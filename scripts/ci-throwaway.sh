@@ -181,7 +181,7 @@ services:
       # destructive helper, declares the variable its callers refuse on, and holds no refusal of
       # its own (TurnWireFixture). Keeping a declared variable while deleting the refusal beside
       # it is a change these rosters cannot see -- scripts/check-objectscript.py's
-      # destructive-test-guard rule is what reads that.
+      # destructive-test-guard rule reads that, but only for a class making a call it names.
       #
       # Rotates the instance's own messages.log. Set here and nowhere else: this container is
       # discarded, and the test refuses to run anywhere the variable is absent rather than

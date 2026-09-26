@@ -618,7 +618,7 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
     }
 }
 
-/// <p>DW-15, AC12. <b>Keeps</b> one readable application-error entry present in the install
+/// <p><b>Keeps</b> one readable application-error entry present in the install
 /// namespace's own <code>^ERRORS</code> (AD-48's underlying store), seeding it through
 /// <method>EnsureErrorEntry</method> only when none is there, and then confirms exactly that
 /// entry -- deterministically, in the caller's own process, with no Task Manager, no scheduled
@@ -652,7 +652,7 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
 /// <code>Error #</code> -- one exact row, never a date bucket.</p>
 /// <p><b>Guarded on the entry's presence, not on a record of having seeded it.</b>
 /// <method>EnsureErrorEntry</method> looks for the demo's own error in the install namespace's
-/// log and seeds only when none is there, so a restart leaves exactly the one entry, and an
+/// log and seeds only when none is there, so a restart seeds no second entry, and an
 /// entry an operator deleted (the Logs area's delete tool removes it) or retention purged is seeded
 /// again at the next start. Either way the entry is confirmed and inventoried the same way.</p>
 ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef pReports, ByRef pRows, Output pErrorEntryId As %String) [ Private ]
@@ -685,7 +685,7 @@ ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef p
         ; namespace travels as the query's own first parameter, never via $NAMESPACE.
         Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSwitchSC) {
-            Do ..Report(.pReports, "warn", "Seeded the demo error-log fixture but could not confirm it -- switching to %SYS to read SYS.ApplicationError failed", {"error": ($System.Status.GetErrorText(tSwitchSC))})
+            Do ..Report(.pReports, "warn", "Could not confirm the demo error-log fixture -- switching to %SYS to read SYS.ApplicationError failed", {"error": ($System.Status.GetErrorText(tSwitchSC))})
             Quit
         }
         Set tFound = 0
@@ -715,11 +715,11 @@ ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef p
         Set $NAMESPACE = tOrigNS
 
         If tQueryFailed {
-            Do ..Report(.pReports, "warn", "Seeded the demo error-log fixture but could not confirm it -- the SYS.ApplicationError:ErrorList query could not be constructed or executed", {"error": ($Select($$$ISERR($Get(tListSC,$$$OK)): $System.Status.GetErrorText(tListSC), 1: "ResultSet not constructed"))})
+            Do ..Report(.pReports, "warn", "Could not confirm the demo error-log fixture -- the SYS.ApplicationError:ErrorList query could not be constructed or executed", {"error": ($Select($$$ISERR($Get(tListSC,$$$OK)): $System.Status.GetErrorText(tListSC), 1: "ResultSet not constructed"))})
             Quit
         }
         If 'tFound || (tMessage = "") || (tTime = "") {
-            Do ..Report(.pReports, "warn", "Seeded an application-error log entry but it did not read back with both readable text and a time (AC12)", {"entry": (tDay _ "," _ tNumber), "message": (tMessage), "time": (tTime)})
+            Do ..Report(.pReports, "warn", "The demo application-error log entry did not read back with both readable text and a time (AC12)", {"entry": (tDay _ "," _ tNumber), "message": (tMessage), "time": (tTime)})
             Quit
         }
 

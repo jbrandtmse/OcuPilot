@@ -639,7 +639,8 @@ export function manifestComparisonBlock(text) {
 }
 
 // Mutation (Rule 19): restore the literal `-lt 11` -> the manifest with an extra attribute-less
-// <Dependency> reads 11 declarations against a floor of 11 and passes, so the first leg goes red.
+// <Dependency> reads the shipped count (11) against a floor of 11 and passes, so the second leg goes
+// red.
 test('a manifest declaring more than the comparison reads fails, naming both numbers', () => {
   const block = manifestComparisonBlock(source);
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-manifest-floor-'));
@@ -666,15 +667,21 @@ test('a manifest declaring more than the comparison reads fails, naming both num
       });
     };
 
+    const same = run(shipped);
+    assert.equal(same.status, 0, `the shipped manifest compares clean against itself: ${same.stdout}${same.stderr}`);
+    const read = /declares the same (\d+) item\(s\)/.exec(same.stdout);
+    assert.ok(read !== null, same.stdout);
+    const n = Number(read[1]);
+
     const extra = shipped.replace('</Module>', '  <Dependency><Name>probe-module</Name><Version>1.0.0</Version></Dependency>\n    </Module>');
     assert.notEqual(extra, shipped, 'the fixture manifest gained a <Dependency>');
     const short = run(extra);
     assert.equal(short.status, 1, `a declaration the comparison cannot read was accepted: ${short.stdout}${short.stderr}`);
-    assert.match(short.stdout, /read only 11 declaration\(s\)[^\n]*fewer than the 12 it declares/, `the failure names both numbers: ${short.stdout}`);
-
-    const same = run(shipped);
-    assert.equal(same.status, 0, `the shipped manifest compares clean against itself: ${same.stdout}${same.stderr}`);
-    assert.match(same.stdout, /declares the same 11 item\(s\)/, same.stdout);
+    assert.match(
+      short.stdout,
+      new RegExp(`read only ${n} declaration\\(s\\)[^\\n]*fewer than the ${n + 1} it declares`),
+      `the failure names both numbers: ${short.stdout}`
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

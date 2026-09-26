@@ -2051,6 +2051,57 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
         co.check_destructive_test_guard(problems)
         self.assertEqual(problems, [])
 
+    def test_an_inline_production_install_guard_that_refuses_nothing_is_refused(self):
+        """The refusal must belong to the production-install guard itself: the class's other
+        guard always supplies a `Quit $$$ERROR`, so one anywhere in the method proves nothing.
+        Mutation (Rule 19): accept any `Quit $$$ERROR` in the method in `refuses_on_variable` ->
+        this goes red."""
+        before_all = (
+            "Method OnBeforeAllTests() As %Status\n"
+            "{\n"
+            "    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {\n"
+            '        Quit $$$ERROR($$$GeneralError, "armed only on a throwaway")\n'
+            "    }\n"
+            '    If $System.Util.GetEnviron("OCUPILOT_ALLOW_PRODUCTION_INSTALL") \'= 1 {\n'
+            "    }\n"
+            "    Quit $$$OK\n"
+            "}\n"
+        )
+        self.write_test_class(
+            "EmptyInstallGuard",
+            '    Set tSC = ##class(OcuPilot.Install.Installer).Install("")',
+            before_all,
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("EmptyInstallGuard.cls" in p and "OCUPILOT_ALLOW_PRODUCTION_INSTALL" in p for p in problems),
+            f"expected the empty production-install guard refused, got {problems}",
+        )
+
+    def test_a_production_install_guard_read_through_another_parameter_passes(self):
+        """The variable may be read through any parameter holding its name, not only
+        `ARMINGVARIABLE`; a one-line guard counts too."""
+        before_all = (
+            'Parameter INSTALLVARIABLE = "OCUPILOT_ALLOW_PRODUCTION_INSTALL";\n\n'
+            "Method OnBeforeAllTests() As %Status\n"
+            "{\n"
+            "    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {\n"
+            '        Quit $$$ERROR($$$GeneralError, "armed only on a throwaway")\n'
+            "    }\n"
+            '    If $System.Util.GetEnviron(..#INSTALLVARIABLE) \'= 1 Quit $$$ERROR($$$GeneralError, "no")\n'
+            "    Quit $$$OK\n"
+            "}\n"
+        )
+        self.write_test_class(
+            "ParameterInstallGuard",
+            '    Set tSC = ##class(OcuPilot.Install.Installer).Install("")',
+            before_all,
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
     def test_the_install_reached_through_the_suites_own_probe_is_in_the_population(self):
         """`OcuPilot.Test.InstallerProbe` extends the installer and does not override `StartPath`,
         so a class driving it runs the real production install while naming no installer class --

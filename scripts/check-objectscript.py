@@ -132,9 +132,9 @@ prose into one checker.
     through the suite's own throwaway-account helpers on `OcuPilot.Test.Version` -- is refused
     unless its `OnBeforeAllTests` refuses first on `$System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1`,
     so an unarmed instance never has `ci-runner.mjs --container <name>` create the principal at
-    all. Reaches principals and the console log only; instance mutation through
-    `OcuPilot.Install.Installer` (a probe database, a namespace mapping, a web application) is
-    outside it.
+    all. A class that runs the production install (`Install("")` or `StartPath`) must also refuse
+    on `OCUPILOT_ALLOW_PRODUCTION_INSTALL`. What the installer creates under the probe profile (a
+    probe database, a namespace mapping, a web application) is outside it.
 
 18. **Restraint-code containment (AD-30, AD-40, Story 3.7).** A restraint code -- the
     `AGENT.READONLY.*` and `AGENT.KILLSWITCH.*` vocabulary, any of its tails
@@ -1341,16 +1341,22 @@ def check_test_class_properties(problems: list[str]) -> None:
 # a parameter holding that name -- so the variable named for the widest effect is the one that
 # keeps every such class off an instance someone cares about.
 
+PRODUCTION_INSTALL_RE = re.compile(
+    r"##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
+    r"\s*\.\s*Install\(\s*(?:\"\"\s*)?[,)]"
+    r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
+    r"\s*\.\s*StartPath\b"
+)
+
+# The production-install spellings are part of the destructive population by construction, so the
+# production-install clause below can never see a spelling the population check skipped.
 DESTRUCTIVE_TEST_RE = re.compile(
     r"##class\(\s*Security\.Users\s*\)\s*\.\s*(?:Create|Delete)\b"
     r"|##class\(\s*Security\.Roles\s*\)\s*\.\s*(?:Create|Delete)\b"
     r"|##class\(\s*Security\.Events\s*\)\s*\.\s*(?:Create|Delete|Modify)\b"
     r"|##class\(\s*Config\.Startup\s*\)\s*\.\s*MoveConsoleLog\b"
     r"|##class\(\s*Security\.System\s*\)\s*\.\s*Modify\b"
-    r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
-    r"\s*\.\s*Install\(\s*(?:\"\"\s*)?[,)]"
-    r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
-    r"\s*\.\s*StartPath\b"
+    r"|" + PRODUCTION_INSTALL_RE.pattern +
     r"|##class\(\s*OcuPilot\.Test\.Version\s*\)\s*\.\s*(?:CreateThrowawayExpiredAccount|DeleteThrowawayAccount)\b"
     r"|##class\(\s*OcuPilot\.Test\.TurnWireFixture\s*\)\s*\.\s*"
     r"(?:EnsurePrincipal|DeletePrincipal|RemovePrincipals|SetRoleResources|RemoveSecondRole)\b"
@@ -1361,13 +1367,6 @@ DESTRUCTIVE_TEST_RE = re.compile(
 )
 
 ARMING_GUARD_RE = re.compile(r"\$System\.Util\.GetEnviron\(\s*\.\.#ARMINGVARIABLE\s*\)\s*'=\s*1")
-
-PRODUCTION_INSTALL_RE = re.compile(
-    r"##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
-    r"\s*\.\s*Install\(\s*(?:\"\"\s*)?[,)]"
-    r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
-    r"\s*\.\s*StartPath\b"
-)
 
 PRODUCTION_INSTALL_VARIABLE = "OCUPILOT_ALLOW_PRODUCTION_INSTALL"
 
@@ -1429,8 +1428,9 @@ def refuses_on_variable(text: str, variable: str) -> bool:
     """Whether `OnBeforeAllTests` refuses unless `variable` reads 1.
 
     The comparison may read the variable by name or through any class parameter whose value is
-    that name, `ARMINGVARIABLE` among them; the same method body must also `Quit $$$ERROR`, as
-    `guarded_before_all_tests` requires.
+    that name, `ARMINGVARIABLE` among them. Its own branch must `Quit $$$ERROR`: on the guard's
+    line after the comparison, or as the next code line. A refusal belonging to another guard in
+    the same method does not count, because a class armed by a second variable always has one.
     """
     names = [
         m.group(1)
@@ -1440,7 +1440,14 @@ def refuses_on_variable(text: str, variable: str) -> bool:
     reads = [re.escape(f'"{variable}"')] + [rf"\.\.#{re.escape(name)}" for name in names]
     guard = re.compile(rf"\$System\.Util\.GetEnviron\(\s*(?:{'|'.join(reads)})\s*\)\s*'=\s*1", re.IGNORECASE)
     code = before_all_tests_code(text)
-    return any(guard.search(raw) for raw in code) and any(ARMING_REFUSAL_RE.search(raw) for raw in code)
+    for i, raw in enumerate(code):
+        found = guard.search(raw)
+        if found is None:
+            continue
+        branch = raw[found.end() :] + ("\n" + code[i + 1] if i + 1 < len(code) else "")
+        if ARMING_REFUSAL_RE.search(branch):
+            return True
+    return False
 
 
 def check_destructive_test_guard(problems: list[str]) -> None:

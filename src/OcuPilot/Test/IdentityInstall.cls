@@ -124,7 +124,8 @@ ClassMethod IdentityShape() As %String
 }
 
 /// <p>Write <var>pProps</var> onto the probe's identity application, or the application
-/// <var>pName</var> names, and answer whether the modify succeeded. Used to induce drift; every method that calls it repairs by re-installing.</p>
+/// <var>pName</var> names, and answer whether the modify succeeded. Used to induce drift; every
+/// method that calls it repairs by re-installing.</p>
 ClassMethod DriftApplication(ByRef pProps, pName As %String = "") As %Boolean
 {
     Set tOk = 0
@@ -217,9 +218,9 @@ Method TestASecondRunRepairsADriftedIdentityApplication()
 
 /// <p>A second run repairs the probe's storage routine application when only its
 /// <code>Type</code> has drifted, and reports the repair. An application of any other type grants
-/// no role, so every escalation into OcuPilot's own state would be refused. The instance accepts
-/// the drift: <code>Security.Applications.Modify</code> sets <code>Type</code> 5 on a routine
-/// application and keeps its <code>MatchRoles</code> and <code>Routines</code>, so only the
+/// no role, so every escalation into OcuPilot's own state would be refused (inference). The
+/// instance accepts the drift: <code>Security.Applications.Modify</code> sets <code>Type</code> 5
+/// on a routine application and keeps its <code>MatchRoles</code> and <code>Routines</code>, so only the
 /// <code>Type</code> comparison can see it.</p>
 /// <p>Mutation (Rule 19): delete the <code>Type</code> comparison from
 /// <method>OcuPilot.Install.Installer.EnsureApplication</method> and recompile

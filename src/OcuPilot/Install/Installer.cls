@@ -2115,7 +2115,8 @@ ClassMethod EnsureApplication(ByRef pNames, pInstallNs As %String, ByRef pReport
             If $Get(tProps("MatchRoles")) '= tWantMatchRoles Set tNeedsRepair = 1
             If $Get(tProps("Routines")) '= tWantRoutines Set tNeedsRepair = 1
             ; Type too, as the identity application's check does: an application of any other
-            ; type grants no role, so every escalation into OcuPilot's own state is refused.
+            ; type grants no role, so every escalation into OcuPilot's own state is refused
+            ; (inference).
             If +$Get(tProps("Type")) '= 4 Set tNeedsRepair = 1
             If tNeedsRepair {
                 Set tModProps("Type") = 4

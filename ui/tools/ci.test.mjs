@@ -1335,7 +1335,7 @@ test('the throwaway and the image probe refuse to touch the live container', () 
   }
 
   const image = readFileSync(join(REPO_ROOT, 'scripts', 'ci-image-compile.sh'), 'utf8');
-  assert.match(image, /"\$NAME" = "ocupilot"/, 'the image probe refuses the live container name');
+  assert.match(image, /^\s*ocupilot\|ocupilot-slot-\*\)/m, 'the image probe refuses the live and slot container names');
   assert.ok(
     !/-p\s|--publish|ports:/.test(image.replace(/^\s*#.*$/gm, '')),
     'and publishes no port at all, so nothing can mistake it for an instance'
@@ -1343,8 +1343,9 @@ test('the throwaway and the image probe refuse to touch the live container', () 
 });
 
 // Mutation (Rule 19): revert the case arm to `*latest-cd*|*:latest)` -> the `:latest-em` row exits
-// past the guard and calls docker, and goes red.
-test('the image probe refuses every floating tag before it calls docker (AD-27)', () => {
+// past the guard and calls docker, and goes red. Narrow the name arm to `ocupilot)` -> the
+// `ocupilot-slot-b` row goes red.
+test('the image probe refuses every floating tag, and a live or slot name, before it calls docker (AD-27)', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-image-tag-'));
   try {
     const bin = join(dir, 'bin');
@@ -1365,6 +1366,18 @@ test('the image probe refuses every floating tag before it calls docker (AD-27)'
       assert.equal(result.status, 2, `${image} exits 2: ${out}`);
       assert.match(out, /AD-27/, `${image}: the refusal names AD-27`);
       assert.ok(!existsSync(calls), `${image}: no docker command ran`);
+    }
+    // The same guard order holds for the container name: a live or slot name exits 2 before any
+    // docker call, because the probe removes its container by name before and after the run.
+    for (const name of ['ocupilot', 'ocupilot-slot-b']) {
+      rmSync(calls, { force: true });
+      const result = spawnSync(
+        '/bin/sh',
+        [join(REPO_ROOT, 'scripts', 'ci-image-compile.sh'), '--image', 'intersystems/irishealth-community:2026.2', '--name', name],
+        { encoding: 'utf8', env: stubEnv(bin, { OCUPILOT_TEST_DOCKER_CALLS: calls }) }
+      );
+      assert.equal(result.status, 2, `--name ${name} exits 2: ${result.stdout}${result.stderr}`);
+      assert.ok(!existsSync(calls), `--name ${name}: no docker command ran`);
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });

@@ -33,10 +33,11 @@ Method OnAfterAllTests() As %Status
     Quit ##class(OcuPilot.Install.Fixture).EnsureErrorEntry(..InstallNamespace(), .tDay, .tNumber, .tSeeded)
 }
 
-/// <p>The namespace the demo's entry lives in, which is the one this suite runs in.</p>
+/// <p>The namespace the demo's entry lives in: the one this suite runs in, which is the install
+/// namespace.</p>
 ClassMethod InstallNamespace() As %String
 {
-    Quit ##class(OcuPilot.Install.Installer).ResolveNamespace()
+    Quit $NAMESPACE
 }
 
 /// <p>The demo's entries in <var>pNamespace</var>, as <code>pIds(n) = "&lt;$H day&gt;,&lt;number&gt;"</code>

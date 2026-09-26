@@ -253,6 +253,43 @@ Rejected:
 - UX edits carry no `[AMENDED]` tags: the spec directs in-place sentence replacement.
 - "(step 7)" left at EXPERIENCE.md `:660`/`:743`: false — it is the build-step tag the document uses throughout (`:206`, `:742`).
 
+### Review Findings (Batches B2+B3, code review 2026-09-26)
+
+- [x] [Review][Patch] The production-install refusal passed with an inline guard whose branch refuses nothing, because any `Quit $$$ERROR` in the method counted and the class's other guard always supplies one; the refusal must now be the guard's own branch [scripts/check-objectscript.py:1427]
+- [x] [Review][Patch] The "read through another parameter" form of that guard, and a one-line guard, had no harness case [scripts/test_check_objectscript.py:2082]
+- [x] [Review][Patch] `PRODUCTION_INSTALL_RE` was a copy inside `DESTRUCTIVE_TEST_RE`, and the install clause runs only for a destructive hit, so a spelling added to one alone went unchecked; the population is now built from it [scripts/check-objectscript.py:1344]
+- [x] [Review][Patch] The module docstring's rule 17 still said installer mutation is outside the rule [scripts/check-objectscript.py:130]
+- [x] [Review][Patch] Three `CreateErrorEntry` warns said "Seeded" on the found path too [src/OcuPilot/Install/Fixture.cls:688]
+- [x] [Review][Patch] "a restart leaves exactly the one entry" is false where earlier starts left several; now "seeds no second entry", and the rewritten doc drops its DW id [src/OcuPilot/Install/Fixture.cls:655]
+- [x] [Review][Patch] `DemoErrorSeed.InstallNamespace` answered `ResolveNamespace()`, which under `OCUPILOT_NAMESPACE` is not the namespace the suite runs in; now `$NAMESPACE`, as `Demo` uses [src/OcuPilot/Test/DemoErrorSeed.cls:38]
+- [x] [Review][Patch] `UiAboutRead`'s header said it writes nothing; the new leg writes one console line (the `AuditingScreen` header's wording) [src/OcuPilot/Test/UiAboutRead.cls:4]
+- [x] [Review][Patch] "any other type grants no role" was stated unmeasured; labeled `(inference)` at both sites [src/OcuPilot/Install/Installer.cls:2119, src/OcuPilot/Test/IdentityInstall.cls:221]
+- [x] [Review][Patch] `ci-image-compile.sh`'s name guard refused only `ocupilot`, and the probe `docker rm -f`s its name; it now refuses `ocupilot-slot-*` too, pinned behaviorally [scripts/ci-image-compile.sh:56, ui/tools/ci.test.mjs:1348]
+- [x] [Review][Patch] The DW-1344 test hard-coded 11 and 12, the literal the fix removed from the script; it now derives the count from the shipped manifest's own run [ui/tools/ipm-archive.test.mjs:672]
+- [x] [Review][Patch] The roster comment said the guard rule reads every deleted refusal; it reads them only for a class making a call it names [scripts/ci-throwaway.sh:184]
+- [x] [Review][Patch] Two doc lines left mis-wrapped by the pass [src/OcuPilot/Api/Readiness.cls:43, src/OcuPilot/Test/IdentityInstall.cls:127]
+- [x] [Review][Defer] The checker reads an arming refusal only for classes making a destructive call it names (`PreferencesWire`, `DemoErrorSeed`), the frontmatter's third `deferred:` item [scripts/check-objectscript.py:1453] — deferred: DW-1694, wontfix-accepted; widening flags seven existing classes
+
+Rejected:
+
+- `EnsureErrorEntry` answers "the newest": false — `DateList` lists newest first (read on `ocupilot-slot-b`: 09/24 down to 09/15) and `ErrorList` highest number first.
+- Cross-class interference in CI's sweep: false — `DemoErrorSeed` touches only the install namespace's demo-marked entries and its own other-routine entry, and leaves one present; `ErrorDelete`, `ErrorLogSeed` and `FixtureNamespace` work in `USER`; `ErrorLog`/`ErrorLogWire` only read and need one entry.
+- Arming in CI: false — all four variables and the eight classes are in `ci-throwaway.sh`'s compose and rosters, which the `instance` job's `up` uses; `ci-runner` counts a refusal as a failure, so nothing is skipped.
+- The preview's role-exists clause has no assertion: low — the AC's pinning test and mutation cover the provenance clause; the other guards a string in a refusal message.
+- DW-1425's mutation only shows the spec typing its own input: low — the fix is the test's input, and the line says the residue case needs 40 rows this throwaway lacks.
+- No `mutation:` line for "the last of two mains wins" or the no-exception leg: low — Rule 19 asks one per AC, and DW-1374's and DW-1373's are recorded.
+- An unparseable `DateList` date gives a half-empty identity (`Fixture`, `DemoErrorSeed`): low — the vendor spells it `$ZDate(day,1)`; the caller then warns.
+- A lowercase `pNamespace` is refused by `EnsureErrorEntry`: low — every caller passes `$NAMESPACE` or an application's stored namespace, both upper case.
+- A `Fixture` subclass seeds under its own routine name: low — test fixtures on a throwaway; a seam change is more than a correction.
+- The demo marker is spelled in three places: low — a divergence reddens `DemoErrorSeed` loudly.
+- `FixtureNamespace` would delete a `USER` demo entry it did not seed: low — such an entry is that class's own residue on a throwaway.
+- The find walks the whole log when no demo entry exists: low — opt-in demo only, bounded by retention.
+- A throw between `SeedInto` and its delete leaves a stray entry: low — assertions do not throw; throwaway only.
+- The checker does not require the refusal to precede the install call, or read `$ClassMethod` spellings: low — rejected at the implement review too; no such class exists.
+- The IPM floor misses a multi-line element and counts a commented one: false — `element_lines` reads a multi-line element too, so no verdict changes; `module.xml` is generated and carries no element comment.
+- `browserConfig` does not refuse a live origin: low — DW-1015's task is the container name; widening it is outside the task.
+- `smoke.sh`'s own FAILED line now repeats the class's, and PASSED names no pending checks: low — both lines are true; the spec asks for skipped only.
+
 ## Spec Change Log
 
 - 2026-09-26, lead at spec validation: (1) an already-fixed entry closes `resolved-by:23-1-the-range-end-cleanup` with the earlier commit as evidence, not `dropped`, which the grammar keeps for invalid or duplicate entries. (2) DW-1650 moves from `burndown` to B6 + L: its ledger trailer records the owner's decision at the 10.6 merge gate, so only the spine's Deferred row was stale. (3) DW-1185, DW-1434, DW-1435 and DW-1478 are escalated to the owner rather than applied: they edit instruction files (`CLAUDE.md`, `.claude/rules/`, `_bmad/custom/skill-rules.md`), which no agent may change on another agent's say-so; the drafted text stays in Batch L for the owner. (4) DW-1338 and DW-1413 are applied only outside other epics' story blocks; the story-block lines (Stories 1.9, 4.3, 13.3) are escalated for the orchestrator. (5) A batch's commit and the lead's review/bookkeeping commit are pushed together, never with `[skip ci]`; the lead's Batch L commit rides with B1's push.
@@ -737,6 +774,7 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Tests and probe
 - mutation: the case arm reverted to `*latest-cd*|*:latest)` → `ci.test.mjs` "the image probe refuses every floating tag before it calls docker (AD-27)" red on `:latest-em`; reverted.
 - mutation: the floor restored to `-lt 11` → `ipm-archive.test.mjs` "a manifest declaring more than the comparison reads fails, naming both numbers" red; reverted.
 - DW-1689 is message text only; no mutation.
+- mutation (code review): `refuses_on_variable` accepting any `Quit $$$ERROR` in the method → `test_an_inline_production_install_guard_that_refuses_nothing_is_refused` red; `names` restricted to `ARMINGVARIABLE` → `test_a_production_install_guard_read_through_another_parameter_passes` red; the name arm narrowed to `ocupilot)` → `ci.test.mjs` "the image probe refuses every floating tag, and a live or slot name" red on `ocupilot-slot-b` (stub docker); `-lt 11` restored → `ipm-archive.test.mjs` floor test red. Each reverted `cmp`-identical. After the patches: `check-objectscript.py` 0 problems in 958 files, harness 134 OK, `npm run test:tools` 1473/1473; `LoadDir` 0 errors on `ocupilot-b-ci`, `DemoErrorSeed` 2/2 (run 46), `Demo` 12/12 (run 47).
 
 ### Batch B4
 

@@ -7342,3 +7342,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: check_destructive_test_guard reads OnBeforeAllTests only for DESTRUCTIVE_TEST_RE classes; ci.test.mjs counts the declaration, not the refusal
 - 2026-09-26T12:20:28Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=harvest note=reopen_if=a test class declares an arming variable and its OnBeforeAllTests refusal is deleted with every gate green
+
+### DW-1694: check-objectscript.py reads an arming refusal only for classes making a destructive call it names, so deleting PreferencesWire's or DemoErrorSeed's Quit $$$ERROR leaves every gate green
+- source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: check_destructive_test_guard skips classes with no DESTRUCTIVE_TEST_RE hit; ci.test.mjs rosters count the declaration, not the refusal. Widening to every ARMINGVARIABLE class flags ProposalFixture, SecretStoreProbe, ServiceLdapProbe, TokenProbe and three inline GetEnviron readers (probe 2026-09-26)
+- 2026-09-26T12:41:27Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=cr note=reopen_if=a Test class declaring an OCUPILOT_ALLOW_* variable is found running with its refusal deleted
+- 2026-09-26T12:43:12Z status=dropped owner=23-1-the-range-end-cleanup by=adjudication note=duplicate of DW-1693 (same arming-refusal coverage limit), filed at harvest
