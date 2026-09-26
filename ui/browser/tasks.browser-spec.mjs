@@ -449,22 +449,22 @@ test('AC3: the demo fixture\'s task appears among the scheduled tasks', async ()
   }
 });
 
-test('Story 6.6 AC1: Task history renders its form first with no read, Search issues one read carrying search, and the demo task\'s failed run is present', async () => {
+test('Story 6.6 AC1: Task history opens on one default read, Search issues one read carrying search, and the demo task\'s failed run is present', async () => {
   const { context, page, reads } = await signedInAtList(config.username, config.password, HISTORY_URL);
   try {
-    await page.waitForSelector('#ocu-task-history-search', { timeout: config.navigationTimeoutMs });
-    assert.equal(await page.$('[role="grid"]'), null, 'no table before Search');
-    assert.equal(await page.$('.ocu-data-table-skeleton'), null, 'no skeleton before Search');
-    assert.deepEqual(reads, [], 'no read before Search');
+    await openedHistory(page);
+    assert.equal(reads.length, 1, `one read on open (Story 11.11): ${JSON.stringify(reads)}`);
+    assert.equal(new URL(reads[0]).searchParams.has('since'), false, 'sending no since, so the default applies');
 
-    await page.type('#ocu-task-history-search', 'OcuPilotDemo');
-    await page.click('.ocu-criteria-controls button[type="submit"]');
+    await searchHistory(page, 'OcuPilotDemo');
     await waitForRows(page, config.navigationTimeoutMs);
 
-    assert.equal(reads.length, 1, `exactly one read was issued by Search: ${JSON.stringify(reads)}`);
-    const url = new URL(reads[0]);
+    assert.equal(reads.length, 2, `exactly one read was issued by Search: ${JSON.stringify(reads)}`);
+    const url = new URL(reads[1]);
     assert.equal(url.pathname, HISTORY_READ_PATH);
     assert.equal(url.searchParams.get('search'), 'OcuPilotDemo', 'carrying search=OcuPilotDemo');
+    assert.equal(url.searchParams.get('since'), '', 'and the emptied since, so the whole history is searched');
+    await showDemoRows(page);
 
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers, [
@@ -633,10 +633,10 @@ test('Story 6.7 AC2: a cold deep link to Task details shows the demo task, the l
 test('Story 6.6 AC3: activating a row\'s name cell on Task history opens a dialog listing every read field, and closing it restores the searched rows without a new read', async () => {
   const { context, page, reads } = await signedInAtList(config.username, config.password, HISTORY_URL);
   try {
-    await page.waitForSelector('#ocu-task-history-search', { timeout: config.navigationTimeoutMs });
-    await page.type('#ocu-task-history-search', 'OcuPilotDemo');
-    await page.click('.ocu-criteria-controls button[type="submit"]');
+    await openedHistory(page);
+    await searchHistory(page, 'OcuPilotDemo');
     await waitForRows(page, config.navigationTimeoutMs);
+    await showDemoRows(page);
     const readsBefore = reads.length;
 
     const rowIndex = await findRowIndexByName(page, DEMO_TASK);
@@ -939,6 +939,60 @@ async function readMatching(reads, matches) {
 }
 
 /** Assert no row, command bar or command box on the open screen offers an action but Refresh. */
+/** Wait for Task history's opening read to render, rows or the empty state (Story 11.11). */
+async function openedHistory(page) {
+  await page.waitForSelector('#ocu-task-history-search', { timeout: config.navigationTimeoutMs });
+  await page.waitForFunction(
+    () => document.querySelector('[role="grid"] .ocu-data-table-body [role="row"]') !== null
+      || document.querySelector('.ocu-data-table-empty') !== null,
+    { timeout: config.navigationTimeoutMs }
+  );
+}
+
+/**
+ * Search Task history for `text` over the whole history -- the since field emptied, so a run older
+ * than the opening seven days is found -- and wait for this Search's own answer.
+ */
+async function searchHistory(page, text) {
+  await page.click('#ocu-task-history-since', { clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  await page.type('#ocu-task-history-search', text);
+  const answered = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === HISTORY_READ_PATH && new URL(response.url()).searchParams.get('search') === text,
+    { timeout: config.navigationTimeoutMs }
+  );
+  await page.click('.ocu-criteria-controls button[type="submit"]');
+  // The opening read's rows are already on screen, so wait until the grid holds this answer's.
+  const body = await (await answered).json();
+  await page.waitForFunction(
+    (wanted) => {
+      const grid = document.querySelector('[role="grid"]');
+      return grid !== null && Number(grid.getAttribute('aria-rowcount')) - 1 === wanted;
+    },
+    { timeout: config.navigationTimeoutMs },
+    Array.isArray(body.rows) ? body.rows.length : -1
+  );
+}
+
+/**
+ * Narrow the rendered rows to the demo task's own with the command bar's filter, so its row is in
+ * view however many other runs the search matched on a long-lived instance.
+ */
+async function showDemoRows(page) {
+  await page.click('#ocu-command-bar-filter', { clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  await page.type('#ocu-command-bar-filter', DEMO_TASK);
+  await page.waitForFunction(
+    (wanted, rowSelector) =>
+      Array.from(document.querySelectorAll(rowSelector)).some(
+        (row) => row.querySelectorAll('[role="gridcell"]')[2]?.textContent.trim() === wanted
+      ),
+    { timeout: config.navigationTimeoutMs },
+    DEMO_TASK,
+    ROW_SELECTOR
+  );
+}
+
 async function assertRefreshAlone(page) {
   const offered = await page.evaluate(() => ({
     rowTriggers: document.querySelectorAll('.ocu-data-table-trigger').length,

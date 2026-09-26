@@ -3,45 +3,73 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-// Pins Task history's own state (`areas/tasks/history.store.ts`): the search text and
-// user-defined-only checkbox translate into `criteria()`'s query, Search is a one-way latch this
-// tab's lifetime, and `readFor` memoizes by reference so a re-bind after the detail dialog closes
-// is a no-op.
+// Pins Task history's own state (`areas/tasks/history.store.ts`): the default read sends nothing,
+// the form as shown sends every field (an emptied one as an unset bound), an arrival sends exactly
+// its criteria, the answer's applied criteria fill the fields a request left absent, Search is a
+// one-way latch this tab's lifetime, and `readFor` memoizes by reference so a re-bind after the
+// detail dialog closes is a no-op.
 //
 // Mutations (Rule 19):
-// - `criteria` always sends `userOnly` -> "the checkbox translates to '1' only when checked" goes red.
+// - `criteria` sends `userOnly: '1'` whatever the checkbox -> "the checkbox translates" goes red.
+// - `applyEcho` fills every field, sent or not -> "the echo fills only what the request left absent" goes red.
 // - `readFor` calls `create` every time -> "readFor memoizes the first read it is given" goes red.
 // - `isCurrentGeneration` always answers true -> "generations tell a stale instance from the current one" goes red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const store = await import(join(uiRoot, 'src', 'app', 'areas', 'tasks', 'history.store.ts'));
 
-test('the store opens unsearched, with an empty search and the checkbox unchecked', () => {
+test('the store opens unsearched on the default read, which sends no criteria at all', () => {
   const search = new store.TaskHistorySearch();
   assert.equal(search.searched(), false);
   assert.equal(search.search(), '');
   assert.equal(search.userOnly(), false);
-  assert.deepEqual(search.criteria(), {}, 'an empty form sends no criteria at all');
+  assert.equal(search.since(), '');
+  assert.deepEqual(search.criteria(), {}, 'nothing is sent, so the instance applies since\'s default');
 });
 
-test('setSearch and setUserOnly notify, and criteria sends only what is set', () => {
+test('the form as shown sends every field, notifying as each is set', () => {
   const search = new store.TaskHistorySearch();
   let notified = 0;
   search.subscribe(() => (notified += 1));
   search.setSearch('OcuPilotDemo');
-  assert.deepEqual(search.criteria(), { search: 'OcuPilotDemo' });
-  assert.equal(notified, 1);
-  search.setUserOnly(true);
-  assert.deepEqual(search.criteria(), { search: 'OcuPilotDemo', userOnly: '1' });
-  assert.equal(notified, 2);
+  search.setSince('2026-09-20 00:00:00');
+  search.useForm();
+  assert.deepEqual(search.criteria(), { search: 'OcuPilotDemo', userOnly: '', since: '2026-09-20 00:00:00' });
+  assert.equal(notified, 3);
+  search.setSince('');
+  assert.deepEqual(search.criteria(), { search: 'OcuPilotDemo', userOnly: '', since: '' }, 'an emptied since is sent empty: the whole history');
 });
 
-test('the checkbox translates to "1" only when checked, never to a stray empty value', () => {
+test('the checkbox translates to "1" when checked and to an empty value when not', () => {
   const search = new store.TaskHistorySearch();
+  search.useForm();
   search.setUserOnly(true);
-  assert.deepEqual(search.criteria(), { userOnly: '1' });
+  assert.equal(search.criteria().userOnly, '1');
   search.setUserOnly(false);
-  assert.deepEqual(search.criteria(), {}, 'unchecked sends nothing, not userOnly: ""');
+  assert.equal(search.criteria().userOnly, '', 'unchecked is an unset criterion, never "0"');
+});
+
+test('an arrival sends exactly its criteria and shows them in the form', () => {
+  const search = new store.TaskHistorySearch();
+  search.useArrival({ route: 'tasks/history', criterion: '', criteria: { search: 'OcuPilotProbeRunTask', since: '', nosuch: 'x' } });
+  assert.deepEqual(search.criteria(), { search: 'OcuPilotProbeRunTask', since: '' }, 'no userOnly, and nothing undeclared');
+  assert.equal(search.search(), 'OcuPilotProbeRunTask');
+  assert.equal(search.since(), '');
+});
+
+test('the echo fills only what the request left absent, and ignores an answer to a replaced request', () => {
+  const search = new store.TaskHistorySearch();
+  search.applyEcho({ search: '', userOnly: '', since: '2026-09-19 12:00:00' }, {});
+  assert.equal(search.since(), '2026-09-19 12:00:00', 'the default read shows the since the instance applied');
+
+  search.useArrival({ route: 'tasks/history', criterion: '', criteria: { search: 'probe' } });
+  search.applyEcho({ search: 'other', userOnly: '1', since: '2026-09-19 13:00:00' }, { search: 'probe' });
+  assert.equal(search.search(), 'probe', 'a field the request carried keeps it');
+  assert.equal(search.userOnly(), true);
+  assert.equal(search.since(), '2026-09-19 13:00:00');
+
+  search.applyEcho({ since: '1999-01-01 00:00:00' }, {});
+  assert.equal(search.since(), '2026-09-19 13:00:00', 'an answer to the default read the arrival replaced changes nothing');
 });
 
 test('Search is a one-way latch: noteSearched flips it on and it stays on', () => {

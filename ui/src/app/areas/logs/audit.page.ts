@@ -5,7 +5,9 @@ import { decodeEntityId } from '../../core/entity-id';
 import { ExplainEntry } from '../../core/explain-entry';
 import { NavigationService, withQuery } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
+import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { ScreenArrivals } from '../../core/screen-arrival';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import { textOf } from '../../core/screen-read';
 import { fieldOf, rowKey } from '../../core/table-model';
@@ -41,14 +43,13 @@ interface AuditView {
 
 /**
  * The page every `list (server criteria)` archetype renders: a criteria form above the table, the
- * table itself once Search has run, and the row detail dialog the `/:id` route opens (AD-5).
+ * table, and the row detail dialog the `/:id` route opens (AD-5).
  *
- * **It renders nothing until Search is pressed** (EXPERIENCE.md "criteria form first, skeleton"). That is the archetype's
- * whole distinction from `list`: this screen's API searches on the server, so an automatic read on
- * navigation would be an unbounded search nobody asked for. The read is therefore not bound to the
- * refresh framework until the first Search -- `RefreshService.readNow()` with no bound read does
- * nothing, which is what keeps a namespace switch from issuing one either -- and the table is not
- * rendered before it, so there is no skeleton and no empty state to see.
+ * **It opens on the screen's default search** (EXPERIENCE.md "default search on open, skeleton
+ * until it answers"). One read runs at once with no criteria, so the instance applies the declared
+ * default -- the last 24 hours, marker off (AD-36, AD-46) -- and the form then shows the values the
+ * read applied. A return visit re-runs the person's last Search, or the default when there was
+ * none. An agent arrival (`ScreenArrivals`) runs exactly the search it carries instead, once.
  *
  * **Criteria travel on the declared read, never on the command bar** (AD-36). The form's values are
  * sent as the descriptor's own `read.criteria` parameters, so the read tool sends the same search;
@@ -117,9 +118,7 @@ interface AuditView {
           </label>
         </div>
       </form>
-      @if (searched) {
-        <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
-      }
+      <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
       @if (detail; as row) {
         <app-dialog
           [heading]="STRINGS.auditDialogTitle"
@@ -155,8 +154,12 @@ export class AuditPage {
   private readonly stores = inject(ScreenStores);
   private readonly refresh = inject(RefreshService);
   private readonly search = inject(AuditSearch);
+  private readonly scope = inject(ScopeService);
 
   private readonly actions = inject(ScreenActions);
+
+  /** An agent navigation's hand-off (Story 11.11). Optional, so a spec that needs none provides none. */
+  private readonly arrivals = inject(ScreenArrivals, { optional: true });
 
   /** The "Explain this entry" hand-off (Story 11.2). Optional, so a spec that needs none provides none. */
   private readonly explainEntry = inject(ExplainEntry, { optional: true });
@@ -188,46 +191,39 @@ export class AuditPage {
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     this.list = { screen, store };
 
-    // Bind with no read until the first Search. `readNow()` answers nothing for a binding with a
-    // null read, so neither the scope's first resolution nor a namespace switch can issue the
-    // unbounded search this screen exists to avoid; the binding itself is still what gives the
-    // table its `hasLoaded`, its fault and its max-rows re-read.
-    this.refresh.bind(screen, this.search.searched() ? this.search.readFor(screen) : null);
+    // Bound on every open. The dialog round trip re-binds the same descriptor with the same
+    // closure, which `bind` treats as a no-op that keeps `hasLoaded`, so it reads nothing.
+    this.refresh.bind(screen, this.search.readFor(screen));
+    const arrival = this.arrivals?.take(screen.route) ?? null;
+    if (arrival !== null) {
+      this.search.useArrival(screen, arrival);
+      this.readNow();
+    } else if (!this.refresh.hasLoaded()) {
+      // A first visit or a return: the person's last Search when there was one, else the default.
+      if (this.search.searched()) this.search.useForm();
+      else this.search.useDefault();
+      this.readNow();
+    }
 
-    // Returning to this screen after a Search is a FULL re-bind, not the dialog's no-op one: the
-    // descriptor in between was another screen's, so `bind` clears `hasLoaded` and the table would
-    // render a skeleton that nothing ever resolves -- this archetype has no timer and no read on
-    // navigation. The dialog round trip does not reach here, because `bind` returns early for the
-    // same descriptor and the same closure, leaving `hasLoaded` true.
-    if (this.search.searched() && !this.refresh.hasLoaded()) void this.refresh.readNow();
+    // Manual Refresh (DW-260): re-runs the read the screen last issued, reading the form at call
+    // time once a Search has run.
+    const stopRefreshAction = this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
+      this.refresh.bind(screen, this.search.readFor(screen));
+      void this.refresh.readNow();
+    });
 
-    // Manual Refresh (DW-260), and **not before the first Search**: this screen renders nothing
-    // until one, and a Refresh with no search behind it would either issue the unbounded read the
-    // whole archetype exists to avoid or do nothing at all. Registered and removed as the store's
-    // own `searched` flag moves, so a sign-out reset takes the control away with the results.
-    let stopRefreshAction: (() => void) | null = null;
-    const syncRefreshAction = (): void => {
-      const offered = this.search.searched();
-      if (offered && stopRefreshAction === null) {
-        stopRefreshAction = this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
-          // The same search, re-run: `readFor` reads the criteria at call time, so Refresh re-runs
-          // what is in the form now rather than a snapshot taken when it was registered.
-          this.refresh.bind(screen, this.search.readFor(screen));
-          void this.refresh.readNow();
-        });
-      } else if (!offered && stopRefreshAction !== null) {
-        stopRefreshAction();
-        stopRefreshAction = null;
-      }
-    };
-    syncRefreshAction();
+    // An arrival for this screen while it is already mounted is taken here, in place of a new page.
+    const stopArrivals =
+      this.arrivals?.subscribe(() => {
+        const next = this.arrivals?.take(screen.route) ?? null;
+        if (next === null) return;
+        this.search.useArrival(screen, next);
+        this.readNow();
+      }) ?? null;
 
     const stopStore = store.subscribe(() => this.bump());
     const stopExplain = this.explainEntry?.subscribe(() => this.bump()) ?? null;
-    const stopSearch = this.search.subscribe(() => {
-      this.bump();
-      syncRefreshAction();
-    });
+    const stopSearch = this.search.subscribe(() => this.bump());
     const stopParams = this.route.paramMap.subscribe((params) => {
       const raw = params.get('id');
       this.entityId.set(raw === null ? '' : decodeEntityId(raw));
@@ -252,7 +248,8 @@ export class AuditPage {
       stopStore();
       stopExplain?.();
       stopSearch();
-      stopRefreshAction?.();
+      stopRefreshAction();
+      stopArrivals?.();
       stopParams.unsubscribe();
       if (!this.search.isCurrentGeneration(generation)) return;
       if (this.navigation.screenForUrl(this.router.url)?.descriptor === screen.descriptor) return;
@@ -279,11 +276,6 @@ export class AuditPage {
   protected get markerOn(): boolean {
     this.generation();
     return this.search.marker();
-  }
-
-  protected get searched(): boolean {
-    this.generation();
-    return this.search.searched();
   }
 
   /**
@@ -351,12 +343,13 @@ export class AuditPage {
     this.search.setMarker((event.target as HTMLInputElement).checked);
   }
 
-  /** Search: bind the read if this is the first one, then read now whatever the rate. */
+  /** Search: send the form as shown, an emptied field as an unset bound, and read now whatever the rate. */
   protected onSearch(event: Event): void {
     event.preventDefault();
     const screen = this.list?.screen;
     if (screen === undefined) return;
     this.search.noteSearched();
+    this.search.useForm();
     this.refresh.bind(screen, this.search.readFor(screen));
     void this.refresh.readNow();
   }
@@ -380,6 +373,11 @@ export class AuditPage {
 
   protected onFocusFilter(): void {
     document.getElementById(COMMAND_BAR_FILTER_ID)?.focus();
+  }
+
+  /** Read once the scope has resolved; before then the framework's own scope read is the one. */
+  private readNow(): void {
+    if (this.scope.loaded()) void this.refresh.readNow();
   }
 
   private bump(): void {

@@ -2,7 +2,7 @@
 title: 'Story 11.11: The screen shows what the agent is talking about'
 type: 'feature'
 created: '2026-09-26'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '0c5317cb2b99de99ba5a93ecd8e3a4739df27447'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -201,6 +201,32 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-26 — Review pass
+
+- verdicts: 21 findings — high 0, medium 5, low 11, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` An audit arrival that is not the marker's has no test keeping the marker off — added "an arrival whose criteria are not the marker's leaves the marker off" to `audit.page.spec.ts`.
+  - `[medium]` `[patch]` `useDefault` after an arrival is unpinned; the audit spec header's `useDefault` mutation could not fail — added arrival-then-return tests to both page specs and corrected the header line.
+  - `[low]` `[patch]` The audit echo's stale-answer guard has no test — added a held-open-read race test to `audit.page.spec.ts`.
+  - `[medium]` `[patch]` `shell.screen.open` accepts `criteria` for screens whose page never takes an arrival (`tasks/upcoming` and others) — `Navigate.CriteriaRefusal` now accepts keys only on a `list (server criteria)` target (`ARRIVALARCHETYPE`), and `ToolNavigate` refuses `tasks/upcoming {hoursOffset}`.
+  - `[low]` `[reject]` `HoursAgo`'s sub-day branch is untested — read correct for non-multiples of 24, and no shipped descriptor declares one.
+  - `[low]` `[reject]` Leg (b)'s at-or-after assertion cannot redden on a young throwaway — the cutoff's pin is `CriteriaDefault` with its recorded mutation; leg (b) pins the open read on a real instance.
+  - `[low]` `[patch]` Two `CriteriaDefault` absence assertions had no proof a query was recorded — each now asserts `maxRows` was sent.
+  - `[medium]` `[patch]` `TestSinceIsNeverSent`'s 168-hour echo sat inside an `If` and could be skipped — made unconditional.
+  - `[low]` `[patch]` AC1's Task-history half had no mutation line — recorded below.
+  - `[low]` `[patch]` AC3's `NAV.CRITERIONINVALID` half had no mutation line — recorded below.
+  - `[low]` `[patch]` AC4 had no mutation line — recorded below.
+  - `[false]` `[reject]` A criteria-free agent navigation replaces the person's last Search with the default — the intent says an arrival sends only the directive's criteria, so an omitted one takes its default.
+  - `[medium]` `[patch]` Tool reach exceeds screen reach (intent-alignment) — same root cause and fix as the `ARRIVALARCHETYPE` row above.
+  - `[low]` `[reject]` Default-to-default agreement is fixture-level only; each read recomputes its window — the tool asks the model to pass the read's `criteria`, which legs (c) and (d) pin; closing a seconds-wide edge would need shared state.
+  - `[false]` `[reject]` The marker-ticked representation of an arrival is only one reading — the spec's lead gate addition mandates it.
+  - `[low]` `[reject]` Search, edit without searching, return: the edited form is sent — form and rows still agree, and the behavior predates the story.
+  - `[false]` `[reject]` A return after an arrival runs the default — that is the matrix's Return-visit row.
+  - `[low]` `[reject]` Refresh is offered from the open read, and a namespace switch reads — both user-initiated (AD-43 forbids timers only), and the spec orders Refresh after the open read.
+  - `[false]` `[reject]` The defaults are pinned only against a stub port — legs (a) and (b) pin them on a real instance.
+  - `[low]` `[reject]` `NAV.CRITERIONINVALID` is not tested through `Dispatch` — `Dispatch` passes any fault's `detail` regardless of code, pinned through it with `NAV.CRITERIONUNKNOWN`.
+  - `[false]` `[reject]` A marker-only arrival now reads the last 24 hours instead of all time — the flag overrides only its own param; an omitted criterion takes its default per the intent.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -282,15 +308,43 @@ Observed (2026-09-26, `ocupilot-ci`, whole package recompiled per mutation, tree
 - mutation: `ScreenArrivals.take` ignores the route -> `screen-arrival.test.mjs` red.
 - mutation: `AgentNavigator.act` sets no arrival -> two `agent-navigator.spec.ts` Story 11.11 tests red.
 - mutation: `AuditPage` ignores a held arrival -> `audit.page.spec.ts` arrival test red.
+- mutation: `Navigate.CriteriaRefusal` drops the `ARRIVALARCHETYPE` gate -> `ToolNavigate.TestAnUndeclaredCriteriaKeyIsRefusedByName` red (`tasks/upcoming`, run 14153).
+- mutation: `CriteriaRefusal` skips the `SeedCriteria` value check -> `ToolNavigate.TestAnInvalidCriteriaValueIsRefusedByName` red (AC3, run 14154).
+- mutation: `TaskHistoryList` `defaultHoursAgo` 168 -> 24 -> `CriteriaDefault.TestSinceIsNeverSent` red (AC1 history half, run 14155).
+- mutation: EXPERIENCE.md `:371` "Logged since" -> "Logged after" -> `strings.test.mjs` red, three tests (AC4).
+- mutation: `useArrival` ticks the marker whenever one is declared -> `audit.page.spec.ts` "not the marker's" red.
+- mutation: `useDefault` keeps the arrival's mode -> the "return after an arrival" tests in `audit.page.spec.ts` and `history.page.spec.ts` red, each alone.
+- mutation: the stale-answer guard dropped from `AuditSearch.applyEcho` -> `audit.page.spec.ts` "a late answer" red.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- the DW-1337 structural gate (`a11y-structural-invariants`) reports 225 entries against 223: `logs/audit|overflow|720|app-status-bar>span.ocu-status-bar-segment.ocu-status-bar-stamp` (2 px) and `tasks/history|overflow|720|app-status-bar>span.ocu-status-bar-segment.ocu-status-bar-stamp` (4 px). Both screens now read on open, so the shell status bar draws its Last-update stamp there; the same key is already baselined on 33 other routes (counted in `structural-baseline.json`). The cause is `app-status-bar`, outside this story's footprint, so per Tasks & Acceptance neither baselined nor fixed.
+Status: done
+Blocking condition: none
 
-- Recommended amendment (lead decides): admit the two keys to the baseline as the existing stamp root cause (entries 225), and route the stamp overflow at 720 px to the owner of DW-1337; or authorize a footprint extension into the shell status bar, which would also clear the 33 baselined entries.
-- State: implementation complete and uncommitted in the worktree on HEAD `0c5317cb` (no finalize commit; step-04 review layers not run).
-- Verification: `CriteriaDefault` (7), `ToolNavigate`, `Descriptor`, `TaskHistory`, `ReadTool`, `ToolDispatchClientFault`, `LedgerClientRows`, `TurnNavigate` green on `ocupilot-ci` (whole package, ERRCOUNT 0); browser `default-search` (4 legs), `audit`, `tasks`, `proposal-demo`, `screen-height` green; `a11y-structural-invariants` red on the two keys only.
-- Sweep: 292 ran, 14 refused (arming), 1 known residue (`WireSecurityRead` task history). `npm test`: tools 1,475/1,475, components 1,454/1,454.
-- Bundle: initial 1,841,110 B before, 1,844,256 B after (under 1854kB).
-- Contended/out-of-footprint files touched: `Api/Error.cls` (additive, plus `NavCodes` list append), `core/strings.ts` (one key), `ui/browser/audit.browser-spec.mjs` (HEAD `:534-619` byte-identical, now at `:554-639`), `ui/src/app/app.ts`, `ui/src/main.ts`, `Test/MgmntPortWire.cls`, `Test/SecurityLists.cls`, `Test/TaskLists.cls`, `Test/TurnNavigate.cls`. Unspecified behavior change: navigating to the current route settles `opened` instead of refused.
+- Summary: both screens open on an instance-side default search (audit 24 h, Task history 7 d via `since`), the read answers the `criteria` it applied, and `shell.screen.open` carries `criteria` that the arriving screen runs exactly. The implementation is implement-1's; this pass appended the lead-ruled baseline keys and patched the review findings.
+- This pass changed:
+  - `ui/browser/structural-baseline.json`: two DW-1584 stamp keys (`logs/audit`, `tasks/history` at 720 px), 225 entries.
+  - `Screen/Tool/Navigate.cls`: `criteria` accepted only on a `list (server criteria)` target (`ARRIVALARCHETYPE`), and the tool description says so.
+  - Tests: `ToolNavigate` (`tasks/upcoming` refused), `CriteriaDefault` (unconditional echo and recorded-query proofs), `audit.page.spec.ts` (+3 tests, harness can hold the open read), `history.page.spec.ts` (+1 test).
+- Review: 21 findings (0 high, 5 medium, 11 low, 5 false). Patched 4 medium entries and 5 low; rejected 12 with the reasons in the triage log; nothing deferred.
+- Follow-up review recommended: false (no high patched).
+- Verification (this pass, `ocupilot-ci`):
+  - `a11y-structural-invariants` 10/10: 225 found, 225 in baseline, 0 stale, no fresh key.
+  - `ToolNavigate` 23/23 (run 14156), `CriteriaDefault` 7/7 (14157), `ToolEmit` 11/11 (14158).
+  - The two page specs 27/27; `strings.test.mjs` 25/25; `client-lint` clean; `check-objectscript` 0 problems.
+  - Seven mutations observed red and reverted (see `## Verification`).
+- Carried from implement-1:
+  - ObjectScript sweep: 292 ran, 14 refused (arming), 1 known residue (`WireSecurityRead` task history).
+  - `npm test`: tools 1,475/1,475, components 1,454/1,454 (the two page specs re-run this pass).
+  - Bundle: 1,844,256 B initial, under the 1854kB warning. The bundle is unchanged since.
+- Judged at the lead's request:
+  - Navigating to the route already open now settles `opened` instead of `refused` `NAV.REFUSEDUNSAVED`. The router answers `false` for a same-URL move, and the mounted page takes the arrival through the subscriber. This is within the settle vocabulary and required by the spec's same-route arrival, so it was kept.
+  - Out-of-footprint edits:
+    - `app.ts`: a comment only.
+    - `main.ts`: provides `ScreenArrivals`.
+    - `MgmntPortWire`, `SecurityLists`, `TaskLists`: key lists admit the new `criteria` key.
+    - `TurnNavigate`: adds the payload test.
+    - All kept; report under footprint_extensions.
+- For the lead (Rule 20): the AD-11 amendment says `criteria` are "keyed by the target's declared criteria fields". This pass narrows acceptance to `list (server criteria)` targets, so the spine sentence may want that qualifier.
+- Residual risk: another archetype that adopts arrivals later must widen `ARRIVALARCHETYPE`.
+- Finalize commit: the one commit on `OCU-1-epic11` that carries this line (`git log -1 --format=%h -- _bmad-output/implementation-artifacts/spec-11-11-the-screen-shows-what-the-agent-is-talking-about.md`); a commit cannot hold its own sha.

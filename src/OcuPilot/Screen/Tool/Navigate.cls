@@ -21,16 +21,26 @@
 /// a <code>single</code> id does, through the same shared encoder, so admitting it invents no
 /// grammar. A screen whose id is <code>none</code>, and a composite of two or more parts, are
 /// openable only without one and refused <code>NAV.ENTITYNOTALLOWED</code>.</p>
-/// <p><b><code>criterion</code> names a filter; it never carries one</b> (AD-21, Story 5.8). It is
-/// accepted only when the target descriptor declares a criterion of that name as a <b>flag</b> --
-/// one whose query parameter and value are both the descriptor's own
-/// (<method>OcuPilot.Screen.Descriptor.Base.FlagCriteria</method>) -- so the value that reaches the
-/// read is the screen's, never the caller's. A name the target does not declare as a flag, a
-/// criterion field whose value a person types, and a name carrying a value are each refused
-/// <code>NAV.CRITERIONUNKNOWN</code> before any announcement exists. The criterion travels on the
-/// directive, not as a query parameter: <code>withQuery</code> in
-/// <file>ui/src/app/core/navigation.ts</file> carries only <code>ns</code>, by documented
-/// intent.</p>
+/// <p><b>Two arguments carry a search to the arriving screen</b> (AD-11, AD-21, AD-36), and neither
+/// travels in the URL: <code>withQuery</code> in <file>ui/src/app/core/navigation.ts</file> carries
+/// only <code>ns</code>, and both ride the directive.</p>
+/// <ul>
+/// <li><code>criterion</code> <b>names a flag; it never carries a value</b> (Story 5.8). It is
+/// accepted only when the target descriptor declares a criterion of that name as a flag -- one whose
+/// query parameter and value are both the descriptor's own
+/// (<method>OcuPilot.Screen.Descriptor.Base.FlagCriteria</method>). Any other name, a criterion
+/// field's name and a name carrying a value are each refused <code>NAV.CRITERIONUNKNOWN</code>.</li>
+/// <li><code>criteria</code> <b>carries values</b>, keyed by the target's declared criteria fields:
+/// the criteria the agent's own read of that screen applied (its answer's <code>criteria</code>).
+/// Each key is checked against <method>OcuPilot.Screen.Read.CriteriaParams</method> and refused
+/// <code>NAV.CRITERIONUNKNOWN</code> when the target does not declare it, or when the target is not
+/// a <parameter>ARRIVALARCHETYPE</parameter> screen, the one archetype whose page runs an arrival's
+/// search; each value must be a
+/// string the read's own check (<method>OcuPilot.Screen.Read.SeedCriteria</method>) accepts, or it
+/// is refused <code>NAV.CRITERIONINVALID</code>. Either refusal names the criterion in
+/// <code>detail.criterion</code>. A value reaches the read only as that read's own criterion.</li>
+/// </ul>
+/// <p>Every refusal happens before any announcement exists.</p>
 Class OcuPilot.Screen.Tool.Navigate Extends OcuPilot.Screen.Tool.Base
 {
 
@@ -39,6 +49,11 @@ Parameter TOOLNAME = "shell.screen.open";
 Parameter KIND = "read";
 
 Parameter FULFILMENT = "client";
+
+/// <p>The archetype whose page takes an arrival's <code>criteria</code> in place of its default read
+/// (Story 11.11). A target of any other archetype has no page that would run them, so its
+/// <code>criteria</code> are refused rather than announced and ignored.</p>
+Parameter ARRIVALARCHETYPE = "list (server criteria)";
 
 Parameter DESCRIPTION = "Open a screen for the user, optionally selecting one row by its id. Announces the move before it happens, then waits about a second before the browser moves; the departing screen may refuse the move (for example, unsaved changes), and the user may always return with Back.";
 
@@ -72,7 +87,9 @@ ClassMethod BuiltRoutes() As %List
 /// <p><var>pDescriptor</var> is ignored: this is a class tool of its own, not descriptor-derived.
 /// <code>route</code> is required and closed to <method>BuiltRoutes</method>; <code>entityId</code>
 /// is optional, at most 256 characters -- the encoded form <code>encodeEntityId</code> produces,
-/// never a URL or a filesystem path.</p>
+/// never a URL or a filesystem path. <code>criteria</code> is a bare object, because the emitted
+/// schema subset admits no nested <code>properties</code>; <method>Directive</method> checks each
+/// key.</p>
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Set tSchema = {
@@ -91,6 +108,10 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
                 "type": "string",
                 "maxLength": 64,
                 "description": "The name of a filter the target screen itself declares, applied on arrival. Name it only; its value is the screen's own and is never supplied here. A name the screen does not declare is refused."
+            },
+            "criteria": {
+                "type": "object",
+                "description": "The criteria your read of that screen used (its answer's criteria), so the screen shows the same rows. Keys are the screen's own criteria and values are strings; an empty string leaves that bound unset and an omitted key takes the screen's default. Only a screen whose criteria form searches on the instance takes them. A key the screen does not declare, criteria on any other screen, or a value its read refuses, is refused."
             }
         },
         "required": ["route"],
@@ -163,7 +184,8 @@ ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, 
 }
 
 /// <p>Validate a call's <var>pArgs</var> and answer the directive the browser is asked to carry
-/// out: <var>pRoute</var> and <var>pEntityId</var>, or <var>pFault</var> naming the refusal.
+/// out: <var>pRoute</var>, <var>pEntityId</var>, <var>pCriterion</var> and <var>pCriteria</var>
+/// (an object, empty when the call carries none), or <var>pFault</var> naming the refusal.
 /// <var>pDescriptor</var> is ignored. <b>Caller contract:</b> <var>pArgs</var> has already passed
 /// <method>InputSchema</method>'s validation, so <code>route</code> is present and, but for the
 /// defensive re-check below, one of <method>BuiltRoutes</method>.</p>
@@ -171,14 +193,17 @@ ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, 
 /// resolves to a built screen -- the enum and the registry have disagreed, which the enum
 /// construction at advertise time (AC1) makes rare rather than impossible between one turn's
 /// advertisement and the next. Refuses <code>NAV.ENTITYNOTALLOWED</code> when <code>entityId</code>
-/// is supplied against a screen <method>AcceptsEntityId</method> refuses (AD-5), and
+/// is supplied against a screen <method>AcceptsEntityId</method> refuses (AD-5),
 /// <code>NAV.CRITERIONUNKNOWN</code> when <code>criterion</code> names anything but a flag
-/// criterion that screen declares (AD-21).</p>
-ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, Output pRoute As %String, Output pEntityId As %String, Output pFault As %DynamicObject, Output pCriterion As %String) As %Status
+/// criterion that screen declares or a <code>criteria</code> key names no criterion it declares
+/// (AD-21), and <code>NAV.CRITERIONINVALID</code> when a <code>criteria</code> value is not a
+/// string or the read would refuse it (AD-11); those two carry <code>detail.criterion</code>.</p>
+ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, Output pRoute As %String, Output pEntityId As %String, Output pFault As %DynamicObject, Output pCriterion As %String, Output pCriteria As %DynamicObject) As %Status
 {
     Set pRoute = ""
     Set pEntityId = ""
     Set pCriterion = ""
+    Set pCriteria = ""
     Set pFault = ""
     Set tSC = $$$OK
     Try {
@@ -208,9 +233,19 @@ ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, O
             Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#NAVCRITERIONUNKNOWN)
             Quit
         }
+        Set tCriteria = {}
+        If tArgs.%GetTypeOf("criteria") = "object" {
+            Set tCode = ..CriteriaRefusal(tTargetDescriptor, tArgs.%Get("criteria"), tCriteria, .tNamed)
+            If tCode '= "" {
+                Set pFault = ..RefusalFault(tCode, tNamed)
+                Set tSC = $$$ERROR($$$GeneralError, tCode)
+                Quit
+            }
+        }
         Set pRoute = tRoute
         Set pEntityId = tEntityId
         Set pCriterion = tCriterion
+        Set pCriteria = tCriteria
     } Catch ex {
         Set pFault = ""
         Set tSC = ex.AsStatus()
@@ -240,12 +275,52 @@ ClassMethod AcceptsEntityId(pDescriptor As %String) As %Boolean
     Quit tAccepts
 }
 
+/// <p>The refusal <var>pGiven</var>, a call's <code>criteria</code>, earns against
+/// <var>pTarget</var>'s declared read, or <code>""</code> having copied every value into
+/// <var>pAccepted</var>. Checked one key at a time, in the call's own order: the key against
+/// <method>OcuPilot.Screen.Read.CriteriaParams</method>, which is empty for a target that is not a
+/// <parameter>ARRIVALARCHETYPE</parameter> screen (<code>NAV.CRITERIONUNKNOWN</code>), then
+/// the value's JSON type, then the read's own check alone on that value
+/// (<code>NAV.CRITERIONINVALID</code>). <var>pNamed</var> is the refused key.</p>
+ClassMethod CriteriaRefusal(pTarget As %String, pGiven As %DynamicObject, pAccepted As %DynamicObject, Output pNamed As %String) As %String [ Private ]
+{
+    Set pNamed = ""
+    Set tCode = ""
+    Set tParams = ""
+    If $ClassMethod(pTarget, "Archetype") = ..#ARRIVALARCHETYPE Set tParams = ##class(OcuPilot.Screen.Read).CriteriaParams(pTarget)
+    Set tRead = $ClassMethod(pTarget, "Read")
+    Set tIterator = pGiven.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue, .tType) {
+        If '$ListFind(tParams, tKey) {
+            Set tCode = ##class(OcuPilot.Api.Error).#NAVCRITERIONUNKNOWN
+        } ElseIf tType '= "string" {
+            Set tCode = ##class(OcuPilot.Api.Error).#NAVCRITERIONINVALID
+        } Else {
+            Kill tOne, tQuery
+            Set tOne(tKey) = tValue
+            If ##class(OcuPilot.Screen.Read).SeedCriteria(tRead, .tOne, .tQuery) '= "" Set tCode = ##class(OcuPilot.Api.Error).#NAVCRITERIONINVALID
+        }
+        If tCode '= "" {
+            Set pNamed = tKey
+            Quit
+        }
+        Do pAccepted.%Set(tKey, tValue, "string")
+    }
+    Quit tCode
+}
+
 /// <p>One <code>{code}</code> fault object, the shape
-/// <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method> reads.</p>
-ClassMethod RefusalFault(pCode As %String) As %DynamicObject [ Private ]
+/// <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method> reads, carrying
+/// <code>detail.criterion</code> when <var>pCriterion</var> names one.</p>
+ClassMethod RefusalFault(pCode As %String, pCriterion As %String = "") As %DynamicObject [ Private ]
 {
     Set tFault = {}
     Do tFault.%Set("code", pCode, "string")
+    If pCriterion '= "" {
+        Set tDetail = {}
+        Do tDetail.%Set("criterion", pCriterion, "string")
+        Do tFault.%Set("detail", tDetail)
+    }
     Quit tFault
 }
 

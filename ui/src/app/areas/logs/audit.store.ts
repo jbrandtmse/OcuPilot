@@ -1,7 +1,8 @@
 import { Injectable, Injector, inject } from '@angular/core';
 
 import { ApiService } from '../../core/api';
-import { RefreshService, type RefreshRead } from '../../core/refresh';
+import type { RefreshRead } from '../../core/refresh';
+import type { ScreenArrival } from '../../core/screen-arrival';
 import { createScreenRead, criteriaParams, type ScreenReadCriteria } from '../../core/screen-read';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 
@@ -14,19 +15,14 @@ import type { ScreenDeclaration } from '../../core/screens.generated';
 export const MARKER_CRITERION = 'marker';
 
 /**
- * The descriptor this store holds the state of. `openWith` checks the declaration it is handed
- * against it, because the shell reaches an area store by injecting it concretely
- * (`shell/agent-navigator.ts`) and so hands this store whichever screen the navigation arrived at.
- * Today `AuditList` is the only descriptor declaring a flag criterion, so no other declaration can
- * get this far -- but `marker` is a field on the shared generated `ReadCriteria`, so a second
- * screen declaring one would otherwise have this store set its own filter and bind that other
- * screen's declaration into the refresh framework through `readFor`.
+ * What the next read sends (Story 11.11): the screen's default (nothing, so the instance applies
+ * each declared default), the form as shown, or an agent arrival's criteria exactly.
  */
-export const AUDIT_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.AuditList';
+type RequestMode = 'default' | 'form' | 'arrival';
 
 /**
  * The audit database viewer's own state: what the criteria form holds, whether the agent-marker
- * filter is on, and whether Search has been pressed at all (AD-19).
+ * filter is on, whether Search has been pressed, and what the next read sends (AD-19).
  *
  * **It is root-provided rather than component-local, and that is load-bearing.** The screen's row
  * detail opens on its own `/:id` route (AD-13), which is a different route config from the bare
@@ -40,6 +36,11 @@ export const AUDIT_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.AuditList';
  * refresh framework treats a re-bind with a *different* read as a new binding and clears
  * `hasLoaded`, which would show a skeleton in place of the rows the user just searched for. Handing
  * back the same closure every time makes the page's re-bind a no-op.
+ *
+ * **The form shows the values the read applied** (AD-36). A read leaves some criteria absent -- all
+ * of them on open -- and the instance applies their declared defaults; `applyEcho` fills each
+ * absent field from the answer's `criteria`, so the begin field reads the instance's own now less
+ * 24 hours rather than a time the browser computed.
  */
 @Injectable({ providedIn: 'root' })
 export class AuditSearch {
@@ -55,6 +56,11 @@ export class AuditSearch {
   private markerOn = false;
 
   private searchedOnce = false;
+
+  private mode: RequestMode = 'default';
+
+  /** What an arrival sends, exactly, while `mode` is `arrival`. */
+  private arrivalSent: Record<string, string> = {};
 
   /**
    * Bumped whenever a page instance is created, so a destroyed instance can tell "the user left
@@ -74,14 +80,15 @@ export class AuditSearch {
    *
    * What it holds is this principal's own search -- the event names, usernames, process ids and
    * namespaces they typed, and whether they had searched at all. Without this, the next principal
-   * to sign in in the same tab inherits the form's contents and an already-searched screen, and the
-   * "renders nothing until Search" rule the archetype exists for would hold only for the first
-   * sign-in of a tab.
+   * to sign in in the same tab inherits the form's contents and has their search re-run on their
+   * first visit instead of the screen's default.
    */
   reset(): void {
     this.values = {};
     this.markerOn = false;
     this.searchedOnce = false;
+    this.mode = 'default';
+    this.arrivalSent = {};
     this.gridFocusWanted = false;
     this.reads.clear();
     this.notify();
@@ -154,16 +161,65 @@ export class AuditSearch {
   }
 
   /**
-   * What the read sends: every declared criterion the form holds a value for, with the marker's
-   * own criterion **overridden** when the filter is on (AD-46).
+   * Open on the screen's default read: nothing is sent, so the instance applies each declared
+   * default, and the marker is off -- an affordance, never a default (AD-46). Every field is then
+   * filled from the answer (`applyEcho`).
+   */
+  useDefault(): void {
+    this.mode = 'default';
+    this.markerOn = false;
+    this.values = {};
+    this.notify();
+  }
+
+  /** Send the form as shown from the next read on: Search, and a return after one. */
+  useForm(): void {
+    this.mode = 'form';
+    this.notify();
+  }
+
+  /**
+   * Run an agent arrival's search, exactly (Story 11.11, AD-11): the criteria it carries and nothing
+   * else, so a criterion it omits takes its default as the agent's own read did. The form shows those
+   * values, and the fields the arrival left absent are filled from the answer.
+   *
+   * **The marker reads ticked when the search is the marker's.** A flag criterion naming it, or an
+   * `eventSources` equal to the marker's value, sends the identical read; showing it as the ticked
+   * affordance with the field empty is what tells the person the rows are the agent-marked events.
+   * The flag overrides its own parameter, as the checkbox does.
+   */
+  useArrival(declaration: ScreenDeclaration, arrival: ScreenArrival): void {
+    const marker = declaration.read?.criteria?.marker ?? null;
+    const sent: Record<string, string> = {};
+    for (const param of criteriaParams(declaration)) {
+      const value = arrival.criteria[param];
+      if (typeof value === 'string') sent[param] = value;
+    }
+    const markerOn =
+      marker !== null && (arrival.criterion === MARKER_CRITERION || sent[marker.param] === marker.value);
+    if (markerOn && marker !== null) sent[marker.param] = marker.value;
+    this.values = { ...sent };
+    if (markerOn && marker !== null) this.values[marker.param] = '';
+    this.markerOn = markerOn;
+    this.arrivalSent = sent;
+    this.mode = 'arrival';
+    this.notify();
+  }
+
+  /**
+   * What the next read sends, read at call time: nothing on the default read, an arrival's criteria
+   * exactly, or the form as shown -- every declared criterion, an emptied field sent empty so the
+   * bound is unset, with the marker's own criterion **overridden** when the filter is on (AD-46).
    *
    * Overridden, never merged. The marker and the Event source criterion name the same query
    * parameter, and the vendor matches a comma list by membership -- so appending the marker's value
    * to whatever the user typed would *widen* the result, which is the opposite of what the filter
-   * is for. While the marker is on, the criterion it names is not sent at all and the field that
-   * carries it renders unavailable; turning the filter off restores both.
+   * is for. While the marker is on, the criterion it names is not sent from the form at all and the
+   * field that carries it renders unavailable; turning the filter off restores both.
    */
   criteria(declaration: ScreenDeclaration): ScreenReadCriteria {
+    if (this.mode === 'default') return {};
+    if (this.mode === 'arrival') return { ...this.arrivalSent };
     const marker = declaration.read?.criteria?.marker ?? null;
     const sent: Record<string, string> = {};
     for (const param of criteriaParams(declaration)) {
@@ -171,6 +227,26 @@ export class AuditSearch {
     }
     if (this.markerOn && marker !== null) sent[marker.param] = marker.value;
     return sent;
+  }
+
+  /**
+   * Fill each field the request `sent` left absent from the answer's `applied` criteria (AD-36), so
+   * the form shows the values the instance used. A field the request carried keeps what it holds.
+   */
+  applyEcho(declaration: ScreenDeclaration, applied: Readonly<Record<string, string>>, sent: ScreenReadCriteria): void {
+    // An answer to a request the screen has since replaced -- an arrival over an open read still
+    // out -- is not the search the form now describes.
+    if (JSON.stringify(sent) !== JSON.stringify(this.criteria(declaration))) return;
+    let changed = false;
+    const next = { ...this.values };
+    for (const param of criteriaParams(declaration)) {
+      if (sent[param] !== undefined) continue;
+      next[param] = applied[param] ?? '';
+      changed = true;
+    }
+    if (!changed) return;
+    this.values = next;
+    this.notify();
   }
 
   /** Whether `param`'s control is unavailable because the marker filter has taken it over. */
@@ -181,58 +257,20 @@ export class AuditSearch {
 
   /**
    * The one `RefreshRead` for `declaration`, created on first ask and handed back unchanged
-   * afterwards. It reads `criteria()` at call time, so Search sends what the form holds now.
+   * afterwards. It reads `criteria()` at call time, and hands each answer's applied criteria to
+   * `applyEcho`.
    */
   readFor(declaration: ScreenDeclaration): RefreshRead {
     const held = this.reads.get(declaration.descriptor);
     if (held !== undefined) return held;
-    const read = createScreenRead(this.injector.get(ApiService), declaration, () =>
-      this.criteria(declaration)
+    const read = createScreenRead(
+      this.injector.get(ApiService),
+      declaration,
+      () => this.criteria(declaration),
+      (applied, sent) => this.applyEcho(declaration, applied, sent)
     );
     this.reads.set(declaration.descriptor, read);
     return read;
-  }
-
-  /**
-   * Arrive on this screen with `criterion` applied, and run the screen's declared read (Story 5.8,
-   * AD-21): the non-interactive path beside the checkbox's and Search's, so "is the marker on" and
-   * "has this screen searched" have one answer and not two.
-   *
-   * **It names a criterion; it is never given a value.** `criterion` is the name the arriving
-   * descriptor declares -- the instance refused anything else before the navigation was announced
-   * (`NAV.CRITERIONUNKNOWN`) -- and the value that reaches the read is `criteria()`'s reading of
-   * the declaration. A name the declaration does not carry applies nothing and searches nothing,
-   * because there is no filter to arrive with.
-   *
-   * **The form is cleared, so the arrival runs the screen's declared read and not the user's last
-   * one.** This store is root-provided and outlives every visit to the screen, so whatever the
-   * user last typed into the criteria form is still held here -- and `criteria()` sends every
-   * declared criterion the form holds a value for. An arrival that kept them would run the
-   * marker filter narrowed by a username or a pid the user typed some visits ago, which is how a
-   * hand-off that found the right row for the agent finds none for the user.
-   *
-   * **It binds and reads rather than leaving that to the page.** The archetype renders nothing
-   * until Search has run, and the page instance the router is about to create binds only when
-   * Search is pressed -- so a navigation that set the flag and stopped there would land on an
-   * unsearched form with a ticked checkbox. Binding is idempotent: `readFor` hands back the same
-   * closure every time, which is what makes the page's own re-bind a no-op.
-   *
-   * **It applies nothing to a screen that is not this one.** `declaration` is whatever screen the
-   * navigation arrived at, so the descriptor is checked as well as the criterion name: this store
-   * owns one screen's filter and one screen's bound read, and setting either from another screen's
-   * declaration would filter a screen nobody asked about (see `AUDIT_DESCRIPTOR`).
-   */
-  openWith(declaration: ScreenDeclaration, criterion: string): void {
-    if (declaration.descriptor !== AUDIT_DESCRIPTOR) return;
-    const marker = declaration.read?.criteria?.marker ?? null;
-    if (marker === null || criterion !== MARKER_CRITERION) return;
-    this.values = {};
-    this.markerOn = true;
-    this.searchedOnce = true;
-    this.notify();
-    const refresh = this.injector.get(RefreshService);
-    refresh.bind(declaration, this.readFor(declaration));
-    void refresh.readNow();
   }
 
   private notify(): void {

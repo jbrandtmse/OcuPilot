@@ -13,6 +13,7 @@ import { ChangeBus } from './app/core/change-bus';
 import { ConnectivityService } from './app/core/connectivity';
 import { ExplainEntry } from './app/core/explain-entry';
 import { FormDirty } from './app/core/form-dirty';
+import { ScreenArrivals } from './app/core/screen-arrival';
 import { HelpLinks } from './app/core/help';
 import { transportFault } from './app/core/fault';
 import { InstanceService } from './app/core/instance';
@@ -231,6 +232,10 @@ const viewOptions = new ViewOptions();
 // question -- two would let a guard refuse a navigation nothing on screen could resolve.
 const formDirty = new FormDirty();
 
+// The one-shot hand-off from an agent navigation to the screen it opens (Story 11.11). One
+// instance, so the navigator that sets it and the page that takes it share it.
+const screenArrivals = new ScreenArrivals();
+
 session.start();
 
 bootstrapApplication(App, {
@@ -255,6 +260,7 @@ bootstrapApplication(App, {
     { provide: ScreenActions, useValue: screenActions },
     { provide: ViewOptions, useValue: viewOptions },
     { provide: FormDirty, useValue: formDirty },
+    { provide: ScreenArrivals, useValue: screenArrivals },
     { provide: AgentStatus, useValue: agentStatus },
     { provide: AgentContext, useValue: agentContext },
     { provide: ExplainEntry, useValue: explainEntry },

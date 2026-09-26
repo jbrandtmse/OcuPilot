@@ -13,6 +13,7 @@ import { OverlayStack } from '../../core/overlay-stack';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { ScreenArrivals } from '../../core/screen-arrival';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
@@ -30,8 +31,8 @@ import { stubExplainEntry, type ExplainEntryState } from '../../testing/explain-
  * the criteria roster the form draws is the one the instance validates.
  *
  * Mutations (Rule 19), each applied and observed red here alone:
- * call `refresh.readNow()` in the constructor -> "nothing is read, and nothing rendered, before
- * Search" red; make `AuditSearch.criteria` append the marker's value to the criterion instead of
+ * make `useDefault` keep the arrival's mode -> "a return after an arrival re-runs the default"
+ * red; make `AuditSearch.criteria` append the marker's value to the criterion instead of
  * overriding it -> "the marker overrides the criterion it names" red; drop the `unavailable`
  * binding from the Event source control -> "and renders that control unavailable" red; point the
  * descriptor's `emptyStateKey` at `tableReadOnlyEmptyNext` and regenerate -> "a zero-row answer
@@ -81,14 +82,40 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 
 const planted: HTMLElement[] = [];
 
-async function mount(initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')], explain: ExplainEntry | null = null) {
+/** The begin the stub instance applies when a read omits it: its own now less 24 hours. */
+const DEFAULT_BEGIN = '2026-09-25 10:00:00';
+
+/** The criteria an instance would echo for `path`: each sent value, the begin's default, else empty. */
+function echoFor(path: string): Record<string, string> {
+  const query = new URLSearchParams(path.split('?')[1] ?? '');
+  const applied: Record<string, string> = {};
+  for (const field of AUDIT.read?.criteria?.fields ?? []) {
+    const sent = query.get(field.param);
+    applied[field.param] = sent !== null ? sent : field.param === 'beginDateTime' ? DEFAULT_BEGIN : '';
+  }
+  return applied;
+}
+
+async function mount(
+  initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')],
+  explain: ExplainEntry | null = null,
+  arrivals: ScreenArrivals | null = null,
+  firstAnswer: Promise<void> | null = null
+) {
   TestBed.resetTestingModule();
   let answerRows = initialRows;
   const paths: string[] = [];
   const api = {
     requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
+      // The opening read's answer waits on `firstAnswer` when a test holds it.
+      const wait = paths.length === 0 ? firstAnswer : null;
       paths.push(path);
-      return { kind: 'ok', status: 200, body: { fields: [], rows: answerRows, truncated: false, banner: '' } as T };
+      if (wait !== null) await wait;
+      return {
+        kind: 'ok',
+        status: 200,
+        body: { fields: [], rows: answerRows, truncated: false, banner: '', criteria: echoFor(path) } as T,
+      };
     },
   };
   const scheduled: (() => void)[] = [];
@@ -123,6 +150,7 @@ async function mount(initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')], 
       },
       { provide: ActivatedRoute, useValue: { paramMap: params } as unknown as ActivatedRoute },
       ...(explain === null ? [] : [{ provide: ExplainEntry, useValue: explain }]),
+      ...(arrivals === null ? [] : [{ provide: ScreenArrivals, useValue: arrivals }]),
     ],
   });
   // One store per test, so a search in one does not leak into the next.
@@ -222,28 +250,33 @@ describe('the audit database viewer', () => {
     expect(hints).toEqual([STRINGS.auditCriteriaTimeHint, STRINGS.auditCriteriaNameHint]);
   });
 
-  it('reads nothing, and renders no table, no skeleton and no empty state, before Search', async () => {
+  it('Story 11.11: opens on one default read, shows the begin the instance applied, and keeps the marker off', async () => {
     const { host, paths } = await mount();
-    expect(paths).toEqual([]);
-    expect(host.querySelector('[role="grid"]')).toBeNull();
+    expect(paths).toHaveLength(1);
+    // No criterion is sent, so the instance applies each declared default (AD-36).
+    expect(paths[0]).toBe('/api/ocupilot/screens/logs.audit/read?maxRows=1000');
+    expect(rowNames(host)).toEqual(['RoleGranted']);
     expect(host.querySelector('.ocu-data-table-skeleton')).toBeNull();
-    expect(host.querySelector('.ocu-data-table-empty')).toBeNull();
+    // The form shows what the read applied, read back from the answer, never a browser clock.
+    expect((host.querySelector('#ocu-audit-criterion-beginDateTime') as HTMLInputElement).value).toBe(DEFAULT_BEGIN);
+    expect((host.querySelector('#ocu-audit-criterion-endDateTime') as HTMLInputElement).value).toBe('');
     // And the marker filter is off: an affordance, never a default (AD-46).
     expect((host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement).checked).toBe(false);
   });
 
-  it('sends the declared criteria on Search, URL-encoded, and omits the empty ones', async () => {
+  it('Search sends the form as shown, URL-encoded, an emptied field as an unset bound', async () => {
     const { paths, search, type, host } = await mount();
     await type('eventSources', '%System');
     await type('events', 'Login,Logout');
+    await type('beginDateTime', '');
     await search();
-    expect(paths).toHaveLength(1);
-    expect(paths[0]).toContain('/screens/logs.audit/read?maxRows=1000');
-    expect(paths[0]).toContain('&eventSources=%25System');
-    expect(paths[0]).toContain('&events=Login%2CLogout');
-    // Every criterion left blank is omitted, so the vendor's own default stands for it.
-    expect(paths[0]).not.toContain('beginDateTime=');
-    expect(paths[0]).not.toContain('authentication=');
+    expect(paths).toHaveLength(2);
+    expect(paths[1]).toContain('/screens/logs.audit/read?maxRows=1000');
+    expect(paths[1]).toContain('&eventSources=%25System');
+    expect(paths[1]).toContain('&events=Login%2CLogout');
+    // Every field travels as shown: the emptied begin reads all time, a blank one is unset.
+    expect(paths[1]).toContain('&beginDateTime=&');
+    expect(paths[1]).toContain('&authentication=');
     expect(host.querySelector('[role="grid"]')).not.toBeNull();
   });
 
@@ -262,8 +295,8 @@ describe('the audit database viewer', () => {
     await search();
     // Overridden, never merged: the value the user typed is not sent at all, because the vendor
     // matches a comma list by membership and appending would widen the result.
-    expect(paths[0]).toContain('&eventSources=OcuPilot');
-    expect(paths[0]).not.toContain('%25System');
+    expect(paths[1]).toContain('&eventSources=OcuPilot');
+    expect(paths[1]).not.toContain('%25System');
 
     // Turning it off restores both the control and the value.
     await toggleMarker(false);
@@ -271,69 +304,102 @@ describe('the audit database viewer', () => {
     expect(restored.getAttribute('aria-disabled')).toBeNull();
     expect(restored.readOnly).toBe(false);
     await search();
-    expect(paths[1]).toContain('&eventSources=%25System');
-    expect(paths[1]).not.toContain('eventSources=OcuPilot');
+    expect(paths[2]).toContain('&eventSources=%25System');
+    expect(paths[2]).not.toContain('eventSources=OcuPilot');
   });
 
-  it('AC3 (Story 5.8): an agent arrival applies the declared marker, searches, and refuses a declaration that is not this screen\'s', async () => {
-    // `openWith` is the non-interactive path an agent navigation arrives through, and this is where
-    // it is driven for real -- `shell/agent-navigator.spec.ts` stubs the store, so it can say who
-    // was asked but not what the asking does.
-    //
-    // Mutation (Rule 19): drop the `searchedOnce = true` line from `openWith` -> the row assertion
-    // goes red, because the archetype renders nothing until this screen has searched.
-    const { fixture, host, paths } = await mount();
-    const store = TestBed.inject(AuditSearch);
-    store.openWith(AUDIT, MARKER_CRITERION);
-    await settle(fixture);
-    const box = host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement;
-    expect(box.checked).toBe(true);
-    expect(paths[0]).toContain('&eventSources=OcuPilot');
+  it('Story 11.11: an agent arrival runs exactly its criteria as the one read, and the form shows them', async () => {
+    // Mutation (Rule 19): make the constructor read the default whether or not an arrival is held
+    // -> two reads land and the first carries none of the arrival's criteria, so this goes red.
+    const arrivals = new ScreenArrivals();
+    arrivals.set({
+      route: 'logs/audit',
+      criterion: '',
+      criteria: { eventSources: 'OcuPilot', beginDateTime: '2026-09-26 08:00:00', endDateTime: '2026-09-26 09:00:00' },
+    });
+    const { host, paths } = await mount([row('RoleGranted', 'OcuPilot')], null, arrivals);
+    expect(paths).toHaveLength(1);
+    const sent = new URLSearchParams(paths[0].split('?')[1] ?? '');
+    expect(sent.get('eventSources')).toBe('OcuPilot');
+    expect(sent.get('beginDateTime')).toBe('2026-09-26 08:00:00');
+    expect(sent.get('endDateTime')).toBe('2026-09-26 09:00:00');
+    expect([...sent.keys()].sort()).toEqual(['beginDateTime', 'endDateTime', 'eventSources', 'maxRows']);
+    expect((host.querySelector('#ocu-audit-criterion-beginDateTime') as HTMLInputElement).value).toBe('2026-09-26 08:00:00');
+    expect((host.querySelector('#ocu-audit-criterion-endDateTime') as HTMLInputElement).value).toBe('2026-09-26 09:00:00');
+    // The arrival's Source is the marker's own value, so the affordance reads ticked and the field
+    // it overrides is empty: the identical read, shown as the agent-marked filter.
+    expect((host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement).checked).toBe(true);
+    expect((host.querySelector('#ocu-audit-criterion-eventSources') as HTMLInputElement).value).toBe('');
     expect(rowNames(host)).toEqual(['RoleGranted']);
+    expect(arrivals.take('logs/audit')).toBeNull();
+  });
 
-    // The arrival runs the screen's DECLARED read, not the user's last one. This store is
-    // root-provided and outlives the screen, so a criterion the user typed on an earlier visit is
-    // still held -- and `criteria()` sends every declared criterion the form holds a value for, so
-    // an arrival that kept it would narrow the marker filter by a username nobody asked about and
-    // show no row for the write the agent just made.
-    //
-    // `usernames` deliberately, and not `eventSources`: the marker overrides its own parameter
-    // (see `criteria`), so a stale value there would be replaced whatever this does. The stale
-    // value that survives is one on a criterion the marker does not name, and narrowing by it is
-    // what loses the row.
-    //
-    // Mutation (Rule 19): drop the `this.values = {}` line from `openWith` -> the second assertion
-    // goes red, carrying `&usernames=someone-else` into the arrival's own read.
-    const stale = await mount();
-    const store2 = TestBed.inject(AuditSearch);
-    store2.setValue('usernames', 'someone-else');
-    store2.openWith(AUDIT, MARKER_CRITERION);
-    await settle(stale.fixture);
-    expect(stale.paths[0]).toContain('&eventSources=OcuPilot');
-    expect(stale.paths[0]).not.toContain('someone-else');
-    expect(rowNames(stale.host)).toEqual(['RoleGranted']);
+  it('Story 11.11: an arrival for a page already mounted is handed over, and a flag alone arrives on the marker', async () => {
+    const arrivals = new ScreenArrivals();
+    const { fixture, host, paths } = await mount([row('RoleGranted', 'OcuPilot')], null, arrivals);
+    expect(paths).toHaveLength(1);
+    arrivals.set({ route: 'logs/audit', criterion: MARKER_CRITERION, criteria: {} });
+    await settle(fixture);
+    expect(paths).toHaveLength(2);
+    // The flag overrides its own parameter; everything else it omits takes its default.
+    expect(paths[1]).toBe('/api/ocupilot/screens/logs.audit/read?maxRows=1000&eventSources=OcuPilot');
+    expect((host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement).checked).toBe(true);
+    expect((host.querySelector('#ocu-audit-criterion-beginDateTime') as HTMLInputElement).value).toBe(DEFAULT_BEGIN);
 
-    // A criterion name this screen does not declare applies nothing: there is no filter to arrive
-    // with, and nothing may invent one.
-    const fresh = await mount();
-    const other = TestBed.inject(AuditSearch);
-    other.openWith(AUDIT, 'nosuchthing');
-    await settle(fresh.fixture);
-    expect((fresh.host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement).checked).toBe(false);
-    expect(fresh.paths).toEqual([]);
+    // An arrival for another screen is not this page's.
+    arrivals.set({ route: 'tasks/history', criterion: '', criteria: {} });
+    await settle(fixture);
+    expect(paths).toHaveLength(2);
+    expect(arrivals.take('tasks/history')).not.toBeNull();
+  });
 
-    // And a declaration belonging to another screen applies nothing either, however well formed.
-    // Mutation (Rule 19): drop the `declaration.descriptor !== AUDIT_DESCRIPTOR` guard from
-    // `openWith` -> this goes red, and this store would filter and bind a screen nobody opened.
-    const foreign = await mount();
-    const store3 = TestBed.inject(AuditSearch);
-    store3.openWith(
-      { ...AUDIT, descriptor: 'OcuPilot.Screen.Descriptor.TaskList' } as ScreenDeclaration,
-      MARKER_CRITERION
-    );
-    await settle(foreign.fixture);
-    expect((foreign.host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement).checked).toBe(false);
-    expect(foreign.paths).toEqual([]);
+  it('Story 11.11: an arrival whose criteria are not the marker\'s leaves the marker off and sends them as given', async () => {
+    // Mutation (Rule 19): make `useArrival` tick the marker whenever the screen declares one -> the
+    // box reads ticked and the read carries eventSources=OcuPilot, so this goes red.
+    const arrivals = new ScreenArrivals();
+    arrivals.set({
+      route: 'logs/audit',
+      criterion: '',
+      criteria: { eventSources: '%System', beginDateTime: '2026-09-26 08:00:00' },
+    });
+    const { host, paths } = await mount([row('RoleGranted', '%System')], null, arrivals);
+    expect(paths).toHaveLength(1);
+    const sent = new URLSearchParams(paths[0].split('?')[1] ?? '');
+    expect(sent.get('eventSources')).toBe('%System');
+    expect(sent.get('beginDateTime')).toBe('2026-09-26 08:00:00');
+    expect((host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement).checked).toBe(false);
+    expect((host.querySelector('#ocu-audit-criterion-eventSources') as HTMLInputElement).value).toBe('%System');
+  });
+
+  it('Story 11.11: a return after an arrival re-runs the default when the person never searched', async () => {
+    const arrivals = new ScreenArrivals();
+    arrivals.set({ route: 'logs/audit', criterion: MARKER_CRITERION, criteria: { beginDateTime: '2026-09-26 08:00:00' } });
+    const { paths, revisit } = await mount([row('RoleGranted', 'OcuPilot')], null, arrivals);
+    expect(paths).toHaveLength(1);
+    const again = await revisit();
+    expect(paths).toHaveLength(2);
+    expect(paths[1]).toBe('/api/ocupilot/screens/logs.audit/read?maxRows=1000');
+    expect((again.host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement).checked).toBe(false);
+    expect((again.host.querySelector('#ocu-audit-criterion-beginDateTime') as HTMLInputElement).value).toBe(DEFAULT_BEGIN);
+  });
+
+  it('Story 11.11: a late answer to the open read does not overwrite the search that replaced it', async () => {
+    // Mutation (Rule 19): drop the stale-answer guard at the top of `AuditSearch.applyEcho` -> the
+    // open read's late echo fills the begin field with the default, so this goes red.
+    let release: () => void = () => {};
+    const firstAnswer = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const arrivals = new ScreenArrivals();
+    const { fixture, host, paths } = await mount([row('RoleGranted', 'OcuPilot')], null, arrivals, firstAnswer);
+    expect(paths).toHaveLength(1);
+    arrivals.set({ route: 'logs/audit', criterion: '', criteria: { beginDateTime: '2026-09-26 08:00:00' } });
+    await settle(fixture);
+    expect(paths).toHaveLength(2);
+    release();
+    await settle(fixture);
+    expect((host.querySelector('#ocu-audit-criterion-beginDateTime') as HTMLInputElement).value).toBe('2026-09-26 08:00:00');
+    expect(rowNames(host)).toEqual(['RoleGranted']);
   });
 
   it('a zero-row answer reads the screen\'s own empty sentence, with no skeleton and no fault', async () => {
@@ -349,7 +415,7 @@ describe('the audit database viewer', () => {
   });
 
   it('opens the detail dialog from the id route, showing the row already fetched, and closes back to the bare route', async () => {
-    const { fixture, host, search, paths, openId } = await mount([row('RoleGranted', 'OcuPilot')]);
+    const { host, search, paths, openId } = await mount([row('RoleGranted', 'OcuPilot')]);
     await search();
     expect(rowNames(host)).toEqual(['RoleGranted']);
     const before = paths.length;
@@ -375,60 +441,59 @@ describe('the audit database viewer', () => {
     expect(host.querySelector('[role=\"dialog\"]')).toBeNull();
   });
 
-  it('re-reads on a return to the screen, rather than rendering a skeleton nothing resolves', async () => {
+  it('a return re-runs the default when the person never searched', async () => {
+    const { paths, type, revisit } = await mount([row('RoleGranted', 'OcuPilot')]);
+    await type('usernames', 'someone');
+    const quiet = await revisit();
+    expect(paths).toHaveLength(2);
+    // Never searched, so the return is the default -- a typed but unsearched value is not sent.
+    expect(paths[1]).toBe('/api/ocupilot/screens/logs.audit/read?maxRows=1000');
+    expect(rowNames(quiet.host)).toEqual(['RoleGranted']);
+  });
+
+  it('a return after a Search re-runs that Search, rather than rendering a skeleton nothing resolves', async () => {
     const { paths, search, type, revisit } = await mount([row('RoleGranted', 'OcuPilot')]);
     await type('eventSources', 'OcuPilot');
     await search();
-    expect(paths).toHaveLength(1);
-
-    // Leaving and returning is a full re-bind: `hasLoaded` is false again, and this archetype has
-    // neither a timer nor a read on navigation, so without the constructor's own `readNow()` the
-    // table would render a skeleton for as long as the user stayed.
-    const again = await revisit();
     expect(paths).toHaveLength(2);
-    expect(paths[1]).toContain('&eventSources=OcuPilot');
+    const again = await revisit();
+    expect(paths).toHaveLength(3);
+    expect(paths[2]).toContain('&eventSources=OcuPilot');
     expect(again.host.querySelector('.ocu-data-table-skeleton')).toBeNull();
     expect(rowNames(again.host)).toEqual(['RoleGranted']);
   });
 
-  it('DW-260: Refresh is offered only after the first Search, and re-runs that same search', async () => {
-    // This screen renders nothing until a Search, so a Refresh before one would either issue the
-    // unbounded read the whole archetype exists to avoid or do nothing at all. After a Search it
-    // re-runs what is in the form *now*, read at call time rather than captured when the handler
-    // was registered.
-    //
-    // Mutation (Rule 19): register the handler unconditionally in `AuditPage`'s constructor -> the
-    // "not before the first Search" assertion goes red, while the list screens stay green.
+  it('DW-260: Refresh is offered from the open read, and re-runs the search the screen last issued', async () => {
+    // Mutation (Rule 19): hand `bind` a fresh closure in the Refresh handler -> `hasLoaded` drops and
+    // the synchronous assertion below goes red.
     const { fixture, host, paths, refresh, search, type, actions } = await mount([row('RoleGranted', 'OcuPilot')]);
-    expect(actions.has(AUDIT.descriptor, REFRESH_ACTION_ID)).toBe(false);
+    expect(actions.has(AUDIT.descriptor, REFRESH_ACTION_ID)).toBe(true);
+    actions.run(AUDIT.descriptor, REFRESH_ACTION_ID);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(paths).toHaveLength(2);
+    expect(paths[1]).toBe('/api/ocupilot/screens/logs.audit/read?maxRows=1000');
 
     await type('eventSources', 'OcuPilot');
     await search();
-    expect(paths).toHaveLength(1);
-    expect(actions.has(AUDIT.descriptor, REFRESH_ACTION_ID)).toBe(true);
+    expect(paths).toHaveLength(3);
 
     actions.run(AUDIT.descriptor, REFRESH_ACTION_ID);
-    // Silent, which counting requests cannot say. This is the one page whose Refresh handler calls
-    // `bind()` before it reads, and `bind()` is a no-op only while `AuditSearch.readFor` hands back
-    // the same closure: give it a fresh one and `bind()` unbinds, clears `loadedOnce`, and
-    // `DataTable` draws the first-load skeleton over the user's results -- the defect this story
-    // found on the error-log drill. Asserted synchronously, before the read lands, because by the
-    // time it has the flag is back up and the skeleton has come and gone.
+    // Silent: `bind()` is a no-op only while `AuditSearch.readFor` hands back the same closure, so
+    // the table keeps its rows rather than drawing the first-load skeleton.
     expect(refresh.hasLoaded()).toBe(true);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(paths).toHaveLength(2);
-    expect(paths[1]).toContain('&eventSources=OcuPilot');
+    expect(paths).toHaveLength(4);
+    expect(paths[3]).toContain('&eventSources=OcuPilot');
     await settle(fixture);
     expect(host.querySelector('.ocu-data-table-skeleton')).toBeNull();
     expect(rowNames(host)).toEqual(['RoleGranted']);
 
-    // And it follows the form: a criterion changed after the first Search travels on the next
-    // Refresh, because `readFor` reads the criteria at call time.
+    // And it follows the form: a criterion changed after the Search travels on the next Refresh.
     await type('eventSources', 'OcuPilotSeed');
     actions.run(AUDIT.descriptor, REFRESH_ACTION_ID);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(paths).toHaveLength(3);
-    expect(paths[2]).toContain('&eventSources=OcuPilotSeed');
+    expect(paths).toHaveLength(5);
+    expect(paths[4]).toContain('&eventSources=OcuPilotSeed');
   });
 
   // --- Story 11.2: "Explain this entry" in the row's dialog --------------------------------------
