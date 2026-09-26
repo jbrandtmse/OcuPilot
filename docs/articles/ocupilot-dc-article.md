@@ -139,6 +139,41 @@ For the developers reading this, a short tour:
   client's Node and Angular tests, 92 browser specs in headless Chrome, a compile-and-smoke run on
   both IRIS Community and IRIS for Health Community, and an offline IPM install.
 
+## How I built it: the BMAD Method
+
+I use and advocate the [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD) for building
+software with AI agents, and OcuPilot was built with it from the first idea to the release - which
+is a large part of how it got this far in under three weeks.
+
+**Planning came first, and it was thorough.** Before any code:
+
+- a research pass over the classic portal and the admin API produced a prioritized catalog of 538
+  portal features;
+- a product brief and a PRD set the scope, and UX design documents set every screen's states,
+  strings and interactions;
+- an architecture spine recorded more than fifty binding decisions - "the agent never writes",
+  "Confirm is a request only the user's browser makes", "the prohibited set lives on the server" -
+  that every story had to honor, or amend in the open;
+- the work was cut into 22 epics of small stories, ordered so that the six contest areas and the
+  ask-review-confirm-audit path landed first.
+
+**Then every story went through the same cycle**, with Claude Code as the development agents: a
+spec written and validated against the architecture, implementation, QA, an adversarial code
+review, and CI against a fresh IRIS container before anything merged. An orchestrator ran two
+epics at a time, each against its own IRIS instance, with its own throwaway containers for tests.
+Nothing a reviewer found was allowed to quietly disappear: each finding was fixed in the story,
+routed to a named later story, or declined with a written reason, and the deferred-work ledger that
+tracks them holds more than 1,100 entries.
+
+**My job was the decisions.** I set the priorities, answered the questions the agents escalated,
+and used the nightly build the way an administrator would. Several things in this article started
+as notes from that use - the agent not opening the screen we were talking about, columns too narrow
+to read, sign-out hard to find - and each became a story and shipped within a day.
+
+By the numbers: close to 2,000 commits, 138 validated story specs, 287 `%UnitTest` classes, and
+every planning document in the repository under `_bmad-output/`, if you want to see what the method
+produces.
+
 ## Install it in three minutes
 
 With Docker, and nothing else:

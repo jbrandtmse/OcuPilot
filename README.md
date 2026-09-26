@@ -307,9 +307,13 @@ remaining portal page.
 
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) is the contributor reference: the development container
 and its start path, the installer, the smoke script and CI, the IPM manifest, VS Code setup and the
-IRIS MCP server suite. Building the client needs Node `^22.22.3`, `^24.15.0` or `^26.0.0`. The
-planning documents behind the build - research, product requirements, architecture and UX - are
-under [_bmad-output/planning-artifacts/](_bmad-output/planning-artifacts/).
+IRIS MCP server suite. Building the client needs Node `^22.22.3`, `^24.15.0` or `^26.0.0`.
+
+OcuPilot was planned and built with the [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD),
+with Claude Code as the development agents: research, a product brief and PRD, UX design and an
+architecture spine first, then every story through the same spec, implementation, QA, code review
+and CI cycle. The planning documents are under
+[_bmad-output/planning-artifacts/](_bmad-output/planning-artifacts/).
 
 ## License
 
