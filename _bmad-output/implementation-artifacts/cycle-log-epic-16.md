@@ -26,3 +26,7 @@
 2026-09-26T16:16:03Z	Story 16.1	protocol_violation	stage=code-review depth=3 agent=review_layers violation=layers_launched_in_background consequence=none(reviewer_waited_for_all_four_before_triage,tree_unchanged_by_layers) detected_by=reviewer_self_report outcome=recorded
 2026-09-26T16:16:03Z	Story 16.1	ledger_adjudicated	owned=1 resolved=1 reowned=0 terminal=0 note=DW-1704_filed_by_cr_then_resolved_by_lead_CLAUDE.md_fix model=claude-opus-5-5
 2026-09-26T16:16:03Z	Story 16.1	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci_rebuilt_redeployed;browser/openapi-try-it.browser-spec.mjs_5/5;node_43/43;bundle_1.86MB_under_1900kB model=claude-opus-5-5
+2026-09-26T16:16:59Z	Story 16.1	committed	sha=452f33df submodules= ci=pending run=36254884740 amendments=ARCHITECTURE-SPINE.md:AD-57+pointers(AD-10,AD-28,AD-39),EXPERIENCE.md:fixed-strings_row_appended,CLAUDE.md:105_ad_count note=supersedes_merge_run_36253429558(cancel-in-progress)
+2026-09-26T16:18:56Z	Epic 16	epic_context_compiled	reason=planning_artifact_newer(epics.md_16.21-16.22,spine_AD-57,11-11_amendments) model=claude-opus-5-5 agent=ab5105a4d23be4d21
+2026-09-26T16:18:56Z	Story 16.17	integrate_forward	feature=fe5b445e already_contained=true
+2026-09-26T16:18:56Z	Story 16.17	stage_spawned	stage=plan spawn_at=2026-09-26T16:18:56Z model=opus agent_name=16-17-the-read-back-line-plan-1 cycle_iteration=1
