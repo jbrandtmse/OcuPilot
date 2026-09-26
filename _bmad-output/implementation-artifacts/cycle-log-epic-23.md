@@ -21,3 +21,6 @@
 2026-09-26T10:39:33Z	Story 23.1	cr_complete	batch=B1 spawn_at=2026-09-26T10:21:57Z model=opus resolved=10 routed=1 wontfix_accepted=1 dismissed=8 high=0 med=6 low=6 rows=39 unresolved_high_med=0 filed=DW-1691,DW-1692 sprint=review closing_sections_present=true subagent_tokens=250445
 2026-09-26T10:39:33Z	Story 23.1	ledger_adjudicated	batch=B1+L owned=23 resolved=21 reowned=0 escalated_residual=2(DW-1338,DW-1413) terminal=21 slice_range_end_cleanup_after=57
 2026-09-26T10:39:33Z	Story 23.1	smoke_complete	batch=B1 method=other result=pass iterations=1 defects_caught=0 evidence=text_only_batch;src_loaded_ocupilot-b-ci_0_errors;test_tools_1468;check_objectscript_0 model=claude-opus-5-5
+2026-09-26T10:40:06Z	Story 23.1	committed	batch=B1 sha=32bbe297 code=3606e40f,0f7b0843 ci=pending run=36236454308 amendments=epics.md:409,437,452,454,759;prd.md:402,404
+2026-09-26T11:21:05Z	Story 23.1	ci_resolved	batch=B1 run=36236454308 head=32bbe297 result=success resolved_at=next_implement
+2026-09-26T11:21:06Z	Story 23.1	stage_spawned	stage=implement batch=B2+B3 spawn_at=2026-09-26T11:21:06Z model=opus agent_name=23-1-the-range-end-cleanup-implement-b2b3 cycle_iteration=2

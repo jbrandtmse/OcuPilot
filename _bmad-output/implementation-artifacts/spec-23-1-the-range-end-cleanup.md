@@ -2,7 +2,7 @@
 title: 'Story 23.1: The range-end cleanup'
 type: 'chore'
 created: '2026-09-26'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'f30207594e8641fc86ccaa1db9ebcceee2ba9484'
 baseline_commit: 'f30207594e8641fc86ccaa1db9ebcceee2ba9484'
 review_loop_iteration: 0
@@ -249,6 +249,7 @@ Rejected:
 
 - 2026-09-26, lead at spec validation: (1) an already-fixed entry closes `resolved-by:23-1-the-range-end-cleanup` with the earlier commit as evidence, not `dropped`, which the grammar keeps for invalid or duplicate entries. (2) DW-1650 moves from `burndown` to B6 + L: its ledger trailer records the owner's decision at the 10.6 merge gate, so only the spine's Deferred row was stale. (3) DW-1185, DW-1434, DW-1435 and DW-1478 are escalated to the owner rather than applied: they edit instruction files (`CLAUDE.md`, `.claude/rules/`, `_bmad/custom/skill-rules.md`), which no agent may change on another agent's say-so; the drafted text stays in Batch L for the owner. (4) DW-1338 and DW-1413 are applied only outside other epics' story blocks; the story-block lines (Stories 1.9, 4.3, 13.3) are escalated for the orchestrator. (5) A batch's commit and the lead's review/bookkeeping commit are pushed together, never with `[skip ci]`; the lead's Batch L commit rides with B1's push.
 - 2026-09-26, lead, Batch L (Rule 5 apply-and-report, each marked `[AMENDED 2026-09-26, Story 23.1]` at the line): epics.md `:409`, `:437` (DW-1413), `:452` UX-DR56 and `:454` UX-DR58 (DW-1688, DW-1691), `:759` (DW-1338); prd.md `:402` and `:404` FR-17 (DW-1691). Spine (Rule 20): the Invariants direction line (DW-456), AD-10 (DW-1688), AD-42 (DW-1179), the Deferred DW-444 row (DW-1319).
+- 2026-09-26, lead, after B1's green CI (run 36236454308): B2 and B3 run as one implement pass and one commit (17 entries, adjacent install and CI-tooling areas), to save one CI cycle; a red result re-opens the pair.
 - 2026-09-26, lead, re-sequence: Epic 16 runs on slot A from now on (`Screen/**`, `Port/**`, `Kernel/Proposal/**`, `shell/**`, `core/**`, the logs, Home and OpenAPI-viewer areas). Batches run B2, B3, B4, B8 first; B5, B6 and B7, which touch those paths, run last against Epic 16's pushed version or are re-owned to the Epic 16 story that owns the code.
 
 ## Review Triage Log
