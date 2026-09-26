@@ -4,7 +4,7 @@
 contest. Publish only after release 1.0.0 is on main with the built client, the IPM package is
 published, and both install commands have been run on a clean machine; check the Epic 11 features
 (Explain this screen, explain an entry, citation chips) on the demo first. Add the screenshots marked
-below, the Open Exchange link and the contest tag. -->
+below and the contest tag. -->
 
 The Management Portal is where most of us administer IRIS, and it has grown over many releases.
 When InterSystems asked the community to [build our own management
@@ -189,7 +189,7 @@ each removal that says what depends on it ("3 users hold this role").
 
 - Live demo: [ocupilot.org](https://ocupilot.org) (`demo` / `ocupilot-demo`)
 - Source and install guide: [github.com/jbrandtmse/OcuPilot](https://github.com/jbrandtmse/OcuPilot)
-- Open Exchange: <!-- OPEN EXCHANGE LINK -->
+- Open Exchange: [OcuPilot](https://openexchange.intersystems.com/package/OcuPilot)
 
 I would love to hear what you would ask an agent like this to do on your own instances - and what
 you would never let it do. If OcuPilot is useful to you, I would be grateful for your vote in the
