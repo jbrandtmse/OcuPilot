@@ -1035,6 +1035,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: _components.scss .ocu-header-lockup draws the reversed PNG as background-image; header.spec.ts pins lockup.children at 0 and textContent at ''. Windows High Contrast (forced-colors: active) drops background images, leaving a 156x32 invisible link. Its aria-label survives, so assistive technology is unaffected; a sighted high-contrast user sees nothing where Home is. No forced-colors block exists anywhere in ui/src/styles.
 - 2026-09-12T16:21:26Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a forced-colors pass finds the Home affordance unreachable by sight; a raster lockup needs an SVG or a visible-text fallback, not a 15-line patch
+- 2026-09-26T04:37:06Z occurrence=15-10-the-header-logo-on-a-white-tile
 
 ### DW-152: The status bar's connecting disc and statusConnectionSigningIn can never render in the composed app
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-epic
@@ -6364,6 +6365,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=baseline keys carry this id
 - 2026-09-24T00:20:24Z by=integrate_forward note=Epic 7 merge adds 5 keys on the three security/auditing screens at 720; one-time extension, same root cause
 - 2026-09-25T01:23:50Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
+- 2026-09-26T04:25:02Z occurrence=15-10-the-header-logo-on-a-white-tile by=harvest note=stamp_presence_varies_run_to_run_so_1-4_of_these_keys_read_stale_on_an_unchanged_bundle(223/223,219+4stale,222+1stale_on_ocupilot-b-ci);0_fresh
 
 ### DW-1585: Structural gate baseline: command-bar controls overflow the command bar at 720px (refresh action 80px on agent/definitions; sort 30px in CI only)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -7187,3 +7189,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner decision 2026-09-25 (2ce5a785 scratched 14.7) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: ui/src/app/shell/proposal-card.ts:645-647 says the typed-name field is Story 14.7's and that 14.7 reads the wire declaration; 14.7 is scratched (a destructive agent proposal keeps its destructive bar and Confirm without a typed name); restate the comment
 - 2026-09-26T04:52:40Z status=routed owner=range-end-cleanup by=orchestrator note=owner: route to range-end-cleanup
+### DW-1683: epics.md UX-DR14 (:395) and Story 1.10's AC (:1384) still name the reversed lockup at 32px directly on the navy header
+- source: spec-15-10-the-header-logo-on-a-white-tile.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 15.10 moved the header to the navy lockup on a white tile and amended DESIGN.md/EXPERIENCE.md at origin; epics.md is contended (Epic 11 edits it) and outside the story's footprint, so the two requirement lines were left as written.
+- 2026-09-26T04:37:06Z status=wontfix-accepted owner=15-10-the-header-logo-on-a-white-tile by=cr note=reopen_if=a plan stage or spec cites UX-DR14's reversed-lockup wording; fix is a Rule 5 tier-1 in-place amendment by the lead

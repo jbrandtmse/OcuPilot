@@ -1,29 +1,39 @@
 # OcuPilot: ask, review, confirm, audit - an AI co-pilot for the IRIS Management Portal
 
 <!-- Draft for the InterSystems Developer Community, for the "Build Your Own Management Portal"
-contest. Before publishing: add the screenshots marked below, the Open Exchange link, and the
-contest tag. -->
+contest. Publish only after release 1.0.0 is on main with the built client, the IPM package is
+published, and both install commands have been run on a clean machine; check the Epic 11 features
+(Explain this screen, explain an entry, citation chips) on the demo first. Add the screenshots marked
+below, the Open Exchange link and the contest tag. -->
 
-The System Management Portal is where most of us administer IRIS, and it has not changed much in a
-long time. When InterSystems asked the community to [build our own management
+The Management Portal is where most of us administer IRIS, and it has grown over many releases.
+When InterSystems asked the community to [build our own management
 portal](https://openexchange.intersystems.com/contest/48), I wanted to answer two questions at
-once: what would the portal look like if it were built today, and what would it take to let an AI
+once: what would the portal look like if we started it today, and what would it take to let an AI
 agent help run an IRIS instance without having to trust it?
 
 The result is **OcuPilot**: a rebuilt portal for the six areas the contest names, with an agent
-docked beside every screen that can explain what you are looking at and change settings for you -
-but only after you have reviewed the change and pressed Confirm.
+beside every screen. It can explain what you are looking at and change settings for you - but only
+after you have reviewed the change and pressed Confirm.
 
-You can try it right now, without installing anything: open **[ocupilot.org](https://ocupilot.org)**
-and sign in as `demo` with the password `ocupilot-demo`. The demo runs on a real IRIS for Health
-instance and resets every hour.
+## Try it in two minutes
+
+Open **[ocupilot.org](https://ocupilot.org)** and sign in as `demo` with the password
+`ocupilot-demo`. It runs on a real IRIS for Health instance.
+
+- **No model key needed.** The demo's agent runs on Claude Opus 5.5.
+- **Changes take a moment.** A request that makes a change can take up to a minute.
+- **It is shared.** Everyone uses the same instance, so if `/csp/myapp` is already enabled, ask the
+  agent to disable it first. It resets every hour, on the hour, and is offline for a few minutes
+  while it does.
+- **Please do not type anything private.**
 
 <!-- SCREENSHOT: the portal with the agent panel open beside the Web applications list. -->
 
 ## A portal for the six areas
 
-OcuPilot covers every area the contest asks for, with list screens, row actions and full editors
-working against live instance data:
+OcuPilot covers every area the contest asks for, with lists, row actions and full editors working
+against live instance data:
 
 - **Web applications** - create, edit, enable, disable and delete, plus a REST API explorer and an
   OpenAPI viewer for every REST application on the instance.
@@ -36,147 +46,106 @@ working against live instance data:
 - **OS management** - processes, locks, system usage, databases and devices.
 - **Logs** - `alerts.log`, `messages.log`, application errors and the audit database.
 
-The shell is shaped like VS Code: an activity rail on the left, the screen in the middle and the
-agent panel on the right. There is a command palette (`Ctrl+K` or `⌘K`), favorites and recent
-items, resizable columns, per-screen help, and a light and a dark theme.
+The layout will feel familiar if you use VS Code: areas on the left, the screen in the middle and
+the agent on the right. There is a command palette (`Ctrl+K` or `⌘K`), favorites and recent items,
+resizable columns, help on every screen, and a light and a dark theme.
 
 ## Ask about what you are looking at
 
-The agent always knows which screen you are on. When you ask a question, OcuPilot sends it the
-screen's identity, its filter and selection, and the rows in front of you, so questions like these
-are answered from your own data rather than from general knowledge:
+The agent always knows which screen you are on. When you ask a question, it gets that screen's
+filter, selection and the rows in front of you, so questions like these are answered from your own
+data:
 
 - "Which of these web applications allow unauthenticated access?"
 - "Why is this task suspended, and is it safe to resume?"
 - "What does this audit record mean?"
 
-Every screen offers an **Explain this screen** prompt and a few suggested questions, and any log
-line, application error or audit record can be explained in place. When the agent names rows in
-its answer, they come back as citation chips: click one and the screen selects that row.
+Every screen offers an **Explain this screen** prompt and a few suggested questions, and you can
+ask the agent to explain any log line, application error or audit record. When it names rows in its
+answer, they come back as chips: click one and the screen selects that row.
 
-If a conversation is about a screen you are not on, the agent opens it. Ask "create a web
-application for my new REST service" from Home, and it takes you to Web applications first.
+If a conversation is about another screen, the agent opens it. Ask "create a web application for my
+new REST service" from Home, and it takes you to Web applications first.
 
 ## Ask, review, confirm, audit
 
-This is the part I cared about most. An agent that can change a production instance is only
-useful if you never have to wonder what it did. So in OcuPilot the agent never writes anything. It
-can read, and it can propose; the write happens in a separate request that only your browser makes,
-when you press Confirm.
+This is the part I cared about most. An agent that can change an instance is only useful if you
+never have to wonder what it did. So in OcuPilot the agent never makes a change by itself. It can
+read, and it can propose. The change happens only when you press Confirm - a request the agent
+cannot make; it has to come from your own signed-in session.
 
 Here is the whole path, using the web application the demo ships disabled.
 
 **1. Ask.** On Web applications, type: *"Enable /csp/myapp and give it the %Development
-resource."*
+resource."* (That resource means only users who hold `%Development` can use the application.)
 
-**2. Review.** A proposal card appears in the panel. The diff on it is computed by the instance
-from a fresh read of `/csp/myapp` - not written by the model - and shows each field that will
-change with its current and new value. The card also names the privilege the change needs and how
-to reverse it.
+**2. Review.** A proposal card appears in the panel. Its before-and-after comparison is worked out
+by the instance from a fresh read of `/csp/myapp` - not written by the model. It shows each field
+that will change, the privilege the change needs, and how to undo it.
 
-<!-- SCREENSHOT: the proposal card with the before-and-after diff and the privilege line. -->
+<!-- SCREENSHOT: the proposal card with the before-and-after comparison and the privilege line. -->
 
-**3. Confirm.** When you press Confirm, OcuPilot re-checks, on the server, that you still hold the
-privilege, that `/csp/myapp` has not changed since the proposal was made, and that the change is not
-on the prohibited list. Then it runs the change **as you**, with your own roles, never an elevated
-service account. A proposal can be confirmed once and expires after ten minutes.
+**3. Confirm.** When you press Confirm, OcuPilot checks again, on the server, that you still hold
+the privilege, that `/csp/myapp` has not changed since the proposal was made, and that the change is
+allowed. Then it makes the change **as you**, with your own roles, never an elevated account. A
+proposal can be confirmed once and expires after ten minutes.
 
-**4. Audit.** The Web applications list refreshes and marks `/csp/myapp` as Changed. And the change
-is recorded in the IRIS audit database as an `OcuPilot/Security/AgentWrite` event, so the answer to
-"what did the agent change last week?" lives where your auditors already look, not in a log only
-OcuPilot can read.
+**4. Audit.** The Web applications list refreshes and marks `/csp/myapp` as Changed, and the change
+is recorded in the IRIS audit database as an `OcuPilot/Security/AgentWrite` event. So the answer to
+"what did the agent change last week?" lives where your auditors already look. If auditing is ever
+switched off, the panel says so plainly, and each change shows "audit not marked".
 
-<!-- SCREENSHOT: the refreshed list with the Changed marker, and the audit database filtered to agent writes. -->
+<!-- SCREENSHOT: the refreshed list with the Changed marker, and the audit database filtered to agent
+writes. -->
 
 ## Guardrails that live on the instance
 
-Everything above is enforced by the server, not the browser, and a few changes are refused outright
-however they are asked for. OcuPilot will not disable or delete `_SYSTEM`, the signed-in user, the
-service accounts or the last holder of `%All`; it will not break its own web applications, roles,
-resources or processes; and it will not touch fields outside the reviewed list for each tool. The
-refusal says why - for example: *"This is the last account that holds %All. Disabling it, deleting
-it or taking the role off it would leave nobody able to administer this instance."*
+Everything above is enforced by the server, not the browser, and some changes are refused however
+they are asked for. OcuPilot will not disable or delete `_SYSTEM`, the signed-in user, the accounts
+the instance's own services run as, or the last holder of `%All`; and it will not break its own
+applications, roles or processes. The refusal says why - for example: *"This is the last account
+that holds %All. Disabling it, deleting it or taking the role off it would leave nobody able to
+administer this instance."*
 
-An administrator also has switches: a kill switch that stops the agent for everyone, an enforced
-read-only mode, per-user holds, and control over how many rows of screen context may be shared.
+An administrator can also turn the agent off for everyone, hold it read-only, switch it off for
+one user, and limit how many rows of a screen it may see.
 
-Secrets never reach the model. Screens that hold passwords, keys or wallet secrets send only which
-record you are on. When a change needs a secret - a new user's password, say - the proposal card
-asks you for it, and it travels only with your Confirm.
+The agent never sees more than your screen shows, and sometimes less. Stored passwords, keys and
+wallet secrets are never sent to it; when a change needs a secret - a new user's password, say - the
+proposal card asks you for it, and it travels only with your Confirm. The variables IRIS captures
+with an application error stay on your screen too, because on IRIS for Health they can hold patient
+data. And a **Share screen context** switch in the panel turns sharing off entirely.
 
 ## Bring your own model
 
 OcuPilot works with Anthropic, OpenAI, Google Gemini, or any OpenAI-compatible endpoint. The last
 one is the privacy option: point it at Ollama, vLLM or LM Studio on your own network, mark it local,
-and no screen data or log text leaves your network.
-
-Two tips from setting this up with real keys:
-
-- **Anthropic:** create the key inside one workspace. A key that spans every workspace is refused
-  unless the request names a workspace.
-- **Local models:** a model that is still loading can take longer to answer its first request than
-  the Web Gateway waits. Test again once it is warm, or raise the gateway's
-  `Server_Response_Timeout` if your model is simply slow.
+and no screen data or log text leaves your network. The README has a short guide to getting a key
+for each provider.
 
 ## How it is built
 
-For the developers reading this, a short tour:
+OcuPilot is one install served by IRIS itself: an Angular application at `/ocupilot` and an
+ObjectScript REST API behind it, with no separate server to run. Most screens work through IRIS's
+own `/api/admin` service, called inside IRIS rather than over the network. Each screen is declared
+once, and that one declaration serves both the screen and the agent's matching tool. The agent's
+work runs in a background job that can only read and propose; its proposals are stored on the
+instance, which is how Confirm can tell whether the target has changed since. Every code change runs
+through the full test suite against a fresh IRIS container before it is merged.
 
-- **One install, served by IRIS.** The portal is an Angular 22 application served from `/ocupilot`,
-  and the API behind it is ObjectScript REST at `/api/ocupilot`. There is no separate server.
-- **The admin API, in-process.** Most screens read and write through IRIS's `/api/admin` v2
-  service, called in-process rather than over HTTP, alongside `Security.*`, `%SYS.Task` and the
-  log files.
-- **One descriptor per screen.** Each screen is declared once, and that declaration produces both
-  the screen's read and the agent's matching tool, so the agent and the screen always see the same
-  data.
-- **The model never writes.** An agent turn runs in a background job that can only read and
-  propose. Proposals are stored on the instance with a fingerprint of their target, which is how
-  Confirm knows whether the target has changed.
-- **Protected state.** Agent definitions, switches, the agent ledger and transcripts live in
-  OcuPilot's own database, behind a resource no ordinary role holds.
-- **Tested in CI.** Every push runs 287 `%UnitTest` classes inside a fresh IRIS container, the
-  client's Node and Angular tests, 92 browser specs in headless Chrome, a compile-and-smoke run on
-  both IRIS Community and IRIS for Health Community, and an offline IPM install.
+<!-- DIAGRAM: the README's architecture diagram. -->
 
-## How I built it: the BMAD Method
+## How I built it
 
-I use and advocate the [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD) for building
-software with AI agents, and OcuPilot was built with it from the first idea to the release - which
-is a large part of how it got this far in under three weeks.
+I built OcuPilot with the [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD), which I have
+been advocating for a while, with Claude Code as the development agents. The safety you read about
+above - the Confirm step, the refusals, the audit record - was written into the design before any
+code existed, and every piece of work was checked against it. Every planning document is in the
+repository, and I tell that story in a follow-up article.
 
-**Planning came first, and it was thorough.** Before any code:
+## Install it yourself
 
-- a research pass over the classic portal and the admin API produced a prioritized catalog of 538
-  portal features;
-- a product brief and a PRD set the scope, and UX design documents set every screen's states,
-  strings and interactions;
-- an architecture spine recorded more than fifty binding decisions - "the agent never writes",
-  "Confirm is a request only the user's browser makes", "the prohibited set lives on the server" -
-  that every story had to honor, or amend in the open;
-- the work was cut into 22 epics of small stories, ordered so that the six contest areas and the
-  ask-review-confirm-audit path landed first.
-
-**Then every story went through the same cycle**, with Claude Code as the development agents: a
-spec written and validated against the architecture, implementation, QA, an adversarial code
-review, and CI against a fresh IRIS container before anything merged. An orchestrator ran two
-epics at a time, each against its own IRIS instance, with its own throwaway containers for tests.
-Nothing a reviewer found was allowed to quietly disappear: each finding was fixed in the story,
-routed to a named later story, or declined with a written reason, and the deferred-work ledger that
-tracks them holds more than 1,100 entries.
-
-**My job was the decisions.** I set the priorities, answered the questions the agents escalated,
-and used the nightly build the way an administrator would. Several things in this article started
-as notes from that use - the agent not opening the screen we were talking about, columns too narrow
-to read, sign-out hard to find - and each became a story and shipped within a day.
-
-By the numbers: close to 2,000 commits, 138 validated story specs, 287 `%UnitTest` classes, and
-every planning document in the repository under `_bmad-output/`, if you want to see what the method
-produces.
-
-## Install it in three minutes
-
-With Docker, and nothing else:
+With Docker installed:
 
 ```bash
 git clone https://github.com/jbrandtmse/OcuPilot.git
@@ -184,36 +153,37 @@ cd OcuPilot
 docker compose up -d --wait
 ```
 
-Open <http://localhost:52774/ocupilot/> and sign in as `_SYSTEM` / `SYS` - the first install clears
-the password expiry Community Edition ships with. OcuPilot then walks you through connecting a
-model: pick a provider, paste a key, press Test connection, save and enable.
+The first start downloads IRIS for Health Community and installs OcuPilot, which takes a few
+minutes. Then open <http://localhost:52774/ocupilot/> and sign in as `_SYSTEM` / `SYS` - the first
+install clears the password expiry Community Edition ships with. OcuPilot then walks you through
+connecting a model: pick a provider, paste a key, press Test connection, save and enable.
 
-To add OcuPilot to an instance you already have, install it with IPM in the namespace you want:
+To add OcuPilot to an instance you already have - IRIS or IRIS for Health 2026.2 or later, with IPM
+0.10.0 or later - install it in the namespace you want (not `%SYS`):
 
 ```objectscript
 zpm "install ocupilot"
 ```
 
 One thing to know before you install it anywhere that matters: OcuPilot switches instance auditing
-on if it is off, and registers its own audit events. That is deliberate - an agent write that could
-not be audited would defeat the point - but it is a change to the instance's security posture, so
+on if it is off, and registers its own audit events. That is deliberate - agent changes that could
+not be audited would defeat the point - but it is a change to the instance's security settings, so
 the README lists exactly what the installer adds.
 
 ## Community ideas
 
-OcuPilot implements two ideas from the InterSystems Ideas portal:
-[DPI-I-516](https://ideas.intersystems.com/ideas/DPI-I-516), *Integration with LLMs like GPT,
-llama*, and [DPI-I-574](https://ideas.intersystems.com/ideas/DPI-I-574), *AI analysis of error
-logs*. Next on the list is [DPI-I-966](https://ideas.intersystems.com/ideas/DPI-I-966), letting the
-Logs area open older `messages.log` files.
+OcuPilot implements [DPI-I-516](https://ideas.intersystems.com/ideas/DPI-I-516), *Integration with
+LLMs like GPT, llama*, and the on-demand part of
+[DPI-I-574](https://ideas.intersystems.com/ideas/DPI-I-574), *AI analysis of error logs*: the agent
+explains any error or log entry you point it at. Next is
+[DPI-I-966](https://ideas.intersystems.com/ideas/DPI-I-966), opening older `messages.log` files.
 
-## What is next
+## What it does not do yet
 
-Improvements continue through the voting week: a try-it console in the REST API explorer, a
-read-back line that shows the instance now holds what a change wrote, a performance row on Home,
-impact lines on removals ("3 users hold this role"), and older `messages.log` files. Longer term,
-the goal is parity with the classic portal - namespaces, databases, journals, a code and SQL
-explorer, and Interoperability.
+OcuPilot does not yet cover namespaces, database configuration, journals, mirroring or
+Interoperability; for those, the classic portal is still there. Improvements continue through the
+voting week - among them a way to send a test request from the REST API explorer, and a line on
+each removal that says what depends on it ("3 users hold this role").
 
 ## Try it
 

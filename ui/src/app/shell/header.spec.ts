@@ -22,9 +22,10 @@ import { stubAccountPreferences } from '../testing/account-preferences';
 /**
  * The header's rendered contract (DESIGN.md `:1007-1017`, EXPERIENCE.md "`{spacing.header-height}` band").
  *
- * The band's *appearance* -- the gradient, the 32px lockup, the 100%-opacity rule -- is CSS
+ * The band's *appearance* -- the gradient, the tiled lockup, the 100%-opacity rule -- is CSS
  * and jsdom computes none of it; those are asserted against the shipped stylesheet in
- * `ui/tools/design-tokens.test.mjs`, and measured in the browser under Manual checks. What is
+ * `ui/tools/design-tokens.test.mjs`, and measured in the browser under Manual checks (the lockup
+ * by `ui/browser/header-lockup.browser-spec.mjs`). What is
  * here is the half a regex over the stylesheet cannot see: the landmark, the lockup's link and
  * accessible name, the command box's presence, the namespace slot, the account button at the right
  * end, and the badge's absence.
@@ -231,7 +232,7 @@ describe('the header', () => {
     // resolved through the deployment's base href -- `Location.prepareExternalUrl` is what
     // applies it, and the test harness's base is `/`.
     expect(lockup.getAttribute('href')).toBe(location.prepareExternalUrl('/'));
-    // No plate, no ground, no hover state: it is an anchor with nothing inside it.
+    // The tile is the anchor's own background and there is no hover state: nothing inside it.
     expect(lockup.children).toHaveLength(0);
     expect(lockup.textContent?.trim()).toBe('');
   });
