@@ -228,14 +228,16 @@ test('Command Sign out: typing "sign out" offers an active Sign out row, and Ent
   }
 });
 
-// Mutations (Rule 19): render the filter unconditionally, or force `hasContent` true -> the Home leg,
-// the first the mutation reaches, goes red; hide the filter everywhere -> the list leg goes red.
-test('No read, no filter: Home draws no command bar, the error log and a user editor draw no filter or count, and a list still filters', async () => {
+// Home refreshes (AD-43) but declares no read, so its bar holds the auto-refresh chip and nothing
+// to filter. Mutations (Rule 19): render the filter unconditionally -> the Home leg, the first the
+// mutation reaches, goes red; hide the filter everywhere -> the list leg goes red.
+test('No read, no filter: Home draws its auto-refresh chip but no filter or count, the error log and a user editor draw no filter or count, and a list still filters', async () => {
   const { context, page } = await signedInAt(HOME_URL);
   try {
     await page.waitForSelector('main .ocu-home', { timeout: config.navigationTimeoutMs });
-    assert.equal(await page.$('.ocu-command-bar'), null, 'Home draws no command bar');
-    assert.equal(await page.$(FILTER_SELECTOR), null, 'and no filter');
+    await page.waitForSelector('.ocu-command-bar .ocu-command-bar-refresh', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$(FILTER_SELECTOR), null, 'Home draws no filter');
+    assert.equal(await page.$('.ocu-command-bar-count'), null, 'and no count');
 
     await openAt(page, ERRORS_URL);
     await page.waitForSelector('.ocu-command-bar-refresh-action', { timeout: config.navigationTimeoutMs });

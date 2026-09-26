@@ -2,8 +2,8 @@
 title: "Story 16.18: Home's performance row"
 type: 'feature'
 created: '2026-09-26'
-status: 'in-progress'
-baseline_revision: '585d73b023e3655fb35bc71d312ca2d17041edcd'
+status: 'done'
+baseline_revision: 'b52210cfcfe1d8287962e39512a90d8ec55b4a68'
 baseline_commit: '585d73b023e3655fb35bc71d312ca2d17041edcd'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -232,7 +232,7 @@ Rejected:
 
 ### Rework (CI, iteration 1)
 
-- [ ] [CI] browser: `ui/browser/account-and-filter.browser-spec.mjs:237` (Story 15.9's "No read, no filter") fails on run 36275199146 at head f344e836: "Home draws no command bar" now finds `.ocu-command-bar`, because Home joined the auto-refresh roster (AD-43 as amended) and draws the chip. The fix is the test's Home leg, not Home: assert Home's bar carries the auto-refresh chip and draws no filter (`FILTER_SELECTOR`) and no count (`.ocu-command-bar-count`) -- 15.9's intent is "no filter where nothing filters". Update the test's name and its Rule 19 comment to match; demonstrate the mutation (render the filter on Home -> the Home leg reds) after rebuild + redeploy, and write its `mutation:` line. Search the other browser specs for any assertion that Home has no command bar, refresh chip or status stamp (`grep -rn` over `ui/browser`) and fix any other such leg the same way; run each touched spec file alone on `ocupilot-ci`. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36275199146>
+- [x] [CI] browser: `ui/browser/account-and-filter.browser-spec.mjs:237` (Story 15.9's "No read, no filter") fails on run 36275199146 at head f344e836: "Home draws no command bar" now finds `.ocu-command-bar`, because Home joined the auto-refresh roster (AD-43 as amended) and draws the chip. The fix is the test's Home leg, not Home: assert Home's bar carries the auto-refresh chip and draws no filter (`FILTER_SELECTOR`) and no count (`.ocu-command-bar-count`) -- 15.9's intent is "no filter where nothing filters". Update the test's name and its Rule 19 comment to match; demonstrate the mutation (render the filter on Home -> the Home leg reds) after rebuild + redeploy, and write its `mutation:` line. Search the other browser specs for any assertion that Home has no command bar, refresh chip or status stamp (`grep -rn` over `ui/browser`) and fix any other such leg the same way; run each touched spec file alone on `ocupilot-ci`. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36275199146>
 
 ## Spec Change Log
 
@@ -260,6 +260,18 @@ Rejected:
   - `[false]` `[reject]` Home's turn now always carries a `view` — the matrix's Denied row requires context rows `[]`, which is that view.
   - `[false]` `[reject]` One collection per read shortens external scrapers' windows — that is the intent's "one sensor collection per read" and AD-29's recorded (inference).
   - `[false]` `[reject]` The spec's Auto Run Result still read ready-for-dev -- finalize writes it.
+
+### 2026-09-26 — Review pass
+
+- verdicts: 7 findings — high 0, medium 0, low 3, false 4, maybe-false 0
+- findings:
+  - `[false]` `[reject]` The rework's `mutation:` line is not yet under Verification — finalize writes it (below); the fix edits this spec.
+  - `[low]` `[patch]` `command-bar.spec.ts` titled its synthetic read-less, non-refreshing case "Home ... draws no command bar", which the real Home now contradicts — retitled to describe the screen it builds; its Rule 19 comment says "read-less leg"; 52/52 green.
+  - `[low]` `[patch]` `command-bar.spec.ts` DW-260 comment said "Home registers none, because it reads nothing" — now "A screen with nothing to re-read registers none".
+  - `[low]` `[reject]` Chip presence is a `waitForSelector`, not a named assertion — a Home without the chip still fails the leg (timeout on the named selector); a named message adds code for no new reach.
+  - `[false]` `[reject]` No mutation exercises the count assertion alone — the count `<p>` sits inside the same `@if (hasFilter)` block as the filter (`command-bar.ts:172-184`), so a count without a filter cannot render.
+  - `[false]` `[reject]` Ledger evidence (mutation, solo run) is absent — recorded below under Verification and in the Auto Run Result at finalize.
+  - `[false]` `[reject]` Nothing shows the leg ran against a bundle carrying the chip — the leg waits for `.ocu-command-bar-refresh` and ran 4/4 green on `ocupilot-ci`, so the deployed bundle carries it.
 
 ## Design Notes
 
@@ -365,6 +377,10 @@ The Where column: "Home's performance row (Story 16.18): its heading; two labels
 - mutation: `ScreenStore.rememberView` keyed by `this.route || this.rateKey` -> red: `screen-store.test.mjs` "Story 16.18 AC5".
 - mutation: `Base.RefreshDefaultOf` answers `%Get` whatever the JSON type, recompiled on `ocupilot-ci` -> red: `OcuPilot.Test.Descriptor` `TestARefreshDeclarationOutsideThePermittedShapesIsRefused`.
 
+**Mutations (Rule 19), 2026-09-26, CI rework 1.** Same discipline; `git status --short` and `git diff --stat` byte-identical before and after (`cmp`).
+
+- mutation: `ui/src/app/shell/command-bar.ts:172` `@if (hasFilter)` -> `@if (true)`, rebuilt and redeployed to `ocupilot-ci` -> red: `account-and-filter.browser-spec.mjs` "No read, no filter: Home draws its auto-refresh chip but no filter or count, ..." at "Home draws no filter" (the other three tests green); reverted, clean bundle redeployed, 4/4 green.
+
 ## Auto Run Result
 
 Status: done
@@ -395,3 +411,11 @@ Blocking condition: none
 
 - About 30 browser specs outside this story land on Home, which now shows a chip, a stamp and the row. The full browser suite runs in CI (Rule 29).
 - A denied caller still polls a 403 every 10 s (by design, see the triage log).
+
+**CI rework 1 (run 36275199146).** Story 15.9's browser leg asserted Home draws no command bar; Home's auto-refresh chip now draws one by design (AD-43 as amended). The leg now waits for the chip and asserts no filter and no count; its name and Rule 19 comment match. No app code, no ObjectScript (no sweep).
+
+- Files: `ui/browser/account-and-filter.browser-spec.mjs` (the Home leg); `ui/src/app/shell/command-bar.spec.ts` (review patch: a test title and two comments that still called the synthetic read-less screen Home).
+- Search: `grep -rn` over `ui/browser` for command bar, chip, count and stamp assertions on Home found no other leg.
+- Verification: `account-and-filter.browser-spec.mjs` alone on `ocupilot-ci`, 4/4 green (clean bundle, before and after the mutation); `ng test --include src/app/shell/command-bar.spec.ts` 52/52; client-lint clean. Mutation recorded under Verification.
+- Review: 7 findings, 2 low patched, 5 rejected (see the triage log); none deferred. `followup_review_recommended: false` (follow-up pass, no high patched).
+- Residual risk: none new; the full browser suite runs in CI (Rule 29).

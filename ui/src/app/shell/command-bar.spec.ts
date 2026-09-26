@@ -1102,11 +1102,11 @@ describe('the command bar', () => {
 
   // --- Story 15.9: no filter where there is nothing to filter ---------------------------------
   //
-  // Mutations (Rule 19): render the filter unconditionally -> the Home and error-drill legs go red;
-  // force `hasContent` true -> the Home leg goes red; hide the filter on every screen -> the list
-  // leg goes red.
+  // Mutations (Rule 19): render the filter unconditionally -> the read-less and error-drill legs go
+  // red; force `hasContent` true -> the read-less leg goes red; hide the filter on every screen -> the
+  // list leg goes red.
 
-  it('Home, which declares no read and registers nothing, draws no command bar', () => {
+  it('a screen that declares no read, does not refresh and registers nothing draws no command bar', () => {
     build(screenDeclaration({ route: '', archetype: 'home', read: null }));
     expect(fixture.nativeElement.querySelector('.ocu-command-bar')).toBeNull();
     expect(fixture.nativeElement.querySelector('#ocu-command-bar-filter')).toBeNull();
@@ -1137,8 +1137,8 @@ describe('the command bar', () => {
 
   it('DW-260: the bar draws Refresh only where a handler is registered for it', () => {
     // The control is not a declared action: Refresh re-reads whatever the screen reads, and the
-    // registration is what says a screen can carry it out. Home registers none, because it reads
-    // nothing, and the audit viewer registers only once it has a search to re-run.
+    // registration is what says a screen can carry it out. A screen with nothing to re-read registers
+    // none, and the audit viewer registers only once it has a search to re-run.
     //
     // Mutation (Rule 19): draw the button unconditionally -> the "before registration" assertion
     // goes red, and every read-less screen grows a control with nothing behind it.
