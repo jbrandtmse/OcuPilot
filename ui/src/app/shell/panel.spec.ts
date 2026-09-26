@@ -3438,6 +3438,37 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(reply).not.toContain(STRINGS.auditMarkerReplySentence);
   });
 
+  /**
+   * Story 16.17, AD-58: the confirmed card draws the instance's read-back under its status line,
+   * from the confirm's own answer, so an agent's write is never a silent success.
+   *
+   * mutation: drop the card's `[readBack]` binding in the panel template -> this goes red.
+   */
+  it('AC1: a confirmed card carries the instance\u2019s read-back line under its status line', async () => {
+    const { host, fixture } = await mountDecidable({
+      [proposalConfirmPath('p1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            proposalId: 'p1',
+            state: 'confirmed',
+            closedReason: '',
+            confirmedAt: '2026-09-19T10:31:04Z',
+            auditMarked: true,
+            readBack: { verdict: 'differs', fields: ['Enabled'], written: [] },
+          },
+        },
+      ],
+    });
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const line = host.querySelector('.ocu-proposal-card [data-slot="read-back"]');
+    expect(line?.textContent?.trim()).toBe('Read back: differs in Enabled');
+  });
+
   it('AC: the audit-entry offer is appended once, even to a reply that already ends with it', async () => {
     // Idempotent like the other three appenders. **Driven against a MODEL-AUTHORED reply that
     // already carries the sentence**, which is the only shape the guard can be observed in:

@@ -10,7 +10,16 @@
 /// row's path extends) to <code>ordinary</code>, <code>secret</code> or <code>opaque</code>. An
 /// optional <code>authored</code> object maps a top-level name the endpoint's request wrapper
 /// carries and its template does not to <code>secret</code>, the only class it accepts; such a name
-/// may not collide with a derived path. The keys <code>required</code>, <code>enum</code> and
+/// may not collide with a derived path. An optional <code>compare</code> object maps a top-level
+/// row of the list to how the read-back compares a field the instance normalizes on save (AD-58):
+/// <code>unordered</code> (an array, as a multiset), <code>unslashed</code>, <code>words</code>,
+/// <code>letters</code>, <code>members</code> (an object, on the members sent) or
+/// <code>written</code> (never read back); a mode on a <code>secret</code> path is refused. The
+/// declarations are measured: user <code>Roles</code>, role <code>GrantedRoles</code> and
+/// <code>Resources</code> read back sorted, a resource's <code>PublicPermission</code>
+/// <code>"WR"</code> reads back <code>"RW"</code>, the OAuth 2.0 <code>Metadata</code> objects merge
+/// by member (AD-4), and a task's <code>Settings</code> may hold a secret-typed setting that is never
+/// read (AD-35). The keys <code>required</code>, <code>enum</code> and
 /// <code>description</code> are reserved for the semantic half of a tool's schema and accept no
 /// content yet; no other key is accepted.</p>
 /// <p><b>It fails closed.</b> A classifiable path the entry does not name is emitted
@@ -119,6 +128,7 @@ XData Entries
 {
   "permissions.users.update": {
     "fieldList": "Security.User",
+    "compare": {"Roles": "unordered"},
     "classification": {
       "AccountNeverExpires": "ordinary",
       "AutheEnabled": "ordinary",
@@ -267,6 +277,7 @@ XData Entries
   },
   "permissions.users.create": {
     "fieldList": "Security.User",
+    "compare": {"Roles": "unordered"},
     "classification": {
       "AccountNeverExpires": "ordinary",
       "AutheEnabled": "ordinary",
@@ -291,6 +302,7 @@ XData Entries
   },
   "permissions.roles.create": {
     "fieldList": "Security.Role",
+    "compare": {"GrantedRoles": "unordered", "Resources": "unordered"},
     "classification": {
       "Description": "ordinary",
       "GrantedRoles[]": "ordinary",
@@ -301,6 +313,7 @@ XData Entries
   },
   "permissions.roles.update": {
     "fieldList": "Security.Role",
+    "compare": {"GrantedRoles": "unordered", "Resources": "unordered"},
     "classification": {
       "Description": "ordinary",
       "GrantedRoles[]": "ordinary",
@@ -311,6 +324,7 @@ XData Entries
   },
   "permissions.resources.create": {
     "fieldList": "Security.Resource",
+    "compare": {"PublicPermission": "letters"},
     "classification": {
       "Description": "ordinary",
       "PublicPermission": "ordinary"
@@ -318,6 +332,7 @@ XData Entries
   },
   "permissions.resources.update": {
     "fieldList": "Security.Resource",
+    "compare": {"PublicPermission": "letters"},
     "classification": {
       "Description": "ordinary",
       "PublicPermission": "ordinary"
@@ -453,6 +468,7 @@ XData Entries
   },
   "security.oauthserverdescriptions.create": {
     "fieldList": "Security.OAuth2.Client.ServerDefinition",
+    "compare": {"Metadata": "members"},
     "classification": {
       "IssuerEndpoint": "ordinary",
       "SSLConfiguration": "ordinary",
@@ -462,6 +478,7 @@ XData Entries
   },
   "security.oauthserverdescriptions.update": {
     "fieldList": "Security.OAuth2.Client.ServerDefinition",
+    "compare": {"Metadata": "members"},
     "classification": {
       "IssuerEndpoint": "ordinary",
       "SSLConfiguration": "ordinary",
@@ -483,6 +500,7 @@ XData Entries
   },
   "security.oauthclients.create": {
     "fieldList": "Security.OAuth2.Client.ClientConfiguration",
+    "compare": {"RedirectionEndpoint": "unslashed", "DefaultScope": "words", "Metadata": "members"},
     "classification": {
       "ServerDefinition": "ordinary",
       "Enabled": "ordinary",
@@ -500,6 +518,7 @@ XData Entries
   },
   "security.oauthclients.update": {
     "fieldList": "Security.OAuth2.Client.ClientConfiguration",
+    "compare": {"RedirectionEndpoint": "unslashed", "DefaultScope": "words", "Metadata": "members"},
     "classification": {
       "ServerDefinition": "ordinary",
       "Enabled": "ordinary",
@@ -593,6 +612,7 @@ XData Entries
   },
   "security.oauthserver.create": {
     "fieldList": "Security.OAuth2.Server",
+    "compare": {"Metadata": "members"},
     "classification": {
       "IssuerEndpoint": "ordinary",
       "Description": "ordinary",
@@ -628,6 +648,7 @@ XData Entries
   },
   "security.oauthserver.update": {
     "fieldList": "Security.OAuth2.Server",
+    "compare": {"Metadata": "members"},
     "classification": {
       "IssuerEndpoint": "ordinary",
       "Description": "ordinary",
@@ -701,6 +722,7 @@ XData Entries
   },
   "security.oauthserverclients.create": {
     "fieldList": "Security.OAuth2.ServerClients",
+    "compare": {"Metadata": "members"},
     "classification": {
       "Name": "ordinary",
       "RedirectURL[]": "ordinary",
@@ -714,6 +736,7 @@ XData Entries
   },
   "security.oauthserverclients.update": {
     "fieldList": "Security.OAuth2.ServerClients",
+    "compare": {"Metadata": "members"},
     "classification": {
       "Name": "ordinary",
       "RedirectURL[]": "ordinary",
@@ -743,6 +766,7 @@ XData Entries
   },
   "permissions.users.create": {
     "fieldList": "Security.User",
+    "compare": {"Roles": "unordered"},
     "classification": {
       "AccountNeverExpires": "ordinary",
       "AutheEnabled": "ordinary",
@@ -791,6 +815,7 @@ XData Entries
   },
   "tasks.schedule.create": {
     "fieldList": "Task.CRUD",
+    "compare": {"Settings": "written"},
     "classification": {
       "Name": "ordinary",
       "RunAsUser": "ordinary",
@@ -831,6 +856,7 @@ XData Entries
   },
   "tasks.schedule.update": {
     "fieldList": "Task.CRUD",
+    "compare": {"Settings": "written"},
     "classification": {
       "Name": "ordinary",
       "RunAsUser": "ordinary",

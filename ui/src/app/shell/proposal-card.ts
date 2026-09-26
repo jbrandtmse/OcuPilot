@@ -23,6 +23,7 @@ import {
   offersRepropose,
   statusLineFor,
 } from '../core/proposal-view';
+import { type ReadBack, readBackLine } from '../core/read-back';
 import { STRINGS } from '../core/strings';
 import {
   type ProposalCardView,
@@ -293,6 +294,9 @@ export interface ProposalConfirmRequest {
             >
               {{ statusLine }}
             </p>
+            @if (readBackText !== '') {
+              <p class="ocu-proposal-card-read-back" data-slot="read-back">{{ readBackText }}</p>
+            }
           }
         }
         @if (buttonsVisible) {
@@ -371,6 +375,12 @@ export class ProposalCard {
 
   /** The moment a confirmed write landed, as `hh:mm:ss`, from the instance's own stamp. */
   readonly confirmedAt = input<string>('');
+
+  /**
+   * The confirmed write's read-back, as the instance answered it (AD-58), or `null`. The card
+   * renders the line under its confirmed status line and compares nothing itself.
+   */
+  readonly readBack = input<ReadBack | null>(null);
 
   /**
    * Confirm was pressed: the proposal's id and the values typed into its masked fields (AD-6,
@@ -792,6 +802,11 @@ export class ProposalCard {
   protected get statusLine(): string {
     const phase = this.livePhase;
     return phase === null ? '' : statusLineFor(phase, this.userName(), this.confirmedAt());
+  }
+
+  /** The read-back line under a confirmed card's status line, or `''` (AD-58). */
+  protected get readBackText(): string {
+    return this.confirmed ? readBackLine(this.readBack()) : '';
   }
 
   /**

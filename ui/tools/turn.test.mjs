@@ -1586,6 +1586,61 @@ test("a confirmed create's change carries the instance's own createdId, else the
   }
 });
 
+test('a confirm carries the instance\u2019s read-back onto its outcome, its change and its proposal row, and a reload reads it off the wire (AD-58)', async () => {
+  // Story 16.17: the card's line and the marked row both come from the confirm's own `readBack`,
+  // and a card reloaded after its confirm reads the one the proposal row recorded.
+  //
+  // Mutation (Rule 19): drop `readBack: outcome.readBack` from the change `confirmProposal`
+  // publishes -> the event leg goes red; drop `readBack` from `parseProposal` -> the reload leg does.
+  const readBack = { verdict: 'differs', fields: ['Description'], written: ['Password'] };
+  const expected = { ...readBack, reason: '' };
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z', action: 'updated', readBack }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  assert.deepEqual(outcome.readBack, expected, 'the outcome carries the read-back');
+  const event = bus.events.find((candidate) => candidate.kind === 'changed');
+  assert.ok(event, 'the confirm publishes a change');
+  assert.deepEqual(event.readBack, expected, 'and the change carries the read-back to the marked row');
+  assert.deepEqual(turn.entries()[0].proposals[0].readBack, expected, 'and so does the proposal the card renders');
+
+  const reloaded = new TurnStore({
+    api: fakeApi({
+      [conversationReadPath('c1')]: [
+        ok({
+          turns: [
+            {
+              seq: 1,
+              message: 'do it',
+              state: 'completed',
+              proposals: [wireProposal({ state: 'confirmed', confirmedAt: '2026-09-19T10:01:02Z', readBack })],
+            },
+          ],
+        }),
+      ],
+    }),
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+  });
+  await reloaded.restore();
+  assert.deepEqual(reloaded.entries()[0].proposals[0].readBack, expected, 'a reloaded card reads the recorded read-back');
+});
+
 test("a confirm's outcome carries the instance's own action and createdId, which the panel's change sentence reads (Story 10.6)", async () => {
   // The panel names the change from the outcome, so the outcome must carry what the change event
   // carries: the action through the same closed-set reading, and the createdId verbatim.

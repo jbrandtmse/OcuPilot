@@ -130,6 +130,8 @@ Method TestTheCreateAndTheFormReadAnswerOverTheWire()
 {
     Set tBody = {"Name": (..#NEWPROBE), "Type": 0, "VerifyPeer": 1, "Enabled": true, "CAFile": "%OSCertificateStore", "Description": (..#PROBEMARKER)}
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", "/ssl", .tStatus, .tAnswer, tBody.%ToJSON(), "application/json")
+    Do $$$AssertEquals($Select($IsObject($Get(tAnswer)) && (tAnswer.%GetTypeOf("readBack") = "object"): tAnswer.%Get("readBack").%Get("verdict") _ " " _ tAnswer.%Get("readBack").%Get("written").%ToJSON(), 1: ""), "matches []", "carrying the create's read-back, which holds what was sent (AD-58): " _ $Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: ""))
+    If $IsObject($Get(tAnswer)) Do tAnswer.%Remove("readBack")
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: ""), "201 {""name"":""" _ ..#NEWPROBE _ """}", "a client is created")
     Kill tProps
     Do $$$AssertStatusOK(..Stored(..#NEWPROBE, .tProps), "and the instance holds it")

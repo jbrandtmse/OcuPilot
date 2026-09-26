@@ -5,6 +5,7 @@ import { ChangeBus } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { normalizeEntityId } from '../../core/entity-ref';
 import { FormDirty } from '../../core/form-dirty';
+import { readBackOf, type ReadBack } from '../../core/read-back';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
 import {
   GRANTED_ROLES_FIELD,
@@ -149,6 +150,8 @@ export class RoleEditor {
   private refusedValues: Record<string, string> = {};
 
   private savedValue = false;
+  /** The instance's read-back of the last accepted Save (AD-58), or `null`. */
+  private readBackValue: ReadBack | null = null;
 
   /** The role a create has just made, whose editor opens already saved. */
   private arrivingSaved = '';
@@ -256,6 +259,11 @@ export class RoleEditor {
   /** The sentence an action on this role was refused with (AD-39), or `''`. */
   actionRefusal(): string {
     return this.actionRefusalValue;
+  }
+
+  /** The read-back the last accepted Save answered (AD-58), which its "Saved" line renders. */
+  readBack(): ReadBack | null {
+    return this.readBackValue;
   }
 
   saved(): boolean {
@@ -389,6 +397,7 @@ export class RoleEditor {
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
+    this.readBackValue = null;
     this.notify();
     const sent = this.snapshot();
     const sentBuffer = this.buffer;
@@ -410,8 +419,9 @@ export class RoleEditor {
     this.opened = sentBuffer;
     const unsaved = Object.keys(this.changedFields()).length > 0;
     this.savedValue = !unsaved;
+    this.readBackValue = readBackOf((result.body as Record<string, unknown> | null)?.['readBack']);
     this.formDirty.setDirty(unsaved);
-    this.injector.get(ChangeBus).publish({ kind: 'changed', type: ROLE_ENTITY, scope: ROLE_SCOPE, id: this.roleName, action: 'updated' });
+    this.injector.get(ChangeBus).publish({ kind: 'changed', type: ROLE_ENTITY, scope: ROLE_SCOPE, id: this.roleName, action: 'updated', readBack: this.readBackValue });
     this.notify();
     return true;
   }

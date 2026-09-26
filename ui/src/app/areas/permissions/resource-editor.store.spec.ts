@@ -150,6 +150,20 @@ describe('the resource editor store', () => {
     expect(store.mode()).toBe('edit');
   });
 
+  it('Story 16.17: an edit keeps the instance\u2019s read-back for its Saved line and carries it on the change', async () => {
+    // Mutation (Rule 19): drop `readBack` from the change `save()` publishes -> this goes red, and
+    // the marked row under the dialog says nothing about what the instance now holds (AD-58).
+    const readBack = { verdict: 'differs', fields: ['PublicPermission'], written: [] };
+    const { store, events } = mount({ kind: 'ok', status: 200, body: { name: 'ProbeResource', readBack } });
+    await store.openEdit('ProbeResource');
+    store.setDescription('new');
+    expect(await store.save()).toBe(true);
+    await settle();
+    expect(store.readBack()).toEqual({ ...readBack, reason: '' });
+    expect(events).toHaveLength(1);
+    expect(events[0].readBack).toEqual({ ...readBack, reason: '' });
+  });
+
   it('applies the server letter rule to the name on screen, and a rename drops a letter the new name refuses', async () => {
     const { store } = mount();
     await store.openCreate();

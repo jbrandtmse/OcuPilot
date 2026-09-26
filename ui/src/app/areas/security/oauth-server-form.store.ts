@@ -3,6 +3,7 @@ import { Injectable, Injector, inject } from '@angular/core';
 import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeAction } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
+import { readBackOf, type ReadBack } from '../../core/read-back';
 import { ENTITY_SINGLETON_ID } from '../../core/screens.generated';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
 
@@ -368,6 +369,8 @@ export class OAuthServerForm {
   private refusalPairValue = '';
 
   private savedValue = false;
+  /** The instance's read-back of the last accepted Save (AD-58), or `null`. */
+  private readBackValue: ReadBack | null = null;
 
   private passwordRefusedValue = '';
 
@@ -507,6 +510,11 @@ export class OAuthServerForm {
 
   refusalPair(): string {
     return this.refusalPairValue;
+  }
+
+  /** The read-back the last accepted Save answered (AD-58), which its "Saved" line renders. */
+  readBack(): ReadBack | null {
+    return this.readBackValue;
   }
 
   saved(): boolean {
@@ -692,6 +700,7 @@ export class OAuthServerForm {
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
+    this.readBackValue = null;
     this.passwordRefusedValue = '';
     this.notify();
     const result = await this.api().requestJson<unknown>(OAUTH_AUTH_SERVER_PATH, {
@@ -716,6 +725,7 @@ export class OAuthServerForm {
     this.modeValue = 'edit';
     this.heldValue = true;
     this.savedValue = true;
+    this.readBackValue = readBackOf((result.body as Record<string, unknown> | null)?.['readBack']);
     this.formDirty.setDirty(false);
     this.publish(creating ? 'created' : 'updated');
     this.notify();
@@ -851,7 +861,7 @@ export class OAuthServerForm {
   }
 
   private publish(action: ChangeAction): void {
-    this.injector.get(ChangeBus).publish({ kind: 'changed', type: OAUTH_AUTH_SERVER_ENTITY, scope: OAUTH_AUTH_SERVER_SCOPE, id: OAUTH_AUTH_SERVER_ID, action });
+    this.injector.get(ChangeBus).publish({ kind: 'changed', type: OAUTH_AUTH_SERVER_ENTITY, scope: OAUTH_AUTH_SERVER_SCOPE, id: OAUTH_AUTH_SERVER_ID, action, readBack: this.readBackValue });
   }
 
   private notify(): void {

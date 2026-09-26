@@ -1954,7 +1954,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:615 */
+  /** EXPERIENCE.md:616 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2879,6 +2879,26 @@ export const STRINGS = {
   tryItCut: 'The response was cut at 256 KB.',
   /** EXPERIENCE.md:574 */
   tryItBinary: '<n> bytes, not shown as text.',
+  /** EXPERIENCE.md:575 */
+  readBackMatches: 'Read back: matches',
+  /** EXPERIENCE.md:575 */
+  readBackDiffers: 'Read back: differs in <fields>',
+  /** EXPERIENCE.md:575 */
+  readBackNotFound: 'Read back: not found',
+  /** EXPERIENCE.md:575 */
+  readBackPresent: 'Read back: still present',
+  /** EXPERIENCE.md:575 */
+  readBackWritten: 'Read back: <fields> written, not read back',
+  /** EXPERIENCE.md:575 */
+  readBackWrittenClause: '<fields> written, not read back',
+  /** EXPERIENCE.md:575 */
+  readBackNothingSent: 'Read back: nothing sent to compare',
+  /** EXPERIENCE.md:575 */
+  readBackRunning: 'Read back: not checked, the write is still running',
+  /** EXPERIENCE.md:575 */
+  readBackUnreadable: 'Read back: could not be read',
+  /** EXPERIENCE.md:575 */
+  readBackMore: ' and <n> more',
 
 } as const;
 

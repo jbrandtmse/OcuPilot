@@ -4,6 +4,7 @@ import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeAction } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
+import { readBackOf, type ReadBack } from '../../core/read-back';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
 
 /** The routes the form saves through: `POST` creates, `PUT <path>/<id>` edits. */
@@ -164,6 +165,8 @@ export class WalletSecretForm {
   private refusedValues: Record<string, string> = {};
 
   private savedValue = false;
+  /** The instance's read-back of the last accepted Save (AD-58), or `null`. */
+  private readBackValue: ReadBack | null = null;
 
   private createdIdValue = '';
 
@@ -289,6 +292,11 @@ export class WalletSecretForm {
 
   refusalPair(): string {
     return this.refusalPairValue;
+  }
+
+  /** The read-back the last accepted Save answered (AD-58), which its "Saved" line renders. */
+  readBack(): ReadBack | null {
+    return this.readBackValue;
   }
 
   saved(): boolean {
@@ -456,6 +464,7 @@ export class WalletSecretForm {
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
+    this.readBackValue = null;
     this.notify();
 
     const sent = this.snapshotValues();
@@ -485,6 +494,7 @@ export class WalletSecretForm {
     if (creating) this.createdIdValue = id;
     this.opened = this.buffer;
     this.savedValue = true;
+    this.readBackValue = readBackOf((result.body as Record<string, unknown> | null)?.['readBack']);
     this.formDirty.setDirty(false);
     this.publish(id, creating ? 'created' : 'updated');
     this.notify();
@@ -644,7 +654,7 @@ export class WalletSecretForm {
     if (id === '') return;
     this.injector
       .get(ChangeBus)
-      .publish({ kind: 'changed', type: WALLET_SECRET_ENTITY, scope: WALLET_SECRET_SCOPE, id, action });
+      .publish({ kind: 'changed', type: WALLET_SECRET_ENTITY, scope: WALLET_SECRET_SCOPE, id, action, readBack: this.readBackValue });
   }
 
   private notify(): void {

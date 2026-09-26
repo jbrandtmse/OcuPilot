@@ -5,6 +5,7 @@ import { ChangeBus } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { normalizeEntityId } from '../../core/entity-ref';
 import { FormDirty } from '../../core/form-dirty';
+import { readBackOf, type ReadBack } from '../../core/read-back';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
 
 /** The route the editor saves through: `PUT <path>/<id>`. */
@@ -176,6 +177,8 @@ export class UserEditor {
   private refusedValues: Record<string, string> = {};
 
   private savedValue = false;
+  /** The instance's read-back of the last accepted Save (AD-58), or `null`. */
+  private readBackValue: ReadBack | null = null;
 
   /** The account a create has just made, whose editor opens already saved. */
   private arrivingSaved = '';
@@ -277,6 +280,11 @@ export class UserEditor {
   /** The sentence an action on this account was refused with (AD-39), or `''`. */
   actionRefusal(): string {
     return this.actionRefusalValue;
+  }
+
+  /** The read-back the last accepted Save answered (AD-58), which its "Saved" line renders. */
+  readBack(): ReadBack | null {
+    return this.readBackValue;
   }
 
   saved(): boolean {
@@ -423,6 +431,7 @@ export class UserEditor {
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
+    this.readBackValue = null;
     this.notify();
     const sent = this.snapshot();
     const sentBuffer = this.buffer;
@@ -444,8 +453,9 @@ export class UserEditor {
     this.opened = sentBuffer;
     const unsaved = Object.keys(this.changedFields()).length > 0;
     this.savedValue = !unsaved;
+    this.readBackValue = readBackOf((result.body as Record<string, unknown> | null)?.['readBack']);
     this.formDirty.setDirty(unsaved);
-    this.injector.get(ChangeBus).publish({ kind: 'changed', type: USER_ENTITY, scope: USER_SCOPE, id: this.accountName, action: 'updated' });
+    this.injector.get(ChangeBus).publish({ kind: 'changed', type: USER_ENTITY, scope: USER_SCOPE, id: this.accountName, action: 'updated', readBack: this.readBackValue });
     this.notify();
     return true;
   }

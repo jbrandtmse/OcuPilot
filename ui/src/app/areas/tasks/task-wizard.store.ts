@@ -4,6 +4,7 @@ import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
+import { readBackOf, type ReadBack } from '../../core/read-back';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
 import {
   EDIT_FIXED_FIELDS,
@@ -218,6 +219,8 @@ export class TaskWizard {
   private opened: TaskValues = EMPTY_VALUES;
 
   private savedValue = false;
+  /** The instance's read-back of the last accepted Save (AD-58), or `null`. */
+  private readBackValue: ReadBack | null = null;
 
   private absentValue = false;
 
@@ -351,6 +354,11 @@ export class TaskWizard {
     return this.modeValue === 'edit' && this.idValue !== '' && id === this.idValue;
   }
 
+  /** The read-back the last accepted Save answered (AD-58), which its "Saved" line renders. */
+  readBack(): ReadBack | null {
+    return this.readBackValue;
+  }
+
   /** Whether the last Save of an edit was accepted and nothing has changed since. */
   saved(): boolean {
     return this.savedValue;
@@ -473,6 +481,7 @@ export class TaskWizard {
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
+    this.readBackValue = null;
     this.notify();
     const result = await this.api().requestJson<unknown>(`${TASKS_PATH}/${encodeEntityId(this.idValue)}`, {
       method: 'PUT',
@@ -491,8 +500,9 @@ export class TaskWizard {
     }
     this.opened = this.valuesValue;
     this.savedValue = true;
+    this.readBackValue = readBackOf((result.body as Record<string, unknown> | null)?.['readBack']);
     this.formDirty.setDirty(false);
-    this.injector.get(ChangeBus).publish({ kind: 'changed', type: TASK_ENTITY, scope: TASK_SCOPE, id: this.idValue, action: 'updated' });
+    this.injector.get(ChangeBus).publish({ kind: 'changed', type: TASK_ENTITY, scope: TASK_SCOPE, id: this.idValue, action: 'updated', readBack: this.readBackValue });
     this.notify();
     return true;
   }
@@ -601,6 +611,7 @@ export class TaskWizard {
     this.savingValue = true;
     this.violationList = [];
     this.clearRefusal();
+    this.readBackValue = null;
     this.notify();
     const result = await this.api().requestJson<unknown>(TASKS_PATH, {
       method: 'POST',
@@ -619,9 +630,10 @@ export class TaskWizard {
     }
     const id = textAt(result.body, 'id');
     this.createdIdValue = id;
+    this.readBackValue = readBackOf((result.body as Record<string, unknown> | null)?.['readBack']);
     this.formDirty.setDirty(false);
     if (id !== '') {
-      this.injector.get(ChangeBus).publish({ kind: 'changed', type: TASK_ENTITY, scope: TASK_SCOPE, id, action: 'created' });
+      this.injector.get(ChangeBus).publish({ kind: 'changed', type: TASK_ENTITY, scope: TASK_SCOPE, id, action: 'created', readBack: this.readBackValue });
     }
     this.notify();
     return true;

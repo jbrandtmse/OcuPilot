@@ -610,7 +610,7 @@ export class RefreshService {
     if (!screenShowsEntity(bound.screen, event, this.namespace())) return;
 
     if (event.kind === 'changed') {
-      bound.store.markChanged(event.id, event.action);
+      bound.store.markChanged(event.id, event.action, event.readBack ?? null);
       // AD-14's action, and the one thing it decides here: a row that did not exist before is
       // selected as soon as the re-fetch returns it, because it is the one row the user has not
       // seen. An update leaves the caret where the user put it; a delete is `reconcile`'s, which

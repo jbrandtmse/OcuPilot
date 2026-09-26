@@ -248,6 +248,16 @@ ClassMethod AfterWrite(pPort As %String, pEndpoint As %String, pIdParam As %Stri
     Quit $$$OK
 }
 
+/// <p>Whether this tool's deleted target is gone although its read-back re-read
+/// <var>pAfter</var> answered, given the payload <var>pPayload</var> the write was made from
+/// (AD-58). <code>0</code> here: a delete whose target still answers reads back
+/// <code>present</code>. A tool whose read answers a set rather than one object says when that set
+/// no longer holds what it removed.</p>
+ClassMethod ReadBackGone(pAfter As %DynamicObject, pPayload As %DynamicObject) As %Boolean
+{
+    Quit 0
+}
+
 /// <p><parameter>WRITETYPE</parameter>, read at the one site that issues the write.</p>
 ClassMethod WriteType() As %String
 {

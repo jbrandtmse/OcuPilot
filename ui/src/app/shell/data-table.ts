@@ -29,6 +29,7 @@ import { normalizeEntityId } from '../core/entity-ref';
 import { isBannerFault } from '../core/fault';
 import { childListFor, detailScreenFor, documentScreenFor, editorScreenFor, hasIdRoute, screenForRoute, withQuery } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
+import { readBackLine, withReadBack } from '../core/read-back';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { ScreenActions, actionLabel } from '../core/screen-actions';
@@ -90,6 +91,8 @@ interface CellModel {
   readonly disc: boolean;
   readonly plain: boolean;
   readonly tag: boolean;
+  /** The marked row's read-back line (AD-58), drawn after the tag; `''` for none. */
+  readonly readBack: string;
   readonly active: boolean;
   /** This one cell draws a skeleton bar instead of `view` (Story 6.11, `pendingFields`). */
   readonly pending: boolean;
@@ -348,6 +351,9 @@ interface CellTooltip {
                     }
                     @if (cell.tag) {
                       <span class="ocu-data-table-changed-tag">{{ STRINGS.tableChangedTag }}</span>
+                      @if (cell.readBack !== '') {
+                        <span class="ocu-data-table-read-back">{{ cell.readBack }}</span>
+                      }
                     }
                   </div>
                 }
@@ -574,6 +580,7 @@ export class DataTable implements OnInit {
     const selected = store.selection()[0] ?? '';
     const changed = store.changed();
     const markedKeys = new Set([...changed].map((key) => this.viewKeyFor(key)));
+    const readBackLines = new Map([...changed].map((key) => [this.viewKeyFor(key), readBackLine(store.changedReadBack(key))]));
     const activeColumn = this.activeColumn();
     const menuKey = this.menuIsOpen() ? this.menuKey() : null;
     // The name cell opens the entity's own surface: a declared rowTarget first (Story 6.10's
@@ -639,6 +646,7 @@ export class DataTable implements OnInit {
             disc: !pending && view.disc !== null,
             plain: !pending && !link && !classic,
             tag: !pending && isChanged && column.kind === 'name',
+            readBack: !pending && isChanged && column.kind === 'name' ? (readBackLines.get(key) ?? '') : '',
             active: isActive && activeColumn === columnIndex,
             pending,
           };
@@ -1509,11 +1517,15 @@ export class DataTable implements OnInit {
     }
     for (const key of changed) {
       const action = store.changedAction(key);
-      if (this.announcedChanged.get(key) === action) continue;
+      const readBack = store.changedReadBack(key);
+      // The read-back rides the announcement, so a second write whose read-back differs from the
+      // first's is announced again even under the same action.
+      const said = `${action}|${readBackLine(readBack)}`;
+      if (this.announcedChanged.get(key) === said) continue;
       const row = this.viewKeyFor(key);
       if (row === '') continue;
-      this.announcedChanged.set(key, action);
-      this.announcement.set(formatChangeAnnouncement(STRINGS.tableChangeAnnouncement, row, action));
+      this.announcedChanged.set(key, said);
+      this.announcement.set(withReadBack(formatChangeAnnouncement(STRINGS.tableChangeAnnouncement, row, action), readBack));
     }
   }
 

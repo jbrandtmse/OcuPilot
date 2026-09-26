@@ -23,6 +23,12 @@
  * `authored: true`. A name that is not one top-level segment, or that collides with a derived
  * path, is refused.
  *
+ * **An entry may declare how the read-back compares a field** (`compare`, AD-3, AD-58): a
+ * top-level row of its list mapped to one mode of a closed vocabulary (`COMPARE_MODES`). Every
+ * field row under that name is emitted with the mode. It refuses an unknown mode, a path that is
+ * not a top-level row of the entry's list, a mode on a `secret` path, `unordered` on a non-array
+ * and `members` on a non-object.
+ *
  * Usage: `node tools/field-lists.mjs` writes `ToolFields.cls`; `--check` reports and exits 1 on
  * a refusal or when the committed file differs from what would be written.
  */
@@ -52,7 +58,18 @@ export const CLASSES = ['ordinary', 'secret', 'opaque'];
 export const DEFAULT_CLASS = 'secret';
 
 /** The keys an entry may carry. */
-export const ENTRY_KEYS = ['fieldList', 'classification', 'authored', 'required', 'enum', 'description'];
+export const ENTRY_KEYS = ['fieldList', 'classification', 'authored', 'compare', 'required', 'enum', 'description'];
+
+/** The closed vocabulary of read-back comparison modes an entry's `compare` may declare (AD-58). */
+export const COMPARE_MODES = ['unordered', 'unslashed', 'words', 'letters', 'members', 'written'];
+
+/** A top-level row's path: one segment, no member and no element. */
+const TOP_LEVEL_RE = /^[A-Za-z0-9_%]+$/;
+
+/** The top-level name a field-row path sits under: `Resources[].Name` answers `Resources`. */
+export function topName(path) {
+  return path.split('.')[0].split('[')[0];
+}
 
 /** The one class an authored wrapper field may carry. */
 export const AUTHORED_CLASS = 'secret';
@@ -292,6 +309,35 @@ export function classify(lists, entries) {
         }
       }
     }
+    if (entry.compare !== undefined) {
+      if (!isObject(entry.compare)) {
+        refuse('compare is not a JSON object of path to mode');
+      } else {
+        for (const [path, mode] of Object.entries(entry.compare)) {
+          if (!COMPARE_MODES.includes(mode)) {
+            refuse(`compare mode ${JSON.stringify(mode)} on ${path} is not one of ${COMPARE_MODES.join(', ')}`);
+            continue;
+          }
+          const row = TOP_LEVEL_RE.test(path) ? rows.find((candidate) => candidate.path === path) : undefined;
+          if (row === undefined) {
+            refuse(`compare path ${path} is not a top-level row of list ${entry.fieldList}`);
+            continue;
+          }
+          if (fields.some((field) => topName(field.path) === path && field.class === 'secret')) {
+            refuse(`compare path ${path} is secret, and a secret is never read back`);
+            continue;
+          }
+          if (mode === 'unordered' && row.shape !== 'array') refuse(`compare path ${path} is a ${row.shape} and cannot be unordered`);
+          if (mode === 'members' && row.shape !== 'object') refuse(`compare path ${path} is a ${row.shape} and cannot be members`);
+        }
+        if (problems.length === before) {
+          for (const field of fields) {
+            const mode = entry.compare[topName(field.path)];
+            if (mode !== undefined && field.authored !== true) field.compare = mode;
+          }
+        }
+      }
+    }
     if (problems.length === before) tools[tool] = { fieldList: entry.fieldList, fields };
   }
   return { tools, problems };
@@ -326,6 +372,7 @@ export function buildToolFields(tools) {
               templateType: field.templateType,
               itemType: field.itemType,
               class: field.class,
+              ...(field.compare === undefined ? {} : { compare: field.compare }),
             }
       )
     );

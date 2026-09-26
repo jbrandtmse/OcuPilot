@@ -57,9 +57,10 @@ ClassMethod ProhibitedClass() As %String
 
 /// <p>Answer <code>POST /audit-events</code>: register one event from the body's
 /// <code>Source</code>, <code>Type</code>, <code>Name</code>, <code>Description</code> and
-/// <code>Enabled</code>, and answer <code>{target}</code> with 201. A broken rule, or an event the
-/// instance already holds, is one 422 <code>AUDITEVENT.VALIDATION</code> envelope carrying every
-/// violation; any other refusal is the port's or the prohibited set's own envelope.</p>
+/// <code>Enabled</code>, and answer <code>{target, readBack}</code> with 201 (AD-58). A broken
+/// rule, or an event the instance already holds, is one 422 <code>AUDITEVENT.VALIDATION</code>
+/// envelope carrying every violation; any other refusal is the port's or the prohibited set's own
+/// envelope.</p>
 ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
@@ -73,8 +74,8 @@ ClassMethod HandleCreate() As %Status
             Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
             Quit
         }
-        Set tPerformSC = ..Create(tBody, .tEventName, .tHttp, .tFault, .tViolations)
-        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, $Get(tEventName))
+        Set tPerformSC = ..Create(tBody, .tEventName, .tHttp, .tFault, .tViolations, .tReadBack)
+        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, $Get(tEventName), $Get(tReadBack))
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
@@ -82,10 +83,11 @@ ClassMethod HandleCreate() As %Status
 }
 
 /// <p>Answer <code>PUT /audit-events/:id</code>: change the Description of the event <var>pId</var>
-/// -- one path segment, decoded once here (AD-13) -- and answer <code>{target}</code> with 200. A key
-/// other than <code>Description</code> is 400 <code>PORT.FIELD.UNEXPECTED</code>; an event the
-/// instance does not hold is 404 <code>AUDITEVENT.ABSENT</code>; a system event is 422
-/// <code>AUDITEVENT.VALIDATION</code> carrying <code>AUDITEVENT.SYSTEM</code> on <code>EventName</code>.</p>
+/// -- one path segment, decoded once here (AD-13) -- and answer <code>{target, readBack}</code>
+/// with 200 (AD-58). A key other than <code>Description</code> is 400
+/// <code>PORT.FIELD.UNEXPECTED</code>; an event the instance does not hold is 404
+/// <code>AUDITEVENT.ABSENT</code>; a system event is 422 <code>AUDITEVENT.VALIDATION</code>
+/// carrying <code>AUDITEVENT.SYSTEM</code> on <code>EventName</code>.</p>
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
@@ -100,12 +102,12 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Quit
         }
         Set tEventName = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
-        Set tPerformSC = ..Update(tEventName, tBody, .tHttp, .tFault, .tViolations)
+        Set tPerformSC = ..Update(tEventName, tBody, .tHttp, .tFault, .tViolations, .tReadBack)
         If $$$ISERR(tPerformSC) && (+$Get(tHttp) = 404) && ($Get(tViolations) = 0) {
             Set tSC = $ClassMethod(..#RULES, "RenderCode", 404, ##class(OcuPilot.Api.Error).#AUDITEVENTABSENT)
             Quit
         }
-        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, tEventName)
+        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, tEventName, $Get(tReadBack))
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
@@ -117,12 +119,14 @@ ClassMethod HandleUpdate(pId As %String) As %Status
 /// <p><b>Caller contract:</b> <var>pViolations</var> is the violation array
 /// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>); a
 /// non-zero count means nothing was written and the other outputs say nothing. Otherwise an error
-/// status carries <var>pHttpStatus</var> and <var>pFault</var>.</p>
-ClassMethod Create(pArgs As %DynamicObject, Output pEventName As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations) As %Status
+/// status carries <var>pHttpStatus</var> and <var>pFault</var>. On success <var>pReadBack</var> is
+/// the write's read-back (AD-58); it is <code>""</code> otherwise.</p>
+ClassMethod Create(pArgs As %DynamicObject, Output pEventName As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pReadBack As %DynamicObject) As %Status
 {
     Set pEventName = ""
     Set pHttpStatus = 0
     Set pFault = ""
+    Set pReadBack = ""
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -160,7 +164,9 @@ ClassMethod Create(pArgs As %DynamicObject, Output pEventName As %String, Output
             Set tSC = $$$ERROR($$$GeneralError, "the create's payload could not be composed after its rules passed: " _ tProblem)
             Quit
         }
-        Set tSC = ..Send(tClass, pEventName, tPayload, .pHttpStatus, .pFault)
+        Set tSC = ..Send(tClass, pEventName, tPayload, .pHttpStatus, .pFault, .tWritten)
+        ; AD-58: the event read back through the tool's port and compared with what was sent.
+        If $$$ISOK(tSC) Set pReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(tClass, pEventName, tPayload, "", ..PortClass(), $Get(tWritten), pHttpStatus)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -172,10 +178,11 @@ ClassMethod Create(pArgs As %DynamicObject, Output pEventName As %String, Output
 /// <p><b>Caller contract:</b> as <method>Create</method>'s. An event the instance does not hold is
 /// an error status with <var>pHttpStatus</var> 404 and no stub is created; a key outside
 /// <parameter>EDITFIELDS</parameter> is an error status with <var>pHttpStatus</var> 400.</p>
-ClassMethod Update(pEventName As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations) As %Status
+ClassMethod Update(pEventName As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pReadBack As %DynamicObject) As %Status
 {
     Set pHttpStatus = 0
     Set pFault = ""
+    Set pReadBack = ""
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -214,7 +221,9 @@ ClassMethod Update(pEventName As %String, pArgs As %DynamicObject, Output pHttpS
 
         Set tSC = ..Prohibited(tClass, pEventName, tPayload, tDiff, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
-        Set tSC = ..Send(tClass, pEventName, tPayload, .pHttpStatus, .pFault)
+        Set tSC = ..Send(tClass, pEventName, tPayload, .pHttpStatus, .pFault, .tWritten)
+        ; AD-58: the event read back through the tool's port and compared with what was sent.
+        If $$$ISOK(tSC) Set pReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(tClass, pEventName, tPayload, tFresh, ..PortClass(), $Get(tWritten), pHttpStatus)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -260,12 +269,12 @@ ClassMethod Prohibited(pToolClass As %String, pEventName As %String, pPayload As
 
 /// <p>Issue tool <var>pToolClass</var>'s own write for <var>pEventName</var> with
 /// <var>pPayload</var>, through <method>PortClass</method>; once it reads OK, observe the marking
-/// fact when the tool moves it.</p>
-ClassMethod Send(pToolClass As %String, pEventName As %String, pPayload As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// fact when the tool moves it. <var>pWritten</var> is the port's answer.</p>
+ClassMethod Send(pToolClass As %String, pEventName As %String, pPayload As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pWritten) As %Status [ Private ]
 {
     Kill tQuery
     Set tQuery($ClassMethod(pToolClass, "IdParam")) = pEventName
-    Set tSC = $ClassMethod(..PortClass(), "Invoke", $ClassMethod(pToolClass, "Endpoint"), $ClassMethod(pToolClass, "WriteType"), .tQuery, pPayload, .tAnswer, .pHttpStatus, .pFault)
+    Set tSC = $ClassMethod(..PortClass(), "Invoke", $ClassMethod(pToolClass, "Endpoint"), $ClassMethod(pToolClass, "WriteType"), .tQuery, pPayload, .pWritten, .pHttpStatus, .pFault)
     If $$$ISOK(tSC) && ##class(OcuPilot.Kernel.Proposal.Operation).MovesMarking(pToolClass) Do ..ObserveMarking(pToolClass)
     Quit tSC
 }
@@ -294,8 +303,9 @@ ClassMethod ObserveMarking(pToolClass As %String) [ Private ]
 
 /// <p>Render the outcome of <method>Create</method> or <method>Update</method>: the violations as
 /// one 422 envelope, a refusal as its own envelope, and success as <code>{target}</code>, the
-/// canonical triple (AD-13), at <var>pSuccess</var>.</p>
-ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault As %DynamicObject, pSuccess As %Integer, pEventName As %String) As %Status [ Private ]
+/// canonical triple (AD-13), at <var>pSuccess</var>, with <var>pReadBack</var> as
+/// <code>readBack</code> when there is one (AD-58).</p>
+ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault As %DynamicObject, pSuccess As %Integer, pEventName As %String, pReadBack As %DynamicObject = "") As %Status [ Private ]
 {
     If $Get(pViolations) > 0 {
         Set tDetail = {}
@@ -314,6 +324,7 @@ ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault 
     If $$$ISERR(tSC) Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tSC))
     Set tAnswer = {}
     Do tAnswer.%Set("target", tTarget)
+    If $IsObject(pReadBack) Do tAnswer.%Set("readBack", pReadBack)
     Quit ##class(OcuPilot.Api.Response).JSONStatus(pSuccess, tAnswer)
 }
 

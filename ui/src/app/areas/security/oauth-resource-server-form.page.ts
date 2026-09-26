@@ -15,6 +15,7 @@ import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
 import { tabErrorCounts, tabToOpen } from '../../core/form-tabs';
 import { NavigationService, formatDeniedAction, ownIdSegment, screenForRoute, withQuery } from '../../core/navigation';
+import { savedLine } from '../../core/read-back';
 import { actionLabel } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
@@ -680,7 +681,7 @@ export class OAuthResourceServerFormPage {
     if (refused !== '') lines.push(STRINGS.oauthResourceServerSecretRefused.split('<reason>').join(refused));
     const mappings = this.store.mappingsRefused();
     if (mappings.count > 0) lines.push(STRINGS.oauthResourceServerMappingsRefused.split('<count>').join(String(mappings.count)).split('<reason>').join(mappings.reason));
-    return lines.length === 0 ? STRINGS.formSaved : lines.join(' ');
+    return lines.length === 0 ? savedLine(this.store.readBack()) : lines.join(' ');
   }
 
   protected get hasStatus(): boolean {

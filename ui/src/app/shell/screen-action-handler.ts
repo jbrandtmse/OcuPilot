@@ -4,6 +4,7 @@ import { AGENT_WRITE_EVENT } from '../core/agent-status';
 import { ApiService } from '../core/api';
 import { ChangeBus, type ChangeAction } from '../core/change-bus';
 import { splitCompositeId } from '../core/entity-id';
+import { readBackOf } from '../core/read-back';
 import { ScreenActions, actionLabel } from '../core/screen-actions';
 import { SCREEN_READ_PATH_PREFIX } from '../core/screen-read';
 import { ScreenStores } from '../core/screen-store';
@@ -284,6 +285,8 @@ interface ScreenActionAnswer {
   readonly target?: { readonly type?: string; readonly scope?: string; readonly id?: string };
   /** `true` where the write was made and is still running on the instance (AD-26). */
   readonly continues?: boolean;
+  /** The instance's read-back of the write (AD-58), carried onto the change event as it came. */
+  readonly readBack?: unknown;
 }
 
 /** Which dialog a pending row action is waiting on. */
@@ -684,6 +687,8 @@ export class ScreenActionHandler {
       // The verb is the instance's, never inferred here: the vocabulary is the kernel's closed set
       // and a screen routes on it (AD-14).
       action: (answer?.action ?? '') as ChangeAction,
+      // AD-58: the instance's verdict rides beside the mark; the client compares nothing.
+      readBack: readBackOf(answer?.readBack),
     });
     return true;
   }

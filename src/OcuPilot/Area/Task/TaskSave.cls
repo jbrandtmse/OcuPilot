@@ -46,11 +46,12 @@ ClassMethod ProhibitedClass() As %String
     Quit "OcuPilot.Kernel.Proposal.Prohibited"
 }
 
-/// <p>Answer <code>POST /tasks</code>: create one task from the body and answer <code>{id, name}</code>
-/// with 201. A broken rule is one 422 <parameter>OcuPilot.Api.Error.TASKVALIDATION</parameter>
-/// envelope carrying every violation; a key outside the tool's settable fields is 400
-/// <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>; any other refusal is the port's or
-/// the prohibited set's own envelope.</p>
+/// <p>Answer <code>POST /tasks</code>: create one task from the body and answer
+/// <code>{id, name, readBack}</code> with 201 (AD-58). A broken rule is one 422
+/// <parameter>OcuPilot.Api.Error.TASKVALIDATION</parameter> envelope carrying every violation; a
+/// key outside the tool's settable fields is 400
+/// <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>; any other refusal is the port's
+/// or the prohibited set's own envelope.</p>
 ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
@@ -66,7 +67,7 @@ ClassMethod HandleCreate() As %Status
             Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
             Quit
         }
-        Set tPerformSC = ..Create(tBody, .tHttp, .tFault, .tViolations, .tId)
+        Set tPerformSC = ..Create(tBody, .tHttp, .tFault, .tViolations, .tId, .tReadBack)
         If $Get(tViolations) > 0 {
             Set tSC = ..RenderViolations(.tViolations)
             Quit
@@ -82,6 +83,7 @@ ClassMethod HandleCreate() As %Status
         Set tAnswer = {}
         Do tAnswer.%Set("id", tId, "number")
         Do tAnswer.%Set("name", tBody.%Get(..#IDARGUMENT), "string")
+        If $IsObject($Get(tReadBack)) Do tAnswer.%Set("readBack", tReadBack)
         Set tSC = ##class(OcuPilot.Api.Response).JSONStatus(201, tAnswer)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -90,17 +92,18 @@ ClassMethod HandleCreate() As %Status
 }
 
 /// <p>Create the task <var>pArgs</var> describes, answering its new id in <var>pId</var>.</p>
-/// <p><b>Caller contract:</b> <var>pViolations</var> is the violation array
-/// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>); a
-/// non-zero count means nothing was written. Otherwise an error status carries
-/// <var>pHttpStatus</var> and <var>pFault</var>: 400 for a key outside the settable fields, 403 for a
-/// prohibited create, and the port's own for a vendor refusal. Nothing is sent on any of them but
-/// the last.</p>
-ClassMethod Create(pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pId As %String) As %Status
+/// <p><b>Caller contract:</b> <var>pViolations</var> is the violation array (<code>pViolations(n) =
+/// $ListBuild(field, code)</code>, count in <code>pViolations</code>); a non-zero count means
+/// nothing was written. Otherwise an error status carries <var>pHttpStatus</var> and
+/// <var>pFault</var>: 400 for a key outside the settable fields, 403 for a prohibited create, and
+/// the port's own for a vendor refusal. Nothing is sent on any of them but the last. On success
+/// <var>pReadBack</var> is the write's read-back (AD-58); it is <code>""</code> otherwise.</p>
+ClassMethod Create(pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pId As %String, Output pReadBack As %DynamicObject) As %Status
 {
     Set pHttpStatus = 0
     Set pFault = ""
     Set pId = ""
+    Set pReadBack = ""
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -151,18 +154,22 @@ ClassMethod Create(pArgs As %DynamicObject, Output pHttpStatus As %Integer, Outp
         If pId = "" {
             Set pHttpStatus = 500
             Set tSC = $$$ERROR($$$GeneralError, "the task was created and the instance answered no id for it")
+            Quit
         }
+        ; AD-58: the task read back, under the id the instance allocated, and compared with what was sent.
+        Set pReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(tClass, tName, tPayload, "", ..PortClass(), $Get(tWritten), pHttpStatus)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC
 }
 
-/// <p>Answer <code>PUT /tasks/:id</code>: change task <var>pId</var> -- one path segment, decoded once
-/// here (AD-13) -- from the body, and answer <code>{id, name}</code> with 200. A task the instance does
-/// not hold is 404 <parameter>OcuPilot.Api.Error.TASKABSENT</parameter>; a key outside the tool's
-/// settable fields is 400 <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>; a broken
-/// rule is one 422 envelope carrying every violation.</p>
+/// <p>Answer <code>PUT /tasks/:id</code>: change task <var>pId</var> -- one path segment, decoded
+/// once here (AD-13) -- from the body, and answer <code>{id, name, readBack}</code> with 200
+/// (AD-58). A task the instance does not hold is 404
+/// <parameter>OcuPilot.Api.Error.TASKABSENT</parameter>; a key outside the tool's settable fields
+/// is 400 <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>; a broken rule is one 422
+/// envelope carrying every violation.</p>
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
@@ -179,7 +186,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Quit
         }
         Set tId = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
-        Set tPerformSC = ..Update(tId, tBody, .tHttp, .tFault, .tViolations, .tName)
+        Set tPerformSC = ..Update(tId, tBody, .tHttp, .tFault, .tViolations, .tName, .tReadBack)
         If $Get(tViolations) > 0 {
             Set tSC = ..RenderViolations(.tViolations)
             Quit
@@ -199,6 +206,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         Set tAnswer = {}
         Do tAnswer.%Set("id", +tId, "number")
         Do tAnswer.%Set("name", tName, "string")
+        If $IsObject($Get(tReadBack)) Do tAnswer.%Set("readBack", tReadBack)
         Set tSC = ##class(OcuPilot.Api.Response).JSONStatus(200, tAnswer)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -213,11 +221,12 @@ ClassMethod HandleUpdate(pId As %String) As %Status
 /// that changes nothing sends nothing. <var>pName</var> is the task's name after the edit.</p>
 /// <p><b>Caller contract:</b> as <method>Create</method>'s, with <var>pHttpStatus</var> 404 for a task
 /// the instance does not hold.</p>
-ClassMethod Update(pId As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pName As %String) As %Status
+ClassMethod Update(pId As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pName As %String, Output pReadBack As %DynamicObject) As %Status
 {
     Set pHttpStatus = 0
     Set pFault = ""
     Set pName = ""
+    Set pReadBack = ""
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -267,6 +276,8 @@ ClassMethod Update(pId As %String, pArgs As %DynamicObject, Output pHttpStatus A
             Do ..PortViolations(pFault, .pViolations)
             Quit
         }
+        ; AD-58: the task read back through the tool's port and compared with what was sent.
+        Set pReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(tClass, pId, tPayload, tFresh, ..UpdatePortClass(), $Get(tWritten), pHttpStatus)
         Set pName = tPayload.%Get("Name")
     } Catch ex {
         Set tSC = ex.AsStatus()

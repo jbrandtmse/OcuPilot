@@ -85,7 +85,8 @@ ClassMethod ProhibitedClass() As %String
 }
 
 /// <p>Answer <code>POST /web-applications</code>: create one web application from the body and
-/// answer the application the instance then holds.</p>
+/// answer the application the instance then holds, with <code>readBack</code> the application read
+/// back and compared with what was sent (AD-58).</p>
 /// <p>In order, and the order is AD-55's: the caller's own pairs; the body is read; the rules
 /// this release applies are evaluated and answered as one
 /// <parameter>OcuPilot.Api.Error.WEBAPPVALIDATION</parameter> envelope carrying every violation;
@@ -110,7 +111,7 @@ ClassMethod HandleCreate() As %Status
 
         Set tName = ""
         If tBody.%GetTypeOf(..#IDARGUMENT) = "string" Set tName = tBody.%Get(..#IDARGUMENT)
-        Set tPerformSC = ..Perform(tName, tBody, .tCreated, .tHttp, .tFault, .tViolations)
+        Set tPerformSC = ..Perform(tName, tBody, .tCreated, .tHttp, .tFault, .tViolations, .tReadBack)
         If $Get(tViolations) > 0 {
             Set tSC = ..RenderViolations(.tViolations)
             Quit
@@ -126,6 +127,7 @@ ClassMethod HandleCreate() As %Status
         Set tAnswer = {}
         Do tAnswer.%Set("name", tName, "string")
         Do tAnswer.%Set("application", $Select($IsObject($Get(tCreated)): tCreated, 1: {}))
+        If $IsObject($Get(tReadBack)) Do tAnswer.%Set("readBack", tReadBack)
         Set tSC = ##class(OcuPilot.Api.Response).JSONStatus(201, tAnswer)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -139,15 +141,16 @@ ClassMethod HandleCreate() As %Status
 /// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>) and a
 /// non-zero count means nothing was written and the other outputs say nothing. Otherwise an error
 /// status carries <var>pHttpStatus</var> and <var>pFault</var> from the port, and success carries
-/// the created application.</p>
+/// the created application and, in <var>pReadBack</var>, the write's read-back (AD-58).</p>
 /// <p>It is the screen's half of AD-55. The agent's half is the same tool class read by
 /// <class>OcuPilot.Kernel.Proposal.Mint</class> and <class>OcuPilot.Kernel.Proposal.Confirm</class>,
 /// so the two compose one payload from one field list and pass one prohibited set.</p>
-ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations) As %Status
+ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pReadBack As %DynamicObject) As %Status
 {
     Set pCreated = ""
     Set pHttpStatus = 0
     Set pFault = ""
+    Set pReadBack = ""
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -204,6 +207,8 @@ ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated A
         Kill tQuery
         Set tQuery($ClassMethod(tClass, "IdParam")) = pName
         Set tSC = $ClassMethod(..PortClass(), "Invoke", $ClassMethod(tClass, "Endpoint"), $ClassMethod(tClass, "WriteType"), .tQuery, tPayload, .pCreated, .pHttpStatus, .pFault)
+        ; AD-58: the application read back through the tool's port and compared with what was sent.
+        If $$$ISOK(tSC) Set pReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(tClass, pName, tPayload, "", ..PortClass(), $Get(pCreated), pHttpStatus)
     } Catch ex {
         Set pCreated = ""
         Set tSC = ex.AsStatus()

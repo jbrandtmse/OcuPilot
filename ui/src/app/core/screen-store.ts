@@ -31,6 +31,7 @@
 
 import { AccountPreferences, REFRESH_KIND, VIEW_KIND } from './account-preferences.ts';
 import { screenForDescriptor } from './navigation.ts';
+import { type ReadBack, readBackLine } from './read-back.ts';
 import { isColumnWidth } from './table-model.ts';
 
 /** The sort directions a table view may hold; `''` takes the declared direction. */
@@ -104,6 +105,7 @@ export class ScreenStore {
   private activeKey = '';
   private changedKeys: ReadonlySet<string> = new Set();
   private changedActions: ReadonlyMap<string, string> = new Map();
+  private changedReadBacks: ReadonlyMap<string, ReadBack> = new Map();
   private pendingSelectionKey = '';
   private scrollTop = 0;
   private sortBy = '';
@@ -280,6 +282,7 @@ export class ScreenStore {
     this.activeKey = '';
     this.changedKeys = new Set();
     this.changedActions = new Map();
+    this.changedReadBacks = new Map();
     this.pendingSelectionKey = '';
     this.scrollTop = 0;
     this.notify();
@@ -320,17 +323,30 @@ export class ScreenStore {
    * every reader unpack a pair to ask it. The action has exactly one reader: the polite
    * announcement, which names what happened.
    */
-  markChanged(key: string, action: string = ''): void {
+  markChanged(key: string, action: string = '', readBack: ReadBack | null = null): void {
     if (key === '') return;
-    if (this.changedKeys.has(key) && (this.changedActions.get(key) ?? '') === action) return;
+    const sameReadBack = readBackLine(this.changedReadBacks.get(key) ?? null) === readBackLine(readBack);
+    if (this.changedKeys.has(key) && (this.changedActions.get(key) ?? '') === action && sameReadBack) return;
     this.changedKeys = new Set([...this.changedKeys, key]);
     this.changedActions = new Map([...this.changedActions, [key, action]]);
+    const readBacks = new Map(this.changedReadBacks);
+    if (readBack === null) readBacks.delete(key);
+    else readBacks.set(key, readBack);
+    this.changedReadBacks = readBacks;
     this.notify();
   }
 
   /** What the change event that marked `key` said happened, or `''`. */
   changedAction(key: string): string {
     return this.changedActions.get(key) ?? '';
+  }
+
+  /**
+   * The instance's read-back of the write that marked `key` (AD-58), or `null`. Kept beside the
+   * mark for the reason `changedAction` is: an annotation, never row data (AD-14).
+   */
+  changedReadBack(key: string): ReadBack | null {
+    return this.changedReadBacks.get(key) ?? null;
   }
 
   clearChanged(key: string): void {
@@ -341,6 +357,9 @@ export class ScreenStore {
     const actions = new Map(this.changedActions);
     actions.delete(key);
     this.changedActions = actions;
+    const readBacks = new Map(this.changedReadBacks);
+    readBacks.delete(key);
+    this.changedReadBacks = readBacks;
     this.notify();
   }
 

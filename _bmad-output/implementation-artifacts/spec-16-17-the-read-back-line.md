@@ -2,13 +2,21 @@
 title: 'Story 16.17: The read-back line'
 type: 'feature'
 created: '2026-09-26'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '003d8c985b66ca0bb5983c40a233dc3e2b830c6f'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A role's Resources grant sent with Permissions "WR" (or members in another order) reads back as "differs in Resources".
+    evidence: |-
+      `unordered` compares each element's whole Mint.Display JSON; the vendor stores "WR" as "RW" (measured in Design Notes). The closed top-level vocabulary has no nested mode, so the declaration cannot express it. Settle by an agent role update granting "WR" on ocupilot-ci.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/ReadBack.cls SameMultiset; Screen/Tool/Classification.cls permissions.roles.*
+    severity: medium
 ---
 
 <intent-contract>
@@ -179,6 +187,32 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-26 — Review pass
+
+- verdicts: 21 findings — high 1, medium 8, low 6, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` VG: agent path client wiring (turn confirm -> event -> card; reload via `parseProposal`) untested — added a `turn.test.mjs` case (outcome, event, row, reload) and a `panel.spec.ts` card-line case; mutations recorded.
+  - `[medium]` `[patch]` VG: Save read-backs other than the web app pinned only for presence — `DeviceWire`, `RoleSave`, `TaskEdit`, `UserSave`, `WalletWire` now assert the verdict (`matches []`, wallet `matches ["Secret"]`); all green on `ocupilot-ci` except `TaskEdit` (refuses there, arming residue), whose Save and rename were probed by hand on `ocupilot-ci` and read `matches`.
+  - `[medium]` `[patch]` VG: an empty compared set (no sent object, field rows unreadable) answered `matches` — `Compared` now answers 0 and `Of` reports `unchecked`/`unreadable`; `TestAMergeWithNothingToCompareIsUnchecked` added.
+  - `[medium]` `[patch]` VG: form-store read-back pinned only on the web app editor — added `reduced-form.page.spec.ts` and `resource-editor.store.spec.ts` cases.
+  - `[low]` `[patch]` VG: AC2 `differs` pinning test had no mutation line — mutation applied, red observed, line written.
+  - `[low]` `[patch]` VG: `read-back.test.mjs` asserted a source constant — assertion (and its now-unused import) deleted.
+  - `[high]` `[patch]` VG: existing browser specs waited for "Saved" exactly and would time out on "Saved · Read back: …" — helpers in `audit-event-editor`, `reduced-editors`, `resources-editor`, `ssl-editor`, `task-editor` and the five OAuth editor specs accept the line; `token-revoke`'s whole-cell tag assertion accepts it too. All ran green on `ocupilot-ci` except `reduced-editors` (refuses there: `OCUPILOT_ALLOW_SERVICE_CONFIG` unset).
+  - `[medium]` `[patch]` VG other: field rows unreadable answer `matches` — same root as the empty-compared-set row; closed by that patch.
+  - `[medium]` `[defer]` VG other: role `Resources: unordered` compares each element's whole JSON, so a grant sent `"WR"` (read back `"RW"`) or with members in another order reads "differs in Resources" — the closed top-level vocabulary cannot express a nested mode; deferred.
+  - `[low]` `[reject]` VG: `ErrorDelete.ReadBackGone` answers gone when the re-read has no `entries` array — the port answers a fixed shape; no reachable path shown.
+  - `[low]` `[reject]` IA-R2: `written` answers `Password`, the matrix example says `NewPassword` — the kernel's sent name is the descriptor's declared secret, the one the card asks for; the port renames it only on the wire (`UserPassword.cls:5-10`). Flagged for the lead as spec-text drift.
+  - `[medium]` `[defer]` IA-R8: the "Normalized list" reading that covers `Resources[].Permissions` — same root as the VG `Resources` row; deferred with it.
+  - `[false]` `[reject]` IA-R3: a secret's sent value is compared with the fresh read's — the intent's Merge row says exactly that; the re-read's value is never examined.
+  - `[false]` `[reject]` IA-R6: the re-read delays the answer by one round trip — required for `readBack` to ride the success answer; no wait or retry is added.
+  - `[false]` `[reject]` IA-R7: Saves re-read through the Save's own port — that is the port the write went through and the tool's own read resolves on it (task Save via `UpdatePortClass` probed `matches`).
+  - `[false]` `[reject]` IA: list-row read skips a sent name the row does not carry (`pRowOnly`) — the reading "a list-type read resolves exactly as the mint's does" admits only this; comparing an unseen field would report `differs` for every such write.
+  - `[medium]` `[patch]` IA-R9 surface: agent card/row and forms other than the web app exercised only below their surface — same roots as the VG agent-path and form-store rows; closed by those patches.
+  - `[low]` `[reject]` IA-R9: a `present` delete's row line not exercised on the client — `readBackLine` pins the text and `data-table.spec.ts` pins the line's placement; the combination adds no branch.
+  - `[low]` `[reject]` IA-R9: a Save answering 202 is not reached by a test — no Save's port answers 202 today; `ForSave` shares `Running()` with the tested callers.
+  - `[false]` `[reject]` IA-R9: recording failure never tested — `RecordReadBack` is wrapped in Try/Catch and logs only; no reachable failure shown.
+  - `[false]` `[reject]` IA-R9: committed declarations asserted for five update entries only — `field-lists.mjs --check` pins every emitted row byte for byte against `ToolFields.cls`.
+
 ## Design Notes
 
 **Recorded as AD-58 at the spec gate (2026-09-26).** The halt as raised: It adds three things other stories rely on: a shared post-write step that both callers of every write tool must run, a declaration vocabulary that every future write tool uses, and per-kind semantics. 16.19's impact lines and 16.21's Fix it proposals depend on these, so they have architectural weight. Recommended text for the lead:
@@ -212,6 +246,7 @@ No AC contradicts an existing AD Rule. Once AD-58 is in the spine, set `status: 
 - Resource `PublicPermission` sent as `"WR"` read back as `"RW"`.
 - User `Roles` were read back sorted.
 - A deleted web app, role and resource each re-read as 404.
+- Role `Resources` sent as `[%Development,%Admin_Operate]` read back `[%Admin_Operate,%Development]` (implement, 2026-09-26), so `Resources: unordered` is declared on `permissions.roles.update` and `.create`.
 
 **Copy for the EXPERIENCE.md row at 575, verbatim:**
 
@@ -252,7 +287,36 @@ The Where column says: the read-back line of a confirmed write (Story 16.17), on
 - `cd ui && npm test` (once, before dev_complete) -- expected: green, and the bundle under 1900 kB.
 - Full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before dev_complete) -- expected: green.
 
+**Observed (implement, 2026-09-26; each file restored byte for byte after its run, ObjectScript recompiled on `ocupilot-ci`, the whole tree after the last):**
+
+- mutation: accept an unknown mode in `classify()` (`field-lists.mjs`) -> "a compare declaration is emitted onto its rows, and every malformed one is refused" red.
+- mutation: drop the `compare` key from `buildToolFields()` -> `--check` exits "stale", and the drift, committed-file and compare cases red.
+- mutation: answer `matches` for a 404 re-read in `ReadBack.Of` -> `Test.ReadBack` `TestAnUpdateWhoseTargetIsGoneIsNotFound` (and the action case's gone leg) red.
+- mutation: compare secrets like ordinary fields in `ReadBack.Compared` -> `Test.ReadBack` `TestASecretIsWrittenAndItsReadValueIsNeverExamined` red.
+- mutation: remove `GrantedRoles` from `permissions.roles.update`'s `compare`, regenerate -> `Test.ReadBackRoute` `TestAConfirmedRoleUpdateReadsBackAReorderedListAsMatching` and `Test.ReadBack` `TestADeclaredUnorderedListMatchesReordered` red.
+- mutation: drop `readBack` from `Propose.WireRow` -> `Test.ProposalWire` `TestTheWireRowCarriesTheRecordedReadBack` and `TestTheWireRowCarriesTheTripleTheDiffAndTheState` red.
+- mutation: render `''` for `notFound` in `readBackLine` -> `proposal-card-read-back.spec.ts`'s delete case and `read-back.test.mjs`'s per-verdict case red; accept a verdict outside the vocabulary in `readBackOf` -> the vocabulary case red.
+- mutation: drop `readBack` from `ChangeBus.publish` -> `change-bus.test.mjs`'s read-back case red; drop the read-back span from the data table's name cell -> `data-table.spec.ts`'s Story 16.17 case red; drop `readBack` from the row action's publish -> `screen-action-handler.spec.ts`'s read-back case red; render `STRINGS.formSaved` in place of `savedText` on the web application editor -> `web-app-editor.page.spec.ts`'s Story 16.17 case red.
+- mutation: drop `readBack` from `ScreenAction.Run`'s answer, recompiled on `ocupilot-ci` with the rebuilt bundle deployed -> `browser/read-back.browser-spec.mjs` AC5 red; the same beside dropping it from `WebAppSave.HandleUpdate`'s answer -> `Test.ReadBackRoute`'s row-action and Save cases red.
+- mutation: re-read a 202 write (`If 0` for the 202 branch) in `Confirm.Transition` and `ScreenAction.Run` -> `Test.AuditStarted`'s agent and screen-route cases red on "a copy still running is not read back" (Queued matrix row).
+- mutation: never record a differing field in `ReadBack.Compared` (`If 0 Set pFields`) -> `Test.ReadBack` `TestAChangedValueDiffersByName` red (AC2's `differs` half).
+- mutation: answer 1 from `Compared` for a missing sent object -> `Test.ReadBack` `TestAMergeWithNothingToCompareIsUnchecked` red; pass `""` as the sent body in `DeviceSave.Create`'s `ForSave` -> `Test.DeviceWire` create case red on its `matches []` verdict.
+- mutation: drop `readBack: outcome.readBack` from `confirmProposal`'s publish -> `turn.test.mjs` read-back case red (event leg); drop `readBack` from `parseProposal` -> the same case red (reload leg); drop the card's `[readBack]` binding in `panel.ts` -> `panel.spec.ts` "AC1: a confirmed card carries the instance's read-back line" red (AC1 agent leg).
+- mutation: drop the `readBackOf(...)` assignment in `ReducedFormStore.save` -> `reduced-form.page.spec.ts` Story 16.17 case red; drop `readBack` from `ResourceEditor.save`'s publish -> `resource-editor.store.spec.ts` Story 16.17 case red (AC1 form leg).
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none (the needed AD was written by the lead as AD-58 at the spec gate on 2026-09-26)
+**Implemented (AD-58).** `Kernel/Proposal/ReadBack.cls` re-reads the target through `Operation.ReadAt` and answers `{verdict, fields, written, reason?}`, names only; the kind comes from the tool's parameters and every fault, including nothing to compare, reads `unchecked`. Callers: `Confirm.Transition` (recorded on `Propose.ReadBack`, wire `readBack`, `null` until recorded), `ScreenAction.Run` and all 20 Save/Create handlers via `ReadBack.ForSave`; 202 answers `unchecked`/`running`. `compare` is a Classification key validated and emitted by `field-lists.mjs` onto `ToolFields`; role `Resources` measured sorted and declared `unordered`. `ErrorDelete.ReadBackGone` keys on date, number and Time. Client: `core/read-back.ts` renders; the verdict rides the change event to the marked row and its announcement, the proposal card, and every form's "Saved · <line>". Copy appended at EXPERIENCE.md:575 (one citation moved 615 to 616).
+
+**Files:** server `ReadBack.cls` (new), `Confirm.cls`, `ScreenAction.cls`, `Propose.cls`, `Write.cls`, `ErrorDelete.cls`, `Classification.cls`, `ToolFields.cls` (generated), 20 `Area/*` Save handlers; client `read-back.ts` (new), change-bus, screen-store, refresh, data-table, screen-action-handler, turn, panel, proposal-card, reduced form, 17 form stores and pages, `strings.ts`, `_components.scss`; tests `Test.ReadBack`, `Test.ReadBackPort`, `Test.ReadBackRoute` (new), verdict assertions in `ProposalWire`, `AuditStarted`, `DeviceWire`, `RoleSave`, `TaskEdit`, `UserSave`, `WalletWire`, `SslSave`, fixture `ProposalFixture`; `read-back.test.mjs`, `field-lists.test.mjs`, `change-bus.test.mjs`, `turn.test.mjs`, five component specs, `read-back.browser-spec.mjs` (new), eleven browser specs' "Saved"/tag waits; `scripts/ci-throwaway.sh` roster. Epic 23 files touched, off their hunks: EXPERIENCE.md, `_components.scss` (appended at end), `proposal-card.ts` (away from 662-672), `ci-throwaway.sh` (roster comment).
+
+**Review:** 21 findings — 9 patched (high 1: existing browser specs waited for "Saved" exactly; see the triage log), 2 deferred (one root: role `Resources` whole-element compare), 10 rejected with reasons in the log. Patched counts by verdict: high 1, medium 6, low 2. `written` names the declared secret (`Password`) where the matrix example says `NewPassword` (the port's wire name) — flagged for the lead as spec-text drift.
+
+**Follow-up review recommended:** true — the patched high is the browser-spec wait fix; `reduced-editors.browser-spec.mjs` refuses on `ocupilot-ci` (`OCUPILOT_ALLOW_SERVICE_CONFIG` unset), so its patched `saved()` is verified only by CI's browser job.
+
+**Verification:** node tiers (field-lists, read-back, change-bus, turn) green; component specs for the card, data table, action handler, web-app editor, panel, reduced form and resource store green; `npm test` whole green (1505 node tests, 111 component files; one stale expectation in `reduced-form.store.spec.ts` fixed first); build 1,868,563 bytes, under 1900 kB; `check-objectscript` and `lint-docs` clean. On `ocupilot-ci`, one class at a time: `ReadBack` 13, `ReadBackRoute` 3, `ProposalWire` 16, `ProposalConfirm` 20, `ToolWrite` 31, `AuditStarted` 3, `DeviceWire`, `RoleSave`, `UserSave`, `WalletWire`, `SslSave` green. Full sweep once: 294 classes, 2338 tests, 14 refused (arming), 1 known residue (`WireSecurityRead` task history), 1 story failure (`SslSave` exact create answer), patched and re-run green. `TaskEdit` refuses there; its Save and a rename were probed by hand and read `matches`. Browser: `read-back.browser-spec.mjs` green in both themes within the structural baseline; audit-event, resources, SSL, task and token-revoke specs and the five OAuth editor specs green after the wait patch.
+
+**Residual risks:** vendor normalizations not covered by a declaration may read `differs` on editors not exercised here (LDAP, X.509, audit events, services); a role grant sent `"WR"` reads `differs` (deferred).
+
+Status: done
+Blocking condition: none

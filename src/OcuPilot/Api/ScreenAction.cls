@@ -63,9 +63,10 @@ ClassMethod CallerUsername() As %String
 /// screen's own list reports, and -- only where the action's tool declares any
 /// (<parameter>OcuPilot.Screen.Tool.Write.SCREENVALUES</parameter>) -- an object of strings keyed
 /// by exactly those names. On success, one envelope carrying
-/// <code>{action, target: {type, scope, id}}</code> -- the AD-14 change event's own triple and
-/// verb, which the client publishes rather than inferring -- plus <code>continues: true</code> where
-/// the port answered that a queued write is still running on the instance (AD-26).</p>
+/// <code>{action, target: {type, scope, id}, readBack}</code> -- the AD-14 change event's own triple
+/// and verb, which the client publishes rather than inferring, and the target read back and compared
+/// with what was sent (AD-58) -- plus <code>continues: true</code> where the port answered that a
+/// queued write is still running on the instance (AD-26).</p>
 /// <p><b>The value channel is closed, as the confirm channel is</b> (AD-6, AD-56 (ii)). A body key
 /// other than those three, a value name the action does not declare, a declared name left out, and
 /// a value that is not a non-empty string are each 400 <code>TOOL.ARGUMENTS</code> before anything
@@ -264,14 +265,22 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
         Set tSendBody = tPayload
         If 'tSendsBody Set tSendBody = ##class(OcuPilot.Kernel.Proposal.Operation).SecretBody(pToolClass, pSecrets, ##class(OcuPilot.Screen.Tool.Registry).SecretArguments(pTool, .tSecretsDeclared))
         Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).Apply(pToolClass, ..PortClass(), tEndpoint, tIdParam, pId, tPayloadJson, tSendBody, .tWritten, .tWriteHttp, .tWriteFault, tFresh)
-        Set tSendBody = ""
         If $$$ISERR(tWriteSC) {
+            Set tSendBody = ""
             Set tSC = ..Fault(tWriteSC, tWriteHttp, .tWriteFault)
             Quit
         }
         ; AD-53 as amended: a write that opens or closes the audit channel records the observed
         ; marking fact the banner reads. It never alters this answer.
         If ##class(OcuPilot.Kernel.Proposal.Operation).MovesMarking(pToolClass) Do ..ObserveMarking(pToolClass)
+        ; AD-58: the target is read back through the tool's own port and read type, as the caller.
+        ; Only names leave the comparison, so the secret body is cleared right after it.
+        If +$Get(tWriteHttp) = 202 {
+            Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).Running()
+        } Else {
+            Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).Of(pToolClass, pId, tSendBody, tFresh, tPayloadJson, ##class(OcuPilot.Kernel.Proposal.Operation).PortClassOf(pToolClass, ..PortClass()))
+        }
+        Set tSendBody = ""
 
         Set tSC = ##class(OcuPilot.Kernel.EntityRef).Wire(pType, pScope, pId, .tTarget)
         If $$$ISERR(tSC) {
@@ -285,6 +294,7 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
         Do tResult.%Set("target", tTarget)
         ; AD-26: a queued write the port answered 202 was made and continues on the instance.
         If +$Get(tWriteHttp) = 202 Do tResult.%Set("continues", 1, "boolean")
+        Do tResult.%Set("readBack", tReadBack)
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tResult)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)

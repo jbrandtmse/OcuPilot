@@ -15,6 +15,7 @@ import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
 import { tabErrorCounts, tabToOpen } from '../../core/form-tabs';
 import { NavigationService, formatDeniedAction, ownIdSegment, screenForRoute, withQuery } from '../../core/navigation';
+import { savedLine } from '../../core/read-back';
 import { actionLabel } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
@@ -605,7 +606,7 @@ export class OAuthServerFormPage {
     if (this.rotated) return STRINGS.oauthAuthServerRotated;
     if (!this.store.saved()) return '';
     const refused = this.store.passwordRefused();
-    return refused === '' ? STRINGS.formSaved : STRINGS.oauthAuthServerPasswordRefused.split('<reason>').join(refused);
+    return refused === '' ? savedLine(this.store.readBack()) : STRINGS.oauthAuthServerPasswordRefused.split('<reason>').join(refused);
   }
 
   protected get hasStatus(): boolean {

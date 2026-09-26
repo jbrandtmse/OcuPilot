@@ -45,6 +45,7 @@ import {
   phaseForState,
   toCardView,
 } from '../core/proposal-view';
+import type { ReadBack } from '../core/read-back';
 import { ScopeService, onScopeChange } from '../core/scope';
 import {
   assembleEntryContext,
@@ -171,6 +172,8 @@ interface PanelProposalView {
   readonly phase: ProposalPhase;
   /** The moment the instance committed the write, for the confirmed status line; `''` until then. */
   readonly confirmedAt: string;
+  /** The confirmed write's read-back, for the card's line under that status line (AD-58). */
+  readonly readBack: ReadBack | null;
 }
 
 /** One turn's rendered view, precomputed once per read so the template does no substitution. */
@@ -465,6 +468,7 @@ interface PanelTurnView {
                   [nowMs]="nowMs"
                   [userName]="userName"
                   [confirmedAt]="proposal.confirmedAt"
+                  [readBack]="proposal.readBack"
                   (confirm)="onCardConfirm($event)"
                   (cancel)="onCardCancel($event)"
                   (repropose)="onCardRepropose($event)"
@@ -998,6 +1002,7 @@ export class Panel {
       ),
       phase: this.phaseFor(proposal),
       confirmedAt: clockOf(proposal.confirmedAt),
+      readBack: proposal.readBack ?? null,
     };
   }
 

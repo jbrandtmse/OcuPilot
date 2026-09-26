@@ -3,6 +3,7 @@ import { Injectable, Injector, inject } from '@angular/core';
 import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
+import { readBackOf, type ReadBack } from '../../core/read-back';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
 
 /** The route the form creates through, and the one the list reads. */
@@ -211,6 +212,8 @@ export class WebAppCreateForm {
   private refusedValues: Record<string, string> = {};
 
   private savedValue = false;
+  /** The instance's read-back of the last accepted Save (AD-58), or `null`. */
+  private readBackValue: ReadBack | null = null;
 
   private createdIdValue = '';
 
@@ -304,6 +307,11 @@ export class WebAppCreateForm {
 
   refusalPair(): string {
     return this.refusalPairValue;
+  }
+
+  /** The read-back the last accepted Save answered (AD-58), which its "Saved" line renders. */
+  readBack(): ReadBack | null {
+    return this.readBackValue;
   }
 
   /** Whether the last Save was accepted, which is what the sticky bar's caption reads. */
@@ -535,6 +543,7 @@ export class WebAppCreateForm {
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
+    this.readBackValue = null;
     this.notify();
 
     const sent = this.snapshotValues();
@@ -555,6 +564,7 @@ export class WebAppCreateForm {
     }
     this.createdIdValue = textAt(result.body, 'name');
     this.savedValue = true;
+    this.readBackValue = readBackOf((result.body as Record<string, unknown> | null)?.['readBack']);
     this.formDirty.setDirty(false);
     this.publishCreated();
     this.notify();
@@ -639,6 +649,7 @@ export class WebAppCreateForm {
       scope: WEB_APPLICATION_SCOPE,
       id: this.createdIdValue,
       action: 'created',
+      readBack: this.readBackValue,
     });
   }
 

@@ -15,6 +15,7 @@ import { ChangeBus } from '../../core/change-bus';
 import { tabErrorCounts, tabToOpen } from '../../core/form-tabs';
 import { FormDirty } from '../../core/form-dirty';
 import { formatRequires, ownIdSegment, screenForDescriptor, withQuery } from '../../core/navigation';
+import { savedLine } from '../../core/read-back';
 import { selfProtectionReason } from '../../core/self-protection';
 import { Session } from '../../core/session';
 import { STRINGS } from '../../core/strings';
@@ -448,7 +449,7 @@ interface ActionView {
     <div class="ocu-form-bar">
       <div class="ocu-form-bar-status">
         @if (showSaved) {
-          <span role="status">{{ STRINGS.formSaved }}</span>
+          <span role="status">{{ savedText }}</span>
         }
       </div>
       <div class="ocu-form-bar-actions">
@@ -674,6 +675,12 @@ export class UserEditorPage {
   protected get showSaved(): boolean {
     this.generation();
     return this.store.saved();
+  }
+
+  /** "Saved", with the instance's read-back line where the Save answered one (AD-58). */
+  protected get savedText(): string {
+    this.generation();
+    return savedLine(this.store.readBack());
   }
 
   protected get leavePending(): boolean {

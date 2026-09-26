@@ -114,7 +114,8 @@ ClassMethod ProhibitedClassName() As %String
 /// <var>pSuppliedSecrets</var> as the body the request carried.</p>
 /// <p>On success the status is OK, <var>pHttpStatus</var> 200 and <var>pResult</var>
 /// <code>{proposalId, state, closedReason, confirmedAt, auditMarked}</code> -- the last being
-/// whether the write's audit marker landed a row, which never changes the status (AD-15) -- plus
+/// whether the write's audit marker landed a row, which never changes the status (AD-15) -- and
+/// <code>readBack</code>, the target re-read and compared with what was sent (AD-58), plus
 /// <code>continues: true</code> where the port answered that a queued write is still running on the
 /// instance (AD-26). On a refusal the status is an
 /// error, <var>pCode</var> is the machine code, <var>pHttpStatus</var> the HTTP status it is
@@ -426,7 +427,18 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; per-write failure belongs.
         If $Get(tEmitted, 0) Do $ClassMethod(..EventClass(), "RecordMarking", tMarked)
 
-        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode, $Select(tMarked: 1, 1: 0), ..ToolChangeAction(tToolClass), ..ToolCreatedId(tToolClass, $Get(tWritten)))
+        ; AD-58: the target is read back after the ledger row and the marker, outside the claim's
+        ; transaction, and the verdict rides beside the answer it never alters. A queued write is
+        ; still running (AD-26), so it is not re-read.
+        Set tCreatedId = ..ToolCreatedId(tToolClass, $Get(tWritten))
+        If +$Get(tWriteHttp) = 202 {
+            Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).Running()
+        } Else {
+            Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).Of(tToolClass, $Select(tCreatedId '= "": tCreatedId, 1: tIdValue), tBody, $Get(tFresh), $Get(pRow("payload")), ..PortClassOf(tToolClass))
+        }
+        Do ..RecordReadBack(pProposalId, tReadBack)
+
+        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode, $Select(tMarked: 1, 1: 0), ..ToolChangeAction(tToolClass), tCreatedId, tReadBack)
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Internal("the confirm transition failed: " _ ex.DisplayString(), .pHttpStatus, .pCode)
@@ -745,10 +757,10 @@ ClassMethod HoldsPair(pUser As %String, pResource As %String, pPermission As %St
 }
 
 /// <p>The proposal's closed state as the caller is answered it:
-/// <code>{proposalId, state, closedReason, confirmedAt}</code>, plus <code>auditMarked</code> where
-/// a write was made, <code>action</code> and <code>createdId</code> where the tool answers them, read back from the row so the answer and the wire cannot disagree. A row that is no longer there is answered as an internal
+/// <code>{proposalId, state, closedReason, confirmedAt}</code>, plus <code>auditMarked</code> and
+/// <code>readBack</code> (AD-58) where a write was made, <code>action</code> and <code>createdId</code> where the tool answers them, read back from the row so the answer and the wire cannot disagree. A row that is no longer there is answered as an internal
 /// failure, never as a 200 carrying empty fields.</p>
-ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, pAuditMarked As %String = "", pAction As %String = "", pCreatedId As %String = "") As %Status [ Private ]
+ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, pAuditMarked As %String = "", pAction As %String = "", pCreatedId As %String = "", pReadBack As %DynamicObject = "") As %Status [ Private ]
 {
     Set pResult = ""
     Set tSC = $ClassMethod(..StoreClass(), "GuardedByKey", pProposalId, .tFound, .tValues)
@@ -771,6 +783,8 @@ ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Out
     ; AD-14: the id the instance allocated for a created target whose proposal names it by another
     ; key, present only where the tool answers one; the client publishes it as the event's id.
     If pCreatedId '= "" Do pResult.%Set("createdId", pCreatedId, "string")
+    ; AD-58: the read-back of the write that just happened, present only where one happened.
+    If $IsObject(pReadBack) Do pResult.%Set("readBack", pReadBack)
     Set pHttpStatus = 200
     Quit $$$OK
 }
@@ -813,6 +827,36 @@ ClassMethod ClosedDetail(pProposalId As %String, Output pDetail As %DynamicObjec
     } Catch {
         Set pDetail = ""
     }
+}
+
+/// <p>Record <var>pReadBack</var> on proposal <var>pProposalId</var>'s row through
+/// <method>StoreClass</method> (AD-58), so a card reloaded after the confirm still reads it. A
+/// failure is logged and never propagated: the write has already been answered for.</p>
+ClassMethod RecordReadBack(pProposalId As %String, pReadBack As %DynamicObject) [ Private ]
+{
+    Try {
+        Set tSC = $ClassMethod(..StoreClass(), "GuardedRecordReadBack", pProposalId, pReadBack)
+        If $$$ISOK(tSC) Quit
+        Do ..LogReadBackFailure(pProposalId, tSC)
+    } Catch ex {
+        Try {
+            Do ..LogReadBackFailure(pProposalId, ex.AsStatus())
+        } Catch {
+        }
+    }
+}
+
+/// <p>The log message a failed read-back recording reports.</p>
+Parameter READBACKFAILED = "the confirmed write's read-back could not be recorded on its proposal";
+
+/// <p>Log one error line for a read-back <method>RecordReadBack</method> could not record: the
+/// proposal and the reason, never the verdict's names.</p>
+ClassMethod LogReadBackFailure(pProposalId As %String, pStatus As %Status) [ Private ]
+{
+    Set tData = {}
+    Do tData.%Set("proposalId", pProposalId, "string")
+    Do tData.%Set("reason", $System.Status.GetErrorText(pStatus), "string")
+    Do ##class(OcuPilot.Kernel.Audit.Log).Error(##class(OcuPilot.Kernel.Audit.Event).#LOGSUBSYSTEM, ..#READBACKFAILED, tData)
 }
 
 /// <p>The HTTP status one of <class>OcuPilot.Kernel.Proposal.Write</class>'s claim refusals is

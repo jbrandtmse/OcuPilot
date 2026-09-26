@@ -166,6 +166,24 @@ describe('the reduced form page', () => {
     expect(events.map((event) => `${event.kind} ${event.type} ${event.id} ${event.action}`)).toEqual(['changed service %Service_CallIn updated']);
   });
 
+  it('Story 16.17: a Save shows the instance\u2019s read-back beside Saved and carries it on the change', async () => {
+    // Mutation (Rule 19): drop the `readBackOf(...)` assignment from `ReducedFormStore.save` -> the
+    // status reads "Saved" alone and the event carries no read-back, and this goes red (AD-58).
+    const readBack = { verdict: 'matches', fields: [], written: [] };
+    const { fixture, host, events } = await mount(
+      SERVICE_SCREEN,
+      '/permissions/services/edit/%2525Service_CallIn',
+      { kind: 'ok', status: 200, body: { service: SERVICE, servesOcuPilot: false } },
+      { kind: 'ok', status: 200, body: { name: '%Service_CallIn', readBack } }
+    );
+    addEntry(fixture, host, 'ClientSystems', '10.0.0.1');
+    saveButton(host).click();
+    await settle(fixture);
+    expect(host.querySelector('.ocu-form-bar [role="status"]')?.textContent?.trim()).toBe(`${STRINGS.formSaved} \u00b7 Read back: matches`);
+    expect(events).toHaveLength(1);
+    expect(events[0].readBack).toEqual({ ...readBack, reason: '' });
+  });
+
   it('a refused Save focuses the summary, then the refused field, whose reason it carries', async () => {
     const refusal: JsonResult<unknown> = {
       kind: 'error',

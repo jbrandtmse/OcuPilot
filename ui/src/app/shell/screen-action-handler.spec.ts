@@ -119,6 +119,39 @@ describe('the generic screen-action handler', () => {
     expect(events[0].id).toBe(ORDINARY_ROW);
   });
 
+  it('carries the instance\u2019s read-back onto the change event, and none it did not answer', async () => {
+    // Mutation (Rule 19): drop `readBack` from `send()`'s publish -> the first assertion goes red,
+    // and the marked row would say "Changed" and nothing about what the instance now holds (AD-58).
+    const answered = mount({
+      kind: 'ok',
+      status: 200,
+      body: {
+        action: 'updated',
+        target: { type: 'web-application', scope: 'instance', id: ORDINARY_ROW },
+        readBack: { verdict: 'matches', fields: [], written: [] },
+      },
+    });
+    answered.store.setSelection([ORDINARY_ROW]);
+    answered.actions.run(WEB_APPS.descriptor, 'enable');
+    await settle();
+    expect(answered.events[0].readBack).toEqual({ verdict: 'matches', fields: [], written: [], reason: '' });
+
+    const outside = mount({
+      kind: 'ok',
+      status: 200,
+      body: {
+        action: 'updated',
+        target: { type: 'web-application', scope: 'instance', id: ORDINARY_ROW },
+        readBack: { verdict: 'probably', fields: [], written: [] },
+      },
+    });
+    outside.store.setSelection([ORDINARY_ROW]);
+    outside.actions.run(WEB_APPS.descriptor, 'enable');
+    await settle();
+    expect(outside.events).toHaveLength(1);
+    expect('readBack' in outside.events[0]).toBe(false);
+  });
+
   it('sends nothing with no row selected', async () => {
     const { actions, calls, events } = mount();
     actions.run(WEB_APPS.descriptor, 'enable');

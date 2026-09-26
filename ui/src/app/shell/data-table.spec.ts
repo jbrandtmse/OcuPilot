@@ -6,6 +6,7 @@ import { ChangeBus } from '../core/change-bus';
 import type { ConnectivityService } from '../core/connectivity';
 import type { Fault } from '../core/fault';
 import { OverlayStack } from '../core/overlay-stack';
+import { readBackOf } from '../core/read-back';
 import { RefreshService, type RefreshReadResult } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
@@ -739,6 +740,35 @@ describe('the data table', () => {
     await settle(wired.fixture);
     expect(slot()).toBe('Updated: /csp/app01 deleted');
     expect(wired.store.changed().has('/csp/app01')).toBe(true);
+  });
+
+  it('Story 16.17: a marked row carries the read-back line after its tag, and in its announcement', async () => {
+    // Mutation (Rule 19): drop the read-back span from the name cell -> the line assertions go red,
+    // and the row says "Changed" without saying whether the instance holds what was sent (AD-58).
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const slot = () =>
+      (wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement).textContent?.trim();
+
+    wired.store.markChanged('/csp/app01', 'updated', readBackOf({ verdict: 'differs', fields: ['Description'], written: [] }));
+    await settle(wired.fixture);
+    const row = wired.host().querySelector('[aria-rowindex="3"]') as HTMLElement;
+    const tag = row.querySelector('.ocu-data-table-changed-tag') as HTMLElement;
+    expect(tag.textContent?.trim()).toBe(STRINGS.tableChangedTag);
+    const line = row.querySelector('.ocu-data-table-read-back') as HTMLElement;
+    expect(line.textContent?.trim()).toBe('Read back: differs in Description');
+    expect(tag.nextElementSibling).toBe(line);
+    expect(slot()).toBe('Updated: /csp/app01 updated \u00b7 Read back: differs in Description');
+
+    // A mark with no read-back draws no line, and a second write under the same action whose
+    // read-back differs is announced again.
+    wired.store.markChanged('/csp/app02', 'updated');
+    await settle(wired.fixture);
+    expect((wired.host().querySelector('[aria-rowindex="4"]') as HTMLElement).querySelector('.ocu-data-table-read-back')).toBeNull();
+    wired.store.markChanged('/csp/app01', 'updated', readBackOf({ verdict: 'matches', fields: [], written: [] }));
+    await settle(wired.fixture);
+    expect(slot()).toBe('Updated: /csp/app01 updated \u00b7 Read back: matches');
   });
 
   it('Story 5.7: the change names the canonical id, and the row the instance spells otherwise is marked', async () => {

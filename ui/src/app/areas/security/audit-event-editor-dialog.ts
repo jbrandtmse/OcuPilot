@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 
 import { formatDeniedAction } from '../../core/navigation';
+import { savedLine } from '../../core/read-back';
 import { STRINGS } from '../../core/strings';
 import type { Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
@@ -118,7 +119,7 @@ interface FieldView {
       </div>
     }
     @if (showSaved) {
-      <span dialogAction class="ocu-dialog-status" role="status">{{ STRINGS.formSaved }}</span>
+      <span dialogAction class="ocu-dialog-status" role="status">{{ savedText }}</span>
     }
     <button dialogAction type="button" class="ocu-button-primary" [attr.aria-disabled]="saveBlocked" (click)="onSave()">
       {{ STRINGS.actionSave }}
@@ -205,6 +206,12 @@ export class AuditEventEditorDialog {
   protected get showSaved(): boolean {
     this.generation();
     return this.store.saved();
+  }
+
+  /** "Saved", with the instance's read-back line where the Save answered one (AD-58). */
+  protected get savedText(): string {
+    this.generation();
+    return savedLine(this.store.readBack());
   }
 
   /** Save does nothing while a Save is in flight, or in edit mode without a fresh read of the event. */

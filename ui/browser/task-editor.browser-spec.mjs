@@ -171,7 +171,8 @@ async function save(page) {
 /** Wait for a Save to settle: "Saved" in the bar, or a refusal; the bar's text or the refusal's. */
 async function saved(page) {
   await page.waitForFunction(
-    (text) => document.querySelector('.ocu-form-bar-status')?.textContent.trim() === text || document.querySelector('.ocu-form-summary, .ocu-banner-warning') !== null,
+    // Story 16.17: "Saved", or "Saved" and the instance's read-back line after it.
+    (text) => ((shown) => shown === text || shown.startsWith(`${text} \u00b7 `))(document.querySelector('.ocu-form-bar-status')?.textContent.trim() ?? '') || document.querySelector('.ocu-form-summary, .ocu-banner-warning') !== null,
     { timeout: config.navigationTimeoutMs },
     STRINGS.formSaved
   );
@@ -266,7 +267,8 @@ test('Matrix "Two-field save", AC2: Save answers "Saved", sends the two fields, 
     await openTab(page, 'schedule');
     await setValue(page, 'ocu-task-DailyIncrement', '15');
     await save(page);
-    assert.equal(await saved(page), STRINGS.formSaved, 'the Save is accepted');
+    const statusSave = await saved(page);
+    assert.ok(statusSave === STRINGS.formSaved || statusSave.startsWith(`${STRINGS.formSaved} \u00b7 `), `the Save is accepted: ${statusSave}`);
     assert.equal(writes.length, 1, 'one Save');
     assert.deepEqual(JSON.parse(writes[0].body), { Description: 'two fields', DailyIncrement: '15' }, 'carrying the two fields alone');
     const after = stored(id);
@@ -298,7 +300,8 @@ test('Integration, AD-14: a rename saved on Edit task shows on Task details and 
     await editorReady(page, 'OcuP98BrowserRename');
     await fill(page, 'ocu-task-Name', RENAMED);
     await save(page);
-    assert.equal(await saved(page), STRINGS.formSaved, 'the rename is accepted');
+    const statusRename = await saved(page);
+    assert.ok(statusRename === STRINGS.formSaved || statusRename.startsWith(`${STRINGS.formSaved} \u00b7 `), `the rename is accepted: ${statusRename}`);
     await page.goBack();
     await page.waitForFunction((name) => document.querySelector('app-task-details-page')?.textContent.includes(name), { timeout: config.navigationTimeoutMs }, RENAMED);
     await page.goBack();

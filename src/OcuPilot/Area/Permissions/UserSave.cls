@@ -44,11 +44,11 @@ ClassMethod ProhibitedClass() As %String
 }
 
 /// <p>Answer <code>PUT /users/:id</code>: change the account <var>pId</var> -- one path segment,
-/// decoded once here (AD-13) -- from the body's fields, and answer <code>{name}</code> with 200. A
-/// key outside the fourteen is 400 <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>
-/// naming every such key; a broken rule is one 422
-/// <parameter>OcuPilot.Api.Error.USERVALIDATION</parameter> envelope; an account the instance does
-/// not hold is 404 <parameter>OcuPilot.Api.Error.USERNAMEABSENT</parameter>.</p>
+/// decoded once here (AD-13) -- from the body's fields, and answer <code>{name, readBack}</code>
+/// with 200 (AD-58). A key outside the fourteen is 400
+/// <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter> naming every such key; a broken
+/// rule is one 422 <parameter>OcuPilot.Api.Error.USERVALIDATION</parameter> envelope; an account
+/// the instance does not hold is 404 <parameter>OcuPilot.Api.Error.USERNAMEABSENT</parameter>.</p>
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
@@ -64,7 +64,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Quit
         }
         Set tName = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
-        Set tPerformSC = ..Update(tName, tBody, .tHttp, .tFault, .tViolations)
+        Set tPerformSC = ..Update(tName, tBody, .tHttp, .tFault, .tViolations, .tReadBack)
         Set tBody = ""
         If $Get(tViolations) > 0 {
             Set tSC = ##class(OcuPilot.Area.Permissions.UserCreate).RenderViolations(.tViolations)
@@ -84,6 +84,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         }
         Set tAnswer = {}
         Do tAnswer.%Set("name", tName, "string")
+        If $IsObject($Get(tReadBack)) Do tAnswer.%Set("readBack", tReadBack)
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tAnswer)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -99,11 +100,13 @@ ClassMethod HandleUpdate(pId As %String) As %Status
 /// non-zero count means nothing was written. Otherwise an error status carries
 /// <var>pHttpStatus</var> and <var>pFault</var>: 404 for an account the instance does not hold,
 /// 400 for a key outside the fourteen, 403 for a prohibited change, and the port's own for a vendor
-/// refusal. Nothing is sent on any of them but the last.</p>
-ClassMethod Update(pName As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations) As %Status
+/// refusal. Nothing is sent on any of them but the last. On success <var>pReadBack</var> is the
+/// write's read-back (AD-58); it is <code>""</code> otherwise.</p>
+ClassMethod Update(pName As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pReadBack As %DynamicObject) As %Status
 {
     Set pHttpStatus = 0
     Set pFault = ""
+    Set pReadBack = ""
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -155,6 +158,8 @@ ClassMethod Update(pName As %String, pArgs As %DynamicObject, Output pHttpStatus
         Kill tQuery
         Set tQuery($ClassMethod(tClass, "IdParam")) = pName
         Set tSC = $ClassMethod(..PortClass(), "Invoke", $ClassMethod(tClass, "Endpoint"), $ClassMethod(tClass, "WriteType"), .tQuery, tPayload, .tAnswer, .pHttpStatus, .pFault)
+        ; AD-58: the account read back through the tool's port and compared with what was sent.
+        If $$$ISOK(tSC) Set pReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(tClass, pName, tPayload, tFresh, ..PortClass(), $Get(tAnswer), pHttpStatus)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

@@ -410,3 +410,55 @@ test('an authored wrapper field is emitted secret and marked, and every other sh
   // The committed entry is the one the Users list's create tool carries.
   assert.deepEqual(committedEntries['permissions.users.create']?.authored, { Password: 'secret' }, 'the committed create entry authors Password');
 });
+
+// Story 16.17 (AD-58): an entry's `compare` declares how the read-back compares a field the
+// instance normalizes on save. It is emitted onto every field row under the declared name, and the
+// generator refuses an unknown mode, a path that is not a top-level row, a mode on a secret path,
+// `unordered` on a non-array and `members` on a non-object.
+// Mutation (Rule 19): accept an unknown mode in classify() -> the "unknown mode" refusal goes red;
+// drop the `compare` key from buildToolFields() -> the emission assertions and the committed-file
+// drift test go red.
+test('a compare declaration is emitted onto its rows, and every malformed one is refused', () => {
+  const entry = (compare) => ({
+    'permissions.roles.update': {
+      fieldList: 'Security.Role',
+      classification: { Description: 'ordinary', 'GrantedRoles[]': 'ordinary', EscalationOnly: 'ordinary', 'Resources[].Name': 'ordinary', 'Resources[].Permissions': 'ordinary' },
+      compare,
+    },
+  });
+  const accepted = classify(lists, entry({ GrantedRoles: 'unordered', Resources: 'unordered' }));
+  assert.deepEqual(accepted.problems, [], 'a well-formed declaration is accepted');
+  assert.equal(fieldOf(accepted, 'permissions.roles.update', 'GrantedRoles[]')?.compare, 'unordered', 'the array row carries its mode');
+  assert.equal(fieldOf(accepted, 'permissions.roles.update', 'Resources[].Name')?.compare, 'unordered', 'every row under a declared name carries it');
+  assert.equal(fieldOf(accepted, 'permissions.roles.update', 'Description')?.compare, undefined, 'an undeclared row carries none');
+  const text = generateFrom({ lists, entries: entry({ GrantedRoles: 'unordered' }) }).text;
+  assert.match(text, /\{"path":"GrantedRoles\[\]","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unordered"\}/, 'ToolFields carries the mode');
+  assert.match(text, /\{"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"\}/, 'and an undeclared row is byte-identical to before');
+
+  const refusals = [
+    [{ GrantedRoles: 'sorted' }, /compare mode "sorted" on GrantedRoles is not one of/],
+    [{ 'Resources[].Name': 'unordered' }, /compare path Resources\[\]\.Name is not a top-level row/],
+    [{ Nothing: 'words' }, /compare path Nothing is not a top-level row/],
+    [{ Description: 'unordered' }, /compare path Description is a literal and cannot be unordered/],
+    [{ Resources: 'members' }, /compare path Resources is a array and cannot be members/],
+  ];
+  for (const [compare, pattern] of refusals) {
+    const refused = generateFrom({ lists, entries: entry(compare) });
+    assert.equal(refused.text, null, `${JSON.stringify(compare)} emits nothing`);
+    assert.ok(refused.problems.some((problem) => pattern.test(problem)), `${JSON.stringify(compare)} is refused: ${refused.problems.join('; ')}`);
+  }
+  const secret = generateFrom({
+    lists,
+    entries: { 'permissions.roles.update': { fieldList: 'Security.Role', classification: { Description: 'ordinary' }, compare: { GrantedRoles: 'unordered' } } },
+  });
+  assert.ok(secret.problems.some((problem) => /compare path GrantedRoles is secret/.test(problem)), `a mode on a secret path is refused: ${secret.problems.join('; ')}`);
+  const notAnObject = generateFrom({ lists, entries: entry(['GrantedRoles']) });
+  assert.ok(notAnObject.problems.some((problem) => /compare is not a JSON object/.test(problem)), 'a compare that is not an object is refused');
+
+  // The committed declarations the story makes, measured or cited.
+  assert.deepEqual(committedEntries['permissions.roles.update']?.compare, { GrantedRoles: 'unordered', Resources: 'unordered' });
+  assert.deepEqual(committedEntries['permissions.users.update']?.compare, { Roles: 'unordered' });
+  assert.deepEqual(committedEntries['permissions.resources.update']?.compare, { PublicPermission: 'letters' });
+  assert.deepEqual(committedEntries['security.oauthclients.update']?.compare, { RedirectionEndpoint: 'unslashed', DefaultScope: 'words', Metadata: 'members' });
+  assert.deepEqual(committedEntries['tasks.schedule.update']?.compare, { Settings: 'written' });
+});

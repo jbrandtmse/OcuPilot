@@ -84,7 +84,8 @@ describe('the reduced form store', () => {
     expect(JSON.parse(put.init.body ?? '')).toEqual({ ClientSystems: ['10.0.0.9|%All', '10.0.0.1'] });
     expect(store.saved()).toBe(true);
     expect(formDirty.dirty()).toBe(false);
-    expect(published).toEqual([{ kind: 'changed', type: 'service', scope: 'instance', id: '%Service_CallIn', action: 'updated' }]);
+    // Story 16.17: the answer carried no read-back, so the change carries `null`, which the bus drops.
+    expect(published).toEqual([{ kind: 'changed', type: 'service', scope: 'instance', id: '%Service_CallIn', action: 'updated', readBack: null }]);
   });
 
   it('Matrix "Absent": a Save answered 404 turns the form absent and publishes nothing', async () => {

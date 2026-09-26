@@ -198,3 +198,20 @@ test('every subscriber sees every event, and unsubscribing from inside a handler
   assert.deepEqual(first, ['one'], 'it stopped when it said it did');
   assert.deepEqual(second, ['one', 'two'], 'and the walk was not cut short by the removal');
 });
+
+// Story 16.17 (AD-58): a `changed` carries the write's read-back as an annotation beside the mark,
+// and a proposal kind carries none.
+// Mutation (Rule 19): drop the `readBack` spread from `publish()` -> the first assertion goes red.
+test('a changed event carries the read-back its write answered, and a proposal kind refuses one', () => {
+  const { bus, seen } = busWithLog();
+  const readBack = { verdict: 'differs', fields: ['Description'], written: [], reason: '' };
+  assert.equal(bus.publish({ kind: 'changed', type: 'web-application', scope: 'instance', id: '/csp/a', action: 'updated', readBack }), true);
+  assert.deepEqual(seen[0].readBack, readBack, 'the event carries the read-back as it was published');
+  assert.equal(bus.publish({ kind: 'changed', type: 'web-application', scope: 'instance', id: '/csp/a', action: 'updated' }), true);
+  assert.equal('readBack' in seen[1], false, 'an event whose write answered none carries no key');
+  assert.equal(
+    bus.publish({ kind: 'proposal-open', type: 'web-application', scope: 'instance', id: '/csp/a', proposalId: 'p1', readBack }),
+    false,
+    'a proposal kind is not a write and refuses a read-back'
+  );
+});

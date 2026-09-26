@@ -68,10 +68,10 @@ ClassMethod ProhibitedClass() As %String
 }
 
 /// <p>Answer <code>POST /oauth/server-description</code>: create one description from the body and
-/// answer <code>{issuer}</code> with 201, plus <code>tokenRefused</code> when the body's token was
-/// refused. A broken rule is one 422 <parameter>OcuPilot.Api.Error.OAUTHVALIDATION</parameter>
-/// envelope carrying every violation; any other refusal is the port's or the prohibited set's own
-/// envelope.</p>
+/// answer <code>{issuer, readBack}</code> with 201 (AD-58), plus <code>tokenRefused</code> when the
+/// body's token was refused. A broken rule is one 422
+/// <parameter>OcuPilot.Api.Error.OAUTHVALIDATION</parameter> envelope carrying every violation; any
+/// other refusal is the port's or the prohibited set's own envelope.</p>
 ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
@@ -92,11 +92,13 @@ ClassMethod HandleCreate() As %Status
         }
         Set tToken = ..TakeSecret(tBody)
         Set tIssuer = ##class(OcuPilot.Area.Security.OAuthServerRules).Text(tBody, ..#IDARGUMENT)
-        Set tPerformSC = ..Create(tIssuer, tBody, .tHttp, .tFault, .tViolations)
-        Set tTokenReason = ""
+        Set tPerformSC = ..Create(tIssuer, tBody, .tHttp, .tFault, .tViolations, .tWrite)
+        Set (tTokenReason, tReadBack) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tToken '= "") Set tTokenReason = ..StoreToken(tIssuer, tToken)
         Set tToken = ""
-        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, tIssuer, tTokenReason)
+        ; AD-58: the description read back after the Save's last write, over what its own write sent.
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#CREATETOOL, tIssuer, tWrite("sent"), "", ..PortClass(), $Get(tWrite("written")), $Get(tHttp))
+        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, tIssuer, tTokenReason, tReadBack)
     } Catch ex {
         Set tToken = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -104,12 +106,12 @@ ClassMethod HandleCreate() As %Status
     Quit tSC
 }
 
-/// <p>Answer <code>PUT /oauth/server-description/:id</code>: change the description <var>pId</var> --
-/// one path segment, decoded once here (AD-13) -- by the body's fields, and answer
-/// <code>{issuer}</code> with 200, the issuer being the new one after a rename. A key outside the
-/// editor's is 400 <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>; a description the
-/// instance does not hold is 404 <parameter>OcuPilot.Api.Error.OAUTHISSUERENDPOINTABSENT</parameter>
-/// and nothing is sent.</p>
+/// <p>Answer <code>PUT /oauth/server-description/:id</code>: change the description <var>pId</var>
+/// -- one path segment, decoded once here (AD-13) -- by the body's fields, and answer
+/// <code>{issuer, readBack}</code> with 200 (AD-58), the issuer being the new one after a rename. A
+/// key outside the editor's is 400 <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>; a
+/// description the instance does not hold is 404
+/// <parameter>OcuPilot.Api.Error.OAUTHISSUERENDPOINTABSENT</parameter> and nothing is sent.</p>
 /// <p>The body's <code>Metadata</code> carries only the members the form changes, a cleared one as
 /// <code>""</code> or <code>[]</code>; the route applies them over the fresh read's members, so the
 /// tool's argument is the whole metadata the description will hold.</p>
@@ -133,16 +135,18 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         }
         Set tToken = ..TakeSecret(tBody)
         Set tIssuer = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
-        Set tPerformSC = ..Update(tIssuer, tBody, .tNewIssuer, .tHttp, .tFault, .tViolations)
+        Set tPerformSC = ..Update(tIssuer, tBody, .tNewIssuer, .tHttp, .tFault, .tViolations, .tWrite)
         If $$$ISERR(tPerformSC) && (+$Get(tHttp) = 404) && '$Get(tViolations) {
             Set tToken = ""
             Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONOAUTHISSUERENDPOINTABSENT, ##class(OcuPilot.Api.Error).#OAUTHISSUERENDPOINTABSENT)
             Quit
         }
-        Set tTokenReason = ""
+        Set (tTokenReason, tReadBack) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tToken '= "") Set tTokenReason = ..StoreToken(tNewIssuer, tToken)
         Set tToken = ""
-        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, $Get(tNewIssuer, tIssuer), tTokenReason)
+        ; AD-58: the description read back, under the issuer it now carries, after the Save's last write.
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#UPDATETOOL, $Get(tNewIssuer, tIssuer), tWrite("sent"), tWrite("fresh"), ..PortClass(), $Get(tWrite("written")), $Get(tHttp))
+        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, $Get(tNewIssuer, tIssuer), tTokenReason, tReadBack)
     } Catch ex {
         Set tToken = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -204,15 +208,18 @@ ClassMethod HandleDiscover() As %Status
 
 /// <p>Create the description <var>pIssuer</var> from <var>pArgs</var>, whose token has been taken
 /// out.</p>
-/// <p><b>Caller contract:</b> <var>pViolations</var> is the violation array
-/// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>); a
-/// non-zero count means nothing was written. Otherwise an error status carries
-/// <var>pHttpStatus</var> and <var>pFault</var>; a refusal the port answers on a field arrives as a
-/// violation too.</p>
-ClassMethod Create(pIssuer As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations) As %Status
+/// <p><b>Caller contract:</b> <var>pViolations</var> is the violation array (<code>pViolations(n) =
+/// $ListBuild(field, code)</code>, count in <code>pViolations</code>); a non-zero count means
+/// nothing was written. Otherwise an error status carries <var>pHttpStatus</var> and
+/// <var>pFault</var>; a refusal the port answers on a field arrives as a violation too. Once the
+/// write reads OK, <var>pWrite</var><code>("sent")</code> is the body it sent and
+/// <var>pWrite</var><code>("written")</code> the port's answer, for the caller's read-back after
+/// its own follow-up writes (AD-58); otherwise both are undefined.</p>
+ClassMethod Create(pIssuer As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pWrite) As %Status
 {
     Set pHttpStatus = 0
     Set pFault = ""
+    Kill pWrite
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -236,8 +243,9 @@ ClassMethod Create(pIssuer As %String, pArgs As %DynamicObject, Output pHttpStat
             Quit
         }
         Do $ClassMethod(tClass, "DerivedFields", tPayload)
-        Set tSC = ..Send(tClass, pIssuer, tPayload, .pHttpStatus, .pFault)
+        Set tSC = ..Send(tClass, pIssuer, tPayload, .pHttpStatus, .pFault, .tWritten)
         If $$$ISERR(tSC) Do ..PortViolations(pFault, .pViolations)
+        If $$$ISOK(tSC) Set pWrite("sent") = tPayload, pWrite("written") = $Get(tWritten)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -248,13 +256,16 @@ ClassMethod Create(pIssuer As %String, pArgs As %DynamicObject, Output pHttpStat
 /// fresh read, so a field the caller did not send keeps the instance's value and the body is the
 /// complete set (AD-4). <var>pNewIssuer</var> is the issuer the description carries after the
 /// write.</p>
-/// <p><b>Caller contract:</b> as <method>Create</method>'s. A description the instance does not hold
-/// is an error status with <var>pHttpStatus</var> 404 and nothing sent.</p>
-ClassMethod Update(pIssuer As %String, pArgs As %DynamicObject, Output pNewIssuer As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations) As %Status
+/// <p><b>Caller contract:</b> as <method>Create</method>'s, with
+/// <var>pWrite</var><code>("fresh")</code> the fresh read the body was merged over. A description
+/// the instance does not hold is an error status with <var>pHttpStatus</var> 404 and nothing
+/// sent.</p>
+ClassMethod Update(pIssuer As %String, pArgs As %DynamicObject, Output pNewIssuer As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pWrite) As %Status
 {
     Set pNewIssuer = pIssuer
     Set pHttpStatus = 0
     Set pFault = ""
+    Kill pWrite
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -289,11 +300,12 @@ ClassMethod Update(pIssuer As %String, pArgs As %DynamicObject, Output pNewIssue
         Set tSC = ..Prohibited(tClass, pIssuer, tPayload, tDiff, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
         Do $ClassMethod(tClass, "DerivedFields", tPayload)
-        Set tSC = ..Send(tClass, pIssuer, tPayload, .pHttpStatus, .pFault)
+        Set tSC = ..Send(tClass, pIssuer, tPayload, .pHttpStatus, .pFault, .tWritten)
         If $$$ISERR(tSC) {
             Do ..PortViolations(pFault, .pViolations)
             Quit
         }
+        Set pWrite("sent") = tPayload, pWrite("fresh") = tFresh, pWrite("written") = $Get(tWritten)
         Set pNewIssuer = tPayload.%Get(..#IDARGUMENT)
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -411,18 +423,19 @@ ClassMethod Prohibited(pToolClass As %String, pIssuer As %String, pPayload As %D
 }
 
 /// <p>Issue tool <var>pToolClass</var>'s own write for <var>pIssuer</var> with <var>pPayload</var>,
-/// through <method>PortClass</method>.</p>
-ClassMethod Send(pToolClass As %String, pIssuer As %String, pPayload As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// through <method>PortClass</method>; <var>pWritten</var> is the port's answer.</p>
+ClassMethod Send(pToolClass As %String, pIssuer As %String, pPayload As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pWritten) As %Status [ Private ]
 {
     Kill tQuery
     Set tQuery($ClassMethod(pToolClass, "IdParam")) = pIssuer
-    Quit $ClassMethod(..PortClass(), "Invoke", $ClassMethod(pToolClass, "Endpoint"), $ClassMethod(pToolClass, "WriteType"), .tQuery, pPayload, .tAnswer, .pHttpStatus, .pFault)
+    Quit $ClassMethod(..PortClass(), "Invoke", $ClassMethod(pToolClass, "Endpoint"), $ClassMethod(pToolClass, "WriteType"), .tQuery, pPayload, .pWritten, .pHttpStatus, .pFault)
 }
 
 /// <p>Render an outcome: the violations as one 422 envelope, a refusal as its own envelope, and
 /// success as <code>{issuer}</code> at <var>pSuccess</var>, with <code>tokenRefused</code> when
-/// <var>pTokenReason</var> is not empty.</p>
-ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault As %DynamicObject, pSuccess As %Integer, pIssuer As %String, pTokenReason As %String) As %Status [ Private ]
+/// <var>pTokenReason</var> is not empty and <var>pReadBack</var> as <code>readBack</code> when
+/// there is one (AD-58).</p>
+ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault As %DynamicObject, pSuccess As %Integer, pIssuer As %String, pTokenReason As %String, pReadBack As %DynamicObject = "") As %Status [ Private ]
 {
     If $Get(pViolations) > 0 Quit ..RenderViolations(.pViolations)
     If $$$ISERR(pSC) {
@@ -434,6 +447,7 @@ ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault 
     Set tAnswer = {}
     Do tAnswer.%Set("issuer", pIssuer, "string")
     If pTokenReason '= "" Do tAnswer.%Set("tokenRefused", pTokenReason, "string")
+    If $IsObject(pReadBack) Do tAnswer.%Set("readBack", pReadBack)
     Quit ##class(OcuPilot.Api.Response).JSONStatus(pSuccess, tAnswer)
 }
 

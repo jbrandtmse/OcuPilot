@@ -25,7 +25,7 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 Parameter FRESH = "{""Enabled"":false,""Description"":""before"",""Resource"":""""}";
 
 /// <p>The keys the progress payload's <code>proposals[]</code> entry carries, comma-separated.</p>
-Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,unchanged,rationale,expectedImpact,reverse,state,closedReason,confirmedAt,auditWarning,destructive,consequence,privilege";
+Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,unchanged,rationale,expectedImpact,reverse,state,closedReason,confirmedAt,auditWarning,destructive,consequence,privilege,readBack";
 
 /// <p>The write tool whose generated field list the disclosure's masking is driven against
 /// (DW-1223). The probe descriptor owns no field-list entry, which is the fail-closed case and not
@@ -139,6 +139,26 @@ Method TestTheWireRowCarriesTheTripleTheDiffAndTheState()
     Do $$$AssertEquals(tRow.%Get("expectedImpact"), "what", "its expected impact")
     Do $$$AssertEquals(tRow.%Get("reverse"), "how", "and its reversal")
     Do $$$AssertNotEquals(tRow.%Get("expiresAt"), "", "and the row says when it stops being confirmable")
+}
+
+/// <p>AD-58: the wire row's <code>readBack</code> is <code>null</code> until the confirm records
+/// one, and then the recorded verdict and names, so a card reloaded after its confirm is never a
+/// silent success.</p>
+/// <p>Mutation (Rule 19): drop the <code>readBack</code> member from
+/// <method>OcuPilot.Kernel.State.Propose.WireRow</method> -- both legs go red.</p>
+Method TestTheWireRowCarriesTheRecordedReadBack()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tTurn), "a turn is seeded")
+    Do $$$AssertStatusOK(..Seed(..#PROBEUSER, tTurn, "after", .tKey), "and one proposal is minted on it")
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurn, ..#PROBEUSER, .tRows)
+    Do $$$AssertEquals(tRows.%Get(0).%GetTypeOf("readBack"), "null", "a row with no recorded read-back carries null")
+    Set tRecorded = ##class(OcuPilot.Kernel.Proposal.ReadBack).Verdict("differs", $ListBuild("Description"), $ListBuild("Password"))
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedRecordReadBack(tKey, tRecorded), "the read-back is recorded")
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurn, ..#PROBEUSER, .tRows)
+    Set tReadBack = tRows.%Get(0).%Get("readBack")
+    Do $$$AssertTrue($IsObject(tReadBack), "and the wire row then carries it")
+    If '$IsObject(tReadBack) Quit
+    Do $$$AssertEquals(tReadBack.%ToJSON(), tRecorded.%ToJSON(), "as the verdict and names that were recorded")
 }
 
 /// <p>AD-6: the stored body reaches the wire only as the disclosure's masked

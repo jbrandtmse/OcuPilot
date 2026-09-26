@@ -14,6 +14,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
 import { NavigationService, formatDeniedAction, ownIdSegment, screenForRoute, withQuery } from '../../core/navigation';
+import { savedLine } from '../../core/read-back';
 import { actionLabel } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
@@ -593,7 +594,7 @@ export class OAuthServerDescriptionFormPage {
     if (!this.store.saved()) return '';
     const refused = this.store.tokenRefused();
     if (refused !== '') return STRINGS.oauthServerTokenRefused.split('<reason>').join(refused);
-    return STRINGS.formSaved;
+    return savedLine(this.store.readBack());
   }
 
   protected get hasStatus(): boolean {

@@ -38,6 +38,7 @@
 import type { ApiService, JsonResult } from './api';
 import { CHANGE_ACTIONS, type ChangeAction, type ChangeBus } from './change-bus.ts';
 import { parseCitations, type Citation } from './citations.ts';
+import { readBackOf, type ReadBack } from './read-back.ts';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
 
@@ -89,6 +90,7 @@ const NO_OUTCOME: ProposalOutcome = {
   failedPair: '',
   auditMarked: false,
   continues: false,
+  readBack: null,
 };
 
 /** Storage key for the per-tab conversation id (Boundaries & Constraints). */
@@ -249,6 +251,12 @@ export interface TurnProposal {
    * Optional so a literal built before it existed still compiles.
    */
   readonly privilege?: TurnProposalPrivilege | null;
+  /**
+   * The confirmed write's read-back as the instance recorded it on the proposal row (AD-58), or
+   * `null` until one is recorded -- so a card reloaded after its confirm is never a silent success.
+   * Optional so a literal built before it existed still compiles.
+   */
+  readonly readBack?: ReadBack | null;
 }
 
 /**
@@ -358,6 +366,11 @@ export interface ProposalOutcome {
    * and a queued worker finishes it after the confirm answered. `false` on every other answer.
    */
   readonly continues: boolean;
+  /**
+   * The instance's read-back of the confirmed write (AD-58), off the confirm's own `readBack`;
+   * `null` on every answer that is not a confirmed write, and where the answer carried none.
+   */
+  readonly readBack: ReadBack | null;
 }
 
 /**
@@ -566,6 +579,7 @@ function parseProposal(value: unknown): TurnProposal | null {
     destructive: boolAt(row, 'destructive'),
     consequence: textAt(row, 'consequence'),
     privilege: parseProposalPrivilege(row['privilege']),
+    readBack: readBackOf(row['readBack']),
   };
 }
 
@@ -1172,6 +1186,7 @@ export class TurnStore {
         failedPair: '',
         auditMarked: boolAt(result.body, 'auditMarked'),
         continues: boolAt(result.body, 'continues'),
+        readBack: readBackOf(result.body?.['readBack']),
       };
       const target = this.targetOf(id);
       this.recordProposalState(id, outcome);
@@ -1192,6 +1207,7 @@ export class TurnStore {
           id: confirmedId(result.body, target.id),
           action: confirmedAction(result.body),
           proposalId: id,
+          readBack: outcome.readBack,
         });
       }
       return outcome;
@@ -1213,6 +1229,7 @@ export class TurnStore {
       failedPair: detail === null ? '' : textAt(detail, 'failedPair'),
       auditMarked: false,
       continues: false,
+      readBack: null,
     };
     if (outcome.state !== '') this.recordProposalState(id, outcome);
     // DW-1348: a refusal that left the row live closes nothing and so records no state, and until
@@ -1243,6 +1260,7 @@ export class TurnStore {
                   state: outcome.state,
                   closedReason: outcome.closedReason,
                   confirmedAt: outcome.confirmedAt,
+                  ...(outcome.readBack === null ? {} : { readBack: outcome.readBack }),
                 }
               : proposal
           )
