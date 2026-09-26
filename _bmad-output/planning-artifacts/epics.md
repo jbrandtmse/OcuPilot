@@ -748,7 +748,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner triage, 2026-09-24 (reliability), high priority.** Live turns on Claude Opus 5 failed intermittently - three of about ten in an hour - with "The turn stopped at provider": the connection broke within a second of the call, before any reply (`<READ>` in `%Net.HttpRequest`), and a transport failure is never retried. Separately, the panel reported a confirmed create as "was updated". Story 10.6 fixes both; it runs alone on slot B at Epic 12's next story boundary.
 
-**Owner plan, 2026-09-25 (voting week).** Epics 14 and 16 run in the voting week, where improvements are allowed, starting once the submission build is cut. Order: Story 16.1 (the try-it console), then Stories 16.8 and 16.9 (the secondary log viewers and the hub); then Story 14.1 (the copy-out draft), Stories 14.3 and 14.8 (defanging and the seeded-injection test), Story 16.3 (effective privileges) and Story 16.16 (the agent audit viewer); then the rest of Epic 16; then Story 14.5, with Stories 14.2, 14.4 and 14.6 last. The first two groups close the gaps a judge sees when comparing entries and show what only the agent does. `main` moves only at planned releases - after each of the first two groups and at the end of the week - each a pull request with green CI, a clean-clone check and a new package version, so a judge never installs a half-finished build. Story 14.7 is scratched: a user acting on a screen still types the target's name, while a destructive agent proposal takes the destructive bar, a destructive Confirm and the user's own press, without a typed name. FR-17 and Stories 5.10 and 7.2 are amended to match. Epics 18 to 22 stay after the contest.
+**Owner plan, 2026-09-25 (voting week).** Epics 14 and 16 run in the voting week, where improvements are allowed, starting once the submission build is cut. Order: Story 16.1 (the try-it console), then Stories 16.17 to 16.19 (the read-back line, Home's performance row and impact lines on removals, added from the contest survey the same evening), then Stories 16.8 and 16.9 (the secondary log viewers and the hub); then Story 14.1 (the copy-out draft), Stories 14.3 and 14.8 (defanging and the seeded-injection test), Story 16.3 (effective privileges) and Story 16.16 (the agent audit viewer); then the rest of Epic 16; then Story 14.5, with Stories 14.2, 14.4 and 14.6 last. The first two groups close the gaps a judge sees when comparing entries and show what only the agent does. `main` moves only at planned releases - after each of the first two groups and at the end of the week - each a pull request with green CI, a clean-clone check and a new package version, so a judge never installs a half-finished build. Story 14.7 is scratched: a user acting on a screen still types the target's name, while a destructive agent proposal takes the destructive bar, a destructive Confirm and the user's own press, without a typed name. FR-17 and Stories 5.10 and 7.2 are amended to match. Epics 18 to 22 stay after the contest.
 
 **Owner triage, 2026-09-25 (logo), high priority.** The header draws the reversed lockup, a white wordmark on a transparent cut-out whose anti-aliased edges fringe against the navy chrome. Story 15.10 draws the navy-wordmark lockup on a white rounded tile instead, as the demo landing page does, and amends DESIGN.md at origin. It runs alone on slot B, free since Epic 12 merged, and the submission cut waits for it.
 
@@ -888,7 +888,7 @@ A user makes the portal their own - own password, favorites, recents, menu searc
 
 ### Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19).
 
 **FRs covered:** FR-74, FR-76, FR-77, FR-78
 
@@ -6067,7 +6067,7 @@ So that the first thing I see looks finished.
 
 ## Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19).
 
 **Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
 
@@ -6410,6 +6410,76 @@ So that the ledger is readable without SQL.
 - **Given** any row
 - **When** it renders
 - **Then** secrets are absent, because they were excluded at write time by schema rather than redacted afterwards.
+
+### Story 16.17: The read-back line
+
+As a developer-administrator who just confirmed a change,
+I want the screen to say the instance now holds what was written,
+So that I can trust the change without re-opening the record.
+
+**Owner survey, 2026-09-25.** Meridian, Ops Studio and OpsDeck sell "verified" writes; OcuPilot already re-reads the target when the screen refreshes, and this story shows the comparison.
+
+**Acceptance Criteria:**
+
+- **Given** a confirmed write, from the agent's proposal or from a screen's own form or action
+- **When** the affected screen refreshes and marks the changed row
+- **Then** the row carries "Read back: matches" when every field the write sent reads back with the value sent, compared on the instance rather than in the browser.
+
+- **Given** a field that reads back with a different value, or a target that no longer reads at all
+- **When** the comparison runs
+- **Then** the row says "Read back: differs" and names the fields, or "Read back: not found", and the proposal card's closing line says the same, **never** a silent success.
+
+- **Given** a field the instance normalizes on save, such as a path's trailing slash or a list's order
+- **When** it is compared
+- **Then** the descriptor's field list declares how that field is compared, so a normalized value is not reported as a difference, and a secret field is reported as written without its value being read back.
+
+### Story 16.18: Home's performance row
+
+As a developer-administrator opening OcuPilot,
+I want the instance's pulse on the first screen,
+So that I can tell at a glance whether it is busy or struggling.
+
+**Owner survey, 2026-09-25.** IRIS-Operations-Center and LuminIRIS lead with live metrics; Home shows system information and no motion.
+
+**Acceptance Criteria:**
+
+- **Given** Home
+- **When** it renders
+- **Then** it shows a performance row - cache efficiency, global references per second, global updates per second and disk reads and writes per second - read from the instance's own dashboard metrics, each with its unit.
+
+- **Given** the auto-refresh framework
+- **When** Home stays open
+- **Then** the row refreshes on the framework's interval, and global references per second draws a small line of the last ten minutes that grows while the screen is open, starting empty rather than inventing history.
+
+- **Given** a caller who may not read the metrics
+- **When** Home renders
+- **Then** the row is absent rather than showing zeros, and the agent's Home context carries the same values when it is present.
+
+### Story 16.19: Impact lines on removals
+
+As a developer-administrator about to remove something,
+I want to be told what else depends on it,
+So that I do not break access I did not know about.
+
+**Owner survey, 2026-09-25.** FlightDeck's dry run and Meridian's home page both lead with impact; Story 11.8's privilege line is the sibling this extends.
+
+**Acceptance Criteria:**
+
+- **Given** a proposal or a screen dialog that deletes a role
+- **When** it renders
+- **Then** it carries an impact line naming how many users hold the role and how many web applications grant it, with the first few names.
+
+- **Given** removing a role from a user
+- **When** it renders
+- **Then** the impact line names the resources and permissions the user loses, net of what their other roles still grant.
+
+- **Given** deleting a resource
+- **When** it renders
+- **Then** the impact line names the roles that grant it and the web applications and databases it guards.
+
+- **Given** an impact that cannot be computed because the caller may not read a source
+- **When** the line renders
+- **Then** it says which part could not be checked rather than reporting no impact, and the counts are read fresh when the proposal is minted or the dialog opens.
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
