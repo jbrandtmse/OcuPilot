@@ -4,7 +4,7 @@ type: 'chore'
 created: '2026-09-26'
 status: 'done'
 baseline_revision: 'eb44aa3bfdc05ee2b5c30b096c4d341f4b53844f'
-baseline_commit: 'f30207594e8641fc86ccaa1db9ebcceee2ba9484'
+baseline_commit: 'eb44aa3bfdc05ee2b5c30b096c4d341f4b53844f'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -218,7 +218,7 @@ Each fix below is sentence replacement, not an appended erratum. Spine edits fol
 - [ ] DW-1435 (escalated to the owner, not applied): add to `_bmad/custom/skill-rules.md` Rule 22 (`:232`): when the merge brings ObjectScript, load the merged `src/` into a fresh or re-loaded throwaway before the suite. The merged tree's browser tier is CI's browser job.
 - [ ] DW-1478 (escalated to the owner, not applied): append to the `CLAUDE.md:121` bullet: "a planning document other suites cite by line (EXPERIENCE.md, epics.md) also needs `cd ui && npm run test:tools`".
 - [ ] DW-1650: in AD-42, after "is retried **once, on a new connection**, inside the same attempt and delay budget", say that a connect that never opened (`#6059`, no connection) is not retried; mark the Deferred row DW-1650 decided (10.6 merge gate). Applied with B6.
-- [ ] DW-1439 (conditional): if B2 measured a different answer than the documented 500 `<PROTECT>`, replace AD-21 `:313`'s sentence with the measured mechanism.
+- [x] DW-1439 (conditional; applied, B2 measured 403 with an empty body): if B2 measured a different answer than the documented 500 `<PROTECT>`, replace AD-21 `:313`'s sentence with the measured mechanism.
 
 **Acceptance Criteria:**
 

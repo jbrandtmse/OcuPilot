@@ -24,3 +24,9 @@
 2026-09-26T10:40:06Z	Story 23.1	committed	batch=B1 sha=32bbe297 code=3606e40f,0f7b0843 ci=pending run=36236454308 amendments=epics.md:409,437,452,454,759;prd.md:402,404
 2026-09-26T11:21:05Z	Story 23.1	ci_resolved	batch=B1 run=36236454308 head=32bbe297 result=success resolved_at=next_implement
 2026-09-26T11:21:06Z	Story 23.1	stage_spawned	stage=implement batch=B2+B3 spawn_at=2026-09-26T11:21:06Z model=opus agent_name=23-1-the-range-end-cleanup-implement-b2b3 cycle_iteration=2
+2026-09-26T12:20:39Z	Story 23.1	dev_complete	batch=B2+B3 spawn_at=2026-09-26T11:21:06Z model=opus build_sha=8eb4afc8 baseline_revision=eb44aa3b review_loop_iteration=0 followup_review_recommended=true deferred=1 harvested=DW-1693(wontfix-accepted) files=41 cycle_iteration=2 subagent_tokens=316932
+2026-09-26T12:20:39Z	Story 23.1	adr_verifications_complete	batch=B2+B3 result=none_required reason=no_AD_tooled_AC mutations=in_spec_verification model=claude-opus-5-5
+2026-09-26T12:20:39Z	Story 23.1	qa_complete	batch=B2+B3 result=skipped reason=pinning_tests_and_mutations_written_by_implement(Rule19) tests_added=DemoErrorSeed,BundleIdentity,+methods
+2026-09-26T12:20:39Z	Story 23.1	pushed	batch=B2+B3 head=8eb4afc8 ci=pending run=36241572452
+2026-09-26T12:20:39Z	Epic 23	spine_updated	ad=AD-21 reason=rule5 by=runner story=23-1-the-range-end-cleanup entries=DW-1439 lint=ok(preexisting_low_only)
+2026-09-26T12:20:40Z	Story 23.1	stage_spawned	stage=code-review batch=B2+B3 spawn_at=2026-09-26T12:20:40Z model=opus agent_name=23-1-the-range-end-cleanup-code-review-b2b3 cycle_iteration=2

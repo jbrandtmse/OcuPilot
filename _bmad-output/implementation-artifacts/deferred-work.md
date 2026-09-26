@@ -7337,3 +7337,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: B1 replaced the wording in Router, the checker and RouterFixture (DW-1298); the spine :710 uses the new rule; epics.md:993 is a closed story's AC in another epic's block
 - 2026-09-26T10:35:31Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=cr note=reopen_if=a plan or review cites epics.md:993's N-segment wording as the ordering rule
+
+### DW-1693: No check requires PreferencesWire's arming refusal or DemoErrorSeed's inline ERROR_DELETE refusal to stay in OnBeforeAllTests
+- source: _bmad-output/implementation-artifacts/spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: check_destructive_test_guard reads OnBeforeAllTests only for DESTRUCTIVE_TEST_RE classes; ci.test.mjs counts the declaration, not the refusal
+- 2026-09-26T12:20:28Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=harvest note=reopen_if=a test class declares an arming variable and its OnBeforeAllTests refusal is deleted with every gate green
