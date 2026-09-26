@@ -3792,4 +3792,13 @@ ClassMethod AuditEventViolationCodes() As %List
     Quit $ListBuild(..#AUDITEVENTPARTREQUIRED, ..#AUDITEVENTPARTLENGTH, ..#AUDITEVENTPARTSLASH, ..#AUDITEVENTPARTRESERVED, ..#AUDITEVENTDESCRIPTIONLENGTH, ..#AUDITEVENTEVENTNAMESHAPE, ..#AUDITEVENTSYSTEM, ..#AUDITEVENTUSER, ..#AUDITEVENTTAKEN, ..#AUDITEVENTABSENT)
 }
 
+/// <p>Machine code (AD-12, AD-39, AD-42): the provider ended the reply because the model's tool call
+/// could not be completed -- malformed, not one it was offered, or more calls than the request
+/// allowed -- mapped from the canonical
+/// <parameter>OcuPilot.Kernel.Provider.MessageAdapter.TOOLCALLFAILEDSTOPREASON</parameter>. A turn
+/// ends <code>failed</code> on it with no reply; produced by
+/// <class>OcuPilot.Kernel.Agent.Loop</class> on the <parameter>UNAVAILABLE</parameter> slug, with
+/// its sentence in <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method>.</p>
+Parameter PROVIDERTOOLCALLFAILED = "PROVIDER.TOOLCALLFAILED";
+
 }

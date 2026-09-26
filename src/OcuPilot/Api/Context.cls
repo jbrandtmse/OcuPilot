@@ -36,18 +36,18 @@ ClassMethod HandleRead() As %Status
 /// <p>Answer <code>PUT /agent/context {share: boolean}</code>: store the caller's choice and
 /// answer the same body <method>HandleRead</method> would. A body carrying anything else --
 /// missing, badly typed, or an extra member -- is refused 422
-/// <parameter>OcuPilot.Api.Error.AGENTCONTEXTSHARE</parameter> before anything is written.</p>
+/// <parameter>OcuPilot.Api.Error.AGENTCONTEXTSHARE</parameter> before anything is written. A body
+/// the server could not read or decode answers 500 <code>INTERNAL</code>.</p>
 ClassMethod HandleUpdate() As %Status
 {
     Set tSC = $$$OK
     Try {
         Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tRequestBody, .tStage)
         If $$$ISERR(tReadSC) && (tStage '= "parse") {
-            ; A read or decode fault is not a share violation, so it takes the bad-body refusal
-            ; rather than this route's 422. Since REASONAGENTBADBODY carries no stage, the two are
-            ; told apart by their codes -- AGENT.BADBODY against AGENT.CONTEXT.SHARE -- and the
-            ; raw status reaches the log through Fault.LogRaw (DW-24, DW-447).
-            Set tSC = ##class(OcuPilot.Api.Switches).RenderBadBody(tReadSC)
+            ; A body the server could not read or decode is the server's fault, not a share
+            ; violation: it answers 500 through the bad-body refusal rather than this route's 422,
+            ; and the raw status reaches the log only.
+            Set tSC = ##class(OcuPilot.Api.Switches).RenderBadBody(tReadSC, tStage)
             Quit
         }
         If $$$ISERR(tReadSC) {

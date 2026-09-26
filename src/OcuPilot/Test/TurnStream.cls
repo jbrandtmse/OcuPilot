@@ -3,7 +3,8 @@
 /// the reply; the turn ends with the reply and step text a plain run ends with; a stream broken at
 /// half fails the turn <code>PROVIDER.TRANSPORT</code> after one call with the step text cleared and
 /// no reply; the same write proposal is minted streamed and plain; a refusal fails the turn
-/// <code>PROVIDER.DECLINED</code> either way; and <class>OcuPilot.Kernel.Agent.StreamStep</class>
+/// <code>PROVIDER.DECLINED</code> either way, and a failed tool call
+/// <code>PROVIDER.TOOLCALLFAILED</code>; and <class>OcuPilot.Kernel.Agent.StreamStep</class>
 /// writes at most once per interval and never past the cap.</p>
 /// <p><b>It creates an IRIS user and a role and spawns turn jobs, so
 /// <method>OnBeforeAllTests</method> refuses to run unless both</b>
@@ -305,6 +306,32 @@ Method TestARefusalFailsTheTurnDeclinedEitherWay()
         Do $$$AssertEquals($Select($IsObject(tStep): tStep.status _ "|" _ tStep.text _ "|" _ tStep.code, 1: ""), "error||" _ tDeclined, tCase _ ": the model step is error, empty, carrying the code")
         Do $$$AssertEquals(..LedgerOutcome($Select(tCase = "streamed": tId, 1: tPlainId)), "error|" _ tDeclined, tCase _ ": and so is the provider call's ledger row")
     }
+}
+
+/// <p>A reply whose tool call the provider could not complete fails the turn
+/// <code>PROVIDER.TOOLCALLFAILED</code> with that code's sentence and no reply, on the model step
+/// and on the provider call's ledger row alike.</p>
+/// <p>mutation: remove the tool-call-failed branch from <method>OcuPilot.Kernel.Agent.Loop.Run</method>
+/// -- the turn completes with a reply and this goes red.</p>
+Method TestAFailedToolCallFailsTheTurnByItsOwnCode()
+{
+    Set tStop = $Parameter("OcuPilot.Kernel.Provider.MessageAdapter", "TOOLCALLFAILEDSTOPREASON")
+    Set tBody = "{""content"":[{""type"":""text"",""text"":""I can""}],""stop_reason"":""" _ tStop _ """,""usage"":{""input_tokens"":5,""output_tokens"":2}}"
+    Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERTOOLCALLFAILED
+    Do ##class(OcuPilot.Test.TurnProvider).Plain(..#PLAINTAG)
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#PLAINTAG, 0, tBody)
+    Do $ClassMethod(..#FIXTURE, "SetTag", ..PreparedDefinitionId, ..#PLAINTAG)
+    Set tId = ..Start()
+    If tId = "" Quit
+    Set tView = ..AwaitView(tId)
+    Do $$$AssertEquals($Select($IsObject(tView): tView.state, 1: ""), "failed", "the turn fails")
+    If '$IsObject(tView) Quit
+    Do $$$AssertEquals($Select($IsObject(tView.error): tView.error.code, 1: ""), tCode, "PROVIDER.TOOLCALLFAILED, not PROVIDER.DECLINED")
+    Do $$$AssertEquals($Select($IsObject(tView.error): tView.error.reason, 1: ""), "The model could not make a valid tool call. Try again, or rephrase the request.", "with the code's one sentence")
+    Do $$$AssertEquals(tView.%GetTypeOf("reply"), "null", "and no reply")
+    Set tStep = ..ModelStep(tView)
+    Do $$$AssertEquals($Select($IsObject(tStep): tStep.status _ "|" _ tStep.code, 1: ""), "error|" _ tCode, "the model step is error, carrying the code")
+    Do $$$AssertEquals(..LedgerOutcome(tId), "error|" _ tCode, "and so is the provider call's ledger row")
 }
 
 /// <p>The status and code of turn <var>pTurnKey</var>'s provider-call ledger rows, joined.</p>

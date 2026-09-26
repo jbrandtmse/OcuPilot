@@ -6,7 +6,8 @@
 /// makes no provider call at all. The same call is driven once with the version first, where it
 /// reaches the transport and consumes a queued answer, so the zero read afterwards is a
 /// measurement rather than a counter that was never live. The third answers 500 for a read fault
-/// on every definition and switch route that reads a body, and 400 for a malformed document.</p>
+/// on every definition, switch, context and password-change route that reads a body, and 400 for
+/// a malformed document.</p>
 /// <p>The handler's remaining error shapes name <class>OcuPilot.Kernel.State.Agent</class> by
 /// literal <code>##class</code> and are unreachable without a state-class seam; they are recorded
 /// in the ledger rather than worked around here.</p>
@@ -214,19 +215,23 @@ Method TestAnAsStoredTestWithNoVersionRefusesBeforeTheProviderIsCalled()
 }
 
 /// <p>A request body the server could not read is the server's fault, not the client's: a read
-/// fault answers 500 <code>INTERNAL</code> on every definition and switch route that reads a body,
-/// and a malformed document still answers 400 <code>AGENT.BADBODY</code>. Nothing is written.</p>
+/// fault answers 500 <code>INTERNAL</code> on every definition, switch, context and password-change
+/// route that reads a body, and a malformed document still answers 400 <code>AGENT.BADBODY</code>.
+/// Nothing is written.</p>
 /// <p>Driven through <method>OcuPilot.Test.Dispatch.InvokeHandlerWithRequest</method> with
 /// <class>OcuPilot.Test.BodyRequest</class> as <code>%request</code>, whose content read throws;
 /// the three routes that take an id are given a stored definition's.</p>
-/// <p>Mutation: drop <code>.tStage</code> at any of the six <code>ReadRequestBody</code> calls and
-/// recompile the package -> that route's read fault answers 400 and this goes red.</p>
+/// <p>Mutation: drop <code>.tStage</code> at any of the six <code>ReadRequestBody</code> calls, or
+/// the stage argument at <method>OcuPilot.Api.Context.HandleUpdate</method>'s
+/// <code>RenderBadBody</code> call, and recompile the package -> that route's read fault answers
+/// 400 and this goes red. Answer the 422 for every stage in
+/// <method>OcuPilot.Api.Account.RenderBodyRefusal</method> -> the password-change case goes red.</p>
 Method TestAnUnreadableBodyIsAServerFaultAndAMalformedOneIsTheClients()
 {
     Set tId = ..StubbedDefinition("BodyFault")
     If tId = "" Quit
     Set tBefore = ##class(OcuPilot.Test.AgentFixture).ProbeCount()
-    Set tCases = $ListBuild("OcuPilot.Api.Definitions|HandleCreate|", "OcuPilot.Api.Definitions|HandleUpdate|" _ tId, "OcuPilot.Api.Definitions|HandleStoreCredential|" _ tId, "OcuPilot.Api.Definitions|HandleTest|" _ tId, "OcuPilot.Api.Switches|HandleUpdate|", "OcuPilot.Api.Switches|HandleHoldCreate|")
+    Set tCases = $ListBuild("OcuPilot.Api.Definitions|HandleCreate|", "OcuPilot.Api.Definitions|HandleUpdate|" _ tId, "OcuPilot.Api.Definitions|HandleStoreCredential|" _ tId, "OcuPilot.Api.Definitions|HandleTest|" _ tId, "OcuPilot.Api.Switches|HandleUpdate|", "OcuPilot.Api.Switches|HandleHoldCreate|", "OcuPilot.Api.Context|HandleUpdate|", "OcuPilot.Api.Account|HandlePasswordChange|")
     For tI = 1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, tI)
         Set tFault = ##class(OcuPilot.Test.BodyRequest).%New()

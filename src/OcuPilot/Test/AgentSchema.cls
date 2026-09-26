@@ -189,8 +189,8 @@ Method TestBothIndexesAreDeclaredUnique()
 /// <p>DW-363 -- a security property the wire translation dropped drives <b>both</b> readers of
 /// <method>OcuPilot.Api.Definitions.SecurityFieldNames</method> conservatively: no verification is
 /// recorded, and the change is audited as a security change.</p>
-/// <p><b>Why it needs a probe.</b> All six properties
-/// <method>OcuPilot.Kernel.State.Agent.SecurityFields</method> names carry a
+/// <p><b>Why it needs a probe.</b> Every property
+/// <method>OcuPilot.Kernel.State.Agent.SecurityFields</method> names carries a
 /// <method>OcuPilot.Api.Definitions.Fields</method> entry, so <code>pComplete</code> is 1 on every
 /// call the shipped tree can make and both fallbacks are unreachable end-to-end.
 /// <class>OcuPilot.Test.DefinitionsFieldGapProbe</class> removes one mapping and nothing else, so
