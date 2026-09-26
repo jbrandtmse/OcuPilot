@@ -5397,6 +5397,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The spec's deferred: item named both sites ('at epics.md:5124 and again at :737'); the 2026-09-20 Spec Change Log entry applied the amendment at :5124 only. :737 reads 'the archive is proven by a dry-run build and a local install'. IPM 0.10.5 has no dry-run modifier on publish, so the surviving sentence is the wrong claim left at an origin a later plan stage reads.
 - 2026-09-20T10:10:48Z status=routed owner=range-end-cleanup by=cr note=one-line lead edit in epics.md, outside this reviewer's footprint; same amendment as :5124
 - 2026-09-26T10:39:25Z status=escalated owner=burndown by=adjudication note=:759 fixed c049204d; residual epics.md :5623 is in Story 13.3's block (another epic's) - orchestrator applies
+- 2026-09-26T18:31:50Z status=resolved-by:23-1-the-range-end-cleanup by=orchestrator note=residual at Story 13.3's block applied by the orchestrator post-merge: the publish command is no longer said to run in a dry-run form (IPM 0.10.5 has none); the package is exercised only as a local build and install
 
 ### DW-1339: ci-ipm-archive.sh's <Dependency> comparison arm matches nothing against IPM's own serialization, so a dependency could drift uncompared
 - source: spec-13-3-publish-the-package-to-the-community-registry.md / code-review | severity: low | fix-risk: med | footprint: in-story
@@ -5824,6 +5825,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: UX-DR22 and UX-DR44 plus Story 1.9's and Story 4.3's acceptance lines; Epic 1 and Epic 4 are merged, so the runner may not edit their story blocks (Rule 11)
 - 2026-09-21T02:40:44Z status=routed owner=range-end-cleanup by=cr note=same shape as DW-1338; a later plan stage reads epics.md and would implement the wording AD-50 falsified
 - 2026-09-26T10:39:25Z status=escalated owner=burndown by=adjudication note=:409/:437 fixed c049204d; residual epics.md :1368 (Story 1.9) and :2834 (4.3) are other epics' blocks - orchestrator
+- 2026-09-26T18:31:50Z status=resolved-by:23-1-the-range-end-cleanup by=orchestrator note=residuals in Stories 1.9 and 4.3 applied by the orchestrator post-merge: the side bar's open state and the panel width persist per user, on the instance (Story 15.5), not per browser
 
 ### DW-1414: AccountPreferences.fault() is one unscoped slot, so a background write's refusal is announced as the user's own gesture failing and Home speaks it twice
 - source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: med | fix-risk: high | footprint: in-story
@@ -7015,6 +7017,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: FR-24 and EXPERIENCE.md's Definition form row list a read-only flag; definition-form.page.ts renders none (only the store carries readOnly). Pre-existing; 11.10's flip to read/write makes the API the only way to a read-only definition.
 - 2026-09-24T17:07:50Z status=decision-pending owner=burndown by=cr note=product call: add the control (new string, row, tests) or accept Switches' enforced read-only as the UI path
+- 2026-09-26T18:31:50Z status=routed owner=14-5-the-per-user-read-only-toggle by=merge_gate note=orchestrator (recommended disposition, owner may veto): the Definition form's read-only control belongs with 14.5's read-only work
 
 ### DW-1622: A create whose body sends readOnly as a quoted string stores the read/write default without telling the caller
 - source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: low | fix-risk: med | footprint: in-epic

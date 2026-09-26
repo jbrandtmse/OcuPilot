@@ -1367,7 +1367,7 @@ So that I learn the instance's permission model from the portal instead of from 
 - **When** they render
 - **Then** the rail carries eight items in daily-use order with Agent co-pilot pinned bottom, is one Tab stop with Up/Down moving between items, marks the active area with `aria-current="page"` and a solid 3px `secondary-dark` left indicator, and shows no count badge
 - **And** a rail item opens its area's side bar without navigating, while clicking the active item collapses it; Home is the exception and navigates
-- **And** the side bar is fixed at 240px with no sash, grip or resize cursor, lists only screens that are built, remembers its open state per browser, and toggles with Ctrl/Cmd+B.
+- **And** the side bar is fixed at 240px with no sash, grip or resize cursor, lists only screens that are built, remembers its open state per user, on the instance, and toggles with Ctrl/Cmd+B.
 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
@@ -2833,7 +2833,7 @@ So that asking about a screen never means leaving it.
 
 - **Given** the panel's left edge
 - **When** the user drags it
-- **Then** it resizes between the minimum and the point where content reaches its 640px minimum, with a `col-resize` cursor and a grip that turns `restrained` at either stop - the minimum and the 640px content point [AMENDED 2026-09-17 — see the story change log] - and the width persists per browser
+- **Then** it resizes between the minimum and the point where content reaches its 640px minimum, with a `col-resize` cursor and a grip that turns `restrained` at either stop - the minimum and the 640px content point [AMENDED 2026-09-17 — see the story change log] - and the width persists per user, on the instance
 - **And** it is the **only** resizable edge in the shell - the side bar has no sash, grip or resize cursor
 - **And** the handle is `role="separator"`, `aria-orientation="vertical"`, focusable, with `aria-valuenow/min/max` in px, Left and Right arrows changing width by 16px, Escape releasing, and the new width announced through the value.
 
@@ -5644,7 +5644,7 @@ which is a public, irreversible act that ships whatever the build is at that mom
 - **Given** this story is held
 - **When** it is implemented, reviewed and reported
 - **Then** nothing in it contacts the public registry, no registry credential or token is read,
-  configured, requested or used, the publish command is exercised only in its dry-run or local form,
+  configured, requested or used, the package is exercised only as a local build and install,
   and the story is **not** reported done by having published. A gate that can only be closed by
   publishing is an unmet gate, to be escalated rather than closed - the release is the owner's alone.
 
