@@ -28,9 +28,9 @@ twice.
 
 ## Why OcuPilot is a fair test
 
-I am Director of Engineering at MedAllies, and I have been advocating BMAD for a while. At READY
-2026 in April I gave a session called *Agentic Engineering Live on Stage*, where we built a loan
-broker application on IRIS from a single product brief, live, in 45 minutes
+I have been advocating BMAD for a while. At READY 2026 in April I gave a session called *Agentic
+Engineering Live on Stage*, where we built a loan broker application on IRIS from a single product
+brief, live, in 45 minutes
 ([READY-2026-LoanDemo](https://openexchange.intersystems.com/package/READY-2026-LoanDemo)). The
 slide I kept coming back to said simply: **BMAD Method = Context Engineering.** I also maintain the
 [IRIS MCP Server Suite](https://openexchange.intersystems.com/package/IRIS-MCP-Server-Suite-2),

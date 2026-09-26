@@ -34,7 +34,7 @@ small chart, one screenshot of a real story spec and one of the deferred-work le
 
 ## 2. Who is telling this, and why OcuPilot is a fair test (about 200 words)
 
-- Joshua R. Brandt, Director, Engineering at MedAllies. Spoke at READY 2026 - *"Agentic Engineering
+- A BMAD advocate who spoke at READY 2026 - *"Agentic Engineering
   Live on Stage"*, Tuesday 28 April - and built a loan-broker application live from a single
   product brief ([READY-2026-LoanDemo](https://openexchange.intersystems.com/package/READY-2026-LoanDemo)).
   The slide that summarized the talk: **"BMAD Method = Context Engineering."**
