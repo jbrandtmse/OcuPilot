@@ -151,6 +151,10 @@ test actually exercises still runs the old code and stays green. Recompile the p
 least the mutated class and every descendant) before reading the result, and treat a mutation that
 did not redden as unproven until you have confirmed which copy ran.
 
+Run mutations on the throwaway only. A mutation can leave process state, such as an open capture,
+in a pooled Atelier worker; a later red on reverted code that says "Capture Already Active" is that
+leftover, not a regression.
+
 ### Three traps when reading results
 
 - **The two sources use different units.** The MCP test runner's per-method `duration` is in
