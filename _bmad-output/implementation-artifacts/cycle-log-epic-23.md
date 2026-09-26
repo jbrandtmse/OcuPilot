@@ -7,3 +7,5 @@
 2026-09-26T09:20:34Z	Epic 23	sprint_planning_complete	gate=PASS source=orchestrator_pre_reflected validate=valid model=claude-opus-5-5
 2026-09-26T09:20:34Z	Epic 23	retro_review_skipped	reason=assigned_skip_rule27_no_x0
 2026-09-26T09:22:33Z	Epic 23	epic_context_compiled	reason=initial model=claude-opus-5-5 agent=a366dfcfd6a67c7ec
+2026-09-26T09:22:41Z	Epic 23	throwaway_up	container=ocupilot-b-ci dir=/tmp/ocupilot-b-ci project=ocupilot-b-ci web=52777 super=1976 by=lead result=healthy
+2026-09-26T09:22:46Z	Story 23.1	stage_spawned	stage=plan spawn_at=2026-09-26T09:22:46Z model=opus agent_name=23-1-the-range-end-cleanup-plan-1 cycle_iteration=1
