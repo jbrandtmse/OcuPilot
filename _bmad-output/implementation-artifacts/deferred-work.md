@@ -3076,6 +3076,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T04:37:08Z status=decision-pending owner=burndown by=harvest note=Two published DESIGN.md rules both hold; recommended that the panel width the user drags wins and the side bar yields again when the drag needs the room
 - 2026-09-19T02:12:25Z status=routed owner=11-1-explain-this-screen by=merge_gate note=at the yielding viewport a narrowed panel traps the side bar and the panel cannot be widened back
 - 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: panel layout/rail behavior, not on the explain path; residual unchanged
+- 2026-09-26T04:49:15Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): panel layout/rail behavior, not floor-blocking, no remaining Epic 11 story
 
 ### DW-459: The first-login gate leaves the fresh-sign-in flag unspent after a failed read and retries on every later navigation or agent-status change with no bound, so a user mid-task can be redirected to the Definition form long after sign-in
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-story
@@ -3089,6 +3090,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T05:12:20Z status=decision-pending owner=burndown by=cr note=Product call: a rail click in full screen is ignored for side-bar areas, or exits full screen and shows the area
 - 2026-09-19T02:12:26Z status=routed owner=11-1-explain-this-screen by=merge_gate note=the rail stays live under a full-screen panel, so a click changes a side bar or route the panel covers
 - 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: panel layout/rail behavior, not on the explain path; residual unchanged
+- 2026-09-26T04:49:15Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): panel layout/rail behavior, not floor-blocking, no remaining Epic 11 story
 
 ### DW-1029: Switches.MergeBody treats a JSON object or array sent for any switch field, contextRowCap included, as absent and keeps the stored value instead of refusing
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
@@ -3763,6 +3765,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: 7.1 ships no read tool and adds no read criterion; the fix is a per-criterion description mechanism for derived read tools (Screen/Tool/Read.cls), moves with DW-1013
 - 2026-09-23T20:58:41Z owner=11-1-explain-this-screen by=burndown note=Epic 7 burn-down overflow: no Epic 7 story touches derived read-tool criterion descriptions; 11.1 is the first story whose agent reads a screen through its read tool and must describe its criteria truthfully (not floor-blocking, so Rule 27 charters no burn-down story)
 - 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: needs a descriptor-declared criterion-description mechanism (Read.cls, registry, mirror); not floor-blocking
+- 2026-09-26T04:49:16Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): per-criterion read-tool descriptions (Screen/Tool/Read.cls), not floor-blocking
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -3832,6 +3835,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: same mechanism as DW-1001 (descriptor-declared field meaning for derived read tools); moves with it
 - 2026-09-23T20:58:41Z owner=11-1-explain-this-screen by=burndown note=Epic 7 burn-down overflow: moves with DW-1001 (descriptor-declared field meaning for derived read tools)
 - 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: needs a descriptor-declared criterion-description mechanism (Read.cls, registry, mirror); not floor-blocking
+- 2026-09-26T04:49:16Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): per-criterion read-tool descriptions (Screen/Tool/Read.cls), not floor-blocking
 
 ### DW-1014: An empty AuthenticationMethods cell reads (none) on 7 of 15 stock services, which can read as no authentication where authentication does not apply
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
