@@ -39,8 +39,45 @@ instance. Sign in as `demo` with the password `ocupilot-demo`.
 - Everyone shares the one instance, and it resets to a clean state every hour, on the hour.
 - The `demo` account can administer all six areas. It cannot see or change the agent's own
   configuration, which holds the model key.
+- To see how OcuPilot treats a user with fewer privileges, sign in as `operator` with the password
+  `ocupilot-operator`: an operator who runs tasks and processes but holds no security privileges.
 
-<!-- SCREENSHOTS: the hero image and the gallery are added from the release build at the release cut. -->
+![The agent proposes enabling /csp/myapp: the proposal card beside the Web applications list shows the before-and-after comparison, the agent's rationale and expected impact, how to reverse the change, and the privilege it needs.](docs/images/02-proposal.png)
+
+<details>
+<summary><b>More screenshots</b></summary>
+
+**Asking about the screen you are on** - the agent reads the task schedule and history and explains
+what needs attention.
+
+![The agent explains three suspended tasks on the Task schedule screen.](docs/images/05-tasks-question.png)
+
+**Full editors** - here the SSL/TLS configuration editor, with its connection test.
+
+![The SSL/TLS configuration editor with its General, Verification, Credentials, Cryptographic settings and OCSP tabs.](docs/images/06-ssl-editor.png)
+
+**Fewer privileges, plainly explained** - signed in as `operator`, the agent declines a security
+change and says what would be needed; Home marks the screens this user may not open.
+
+![Signed in as operator, the agent explains it cannot enable /csp/myapp without %Admin_Secure:USE.](docs/images/08-operator-refusal.png)
+
+**Light and dark** - every screen in both themes.
+
+![Home in the dark theme, with suggested questions in the agent panel.](docs/images/07-dark-home.png)
+
+</details>
+
+### A 90-second tour
+
+1. Open **[ocupilot.org](https://ocupilot.org)**, choose **Open the demo** and sign in as `demo`.
+2. Open **Web applications and REST API explorer → Web applications** from the rail on the left.
+3. In the agent panel, ask: *"Enable /csp/myapp and give it the %Development resource."*
+4. Read the proposal card: what changes, why, the privilege it needs and how to undo it.
+5. Press **Confirm**. The list refreshes and marks `/csp/myapp` as Changed.
+6. Open **Logs → Audit database**, tick **Agent-marked events only** and press **Search**: your
+   change is there.
+7. Sign out, sign in as `operator` / `ocupilot-operator`, and ask for the same change: the agent
+   explains what that account would need instead.
 
 ## Why OcuPilot
 
@@ -50,7 +87,8 @@ instance. Sign in as `demo` with the password `ocupilot-demo`.
   **Explain this screen** prompt and suggested questions.
 - **Changes are proposals, never surprises.** A write appears as a card with the target, an
   instance-computed before-and-after diff, the privilege it needs and how to reverse it. The agent
-  cannot confirm its own proposal; Confirm is a request only your browser can make.
+  cannot confirm its own proposal: Confirm comes only from you, in your browser or a script signed
+  in as you.
 - **It acts as you, and it is on the record.** A confirmed change runs with your roles, never an
   elevated service account. Each one is recorded in the IRIS audit database as
   `OcuPilot/Security/AgentWrite`, and the screen marks the changed row.
@@ -192,18 +230,25 @@ Uninstalling (`zpm "uninstall ocupilot"`) removes what the installer created.
 
 ## A change, from question to audit record
 
-<!-- WALKTHROUGH: a screenshot is added at each step from the release build at the release cut. -->
-
 1. **Open Web applications** and ask the agent: *"Enable /csp/myapp and give it the %Development
    resource."* If you ask from another screen, the agent opens this one first.
 2. **The proposal card appears.** It names the target, shows the fields that change with their
    current and new values - computed on the instance from a fresh read, not by the model - the
    privilege the change needs, and how to reverse it.
+
+   ![The proposal card for /csp/myapp beside the list.](docs/images/02-proposal.png)
+
 3. **Press Confirm.** OcuPilot re-checks that you still hold the privilege, that the target has not
    changed since the proposal was made, and that the change is not prohibited, then runs it as you.
-4. **The screen refreshes** and marks `/csp/myapp` as Changed.
-5. **Open Logs → Audit database** and filter to agent writes: the change is there as an
-   `OcuPilot/Security/AgentWrite` event.
+4. **The screen refreshes** and marks `/csp/myapp` as Changed; the panel shows the change done and
+   audit-marked, confirmed by you.
+
+   ![The Web applications list with /csp/myapp enabled and marked Changed, and the confirmed proposal in the panel.](docs/images/03-changed.png)
+
+5. **Open Logs → Audit database**, tick **Agent-marked events only** and press **Search**: the
+   change is there as an `OcuPilot/Security/AgentWrite` event.
+
+   ![The audit database filtered to agent-marked events, with the AgentWrite event by demo at the top.](docs/images/04-audit.png)
 
 A proposal expires after ten minutes and can be confirmed once. It is refused if, in between, the
 target changes, you are no longer the user who asked, or the conversation, the agent definition or
@@ -219,6 +264,31 @@ the read-only state changes.
   one asks you for it on the proposal card, and it travels only with your Confirm.
 - **Where it goes:** to the model provider you configured, and nowhere else. A definition marked
   local sends nothing off your network.
+
+## From a script
+
+Everything the portal does goes through OcuPilot's REST API at `/api/ocupilot`, which accepts your
+IRIS user name and password, so the same work can be scripted. Reading a screen returns its rows:
+
+```bash
+curl -s -u demo:ocupilot-demo \
+  "https://demo.ocupilot.org/api/ocupilot/screens/webapp.list/read?maxRows=5"
+```
+
+Asking the agent takes three calls: start a conversation, send a message, and follow the turn until
+it completes. Any change it wants to make comes back as a proposal, which you confirm with your own
+credentials:
+
+```bash
+B=https://demo.ocupilot.org/api/ocupilot
+C=$(curl -s -u demo:ocupilot-demo -X POST -H 'Content-Type: application/json' -d '{}' $B/conversation | jq -r .conversationId)
+T=$(curl -s -u demo:ocupilot-demo -X POST -H 'Content-Type: application/json' \
+  -d "{\"conversationId\":\"$C\",\"message\":\"Which web applications are disabled?\"}" $B/turn | jq -r .turnId)
+curl -s -u demo:ocupilot-demo $B/turn/$T/progress | jq '{state, reply, proposals}'
+# once a proposal is shown:  curl -s -u demo:ocupilot-demo -X POST -H 'Content-Type: application/json' -d '{}' $B/proposal/<proposalId>/confirm
+```
+
+Against your own install, use `http://localhost:52774/api/ocupilot` and your own account.
 
 ## How it is built
 
@@ -286,6 +356,20 @@ that carry Community Opportunity status:
 - [DPI-I-574](https://ideas.intersystems.com/ideas/DPI-I-574), **AI analysis of error logs:** the
   agent explains any application error, `messages.log` line, alert or audit record in front of it
   and suggests what to do next.
+
+## Known limitations
+
+- **One instance at a time.** OcuPilot manages the instance it is installed on.
+- **Not every portal page yet.** Namespaces, database configuration, journals, mirroring and
+  Interoperability are still the classic portal's; the LDAP and Kerberos and the service editors
+  cover the common fields and link to the classic page for the rest.
+- **A model is needed for the agent.** Every screen works without one; the agent needs a key or a
+  local model. A turn that makes a change can take up to a minute, and a small local model may
+  propose changes that need correcting.
+- **IRIS 2026.2 or later.** OcuPilot relies on the admin API that version introduced.
+- **Auditing must be on for the audit record.** If it is switched off, the agent's changes still
+  need your Confirm, and the panel says plainly that they are not being marked.
+- **English only.**
 
 ## Roadmap
 
