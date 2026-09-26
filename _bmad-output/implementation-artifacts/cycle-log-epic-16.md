@@ -77,3 +77,6 @@
 2026-09-26T22:57:39Z	Story 16.18	ci_resolved	story=16.18 run=36275199146 result=failure resolved_at=next_implement head=f344e836 job=browser test=account-and-filter.browser-spec.mjs:237 first_red=16.18
 2026-09-26T22:57:39Z	Story 16.18	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI-browser-account-and-filter:237 scope_baseline=fa14b3ca
 2026-09-26T22:57:39Z	Story 16.18	stage_spawned	stage=implement spawn_at=2026-09-26T22:57:39Z model=opus agent_name=16-18-home-s-performance-row-implement-2 cycle_iteration=2
+2026-09-26T23:05:52Z	Story 16.18	dev_complete	spawn_at=2026-09-26T22:57:39Z model=opus build_sha=3bdd00a4 baseline_revision=b52210cf review_loop_iteration=0 followup_review_recommended=false deferred=0 files=3 cycle_iteration=2 note=test-only_rework ci=pending run=36278350240
+2026-09-26T23:05:52Z	Story 16.18	adr_verifications_complete	result=none_required note=rework_touched_tests_only(no_AD-constrained_code)
+2026-09-26T23:05:52Z	Story 16.18	stage_spawned	stage=code-review spawn_at=2026-09-26T23:05:52Z model=opus agent_name=16-18-home-s-performance-row-code-review-2 cycle_iteration=2
