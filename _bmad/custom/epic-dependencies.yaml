@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "4d04f32b73cf28f93275ddca84518fe5a57e4152125d7bc53dcfec504e8699f9"
+epics_md_hash: "9e6a56e593bd590c6f9f25d91589504a5a463b7afe521847c32fd4e510627407"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -129,7 +129,12 @@ epics:
         reason: >-
           Live Opus 5 turns failed 3 in ~10 on a transport <READ> within 1 s, never retried; and a confirmed create
           reported "was updated". Retry a model call once on a fresh connection; SocketTimeout 0; fix the create sentence.
-    paths_hint: ["src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Kernel/AgentRules.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Kernel/State/Agent.cls", "src/OcuPilot/Api/Definitions.cls", "src/OcuPilot/Api/Error.cls", "src/OcuPilot/Screen/Tool/Registry.cls", "src/OcuPilot/Test/OpenAI*.cls", "src/OcuPilot/Test/Gemini*.cls", "src/OcuPilot/Test/Compatible*.cls", "src/OcuPilot/Test/Adapter*.cls", "src/OcuPilot/Test/CatalogProbe*.cls", "src/OcuPilot/Test/AgentRules*.cls", "src/OcuPilot/Test/Provider*.cls", "src/OcuPilot/Test/Egress*.cls", "src/OcuPilot/Test/Anthropic*.cls", "src/OcuPilot/Test/AgentConnection*.cls", "ui/src/app/areas/agent/definition-form.*", "ui/src/app/shell/context-chip.ts", "ui/src/app/core/strings.ts", "ui/tools/strings.test.mjs", "ui/browser/definitions.browser-spec.mjs", "README.md", "ui/src/app/shell/panel*", "ui/src/app/shell/proposal-card*", "ui/src/app/core/toasts.ts"]
+      - story: "10-7-claude-opus-5-5-as-the-anthropic-default"
+        after: epic-8        # owner triage 2026-09-25, HIGH: first slot to free; the submission cut waits for it
+        reason: >-
+          Claude Opus 5.5 released; the demo runs on it. The catalog's Anthropic defaultModel becomes claude-opus-5-5
+          (suggestions keep the others); tests pinning the row and the README's provider table follow. No live key needed.
+    paths_hint: ["src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Kernel/AgentRules.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Kernel/State/Agent.cls", "src/OcuPilot/Api/Definitions.cls", "src/OcuPilot/Api/Error.cls", "src/OcuPilot/Screen/Tool/Registry.cls", "src/OcuPilot/Test/OpenAI*.cls", "src/OcuPilot/Test/Gemini*.cls", "src/OcuPilot/Test/Compatible*.cls", "src/OcuPilot/Test/Adapter*.cls", "src/OcuPilot/Test/CatalogProbe*.cls", "src/OcuPilot/Test/AgentRules*.cls", "src/OcuPilot/Test/Provider*.cls", "src/OcuPilot/Test/Egress*.cls", "src/OcuPilot/Test/Anthropic*.cls", "src/OcuPilot/Test/AgentConnection*.cls", "src/OcuPilot/Test/AgentWire*.cls", "src/OcuPilot/Kernel/Provider/Catalog.cls", "ui/src/app/app.routes.guard.wire.spec.ts", "ui/src/app/areas/agent/definition-form.*", "ui/src/app/shell/context-chip.ts", "ui/src/app/core/strings.ts", "ui/tools/strings.test.mjs", "ui/browser/definitions.browser-spec.mjs", "README.md", "ui/src/app/shell/panel*", "ui/src/app/shell/proposal-card*", "ui/src/app/core/toasts.ts"]
   epic-11:
     depends_on: [epic-4, epic-5, epic-6, epic-10]
     submodules: []

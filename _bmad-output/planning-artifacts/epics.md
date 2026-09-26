@@ -752,6 +752,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner triage, 2026-09-25 (logo), high priority.** The header draws the reversed lockup, a white wordmark on a transparent cut-out whose anti-aliased edges fringe against the navy chrome. Story 15.10 draws the navy-wordmark lockup on a white rounded tile instead, as the demo landing page does, and amends DESIGN.md at origin. It runs alone on slot B, free since Epic 12 merged, and the submission cut waits for it.
 
+**Owner triage, 2026-09-25 (model), high priority.** Anthropic has released Claude Opus 5.5, and the public demo already runs on it, verified by a connection test and a tool-calling turn. Story 10.7 makes `claude-opus-5-5` the default model of a new Anthropic definition, so a judge's fresh install starts on it. It runs on the first slot to free, and the submission cut waits for it.
+
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
 the archive is proven by a dry-run build and a local install, and a third criterion forbids touching the
@@ -840,7 +842,7 @@ A user opens the editors that carry the classic portal's whole field set - user,
 
 ### Epic 10: Run on any model, and harden the write path
 
-An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), a connection test that answers before the Web Gateway's timeout (10.5), and turns that survive a dropped connection (10.6). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
+An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), a connection test that answers before the Web Gateway's timeout (10.5), turns that survive a dropped connection (10.6), and Claude Opus 5.5 as the Anthropic default (10.7). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
 
 **FRs covered:** FR-25 (the three remaining families)
 
@@ -4893,7 +4895,7 @@ So that I can define the events my own code emits without going back to the clas
 
 ## Epic 10: Run on any model, and harden the write path
 
-An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), a connection test that answers before the Web Gateway's timeout (10.5), and turns that survive a dropped connection (10.6). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
+An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), a connection test that answers before the Web Gateway's timeout (10.5), turns that survive a dropped connection (10.6), and Claude Opus 5.5 as the Anthropic default (10.7). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
 
 ### Story 10.1: The message and tool-definition adapters
 
@@ -5065,6 +5067,29 @@ So that the agent reads as reliable on the first try.
 - **Given** a confirmed proposal from a tool that declares `created` - every create tool already does (inference: the fault is on the path from the confirm to the panel)
 - **When** the panel and the toast report the outcome
 - **Then** they read "<entity> was created", and a browser spec pins it end to end for a web-application create.
+
+### Story 10.7: Claude Opus 5.5 as the Anthropic default
+
+**Owner triage, 2026-09-25, high priority.** Runs on the first slot to free and merges before the submission cut.
+
+As an operator creating an Anthropic definition,
+I want it to start on Anthropic's current flagship model,
+So that a first install gets the strongest agent without editing the model name.
+
+**Acceptance Criteria:**
+
+- **Given** the provider catalog's Anthropic row
+- **When** a new Anthropic definition is created without a model
+- **Then** its model is `claude-opus-5-5`, and the row's model suggestions list `claude-opus-5-5` first while keeping `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5` and `claude-fable-5-1`
+- **And** a definition that already stores a model keeps it: nothing migrates stored rows.
+
+- **Given** Story 10.4's rule that no sampling parameter is sent to Anthropic
+- **When** a definition on `claude-opus-5-5` calls the model
+- **Then** it sends none, as it does for `claude-opus-5`; the owner verified a connection test and a tool-calling turn on `claude-opus-5-5` on the public demo on 2026-09-25, and this story needs no live key.
+
+- **Given** the tests and fixtures that pin the Anthropic row or its canonical default
+- **When** this story completes
+- **Then** they name `claude-opus-5-5`, test data that merely needs some model name may keep `claude-opus-5`, and the README's provider table states the new default.
 
 ---
 
