@@ -117,6 +117,36 @@ deferred: []
 - **AC3.** Given Story 10.4's rule, when a definition on `claude-opus-5-5` calls the model, then the body carries no `temperature`, `top_p` or `top_k`, exactly as on `claude-opus-5` (task 5).
 - **AC4.** Given the tests and fixtures that pin the Anthropic row or its canonical default, when this story completes, then they name `claude-opus-5-5`, every kept `claude-opus-5` has its reason in Design Notes, and README's provider table states the new default (tasks 2, 3, 7, 8).
 
+### Review Findings
+
+Code review 2026-09-26 (four layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 26 raw findings, 7 patch entries (all low), 0 decision-needed, 0 deferred, 15 rejected. AC1 to AC4 hold, AD-42, AD-17, AD-38 and AD-35 hold, and on the merged tree the no-sampling rule holds for `claude-opus-5-5` on the plain and the streamed path (`Anthropic.cls` unkeyed; AdapterSampling run 314, 7/7).
+
+- [x] [Review][Patch] Browser spec header counts "Three claims" above seven [ui/browser/definitions.browser-spec.mjs:5] (fix-risk low: one word)
+- [x] [Review][Patch] Census row cites `epic-dependencies.yaml:135`, the hit is `:7` [spec Design Notes, census table] (fix-risk low: one number)
+- [x] [Review][Patch] The streamed leg's doc comment names who wrote it and repeats the mutation recipe the Verification section holds [src/OcuPilot/Test/AdapterSampling.cls:248] (fix-risk low: comment only)
+- [x] [Review][Patch] `BodyFor`'s doc tags the class `ProviderStub` as `<method>` [src/OcuPilot/Test/AdapterSampling.cls:81] (fix-risk low: comment only)
+- [x] [Review][Patch] The 10.7 browser wait's `?.value !== ''` passes while the model field is absent [ui/browser/definitions.browser-spec.mjs:697] (fix-risk low: `?? ''`, spec 9/9 after)
+- [x] [Review][Patch] The explicit-model and install legs rely on `claude-opus-5` not being the catalog default without asserting it [src/OcuPilot/Test/DefinitionDefaults.cls:155,193] (fix-risk low: `AnthropicDefault` helper plus one precondition per leg; run 313, 5/5)
+- [x] [Review][Patch] DefinitionDefaults' header omits that its legs need the web application and the suite's HTTP credentials [src/OcuPilot/Test/DefinitionDefaults.cls:13] (fix-risk low: comment only)
+
+Rejected:
+
+- `false` The streamed leg never reads the sink, so it may not have streamed: `stream: true` is set only while `Streaming`, which needs the sink (`Anthropic.cls:90`); the three `StreamSinkProbe.Reset` calls are hygiene for a process-global probe.
+- `false` `GET /agent/providers` has no direct HTTP pin: the form fills model and datalist from that route alone, and the suggestion-swap mutation reddened the browser 10.7 leg.
+- `low` No streamed `claude-opus-5` leg: the adapter has no model branch, and the plain leg already compares both models side by side.
+- `low` The install leg repeats a production install `TestAStoredFlagSurvivesAnInstall` already runs: task 4 specifies a separate method (by-design).
+- `low` `TestAnOmittedAnthropicModelIsClaudeOpus55` overlaps `AgentWire:107`: task 4 specifies it; it adds the stored-model read (by-design).
+- `low` `StoredModel` copies `StoredReadOnly`'s shape: eight lines, no caller diverges.
+- `low` No test keeps the README row equal to the catalog: a new cross-file checker for a value that changes once per model release.
+- `low` The `PROVIDERS_BODY` stubs hold two suggestions, not five: task 8 specifies the two-item list (by-design).
+- `low` An explicit `"model":""` on create is stored empty: pre-existing since Story 10.2, and the vendor refuses it loudly at Test connection; choosing default-or-422 is a product rule outside this story.
+- `low` Auto Run Result counts (review 1 patch/5 reject, AdapterSampling 6, seven mutations) predate QA's leg: the fix is a spec edit; `## Verification` records run 308 and the eighth mutation.
+- `low` The Verification bullet for AC3's streamed path sits after AC4: spec edit, cosmetic.
+- `low` `baseline_revision` and `baseline_commit` hold one value: frontmatter written by two tools; spec edit.
+- `low` Code Map cites `Anthropic.cls:47-94`, now `:54-102` after the merge: spec edit; the file is read-only here.
+- `low` The triage-log patch and reject counts disagree with the Auto Run Result: spec edit, record only.
+- `low` The census calls the stubs mirrors of the row though they are a subset: spec prose, see the stubs row above.
+
 ## Spec Change Log
 
 - 2026-09-26, spec gate (runner): task 8 added. The owner's triage names the UI specs that mirror the Anthropic row, so the two `PROVIDERS_BODY` stubs follow it; the Never line and the pin census were amended to match.
@@ -162,7 +192,7 @@ deferred: []
 | `ui/src/app/app.routes.guard.wire.spec.ts:57-58` | (a) | change | the `PROVIDERS_BODY` Anthropic stub mirrors the providers response's Anthropic row; the owner's triage names these UI specs, so its `defaultModel` and first suggestion follow the row (lead amendment at the spec gate) |
 | `ui/src/app/areas/agent/definition-form.page.spec.ts:27-28` | (a) | change | the same stub, the same reason |
 | `ui/src/app/app.routes.guard.wire.spec.ts:232`, `ui/src/app/areas/agent/definition-form.page.spec.ts:195` | (b) | keep | a stored definition's model: a stored `claude-opus-5` staying put is exactly AC2's rule |
-| `_bmad/custom/epic-dependencies.yaml:135` | — | keep | orchestration prose, not a pin |
+| `_bmad/custom/epic-dependencies.yaml:7` | — | keep | orchestration prose, not a pin |
 
 `AdapterSampling:94` and `ProviderSampling:206` read `tRow.defaultModel` rather than spelling it, so they follow the row with no edit.
 
@@ -242,6 +272,12 @@ deferred: []
   - mutation: as written → red: AdapterSampling run 15, `TestClaudeOpus55IsSentNoSamplingParameter` on the two `claude-opus-5-5` legs only (the `claude-opus-5` legs green), plus `TestAnthropicIsSentNoSamplingParameterWhateverTheDefinitionHolds` and `TestEachRowsColumnAgreesWithWhatItsAdapterSends`, which store the row's default; reverted, `git diff --quiet` on `Anthropic.cls` exits 0, package recompiled, AdapterSampling green again.
 - **AC4.** Its executable pins are `AgentRules.cls:150` and `AgentWire.cls:107`, reddened by AC1's default mutation. The README row and the two `PROVIDERS_BODY` stubs are mirror data that no test reads; the form's observable default is the browser 10.7 leg.
   - mutation: `defaultModel` `claude-opus-5` in `Catalog.cls:66` → red: AgentRules run 7 (`TestTheShippedProviderRowsArePinned`), AgentWire run 8 (`TestASoundCreateIsReturnedByTheListImmediately`); the same applied mutation as AC1's first line, reverted byte-identical.
+- **AC3, the streamed path (QA).** `CallMessages` builds one body for a plain and a streamed call alike and a streamed call only adds `"stream": true`, so `TestClaudeOpus55IsSentNoSamplingParameter` -- which never streams -- cannot see a rule keyed off `Streaming`. `AdapterSampling.BodyFor` gained a trailing `pStreamed` flag: when set it queues the port's call with a `StreamSinkProbe` (`OcuPilot.Test.StreamCase.Sse` for the transport script), driving the same `claude-opus-5-5` definition through an actually-streamed call. `TestClaudeOpus55StreamedIsSentNoSamplingParameter` asserts the recorded request body still carries `stream: true` and no `temperature`, `top_p` or `top_k`, holding no temperature or 0.7.
+  - mutation: in `Anthropic.CallMessages`, `If ..Streaming && ($Get(pValues("model"))="claude-opus-5-5") Do tBody.%Set("temperature", 1, "number")` → red: AdapterSampling run 307, `TestClaudeOpus55StreamedIsSentNoSamplingParameter` on both held-temperature legs (`TestClaudeOpus55IsSentNoSamplingParameter` stayed green, confirming it is the streamed leg alone catching this); reverted, `git diff --quiet -- src/OcuPilot/Kernel/Provider/Anthropic.cls` exits 0, package recompiled on `ocupilot-b-ci`, AdapterSampling green again at run 308 (7/7).
+
+**QA test files (changed).** `src/OcuPilot/Test/AdapterSampling.cls` (QA) -- `BodyFor` gained `pStreamed`, and `TestClaudeOpus55StreamedIsSentNoSamplingParameter` closes the AC3 streamed-path gap above.
+
+**Review pass (2026-09-26).** Seven low patches applied on `ocupilot-b-ci`: DefinitionDefaults run 313 (5/5), AdapterSampling run 314 (7/7), both confirmed in `%UnitTest_Result`; `definitions.browser-spec.mjs` 9/9; `npm run test:tools` 1468/1468; `check-objectscript.py` and `lint-docs.sh` clean; `git diff --quiet` on `Anthropic.cls` exits 0. No pinning test changed, so no `mutation:` line moved.
 
 ## Auto Run Result
 

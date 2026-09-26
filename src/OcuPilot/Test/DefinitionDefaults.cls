@@ -10,7 +10,9 @@
 /// reset the same way, so no kill switch or enforced read-only decides the verdict.</p>
 /// <p><b>It runs OcuPilot's production install, so it runs on a throwaway container only</b>
 /// (<file>scripts/ci-throwaway.sh</file>), and <method>OnBeforeAllTests</method> refuses anywhere
-/// <parameter>ARMINGVARIABLE</parameter> does not arm it.</p>
+/// <parameter>ARMINGVARIABLE</parameter> does not arm it. Its create, update and read legs go over
+/// HTTP through <method>OcuPilot.Test.AgentWire.Call</method>, so they need OcuPilot's web
+/// application and the suite's test credentials as well.</p>
 Class OcuPilot.Test.DefinitionDefaults Extends %UnitTest.TestCase
 {
 
@@ -74,6 +76,14 @@ ClassMethod StoredModel(pId As %String) As %String
     Set tValue = tRow.Model
     Set tRow = ""
     Quit tValue
+}
+
+/// <p>The Anthropic row's <code>defaultModel</code>, so a leg that keeps another model can assert
+/// that keeping it is observable.</p>
+ClassMethod AnthropicDefault() As %String
+{
+    If '##class(OcuPilot.Kernel.Provider.Catalog).Row("anthropic", .tRow) Quit ""
+    Quit tRow.defaultModel
 }
 
 /// <p>A new definition is read/write: <method>%New</method> starts at 0, a row created without
@@ -142,6 +152,8 @@ Method TestAnOmittedAnthropicModelIsClaudeOpus55()
 /// and a read answers it.</p>
 Method TestAnExplicitModelIsKeptThroughACreateAndAnUpdate()
 {
+    Set tDefault = ..AnthropicDefault()
+    Do $$$AssertTrue((tDefault '= "") && (tDefault '= "claude-opus-5"), "the kept model is not the catalog default (" _ tDefault _ "), so keeping it is observable")
     Set tSC = ##class(OcuPilot.Test.AgentWire).Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Kept"",""provider"":""anthropic"",""model"":""claude-opus-5"",""credType"":""env"",""envVarName"":""ANTHROPIC_API_KEY""}", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the create request completes")
     Do $$$AssertEquals(tStatus, 201, "and answers 201 Created: " _ $Get(tBody))
@@ -178,6 +190,8 @@ Method TestAStoredModelSurvivesAnInstallAndEveryMigration()
     Set tId = tRow.%Id()
     Set tRow = ""
     Do $$$AssertEquals(..StoredModel(tId), "claude-opus-5", "the probe stores the former default")
+    Set tDefault = ..AnthropicDefault()
+    Do $$$AssertTrue((tDefault '= "") && (tDefault '= "claude-opus-5"), "which is not the catalog default (" _ tDefault _ "), so a rewrite to it is observable")
 
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install(""), "the production install runs")
     Do $$$AssertEquals(..StoredModel(tId), "claude-opus-5", "the stored model is unchanged by the install")

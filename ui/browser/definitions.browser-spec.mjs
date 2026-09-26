@@ -2,7 +2,7 @@
  * The Definition form and the Definitions list in a real browser, against the throwaway instance
  * (Story 3.5's Integration AC).
  *
- * Three claims, each asserted on rendered DOM and on the real URL rather than on store state:
+ * Seven claims, each asserted on rendered DOM and on the real URL rather than on store state:
  *
  * 1. **A definition is created through the form**, its saved sentence appears in the sticky bar,
  *    and the row appears in the list -- the whole path from a typed name to a row, through the
@@ -694,7 +694,7 @@ test('Story 10.7: a new definition opens on claude-opus-5-5, first of the sugges
     // The providers read fills the model field and the datalist; wait for both, not for a guess.
     await page.waitForFunction(
       () =>
-        document.querySelector('#ocu-definition-model')?.value !== '' &&
+        (document.querySelector('#ocu-definition-model')?.value ?? '') !== '' &&
         document.querySelectorAll('#ocu-definition-models option').length > 0,
       { timeout: config.navigationTimeoutMs }
     );
