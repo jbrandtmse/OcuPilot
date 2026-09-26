@@ -382,6 +382,18 @@ Rejected:
 - 2026-09-26, lead, after B4+B8's green CI (run 36250263918): B6 runs next (now nine items with DW-1650 and DW-1699). Story 11.11 (branch `OCU-1-epic11`, slot A) also edits `Kernel/Agent/Loop.cls` and appends to `Api/Error.cls`; B6 reads its pushed version first and stays off its hunks. B7's read-tool items (DW-1001, DW-1013, DW-1236) wait for 11.11 to merge, since 11.11 rewrites `Screen/Tool/Read.cls`, `Screen/Registry.cls` and `screen-mirror.mjs`.
 - 2026-09-26, lead, re-sequence: Epic 16 runs on slot A from now on (`Screen/**`, `Port/**`, `Kernel/Proposal/**`, `shell/**`, `core/**`, the logs, Home and OpenAPI-viewer areas). Batches run B2, B3, B4, B8 first; B5, B6 and B7, which touch those paths, run last against Epic 16's pushed version or are re-owned to the Epic 16 story that owns the code.
 
+### Batch results (lead)
+
+| Batch | Entries | Code commits | CI run on the pushed head | Result |
+| --- | --- | --- | --- | --- |
+| L | DW-456, DW-1179, DW-1319, DW-1688 (planning half), DW-1338 and DW-1413 (partial), DW-1691, DW-1439, DW-1650, DW-1701 | `c049204d`, `0f7b0843`, later spine commits | rode with each batch | applied; four instruction-file entries escalated to the owner |
+| B1 | 17 | `3606e40f`, `0f7b0843` | 36236454308 on `32bbe297` | success |
+| B2+B3 | 16 + DW-1689 | `8eb4afc8`, `d29387c3` | 36242870954 on `b81ec899` | success |
+| B4+B8 | 12 | `e026c64c`, `f9dc5551` | 36250263918 on `0da7618e` | success |
+| B6 | 8 + DW-1699 | `e27ff3c4`, `ae40f16a` (+ integrate-forward `62f506ac`) | 36256669284 on `677986fd` | success |
+| B5 | 9 | -- | -- | not started: stopped at the B6 boundary (release 1.0.1 window passed); entries stay owned by `range-end-cleanup` for re-charter |
+| B7 | 12 + DW-1706 | -- | -- | not started: as B5; its read-tool items now sit on Story 11.11's merged `Screen/Tool/Read.cls` |
+
 ## Review Triage Log
 
 ### 2026-09-26 — Review pass (Batch B1)
