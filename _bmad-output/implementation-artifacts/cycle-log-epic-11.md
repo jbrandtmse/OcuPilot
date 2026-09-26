@@ -189,3 +189,10 @@ TAB-separated, append-only: `<UTC> TAB <Story <id> | Epic 11> TAB <stage> TAB <m
 2026-09-26T06:55:10Z	Epic 11	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@00d56f33 merge_sha=2755e95a conflicts=sprint-status.yaml(last_updated_only) files=docs,README,CLAUDE.md,epics.md,ledger,dependencies ci=success run=36220629414
 2026-09-26T06:55:10Z	Epic 11	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@61a7fd1c(Story_15.10) merge_sha=d60b740f conflicts=none local=strings.test_25/25,mirror_up_to_date,build_1.84MB,tools_1468,components_1451 ci=success run=36223156503 note=15.10_runner's_screenshots_hit_ocupilot-ci_03:30-04:20Z;no_result_of_ours_in_that_window_was_odd(11.4_implement_browser_green;lead_smoke_re-run_04:4x_green)
 2026-09-26T06:55:10Z	Epic 11	epic_runner_complete	stories_completed=6(11.7,11.8,11.1,11.2,11.3,11.4) ready_for_merge=true code_head=d60b740f ci=success run=36223156503 decisions_for_user=DW-1621,DW-1661,DW-1669 model_tier_checkpoint=orchestrator_side throwaway=ocupilot-ci_left_running(not_ours_to_tear_down)
+2026-09-26T11:39:52Z	Epic 11	lead_model_gate	model=claude-opus-5-5[1m] action=proceed role=epic-runner story=11.11
+2026-09-26T11:39:52Z	Epic 11	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-09-26T11:39:52Z	Epic 11	telemetry_gate	pending=0 action=none note=Epic6_entry_matched_on_text_but_result=hold
+2026-09-26T11:39:52Z	Epic 11	epic_branch_checked_out	repos=. head=f231a357 worktree=.worktrees/epic-11 note=runner_mode_assert_ok
+2026-09-26T11:39:52Z	Epic 11	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@28775f3e merge_sha=5c731a33 conflicts=none files=12(docs/images,README,epics.md_16.21/16.22,parallel_bookkeeping;docs_only) ci=rides_on_next_code_push(DW-1435)
+2026-09-26T11:39:52Z	Epic 11	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=56 status=final read=in_full(Rule_26)
+2026-09-26T11:39:52Z	Epic 11	ledger_load	total=1149 open=3 routed=230 escalated=0 decision_pending=1 terminal=915 burndown=1 reowned_none=0 owner_unknown=0 inbox_11-11=none note=epic_start_gates_not_repeated(orchestrator)
