@@ -7034,11 +7034,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Rules.CustomizationViolations admits a create's role only through the RoleList read (StoredRoles of no fresh read is empty), while Effective() gives every other create field Defaults(); run 807 measured that admitting Defaults() roles on a create lets the two-pair principal create (vendor PUT 201).
 - 2026-09-25T16:49:33Z status=decision-pending owner=burndown by=cr note=recommend: admit Defaults() roles on a create; QA's Wire create test then flips; spec line 73 reads stored values only
+- 2026-09-26T01:23:58Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the Epic 12 merge (orchestrator, recommended disposition): a create accepts the default roles it pre-ticks (the vendor answers 201, reviewer-confirmed); fix in the range-end cleanup
 
 ### DW-1663: The authorization server's privileged customization-role effect is name-only, so adding %Manager, %Operator or %SecurityAdministrator (which carry %Admin_* resources) is not minted destructive
 - source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: Prohibited.AddsPrivilegedCustomizationRole uses IsPrivilegedRole (%All or an %Admin_ name); IRIS ships no %Admin_ role; the web-application arm Q4 cites uses RoleEscalates; the create defaults include %Manager. Fix needs a Security.Roles read the two-pair principal may be refused, plus a server-computed privileged mark for the client line.
 - 2026-09-25T16:49:33Z status=escalated owner=burndown by=cr note=Q4 as worded is met; the lead decides whether its intent is RoleEscalates
+- 2026-09-26T01:23:58Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the Epic 12 merge (orchestrator, recommended disposition): flag a customization role destructive by the role's actual privileges (a role read), not by name; post-release, high fix-risk
 
 ### DW-1664: A failed authorization server form read draws an editable create with the classic defaults and an enabled Save
 - source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
