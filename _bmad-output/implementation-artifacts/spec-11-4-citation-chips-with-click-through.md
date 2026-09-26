@@ -264,6 +264,8 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-09-26, lead spec gate: the proposed AD-11 paragraph is written into the spine (Rule 20). This spec was planned before Epic 12 merged into the branch (`521e3f72`); Epic 12's branch is gone, so its "stay off Epic 12's hunks" constraints are lifted, but every Code Map line reference in `panel.ts`, `turn.ts`, `strings.ts` and EXPERIENCE.md may have moved (the `taskCreate` citation is now `:613`) and must be re-read before editing. The EXPERIENCE.md restatements at the former `:248` and `:584` are accepted as Rule 5 tier-1 apply-and-report edits.
+
 ## Review Triage Log
 
 ## Design Notes
