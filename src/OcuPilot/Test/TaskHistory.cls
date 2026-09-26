@@ -110,7 +110,7 @@ ClassMethod DemoHistoryRow(Output pRows As %DynamicArray, Output pWaited As %Num
     Set tPoll = ..#POLLSECONDS
     Set tStart = $ZHorolog
     For {
-        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/tasks.history/read?maxRows=1000&search=OcuPilotDemo", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders)
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/tasks.history/read?maxRows=1000&search=OcuPilotDemo&since=", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders)
         If $$$ISOK(tSC) && (tStatus = 200) {
             Set tAnswer = ##class(%DynamicObject).%FromJSON($ZConvert(tBody, "I", "UTF8"))
             If $IsObject(tAnswer) && $IsObject(tAnswer.rows) {
@@ -193,7 +193,7 @@ Method TestRouteEntityTypeResolvesThroughTheParent()
 /// <code>DescendingTaskHistoryFilter("", 0)</code> rows in the same order, up to the cap.</p>
 Method TestAllTasksReadsTheVendorsHistory()
 {
-    Set tSC = ..Read("tasks.history", "maxRows=1000", .tStatus, .tAnswer)
+    Set tSC = ..Read("tasks.history", "maxRows=1000&since=", .tStatus, .tAnswer)
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 200, "the read answers")
     If (tStatus '= 200) || '$IsObject(tAnswer) Quit
@@ -262,7 +262,7 @@ Method TestSearchReachesTheVendorAsFilterAndFindsTheDemoTasksFailedRun()
 /// the cap, as the vendor's own <code>DescendingTaskHistoryFilter("", 1)</code>.</p>
 Method TestUserOnlyMatchesTheVendorsUserOnlyQuery()
 {
-    Set tSC = ..Read("tasks.history", "maxRows=1000&userOnly=1", .tStatus, .tAnswer)
+    Set tSC = ..Read("tasks.history", "maxRows=1000&userOnly=1&since=", .tStatus, .tAnswer)
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 200, "the read answers")
     If (tStatus '= 200) || '$IsObject(tAnswer) Quit
@@ -352,7 +352,7 @@ Method TestNoTaskIdReadsAsAllTasks()
     Set tSC = ..Read("tasks.taskhistory", "maxRows=1000", .tStatus, .tAnswer)
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 200, "the read answers")
-    Set tSC2 = ..Read("tasks.history", "maxRows=1000", .tStatus2, .tAnswer2)
+    Set tSC2 = ..Read("tasks.history", "maxRows=1000&since=", .tStatus2, .tAnswer2)
     Do $$$AssertStatusOK(tSC2, "the all-tasks request completes")
     Do $$$AssertEquals(tStatus2, 200, "and answers")
     If (tStatus '= 200) || (tStatus2 '= 200) || '$IsObject(tAnswer) || '$IsObject(tAnswer2) Quit
@@ -363,7 +363,7 @@ Method TestNoTaskIdReadsAsAllTasks()
 Method TestEachRouteIsCutAtACapOfOne()
 {
     For tTool = "tasks.history", "tasks.taskhistory" {
-        Set tSC = ..Read(tTool, "maxRows=1", .tStatus, .tAnswer)
+        Set tSC = ..Read(tTool, "maxRows=1" _ $Select(tTool = "tasks.history": "&since=", 1: ""), .tStatus, .tAnswer)
         Do $$$AssertStatusOK(tSC, tTool _ ": the capped request completes")
         Do $$$AssertEquals(tStatus, 200, tTool _ ": and answers")
         If (tStatus '= 200) || '$IsObject(tAnswer) Continue
@@ -373,7 +373,8 @@ Method TestEachRouteIsCutAtACapOfOne()
 }
 
 /// <p>The Integration AC -- the read tool over each screen, at a context cap of two, answers only
-/// <code>fields</code>, <code>rows</code> and <code>truncated</code>: the route's fields and the
+/// <code>fields</code>, <code>rows</code>, <code>truncated</code> and the <code>criteria</code> it
+/// applied (both over the whole history, <code>since</code> empty): the route's fields and the
 /// first two of the route's rows in the declared default order, Task history read with
 /// <code>search</code> "OcuPilotDemo" and History (one task) with the demo <code>taskId</code>; and
 /// the input schema offers <code>search</code>, <code>userOnly</code> (an enum of
@@ -410,6 +411,9 @@ Method TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap()
         Set tCap = 2
         Set tArgs = {}
         Do tArgs.%Set(tCriterion, tValue, "string")
+        ; The whole history, on both callers: the demo task's run may be older than the seven-day
+        ; default window on a long-lived instance.
+        If tDescriptor = ..#HISTORY Do tArgs.%Set("since", "", "string")
 
         Do ##class(OcuPilot.Kernel.Scope).Set("HSCUSTOM")
         Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(tDescriptor, tArgs, tCap, .tView)
@@ -418,7 +422,7 @@ Method TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap()
         If $$$ISERR(tSC) || '$IsObject(tView) Continue
         Do $$$AssertTrue(tView.rows.%Size() > 0, tTool _ ": and answers at least one of the demo task's rows")
 
-        Set tSC = ..Read($List(tCase, 2), "maxRows=1000&" _ tCriterion _ "=" _ tValue, .tStatus, .tRoute)
+        Set tSC = ..Read($List(tCase, 2), "maxRows=1000&" _ tCriterion _ "=" _ tValue _ $Select(tDescriptor = ..#HISTORY: "&since=", 1: ""), .tStatus, .tRoute)
         Do $$$AssertEquals(tStatus, 200, tTool _ ": the route answers the same read")
         If (tStatus '= 200) || '$IsObject(tRoute) Continue
         Set tOrdered = ##class(OcuPilot.Screen.Read).ApplyView(tRoute.rows, $ClassMethod(tDescriptor, "Read"))
@@ -432,7 +436,7 @@ Method TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap()
         While tIterator.%GetNext(.tKey, .tValue2) {
             Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
         }
-        Do $$$AssertEquals(tKeys, "fields,rows,truncated,rowsAvailable", tTool _ ": and nothing else")
+        Do $$$AssertEquals(tKeys, "fields,rows,truncated,rowsAvailable,criteria", tTool _ ": and nothing else but the criteria it applied")
     }
 }
 

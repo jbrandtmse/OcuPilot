@@ -36,6 +36,13 @@ Property EntityId As %String(MAXLEN = "");
 /// reads it as <code>""</code>, which is exactly "this directive named no filter".</p>
 Property Criterion As %String(MAXLEN = 64);
 
+/// <p>The criteria values the arriving screen's read runs with (Story 11.11, AD-11), as the JSON of
+/// an object keyed by that screen's declared criteria, or <code>""</code> for none. Validated
+/// against the target's read before the directive was requested.</p>
+/// <p><b>No <code>SCHEMAVERSION</code> move</b> (Consistency Conventions): every pre-existing row
+/// reads it as <code>""</code>, which is exactly "this directive carried no criteria".</p>
+Property Criteria As %String(MAXLEN = 16000);
+
 Property RequestedAt As %String(MAXLEN = 32);
 
 /// <p><code>""</code> while unsettled; <code>opened</code>, <code>refused</code> or
@@ -51,12 +58,12 @@ Property SettledAt As %String(MAXLEN = 32);
 Index NavTurnKeyIdx On TurnKey [ Unique ];
 
 /// <p>Request a directive for turn <var>pKey</var>: open <var>pRoute</var>, optionally selecting
-/// <var>pEntityId</var> and optionally applying the declared flag criterion
-/// <var>pCriterion</var>. Refuses when <var>pSeq</var> names no committed <code>announce</code> step
+/// <var>pEntityId</var>, optionally applying the declared flag criterion <var>pCriterion</var> and
+/// the criteria object <var>pCriteria</var>. Refuses when <var>pSeq</var> names no committed <code>announce</code> step
 /// of this turn (AD-11 rule 3) -- the ordering guarantee that makes a directive impossible to
 /// observe before its announcement is in the transcript. A turn's second navigation reuses the row
 /// (see the class header); its outcome, code and settled time are cleared.</p>
-ClassMethod GuardedRequest(pKey As %String, pSeq As %Integer, pRoute As %String, pEntityId As %String, pCriterion As %String = "") As %Status
+ClassMethod GuardedRequest(pKey As %String, pSeq As %Integer, pRoute As %String, pEntityId As %String, pCriterion As %String = "", pCriteria As %DynamicObject = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -79,6 +86,7 @@ ClassMethod GuardedRequest(pKey As %String, pSeq As %Integer, pRoute As %String,
         Set tRow.Route = pRoute
         Set tRow.EntityId = pEntityId
         Set tRow.Criterion = pCriterion
+        Set tRow.Criteria = $Select($IsObject(pCriteria) && pCriteria.%Size(): pCriteria.%ToJSON(), 1: "")
         Set tRow.RequestedAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
         Set tRow.Outcome = ""
         Set tRow.Code = ""
@@ -92,15 +100,17 @@ ClassMethod GuardedRequest(pKey As %String, pSeq As %Integer, pRoute As %String,
 }
 
 /// <p>The unsettled directive for turn <var>pKey</var>, read fresh with no OREF held across a wait:
-/// <var>pSeq</var>, <var>pRoute</var>, <var>pEntityId</var> and <var>pCriterion</var> are
-/// <code>0</code>/<code>""</code> when the turn holds no directive at all. <var>pSettled</var> is 1 once <var>pOutcome</var> and
+/// <var>pSeq</var>, <var>pRoute</var>, <var>pEntityId</var>, <var>pCriterion</var> and
+/// <var>pCriteria</var> (the criteria JSON) are <code>0</code>/<code>""</code> when the turn holds
+/// no directive at all. <var>pSettled</var> is 1 once <var>pOutcome</var> and
 /// <var>pCode</var> carry an answer.</p>
-ClassMethod GuardedPending(pKey As %String, Output pSeq As %Integer, Output pRoute As %String, Output pEntityId As %String, Output pSettled As %Boolean, Output pOutcome As %String, Output pCode As %String, Output pCriterion As %String) As %Status
+ClassMethod GuardedPending(pKey As %String, Output pSeq As %Integer, Output pRoute As %String, Output pEntityId As %String, Output pSettled As %Boolean, Output pOutcome As %String, Output pCode As %String, Output pCriterion As %String, Output pCriteria As %String) As %Status
 {
     Set pSeq = 0
     Set pRoute = ""
     Set pEntityId = ""
     Set pCriterion = ""
+    Set pCriteria = ""
     Set pSettled = 0
     Set pOutcome = ""
     Set pCode = ""
@@ -111,6 +121,7 @@ ClassMethod GuardedPending(pKey As %String, Output pSeq As %Integer, Output pRou
         Set pRoute = ..Text(tRow.Route)
         Set pEntityId = ..Text(tRow.EntityId)
         Set pCriterion = ..Text(tRow.Criterion)
+        Set pCriteria = ..Text(tRow.Criteria)
         Set pOutcome = ..Text(tRow.Outcome)
         Set pCode = ..Text(tRow.Code)
         Set pSettled = (pOutcome '= "")

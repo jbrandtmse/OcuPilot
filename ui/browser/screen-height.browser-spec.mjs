@@ -60,7 +60,7 @@ const SCREENS = [
   { route: '/ocupilot/os-management/devices?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
 ];
 
-/** The audit viewer's Search, which is what puts rows on that screen at all. */
+/** The audit viewer's Search, which re-reads rows the screen's default search already put there (Story 11.11). */
 const SEARCH_BUTTON = '.ocu-criteria-controls button[type="submit"]';
 
 let browser = null;

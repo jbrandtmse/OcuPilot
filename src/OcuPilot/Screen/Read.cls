@@ -190,7 +190,8 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 
 /// <p>Run <var>pDescriptor</var>'s declared read, bounded by <var>pMaxRows</var>.</p>
 /// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner}</code>, plus
-/// <code>document</code> when a <code>mgmnt</code> source answered one:
+/// <code>criteria</code> when the read declares criteria and <code>document</code> when a
+/// <code>mgmnt</code> source answered one:
 /// <code>fields</code>
 /// the declared field names without the descriptor's <code>context.secretFields</code>, each row an
 /// object carrying exactly those keys (an absent key is <code>null</code>), and at most the cap's
@@ -213,8 +214,11 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 /// <method>ForEachRows</method>, where a child list's 404 skips that parent.</p>
 /// <p><var>pCriteria</var> supplies the read's declared server-search parameters (AD-21), keyed by
 /// the descriptor's own <code>read.criteria</code> parameter names. Only a declared name is read --
-/// the roster is the allow-list, so a key nothing declares reaches no port -- and an empty value is
-/// omitted from the query, which leaves the vendor's own default standing. A supplied value is
+/// the roster is the allow-list, so a key nothing declares reaches no port. An absent criterion
+/// takes its declared default and an empty one is omitted from the query
+/// (<method>SeedCriteria</method>); the answer then carries <code>criteria</code>, each declared
+/// criterion's applied value, and an <code>atOrAfterField</code> criterion drops the earlier rows
+/// here, before <code>truncated</code> is judged (AD-36). A supplied value is
 /// checked against its criterion's declared kind <b>before the port is called</b> -- a
 /// <code>choice</code> against its <code>options</code>, a <code>datetime</code> against
 /// <parameter>DATETIMEFORM</parameter> -- and anything else is 400 with
@@ -250,6 +254,8 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         }
         Set tForEach = tSource.%Get("forEach")
         Set tTruncated = ""
+        Set tApplied = ""
+        Kill tCutoffs
 
         If tSource.%Get("port") = ..#SOURCESTATE {
             ; AD-36's second source kind: the rows come from a kernel store's guarded list rather
@@ -272,7 +278,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             ; The management API's rows: the route's own scope travels as the port's namespace,
             ; and a document read also answers the document itself, which rides beside the rows.
             Set tQuery("maxRows") = tMax + 1
-            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)
+            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
             If tCriterionProblem '= "" {
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
                 Quit
@@ -302,7 +308,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                     Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tObjectParam _ " is required", .pHttpStatus, .pFault)
                     Quit
                 }
-                Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)
+                Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
                 If tCriterionProblem '= "" {
                     Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
                     Quit
@@ -355,7 +361,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             ; An admin LIST, UPCOMING, HISTORY or VOLUMELIST: the declared type, the fixed query and then the criteria.
             Do ..SeedSourceQuery(tSource, .tQuery)
             Set tQuery("maxRows") = tMax + 1
-            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)
+            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
             If tCriterionProblem '= "" {
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
                 Quit
@@ -373,6 +379,9 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-35: an audit row's declared vendor secrets are masked before any field is projected, so
         ; the screen and its read tool read the one masked row (DW-1640).
         If (tSource.%Get("port") = ..#SOURCEADMIN) && (tSource.%Get("endpoint") = ##class(OcuPilot.Port.AuditPort).#RECORDENDPOINT) Do ##class(OcuPilot.Port.AuditPort).MaskVendorSecrets(tAnswer)
+        ; AD-36: an `atOrAfterField` criterion is applied here rather than sent, before truncation is
+        ; judged, so a row the cutoff drops never counts toward the cap.
+        If $Data(tCutoffs) Set tAnswer = ..AtOrAfter(tAnswer, .tCutoffs)
         If tTruncated = "" Set tTruncated = (tAnswer.%Size() > tMax)
 
         Set tSecrets = $ClassMethod(pDescriptor, "ContextSecretFields")
@@ -403,6 +412,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Do pResult.%Set("rows", tRows)
         Do pResult.%Set("truncated", tTruncated, "boolean")
         Do pResult.%Set("banner", ..BannerKey(pDescriptor))
+        If $IsObject(tApplied) Do pResult.%Set("criteria", tApplied)
         If $IsObject($Get(tDocument)) Do pResult.%Set("document", tDocument)
         Set pHttpStatus = 200
     } Catch ex {
@@ -666,44 +676,55 @@ ClassMethod SeedSourceQuery(pSource As %DynamicObject, ByRef pQuery)
     }
 }
 
-/// <p>Seed <var>pQuery</var> with every declared criterion <var>pSupplied</var> carries a non-empty
-/// value for, and answer what is wrong with one of those values, or <code>""</code>.</p>
-/// <p>An empty value is omitted rather than sent, so the vendor's own default stands for that
-/// criterion. Every value is bounded by its criterion's declared <code>maxLength</code> first,
-/// whatever the kind (DW-279); then a <code>choice</code> criterion's value must be one of its
-/// declared <code>options</code> exactly, and a <code>datetime</code> one must carry its time part
+/// <p>Seed <var>pQuery</var> with every declared criterion that has a non-empty value, and answer
+/// what is wrong with one of those values, or <code>""</code>.</p>
+/// <p><b>Absent and empty differ</b> (AD-36). A criterion <var>pSupplied</var> does not define takes
+/// its declared <code>defaultHoursAgo</code>, when it declares one: the instance's local time that
+/// many hours earlier (<method>HoursAgo</method>). A criterion defined as <code>""</code> is unset
+/// and is omitted rather than sent, so the vendor's own default stands for it. Every value is
+/// bounded by its criterion's declared <code>maxLength</code> first, whatever the kind (DW-279);
+/// then a <code>choice</code> criterion's value must be one of its declared <code>options</code>
+/// exactly, and a <code>datetime</code> one must carry its time part
 /// (<parameter>DATETIMEFORM</parameter>); anything else is refused by name and nothing is sent.</p>
 /// <p><b>The length is checked here and not at the port</b> because this is the last place that
-/// knows which parameter the value belongs to. A value longer than the vendor property
-/// (<code>Pids</code> is <code>MAXLEN</code> 50) faults inside
-/// <class>OcuPilot.Port.AdminPort</class>, which answers a fault naming no parameter at all; the
-/// refusal here is 400 <code>READ.CRITERION</code> naming the parameter and its bound, with no
-/// request issued. Both callers cross this method, so neither the screen route nor the read tool
-/// can reach the port with an over-long value.</p>
+/// knows which parameter the value belongs to. Both callers cross this method, so neither the screen
+/// route nor the read tool can reach the port with an over-long value.</p>
 /// <p><b>Public and value-driven</b>, for the reason
-/// <method>OcuPilot.Screen.Registry.RefreshProblem</method> is: the seeding and the refusal are
-/// exercised as values -- a declared value, an empty one and an off-list one against the shipped
-/// declaration -- rather than through three port round trips.</p>
+/// <method>OcuPilot.Screen.Registry.RefreshProblem</method> is, and so
+/// <method>OcuPilot.Screen.Tool.Navigate.Directive</method> can refuse a value with the read's own
+/// check.</p>
 /// <p><b>A criterion declaring <code>vendorParam</code> is seeded under that name instead of its
-/// own <code>param</code></b> (Story 6.6): the caller, the refusal text above and
-/// <method>OcuPilot.Screen.Tool.Read.InputSchema</method> all keep using <code>param</code>, and
-/// only the query key <var>pQuery</var> reaches the port under changes.</p>
-ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery) As %String
+/// own <code>param</code></b> (Story 6.6). <b>A criterion declaring <code>atOrAfterField</code> is
+/// never seeded</b>: its value is answered in <var>pCutoffs</var>, subscripted by that field, for
+/// <method>Execute</method> to compare on the instance.</p>
+/// <p><var>pApplied</var> is <code>{param: applied value}</code> for every declared criterion, in
+/// declaration order, <code>""</code> for one left unset; it is <code>""</code> (not an object) for
+/// a read that declares no criteria, and empty when a value is refused.</p>
+ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery, Output pApplied As %DynamicObject, Output pCutoffs) As %String
 {
     Set tProblem = ""
+    Set pApplied = ""
+    Kill pCutoffs
     If '$IsObject(pRead) Quit tProblem
     Set tCriteria = pRead.%Get("criteria")
     If '$IsObject(tCriteria) || 'tCriteria.%IsA("%Library.DynamicObject") Quit tProblem
     Set tFields = tCriteria.%Get("fields")
     If '$IsObject(tFields) || 'tFields.%IsA("%Library.DynamicArray") Quit tProblem
-    Kill tSeed
-    Kill tSeedKey
+    Kill tSeed, tSeedKey, tCutoff
+    Set tApplied = {}
     Set tIterator = tFields.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tField) {
         If '$IsObject(tField) Continue
         Set tParam = tField.%Get("param")
         If tParam = "" Continue
-        Set tValue = $Get(pSupplied(tParam))
+        If $Data(pSupplied(tParam)) # 2 {
+            Set tValue = pSupplied(tParam)
+        } Else {
+            Set tValue = ""
+            Set tHours = tField.%Get("defaultHoursAgo")
+            If tHours > 0 Set tValue = ..HoursAgo(tHours)
+        }
+        Do tApplied.%Set(tParam, tValue, "string")
         If tValue = "" Continue
         ; DW-279, and before the kind, because the bound binds every kind. The vendor property is
         ; what the value lands in -- `Pids` is MAXLEN 50 -- and a longer one faults inside the port,
@@ -725,6 +746,11 @@ ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery)
                 Quit
             }
         }
+        Set tAgainst = tField.%Get("atOrAfterField")
+        If tAgainst '= "" {
+            Set tCutoff(tAgainst) = tValue
+            Continue
+        }
         Set tSeed(tParam) = tValue
         Set tSeedKey(tParam) = $Select(tField.%Get("vendorParam") '= "": tField.%Get("vendorParam"), 1: tParam)
     }
@@ -737,7 +763,52 @@ ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery)
         If tParam = "" Quit
         Set pQuery(tSeedKey(tParam)) = tSeed(tParam)
     }
+    Merge pCutoffs = tCutoff
+    Set pApplied = tApplied
     Quit ""
+}
+
+/// <p>The instance's local time <var>pHours</var> hours before now, as
+/// <code>YYYY-MM-DD HH:MM:SS</code> (AD-36): the default a <code>defaultHoursAgo</code> criterion
+/// takes when a caller omits it. From <code>$Horolog</code>, because the form's hint and the vendor
+/// both read the bound as instance local time.</p>
+ClassMethod HoursAgo(pHours As %Integer) As %String
+{
+    Set tNow = $Horolog
+    Set tDays = +tNow - (pHours \ 24)
+    Set tSeconds = $Piece(tNow, ",", 2) - ((pHours # 24) * 3600)
+    If tSeconds < 0 {
+        Set tSeconds = tSeconds + 86400
+        Set tDays = tDays - 1
+    }
+    Quit $ZDateTime(tDays _ "," _ (tSeconds \ 1), 3, 1)
+}
+
+/// <p><var>pRows</var> without the rows an <code>atOrAfterField</code> criterion drops (AD-36): a
+/// row is kept when, for every field <var>pCutoffs</var> names, its value is a string at or after
+/// the cutoff in code-unit order. A row whose value is empty or not a string is dropped. Sound only
+/// because both values are the instance's own <code>YYYY-MM-DD HH:MM:SS</code>.</p>
+ClassMethod AtOrAfter(pRows As %DynamicArray, ByRef pCutoffs) As %DynamicArray [ Private ]
+{
+    Set tKept = []
+    Set tIterator = pRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tKeep = $IsObject(tRow) && tRow.%IsA("%Library.DynamicObject")
+        Set tField = ""
+        For {
+            If 'tKeep Quit
+            Set tField = $Order(pCutoffs(tField))
+            If tField = "" Quit
+            If tRow.%GetTypeOf(tField) '= "string" {
+                Set tKeep = 0
+                Quit
+            }
+            Set tValue = tRow.%Get(tField)
+            If (tValue = "") || ((tValue '= pCutoffs(tField)) && '(tValue ] pCutoffs(tField))) Set tKeep = 0
+        }
+        If tKeep Do tKept.%Push(tRow)
+    }
+    Quit tKept
 }
 
 /// <p><var>pDescriptor</var>'s declared banner resolved against the instance: the

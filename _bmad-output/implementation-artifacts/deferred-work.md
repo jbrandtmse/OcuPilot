@@ -6513,6 +6513,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T01:23:50Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
 - 2026-09-26T04:25:02Z occurrence=15-10-the-header-logo-on-a-white-tile by=harvest note=stamp_presence_varies_run_to_run_so_1-4_of_these_keys_read_stale_on_an_unchanged_bundle(223/223,219+4stale,222+1stale_on_ocupilot-b-ci);0_fresh
 - 2026-09-26T14:57:17Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
+- 2026-09-26T13:17:24Z occurrence=11-11-the-screen-shows-what-the-agent-is-talking-about by=spec_gate note=logs/audit_and_tasks/history_now_read_on_open_so_the_stamp_draws;two_keys_admitted_with_dw_DW-1584(entries_225)
 
 ### DW-1585: Structural gate baseline: command-bar controls overflow the command bar at 720px (refresh action 80px on agent/definitions; sort 30px in CI only)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -7436,3 +7437,22 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Test/BodyRequest.cls has FaultOnContent (read stage) only; dropping the decode test at Account.cls:119 or Definitions.cls:1360 leaves DefinitionsFaults green
 - 2026-09-26T16:35:43Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=cr note=needs a decode-fault seam on BodyRequest; reopen_if=a decode fault is observed or BodyRequest gains a decode mode
+### DW-1695: epics.md Stories 2.10 and 6.6 still describe the audit and Task history screens as criteria-form-first with a skeleton only after Search, which Story 11.11 replaced with a default search on open
+- source: spec-11-11-the-screen-shows-what-the-agent-is-talking-about.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: epics.md:2099 and :4022 against EXPERIENCE.md:782 and :793 after Story 11.11
+- 2026-09-26T14:09:15Z status=wontfix-accepted owner=11-11-the-screen-shows-what-the-agent-is-talking-about by=cr note=reopen_if=a plan or review cites the epics.md 2.10/6.6 criteria-form-first wording as current behavior
+
+### DW-1696: WireSecurityRead's two audit reads send no beginDateTime, so since Story 11.11 they read the last 24 hours rather than all time and the marker-source lower bound needs an OcuPilot audit row inside that window
+- source: spec-11-11-the-screen-shows-what-the-agent-is-talking-about.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: src/OcuPilot/Test/WireSecurityRead.cls:1131,1148 build the read URL without beginDateTime; the AD-36 default now applies
+- 2026-09-26T14:09:15Z status=wontfix-accepted owner=11-11-the-screen-shows-what-the-agent-is-talking-about by=cr note=reopen_if=WireSecurityRead reports 'the marker's own Source returned rows: 0' on any instance
+
+### DW-1697: Nav.Criteria is MAXLEN 16000 over the criteria JSON, so criteria values dense with escaped control characters could fail the directive's save after the announcement exists
+- source: spec-11-11-the-screen-shows-what-the-agent-is-talking-about.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Kernel/State/Nav.cls:44 holds pCriteria.%ToJSON(); the audit's declared maxLengths sum to 5,200 characters and a control character serializes as six
+- 2026-09-26T14:09:15Z status=by-design owner=11-11-the-screen-shows-what-the-agent-is-talking-about by=cr note=spec fixes MAXLEN 16000; real only if a model sends criteria carrying over ~2,700 control characters
+
+### DW-1698: No registry rule enforces AD-36's condition that an atOrAfterField criterion is sound only on a read the vendor answers newest first
+- source: spec-11-11-the-screen-shows-what-the-agent-is-talking-about.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Screen/Registry.cls CriteriaDefaultProblem and screen-mirror.mjs criteriaDefaultProblem check kind, field membership and vendorParam only
+- 2026-09-26T14:09:15Z status=wontfix-theoretical owner=11-11-the-screen-shows-what-the-agent-is-talking-about by=cr note=real once a descriptor declares atOrAfterField over a read not answered newest first (only TaskHistoryList's HISTORY today)

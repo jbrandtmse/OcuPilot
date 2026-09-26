@@ -2,9 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, type CanDeactivateFn } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuditSearch } from '../areas/logs/audit.store';
 import { ownIdSegment, screenForRoute } from '../core/navigation';
-import type { ScreenDeclaration } from '../core/screens.generated';
+import { ScreenArrivals } from '../core/screen-arrival';
 import { NAV_REFUSED_UNSAVED_CODE, type TurnNavigation } from '../core/turn';
 import { ShellState } from '../core/shell-state';
 import { TurnStore } from '../core/turn';
@@ -61,27 +60,13 @@ class StubShell {
   }
 }
 
-/**
- * The audit screen's store, stubbed to the one seam an arrival uses (Story 5.8). What the real one
- * does with the call -- set the flag, note the search, bind and read -- is `audit.store`'s own to
- * pin; what this file says is that the arriving screen is the one asked, with the name the
- * directive carried and never with a value.
- */
-class StubAudit {
-  readonly opened: { descriptor: string; criterion: string }[] = [];
-
-  openWith(declaration: ScreenDeclaration, criterion: string): void {
-    this.opened.push({ descriptor: declaration.descriptor, criterion });
-  }
-}
-
 /** A `form-page`-shaped decline, standing in for `leaveFormGuard` over a dirty form. */
 const declineGuard: CanDeactivateFn<unknown> = () => false;
 
 describe('the agent navigator', () => {
   let turn: StubTurn;
   let shell: StubShell;
-  let audit: StubAudit;
+  let arrivals: ScreenArrivals;
   let router: Router;
   let navigator: AgentNavigator;
 
@@ -89,7 +74,7 @@ describe('the agent navigator', () => {
     vi.useFakeTimers();
     turn = new StubTurn();
     shell = new StubShell();
-    audit = new StubAudit();
+    arrivals = new ScreenArrivals();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -102,7 +87,7 @@ describe('the agent navigator', () => {
         ]),
         { provide: TurnStore, useValue: turn as unknown as TurnStore },
         { provide: ShellState, useValue: shell as unknown as ShellState },
-        { provide: AuditSearch, useValue: audit as unknown as AuditSearch },
+        { provide: ScreenArrivals, useValue: arrivals },
       ],
     });
     router = TestBed.inject(Router);
@@ -116,7 +101,7 @@ describe('the agent navigator', () => {
   });
 
   it('AC4: never navigates before NAVIGATIONDELAYMS, and moves once it elapses', async () => {
-    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: '', criterion: '' });
+    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: '', criterion: '', criteria: {} });
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS - 1);
     expect(router.url).toBe('/');
     expect(turn.settleCalls).toHaveLength(0);
@@ -126,7 +111,7 @@ describe('the agent navigator', () => {
   });
 
   it('opens the target and reports "opened" with no code', async () => {
-    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: '', criterion: '' });
+    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: '', criterion: '', criteria: {} });
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
     expect(router.url).toBe('/permissions/users');
     expect(turn.settleCalls).toEqual([{ outcome: 'opened', code: null }]);
@@ -134,40 +119,49 @@ describe('the agent navigator', () => {
     expect(shell.arrivals[0].route).toBe('permissions/users');
   });
 
-  it('AC3: a criterion is applied on the screen arrived at, after the move, by name and with no value', async () => {
-    // Story 5.8, AD-21. The instance already refused anything but a flag the target declares
-    // (`NAV.CRITERIONUNKNOWN`), so what this asserts is the browser's half: the name reaches the
-    // arriving screen's own store, and it reaches it once the move has happened.
+  it('Story 11.11: the directive\'s criterion and criteria are handed to the screen it opens, never the URL', async () => {
+    // AD-11: the instance validated the values before the navigation was announced; what this
+    // asserts is the browser's half -- the arrival is set for that route, once, and the URL carries
+    // only the route.
     //
-    // Mutation (Rule 19): drop the `applyCriterion` call from `act()` -> this goes red, and the
-    // audit screen arrives with an unticked filter and an unsearched form.
-    turn.setNavigation({ seq: 1, route: 'logs/audit', entityId: '', criterion: 'marker' });
+    // Mutation (Rule 19): drop the `arrivals?.set` call from `act()` -> this goes red, and the
+    // screen opens on its default read instead of the agent's search.
+    const taken: unknown[] = [];
+    arrivals.subscribe(() => taken.push(arrivals.take('logs/audit')));
+    turn.setNavigation({ seq: 1, route: 'logs/audit', entityId: '', criterion: 'marker', criteria: { beginDateTime: '2026-09-26 08:00:00' } });
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
     expect(router.url).toBe('/logs/audit');
-    expect(audit.opened).toEqual([{ descriptor: 'OcuPilot.Screen.Descriptor.AuditList', criterion: 'marker' }]);
+    expect(taken).toEqual([{ route: 'logs/audit', criterion: 'marker', criteria: { beginDateTime: '2026-09-26 08:00:00' } }]);
+    expect(turn.settleCalls).toEqual([{ outcome: 'opened', code: null }]);
   });
 
-  it('AC3: a navigation carrying no criterion applies none', async () => {
-    turn.setNavigation({ seq: 1, route: 'logs/audit', entityId: '', criterion: '' });
-    await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
-    expect(audit.opened).toEqual([]);
-  });
-
-  it('AC3: a criterion on a navigation the departing screen declined is never applied', async () => {
-    // The filter belongs to the screen the browser did not reach. Applying it anyway would leave
-    // a filter standing on a screen nobody opened.
+  it('Story 11.11: an arrival for a navigation the departing screen declined is cleared, never taken', async () => {
+    // The search belongs to the screen the browser did not reach, so nothing may take it later.
     //
-    // Mutation (Rule 19): move the `applyCriterion` call above the `if (navigated)` branch ->
-    // this goes red.
+    // Mutation (Rule 19): drop the `arrivals?.clear()` from the refusal branch -> this goes red.
     await router.navigateByUrl('/agent/switches');
-    turn.setNavigation({ seq: 1, route: 'logs/audit', entityId: '', criterion: 'marker' });
+    turn.setNavigation({ seq: 1, route: 'logs/audit', entityId: '', criterion: '', criteria: { eventSources: 'OcuPilot' } });
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
     expect(router.url).toBe('/agent/switches');
-    expect(audit.opened).toEqual([]);
+    expect(arrivals.take('logs/audit')).toBeNull();
+    expect(turn.settleCalls).toEqual([{ outcome: 'refused', code: NAV_REFUSED_UNSAVED_CODE }]);
+  });
+
+  it('Story 11.11: a navigation to the screen already open reports "opened", its mounted page having taken the arrival', async () => {
+    await router.navigateByUrl('/logs/audit');
+    const taken: unknown[] = [];
+    arrivals.subscribe(() => {
+      const arrival = arrivals.take('logs/audit');
+      if (arrival !== null) taken.push(arrival);
+    });
+    turn.setNavigation({ seq: 1, route: 'logs/audit', entityId: '', criterion: '', criteria: { eventSources: 'OcuPilot' } });
+    await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
+    expect(taken).toHaveLength(1);
+    expect(turn.settleCalls).toEqual([{ outcome: 'opened', code: null }]);
   });
 
   it('AD-13: an entity id is appended as one path segment, encoded the same way a name-cell link is', async () => {
-    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: 'a.b', criterion: '' });
+    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: 'a.b', criterion: '', criteria: {} });
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
     expect(router.url).toBe('/permissions/users/a%252Eb');
     // DW-1419: the URL alone said nothing about the row. `ownIdSegment` is what the list reads it
@@ -180,7 +174,7 @@ describe('the agent navigator', () => {
     // The Task schedule's id is a composite over one part, which occupies the same single segment
     // a `single` id does. `OcuPilot.Screen.Tool.Navigate` admits it for that reason; here the
     // browser half is pinned -- the route the navigator builds is one `ownIdSegment` resolves.
-    turn.setNavigation({ seq: 1, route: 'tasks/schedule', entityId: '7', criterion: '' });
+    turn.setNavigation({ seq: 1, route: 'tasks/schedule', entityId: '7', criterion: '', criteria: {} });
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
     expect(router.url).toBe('/tasks/schedule/7');
     expect(ownIdSegment(screenForRoute('tasks/schedule')!, router.url)).toBe('7');
@@ -190,7 +184,7 @@ describe('the agent navigator', () => {
     await router.navigateByUrl('/agent/switches');
     expect(router.url).toBe('/agent/switches');
 
-    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: '', criterion: '' });
+    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: '', criterion: '', criteria: {} });
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
 
     expect(router.url).toBe('/agent/switches');
@@ -200,7 +194,7 @@ describe('the agent navigator', () => {
   });
 
   it('never re-schedules the same directive while a poll re-notifies before the delay elapses', async () => {
-    const directive: TurnNavigation = { seq: 1, route: 'permissions/users', entityId: '', criterion: '' };
+    const directive: TurnNavigation = { seq: 1, route: 'permissions/users', entityId: '', criterion: '', criteria: {} };
     turn.setNavigation(directive);
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS / 2);
     // Mutation (Rule 19): drop the `activeSeq` guard in `check()` -> this second notification
@@ -212,11 +206,11 @@ describe('the agent navigator', () => {
   });
 
   it('a later directive, once the first has settled, is acted on independently', async () => {
-    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: '', criterion: '' });
+    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: '', criterion: '', criteria: {} });
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
     expect(turn.settleCalls).toHaveLength(1);
 
-    turn.setNavigation({ seq: 2, route: 'agent/switches', entityId: '', criterion: '' });
+    turn.setNavigation({ seq: 2, route: 'agent/switches', entityId: '', criterion: '', criteria: {} });
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
     expect(turn.settleCalls).toHaveLength(2);
     expect(turn.settleCalls[1]).toEqual({ outcome: 'opened', code: null });
@@ -226,7 +220,7 @@ describe('the agent navigator', () => {
     // Step.Seq restarts at 1 for every new turn (TurnSeqIdx is unique per TurnKey, not
     // globally), so a second, unrelated turn's own navigation can legitimately land on the same
     // numeric seq an earlier turn already settled.
-    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: '', criterion: '' });
+    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: '', criterion: '', criteria: {} });
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
     expect(turn.settleCalls).toHaveLength(1);
 
@@ -237,7 +231,7 @@ describe('the agent navigator', () => {
     // Mutation (Rule 19): drop the `directive === null` reset branch in `check()` -> this second
     // directive is never scheduled, since `directive.seq === this.activeSeq` still holds from the
     // first turn, and the settle call count below stays at 1.
-    turn.setNavigation({ seq: 1, route: 'agent/switches', entityId: '', criterion: '' });
+    turn.setNavigation({ seq: 1, route: 'agent/switches', entityId: '', criterion: '', criteria: {} });
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
     expect(turn.settleCalls).toHaveLength(2);
     expect(router.url).toBe('/agent/switches');

@@ -223,6 +223,17 @@ export interface ReadCriterion {
    * using `param` regardless.
    */
   readonly vendorParam?: string;
+  /**
+   * The hours before the instance's own now a caller that omits this `datetime` criterion is
+   * searched from (AD-36). An explicit empty value leaves the bound unset instead. The default is
+   * computed on the instance, never in the browser.
+   */
+  readonly defaultHoursAgo?: number;
+  /**
+   * The read field this `datetime` criterion is compared against on the instance rather than sent
+   * to the vendor (AD-36): earlier rows are dropped before truncation is judged.
+   */
+  readonly atOrAfterField?: string;
   readonly options?: readonly string[];
 }
 
@@ -1065,7 +1076,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "beginDateTime",
             "labelKey": "auditCriteriaBegin",
             "kind": "datetime",
-            "maxLength": 50
+            "maxLength": 50,
+            "defaultHoursAgo": 24
           },
           {
             "param": "endDateTime",
@@ -6824,6 +6836,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "options": [
               "1"
             ]
+          },
+          {
+            "param": "since",
+            "labelKey": "taskHistorySince",
+            "kind": "datetime",
+            "maxLength": 50,
+            "defaultHoursAgo": 168,
+            "atOrAfterField": "LogDatetime"
           }
         ]
       }

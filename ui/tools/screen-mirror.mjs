@@ -1412,7 +1412,7 @@ export function criteriaProblem(declaration) {
   }
 
   const params = [];
-  const fieldsFault = criteriaFieldsProblem(criteria, params);
+  const fieldsFault = criteriaFieldsProblem(criteria, params, read.fields);
   if (fieldsFault !== null) return fieldsFault;
   const vendorParamFault = criteriaVendorParamProblem(criteria);
   if (vendorParamFault !== null) return vendorParamFault;
@@ -1425,10 +1425,7 @@ export function criteriaProblem(declaration) {
   // confirmed above, since `parented` reaching here means exactly one criterion -- so it may
   // refresh in place (Story 6.7).
   if (declaration.refreshes === true && !parented) {
-    return (
-      'refreshes is declared with read.criteria, and a screen that searches on the server renders ' +
-      'nothing until Search and does not auto-refresh (AD-43)'
-    );
+    return 'refreshes is declared with read.criteria, and a screen that searches on the server does not auto-refresh (AD-43)';
   }
   return null;
 }
@@ -1445,8 +1442,11 @@ function parentCriteriaProblem(declaration) {
   );
 }
 
-/** What is wrong with `criteria.fields`, or `null`. Declared parameter names are pushed onto `params`. */
-function criteriaFieldsProblem(criteria, params) {
+/**
+ * What is wrong with `criteria.fields`, or `null`. Declared parameter names are pushed onto
+ * `params`; `readFields` is the read's own `fields`, which an `atOrAfterField` must name.
+ */
+function criteriaFieldsProblem(criteria, params, readFields) {
   if (!Array.isArray(criteria.fields)) return 'read.criteria.fields is not an array of criterion declarations';
   if (criteria.fields.length === 0) {
     return 'read.criteria.fields is empty, and a declared criteria block carries at least one criterion (AD-21)';
@@ -1458,8 +1458,8 @@ function criteriaFieldsProblem(criteria, params) {
     if (!isObject(field)) return `${where} is not an object declaring its param, labelKey and kind`;
     const allowed =
       field.kind === 'choice'
-        ? ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'options']
-        : ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam'];
+        ? ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField', 'options']
+        : ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField'];
     const fieldKeysFault = unknownKeyProblem(where, field, allowed);
     if (fieldKeysFault !== null) return fieldKeysFault;
 
@@ -1496,6 +1496,8 @@ function criteriaFieldsProblem(criteria, params) {
     }
     const maxLengthFault = criteriaMaxLengthProblem(field, where);
     if (maxLengthFault !== null) return maxLengthFault;
+    const defaultFault = criteriaDefaultProblem(field, where, readFields);
+    if (defaultFault !== null) return defaultFault;
     if (field.kind !== 'choice') continue;
     const optionsFault = criteriaOptionsProblem(field, where);
     if (optionsFault !== null) return optionsFault;
@@ -1519,6 +1521,40 @@ function criteriaMaxLengthProblem(field, where) {
   const value = field.maxLength;
   if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
     return `${where} maxLength '${shown(value)}' is not a whole number above zero`;
+  }
+  return null;
+}
+
+/** The most hours a `defaultHoursAgo` may reach back: one year (AD-36). */
+const CRITERION_MAX_HOURS = 8760;
+
+/**
+ * What is wrong with a criterion's `defaultHoursAgo` or `atOrAfterField`, or `null` (AD-36): either
+ * is admitted on a `datetime` criterion alone; `defaultHoursAgo` is a whole number from 1 to
+ * `CRITERION_MAX_HOURS`; `atOrAfterField` names one of the read's `fields` and is never declared with
+ * `vendorParam`, since its value is compared on the instance and never sent.
+ * `OcuPilot.Screen.Registry.CriteriaDefaultProblem` returns the same sentences.
+ */
+function criteriaDefaultProblem(field, where, readFields) {
+  if (field.defaultHoursAgo !== undefined) {
+    if (field.kind !== 'datetime') {
+      return `${where} declares defaultHoursAgo on kind '${field.kind}', and only a datetime criterion carries a default (AD-36)`;
+    }
+    const hours = field.defaultHoursAgo;
+    if (typeof hours !== 'number' || !Number.isInteger(hours) || hours < 1 || hours > CRITERION_MAX_HOURS) {
+      return `${where} defaultHoursAgo '${shown(hours)}' is not a whole number of hours from 1 to ${CRITERION_MAX_HOURS}`;
+    }
+  }
+  if (field.atOrAfterField === undefined) return null;
+  if (field.kind !== 'datetime') {
+    return `${where} declares atOrAfterField on kind '${field.kind}', and only a datetime criterion is compared against a read field (AD-36)`;
+  }
+  const against = field.atOrAfterField;
+  if (typeof against !== 'string' || !Array.isArray(readFields) || !readFields.includes(against)) {
+    return `${where} atOrAfterField '${shown(against)}' is not one of read.fields`;
+  }
+  if (field.vendorParam !== undefined) {
+    return `${where} declares atOrAfterField with vendorParam, and a criterion compared on the instance is never sent to the vendor (AD-36)`;
   }
   return null;
 }
@@ -2767,6 +2803,17 @@ export interface ReadCriterion {
    * using \`param\` regardless.
    */
   readonly vendorParam?: string;
+  /**
+   * The hours before the instance's own now a caller that omits this \`datetime\` criterion is
+   * searched from (AD-36). An explicit empty value leaves the bound unset instead. The default is
+   * computed on the instance, never in the browser.
+   */
+  readonly defaultHoursAgo?: number;
+  /**
+   * The read field this \`datetime\` criterion is compared against on the instance rather than sent
+   * to the vendor (AD-36): earlier rows are dropped before truncation is judged.
+   */
+  readonly atOrAfterField?: string;
   readonly options?: readonly string[];
 }
 

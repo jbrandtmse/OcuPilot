@@ -40,7 +40,8 @@ ClassMethod ReadClass() As %String
 }
 
 /// <p>Answer the request for <var>pScreen</var>, a <code>toolIdentifier</code>: one success
-/// envelope carrying <code>{fields, rows, truncated}</code>, or one error envelope.</p>
+/// envelope carrying <code>{fields, rows, truncated}</code> (and <code>criteria</code> for a read
+/// that declares them), or one error envelope.</p>
 ClassMethod Handle(pScreen As %String) As %Status
 {
     Set tSC = $$$OK
@@ -68,7 +69,9 @@ ClassMethod Handle(pScreen As %String) As %Status
         Set tParams = $ClassMethod(..ReadClass(), "CriteriaParams", tDescriptor)
         For tI = 1:1:$ListLength(tParams) {
             Set tParam = $List(tParams, tI)
-            Set tCriteria(tParam) = %request.Get(tParam)
+            ; Absent and empty differ (AD-36): `?p=` is an unset bound, while a key the request
+            ; does not carry takes the criterion's declared default.
+            If $Data(%request.Data(tParam, 1)) Set tCriteria(tParam) = %request.Get(tParam)
         }
         Set tReadSC = $ClassMethod(..ReadClass(), "Execute", tDescriptor, %request.Get("maxRows"), .tResult, .tHttp, .tFault, .tCriteria)
         If $$$ISERR(tReadSC) {

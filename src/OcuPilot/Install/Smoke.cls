@@ -668,6 +668,9 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %Str
             Continue
         }
         Set tPath = tBase _ "/screens/" _ tTool _ "/read?maxRows=1"
+        ; The audit read opens on the last 24 hours when its begin is omitted (AD-36), so a quiet
+        ; instance could answer no row; an explicit empty begin reads all time, as this row always has.
+        If tName = "audit" Set tPath = tPath _ "&beginDateTime="
         Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
         If $$$ISERR(tSC) {
             Do ..Note(.pChecks, tName, "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
