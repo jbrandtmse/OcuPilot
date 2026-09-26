@@ -788,6 +788,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:371 */
   taskHistoryUserOnly: 'User-defined tasks only',
   /** EXPERIENCE.md:371 */
+  taskHistorySince: 'Logged since',
+  /** EXPERIENCE.md:371 */
   taskHistoryEmpty: 'No task runs match.',
   /** EXPERIENCE.md:372 */
   taskRunsLabel: 'History',

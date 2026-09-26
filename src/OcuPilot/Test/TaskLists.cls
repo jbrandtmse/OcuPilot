@@ -317,7 +317,8 @@ Method TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap()
         While tIterator.%GetNext(.tKey, .tValue) {
             Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
         }
-        Do $$$AssertEquals(tKeys, "fields,rows,truncated,rowsAvailable", tTool _ ": and nothing else")
+        ; A read that declares criteria also reports the ones it applied (AD-36, Story 11.11).
+        Do $$$AssertEquals(tKeys, "fields,rows,truncated,rowsAvailable" _ $Select(##class(OcuPilot.Screen.Read).CriteriaParams(tDescriptor) '= "": ",criteria", 1: ""), tTool _ ": and nothing else")
     }
 }
 

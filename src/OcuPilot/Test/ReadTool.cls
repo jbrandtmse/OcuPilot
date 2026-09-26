@@ -346,7 +346,7 @@ Method TestEveryCriteriaCorpusCaseGetsItsSentence()
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tShipped), "", tClass _ ": its criteria are the declared grammar")
         If $ListLength(##class(OcuPilot.Screen.Read).CriteriaParams(tClass)) > 0 Set tWithCriteria = tWithCriteria + 1
     }
-    Do $$$AssertEquals(tWithCriteria, 10, "exactly ten shipped descriptors declare criteria: the audit database viewer's server search, the OpenAPI document viewer's application name, the Secrets list's parent collection, Process details' parent pid, the Upcoming tasks horizon, Task history's search and user-defined-only filter, History (one task)'s parent taskId, Task details' parent taskId, and Story 6.11's two -- Database details' parent dir and Database volumes' parent dir")
+    Do $$$AssertEquals(tWithCriteria, 10, "exactly ten shipped descriptors declare criteria: the audit database viewer's server search, the OpenAPI document viewer's application name, the Secrets list's parent collection, Process details' parent pid, the Upcoming tasks horizon, Task history's search, user-defined-only filter and logged-since bound, History (one task)'s parent taskId, Task details' parent taskId, and Story 6.11's two -- Database details' parent dir and Database volumes' parent dir")
 }
 
 /// <p>Story 2.10 AC7 -- the read tool's schema carries one property per declared criterion, the
@@ -566,8 +566,8 @@ Method TestTheReadToolSendsItsDeclaredCriteriaToThePort()
     Do $$$AssertTrue(tParams [ "authentication=Password", "and so does the choice one: " _ tParams)
     Do $$$AssertTrue(tParams [ "maxRows=6", "beside the cap plus one the read sends itself: " _ tParams)
 
-    ; A criterion left out is omitted rather than sent empty, so the vendor's own default stands --
-    ; the same rule the route is held to.
+    ; A criterion left out that declares no default is omitted rather than sent empty, so the
+    ; vendor's own default stands -- the same rule the route is held to.
     Do ##class(OcuPilot.Test.EndpointFixture).Clear()
     Do ##class(OcuPilot.Test.EndpointFixture).SetMode("list")
     Do ##class(OcuPilot.Test.EndpointFixture).SetRows("[]")

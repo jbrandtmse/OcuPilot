@@ -82,9 +82,14 @@
 /// text and says nothing about result values (AD-39), so it is left unrendered rather than
 /// converted. It stays in <code>read.fields</code> for the dialog and out of
 /// <code>table.columns</code>.</p>
+/// <p><b>It opens on the last 24 hours</b> (AD-36): <code>beginDateTime</code> declares
+/// <code>defaultHoursAgo</code> 24, so a caller that omits it -- the screen on open, or the read
+/// tool -- searches from the instance's own now less a day, and the answer's <code>criteria</code>
+/// says so. An explicit empty begin reads all time. The agent marker is never part of that default
+/// (AD-46).</p>
 /// <p><b>It declares no <code>refreshes</code>.</b> <file>EXPERIENCE.md</file> exempts this screen
-/// by name: it renders nothing until Search is pressed, so a timer would have no rows to re-read
-/// (AD-43). <method>OcuPilot.Screen.Registry.CriteriaProblem</method> refuses the pair.</p>
+/// by name: it reads on open, on Search and on Refresh, never on a timer (AD-43).
+/// <method>OcuPilot.Screen.Registry.CriteriaProblem</method> refuses the pair.</p>
 /// <p><b>The privilege set is three pairs, in the order the gate reports in.</b></p>
 /// <ul>
 /// <li><code>%Admin_Secure:USE</code> -- the vendor endpoint's own gate.
@@ -144,7 +149,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "beginDateTime", "labelKey": "auditCriteriaBegin", "kind": "datetime", "maxLength": 50},
+        {"param": "beginDateTime", "labelKey": "auditCriteriaBegin", "kind": "datetime", "maxLength": 50, "defaultHoursAgo": 24},
         {"param": "endDateTime", "labelKey": "auditCriteriaEnd", "kind": "datetime", "maxLength": 50},
         {"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 1000},
         {"param": "eventTypes", "labelKey": "auditColumnEventType", "kind": "text", "maxLength": 1000},

@@ -400,8 +400,10 @@ ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, p
 /// answered before any announce step or directive exists (AC2): a refusal from a check before
 /// <code>Directive</code> carries that check's own code, and a refusal from <code>Directive</code>
 /// itself carries <code>NAV.ROUTEUNKNOWN</code>, <code>NAV.ENTITYNOTALLOWED</code> or
-/// <code>NAV.CRITERIONUNKNOWN</code>. <var>pCriterion</var> is the declared flag criterion the
-/// directive carries, or <code>""</code>.
+/// <code>NAV.CRITERIONUNKNOWN</code> or <code>NAV.CRITERIONINVALID</code>, with the fault's
+/// <code>detail</code>. <var>pCriterion</var> is the declared flag criterion the directive carries,
+/// or <code>""</code>, and <var>pCriteria</var> the criteria values it carries, an object, or
+/// <code>""</code> when no directive is pending.
 /// <var>pFailedPair</var> is set only by the two privilege-pair refusals.</p>
 /// <p><var>pKey</var> is the turn the call belongs to, which every log line here names.
 /// <var>pInput</var>, <var>pDeclaredPairs</var>, <var>pCallPairs</var> and <var>pSecretNames</var>
@@ -416,10 +418,11 @@ ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, p
 /// return before any pair is read. It is what tells an honestly-empty requirement from one nobody
 /// read (DW-1305); <var>pSecretDeclared</var> cannot answer that question and must not be used
 /// for it.</p>
-ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String, pKey As %String = "", Output pInput As %DynamicAbstractObject, Output pDeclaredPairs As %List, Output pCallPairs As %List, Output pSecretNames As %List, Output pSecretDeclared As %Boolean, Output pPairsResolved As %Boolean, Output pCriterion As %String) As %Status
+ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String, pKey As %String = "", Output pInput As %DynamicAbstractObject, Output pDeclaredPairs As %List, Output pCallPairs As %List, Output pSecretNames As %List, Output pSecretDeclared As %Boolean, Output pPairsResolved As %Boolean, Output pCriterion As %String, Output pCriteria As %DynamicObject) As %Status
 {
     Set pInput = ""
     Set pCriterion = ""
+    Set pCriteria = ""
     Set pDeclaredPairs = ""
     Set pCallPairs = ""
     Set pSecretNames = ""
@@ -538,10 +541,12 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
             Quit
         }
 
-        Set tSC = $ClassMethod(tTool.%Get("class"), "Directive", tTool.%Get("descriptor"), tInput, .tDirectiveRoute, .tDirectiveEntityId, .tFault, .tDirectiveCriterion)
+        Set tSC = $ClassMethod(tTool.%Get("class"), "Directive", tTool.%Get("descriptor"), tInput, .tDirectiveRoute, .tDirectiveEntityId, .tFault, .tDirectiveCriterion, .tDirectiveCriteria)
         If $$$ISERR(tSC) {
             If $IsObject(tFault) && (tFault.%Get("code") '= "") {
-                Set pContent = ..ErrorContent(tFault.%Get("code"))
+                ; The fault's detail travels with its code (AD-39): a criteria refusal names the
+                ; criterion there, which is what the model needs to correct the call.
+                Set pContent = ..ErrorContent(tFault.%Get("code"), tFault.%Get("detail"))
                 Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tFault.%Get("code"))
                 ; Same reasoning as the ValidateArguments branch above: Directive's own refusal is
                 ; an ordinary result, not a dispatcher failure.
@@ -556,6 +561,7 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
         Set pRoute = tDirectiveRoute
         Set pEntityId = tDirectiveEntityId
         Set pCriterion = $Get(tDirectiveCriterion)
+        Set pCriteria = $Get(tDirectiveCriteria)
         Set pPending = 1
         Set pIsError = 0
         Set pContent = ""

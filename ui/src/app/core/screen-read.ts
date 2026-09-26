@@ -42,6 +42,7 @@ interface ReadBody {
   readonly rows?: unknown;
   readonly truncated?: unknown;
   readonly banner?: unknown;
+  readonly criteria?: unknown;
 }
 
 /** `text` with only the ASCII capitals lower-cased. */
@@ -138,8 +139,18 @@ export function applyView(rows: readonly unknown[], read: ViewDeclaration, optio
   return order.map((index) => kept[index]);
 }
 
-/** The server-search criteria a read carries, keyed by the descriptor's own parameter names. */
-export type ScreenReadCriteria = Readonly<Record<string, string>>;
+/**
+ * The server-search criteria a read carries, keyed by the descriptor's own parameter names. A key
+ * that is absent (or `undefined`) is not sent, so the instance applies that criterion's declared
+ * default; a key holding `''` is sent empty, which leaves the bound unset (AD-36).
+ */
+export type ScreenReadCriteria = Readonly<Record<string, string | undefined>>;
+
+/**
+ * The applied criteria a read answered with (AD-36), keyed by parameter, with the request that
+ * produced them. Only the string values of the answer's `criteria` are kept.
+ */
+export type ScreenReadEcho = (applied: Readonly<Record<string, string>>, sent: ScreenReadCriteria) => void;
 
 /**
  * The declared server-search parameter names of `declaration`'s read, in declaration order (AD-21).
@@ -155,10 +166,11 @@ export function criteriaParams(declaration: Pick<ScreenDeclaration, 'read'>): re
 
 /**
  * The absolute path of `declaration`'s read under `maxRows`, with every declared criterion
- * `criteria` carries a non-empty value for appended, URL-encoded, in declaration order.
+ * `criteria` carries a value for appended, URL-encoded, in declaration order.
  *
- * A criterion the descriptor does not declare is dropped rather than sent, and an empty value is
- * omitted so the instance leaves the vendor's own default standing for it.
+ * A criterion the descriptor does not declare is dropped rather than sent. An absent one is not
+ * sent, so the instance applies its declared default; an empty one is sent as `p=`, which the
+ * instance reads as an unset bound (AD-36).
  */
 export function screenReadPath(
   declaration: Pick<ScreenDeclaration, 'toolIdentifier' | 'read'>,
@@ -166,8 +178,8 @@ export function screenReadPath(
   criteria: ScreenReadCriteria = {}
 ): string {
   const query = criteriaParams(declaration)
-    .filter((param) => (criteria[param] ?? '') !== '')
-    .map((param) => '&' + encodeURIComponent(param) + '=' + encodeURIComponent(criteria[param]))
+    .filter((param) => typeof criteria[param] === 'string')
+    .map((param) => '&' + encodeURIComponent(param) + '=' + encodeURIComponent(criteria[param] as string))
     .join('');
   return (
     SCREEN_READ_PATH_PREFIX +
@@ -185,19 +197,24 @@ export function screenReadPath(
  *
  * `criteria` is read **at call time**, not at bind time, so a screen whose criteria form the user
  * is still editing sends what the form holds when Search is pressed rather than what it held when
- * the read was bound.
+ * the read was bound. `echo`, when given, is handed the answer's applied `criteria` and the request
+ * that produced them, so a form can show the values the instance applied for the criteria it left
+ * absent.
  */
 export function createScreenRead(
   api: Pick<ApiService, 'requestJson'>,
   declaration: ScreenDeclaration,
-  criteria: () => ScreenReadCriteria = () => ({})
+  criteria: () => ScreenReadCriteria = () => ({}),
+  echo: ScreenReadEcho | null = null
 ): RefreshRead {
   if (declaration.read === null) throw new Error(NO_READ_MESSAGE + declaration.descriptor);
   return async ({ maxRows }): Promise<RefreshReadResult> => {
-    const path = screenReadPath(declaration, maxRows, criteria());
+    const sent = criteria();
+    const path = screenReadPath(declaration, maxRows, sent);
     const result = await api.requestJson<ReadBody>(path);
     const body = result.kind === 'ok' ? result.body : null;
     if (result.kind === 'ok' && body !== null && typeof body === 'object' && Array.isArray(body.rows)) {
+      if (echo !== null) echo(appliedCriteria(body.criteria), sent);
       // A body carrying no `banner` is a screen that declares none, not a malformed answer: the key
       // is additive, and anything but a string reads as no strip rather than as a failed read.
       return {
@@ -213,4 +230,14 @@ export function createScreenRead(
       result.kind === 'ok' ? { kind: 'error', status: result.status, code: null, reason: null, detail: null } : result;
     return { kind: 'fault', fault: classifyFault(failed, path) as Fault };
   };
+}
+
+/** The string members of an answer's `criteria`, or none when it carries no object. */
+export function appliedCriteria(value: unknown): Readonly<Record<string, string>> {
+  const applied: Record<string, string> = {};
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return applied;
+  for (const [key, member] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof member === 'string') applied[key] = member;
+  }
+  return applied;
 }
