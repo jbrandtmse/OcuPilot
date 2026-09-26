@@ -754,7 +754,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner triage, 2026-09-25 (model), high priority.** Anthropic has released Claude Opus 5.5, and the public demo already runs on it, verified by a connection test and a tool-calling turn. Story 10.7 makes `claude-opus-5-5` the default model of a new Anthropic definition, so a judge's fresh install starts on it. It runs on the first slot to free, and the submission cut waits for it.
 
-**Owner triage, 2026-09-26 (criteria screens), high priority.** The audit database and all-task history open on an empty criteria form and read nothing until Search, so when the agent opens one and describes rows, the person sees none. Story 11.11 gives both screens a default search on open and lets the agent open them with the criteria its own read used. It runs alone on slot A and ships in release 1.0.1 before the contest deadline, built as release 1.0.0 plus this story alone.
+**Owner triage, 2026-09-26 (criteria screens), high priority.** The audit database and all-task history open on an empty criteria form and read nothing until Search, so when the agent opens one and describes rows, the person sees none. Story 11.11 gives both screens a default search on open and lets the agent open them with the criteria its own read used. It runs alone on slot A and ships in release 1.0.1 before the contest deadline, cut from the feature branch at this story's merge with whatever else has merged by then.
 
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
