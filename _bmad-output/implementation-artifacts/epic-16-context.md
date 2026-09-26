@@ -4,7 +4,7 @@
 
 ## Goal
 
-This is voting-week work, done after the submission cut. It adds the second-tier screens and actions a judge sees when comparing entries: a try-it console, web sessions, effective privileges, task export and import, background tasks, broadcast, license usage and the full dashboard, six secondary log viewers with a hub, and external language servers. It also carries six stories deferred from the contest build (16.11 to 16.16), and survey-driven stories: read-back, Home's performance row, impact lines, older messages.log files (Community Idea DPI-I-966), a security findings panel whose fixes are agent proposals, and a Guardrails page. **This run's order:** 16.1 (done), 16.17, 16.18, 16.19, 16.20, 16.21, 16.22, then 16.8, then 16.9. The other stories stay backlog. Everything merges to the feature branch; `main` moves only at owner-approved releases. **Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
+This is voting-week work, done after the submission cut. It adds the second-tier screens and actions a judge sees when comparing entries: a try-it console, web sessions, effective privileges, task export and import, background tasks, broadcast, license usage and the full dashboard, six secondary log viewers with a hub, and external language servers. It also carries six stories deferred from the contest build (16.11 to 16.16), and survey-driven stories: read-back, Home's performance row, impact lines, older messages.log files (Community Idea DPI-I-966), a security findings panel whose fixes are agent proposals, and a Guardrails page. **This run's order:** 16.1 (done), 16.17 (done), 16.18, 16.19, 16.20, 16.21, 16.22, then 16.8, then 16.9. The other stories stay backlog. Everything merges to the feature branch; `main` moves only at owner-approved releases. **Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
 
 ## Stories
 
@@ -35,10 +35,6 @@ This is voting-week work, done after the submission cut. It adds the second-tier
 
 - **Every story.** Each screen is one descriptor with its derived read tool. Each action ships with its confirmed write tool.
 - **Governance baseline: held on an owner decision.** The epic says new write keys join Epic 14's governance baseline, but Story 14.2 is held. No tool is wired into a governance policy in this run; the gate point keeps returning "allowed" for everything not prohibited.
-- **Read-back (16.17).**
-  - After a confirmed write from either caller, the refreshed row reads "Read back: matches", "Read back: differs" (naming the fields) or "Read back: not found". The comparison runs on the instance.
-  - The proposal card's closing line says the same. It is never a silent success.
-  - The descriptor's field list declares how each field the instance normalizes on save is compared. A secret is reported as written, and its value is never read back.
 - **Home performance row (16.18).**
   - Cache efficiency, global references per second, global updates per second, and disk reads and writes per second, each with its unit, from the instance's own dashboard metrics.
   - It refreshes on the auto-refresh framework's interval. A sparkline of global references per second covers the last ten minutes, starts empty and invents no history.
@@ -61,7 +57,7 @@ This is voting-week work, done after the submission cut. It adds the second-tier
   - A read-only page in the Agent co-pilot area lists every action the agent refuses outright, each with its refusal reason. It is generated from the same prohibited set the server enforces, never written separately.
   - It shows the kill switch and enforced read-only state, which tools change the instance and therefore always need a Confirm, what the agent never sees (stored secrets, the variables captured with application errors), and the screen-context row limit.
   - A changed rule changes the page with no second edit, and a test fails when a prohibited action has no reason text.
-- **Log viewers (16.8).** All six sources render in the shared log viewer: search with highlight and "n of N", jump to top and bottom, Load newer, a Raw toggle, and a per-row explain entry point that sends that entry alone.
+- **Log viewers (16.8).** All six sources render in the shared log viewer: search with highlight and "n of N", jump to top and bottom, Load newer, a Raw toggle, and a per-row explain entry point that sends that entry alone. File-backed sources are named from a fixed enum.
   - DW-1102: add "Next match" and "Previous match" (approved copy) as accessible names, with their strings rows.
   - DW-1110: add `LogViewerStore` to sign-out teardown.
 - **Hub (16.9).** Lists every source with a count and its last entry. Each row opens that source and carries an explain entry point.
@@ -75,6 +71,7 @@ This is voting-week work, done after the submission cut. It adds the second-tier
   - A `datetime` criterion may declare `defaultHoursAgo` or `atOrAfterField`, and the answer reports every applied criterion as `criteria`. Screen and tool apply the same default.
 - **Navigation (AD-11).** `shell.screen.open` may carry `criteria` keyed by the target's declared criteria fields, on a `list (server criteria)` screen only. Values are validated on the instance before any announcement, travel on the directive and never in a URL. A navigation the user did not start is announced, and the departing screen may refuse it. A citation chip is a reference, not a navigation proposal. This is the path 16.21's Fix it takes to the affected screen (inference).
 - **Prohibited set (AD-10).** It has exactly one home: kernel predicates evaluated against the resolved target inside the atomic transition (AD-34), whichever caller wrote. Each refusal has a `PROHIBITED.*` code. Other privilege grants, including `%All`, are permitted at the strongest confirmation. 16.21's refusal wording and 16.22's list must come from this one declaration.
+- **Dependency direction.** The registry never depends on kernel behavior (the turn, the provider, governance). It may name kernel value types, constants, pure helpers, stores and the error vocabulary, and a write tool calls the proposal kernel's mint, prohibited-set and operation entry points.
 - **Switches and classification (AD-22, AD-30).** Every tool declares `read` or `write`. Read-only and the kill switch are instance state evaluated at the point of effect; `Kernel.Restraint.Verdict` gives the `blocked` answer, and every screen-context payload carries `tools` and `readOnly` (AD-24).
 - **What the agent never sees (AD-35, AD-48).** Secret-typed fields are schema-driven, never sent. Error-log detail (captured variables) is secret by default: summary fields only reach the model.
 - **Privilege (AD-8, AD-29).**
@@ -82,9 +79,12 @@ This is voting-week work, done after the submission cut. It adds the second-tier
   - Every non-admin port declares and checks its own gate. Establish each set from the backing class's own check, then by a real least-privileged run on a throwaway.
   - There is no elevation. What a caller cannot read is reported as such, never inferred.
 - **Paths and files (AD-21).** No endpoint accepts a filesystem path. A file source is named from a fixed enum, its directory is `$System.Util.ManagerDirectory()` resolved on every call, and paging validates the file's identity. 16.20's pattern-matched rotated-file name is a new named case, so amend AD-21 before building it (inference).
-- **Writes (AD-53, AD-55, AD-10).** A screen action and the agent's write are two callers of one tool. Kinds are merge (AD-4), action-style (AD-51), create (AD-54) and secret-only (AD-56); the port is declared per tool (AD-52). 16.17 and 16.19 extend these shipped kernel paths and must leave Release 1 writes unchanged.
+- **Writes (AD-53, AD-55, AD-10).** A screen action and the agent's write are two callers of one tool, sharing target resolution through the declared port, the fresh read, the prohibited-set predicates, the caller's privileges, the change event, the read-back and the vendor audit record. Kinds are merge (AD-4), action-style (AD-51), create (AD-54) and secret-only (AD-56); the port is declared per tool (AD-52). 16.19 extends these shipped kernel paths and must leave Release 1 writes unchanged.
+- **Read-back (AD-58, done in 16.17).** Every confirmed write, from either caller, re-reads its target through the tool's declared port with the caller's own privileges, after the ledger row and outside any transaction, and answers `readBack {verdict, fields, written, reason?}` without failing or altering the write's answer. A write tool touched or added later inherits it. A field the instance normalizes on save declares `compare` in its reviewed Classification entry; a secret is reported written, never read back. Only names and a verdict leave the instance, riding the change event as an annotation, never as row data.
+- **Open decision DW-1710.** Whether a list-row create (`TaskCreate`, `OAuthRegisteredClientCreate`) reads back over only its list row's fields (8 of the task create's 34 keys) or re-reads by `createdId`. It is on the Epic 16 merge-gate decision sheet; either answer amends AD-58.
 - **Try-it console (AD-57, done in 16.1).** A browser request under the tab's own Bearer token, never a tool or OcuPilot's write path. Targets under OcuPilot's own applications and `/api/admin` writes are refused before sending; other mutating verbs need a confirmation dialog. The response reaches the screen only, as data.
 - **Refresh (AD-14, AD-43).** A confirmed write publishes the scoped triple; screens re-fetch and highlight, never patch. Auto-refresh has one framework, and its roster lives in EXPERIENCE.md, so Home joins the roster and its descriptor together in 16.18 (inference).
+- **Stale-save version.** A screen that renders a stale-save refusal sends back the row version it read. After its own write (a Test connection, say) it may adopt the new version only when every field it will send still reads as loaded; otherwise only a reload does.
 - **Client (AD-19, AD-20).** Zoneless, `OnPush`, framework-free stores in `core/` mirrored into signals. Every root store resets at sign-out. Every API URL is absolute through the one API service.
 - **Server conventions.** One error envelope `{error, reason, code, detail}` (AD-12, AD-39). Ids are encoded twice and decoded once (AD-13). Tools are named `<area>.<screen>.<verb>`. User-facing strings come only from EXPERIENCE.md's Fixed strings and `strings.ts`; runners never invent copy.
 
@@ -92,18 +92,20 @@ This is voting-week work, done after the submission cut. It adds the second-tier
 
 - **Log viewer.** Rows show time, pid, a severity chip (with its word) and text. The sticky search shows a polite "n of N". Raw is a bounded monospace view on `code-surface`. It is a tail, not live, and never loads the whole file.
 - **Meters (16.7, 16.18).** Each meter shows its state as a word as well as a colour.
-- **Proposal card.** Diff rows, "N unchanged fields", "Agent's rationale", "Expected impact", 11.8's privilege line ("Requires ...") and a focus-taking status line. 16.19's impact line is 11.8's sibling; 16.17's closing line reports the read-back.
-- **Destructive confirmations.** A person's destructive dialog asks for the target's typed name. A destructive agent proposal takes the destructive bar with no typed name (14.7 is scratched).
+- **Proposal card.** Diff rows, "N unchanged fields", "Agent's rationale", "Expected impact", 11.8's privilege line ("Requires ...") and a focus-taking status line, with the read-back line under it once confirmed. 16.19's impact line is 11.8's sibling.
+- **Read-back copy.** The "Read back: ..." lines are Fixed strings. They follow the "Changed" tag on the marked row, join its announcement with " · ", and read "Saved · <line>" on a form.
+- **Destructive confirmations.** A screen's destructive dialog asks for the target's typed name, and its destructive button is labeled with the verb. A destructive agent proposal takes the destructive bar and a destructive Confirm, with no typed name.
 - **Gated controls.** They use `aria-disabled`, never `disabled`, and name their reason ("Requires <resource>").
-- **New copy.** Neither 16.21's panel nor 16.22's page has Fixed strings yet, so their copy must be added to EXPERIENCE.md before a runner uses it.
+- **New copy.** Neither 16.18's row, 16.19's impact line, 16.21's panel nor 16.22's page has Fixed strings yet, so their copy must be added to EXPERIENCE.md before a runner uses it.
 
 ## Cross-Story Dependencies
 
 - **Slot.** This run is on slot A: profile `ocupilot-slot-a`, throwaway `ocupilot-ci` on 52776/1975.
+- **Epic 14 runs concurrently on slot B.** Story 14.1 adds a "script instead" snippet to every write tool with a registry check, and Story 14.3 adds a sanitizer. A write tool or a registry change landing here must still satisfy them once they merge (inference).
 - **Home.** 16.18 and 16.21 both extend Home (15.4's System Information panel). Build them in order and keep 16.18's row intact.
-- **16.21 on 16.17 and 16.19.** Fix it proposals go through the ordinary proposal path, which carries 16.17's read-back line and 16.19's impact lines when they apply (inference).
+- **16.21 on 16.17 and 16.19.** Fix it proposals go through the ordinary proposal path, which carries the read-back line and 16.19's impact lines when they apply (inference).
 - **16.22.** It reads the kernel's prohibited set, tool classification, switches and context cap. It adds no new enforcement.
 - **16.20.** Extends 6.14's messages.log viewer and 11.2's "Explain this entry".
 - **16.9 after 16.8,** because the hub lists 16.8's sources.
 - **Held.** 16.4 needs Story 18.1's directory allow-list, which is out of range.
-- **Backlog notes.** 16.6 is the first screen to need multi-select. 16.13 and 16.14 each remove a classic-link exemption (AD-44) and replace Story 9.9's reduced forms.
+- **Backlog notes.** 16.6 is the first screen to need multi-select. 16.13 and 16.14 each remove a classic-link exemption (AD-44) and replace Story 9.9's reduced forms; 16.13 draws the `%Service_WebGateway` disable as disabled with the published sentence, because AD-10 refuses it from any caller.
