@@ -227,7 +227,7 @@ epics:
   epic-14:
     depends_on: [epic-4, epic-11, epic-12]
     submodules: []
-    story_order: ["14-1", "14-8 BEFORE 14-3 (14.3 AC2 needs 14.8's test, epics.md:5709-5711)", "14-5", "14-2 (HELD: owner decision on the frozen-baseline vs post-freeze-keys contradiction, epics.md:5665/5669 vs 6097)", "14-4", "14-6 (HELD: the two turn-limit strings, EXPERIENCE.md:756/909 [NOTE FOR PRD], epics.md:5785)"]
+    story_order: ["14-1", "14-8 BEFORE 14-3 (14.3 AC2 needs 14.8, epics.md:5709-5711)", "14-3", "14-5", "14-4", "14-2 (released 1756c380: shipped post-freeze write keys join the baseline, enabled; a registered write key missing from the list fails a test)", "14-6 (released 1756c380: strings authored in the story; default no limit)"]
     paths_hint: ["src/OcuPilot/Kernel/Governance/**", "src/OcuPilot/Kernel/Agent/**", "src/OcuPilot/Kernel/Proposal/**", "src/OcuPilot/Kernel/Audit/**", "src/OcuPilot/Kernel/State/**", "src/OcuPilot/Kernel/Restraint.cls", "src/OcuPilot/Api/Conversation.cls", "src/OcuPilot/Api/Turn*.cls", "src/OcuPilot/Api/Switches.cls", "src/OcuPilot/Api/Ledger.cls", "src/OcuPilot/Screen/Tool/**", "src/OcuPilot/Install/Installer.cls", "src/OcuPilot/Test/**", "ui/src/app/shell/**", "ui/src/app/areas/agent/**", "ui/src/app/core/**"]
   epic-16:
     depends_on: [epic-6, epic-11, epic-12]
