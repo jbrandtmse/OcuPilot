@@ -70,7 +70,8 @@ ClassMethod SecurityFieldNames() As %List
     Quit tNames
 }
 
-/// <p>Answer <code>GET /agent/switches</code>: the switches in force and every per-user hold.</p>
+/// <p>Answer <code>GET /agent/switches</code>: the switches in force, the row version they were
+/// read at, and every per-user hold.</p>
 ClassMethod HandleRead() As %Status
 {
     Set tSC = $$$OK
@@ -79,11 +80,20 @@ ClassMethod HandleRead() As %Status
             Set tSC = ..RenderForbidden()
             Quit
         }
+        ; The version is read before the values, for the reason HandleUpdate gives: a writer landing
+        ; between the two reads leaves the screen holding a version older than the values it shows,
+        ; so its save is refused rather than taken over that writer's change.
+        Set tVersionSC = ##class(OcuPilot.Kernel.State.Switch).GuardedVersion(.tVersion)
+        If $$$ISERR(tVersionSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tVersionSC))
+            Quit
+        }
         Set tReadSC = ##class(OcuPilot.Kernel.State.Switch).Resolve(.tValues)
         If $$$ISERR(tReadSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))
             Quit
         }
+        Set tValues("rowVersion") = tVersion
         Set tHoldSC = ..Holds(.tHolds)
         If $$$ISERR(tHoldSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tHoldSC))
@@ -99,6 +109,9 @@ ClassMethod HandleRead() As %Status
 /// <p>Answer <code>PUT /agent/switches</code>: merge the body over the stored switches, validate,
 /// then save. A key the body omits keeps its stored value, so turning the kill switch on is a
 /// two-key body and cannot silently clear enforced read-only (AD-4).</p>
+/// <p>A body carrying <code>rowVersion</code> as a JSON number saves only while the row still
+/// carries that version, and is refused <code>STATE.CONFLICT</code> otherwise. A body without it
+/// saves against the version this request read.</p>
 ClassMethod HandleUpdate() As %Status
 {
     Set tSC = $$$OK
@@ -107,9 +120,9 @@ ClassMethod HandleUpdate() As %Status
             Set tSC = ..RenderForbidden()
             Quit
         }
-        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody)
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
         If $$$ISERR(tReadSC) {
-            Set tSC = ..RenderBadBody(tReadSC)
+            Set tSC = ..RenderBadBody(tReadSC, tStage)
             Quit
         }
         If '##class(OcuPilot.Api.Definitions).BodyIsReadable(tBody) {
@@ -121,7 +134,8 @@ ClassMethod HandleUpdate() As %Status
         ; a version older than the row, and the conditional save below is refused. Read the values
         ; first and the same writer leaves a version that still matches while the merge carries
         ; the values it superseded -- which is the lost update this closes, not a case it catches.
-        ; Read from the store, never taken from the request: no version token crosses the wire.
+        ; Where the body carries rowVersion, the version is the one the screen read, sent back on
+        ; save, and it replaces this request's own.
         Set tVersionSC = ##class(OcuPilot.Kernel.State.Switch).GuardedVersion(.tVersion)
         If $$$ISERR(tVersionSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tVersionSC))
@@ -139,7 +153,8 @@ ClassMethod HandleUpdate() As %Status
             Set tSC = ..RenderViolations(.tViolations)
             Quit
         }
-        Set tSaveSC = ##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues, tVersion)
+        Set tExpected = ##class(OcuPilot.Api.Definitions).BodyRowVersion(tBody)
+        Set tSaveSC = ##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues, $Select(tExpected '= "": tExpected, 1: tVersion))
         If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(tSaveSC) {
             Set tSC = ..RenderConflict()
             Quit
@@ -148,12 +163,18 @@ ClassMethod HandleUpdate() As %Status
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The agent switches could not be saved", ##class(%Exception.StatusException).CreateFromStatus(tSaveSC))
             Quit
         }
+        Set tAfterVersionSC = ##class(OcuPilot.Kernel.State.Switch).GuardedVersion(.tAfterVersion)
+        If $$$ISERR(tAfterVersionSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tAfterVersionSC))
+            Quit
+        }
         Set tAfterSC = ##class(OcuPilot.Kernel.State.Switch).Resolve(.tAfter)
         If $$$ISERR(tAfterSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tAfterSC))
             Quit
         }
         Do ..LogChange(..#SWITCHESVERB, .tBefore, .tAfter)
+        Set tAfter("rowVersion") = tAfterVersion
         Set tHoldSC = ..Holds(.tHolds)
         If $$$ISERR(tHoldSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tHoldSC))
@@ -182,9 +203,9 @@ ClassMethod HandleHoldCreate() As %Status
             Set tSC = ..RenderForbidden()
             Quit
         }
-        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody)
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
         If $$$ISERR(tReadSC) {
-            Set tSC = ..RenderBadBody(tReadSC)
+            Set tSC = ..RenderBadBody(tReadSC, tStage)
             Quit
         }
         If '##class(OcuPilot.Api.Definitions).BodyIsReadable(tBody) {
@@ -312,7 +333,9 @@ ClassMethod CallerUsername() As %String
     Quit $Username
 }
 
-/// <p>The switch state and its holds, as the object both reads answer.</p>
+/// <p>The switch state and its holds, as the object both reads answer, with
+/// <code>rowVersion</code> -- the version <var>pValues</var> were read at, which the screen sends
+/// back on save.</p>
 ClassMethod Projection(ByRef pValues, pHolds As %DynamicArray) As %DynamicObject
 {
     Set tOut = {}
@@ -330,6 +353,7 @@ ClassMethod Projection(ByRef pValues, pHolds As %DynamicArray) As %DynamicObject
         }
     }
     Do tOut.%Set("updatedAt", $Get(pValues("updatedAt")), "string")
+    Do tOut.%Set("rowVersion", +$Get(pValues("rowVersion")), "number")
     Do tOut.%Set("holds", pHolds)
     Quit tOut
 }
@@ -428,9 +452,8 @@ ClassMethod IsAdministrator() As %Boolean
     Quit ##class(OcuPilot.Api.Definitions).IsAdministrator()
 }
 
-/// <p>Refuse with the 403 the definition routes already publish copy for: the
-/// <parameter>OcuPilot.Api.Error.AUTHNOPRIVILEGE</parameter> code and the failed
-/// <code>(resource, permission)</code> pair in <code>detail.failedPair</code> (AD-8).</p>
+/// <p>Refuse through <method>OcuPilot.Api.Definitions.RenderForbidden</method>, the one privilege
+/// refusal the agent routes share (AD-8).</p>
 ClassMethod RenderForbidden() As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).RenderForbidden()
@@ -444,12 +467,13 @@ ClassMethod RenderConflict() As %Status
     Quit ##class(OcuPilot.Api.Definitions).RenderConflict()
 }
 
-/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, carrying
-/// <parameter>OcuPilot.Api.Error.REASONAGENTBADBODY</parameter> alone; <var>pStatus</var>'s raw
-/// text reaches the log only (AD-39).</p>
-ClassMethod RenderBadBody(pStatus As %Status) As %Status
+/// <p>Refuse an unreadable body through <method>OcuPilot.Api.Definitions.RenderBadBody</method>:
+/// 500 for a <code>read</code> or <code>decode</code> <var>pStage</var>, and otherwise 400 with
+/// <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>; <var>pStatus</var>'s raw text reaches
+/// the log only (AD-39).</p>
+ClassMethod RenderBadBody(pStatus As %Status, pStage As %String = "") As %Status
 {
-    Quit ##class(OcuPilot.Api.Definitions).RenderBadBody(pStatus)
+    Quit ##class(OcuPilot.Api.Definitions).RenderBadBody(pStatus, pStage)
 }
 
 /// <p>Refuse with <b>one</b> 422 carrying every violation as <code>detail.violations</code>, each a

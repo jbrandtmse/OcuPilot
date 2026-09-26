@@ -1,6 +1,6 @@
 #!/bin/sh
 # Write, start and tear down the THROWAWAY container CI's instance job runs against
-# (Story 1.17; README.md's "Verifying the start path against a throwaway container").
+# (docs/DEVELOPMENT.md's "Verifying the start path against a throwaway container").
 #
 # **It never points `docker compose` at this repository's own docker-compose.yml.** That file
 # names the container `ocupilot` and mounts `./iris-data`, so one missing override line reaches
@@ -181,8 +181,7 @@ services:
       # destructive helper, declares the variable its callers refuse on, and holds no refusal of
       # its own (TurnWireFixture). Keeping a declared variable while deleting the refusal beside
       # it is a change these rosters cannot see -- scripts/check-objectscript.py's
-      # destructive-test-guard rule is what reads that, and DW-419 is where its limits are
-      # recorded.
+      # destructive-test-guard rule reads that, but only for a class making a call it names.
       #
       # Rotates the instance's own messages.log. Set here and nowhere else: this container is
       # discarded, and the test refuses to run anywhere the variable is absent rather than
@@ -224,6 +223,7 @@ services:
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
       # would leave it there.
       # classes: ErrorDelete, ErrorLogSeed, ProviderSecret, ProviderStub, ProviderStubTransport
+      # classes: DemoErrorSeed
       # classes: SecretLeak, SecretStoreProbe
       OCUPILOT_ALLOW_ERROR_SEED: "1"
       # Deletes OcuPilot's own audit event registrations to prove an unregistered triple drops
@@ -239,14 +239,14 @@ services:
       # Runs OcuPilot's PRODUCTION install. A production install is not one side effect but a
       # whole set of them -- a database, a resource, a role, three web applications, the audit
       # registrations and the _SYSTEM unexpire -- which is why it has a variable of its own
-      # rather than riding on a narrower one. It is not the whole population that installs:
-      # seven further classes run the same install and are armed by OCUPILOT_ALLOW_PRINCIPALS or
-      # OCUPILOT_ALLOW_AUDIT_EVENTS instead, under a variable named for a narrower effect than
-      # the one they have. Consequence, stated plainly: the classes below run here and on CI,
-      # never on a development container someone cares about.
+      # rather than riding on a narrower one. Every class that runs it refuses on this variable,
+      # whatever else arms it; scripts/check-objectscript.py's destructive-test-guard rule holds
+      # that. Consequence, stated plainly: the classes below run here and on CI, never on a
+      # development container someone cares about.
       # classes: AuditRecord, AuditVerbs, DefinitionDefaults, DemoOptIn, GatewayGapIpmPath, GrantReadBack
       # classes: IdentityInstall, InstallNamespaceSource, Installer, Manifest, Provenance, Static
       # classes: UninstallGuard, UninstallResidue, UninstallSurvival, WebApp
+      # classes: AuditEvent, AuditMarker, ConfigGate, State, Token, UnexpireScope, Version, Wire
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same
@@ -291,7 +291,10 @@ services:
       # at an instance someone cares about would destroy the record of a fault nobody had read yet.
       # The class seeds every error it removes and clears its own namespace on exit; it declares
       # OCUPILOT_ALLOW_ERROR_SEED as well, because it seeds through that class's own guarded helper.
+      # DemoErrorSeed deletes the demo fixture's own entries from the install namespace and leaves
+      # one present when it finishes.
       # classes: ErrorDelete
+      # classes: DemoErrorSeed
       OCUPILOT_ALLOW_ERROR_DELETE: "1"
       # Writes a service and LDAP configurations in this instance's own security database through
       # the shipped Save and confirm paths. The service classes write only %Service_CallIn, which is
@@ -318,6 +321,11 @@ services:
       # container, which its own assertThrowaway checks.
       # classes: AuditPurge
       OCUPILOT_ALLOW_AUDIT_PURGE: "1"
+      # Clears the suite's own HTTP account's favorites, recents and remembered views through the
+      # shipped preferences route and its store. Its own variable because no narrower one names
+      # that effect: a runner pointed at an instance someone uses would empty that account's lists.
+      # classes: PreferencesWire
+      OCUPILOT_ALLOW_ACCOUNT_PREFERENCES: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

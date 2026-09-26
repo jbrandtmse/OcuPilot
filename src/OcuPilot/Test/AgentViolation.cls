@@ -187,9 +187,9 @@ Method TestTheCredentialNameBoundIsTheVendorPropertysOwn()
 /// <p><b>The provider catalog route</b> -- status, content type and body shape, over HTTP
 /// (Conventions, Tests).</p>
 /// <p>It serves every column the Definition form cascades from, plus the derived
-/// <code>keyShapeReason</code>, and <b>not</b> the two columns that are the table's own
-/// machinery: <code>adapterClass</code> names a class on this instance and
-/// <code>authVersion</code> is a wire detail of the call OcuPilot makes.</p>
+/// <code>keyShapeReason</code>, and <b>not</b> <code>adapterClass</code>,
+/// <code>authVersion</code> or <code>reasoningEffort</code>: the first names a class on this
+/// instance, and the other two are wire details of the call OcuPilot makes.</p>
 /// <p>Mutation: add <code>adapterClass</code> to
 /// <method>OcuPilot.Api.Definitions.ProviderColumns</method> -- this goes red on the key
 /// roster.</p>
@@ -211,8 +211,7 @@ Method TestTheProviderCatalogRouteServesTheCascadeColumns()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    ; acceptsTemperature is Story 10.4's column, shipped for the Definition form's Temperature field.
-    Do $$$AssertEquals(tKeys, "key,label,defaultModel,modelSuggestions,defaultEndpoint,endpointRequired,canonicalMaxTokens,canonicalTemperature,defaultEnvVarName,defaultCredentialName,keyPrefix,allowsLocal,acceptsTemperature,keyShapeReason", "the twelve cascade columns and the derived sentence, and neither adapterClass nor authVersion")
+    Do $$$AssertEquals(tKeys, "key,label,defaultModel,modelSuggestions,defaultEndpoint,endpointRequired,canonicalMaxTokens,canonicalTemperature,defaultEnvVarName,defaultCredentialName,keyPrefix,allowsLocal,acceptsTemperature,keyShapeReason", "the thirteen cascade columns and the derived sentence, and none of adapterClass, authVersion or reasoningEffort")
     Do $$$AssertEquals(tRow.key, "anthropic", "the shipped row")
     Do $$$AssertEquals(tRow.%GetTypeOf("endpointRequired"), "boolean", "a flag arrives as a JSON boolean")
     Do $$$AssertEquals(tRow.%GetTypeOf("canonicalMaxTokens"), "number", "and a count as a JSON number")

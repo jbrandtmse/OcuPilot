@@ -76,6 +76,9 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.Wire creates and deletes IRIS users and roles on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
+    If $System.Util.GetEnviron("OCUPILOT_ALLOW_PRODUCTION_INSTALL") '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.Wire runs OcuPilot's production install on this instance and runs on a throwaway container only. OCUPILOT_ALLOW_PRODUCTION_INSTALL does not read 1 here, so nothing was installed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
@@ -902,8 +905,8 @@ Method TestReadinessAnswersAnAnonymousCaller()
 
     ; The same path without the trailing slash resolves to the password-authenticated API
     ; application, which has no such route: 401 to an anonymous caller. Asserted so the two
-    ; applications cannot be confused for each other, and so README.md's spelling is the one
-    ; that works.
+    ; applications cannot be confused for each other, and so the spelling in docs/DEVELOPMENT.md's
+    ; "The readiness endpoint" is the one that works.
     Set tSC2 = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/readiness", "", "", .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC2, "the slashless request completes")
     Do $$$AssertEquals(tStatus2, 401, "without the trailing slash the parent API application answers, and it is authenticated")

@@ -136,7 +136,7 @@ Method TestAMalformedPairSpecFailsClosed()
 /// <p><b>AC6</b> -- every port's outbound entry refuses <code>AUTH.NOPRIVILEGE</code> when its
 /// declared gate is not held, before the call it guards is made. Driven, not read.</p>
 /// <p>Mutation: remove <method>OcuPilot.Port.ProviderPort.Invoke</method>'s
-/// <code>EvaluateAnyOf</code> call, or <method>OcuPilot.Port.MgmntPort.Invoke</method>'s
+/// <code>GateAnyOfForUser</code> call, or <method>OcuPilot.Port.MgmntPort.Invoke</method>'s
 /// <code>EvaluateRequired</code> call -> this goes red.</p>
 Method TestEveryPortEvaluatesItsDeclaredGate()
 {

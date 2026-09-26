@@ -2114,7 +2114,12 @@ ClassMethod EnsureApplication(ByRef pNames, pInstallNs As %String, ByRef pReport
             If +$Get(tProps("Enabled")) '= 1 Set tNeedsRepair = 1
             If $Get(tProps("MatchRoles")) '= tWantMatchRoles Set tNeedsRepair = 1
             If $Get(tProps("Routines")) '= tWantRoutines Set tNeedsRepair = 1
+            ; Type too, as the identity application's check does: an application of any other
+            ; type grants no role, so every escalation into OcuPilot's own state is refused
+            ; (inference).
+            If +$Get(tProps("Type")) '= 4 Set tNeedsRepair = 1
             If tNeedsRepair {
+                Set tModProps("Type") = 4
                 Set tModProps("Enabled") = 1
                 Set tModProps("MatchRoles") = tWantMatchRoles
                 Set tModProps("Routines") = tWantRoutines
@@ -2275,9 +2280,9 @@ ClassMethod CodeDatabaseResource(pInstallNs As %String, Output pResource As %Str
 /// <p><b>Why these roles exist at all.</b> Database READ is routine-execution permission
 /// (AD-9), so an <b>anonymous</b> request cannot load
 /// <class>OcuPilot.Api.StaticHandler</class> or <class>OcuPilot.Api.Readiness</class> from the
-/// install namespace's database unless the application grants read on it: without the role the
-/// same request answers 500 with a <code>&lt;PROTECT&gt;</code> error that also leaks the
-/// database directory to the caller. The role buys the right to execute OcuPilot's own code
+/// install namespace's database unless the application grants read on it: without the role IRIS
+/// refuses the same request 403 with an empty body before the dispatch class runs (measured on
+/// the readiness application). The role buys the right to execute OcuPilot's own code
 /// and no data privilege beyond it -- OcuPilot's state lives in the separate protected database
 /// (AD-9), which these roles do not reach.</p>
 /// <p><b>One role per application, not one shared role</b> (Story 1.17, the owner's overnight
@@ -2655,9 +2660,8 @@ ClassMethod RefuseForeignApplications(ByRef pNames, ByRef pRecorded, ByRef pRepo
 /// <p>The install-time assertion (AD-21, AD-10): after every application has been ensured,
 /// read each one back and require that it exists, carries <b>exactly</b> the matching role its
 /// roster entry declares and nothing else, and carries no application resource. A failure here
-/// fails the install loudly rather than leaving an unauthenticated application that answers 500
-/// with a <code>&lt;PROTECT&gt;</code> naming a database directory the first time anyone asks
-/// it anything.</p>
+/// fails the install loudly rather than leaving an unauthenticated application that refuses
+/// every anonymous request 403 before its dispatch class runs (inference).</p>
 /// <p><b>It is derived from the same iteration the ensure steps use</b> (DW-192), so a fourth
 /// application is asserted by arriving in the roster rather than by anyone remembering to add
 /// a line here. It reads the instance rather than the values just written, which is what makes
@@ -3753,7 +3757,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         Kill tRecorded
         Set tProvSC = ##class(OcuPilot.Kernel.State.WebApp).GuardedPathsForProfile(pProfile, .tRecorded)
         If $$$ISERR(tProvSC) {
-            Do ..LogWarn("Could not read this profile's web-application provenance record -- no web application and no application matching role will be removed, and each application this profile's roster names is reported instead", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tProvSC))})
+            Do ..LogWarn("Could not read this profile's web-application provenance record -- no web application, and no matching role of an application still present, will be removed, and each application this profile's roster names is reported instead", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tProvSC))})
             Kill tRecorded
         }
 
@@ -3772,13 +3776,15 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
                 Set tUKey = $Piece(tNames("appKeys"), ",", tUI)
                 Set tUName = $Get(tNames("appName", tUKey))
                 If $Data(tRecorded(tUName)) Set tAppList = tAppList _ $Select(tAppList = "": "", 1: ", ") _ "'" _ tUName _ "'"
-                ; DW-94: the role list is filtered by the same provenance the application list
-                ; is, because the deletion loop below is. An unfiltered list promised to destroy
-                ; the matching role of an application uninstall deliberately leaves in place --
-                ; the AD-21 privilege floor that "left in place" means still working.
-                If '$Data(tRecorded(tUName)) Continue
+                ; The role list mirrors the deletion loop below: an existing role is removed when
+                ; its application is recorded (and so removed) or no application sits at its
+                ; roster path, and kept while an application uninstall leaves in place still
+                ; matches it -- the AD-21 privilege floor that "left in place" means still working.
                 Set tURole = $Get(tNames("appRole", tUKey))
-                If tURole '= "" Set tRoleList = tRoleList _ $Select(tRoleList = "": "", 1: ", ") _ "'" _ tURole _ "'"
+                If tURole = "" Continue
+                If '##class(Security.Roles).Exists(tURole, .tUEW1, .tUSW1) Continue
+                If '$Data(tRecorded(tUName)), ##class(Security.Applications).Exists(tUName, .tUEW2, .tUSW2) Continue
+                Set tRoleList = tRoleList _ $Select(tRoleList = "": "", 1: ", ") _ "'" _ tURole _ "'"
             }
             If tAppList = "" Set tAppList = "(no web application carries a provenance record, so none would be removed)"
             Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "' and '" _ tNames("identityRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "', '" _ tNames("identityApplication") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit events '" _ ..EventList(.tNames) _ "', TLS configuration '" _ tNames("sslConfig") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
@@ -3900,11 +3906,12 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         ; row) keeps its role, because deleting a role strips its name from every application
         ; still matching it (verified on this build, and pinned by OcuPilot.Test.WebApp), which
         ; would take that application's AD-21 privilege floor with it and leave an anonymous
-        ; application that cannot load its own dispatch class and answers 500 with a <PROTECT>
-        ; naming the database directory. "Left in place" has to mean still working. An
-        ; application that is ALREADY ABSENT -- removed this run, or by another hand before it
+        ; application that refuses every anonymous request 403 before its dispatch class runs
+        ; (inference). "Left in place" has to mean still working. An application that is
+        ; ALREADY ABSENT -- removed this run, or by another hand before it
         ; -- has no floor to preserve, so its role goes: no roster-declared role survives when
-        ; no application sits at its roster path (AD-21's both-directions invariant).
+        ; no application sits at its roster path (AD-21: the floor role is created and removed by
+        ; the installer).
         For tRI = 1:1:$Length(tNames("appKeys"), ",") {
             Set tRKey = $Piece(tNames("appKeys"), ",", tRI)
             Set tRRole = $Get(tNames("appRole", tRKey))

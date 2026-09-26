@@ -672,12 +672,10 @@ export class ProposalCard {
 
   /**
    * Whether the tool declared this write destructive, which turns the card's left-edge bar and its
-   * Confirm to the destructive treatment (DESIGN.md `:1176`, `:1243`).
+   * Confirm to the destructive treatment (DESIGN.md `:1181`, `:1242`).
    *
-   * **The styling ships without the typed-name field.** `button-destructive` is published as
-   * appearing only once a typed name matches, and that field is Story 14.7's: shipping it here
-   * would leave Confirm permanently `aria-disabled`, since nothing yet compares what was typed.
-   * The declaration on the wire is what 14.7 then reads, from one place.
+   * A destructive agent proposal has no typed-name field: the destructive bar, the destructive
+   * Confirm and the user's own press are its confirmation.
    */
   protected get destructive(): boolean {
     return this.view().destructive === true;

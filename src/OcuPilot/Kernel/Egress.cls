@@ -61,14 +61,15 @@ Parameter KINDLINKLOCAL = "linklocal";
 /// with <b>no escape</b> however a definition is marked (DW-1214). They answer this kind rather
 /// than a kind of their own, because the treatment is exactly the one IPv4 link-local already
 /// has -- <code>169.254.169.254</code> is in that range, and the asymmetry being removed is the
-/// escape the IPv6 addresses had, not the range.</p>
+/// escape the addresses outside it had (the IPv6 ones, and Alibaba Cloud's
+/// <code>100.100.100.200</code>), not the range.</p>
 /// <p><b>The unique-local range itself is not refused.</b> <code>fc00::/7</code> is how a private
 /// IPv6 network is addressed and a local model legitimately sits in it, so refusing the range would
 /// trade this family's own use case for a narrow risk. Only these addresses are named.</p>
 /// <p><b>A denylist cannot be complete.</b> A provider that publishes a new metadata address is
 /// uncovered until this list learns it; the durable posture is an allowlist of endpoints an
 /// operator declared, which is an AD-42 amendment and not this parameter.</p>
-Parameter METADATAADDRESSES = "169.254.169.254,169.254.170.2,fd00:ec2::254,fd20:ce::254";
+Parameter METADATAADDRESSES = "169.254.169.254,169.254.170.2,fd00:ec2::254,fd20:ce::254,100.100.100.200";
 
 /// <p>Kind: the address is one this instance's own interfaces carry.</p>
 Parameter KINDINSTANCE = "instance";

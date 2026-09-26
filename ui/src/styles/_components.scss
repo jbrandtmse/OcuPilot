@@ -4431,9 +4431,9 @@ app-data-table {
   }
 }
 
-// The destructive card (DESIGN.md `:1176`, `:1243`): the 4px left-edge bar in `destructive`, and
-// Confirm as `button-destructive`. The declaration is the write tool's own and arrives on the
-// wire; the typed-name field that DESIGN.md pairs with the button is Story 14.7's.
+// The destructive card (DESIGN.md `:1181`, `:1242`): the 4px left-edge bar in `destructive`, and
+// Confirm as `button-destructive`. A destructive agent proposal has no typed-name field: the
+// destructive bar, the destructive Confirm and the user's own press are its confirmation.
 .ocu-proposal-card-destructive {
   border-left-color: var(--ocu-destructive);
 }
@@ -6536,4 +6536,32 @@ app-data-table .ocu-data-table-header-cell {
   margin: 0;
   padding: 0 var(--ocu-space-2);
   color: var(--ocu-on-surface-variant);
+}
+
+// The status bar at a narrow viewport: the right group (DESIGN.md `status-bar`) -- the flag badge,
+// the auto-refresh stamp and the connection state -- keeps its width, and the left group's tail is
+// clipped instead.
+.ocu-status-bar-group:last-child {
+  flex-shrink: 0;
+}
+
+.ocu-status-bar-group:first-child {
+  overflow-x: clip;
+}
+
+// Every flag and choice is a 24px target (EXPERIENCE.md "Target sizes."): the checkbox or radio
+// itself and the label that wraps it, wherever a form or filter draws one inside
+// `.ocu-field-checkbox` or `.ocu-criteria-marker`. The box never shrinks, so a long label beside it
+// wraps instead of narrowing the target.
+.ocu-field-checkbox,
+.ocu-criteria-marker {
+  min-block-size: var(--ocu-space-6);
+}
+
+.ocu-field-checkbox input:is([type='checkbox'], [type='radio']),
+.ocu-criteria-marker input[type='checkbox'] {
+  flex-shrink: 0;
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
 }

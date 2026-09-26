@@ -45,3 +45,4 @@
 2026-09-26T19:28:58Z	Epic 16	spine_updated	ad=deferred reason=decision_pending_mirror(DW-1710) by=runner story=16-17-the-read-back-line lint=ok(pre-existing_low_placeholder_AD-7)
 2026-09-26T19:28:58Z	Story 16.17	ledger_adjudicated	owned=1 resolved=1 reowned=0 terminal=0 note=DW-1709_resolved-by_16-17_in_cr(Resources[].Permissions:letters,measured_matches);DW-1710_decision-pending_to_sheet model=claude-opus-5-5
 2026-09-26T19:28:58Z	Story 16.17	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci(final_source_and_bundle_per_cr);read-back.browser-spec_1/1_both_themes;roles-create.browser-spec_5/5 model=claude-opus-5-5
+2026-09-26T19:29:55Z	Story 16.17	committed	sha=24ee1fb7 submodules= ci=pending run=36266240671 amendments=ARCHITECTURE-SPINE.md:AD-58+pointers(AD-3,AD-53),ARCHITECTURE-SPINE.md:Deferred_DW-1710_row,EXPERIENCE.md:fixed-strings_row,CLAUDE.md:105_ad_count_58 note=supersedes_run_36263778004(cancel-in-progress)

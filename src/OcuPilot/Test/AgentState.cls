@@ -297,10 +297,11 @@ Method Disable(pId As %String)
     Do $$$AssertStatusOK(tUpdateSC, "the definition is disabled")
 }
 
-/// <p>AC5 -- a save that changes any of the six security-relevant fields clears both
+/// <p>AC5 -- a save that changes any property
+/// <method>OcuPilot.Kernel.State.Agent.SecurityFields</method> names clears both
 /// <property>ConnectionVerified</property> and <property>Enabled</property>; a save that changes
 /// only the model leaves both alone.</p>
-/// <p>All six are exercised one at a time, so a field quietly dropped from
+/// <p>Every property that method names is exercised one at a time, so a field quietly dropped from
 /// <method>OcuPilot.Kernel.State.Agent.SecurityFields</method> is caught rather than covered by
 /// its neighbours.</p>
 /// <p>Mutation: remove <code>EndpointUrl</code> from that list -- the endpoint leg goes red, the
@@ -335,6 +336,10 @@ Method TestASecurityChangeDisablesAndAModelChangeDoesNot()
     Do ..ReEnable(tA)
     Do ..ApplyChange(tA, "MarkedLocal", 1)
     Do $$$AssertEquals(..FlagsOf(tA), "0|0", "and so does marking it local, which widens which addresses its endpoint may resolve to")
+
+    Do ..ReEnable(tA)
+    Do ..ApplyChange(tA, "HttpAcknowledged", 1)
+    Do $$$AssertEquals(..FlagsOf(tA), "0|0", "and so does acknowledging an unencrypted endpoint, which lets the credential cross one")
 }
 
 /// <p><code>Enabled|ConnectionVerified</code> for definition <var>pId</var>, read from the stored

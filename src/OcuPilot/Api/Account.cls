@@ -40,12 +40,12 @@ Parameter POLICYCODES = "845,958";
 /// <p>Answer <code>POST /account/password {"currentPassword","newPassword"}</code>: change the
 /// calling user's own password and answer <code>200 {}</code>.</p>
 /// <p>A body carrying anything but exactly those two string members is refused 422
-/// <parameter>OcuPilot.Api.Error.ACCOUNTPASSWORDBODY</parameter> before the change is attempted. A
-/// refused change is one 422 <parameter>OcuPilot.Api.Error.ACCOUNTVALIDATION</parameter> carrying
-/// one violation -- on <code>currentPassword</code> when the old password was wrong, on
-/// <code>newPassword</code> when the instance's policy refused the new one, with the instance's
-/// own sentence as that violation's <code>reason</code>. Any other outcome is a 500 whose detail
-/// reaches the log alone.</p>
+/// <parameter>OcuPilot.Api.Error.ACCOUNTPASSWORDBODY</parameter> before the change is attempted, and
+/// a body the server could not read or decode answers 500 <code>INTERNAL</code>. A refused change
+/// is one 422 <parameter>OcuPilot.Api.Error.ACCOUNTVALIDATION</parameter> carrying one violation --
+/// on <code>currentPassword</code> when the old password was wrong, on <code>newPassword</code> when
+/// the instance's policy refused the new one, with the instance's own sentence as that violation's
+/// <code>reason</code>. Any other outcome is a 500 whose detail reaches the log alone.</p>
 ClassMethod HandlePasswordChange() As %Status
 {
     Set tSC = $$$OK
@@ -107,7 +107,9 @@ ClassMethod HandlePasswordChange() As %Status
 }
 
 /// <p>Refuse the body with 422 <parameter>OcuPilot.Api.Error.ACCOUNTPASSWORDBODY</parameter>, and
-/// log a status composed here naming <var>pStage</var> alone.</p>
+/// log a status composed here naming <var>pStage</var> alone. A <code>read</code> or
+/// <code>decode</code> fault is the server's, not the client's, and answers 500
+/// <code>INTERNAL</code> instead, with the same composed status as its logged detail.</p>
 /// <p><b>Not <method>OcuPilot.Api.Definitions.RenderBadBody</method>.</b> That path logs the
 /// read's own <class>%Status</class> through <method>OcuPilot.Kernel.Fault.LogRaw</method>, and
 /// <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> folds the parser's exception -- which can
@@ -115,7 +117,11 @@ ClassMethod HandlePasswordChange() As %Status
 /// (AD-35).</p>
 ClassMethod RenderBodyRefusal(pStage As %String) As %Status [ Private ]
 {
-    Do ##class(OcuPilot.Kernel.Fault).LogRaw("account", "password change body refused", $$$ERROR($$$GeneralError, "the password-change body was refused at the " _ pStage _ " stage"), ##class(OcuPilot.Api.Error).#ACCOUNTPASSWORDBODY)
+    Set tLogged = $$$ERROR($$$GeneralError, "the password-change body was refused at the " _ pStage _ " stage")
+    If (pStage = "read") || (pStage = "decode") {
+        Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tLogged))
+    }
+    Do ##class(OcuPilot.Kernel.Fault).LogRaw("account", "password change body refused", tLogged, ##class(OcuPilot.Api.Error).#ACCOUNTPASSWORDBODY)
     Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.Error).#REASONACCOUNTPASSWORDBODY, ##class(OcuPilot.Api.Error).#ACCOUNTPASSWORDBODY)
 }
 
@@ -166,17 +172,12 @@ ClassMethod PolicyText(pStatus As %Status, pCodes As %String, Output pMatched As
 }
 
 /// <p>Refuse with <b>one</b> 422 carrying <var>pViolations</var> as
-/// <code>detail.violations</code>, each a <code>{field, code, reason}</code> object (AD-39).</p>
-/// <p>It serializes through <method>OcuPilot.Kernel.AgentRules.ViolationsJson</method>, the tree's
-/// one violation serializer, rather than through
-/// <method>OcuPilot.Api.Definitions.RenderViolations</method>, which fixes the envelope's code at
-/// <parameter>OcuPilot.Api.Error.AGENTVALIDATION</parameter>; this route's is
-/// <parameter>OcuPilot.Api.Error.ACCOUNTVALIDATION</parameter>.</p>
+/// <code>detail.violations</code>, each a <code>{field, code, reason}</code> object (AD-39). It
+/// delegates to <method>OcuPilot.Api.Definitions.RenderViolations</method> with this route's code,
+/// <parameter>OcuPilot.Api.Error.ACCOUNTVALIDATION</parameter>, and this route's reason.</p>
 ClassMethod RenderViolations(ByRef pViolations) As %Status [ Private ]
 {
-    Set tDetail = {}
-    Do tDetail.%Set("violations", ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.pViolations))
-    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.Error).#REASONACCOUNTVALIDATION, ##class(OcuPilot.Api.Error).#ACCOUNTVALIDATION, tDetail)
+    Quit ##class(OcuPilot.Api.Definitions).RenderViolations(.pViolations, ##class(OcuPilot.Api.Error).#REASONACCOUNTVALIDATION, ##class(OcuPilot.Api.Error).#ACCOUNTVALIDATION)
 }
 
 }

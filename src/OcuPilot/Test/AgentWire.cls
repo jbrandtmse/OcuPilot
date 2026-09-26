@@ -110,9 +110,9 @@ Method TestASoundCreateIsReturnedByTheListImmediately()
     Do $$$AssertEquals(tCreated.readOnly, 0, "a definition is created read/write, so a first request for a change ends in a proposal")
     Do $$$AssertEquals(tCreated.retentionDays, 30, "with the settled retention default")
     Do $$$AssertEquals(tCreated.maxIterationsPerTurn, 10, "and the settled per-turn iteration ceiling")
-    ; Story 10.3 appended httpAcknowledged to OcuPilot.Api.Definitions.Fields(); the key list is
-    ; pinned exactly, so the projection gaining a key is a deliberate edit here (granted 2026-09-19).
-    Do $$$AssertEquals(..KeysOf(tCreated), "id,name,provider,model,endpointUrl,markedLocal,httpAcknowledged,credType,envVarName,credentialName,maxTokens,temperature,maxIterationsPerTurn,systemPromptOverride,readOnly,retentionDays,enabled,connectionVerified,createdAt,updatedAt,default", "the full projection carries exactly these keys, and no key that could hold a credential value")
+    ; The key list is pinned exactly, so the projection gaining a key is a deliberate edit here.
+    Do $$$AssertEquals(..KeysOf(tCreated), "id,name,provider,model,endpointUrl,markedLocal,httpAcknowledged,credType,envVarName,credentialName,maxTokens,temperature,maxIterationsPerTurn,systemPromptOverride,readOnly,retentionDays,enabled,connectionVerified,createdAt,updatedAt,default,rowVersion", "the full projection carries exactly these keys, and no key that could hold a credential value")
+    Do $$$AssertEquals(tCreated.%GetTypeOf("rowVersion"), "number", "the row version arrives as a JSON number")
 
     Set tSC2 = ..Call("GET", "", "", .tListStatus, .tListBody, .tListHeaders)
     Do $$$AssertStatusOK(tSC2, "the list request completes")
@@ -180,6 +180,49 @@ Method TestReadUpdateSetDefaultAndDeleteOverTheWire()
     Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).deleted, 1, "reporting the deletion")
     Do ..Call("GET", "/" _ tFirst, "", .tStatus, .tBody, .tHeaders)
     Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).default, 1, "and the marker falls back to the remaining definition")
+}
+
+/// <p>An update carrying the version the screen read is refused <code>STATE.CONFLICT</code> once
+/// another writer has moved the row, and pressing Save again with the same version is refused
+/// again; a read hands back the current version, and an update carrying it is taken, as is the next
+/// one carrying the version that answer carried. A body with no <code>rowVersion</code>, or one
+/// that is not a JSON number, saves as it always has.</p>
+/// <p>Mutation: have <method>OcuPilot.Api.Definitions.HandleUpdate</method> ignore the body's
+/// <code>rowVersion</code> -- the two stale updates answer 200 and this goes red. Delete the JSON
+/// type check in <method>OcuPilot.Api.Definitions.BodyRowVersion</method> -- the quoted
+/// <code>"0"</code> is read as version 0 and refused, and this goes red.</p>
+Method TestAnUpdateCarryingAStaleVersionIsRefusedUntilReloaded()
+{
+    Set tId = ..CreateDefinition("StaleVersion")
+    If tId = "" Quit
+    Do ..Call("GET", "/" _ tId, "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the definition reads: " _ tBody)
+    Set tRead = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
+    Do ..Call("PUT", "/" _ tId, "{""model"":""claude-sonnet-5"",""rowVersion"":" _ tRead _ "}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "an update carrying the version read is taken: " _ tBody)
+    Set tHeld = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
+    Do $$$AssertTrue(tHeld > tRead, "and answers the version the update wrote: " _ tHeld)
+
+    Do ..Call("PUT", "/" _ tId, "{""model"":""claude-other-5""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "another writer's update with no rowVersion is taken as it always was: " _ tBody)
+
+    For tAttempt = 1, 2 {
+        Do ..Call("PUT", "/" _ tId, "{""model"":""claude-stale-5"",""rowVersion"":" _ tHeld _ "}", .tStatus, .tBody, .tHeaders)
+        Do $$$AssertEquals(tStatus, 409, "update " _ tAttempt _ " with the version this screen held is refused: " _ tBody)
+        If tStatus = 409 Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).code, ##class(OcuPilot.Api.Error).#STATECONFLICT, "as a stale save")
+    }
+    Do ..Call("GET", "/" _ tId, "", .tStatus, .tBody, .tHeaders)
+    Set tNow = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tNow.model, "claude-other-5", "the other writer's model survived both")
+
+    Do ..Call("PUT", "/" _ tId, "{""model"":""claude-reloaded-5"",""rowVersion"":" _ tNow.rowVersion _ "}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "an update carrying the reloaded version is taken: " _ tBody)
+    Set tAnswered = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
+    Do ..Call("PUT", "/" _ tId, "{""model"":""claude-answered-5"",""rowVersion"":" _ tAnswered _ "}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "and so is the next, carrying the version that answer carried: " _ tBody)
+
+    Do ..Call("PUT", "/" _ tId, "{""model"":""claude-typed-5"",""rowVersion"":""0""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "a rowVersion that is not a JSON number is ignored, and the update saves against the version it read: " _ tBody)
 }
 
 /// <p>An id no definition holds is a named 404 on every route that takes one -- never a 500, and

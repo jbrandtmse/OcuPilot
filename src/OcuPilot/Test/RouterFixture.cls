@@ -50,7 +50,8 @@ ClassMethod MayEnterNamespace(pNamespace As %String, Output pFailedPair As %Stri
 /// <code>/items/current</code> must be checked before <code>/items/:id</code>, or the
 /// wildcard would swallow "current" as an id. <code>/items/:id</code> doubles as the
 /// single-segment id route the entity-id corpus test dispatches through.</p>
-/// <p>Ordering invariant 3 (N-segment before (N-1)-segment): <code>/docs/:id/history</code>
+/// <p>Ordering invariant 3 (a longer route before a shorter one whose Url matches its leading
+/// segments): <code>/docs/:id/history</code>
 /// is 3 segments and is listed before the 2-segment <code>/docs/:id</code>, as the convention
 /// requires.</p>
 /// <p><code>/screens/:screen/read</code> is the production screen-read route's shape, dispatched to
@@ -292,9 +293,9 @@ ClassMethod AgentDefinitionCredentialRoute(pId As %String) As %Status
 }
 
 /// <p>The switches update with a second writer inside it
-/// (<class>OcuPilot.Test.SwitchesStaleProbe</class>), which is the only way to observe the
-/// conditional write's 409 through a dispatch: the window it closes opens and closes inside one
-/// request, and no version token crosses the wire for a second request to carry.</p>
+/// (<class>OcuPilot.Test.SwitchesStaleProbe</class>), for a body that carries no
+/// <code>rowVersion</code>: the window that save closes opens and closes inside one request, so the
+/// second writer has to be inside it too.</p>
 /// <p>The handler body, the version read, the validation, the conditional save and the envelope are
 /// the literal, inherited ones.</p>
 ClassMethod AgentSwitchesStaleRoute() As %Status
