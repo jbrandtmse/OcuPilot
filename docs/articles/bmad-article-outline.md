@@ -56,8 +56,8 @@ small chart, one screenshot of a real story spec and one of the deferred-work le
 
 ## 4. Planning in 28 hours (about 450 words)
 
-From the BMAD install to the first line of code took about 28 hours (08 Sep 05:56 to 09 Sep 10:16,
-from git). In that time:
+From the BMAD install to the first line of code took about 28 hours of clock time (08 Sep 05:56 to
+09 Sep 10:16, from git) - and, per the owner, a couple of hours of their own effort. In that time:
 
 - **Analysis.** A 503-word idea became a research report (17,000 words, 46 sources) and a feature
   catalog of **538 portal features in five priority bands** - rows are never deleted, only moved to

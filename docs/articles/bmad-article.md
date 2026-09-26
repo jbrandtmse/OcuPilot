@@ -50,7 +50,9 @@ people skip, so that is where I will start.
 
 ## Planning in 28 hours
 
-From installing BMAD (v6.12.0) to the first line of code took about 28 hours. In that time:
+From installing BMAD (v6.12.0) to the first line of code took about 28 hours of clock time - and a
+couple of hours of my own effort, answering the agents' questions and making the decisions only I
+could make. The agents did the rest. In those 28 hours:
 
 - **Analysis.** A 500-word idea became a research report of 17,000 words across 46 sources, and a
   catalog of **538 portal features in five priority bands**. Nothing is ever deleted from that
