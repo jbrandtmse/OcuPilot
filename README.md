@@ -232,8 +232,8 @@ Uninstalling (`zpm "uninstall ocupilot"`) removes what the installer created.
 
    ![The Web applications list with /csp/myapp enabled and marked Changed, and the confirmed proposal in the panel.](docs/images/03-changed.png)
 
-5. **Open Logs → Audit database** and filter to agent writes: the change is there as an
-   `OcuPilot/Security/AgentWrite` event.
+5. **Open Logs → Audit database**, tick **Agent-marked events only** and press **Search**: the
+   change is there as an `OcuPilot/Security/AgentWrite` event.
 
    ![The audit database filtered to agent-marked events, with the AgentWrite event by demo at the top.](docs/images/04-audit.png)
 
