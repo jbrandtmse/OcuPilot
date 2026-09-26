@@ -91,6 +91,39 @@ deferred: []
 - Given a request whose target resolves, by any spelling, under OcuPilot's own applications, or a `POST`/`PUT`/`PATCH`/`DELETE` resolving under `/api/admin`, when the person tries to send it, then nothing is sent and the console shows the refusal (AD-57 (2)).
 - Given a request carrying a secret-named query, header or body member, when it has been sent, then the record shows the value masked and the page's DOM holds the unmasked value nowhere but the input it was typed into.
 
+### Review Findings
+
+Code review 2026-09-26 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 52 rows, 16 entries — high 1, medium 4, low 11; 0 decision-needed, 12 patched, 1 deferred (ledgered), 3 by-design, the rest rejected.
+
+- [x] [Review][Patch] **HIGH, AD-57 (2)/Rule 6:** a path parameter of `..%2F..%2F..%2Fx` composes `/api/admin/.../..%252F..%252F..%252Fx`, which `resolveTarget` fully decodes to `/api/x`, so a `DELETE` was offered while the wire path stays under `/api/admin` (probed on `ocupilot-ci`: the same spelling under `/api/ocupilot` is answered by OcuPilot's router). Fixed: `refuseRequest(verb, url)` refuses when any reading (each decoding, with and without dot removal) is refused; the page and store call it [ui/src/app/areas/web-applications/try-it.ts:224]
+- [x] [Review][Patch] The dialog heading's URL masking was unpinned (AC4 DOM half) [openapi-try-it.page.spec.ts]
+- [x] [Review][Patch] The store's `send`-side refusal reddened nothing alone; now `pending()` is asserted null [ui/tools/try-it.test.mjs]
+- [x] [Review][Patch] The browser "no cookie" check read `request.headers()`, which precedes cookie attachment; it now reads CDP `requestWillBeSentExtraInfo` with a floor [ui/browser/openapi-try-it.browser-spec.mjs:152]
+- [x] [Review][Patch] The package-only "no toggle" assertion had no rendered-operation floor [openapi-try-it.page.spec.ts]
+- [x] [Review][Patch] "One function does the resolution and both refusals" was two functions combined at two call sites; `refuseRequest` is that function [try-it.ts]
+- [x] [Review][Patch] `confirmHeading` passed the URL to `String.replace` as a string, so `$&` in a document path garbled it; replacer functions now [openapi-viewer.page.ts:469]
+- [x] [Review][Patch] The per-operation no-address refusal was untested [openapi-try-it.page.spec.ts]
+- [x] [Review][Patch] DW-1337 never drew a refusal line; the admin-write refusal case now runs `assertStructure` [openapi-try-it.browser-spec.mjs]
+- [x] [Review][Patch] The node test header's trailing-slash mutation line contradicted the observed result; corrected [ui/tools/try-it.test.mjs:18]
+- [x] [Review][Patch] `resolveTarget`'s comment claimed decoding "until nothing changes" (it stops at eight); rewritten with the patch [try-it.ts]
+- [x] [Review][Patch] The QA redirect test's comment narrated spec history; trimmed to what it pins [ui/tools/try-it.test.mjs]
+- [x] [Review][Defer] CLAUDE.md says "all 56 ADs"; the spine holds 57 [CLAUDE.md:105] — deferred: agent-context file, DW-1704 wontfix-accepted
+- [x] [Review][By-design] Only top-level JSON body members are masked (nested ones and non-JSON bodies are not): the Always bullet says top-level; the body field shows the same text unmasked.
+- [x] [Review][By-design] `X-API-Key`, `api_key` escape the credential pattern: the spec binds masking to Conventions › Secrets; a separator-insensitive pattern is a convention change.
+- [x] [Review][By-design] JSON integers above 2^53 lose precision when pretty-printed: the spec mandates `JSON.parse`/`JSON.stringify` only.
+
+Rejected:
+
+- false: an expired token is sent after 60 s — `Session.scheduleRenewal` renews before expiry.
+- false: an unparseable URL reads as own-application — `composeRequest` yields only parsed same-origin URLs.
+- false: the `strings.ts` `:614`→`:615` citation edit breaks add-only — sanctioned in Design Notes, and correct.
+- wontfix-theoretical: `%00`, `;param`, trailing `%20` after a protected prefix — each is answered by the web server's own 404 on `ocupilot-ci`; real only behind a front end that strips `;params` or truncates at NUL.
+- low: required parameters are not enforced (`/v2//`) — the dialog restates the exact URL; the fix needs a new Fixed string while EXPERIENCE.md is line-frozen.
+- low: a redirect shows as status 0 — rare; same Fixed-string constraint.
+- low: the dialog shows `displayUrl`, not `resolved.href`; the record lists `Authorization` with no token — previously adjudicated.
+- low: whole-body buffering, no timeout; body always `application/json`; `formData` on GET; duplicate path names; non-UTF-8 charsets; `__proto__` members; multibyte split at the cap — unlikely, each fix adds machinery.
+- low: `OWN_APPLICATIONS` not pinned to the installer; Cancel clicked by position; heading outline and live-region; "256 KB"/"1 bytes" wording; disabled-Send and note contrast unmeasured; AC4 masking proven in jsdom only; the second `calls` assertion — cosmetic or unlikely.
+
 ## Spec Change Log
 
 - 2026-09-26, lead, spec gate: orchestrator ruling (A) on the AD-10 intent gap, written into the spine as AD-57 (pointers from AD-10, AD-28, AD-39). Added the `/api/admin` write refusal, browser-equivalent target resolution before comparison, the spelling and admin-write matrix rows, the refusal AC, and per-arm reddening tests. Status reset to ready-for-dev.
@@ -176,6 +209,8 @@ So (c): the only credential that makes "with the current session" true for an au
 - mutation: bind the answer with `[innerHTML]` -> the component spec's markup-as-text case red; show Send whatever `refusal` answers -> its admin-write and own-application cases red; confirm a write right after Send -> its dialog case red; bind a field with `[attr.value]` -> its secrets-in-DOM case red.
 - mutation: omit the Bearer in `try-it.store.ts`, rebuilt and redeployed to `ocupilot-ci` -> the browser spec's `/api/admin` case read 401, not 200.
 - mutation (review pass): drop the body from the answer text in `tryItView` -> the component GET case red (AC1's display half); drop `this.tryIt.reset()` from the page's load -> "opening another document forgets every console" red; drop `this.consoles.clear()` from `reset` -> "reset forgets every console" red; send a declared `Authorization` header -> "the store sends the tab's token as the one Authorization" red; drop the cut notice, or the byte-count line, from the template -> the component cut/byte-count case red; make `basePath()` ignore the document -> the component basePath case red; show the form body unmasked -> "a secret-named form parameter reads masked" red.
+- (QA) `ui/tools/try-it.test.mjs` -- added "a redirect answer (fetch resolved, redirect: manual) is shown as status 0 with nothing invented", pinning the Auto Run Result's named residual (a redirect reads status 0, no explanatory line) as observed behavior rather than leaving it unverified; mutation: mark `state.failed` true whenever `answer.status === 0` in `try-it.store.ts`'s `dispatch` -> red (`store.failed` reads `true`, not `false`); reverted, `try-it.store.ts` confirmed byte-identical.
+- mutation (code review): make `refuseRequest` read only the fully decoded path -> "a path whose readings disagree is refused when any reading lies under a protected application" red; the same in the page -> the component disagreeing-readings case red; remove either arm of `refusal` -> the own-application or admin-write cases and "the store refuses at send" red; drop the store's `send`-side check -> "the store refuses at send" red (`pending()` not null); fill the dialog from `url` -> the component secrets case red; pass the URL to `replace` as a string -> the `$&` case red; drop the page's no-address refusal -> the no-address case red; send `credentials: 'include'`, rebuilt and redeployed to `ocupilot-ci` -> the browser `/api/admin` case red at "no cookie is sent". Each file restored byte for byte.
 
 ## Auto Run Result
 

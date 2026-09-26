@@ -7216,3 +7216,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-11-the-screen-shows-what-the-agent-is-talking-about.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Screen/Registry.cls CriteriaDefaultProblem and screen-mirror.mjs criteriaDefaultProblem check kind, field membership and vendorParam only
 - 2026-09-26T14:09:15Z status=wontfix-theoretical owner=11-11-the-screen-shows-what-the-agent-is-talking-about by=cr note=real once a descriptor declares atOrAfterField over a read not answered newest first (only TaskHistoryList's HISTORY today)
+
+### DW-1704: CLAUDE.md tells agents to read all 56 ADs; the spine holds 57 since AD-57 landed at Story 16.1's spec gate
+- source: spec-16-1-the-try-it-request-console.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: grep -c '^### AD-' ARCHITECTURE-SPINE.md reads 57; CLAUDE.md:105 says 'all 56 ADs'
+- 2026-09-26T16:14:16Z status=wontfix-accepted owner=16-1-the-try-it-request-console by=cr note=agent-context file, lead's to edit; reopen_if=a gate or agent uses CLAUDE.md's AD count as a completeness check
+- 2026-09-26T16:16:03Z status=resolved-by:16-1-the-try-it-request-console by=adjudication note=CLAUDE.md:105 now reads all 57 ADs (lead bookkeeping in the 16.1 commit)

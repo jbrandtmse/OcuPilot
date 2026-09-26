@@ -10,15 +10,14 @@
  *
  * **It sends through the injected `fetch`, never through `ApiService`**: same origin, the tab's
  * access token as the one credential, no cookie and no redirect followed (AD-57 (1)). The request is
- * checked against `refusal` once more at the moment it is sent, whatever the page decided.
+ * checked against `refuseRequest` once more at the moment it is sent, whatever the page decided.
  */
 
 import {
   isSafeVerb,
   maskedRecord,
-  refusal,
+  refuseRequest,
   renderBody,
-  resolveTarget,
   type ComposedRequest,
   type RenderedBody,
   type RequestRecord,
@@ -158,7 +157,7 @@ export class TryItStore {
 
   /**
    * Send `request` for console `key`: at once for a safe verb, and otherwise only once `confirm()`
-   * is called for it. A console already sending, or a request `refusal` refuses, sends nothing.
+   * is called for it. A console already sending, or a request `refuseRequest` refuses, sends nothing.
    */
   send(key: string, request: ComposedRequest): Promise<void> {
     if (this.sending(key) || this.refused(request)) return Promise.resolve();
@@ -195,7 +194,7 @@ export class TryItStore {
   }
 
   private refused(request: ComposedRequest): boolean {
-    return refusal(request.method, resolveTarget(request.url)) !== null;
+    return refuseRequest(request.method, request.url) !== null;
   }
 
   private async dispatch(key: string, request: ComposedRequest): Promise<void> {

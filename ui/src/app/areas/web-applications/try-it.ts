@@ -9,6 +9,8 @@
  * - `resolveTarget` resolves a URL's path the way the browser and the instance will, so
  *   `refusal` compares what is actually reached rather than how it was spelled.
  * - `refusal` is AD-57 (2): OcuPilot's own applications for any verb, and `/api/admin` for a write.
+ * - `refuseRequest` is the one function the console asks: every reading of a URL's path, and
+ *   `refusal` over each.
  * - `maskedRecord` is what the console shows of a request once sent: every secret masked (AD-57 (4)).
  * - `renderBody` turns an answer's bytes into text, and never into markup (AD-11 rule 4).
  */
@@ -139,30 +141,62 @@ function removeDotSegments(path: string): string {
 }
 
 /**
- * `url`'s path as the browser and the instance will resolve it, for comparison only: parsed through
- * `new URL` (which removes dot segments), percent-decoded until nothing changes (so `%6F`, `%2e` and
- * a doubly encoded `%252e` hide nothing), backslashes read as slashes, dot segments removed again,
- * repeated slashes collapsed, a trailing slash dropped, and case folded both ways (IRIS matches an
- * application name case-insensitively, AD-13). `null` when `url` does not parse.
+ * `url`'s path as parsed by `new URL` (which removes dot segments), then percent-decoded once per
+ * entry, up to eight times, until nothing changes. `null` when `url` does not parse.
  */
-export function resolveTarget(url: string): string | null {
+function decodings(url: string): string[] | null {
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
     return null;
   }
-  let path = parsed.pathname;
+  const paths = [parsed.pathname];
   for (let pass = 0; pass < 8; pass += 1) {
-    const decoded = decodeOnce(path);
-    if (decoded === path) break;
-    path = decoded;
+    const decoded = decodeOnce(paths[paths.length - 1]);
+    if (decoded === paths[paths.length - 1]) break;
+    paths.push(decoded);
   }
-  path = path.replace(/\\/g, '/').replace(/\/+/g, '/');
-  if (!path.startsWith('/')) path = `/${path}`;
-  path = removeDotSegments(path).replace(/\/+/g, '/');
-  if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
-  return path.toUpperCase().toLowerCase();
+  return paths;
+}
+
+/**
+ * `path` for comparison: backslashes read as slashes, repeated slashes collapsed, dot segments
+ * removed when `dots` is set, a trailing slash dropped, and case folded both ways (IRIS matches an
+ * application name case-insensitively, AD-13).
+ */
+function normalize(path: string, dots: boolean): string {
+  let out = path.replace(/\\/g, '/').replace(/\/+/g, '/');
+  if (!out.startsWith('/')) out = `/${out}`;
+  if (dots) out = removeDotSegments(out).replace(/\/+/g, '/');
+  if (out.length > 1 && out.endsWith('/')) out = out.slice(0, -1);
+  return out.toUpperCase().toLowerCase();
+}
+
+/**
+ * `url`'s path fully decoded and normalized: what it reaches when every layer decodes it (so `%6F`,
+ * `%2e` and a doubly encoded `%252e` hide nothing). `null` when `url` does not parse.
+ */
+export function resolveTarget(url: string): string | null {
+  const paths = decodings(url);
+  return paths === null ? null : normalize(paths[paths.length - 1], true);
+}
+
+/**
+ * Every path `url` can be read as: each of its decodings, with and without dot segments removed.
+ * The web server, the gateway and the application each decode at most once, so which reading the
+ * instance routes on cannot be told from the client; a refusal holds when any reading is refused.
+ * `null` when `url` does not parse.
+ */
+export function resolveTargets(url: string): string[] | null {
+  const paths = decodings(url);
+  if (paths === null) return null;
+  const readings = new Set<string>();
+  for (const path of paths) {
+    readings.add(normalize(path, true));
+    readings.add(normalize(path, false));
+  }
+  return [...readings];
 }
 
 /** Whether `target` is `prefix` or lies under it, on whole segments. */
@@ -180,6 +214,19 @@ export function refusal(verb: string, target: string | null): TryItRefusal | nul
   if (target === null) return 'own-application';
   if (OWN_APPLICATIONS.some((application) => isUnder(target, application))) return 'own-application';
   if (WRITE_VERBS.includes(verb.toUpperCase()) && isUnder(target, ADMIN_API)) return 'admin-write';
+  return null;
+}
+
+/**
+ * AD-57 (2) for a request to `url` by `verb`: `refusal` over every reading `resolveTargets` gives,
+ * the own-application arm first. A URL that does not parse is refused as `refusal` refuses `null`.
+ */
+export function refuseRequest(verb: string, url: string): TryItRefusal | null {
+  const targets = resolveTargets(url);
+  if (targets === null) return refusal(verb, null);
+  const verdicts = targets.map((target) => refusal(verb, target));
+  if (verdicts.includes('own-application')) return 'own-application';
+  if (verdicts.includes('admin-write')) return 'admin-write';
   return null;
 }
 

@@ -93,7 +93,11 @@ async function settle(fixture: ComponentFixture<OpenApiViewerPage>): Promise<voi
  *
  * Mutations (Rule 19): bind the answer with `[innerHTML]` -> the markup-as-text case goes red; show
  * Send whatever `refusal` answers -> the two refusal cases go red; send a write without the dialog
- * -> the confirmation case goes red; bind a field with `[attr.value]` -> the secrets case goes red.
+ * -> the confirmation case goes red; bind a field with `[attr.value]` -> the secrets case goes red;
+ * fill the dialog heading from `url` rather than `displayUrl` -> the secrets case goes red; pass the
+ * dialog's URL to `replace` as a string -> the `$&` case goes red; drop the page's no-address
+ * refusal -> the no-address case goes red; judge the page's refusal on the fully decoded path alone
+ * -> the disagreeing-readings case goes red.
  */
 describe('OpenApiViewerPage try-it console', () => {
   afterEach(() => {
@@ -260,6 +264,9 @@ describe('OpenApiViewerPage try-it console', () => {
     type(fixture, one(fixture, 'body') as HTMLTextAreaElement, '{"Password":"secret-body-value","User":"me"}');
     one(fixture, 'send')!.click();
     fixture.detectChanges();
+    const heading = fixture.nativeElement.querySelector('[role="dialog"] .ocu-dialog-title') as HTMLElement;
+    expect(textOf(heading)).toContain(`apiKey=${MASKED_VALUE}`);
+    expect(fixture.nativeElement.outerHTML).not.toContain('secret-query-value');
     one(fixture, 'confirm')!.click();
     await settle(fixture);
     expect(calls).toHaveLength(1);
@@ -344,7 +351,32 @@ describe('OpenApiViewerPage try-it console', () => {
     await settle(fixture);
     (fixture.nativeElement.querySelector('[data-ocu-openapi="path"]') as HTMLElement).click();
     fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('[data-ocu-openapi="operation"]')).toHaveLength(1);
     expect(all(fixture, 'toggle')).toHaveLength(0);
     expect(all(fixture, 'no-address').map((node) => textOf(node))).toEqual([STRINGS.tryItNoAddress]);
+  });
+
+  it('a declared basePath that leaves this origin shows the no-address refusal in place of Send', async () => {
+    const calls = stubFetch({ status: 200, type: 'text/plain', body: '' });
+    const fixture = await opened('/api/probe', answer('/' + '/evil.example', [row(1, '/x', 'get')]));
+    expect(one(fixture, 'send')).toBeNull();
+    expect(textOf(one(fixture, 'refusal'))).toBe(STRINGS.tryItNoAddress);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('a path whose readings disagree is refused on the page when any reading lies under the admin API', async () => {
+    const fixture = await opened('/api/admin', answer('/api/admin', [row(1, '/v2/web-app/{name}', 'delete', [{ name: 'name', in: 'path' }])]));
+    type(fixture, one(fixture, 'field') as HTMLInputElement, '..%2F..%2F..%2Fx');
+    expect(one(fixture, 'send')).toBeNull();
+    expect(textOf(one(fixture, 'refusal'))).toBe(STRINGS.tryItAdminWrite);
+  });
+
+  it('the dialog restates a URL holding $& as written', async () => {
+    stubFetch({ status: 204, type: '', body: '' });
+    const fixture = await opened('/api/probe', answer('/api/probe', [row(1, '/x$&y', 'delete')]));
+    one(fixture, 'send')!.click();
+    fixture.detectChanges();
+    const heading = fixture.nativeElement.querySelector('[role="dialog"] .ocu-dialog-title') as HTMLElement;
+    expect(textOf(heading)).toBe(`Send DELETE ${document.location.origin}/api/probe/x$&y?`);
   });
 });

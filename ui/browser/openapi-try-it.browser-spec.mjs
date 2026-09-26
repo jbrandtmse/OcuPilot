@@ -53,16 +53,24 @@ after(async () => {
   if (browser !== null) await browser.close();
 });
 
-/** Signed in on `application`'s document, with every request the page issues recorded. */
+/**
+ * Signed in on `application`'s document, with every request the page issues recorded. `sentHeaders` holds
+ * the headers each request actually carried, by request id, from CDP's `requestWillBeSentExtraInfo`:
+ * Puppeteer's `request.headers()` is read before the network stack attaches cookies.
+ */
 async function atDocument(application) {
   const { context, page } = await signedInAt(browser, config, `${VIEWER_PATH}${encodeEntityId(application)}?ns=HSCUSTOM`);
   const requests = [];
+  const sentHeaders = new Map();
+  const cdp = await page.createCDPSession();
+  cdp.on('Network.requestWillBeSentExtraInfo', (event) => sentHeaders.set(event.requestId, event.headers));
+  await cdp.send('Network.enable');
   page.on('request', (request) => {
     const url = new URL(request.url());
-    if (!url.pathname.startsWith('/api/ocupilot')) requests.push({ method: request.method(), path: url.pathname + url.search, headers: request.headers() });
+    if (!url.pathname.startsWith('/api/ocupilot')) requests.push({ id: request.id, method: request.method(), path: url.pathname + url.search, headers: request.headers() });
   });
   await page.waitForSelector('[data-ocu-openapi="path"]', { timeout: config.navigationTimeoutMs });
-  return { context, page, requests };
+  return { context, page, requests, sentHeaders };
 }
 
 /** Open the path disclosure reading `path`, then the Try it console of its operation whose verb chip reads `verb`. */
@@ -127,7 +135,7 @@ async function assertStructure(page) {
 }
 
 test('GET /v2/web-apps on /api/admin is sent with the tab\'s Bearer and no cookie, answers 200 as text, and passes DW-1337', async () => {
-  const { context, page, requests } = await atDocument('/api/admin');
+  const { context, page, requests, sentHeaders } = await atDocument('/api/admin');
   try {
     const operation = await openConsole(page, '/v2/web-apps', 'Get');
     const answered = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/admin/v2/web-apps', { timeout: config.navigationTimeoutMs });
@@ -141,7 +149,9 @@ test('GET /v2/web-apps on /api/admin is sent with the tab\'s Bearer and no cooki
     assert.equal(sent.length, 1, `one request reached the admin API: ${JSON.stringify(sent.map((request) => request.path))}`);
     assert.equal(sent[0].method, 'GET');
     assert.match(sent[0].headers.authorization ?? '', /^Bearer \S+$/, 'the tab\'s access token is the credential');
-    assert.equal(sent[0].headers.cookie, undefined, 'no cookie is sent');
+    const onWire = Object.keys(sentHeaders.get(sent[0].id) ?? {}).map((name) => name.toLowerCase());
+    assert.ok(onWire.includes('authorization'), `the headers on the wire were captured: ${JSON.stringify(onWire)}`);
+    assert.equal(onWire.includes('cookie'), false, 'no cookie is sent');
 
     const shown = await page.evaluate((selector) => {
       const pre = document.querySelector(`${selector} [data-ocu-try-it="answer"]`);
@@ -205,6 +215,7 @@ test('a DELETE in /api/admin\'s document offers no Send and shows the admin-writ
     const operation = await openConsole(page, '/v2/web-app', 'Delete');
     assert.equal(await page.$(`${operation} [data-ocu-try-it="send"]`), null);
     assert.equal(await page.$eval(`${operation} [data-ocu-try-it="refusal"]`, (node) => node.textContent.trim()), STRINGS.tryItAdminWrite);
+    await assertStructure(page);
   } finally {
     await context.close();
   }

@@ -13,7 +13,7 @@ import { STRINGS } from '../../core/strings';
 import { TokenStore } from '../../core/token-store';
 import { Dialog } from '../../shell/dialog';
 import { OpenApiViewerStore, verbLabel, type OpenApiOperation } from './openapi-viewer.store';
-import { FIELD_LOCATIONS, composeRequest, refusal, resolveTarget, takesBody, type Composition } from './try-it';
+import { FIELD_LOCATIONS, composeRequest, refuseRequest, takesBody, type Composition } from './try-it';
 import { TryItStore } from './try-it.store';
 
 /** One parameter, resolved for drawing. */
@@ -466,7 +466,7 @@ export class OpenApiViewerPage {
     this.generation();
     const pending = this.tryIt.pending();
     if (pending === null) return '';
-    return STRINGS.tryItConfirmTitle.replace('<VERB>', pending.request.method).replace('<URL>', pending.request.displayUrl);
+    return STRINGS.tryItConfirmTitle.replace('<VERB>', () => pending.request.method).replace('<URL>', () => pending.request.displayUrl);
   }
 
   protected get pathViews(): readonly PathView[] {
@@ -533,7 +533,7 @@ export class OpenApiViewerPage {
     let refused = '';
     if (composition.kind === 'no-address') refused = STRINGS.tryItNoAddress;
     if (composition.kind === 'ok') {
-      const verdict = refusal(composition.request.method, resolveTarget(composition.request.url));
+      const verdict = refuseRequest(composition.request.method, composition.request.url);
       if (verdict === 'own-application') refused = STRINGS.tryItOwnApplication;
       if (verdict === 'admin-write') refused = STRINGS.tryItAdminWrite;
     }
