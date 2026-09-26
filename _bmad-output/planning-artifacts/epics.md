@@ -176,7 +176,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 
 - FR-70: Screen-aware help from the agent - "Explain this screen" as one click on every screen citing the read tool it used; an explain entry point on every log and audit entry sending that entry alone; at least three suggested prompts per screen grouped by task. Catalog: CP-23, CP-24, CP-25.
 - FR-71: Agent transparency - click-through citation chips on every reply that used a read tool; a data-egress line on every turn with context sharing on; an agent audit viewer over the ledger with filters by user, screen and date, where administrators see all users' rows and others their own. Catalog: CP-26, CP-27, CP-31.
-- FR-72: Agent restraint and governance - a copy-out ObjectScript, CLI or REST draft instead of an execution on any proposal; a per-tool-and-action governance policy with read-only and full presets over a frozen baseline that keeps every Release 1 write key enabled; truncation, control-stripping, delimiter-wrapping and secret redaction of tool and log content before it reaches the model with a seeded-injection test; transcripts persisted per user with a retention purge, an administrator's view of another user's transcript ledgered and gated by the resources those calls required. Catalog: CP-29, CP-30, CP-32, CP-33.
+- FR-72: Agent restraint and governance - a copy-out ObjectScript, CLI or REST draft instead of an execution on any proposal; a per-tool-and-action governance policy with read-only and full presets over a baseline that keeps every Release 1 write key enabled and, through 2026-10-04, gains each new write key in the story that ships it [AMENDED 2026-09-26, owner: new write keys join the baseline through the voting week; was "a frozen baseline"]; truncation, control-stripping, delimiter-wrapping and secret redaction of tool and log content before it reaches the model with a seeded-injection test; transcripts persisted per user with a retention purge, an administrator's view of another user's transcript ledgered and gated by the resources those calls required. Catalog: CP-29, CP-30, CP-32, CP-33.
 - FR-73: Shell conveniences - change own password, favorites, recent items, menu search, About, per-screen Help, the fixed shortcuts menu, the links panel, the Home system information panel, UI state across sessions and a light or dark theme, each reachable from the header or Home with per-user state surviving a sign-out. Catalog: SH-12 to SH-22.
 - FR-74: Web applications and permissions extras - a try-it request console round-tripping with the current session, web sessions list and end, a user's effective privileges, and a permission-check tool answering yes or no with the granting role. Catalog: WA-08, WA-09, PM-17, PM-18.
 - FR-75: Security and secrets editors and tests - SSL/TLS test connection, X.509 certificate details, LDAP test authentication, OAuth 2.0 token revoke, audit database copy and purge, and full editors for OAuth 2.0 resource servers, client server descriptions, client configurations, the authorization server and server client descriptions, each round-tripping create, edit and delete. Catalog: SS-17 to SS-27.
@@ -880,7 +880,7 @@ An OcuPilot administrator can disable any write tool by tool and action, a user 
 
 **FRs covered:** FR-72, FR-19 (per-user toggle and turn limits), NFR-6 (the seeded-injection test)
 
-**Implementation notes:** AD-22 fixed the shape in Release 1 so this fits without rework: keys are `tool` or `tool:action`; the **frozen baseline captured at the Release 1 freeze** means "pre-existing, therefore enabled", which is what keeps SM-3 holding through 2026-10-04; a key absent from it is disabled by default when it mutates; the baseline is never regenerated to grow; layers resolve with a null-coalescing cascade so an explicit `false` at any layer is honored; the read-only preset blocks anything it cannot classify; and **the audit ledger is configuration, not a governed tool**. The sanitizer is *additional* to NFR-6's invariants and is never the defense. An administrator opening another user's transcript is ledgered and sees tool results only when holding every resource that transcript's calls required. The per-user work is **data and UI, not a new enforcement point**: the gate already exists and is evaluated at the write. Per-user turn limits need a "turn limit reached" banner and a refusal sentence before Story 14.6 ships (UX-DR81).
+**Implementation notes:** AD-22 fixed the shape in Release 1 so this fits without rework: keys are `tool` or `tool:action`; the **baseline** holds every write key Release 1 shipped, enabled, which is what keeps SM-3 holding through 2026-10-04; through 2026-10-04 each story that ships a new write key adds it in the same change, enabled unless its own criteria set it disabled (as the Epic 11 and Epic 16 preambles say); a key absent from it is disabled by default when it mutates; the baseline grows only by those additions and is never regenerated [AMENDED 2026-09-26, owner: new write keys join the baseline through the voting week; was "the frozen baseline captured at the Release 1 freeze ... never regenerated to grow"]; layers resolve with a null-coalescing cascade so an explicit `false` at any layer is honored; the read-only preset blocks anything it cannot classify; and **the audit ledger is configuration, not a governed tool**. The sanitizer is *additional* to NFR-6's invariants and is never the defense. An administrator opening another user's transcript is ledgered and sees tool results only when holding every resource that transcript's calls required. The per-user work is **data and UI, not a new enforcement point**: the gate already exists and is evaluated at the write. Per-user turn limits need a "turn limit reached" banner and a refusal sentence before Story 14.6 ships (UX-DR81).
 
 ### Epic 15: Shell conveniences and the theme
 
@@ -5686,11 +5686,12 @@ So that I can adopt the parts of it my organization is ready for.
 - **When** an administrator configures it
 - **Then** keys are `tool` or `tool:action`, with read-only and full presets, and the effective policy is viewable.
 
-- **Given** the **frozen baseline** captured at the Release 1 freeze
+- **Given** the **baseline**, a checked-in list of write keys [AMENDED 2026-09-26, owner: new write keys join the baseline through the voting week; was "the frozen baseline captured at the Release 1 freeze"]
 - **When** the policy resolves
 - **Then** every write tool-and-action key Release 1 shipped is **enabled** by it, which is what keeps the six-areas-six-writes metric holding through 2026-10-04
-- **And** a key **absent** from the baseline is new, and defaults to **disabled** when it mutates
-- **And** the baseline is **never regenerated to grow**.
+- **And** every write key a story ships after Release 1 and through 2026-10-04 is **on the list**, enabled unless that story's own criteria set it disabled: this story adds the keys already shipped, and each later story adds its own in the same change
+- **And** a key **absent** from the baseline defaults to **disabled** when it mutates, and a test fails when a registered write key is not on the list
+- **And** the baseline grows only by those additions and is **never regenerated**; after 2026-10-04 the owner decides how new keys enter it.
 
 - **Given** several policy layers
 - **When** they resolve
@@ -5804,13 +5805,17 @@ So that the agent's cost is bounded per person rather than only per turn.
 - **Then** they hold a per-user concurrent-turn limit and a per-user turns-per-hour limit, both **enforced on the instance**
 - **And** the concurrent-turn limit's permitted range in Release 1 is **exactly 1**, rendered read-only with its reason: the conversation lock and the panel's single transcript both assume one turn per user (Story 4.1), so widening it is a Stage 2 change and not an administrator setting.
 
-- **Given** a user reaches either limit
-- **When** they send
-- **Then** the panel shows a "turn limit reached" banner and the agent's refusal sentence - **and these two strings must exist before this story ships**, being the one UX item the architecture spine did not answer and the reason this story cannot start without them.
+- **Given** no administrator has set a turns-per-hour limit
+- **When** any user sends
+- **Then** no such limit applies: the default is **no limit** [AMENDED 2026-09-26, owner]
 
-- **Given** the strings are authored
-- **When** they land
-- **Then** they are added to the canonical Fixed strings table, not invented at the component.
+- **Given** a user reaches the turns-per-hour limit
+- **When** they send
+- **Then** the panel shows the banner "You have reached this instance's limit of <n> agent turns an hour. You can send again at <hh:mm>." and the transcript shows "This turn was not started: you have used your <n> turns for this hour."; the concurrent-turn limit keeps the existing lock banner [AMENDED 2026-09-26, owner: the two strings authored; was "these two strings must exist before this story ships"]
+
+- **Given** the strings
+- **When** this story lands
+- **Then** it adds them to the canonical Fixed strings table and the client string source in the same change, and resolves EXPERIENCE.md's step-7 `[NOTE FOR PRD]` and its index row, rather than inventing them at the component.
 
 ### Story 14.8: The seeded-injection test
 
