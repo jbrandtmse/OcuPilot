@@ -53,3 +53,7 @@
 2026-09-26T19:51:31Z	Epic 16	spine_updated	ad=AD-43,AD-29 reason=clarification by=runner story=16-18-home-s-performance-row lint=ok(pre-existing_low_placeholder_AD-7) note=roster_eight_home;per-screen_default_rate_home_10s(lead_ruling_tier1);MonitorPort_contract
 2026-09-26T19:51:31Z	Story 16.18	story_created	spawn_at=2026-09-26T19:33:40Z model=opus path=_bmad-output/implementation-artifacts/spec-16-18-home-s-performance-row.md build_status=ready-for-dev epic_context=reused note=lead_amended_AD-43/AD-29_and_default_rate
 2026-09-26T19:51:31Z	Story 16.18	spec_validated	service_introducing=true(MonitorPort) integration_ac=present(Home_row) adr_constrained_acs=AD-43,AD-29,AD-24,AD-36,AD-50 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=1(DW-118_epic_bullet) mutates_shared_runtime=true(ocupilot-ci_probe_principals) model=claude-opus-5-5
+2026-09-26T20:22:45Z	Story 16.17	ci_resolved	story=16.17 run=36266348582 result=success resolved_at=next_implement head=89e690d1 covers=24ee1fb7(16.17)+integrate_forward(DW-1435)
+2026-09-26T20:22:45Z	Story 16.1	story_boundary	story=16.1 head=452f33df ci_run=36254884740 ci=success
+2026-09-26T20:22:45Z	Story 16.17	story_boundary	story=16.17 head=89e690d1 ci_run=36266348582 ci=success note=includes_16.1_and_integrate_forward_8860b69c
+2026-09-26T20:22:45Z	Story 16.18	stage_spawned	stage=implement spawn_at=2026-09-26T20:22:45Z model=opus agent_name=16-18-home-s-performance-row-implement-1 cycle_iteration=1
