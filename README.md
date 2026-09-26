@@ -14,6 +14,7 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#get-a-model-key-in-two-minutes">Get a key</a> ·
   <a href="#a-change-from-question-to-audit-record">Walkthrough</a> ·
+  <a href="https://community.intersystems.com/post/ocupilot-ask-review-confirm-audit-ai-co-pilot-iris-management-portal">Article</a> ·
   <a href="docs/DEVELOPMENT.md">Developer reference</a>
 </p>
 
@@ -127,7 +128,7 @@ The first start takes a few minutes: IRIS for Health Community starts, then the 
 and installs OcuPilot. `--wait` returns once the health check reports OcuPilot installed.
 
 Then open **<http://localhost:52774/ocupilot/>** and sign in as `_SYSTEM` with the password `SYS`.
-Community Edition ships `_SYSTEM`'s password already expired; OcuPilot's first install clears that,
+Community Edition ships the `_SYSTEM` password already expired; OcuPilot's first install clears that,
 so you are not asked to change it.
 
 The host ports are 52774 (web) and 1973 (SuperServer), one above the IRIS defaults, so OcuPilot can
@@ -200,6 +201,9 @@ namespace):
 ```objectscript
 zpm "install ocupilot"
 ```
+
+If IPM answers that no repositories are configured, run `zpm "enable -community"` once, then
+install again.
 
 Then open `/ocupilot/` on that instance's web server. Two things differ from the container path:
 IPM never clears an expired `_SYSTEM` password, and it creates no demonstration objects. The
@@ -292,17 +296,9 @@ Against your own install, use `http://localhost:52774/api/ocupilot` and your own
 
 ## How it is built
 
-```mermaid
-flowchart LR
-  B["Browser<br>Angular 22 shell and agent panel"] -- "JWT" --> A["/api/ocupilot<br>ObjectScript REST"]
-  A --> M["IRIS management APIs<br>/api/admin v2 in-process, Security.*, %SYS.Task, logs"]
-  A --> T["Agent turn<br>background job"]
-  T <-- "screen context, tools" --> P["Model provider<br>Anthropic, OpenAI, Gemini or local"]
-  T --> R["Proposal<br>minted and stored on the instance"]
-  B -- "Confirm" --> A
-  A -- "write as the user" --> M
-  A --> U[("IRIS audit database<br>OcuPilot/Security/AgentWrite")]
-```
+![How OcuPilot is built: the browser calls /api/ocupilot with a JWT; the API reads and writes through the IRIS management APIs as the user, starts the agent turn as a background job that exchanges screen context and tools with the model provider and mints proposals on the instance, and records agent writes in the IRIS audit database.](docs/images/09-architecture.png)
+
+<!-- Source: docs/images/09-architecture.mmd, rendered at 1600 px wide. Open Exchange does not render Mermaid. -->
 
 - **One install, served by IRIS.** The portal is static files in `/ocupilot`; the API, the agent
   runtime and the proposal store are ObjectScript classes in the install namespace. There is no
@@ -327,7 +323,7 @@ flowchart LR
 
 ## Troubleshooting
 
-- **HTTP 401 from everything on a fresh container:** `_SYSTEM`'s password is still expired. The
+- **HTTP 401 from everything on a fresh container:** the `_SYSTEM` password is still expired. The
   first install clears it, so this usually means an older `iris-data/` folder was reused. Clear it
   with:
 
