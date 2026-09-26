@@ -6347,6 +6347,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=baseline keys carry this id
 - 2026-09-24T00:20:24Z by=integrate_forward note=Epic 7 merge adds 5 keys on the three security/auditing screens at 720; one-time extension, same root cause
 - 2026-09-25T01:23:50Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
+- 2026-09-26T04:25:02Z occurrence=15-10-the-header-logo-on-a-white-tile by=harvest note=stamp_presence_varies_run_to_run_so_1-4_of_these_keys_read_stale_on_an_unchanged_bundle(223/223,219+4stale,222+1stale_on_ocupilot-b-ci);0_fresh
 
 ### DW-1585: Structural gate baseline: command-bar controls overflow the command bar at 720px (refresh action 80px on agent/definitions; sort 30px in CI only)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
