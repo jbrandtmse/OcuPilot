@@ -3431,6 +3431,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T10:06:04Z status=routed owner=burndown by=harvest note=reaching it through a turn needs a seam that stores a refused definition
 - 2026-09-19T03:19:55Z status=routed owner=10-3-the-openai-compatible-adapter-and-local-models by=x0 note=egress refusal is the local-model story's core concern; Kernel/Egress.cls is Epic 10 contended for Epic 5
 - 2026-09-19T18:35:54Z status=routed owner=range-end-cleanup by=burndown note=Rule 27 non-blocking: a test-reachability note about where PROVIDER.EGRESS is pinned, not a defect
+- 2026-09-26T16:37:45Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batch B6 commit e27ff3c4, review patches ae40f16a
 
 ### DW-1106: ProviderStub.ScriptElapsed is one value for every call, not the per-queued-answer duration the spec describes
 - source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3789,6 +3790,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T19:09:19Z occurrence=2026-09-18 run 35384075582 on 9a0e771: the instance job died at 'bring up a throwaway container' with 'failed to set up container networking: driver failed programming external connectivity on endpoint ocupilot-ci', before a single test ran; the three node legs and both image jobs were green
 - 2026-09-18T19:44:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=probe for a free pair or retry the bind; ci.test.mjs holds 52776 equal across five sites
 - 2026-09-20T04:09:30Z status=routed owner=range-end-cleanup by=adjudication note=Kernel/Audit/Ledger.cls is another epic's file; a ledger truncation flag, no floor or downstream story blocked
+- 2026-09-26T16:37:46Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batch B6 commit e27ff3c4, review patches ae40f16a
 
 ### DW-1001: The derived webapp.openapi.read tool describes its application criterion as a comma-separated list where * matches any name, while MgmntPort accepts exactly one exact name
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -4835,6 +4837,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-10-3-the-openai-compatible-adapter-and-local-models.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: 100.100.100.200 is RFC 6598 shared address space, which neither IsPrivate nor IsLinkLocal covers, so KindOf answers public and IsPermitted returns 1 before it reads markedLocal or allowsLocal; DW-1214 closed the IPv6 asymmetry and parked completeness in general, but this address is published today
 - 2026-09-19T17:51:48Z status=routed owner=range-end-cleanup by=cr note=one literal in METADATAADDRESSES plus one leg on Test/Egress.TestACloudMetadataAddressIsRefusedInEveryFamily; widening a security denylist is the orchestrator's call per DW-1214's own precedent, not a reviewer patch
+- 2026-09-26T16:37:45Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batch B6 commit e27ff3c4, review patches ae40f16a
 
 ### DW-1218: AD-42 does not carry the marked-local proxy bypass this story ships, so the spine still reads that a configured proxy is judged rather than bypassed
 - source: spec-10-3-the-openai-compatible-adapter-and-local-models.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -4864,6 +4867,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-10-3-the-openai-compatible-adapter-and-local-models.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Test/DefinitionsFieldGapProbe.cls:5, Test/AgentSchema.cls and Test/AgentState.cls each say six in a doc comment; none is an assertion, so no pin reddens and the suite stays green. All three are Epic 5's, and the standing mechanical-pin grant covers a pin a shipped surface reddens, not a comment
 - 2026-09-19T17:57:05Z status=routed owner=range-end-cleanup by=harvest note=stale prose only, no assertion and no behaviour; grouped with the other cross-epic tidy-ups rather than spending a grant on a comment
+- 2026-09-26T16:37:45Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batch B6 commit e27ff3c4, review patches ae40f16a
 
 ### DW-1223: Five error-log browser navigations timed out at 30 s in one CI run and did not reproduce on a re-run of the identical head, so the instance wedges intermittently during that spec
 - source: cycle-log-parallel.md (Epic 10 merge gate) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -4991,6 +4995,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cr | severity: low | fix-risk: low | footprint: in-epic
 - evidence: For INVOKEPAIRS the first member is %Admin_ExternalLanguageServerEdit:USE, first only because the list is alphabetical; any of the thirteen would satisfy the gate. Verified it reaches no card: a provider fault updates a model step and Step.GuardedUpdate carries no failedPair. Location: src/OcuPilot/Screen/Gate.cls
 - 2026-09-20T06:03:03Z status=routed owner=range-end-cleanup by=code-review note=non-blocking (Rule 27): no user-visible surface renders it today, and the honest answer is either the whole set or no pair at all
+- 2026-09-26T16:37:46Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batch B6 commit e27ff3c4, review patches ae40f16a
 
 ### DW-1323: EnsureApplication omits Type from the state application's drift comparison, the same gap repaired on the identity application
 - source: cr | severity: low | fix-risk: low | footprint: in-epic
@@ -5238,6 +5243,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Context.cls:44-53 routes a non-parse stage to a different refusal. The split was implemented and then reverted: no constructible input reaches the read or decode stage -- an invalid-UTF-8 body parses through -- so the branch could not be pinned by any test.
 - 2026-09-20T04:10:58Z status=wontfix-accepted owner=15-1-change-your-own-password by=harvest note=reopen_if=an input is found that reaches Account.cls's body read or decode stage without parsing
 - 2026-09-26T16:35:43Z occurrence=23-1-the-range-end-cleanup
+- 2026-09-26T16:37:58Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=B6 ae40f16a: Account read/decode fault answers 500, pinned in DefinitionsFaults via the fault hook
 
 ### DW-1293: A new ACCOUNT.* field-level violation code with no ReasonForViolation arm renders a blank reason with no test going red
 - source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -5484,6 +5490,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: low | fix-risk: low | footprint: src/OcuPilot/Port/ProviderPort.cls
 - evidence: Two copies of one OR-set walk, and a method no caller reaches
 - 2026-09-20T20:34:00Z status=routed owner=range-end-cleanup by=harvest note=NOT blocking, judgment recorded per Rule 27: a duplicated walk and a dead method are tidiness, and nothing in this range fails while they stand. reopen_if=the two walks disagree on a case
+- 2026-09-26T16:37:46Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batch B6 commit e27ff3c4, review patches ae40f16a
 
 ### DW-1384: A confirmed write's tool-call card and its not-marked sentence do not survive a page reload
 - source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: low | fix-risk: med | footprint: ui/src/app/shell/panel.ts
@@ -7141,6 +7148,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Post to http://127.0.0.1:1/ with Timeout 3 on ocupilot-b-ci: 3.01 s, ERROR #6059, no HttpResponse (HttpRequest.cls:1664-1679); Base.cls Attempts retries it since only CSPTimeout counts as a timeout. The spec's design note both retries a connect refusal and says a timeout that spent its per-call timeout is not retried.
 - 2026-09-25T07:48:27Z status=decision-pending owner=burndown by=cr note=owner call: exclude #6059/pre-send config errors, or an attempt that spent its timeout, from the one retry (recommended)
 - 2026-09-25T08:27:24Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the 10.6 merge (orchestrator, recommended disposition): exclude a connect that never opened (#6059) from the one transport retry, about 10 lines plus a test
+- 2026-09-26T16:37:46Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batch B6 commit e27ff3c4, review patches ae40f16a
 
 ### DW-1660: The resource-server update's proposal card does not state that changing the authenticator's namespace or implementation resets its other settings to the new class's defaults; the form says so, the card does not
 - source: spec-12-6-the-oauth-2-0-resource-server-editor.md | severity: med | fix-risk: low | footprint: in-story
@@ -7201,6 +7209,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T15:14:22Z status=open owner=11-7-token-streaming by=harvest note=in-story MED; for the 11.7 code review to patch or disposition
 - 2026-09-25T15:49:29Z status=decision-pending owner=burndown by=cr note=product call: fix contradicts Epic 10 pinned refusal map; rec. own code for Gemini tool-call failures
 - 2026-09-26T06:57:00Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the Epic 11 merge (orchestrator, recommended disposition): give Gemini tool-call failures such as MALFORMED_FUNCTION_CALL their own code and sentence instead of PROVIDER.DECLINED
+- 2026-09-26T16:37:45Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batch B6 commit e27ff3c4, review patches ae40f16a
 
 ### DW-1669: A live proposal card's privilege line is refreshed only while its turn is still polling; after the turn ends, a revocation shows no warning until a conversation restore
 - source: spec-11-8-the-proposal-names-the-privilege-it-needs.md | severity: med | fix-risk: med | footprint: in-story
@@ -7385,6 +7394,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T14:34:38Z status=open owner=23-1-the-range-end-cleanup by=harvest note=fix in Batch B6: one argument plus a DefinitionsFaults case
 - 2026-09-26T14:54:59Z occurrence=23-1-the-range-end-cleanup
 - 2026-09-26T14:54:59Z status=open owner=23-1-the-range-end-cleanup by=cr note=also Api/Account.cls:57 RenderBodyRefusal answers 422 for a read or decode fault; fix both in B6
+- 2026-09-26T16:37:46Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batch B6 commit e27ff3c4, review patches ae40f16a
 
 ### DW-1700: Switches refuses a save as stale when only the auditing writes-marked flag moved on its row, a field the Save never writes
 - source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: in-story

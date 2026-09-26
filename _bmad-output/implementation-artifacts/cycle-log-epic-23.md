@@ -56,3 +56,6 @@
 2026-09-26T16:19:27Z	Story 23.1	pushed	batch=B6 head=e27ff3c4 ci=pending run=36254992406
 2026-09-26T16:19:27Z	Epic 23	spine_updated	ad=AD-42,deferred reason=decision_sheet by=runner story=23-1-the-range-end-cleanup entries=DW-1650 lint=ok(preexisting_low_only)
 2026-09-26T16:19:27Z	Story 23.1	stage_spawned	stage=code-review batch=B6 spawn_at=2026-09-26T16:19:27Z model=opus agent_name=23-1-the-range-end-cleanup-code-review-b6 cycle_iteration=4
+2026-09-26T16:37:58Z	Story 23.1	cr_complete	batch=B6 spawn_at=2026-09-26T16:19:27Z model=opus resolved=5 filed=DW-1706(open,B7),DW-1707,DW-1708(wontfix-accepted) occurrence=DW-1292 dismissed=15 high=0 med=0 low=9 rows=4 unresolved_high_med=0 sprint=review closing_sections_present=true subagent_tokens=246475
+2026-09-26T16:37:58Z	Story 23.1	ledger_adjudicated	batch=B6 owned=10 resolved=10(incl_DW-1292) reowned=0 terminal=10 slice_range_end_cleanup_after=21
+2026-09-26T16:37:58Z	Story 23.1	smoke_complete	batch=B6 method=other result=pass iterations=1 defects_caught=0 evidence=throwaway_turn_tests_TurnProviderFault_6/6,TurnStream,ProviderTransportRetry_9/9 model=claude-opus-5-5
