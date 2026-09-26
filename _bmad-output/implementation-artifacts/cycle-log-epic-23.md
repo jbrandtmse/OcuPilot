@@ -30,3 +30,6 @@
 2026-09-26T12:20:39Z	Story 23.1	pushed	batch=B2+B3 head=8eb4afc8 ci=pending run=36241572452
 2026-09-26T12:20:39Z	Epic 23	spine_updated	ad=AD-21 reason=rule5 by=runner story=23-1-the-range-end-cleanup entries=DW-1439 lint=ok(preexisting_low_only)
 2026-09-26T12:20:40Z	Story 23.1	stage_spawned	stage=code-review batch=B2+B3 spawn_at=2026-09-26T12:20:40Z model=opus agent_name=23-1-the-range-end-cleanup-code-review-b2b3 cycle_iteration=2
+2026-09-26T12:44:21Z	Story 23.1	cr_complete	batch=B2+B3 spawn_at=2026-09-26T12:20:40Z model=opus resolved=13 wontfix_accepted=1(DW-1694,dup_of_DW-1693) dismissed=17 high=0 med=1 low=13 rows=14 unresolved_high_med=0 sprint=review closing_sections_present=true subagent_tokens=346079
+2026-09-26T12:44:21Z	Story 23.1	ledger_adjudicated	batch=B2+B3 owned=17 resolved=17 reowned=0 terminal=17 slice_range_end_cleanup_after=41
+2026-09-26T12:44:21Z	Story 23.1	smoke_complete	batch=B2+B3 method=cli result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-b-ci_PASSED(1_skipped_named);DemoErrorSeed_2/2;Demo_12/12 model=claude-opus-5-5

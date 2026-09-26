@@ -2802,6 +2802,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T15:11:12Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=x0 note=excluded from Story 4.0 which is bounded at twelve by priority; a coverage or CI gap with no user-reachable failure, for the story that grows the suite in CI
 - 2026-09-20T03:58:52Z occurrence=13-2-the-test-suite-grows-in-ci-against-a-stock-image
 - 2026-09-20T04:09:30Z status=routed owner=range-end-cleanup by=adjudication note=scripts/check-objectscript.py is another epic's file; durable half already covered by ci.test.mjs's roster equality, so non-blocking
+- 2026-09-26T12:44:14Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-420: DW-350's licence condition has no seam and is not falsified by any test
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
@@ -3882,6 +3883,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T00:48:34Z status=routed owner=range-end-cleanup by=merge_gate note=RE-ROUTED off story 13.2. Epic 13 declined it correctly: all three need edits in ui/browser/*.browser-spec.mjs, which is Epic 5's footprint, and Epic 13 has no browser-spec footprint at all. That was an orchestrator error - epic-dependencies.yaml gave Epic 13 the glob ui/src/**/*.browser.spec.ts, which is the wrong directory, extension and separator and matched nothing; the real specs are the 34 ui/browser/*.browser-spec.mjs files. Glob dropped from the graph with the reason recorded inline. Non-blocking under Rule 27: none of the three blocks the 2026-09-27 floor or a downstream-epic story, and DW-1223's five error-log timeouts have already failed to reproduce twice
 - 2026-09-24T00:04:16Z occurrence=15-6-the-light-and-dark-theme note=structural-walk.mjs assertThrowaway and theme.browser-spec.mjs write the account's prefs and refuse only ocupilot
 - 2026-09-23T05:12:39Z occurrence=7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de note=oauth-delete.browser-spec.mjs:78 creates and deletes OAuth objects and refuses only LIVE_CONTAINER
+- 2026-09-26T12:44:14Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1016: A proposal diff-row has no empty-cell word, so a service-editor proposal restricting AllowedConnections would read (none) -> 10.0.0.1
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -4148,6 +4150,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T17:54:56Z occurrence=6-14-the-messages-log-viewer note=browser-spec twin found by the AC8 wait re-review: settled() at messages-log.browser-spec.mjs:145 and alerts-log:136 returns silently at its 30 s deadline, and the Clear-restore waits (messages:275, alerts:246) are unnamed; fix shape is list-spec.mjs's throw-at-deadline plus a shared ui/browser/wait.mjs
 - 2026-09-18T19:44:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=smoke.sh must print a quotable failure line naming the check that failed
 - 2026-09-20T00:48:34Z status=routed owner=range-end-cleanup by=merge_gate note=RESIDUAL recorded rather than left in prose. Epic 13 closes the shell half in smoke.sh:184, but Install/Smoke.cls:1218 renders the same non-quotable failure line, and that class is a contended path it correctly did not take. A defect fixed in one of its two surfaces is exactly the half-corrected state this project's pitfalls list warns about, so it belongs in the ledger with an owner rather than as a sentence in a spec nobody slices
+- 2026-09-26T12:44:13Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1136: ForgetTask's new privilege guard leaves a vendor async-task row behind on every unprivileged async read, permanently and silently, and nothing purges them
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: in-epic
@@ -4988,6 +4991,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cr | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Installer.cls EnsureApplication compares Enabled, MatchRoles and Routines; an application recreated as a non-routine type reads 'already correct' and grants no role. Pre-existing (Story 1.4); the identity twin was folded in at this review. Location: src/OcuPilot/Install/Installer.cls EnsureApplication
 - 2026-09-20T06:03:15Z status=routed owner=range-end-cleanup by=code-review note=non-blocking (Rule 27): with the identity pair's answer now loud (503 INSTALL.UNREADABLE) the same fault on the state application surfaces as a failing guarded write rather than silence
+- 2026-09-26T12:44:13Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1324: Test/Disabled exercises only the dispatched routes and /refresh; /login, /logout and /revoke for a disabled account are unmeasured
 - source: cr | severity: low | fix-risk: low | footprint: in-epic
@@ -5138,6 +5142,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T22:46:22Z status=routed owner=burndown by=harvest note=introduced by 13.1's granted role-loop edit; the fix is at :3509,:3528-3536, outside the lines granted
 - 2026-09-19T23:31:41Z occurrence=13-1-the-uninstall-hook
 - 2026-09-20T11:45:59Z status=routed owner=range-end-cleanup by=burndown note=preview under-reports orphan roles after 13.1's fix; AD-21's floor is NOT stripped by its own evidence, so no AD invariant is violated and Rule 27 governs; bounded edit in Installer.cls
+- 2026-09-26T12:44:13Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1269: The AC5 StateFingerprint equality is green but no mutation has been shown to redden it
 - source: spec-13-1-the-uninstall-hook.md | severity: med | fix-risk: low | footprint: in-story
@@ -5311,6 +5316,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: OnBeforeOneTest calls Clear(), which GuardedClears Http.GetTestUsername() -- _SYSTEM by default, the account the owner uses on slot A/B/C. PrefState avoids exactly this by writing only probe users; the wire suite cannot, because the route answers for $Username alone. Fix is snapshot-and-restore around each test.
 - 2026-09-20T10:52:02Z status=open owner=range-end-cleanup by=cr note=Harmless on a throwaway, which is where CI runs it; it bites the owner only on a slot instance. Snapshot/restore also has to change the teardown assertion that both lists are empty.
+- 2026-09-26T12:44:14Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1341: RecentsRecorder stays subscribed after sign-out, so a Back press on the sign-in card issues an authenticated preference write with no principal
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
@@ -5357,6 +5363,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T07:02:13Z status=routed owner=range-end-cleanup by=harvest note=one-line guard widening, blocks no floor and no downstream story (Rule 27)
 - 2026-09-20T10:10:56Z occurrence=13-3-publish-the-package-to-the-community-registry
 - 2026-09-20T10:10:56Z status=routed owner=range-end-cleanup by=cr note=re-sighted: its only test is a source-text /latest-cd/ match, which the narrow guard satisfies
+- 2026-09-26T12:44:14Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1333: IPM's exporter drops <SystemRequirements>, so the distributable archive carries no IRIS or IPM version floor
 - source: spec-13-3-publish-the-package-to-the-community-registry.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -5394,6 +5401,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: It stops being tight the moment the roster declares a twelfth item: the floor still reads 11 and a dropped declaration goes unnoticed. Same mechanism DW-1339 records for the Node pin
 - 2026-09-20T10:55:28Z status=routed owner=range-end-cleanup by=harvest note=pairs with DW-1339; derive the floor from the roster instead of pinning a number
 - 2026-09-20T11:16:49Z status=routed owner=range-end-cleanup by=cr note=correction: DW-1339 is this script's <Dependency> arm, not a Node pin
+- 2026-09-26T12:44:14Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 ### DW-1335: An unlabelled empty bordered box renders above the gate banner on the Definition form, where no control is declared
 - source: owner screenshot 2026-09-20, ocupilot-c-ci :52779 /ocupilot/agent/definitions/edit | severity: high | fix-risk: low | footprint: out-of-footprint
 - evidence: Owner-reported from a live screenshot of /ocupilot/agent/definitions/edit?ns=HSCUSTOM. Between the breadcrumb and the info banner sits an empty white box with a grey border, roughly 290px wide, carrying no label and no visible purpose; it reads as an unlabelled text input. NOT either form banner: hasSummary is guarded by violations.length > 0 (definition-form.page.ts:554-556), hasReason by reason !== '' (:589-591), and .ocu-form-summary paints a destructive red background (_components.scss:2881), not a white bordered box. The form's own declared fields are all labelled. Identity unknown from static reading. Probe: load that route on a throwaway with no definitions present and read the DOM between .ocu-form-page's open and the first .ocu-banner, then walk up to whichever component emitted it
@@ -5526,6 +5534,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-5.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Install/Smoke.cls,scripts/smoke.sh
 - evidence: Measured on ocupilot-ci 2026-09-20: executed=45 passed=45 skipped=0 on a clean instance, and executed=44 passed=44 skipped=1 immediately after npm run test:browser, because switches.browser-spec.mjs writes the switch row that the agentswitches check reads and the check then declines to assert
 - 2026-09-20T22:31:39Z status=routed owner=range-end-cleanup by=harvest note=NOT blocking, judgment recorded per Rule 27: nothing about the product is wrong and the check's own skip is well designed -- it declines to assert rather than asserting falsely, and its line already SAYS why ('the agent switches have been written on this instance, last at <ts>, so whether the install wrote none cannot be told here'). The gap is narrower than it first looks and worth stating exactly: the REASON travels, the HEADLINE COUNT does not. CLAUDE.md's guarantee that zero executed checks is a failure and never a pass is weaker than it reads while executed= varies with test ORDERING, because a reader who remembers 45 reads 44 as a regression. The durable fix is for a run's verdict line to carry the skip count and its causes alongside the total, so the one quotable line is self-describing; until then a reader must read the skip lines rather than the number. This runner was saved only by a note in the story's own spec, which does not travel to the next story or the next epic
+- 2026-09-26T12:44:13Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1403: The client's reference key and the kernel's are pinned against the same hand-copied literal on each side rather than by anything that compares them, and REF_SEPARATOR carries no build gate at all
 - source: spec-5-7-the-screen-shows-the-change.md | severity: med | fix-risk: low | footprint: ui/src/app/core/entity-ref.ts,src/OcuPilot/Kernel/EntityRef.cls
@@ -5620,6 +5629,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: MEASURED, not inferred: tasks.browser-spec.mjs's two Story 6.6 legs fail on the reused ocupilot-ci (%SYS_Task.History holds ~46 OcuPilotDemoProbe* rows against 3 genuine ones) and PASS in CI run 35552263340's instance job, which builds its throwaway fresh.
 - 2026-09-21T03:18:33Z status=routed owner=range-end-cleanup by=lead note=A task's history outlives the task, so an uninstall that removes the task leaves its history rows behind; TaskHistoryList reads LogDatetime desc with paging cap and a DOM-only scan, so the genuine rows sort behind the residue and fall outside the virtual-scroll window. The durable fix is for the probe fixture to purge its own history as well as its tasks. Filed rather than fixed in 5.7 per the orchestrator: 5.7's diff touches no part of that read. The discriminating test is now known - a failure on a FRESH throwaway is real, on a reused one it is this.
 - 2026-09-24T16:48:12Z occurrence=9-7-the-new-task-wizard by=harvest note=TaskProbe_legs_leave_two_history_rows_per_probe_task(236_OcuP97_rows_on_ocupilot-ci)
+- 2026-09-26T12:44:14Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1426: A refused confirm produces no write tool-call card at all, so AC4's 'failed - <resource>' has no producer
 - source: spec-5-8-web-applications-enable-a-disabled-application-and-grant-it.md | severity: med | fix-risk: low | footprint: ui/src/app/shell/panel.ts
@@ -5671,6 +5681,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Seven entries across three dates and two gates carry it - DW-1190, DW-1206, DW-1207, DW-1208, DW-1355, DW-1429, DW-1430 - by=cr and by=harvest alike, so it is a convention collision and not one caller's slip. Detection is UNAFFECTED: note=note=human= contains note=human= as a substring, so a decision-sheet grep still matches all 7.
 - 2026-09-21T09:46:14Z status=routed owner=range-end-cleanup by=lead note=Rule 15's grammar says a human-owned entry carries note=human=<what>, and ledger.sh prefixes note= itself, so a caller who follows the rule literally produces the doubling every time. The FIX IS AT THE CAUSE - either the grammar drops its note= or the tool detects an already-prefixed value - and NOT seven appended correction lines, which would add noise without fixing anything and would be a correction longer than the claim it corrects. Cosmetic only: the human= marker is present and greppable, so every affected entry still reaches the decision sheet correctly. Found by the 5.8 reviewer, which read the entries rather than the counts.
 - 2026-09-21T16:54:31Z occurrence=5-9-permissions-the-area-s-first-confirmed-user-write
+- 2026-09-26T12:44:14Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 ### DW-1368: A transient help-read failure removes that screen's Help control for the rest of the session
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: HelpLinks.load adds the route to asked before awaiting and never removes it on failure; helpHrefFor collapses a refusal, an unavailable answer and an unreachable instance to the same empty string. Closing it gives helpHrefFor a third outcome, which changes its contract. ui/src/app/core/help.ts
@@ -5706,12 +5717,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: OcuPilot.Test.UiAboutFixture.LogSourceFailure overrides the seam without ##super, so every test driving a refused source records into a process-private global and Kernel.Audit.Log.Error(..#LOGSUBSYSTEM, ...) is never run. src/OcuPilot/Test/UiAboutFixture.cls
 - 2026-09-20T17:09:36Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
 - 2026-09-20T17:49:19Z status=routed owner=range-end-cleanup by=adjudication note=residual: Test/UiAboutFixture.LogSourceFailure overrides the seam without ##super, so no test executes Kernel.Audit.Log.Error for the new uiabout subsystem. Non-blocking: the logger itself is pinned by its own suite and every other subsystem exercises the same call; what is unpinned is this subsystem's string reaching it. A one-line ##super plus an assertion, deliberately not taken in a done story
+- 2026-09-26T12:44:13Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1374: Installer.BundleIdentity's fallback branch has no test in any tier
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: It is [ Private ], so reaching it needs an installer fixture subclass or an install run with the shell bundle directory emptied. The happy path is covered on every throwaway install; the fallback's failure mode is a Build row reading dev, which the client now never compares
 - 2026-09-20T17:09:36Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
 - 2026-09-20T17:49:19Z status=routed owner=range-end-cleanup by=adjudication note=residual: Installer.BundleIdentity's fallback branch is [ Private ] and reachable only via an installer fixture subclass or an install with the shell bundle directory emptied. Non-blocking: the happy path runs on every throwaway install and is asserted there, and the fallback's failure mode is a Build row reading dev, which the client now never compares because isStale requires two hashed names
+- 2026-09-26T12:44:13Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1375: Home's Shortcuts empty state is unreachable, so STRINGS.shortcutsEmpty is published but cannot be displayed
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
@@ -5869,6 +5882,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-21T16:54:48Z status=escalated owner=burndown by=cr note=The API-account sentences were corrected in this story (Router.cls and README's two API paragraphs). The anonymous-application claim is Story 1.3/1.4 surface and appears in the spine, so correcting it is a Rule 20 spine amendment, not a review patch. Measure it on a throwaway by removing the shell application's matching role and reading the status and body.
 - 2026-09-21T19:49:53Z status=escalated owner=range-end-cleanup by=merge_gate note=DECIDED: re-owned to range-end-cleanup, and NOT generalised from this story's single API-account probe - stopping at that line is CLAUDE.md's first listed pitfall observed rather than violated. RUNNABLE PROBE RECIPE so nobody re-derives it: on a throwaway, remove the shell application's matching role (the one Installer.EnsureApplicationRoles derives), then request an anonymous application path and read BOTH the HTTP status and the response body - a 500 with PROTECT confirms README/Installer/AD-21, a bodyless 403 confirms the mechanism this story measured for the API account. FLAG: correcting the anonymous-path claim touches ARCHITECTURE-SPINE AD-21, so whoever takes it should treat a Rule 20 spine amendment as IN scope, not out.
 - 2026-09-22T20:54:58Z status=routed owner=range-end-cleanup by=merge_gate note=Decided earlier and applied here; the entry still read escalated because only the owner was written. Third instance of that pattern at this gate. Record the throwaway-probe recipe on the entry so it is runnable without re-derivation, and note it may need a Rule 20 amendment so whoever takes it does not treat a spine change as out of scope.
+- 2026-09-26T12:44:13Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1440: Installer.EnsureApplicationRoles derives the anonymous applications' matching role from the ROUTINE database's resource, while the framework's AccessCheck tests the DEFAULT GLOBAL database's, so on a namespace whose two databases differ the granted role is the wrong one
 - source: spec-5-9-permissions-the-area-s-first-confirmed-user-write.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -6053,6 +6067,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T19:09:30Z occurrence=5-14-epic-5-burn-down
 - 2026-09-22T19:09:30Z note=root cause named: OcuPilotDemoProbe* history rows, purged only on a passing run's path, so one failure is self-reinforcing. Deleting 42 took the spec 12/14 to 14/14
 - 2026-09-24T16:48:12Z occurrence=9-7-the-new-task-wizard by=harvest note=sweep_run_10377_ocupilot-ci_2078_history_rows
+- 2026-09-26T12:44:14Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1469: Eight of Story 5.12's acceptance criteria carry their Rule 19 mutation only in the test method's doc comment, not as a mutation line in the spec's Verification list
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: in-story
@@ -7300,6 +7315,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner triage 2026-09-25 (7d51837b request) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: OcuPilot.Install.Fixture SeedApplicationError runs on every start from the container's start hook; seed only when no such error exists (owner)
 - 2026-09-26T03:10:29Z status=routed owner=range-end-cleanup by=orchestrator note=owner triage: seed only when none exists
+- 2026-09-26T12:44:13Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1682: Four code comments still name README sections that moved to docs/DEVELOPMENT.md in the README split
 - source: owner decision 2026-09-25 (4b0749a0) | severity: low | fix-risk: low | footprint: in-epic
@@ -7321,6 +7337,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: scripts/test_check_objectscript.py:1659 keeps the retired N-segment phrase after B1 replaced it in five places
 - 2026-09-26T10:21:46Z status=open owner=23-1-the-range-end-cleanup by=harvest note=fix in Batch B3, which owns the file
+- 2026-09-26T12:44:14Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B2+B3 commit 8eb4afc8, review patches d29387c3
 
 ### DW-1690: DESIGN.md:1181 specifies a 3px destructive bar under the card header that the card never draws, and a mockup still draws a typed-name field
 - source: _bmad-output/implementation-artifacts/spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
