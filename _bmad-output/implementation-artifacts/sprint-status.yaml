@@ -181,7 +181,7 @@ development_status:
   10-7-claude-opus-5-5-as-the-anthropic-default: backlog
   epic-10-retrospective: optional
 
-  epic-11: in-progress
+  epic-11: done
   11-9-the-agent-knows-the-screen-it-is-on: done
   11-10-a-judge-succeeds-the-first-time: done
   11-7-token-streaming: done

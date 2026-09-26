@@ -7055,12 +7055,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: MessageAdapter.GEMINISTOPREASONS (:75) folds ten Gemini reasons into refusal; Loop routes every canonical refusal to PROVIDER.DECLINED (Story 11.7)
 - 2026-09-25T15:14:22Z status=open owner=11-7-token-streaming by=harvest note=in-story MED; for the 11.7 code review to patch or disposition
 - 2026-09-25T15:49:29Z status=decision-pending owner=burndown by=cr note=product call: fix contradicts Epic 10 pinned refusal map; rec. own code for Gemini tool-call failures
+- 2026-09-26T06:57:00Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the Epic 11 merge (orchestrator, recommended disposition): give Gemini tool-call failures such as MALFORMED_FUNCTION_CALL their own code and sentence instead of PROVIDER.DECLINED
 
 ### DW-1669: A live proposal card's privilege line is refreshed only while its turn is still polling; after the turn ends, a revocation shows no warning until a conversation restore
 - source: spec-11-8-the-proposal-names-the-privilege-it-needs.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: pollUntilTerminal (ui/src/app/core/turn.ts) stops at the turn's terminal state, usually right after the proposal, so the line keeps its last held answer while the card stays live; Confirm still refuses AUTH.NOPRIVILEGE naming the pair
 - 2026-09-25T18:15:26Z status=open owner=11-8-the-proposal-names-the-privilege-it-needs by=harvest note=in-story MED; turn.ts/panel.ts polling is contended with Epic 12; for the 11.8 code review to patch or disposition
 - 2026-09-25T18:40:20Z status=escalated owner=burndown by=cr note=fix-risk high: post-terminal re-read vs turn.ts polling-stops contract; restore shows no line; refusal now flips it
+- 2026-09-26T06:57:00Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the Epic 11 merge (orchestrator, recommended disposition): a post-release follow-up that re-reads live proposals slowly after the turn ends so a revoked privilege shows its warning; Confirm already refuses correctly
 
 ### DW-1675: Every messages.log/alerts.log row's explain button has the same accessible name, so a screen-reader button list cannot tell the rows apart
 - source: spec-11-2-explain-a-log-or-audit-entry.md | severity: low | fix-risk: low | footprint: in-story
