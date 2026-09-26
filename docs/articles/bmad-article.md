@@ -1,12 +1,15 @@
 # Human in the loop, twice: building an AI co-pilot for IRIS with the BMAD Method
 
-<!-- Draft of the second contest article. Before publishing: confirm the Tsvetkov attribution on the
-LinkedIn post and restore his British spelling of the bracketed word in the quote (the repository's
-spelling check forces the bracket here); re-count stories on the day; add the two visuals marked
-below and the article 1 and Open Exchange links. -->
+<!-- Draft of the second contest article. Before publishing: confirm the Tsvetkov quote and its
+attribution on the LinkedIn post, ideally with his permission and a tag, and restore his British
+spelling of the bracketed word; re-count stories on the day; add the two visuals marked below and
+the article 1 and Open Exchange links. -->
 
-After InterSystems READY 2026 Asia, Aleksandr Tsvetkov of Banksia Global wrote something that has
-stayed with me:
+*How I used the BMAD Method and AI agents to build OcuPilot in nineteen days - and why a person
+stayed in the loop the whole way.*
+
+After this year's InterSystems READY event in Asia, Aleksandr Tsvetkov of Banksia Global wrote
+something that has stayed with me:
 
 > "We'd put a human-in-the-loop approval step into our agent project almost as an afterthought. At
 > the Summit that's the part every serious conversation kept coming back to - not the AI. It
@@ -14,39 +17,40 @@ stayed with me:
 > model to call tools, it's making that safe and observable enough that a regulated
 > [organization] would actually switch it on."
 
-I agree. And I would add one thing: that kind of engineering does not happen by accident.
+He is right, and it matches what I found. For the last three weeks I have been building
+[OcuPilot](https://ocupilot.org), an AI co-pilot for the IRIS Management Portal, for the "Build
+Your Own Management Portal" contest. Its main feature is an agent that is allowed to change an IRIS
+instance. In OcuPilot, the approval step came first: it was written into the design before any code
+existed.
 
-For the last three weeks I have been building [OcuPilot](https://ocupilot.org), an AI co-pilot for
-the IRIS Management Portal, for the "Build Your Own Management Portal" contest. Its main feature is
-an agent that is allowed to change an IRIS instance. In OcuPilot, the human approval step was never
-an afterthought. It was written into the design on the first day, before there was any code to get
-it wrong.
+That is what the [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD) is good at. And the
+same approach that made the product safe also shaped how it was built: AI agents did the work, and a
+person made the decisions. Human in the loop, twice.
 
-That is what the [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD) is for. And the same
-approach that made the product safe also shaped how the product was built: AI agents did the work,
-and a human made the decisions. Human in the loop, twice.
+## A real test, not a demo
 
-## Why OcuPilot is a fair test
-
-I have been advocating BMAD for a while. At READY 2026 in April I gave a session called *Agentic
-Engineering Live on Stage*, where we built a loan application on IRIS, live, from a single product
-brief ([READY-2026-LoanDemo](https://openexchange.intersystems.com/package/READY-2026-LoanDemo)).
-The slide I kept coming back to said simply: **BMAD Method = Context Engineering.** I also maintain
-the [IRIS MCP Server Suite](https://openexchange.intersystems.com/package/IRIS-MCP-Server-Suite-2),
-which is how the agents in this story worked with IRIS directly.
+At READY 2026 in April I gave a session called *Agentic Engineering Live on Stage*, where we built a
+loan application on IRIS, live, from a single product brief
+([READY-2026-LoanDemo](https://openexchange.intersystems.com/package/READY-2026-LoanDemo)). The
+slide that summed up the talk said: **BMAD Method = Context Engineering** - give agents the right
+context, and they do the right work.
 
 A stage demo is a controlled experiment. OcuPilot was not. It had a hard deadline, a portal with six
-areas to rebuild, and an agent that can change security settings - and nineteen days from the first
-commit to the submission.
+areas to rebuild, an agent that can change security settings, and nineteen days from the first
+commit to the submission. In fairness: it also reused code and lessons from four of my earlier IRIS
+projects, and the agents worked day and night.
 
 ## Agentic engineering is not vibe coding
 
 Vibe coding is asking a model for code and hoping it works. Agentic engineering is giving agents the
 context a good engineer would have - what we are building, for whom, how it should look and how it
-must be built - and holding every change to it.
+must be built - and holding every change to that.
 
-BMAD describes its own goal as to *"turn an idea or change request into working software without
-giving up the thinking."* The thinking is the part people skip, so that is where I started.
+BMAD is a free, open-source method for doing that. AI agents take the roles of analyst, product
+manager, architect, UX designer and developer, and each writes a document the next one builds on. I
+ran it in Claude Code. BMAD describes its own goal as to *"turn an idea or change request into
+working software without giving up the thinking."* The thinking is the part people skip, so that is
+where I started.
 
 ## Planning first
 
@@ -64,18 +68,16 @@ In that time, a one-page idea became:
 - **an architecture** of binding decisions that every later change had to respect;
 - **a plan** of 22 epics, broken into small stories.
 
-The safety engineering Tsvetkov describes lives in that architecture, written down before any code
-existed. Three of its decisions, word for word:
+The safety engineering Tsvetkov describes lives in that architecture. Two of its decisions, word
+for word:
 
 - *"Confirm is reachable only from the browser, and the write gate is on the write."* The agent can
   suggest a change. Only the person at the keyboard can approve it.
-- *"Prohibited actions are absent from the tool set, not gated within it."* There are things the
-  agent simply cannot ask to do.
-- *"The model is assumed compromised by anything it reads."* Nothing the agent reads on a screen
-  can turn into an instruction.
+- *"The model is assumed compromised by anything it reads."* We assume anything the agent reads may
+  try to trick it - so a trick can never make a change on its own. Every change is still a proposal
+  a person has to approve.
 
-Add one more: every change the agent makes is recorded in the IRIS audit database, where
-administrators already look.
+And the agent's changes are marked in the IRIS audit database, where administrators already look.
 
 None of that was bolted on later. Every story was checked against it.
 
@@ -94,30 +96,34 @@ Every story went through the same steps:
 
 I published the command that runs this cycle as
 [bmad-epic-cycle-command](https://github.com/jbrandtmse/bmad-epic-cycle-command). It ran two
-streams of work side by side, each with its own IRIS instance, so they never got in each other's
-way.
+streams of work side by side, each with its own IRIS instance, so their tests never collided.
 
 The results:
 
-- **More than 140 stories** finished for the submission, at about **three hours** each.
-- About **6 stories a day** with one stream of work, and **up to 16 a day** with two.
+- A typical story took **about three hours**.
+- About **6 stories a day** with one stream of work, about **11 a day** with two, and **16 a day**
+  by the end.
+- By the submission, more than 140 of the plan's 229 stories were done - and because of the way the
+  plan was ordered, everything that shipped is complete.
 
 <!-- VISUAL: stories finished per day, 9 to 25 September. -->
 
-BMAD has since added its own version of this cycle, and I expect the two ideas to come together.
+BMAD now has its own build loop. Mine adds the two parallel streams and the review list below. If
+you are starting out, try BMAD's first.
 
 ## Nothing gets lost
 
-On most AI-assisted projects I have seen, review comments pile up and are quietly forgotten. On an
-earlier project, the list of things to fix "later" grew to more than 1,500 items and never once got
-shorter.
+An earlier version of this workflow taught me the problem: review comments pile up and are quietly
+forgotten. On that project, the list of things to fix "later" grew to 1,588 items in 114 days and
+never once got shorter.
 
 So on OcuPilot every problem a reviewer found had to go somewhere: fixed right away, assigned to a
-specific later story, or turned down with a written reason. The list is reviewed at the end of every
-epic.
+later story or a scheduled clean-up pass, or turned down with a written reason. The list is reviewed
+at the end of every epic.
 
-More than 1,100 findings went through that list. Nearly half were fixed, and every one of the rest
-has an owner or a reason. Only a handful are still open.
+More than 1,100 findings went through it. Nearly half were fixed. About a third were turned down
+with a written reason. About a fifth are waiting on a named later story or the clean-up pass. Only a
+handful have no decision yet.
 
 ## What the agents got wrong
 
@@ -127,40 +133,41 @@ hard way:
 - **They grade their own work generously.** Early on, a separate reviewer found tests that could
   never fail, which the agent that wrote them had reported as proof. Since then, no agent's claim
   about its own work counts until something independent has checked it.
-- **They treat symptoms.** One early story took 43 hours because the agents kept making a test wait
-  longer instead of asking why it was slow. The real cause was a small mistake in how the test
-  re-read its data. Now a story that keeps failing stops and comes back to me.
-- **They write too much.** One story's spec grew to 664 KB. A longer spec is not a better one - it is
-  more for a reviewer to argue with - so we keep them short on purpose.
-- **Cheaper models were not cheaper.** Moving the coding work to a smaller model made nothing faster
-  and meant more rework, so it moved back.
+- **They treat symptoms.** One early story took nearly two days because the agents kept making a
+  test wait longer instead of asking why it was slow. The real cause was a small mistake in how the
+  test re-read its data. Now a story that keeps failing stops and comes back to me.
+- **They write too much.** One story's spec grew to 664 KB - about the length of a novel. A longer
+  spec is not a better one; it is more for a reviewer to argue with. So we keep them short on
+  purpose.
+- **A cheaper model was a false saving.** When we moved the coding work to a smaller model, 5 of its
+  12 stories had to be redone, against 1 of 9 on the larger one. It moved back.
 
 ## The human in the loop, in the build
 
 I kept the decisions that matter: priorities, scope, security, what goes to the main branch, and
 what gets published. After the first week, I let the agents settle routine questions themselves and
-report what they decided.
+report what they decided. I did not read every line of code - that is what the reviews and tests are
+for. I read the plans, decided the questions that came back to me, and used the product.
 
 The decisions that changed the product were mine. I moved the OAuth 2.0 screens ahead of other work,
-because the contest named them. I decided that an administrator should be able to grant powerful
-roles, with a confirmation - *"remember this is a developer tool first."* And I made sure a new user
-could try the agent's changes the first time, without extra setup.
+because the contest named them. I decided that an administrator may grant powerful roles through
+the agent, always with a confirmation - while the agent still cannot lock you out of your own
+instance. And I made sure a new user could try the agent's changes the first time, without extra
+setup.
 
 Using the product was part of the process too. I ran the latest build with real AI provider keys,
-the way an administrator would. Nine problems came out of that. Eight became stories and shipped,
-some within hours. The automated tests could never have found them, which is exactly why a person
-stays in the loop.
+the way an administrator would. Nine problems came out of that, and eight became stories and
+shipped, some within hours. None of them showed up in the tests: some needed a real AI provider, and
+some were things you only notice by using the screen.
 
-It is the same pattern as the product: the agents propose, and a human confirms.
+It is the same pattern as the product: the agents propose, and a person confirms.
 
-## What I would tell a team starting with BMAD on IRIS
+## If you are starting with BMAD on IRIS
 
 - **Plan before you build.** A clear architecture lets you say no to changes that do not fit.
 - **Make safety a design decision, not a feature.** If it is not in the design, it will be an
   afterthought.
 - **Give every review comment a home.** Fix it, schedule it, or explain why not.
-- **Do not trust a test you have not seen fail.**
-- **Keep documents short.** More words are not more quality.
 - **Test against a real IRIS,** early and on every change.
 - **Keep people on the decisions that cannot be undone:** what ships, what gets published, and
   anything that touches security.
@@ -173,6 +180,5 @@ It is the same pattern as the product: the agents propose, and a human confirms.
 - The first article, on what OcuPilot does: <!-- LINK TO ARTICLE 1 -->
 - Open Exchange: <!-- OPEN EXCHANGE LINK -->
 
-I would love to hear how your teams approach this - and what you would never let an agent do on your
-own instance. If OcuPilot or this way of working is useful to you, I would be grateful for your vote
-in the contest.
+If you are trying BMAD on IRIS, I would like to hear what has worked for you and what has not. And
+if OcuPilot is useful to you, I would be grateful for your vote in the contest.
