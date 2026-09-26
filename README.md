@@ -130,7 +130,7 @@ start.
 
 | Provider | Default model | Where to get a key |
 | --- | --- | --- |
-| Anthropic | `claude-opus-5` | [console.anthropic.com](https://console.anthropic.com/) → Settings → API keys |
+| Anthropic | `claude-opus-5-5` | [console.anthropic.com](https://console.anthropic.com/) → Settings → API keys |
 | OpenAI | `gpt-5.6-terra` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
 | Google Gemini | `gemini-3.8-flash` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | OpenAI-compatible | none - you name it | Your own server: Ollama, vLLM, LM Studio and others |

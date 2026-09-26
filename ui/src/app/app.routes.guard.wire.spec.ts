@@ -54,8 +54,8 @@ const PROVIDERS_BODY = {
     {
       key: 'anthropic',
       label: 'Anthropic',
-      defaultModel: 'claude-opus-5',
-      modelSuggestions: ['claude-opus-5', 'claude-sonnet-5'],
+      defaultModel: 'claude-opus-5-5',
+      modelSuggestions: ['claude-opus-5-5', 'claude-sonnet-5'],
       defaultEndpoint: 'https://ocupilot.invalid/v1/messages',
       endpointRequired: false,
       canonicalMaxTokens: 32000,

@@ -1,8 +1,8 @@
 /// <p>Story 10.4's wire half: which sampling fields each shipped catalog row's adapter sends. A
 /// stored temperature reaches the OpenAI, Gemini and OpenAI-compatible bodies only when it is set,
-/// the Anthropic body never carries a sampling parameter, each row's
-/// <code>acceptsTemperature</code> column agrees with what its adapter actually sends, and only
-/// the <code>openai</code> row's body carries <code>reasoning_effort</code>.</p>
+/// the Anthropic body never carries a sampling parameter -- on a plain call or a streamed one --
+/// each row's <code>acceptsTemperature</code> column agrees with what its adapter actually sends,
+/// and only the <code>openai</code> row's body carries <code>reasoning_effort</code>.</p>
 /// <p>Every leg drives a <b>shipped</b> row through
 /// <method>OcuPilot.Port.ProviderPort.Invoke</method> with only the transport swapped: the three
 /// OpenAI-family rows through <class>OcuPilot.Test.CatalogProbeShipped</class>, the
@@ -57,6 +57,7 @@ Method OnBeforeOneTest() As %Status
     Do $ClassMethod(..#PORT, "SetSecretClass", "OcuPilot.Test.SecretProbe")
     Do $ClassMethod(..#PORT, "SetSslState", "present")
     Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PROBEKEY)
+    Do ##class(OcuPilot.Test.StreamSinkProbe).Reset()
     Quit ##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tRemaining)
 }
 
@@ -64,6 +65,7 @@ Method OnAfterOneTest() As %Status
 {
     Do $ClassMethod(..#PORT, "Reset")
     Do ##class(OcuPilot.Test.SecretProbe).Forget()
+    Do ##class(OcuPilot.Test.StreamSinkProbe).Reset()
     Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tRemaining), "every probe definition this method created is removed")
     Do $$$AssertEquals(tRemaining, 0, "and none survives")
     Quit $$$OK
@@ -72,11 +74,16 @@ Method OnAfterOneTest() As %Status
 /// <p>Store a definition on the shipped row <var>pKey</var> holding <var>pTemperature</var>, make
 /// one call through the port with the catalog that re-adapts that row to its stub, and answer the
 /// body the stub recorded, parsed, or <code>""</code> when no call was made. With
-/// <var>pWithTools</var> the call advertises one tool.</p>
+/// <var>pWithTools</var> the call advertises one tool. A non-empty <var>pModel</var> is stored in
+/// place of the row's <code>defaultModel</code>. With <var>pStreamed</var> the call carries a
+/// <class>OcuPilot.Test.StreamSinkProbe</class> sink through the port, exactly as a turn's own
+/// streamed call would, and the stub answers a streamed reply instead of a plain one -- the
+/// recorded body read back is still the <b>request</b> body <class>OcuPilot.Test.ProviderStub</class>
+/// captured, so the same read-back proves what a streamed call sends.</p>
 /// <p>The call is made only when the switched catalog's row names a class in
 /// <parameter>STUBPACKAGE</parameter>, so a re-adaptation that drifted can never reach a
 /// vendor.</p>
-Method BodyFor(pKey As %String, pTemperature As %String, pWithTools As %Boolean = 0) As %DynamicObject
+Method BodyFor(pKey As %String, pTemperature As %String, pWithTools As %Boolean = 0, pModel As %String = "", pStreamed As %Boolean = 0) As %DynamicObject
 {
     Set tBody = ""
     Try {
@@ -91,7 +98,7 @@ Method BodyFor(pKey As %String, pTemperature As %String, pWithTools As %Boolean 
         Set tDef = ##class(OcuPilot.Kernel.State.Agent).%New()
         Set tDef.Name = $Parameter("OcuPilot.Test.AgentFixture", "PROBEPREFIX") _ "Sampling" _ pKey _ $Increment(^||OcuPilotAdapterSampling)
         Set tDef.Provider = pKey
-        Set tDef.Model = $Select(tRow.defaultModel '= "": tRow.defaultModel, 1: ..#LOCALMODEL)
+        Set tDef.Model = $Select(pModel '= "": pModel, tRow.defaultModel '= "": tRow.defaultModel, 1: ..#LOCALMODEL)
         If +tRow.endpointRequired {
             Set tDef.EndpointUrl = ..#LOCALENDPOINT
             Set tDef.MarkedLocal = 1
@@ -111,7 +118,14 @@ Method BodyFor(pKey As %String, pTemperature As %String, pWithTools As %Boolean 
 
         Do $ClassMethod(..#PORT, "SetCatalogClass", tCatalog)
         Do ##class(OcuPilot.Test.ProviderStub).Reset()
-        Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..ReplyFor(pKey))
+        Do ##class(OcuPilot.Test.StreamSinkProbe).Reset()
+        Set tSink = ""
+        If pStreamed {
+            Set tSink = ##class(OcuPilot.Test.StreamSinkProbe).%New()
+            Do ##class(OcuPilot.Test.ProviderStub).QueueStream(200, ##class(OcuPilot.Test.StreamCase).Sse(pKey, ..ReplyFor(pKey)))
+        } Else {
+            Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..ReplyFor(pKey))
+        }
         Kill tMessages, tTools
         Set tMessages = 1
         Set tMessages(1, "role") = "user"
@@ -122,7 +136,7 @@ Method BodyFor(pKey As %String, pTemperature As %String, pWithTools As %Boolean 
             Set tTools(1, "description") = "read the error log"
             Set tTools(1, "inputSchema") = "{""type"":""object"",""properties"":{""maxRows"":{""type"":""integer"",""description"":""how many""}},""required"":[],""additionalProperties"":false}"
         }
-        Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+        Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault, "", tSink)
         Do $$$AssertStatusOK(tSC, pKey _ ": the port returns $$$OK")
         Do $$$AssertTrue('$IsObject($Get(tFault)), pKey _ ": with no fault: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
         Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, pKey _ ": the stub's transport was entered once")
@@ -207,6 +221,46 @@ Method TestAnthropicIsSentNoSamplingParameterWhateverTheDefinitionHolds()
         If '$IsObject(tBody) Continue
         For tField = "temperature", "top_p", "top_k" {
             Do $$$AssertEquals(tBody.%GetTypeOf(tField), "unassigned", "anthropic holding '" _ tHeld _ "': no " _ tField _ " is sent: " _ tBody.%ToJSON())
+        }
+    }
+}
+
+/// <p>Story 10.7 -- a definition on <code>claude-opus-5-5</code>, like one on
+/// <code>claude-opus-5</code>, is sent no <code>temperature</code>, <code>top_p</code> or
+/// <code>top_k</code>, whether it holds no temperature or 0.7. Each leg first asserts the body
+/// names the model it was stored with, so every leg is known to have run on that model.</p>
+Method TestClaudeOpus55IsSentNoSamplingParameter()
+{
+    For tModel = "claude-opus-5-5", "claude-opus-5" {
+        For tHeld = "", ..#SETTEMPERATURE {
+            Set tLeg = tModel _ " holding '" _ tHeld _ "'"
+            Set tBody = ..BodyFor(..#ANTHROPICKEY, tHeld, 0, tModel)
+            Do $$$AssertTrue($IsObject(tBody), tLeg _ ": the body was recorded")
+            If '$IsObject(tBody) Continue
+            Do $$$AssertEquals(tBody.%Get("model"), tModel, tLeg _ ": the body names the stored model")
+            For tField = "temperature", "top_p", "top_k" {
+                Do $$$AssertEquals(tBody.%GetTypeOf(tField), "unassigned", tLeg _ ": no " _ tField _ " is sent: " _ tBody.%ToJSON())
+            }
+        }
+    }
+}
+
+/// <p>Story 10.7 -- a streamed call on <code>claude-opus-5-5</code> is sent no
+/// <code>temperature</code>, <code>top_p</code> or <code>top_k</code>, whether the definition
+/// holds no temperature or 0.7, and its body carries <code>stream</code> true, which the adapter
+/// sets only while streaming. <method>TestClaudeOpus55IsSentNoSamplingParameter</method> never
+/// streams, so it cannot see a rule keyed off <property>Streaming</property>.</p>
+Method TestClaudeOpus55StreamedIsSentNoSamplingParameter()
+{
+    For tHeld = "", ..#SETTEMPERATURE {
+        Set tLeg = "claude-opus-5-5 streamed holding '" _ tHeld _ "'"
+        Set tBody = ..BodyFor(..#ANTHROPICKEY, tHeld, 0, "claude-opus-5-5", 1)
+        Do $$$AssertTrue($IsObject(tBody), tLeg _ ": the body was recorded")
+        If '$IsObject(tBody) Continue
+        Do $$$AssertEquals(tBody.%Get("model"), "claude-opus-5-5", tLeg _ ": the body names the stored model")
+        Do $$$AssertEquals(tBody.%GetTypeOf("stream") _ "|" _ tBody.%Get("stream"), "boolean|1", tLeg _ ": the streamed call still asks for a stream: " _ tBody.%ToJSON())
+        For tField = "temperature", "top_p", "top_k" {
+            Do $$$AssertEquals(tBody.%GetTypeOf(tField), "unassigned", tLeg _ ": no " _ tField _ " is sent: " _ tBody.%ToJSON())
         }
     }
 }

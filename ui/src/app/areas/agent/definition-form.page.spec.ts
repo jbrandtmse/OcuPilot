@@ -24,8 +24,8 @@ const PROVIDERS_BODY = {
     {
       key: 'anthropic',
       label: 'Anthropic',
-      defaultModel: 'claude-opus-5',
-      modelSuggestions: ['claude-opus-5', 'claude-sonnet-5'],
+      defaultModel: 'claude-opus-5-5',
+      modelSuggestions: ['claude-opus-5-5', 'claude-sonnet-5'],
       // The one absolute URL `ui/tools/client-lint.mjs` admits: a fixture endpoint that is never
       // fetched, and which nothing in this spec asks a browser to reach (AD-47, NFR-10).
       defaultEndpoint: 'https://ocupilot.invalid/v1/messages',
