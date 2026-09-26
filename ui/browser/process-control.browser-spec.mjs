@@ -2,7 +2,7 @@
  * Story 5.12 end to end in a real browser against the throwaway instance: the agent proposes
  * suspending one process, the user confirms, and the Processes list re-fetches and highlights that
  * row -- with the card's one state row, NFR-1's two-second budget, and the auto-refresh paused
- * while the proposal is live.
+ * while the proposal is live, on the list and on Process details.
  *
  * **It suspends a process.** It refuses outright to run outside a throwaway, it starts and
  * suspends a process of its own -- `OcuPilot.Test.ProcessControl`'s probe, owned by that class's
@@ -46,6 +46,9 @@ const probe = { container: config.container, marker: 'PROCCTL' };
 const STRINGS = loadStrings();
 
 const LIST_URL = '/ocupilot/os-management/processes?ns=HSCUSTOM';
+
+/** Process details for `pid`, at the route the registry declares for it (AD-5, AD-13). */
+const detailsUrl = (pid) => `/ocupilot/os-management/processes/details/${encodeURIComponent(pid)}?ns=HSCUSTOM`;
 
 /** The two tools' provider-side names: the canonical dotted names with underscores (AD-42). */
 const SUSPEND_WIRE_NAME = 'osmgmt_processes_suspend';
@@ -232,6 +235,11 @@ async function showProbeRow(page) {
   });
 }
 
+/** Wait until Process details shows the probe process's own fields. */
+async function showProbeDetails(page) {
+  await page.waitForSelector('.ocu-details-fields', { timeout: config.navigationTimeoutMs });
+}
+
 /**
  * Turn the screen's auto-refresh on, by cycling the command-bar chip off its published `off`
  * literal. The chip reads the setting the user chose, and "off wins over paused"
@@ -247,16 +255,19 @@ async function enableAutoRefresh(page) {
   );
 }
 
-/** A signed-in page standing on the Processes list with one live suspend card. */
-async function listWithLiveCard({ withRefresh = false } = {}) {
+/**
+ * A signed-in page standing on `url` -- the Processes list unless told otherwise -- with one live
+ * suspend card; `show` waits until that screen shows the probe process.
+ */
+async function screenWithLiveCard({ withRefresh = false, url = LIST_URL, show = showProbeRow } = {}) {
   await requireFreeSlot(config);
   resumeProbeProcess(probePid);
   const tag = nextTag();
   setTag(tag);
   scriptReply(tag, 0, proposeReply(probePid));
   scriptReply(tag, 0, textReply('done'));
-  const { context, page } = await signedInAt(browser, config, LIST_URL);
-  await showProbeRow(page);
+  const { context, page } = await signedInAt(browser, config, url);
+  await show(page);
   if (withRefresh) await enableAutoRefresh(page);
   await page.waitForFunction(
     () => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'),
@@ -299,7 +310,7 @@ test('AC1: the card carries one state row, and the confirmed suspend re-fetches 
   // port is given a body the vendor SUSPEND does not read and the write leg goes red; set that
   // tool's `DESTRUCTIVE` to 1 -> the card draws the destructive bar and the treatment assertion
   // goes red.
-  const { context, page, tag } = await listWithLiveCard();
+  const { context, page, tag } = await screenWithLiveCard();
   try {
     const drawn = await page.evaluate(() => ({
       destructive: document
@@ -360,7 +371,7 @@ test('AC1: the card carries one state row, and the confirmed suspend re-fetches 
 test('AC7, AD-43: Processes pauses its auto-refresh while the process proposal is live, and resumes on close', async () => {
   // Mutation (Rule 19): drop the `proposal-open` subscription in `ui/src/app/core/refresh.ts` ->
   // the chip never appears and this goes red.
-  const { context, page, tag } = await listWithLiveCard({ withRefresh: true });
+  const { context, page, tag } = await screenWithLiveCard({ withRefresh: true });
   try {
     await page.waitForFunction(
       (sentence) =>
@@ -375,6 +386,47 @@ test('AC7, AD-43: Processes pauses its auto-refresh while the process proposal i
         !(document.querySelector('.ocu-command-bar-refresh')?.textContent ?? '').includes(sentence),
       { timeout: config.navigationTimeoutMs },
       STRINGS.statusAutoRefreshPaused
+    );
+    assert.ok(
+      !processState(probePid).includes('SUSP'),
+      'and the cancelled proposal left the process running'
+    );
+  } finally {
+    await context.close();
+    forgetTag(tag);
+    dropProposals();
+    resumeProbeProcess(probePid);
+  }
+});
+
+test('AC7, AD-43: Process details pauses its auto-refresh while the process proposal is live, and resumes on close', async () => {
+  // Mutation (Rule 19): make `ui/src/app/core/refresh.ts` ignore `proposal-open` for a screen that
+  // declares a `parentScope` -> the chip never reads paused here, while the list leg above stays green.
+  const { context, page, tag } = await screenWithLiveCard({
+    withRefresh: true,
+    url: detailsUrl(probePid),
+    show: showProbeDetails,
+  });
+  try {
+    await page.waitForFunction(
+      (sentence) =>
+        (document.querySelector('.ocu-command-bar-refresh')?.textContent ?? '').includes(sentence) &&
+        document.querySelector('.ocu-command-bar-refresh')?.getAttribute('data-paused') === 'true',
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.statusAutoRefreshPaused
+    );
+    await page.click('.ocu-proposal-card-cancel');
+    // Resumed, not merely unpaused: the chip is still there and reads the running form
+    // ("every <n> s"), never the off literal.
+    await page.waitForFunction(
+      ([paused, off, onPrefix]) => {
+        const chip = document.querySelector('.ocu-command-bar-refresh');
+        if (chip === null || chip.getAttribute('data-paused') === 'true') return false;
+        const text = (chip.textContent ?? '').trim();
+        return !text.includes(paused) && text !== off && text.startsWith(onPrefix);
+      },
+      { timeout: config.navigationTimeoutMs },
+      [STRINGS.statusAutoRefreshPaused, STRINGS.statusAutoRefreshOff, STRINGS.statusAutoRefreshOn.split('<n>')[0]]
     );
     assert.ok(
       !processState(probePid).includes('SUSP'),

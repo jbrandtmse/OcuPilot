@@ -103,6 +103,15 @@ export const MIN_WIDTH_SOURCES = {
   tokens: ['icon-button-size', 'panel-send-width'],
 };
 
+/**
+ * Declared overflows, each with its source: an element carrying `className` may stand up to `px`
+ * past its containing block by design, and the overflow check skips it only within that allowance
+ * (plus the check's own 1px tolerance). Anything further past is still reported.
+ */
+export const OVERFLOW_ALLOWANCES = [
+  { className: 'ocu-panel-resize-handle', px: 4, source: 'DESIGN.md panel-resize-handle -- 8px hit area on the panel edge' },
+];
+
 /** The classes `_components.scss` sizes by one of `MIN_WIDTH_SOURCES.tokens`, as `[{className, token}]`. */
 export function tokenSizedClasses(componentsScss) {
   const out = [];
@@ -244,7 +253,7 @@ function detectInPage(options) {
     return true;
   };
 
-  const all = [...document.body.querySelectorAll('*')].filter((el) => el instanceof HTMLElement);
+  const all = [...document.body.querySelectorAll('*')].filter((el) => el instanceof HTMLElement || el instanceof SVGSVGElement);
   const shown = all.filter(visible);
 
   // name: mark the fields; the accessible name is read from Chrome's own tree afterwards.
@@ -346,6 +355,8 @@ function detectInPage(options) {
       const right = blockRect.right - parseFloat(bs.borderRightWidth);
       const rect = el.getBoundingClientRect();
       const past = Math.max(rect.right - right, left - rect.left);
+      const allowance = options.overflowAllowances.find((entry) => el.classList.contains(entry.className));
+      if (allowance !== undefined && past <= allowance.px + 1) continue;
       if (past > 1) {
         results.violations.push({
           invariant: 'overflow',
@@ -486,6 +497,7 @@ export async function detectScreen(page, { route, checks, viewport, theme, minim
     floorPx: MIN_WIDTH_SOURCES.floor.px,
     classMinimums: MIN_WIDTH_SOURCES.classes.map(({ className, px }) => ({ className, px })),
     tokenMinimums: minimums,
+    overflowAllowances: OVERFLOW_ALLOWANCES.map(({ className, px }) => ({ className, px })),
   });
   const entries = [];
   const contextFor = (invariant) => (invariant === 'contrast' ? theme : invariant === 'name' ? '' : String(viewport));

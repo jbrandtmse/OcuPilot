@@ -293,9 +293,9 @@ ClassMethod AgentDefinitionCredentialRoute(pId As %String) As %Status
 }
 
 /// <p>The switches update with a second writer inside it
-/// (<class>OcuPilot.Test.SwitchesStaleProbe</class>), which is the only way to observe the
-/// conditional write's 409 through a dispatch: the window it closes opens and closes inside one
-/// request, and no version token crosses the wire for a second request to carry.</p>
+/// (<class>OcuPilot.Test.SwitchesStaleProbe</class>), for a body that carries no
+/// <code>rowVersion</code>: the window that save closes opens and closes inside one request, so the
+/// second writer has to be inside it too.</p>
 /// <p>The handler body, the version read, the validation, the conditional save and the envelope are
 /// the literal, inherited ones.</p>
 ClassMethod AgentSwitchesStaleRoute() As %Status

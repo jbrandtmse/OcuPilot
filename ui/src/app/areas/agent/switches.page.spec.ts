@@ -44,7 +44,7 @@ const forbidden = (): JsonResult<unknown> => ({
   kind: 'error',
   status: 403,
   code: 'AUTH.NOPRIVILEGE',
-  reason: "This account does not hold OcuPilot's administrative privilege",
+  reason: 'This account does not hold the privilege this request requires.',
   detail: { failedPair: 'OcuPilotAdmin:USE' },
 });
 
@@ -291,6 +291,33 @@ describe('the Switches screen', () => {
     expect(banner.getAttribute('role')).toBe('alert');
     expect(banner.textContent?.trim()).toBe(STRINGS.formStaleSave);
     expect(banner.textContent).not.toContain(CONFLICT_ENVELOPE_REASON);
+  });
+
+  it('DW-425: a save sends the row version the screen read, takes the one each answer carries, and keeps it after a stale refusal', async () => {
+    // Mutation (Rule 19): drop `rowVersion` from `SwitchesStore.body()` -> the first expectation
+    // goes red; take the version from a refusal as well as from an answer -> the last goes red.
+    let puts = 0;
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (init.method === 'PUT') {
+        puts += 1;
+        return puts === 1 ? ok(switches({ enforcedReadOnly: true, rowVersion: 4 })) : conflicted();
+      }
+      return ok(switches({ rowVersion: 3 }));
+    });
+    const sentVersions = () =>
+      calls.filter((call) => call.method === 'PUT').map((call) => JSON.parse(call.body)['rowVersion']);
+
+    tick(input(host, 'ocu-switches-read-only'), true);
+    (host.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(sentVersions()).toEqual([3]);
+
+    tick(input(host, 'ocu-switches-share-context'), false);
+    (host.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    (host.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(sentVersions()).toEqual([3, 4, 4]);
   });
 
   it('AD-37: a hold naming a user the instance no longer holds renders the published absent sentence, and the screen loads', async () => {

@@ -205,7 +205,7 @@ Method OnBeforeOneTest() As %Status
 /// <method>TestTheChildSendsTheTestRequestAsItsCaller</method>) cannot show because that test's
 /// own account already holds <code>%All</code>.</p>
 /// <p>Mutation: have <method>OcuPilot.Kernel.State.Base.GuardedExistsId</method> drop its
-/// <code>New $ROLES</code> frame, so the escalation <method>OcuPilot.Kernel.State.Agent.GuardedVersion</method>
+/// <code>New $ROLES</code> frame, so the escalation <method>OcuPilot.Api.Definitions.OpenDefinition</method>
 /// takes before the call is still standing at the <code>JOB</code> -- red on the recorded roles
 /// carrying <code>%DB_OCUPILOT</code>.</p>
 Method TestTheChildRunsAsALeastPrivilegedCallerOverHttp()

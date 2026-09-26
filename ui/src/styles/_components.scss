@@ -6449,3 +6449,30 @@ app-data-table .ocu-data-table-header-cell {
   padding-inline-start: calc(var(--ocu-avatar-size, 24px) + var(--ocu-space-2));
   color: var(--ocu-on-surface-variant);
 }
+
+// The status bar at a narrow viewport: the right group (DESIGN.md `status-bar`) -- the flag badge,
+// the auto-refresh stamp and the connection state -- keeps its width, and the left group's tail is
+// clipped instead.
+.ocu-status-bar-group:last-child {
+  flex-shrink: 0;
+}
+
+.ocu-status-bar-group:first-child {
+  overflow-x: clip;
+}
+
+// Every flag and choice is a 24px target (EXPERIENCE.md "Target sizes."): the checkbox or radio
+// itself and the label that wraps it, on every form and filter that draws one. The box never
+// shrinks, so a long label beside it wraps instead of narrowing the target.
+.ocu-field-checkbox,
+.ocu-criteria-marker {
+  min-block-size: var(--ocu-space-6);
+}
+
+.ocu-field-checkbox input:is([type='checkbox'], [type='radio']),
+.ocu-criteria-marker input[type='checkbox'] {
+  flex-shrink: 0;
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
+}

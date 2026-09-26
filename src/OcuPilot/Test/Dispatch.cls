@@ -244,6 +244,59 @@ ClassMethod InvokeHandler(pHandlerClass As %String, pMethod As %String = "Handle
     Quit tSC
 }
 
+/// <p><method>InvokeHandler</method> with <var>pRequest</var> -- a prebuilt stand-in such as
+/// <class>OcuPilot.Test.BodyRequest</class> -- as <code>%request</code>, and <var>pArgument</var>
+/// passed to <var>pMethod</var> when it is not empty. A request whose body read faults reaches a
+/// handler this way, which no <class>%CSP.Request</class> stub can produce.</p>
+/// <p><b>Caller contract:</b> <var>pRequest</var> must answer everything the handler reads off
+/// <code>%request</code>; the route table and <method>OcuPilot.Api.Router.OnPreDispatch</method> are
+/// not involved.</p>
+ClassMethod InvokeHandlerWithRequest(pRequest As %RegisteredObject, pHandlerClass As %String, pMethod As %String, pArgument As %String = "", Output pBody As %String, Output pStatus As %Integer) As %Status
+{
+    Set tSC = $$$OK
+    Set pBody = ""
+    Set pStatus = 0
+    Set tCapturing = 0
+    New %request, %response
+    Try {
+        Set %request = pRequest
+        Set %response = ##class(%CSP.Response).%New()
+
+        Set tInitIO = $IO
+        Set tNull = ##class(%Library.Device).GetNullDevice()
+        Set %OcuPilotDispatchCap = ""
+        ; Armed before the three statements that can strand the process in the mnemonic space,
+        ; for the reason Invoke's own comment gives.
+        Set tCapturing = 1
+        Open tNull:::1
+        Use tNull::("^" _ $ZNAME)
+        Do ##class(%Library.Device).ReDirectIO(1)
+
+        If pArgument = "" {
+            Set tSC = $ClassMethod(pHandlerClass, pMethod)
+        } Else {
+            Set tSC = $ClassMethod(pHandlerClass, pMethod, pArgument)
+        }
+
+        Do ##class(%Library.Device).ReDirectIO(0)
+        Use tInitIO
+        Close tNull
+        Set tCapturing = 0
+
+        Set pBody = $Get(%OcuPilotDispatchCap, "")
+        Set pStatus = +%response.Status
+    } Catch ex {
+        If tCapturing {
+            Do ##class(%Library.Device).ReDirectIO(0)
+            Use tInitIO
+            Close tNull
+        }
+        Set tSC = ex.AsStatus()
+    }
+    Kill %OcuPilotDispatchCap
+    Quit tSC
+}
+
 /// <p>Mnemonic I/O space bound via <code>Use tNull::("^"_$ZNAME)</code> in
 /// <method>Invoke</method> — must live in this class's own compiled routine for
 /// <code>$ZNAME</code> to resolve these labels. Accumulates every <code>Write</code> issued

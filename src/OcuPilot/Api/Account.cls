@@ -166,17 +166,12 @@ ClassMethod PolicyText(pStatus As %Status, pCodes As %String, Output pMatched As
 }
 
 /// <p>Refuse with <b>one</b> 422 carrying <var>pViolations</var> as
-/// <code>detail.violations</code>, each a <code>{field, code, reason}</code> object (AD-39).</p>
-/// <p>It serializes through <method>OcuPilot.Kernel.AgentRules.ViolationsJson</method>, the tree's
-/// one violation serializer, rather than through
-/// <method>OcuPilot.Api.Definitions.RenderViolations</method>, which fixes the envelope's code at
-/// <parameter>OcuPilot.Api.Error.AGENTVALIDATION</parameter>; this route's is
-/// <parameter>OcuPilot.Api.Error.ACCOUNTVALIDATION</parameter>.</p>
+/// <code>detail.violations</code>, each a <code>{field, code, reason}</code> object (AD-39). It
+/// delegates to <method>OcuPilot.Api.Definitions.RenderViolations</method> with this route's code,
+/// <parameter>OcuPilot.Api.Error.ACCOUNTVALIDATION</parameter>, and this route's reason.</p>
 ClassMethod RenderViolations(ByRef pViolations) As %Status [ Private ]
 {
-    Set tDetail = {}
-    Do tDetail.%Set("violations", ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.pViolations))
-    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.Error).#REASONACCOUNTVALIDATION, ##class(OcuPilot.Api.Error).#ACCOUNTVALIDATION, tDetail)
+    Quit ##class(OcuPilot.Api.Definitions).RenderViolations(.pViolations, ##class(OcuPilot.Api.Error).#REASONACCOUNTVALIDATION, ##class(OcuPilot.Api.Error).#ACCOUNTVALIDATION)
 }
 
 }

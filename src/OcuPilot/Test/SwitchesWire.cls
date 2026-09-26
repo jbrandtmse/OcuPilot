@@ -34,16 +34,14 @@ Method OnAfterOneTest() As %Status
 /// <p><b>DW-388's integration acceptance criterion</b> -- a switches save whose row moved after
 /// this request read it is refused 409 with <code>STATE.CONFLICT</code>, through the one envelope
 /// and the one error writer (AD-12, AD-39), and the other writer's values survive.</p>
-/// <p><b>It runs through <class>OcuPilot.Test.Dispatch</class> and not over a socket, and that is
-/// a property of the defect rather than of the test.</b> The window the conditional write closes
-/// opens and closes inside one request -- a handler that reads, does work, then writes -- and
-/// OcuPilot publishes no version token a second request could carry, deliberately. So the second
-/// writer has to be inside the request, which is what
-/// <class>OcuPilot.Test.SwitchesStaleProbe</class> is; everything under it, including the real
-/// <code>%CSP.REST</code> dispatch, the real status and the real envelope, is the shipped path.
-/// The ordinary save over a real socket is this class's own
-/// <method>TestTheSwitchesUpdateWritesAndAnswersTheStoredTruth</method>, which is what says the
-/// conditional write did not break the path that does not race.</p>
+/// <p><b>It runs through <class>OcuPilot.Test.Dispatch</class> and not over a socket.</b> The body
+/// carries no <code>rowVersion</code>, so the window the conditional write closes opens and closes
+/// inside one request -- a handler that reads, does work, then writes -- and the second writer has
+/// to be inside the request, which is what <class>OcuPilot.Test.SwitchesStaleProbe</class> is;
+/// everything under it, including the real <code>%CSP.REST</code> dispatch, the real status and
+/// the real envelope, is the shipped path. A body that carries the version the screen read is
+/// <method>TestASaveCarryingAStaleVersionIsRefusedUntilReloaded</method>'s, over a real
+/// socket.</p>
 /// <p>Mutation: drop <code>AND COALESCE(RowVersion, 0) = ?</code> from
 /// <method>OcuPilot.Kernel.State.Base.GuardedSaveIfCurrent</method>, or stop passing the version
 /// read in <method>OcuPilot.Api.Switches.HandleUpdate</method> -- this answers 200 and goes
@@ -85,7 +83,9 @@ Method TestTheSwitchesReadAnswersTheDefaultsOnACleanInstance()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "killSwitch,killSwitchReason,enforcedReadOnly,shareContextByDefault,contextRowCap,updatedAt,holds", "the seven keys the screen reads")
+    Do $$$AssertEquals(tKeys, "killSwitch,killSwitchReason,enforcedReadOnly,shareContextByDefault,contextRowCap,updatedAt,rowVersion,holds", "the eight keys the screen reads")
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("rowVersion"), "number", "the row version arrives as a JSON number")
+    Do $$$AssertEquals(tAnswer.rowVersion, 0, "and is 0 while the instance holds no row")
     Do $$$AssertEquals(tAnswer.%GetTypeOf("killSwitch"), "boolean", "a flag arrives as a JSON boolean")
     Do $$$AssertEquals(tAnswer.killSwitch, 0, "the kill switch is off")
     Do $$$AssertEquals(tAnswer.enforcedReadOnly, 0, "read-only is not enforced")
@@ -121,6 +121,39 @@ Method TestTheSwitchesUpdateWritesAndAnswersTheStoredTruth()
     Do $$$AssertEquals(tAnswer.killSwitch, 0, "turning the kill switch off")
     Do $$$AssertEquals(tAnswer.enforcedReadOnly, 1, "and leaving enforced read-only alone (AD-4)")
     Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 1, "with one row written, not two")
+}
+
+/// <p>A save carrying the version the screen read is refused <code>STATE.CONFLICT</code> once
+/// another writer has moved the row, and pressing Save again with the same version is refused
+/// again; a read hands back the current version, and a save carrying it is taken. A body with no
+/// <code>rowVersion</code> saves as it always has.</p>
+/// <p>Mutation: have <method>OcuPilot.Api.Switches.HandleUpdate</method> ignore the body's
+/// <code>rowVersion</code> -- the two stale saves answer 200 and this goes red.</p>
+Method TestASaveCarryingAStaleVersionIsRefusedUntilReloaded()
+{
+    Do ..Call("GET", "/agent/switches", "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the switches read: " _ tBody)
+    Set tRead = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
+    Do ..Call("PUT", "/agent/switches", "{""killSwitchReason"":""first"",""rowVersion"":" _ tRead _ "}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "a save carrying the version read is taken: " _ tBody)
+    Set tHeld = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
+    Do $$$AssertTrue(tHeld > tRead, "and answers the version the save wrote: " _ tHeld)
+
+    Do ..Call("PUT", "/agent/switches", "{""killSwitchReason"":""other""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "another writer's save with no rowVersion is taken as it always was: " _ tBody)
+
+    For tAttempt = 1, 2 {
+        Do ..Call("PUT", "/agent/switches", "{""killSwitchReason"":""stale"",""rowVersion"":" _ tHeld _ "}", .tStatus, .tBody, .tHeaders)
+        Do $$$AssertEquals(tStatus, 409, "save " _ tAttempt _ " with the version this screen held is refused: " _ tBody)
+        If tStatus = 409 Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).code, ##class(OcuPilot.Api.Error).#STATECONFLICT, "as a stale save")
+    }
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).Resolve(.tNow), "the switches read back")
+    Do $$$AssertEquals(tNow("killSwitchReason"), "other", "and the other writer's reason survived both")
+
+    Do ..Call("GET", "/agent/switches", "", .tStatus, .tBody, .tHeaders)
+    Set tReloaded = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
+    Do ..Call("PUT", "/agent/switches", "{""killSwitchReason"":""after reload"",""rowVersion"":" _ tReloaded _ "}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "a save carrying the reloaded version is taken: " _ tBody)
 }
 
 /// <p><b>A flag sent as anything but a JSON boolean, and a reason sent as anything but a JSON
