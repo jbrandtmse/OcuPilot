@@ -17,6 +17,12 @@
 /// repeats. With no script a call answers a short text reply, HTTP 200, at once. A scripted status
 /// of <code>0</code> is a transport timeout and <code>-1</code> any other transport failure, both
 /// instead of an HTTP answer.</p>
+/// <p><b>Streaming (Story 11.7).</b> A call that streams -- a turn passes a sink, and
+/// <method>Plain</method> has not turned its tag off -- is answered a scripted HTTP 200 by feeding
+/// <method>OcuPilot.Test.SseFixture.Anthropic</method> of the scripted body into the request's chunk
+/// reader in 7-byte slices, as the real transport would; <method>ScriptStream</method> paces those
+/// slices and can break the stream at half. The call records <code>stream</code>, 1 when the
+/// request asked for a stream.</p>
 Class OcuPilot.Test.TurnProvider Extends OcuPilot.Kernel.Provider.Anthropic
 {
 
@@ -41,6 +47,36 @@ ClassMethod Script(pTag As %String, pHangSeconds As %Numeric, pReplyBody As %Str
     Set tIndex = $Increment(^IRIS.Temp.OcuPilotTurnProvider(pTag, "script"))
     Set ^IRIS.Temp.OcuPilotTurnProvider(pTag, "script", tIndex) = $ListBuild(+pHangSeconds, pReplyBody, +pHttpStatus, pRetryAfter)
     Quit $$$OK
+}
+
+/// <p>Append a streamed script entry for <var>pTag</var>: hang <var>pHangSeconds</var> before the
+/// status line, then stream <var>pReplyBody</var> with HTTP 200, spreading
+/// <var>pMidHangSeconds</var> evenly across its slices. <var>pBreakAtHalf</var> stops after half
+/// the bytes and answers the <code>&lt;READ&gt;</code> error a dropped connection produces. A call
+/// that does not stream answers the body plain.</p>
+ClassMethod ScriptStream(pTag As %String, pHangSeconds As %Numeric, pReplyBody As %String, pMidHangSeconds As %Numeric = 0, pBreakAtHalf As %Boolean = 0) As %Status
+{
+    If pTag = "" Quit $$$ERROR($$$GeneralError, "ScriptStream requires a tag")
+    Set tIndex = $Increment(^IRIS.Temp.OcuPilotTurnProvider(pTag, "script"))
+    Set ^IRIS.Temp.OcuPilotTurnProvider(pTag, "script", tIndex) = $ListBuild(+pHangSeconds, pReplyBody, 200, "", +pMidHangSeconds, ''pBreakAtHalf)
+    Quit $$$OK
+}
+
+/// <p>Make every call for <var>pTag</var> plain: <method>StreamsFor</method> answers 0, so the
+/// request asks for no stream and the scripted body is answered whole.</p>
+ClassMethod Plain(pTag As %String) As %Status
+{
+    If pTag = "" Quit $$$ERROR($$$GeneralError, "Plain requires a tag")
+    Set ^IRIS.Temp.OcuPilotTurnProvider(pTag, "plain") = 1
+    Quit $$$OK
+}
+
+/// <p>The base's answer, and 0 for a tag <method>Plain</method> turned off.</p>
+Method StreamsFor(ByRef pSettings, ByRef pValues) As %Boolean
+{
+    Set tTag = $Get(pValues("model"))
+    If (tTag '= "") && +$Get(^IRIS.Temp.OcuPilotTurnProvider(tTag, "plain")) Quit 0
+    Quit ##super(.pSettings, .pValues)
 }
 
 /// <p>Remove <var>pTag</var>'s script and records.</p>
@@ -133,6 +169,7 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "messages") = tSent.messages.%ToJSON()
     Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "tools") = $Select($IsObject(tSent.tools): tSent.tools.%ToJSON(), 1: "")
     Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "at") = ##class(OcuPilot.Kernel.State.Turn).NowSeconds()
+    Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "stream") = ''tSent.stream
     Set tIndex = tCall
     If tIndex > +$Get(^IRIS.Temp.OcuPilotTurnProvider(tTag, "script")) Set tIndex = +$Get(^IRIS.Temp.OcuPilotTurnProvider(tTag, "script"))
     Set tEntry = $Select(tIndex > 0: $Get(^IRIS.Temp.OcuPilotTurnProvider(tTag, "script", tIndex)), 1: "")
@@ -147,6 +184,21 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     Set pStatus = tStatus
     Set pBody = $List(tEntry, 2)
     Set pRetryAfter = $ListGet(tEntry, 4)
+    If (tStatus '= 200) || '$IsObject(pRequest.ResponseChunkReader) Quit $$$OK
+    ; A body the fixture cannot turn into a stream is answered plain, as it always was.
+    Set tBytes = ""
+    Try {
+        Set tBytes = $ZConvert(##class(OcuPilot.Test.SseFixture).Anthropic(pBody), "O", "UTF8")
+    } Catch ex {
+        Set tBytes = ""
+    }
+    If tBytes = "" Quit $$$OK
+    Set pBody = ""
+    Set tHalf = $Select(+$ListGet(tEntry, 6): $Length(tBytes) \ 2, 1: 0)
+    Set tSlices = ($Select(tHalf > 0: tHalf, 1: $Length(tBytes)) + 6) \ 7
+    Set tPace = $Select(tSlices > 1: +$ListGet(tEntry, 5) / (tSlices - 1), 1: 0)
+    Do ##class(OcuPilot.Test.ProviderStubTransport).Feed(pRequest.ResponseChunkReader, tBytes, 7, tHalf, tPace)
+    If tHalf > 0 Quit $$$ERROR($$$TCPIPError, "<READ>", 0)
     Quit $$$OK
 }
 

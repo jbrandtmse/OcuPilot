@@ -44,6 +44,11 @@ XData Declaration
   "context": {"fields": ["Name", "Namespace", "DispatchClass", "SpecBased", "Enabled"], "secretFields": []},
   "emptyStateKey": "restApiListEmpty",
   "commandAliases": ["REST", "REST APIs"],
+  "suggestedPrompts": [
+    {"groupKey": "webAppPromptGroupCode", "textKey": "restApiListPrompt1"},
+    {"groupKey": "webAppPromptGroupCode", "textKey": "restApiListPrompt2"},
+    {"groupKey": "webAppPromptGroupCode", "textKey": "restApiListPrompt3"}
+  ],
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

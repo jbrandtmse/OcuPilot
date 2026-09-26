@@ -556,9 +556,11 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   //
   // Story 12.8 moves the bound to 1200 under the same protocol: its one row's fifteen literals take
   // the table past 1100.
+  // Story 11.3 adds 45 rows and one extended row, 137 literals, beside Epic 12's; merged at Epic
+  // 12's integration, the bound moves to 1400 under the same protocol.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 1200,
-    `expected between 150 and 1200 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 1400,
+    `expected between 150 and 1400 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

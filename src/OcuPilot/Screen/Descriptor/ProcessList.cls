@@ -103,6 +103,11 @@ XData Declaration
   "context": {"fields": ["Pid", "Username", "Nspace", "Routine", "State", "Commands", "Globals"], "secretFields": []},
   "emptyStateKey": "processListEmpty",
   "commandAliases": ["jobs"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "processListPrompt1"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "processListPrompt2"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "processListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.Processes",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

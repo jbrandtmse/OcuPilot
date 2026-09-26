@@ -45,6 +45,11 @@ XData Declaration
   "rowActions": [],
   "emptyStateKey": "",
   "commandAliases": ["home", "start"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupGettingStarted", "textKey": "homeStarterPromptExplainScreen"},
+    {"groupKey": "promptGroupGettingStarted", "textKey": "homeStarterPromptExplainLog"},
+    {"groupKey": "promptGroupGettingStarted", "textKey": "homeStarterPromptChangeOneThing"}
+  ],
   "classicPage": "%CSP.Portal.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "shell.home"

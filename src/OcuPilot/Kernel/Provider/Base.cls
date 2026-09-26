@@ -26,6 +26,16 @@
 /// object, inside the same attempt count, attempt deadline and delay budget. A model call changes
 /// nothing on the instance, so a connection that broke before the provider answered is safe to
 /// open again.</p>
+/// <p><b>Streaming</b> (AD-42, AD-33). A call streams only when the caller put a
+/// <class>OcuPilot.Kernel.Provider.StreamSink</class> in <code>pSettings("stream")</code> and
+/// <method>StreamsFor</method> answers 1, which it does when <parameter>STREAMS</parameter> is 1.
+/// A streamed attempt asks for no gzip, reads the body raw, and hands it to a fresh
+/// <class>OcuPilot.Kernel.Provider.StreamReader</class>, whose assembled non-streamed body the
+/// unchanged <method>MapResponse</method> reads. Its exits are the plain call's, plus one: a 2xx
+/// whose stream carried an error event or ended without its terminator ends the call
+/// <code>PROVIDER.TRANSPORT</code> and is never retried, because a status line arrived. A body the
+/// reader saw as JSON, and a call whose reader received nothing, are read exactly as a plain
+/// call's.</p>
 /// <p>Seams a subclass overrides: <method>ProviderName</method>, <method>CallMessages</method>,
 /// <method>ApplyAuth</method>, <method>IsApiKeyShapeValid</method> and <method>MapResponse</method>
 /// are the family contract, and
@@ -81,6 +91,14 @@ Parameter REASONTESTTIMEOUT = "The provider (<provider>) did not answer within <
 /// pinned the same way as <parameter>REASONTESTTIMEOUT</parameter>.</p>
 Parameter REASONTESTTIMEOUTLOCAL = "The model did not answer within <n> seconds. A local model may still be loading; test again in a minute.";
 
+/// <p>1 when this family's calls stream whenever the caller passes a sink; 0 turns streaming off for
+/// the family, and a call then renders exactly as a plain one.</p>
+Parameter STREAMS As %Boolean = 1;
+
+/// <p>The <class>OcuPilot.Kernel.Provider.StreamAdapter</class> family this adapter's stream is
+/// assembled as; <code>""</code> means the adapter cannot stream.</p>
+Parameter STREAMFAMILY As %String;
+
 /// <p>The resolved credential, for the life of one <method>Invoke</method> and no longer.</p>
 /// <p><code>Internal</code> keeps it out of the published class reference; what actually keeps it
 /// off a log screen is that it is a <b>property</b> rather than a local, because
@@ -100,6 +118,11 @@ Property AuthVersion As %String(MAXLEN = 32);
 /// <class>OcuPilot.Port.ProviderPort</class>'s own <method>SecretClass</method> seam reaches the
 /// adapter, so there is one place a test replaces the ladder rather than one per layer.</p>
 Property SecretClassName As %String(MAXLEN = 128);
+
+/// <p>Whether the call in progress streams, set by <method>Attempts</method> before the request URL
+/// and body are built, so <method>RequestUrl</method> and <method>CallMessages</method> ask for a
+/// stream exactly when the call reads one.</p>
+Property Streaming As %Boolean [ InitialExpression = 0 ];
 
 /// <p>The class a credential reference is resolved through when the caller named none.
 /// <b>Overridable</b> so a test can put a canary in play without setting anything on the instance;
@@ -256,6 +279,8 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
 /// the address policy never saw it.</p>
 Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String, ByRef pSettings, ByRef pResponse As OcuPilot.Kernel.Provider.Response, ByRef pFault As %DynamicObject, ByRef pHttpStatus As %Integer) [ Private ]
 {
+    Set ..Streaming = ..StreamsFor(.pSettings, .pValues)
+    Set tSink = $Select(..Streaming: pSettings("stream"), 1: "")
     Set tUrl = ..RequestUrl(.pValues)
     Set tOrigin = ..OriginOf(tUrl)
     Set tJudged = ..OriginOf($Get(pValues("endpointUrl")))
@@ -283,12 +308,23 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
         Set tRetryAfter = ""
         Set tThrew = 0
         Set tIssueSC = $$$OK
+        Set tAssembleSC = $$$OK
+        Set tReader = ""
         Set tRequest = ..NewRequest(.pSettings)
+        If ..Streaming {
+            ; A fresh, empty reader per attempt, so a retried attempt starts from no text.
+            Set tRequest.AcceptGzip = 0
+            Set tRequest.ReadRawMode = 1
+            Set tReader = ##class(OcuPilot.Kernel.Provider.StreamReader).%New(..#STREAMFAMILY, tSink)
+            Set tRequest.ResponseChunkReader = tReader
+        }
         Set tBuildSC = ..CallMessages(tRequest, .pValues, .pMessages, .pTools, pSystemPrompt)
         If $$$ISERR(tBuildSC) {
             Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT
             Do ..LogRaw("the provider request body could not be built", tBuildSC, tCode)
             Set tRequest = ""
+            If $IsObject(tReader) Do tReader.Release()
+            Set tReader = ""
             Quit
         }
         Do ..ApplyAuth(tRequest)
@@ -299,6 +335,20 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
             Set tIssueSC = attemptEx.AsStatus()
         }
         Set tRequest = ""
+        If $IsObject(tReader) {
+            ; Bytes reach the reader only after a status line was parsed. What it received is the
+            ; body of record; a reader that received nothing leaves the transport's own body.
+            Do tReader.Finish()
+            If tReader.Received > 0 {
+                If (+tStatus >= 200) && (+tStatus < 300) && 'tReader.IsJson() {
+                    Set tBody = tReader.Body(.tAssembleSC)
+                } Else {
+                    Set tBody = tReader.Raw()
+                }
+            }
+            Do tReader.Release()
+            Set tReader = ""
+        }
         If tThrew {
             ; AD-42: a call that threw mid-flight is never retried -- the request may already have
             ; been processed. The loop ends here rather than continuing.
@@ -327,6 +377,12 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
         }
         Set pResponse.HttpStatus = +tStatus
         If (+tStatus >= 200) && (+tStatus < 300) {
+            If $$$ISERR(tAssembleSC) {
+                ; A status line arrived, so the provider answered: never retried (AD-42).
+                Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT
+                Do ..LogRaw("the provider's stream broke off after its status line", tAssembleSC, tCode)
+                Quit
+            }
             Set tMapSC = ..MapResponse(tBody, pResponse)
             If $$$ISOK(tMapSC) {
                 Set tCode = ""
@@ -360,6 +416,18 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
     If tCode = "" Quit
     Set pResponse.StopReason = "error"
     Do ..Fault(tCode, "", tProviderText, .pFault, .pHttpStatus)
+}
+
+/// <p>Whether this call streams: the family can (<parameter>STREAMS</parameter> 1 and a
+/// <parameter>STREAMFAMILY</parameter>) and the caller put a
+/// <class>OcuPilot.Kernel.Provider.StreamSink</class> in <var>pSettings</var>'s
+/// <code>stream</code> node. <var>pValues</var> is the call's definition, for an override that
+/// decides by it.</p>
+Method StreamsFor(ByRef pSettings, ByRef pValues) As %Boolean
+{
+    If ..#STREAMS '= 1 Quit 0
+    If ..#STREAMFAMILY = "" Quit 0
+    Quit $IsObject($Get(pSettings("stream")))
 }
 
 /// <p><b>The request-URL seam.</b> The URL this call is issued to, which at this floor is the
@@ -482,6 +550,9 @@ Method LogClamp(ByRef pSettings, pEffectiveAttempts As %Integer) [ Private ]
 /// assertions are made at all.</p>
 /// <p><method>%Net.HttpResponse.GetHeader</method> upper-cases the name it is given, so the header
 /// matches whatever case the provider sent it in.</p>
+/// <p><b>A request carrying a <property>%Net.HttpRequest.ResponseChunkReader</property> answers no
+/// body</b>: a streamed body can exceed the string limit, and the reader holds the body of
+/// record.</p>
 Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pStatus As %Integer, Output pBody As %String, Output pRetryAfter As %String) As %Status
 {
     Set pStatus = 0
@@ -499,7 +570,7 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     }
     Set pStatus = +pRequest.HttpResponse.StatusCode
     Set pRetryAfter = pRequest.HttpResponse.GetHeader("Retry-After")
-    If $IsObject(pRequest.HttpResponse.Data) {
+    If $IsObject(pRequest.HttpResponse.Data) && '$IsObject(pRequest.ResponseChunkReader) {
         Do pRequest.HttpResponse.Data.Rewind()
         While 'pRequest.HttpResponse.Data.AtEnd {
             Set pBody = pBody _ pRequest.HttpResponse.Data.Read(32000)
@@ -659,6 +730,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUT Quit ..#REASONTESTTIMEOUT
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUTLOCAL Quit ..#REASONTESTTIMEOUTLOCAL
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERDECLINED Quit "The model declined to answer this request"
     Quit "The provider call did not complete"
 }
 

@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { ExplainEntry } from '../../core/explain-entry';
 import { isBannerFault } from '../../core/fault';
 import { formatDeniedAction, NavigationService } from '../../core/navigation';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import {
   SEVERITY_CHIPS,
@@ -26,6 +28,8 @@ interface RowView {
   readonly spans: readonly { readonly text: string; readonly match: boolean }[];
   readonly raw: string;
   readonly match: boolean;
+  /** The entry as its screen's context declares it, which "Explain this entry" sends (Story 11.2). */
+  readonly entry: { readonly time: string; readonly severity: string; readonly text: string };
 }
 
 /** One severity chip, resolved for drawing. */
@@ -153,6 +157,7 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
                 class="ocu-log-row"
                 role="listitem"
                 [class.ocu-log-row-match]="row.match"
+                [class.ocu-log-row-explain]="explainShown"
                 [attr.data-ocu-row]="row.key"
                 [attr.data-ocu-severity]="row.chip"
               >
@@ -172,6 +177,18 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
                     }
                   }
                 </span>
+                @if (explainShown) {
+                  <button
+                    type="button"
+                    class="ocu-button-text ocu-log-explain"
+                    data-ocu-log="explain"
+                    [attr.aria-disabled]="explainAriaDisabled"
+                    [attr.aria-describedby]="explainDescribedBy"
+                    (click)="onExplain(row)"
+                  >
+                    {{ STRINGS.agentExplainEntryAction }}
+                  </button>
+                }
               </div>
             }
           </div>
@@ -195,6 +212,12 @@ export class LogViewerPage {
 
   private readonly actions = inject(ScreenActions);
 
+  /** The "Explain this entry" hand-off (Story 11.2). Optional, so a spec that needs none provides none. */
+  private readonly explainEntry = inject(ExplainEntry, { optional: true });
+
+  /** The screen this page renders, which an explained entry is sent as. */
+  private readonly screen: ScreenDeclaration | null;
+
   protected readonly STRINGS = STRINGS;
 
   private readonly viewport = viewChild<ElementRef<HTMLElement>>('viewport');
@@ -213,7 +236,9 @@ export class LogViewerPage {
 
   constructor() {
     const stop = this.store.subscribe(() => this.generation.update((value) => value + 1));
+    const stopExplain = this.explainEntry?.subscribe(() => this.generation.update((value) => value + 1)) ?? null;
     const screen = this.navigation.screenForUrl(this.router.url);
+    this.screen = screen;
     this.store.setSource(SOURCES[screen?.route ?? ''] ?? ALERTS_SOURCE);
     // Manual Refresh only (DW-260). This screen binds no `RefreshService`: it declares
     // `refreshes: false` and adds rows only on an explicit Load newer, so Refresh re-opens the
@@ -226,6 +251,7 @@ export class LogViewerPage {
           });
     inject(DestroyRef).onDestroy(() => {
       stop();
+      stopExplain?.();
       stopRefreshAction?.();
     });
     if (!this.store.loaded() && !this.store.loading()) void this.store.open();
@@ -264,7 +290,31 @@ export class LogViewerPage {
       spans: highlightSpans(line.text, needle),
       raw: line.raw,
       match: matchesSearch(line, needle),
+      entry: { time: line.stamp, severity: line.severity, text: line.text },
     }));
+  }
+
+  /** Whether each row carries "Explain this entry": the agent answered with an enabled definition. */
+  protected get explainShown(): boolean {
+    this.generation();
+    return this.explainEntry !== null && this.explainEntry.shown();
+  }
+
+  protected get explainAriaDisabled(): 'true' | null {
+    this.generation();
+    const entry = this.explainEntry;
+    return entry === null || entry.reason() === null ? null : 'true';
+  }
+
+  protected get explainDescribedBy(): string | null {
+    this.generation();
+    return this.explainEntry?.describedBy() ?? null;
+  }
+
+  /** Hand this row's entry to the panel; a refused control sends nothing. */
+  protected onExplain(row: RowView): void {
+    if (this.screen === null) return;
+    this.explainEntry?.request(this.screen, row.entry);
   }
 
   protected get chips(): readonly ChipView[] {

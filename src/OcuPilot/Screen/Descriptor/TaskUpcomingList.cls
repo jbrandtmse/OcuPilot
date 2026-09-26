@@ -49,6 +49,11 @@ XData Declaration
   "context": {"fields": ["Id", "Name", "Namespace", "Datetime", "Suspended"], "secretFields": []},
   "emptyStateKey": "taskUpcomingEmpty",
   "commandAliases": ["upcoming", "next runs"],
+  "suggestedPrompts": [
+    {"groupKey": "taskPromptGroupSchedule", "textKey": "taskUpcomingListPrompt1"},
+    {"groupKey": "taskPromptGroupSchedule", "textKey": "taskUpcomingListPrompt2"},
+    {"groupKey": "taskPromptGroupSchedule", "textKey": "taskUpcomingListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.TasksUpcoming",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

@@ -52,6 +52,11 @@ XData Declaration
   "secretArguments": ["Secret"],
   "emptyStateKey": "walletSecretListEmpty",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupAccess", "textKey": "walletSecretListPrompt1"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "walletSecretListPrompt2"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "walletSecretListPrompt3"}
+  ],
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

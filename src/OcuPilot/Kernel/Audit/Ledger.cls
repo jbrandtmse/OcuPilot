@@ -78,12 +78,11 @@ ClassMethod RegistryClass() As %String
 /// <method>OcuPilot.Screen.Registry.DescriptorForRoute</method> matches a descriptor's declared
 /// route exactly, so <code>""</code> answers Home and an unknown route answers nothing (verified on
 /// <code>ocupilot-ci</code>: <code>"no/such/route"</code> and <code>"/"</code> both answer
-/// <code>""</code>). <b>Accepted consequence, and it is wider than Home</b> (DW-1381): no turn can
-/// carry a context whose route is empty -- <method>OcuPilot.Api.Turn.ContextViolation</method>
-/// refuses one with <code>TURN.CONTEXT.INVALID</code> and the client's own
-/// <code>assembleScreenContext</code> sends none for Home -- so every empty route here is a turn
-/// that carried no screen context at all, whether it began on Home or on a gated screen whose user
-/// has context sharing off. Those two are indistinguishable on the wire, and this releases both.
+/// <code>""</code>). <b>Accepted consequence, and it is wider than Home</b> (DW-1381): a turn that
+/// carried no screen context at all -- one begun on a gated screen whose user has context sharing
+/// off -- is recorded with the same empty route as a turn that carried Home's context
+/// (<method>OcuPilot.Kernel.Agent.Loop.ContextRoute</method>), so the two are indistinguishable
+/// here, and this releases both.
 /// A cross-user reader still has to hold the ledger's own administrative pair (AD-46).</p>
 ClassMethod RoutePairs(pRoute As %String, Output pResolved As %Boolean) As %List [ Private ]
 {

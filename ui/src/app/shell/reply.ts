@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, viewChild, type ElementRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, output, viewChild, type ElementRef } from '@angular/core';
 import DOMPurify from 'dompurify';
 
+import type { Citation } from '../core/citations';
 import { REPLY_TAGS, parseReply, type ReplyNode } from '../core/reply';
 
 /**
@@ -8,8 +9,12 @@ import { REPLY_TAGS, parseReply, type ReplyNode } from '../core/reply';
  * spec's own four -- every `<a>` this module builds carries `rel="noopener noreferrer nofollow"`
  * (Design Notes D5), and DOMPurify drops any attribute name absent from this list regardless of
  * what wrote it, `rel` included; omitting it would have the sanitizer undo D5 on every link.
+ * `type` is a citation chip's `type="button"` (Story 11.4).
  */
-const ALLOWED_ATTR: readonly string[] = ['class', 'href', 'src', 'alt', 'rel'];
+const ALLOWED_ATTR: readonly string[] = ['class', 'href', 'src', 'alt', 'rel', 'type'];
+
+/** The class a citation chip carries (Story 11.4). */
+export const CITATION_CLASS = 'ocu-reply-citation';
 
 /**
  * `http:`/`https:` absolute, or anything with no scheme at all (a relative or root-relative
@@ -26,9 +31,19 @@ const ALLOWED_URI_REGEXP = /^(?:https?:|[^a-z]|[a-z][a-z0-9+.-]*(?:[^a-z0-9+.:-]
  * `href`/`src`/`alt`, are exactly what `core/reply.ts` decided; this function makes no rendering
  * decision of its own.
  */
-function buildNode(doc: Document, node: ReplyNode): Node {
+function buildNode(doc: Document, node: ReplyNode, chips?: WeakMap<Element, Citation>): Node {
   if (node.kind === 'text') return doc.createTextNode(node.text);
   if (node.kind === 'break') return doc.createElement('br');
+  if (node.kind === 'citation') {
+    // A chip is a plain button whose text is the cited name: no URL, no data attribute, no
+    // request (AD-11 rule 4). Which citation it opens is held beside the DOM, never in it.
+    const chip = doc.createElement('button');
+    chip.setAttribute('type', 'button');
+    chip.className = CITATION_CLASS;
+    chip.textContent = node.citation.label;
+    chips?.set(chip, node.citation);
+    return chip;
+  }
   const el = doc.createElement(node.tag);
   if (node.classes.length > 0) el.className = node.classes.join(' ');
   if (node.href !== undefined) el.setAttribute('href', node.href);
@@ -37,14 +52,21 @@ function buildNode(doc: Document, node: ReplyNode): Node {
   // rel carries even though DOMPurify would also strip a bare target -- "inert" is the link's
   // own contract, not only what the sanitizer happens to remove (Design Notes D5).
   if (node.tag === 'a') el.setAttribute('rel', 'noopener noreferrer nofollow');
-  for (const child of node.children) el.appendChild(buildNode(doc, child));
+  for (const child of node.children) el.appendChild(buildNode(doc, child, chips));
   return el;
 }
 
-/** Builds every root-level node into one fragment, so the caller appends it in a single mutation. */
-export function buildReplyFragment(doc: Document, nodes: readonly ReplyNode[]): DocumentFragment {
+/**
+ * Builds every root-level node into one fragment, so the caller appends it in a single mutation.
+ * Each citation chip built is recorded in `chips` against the citation it opens.
+ */
+export function buildReplyFragment(
+  doc: Document,
+  nodes: readonly ReplyNode[],
+  chips?: WeakMap<Element, Citation>
+): DocumentFragment {
   const fragment = doc.createDocumentFragment();
-  for (const node of nodes) fragment.appendChild(buildNode(doc, node));
+  for (const node of nodes) fragment.appendChild(buildNode(doc, node, chips));
   return fragment;
 }
 
@@ -86,21 +108,34 @@ export function sanitizeReplyRoot(root: Element): void {
  * **One mutation, one announcement.** The whole subtree is built off-DOM into a
  * `DocumentFragment` and appended to the render root in a single `appendChild`, so the panel's
  * `role="log"` transcript announces the reply once, not once per top-level block.
+ *
+ * **Citation chips** (Story 11.4). A code span naming one of `citations` renders as a chip; one
+ * click handler on the root emits `cite` with the chip's citation, and the host decides what a
+ * click does. With no citations the reply renders exactly as it always has.
  */
 @Component({
   selector: 'app-reply',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span #root></span>`,
+  template: `<span #root (click)="onClick($event)"></span>`,
 })
 export class Reply {
   readonly text = input<string | null>(null);
 
+  /** The reply's citations; a chip is drawn only for a code span whose text is one's `label`. */
+  readonly citations = input<readonly Citation[]>([]);
+
+  /** A chip was clicked: the citation it names. */
+  readonly cite = output<Citation>();
+
   private readonly rootEl = viewChild.required<ElementRef<HTMLSpanElement>>('root');
+
+  /** Each chip currently built, against the citation it opens. */
+  private chips = new WeakMap<Element, Citation>();
 
   private readonly nodes = computed((): readonly ReplyNode[] => {
     const value = this.text();
     if (value === null || value === '') return [];
-    return parseReply(value, { origin: location.origin });
+    return parseReply(value, { origin: location.origin, citations: this.citations() });
   });
 
   constructor() {
@@ -108,9 +143,19 @@ export class Reply {
       const nodes = this.nodes();
       const root = this.rootEl().nativeElement;
       root.textContent = '';
+      this.chips = new WeakMap();
       if (nodes.length === 0) return;
-      root.appendChild(buildReplyFragment(root.ownerDocument, nodes));
+      root.appendChild(buildReplyFragment(root.ownerDocument, nodes, this.chips));
       sanitizeReplyRoot(root);
     });
+  }
+
+  protected onClick(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const chip = target.closest(`button.${CITATION_CLASS}`);
+    if (chip === null) return;
+    const citation = this.chips.get(chip);
+    if (citation !== undefined) this.cite.emit(citation);
   }
 }

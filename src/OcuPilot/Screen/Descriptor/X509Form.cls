@@ -41,6 +41,11 @@ XData Declaration
   "fingerprintExcludes": [],
   "emptyStateKey": "",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "sslPromptGroupConnections", "textKey": "x509FormPrompt1"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "x509FormPrompt2"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "x509FormPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.X509Credential",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "security.x509form"

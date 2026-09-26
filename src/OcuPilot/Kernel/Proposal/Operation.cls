@@ -308,20 +308,8 @@ ClassMethod Gate(pTool As %DynamicObject, pTargetRef As %String, pPayloadJson As
             Quit
         }
         Set tToolName = pTool.%Get("name")
-        Set pPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(pTool, .tPairsResolved)
-        If 'tPairsResolved {
-            Set tSC = $$$ERROR($$$GeneralError, "the privilege pairs of " _ tToolName _ " could not be read")
-            Quit
-        }
-        ; AD-8, AD-48. A tool whose requirement depends on its own argument -- the namespace a
-        ; delete names -- declares that half through ArgumentPairs, resolved here from the write's
-        ; own arguments. Empty for every tool whose requirement is its screen's alone.
-        Set tArgumentPairs = ##class(OcuPilot.Screen.Tool.Registry).ArgumentPairs(pTool, ..ParsedObject(pArgumentsJson), .tArgumentsResolved)
-        If 'tArgumentsResolved {
-            Set tSC = $$$ERROR($$$GeneralError, "the argument privilege pairs of " _ tToolName _ " could not be read")
-            Quit
-        }
-        Set pPairs = pPairs _ tArgumentPairs
+        Set tSC = ..RequiredPairsOf(pTool, pArgumentsJson, .pPairs)
+        If $$$ISERR(tSC) Quit
         Set tFailedPair = ..MissingPair(pUser, pPairs, pHolderClass)
         If tFailedPair '= "" {
             Set pRefused = 1
@@ -396,6 +384,42 @@ ClassMethod ApplyAt(pToolClass As %String, pPort As %String, pEndpoint As %Strin
     Set pHttpStatus = $Select(+$Get(tAfterHttp): +tAfterHttp, 1: 500)
     Set pFault = $Get(tAfterFault)
     Quit tAfterSC
+}
+
+/// <p>The pairs the write of <var>pTool</var> with the stored arguments <var>pArgumentsJson</var>
+/// requires (AD-8): the tool's declared pairs, then the pairs its arguments add (AD-48), in that
+/// order. This is the set <method>Gate</method> checks and the one a mint records.</p>
+/// <p>An error status means either half could not be read; <var>pPairs</var> is then
+/// <code>""</code> and a caller must not read it as "requires nothing".</p>
+ClassMethod RequiredPairsOf(pTool As %DynamicObject, pArgumentsJson As %String, Output pPairs As %List) As %Status
+{
+    Set pPairs = ""
+    Set tSC = $$$OK
+    Try {
+        If '$IsObject(pTool) {
+            Set tSC = $$$ERROR($$$GeneralError, "the privilege pairs were asked for with no resolved tool")
+            Quit
+        }
+        Set tToolName = pTool.%Get("name")
+        Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(pTool, .tPairsResolved)
+        If 'tPairsResolved {
+            Set tSC = $$$ERROR($$$GeneralError, "the privilege pairs of " _ tToolName _ " could not be read")
+            Quit
+        }
+        ; AD-8, AD-48. A tool whose requirement depends on its own argument -- the namespace a
+        ; delete names -- declares that half through ArgumentPairs, resolved here from the write's
+        ; own arguments. Empty for every tool whose requirement is its screen's alone.
+        Set tArgumentPairs = ##class(OcuPilot.Screen.Tool.Registry).ArgumentPairs(pTool, ..ParsedObject(pArgumentsJson), .tArgumentsResolved)
+        If 'tArgumentsResolved {
+            Set tSC = $$$ERROR($$$GeneralError, "the argument privilege pairs of " _ tToolName _ " could not be read")
+            Quit
+        }
+        Set pPairs = tPairs _ tArgumentPairs
+    } Catch ex {
+        Set pPairs = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>The first pair of <var>pPairs</var> that <var>pUser</var> does not hold, as

@@ -5230,7 +5230,7 @@ So that a refusal is predictable before Confirm rather than discovered after it.
 
 - **Given** a proposal card for any write tool
 - **When** it renders
-- **Then** it carries one line naming the resource the endpoint declares through its `ResourcesOR()` list - the same list `AdminPort` already gates on (AD-29) - and whether the signed-in user holds it, read from the privilege map the shell already loads (Story 1.9, FR-4); no new derivation and no second source of truth.
+- **Then** it carries one line naming the pairs the write's own gate requires, the endpoint's `ResourcesOR()` resource among them (AD-29) and AD-8's extra pairs, and whether the signed-in user holds them, evaluated on the instance by the check Confirm's gate makes (AD-8) at each read of the proposal; no new derivation and no second source of truth. [AMENDED 2026-09-25, Story 11.8 spec gate, Rule 5 tier-1: was "the resource the endpoint declares through its `ResourcesOR()` list ... read from the privilege map the shell already loads (Story 1.9, FR-4)". Measured in the tree at planning: `ResourcesOR()` is evaluated only inside a running endpoint call (`AdminPort`), and the shell's privilege map answers yes or no per area and screen, never per pair, and is re-read only at sign-in or after a refusal; answering either as worded needs a new derivation. The intent - the card predicts Confirm's refusal from facts the write path already holds - is unchanged.]
 
 - **Given** the user lacks the resource
 - **When** the card renders

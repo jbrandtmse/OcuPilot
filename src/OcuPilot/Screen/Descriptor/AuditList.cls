@@ -129,6 +129,11 @@ XData Declaration
   "context": {"fields": ["SystemID", "AuditIndex", "TimeStamp", "EventSource", "EventType", "Event", "Pid", "SessionID", "Username", "Description", "UTCTimeStamp", "JobNumber", "Authentication", "ClientExecutableName", "ClientIPAddress", "Namespace", "Roles", "RoutineSpec", "UserInfo", "JobId", "Status", "OSUsername", "StartupClientIPAddress"], "secretFields": []},
   "emptyStateKey": "auditListEmpty",
   "commandAliases": ["audit"],
+  "suggestedPrompts": [
+    {"groupKey": "auditUserEventPromptGroup", "textKey": "auditListPrompt1"},
+    {"groupKey": "auditUserEventPromptGroup", "textKey": "auditListPrompt2"},
+    {"groupKey": "auditUserEventPromptGroup", "textKey": "auditListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.Audit.View",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

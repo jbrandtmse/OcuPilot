@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, afterNextRender, inject
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { decodeEntityId } from '../../core/entity-id';
+import { ExplainEntry } from '../../core/explain-entry';
 import { NavigationService, withQuery } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -129,6 +130,19 @@ interface AuditView {
           <p class="ocu-dialog-value">{{ row.description }}</p>
           <p class="ocu-dialog-field">{{ STRINGS.auditDialogEventData }}</p>
           <pre class="ocu-dialog-payload">{{ row.eventData }}</pre>
+          @if (explainShown) {
+            <button
+              dialogAction
+              type="button"
+              class="ocu-button-secondary ocu-audit-explain"
+              data-ocu-audit="explain"
+              [attr.aria-disabled]="explainAriaDisabled"
+              [attr.aria-describedby]="explainDescribedBy"
+              (click)="onExplain()"
+            >
+              {{ STRINGS.agentExplainEntryAction }}
+            </button>
+          }
         </app-dialog>
       }
     }
@@ -143,6 +157,9 @@ export class AuditPage {
   private readonly search = inject(AuditSearch);
 
   private readonly actions = inject(ScreenActions);
+
+  /** The "Explain this entry" hand-off (Story 11.2). Optional, so a spec that needs none provides none. */
+  private readonly explainEntry = inject(ExplainEntry, { optional: true });
 
   protected readonly STRINGS = STRINGS;
 
@@ -206,6 +223,7 @@ export class AuditPage {
     syncRefreshAction();
 
     const stopStore = store.subscribe(() => this.bump());
+    const stopExplain = this.explainEntry?.subscribe(() => this.bump()) ?? null;
     const stopSearch = this.search.subscribe(() => {
       this.bump();
       syncRefreshAction();
@@ -232,6 +250,7 @@ export class AuditPage {
     const generation = this.search.takeGeneration();
     inject(DestroyRef).onDestroy(() => {
       stopStore();
+      stopExplain?.();
       stopSearch();
       stopRefreshAction?.();
       stopParams.unsubscribe();
@@ -274,16 +293,50 @@ export class AuditPage {
    * dialog rather than an empty one.
    */
   protected get detail(): DetailView | null {
-    this.generation();
-    const view = this.list;
-    const id = this.entityId();
-    if (view === null || id === '') return null;
-    const row = view.store.data().find((candidate) => rowKey(candidate, view.screen) === id);
-    if (row === undefined) return null;
+    const row = this.detailRow;
+    if (row === null) return null;
     return {
       description: textOf(fieldOf(row, 'Description')),
       eventData: textOf(fieldOf(row, 'EventData')),
     };
+  }
+
+  /** The row the id route names, as the last read returned it, or `null` (`detail`). */
+  private get detailRow(): unknown {
+    this.generation();
+    const view = this.list;
+    const id = this.entityId();
+    if (view === null || id === '') return null;
+    return view.store.data().find((candidate) => rowKey(candidate, view.screen) === id) ?? null;
+  }
+
+  /** Whether the dialog carries "Explain this entry": the agent answered with an enabled definition. */
+  protected get explainShown(): boolean {
+    this.generation();
+    return this.explainEntry !== null && this.explainEntry.shown();
+  }
+
+  protected get explainAriaDisabled(): 'true' | null {
+    this.generation();
+    const entry = this.explainEntry;
+    return entry === null || entry.reason() === null ? null : 'true';
+  }
+
+  protected get explainDescribedBy(): string | null {
+    this.generation();
+    return this.explainEntry?.describedBy() ?? null;
+  }
+
+  /**
+   * Hand the open row to the panel, then close the dialog as its own action does. A refused control
+   * sends nothing and leaves the dialog open.
+   */
+  protected onExplain(): void {
+    const view = this.list;
+    const row = this.detailRow;
+    if (this.explainEntry === null || view === null || row === null || typeof row !== 'object') return;
+    if (!this.explainEntry.request(view.screen, row)) return;
+    this.onCloseDetail();
   }
 
   protected onCriterion(param: string, event: Event): void {

@@ -5,6 +5,7 @@ import { Router, provideRouter } from '@angular/router';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
+import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../../core/explain-entry';
 import { NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -13,6 +14,7 @@ import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
+import { stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
 import { ErrorLogPage, LOG_ERROR_LIST } from './error-log.page';
 import { ErrorLogDrill } from './error-log.store';
 
@@ -131,7 +133,10 @@ class StubApi {
 }
 
 describe('ErrorLogPage', () => {
-  function mount(api: StubApi): {
+  function mount(
+    api: StubApi,
+    explain: ExplainEntry | null = null
+  ): {
     fixture: ComponentFixture<ErrorLogPage>;
     drill: ErrorLogDrill;
     actions: ScreenActions;
@@ -149,6 +154,7 @@ describe('ErrorLogPage', () => {
         { provide: ChangeBus, useValue: new ChangeBus() },
         { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
         { provide: OverlayStack, useValue: new OverlayStack() },
+        ...(explain === null ? [] : [{ provide: ExplainEntry, useValue: explain }]),
       ],
     });
     const fixture = TestBed.createComponent(ErrorLogPage);
@@ -1024,7 +1030,7 @@ describe('ErrorLogPage', () => {
 
     await drill.openList('09/23/2026');
     fixture.detectChanges();
-    expect(store.data()).toEqual(drill.errors());
+    expect(store.data()).toEqual(drill.scopedErrors());
     expect(store.data().length).toBe(1);
     expect(store.truncated()).toBe(false);
 
@@ -1032,7 +1038,7 @@ describe('ErrorLogPage', () => {
     (row(fixture, '4').querySelectorAll('[role="gridcell"]')[2] as HTMLElement).click();
     fixture.detectChanges();
     expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
-    expect(store.data()).toEqual(drill.errors());
+    expect(store.data()).toEqual(drill.scopedErrors());
 
     // A same-level re-read (Refresh, or the re-read after a delete) publishes its new rows.
     // Mutation: `publishRows` skips a same-level publish once that level holds rows -> this leg keeps one row.
@@ -1041,7 +1047,7 @@ describe('ErrorLogPage', () => {
     await drill.reopen();
     fixture.detectChanges();
     expect(drill.errors().length).toBe(2);
-    expect(store.data()).toEqual(drill.errors());
+    expect(store.data()).toEqual(drill.scopedErrors());
     expect(store.truncated()).toBe(true);
 
     await drill.openDetail(4);
@@ -1052,7 +1058,7 @@ describe('ErrorLogPage', () => {
     // Backing out of the list keeps its rows in the drill, so these legs hold rows to leak.
     await drill.back();
     fixture.detectChanges();
-    expect(store.data()).toEqual(drill.errors());
+    expect(store.data()).toEqual(drill.scopedErrors());
     await drill.back();
     fixture.detectChanges();
     expect(drill.level()).toBe('dates');
@@ -1063,5 +1069,115 @@ describe('ErrorLogPage', () => {
     expect(drill.level()).toBe('namespaces');
     expect(drill.errors().length).toBe(2);
     expect(store.data()).toEqual([]);
+  });
+
+  // --- Story 11.2: DW-1610 and "Explain this entry" ----------------------------------------------
+
+  // Mutation (Rule 19): publish unscoped `errors()` in `publishRows` -> this goes red on the scope.
+  it('Story 11.2 (DW-1610): each published list row carries the drilled namespace and date', async () => {
+    const { fixture, drill } = mount(seeded());
+    await drill.openNamespaces();
+    await drill.openDates('USER');
+    await drill.openList('09/23/2026');
+    fixture.detectChanges();
+    const [published] = TestBed.inject(ScreenStores).for(LOG_ERROR_LIST, []).data() as Record<string, unknown>[];
+    expect(published['namespace']).toBe('USER');
+    expect(published['date']).toBe('09/23/2026');
+    expect(published['errorNumber']).toBe(4);
+    expect(drill.scopedErrors()).toBe(drill.scopedErrors());
+  });
+
+  /** `seeded()` with a second list-level error, so a test can explain a row other than the first. */
+  function seededTwo(): StubApi {
+    const api = seeded();
+    api.answer('list', {
+      namespace: 'USER',
+      date: '09/23/2026',
+      rows: [
+        { errorNumber: 4, time: '17:01:38', errorText: '<DIVIDE>x^y', routine: 'y', line: ' s x=1/0', username: 'Dana', process: '4711' },
+        { errorNumber: 5, time: '17:02:10', errorText: '<UNDEFINED>z^y', routine: 'y', line: ' s a=b', username: 'Dana', process: '4712' },
+      ],
+      truncated: false,
+    });
+    return api;
+  }
+
+  async function atList(gate: Partial<ExplainEntryState> = {}) {
+    const stub = stubExplainEntry(gate);
+    const mounted = mount(seededTwo(), stub.entry);
+    await mounted.drill.openNamespaces();
+    await mounted.drill.openDates('USER');
+    await mounted.drill.openList('09/23/2026');
+    mounted.fixture.detectChanges();
+    return { ...mounted, ...stub };
+  }
+
+  function openMenu(fixture: ComponentFixture<ErrorLogPage>, key: string): HTMLButtonElement[] {
+    (row(fixture, key).querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    return Array.from(fixture.nativeElement.querySelectorAll('.ocu-data-table-menu-item'));
+  }
+
+  it('Story 11.2: the list level\u2019s row menu adds "Explain this entry" after Delete, which hands over the scoped row', async () => {
+    const { fixture, entry } = await atList();
+    const items = openMenu(fixture, '5');
+    expect(items.map((item) => item.textContent?.trim())).toEqual([STRINGS.actionDelete, STRINGS.agentExplainEntryAction]);
+    expect(items[1].getAttribute('aria-disabled')).toBeNull();
+    items[1].click();
+    fixture.detectChanges();
+    const taken = entry.take();
+    expect(taken?.screen.route).toBe('logs/errors');
+    expect(taken?.row).toMatchObject({ namespace: 'USER', date: '09/23/2026', errorNumber: 5, time: '17:02:10' });
+    expect(fixture.nativeElement.querySelector('.ocu-data-table-menu')).toBeNull();
+  });
+
+  it('Story 11.2: the namespaces, dates and detail levels offer no explain item, and Delete stays first', async () => {
+    const stub = stubExplainEntry();
+    const { fixture, drill } = mount(seeded(), stub.entry);
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    expect(openMenu(fixture, 'USER').map((item) => item.textContent?.trim())).toEqual([STRINGS.actionDelete]);
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    expect(openMenu(fixture, '09/23/2026').map((item) => item.textContent?.trim())).toEqual([STRINGS.actionDelete]);
+    await drill.openList('09/23/2026');
+    await drill.openDetail(4);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent ?? '').not.toContain(STRINGS.agentExplainEntryAction);
+  });
+
+  // Mutation (Rule 19): drop the page's `explainEntry.subscribe` -> this goes red on the stale item.
+  it('Story 11.2: a gate that changes while the row menu is open re-renders its explain item', async () => {
+    const { fixture, state, fire } = await atList();
+    expect(openMenu(fixture, '4')[1].getAttribute('aria-disabled')).toBeNull();
+    state.busy = true;
+    fire();
+    fixture.detectChanges();
+    const item = fixture.nativeElement.querySelectorAll('.ocu-data-table-menu-item')[1] as HTMLButtonElement;
+    expect(item.getAttribute('aria-disabled')).toBe('true');
+    expect(item.getAttribute('aria-describedby')).toBe(BUSY_REASON_ID);
+  });
+
+  it('Story 11.2: unconfigured, the list level offers no explain item', async () => {
+    const { fixture } = await atList({ configured: false });
+    expect(openMenu(fixture, '4').map((item) => item.textContent?.trim())).toEqual([STRINGS.actionDelete]);
+  });
+
+  it('Story 11.2: blocked, the item is aria-disabled with its reason, and a click hands nothing over', async () => {
+    const cases: [Partial<ExplainEntryState>, string][] = [
+      [{ killSwitch: true }, KILL_SWITCH_ID],
+      [{ busy: true }, BUSY_REASON_ID],
+      [{ share: false }, CONTEXT_CHIP_OFF_ID],
+    ];
+    for (const [gate, reasonId] of cases) {
+      const { fixture, entry } = await atList(gate);
+      const item = openMenu(fixture, '4')[1];
+      expect(item.getAttribute('aria-disabled'), JSON.stringify(gate)).toBe('true');
+      expect(item.getAttribute('aria-describedby'), JSON.stringify(gate)).toBe(reasonId);
+      item.click();
+      expect(entry.take(), JSON.stringify(gate)).toBeNull();
+      TestBed.inject(ErrorLogDrill).reset();
+      TestBed.resetTestingModule();
+    }
   });
 });

@@ -298,6 +298,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set tValues("targetRef") = tTargetRef
         Set tValues("fingerprint") = tFingerprint
         Set tValues("arguments") = ..StoredArguments(pArgs)
+        Set tValues("requiredPairs") = ..RecordedPairs(pToolName, tValues("arguments"))
         Set tValues("payload") = tPayload.%ToJSON()
         Set tValues("diff") = tDiff.%ToJSON()
         Set tValues("unchangedCount") = tUnchanged
@@ -419,6 +420,52 @@ ClassMethod WarnsAuditingOff(pToolName As %String, pTargetType As %String, pTarg
         Set tWarns = 0
     }
     Quit tWarns
+}
+
+/// <p>The pair set the write of tool <var>pToolName</var> with the stored arguments
+/// <var>pArgumentsJson</var> requires (AD-8, Story 11.8), as the proposal records it: the answer of
+/// <method>OcuPilot.Kernel.Proposal.Operation.RequiredPairsOf</method> for the tool resolved through
+/// <method>RegistryClass</method>, de-duplicated in resolution order, spelled
+/// <code>resource:permission</code> and comma-joined.</p>
+/// <p>It never fails the mint. A tool that does not resolve, a set that cannot be read, and a
+/// spelling longer than the store's column each answer <code>""</code>, which the wire carries as
+/// no privilege line, and log a fault.</p>
+ClassMethod RecordedPairs(pToolName As %String, pArgumentsJson As %String) As %String
+{
+    Set tSpec = ""
+    Set tProblem = ""
+    Try {
+        Set tResolveSC = $ClassMethod(..RegistryClass(), "Resolve", pToolName, .tTool)
+        If $$$ISERR(tResolveSC) || '$IsObject($Get(tTool)) {
+            Set tProblem = $Select($$$ISERR(tResolveSC): tResolveSC, 1: $$$ERROR($$$GeneralError, "the tool " _ pToolName _ " did not resolve"))
+            Quit
+        }
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).RequiredPairsOf(tTool, pArgumentsJson, .tPairs)
+        If $$$ISERR(tSC) {
+            Set tProblem = tSC
+            Quit
+        }
+        Kill tSeen
+        For tI = 1:1:$ListLength(tPairs) {
+            Set tPair = $List(tPairs, tI)
+            Set tSpelled = $List(tPair, 1) _ ":" _ $List(tPair, 2)
+            If $Data(tSeen(tSpelled)) Continue
+            Set tSeen(tSpelled) = ""
+            Set tSpec = tSpec _ $Select(tSpec = "": "", 1: ",") _ tSpelled
+        }
+        Set tProperty = ##class(%Dictionary.CompiledProperty).%OpenId(..StoreClass() _ "||RequiredPairs")
+        Set tMax = $Select($IsObject(tProperty): +tProperty.Parameters.GetAt("MAXLEN"), 1: 0)
+        Set tProperty = ""
+        If $Length(tSpec) > tMax {
+            Set tProblem = $$$ERROR($$$GeneralError, "the pairs of " _ pToolName _ " spell " _ $Length(tSpec) _ " characters, longer than the column's " _ tMax)
+            Set tSpec = ""
+        }
+    } Catch ex {
+        Set tSpec = ""
+        Set tProblem = ex.AsStatus()
+    }
+    If tProblem '= "" Do ##class(OcuPilot.Kernel.Fault).LogRaw("proposal", "the proposal's required privilege pairs were not recorded", tProblem, "")
+    Quit tSpec
 }
 
 /// <p>Whether the tool named <var>pToolName</var> declares its write destructive

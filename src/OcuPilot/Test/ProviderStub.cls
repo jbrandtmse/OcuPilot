@@ -62,6 +62,22 @@ ClassMethod QueueAnswer(pStatus As %Integer, pBody As %String = "", pRetryAfter 
     Set ^||OcuPilotProviderStub("script", tIndex, "retryAfter") = pRetryAfter
 }
 
+/// <p>Queue one streamed answer (Story 11.7): with a chunk reader attached, the raw UTF-8 bytes of
+/// <var>pSse</var> are fed into its <method>%Net.ChunkedReader.ReadChunk</method> in slices of
+/// <var>pSliceBytes</var>, and the transport answers <var>pStatus</var> with no body -- the real
+/// transport's shape. <var>pBreakAfterBytes</var> above 0 stops after that many bytes and answers
+/// the <code>&lt;READ&gt;</code> error a dropped connection produces, with <var>pStatus</var> as the
+/// status line's code. With no reader attached, <var>pSse</var> is answered as the body.</p>
+ClassMethod QueueStream(pStatus As %Integer, pSse As %String, pSliceBytes As %Integer = 7, pBreakAfterBytes As %Integer = 0)
+{
+    Set tIndex = $Increment(^||OcuPilotProviderStub("script"))
+    Set ^||OcuPilotProviderStub("script", tIndex, "kind") = "stream"
+    Set ^||OcuPilotProviderStub("script", tIndex, "status") = pStatus
+    Set ^||OcuPilotProviderStub("script", tIndex, "body") = pSse
+    Set ^||OcuPilotProviderStub("script", tIndex, "slice") = pSliceBytes
+    Set ^||OcuPilotProviderStub("script", tIndex, "break") = pBreakAfterBytes
+}
+
 /// <p>Queue one transport failure: the call returns an error <class>%Status</class> and no HTTP
 /// answer at all. <var>pTimeout</var> makes it the timeout status
 /// <method>OcuPilot.Kernel.Provider.Base.Attempts</method> tells apart from every other transport
@@ -218,8 +234,9 @@ Method NewRequest(ByRef pSettings) As %Net.HttpRequest
 /// <code>sslConfiguration</code>, <code>sslCheckServerIdentity</code>, <code>timeout</code>,
 /// <code>proxyServer</code>, <code>proxyPort</code>, <code>proxyHttps</code>,
 /// <code>proxyTunnel</code>, <code>followRedirect</code>, <code>socketTimeout</code>,
-/// <code>url</code>, <code>body</code>, <code>headerNames</code>, <code>contentType</code> or
-/// <code>servedBy</code>.</p>
+/// <code>url</code>, <code>body</code>, <code>headerNames</code>, <code>contentType</code>,
+/// <code>servedBy</code>, <code>acceptGzip</code>, <code>readRawMode</code> or
+/// <code>streamReader</code> (1 when a chunk reader was attached).</p>
 ClassMethod Recorded(pKey As %String, pCall As %Integer = 1) As %String
 {
     Quit $Get(^||OcuPilotProviderStub("call", pCall, pKey))
@@ -277,6 +294,7 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     Set ^||OcuPilotProviderStub("call", tCall, "headerNames") = ..HeaderNames(pRequest)
     Set ^||OcuPilotProviderStub("call", tCall, "contentType") = pRequest.ContentType
     Set ^||OcuPilotProviderStub("call", tCall, "body") = ..BodyOf(pRequest)
+    Do ##class(OcuPilot.Test.ProviderStubTransport).RecordStreaming(pRequest, tCall)
     Set tIndex = tCall
     If tIndex > +$Get(^||OcuPilotProviderStub("script")) Set tIndex = +$Get(^||OcuPilotProviderStub("script"))
     If tIndex < 1 {
@@ -298,6 +316,7 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
         Set pStatus = +$Get(^||OcuPilotProviderStub("script", tIndex, "status"))
         Quit $$$ERROR($$$TCPIPError, "<READ>", 0)
     }
+    If tKind = "stream" Quit ##class(OcuPilot.Test.ProviderStubTransport).Stream(pRequest, tIndex, .pStatus, .pBody)
     If +$Get(^||OcuPilotProviderStubLog("armed")) {
         Do ..ForceErrorLog()
     }

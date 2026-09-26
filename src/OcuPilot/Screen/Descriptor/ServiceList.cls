@@ -54,6 +54,11 @@ XData Declaration
   "context": {"fields": ["Name", "Enabled", "Public", "AuthenticationMethods", "AllowedConnections", "Description", "HttpOnlyCookies", "TwoFactorEnabled"], "secretFields": []},
   "emptyStateKey": "serviceListEmpty",
   "commandAliases": ["security services"],
+  "suggestedPrompts": [
+    {"groupKey": "sslPromptGroupConnections", "textKey": "serviceListPrompt1"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "serviceListPrompt2"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "serviceListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.Services",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

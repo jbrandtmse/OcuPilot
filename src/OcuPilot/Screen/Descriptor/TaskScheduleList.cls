@@ -100,6 +100,11 @@ XData Declaration
   "context": {"fields": ["Name", "Type", "Namespace", "Description", "Id", "LastFinished", "NextScheduled", "Suspended"], "secretFields": []},
   "emptyStateKey": "taskListEmpty",
   "commandAliases": ["task manager"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "taskScheduleListPrompt1"},
+    {"groupKey": "taskPromptGroupSchedule", "textKey": "taskScheduleListPrompt2"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "taskScheduleListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.TaskSchedule",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

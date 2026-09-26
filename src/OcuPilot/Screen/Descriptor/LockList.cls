@@ -62,6 +62,11 @@ XData Declaration
   "context": {"fields": ["Pid", "OSUserName", "RoutineInfo", "ModeCount", "Reference", "Directory", "System", "DeleteID"], "secretFields": []},
   "emptyStateKey": "lockListEmpty",
   "commandAliases": ["locks", "lock table"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "lockListPrompt1"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "lockListPrompt2"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "lockListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.LocksView",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

@@ -72,6 +72,11 @@ XData Declaration
   },
   "emptyStateKey": "processDetailsGone",
   "commandAliases": ["process details"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "processDetailsPrompt1"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "processDetailsPrompt2"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "processDetailsPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.ProcessDetails",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

@@ -43,6 +43,11 @@ XData Declaration
   "fingerprintExcludes": [],
   "emptyStateKey": "",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupAccess", "textKey": "walletSecretFormPrompt1"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "walletSecretFormPrompt2"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "walletSecretFormPrompt3"}
+  ],
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "security.secretform"

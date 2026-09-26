@@ -51,6 +51,11 @@ XData Declaration
   "context": {"fields": ["Name", "Description", "PublicPermission", "ResourceType", "AllowDelete"], "secretFields": []},
   "emptyStateKey": "resourceListEmpty",
   "commandAliases": ["security resources"],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupAccess", "textKey": "resourceListPrompt1"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "resourceListPrompt2"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "resourceListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.Resources",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

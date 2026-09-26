@@ -17,7 +17,7 @@
 /// <method>OcuPilot.Test.ProviderStub.QueueThrow</method>,
 /// <method>OcuPilot.Test.ProviderStub.QueueTransportFailure</method>,
 /// <method>OcuPilot.Test.ProviderStub.QueueBrokenAfterStatus</method> (a connection that broke after
-/// its status line) and
+/// its status line), <method>OcuPilot.Test.ProviderStub.QueueStream</method> (a streamed body) and
 /// <method>OcuPilot.Test.ProviderStub.ScriptElapsed</method>, and reads it back with
 /// <method>OcuPilot.Test.ProviderStub.Calls</method>,
 /// <method>OcuPilot.Test.ProviderStub.Recorded</method>,
@@ -62,6 +62,7 @@ ClassMethod Transport(pIdentity As %String, pWatchedHeaders As %String, pRequest
     Set ^||OcuPilotProviderStub("call", tCall, "headerNames") = ..HeaderNames(pRequest, pWatchedHeaders)
     Set ^||OcuPilotProviderStub("call", tCall, "contentType") = pRequest.ContentType
     Set ^||OcuPilotProviderStub("call", tCall, "body") = ..BodyOf(pRequest)
+    Do ..RecordStreaming(pRequest, tCall)
     Set tIndex = tCall
     If tIndex > +$Get(^||OcuPilotProviderStub("script")) Set tIndex = +$Get(^||OcuPilotProviderStub("script"))
     If tIndex < 1 {
@@ -82,6 +83,7 @@ ClassMethod Transport(pIdentity As %String, pWatchedHeaders As %String, pRequest
         Set pStatus = +$Get(^||OcuPilotProviderStub("script", tIndex, "status"))
         Quit $$$ERROR($$$TCPIPError, "<READ>", 0)
     }
+    If tKind = "stream" Quit ..Stream(pRequest, tIndex, .pStatus, .pBody)
     Do ..ForceErrorLog()
     ; Mid-flight by construction: the caller is inside its own read-then-write window while this
     ; runs, which is the only place a second writer can stand.
@@ -90,6 +92,56 @@ ClassMethod Transport(pIdentity As %String, pWatchedHeaders As %String, pRequest
     Set pBody = $Get(^||OcuPilotProviderStub("script", tIndex, "body"))
     Set pRetryAfter = $Get(^||OcuPilotProviderStub("script", tIndex, "retryAfter"))
     Quit $$$OK
+}
+
+/// <p>Record, for call <var>pCall</var>, how <var>pRequest</var> was set up to read a stream:
+/// <code>acceptGzip</code>, <code>readRawMode</code> and <code>streamReader</code>.</p>
+ClassMethod RecordStreaming(pRequest As %Net.HttpRequest, pCall As %Integer)
+{
+    Set ^||OcuPilotProviderStub("call", pCall, "acceptGzip") = ''pRequest.AcceptGzip
+    Set ^||OcuPilotProviderStub("call", pCall, "readRawMode") = ''pRequest.ReadRawMode
+    Set ^||OcuPilotProviderStub("call", pCall, "streamReader") = $IsObject(pRequest.ResponseChunkReader)
+}
+
+/// <p>Answer script entry <var>pIndex</var>, queued by
+/// <method>OcuPilot.Test.ProviderStub.QueueStream</method>, the way the real transport answers a
+/// streamed body.</p>
+ClassMethod Stream(pRequest As %Net.HttpRequest, pIndex As %Integer, Output pStatus As %Integer, Output pBody As %String) As %Status
+{
+    Set pStatus = +$Get(^||OcuPilotProviderStub("script", pIndex, "status"))
+    Set pBody = ""
+    Set tSse = $Get(^||OcuPilotProviderStub("script", pIndex, "body"))
+    If '$IsObject(pRequest.ResponseChunkReader) {
+        Set pBody = tSse
+        Quit $$$OK
+    }
+    Set tBreak = +$Get(^||OcuPilotProviderStub("script", pIndex, "break"))
+    Do ..Feed(pRequest.ResponseChunkReader, $ZConvert(tSse, "O", "UTF8"), +$Get(^||OcuPilotProviderStub("script", pIndex, "slice")), tBreak)
+    If tBreak > 0 Quit $$$ERROR($$$TCPIPError, "<READ>", 0)
+    Quit $$$OK
+}
+
+/// <p>Feed the raw bytes <var>pBytes</var> into <var>pReader</var> in slices of <var>pSlice</var>
+/// bytes, stopping after <var>pLimit</var> bytes when it is above 0, and spending
+/// <var>pPace</var> seconds before every slice after the first -- owed and taken in waits of at
+/// least 50 ms, so a small pace is not rounded up per slice.</p>
+ClassMethod Feed(pReader As %Net.ChunkedReader, pBytes As %String, pSlice As %Integer, pLimit As %Integer = 0, pPace As %Numeric = 0)
+{
+    Set tSlice = $Select(pSlice < 1: 1, 1: pSlice)
+    Set tEnd = $Select((pLimit > 0) && (pLimit < $Length(pBytes)): pLimit, 1: $Length(pBytes))
+    Set tOwed = 0
+    For tAt = 1:tSlice:tEnd {
+        If (tAt > 1) && (pPace > 0) {
+            Set tOwed = tOwed + pPace
+            If tOwed >= 0.05 {
+                Hang tOwed
+                Set tOwed = 0
+            }
+        }
+        Set tLast = tAt + tSlice - 1
+        If tLast > tEnd Set tLast = tEnd
+        Do pReader.ReadChunk($Extract(pBytes, tAt, tLast))
+    }
 }
 
 /// <p>Record the wait and advance the fake clock by it rather than taking it, so the retry path

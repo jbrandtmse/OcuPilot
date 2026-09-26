@@ -74,6 +74,11 @@ XData Declaration
   "secretArguments": ["Password"],
   "emptyStateKey": "userListEmpty",
   "commandAliases": ["accounts"],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupSignIn", "textKey": "userListPrompt1"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "userListPrompt2"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "userListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.Users",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

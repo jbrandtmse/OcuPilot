@@ -3076,6 +3076,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: resolveLayout decides the side-bar fit from the remembered width and applyWidth clamps to the resulting maximum; at 1,280px a run went 400 to 336 with the bar shown and max 352, then widening stuck at 352
 - 2026-09-17T04:37:08Z status=decision-pending owner=burndown by=harvest note=Two published DESIGN.md rules both hold; recommended that the panel width the user drags wins and the side bar yields again when the drag needs the room
 - 2026-09-19T02:12:25Z status=routed owner=11-1-explain-this-screen by=merge_gate note=at the yielding viewport a narrowed panel traps the side bar and the panel cannot be widened back
+- 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: panel layout/rail behavior, not on the explain path; residual unchanged
+- 2026-09-26T04:49:15Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): panel layout/rail behavior, not floor-blocking, no remaining Epic 11 story
 
 ### DW-459: The first-login gate leaves the fresh-sign-in flag unspent after a failed read and retries on every later navigation or agent-status change with no bound, so a user mid-task can be redirected to the Definition form long after sign-in
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-story
@@ -3088,6 +3090,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Rail.activate has no fullScreen guard while SideBar.onGlobalKeydown ignores Ctrl/Cmd+B in full screen; clicking the visible area's rail item writes ocupilot.side-bar.open=false unseen
 - 2026-09-17T05:12:20Z status=decision-pending owner=burndown by=cr note=Product call: a rail click in full screen is ignored for side-bar areas, or exits full screen and shows the area
 - 2026-09-19T02:12:26Z status=routed owner=11-1-explain-this-screen by=merge_gate note=the rail stays live under a full-screen panel, so a click changes a side bar or route the panel covers
+- 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: panel layout/rail behavior, not on the explain path; residual unchanged
+- 2026-09-26T04:49:15Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): panel layout/rail behavior, not floor-blocking, no remaining Epic 11 story
 
 ### DW-1029: Switches.MergeBody treats a JSON object or array sent for any switch field, contextRowCap included, as absent and keeps the stored value instead of refusing
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
@@ -3295,6 +3299,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T21:58:32Z status=decision-pending owner=burndown by=cr note=product call for the decision sheet; reviewer will not pick between a server change and a UX contract
 - 2026-09-17T22:26:06Z status=decision-pending owner=burndown by=adjudication note=lead agrees this is a product call between a server change and EXPERIENCE.md:712; carried to the owner decision sheet, not decided here
 - 2026-09-19T02:12:26Z status=routed owner=11-1-explain-this-screen by=merge_gate note=Home's empty route makes the chip name a screen no turn carries; say what the turn actually sends
+- 2026-09-25T20:44:07Z status=resolved-by:11-1-explain-this-screen by=adjudication note=Home's empty route is sent by screen-context.ts and accepted by Api.Turn.ContextViolation (7ea91c67); pinned by TurnGrounding.TestHomesContextReachesTheTurn (lead mutation red 12681/green 12682), ScreenGrounding.TestHomesEmptyRouteIsAccepted, browser explain-screen (b)
 
 ### DW-1081: DESIGN.md gives reply code blocks a copy icon button; Story 4.6 does not build one
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3433,6 +3438,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T11:13:39Z status=decision-pending owner=burndown by=cr note=spec-bound: AC8 requires the fallback, EXPERIENCE.md:486 requires one banner -- owner picks which
 - 2026-09-18T11:25:56Z status=decision-pending owner=burndown by=adjudication note=lead agrees this is spec-bound: AC8 requires the fallback banner and EXPERIENCE.md:486 requires one banner, so the exit is a product call; carried to the owner sheet with its second face (a refused, absent or rejected fault publishes no connectivity sentence)
 - 2026-09-19T02:12:26Z status=routed owner=11-1-explain-this-screen by=merge_gate note=one status-0 Send must raise one alert; drop the panel's fallback when the shell strip already says it
+- 2026-09-25T20:44:08Z status=resolved-by:11-1-explain-this-screen by=adjudication note=sendErrorText answers null for status 0 and 5xx without an envelope, so only the shell strip alerts (7ea91c67); pinned by panel.spec status-0 and 502 legs; a 4xx without an envelope is theoretical under AD-12 and keeps its fallback
 
 ### DW-1113: OcuPilot.Test.TurnProvider's pRetryAfter seam has no caller, so the turn path's Retry-After forwarding is never exercised
 - source: code review of story-4.8 (2026-09-18) | severity: low | fix-risk: low | footprint: in-story
@@ -3571,6 +3577,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Task 4 of the 4.10 spec specifies the fallback on every zero, and the I/O matrix settles neither the refused row nor the faulted row against it. A caller without the error log's privilege sees the three starter prompts and no indication that a line could not be read. Probe: sign in as a least-privileged principal on Home and read the block
 - 2026-09-18T18:01:00Z status=decision-pending owner=burndown by=harvest note=product call for the owner sheet: whether a line that could not be read reads as zero, as absent, or as a stated refusal
 - 2026-09-19T02:12:26Z status=routed owner=11-3-suggested-prompts-per-screen by=merge_gate note=distinguish refused from zero; a caller who may not read a source must be told so, not told all is well
+- 2026-09-26T01:12:25Z status=resolved-by:11-3-suggested-prompts-per-screen by=adjudication note=a refused or faulted errors read answers an unread line and showPrompts() goes false (90e68c6f); pinned by suggested-view.test.mjs refused/faulted and panel.spec Refused/Faulted read legs
 
 ### DW-1148: DESIGN.md's Home 1,920 row gives the side bar 240 and content 672, which the ordinary Home arrival cannot reach
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3634,6 +3641,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T19:50:14Z status=decision-pending owner=burndown by=cr note=owner picks: amend EXPERIENCE.md 514/716 to publish the greeting as the yielder, or invert so the block keeps them and the greeting drops its prompt rows
 - 2026-09-18T19:55:04Z status=decision-pending owner=burndown by=adjudication note=lead agrees this is the owner's: EXPERIENCE.md's Home suggested-view row and UJ-2 both say the block offers the three starter prompts on a fresh container, while the shipped panel yields the block's set to the greeting's. The de-duplication itself is right; which set survives is the product call. The row now records the shipped behaviour, so a reversal is one row and one branch
 - 2026-09-19T02:12:26Z status=routed owner=11-3-suggested-prompts-per-screen by=merge_gate note=decided: EXPERIENCE.md is canonical, so Home shows its starter prompts; the greeting does not displace them
+- 2026-09-26T01:12:25Z status=resolved-by:11-3-suggested-prompts-per-screen by=adjudication note=Home's block keeps its prompts and the greeting yields (90e68c6f); pinned by panel.spec Home all-zero/attention legs and browser suggested-prompts (b)
 
 ### DW-1159: EXPERIENCE.md's Home suggested-view row still publishes the declined tasks-suspended line and 'application errors today per namespace', both superseded by Story 4.10's AC1 amendment
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: in-story
@@ -3647,6 +3655,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T19:50:26Z status=escalated owner=burndown by=cr note=fix shape depends on DW-1147: answering null on a zero collides with that decision, and a date-free sentence needs a Fixed-strings row
 - 2026-09-18T19:55:13Z status=escalated owner=burndown by=adjudication note=lead confirms the escalation: the fix shape depends on the owner's DW-1147, and the defect is hidden until Story 6.13 appends a second counted source
 - 2026-09-19T02:12:26Z status=routed owner=11-3-suggested-prompts-per-screen by=merge_gate note=a counted line answering zero must not render a dateless sentence
+- 2026-09-26T01:12:25Z status=resolved-by:11-3-suggested-prompts-per-screen by=adjudication note=suggestedRows drops a readable zero counted line (90e68c6f); pinned by panel.spec Zero line leg
 
 ### DW-1161: Four byte-identical privilege-reason rule blocks cost the eager bundle 1.3 kB, which is more than the headroom DW-1153 reports
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3756,6 +3765,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T11:34:58Z occurrence=6-7-task-details
 - 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: 7.1 ships no read tool and adds no read criterion; the fix is a per-criterion description mechanism for derived read tools (Screen/Tool/Read.cls), moves with DW-1013
 - 2026-09-23T20:58:41Z owner=11-1-explain-this-screen by=burndown note=Epic 7 burn-down overflow: no Epic 7 story touches derived read-tool criterion descriptions; 11.1 is the first story whose agent reads a screen through its read tool and must describe its criteria truthfully (not floor-blocking, so Rule 27 charters no burn-down story)
+- 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: needs a descriptor-declared criterion-description mechanism (Read.cls, registry, mirror); not floor-blocking
+- 2026-09-26T04:49:16Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): per-criterion read-tool descriptions (Screen/Tool/Read.cls), not floor-blocking
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -3824,6 +3835,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T20:44:36Z occurrence=6-2-the-roles-resources-and-services-lists
 - 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: same mechanism as DW-1001 (descriptor-declared field meaning for derived read tools); moves with it
 - 2026-09-23T20:58:41Z owner=11-1-explain-this-screen by=burndown note=Epic 7 burn-down overflow: moves with DW-1001 (descriptor-declared field meaning for derived read tools)
+- 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: needs a descriptor-declared criterion-description mechanism (Read.cls, registry, mirror); not floor-blocking
+- 2026-09-26T04:49:16Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): per-criterion read-tool descriptions (Screen/Tool/Read.cls), not floor-blocking
 
 ### DW-1014: An empty AuthenticationMethods cell reads (none) on 7 of 15 stock services, which can read as no authentication where authentication does not apply
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
@@ -4159,6 +4172,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor compares the last row of two cap-5 newest-first windows read one call apart. A line arriving between them shifts every position, the last as much as the first; the comment claiming the last row is immune was corrected at code review. The calls are adjacent and nothing in the class writes to the file, and the assertion held across three full runs here.
 - 2026-09-18T16:02:26Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=that assertion reddens in CI with no code change, at which point compare the two windows as sets instead of by index
+- 2026-09-25T15:53:11Z status=routed owner=11-7-token-streaming by=ci note=reopen_if fired: CI run 36152768790 (e5c0bff5) reddened the assertion with no change to ReadTool or the messages source; fixed as 11.7 rework [CI] item
+- 2026-09-25T16:31:50Z status=resolved-by:11-7-token-streaming by=cr note=port read before+after the tool, 5 attempts, plus a sev-0 marker; CI 36158629277 instance green; alerts mutation red 12123, green 12124
 
 ### DW-1145: messages-log.browser-spec restates alerts-log.browser-spec's harness rather than sharing it
 - source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
@@ -4638,6 +4653,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T05:38:50Z status=escalated owner=burndown by=cr note=clamp arithmetic itself is total and correct; the gap is the multiplicand, pre-existing since Epic 3
 - 2026-09-19T05:43:11Z by=adjudication note=AD-42s bound was corrected at its origin in this same story after this finding: the spine now says the clamp bounds what OcuPilot configures rather than the wall clock and names AD-31 as what bounds a dripping provider, so the decision sheet is left with only the product question of whether to bound an attempt at the transport
 - 2026-09-19T20:00:38Z status=routed owner=range-end-cleanup by=merge_gate note=DECIDED split it. The false claim is corrected now at its origin - AD-42's prose must say what Timeout actually bounds, one socket read re-armed on every Read inside %Net.HttpRequest's While loop, NOT one attempt and not a wall-clock budget. Leaving a wrong claim standing in an AD is the thing this project's own pitfalls list forbids. The transport-level attempt bound is the fix-risk=high half and is deferred: the exposure is bounded because the turn runs in a background job under its own wall-clock limit (AD-31), so a slow-drip provider cannot hang a turn indefinitely even though it can outrun AD-42's stated 300 s. Do not bound the transport mid-range for all providers to close a gap the turn limit already caps
+- 2026-09-25T15:49:29Z occurrence=11-7-token-streaming
 
 ### DW-1180: Gemini's FunctionCall and FunctionResponse do carry an optional id, so the reply direction discards one the provider sent and the request direction never echoes it
 - source: spec-10-1-the-message-and-tool-definition-adapters.md | severity: med | fix-risk: med | footprint: in-epic
@@ -4650,6 +4666,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: MessageAdapter maps content_filter and six Gemini block reasons to refusal; grep over src finds StopReason read only at Loop.cls:223 (a log summary) and set at ProviderPort.cls:515. A blocked reply therefore renders as empty text with no error. The consuming code is Kernel/Agent/Loop.cls, Epic 5's footprint.
 - 2026-09-19T05:39:00Z status=routed owner=burndown by=cr note=reachable today through Anthropic's own stop_reason; 10.2 widens it to two more families
 - 2026-09-19T18:35:36Z status=routed owner=11-7-token-streaming by=burndown note=Rule 27: judged FLOOR-BLOCKING and therefore not re-owned to range-end-cleanup. Four shipped providers now write the canonical refusal stop reason and nothing consumes it, so a safety refusal from any of them renders as an empty assistant turn on a Release 1 demo path, against AD-39s rule that a provider failure surfaces as a turn error and never silently. Epic 10 widened the hole from one adapter to four but cannot close it: the consuming code is Kernel/Agent/Loop.cls, Epic 5s footprint. Routed to the Epic 11 story that rebuilds the reply path, by which time Epic 5 has merged
+- 2026-09-25T16:32:23Z status=resolved-by:11-7-token-streaming by=adjudication note=Loop routes the canonical refusal stop reason to a failed turn PROVIDER.DECLINED with a banner (e5c0bff5); pinned by TurnStream refusal legs (plain and streamed, literal reason) and browser leg (f), adapter refusal shapes per family in ProviderStreamFamilies
 
 ### DW-1182: OpenAiToCanonical reads text only when message.content is a string, so a content-part array loses the reply's whole text with no error
 - source: spec-10-1-the-message-and-tool-definition-adapters.md | severity: low | fix-risk: med | footprint: in-epic
@@ -6761,6 +6778,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-9-the-agent-knows-the-screen-it-is-on.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: publishRows sends drill.errors() narrowed to the 5 summary fields; panel.ts sets namespace from scope.namespace() and entity from the route :id, while the drill's namespace/date live only in ErrorLogDrill (AD-48 one namespace source); ErrorRead requires namespace and date
 - 2026-09-24T09:36:58Z status=routed owner=11-2-explain-a-log-or-audit-entry by=cr note=11.2 consumes these rows; carrying the drill scope needs a descriptor or context-contract change outside 11.9's Never list
+- 2026-09-25T22:55:39Z status=resolved-by:11-2-explain-a-log-or-audit-entry by=adjudication note=LogErrorList context.fields carry the drilled namespace and date (a409a997), published by error-log.page from ErrorLogDrill; pinned by error-log.page.spec DW-1610 leg, screen-grounding browser (row.namespace USER), TurnGrounding seven-key assertion; lead mutation 12956/12957
 
 ### DW-1616: AD-15's 'either record locates the other' cannot hold for the agent's token revoke: the vendor's REVOKE records no audit event, and only AD-53 (screen path) names that gap
 - source: spec-12-2-revoke-a-user-s-oauth-2-0-tokens.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -7032,6 +7050,43 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T11:59:21Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=harvest note=reopen_if=any of them fails with a typed value appended to the old one
 - 2026-09-25T12:05:01Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=reopen_if=a form-page triple-click site fails with text appended; grep lists 29 files, add navigate:378
 
+### DW-1661: Gemini finish reasons that are not the model declining (MALFORMED_FUNCTION_CALL, UNEXPECTED_TOOL_CALL, TOO_MANY_TOOL_CALLS and others) map to the canonical refusal, so such a turn now ends PROVIDER.DECLINED with 'The model declined to answer this request'
+- source: spec-11-7-token-streaming.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: MessageAdapter.GEMINISTOPREASONS (:75) folds ten Gemini reasons into refusal; Loop routes every canonical refusal to PROVIDER.DECLINED (Story 11.7)
+- 2026-09-25T15:14:22Z status=open owner=11-7-token-streaming by=harvest note=in-story MED; for the 11.7 code review to patch or disposition
+- 2026-09-25T15:49:29Z status=decision-pending owner=burndown by=cr note=product call: fix contradicts Epic 10 pinned refusal map; rec. own code for Gemini tool-call failures
+
+### DW-1669: A live proposal card's privilege line is refreshed only while its turn is still polling; after the turn ends, a revocation shows no warning until a conversation restore
+- source: spec-11-8-the-proposal-names-the-privilege-it-needs.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: pollUntilTerminal (ui/src/app/core/turn.ts) stops at the turn's terminal state, usually right after the proposal, so the line keeps its last held answer while the card stays live; Confirm still refuses AUTH.NOPRIVILEGE naming the pair
+- 2026-09-25T18:15:26Z status=open owner=11-8-the-proposal-names-the-privilege-it-needs by=harvest note=in-story MED; turn.ts/panel.ts polling is contended with Epic 12; for the 11.8 code review to patch or disposition
+- 2026-09-25T18:40:20Z status=escalated owner=burndown by=cr note=fix-risk high: post-terminal re-read vs turn.ts polling-stops contract; restore shows no line; refusal now flips it
+
+### DW-1675: Every messages.log/alerts.log row's explain button has the same accessible name, so a screen-reader button list cannot tell the rows apart
+- source: spec-11-2-explain-a-log-or-audit-entry.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: log-viewer.page.ts renders one 'Explain this entry' button per parsed row with no per-row aria-label; the row's time/severity are only in sibling cells. Purpose is clear in its listitem context; naming it per row is a UX wording choice the spec does not make.
+- 2026-09-25T22:53:59Z status=wontfix-accepted owner=11-2-explain-a-log-or-audit-entry by=cr note=reopen_if=an a11y walk or screen-reader check on messages.log with an agent configured flags the duplicate names
+
+### DW-1676: An explained error row carries its drilled namespace while the payload's top-level namespace is still the shell scope, and the prompt does not say which scopes the error tools
+- source: spec-11-2-explain-a-log-or-audit-entry.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: screen-context.ts assembleEntryContext and panel Send set namespace from scope.namespace() (ContextViolation requires it); error-log.store.ts scopedErrors adds the drill's namespace/date per row. Whether a model prefers the row's scope for logs.applicationerrors.read/delete is unverified (inference).
+- 2026-09-25T22:53:59Z status=wontfix-accepted owner=11-2-explain-a-log-or-audit-entry by=cr note=reopen_if=a recorded or live turn calls logs.applicationerrors.read or delete with the top-level namespace instead of the row's
+
+### DW-1678: Home's idle greeting offers no prompt set while the suggested view never answers (namespace unresolved or a hung dates read)
+- source: spec-11-3-suggested-prompts-per-screen.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: panel.ts greetingPrompts waits on suggested.answered() on Home; readApplicationErrors leaves the source pending while scope.namespace() is '' (a failed namespaces read), and requestJson has no timeout. Pinned as intended by panel.spec 'Home never answers'.
+- 2026-09-26T01:10:14Z status=wontfix-accepted owner=11-3-suggested-prompts-per-screen by=cr note=only while the instance answers no read; reopen_if=Home idle+empty shows no prompt set for >5s on a reachable instance
+
+### DW-1679: A Send or one-click suggested prompt during the bootstrap conversation restore abandons it: restored() stays false and the adopted conversation's earlier turns never load
+- source: spec-11-3-suggested-prompts-per-screen.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: TurnStore.send() bumps pollGeneration and restore() drops its result when the generation moved (turn.ts restore/endSession). Home's block prompts render without a restored() check, so one click at reload reaches it; Send and Explain share the race.
+- 2026-09-26T01:10:14Z status=wontfix-accepted owner=11-3-suggested-prompts-per-screen by=cr note=window is the restore read on a reload; reopen_if=a reload-then-send smoke shows the transcript missing earlier turns
+
+### DW-1680: EXPERIENCE.md Fixed-strings row 331 still says Home's starter prompts show only when nothing needs attention; since 11.3 they also show in the greeting, under the Getting started group
+- source: spec-11-3-suggested-prompts-per-screen.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Row 331's Where cell vs panel.ts greetingPrompts and panel.spec 'Home attention'. The reviewer may not rewrite a Fixed-strings row the story did not add (shared-append rule); a Rule 5 tier-1 in-place amendment by the lead.
+- 2026-09-26T01:10:14Z status=open owner=11-3-suggested-prompts-per-screen by=cr note=lead: amend row 331 Where cell in place at this story's gate, as :356 was
+- 2026-09-26T01:12:26Z status=resolved-by:11-3-suggested-prompts-per-screen by=adjudication note=lead amended EXPERIENCE.md row 331 in place (Rule 5 tier-1, AMENDED marker); strings.test 25/25
 ### DW-1662: A principal holding only the authorization server tab's two pairs cannot create a configuration: a create admits only readable roles, and the editor pre-checks the default roles it then refuses
 - source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Rules.CustomizationViolations admits a create's role only through the RoleList read (StoredRoles of no fresh read is empty), while Effective() gives every other create field Defaults(); run 807 measured that admitting Defaults() roles on a create lets the two-pair principal create (vendor PUT 201).
@@ -7101,6 +7156,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: target=_blank at locator-bar.ts:175 (Help), home.page.ts:339, sign-in.ts:172, instance-notice.ts:67; the banned-everywhere clause names none of them. Pre-existing; 12.9 removed only the OAuth wording.
 - 2026-09-26T00:00:58Z status=by-design owner=12-9-removing-the-classic-link-outs by=cr note=spec gate Q3 left the Help/new-tab claim to its owner; reopens only via a UX amendment naming the outbound doc links
 
+### DW-1684: A chip clicked while already on the cited list decides presence from the list's cached read
+- source: spec-11-4-citation-chips-with-click-through.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: citation-navigator.ts alreadyHere settles from store.data() read before the click; a row created elsewhere since that read shows a false no-longer-present line. Requiring a fresh read there needs a refresh the spec does not ask for.
+- 2026-09-26T04:44:16Z status=wontfix-accepted owner=11-4-citation-chips-with-click-through by=cr note=reopen_if=a no-longer-present line is observed for a row the instance still holds
+
+### DW-1685: The server span scanner and marked disagree on block grammar (inline triple backticks, mixed fence chars, indented or quoted code, tables, CRLF)
+- source: spec-11-4-citation-chips-with-click-through.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Citations.Cite toggles fences on any line opening with three backticks or tildes and scans indented, quoted and table lines; the client draws no chip there, so a citation can be missing or spend a cap slot on a span with no chip.
+- 2026-09-26T04:44:16Z status=wontfix-accepted owner=11-4-citation-chips-with-click-through by=cr note=reopen_if=a live reply shows a cited returned row as plain code, or 20 citations with fewer than 20 chips
+
+### DW-1686: A span matching rows of two entity types read in one turn cites the first-read type
+- source: spec-11-4-citation-chips-with-click-through.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Citations.Match takes the lowest candidate index across types, so a user and a role both named Admin, or task 12 and pid 12, chip to whichever read came first.
+- 2026-09-26T04:44:16Z status=wontfix-accepted owner=11-4-citation-chips-with-click-through by=cr note=reopen_if=a chip opens a different entity type than the reply's sentence names
+
+### DW-1687: A citation chip's accessible name is the bare id, with nothing saying it opens and selects the row
+- source: spec-11-4-citation-chips-with-click-through.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: reply.ts builds the button with textContent only; EXPERIENCE.md defines no accessible description, and adding one needs a Fixed-strings row and a strings.ts entry.
+- 2026-09-26T04:44:16Z status=wontfix-accepted owner=11-4-citation-chips-with-click-through by=cr note=reopen_if=an accessibility review or NFR-12 audit flags the chip's purpose as unannounced
 ### DW-1681: The demo fixture seeds a new <DIVIDE> application error on every container start, so each restart adds a duplicate
 - source: owner triage 2026-09-25 (7d51837b request) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: OcuPilot.Install.Fixture SeedApplicationError runs on every start from the container's start hook; seed only when no such error exists (owner)

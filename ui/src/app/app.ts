@@ -600,6 +600,10 @@ export class App {
       // next sign-in in this tab must start fresh rather than adopting a departed principal's
       // conversation (AD-8), and any poll this principal's turn left running must stop.
       this.turn.endSession();
+      // With no conversation left the transcript is known empty, so it reads restored: the next
+      // sign-in in this tab shows the idle greeting and its suggested prompts (Story 11.3) without
+      // waiting for a bootstrap restore that has already run.
+      void this.turn.restore();
       // The eleventh: the context chip's sharing choice is per user (Story 4.11), and the
       // instance's own answer about where a turn's provider call goes belongs to no one until
       // the next principal reads it fresh.

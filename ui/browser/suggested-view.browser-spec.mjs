@@ -325,6 +325,10 @@ test('AC1, AC3: the block renders above the transcript with 32px rows, and a lin
           code: row.querySelector('code')?.textContent?.trim() ?? null,
           openText: row.querySelector('.ocu-suggested-open')?.textContent?.trim() ?? null,
         })),
+        groupPrompts: [...block.querySelectorAll('.ocu-prompt-group .ocu-suggested-starter > span:first-child')].map(
+          (node) => node.textContent.trim()
+        ),
+        lines: [...block.querySelectorAll('.ocu-suggested-prompt')].map((node) => node.textContent.trim()),
       };
     });
 
@@ -351,9 +355,8 @@ test('AC1, AC3: the block renders above the transcript with 32px rows, and a lin
     assert.equal(shown.rows[0].code, null, 'it is uncounted, so it renders no count');
 
     if (newest === null) {
-      // A clean log: the published starter prompts stand in for the zeros.
-      const prompts = shown.rows.slice(1).map((row) => row.text);
-      assert.deepEqual(prompts, [
+      // A clean log: Home's prompts group stands in for the zeros (Story 11.3).
+      assert.deepEqual(shown.groupPrompts, [
         STRINGS.homeStarterPromptExplainScreen,
         STRINGS.homeStarterPromptExplainLog,
         STRINGS.homeStarterPromptChangeOneThing,
@@ -371,11 +374,12 @@ test('AC1, AC3: the block renders above the transcript with 32px rows, and a lin
       assert.ok(errors.openText.startsWith(STRINGS.homeSuggestedOpen), 'and an Open control of its own');
     }
 
-    // The gesture, with real focus traversal: `.click()` moves no focus in jsdom.
-    const chosen = shown.rows[shown.rows.length - 1].text;
+    // The gesture, with real focus traversal: `.click()` moves no focus in jsdom. It is a line's,
+    // never a prompt's -- a prompt sends a turn (Story 11.3).
+    const chosen = shown.lines[shown.lines.length - 1];
     await page.evaluate(() => {
-      const rows = [...document.querySelectorAll('.ocu-suggested .ocu-suggested-line')];
-      rows[rows.length - 1].querySelector('button').click();
+      const lines = [...document.querySelectorAll('.ocu-suggested .ocu-suggested-prompt')];
+      lines[lines.length - 1].click();
     });
     await page.waitForFunction(
       (text) => document.querySelector('#ocu-panel-composer').value === text,

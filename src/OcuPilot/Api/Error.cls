@@ -202,7 +202,7 @@ Parameter REASONPORTNOTAPPLIED = "The instance reported the change as made, and 
 /// definition carries the id the caller named, the definition is not usable, or its provider's
 /// catalog row names no adapter class this instance holds. Produced by
 /// <class>OcuPilot.Port.ProviderPort</class> on the <parameter>UNAVAILABLE</parameter> slug.</p>
-/// <p>The twelve <code>PROVIDER.*</code> codes and the three endpoint violation codes below are
+/// <p>The thirteen <code>PROVIDER.*</code> codes and the three endpoint violation codes below are
 /// declared <b>here</b>, with their producers in other classes, for the reason the seven
 /// <code>PORT.*</code> codes are: this class is the one home of the vocabulary.</p>
 Parameter PROVIDERUNCONFIGURED = "PROVIDER.UNCONFIGURED";
@@ -278,6 +278,12 @@ Parameter PROVIDERTESTTIMEOUT = "PROVIDER.TESTTIMEOUT";
 /// <p>Machine code (AD-12, AD-39, AD-42): <parameter>PROVIDERTESTTIMEOUT</parameter>'s twin for a
 /// definition marked local, whose reason says a local model may still be loading.</p>
 Parameter PROVIDERTESTTIMEOUTLOCAL = "PROVIDER.TESTTIMEOUTLOCAL";
+
+/// <p>Machine code (AD-12, AD-39, AD-42): the provider answered with the canonical
+/// <code>refusal</code> stop reason -- the model declined to answer -- streamed or not. A turn ends
+/// <code>failed</code> on it with no reply; produced by <class>OcuPilot.Kernel.Agent.Loop</class> on
+/// the <parameter>UNAVAILABLE</parameter> slug.</p>
+Parameter PROVIDERDECLINED = "PROVIDER.DECLINED";
 
 /// <p>Machine code (AD-12, AD-36, AD-39): a screen read's <code>maxRows</code> is not a whole
 /// number above zero. Rendered on the <parameter>BADREQUEST</parameter> slug by
@@ -1048,7 +1054,7 @@ ClassMethod ReasonForTurnError(pCode As %String) As %String
 /// <p>The refusal sentence one field-level violation code carries (AD-39).</p>
 /// <p><b>Every field-level code has one, and this class is where they live</b> -- beside the codes
 /// themselves and beside the envelope reasons the rest of the tree renders, for the reason the
-/// twelve <code>PROVIDER.*</code> sentences live together in
+/// thirteen <code>PROVIDER.*</code> sentences live together in
 /// <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method>: one home, so the same refusal cannot
 /// be worded two ways. The envelope's own <code>reason</code> for a validation failure is generic
 /// -- it names no rule, because it stands for a list of them -- so the sentence a form renders on

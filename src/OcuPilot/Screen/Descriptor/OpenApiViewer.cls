@@ -41,6 +41,11 @@ XData Declaration
   "context": {"fields": ["Path", "Verb", "Summary", "OperationId"], "secretFields": []},
   "emptyStateKey": "openApiViewerEmpty",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "webAppPromptGroupCode", "textKey": "openApiViewerPrompt1"},
+    {"groupKey": "webAppPromptGroupCode", "textKey": "openApiViewerPrompt2"},
+    {"groupKey": "webAppPromptGroupCode", "textKey": "openApiViewerPrompt3"}
+  ],
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

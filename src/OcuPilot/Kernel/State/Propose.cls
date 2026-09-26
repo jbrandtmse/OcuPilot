@@ -158,6 +158,17 @@ Property DefinitionId As %String(MAXLEN = 64);
 
 Property DefinitionVersion As %String(MAXLEN = 32);
 
+/// <p>The pairs the write's own gate required when this proposal was minted
+/// (<method>OcuPilot.Kernel.Proposal.Operation.RequiredPairsOf</method>, AD-8), de-duplicated, in
+/// resolution order, spelled <code>resource:permission</code> and comma-joined as
+/// <method>OcuPilot.Screen.Gate.ParsePairSpec</method> reads them; <code>""</code> when none was
+/// recorded. Whether the owner holds them is evaluated at each read, never stored.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b>, for the reason
+/// <property>AuditWarning</property> records: every pre-existing row reads <code>""</code>, which
+/// the wire serializes as no privilege line, so no older row means anything different once a newer
+/// OcuPilot reads it.</p>
+Property RequiredPairs As %String(MAXLEN = 1024);
+
 Index ProposalKeyIdx On ProposalKey [ Unique ];
 
 Index ProposalTokenIdx On Token [ Unique ];
@@ -190,8 +201,8 @@ Index ProposalTargetIdx On (TargetRef As Exact, State);
 /// <code>turnKey</code>, <code>toolName</code>, <code>targetRef</code>, <code>fingerprint</code>,
 /// <code>arguments</code>, <code>payload</code>, <code>diff</code>, <code>unchangedCount</code>,
 /// <code>rationale</code>, <code>expectedImpact</code>, <code>reverse</code>,
-/// <code>auditWarning</code>, <code>consequence</code>, <code>definitionId</code> and
-/// <code>definitionVersion</code>, every one already
+/// <code>auditWarning</code>, <code>consequence</code>, <code>definitionId</code>,
+/// <code>definitionVersion</code> and <code>requiredPairs</code>, every one already
 /// built and already stripped of secret-declared keys by
 /// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method>; nothing here strips anything.
 /// <var>pLimitsClass</var> is the class <code>PROPOSALEXPIRYSECONDS</code> is read from, so a test
@@ -233,6 +244,7 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
         Set tRow.Consequence = ..Cut($Get(pValues("consequence")), 64)
         Set tRow.DefinitionId = ..Cut($Get(pValues("definitionId")), 64)
         Set tRow.DefinitionVersion = ..Cut($Get(pValues("definitionVersion")), 32)
+        Set tRow.RequiredPairs = $Get(pValues("requiredPairs"))
         Set tRow.CreatedAt = ..Stamp(tStamp)
         Set tRow.ExpiresAt = ..StampOfSeconds(tSeconds)
         Set tRow.State = ..#STATELIVE
@@ -503,7 +515,7 @@ ClassMethod ProjectedState(pStored As %String, pExpiresAt As %String) As %String
 /// <p>Turn <var>pTurnKey</var>'s proposals owned by <var>pUser</var>, oldest first, as the wire
 /// array the turn's progress payload carries:
 /// <code>{proposalId, target: {type, scope, id}, expiresAt, tool, changed, unchangedCount,
-/// unchanged, rationale, expectedImpact, reverse, state, auditWarning, consequence}</code>.</p>
+/// unchanged, rationale, expectedImpact, reverse, state, auditWarning, consequence, privilege}</code>.</p>
 /// <p><b>Every value is the row's own.</b> The target triple is
 /// <method>OcuPilot.Kernel.EntityRef.Parse</method>'s reading of the stored key, so a reader
 /// cannot be handed a triple this store never wrote; <code>changed</code> is the stored diff,
@@ -619,6 +631,7 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
     Set pValues("auditWarning") = ''pRow.AuditWarning
     Set pValues("destructive") = ''pRow.Destructive
     Set pValues("consequence") = ..Text(pRow.Consequence)
+    Set pValues("requiredPairs") = ..Text(pRow.RequiredPairs)
     Set tSC = ..GuardedStreamText(pRow, "Arguments", .tArguments)
     If $$$ISERR(tSC) Quit tSC
     Set pValues("arguments") = tArguments
@@ -638,7 +651,9 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
 /// the token are absent by construction rather than by omission, and the stored payload reaches
 /// the wire only as <method>OcuPilot.Kernel.Proposal.Disclosure.Rows</method>'s masked
 /// <code>{field, value}</code> projection -- never as itself, and never carrying a value its
-/// tool's field list does not classify <code>ordinary</code>.</p>
+/// tool's field list does not classify <code>ordinary</code>. <code>privilege</code> is
+/// <method>OcuPilot.Kernel.Proposal.Disclosure.Privilege</method>'s answer for the recorded pairs and
+/// the row's owner, evaluated at this call, or <code>null</code> when no pairs were recorded.</p>
 ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ Private ]
 {
     Set pOut = ""
@@ -663,6 +678,12 @@ ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ P
     Do tOut.%Set("auditWarning", ''$Get(pValues("auditWarning")), "boolean")
     Do tOut.%Set("destructive", ''$Get(pValues("destructive")), "boolean")
     Do tOut.%Set("consequence", $Get(pValues("consequence")), "string")
+    Set tPrivilege = ##class(OcuPilot.Kernel.Proposal.Disclosure).Privilege($Get(pValues("requiredPairs")), $Get(pValues("user")))
+    If $IsObject(tPrivilege) {
+        Do tOut.%Set("privilege", tPrivilege)
+    } Else {
+        Do tOut.%Set("privilege", "", "null")
+    }
     Set pOut = tOut
     Quit $$$OK
 }

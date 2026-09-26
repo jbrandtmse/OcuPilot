@@ -76,6 +76,37 @@ ClassMethod Rows(pToolName As %String, pPayload As %String, pDiff As %String) As
     Quit tRows
 }
 
+/// <p>The proposal card's privilege line (AD-8, Story 11.8): <code>{requires, missing}</code> for
+/// the pair specification <var>pRequired</var> a mint recorded, or <code>""</code> when it parses
+/// to no pair -- nothing recorded, or a malformed specification -- or cannot be evaluated, which
+/// logs a fault.</p>
+/// <p><code>requires</code> is every pair spelled <code>resource:permission</code>, in recorded
+/// order. <code>missing</code> is <method>OcuPilot.Kernel.Proposal.Operation.MissingPair</method>'s
+/// answer for <var>pUser</var>, the check Confirm's gate makes, asked at this call and never
+/// stored; <code>""</code> when every pair is held. <var>pHolderClass</var> is that method's seam.
+/// <b>Caller contract:</b> call it outside any escalated frame (AD-9), so the answer is about the
+/// user's own current grants.</p>
+ClassMethod Privilege(pRequired As %String, pUser As %String, pHolderClass As %String = "") As %DynamicObject
+{
+    Set tPrivilege = ""
+    Try {
+        Set tPairs = ##class(OcuPilot.Screen.Gate).ParsePairSpec(pRequired)
+        If tPairs = "" Quit
+        Set tRequires = []
+        For tI = 1:1:$ListLength(tPairs) {
+            Set tPair = $List(tPairs, tI)
+            Do tRequires.%Push($List(tPair, 1) _ ":" _ $List(tPair, 2), "string")
+        }
+        Set tPrivilege = {}
+        Do tPrivilege.%Set("requires", tRequires)
+        Do tPrivilege.%Set("missing", ##class(OcuPilot.Kernel.Proposal.Operation).MissingPair(pUser, tPairs, pHolderClass), "string")
+    } Catch ex {
+        Set tPrivilege = ""
+        Do ##class(OcuPilot.Kernel.Fault).LogRaw("proposal", "the proposal's privilege line could not be evaluated", ex.AsStatus(), "")
+    }
+    Quit tPrivilege
+}
+
 /// <p>Whether the write tool <var>pToolName</var> sends a body at all (AD-51), resolved through
 /// the tool registry as <method>OcuPilot.Kernel.Proposal.Mint.DestructiveTool</method> resolves
 /// that tool's own destructive declaration. A name the registry does not carry, or a class that

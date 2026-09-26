@@ -1,7 +1,7 @@
-/// <p>Stories 11.9 and 11.10 in process: the built-in prompt's six screen statements, the tools each
+/// <p>Stories 11.9, 11.10, 11.1 and 11.2 in process: the built-in prompt's eight screen statements, the tools each
 /// kind of screen names (<method>OcuPilot.Screen.Context.ScreenTools</method>), the refusal of a
 /// request that supplies a derived member (<method>OcuPilot.Api.Turn.ContextViolation</method>),
-/// and the two members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
+/// Home's empty route, the error read tool's input schema, and the two members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
 /// branches and inside the total bound (AD-11, AD-24).</p>
 /// <p>Spawns nothing, writes no state and creates no principal, so it needs no arming variable. It
 /// reads the compiled tool and screen registries, so it runs on an instance where OcuPilot is
@@ -15,7 +15,7 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 /// behind its four row actions, in name order.</p>
 Parameter PROCESSTOOLS = "[""osmgmt_processes_read"",""osmgmt_processes_resume"",""osmgmt_processes_suspend"",""osmgmt_processes_terminate"",""osmgmt_processes_terminatewitherror""]";
 
-/// <p>The prompt's statement at <var>pIndex</var> (1 to 6), verbatim.</p>
+/// <p>The prompt's statement at <var>pIndex</var> (1 to 8), verbatim.</p>
 ClassMethod Statement(pIndex As %Integer) As %String
 {
     Quit $Case(pIndex,
@@ -25,6 +25,8 @@ ClassMethod Statement(pIndex As %Integer) As %String
         4: "When you are read-only, say so, and describe the change you would make instead of proposing it.",
         5: "Use only the tools you are offered, and when none of them can do what was asked, say so rather than describe a capability you lack.",
         6: "When the user asks about something a screen shows, or asks to change it, and the screen_context does not show them on that screen, open that screen with the navigation tool first, before you answer or propose the change, so they see what you are discussing and the change when it lands; when they are already on it, do not navigate.",
+        7: "When the user asks you to explain this screen, say what the screen is for, what data it shows and what actions its tools offer, name the read tool in tools that its data comes from, or say that it has none, and propose no change.",
+        8: "When the user asks you to explain this entry, explain the one row in screen_context: what it records, what likely caused it and what to check next, and propose no change.",
         : "")
 }
 
@@ -39,7 +41,7 @@ Method ToolsFor(pRoute As %String) As %String
     Quit tTools.%ToJSON()
 }
 
-/// <p>The prompt is the class parameter, whole, and carries each of the six screen statements
+/// <p>The prompt is the class parameter, whole, and carries each of the eight screen statements
 /// verbatim, one assertion each.</p>
 Method TestThePromptCarriesTheScreenStatements()
 {
@@ -51,6 +53,8 @@ Method TestThePromptCarriesTheScreenStatements()
     Do $$$AssertTrue(tPrompt [ ..Statement(4), "the read-only statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(5), "the only-the-tools-offered statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(6), "the open-the-screen-first statement")
+    Do $$$AssertTrue(tPrompt [ ..Statement(7), "the explain statement")
+    Do $$$AssertTrue(tPrompt [ ..Statement(8), "the explain-entry statement")
     Set tOutside = 0
     For tI = 1:1:$Length(tPrompt) If ($Ascii(tPrompt, tI) < 32) || ($Ascii(tPrompt, tI) > 126) Set tOutside = tOutside + 1
     Do $$$AssertEquals(tOutside, 0, "the prompt is printable ASCII throughout")
@@ -95,6 +99,25 @@ Method TestTheErrorListNamesItsClassReadAndDelete()
     Do $$$AssertEquals(..ToolsFor("logs/errors"), "[""logs_applicationerrors_read"",""logs_applicationerrors_delete""]", "the error list's read and delete")
 }
 
+/// <p>The error list's read tool, resolved by name through the tool registry, takes exactly the
+/// namespace, the date and <code>maxRows</code> and refuses any other argument, so no caller can
+/// ask it for an entry's captured detail (AD-48).</p>
+Method TestTheErrorReadToolTakesNoDetailArgument()
+{
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("logs.applicationerrors.read", .tTool)
+    Do $$$AssertStatusOK(tSC, "the tool list is built")
+    Do $$$AssertTrue($IsObject(tTool), "logs.applicationerrors.read is registered")
+    If '$IsObject(tTool) Quit
+    Set tSchema = ##class(OcuPilot.Screen.Tool.Registry).InputSchemaOf(tTool)
+    Set tNames = ""
+    Set tIterator = tSchema.properties.%GetIterator()
+    While tIterator.%GetNext(.tName, .tValue) {
+        Set tNames = tNames _ $ListBuild(tName)
+    }
+    Do $$$AssertEquals($ListToString(tNames), "namespace,date,maxRows", "its input properties are the namespace, the date and maxRows alone")
+    Do $$$AssertEquals(tSchema.%GetTypeOf("additionalProperties") _ "|" _ tSchema.additionalProperties, "boolean|0", "and any other argument is refused")
+}
+
 /// <p>A tool list that cannot be built fails <method>OcuPilot.Screen.Context.ScreenTools</method>
 /// with that error and an empty list, never a silent <code>[]</code>.</p>
 Method TestAToolListFailureReturnsItsError()
@@ -126,6 +149,40 @@ Method TestARequestSupplyingADerivedMemberIsRefused()
             Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tBody, ..#LIMITS), tCode, tMember _ " as " _ tType _ " is refused")
         }
     }
+}
+
+/// <p>Home's route is <code>""</code>: a context carrying it is accepted while a route that is not a
+/// string is refused, and its payload is Home's identity with no tool, no row and a boolean
+/// <code>readOnly</code>. The namespace and view checks still apply on Home's route, and a row sent
+/// with it reaches the payload with no field value.</p>
+Method TestHomesEmptyRouteIsAccepted()
+{
+    Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    Set tHome = {"context": {"route": ""}}
+    Do tHome.context.%Set("namespace", tNamespace, "string")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tHome, ..#LIMITS), "", "Home's empty route is accepted")
+    Set tNumber = {"context": {"route": 5}}
+    Do tNumber.context.%Set("namespace", tNamespace, "string")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tNumber, ..#LIMITS), ##class(OcuPilot.Api.Error).#TURNCONTEXTINVALID, "a route that is not a string is refused")
+    Do $$$AssertStatusOK(##class(OcuPilot.Api.Turn).BoundedContext(tHome.context, 0, 200, ..#LIMITS, .tJson), "Home's payload builds")
+    Do $$$AssertTrue(tJson '= "", "and is not empty")
+    If tJson = "" Quit
+    Set tPayload = ##class(%DynamicObject).%FromJSON(tJson)
+    Do $$$AssertEquals(tPayload.screen _ "|" _ tPayload.route, "shell.home|", "Home's identity")
+    Do $$$AssertEquals(tPayload.tools.%ToJSON(), "[]", "naming no tool")
+    Do $$$AssertEquals(tPayload.rowsSent, 0, "sending no row")
+    Do $$$AssertEquals(tPayload.%GetTypeOf("readOnly"), "boolean", "and carrying readOnly as a boolean")
+    Set tForeign = {"context": {"route": "", "namespace": "OCUPILOTNOSUCHNAMESPACE"}}
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tForeign, ..#LIMITS), ##class(OcuPilot.Api.Error).#TURNCONTEXTINVALID, "Home in another namespace is refused")
+    Set tBadRows = {"context": {"route": "", "view": {"rows": {}}}}
+    Do tBadRows.context.%Set("namespace", tNamespace, "string")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tBadRows, ..#LIMITS), ##class(OcuPilot.Api.Error).#TURNCONTEXTINVALID, "Home with rows that are not an array is refused")
+    Set tRowed = {"context": {"route": "", "view": {"rows": [{"Pid": "homeprobevalue"}]}}}
+    Do tRowed.context.%Set("namespace", tNamespace, "string")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tRowed, ..#LIMITS), "", "Home with a well-formed view passes the shape check")
+    Do $$$AssertStatusOK(##class(OcuPilot.Api.Turn).BoundedContext(tRowed.context, 0, 200, ..#LIMITS, .tRowedJson), "Home's payload with a row builds")
+    Do $$$AssertTrue(tRowedJson '= "", "and is not empty")
+    Do $$$AssertTrue('(tRowedJson [ "homeprobevalue"), "and carries no field value, since Home declares no context field")
 }
 
 /// <p>Both members ride the rows branch and the identity-only branch, with <code>readOnly</code> a
