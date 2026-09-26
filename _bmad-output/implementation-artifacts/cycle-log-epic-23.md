@@ -50,3 +50,9 @@
 2026-09-26T15:39:07Z	Story 23.1	ci_resolved	batch=B4+B8 run=36250263918 head=0da7618e result=success resolved_at=next_implement
 2026-09-26T15:39:07Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@7da38250 merge=15d65704 conflicts=none code_changes=none(docs) verify=rides_next_batch_push
 2026-09-26T15:39:16Z	Story 23.1	stage_spawned	stage=implement batch=B6 spawn_at=2026-09-26T15:39:16Z model=opus agent_name=23-1-the-range-end-cleanup-implement-b6 cycle_iteration=4
+2026-09-26T16:19:27Z	Story 23.1	dev_complete	batch=B6 spawn_at=2026-09-26T15:39:16Z model=opus build_sha=e27ff3c4 review_loop_iteration=0 followup_review_recommended=false deferred=1 harvested=DW-1705(wontfix-accepted) files=24 contended=Loop.cls(epic11,off-hunk),Error.cls(append) cycle_iteration=4 subagent_tokens=290871
+2026-09-26T16:19:27Z	Story 23.1	adr_verifications_complete	batch=B6 result=none_required reason=no_AD_tooled_AC mutations=in_spec_verification(10) model=claude-opus-5-5
+2026-09-26T16:19:27Z	Story 23.1	qa_complete	batch=B6 result=skipped reason=pinning_tests_and_mutations_written_by_implement(Rule19)
+2026-09-26T16:19:27Z	Story 23.1	pushed	batch=B6 head=e27ff3c4 ci=pending run=36254992406
+2026-09-26T16:19:27Z	Epic 23	spine_updated	ad=AD-42,deferred reason=decision_sheet by=runner story=23-1-the-range-end-cleanup entries=DW-1650 lint=ok(preexisting_low_only)
+2026-09-26T16:19:27Z	Story 23.1	stage_spawned	stage=code-review batch=B6 spawn_at=2026-09-26T16:19:27Z model=opus agent_name=23-1-the-range-end-cleanup-code-review-b6 cycle_iteration=4

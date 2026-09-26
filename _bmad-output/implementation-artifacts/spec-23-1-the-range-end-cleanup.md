@@ -232,7 +232,7 @@ Each fix below is sentence replacement, not an appended erratum. Spine edits fol
 - [ ] DW-1434 (escalated to the owner, not applied): add to `_bmad/custom/skill-rules.md` Rule 28 (`:260`): push the implement or merge commit on its own, and confirm its run registered by `headSha` in `gh run list`, before stacking any `[skip ci]` commit, because GitHub evaluates only the pushed head.
 - [ ] DW-1435 (escalated to the owner, not applied): add to `_bmad/custom/skill-rules.md` Rule 22 (`:232`): when the merge brings ObjectScript, load the merged `src/` into a fresh or re-loaded throwaway before the suite. The merged tree's browser tier is CI's browser job.
 - [ ] DW-1478 (escalated to the owner, not applied): append to the `CLAUDE.md:121` bullet: "a planning document other suites cite by line (EXPERIENCE.md, epics.md) also needs `cd ui && npm run test:tools`".
-- [ ] DW-1650: in AD-42, after "is retried **once, on a new connection**, inside the same attempt and delay budget", say that a connect that never opened (`#6059`, no connection) is not retried; mark the Deferred row DW-1650 decided (10.6 merge gate). Applied with B6.
+- [x] DW-1650: in AD-42, after "is retried **once, on a new connection**, inside the same attempt and delay budget", say that a connect that never opened (`#6059`, no connection) is not retried; mark the Deferred row DW-1650 decided (10.6 merge gate). Applied with B6.
 - [x] DW-1439 (conditional; applied, B2 measured 403 with an empty body): if B2 measured a different answer than the documented 500 `<PROTECT>`, replace AD-21 `:313`'s sentence with the measured mechanism.
 
 **Acceptance Criteria:**

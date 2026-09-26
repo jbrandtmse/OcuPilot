@@ -7405,3 +7405,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: ui/src/app/areas/security/sql-audit-dialog.ts:122; no size rule matches; the structural walk does not open the dialog
 - 2026-09-26T14:54:59Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=cr note=outside DW-1587's eight screens; reopen_if=the walk or a judge measures a grid checkbox under 24px
+
+### DW-1705: Api/Error.cls doc comments at :205 and :1057 count thirteen PROVIDER codes; there are fourteen since PROVIDER.TOOLCALLFAILED
+- source: _bmad-output/implementation-artifacts/spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Error.cls is add-only; the count is prose that goes stale on every appended PROVIDER code
+- 2026-09-26T16:19:27Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=harvest note=reopen_if=a reader or test relies on the PROVIDER code count in Error.cls's doc comments
