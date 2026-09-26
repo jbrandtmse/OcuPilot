@@ -23,6 +23,8 @@
  * 6. **A test that waited its bound reads the published sentence** (Story 10.5): each timeout
  *    code's 504 envelope renders its Fixed strings sentence, resolved from the detail, on the
  *    failure line, which passes every DW-1337 invariant.
+ * 7. **A new definition opens on the catalog's Anthropic default** (Story 10.7): the form's model
+ *    field reads `claude-opus-5-5`, first of the datalist's suggestions, and Save stores it.
  *
  * **It refuses the live container**, for the reason its siblings do: the throwaway is the instance
  * a browser run drives, and this spec creates a definition. It **creates the rows it filters and
@@ -68,7 +70,7 @@ const DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 /** Every definition this spec creates is named with this prefix and removed in `after`. */
 const PREFIX = 'OcuPilotBrowserProbe';
 
-const NAMES = [`${PREFIX}Alpha`, `${PREFIX}Beta`, `${PREFIX}Local`, `${PREFIX}Sampling`, `${PREFIX}Timeout`];
+const NAMES = [`${PREFIX}Alpha`, `${PREFIX}Beta`, `${PREFIX}Local`, `${PREFIX}Sampling`, `${PREFIX}Timeout`, `${PREFIX}Opus`];
 
 /** The form's key route in the structural baseline. */
 const FORM_ROUTE = 'agent/definitions/edit';
@@ -680,6 +682,59 @@ test('Story 10.5: a test that waited its bound reads the published sentence, and
       );
       assert.deepEqual(await freshViolations(page), [], `the ${answer.code} failure line passes every DW-1337 invariant`);
     }
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 10.7: a new definition opens on claude-opus-5-5, first of the suggestions, and saves it', async () => {
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await page.waitForSelector('#ocu-definition-name', { visible: true, timeout: config.navigationTimeoutMs });
+    // The providers read fills the model field and the datalist; wait for both, not for a guess.
+    await page.waitForFunction(
+      () =>
+        document.querySelector('#ocu-definition-model')?.value !== '' &&
+        document.querySelectorAll('#ocu-definition-models option').length > 0,
+      { timeout: config.navigationTimeoutMs }
+    );
+    assert.equal(
+      await page.$eval('#ocu-definition-provider', (select) => select.value),
+      'anthropic',
+      'the form opens on the Anthropic row'
+    );
+    assert.equal(
+      await page.$eval('#ocu-definition-model', (input) => input.value),
+      'claude-opus-5-5',
+      'with the model field on the catalog default'
+    );
+    assert.deepEqual(
+      await page.$$eval('#ocu-definition-models option', (options) => options.map((option) => option.value)),
+      ['claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-fable-5-1'],
+      'and the suggestions in the catalog order, the default first'
+    );
+
+    await fill(page, 'ocu-definition-name', NAMES[5]);
+    const save = (await page.$$('.ocu-form-bar-actions button')).at(-1);
+    assert.ok(save, 'the sticky bar carries a primary action');
+    await save.click();
+    await page.waitForFunction(
+      (sentence) => document.querySelector('.ocu-form-bar-status')?.textContent?.includes(sentence) === true,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.formSavedPendingTest
+    );
+
+    const answer = await fetch(`${config.origin}${DEFINITIONS_PATH}`, { headers: { Authorization: authHeader() } });
+    assert.ok(answer.ok, 'the definitions route answers');
+    const body = await answer.json();
+    const listed = (Array.isArray(body.definitions) ? body.definitions : []).find((row) => row?.name === NAMES[5]);
+    assert.ok(listed, `the definition was stored: ${JSON.stringify(body.definitions)}`);
+    const one = await fetch(`${config.origin}${DEFINITIONS_PATH}/${encodeURIComponent(listed.id)}`, {
+      headers: { Authorization: authHeader() },
+    });
+    assert.ok(one.ok, 'the single-definition route answers');
+    const stored = await one.json();
+    assert.equal(stored.model, 'claude-opus-5-5', `and it stores claude-opus-5-5: ${JSON.stringify(stored)}`);
   } finally {
     await context.close();
   }

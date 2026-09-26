@@ -72,11 +72,12 @@ Method OnAfterOneTest() As %Status
 /// <p>Store a definition on the shipped row <var>pKey</var> holding <var>pTemperature</var>, make
 /// one call through the port with the catalog that re-adapts that row to its stub, and answer the
 /// body the stub recorded, parsed, or <code>""</code> when no call was made. With
-/// <var>pWithTools</var> the call advertises one tool.</p>
+/// <var>pWithTools</var> the call advertises one tool. A non-empty <var>pModel</var> is stored in
+/// place of the row's <code>defaultModel</code>.</p>
 /// <p>The call is made only when the switched catalog's row names a class in
 /// <parameter>STUBPACKAGE</parameter>, so a re-adaptation that drifted can never reach a
 /// vendor.</p>
-Method BodyFor(pKey As %String, pTemperature As %String, pWithTools As %Boolean = 0) As %DynamicObject
+Method BodyFor(pKey As %String, pTemperature As %String, pWithTools As %Boolean = 0, pModel As %String = "") As %DynamicObject
 {
     Set tBody = ""
     Try {
@@ -91,7 +92,7 @@ Method BodyFor(pKey As %String, pTemperature As %String, pWithTools As %Boolean 
         Set tDef = ##class(OcuPilot.Kernel.State.Agent).%New()
         Set tDef.Name = $Parameter("OcuPilot.Test.AgentFixture", "PROBEPREFIX") _ "Sampling" _ pKey _ $Increment(^||OcuPilotAdapterSampling)
         Set tDef.Provider = pKey
-        Set tDef.Model = $Select(tRow.defaultModel '= "": tRow.defaultModel, 1: ..#LOCALMODEL)
+        Set tDef.Model = $Select(pModel '= "": pModel, tRow.defaultModel '= "": tRow.defaultModel, 1: ..#LOCALMODEL)
         If +tRow.endpointRequired {
             Set tDef.EndpointUrl = ..#LOCALENDPOINT
             Set tDef.MarkedLocal = 1
@@ -207,6 +208,26 @@ Method TestAnthropicIsSentNoSamplingParameterWhateverTheDefinitionHolds()
         If '$IsObject(tBody) Continue
         For tField = "temperature", "top_p", "top_k" {
             Do $$$AssertEquals(tBody.%GetTypeOf(tField), "unassigned", "anthropic holding '" _ tHeld _ "': no " _ tField _ " is sent: " _ tBody.%ToJSON())
+        }
+    }
+}
+
+/// <p>Story 10.7 -- a definition on <code>claude-opus-5-5</code>, like one on
+/// <code>claude-opus-5</code>, is sent no <code>temperature</code>, <code>top_p</code> or
+/// <code>top_k</code>, whether it holds no temperature or 0.7. Each leg first asserts the body
+/// names the model it was stored with, so every leg is known to have run on that model.</p>
+Method TestClaudeOpus55IsSentNoSamplingParameter()
+{
+    For tModel = "claude-opus-5-5", "claude-opus-5" {
+        For tHeld = "", ..#SETTEMPERATURE {
+            Set tLeg = tModel _ " holding '" _ tHeld _ "'"
+            Set tBody = ..BodyFor(..#ANTHROPICKEY, tHeld, 0, tModel)
+            Do $$$AssertTrue($IsObject(tBody), tLeg _ ": the body was recorded")
+            If '$IsObject(tBody) Continue
+            Do $$$AssertEquals(tBody.%Get("model"), tModel, tLeg _ ": the body names the stored model")
+            For tField = "temperature", "top_p", "top_k" {
+                Do $$$AssertEquals(tBody.%GetTypeOf(tField), "unassigned", tLeg _ ": no " _ tField _ " is sent: " _ tBody.%ToJSON())
+            }
         }
     }
 }

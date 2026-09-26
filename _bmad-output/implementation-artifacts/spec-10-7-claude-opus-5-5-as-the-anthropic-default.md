@@ -2,7 +2,8 @@
 title: 'Story 10.7: Claude Opus 5.5 as the Anthropic default'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'd8aecbd66b61bbac06bc8735b9d202025884cee0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -121,6 +122,19 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-26 — Review pass
+
+- verdicts: 8 findings — high 0, medium 0, low 6, false 2, maybe-false 0
+- findings:
+  - `[low]` `[patch]` AC4 has no `mutation:` line, and the task-8 stubs are read by no component assertion (verification-gap) — added the AC4 line under Verification naming its executable pins and the observed AC1 runs; the stubs stay mirror data, the form's default being pinned by the browser 10.7 leg.
+  - `[low]` `[reject]` The pin census cites `_bmad/custom/epic-dependencies.yaml:135`; the regex hit is `:7` (verification-gap) — true (`git grep -nP`), a keep row either way; the fix is a spec edit, which this pass rejects.
+  - `[false]` `[reject]` `GET /agent/providers` values are pinned at no HTTP test (intent-alignment) — the form fills model and datalist from that route and holds no catalog copy, so the browser 10.7 leg observes the route's values; the suggestion-swap mutation reddened it.
+  - `[low]` `[reject]` The install leg cannot see a step that only reads `Model` or rewrites the same value (intent-alignment) — neither changes a stored model, so no user-visible outcome; guarding it would need new instrumentation.
+  - `[low]` `[reject]` "The Catalog is the only shipped class that spells a model name" is held by a one-time census, not a test (intent-alignment) — pre-existing invariant the diff keeps; a lint is new surface for a theoretical drift.
+  - `[low]` `[reject]` No-sampling is tested on two models, not every model (intent-alignment) — `Anthropic.CallMessages` has no model branch; the matrix names 5.5, and a keyed branch would show in review of that file.
+  - `[low]` `[patch]` Task 8 stubs change and no component assertion reads them (intent-alignment) — grouped with the first row, same root cause and same fix.
+  - `[false]` `[reject]` The install leg's precondition comes from the fixture's literal (intent-alignment) — the leg asserts "the probe stores the former default" first, so a fixture change fails loudly rather than passing.
+
 ## Design Notes
 
 **Governing ADs.**
@@ -212,14 +226,49 @@ deferred: []
 **Pinning mutations (Rule 19).** For each: apply it, recompile (or rebuild and redeploy for the browser), observe red, revert, and confirm `git status --short` and `git diff --stat` are unchanged. Record each result beside its line.
 
 - **AC1, the default.** Set `defaultModel` back to `claude-opus-5` in `Catalog.cls:66` → red: `AgentRules.TestTheShippedProviderRowsArePinned`, `AgentWire.TestASoundCreateIsReturnedByTheListImmediately`, `DefinitionDefaults.TestAnOmittedAnthropicModelIsClaudeOpus55`, and the browser 10.7 leg.
+  - mutation: `defaultModel` `claude-opus-5` → red: AgentRules run 7 (`TestTheShippedProviderRowsArePinned`), AgentWire run 8 (`TestASoundCreateIsReturnedByTheListImmediately`), DefinitionDefaults run 9 (`TestAnOmittedAnthropicModelIsClaudeOpus55`), browser 10.7 leg (model field `claude-opus-5`); reverted byte-identical.
 - **AC1, the order.** Swap the first two suggestions → red: `AgentRules` suggestions, and the browser datalist assertion.
+  - mutation: suggestions `claude-opus-5`,`claude-opus-5-5`,… → red: AgentRules run 10 ("anthropic: the suggestion list…" alone), browser 10.7 leg ("the suggestions in the catalog order"); reverted byte-identical.
 - **AC2, an explicit create.** Drop `If $Get(pPresent(tField)) Continue` in `Definitions.ApplyCatalogDefaults` → red: `TestAnExplicitModelIsKeptThroughACreateAndAnUpdate` (the create answers `claude-opus-5-5`).
+  - mutation: `Continue` line removed → red: DefinitionDefaults run 11, `TestAnExplicitModelIsKeptThroughACreateAndAnUpdate` (create, update, read and stored-model assertions); reverted byte-identical.
 - **AC2, an update.** In `HandleUpdate`, call `..ApplyCatalogDefaults(.tValues, .tPresent)` after `MergeBody` → red: the same method's `PUT` leg.
+  - mutation: `ApplyCatalogDefaults` after `HandleUpdate`'s `MergeBody` → red: DefinitionDefaults run 12, the same method's `PUT`, `GET` and stored-model assertions, the create leg green; reverted byte-identical.
 - **AC2, migrations.** In `Installer.MigrateToVersion1`, set every `anthropic` definition's `Model` to the catalog's `defaultModel` → red: `TestAStoredModelSurvivesAnInstallAndEveryMigration`, the migrations assertion.
+  - mutation: an SQL `UPDATE … SET Model = <row defaultModel> WHERE Provider = 'anthropic'` in `MigrateToVersion1` → red: DefinitionDefaults run 13, "and unchanged by the migrations" alone; reverted byte-identical.
 - **AC2, the install.** Make the same rewrite at a point in `Install` where the install namespace is current, and record where → red: the post-install assertion.
+  - mutation: the same `UPDATE` in `Install` right after `ReadApplicationProvenance` (`Installer.cls:806`, install namespace current) → red: DefinitionDefaults run 14, "unchanged by the install" (and the migrations assertion after it); reverted byte-identical.
 - **AC3.** In `Anthropic.CallMessages`, add `If $Get(pValues("model")) = "claude-opus-5-5" Do tBody.%Set("temperature", 1, "number")` → red: `TestClaudeOpus55IsSentNoSamplingParameter` on the 5-5 legs only. Revert, then `git diff --quiet -- src/OcuPilot/Kernel/Provider/Anthropic.cls`, because that file is contended.
+  - mutation: as written → red: AdapterSampling run 15, `TestClaudeOpus55IsSentNoSamplingParameter` on the two `claude-opus-5-5` legs only (the `claude-opus-5` legs green), plus `TestAnthropicIsSentNoSamplingParameterWhateverTheDefinitionHolds` and `TestEachRowsColumnAgreesWithWhatItsAdapterSends`, which store the row's default; reverted, `git diff --quiet` on `Anthropic.cls` exits 0, package recompiled, AdapterSampling green again.
+- **AC4.** Its executable pins are `AgentRules.cls:150` and `AgentWire.cls:107`, reddened by AC1's default mutation. The README row and the two `PROVIDERS_BODY` stubs are mirror data that no test reads; the form's observable default is the browser 10.7 leg.
+  - mutation: `defaultModel` `claude-opus-5` in `Catalog.cls:66` → red: AgentRules run 7 (`TestTheShippedProviderRowsArePinned`), AgentWire run 8 (`TestASoundCreateIsReturnedByTheListImmediately`); the same applied mutation as AC1's first line, reverted byte-identical.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** The catalog's Anthropic row defaults to `claude-opus-5-5`, first of five suggestions; the pins, README row and component stubs follow; new legs pin the default over HTTP and in the form, a stored model through create, update, install and migrations, and no sampling on 5.5.
+
+**Files.**
+
+- `src/OcuPilot/Kernel/Provider/Catalog.cls` -- the Anthropic row's `defaultModel` and `modelSuggestions`.
+- `src/OcuPilot/Test/AgentRules.cls`, `src/OcuPilot/Test/AgentWire.cls` -- the row pin and the canonical-default pin.
+- `src/OcuPilot/Test/DefinitionDefaults.cls` -- `StoredModel` and three legs (AC1, AC2).
+- `src/OcuPilot/Test/AdapterSampling.cls` -- `BodyFor(..., pModel)` and `TestClaudeOpus55IsSentNoSamplingParameter` (AC3).
+- `ui/browser/definitions.browser-spec.mjs` -- the Story 10.7 form leg.
+- `ui/src/app/app.routes.guard.wire.spec.ts`, `ui/src/app/areas/agent/definition-form.page.spec.ts` -- the `PROVIDERS_BODY` Anthropic stubs.
+- `README.md` -- line 133 only.
+
+**Review.** Two layers (verification-gap, intent-alignment), 8 findings: 1 patch entry (low; the AC4 `mutation:` line added), 5 rejected (see the triage log), 0 deferred. Patched by verdict: high 0, medium 0, low 1. `followup_review_recommended: false`.
+
+**Verification.**
+
+- `check-objectscript.py` 0 problems; `test_check_objectscript.py` 130 OK; `lint-docs.sh` clean.
+- `npm run test:tools` 1426/1426; `npm run test:components` 1377/1377 (106 files); `npm run build` main 1.65 MB raw, bundle unchanged (no client source edited).
+- Browser `definitions.browser-spec.mjs` on `ocupilot-b-ci` after rebuild and redeploy: 9/9.
+- Targeted classes (handoff, one per run): AgentRules 20, AgentWire 17, DefinitionDefaults 5, AdapterSampling 6, ProviderSampling 7, AgentViolation 8 -- 0 failed.
+- Full ObjectScript sweep on `ocupilot-b-ci` (`ci-runner.mjs`, serialized): 286 classes, 2398 methods, 2398 passed, 0 failed; `%UnitTest_Result` latest-run probe agrees (286 / 2398 / 2398 / 0).
+- Smoke `smoke.sh --container ocupilot-b-ci`: executed 49, passed 49, failed 0.
+- Rule 19: seven mutations applied, red observed, reverted byte-identical; `git diff --quiet -- src/OcuPilot/Kernel/Provider/Anthropic.cls` exits 0 and the package was recompiled on the throwaway.
+
+**Residual risk.** The census row for `_bmad/custom/epic-dependencies.yaml` cites `:135`; the hit is `:7` (a keep row either way). The browser spec header still reads "Three claims" above seven items, as before this story.

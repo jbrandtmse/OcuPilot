@@ -147,7 +147,7 @@ Method TestTheShippedProviderRowsArePinned()
     ; Four keys since Story 10.3's Tasks appended the compatible row; the same AC pins its position.
     Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Provider.Catalog).Keys()), "anthropic,openai,gemini,compatible", "the shipped rows, in the order they are declared")
 
-    Do ..AssertRowPinned("anthropic", "Anthropic", "claude-opus-5", "[""claude-opus-5"",""claude-sonnet-5"",""claude-haiku-4-5"",""claude-fable-5-1""]", "https://api.anthropic.com/v1/messages", 0, 32000, 0, "ANTHROPIC_API_KEY", "OcuPilotAnthropic", "sk-ant-", "OcuPilot.Kernel.Provider.Anthropic", 0, "2023-06-01", "")
+    Do ..AssertRowPinned("anthropic", "Anthropic", "claude-opus-5-5", "[""claude-opus-5-5"",""claude-opus-5"",""claude-sonnet-5"",""claude-haiku-4-5"",""claude-fable-5-1""]", "https://api.anthropic.com/v1/messages", 0, 32000, 0, "ANTHROPIC_API_KEY", "OcuPilotAnthropic", "sk-ant-", "OcuPilot.Kernel.Provider.Anthropic", 0, "2023-06-01", "")
     Do ..AssertRowPinned("openai", "OpenAI", "gpt-5.6-terra", "[""gpt-5.6-terra"",""gpt-5.6-sol"",""gpt-5.6-luna""]", "https://api.openai.com/v1/chat/completions", 0, 32000, 1, "OPENAI_API_KEY", "OcuPilotOpenAI", "", "OcuPilot.Kernel.Provider.OpenAI", 0, "", "none")
     Do ..AssertRowPinned("gemini", "Google Gemini", "gemini-3.8-flash", "[""gemini-3.8-flash"",""gemini-3.5-flash"",""gemini-2.5-pro""]", "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", 0, 32000, 1, "GEMINI_API_KEY", "OcuPilotGemini", "", "OcuPilot.Kernel.Provider.Gemini", 0, "", "")
     ; The one shipped row that exercises endpointRequired and allowsLocal, and the only one whose
