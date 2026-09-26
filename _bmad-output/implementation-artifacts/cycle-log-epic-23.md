@@ -42,3 +42,7 @@
 2026-09-26T14:34:50Z	Story 23.1	qa_complete	batch=B4+B8 result=skipped reason=pinning_tests_and_mutations_written_by_implement(Rule19);browser_legs_definitions_9/9_process-control_3/3
 2026-09-26T14:34:50Z	Story 23.1	pushed	batch=B4+B8 head=e026c64c ci=pending run=36248950796
 2026-09-26T14:34:51Z	Story 23.1	stage_spawned	stage=code-review batch=B4+B8 spawn_at=2026-09-26T14:34:51Z model=opus agent_name=23-1-the-range-end-cleanup-code-review-b4b8 cycle_iteration=3
+2026-09-26T14:57:25Z	Story 23.1	cr_complete	batch=B4+B8 spawn_at=2026-09-26T14:34:51Z model=opus resolved=9 wontfix_accepted=3(DW-1700,1702,1703) routed_in_story=1(DW-1701,resolved_by_lead) occurrence=DW-1699 dismissed=17 high=0 med=2 low=12 rows=14 unresolved_high_med=0 sprint=review closing_sections_present=true subagent_tokens=271309
+2026-09-26T14:57:25Z	Story 23.1	ledger_adjudicated	batch=B4+B8 owned=13 resolved=13 reowned=0 terminal=13 slice_range_end_cleanup_after=29
+2026-09-26T14:57:25Z	Story 23.1	smoke_complete	batch=B4+B8 method=browser result=pass iterations=1 defects_caught=0 evidence=definitions.browser-spec_9/9_redeployed;process-control_3/3;a11y-structural-invariants_12/12 model=claude-opus-5-5
+2026-09-26T14:57:25Z	Epic 23	spine_updated	ad=conv(Concurrent_writes) reason=rule5 by=runner story=23-1-the-range-end-cleanup entries=DW-1701 lint=ok(preexisting_low_only)

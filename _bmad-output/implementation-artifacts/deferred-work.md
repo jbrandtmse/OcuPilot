@@ -2850,6 +2850,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T12:21:34Z status=escalated owner=burndown by=cr note=For the SC-4 decision sheet: either the copy stops promising a reload, or the client carries the version it read. Do not patch the copy without the product call - it is EXPERIENCE.md's published sentence.
 - 2026-09-16T12:32:03Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=DECIDED: the CLIENT carries the version it read, and the published sentence stands. A refusal an operator clears by pressing Save again is not a refusal - the handler re-reads the version each request, matches on the second attempt, and completes the very lost update it announced. The screen keeps the RowVersion from the read that populated it and sends it back on save, so a reload is the only thing that produces a matching version. That is a new wire field and it is the price of EXPERIENCE.md's sentence being true. The Conventions row is amended to say so; the copy is NOT weakened to match a weaker behaviour
 - 2026-09-19T18:55:05Z status=routed owner=range-end-cleanup by=lead note=re-owned off 5.3 (Rule 27). It spans Api/Switches.cls (Epic 5's) and Api/Definitions.cls (Epic 10's), so neither runner can fix it whole while the contention stands, and the contention ends before the range end. Non-blocking for the floor: a published sentence that overstates a refusal, shipped since Epic 3, on a path Epic 5 does not take
+- 2026-09-26T14:57:18Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
 
 ### DW-426: HandleTest reads the row version AFTER the stored values it is meant to pin, so a writer landing between the two reads leaves a matching version and a verified row holding values it never tested
 - source: bmad-code-review Story 3.9 (edge-case-hunter) | severity: med | fix-risk: med | footprint: in-epic
@@ -2857,6 +2858,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T12:21:39Z status=routed owner=burndown by=cr note=Fix is to capture the version at the open beside ValuesFromRow and pass it down, matching Switches. In-epic because Epic 3 owns both handlers.
 - 2026-09-16T12:29:17Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=re-owned off burndown at the Epic 3 close. This is optimistic-concurrency residue on OcuPilot's own stores, and 5-3 is the story whose whole subject is that a confirmed write happens once against the state it was minted from
 - 2026-09-19T18:55:05Z status=routed owner=range-end-cleanup by=lead note=re-owned off 5.3 (Rule 27), same reason as DW-425: the read-order defect is identical in Api/Definitions (contended) and Api/Switches (mine), and fixing one half would leave the pair inconsistent. Non-blocking: the window is a concurrent writer between two reads on the agent-configuration screens, not on the write path
+- 2026-09-26T14:57:17Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
 
 ### DW-427: The Test-connection version guard is over-broad on the branch that never writes and absent on the branch that does, so an unreadable version aborts a read-only call with 500 while a row that moves mid-call is recorded undetected
 - source: bmad-code-review Story 3.9 (blind-hunter) | severity: med | fix-risk: med | footprint: in-epic
@@ -2864,6 +2866,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T12:21:39Z status=routed owner=burndown by=cr note=Narrow the read to the branch that uses it, or extend the conflict check to both; today it is inconsistent in opposite directions on the two branches.
 - 2026-09-16T12:29:17Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=re-owned off burndown at the Epic 3 close. This is optimistic-concurrency residue on OcuPilot's own stores, and 5-3 is the story whose whole subject is that a confirmed write happens once against the state it was minted from
 - 2026-09-19T18:55:05Z status=routed owner=range-end-cleanup by=lead note=re-owned off 5.3 (Rule 27), same file pair and same reason as DW-425 and DW-426. Non-blocking: an unreadable version answers 500 on a branch that never writes
+- 2026-09-26T14:57:17Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
 
 ### DW-428: A surviving sibling never inherits the CredentialCreated mark, so an entry OcuPilot created can outlive every definition that ever named it
 - source: bmad-code-review Story 3.9 (edge-case-hunter) | severity: med | fix-risk: low | footprint: in-epic
@@ -3721,6 +3724,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T22:16:24Z status=routed owner=burndown by=harvest note=lead harvest of the 4.12 deferred list
 - 2026-09-19T03:19:55Z status=routed owner=10-1-the-message-and-tool-definition-adapters by=x0 note=Api/Definitions.cls is Epic 10 contended for Epic 5; 10.1 edits it for provider fields
 - 2026-09-19T18:35:55Z status=routed owner=range-end-cleanup by=burndown note=Rule 27 non-blocking: two routes answer 400 where a server-side read fault deserves 500; wrong class, not wrong outcome
+- 2026-09-26T14:57:18Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
 
 ### DW-1166: The bundle gate's slack went from half a kilobyte to about forty, with no stated policy for when it is re-based
 - source: spec-4-12-epic-4-burn-down.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4889,6 +4893,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Story 5.4 unified the refusal into Kernel/Denial.cls for the read, dispatch and port paths; the Definitions and Switches routes still render their own. Location: src/OcuPilot/Api/Definitions.cls
 - 2026-09-20T05:33:29Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): a third sentence saying the same thing, on routes no Epic 5 story takes; Epic 10 has merged so the file is free by the range end
+- 2026-09-26T14:57:18Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
 
 ### DW-1305: A tool that legitimately declares no privilege pairs now has its ledger row withheld from every cross-user reader
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
@@ -5243,6 +5248,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Api/Account.RenderViolations duplicates Api/Definitions.cls:1270 so it can send ACCOUNT.VALIDATION. Both serialize through the one Kernel/AgentRules.ViolationsJson, so AD-12's single writer holds; the fix is an optional pCode parameter on Definitions.cls.
 - 2026-09-20T04:11:11Z status=routed owner=range-end-cleanup by=harvest note=Non-blocking: AD-12's one-writer invariant is not violated, only the code literal is duplicated. Epic 5 has not touched Definitions.cls (checked at d220487..3a2d15f), but the dedupe is not worth a contended-path edit mid-epic.
+- 2026-09-26T14:57:18Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
 
 ### DW-1295: The dialog's empty-field reason reuses the published Required string, whose EXPERIENCE.md row names the OpenAPI viewer and not this dialog
 - source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-epic
@@ -5332,6 +5338,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: It deletes the row then calls ConnectionOutcome, so since DW-362 added the version capture at Api/Definitions.cls:802 it lands on the GuardedVersion-unreadable refusal at :809, not the GuardedSetVerification refusal at :853. Both render 500/INTERNAL and the test asserts only status and code, so it passes either way, and its recorded mutation would not redden it
 - 2026-09-20T01:17:06Z status=routed owner=burndown by=harvest note=Test/AgentConnection.cls is an existing Test class Epic 5 holds; correcting it needs a Clarification
 - 2026-09-20T11:46:00Z status=routed owner=range-end-cleanup by=burndown note=Rule 19 coverage gap on Api/Definitions.cls:853, not an AD invariant; the file and the test are other epics'
+- 2026-09-26T14:57:17Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
 
 ### DW-1287: Api/Definitions.cls names OcuPilot.Kernel.State.Agent by literal ##class throughout, so four of DW-421's error shapes cannot be driven without a state-class seam
 - source: spec-13-2-the-test-suite-grows-in-ci-against-a-stock-image.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -6086,6 +6093,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: process-control.browser-spec.mjs has two tests, both on /ocupilot/os-management/processes; ProcessDetails declares refreshes true and this story adds JobType to its read.fields but it gains no pause leg
 - 2026-09-22T09:03:03Z status=routed owner=burndown by=harvest note=A_SCREEN_THIS_STORY_CHANGED_AND_DECLARES_AUTO-REFRESHING_IS_EXERCISED_FOR_THE_PAUSE_ONLY_GENERICALLY_(task-resume.browser-spec.mjs:483),_never_on_its_own_route._Low_because_the_generic_pin_covers_the_mechanism;_worth_the_line_because_AD-43s_pause_is_the_channel_that_keeps_a_live_diff_from_moving_under_review
 - 2026-09-22T15:30:15Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
+- 2026-09-26T14:57:17Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
 
 ### DW-1472: AC2's broad ownership reading leaves almost nothing proposable on a single-user instance
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: med | footprint: in-story
@@ -6487,6 +6495,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=resolve by letting the gate honour a declared overflow exemption or by moving the hit area inside the panel; baseline keys carry this id
 - 2026-09-24T00:20:24Z by=integrate_forward note=Epic 7 merge adds 6 keys (security/auditing, /system-events, /user-events; 1280+720); one-time extension, same root cause
 - 2026-09-25T01:23:50Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
+- 2026-09-26T14:57:17Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
 
 ### DW-1584: Structural gate baseline: the status bar's connection and stamp segments overflow their group at 720px on every screen (77 baseline keys)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -6495,6 +6504,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-24T00:20:24Z by=integrate_forward note=Epic 7 merge adds 5 keys on the three security/auditing screens at 720; one-time extension, same root cause
 - 2026-09-25T01:23:50Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
 - 2026-09-26T04:25:02Z occurrence=15-10-the-header-logo-on-a-white-tile by=harvest note=stamp_presence_varies_run_to_run_so_1-4_of_these_keys_read_stale_on_an_unchanged_bundle(223/223,219+4stale,222+1stale_on_ocupilot-b-ci);0_fresh
+- 2026-09-26T14:57:17Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
 
 ### DW-1585: Structural gate baseline: command-bar controls overflow the command bar at 720px (refresh action 80px on agent/definitions; sort 30px in CI only)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -6513,6 +6523,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Walk: app-{switches,audit,device-form,role-create-form,user-create-form,wallet-secret-form,task-history,web-app-create-form}-page>input 13px under the 24px floor (EXPERIENCE.md:713) at 1280 and 720; one shared checkbox sizing rule would clear all. Screens of merged Epics 3-8
 - 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=baseline keys carry this id
+- 2026-09-26T14:57:17Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
 ### DW-1497: A screen row action takes no per-target lock, so it and a concurrent confirm of a live proposal against the same target are ordered only by the vendor endpoint
 - source: _bmad-output/implementation-artifacts/spec-7-1-enable-disable-and-delete-a-web-application.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: OcuPilot.Api.ScreenAction gates and writes with no claim around it while AD-34's lock is the proposal store's; confirm a proposal on /csp/x while pressing its row's Disable and the later write wins. Bounded: both callers run every gate and each sends a complete body over its own fresh read
@@ -6817,6 +6828,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: structural-walk.mjs:247 filters querySelectorAll('*') by instanceof HTMLElement; 15.7's tile-svg width:40px mutation left the gate green while rail-icons.browser-spec (a) went red, so icon containment rests on that spec
 - 2026-09-24T01:08:26Z status=routed owner=burndown by=harvest note=in-epic: 15.6 owns the walk and has passed cr_complete
 - 2026-09-24T01:36:33Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: not floor-blocking (rail-icons.browser-spec pins icon containment meanwhile); the walk should also visit SVG geometry
+- 2026-09-26T14:57:17Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=batches B4+B8 commit e026c64c, review patches f9dc5551
 
 ### DW-1589: Two stale DW-1337 baseline entries on agent/definitions at 720 (command-bar refresh action and sort span) are reported on every gate run
 - source: spec-15-7-the-rail-s-icons.md | severity: low | fix-risk: low | footprint: in-epic
@@ -7382,6 +7394,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: ARCHITECTURE-SPINE.md Consistency Conventions row vs ui/src/app/areas/agent/definition-form.store.ts retakeVersion; the re-take is a re-read that adopts the version only when the loaded record still holds
 - 2026-09-26T14:54:59Z status=open owner=23-1-the-range-end-cleanup by=cr note=Batch L: lead amends the Concurrent writes row (Rule 20) to name the conditional re-take
+- 2026-09-26T14:57:18Z status=resolved-by:23-1-the-range-end-cleanup owner=23-1-the-range-end-cleanup by=adjudication note=spine Concurrent-writes row amended f9dc5551 (Rule 20)
 
 ### DW-1702: DW-1587's 24px height (block-size, min-block-size) is observed by no test: the walk's min-width invariant measures width only
 - source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: in-epic
