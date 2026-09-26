@@ -754,6 +754,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner triage, 2026-09-25 (model), high priority.** Anthropic has released Claude Opus 5.5, and the public demo already runs on it, verified by a connection test and a tool-calling turn. Story 10.7 makes `claude-opus-5-5` the default model of a new Anthropic definition, so a judge's fresh install starts on it. It runs on the first slot to free, and the submission cut waits for it.
 
+**Owner triage, 2026-09-26 (criteria screens), high priority.** The audit database and all-task history open on an empty criteria form and read nothing until Search, so when the agent opens one and describes rows, the person sees none. Story 11.11 gives both screens a default search on open and lets the agent open them with the criteria its own read used. It runs alone on slot A and ships in release 1.0.1 before the contest deadline, built as release 1.0.0 plus this story alone.
+
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
 the archive is proven by a dry-run build and a local install, and a third criterion forbids touching the
@@ -5342,6 +5344,28 @@ So that verifying the agent's answer costs one click rather than a search.
 - **Given** a chip's target no longer exists
 - **When** it is clicked
 - **Then** it reports that the row is no longer present rather than failing the screen - stored references are weak by contract.
+
+### Story 11.11: The screen shows what the agent is talking about
+
+**Owner triage, 2026-09-26, high priority.** Runs alone on slot A and ships in release 1.0.1.
+
+As a person working with the agent,
+I want the screen to show the rows the agent is describing,
+So that I can see and check what it says instead of taking its word for it.
+
+**Acceptance Criteria:**
+
+- **Given** the audit database or the all-task history, the two screens that today open on an empty criteria form
+- **When** a person opens one
+- **Then** it runs a default search at once - the audit database over the last 24 hours, the task history over the last 7 days - newest first and within the screen's row limit, with the criteria form showing those values and Search still there to narrow them.
+
+- **Given** a turn in which the agent opens one of these screens
+- **When** it navigates
+- **Then** it passes the criteria its own read used, the screen runs that search, and the rows the agent describes are the rows on screen - for example "Which changes did the agent make?" opens the audit database filtered to agent-marked events.
+
+- **Given** EXPERIENCE.md's "list (server criteria)" archetype, whose cold-load state is "criteria form first"
+- **When** this story completes
+- **Then** the archetype states the default search at origin, and browser specs pin that both screens show rows on open and that an agent navigation carrying criteria shows the matching rows.
 
 ## Epic 12: The OAuth 2.0 editors and the security-area tests
 
