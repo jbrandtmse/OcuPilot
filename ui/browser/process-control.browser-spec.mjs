@@ -235,7 +235,7 @@ async function showProbeRow(page) {
   });
 }
 
-/** Wait until Process details shows the probe process's own fields. */
+/** Wait until Process details draws its fields; the route it was opened on names the probe's pid. */
 async function showProbeDetails(page) {
   await page.waitForSelector('.ocu-details-fields', { timeout: config.navigationTimeoutMs });
 }

@@ -6462,8 +6462,9 @@ app-data-table .ocu-data-table-header-cell {
 }
 
 // Every flag and choice is a 24px target (EXPERIENCE.md "Target sizes."): the checkbox or radio
-// itself and the label that wraps it, on every form and filter that draws one. The box never
-// shrinks, so a long label beside it wraps instead of narrowing the target.
+// itself and the label that wraps it, wherever a form or filter draws one inside
+// `.ocu-field-checkbox` or `.ocu-criteria-marker`. The box never shrinks, so a long label beside it
+// wraps instead of narrowing the target.
 .ocu-field-checkbox,
 .ocu-criteria-marker {
   min-block-size: var(--ocu-space-6);

@@ -184,10 +184,13 @@ Method TestReadUpdateSetDefaultAndDeleteOverTheWire()
 
 /// <p>An update carrying the version the screen read is refused <code>STATE.CONFLICT</code> once
 /// another writer has moved the row, and pressing Save again with the same version is refused
-/// again; a read hands back the current version, and an update carrying it is taken. A body with
-/// no <code>rowVersion</code> saves as it always has.</p>
+/// again; a read hands back the current version, and an update carrying it is taken, as is the next
+/// one carrying the version that answer carried. A body with no <code>rowVersion</code>, or one
+/// that is not a JSON number, saves as it always has.</p>
 /// <p>Mutation: have <method>OcuPilot.Api.Definitions.HandleUpdate</method> ignore the body's
-/// <code>rowVersion</code> -- the two stale updates answer 200 and this goes red.</p>
+/// <code>rowVersion</code> -- the two stale updates answer 200 and this goes red. Delete the JSON
+/// type check in <method>OcuPilot.Api.Definitions.BodyRowVersion</method> -- the quoted
+/// <code>"0"</code> is read as version 0 and refused, and this goes red.</p>
 Method TestAnUpdateCarryingAStaleVersionIsRefusedUntilReloaded()
 {
     Set tId = ..CreateDefinition("StaleVersion")
@@ -214,6 +217,12 @@ Method TestAnUpdateCarryingAStaleVersionIsRefusedUntilReloaded()
 
     Do ..Call("PUT", "/" _ tId, "{""model"":""claude-reloaded-5"",""rowVersion"":" _ tNow.rowVersion _ "}", .tStatus, .tBody, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "an update carrying the reloaded version is taken: " _ tBody)
+    Set tAnswered = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
+    Do ..Call("PUT", "/" _ tId, "{""model"":""claude-answered-5"",""rowVersion"":" _ tAnswered _ "}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "and so is the next, carrying the version that answer carried: " _ tBody)
+
+    Do ..Call("PUT", "/" _ tId, "{""model"":""claude-typed-5"",""rowVersion"":""0""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "a rowVersion that is not a JSON number is ignored, and the update saves against the version it read: " _ tBody)
 }
 
 /// <p>An id no definition holds is a named 404 on every route that takes one -- never a 500, and

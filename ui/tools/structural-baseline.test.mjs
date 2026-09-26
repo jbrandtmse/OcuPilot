@@ -106,8 +106,15 @@ test('every owner-reported finding is recorded with what the walk found', () => 
 });
 
 test('the baseline holds no entry for a finding the component layer or the walk has since fixed', () => {
+  // Matched by shape as well as by ledger id, because a regenerated baseline writes `dw: null`:
+  // the resize handle past its panel, the status bar's right group past the bar, and a bare input
+  // under the 24px floor.
   const fixed = ['DW-1583', 'DW-1584', 'DW-1587'];
-  const left = baseline.entries.filter((held) => fixed.includes(held.dw)).map((held) => held.key);
+  const fixedShape = (held) =>
+    (held.invariant === 'overflow' && held.element.includes('ocu-panel-resize-handle')) ||
+    (held.invariant === 'overflow' && /ocu-status-bar-(connection|stamp)/.test(held.element)) ||
+    (held.invariant === 'min-width' && /^app-[a-z0-9-]+>input$/.test(held.element));
+  const left = baseline.entries.filter((held) => fixed.includes(held.dw) || fixedShape(held)).map((held) => held.key);
   assert.deepEqual(left, []);
 });
 

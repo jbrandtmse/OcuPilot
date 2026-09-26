@@ -20,12 +20,12 @@
     {
       "tag": "DW-1336",
       "routedTo": "resolved by 5-14",
-      "finding": "Resolved by Story 5.14. At 1280 px the walk records no min-width or overflow entry for the composer or ocu-panel-send (its 72px floor is read from --ocu-panel-send-width); the only app-panel entries at 1280 are the resize handle, 4px past aside.ocu-panel by its declared left: -4px hit area."
+      "finding": "Resolved by Story 5.14. At 1280 px the walk records no min-width or overflow entry for the composer or ocu-panel-send (its 72px floor is read from --ocu-panel-send-width); its only app-panel entries at 1280 were the resize handle, 4px past aside.ocu-panel by its declared left: -4px hit area, which the walk now allows as that hit area."
     },
     {
       "tag": "DW-1388",
       "diagnosed": "agent panel, not Home",
-      "finding": "Not reproduced on this tree, so no entry carries the tag. Measured on the fresh slot-B throwaway: at 720 px, opened directly and after a 1440 to 720 resize, document scrollWidth equals clientWidth (720), app-panel spans 400 to 720 and .ocu-shell-content 48 to 400. The walk finds no page-level horizontal scroll at 720; its only agent-panel entry at 720 is the resize handle, 4px past aside.ocu-panel, which it also finds at 1280."
+      "finding": "Not reproduced on this tree, so no entry carries the tag. Measured on the fresh slot-B throwaway: at 720 px, opened directly and after a 1440 to 720 resize, document scrollWidth equals clientWidth (720), app-panel spans 400 to 720 and .ocu-shell-content 48 to 400. The walk finds no page-level horizontal scroll at 720; its only agent-panel entry at 720 was the resize handle, 4px past aside.ocu-panel, as at 1280, which the walk now allows as the handle's hit area."
     }
   ]
 }

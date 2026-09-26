@@ -298,6 +298,43 @@ Rejected:
 - `browserConfig` does not refuse a live origin: low — DW-1015's task is the container name; widening it is outside the task.
 - `smoke.sh`'s own FAILED line now repeats the class's, and PASSED names no pending checks: low — both lines are true; the spec asks for skipped only.
 
+### Review Findings (Batches B4+B8, code review 2026-09-26)
+
+- [x] [Review][Patch] A stored key's disable was never taken into the screen: `retakeVersion` could adopt a version over another administrator's disable (the store leaves `enabled` false either way) and the Save re-enabled the definition from the unedited buffer; a second Test connection after a key store skipped its re-take and the Save was refused 409 over the screen's own writes. `absorbKeyStore` now marks the loaded record, and an unedited `enabled`, disabled after the store, and `retakeVersion` compares against the loaded record alone [ui/src/app/areas/agent/definition-form.store.ts:778]
+- [x] [Review][Patch] No real-runtime test sent back the version a 200 answered, which is what both stores do on the next Save; both stale-version wire tests now take a second PUT carrying it [src/OcuPilot/Test/AgentWire.cls:215, src/OcuPilot/Test/SwitchesWire.cls:155]
+- [x] [Review][Patch] `BodyRowVersion`'s rule that a non-number `rowVersion` is ignored had no test; `AgentWire` now PUTs a quoted `"0"` and expects 200 [src/OcuPilot/Test/AgentWire.cls:221]
+- [x] [Review][Patch] The fixed-finding baseline test matched only `dw`, which a regenerated baseline writes as null; it now also matches the three findings' shapes [ui/tools/structural-baseline.test.mjs:106]
+- [x] [Review][Patch] The DW-1336 and DW-1388 `ownerReported` findings still said the walk records the resize handle, which the allowance now suppresses [ui/browser/structural-baseline.json:23]
+- [x] [Review][Patch] `showProbeDetails` said it waits for the probe's own fields; it waits for any details fields on the pid's route [ui/browser/process-control.browser-spec.mjs:238]
+- [x] [Review][Patch] `RenderBadBody`'s doc opened with an unconditional 400 [src/OcuPilot/Api/Definitions.cls:1347]
+- [x] [Review][Patch] `DefinitionsFaults`' header said the 400 is driven on the switch routes too; only the read fault is [src/OcuPilot/Test/DefinitionsFaults.cls:8]
+- [x] [Review][Patch] The appended checkbox rule's comment claimed every form and filter; it covers the two wrapper classes [ui/src/styles/_components.scss:6464]
+- [x] [Review][Defer] Switches refuses a save when only `WritesMarked` moved, which the Save never writes; written only when auditing or the marker event flips (`RecordMarking`), so rare, and one reload clears it [src/OcuPilot/Api/Switches.cls:156] — deferred: DW-1700, wontfix-accepted
+- [x] [Review][Defer] The spine's Concurrent writes row says only a reload produces a matching version; the conditional re-take is a second way [ARCHITECTURE-SPINE.md, Consistency Conventions] — deferred: DW-1701, open, owner this story, Batch L
+- [x] [Review][Defer] DW-1587's 24px height is observed by no test; the walk measures width [ui/browser/structural-walk.mjs:268] — deferred: DW-1702, wontfix-accepted
+- [x] [Review][Defer] The SQL audit dialog's grid checkboxes draw at 13px, outside both wrapper classes [ui/src/app/areas/security/sql-audit-dialog.ts:122] — deferred: DW-1703, wontfix-accepted
+- [x] [Review][Defer] `Account.RenderBodyRefusal` answers 422 for a read or decode fault, DW-1165's defect at a seventh site [src/OcuPilot/Api/Account.cls:57] — deferred: DW-1699 (occurrence), Batch B6
+
+Rejected:
+
+- A string or `null` `rowVersion` is ignored and `3.5` is refused as stale: low — the documented contract; both stores send only numbers.
+- `ConnectionOutcome`'s missing-version 500 says "could not be read", and that arm is unreachable from `HandleTest`: low — the task defines the guard for direct callers (rejected at the implement review too).
+- `AgentConnectionRoles` was edited but not re-run: false — green on `ocupilot-b-ci` (run 81); `OpenDefinition` does reach `GuardedExistsId` before the call.
+- `Account` delegating to `Definitions.RenderViolations`: spec-directed (DW-1294).
+- `Dispatch.InvokeHandlerWithRequest` duplicates `InvokeHandler`: low — a test helper the task asks for as a variant.
+- `Switches.Projection` reads a missing version as 0: low — both callers set it.
+- The status bar's left group is clipped with no title: spec-directed (Judge-visible changes, DW-1584).
+- The status-bar rules sit at the file's end, and the per-screen 24px rules stay: the shared-append constraint.
+- Three test classes grew past ~500 lines: low — splitting is more than a correction; in the residual risk.
+- The second writer is the same session, and a newer-than-stored version is untested: low — the refusal is the same equality.
+- The switch insert path ignores the expected version: theoretical — install writes the row on every instance.
+- A key store that answers 500 after writing leaves the version stale: low — a fault path; a reload recovers.
+- The overflow allowance ignores which side overflows: low — the handle is offset on the left only.
+- The pre-call version re-read is gone: low — the window from the handler's own open to the call is in-request, as the old one was.
+- The switches GET's read order has no pinning test: low — needs a seam in a shipped handler, like `HandleTest`'s capture point.
+- DW-1584's `overflow-x: clip` has no mutation line: Rule 19 asks one per AC, and DW-1584's is recorded.
+- `definition-actions.spec.ts`'s 403 fixture reason is not the server's sentence: false — the spec asserts the store echoes whatever the envelope says.
+
 ## Spec Change Log
 
 - 2026-09-26, lead at spec validation: (1) an already-fixed entry closes `resolved-by:23-1-the-range-end-cleanup` with the earlier commit as evidence, not `dropped`, which the grammar keeps for invalid or duplicate entries. (2) DW-1650 moves from `burndown` to B6 + L: its ledger trailer records the owner's decision at the 10.6 merge gate, so only the spine's Deferred row was stale. (3) DW-1185, DW-1434, DW-1435 and DW-1478 are escalated to the owner rather than applied: they edit instruction files (`CLAUDE.md`, `.claude/rules/`, `_bmad/custom/skill-rules.md`), which no agent may change on another agent's say-so; the drafted text stays in Batch L for the owner. (4) DW-1338 and DW-1413 are applied only outside other epics' story blocks; the story-block lines (Stories 1.9, 4.3, 13.3) are escalated for the orchestrator. (5) A batch's commit and the lead's review/bookkeeping commit are pushed together, never with `[skip ci]`; the lead's Batch L commit rides with B1's push.
@@ -407,6 +444,7 @@ Entries whose fix would contradict an AD are dispositioned `by-design` and name 
 - DW-1662 (B7): a principal holding only the authorization-server tab's two pairs can create a configuration with the default roles the editor pre-ticks.
 - DW-1436 (B7): a Users proposal card shows `EscalationRoles` as "2 values" rather than a mask.
 - DW-1001 and DW-1013 (B7): the agent asks for an OpenAPI document or a wallet collection by one exact name on the first call. Asked about a service with no address restriction, it says any address may connect.
+- DW-425 (B8, as reviewed): Switches refuses a save when its row moved while the screen was open, including the auditing flag another screen writes (a rare 409 one reload clears, DW-1700). On Agent definitions, after a key store the Enabled box shows unticked, matching the disable the store performs.
 - DW-425 (B8): after a stale-save refusal on Agent definitions or Switches, pressing Save again is refused again until the page is reloaded, as the published sentence already promises.
 
 ### Document corrections at origin
@@ -826,6 +864,8 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Tests and probe
 - Every mutated file was restored from a copy and `cmp`-checked byte-identical; `git status --short` and `git diff --stat` matched before and after.
 - Review (2026-09-26): no template holding `.ocu-field-checkbox` or `.ocu-criteria-marker` contains either `appearance: none` class (`.ocu-context-chip-switch`, `.ocu-proposal-card-disclosure`). The Process details leg now waits after cancel for the chip to read the running form ("every <n> s"), not merely to stop reading paused; `process-control.browser-spec.mjs` 3/3 on the redeployed bundle.
 
+- Code review (2026-09-26): mutation: a baseline entry with `dw: null` in each fixed shape (status-bar connection overflow, `app-audit-page>input` min-width, resize-handle overflow), one at a time → "the baseline holds no entry for a finding ... since fixed" red each time; restored, `cmp` byte-identical. `npm run test:tools` 1475/1475.
+
 ### Batch B5
 
 - `cd ui && npm run test:tools && npm run test:components` (loop). This covers `panel-layout`, `about` and `design-tokens`, plus the `rail`, `recents-recorder`, `locator-bar`, `app` and `stale-bundle-notice` specs. Expected: green.
@@ -898,6 +938,8 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Tests and probe
 - Every mutated file was restored from a copy and `cmp`-checked byte-identical, the tree reloaded, and the six mutated classes re-run green (runs 65-70).
 - Review patches (2026-09-26): the read-fault leg covers all six `ReadRequestBody` sites (the three id routes on a stored definition). mutation: `.tStage` dropped at `HandleUpdate`, `HandleStoreCredential`, `HandleTest` and `HandleHoldCreate` → the leg red on those four routes alone, each answering 400 (run 74); reverted, 3/3 (run 73's code). mutation (DW-1286): the pre-call `GuardedVersion` refusal restored in `ConnectionOutcome` → `TestTheVerificationWriteFailingAnswersFiveHundredAndNoAnswerBody` red on exactly the two new assertions, provider calls and the write's reason (run 75); reverted, 20/20 (run 76).
 - mutation (client, review): the re-take dropped from the refused-test path → "after a key store and a refused Test connection" red; `enabled` expected as loaded after a key store → the same test red; `enabled` skipped in the comparison → the `run({ enabled: true })` leg of "after this screen's own Test connection" red; each reverted, `cmp` byte-identical, 55/55.
+
+- Code review (2026-09-26, `ocupilot-b-ci`, `LoadDir` 0 errors): `AgentWire` 18/18 (run 77), `SwitchesWire` 22/22 (78), `AgentConnectionRoles` 1/1 (81). mutation: `BodyRowVersion`'s type check deleted, and `HandleUpdate` answering its row one version back → `AgentWire.TestAnUpdateCarryingAStaleVersionIsRefusedUntilReloaded` red on the quoted-`"0"` leg and the answered-version leg (run 79); `Switches.HandleUpdate` answering the version read before its save → `SwitchesWire.TestASaveCarryingAStaleVersionIsRefusedUntilReloaded` red on the answered-version leg (run 80); restored, `cmp` byte-identical, recompiled. mutation (client): `absorbKeyStore`'s buffer line dropped → "a key store's disable is taken into the screen" red (`enabled: true` sent) and the refused-test spec red; its loaded-record line dropped → both red on the version (3 sent); restored, 56/56. `npm run test:components` 1456/1456; bundle rebuilt (initial total 1.84 MB), copied, `Installer.Install("")` re-run, `definitions.browser-spec.mjs` 9/9. The stylesheet change is a comment only.
 
 ### Once for the whole story
 

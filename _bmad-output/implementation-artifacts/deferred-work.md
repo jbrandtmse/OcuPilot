@@ -7370,3 +7370,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Context.cls:50 passes only tReadSC; the six sites DW-1165 fixed now pass tStage and answer 500 for read/decode
 - 2026-09-26T14:34:38Z status=open owner=23-1-the-range-end-cleanup by=harvest note=fix in Batch B6: one argument plus a DefinitionsFaults case
+- 2026-09-26T14:54:59Z occurrence=23-1-the-range-end-cleanup
+- 2026-09-26T14:54:59Z status=open owner=23-1-the-range-end-cleanup by=cr note=also Api/Account.cls:57 RenderBodyRefusal answers 422 for a read or decode fault; fix both in B6
+
+### DW-1700: Switches refuses a save as stale when only the auditing writes-marked flag moved on its row, a field the Save never writes
+- source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Kernel.Audit.Event.RecordMarking writes the switch row when auditing or the marker event flips (auditing screen, a confirmed auditing tool, install); SetGuarded rewrites the flag it read, so no update is lost
+- 2026-09-26T14:54:59Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=cr note=rare, one reload recovers; narrowing needs WritesMarked on its own row; reopen_if=an operator reports a Switches 409 with no other admin
+
+### DW-1701: The spine's Concurrent writes row says only a reload produces a matching version; DefinitionForm.retakeVersion also re-takes one after the screen's own key store or Test connection when no writable field moved
+- source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ARCHITECTURE-SPINE.md Consistency Conventions row vs ui/src/app/areas/agent/definition-form.store.ts retakeVersion; the re-take is a re-read that adopts the version only when the loaded record still holds
+- 2026-09-26T14:54:59Z status=open owner=23-1-the-range-end-cleanup by=cr note=Batch L: lead amends the Concurrent writes row (Rule 20) to name the conditional re-take
+
+### DW-1702: DW-1587's 24px height (block-size, min-block-size) is observed by no test: the walk's min-width invariant measures width only
+- source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: structural-walk.mjs min-width reads getBoundingClientRect().width; deleting block-size on the appended checkbox rule leaves every gate green
+- 2026-09-26T14:54:59Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=cr note=width is pinned; reopen_if=a checkbox inside .ocu-field-checkbox measures under 24px tall in a browser check
+
+### DW-1703: The SQL audit dialog's grid checkboxes sit in bare td cells, outside .ocu-field-checkbox and .ocu-criteria-marker, and draw at the native 13px
+- source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/src/app/areas/security/sql-audit-dialog.ts:122; no size rule matches; the structural walk does not open the dialog
+- 2026-09-26T14:54:59Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=cr note=outside DW-1587's eight screens; reopen_if=the walk or a judge measures a grid checkbox under 24px

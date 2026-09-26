@@ -125,8 +125,9 @@ Method TestTheSwitchesUpdateWritesAndAnswersTheStoredTruth()
 
 /// <p>A save carrying the version the screen read is refused <code>STATE.CONFLICT</code> once
 /// another writer has moved the row, and pressing Save again with the same version is refused
-/// again; a read hands back the current version, and a save carrying it is taken. A body with no
-/// <code>rowVersion</code> saves as it always has.</p>
+/// again; a read hands back the current version, and a save carrying it is taken, as is the next
+/// one carrying the version that answer carried. A body with no <code>rowVersion</code> saves as it
+/// always has.</p>
 /// <p>Mutation: have <method>OcuPilot.Api.Switches.HandleUpdate</method> ignore the body's
 /// <code>rowVersion</code> -- the two stale saves answer 200 and this goes red.</p>
 Method TestASaveCarryingAStaleVersionIsRefusedUntilReloaded()
@@ -154,6 +155,9 @@ Method TestASaveCarryingAStaleVersionIsRefusedUntilReloaded()
     Set tReloaded = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
     Do ..Call("PUT", "/agent/switches", "{""killSwitchReason"":""after reload"",""rowVersion"":" _ tReloaded _ "}", .tStatus, .tBody, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "a save carrying the reloaded version is taken: " _ tBody)
+    Set tAnswered = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
+    Do ..Call("PUT", "/agent/switches", "{""killSwitchReason"":""answered"",""rowVersion"":" _ tAnswered _ "}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "and so is the next, carrying the version that answer carried: " _ tBody)
 }
 
 /// <p><b>A flag sent as anything but a JSON boolean, and a reason sent as anything but a JSON

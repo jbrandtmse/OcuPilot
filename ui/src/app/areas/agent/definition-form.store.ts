@@ -186,7 +186,8 @@ function optionalNumberAt(source: unknown, key: string): number | null {
  * `rowVersion`. A save refused as stale leaves it as it was, so pressing Save again is refused
  * again; only a reload takes a version that matches. This screen's own key store and Test
  * connection write the row without projecting it, so the version is re-taken after them when
- * nothing else about the row moved (`retakeVersion`).
+ * nothing else about the row moved (`retakeVersion`), and the key store's own disable is taken into
+ * the screen (`absorbKeyStore`).
  *
  * Framework-only in its injection, like `ErrorLogDrill`: the API service is resolved on the first
  * call rather than in the constructor.
@@ -715,7 +716,6 @@ export class DefinitionForm {
     }
 
     // Env mode stores no key: the operator sets the variable on the host (FR-26).
-    let keyStored = false;
     if (this.keyValue !== '' && !this.envMode()) {
       const sentToStore = this.snapshotValues();
       const stored = await this.post(
@@ -729,7 +729,7 @@ export class DefinitionForm {
       }
       // Write-only: the field is cleared the moment the instance has it (DW-340).
       this.keyValue = '';
-      keyStored = true;
+      this.absorbKeyStore();
     }
 
     const sentToTest = this.snapshotValues();
@@ -737,7 +737,7 @@ export class DefinitionForm {
     if (generation !== this.generation) return false;
     if (tested.kind !== 'ok') {
       this.absorbTestRefusal(tested, sentToTest);
-      await this.retakeVersion(generation, keyStored);
+      await this.retakeVersion(generation);
       return finish(false);
     }
     this.testReply = textAt(tested.body, 'reply');
@@ -747,7 +747,7 @@ export class DefinitionForm {
     // the operator's work under them and leave the dirty flag standing over changes that are no
     // longer on screen.
     if (!this.formDirty.dirty()) await this.reload();
-    else await this.retakeVersion(generation, keyStored);
+    else await this.retakeVersion(generation);
     return finish(true);
   }
 
@@ -771,11 +771,10 @@ export class DefinitionForm {
    * version, leaving the edit buffer alone. Those writes move the verification flag and `enabled`
    * and answer no projection, so without this the next Save would be refused as stale over a row
    * only this screen had written. The version is taken only when every writable field reads what
-   * these writes leave: what this screen loaded, except `enabled`, which reads false after a key
-   * store (`keyStored`) because the store disables the definition. A row somebody else edited
-   * keeps the version this screen read, and its Save is refused.
+   * the loaded record says, which after a key store includes its disable (`absorbKeyStore`). A row
+   * somebody else edited keeps the version this screen read, and its Save is refused.
    */
-  private async retakeVersion(generation: number, keyStored: boolean): Promise<void> {
+  private async retakeVersion(generation: number): Promise<void> {
     if (this.idValue === '' || this.loadedRecord === null) return;
     const loaded = this.loadedRecord;
     const result = await this.api().requestJson<unknown>(
@@ -784,11 +783,23 @@ export class DefinitionForm {
     if (generation !== this.generation || result.kind !== 'ok') return;
     const record = result.body !== null && typeof result.body === 'object' ? (result.body as Record<string, unknown>) : {};
     for (const field of WRITABLE_FIELDS) {
-      const expected = field === 'enabled' && keyStored ? false : loaded[field];
-      if (record[field] !== expected) return;
+      if (record[field] !== loaded[field]) return;
     }
     const version = record['rowVersion'];
     if (typeof version === 'number') this.rowVersionValue = version;
+  }
+
+  /**
+   * Take a stored key's own write into the screen. The credential route disables the definition,
+   * so it must pass Test connection again, and answers no projection. From here the loaded record
+   * reads it disabled, and so does an `enabled` the operator had not changed: a Save then leaves
+   * the definition disabled, as the stored row is, rather than enabling it over that write or over
+   * anybody else's disable the comparison could not tell apart from it.
+   */
+  private absorbKeyStore(): void {
+    if (this.loadedRecord === null) return;
+    if (this.buffer['enabled'] === flagAt(this.loadedRecord, 'enabled')) this.buffer = { ...this.buffer, enabled: false };
+    this.loadedRecord = { ...this.loadedRecord, enabled: false };
   }
 
   private api(): ApiService {

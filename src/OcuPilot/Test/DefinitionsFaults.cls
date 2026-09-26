@@ -6,7 +6,7 @@
 /// makes no provider call at all. The same call is driven once with the version first, where it
 /// reaches the transport and consumes a queued answer, so the zero read afterwards is a
 /// measurement rather than a counter that was never live. The third answers 500 for a read fault
-/// and 400 for a malformed document, on the definition and switch routes alike.</p>
+/// on every definition and switch route that reads a body, and 400 for a malformed document.</p>
 /// <p>The handler's remaining error shapes name <class>OcuPilot.Kernel.State.Agent</class> by
 /// literal <code>##class</code> and are unreachable without a state-class seam; they are recorded
 /// in the ledger rather than worked around here.</p>

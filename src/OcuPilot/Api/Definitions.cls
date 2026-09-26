@@ -1344,12 +1344,13 @@ ClassMethod RenderNotFound(pId As %String) As %Status
     Quit ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, "No agent definition with that identifier exists on this instance", ##class(OcuPilot.Api.Error).#AGENTNOTFOUND)
 }
 
-/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, carrying
-/// <parameter>OcuPilot.Api.Error.REASONAGENTBADBODY</parameter> alone. <var>pStatus</var>'s own
-/// text is vendor-shaped -- it names internal classes and occasionally a path -- so it reaches
-/// <method>OcuPilot.Kernel.Fault.LogRaw</method> and never the wire (AD-39). That seam, rather
-/// than a log call of its own, is what carries the code the caller was given alongside the raw
-/// text, so the log line and the response pair up.</p>
+/// <p>Refuse a body the handler cannot use: 400 and
+/// <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, carrying
+/// <parameter>OcuPilot.Api.Error.REASONAGENTBADBODY</parameter> alone, except for a server-side
+/// fault (below). <var>pStatus</var>'s own text is vendor-shaped -- it names internal classes and
+/// occasionally a path -- so it reaches <method>OcuPilot.Kernel.Fault.LogRaw</method> and never
+/// the wire (AD-39). That seam, rather than a log call of its own, is what carries the code the
+/// caller was given alongside the raw text, so the 400's log line and response pair up.</p>
 /// <p><var>pStage</var> is the stage <method>OcuPilot.Kernel.Utils.ReadRequestBody</method>
 /// reported. A <code>read</code> or <code>decode</code> fault is the server's, not the client's,
 /// and answers 500 <code>INTERNAL</code> instead; a <code>parse</code> fault, a body that is not

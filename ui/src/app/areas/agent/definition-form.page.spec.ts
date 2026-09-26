@@ -1034,8 +1034,8 @@ describe('the Definition form', () => {
 
   it('DW-425: after a key store and a refused Test connection over unsaved edits, the version is re-taken when only the store moved the row', async () => {
     // Mutation (Rule 19): drop the re-take on the refused path of `testConnection` -> the first
-    // leg goes red, sending the version from before the key store; expect the loaded `enabled`
-    // after a key store in `retakeVersion` -> the first leg goes red as well.
+    // leg goes red, sending the version from before the key store; leave the loaded `enabled` as
+    // it was in `absorbKeyStore` -> the first leg goes red as well.
     const run = async (afterStore: Record<string, unknown>) => {
       let stored = false;
       const answer: Answer = (path, init) => {
@@ -1064,10 +1064,53 @@ describe('the Definition form', () => {
       await settle(fixture);
       expect(calls.filter((call) => call.path.endsWith('/credential')).length).toBe(1);
       const put = JSON.parse(calls.filter((call) => call.method === 'PUT').at(-1)?.body ?? '{}');
-      return { version: put['rowVersion'], name: put['name'] };
+      return { version: put['rowVersion'], name: put['name'], enabled: put['enabled'] };
     };
-    expect(await run({})).toEqual({ version: 6, name: 'Claude edited' });
-    expect(await run({ model: 'claude-other-5' })).toEqual({ version: 3, name: 'Claude edited' });
+    expect(await run({})).toEqual({ version: 6, name: 'Claude edited', enabled: false });
+    expect(await run({ model: 'claude-other-5' })).toEqual({ version: 3, name: 'Claude edited', enabled: false });
+  });
+
+  it("DW-425: a key store's disable is taken into the screen, so a Save after it never re-enables the definition, and every later Test connection re-takes the version", async () => {
+    // Mutation (Rule 19): drop the buffer half of `absorbKeyStore` -> the Save sends `enabled: true`
+    // over the stored row's disable (and over anybody else's); drop the loaded-record half -> both
+    // re-takes are skipped and the Save sends version 3, which the row has moved past.
+    let stored = false;
+    let tests = 0;
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (path.endsWith('/credential')) {
+        stored = true;
+        return ok({ stored: true });
+      }
+      if (path.endsWith('/test')) {
+        tests += 1;
+        return ok({ connected: true, reply: 'Hello', replyTruncated: false, latencyMs: 9, connectionVerified: true, testedAsStored: true });
+      }
+      if (init.method === 'PUT') return ok(definition({ rowVersion: 20 }));
+      return ok(
+        stored
+          ? definition({ rowVersion: 6 + tests, enabled: false, connectionVerified: tests > 0 })
+          : definition({ rowVersion: 3, enabled: true, connectionVerified: true })
+      );
+    };
+    const { fixture, host, calls } = await mount(answer, '/agent/definitions/edit/7');
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Claude edited';
+    name.dispatchEvent(new Event('input'));
+    const key = host.querySelector('#ocu-definition-apiKey') as HTMLInputElement;
+    key.value = 'sk-ant-probe';
+    key.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    for (let press = 0; press < 2; press += 1) {
+      (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+      await settle(fixture);
+    }
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(calls.filter((call) => call.path.endsWith('/credential')).length).toBe(1);
+    expect(tests).toBe(2);
+    const put = JSON.parse(calls.filter((call) => call.method === 'PUT').at(-1)?.body ?? '{}');
+    expect({ version: put['rowVersion'], name: put['name'], enabled: put['enabled'] }).toEqual({ version: 8, name: 'Claude edited', enabled: false });
   });
 
   it('AC8 (DW-373): name and provider carry the asterisk, and the published legend appears once', async () => {
