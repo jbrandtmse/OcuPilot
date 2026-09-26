@@ -2,7 +2,8 @@
 title: 'Story 16.1: The try-it request console'
 type: 'feature'
 created: '2026-09-26'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'efd43df6b9c20eb7ff9666cba1696fe3fd80c744'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -95,6 +96,29 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-26 — Review pass
+
+- verdicts: 18 findings — high 0, medium 5, low 8, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) switching documents clears the console, untested — added the component case "opening another document forgets every console" and the node case "reset forgets every console"; mutations observed red. The "late answer lands in B" half is false: `reset` detaches each console's state, so a late answer writes to an orphan.
+  - `[medium]` `[patch]` (verification-gap) the dropped declared `Authorization` header and the no-token case are unpinned at `fetch` — added the store case; mutation observed red.
+  - `[low]` `[patch]` (verification-gap) the page's cut notice and byte-count line are untested — added the component case; each template block's removal observed red.
+  - `[medium]` `[patch]` (verification-gap) the `basePath`-versus-application choice is never exercised — added the component case for a declared and an absent `basePath`; mutation observed red.
+  - `[medium]` `[patch]` (verification-gap) form-body masking is unpinned — added the node case; mutation observed red.
+  - `[low]` `[reject]` (verification-gap) the "issues no request" assertions cannot fail — the jsdom `img` query pins it with a recorded mutation and a node that was never created issues nothing; a browser case needs an instance endpoint answering markup.
+  - `[low]` `[patch]` (verification-gap) the store refusal mutation line is imprecise — observed each check alone green and both removed red; line corrected.
+  - `[low]` `[patch]` (verification-gap) AC1's display half has no mutation line — dropped the body from the answer text, the GET case went red; line added.
+  - `[low]` `[reject]` (verification-gap) the record lists `Authorization` when no token was sent — a tab on the viewer holds a token; the fix adds a parameter for a state users do not meet.
+  - `[medium]` `[patch]` (intent-alignment) R1: `basePath` preferred over the listed application, untested — grouped with the `basePath` row above; same case.
+  - `[false]` `[reject]` (intent-alignment) R3: decoding until stable is stricter than the browser — over-refusal is the safe side of AD-57 (2); no request that must be refused is sent.
+  - `[low]` `[reject]` (intent-alignment) the origin is not re-checked in the store — `composeRequest` is its only producer and its `no-address` cases are pinned; a re-check adds a branch for an unreachable state.
+  - `[false]` `[reject]` (intent-alignment) R4: secrets held in store memory — the contract scopes the unmasked value to the field versus the record and DOM; the form state is the field's value, and the pending request is "until send".
+  - `[low]` `[reject]` (intent-alignment) R5: the dialog shows the masked `displayUrl`, not `resolved.href` — masking is AD-57 (4)'s; they differ only for dot segments in a document literal (inference), and a second URL rendering adds surface.
+  - `[false]` `[reject]` (intent-alignment) the screen-context negative is not pinned by a test — the diff adds no context wiring and no ObjectScript; the viewer's declared context is unchanged.
+  - `[low]` `[reject]` (intent-alignment) R8: record versus wire — same as the no-token record row.
+  - `[false]` `[reject]` (intent-alignment) R6/R7 wording readings — the spec's Tasks name the admin-write wording and one package-only reason; the diff matches.
+  - `[false]` `[reject]` (intent-alignment) mutations exercise the resolver on raw strings only — two composed-request refusals, the component "show Send whatever `refusal` answers" mutation and the browser spec's refused-Send cases pin the composed path.
+
 ## Design Notes
 
 **Design decision (flagged for review): where the request is issued and what "the current session" is.** Measured on `ocupilot-ci` (52776), 2026-09-26, after a form login to `/api/ocupilot/login`:
@@ -120,7 +144,9 @@ So (c): the only credential that makes "with the current session" true for an au
 
 **Declined DW-118:** already resolved by Story 15.6 (`resolved-by:15-6-the-light-and-dark-theme`).
 
-**Contended files touched:** `ui/src/styles/_components.scss` (append at end only). `openapi-viewer.page.spec.ts`, `Router.cls`, `AdminPort.cls`, `proposal-card.ts` are not touched; EXPERIENCE.md gains rows at the end of Fixed strings only.
+**Contended files touched:** `ui/src/styles/_components.scss` (append at end only). `openapi-viewer.page.spec.ts`, `Router.cls`, `AdminPort.cls`, `proposal-card.ts` are not touched; EXPERIENCE.md gains rows at the end of Fixed strings only. Its one appended row moves every later line by one, so `strings.ts`'s `taskCreate` citation moves `:614` -> `:615`.
+
+**Bundle re-base (DW-1166):** the initial total measured 1,856,906 bytes, past the 1854 kB warning. The policy's 5% would give 1950 kB, past the 1900 kB stop line for this epic, so `maximumWarning` is 1900 kB, pinned in `ui/tools/angular-json.test.mjs`.
 
 ## Verification
 
@@ -129,10 +155,51 @@ So (c): the only credential that makes "with the current session" true for an au
 - `cd ui && node --test tools/try-it.test.mjs tools/credential-lists.test.mjs` (loop) -- expected: green; mutation: drop the `..` refusal in `composeRequest` -> the traversal case reds; mutation: remove the own-application arm of `refusal` -> the own-app cases red; mutation: remove the `/api/admin` write arm -> the admin-write cases red; mutation: skip the percent-decode in `resolveTarget` -> the `%6F` spelling case reds.
 - `cd ui && npx ng test --include src/app/areas/web-applications/openapi-try-it.page.spec.ts` (loop) -- expected: green; mutation: bind the body with `[innerHTML]` -> the markup-as-text case reds.
 - `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/ && OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/openapi-try-it.browser-spec.mjs` (loop) -- expected: green on `ocupilot-ci` only (a mutating verb is only ever sent there); mutation: omit the Bearer -> the `/api/admin` 200 case reads 401.
-- `cd ui && npm test` (once, before dev_complete) -- expected: green, bundle under `maximumWarning` 1854 kB.
+- `cd ui && npm test` (once, before dev_complete) -- expected: green, bundle under `maximumWarning`, re-based to 1900 kB under DW-1166 (see Design Notes).
 - Full ObjectScript sweep through `node tools/ci-runner.mjs --container ocupilot-ci`, one class at a time (once, before dev_complete) -- expected: green; this story changes no ObjectScript.
+
+**Observed (implement, 2026-09-26; each file restored byte for byte after its run):**
+
+- mutation: drop the `.`/`..` segment check in `composeRequest` -> "a path parameter of . or .. is refused at its field" red.
+- mutation: remove the own-application arm of `refusal` -> "every spelling of OcuPilot's own applications", "a composed request that resolves under OcuPilot's own application" and "the store refuses at send" red.
+- mutation: remove the `/api/admin` write arm of `refusal` -> "a write under /api/admin is refused by every spelling" and "the store refuses at send" red.
+- mutation: skip the percent-decode in `resolveTarget` -> the resolution table, the own-application spellings and the admin-write spellings red.
+- mutation: skip the dot-segment removal after decoding -> the resolution table and the own-application spellings red.
+- mutation: skip the slash collapse -> the resolution table, the own-application and admin-write spellings red.
+- mutation: skip the trailing-slash drop -> the resolution table red (the whole-segment match alone already refuses `/api/admin/`).
+- mutation: skip the case fold -> the resolution table, the own-application and admin-write spellings red.
+- mutation: skip the backslash-as-slash step -> the resolution table red.
+- mutation: stop masking a secret query value, a secret header, or a secret body member -> "every secret the request carries reads masked" red.
+- mutation: drop `token` from `secret-names.ts` -> the credential-lists pin and the masking case red.
+- mutation: send `credentials: 'include'` -> "the store sends a safe verb at once" red; drop both of the store's refusal checks (in `send` and `dispatch`) -> "the store refuses at send" red, where either alone stays green because the other still refuses; send a write without holding it -> "the store holds a write for its confirmation" red.
+- mutation: bind the answer with `[innerHTML]` -> the component spec's markup-as-text case red; show Send whatever `refusal` answers -> its admin-write and own-application cases red; confirm a write right after Send -> its dialog case red; bind a field with `[attr.value]` -> its secrets-in-DOM case red.
+- mutation: omit the Bearer in `try-it.store.ts`, rebuilt and redeployed to `ocupilot-ci` -> the browser spec's `/api/admin` case read 401, not 200.
+- mutation (review pass): drop the body from the answer text in `tryItView` -> the component GET case red (AC1's display half); drop `this.tryIt.reset()` from the page's load -> "opening another document forgets every console" red; drop `this.consoles.clear()` from `reset` -> "reset forgets every console" red; send a declared `Authorization` header -> "the store sends the tab's token as the one Authorization" red; drop the cut notice, or the byte-count line, from the template -> the component cut/byte-count case red; make `basePath()` ignore the document -> the component basePath case red; show the form body unmasked -> "a secret-named form parameter reads masked" red.
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none (the AD-10 intent gap was answered by orchestrator ruling (A), recorded as AD-57 at the spec gate on 2026-09-26)
+Implement pass, 2026-09-26. Each operation of a listed application's OpenAPI document gets a "Try it" console. It is sent by the browser under the tab's Bearer, with no cookie and no redirect. It refuses OcuPilot's own applications and `/api/admin` writes after browser-equivalent resolution, confirms every other write, masks the record, and renders the answer as text on the code surface (AD-57).
+
+- Files:
+  - `ui/src/app/areas/web-applications/try-it.ts` (new): composition, resolution, refusal, masking and rendering.
+  - `ui/src/app/areas/web-applications/try-it.store.ts` (new): the framework-free console store.
+  - `ui/src/app/areas/web-applications/openapi-viewer.page.ts`: the disclosure, form, dialog, record and answer.
+  - `ui/src/app/core/secret-names.ts` (new): the runtime credential pattern.
+  - `ui/src/app/core/strings.ts` and EXPERIENCE.md: 11 keys and one appended Fixed-strings row.
+  - `ui/src/styles/_components.scss`: rules appended at the end only.
+  - `ui/angular.json` and `ui/tools/angular-json.test.mjs`: the warning re-based to 1900 kB (Design Notes).
+  - Tests (new): `ui/tools/try-it.test.mjs`, `ui/tools/credential-lists.test.mjs` (extended), `openapi-try-it.page.spec.ts` and `ui/browser/openapi-try-it.browser-spec.mjs`.
+- Review: 18 findings. Seven patched, all test additions or mutation lines: five mediums in four entries, plus three lows. Five were rejected as false and six lows rejected (Review Triage Log). None was deferred.
+- Follow-up review: `false`. The four patched medium entries were missing tests, each added with its mutation observed red, and the patch pass changed no production code, so no unverified risk remains to name.
+- Verification:
+  - Node story tests: 24 of 24 pass.
+  - Component spec: 12 of 12 pass.
+  - Browser spec on `ocupilot-ci`, after rebuild and redeploy: 5 of 5 pass, with DW-1337 holding in both themes and no new allowance.
+  - `npm test`: 1488 node tests and 1463 component tests pass. The bundle measures 1,856,906 bytes.
+  - Full ObjectScript sweep on `ocupilot-ci` (source refreshed and recompiled first): 291 classes ran, 14 refused for arming (`OCUPILOT_ALLOW_*`: task control 7, service config 3, audit purge, audit toggle, error delete, process control), and 1 is known residue (`WireSecurityRead` task history, DW-1425/DW-1468). The 14th refusal is still an arming refusal; this story changes no ObjectScript.
+- Residual risks:
+  - A redirect answer shows status 0 with no explanatory line.
+  - EXPERIENCE.md prose citations after line 573 were already stale, and are now off by one more.
+
+Status: done
+Blocking condition: none

@@ -1952,7 +1952,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:614 */
+  /** EXPERIENCE.md:615 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2853,6 +2853,30 @@ export const STRINGS = {
   oauthRegisteredClientFormRefusedAction: 'change this server client description',
   /** EXPERIENCE.md:573 */
   citationAbsent: '<name> is no longer present on this instance, so there is nothing to select.',
+  // The try-it console (Story 16.1). "Send" is `actionSend` and "Request" is `sslVerifyPeerRequest`:
+  // one key per value.
+  /** EXPERIENCE.md:574 */
+  tryItToggle: 'Try it',
+  /** EXPERIENCE.md:574 */
+  tryItResponse: 'Response',
+  /** EXPERIENCE.md:574 */
+  tryItBody: 'Body',
+  /** EXPERIENCE.md:574 */
+  tryItConfirmTitle: 'Send <VERB> <URL>?',
+  /** EXPERIENCE.md:574 */
+  tryItOwnApplication: 'This request goes to one of OcuPilot\'s own applications, so the console does not send it.',
+  /** EXPERIENCE.md:574 */
+  tryItAdminWrite: 'The console does not send changes to the admin API; OcuPilot\'s own screens make them.',
+  /** EXPERIENCE.md:574 */
+  tryItTraversal: 'A path parameter cannot be a single or double dot.',
+  /** EXPERIENCE.md:574 */
+  tryItNoAddress: 'This operation has no address on this instance, so it cannot be tried here.',
+  /** EXPERIENCE.md:574 */
+  tryItFailed: 'The request did not complete.',
+  /** EXPERIENCE.md:574 */
+  tryItCut: 'The response was cut at 256 KB.',
+  /** EXPERIENCE.md:574 */
+  tryItBinary: '<n> bytes, not shown as text.',
 
 } as const;
 
