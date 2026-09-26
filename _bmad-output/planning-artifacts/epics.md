@@ -94,7 +94,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 #### PRD 5.3 - Agent tools, write model and governance
 
 - FR-16: One read tool per screen - every list and detail screen in the six areas plus the three shell reads (privilege map, namespace list, instance identity) has exactly one read tool over the same endpoint returning the same fields the screen shows; tools take the filters the screen offers and return row identifiers the panel turns into citations; no read tool runs free-form SQL in Release 1. Catalog: CP-11, CP-12 and every read row in 5.5-5.10.
-- FR-17: Write tools with propose, review, confirm - a write-tool call mints a server-side proposal holding the tool, resolved arguments and a fingerprint of the target read fresh; the card shows target, instance-computed before/after diff, every field the payload sends, the agent's labeled rationale and expected impact and how to reverse it; the write runs only on a separate authenticated confirmation carrying the proposal id, executed from stored arguments; confirmation is single-use, expires and is refused when user, conversation, definition, read-only state or fingerprint has changed; secrets are declared in schema, never accepted from the model, and travel only in the confirmation; a destructive proposal requires the user to type the target's name. Catalog: CP-13 and every write action in 5.5-5.10 including SS-04, SS-07, LG-04.
+- FR-17: Write tools with propose, review, confirm - a write-tool call mints a server-side proposal holding the tool, resolved arguments and a fingerprint of the target read fresh; the card shows target, instance-computed before/after diff, every field the payload sends, the agent's labeled rationale and expected impact and how to reverse it; the write runs only on a separate authenticated confirmation carrying the proposal id, executed from stored arguments; confirmation is single-use, expires and is refused when user, conversation, definition, read-only state or fingerprint has changed; secrets are declared in schema, never accepted from the model, and travel only in the confirmation; a destructive action taken on a screen requires the user to type the target's name, while a destructive agent proposal is drawn destructive and needs no typed name (owner, 2026-09-25). Catalog: CP-13 and every write action in 5.5-5.10 including SS-04, SS-07, LG-04.
 - FR-18: Execution strictly as the user - every tool runs under the caller's own IRIS privileges with no service account; a 403 is identical to the screen's and is reported, never retried; the full tool set stays advertised with privilege checked at call time; the Release 1 prohibited set is refused on the instance and never advertised; any escalation is confined to named storage and file-read methods and is not in effect while tool, admin API or provider code runs. Catalog: CP-14.
 - FR-19: Read-only mode - an OcuPilot administrator can enforce it instance-wide and any user can set their own session (build step 7); every write tool returns a structured "blocked by read-only mode" result, the agent states what it would have changed and on which screen, and no proposal card appears; the enforced-state settings also hold the context-sharing default and the per-user turn limits. Catalog: CP-21.
 - FR-20: Kill switch - an OcuPilot administrator can disable the agent globally or per user; turns are refused server-side, the panel renders disabled with the reason, every screen keeps working, and the switch is reachable through a screen that does not depend on the agent. Catalog: CP-22.
@@ -523,7 +523,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - FR-14: Epic 5 - the change event, in-place re-fetch, highlight and off-screen toast.
 - FR-15: Epic 4 - agent-driven navigation over allow-listed route identifiers.
 - FR-16: Epic 2 (the descriptor-derived read tool for each area's step-1 screen), then Epic 4 (the registry, dispatch and the three shell reads), then Epic 6 (a read tool for every remaining screen).
-- FR-17: Epic 5 - propose, review, confirm in its floor form, including the target-fingerprint re-read (5.1, 5.3, 7.10); the typed-name confirmation in Epic 14.
+- FR-17: Epic 5 - propose, review, confirm in its floor form, including the target-fingerprint re-read (5.1, 5.3, 7.10); the typed-name confirmation on the screen path in Story 7.1.
 - FR-18: Epic 5 - execution strictly as the user, the 403 contract and the prohibited set.
 - FR-19: Epic 3 (enforced instance-wide read-only and the enforced-state settings), then Epic 14 (the per-user toggle and the per-user turn limits).
 - FR-20: Epic 3 - the kill switch, global and per user, reachable without the agent.
@@ -645,7 +645,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-14 | 5.7 | FR-54 | 2.9, 6.8 |
 | FR-15 | 4.7 | FR-55 | 5.12, 7.8 |
 | FR-16 | 2.3, 4.2, 6.1-6.14, 11.10 | FR-56 | 6.9 |
-| FR-17 | 5.1, 5.2, 5.3, 7.10, 14.7 | FR-57 | 6.10, 16.12 |
+| FR-17 | 5.1, 5.2, 5.3, 7.1, 7.10 | FR-57 | 6.10, 16.12 |
 | FR-18 | 5.4, 5.5 | FR-58 | 6.11 |
 | FR-19 | 3.7, 14.5, 14.6 | FR-59 | 6.12, 8.8 |
 | FR-20 | 3.7 | FR-60 | 6.13 |
@@ -703,7 +703,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 52 (banner, seven kinds) | Stories 3.6, 3.7, 4.3, 5.6 |
 | 53 (Home suggested view) | Story 4.10 |
 | 54 (toast) | Story 5.7 |
-| 55-57 (confirm dialog, typed-name field, masked-secret field) | Story 7.1 (confirm dialog), Story 3.3 (masked secret), Story 14.7 (typed name) |
+| 55-57 (confirm dialog, typed-name field, masked-secret field) | Story 7.1 (confirm dialog), Story 3.3 (masked secret), Story 7.1 (typed name) |
 | 58-59 (the four buttons, the focus ring on three grounds) | Stories 1.2, 1.9, 5.2 |
 | 60 (the privilege-gating mechanism) | Story 1.9, established once; applied by every gated control thereafter |
 | 61 (live-data behavior) | Stories 1.14 and 5.7 |
@@ -747,6 +747,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 **Owner triage, 2026-09-24 (shell).** A visitor could not find sign-out: it lives only in the account menu behind the user name in the status bar, and the command search has no sign-out command although EXPERIENCE.md assumed one. Separately, the command bar renders its filter field on every screen, so Home, the form pages and the application-error drill-down show a filter that filters nothing. Story 15.9 fixes both and runs after Story 15.8 in the same runner.
 
 **Owner triage, 2026-09-24 (reliability), high priority.** Live turns on Claude Opus 5 failed intermittently - three of about ten in an hour - with "The turn stopped at provider": the connection broke within a second of the call, before any reply (`<READ>` in `%Net.HttpRequest`), and a transport failure is never retried. Separately, the panel reported a confirmed create as "was updated". Story 10.6 fixes both; it runs alone on slot B at Epic 12's next story boundary.
+
+**Owner plan, 2026-09-25 (voting week).** Epics 14 and 16 run in the voting week, where improvements are allowed, starting once the submission build is cut. Order: Story 16.1 (the try-it console), then Stories 16.8 and 16.9 (the secondary log viewers and the hub); then Story 14.1 (the copy-out draft), Stories 14.3 and 14.8 (defanging and the seeded-injection test), Story 16.3 (effective privileges) and Story 16.16 (the agent audit viewer); then the rest of Epic 16; then Story 14.5, with Stories 14.2, 14.4 and 14.6 last. The first two groups close the gaps a judge sees when comparing entries and show what only the agent does. `main` moves only at planned releases - after each of the first two groups and at the end of the week - each a pull request with green CI, a clean-clone check and a new package version, so a judge never installs a half-finished build. Story 14.7 is scratched: a user acting on a screen still types the target's name, while a destructive agent proposal takes the destructive bar, a destructive Confirm and the user's own press, without a typed name. FR-17 and Stories 5.10 and 7.2 are amended to match. Epics 18 to 22 stay after the contest.
 
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
@@ -868,9 +870,9 @@ The entry reads as finished: an uninstall hook that removes everything the insta
 
 ### Epic 14: Governance, restraint and transcripts
 
-An OcuPilot administrator can disable any write tool by tool and action, a user can take a script instead of an execution, log and tool content is defanged before it reaches the model, and every conversation persists per user under a retention policy. It also carries the per-user read-only toggle and turn limits, the typed-name confirmation for destructive tools and the seeded-injection test (Stories 14.5 to 14.8, from Epic 10 by owner re-sequence 2026-09-16), ranked after the OAuth 2.0 editors. Polish week, in "the rest as time allows".
+An OcuPilot administrator can disable any write tool by tool and action, a user can take a script instead of an execution, log and tool content is defanged before it reaches the model, and every conversation persists per user under a retention policy. It also carries the per-user read-only toggle, turn limits and the seeded-injection test (Stories 14.5, 14.6 and 14.8, from Epic 10 by owner re-sequence 2026-09-16). Voting week, in the owner's order of 2026-09-25.
 
-**FRs covered:** FR-72, FR-19 (per-user toggle and turn limits), FR-17 (typed-name confirmation), NFR-6 (the seeded-injection test)
+**FRs covered:** FR-72, FR-19 (per-user toggle and turn limits), NFR-6 (the seeded-injection test)
 
 **Implementation notes:** AD-22 fixed the shape in Release 1 so this fits without rework: keys are `tool` or `tool:action`; the **frozen baseline captured at the Release 1 freeze** means "pre-existing, therefore enabled", which is what keeps SM-3 holding through 2026-10-04; a key absent from it is disabled by default when it mutates; the baseline is never regenerated to grow; layers resolve with a null-coalescing cascade so an explicit `false` at any layer is honored; the read-only preset blocks anything it cannot classify; and **the audit ledger is configuration, not a governed tool**. The sanitizer is *additional* to NFR-6's invariants and is never the defense. An administrator opening another user's transcript is ledgered and sees tool results only when holding every resource that transcript's calls required. The per-user work is **data and UI, not a new enforcement point**: the gate already exists and is evaluated at the write. Per-user turn limits need a "turn limit reached" banner and a refusal sentence before Story 14.6 ships (UX-DR81).
 
@@ -884,7 +886,7 @@ A user makes the portal their own - own password, favorites, recents, menu searc
 
 ### Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Polish week, last, as time allows. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16).
 
 **FRs covered:** FR-74, FR-76, FR-77, FR-78
 
@@ -3686,7 +3688,7 @@ So that the safety model is demonstrated rather than described.
 - **Given** the user asks the agent to disable auditing
 - **When** the proposal card renders
 - **Then** it carries the warning "Agent writes will no longer be marked in the audit database." **inside the card** - the agent never proposes disabling auditing or OcuPilot's own audit events without it
-- **And** the write is declared **destructive**, so it draws the `destructive` bar and the typed-name confirmation of Story 14.7 as well as the warning: it removes the mechanism FR-22, FR-7 and NFR-7 rest on, and must not be easier to confirm than deleting a device
+- **And** the write is declared **destructive**, so it draws the `destructive` bar and a destructive Confirm as well as the warning: it removes the mechanism FR-22, FR-7 and NFR-7 rest on [AMENDED 2026-09-25, owner: the agent path takes no typed name; Story 14.7 is scratched]
 - **And** it is deliberately **not** in the prohibited set, because an operator must be able to reach it; the restraint is confirmation friction, not absence.
 
 - **Given** the user confirms
@@ -4262,7 +4264,7 @@ So that the commonest administrative task takes one click rather than an editor.
 
 - **Given** the change would add `%All`, any `%Admin_*` role, or a role that carries them
 - **When** it is attempted, from the screen or through the agent
-- **Then** it is permitted: the agent's proposal takes the strongest confirmation, the typed name, and its diff names the privilege granted, and the screen's Add role dialog shows a consequence line when a privileged role is selected; the account protections (the signed-in user, `_SYSTEM`, the service account, the last `%All` holder) are unchanged. [AMENDED 2026-09-23, owner decision: privilege grants permitted at typed confirmation; was "refused whatever the caller". The earlier tier-1 amendment of the same day, on the orchestrator's 8.2 AC3 ruling, is superseded; Epic 8 implements the predicate, confirmation-level and `privilegedGrantEffect` changes, and this story consumes them.]
+- **Then** it is permitted: the agent's proposal is drawn destructive and its diff names the privilege granted [AMENDED 2026-09-25, owner: no typed name on the agent path], and the screen's Add role dialog shows a consequence line when a privileged role is selected; the account protections (the signed-in user, `_SYSTEM`, the service account, the last `%All` holder) are unchanged. [AMENDED 2026-09-23, owner decision: privilege grants permitted at typed confirmation; was "refused whatever the caller". The earlier tier-1 amendment of the same day, on the orchestrator's 8.2 AC3 ruling, is superseded; Epic 8 implements the predicate, confirmation-level and `privilegedGrantEffect` changes, and this story consumes them.]
 
 - DW-1486: PROHIBITED.SERVICEACCOUNT is scoped to the disable verb while LASTALLHOLDER is scoped by effect, so a Roles delta stripping %All from the service account is permitted; with 7.2's delete hole, evaluate every account predicate by effect for delete, disable and a Roles delta stripping %All (AD-10 as amended 2026-09-23) (ledger; routed by spec_gate 2026-09-23)
 - DW-1499: Prohibited.ReasonFor's sentences other than SERVINGPATH say the change is not something the agent can propose, which AD-53 makes a defect once a screen caller reaches that arm (ledger; routed by cr 2026-09-23)
@@ -5597,7 +5599,7 @@ which is a public, irreversible act that ships whatever the build is at that mom
 
 ## Epic 14: Governance, restraint and transcripts
 
-An OcuPilot administrator can disable any write tool by tool and action, a user can take a script instead of an execution, log and tool content is defanged before it reaches the model, and every conversation persists per user under a retention policy. It also carries the per-user read-only toggle and turn limits, the typed-name confirmation for destructive tools and the seeded-injection test (Stories 14.5 to 14.8, from Epic 10 by owner re-sequence 2026-09-16), ranked after the OAuth 2.0 editors. Polish week, in "the rest as time allows".
+An OcuPilot administrator can disable any write tool by tool and action, a user can take a script instead of an execution, log and tool content is defanged before it reaches the model, and every conversation persists per user under a retention policy. It also carries the per-user read-only toggle, turn limits and the seeded-injection test (Stories 14.5, 14.6 and 14.8, from Epic 10 by owner re-sequence 2026-09-16). Voting week, in the owner's order of 2026-09-25.
 
 ### Story 14.1: The copy-out draft
 
@@ -5754,27 +5756,6 @@ So that the agent's cost is bounded per person rather than only per turn.
 - **Given** the strings are authored
 - **When** they land
 - **Then** they are added to the canonical Fixed strings table, not invented at the component.
-
-### Story 14.7: The typed-name confirmation for destructive tools
-
-As a developer-administrator,
-I want a destructive agent proposal to make me type the target's name,
-So that the agent's most consequential writes carry the same friction the screens do.
-
-**Acceptance Criteria:**
-
-- **Given** a write tool declared destructive
-- **When** its proposal card renders
-- **Then** it carries a typed-name field and a 3px `destructive` bar beneath the header rule, and its Confirm is `button-destructive` labeled with the verb and target.
-
-- **Given** the typed name
-- **When** it is entered
-- **Then** an **exact, case-sensitive** match is required before Confirm leaves `aria-disabled`; paste is allowed; a mismatch on blur reports "Does not match" with `aria-invalid` and the message in `aria-describedby` - **reported, never silent**, because a disabled Confirm with no reason gives a screen-reader user nothing
-- **And** Enter submits only once the name matches.
-
-- **Given** the same field in a delete dialog
-- **When** both are compared
-- **Then** they look and behave identically, so the screen path and the agent path teach the same gesture.
 
 ### Story 14.8: The seeded-injection test
 
@@ -6053,7 +6034,7 @@ So that the shell reads as finished.
 
 ## Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Polish week, last, as time allows. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16).
 
 **Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
 
