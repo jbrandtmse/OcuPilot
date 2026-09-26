@@ -6910,6 +6910,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T01:19:27Z status=routed owner=12-9-removing-the-classic-link-outs by=cr note=Rule 20 spine text; lead may correct the count at the next bookkeeping commit, 12.9 removes the other four
 - 2026-09-25T01:21:53Z status=routed owner=12-9-removing-the-classic-link-outs by=adjudication note=spine AD-44 and epic context counts corrected at origin (four remaining); 12.9 removes the four and the spine sentence's interim count
 - 2026-09-25T22:03:33Z occurrence=12-8-the-oauth-2-0-server-client-description-editor
+- 2026-09-26T00:00:58Z status=resolved-by:12-9-removing-the-classic-link-outs by=cr note=AD-44 reads exactly two (ServiceForm, LdapConfigForm), no three; classic-links.test.mjs pins 2/2; epic context is generated
 
 ### DW-1645: The DW-1640 audit mask matches the vendor's English audit texts, so on an instance whose audit messages are localized the registration and initial access tokens reach Logs > Audit and logs.audit.read unmasked
 - source: spec-12-5-the-oauth-2-0-client-configuration-editor.md | severity: med | fix-risk: high | footprint: in-story
@@ -7088,3 +7089,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-8-the-oauth-2-0-server-client-description-editor.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Save.Update and the update tool never call NameTaken; the update schema says two clients may share a name. The vendor allows duplicates and the spec scopes the refusal to a create (Q4).
 - 2026-09-25T22:03:33Z status=by-design owner=12-8-the-oauth-2-0-server-client-description-editor by=cr note=spec-bound: uniqueness is AD-54's create fingerprint, not a rule on Name; reopens only by spec amendment
+
+### DW-1677: EXPERIENCE.md :772 and UX-DR67 say only the classic-link-card and a rowLink name cell open a new tab; Help, Home links, sign-in and the instance notice also do
+- source: spec-12-9-removing-the-classic-link-outs.md (code review) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: target=_blank at locator-bar.ts:175 (Help), home.page.ts:339, sign-in.ts:172, instance-notice.ts:67; the banned-everywhere clause names none of them. Pre-existing; 12.9 removed only the OAuth wording.
+- 2026-09-26T00:00:58Z status=by-design owner=12-9-removing-the-classic-link-outs by=cr note=spec gate Q3 left the Help/new-tab claim to its owner; reopens only via a UX amendment naming the outbound doc links

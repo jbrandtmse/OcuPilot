@@ -245,3 +245,6 @@
 2026-09-25T23:47:08Z	Story 12.9	stage_spawned	stage=qa spawn_at=2026-09-25T23:47:08Z model=sonnet agent_name=12-9-classic-link-outs-qa-1 cycle_iteration=1
 2026-09-25T23:51:24Z	Story 12.9	qa_complete	spawn_at=2026-09-25T23:47:08Z model=sonnet tests_added=0 mutations_demonstrated=2 first_run_failures=0 clarifications=0 closing_sections_present=true
 2026-09-25T23:51:24Z	Story 12.9	stage_spawned	stage=code-review spawn_at=2026-09-25T23:51:24Z model=opus agent_name=12-9-classic-link-outs-code-review-1 cycle_iteration=1
+2026-09-26T00:02:36Z	Story 12.9	cr_complete	spawn_at=2026-09-25T23:51:24Z model=opus resolved=6 fixed_at_source=6 by_design=4(incl_DW-1677) dismissed=17 routed=0 escalated=0 decision_pending=0 deferred=0 high=0 med=1 low=5 rows=2 unresolved_high_med=0 clarifications=0 closing_sections_present=true final_status=done review_tier=full-opus
+2026-09-26T00:02:36Z	Story 12.9	ledger_adjudicated	owned=1 resolved=1(DW-1643_by_cr) reowned=0 terminal=0 model=claude-opus-5-5
+2026-09-26T00:02:36Z	Story 12.9	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_49/49(ocupilot-b-ci),oauth_5/5(CR,deployed_bundle),strings.test_25/25 model=claude-opus-5-5

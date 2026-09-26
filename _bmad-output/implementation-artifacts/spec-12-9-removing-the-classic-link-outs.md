@@ -144,6 +144,37 @@ deferred: []
   - AD-44, the PRD's FR-9 and FR-44, EXPERIENCE.md and UX-DR67 name no OAuth exemption and no OAuth classic link.
 - **AC3.** Given the PRD's risk row "OAuth setup is lists and deletes only at the deadline", when this story completes, then the row reads **Closed** and names Stories 12.4-12.8 and 12.9.
 
+### Review Findings
+
+Code review 2026-09-25 (layers full-opus). 23 findings: 6 patched, 0 deferred, 17 closed. Each patch is a tier-1 edit with its own `[AMENDED …]` marker. `lint-docs.sh` is clean, `npm run test:tools` passes 1425/1425, and EXPERIENCE.md still has 929 lines.
+
+- [x] [Review][Patch] (medium) EXPERIENCE.md still called the OAuth exemption "AD-44's single Release 1 classic-link exemption", against AC2. Reworded [EXPERIENCE.md:741]
+- [x] [Review][Patch] (low) The FR-44 copy in epics.md still linked each entry to the classic editor. Now matches the PRD [epics.md:136]
+- [x] [Review][Patch] (low) The banned-everywhere clause forbade a new tab for the kept `rowLink` cell, contradicting :367 and AD-44. Now names the cell [EXPERIENCE.md:772, epics.md:469]
+- [x] [Review][Patch] (low) One archetype was given for all five editors, but the server-description editor is untabbed. The row now lists `form-page · form-page (tabs)` and uses the table's `**P1**` [EXPERIENCE.md:146]
+- [x] [Review][Patch] (low) FR-9 read as though Stories 16.13 and 16.14 create the exemptions. Now "until … replace them" [prd.md:298]
+- [x] [Review][Patch] (low) Story 12.9's AC called the OAuth tabs a "list". Now "a table's name cell" [epics.md:5489]
+
+#### Closed
+
+The first three are by-design. Each of the rest is false or a rejected low.
+
+- **by-design:** the Help, Home-link, sign-in and instance-notice new tabs still contradict the banned list. Spec gate Q3 left that claim to its owner (DW-1677, filed `by-design`).
+- **by-design:** the AD-44 marker quotes only part of the old span and drops the 2dca0322/8bd12776 provenance. The spec set both the span and the marker, and the spine memlog records both rulings.
+- **by-design:** `Multi.cls` keeps an OAuth-shaped exempt fixture, and `epic-12-context.md` is stale. The spec keeps both.
+- **low:** the `.ocu-classic-link-card` clause cannot go red on a tab route. The I/O matrix requires it, and it is not the pinning assertion. This matches the earlier triage.
+- **false:** "the row-link mechanism lost its coverage". `ClassicLinkCorpus.cls:80-86`, `data-table.spec.ts` and `table-model.test.mjs` still cover it.
+- **false:** "the leg misses buttons, `window.open`, menus and unprivileged principals". A classic link reaches the client only through an honored exemption, which AC2 pins.
+- **low:** the leg checks the anchors that exist, not the row count. The classic-exit half is pinned, the fix would add a branch, and Stories 12.4-12.8 pin name-cell navigation.
+- **low:** `epics.md:811` is Epic 6's historical note in another epic's block.
+- **low:** moving the :367 string would break the `strings.ts` line citations.
+- **low:** the :146/:148 overlap. This matches the earlier triage.
+- **low:** `external` is now an unused archetype key (:72, :724), which is harmless.
+- **low:** the name "AC1 (Story 12.9)".
+- **low:** `Tab/Bad` still says "everything else" matches, although `primaryAction` and `rowActions` differ. The operative claim, sound apart from the tab, holds.
+- **low:** AC2's prose half and AC3 are checked by reading.
+- **low:** the Spec Change Log placement and the memlog "prevents" half. Fixing either edits the spec or an append-only log.
+
 ## Spec Change Log
 
 - 2026-09-25, lead spec gate: Q1 the full browser suite is CI's (Rule 29); Q2 keep the row-link mechanism (AD-44 unchanged); Q3 remove only the OAuth wording from EXPERIENCE.md :772 and UX-DR67, leaving the Help-control claim to its owner; Q4 the epic context is regenerated, not hand-edited; Q5 keep `REASONOAUTHAUTHENTICATORSECRET` (text, not a link). The PRD, EXPERIENCE.md and UX-DR67 edits are tier-1 amendments: mark each `[AMENDED 2026-09-25, Story 12.9, Rule 5 tier-1]` and list them in the Auto Run Result.

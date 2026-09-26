@@ -295,7 +295,7 @@ Every classic portal page in the six areas that OcuPilot has not rebuilt is reac
 
 **Consequences (testable):**
 
-- A cut large editor ships as a reduced form of the fields that daily administration uses plus a link to the classic page for the rest, never as a half-working full form; a list screen never links out. A **detail view** may link out, and only where its descriptor declares a `classicLinkExemption` with a reason; the automated check honors that flag, reports every exemption it honors, and counts them against SM-C1. Two such exemptions remain in Release 1, the reduced service and LDAP editors (Stories 16.13 and 16.14) [AMENDED 2026-09-25, Story 12.9, Rule 5 tier-1: was "The OAuth 2.0 tabs (FR-44) are the one such exemption in Release 1"].
+- A cut large editor ships as a reduced form of the fields that daily administration uses plus a link to the classic page for the rest, never as a half-working full form; a list screen never links out. A **detail view** may link out, and only where its descriptor declares a `classicLinkExemption` with a reason; the automated check honors that flag, reports every exemption it honors, and counts them against SM-C1. Two such exemptions remain in Release 1, the reduced service and LDAP editors, until Stories 16.13 and 16.14 replace them [AMENDED 2026-09-25, Story 12.9, Rule 5 tier-1: was "The OAuth 2.0 tabs (FR-44) are the one such exemption in Release 1"].
 - The agent's write tool for that editor's action still ships (5.3), so the change can be made through a confirmed proposal even while the form links out.
 - The link opens in a new tab where the user is expected to be signed in already (FR-1); if the classic portal does not honor the browser login, its own form appears once.
 
