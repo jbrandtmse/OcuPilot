@@ -45,7 +45,7 @@ test('no declaration, or one declaring no prompts, yields no groups', () => {
 
 test('every built screen in the generated mirror yields at least three non-empty prompts under labeled groups', () => {
   const built = SCREENS.filter((screen) => screen.built);
-  assert.ok(built.length >= 53, `the built roster is read (read ${built.length})`);
+  assert.ok(built.length >= 58, `the built roster is read (read ${built.length})`);
   for (const screen of built) {
     const groups = promptGroups(screen);
     const prompts = groups.flatMap((group) => group.prompts);

@@ -4688,7 +4688,7 @@ describe('Story 11.3: suggested prompts per screen', () => {
   // every screen but Home.
   it('AC1: every built screen offers its declared prompts, grouped by task (registry-driven)', async () => {
     const builtScreens = SCREENS.filter((screen) => screen.built);
-    expect(builtScreens.length).toBeGreaterThanOrEqual(53);
+    expect(builtScreens.length).toBeGreaterThanOrEqual(58);
     for (const screen of builtScreens) {
       const home = screen.route === '';
       const { host } = await mountPrompts({ url: '/' + screen.route, area: home ? 'home' : undefined });

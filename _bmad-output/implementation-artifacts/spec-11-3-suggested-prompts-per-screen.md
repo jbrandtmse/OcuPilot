@@ -266,6 +266,19 @@ Rejected:
 
 - [x] [Merge] Epic 12 merged into the branch (521e3f72) with five new built form screens that declare no suggested prompts, so `screen-mirror.mjs` and `Screen/Registry.cls` refuse them (by design, AC3): `OAuthClientForm`, `OAuthResourceServerForm`, `OAuthServerClientForm`, `OAuthServerDescriptionForm`, `OAuthServerForm` under `src/OcuPilot/Screen/Descriptor/`. Declare three prompts each exactly as this story did for Epic 9's editors (existing group keys, `strings.ts` entries appended at this story's block end, one EXPERIENCE.md Fixed-strings row per screen appended at the table's end, citations resolving, `strings.test.mjs` green); regenerate `screens.generated.ts` with `screen-mirror.mjs`; `field-lists.mjs --check` and `ipm-manifest.mjs --check` stay up to date. Verify: mirror `--check` up to date, `Descriptor` green on `ocupilot-ci` after a whole-package recompile, `test:tools`, `test:components`, and the `suggested-prompts` browser spec against a rebuilt, redeployed bundle.
 
+### Review Findings (rework 1 re-review)
+
+Code review 2026-09-25 of `c7eb5d26..HEAD`, `review_tier: full-opus`, three layers (edge case, verification gap, acceptance; blind skipped on a data-only diff). 0 decision-needed, 3 patch (all applied), 0 ledgered, 2 rejected. The `[Merge]` item is confirmed fixed.
+
+- [x] [Review][Patch] (low) The built-roster floors still read 53 while the mirror holds 58, so dropping an OAuth form stayed green [ui/tools/screen-mirror.test.mjs:685, ui/tools/suggested-prompts.test.mjs:48, ui/src/app/shell/panel.spec.ts:4691] -- raised to 58.
+- [x] [Review][Patch] (low) The `[Merge]` item's strings and EXPERIENCE.md half had no `mutation:` line [spec ## Verification] -- written after observing red.
+- [x] [Review][Patch] (low) The rework triage header counted `false 3` over four `[false]` rows [spec ## Review Triage Log] -- now `false 4`.
+
+Rejected:
+
+- `low`: the forms' prompts assume a saved object, though `/edit` with no name opens create mode. By design: one prompt set per screen, and the Role, User and WebApp forms word theirs the same way.
+- `low`: the registry-driven panel leg cannot see a missing text key, since both sides resolve through `stringFor`. `screen-mirror.test.mjs`'s resolve case pins every key.
+
 ## Spec Change Log
 
 - 2026-09-26, rework iteration 1 (trigger integrate_forward): Epic 12's merge brought five built form screens with no prompts; one `[Merge]` item re-opens the spec.
@@ -288,7 +301,7 @@ Rejected:
 
 ### 2026-09-25 — Review pass (rework 1, [Merge])
 
-- verdicts: 6 findings — high 0, medium 0, low 2, false 3, maybe-false 0
+- verdicts: 6 findings — high 0, medium 0, low 2, false 4, maybe-false 0
 - findings:
   - `[low]` `[reject]` (verification-gap) The spec did not yet record this pass: `[Merge]` unticked, no `mutation:` line, stale Auto Run Result — the fix is a spec edit; the finalize step ticks the item, writes the mutation line and this pass's result.
   - `[false]` `[reject]` (intent-alignment) No component or browser test renders an OAuth edit route — the registry-driven panel leg (`panel.spec.ts:4689-4699`) mounts every built screen, the five forms included, and asserts the rendered groups equal the declaration.
@@ -296,6 +309,11 @@ Rejected:
   - `[false]` `[reject]` (intent-alignment) The 15 keys sit before `homeSuggestedApplicationErrorsUnread`, not at the block's literal end — they extend the contiguous prompt run; no reader, test or merge diverges.
   - `[low]` `[reject]` (intent-alignment) `strings.ts`'s `taskCreate` reference (`:1955`) was renumbered — carried: same claim as the 2026-09-25 row; forced by the reference check once rows land at the table's end (`:608` -> `:613`).
   - `[false]` `[reject]` (intent-alignment) The form row says "redirect URLs" where the tab row says "redirect addresses" — the form uses its own field label (`oauthClientFieldRedirect` 'Redirect URL').
+
+### 2026-09-25 — Review pass (rework 1 re-review)
+
+- verdicts: 5 findings — high 0, medium 0, low 5, false 0, maybe-false 0
+- findings: 3 patched, 2 rejected; see `### Review Findings (rework 1 re-review)`.
 
 ## Design Notes
 
@@ -480,6 +498,9 @@ I/O matrix row were already pinned (browser (a); the `panel.spec.ts` Story 11.3 
   refuses ("a built screen declares at least 3 suggestedPrompts") and `Descriptor` 7/52 red after a whole-package
   recompile (run 13228; incl. `TestTheProductionRosterValidates`, `TestAPromptlessBuiltScreenIsRefused`); reverted
   byte-identical, recompiled, `Descriptor` 52/52.
+- mutation (code review, rework 1): EXPERIENCE.md :571 (`OAuthServerForm`'s row) deleted -> `strings.test.mjs`
+  "holds nothing the documents do not authorize" and "every EXPERIENCE.md line reference resolves" red (23/25);
+  restored byte-identical (`cmp`).
 - mutation (code review): `onSuggestedPrompt` guards on `composerUnavailable` only -> panel block
   "Busy" leg red alone (the lock banner shows); reverted byte-identical.
 

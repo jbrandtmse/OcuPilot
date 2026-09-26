@@ -682,7 +682,7 @@ test('PROMPT_GROUP_KEYS equals OcuPilot.Screen.Registry\'s PROMPTGROUPKEYS', () 
 test('every shipped built screen declares at least three suggested prompts that resolve', () => {
   const strings = loadStrings();
   const built = readSources().screens.filter((screen) => screen.declaration.built === true);
-  assert.ok(built.length >= 53, `the built roster is read (read ${built.length})`);
+  assert.ok(built.length >= 58, `the built roster is read (read ${built.length})`);
   for (const screen of built) {
     const prompts = screen.declaration.suggestedPrompts;
     assert.ok(Array.isArray(prompts) && prompts.length >= 3, `${screen.className} declares at least three prompts`);
