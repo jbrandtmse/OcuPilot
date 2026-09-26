@@ -28,6 +28,9 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.Version creates and deletes IRIS users on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
+    If $System.Util.GetEnviron("OCUPILOT_ALLOW_PRODUCTION_INSTALL") '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.Version runs OcuPilot's production install on this instance and runs on a throwaway container only. OCUPILOT_ALLOW_PRODUCTION_INSTALL does not read 1 here, so nothing was installed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Quit $$$OK
 }
 

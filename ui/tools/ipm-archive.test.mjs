@@ -623,6 +623,63 @@ test('the archive-contents comparison accepts a member list with doubled slashes
   }
 });
 
+// --- The manifest comparison's floor is what the roster declares ---------------------------------
+
+/**
+ * The script's manifest-comparison block, from extracting the archive's `module.xml` to the line
+ * that reports the comparison passed. Sliced out of the script, as `archiveContentsBlock` is.
+ */
+export function manifestComparisonBlock(text) {
+  const lines = text.split('\n');
+  const start = lines.findIndex((line) => line.startsWith('tar xzf "$ARCHIVE" -C "$DIR/extract" module.xml'));
+  const end = lines.findIndex((line) => line.includes("the archive's manifest declares the same"));
+  assert.ok(start >= 0, 'the manifest extraction was not found in the script');
+  assert.ok(end > start, 'the manifest comparison summary line was not found after it');
+  return lines.slice(start, end + 1).join('\n');
+}
+
+// Mutation (Rule 19): restore the literal `-lt 11` -> the manifest with an extra attribute-less
+// <Dependency> reads 11 declarations against a floor of 11 and passes, so the first leg goes red.
+test('a manifest declaring more than the comparison reads fails, naming both numbers', () => {
+  const block = manifestComparisonBlock(source);
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-manifest-floor-'));
+  try {
+    mkdirSync(join(dir, 'extract'), { recursive: true });
+    const roster = join(dir, 'roster');
+    mkdirSync(roster, { recursive: true });
+    const shipped = readFileSync(join(REPO_ROOT, 'module.xml'), 'utf8');
+    const bin = join(dir, 'bin');
+    writeStub(bin, 'tar', ['cp "$OCUPILOT_TAR_MANIFEST" "$4/module.xml"']);
+    const prelude = [
+      'set -e',
+      `DIR=${JSON.stringify(dir)}`,
+      `REPO_ROOT=${JSON.stringify(roster)}`,
+      'ARCHIVE=/dev/null',
+      'ARTIFACT_NAME=ocupilot.tgz',
+      'fail() { echo "FAIL $1: $2"; exit 1; }',
+    ].join('\n');
+    const run = (manifest) => {
+      writeFileSync(join(roster, 'module.xml'), manifest);
+      return spawnSync('sh', ['-c', `${prelude}\n${block}`], {
+        encoding: 'utf8',
+        env: stubEnv(bin, { OCUPILOT_TAR_MANIFEST: join(roster, 'module.xml') }),
+      });
+    };
+
+    const extra = shipped.replace('</Module>', '  <Dependency><Name>probe-module</Name><Version>1.0.0</Version></Dependency>\n    </Module>');
+    assert.notEqual(extra, shipped, 'the fixture manifest gained a <Dependency>');
+    const short = run(extra);
+    assert.equal(short.status, 1, `a declaration the comparison cannot read was accepted: ${short.stdout}${short.stderr}`);
+    assert.match(short.stdout, /read only 11 declaration\(s\)[^\n]*fewer than the 12 it declares/, `the failure names both numbers: ${short.stdout}`);
+
+    const same = run(shipped);
+    assert.equal(same.status, 0, `the shipped manifest compares clean against itself: ${same.stdout}${same.stderr}`);
+    assert.match(same.stdout, /declares the same 11 item\(s\)/, same.stdout);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // --- The trap covers an interrupt, not only a clean exit ----------------------------------------
 
 test('SIGTERM mid-run still removes both containers by name, via the same trap as EXIT', async () => {

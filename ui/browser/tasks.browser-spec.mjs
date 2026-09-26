@@ -457,14 +457,14 @@ test('Story 6.6 AC1: Task history renders its form first with no read, Search is
     assert.equal(await page.$('.ocu-data-table-skeleton'), null, 'no skeleton before Search');
     assert.deepEqual(reads, [], 'no read before Search');
 
-    await page.type('#ocu-task-history-search', 'OcuPilotDemo');
+    await page.type('#ocu-task-history-search', DEMO_TASK);
     await page.click('.ocu-criteria-controls button[type="submit"]');
     await waitForRows(page, config.navigationTimeoutMs);
 
     assert.equal(reads.length, 1, `exactly one read was issued by Search: ${JSON.stringify(reads)}`);
     const url = new URL(reads[0]);
     assert.equal(url.pathname, HISTORY_READ_PATH);
-    assert.equal(url.searchParams.get('search'), 'OcuPilotDemo', 'carrying search=OcuPilotDemo');
+    assert.equal(url.searchParams.get('search'), DEMO_TASK, `carrying search=${DEMO_TASK}`);
 
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers, [
@@ -634,10 +634,12 @@ test('Story 6.6 AC3: activating a row\'s name cell on Task history opens a dialo
   const { context, page, reads } = await signedInAtList(config.username, config.password, HISTORY_URL);
   try {
     await page.waitForSelector('#ocu-task-history-search', { timeout: config.navigationTimeoutMs });
-    await page.type('#ocu-task-history-search', 'OcuPilotDemo');
+    await page.type('#ocu-task-history-search', DEMO_TASK);
     await page.click('.ocu-criteria-controls button[type="submit"]');
     await waitForRows(page, config.navigationTimeoutMs);
     const readsBefore = reads.length;
+    assert.ok(readsBefore > 0, 'Search issued a read');
+    assert.equal(new URL(reads[readsBefore - 1]).searchParams.get('search'), DEMO_TASK, `carrying search=${DEMO_TASK}`);
 
     const rowIndex = await findRowIndexByName(page, DEMO_TASK);
     assert.ok(rowIndex >= 0, `the ${DEMO_TASK} row is rendered`);

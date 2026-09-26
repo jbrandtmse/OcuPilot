@@ -3,8 +3,8 @@
 /// (<class>OcuPilot.Test.Http</class>).</p>
 /// <p><b>Read-only against the live instance.</b> Nothing here creates, modifies or deletes an
 /// application error, and nothing writes to <code>^ERRORS</code>. The instance already holds
-/// readable entries -- the installer's own <code>SeedApplicationError</code> puts one in on every
-/// start -- so every leg has a subject without anything being written. The one seeding class is
+/// readable entries -- the installer's own <code>SeedApplicationError</code> keeps one present after
+/// every start -- so every leg has a subject without anything being written. The one seeding class is
 /// <class>OcuPilot.Test.ErrorLogSeed</class>, on a throwaway container.</p>
 /// <p>Needs the API application installed, the test principal's password, that principal holding
 /// <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code> plus read and write on the

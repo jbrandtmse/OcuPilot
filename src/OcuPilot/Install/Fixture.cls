@@ -117,13 +117,13 @@ ClassMethod ResolvedPrefix(pProfile As %String) As %String
 /// seam), binding every one of them -- the web application, the task and the error-log
 /// entry -- to <var>pNamespace</var>, or to the caller's <code>$NAMESPACE</code> when it is
 /// <code>""</code>. Always returns <code>$$$OK</code> -- see this class's header.</p>
-/// <p><var>pErrorEntryId</var> is the exact identity of the application-error entry
-/// <method>CreateErrorEntry</method> seeded <b>and confirmed</b> on THIS call --
+/// <p><var>pErrorEntryId</var> is the exact identity of the demo application-error entry
+/// <method>CreateErrorEntry</method> found or seeded, <b>and confirmed</b>, on THIS call --
 /// <code>"&lt;$H day&gt;,&lt;entry number&gt;"</code>, or <code>""</code> when no entry was
-/// both seeded and read back. A seed whose read-back failed also leaves it <code>""</code>,
+/// both kept present and read back. A read-back that failed also leaves it <code>""</code>,
 /// and the reports then carry the warn that says which step failed. Output so a caller
 /// (<class>OcuPilot.Test.Demo</class>) can make its own independent assertion against the
-/// entry this run actually produced rather than against "some entry from today", which is
+/// entry this run reported rather than against "some entry from today", which is
 /// the DW-61 false-green this replaced: the previous shape output a <code>$H</code>
 /// boundary instead, because the fixture could not tell which entry it had produced.
 /// <code>$$LOG^%ETN()</code>'s return value <b>is</b> that identity, so the ~59-second
@@ -618,10 +618,11 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
     }
 }
 
-/// <p>DW-15, AC12. <b>Seeds</b> one readable application-error entry into the install
-/// namespace's own <code>^ERRORS</code> (AD-48's underlying store) and then confirms
-/// exactly that entry -- deterministically, in the caller's own process, with no Task
-/// Manager, no scheduled task and no wait.</p>
+/// <p>DW-15, AC12. <b>Keeps</b> one readable application-error entry present in the install
+/// namespace's own <code>^ERRORS</code> (AD-48's underlying store), seeding it through
+/// <method>EnsureErrorEntry</method> only when none is there, and then confirms exactly that
+/// entry -- deterministically, in the caller's own process, with no Task Manager, no scheduled
+/// task and no wait.</p>
 /// <p><b>Rework iteration 5 (2026-09-11): this method no longer harvests the demo task's
 /// failure.</b> It used to scan <code>SYS.ApplicationError:ErrorList</code> for an entry
 /// the Task Manager daemon writes when <class>OcuPilot.Install.DemoTask</class>'s
@@ -649,14 +650,11 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
 /// confirmation reads the entry back through <code>SYS.ApplicationError:ErrorList</code>,
 /// the same supported query the Logs area (Story 5.13) will read, matched on its
 /// <code>Error #</code> -- one exact row, never a date bucket.</p>
-/// <p><b>Deliberately not guarded on "already seeded"</b>, unlike the four object
-/// fixtures above. Guard-then-act protects <i>named objects</i> from being modified or
-/// duplicated; an application-error entry has no name and no identity to collide with, it
-/// is append-only log data, and AD-48 makes <code>^ERRORS</code> the Logs area's own data
-/// -- Story 5.13's walkthrough <i>deletes</i> the seeded entries, so a fixture that
-/// refused to re-seed after that delete would leave the next container start's
-/// walkthrough with an empty Logs area, which is precisely what AC12 exists to prevent.
-/// One entry per start, bounded by the instance's own application-error retention.</p>
+/// <p><b>Guarded on the entry's presence, not on a record of having seeded it.</b>
+/// <method>EnsureErrorEntry</method> looks for the demo's own error in the install namespace's
+/// log and seeds only when none is there, so a restart leaves exactly the one entry, and an
+/// entry an operator deleted (the Logs area's delete tool removes it) or retention purged is seeded
+/// again at the next start. Either way the entry is confirmed and inventoried the same way.</p>
 ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef pReports, ByRef pRows, Output pErrorEntryId As %String) [ Private ]
 {
     Set pErrorEntryId = ""
@@ -675,10 +673,10 @@ ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef p
             }
         }
 
-        Set tSeedSC = ..SeedApplicationError(.tDay, .tNumber)
+        Set tSeedSC = ..EnsureErrorEntry(pInstallNs, .tDay, .tNumber, .tSeeded)
         Set $NAMESPACE = tOrigNS
         If $$$ISERR(tSeedSC) {
-            Do ..Report(.pReports, "warn", "Could not seed the demo application-error log entry", {"error": ($System.Status.GetErrorText(tSeedSC))})
+            Do ..Report(.pReports, "warn", "Could not find or seed the demo application-error log entry", {"error": ($System.Status.GetErrorText(tSeedSC))})
             Quit
         }
 
@@ -733,7 +731,11 @@ ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef p
         ; nothing for this Kind (^ERRORS is the Logs area's own data, deleted by its own
         ; confirmed delete tool, never by uninstall).
         Do ..NoteRow(.pRows, "errorentry", ..ResolvedPrefix(pProfile) _ " application error", pInstallNs)
-        Do ..Report(.pReports, "info", "Seeded and confirmed one readable application-error log entry in the install namespace", {"entry": (pErrorEntryId), "namespace": (pInstallNs), "message": (tMessage), "time": (tTime)})
+        If tSeeded {
+            Do ..Report(.pReports, "info", "Seeded and confirmed one readable application-error log entry in the install namespace", {"entry": (pErrorEntryId), "namespace": (pInstallNs), "message": (tMessage), "time": (tTime)})
+        } Else {
+            Do ..Report(.pReports, "info", "Confirmed the demo application-error log entry in the install namespace: already present - not re-seeded", {"entry": (pErrorEntryId), "namespace": (pInstallNs), "message": (tMessage), "time": (tTime)})
+        }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         ; Fix Pack F-4 (round 2): a throw inside tRS.Next()/tRS.Get() used to land here
@@ -743,6 +745,70 @@ ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef p
         If tRSOpen Do tRS.Close()
         Do ..Report(.pReports, "warn", "Could not seed or confirm the demo error-log fixture", {"error": (ex.DisplayString())})
     }
+}
+
+/// <p>Keep the demo's own application error present in <var>pInstallNs</var>, answering its
+/// identity in <var>pDay</var> (a <code>$H</code> day number) and <var>pNumber</var> (that day's
+/// entry number). An entry counts as the demo's when its error text names both
+/// <code>SeedApplicationError+</code> and <code>^OcuPilot.Install.Fixture</code>, which only
+/// <method>SeedApplicationError</method> produces.</p>
+/// <p>It switches once to <code>%SYS</code> (AD-16) and walks <code>SYS.ApplicationError</code>'s
+/// <code>DateList</code> and then <code>ErrorList</code> for <var>pInstallNs</var>, passing each
+/// date as <code>DateList</code> spells it (AD-48). When an entry is found it answers the newest
+/// one with <var>pSeeded</var> 0 and writes nothing; otherwise it restores the namespace, seeds
+/// one, and answers it with <var>pSeeded</var> 1.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> is <var>pInstallNs</var>, because the seed
+/// logs to the current namespace; any other namespace is refused with an error status. A query
+/// fault returns its <code>%Status</code> and seeds nothing.</p>
+ClassMethod EnsureErrorEntry(pInstallNs As %String, Output pDay As %Integer, Output pNumber As %Integer, Output pSeeded As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Set pDay = ""
+    Set pNumber = ""
+    Set pSeeded = 0
+    Set tOrigNS = $NAMESPACE
+    If tOrigNS '= pInstallNs {
+        Quit $$$ERROR($$$GeneralError, "EnsureErrorEntry must be called in the install namespace " _ pInstallNs _ ", not " _ tOrigNS)
+    }
+    Set tDates = ""
+    Set tList = ""
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tDates = ##class(%ResultSet).%New("SYS.ApplicationError:DateList")
+        Set tSC = tDates.Execute(pInstallNs)
+        If $$$ISERR(tSC) Quit
+        While (pNumber = "") && tDates.Next() {
+            Set tDate = tDates.Get("Date")
+            Set tList = ##class(%ResultSet).%New("SYS.ApplicationError:ErrorList")
+            Set tSC = tList.Execute(pInstallNs, tDate)
+            If $$$ISERR(tSC) Quit
+            While tList.Next() {
+                Set tText = tList.Get("Error message")
+                If (tText [ "SeedApplicationError+") && (tText [ "^OcuPilot.Install.Fixture") {
+                    Set pDay = $ZDateH(tDate, 1, , , , , , , "")
+                    Set pNumber = +tList.Get("Error #")
+                    Quit
+                }
+            }
+            Do tList.Close()
+            Set tList = ""
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    If $IsObject(tList) Do tList.Close()
+    If $IsObject(tDates) Do tDates.Close()
+    If $$$ISERR(tSC) {
+        Set pDay = ""
+        Set pNumber = ""
+        Quit tSC
+    }
+    If pNumber '= "" Quit $$$OK
+    Set tSC = ..SeedApplicationError(.pDay, .pNumber)
+    If $$$ISOK(tSC) Set pSeeded = 1
+    Quit tSC
 }
 
 /// <p>Raise one genuine, controlled runtime error inside this class's own routine and

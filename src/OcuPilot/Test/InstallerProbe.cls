@@ -298,4 +298,14 @@ ClassMethod AssertNoForeignRole(pAdminRole As %String, pKey As %String, pName As
     Quit tSC
 }
 
+/// <p>The bundle identity <method>OcuPilot.Install.Installer.BundleIdentity</method> answers when
+/// <var>pDirectory</var> is the shell directory; <code>""</code> leaves the name unset. Reaches the
+/// private method for <class>OcuPilot.Test.BundleIdentity</class>.</p>
+ClassMethod BundleIdentityOf(pDirectory As %String) As %String
+{
+    Kill tNames
+    If pDirectory '= "" Set tNames("shellDirectory") = pDirectory
+    Quit ..BundleIdentity(.tNames)
+}
+
 }

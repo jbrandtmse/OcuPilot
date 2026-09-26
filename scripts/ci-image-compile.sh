@@ -43,7 +43,7 @@ done
 
 [ -n "$IMAGE" ] || { echo "ci-image-compile: --image is required"; exit 2; }
 case "$IMAGE" in
-    *latest-cd*|*:latest) echo "ci-image-compile: refusing a floating tag; AD-27 requires an explicit one"; exit 2 ;;
+    *:latest|*:latest-*) echo "ci-image-compile: refusing a floating tag; AD-27 requires an explicit one"; exit 2 ;;
 esac
 # A reference with no tag at all is the floating `:latest` under another spelling, and the
 # patterns above need a colon to see it. Tested on the segment after the last "/", because the

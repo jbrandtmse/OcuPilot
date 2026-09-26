@@ -232,9 +232,8 @@ Method TestUninstallRemovesOnlyWhatInstallCreatedAndReportsTheRest()
 /// <p>DW-94 -- an application uninstall leaves in place keeps its <b>matching role</b>, not just
 /// its existence. Deleting a role strips the name from every application still matching it, so
 /// removing the role of an application this run deliberately kept would take that application's
-/// AD-21 privilege floor with it: an anonymous caller would then get 500 and a
-/// <code>&lt;PROTECT&gt;</code> naming the database directory. "Left in place and reported" has
-/// to mean still working.</p>
+/// AD-21 privilege floor with it: an anonymous caller would then be refused 403 before the
+/// dispatch class runs (inference). "Left in place and reported" has to mean still working.</p>
 /// <p>Mutation (Rule 19): drop the compound guard
 /// <code>If '$Data(tRemovedKeys(tRKey)), ...Exists(...) Continue</code> from
 /// <method>OcuPilot.Install.Installer.Uninstall</method>'s role loop -> the kept application's
@@ -251,6 +250,51 @@ Method TestUninstallLeavesAKeptApplicationsPrivilegeFloorIntact()
 
     Do $$$AssertEquals(..ApplicationDispatchClass(..#PROBEREADINESS), "OcuPilot.Api.Readiness", "the unrecorded application is still there")
     Do $$$AssertEquals(..MatchRolesOf(..#PROBEREADINESS), ":ProbeOcuPilotReadiness", "and still carries the matching role it needs to answer at all")
+}
+
+/// <p>The uninstall preview lists exactly the matching roles the confirmed run deletes: the role of
+/// an application that is gone, record and all, is listed, and the role of an application left in
+/// place is not.</p>
+/// <p>Mutation (Rule 19): restore the <code>'$Data(tRecorded(tUName))</code> filter on the preview's
+/// role list in <method>OcuPilot.Install.Installer.Uninstall</method> -> the absent application's
+/// role is left out of the preview and this goes red.</p>
+Method TestThePreviewListsTheRolesTheConfirmedRunDeletes()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install("probe"), "a probe install succeeds")
+    Set tGoneRole = $Piece(..MatchRolesOf(..#PROBEREADINESS), ":", 2)
+    Set tKeptRole = $Piece(..MatchRolesOf(..#PROBESHELL), ":", 2)
+    Do $$$AssertTrue((tGoneRole '= "") && (tKeptRole '= ""), "both applications carry a matching role: " _ tGoneRole _ ", " _ tKeptRole)
+
+    ; The readiness application is removed by another hand, record and all; the shell application
+    ; stays where install put it but loses its record, so uninstall leaves it in place.
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#PROBEREADINESS), "the readiness record is removed")
+    Do $$$AssertStatusOK(..DeleteApplication(..#PROBEREADINESS), "and so is the readiness application")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#PROBESHELL), "the shell record is removed, the application is not")
+
+    Set tPreview = $System.Status.GetErrorText(##class(OcuPilot.Install.Installer).Uninstall("probe", 0))
+    Do $$$AssertTrue(tPreview [ ("'" _ tGoneRole _ "'"), "the preview names the absent application's role: " _ tPreview)
+    Do $$$AssertTrue('(tPreview [ ("'" _ tKeptRole _ "'")), "and not the kept application's role")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Uninstall("probe", 1), "the confirmed uninstall succeeds")
+    Do $$$AssertTrue('..RoleExists(tGoneRole), "and deletes the role the preview named")
+    Do $$$AssertTrue(..RoleExists(tKeptRole), "and keeps the one it did not")
+}
+
+/// <p>Delete the web application at <var>pPath</var>. Switches to <code>%SYS</code> and restores
+/// (AD-16).</p>
+Method DeleteApplication(pPath As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISOK(tSC) Set tSC = ##class(Security.Applications).Delete(pPath)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
 }
 
 /// <p>The live <code>MatchRoles</code> of the application at <var>pPath</var>, or

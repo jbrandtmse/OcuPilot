@@ -2,11 +2,11 @@
 title: 'Story 23.1: The range-end cleanup'
 type: 'chore'
 created: '2026-09-26'
-status: 'in-progress'
-baseline_revision: 'f30207594e8641fc86ccaa1db9ebcceee2ba9484'
+status: 'done'
+baseline_revision: 'eb44aa3bfdc05ee2b5c30b096c4d341f4b53844f'
 baseline_commit: 'f30207594e8641fc86ccaa1db9ebcceee2ba9484'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
@@ -24,6 +24,14 @@ deferred:
       _components.scss .ocu-proposal-card-destructive sets border-left-color only; no under-header bar is drawn. Predates B1; the comments cite :1181 as the spec directed.
     location: >-
       ui/src/styles/_components.scss:4434, _bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md:1181
+    severity: low
+  - summary: >-
+      No check requires PreferencesWire's new arming refusal, or DemoErrorSeed's inline OCUPILOT_ALLOW_ERROR_DELETE refusal, to stay in OnBeforeAllTests; deleting either block leaves every gate green.
+    evidence: |-
+      check_destructive_test_guard reads OnBeforeAllTests only for classes matching DESTRUCTIVE_TEST_RE, which covers neither Pref.GuardedClear nor SYS.ApplicationError.DeleteByError;
+      ci.test.mjs armedClasses counts a declared Parameter or GetEnviron literal, not the refusal. Pre-existing coverage limit shared by every class armed only through the rosters.
+    location: >-
+      scripts/check-objectscript.py:1344, src/OcuPilot/Test/PreferencesWire.cls:26, src/OcuPilot/Test/DemoErrorSeed.cls:20
     severity: low
 ---
 
@@ -107,31 +115,31 @@ deferred:
 
 ### Batch B2 — install, smoke and the demo fixture (8)
 
-- [ ] DW-1681 (owner must-fix): add `EnsureErrorEntry(pInstallNs, Output pDay, Output pNumber, Output pSeeded) As %Status` to `Install/Fixture.cls`.
+- [x] DW-1681 (owner must-fix): add `EnsureErrorEntry(pInstallNs, Output pDay, Output pNumber, Output pSeeded) As %Status` to `Install/Fixture.cls`.
   - It switches once to `%SYS` (AD-16) and walks `SYS.ApplicationError` `DateList` then `ErrorList` for the install namespace. Take the date spelling from `LogSourcePort.ErrorsRead`; do not write it from memory.
   - An entry whose error text contains both `SeedApplicationError+` and `^OcuPilot.Install.Fixture` counts as the demo's own error. `ErrorLogSeed`'s entries do not match that.
   - If one exists, the method returns its (day, number) with `pSeeded=0`. Otherwise it restores the namespace and seeds, with `pSeeded=1`.
   - `CreateErrorEntry` calls it, keeps its read-back and `NoteRow` on both paths, and reports "already present - not re-seeded".
   - Replace the "Deliberately not guarded" paragraph (`:653-659`) with the guard's contract. Replace "puts one in on every start" with "keeps one present after every start" at `Test/ErrorLog.cls:2-3` and `Test/ErrorLogWire.cls:6-7`. `Test/Demo.cls`'s header and its first message should read "present, as reported by this run's fixture".
   - New test class `OcuPilot.Test.DemoErrorSeed`. `ARMINGVARIABLE` is `OCUPILOT_ALLOW_ERROR_SEED`; add an inline refusal on `OCUPILOT_ALLOW_ERROR_DELETE`, because it deletes. Add the class to both rosters in `scripts/ci-throwaway.sh`. Both variables are already armed on `ocupilot-b-ci`.
-- [ ] DW-1119 and DW-1402: `Render` names the failed checks as `ocupilot-smoke: FAILED -- N check(s) failed: a, b`. It adds the skipped checks to the PASSED line as `ocupilot-smoke: PASSED -- N check(s) skipped: a, b`, only when N>0. The counts line stays byte-identical. File: `Install/Smoke.cls:1737-1766`. Tests go in `Test/Smoke.cls`.
-- [ ] DW-1268: the preview lists `tURole` when the role exists and either its application is recorded or no application sits at its roster path, which mirrors the delete loop. Reword the `:3756` warn to "no web application, and no matching role of an application still present, will be removed". File: `Installer.cls:3756,3768-3780`. Add a new method to `Test/Provenance.cls`.
-- [ ] DW-1323: the drift check also compares `Type` (expected 4) and repairs it. File: `Installer.cls:2113-2121`. Add a new `Test/IdentityInstall.cls` method using its DriftApplication pattern. If the instance refuses a Type drift, the pass records that measurement under Verification and ships no test; the lead then re-dispositions the entry `wontfix-theoretical`.
-- [ ] DW-1374: add `BundleIdentityOf(pDirectory)` to `Test/InstallerProbe.cls`, plus a new `OcuPilot.Test.BundleIdentity` covering an empty argument, a missing directory, no `main-*.js`, and two `main-*.js` (the last one wins).
-- [ ] DW-1373: new method in `Test/UiAboutRead.cls`. Call the real `Kernel.Shell.About.LogSourceFailure` with a unique field, find the appended `[OcuPilot]` messages.log line, and assert its level, subsystem and field (the `AuditingScreen.cls:142-166` tail pattern). Also call it with `pException=""` and check it does not throw.
-- [ ] DW-1439: in `Test/WebApp.cls` `TestTheInstallTimeAssertionRefusesAMissingMatchingRole`, after the role delete, GET `/api/probeocupilot/readiness` anonymously and assert the measured status and body. If the measurement differs from "500 with `<PROTECT>`", replace that sentence with the measured mechanism at `docs/DEVELOPMENT.md:293-297`, `Installer.cls:2275-2282` and `WebApp.cls:263,308`, and record the measurement for the lead's AD-21 edit (L). If it matches, record it and change no text.
+- [x] DW-1119 and DW-1402: `Render` names the failed checks as `ocupilot-smoke: FAILED -- N check(s) failed: a, b`. It adds the skipped checks to the PASSED line as `ocupilot-smoke: PASSED -- N check(s) skipped: a, b`, only when N>0. The counts line stays byte-identical. File: `Install/Smoke.cls:1737-1766`. Tests go in `Test/Smoke.cls`.
+- [x] DW-1268: the preview lists `tURole` when the role exists and either its application is recorded or no application sits at its roster path, which mirrors the delete loop. Reword the `:3756` warn to "no web application, and no matching role of an application still present, will be removed". File: `Installer.cls:3756,3768-3780`. Add a new method to `Test/Provenance.cls`.
+- [x] DW-1323: the drift check also compares `Type` (expected 4) and repairs it. File: `Installer.cls:2113-2121`. Add a new `Test/IdentityInstall.cls` method using its DriftApplication pattern. If the instance refuses a Type drift, the pass records that measurement under Verification and ships no test; the lead then re-dispositions the entry `wontfix-theoretical`.
+- [x] DW-1374: add `BundleIdentityOf(pDirectory)` to `Test/InstallerProbe.cls`, plus a new `OcuPilot.Test.BundleIdentity` covering an empty argument, a missing directory, no `main-*.js`, and two `main-*.js` (the last one wins).
+- [x] DW-1373: new method in `Test/UiAboutRead.cls`. Call the real `Kernel.Shell.About.LogSourceFailure` with a unique field, find the appended `[OcuPilot]` messages.log line, and assert its level, subsystem and field (the `AuditingScreen.cls:142-166` tail pattern). Also call it with `pException=""` and check it does not throw.
+- [x] DW-1439: in `Test/WebApp.cls` `TestTheInstallTimeAssertionRefusesAMissingMatchingRole`, after the role delete, GET `/api/probeocupilot/readiness` anonymously and assert the measured status and body. If the measurement differs from "500 with `<PROTECT>`", replace that sentence with the measured mechanism at `docs/DEVELOPMENT.md:293-297`, `Installer.cls:2275-2282` and `WebApp.cls:263,308`, and record the measurement for the lead's AD-21 edit (L). If it matches, record it and change no text.
 
 ### Batch B3 — CI, harness and test hygiene (8)
 
-- [ ] DW-419: when a class's code calls `Installer.Install("")` or `StartPath`, `check_destructive_test_guard` also requires a refusal on `OCUPILOT_ALLOW_PRODUCTION_INSTALL` (as `ARMINGVARIABLE` or an inline `GetEnviron`). Add that refusal to the eight classes and add them to the PRODUCTION_INSTALL roster. Delete the "seven further classes ... narrower effect" sentence. Files: `scripts/check-objectscript.py:1408`, `scripts/test_check_objectscript.py` (one fixture that must report a problem, and its armed twin that must pass), `Test/{AuditEvent,AuditMarker,ConfigGate,State,Token,UnexpireScope,Version,Wire}.cls`, `scripts/ci-throwaway.sh:239-249`.
-- [ ] DW-1340: add `Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_ACCOUNT_PREFERENCES"` and the standard `OnBeforeAllTests` refusal. Add the compose env line and a `# classes: PreferencesWire` roster block. Files: `Test/PreferencesWire.cls`, `scripts/ci-throwaway.sh`. `ocupilot-b-ci` predates the variable, so the class refuses there. That refusal is this fix's local observable; CI's fresh throwaway runs it armed.
-- [ ] DW-1015: `browserConfig` throws when the container is `ocupilot` or matches `/^ocupilot-slot-/`, naming the variable. Files: `ui/browser.config.mjs:59`, `ui/tools/browser-config.test.mjs` (two cases).
-- [ ] DW-1425: the Story 6.6 AC1 and AC3 legs type `DEMO_TASK` instead of `'OcuPilotDemo'` and assert `search=DEMO_TASK` on the read URL. File: `ui/browser/tasks.browser-spec.mjs:460-466,637`.
-- [ ] DW-1468: `AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.history", "&search=OcuPilotDemo%20nightly")`. File: `Test/WireSecurityRead.cls:459`.
-- [ ] DW-1433: `new` strips one leading `note=` from its note argument. Files: `_bmad/scripts/ledger.sh:186`, plus a case in `ui/tools/shell-scripts.test.mjs` run against a temporary ledger.
-- [ ] DW-1332: the case arm becomes `*:latest|*:latest-*)`. Files: `scripts/ci-image-compile.sh:46`. In `ui/tools/ci.test.mjs:1339`, a behavioral test replaces the source match: with a stub `docker` on PATH, `:latest-cd`, `:latest-em`, `:latest` and a tagless reference each exit 2, name AD-27, and call no docker.
-- [ ] DW-1689 (harvested from B1): the assertion message at `scripts/test_check_objectscript.py:1659` uses DW-1298's replacement wording ("a longer route before a shorter one whose Url matches its leading segments"). Text only.
-- [ ] DW-1344: derive the floor from the repository's `module.xml` as 3 + the `<(Resource|FileCopy|Invoke|WebApplication|Dependency)[ />]` count + 1, and fail naming both numbers. Files: `scripts/ci-ipm-archive.sh:376-379`, `ui/tools/ipm-archive.test.mjs` (a fixture manifest with an extra `<Dependency>` must fail).
+- [x] DW-419: when a class's code calls `Installer.Install("")` or `StartPath`, `check_destructive_test_guard` also requires a refusal on `OCUPILOT_ALLOW_PRODUCTION_INSTALL` (as `ARMINGVARIABLE` or an inline `GetEnviron`). Add that refusal to the eight classes and add them to the PRODUCTION_INSTALL roster. Delete the "seven further classes ... narrower effect" sentence. Files: `scripts/check-objectscript.py:1408`, `scripts/test_check_objectscript.py` (one fixture that must report a problem, and its armed twin that must pass), `Test/{AuditEvent,AuditMarker,ConfigGate,State,Token,UnexpireScope,Version,Wire}.cls`, `scripts/ci-throwaway.sh:239-249`.
+- [x] DW-1340: add `Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_ACCOUNT_PREFERENCES"` and the standard `OnBeforeAllTests` refusal. Add the compose env line and a `# classes: PreferencesWire` roster block. Files: `Test/PreferencesWire.cls`, `scripts/ci-throwaway.sh`. `ocupilot-b-ci` predates the variable, so the class refuses there. That refusal is this fix's local observable; CI's fresh throwaway runs it armed.
+- [x] DW-1015: `browserConfig` throws when the container is `ocupilot` or matches `/^ocupilot-slot-/`, naming the variable. Files: `ui/browser.config.mjs:59`, `ui/tools/browser-config.test.mjs` (two cases).
+- [x] DW-1425: the Story 6.6 AC1 and AC3 legs type `DEMO_TASK` instead of `'OcuPilotDemo'` and assert `search=DEMO_TASK` on the read URL. File: `ui/browser/tasks.browser-spec.mjs:460-466,637`.
+- [x] DW-1468: `AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.history", "&search=OcuPilotDemo%20nightly")`. File: `Test/WireSecurityRead.cls:459`.
+- [x] DW-1433: `new` strips one leading `note=` from its note argument. Files: `_bmad/scripts/ledger.sh:186`, plus a case in `ui/tools/shell-scripts.test.mjs` run against a temporary ledger.
+- [x] DW-1332: the case arm becomes `*:latest|*:latest-*)`. Files: `scripts/ci-image-compile.sh:46`. In `ui/tools/ci.test.mjs:1339`, a behavioral test replaces the source match: with a stub `docker` on PATH, `:latest-cd`, `:latest-em`, `:latest` and a tagless reference each exit 2, name AD-27, and call no docker.
+- [x] DW-1689 (harvested from B1): the assertion message at `scripts/test_check_objectscript.py:1659` uses DW-1298's replacement wording ("a longer route before a shorter one whose Url matches its leading segments"). Text only.
+- [x] DW-1344: derive the floor from the repository's `module.xml` as 3 + the `<(Resource|FileCopy|Invoke|WebApplication|Dependency)[ />]` count + 1, and fail naming both numbers. Files: `scripts/ci-ipm-archive.sh:376-379`, `ui/tools/ipm-archive.test.mjs` (a fixture manifest with an extra `<Dependency>` must fail).
 
 ### Batch B4 — the structural gate (5)
 
@@ -270,6 +278,28 @@ Rejected:
   - `[low]` `[patch]` intent-alignment: a `; DW-441:` narration prefix remained in `ContextBound.cls` — prefix removed.
   - `[false]` `[reject]` intent-alignment: several edited lines run in no test — they are fixture and message text; the tree compiles with 0 errors and B1 carries no behavior by design.
   - `[low]` `[patch]` intent-alignment: the Router header omitted `/agent/context`, the provider catalog, and the editors' checks — added.
+
+### 2026-09-26 — Review pass (Batches B2+B3)
+
+- verdicts: 17 findings — high 0, medium 3, low 12, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` verification-gap: DW-1681 was pinned only at `EnsureErrorEntry`; restoring `SeedApplicationError` in `CreateErrorEntry` left every test green — added `Demo.TestASecondStartSeedsNoSecondErrorEntry` (a second `Fixture.Create` keeps the demo-entry count, answers the same id, reports "already present - not re-seeded"); mutation observed red (run 41), reverted.
+  - `[low]` `[defer]` verification-gap: deleting PreferencesWire's refusal (or DemoErrorSeed's inline error-delete refusal) reddens no gate — the checker reads refusals only for `DESTRUCTIVE_TEST_RE` classes and the roster counts the declaration; pre-existing coverage limit, in `deferred:`.
+  - `[medium]` `[patch]` verification-gap: DW-1468's `&search=` suffix could not fail on a 90-row history — `AssertSameRowsAsTestAccount` takes an optional name substring every row must carry; suffix-removal mutation observed red (run 44), reverted.
+  - `[low]` `[patch]` verification-gap: `scripts/smoke.sh:216` and the DW-1079 test comment in `ui/tools/ci.test.mjs` said the class line names only the first failed check — clause deleted in both.
+  - `[low]` `[patch]` verification-gap: `BundleIdentity`'s "does not depend on directory order" cannot fail (`%File:FileSet` already sorts by name) — sentence deleted.
+  - `[false]` `[reject]` intent-alignment: B2 and B3 share one pass and one commit — the lead's Spec Change Log entry after B1's green CI directs exactly that; the fix would edit the spec.
+  - `[medium]` `[patch]` intent-alignment: the "already present" report and the start-path count were unasserted (same root cause as the first row) — same patch; the new leg asserts the report text.
+  - `[low]` `[reject]` intent-alignment: no test injects a `SYS.ApplicationError` query fault — the fault path is unchanged (a warn, and `Create` returns OK as before), and injecting one needs a seam in a shipped class.
+  - `[low]` `[reject]` intent-alignment: an instance already holding several demo entries keeps them — the task returns the existing entry; reducing them adds a delete path to install, and an operator deletes from Logs.
+  - `[false]` `[reject]` intent-alignment: `EnsureErrorEntry`'s "newest" doc vs first-match code — measured on `ocupilot-b-ci`, `ErrorList` lists a day's entries newest first (#23 11:53 before #6 and #2), and the verification-gap reviewer's probe on slot B found `DateList` newest first too.
+  - `[low]` `[patch]` intent-alignment: `Test/Demo.cls` still said the fixture "seeds its own entry" — now "keeps its own entry present".
+  - `[low]` `[patch]` intent-alignment: DW-1439's 403 was measured on the readiness application only, yet three new sentences state it for every application — labeled `(inference)` at `Installer.cls` (install-time assertion doc, uninstall role loop) and `Provenance.cls:235`.
+  - `[low]` `[reject]` intent-alignment: DW-1425's residue failure is not reproducible here (4 probe rows) — its pinning `search=` assertion reddens under the named mutation; the residue is environmental.
+  - `[low]` `[defer]` intent-alignment: DW-1340's refusal is unpinned by any check (same root cause as the second row) — same deferred item.
+  - `[low]` `[reject]` intent-alignment: the production-install refusal check does not require the guard and `Quit` to be paired or to precede the install — the same leniency `guarded_before_all_tests` has; tightening it is parser work beyond the task.
+  - `[low]` `[reject]` intent-alignment: the new harness docstring opens "DW-419:" — the Python harness's docstrings carry DW ids by convention (nine others); the prose rule governs doc comments in shipped code.
+  - `[low]` `[patch]` intent-alignment: the new `Fixture.cls` paragraph named "Story 5.13's walkthrough" — now "the Logs area's delete tool".
 
 ## Design Notes
 
@@ -668,6 +698,18 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Tests and probe
   - DW-1374: initialize to `""` instead of `..#BUILDIDENTITY` → `BundleIdentity` red.
   - DW-1373: empty `About.LogSourceFailure`'s Try body → the new `UiAboutRead` method red.
   - DW-1439: flip the asserted status → `WebApp` red, which shows the leg reads the live answer.
+- Results (implement pass, 2026-09-26, `ocupilot-b-ci` after a `LoadDir` of `src/` with 0 errors; each class run alone and confirmed in `%UnitTest_Result`): `DemoErrorSeed` 2/2, `Demo` 11/11 (12/12 after review, run 42), `ErrorLog` 15/15, `ErrorLogWire` 7/7, `Smoke` 40/40, `Provenance` 7/7, `IdentityInstall` 6/6, `BundleIdentity` 2/2, `UiAboutRead` 12/12, `WebApp` 25/25. `npm run test:tools` 1473/1473. `smoke.sh` PASSED, 48 executed, verdict line `ocupilot-smoke: PASSED -- 1 check(s) skipped: agentswitches`, counts line unchanged in shape.
+- Measured: `SYS.ApplicationError:DateList` spells a date `09/26/2026` (`$ZDate(day,1)`), which `EnsureErrorEntry` passes to `ErrorList` verbatim. DW-1439: with the probe readiness role deleted, an anonymous `GET /api/probeocupilot/readiness/` answers **403 with an empty body** (200 before the delete), not 500 with `<PROTECT>`; the sentence was replaced at `docs/DEVELOPMENT.md:293-297`, `Installer.cls` (the floor-role doc, the install-time assertion doc and the uninstall role-loop comment), `WebApp.cls:263,311`, `Provenance.cls:236` and `Api/Readiness.cls:43`. For the lead's AD-21 `:313` edit (L): "without that, IRIS refuses the anonymous request 403 with an empty body before the dispatch class runs". DW-1323: `Security.Applications.Modify` accepts a Type drift on a routine application (4 → 5 keeps `MatchRoles` and `Routines`; 4 → 8 or 9 also clears `Routines`; 2 and 6 are refused for a name without `/`), so the test ships and drifts to 5; an application of type 5 cannot be deleted, so the test puts Type 4 back if the repair fails.
+- mutation: `EnsureErrorEntry`'s match made `If 0` (find always not-found) → `DemoErrorSeed.TestAPresentEntryIsNotSeededAgain` red (5 asserts); reverted.
+- mutation: `If pNumber '= "" Quit $$$OK` made `If 1 Quit $$$OK` (find always found) → `DemoErrorSeed.TestAnAbsentEntryIsSeededOnce` red (3 asserts); reverted.
+- mutation: restored "; the first is named above" → `Smoke.TestTheVerdictLineNamesFailedAndSkippedChecks` red; dropped the skipped suffix → the same method red on the PASSED line; reverted.
+- mutation: restored `If '$Data(tRecorded(tUName)) Continue` in the preview's role list → `Provenance.TestThePreviewListsTheRolesTheConfirmedRunDeletes` red; reverted.
+- mutation: deleted the `Type` comparison from `EnsureApplication` → `IdentityInstall.TestASecondRunRepairsAStorageApplicationWhoseTypeDrifted` red (a Type 8 drift first stayed green because it also clears `Routines`, which is why the test drifts to 5); reverted.
+- mutation: `BundleIdentity` initialized to `""` → `BundleIdentity.TestEachAbsentBundleAnswersTheFallback` red (3 asserts); reverted.
+- mutation: emptied `About.LogSourceFailure`'s `Try` body → `UiAboutRead.TestTheSourceFailureLogLineNamesTheField` red; reverted.
+- mutation: asserted status flipped to 500 → `WebApp.TestTheInstallTimeAssertionRefusesAMissingMatchingRole` red; reverted.
+- Every mutated file was restored from a copy and `cmp`-checked byte-identical, the tree reloaded, and the seven affected classes re-run green (the counts above are those runs).
+- mutation (review): `CreateErrorEntry` called `SeedApplicationError` in place of `EnsureErrorEntry` → `Demo.TestASecondStartSeedsNoSecondErrorEntry` red (run 41); reverted `cmp`-identical, `Demo` 12/12 (run 42).
 
 ### Batch B3
 
@@ -684,6 +726,17 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Tests and probe
   - DW-1433: remove the strip → `shell-scripts.test.mjs` red.
   - DW-1332: revert the case arm → the `:latest-em` case red.
   - DW-1344: restore the literal `-lt 11` → the `ipm-archive.test.mjs` fixture red.
+- Results (implement pass, 2026-09-26): `check-objectscript.py` 0 problems in 958 files; `test_check_objectscript.py` 132 OK. On `ocupilot-b-ci`, one class per call, confirmed in `%UnitTest_Result`: `AuditEvent` 9/9, `AuditMarker` 8/8, `ConfigGate` 3/3, `State` 12/12, `Token` 12/12, `UnexpireScope` 6/6, `Version` 19/19, `Wire` 20/20, `WireSecurityRead` 23/23. `PreferencesWire` refused in `OnBeforeAllTests` naming `OCUPILOT_ALLOW_ACCOUNT_PREFERENCES`, as expected on this pre-existing throwaway. `npm run test:tools` 1473/1473. `browser/tasks.browser-spec.mjs` 15/15 (client source unchanged, so no redeploy).
+- Measured: `ocupilot-b-ci` holds 4 `OcuPilotDemoProbe` task-history rows (fewer than 40) and 90 history rows in all (fewer than 1,000), read through `tasks.history` with `maxRows=1000`, none truncated.
+- mutation: the production-install clause disabled (`if False and install ...`) → `TestDestructiveTestGuardRule.test_a_production_install_armed_only_by_a_narrower_variable_is_refused` red on both subtests; reverted.
+- mutation: `Parameter ARMINGVARIABLE` removed from `PreferencesWire` → `ci.test.mjs` "each arming roster names exactly the classes that declare that variable" red; reverted.
+- mutation: the `ocupilot-slot-` branch dropped from `browserConfig` → `browser-config.test.mjs` "every slot development container is refused" red; reverted.
+- mutation: the typed search term reverted to `'OcuPilotDemo'` → Story 6.6 AC1 and AC3 red on the `search=` assertion; the residue-dependent red needs 40 or more probe rows, and this throwaway holds 4; reverted.
+- mutation (review): with every row's `Name` now required to contain `OcuPilotDemo nightly`, the `&search=` suffix removed → `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` red (run 44); reverted `cmp`-identical, 23/23 (run 45).
+- mutation: `NOTE="${NOTE#note=}"` deleted → `shell-scripts.test.mjs` "ledger.sh new writes a caller-supplied note= prefix once" red; reverted. Run against a temporary ledger with `LEDGER_ID_COUNTER` empty, never the real ledger or counter.
+- mutation: the case arm reverted to `*latest-cd*|*:latest)` → `ci.test.mjs` "the image probe refuses every floating tag before it calls docker (AD-27)" red on `:latest-em`; reverted.
+- mutation: the floor restored to `-lt 11` → `ipm-archive.test.mjs` "a manifest declaring more than the comparison reads fails, naming both numbers" red; reverted.
+- DW-1689 is message text only; no mutation.
 
 ### Batch B4
 
@@ -769,24 +822,14 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Tests and probe
 Status: done
 Blocking condition: none
 
-**This pass: Batch B1 only** (baseline `f30207594e8641fc86ccaa1db9ebcceee2ba9484`). All 17 B1 items landed as comment, doc, assertion-message and fixture text, with no behavior change:
+**This pass: Batches B2 and B3** (baseline `eb44aa3bfdc05ee2b5c30b096c4d341f4b53844f`); all 17 items landed and are ticked. B1's result is superseded; its triage log stands above.
 
-- README pointers now name `docs/DEVELOPMENT.md` sections in the seven files.
-- The destructive-proposal contract ("no typed-name field") is stated in `proposal-card.ts`, its spec, `_components.scss` (same line count), `AuditingUpdate.cls`, `auditing-write.browser-spec.mjs`, DESIGN.md `:1181/:1242/:1272` and EXPERIENCE.md `:192/:197/:606/:611/:660/:743`.
-- Other text fixes: `Limits.cls`, `CatalogAnthropicStub`, `ContextBound`, `AgentViolation`, `LedgerEmptyPairs`, `TurnSecretResidue`, `AdminPort`, `Provenance`, `Installer`, the `Router` header and ordering wording, `check-objectscript.py`, `RouterFixture`, `ErrorReadStub`, `openapi-viewer.page.spec.ts`, `audit.browser-spec.mjs`, DESIGN.md `:898`, EXPERIENCE.md `:382` and `extract-catalog.md:530`.
+- **B2:** `Fixture.EnsureErrorEntry` keeps one demo `<DIVIDE>` present and `CreateErrorEntry` reports "already present - not re-seeded" (DW-1681; new `Test/DemoErrorSeed.cls`, rosters in `ci-throwaway.sh`); the smoke verdict line names failed and skipped checks (DW-1119/1402); the uninstall preview lists the roles the confirmed run deletes (DW-1268); `EnsureApplication` repairs a `Type` drift (DW-1323 — the instance accepts Type 5, so the test ships); `InstallerProbe.BundleIdentityOf` and new `Test/BundleIdentity.cls` (DW-1374); a `UiAboutRead` leg drives the real `LogSourceFailure` (DW-1373). DW-1439 measured **403 with an empty body**, not 500 `<PROTECT>`: the sentence is replaced at `docs/DEVELOPMENT.md`, `Installer.cls`, `WebApp.cls`, `Provenance.cls` and `Api/Readiness.cls`. For the lead's AD-21 `:313` edit (L): "without that, IRIS refuses the anonymous request 403 with an empty body before the dispatch class runs".
+- **B3:** `check-objectscript.py` requires a production-install class to refuse on `OCUPILOT_ALLOW_PRODUCTION_INSTALL`, and the eight classes do (DW-419); `PreferencesWire` is armed (DW-1340); `browserConfig` refuses `ocupilot` and `ocupilot-slot-*` (DW-1015); `tasks.browser-spec.mjs` searches `DEMO_TASK` (DW-1425); `WireSecurityRead` scopes the history leg (DW-1468); `ledger.sh new` strips one `note=` (DW-1433); `ci-image-compile.sh` refuses every `:latest-*` (DW-1332, behavioral test); the harness message wording (DW-1689, which closes the first `deferred:` item); the IPM floor derives from `module.xml` (DW-1344).
+- Also corrected at origin: `ui/browser/error-log.browser-spec.mjs:8` carried the same "puts one in on every start" claim.
 
-**Review:** 12 findings. 9 patched (4 medium, 5 low), 1 deferred (low), 2 rejected. The triage log gives each one. The follow-up review recommendation is `false`: the two medium entries patched are prose, and each was checked against the code. The AdminPort paragraph was checked against all 24 direct port callers in `Area/`, and each Save handler references `Prohibited`.
+**Review:** 17 findings (medium 3, low 12, false 2). Patched: 2 medium entries (the DW-1681 start path, DW-1468's unfalsifiable suffix) and 6 low; deferred: 1 low entry (two rows, checker coverage of arming refusals); rejected: 2 false and 5 low, each with its reason in the triage log. Follow-up review: `true` — two medium entries were patched; the unverified risk is that `Demo.TestASecondStartSeedsNoSecondErrorEntry` and `DemoErrorSeed` have run only as single classes, and CI's full sweep is the first run with every error-writing class beside them.
 
-**Verification** (on `ocupilot-b-ci`, after the patches):
+**Verification** (`ocupilot-b-ci`, source `LoadDir` 0 errors, equal to the tree; each class alone, confirmed in `%UnitTest_Result`): B2 `DemoErrorSeed` 2/2, `Demo` 12/12, `ErrorLog` 15/15, `ErrorLogWire` 7/7, `Smoke` 40/40, `Provenance` 7/7, `IdentityInstall` 6/6, `BundleIdentity` 2/2, `UiAboutRead` 12/12, `WebApp` 25/25; B3 `AuditEvent` 9/9, `AuditMarker` 8/8, `ConfigGate` 3/3, `State` 12/12, `Token` 12/12, `UnexpireScope` 6/6, `Version` 19/19, `Wire` 20/20, `WireSecurityRead` 23/23; `PreferencesWire` refuses naming its variable, as expected here. `check-objectscript.py` 0 problems in 958 files; harness 132 OK; `npm run test:tools` 1473/1473; `tasks.browser-spec.mjs` 15/15; `smoke.sh` PASSED (`1 check(s) skipped: agentswitches`); `lint-docs.sh` clean; EXPERIENCE.md 981 lines, untouched; no client source changed. Every behavior fix has its `mutation:` line in the B2/B3 blocks. Matrix Test Audit: the two DW-1681 rows are covered by `DemoErrorSeed` (both legs) and the new `Demo` leg. No contended Epic 16 path was touched.
 
-- `LoadDir` of `src/` compiled with 0 errors.
-- `check-objectscript.py` found 0 problems in 956 files, and `test_check_objectscript.py` passed 130 tests.
-- `npm run test:tools` passed 1468/1468, and `npm run test:components` passed 1451/1451.
-- `lint-docs.sh` reported 0 issues. EXPERIENCE.md is 981 lines before and after.
-- The `14\.7` grep is empty. The README grep prints only `core/session.ts:59`, which is correct because README.md `:265` carries the unexpire command.
-- The added source contains no non-ASCII characters.
-- The handoff agent ran `OcuPilot.Test.ToolEmit` once: 11 tests, 0 failed.
-- The Matrix Test Audit does not apply, since no matrix row concerns B1.
-- Rule 19 does not apply, since B1 has no behavior.
-
-**Residual risk:** none beyond the two low items in `deferred:`.
+**Residual risk:** DW-1425's residue and DW-1468's 1,000-row cap cannot occur on this throwaway (4 probe rows, 90 in all); both are pinned by assertions that redden under their mutations. `PreferencesWire` runs armed only on CI's fresh throwaway.

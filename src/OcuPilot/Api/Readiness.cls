@@ -39,8 +39,8 @@
 /// <p><b>Anonymous is not unprivileged</b> (AD-21). The application carries one purpose-built
 /// matching role, declared in <class>OcuPilot.Install.Roster</class> and asserted by the
 /// installer, granting read on the install namespace's code database and nothing else --
-/// without it IRIS cannot load this class for the request at all and answers 500 with a
-/// <code>&lt;PROTECT&gt;</code> naming the database directory. This class resolves no user and
+/// without it IRIS refuses an anonymous request 403 with an empty body before this class runs.
+/// This class resolves no user and
 /// infers nothing from <code>$Roles</code>.</p>
 Class OcuPilot.Api.Readiness Extends %CSP.REST
 {

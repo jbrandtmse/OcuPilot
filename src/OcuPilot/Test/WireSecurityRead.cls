@@ -456,7 +456,7 @@ Method TestTaskHistoryPairSetsAreEnforcedForARealPrincipal()
     Do ..AssertReadRefused(..#TASKUSER, "tasks.history", "%DB_IRISSYS:READ", "&search=OcuPilot")
     Do ..AssertReadRefused(..#TASKUSER, "tasks.taskhistory", "%DB_IRISSYS:READ")
 
-    Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.history")
+    Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.history", "&search=OcuPilotDemo%20nightly", "OcuPilotDemo nightly")
     Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.taskhistory")
 }
 
@@ -1011,8 +1011,9 @@ Method TestBothPairsReadEveryList()
 
 /// <p>Assert that <var>pUser</var>'s read of <var>pTool</var> at <code>maxRows=1000</code> answers
 /// 200 with a non-empty, untruncated row set equal, row for row, to the test account's own read of
-/// the same screen. <var>pQuery</var> is appended to both reads' query strings as given.</p>
-Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String, pQuery As %String = "")
+/// the same screen. <var>pQuery</var> is appended to both reads' query strings as given, and when
+/// <var>pEveryNameContains</var> is not empty every row's <code>Name</code> must contain it.</p>
+Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String, pQuery As %String = "", pEveryNameContains As %String = "")
 {
     Set tPath = "/api/ocupilot/screens/" _ pTool _ "/read?maxRows=1000" _ pQuery
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tWantStatus, .tWantBody, .tWantHeaders)
@@ -1028,6 +1029,13 @@ Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String, pQuery As
     Do $$$AssertEquals(tGot.truncated, 0, pUser _ " " _ pTool _ ": nothing is cut at 1,000")
     Do $$$AssertEquals(tGot.rows.%Size(), tWant.rows.%Size(), pUser _ " " _ pTool _ ": as many rows as the test account reads")
     Do $$$AssertTrue(tGot.rows.%ToJSON() = tWant.rows.%ToJSON(), pUser _ " " _ pTool _ ": and the same rows")
+    If pEveryNameContains = "" Quit
+    Set tOther = ""
+    Set tIter = tGot.rows.%GetIterator()
+    While tIter.%GetNext(.tKey, .tRow) {
+        If '(tRow.Name [ pEveryNameContains) Set tOther = "row " _ tKey _ ": " _ tRow.Name Quit
+    }
+    Do $$$AssertEquals(tOther, "", pUser _ " " _ pTool _ ": every row is one the query names (" _ pEveryNameContains _ ")")
 }
 
 /// <p>Story 6.3, Matrix "Secure pairs" -- a principal holding <code>%Admin_Secure:USE</code> and

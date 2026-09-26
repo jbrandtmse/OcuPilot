@@ -292,9 +292,9 @@ cannot produce different ones, and `Uninstall` removes them:
 
 None carries an application resource. `OcuPilotShell` and `OcuPilotReadiness` each grant **read
 on the install namespace's code database and nothing else**: in IRIS database READ is
-routine-execution permission, so without it an anonymous request cannot load the application's
-dispatch class and IRIS answers `500` with a `<PROTECT>` error that also names the database
-directory. They buy the right to run OcuPilot's own code and no data privilege beyond it —
+routine-execution permission, so without it IRIS refuses an anonymous request `403` with an
+empty body before the application's dispatch class runs (measured on the readiness application,
+2026-09-26). They buy the right to run OcuPilot's own code and no data privilege beyond it —
 OcuPilot's state lives in the separate protected database, which neither role reaches (AD-9,
 AD-21). The authenticated API carries no matching role at all, so a request there runs with
 exactly the privileges its own account holds (AD-8).

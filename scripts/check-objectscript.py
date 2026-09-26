@@ -1334,6 +1334,12 @@ def check_test_class_properties(problems: list[str]) -> None:
 # A probe database, a namespace mapping and a web application created under the probe profile stay
 # outside the rule: they are the test's own objects, and the guard exists for effects on the
 # instance an operator cares about.
+#
+# **A production install also refuses on its own variable.** A class that runs one is armed by
+# `OCUPILOT_ALLOW_PRODUCTION_INSTALL` whatever else arms it -- as its `ARMINGVARIABLE`, or as an
+# inline `$System.Util.GetEnviron` refusal in the same `OnBeforeAllTests`, read directly or through
+# a parameter holding that name -- so the variable named for the widest effect is the one that
+# keeps every such class off an instance someone cares about.
 
 DESTRUCTIVE_TEST_RE = re.compile(
     r"##class\(\s*Security\.Users\s*\)\s*\.\s*(?:Create|Delete)\b"
@@ -1355,6 +1361,15 @@ DESTRUCTIVE_TEST_RE = re.compile(
 )
 
 ARMING_GUARD_RE = re.compile(r"\$System\.Util\.GetEnviron\(\s*\.\.#ARMINGVARIABLE\s*\)\s*'=\s*1")
+
+PRODUCTION_INSTALL_RE = re.compile(
+    r"##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
+    r"\s*\.\s*Install\(\s*(?:\"\"\s*)?[,)]"
+    r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
+    r"\s*\.\s*StartPath\b"
+)
+
+PRODUCTION_INSTALL_VARIABLE = "OCUPILOT_ALLOW_PRODUCTION_INSTALL"
 
 ARMING_REFUSAL_RE = re.compile(r"Quit\s+\$\$\$ERROR\s*\(")
 
@@ -1381,6 +1396,20 @@ def method_body(text: str, start: int) -> str:
     return ""
 
 
+def before_all_tests_code(text: str) -> list[str]:
+    """The non-comment lines of `OnBeforeAllTests`' own body, or `[]` when it has none."""
+    signature = ON_BEFORE_ALL_TESTS_RE.search(text)
+    if signature is None:
+        return []
+    open_at = text.find("{", signature.start())
+    body = method_body(text, signature.start())
+    if open_at < 0 or body == "":
+        return []
+    first = line_of(text, open_at)
+    last = first + body.count("\n")
+    return [raw for i, raw in iter_non_comment_lines(text) if first <= i <= last]
+
+
 def guarded_before_all_tests(text: str) -> bool:
     """Whether `OnBeforeAllTests` actually refuses on the arming variable.
 
@@ -1390,19 +1419,28 @@ def guarded_before_all_tests(text: str) -> bool:
     refusing comparison and a `Quit $$$ERROR` must both appear in that method's own body, on lines
     that are not comments: a `;` line quoting the guard is prose, not a barrier.
     """
-    signature = ON_BEFORE_ALL_TESTS_RE.search(text)
-    if signature is None:
-        return False
-    open_at = text.find("{", signature.start())
-    body = method_body(text, signature.start())
-    if open_at < 0 or body == "":
-        return False
-    first = line_of(text, open_at)
-    last = first + body.count("\n")
-    code = [raw for i, raw in iter_non_comment_lines(text) if first <= i <= last]
+    code = before_all_tests_code(text)
     return any(ARMING_GUARD_RE.search(raw) for raw in code) and any(
         ARMING_REFUSAL_RE.search(raw) for raw in code
     )
+
+
+def refuses_on_variable(text: str, variable: str) -> bool:
+    """Whether `OnBeforeAllTests` refuses unless `variable` reads 1.
+
+    The comparison may read the variable by name or through any class parameter whose value is
+    that name, `ARMINGVARIABLE` among them; the same method body must also `Quit $$$ERROR`, as
+    `guarded_before_all_tests` requires.
+    """
+    names = [
+        m.group(1)
+        for m in re.finditer(r"^Parameter\s+([A-Za-z][A-Za-z0-9]*)\s*=\s*\"([^\"]*)\"", text, re.MULTILINE)
+        if m.group(2) == variable
+    ]
+    reads = [re.escape(f'"{variable}"')] + [rf"\.\.#{re.escape(name)}" for name in names]
+    guard = re.compile(rf"\$System\.Util\.GetEnviron\(\s*(?:{'|'.join(reads)})\s*\)\s*'=\s*1", re.IGNORECASE)
+    code = before_all_tests_code(text)
+    return any(guard.search(raw) for raw in code) and any(ARMING_REFUSAL_RE.search(raw) for raw in code)
 
 
 def check_destructive_test_guard(problems: list[str]) -> None:
@@ -1427,17 +1465,31 @@ def check_destructive_test_guard(problems: list[str]) -> None:
                 break
         if hit is None:
             continue
-        if guarded_before_all_tests(text):
-            continue
-        line, call = hit
-        problems.append(
-            f"{rel}:{line}: a %UnitTest.TestCase calling {call} mutates this instance's own "
-            f"principals or logs, and OnBeforeAllTests does not refuse on "
-            f"$System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 with a Quit $$$ERROR -- so "
-            f"`ci-runner.mjs --container <name>` runs it against whatever instance it was pointed "
-            f"at (DW-289); add the guard OcuPilot.Test.LogSourceDenial carries and arm it in "
-            f"scripts/ci-throwaway.sh"
-        )
+        if not guarded_before_all_tests(text):
+            line, call = hit
+            problems.append(
+                f"{rel}:{line}: a %UnitTest.TestCase calling {call} mutates this instance's own "
+                f"principals or logs, and OnBeforeAllTests does not refuse on "
+                f"$System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 with a Quit $$$ERROR -- so "
+                f"`ci-runner.mjs --container <name>` runs it against whatever instance it was pointed "
+                f"at (DW-289); add the guard OcuPilot.Test.LogSourceDenial carries and arm it in "
+                f"scripts/ci-throwaway.sh"
+            )
+        install = None
+        for i, raw in iter_non_comment_lines(text):
+            found = PRODUCTION_INSTALL_RE.search(raw)
+            if found is not None:
+                install = (i, found.group(0))
+                break
+        if install is not None and not refuses_on_variable(text, PRODUCTION_INSTALL_VARIABLE):
+            line, call = install
+            problems.append(
+                f"{rel}:{line}: a %UnitTest.TestCase calling {call} runs OcuPilot's production "
+                f"install, and OnBeforeAllTests does not refuse unless "
+                f"{PRODUCTION_INSTALL_VARIABLE} reads 1 with a Quit $$$ERROR -- declare it as the "
+                f"ARMINGVARIABLE or refuse on it inline with $System.Util.GetEnviron, and add the "
+                f"class to that variable's roster in scripts/ci-throwaway.sh"
+            )
 
 
 # --- Embedded Python in a shipped class (AD-18, `.claude/rules/objectscript-basics.md`) -----
