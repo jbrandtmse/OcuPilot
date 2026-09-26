@@ -33,3 +33,7 @@
 2026-09-26T12:44:21Z	Story 23.1	cr_complete	batch=B2+B3 spawn_at=2026-09-26T12:20:40Z model=opus resolved=13 wontfix_accepted=1(DW-1694,dup_of_DW-1693) dismissed=17 high=0 med=1 low=13 rows=14 unresolved_high_med=0 sprint=review closing_sections_present=true subagent_tokens=346079
 2026-09-26T12:44:21Z	Story 23.1	ledger_adjudicated	batch=B2+B3 owned=17 resolved=17 reowned=0 terminal=17 slice_range_end_cleanup_after=41
 2026-09-26T12:44:21Z	Story 23.1	smoke_complete	batch=B2+B3 method=cli result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-b-ci_PASSED(1_skipped_named);DemoErrorSeed_2/2;Demo_12/12 model=claude-opus-5-5
+2026-09-26T12:44:52Z	Story 23.1	committed	batch=B2+B3 sha=b81ec899 code=8eb4afc8,d29387c3 ci=pending run=36242870954 amendments=spine_AD-21(DW-1439)
+2026-09-26T12:55:18Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@d4a2ff1d merge=0d4934ad conflicts=sprint-status.yaml(resolved:theirs+regenerate+set_23-1=review,epic-23=in-progress) code_changes=none(docs,planning) verify=rides_next_batch_push
+2026-09-26T13:25:54Z	Story 23.1	ci_resolved	batch=B2+B3 run=36242870954 head=b81ec899 result=success resolved_at=next_implement
+2026-09-26T13:25:54Z	Story 23.1	stage_spawned	stage=implement batch=B4+B8 spawn_at=2026-09-26T13:25:54Z model=opus agent_name=23-1-the-range-end-cleanup-implement-b4b8 cycle_iteration=3
