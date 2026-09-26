@@ -232,7 +232,7 @@ epics:
   epic-16:
     depends_on: [epic-6, epic-11, epic-12]
     submodules: []
-    story_order: ["16-1", "16-17", "16-18", "16-19", "16-20", "16-8 BEFORE 16-9 (16.9 lists 16.8's sources, epics.md:6265)", "16-9", "16-3", "16-16", "rest of 16", "16-4 HELD: needs Story 18.1's directory allow-list (epics.md:6175, 6770-6772), out of range"]
+    story_order: ["16-1", "16-17", "16-18", "16-19", "16-20", "16-21", "16-22", "16-8 BEFORE 16-9 (16.9 lists 16.8's sources, epics.md:6265)", "16-9", "16-3", "16-16", "rest of 16", "16-4 HELD: needs Story 18.1's directory allow-list (epics.md:6175, 6770-6772), out of range"]
     paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Tool/**", "src/OcuPilot/Screen/Read.cls", "src/OcuPilot/Screen/Registry.cls", "src/OcuPilot/Port/**", "src/OcuPilot/Api/**", "src/OcuPilot/Kernel/Proposal/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
     note: >-
       Measured 2026-09-26 (orchestrator subagent, read-only): no Epic 16 write needs 14.2 first - Kernel/Governance/Gate.cls
