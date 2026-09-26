@@ -2,7 +2,8 @@
 title: 'Story 11.11: The screen shows what the agent is talking about'
 type: 'feature'
 created: '2026-09-26'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '0c5317cb2b99de99ba5a93ecd8e3a4739df27447'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -183,7 +184,7 @@ deferred: []
   - `tasks.browser-spec.mjs:452,633`.
   - `proposal-demo:576`, only if it goes red.
   - `screen-height:63`, the comment only.
-  - `structural-baseline.json` -- the DW-1337 gate holds: `entries` stays at 223 in both themes. A key `a11y-structural-invariants` newly reports on these two routes is fixed at its cause in this story's markup, never added to the baseline; if the cause is outside this story's footprint, HALT `intent gap` naming the key.
+  - `structural-baseline.json` -- lead ruling 2026-09-26 on the implement-1 intent gap: append exactly the two printed keys `logs/audit|overflow|720|app-status-bar>span.ocu-status-bar-segment.ocu-status-bar-stamp` and `tasks/history|overflow|720|app-status-bar>span.ocu-status-bar-segment.ocu-status-bar-stamp`, each with `"dw": "DW-1584"` (the gate's own "append the printed entry" path; the same root cause is baselined on 33 routes and owned by range-end-cleanup). Entries become 225. Any other new key is still fixed at its cause or HALTs. The status bar is not edited.
 - Lead gate addition -- an arrival whose `criteria.eventSources` equals the declared marker value (`OcuPilot`) opens with the marker affordance ticked and the Event source field empty, which sends the identical read, so "filtered to agent-marked events" is what the person sees. Leg (c) asserts the marker reads ticked.
 
 **Acceptance Criteria:**
@@ -195,6 +196,7 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-09-26, implement-1 halted on the structural gate (225 vs 223, two status-bar stamp keys, DW-1584). Lead ruling: admit the two keys with `dw: DW-1584`; the rest of the implementation stands as written in the tree.
 - 2026-09-26, lead spec gate: AD-11 and AD-36 amendments written into the spine; the structural baseline must not grow (DW-1337, 223 entries); an arrival carrying the marker value ticks the marker affordance.
 
 ## Review Triage Log
@@ -269,7 +271,26 @@ deferred: []
 - Make `Directive` return empty `pCriteria`: leg (c) and the `ToolNavigate` travel test go red.
 - Skip the name check: the `ToolNavigate` unknown test goes red.
 
+Observed (2026-09-26, `ocupilot-ci`, whole package recompiled per mutation, tree restored after):
+
+- mutation: `defaultHoursAgo` dropped from `AuditList` -> `CriteriaDefault` absent-begin, tool/route and HTTP legs red; leg (a) red.
+- mutation: the `AtOrAfter` call skipped in `Read.Execute` -> `CriteriaDefault` cutoff and truncation legs red.
+- mutation: `Navigate.Directive` answers `{}` for `pCriteria` -> `ToolNavigate.TestCriteriaTravelOnTheDirective` red; leg (c) red (the arrival read carried no `eventSources`).
+- mutation: the `CriteriaParams` name check skipped in `Navigate.CriteriaRefusal` -> `ToolNavigate.TestAnUndeclaredCriteriaKeyIsRefusedByName` red.
+- mutation: `screenReadPath` filters out `''` -> `screen-read.test.mjs` explicit-empty test red.
+- mutation: `parseNavigation` answers `criteria: {}` -> `turn.test.mjs` criteria test red.
+- mutation: `ScreenArrivals.take` ignores the route -> `screen-arrival.test.mjs` red.
+- mutation: `AgentNavigator.act` sets no arrival -> two `agent-navigator.spec.ts` Story 11.11 tests red.
+- mutation: `AuditPage` ignores a held arrival -> `audit.page.spec.ts` arrival test red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap -- the DW-1337 structural gate (`a11y-structural-invariants`) reports 225 entries against 223: `logs/audit|overflow|720|app-status-bar>span.ocu-status-bar-segment.ocu-status-bar-stamp` (2 px) and `tasks/history|overflow|720|app-status-bar>span.ocu-status-bar-segment.ocu-status-bar-stamp` (4 px). Both screens now read on open, so the shell status bar draws its Last-update stamp there; the same key is already baselined on 33 other routes (counted in `structural-baseline.json`). The cause is `app-status-bar`, outside this story's footprint, so per Tasks & Acceptance neither baselined nor fixed.
+
+- Recommended amendment (lead decides): admit the two keys to the baseline as the existing stamp root cause (entries 225), and route the stamp overflow at 720 px to the owner of DW-1337; or authorize a footprint extension into the shell status bar, which would also clear the 33 baselined entries.
+- State: implementation complete and uncommitted in the worktree on HEAD `0c5317cb` (no finalize commit; step-04 review layers not run).
+- Verification: `CriteriaDefault` (7), `ToolNavigate`, `Descriptor`, `TaskHistory`, `ReadTool`, `ToolDispatchClientFault`, `LedgerClientRows`, `TurnNavigate` green on `ocupilot-ci` (whole package, ERRCOUNT 0); browser `default-search` (4 legs), `audit`, `tasks`, `proposal-demo`, `screen-height` green; `a11y-structural-invariants` red on the two keys only.
+- Sweep: 292 ran, 14 refused (arming), 1 known residue (`WireSecurityRead` task history). `npm test`: tools 1,475/1,475, components 1,454/1,454.
+- Bundle: initial 1,841,110 B before, 1,844,256 B after (under 1854kB).
+- Contended/out-of-footprint files touched: `Api/Error.cls` (additive, plus `NavCodes` list append), `core/strings.ts` (one key), `ui/browser/audit.browser-spec.mjs` (HEAD `:534-619` byte-identical, now at `:554-639`), `ui/src/app/app.ts`, `ui/src/main.ts`, `Test/MgmntPortWire.cls`, `Test/SecurityLists.cls`, `Test/TaskLists.cls`, `Test/TurnNavigate.cls`. Unspecified behavior change: navigating to the current route settles `opened` instead of refused.
