@@ -2,7 +2,7 @@
 title: 'Story 11.3: Suggested prompts per screen'
 type: 'feature'
 created: '2026-09-25'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'c384fd2135361e0aa699511b35af3a0bb32afc56'
 baseline_commit: 'c384fd2135361e0aa699511b35af3a0bb32afc56'
 review_loop_iteration: 0
@@ -264,8 +264,11 @@ Rejected:
 - `low`: Home shows no set with a non-empty transcript and an attention line. That state is not idle, and 4.10 designed it that way.
 - `low`: AC4's "exactly one" is really "at most one". The fix would edit the spec, and DW-1678 covers the never-answers state.
 
+- [ ] [Merge] Epic 12 merged into the branch (521e3f72) with five new built form screens that declare no suggested prompts, so `screen-mirror.mjs` and `Screen/Registry.cls` refuse them (by design, AC3): `OAuthClientForm`, `OAuthResourceServerForm`, `OAuthServerClientForm`, `OAuthServerDescriptionForm`, `OAuthServerForm` under `src/OcuPilot/Screen/Descriptor/`. Declare three prompts each exactly as this story did for Epic 9's editors (existing group keys, `strings.ts` entries appended at this story's block end, one EXPERIENCE.md Fixed-strings row per screen appended at the table's end, citations resolving, `strings.test.mjs` green); regenerate `screens.generated.ts` with `screen-mirror.mjs`; `field-lists.mjs --check` and `ipm-manifest.mjs --check` stay up to date. Verify: mirror `--check` up to date, `Descriptor` green on `ocupilot-ci` after a whole-package recompile, `test:tools`, `test:components`, and the `suggested-prompts` browser spec against a rebuilt, redeployed bundle.
+
 ## Spec Change Log
 
+- 2026-09-26, rework iteration 1 (trigger integrate_forward): Epic 12's merge brought five built form screens with no prompts; one `[Merge]` item re-opens the spec.
 - 2026-09-25, lead spec gate: the proposed AD-5 amendment is written into the spine (Rule 20). The EXPERIENCE.md rewordings (`:671`, `:673`, `:356`) are accepted as Rule 5 tier-1 apply-and-report edits; the implement stage makes them.
 
 ## Review Triage Log
