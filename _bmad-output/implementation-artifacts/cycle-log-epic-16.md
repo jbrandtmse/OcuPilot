@@ -34,3 +34,5 @@
 2026-09-26T16:36:09Z	Epic 16	spine_updated	ad=AD-58 reason=clarification by=runner story=16-17-the-read-back-line lint=ok(pre-existing_low_placeholder_AD-7) pointers=AD-3,AD-53
 2026-09-26T16:36:09Z	Story 16.17	story_created	spawn_at=2026-09-26T16:18:56Z model=opus path=_bmad-output/implementation-artifacts/spec-16-17-the-read-back-line.md build_status=ready-for-dev epic_context=reused note=AD-58_written_by_lead_no_replan
 2026-09-26T16:36:09Z	Story 16.17	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-58,AD-3,AD-14,AD-35,AD-53,AD-55 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=1(DW-118_epic_bullet) mutates_shared_runtime=true(ocupilot-ci_only) model=claude-opus-5-5
+2026-09-26T17:02:17Z	Story 16.1	ci_resolved	story=16.1 run=36254884740 result=success resolved_at=next_implement head=452f33df covers=integrate_forward_8412fb6c(DW-1435)
+2026-09-26T17:02:17Z	Story 16.17	stage_spawned	stage=implement spawn_at=2026-09-26T17:02:17Z model=opus agent_name=16-17-the-read-back-line-implement-1 cycle_iteration=1
