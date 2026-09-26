@@ -74,6 +74,11 @@ XData Declaration
   },
   "emptyStateKey": "taskDetailsGone",
   "commandAliases": ["task details"],
+  "suggestedPrompts": [
+    {"groupKey": "taskPromptGroupSchedule", "textKey": "taskDetailsPrompt1"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "taskDetailsPrompt2"},
+    {"groupKey": "taskPromptGroupSchedule", "textKey": "taskDetailsPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.TaskInfo",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

@@ -30,6 +30,7 @@ XData Declaration
   "rowActions": [],
   "emptyStateKey": "",
   "commandAliases": ["ssl detail"],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "OcuPilotTestClassicPageDetail",
   "classicLinkExemption": {"exempt": true, "reason": "a detail view with no rebuilt equivalent yet, which is the one shape AD-44 permits", "label": "OcuPilot test classic page (Detail)", "href": "/csp/sys/OcuPilotTestClassicPageDetail.csp"},
   "toolIdentifier": "security.ssl.detail"

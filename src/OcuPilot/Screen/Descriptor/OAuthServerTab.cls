@@ -35,6 +35,11 @@ XData Declaration
   "context": {"fields": ["IssuerEndpoint", "Metadata.scopes_supported", "Metadata.grant_types_supported", "SigningAlgorithm", "EncryptionAlgorithm", "KeyAlgorithm", "ServerCredentials"], "secretFields": []},
   "emptyStateKey": "oauthServerEmpty",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthServerTabPrompt1"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthServerTabPrompt2"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthServerTabPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.OAuth2.Server.Configuration",
   "classicLinkExemption": {
     "exempt": true,

@@ -53,6 +53,11 @@ XData Declaration
   "context": {"fields": ["Name", "Description", "CreatedBy", "EscalationOnly"], "secretFields": []},
   "emptyStateKey": "roleListEmpty",
   "commandAliases": ["security roles"],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupAccess", "textKey": "roleListPrompt1"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "roleListPrompt2"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "roleListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.Roles",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

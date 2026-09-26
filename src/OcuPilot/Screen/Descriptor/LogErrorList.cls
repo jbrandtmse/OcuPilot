@@ -92,6 +92,11 @@ XData Declaration
   "context": {"fields": ["namespace", "date", "errorNumber", "time", "errorText", "routine", "line"], "secretFields": []},
   "emptyStateKey": "errorLogEmptyInstance",
   "commandAliases": ["application errors"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "logErrorListPrompt1"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "logErrorListPrompt2"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "logErrorListPrompt3"}
+  ],
   "classicPage": "%cspapp.op.utilsysapperrornamespaces",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "logs.applicationerrors"

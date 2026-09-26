@@ -24,6 +24,7 @@ XData Declaration
   "rowActions": [],
   "emptyStateKey": "",
   "commandAliases": ["task history", "history"],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "OcuPilotTestClassicPageSub",
   "classicLinkExemption": {"exempt": false, "reason": ""},
   "toolIdentifier": "task.history"

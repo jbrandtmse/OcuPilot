@@ -56,6 +56,11 @@ XData Declaration
   "context": {"fields": ["Name", "Namespace", "Type", "Description", "Id", "LastFinished", "NextScheduled"], "secretFields": []},
   "emptyStateKey": "taskOnDemandEmpty",
   "commandAliases": ["on demand", "run task"],
+  "suggestedPrompts": [
+    {"groupKey": "taskPromptGroupSchedule", "textKey": "taskOnDemandListPrompt1"},
+    {"groupKey": "taskPromptGroupSchedule", "textKey": "taskOnDemandListPrompt2"},
+    {"groupKey": "taskPromptGroupSchedule", "textKey": "taskOnDemandListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.TasksOnDemand",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

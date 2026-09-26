@@ -56,6 +56,11 @@ XData Declaration
   },
   "emptyStateKey": "systemUsageEmpty",
   "commandAliases": ["system usage", "memory", "shared memory", "global references"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupCapacity", "textKey": "systemUsagePrompt1"},
+    {"groupKey": "promptGroupCapacity", "textKey": "systemUsagePrompt2"},
+    {"groupKey": "promptGroupCapacity", "textKey": "systemUsagePrompt3"}
+  ],
   "classicPage": "%cspapp.op.utilsysmonitor",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

@@ -1843,15 +1843,35 @@ export function tabProblem(declaration) {
 export const SUGGESTED_PROMPTS_MIN = 3;
 
 /**
- * What is wrong with a declaration's `suggestedPrompts`, or `null` (Story 11.3). Absent or `null`
- * declares none. Otherwise it is an array of at least `SUGGESTED_PROMPTS_MIN` objects, each carrying
- * only `groupKey` and `textKey`, both non-empty string keys; that each resolves is
+ * The closed vocabulary a suggested prompt's `groupKey` is drawn from (Story 11.3), in
+ * `OcuPilot.Screen.Registry`'s `PROMPTGROUPKEYS` order; `screen-mirror.test.mjs` pins the two equal.
+ */
+export const PROMPT_GROUP_KEYS = [
+  'userPromptGroupSignIn',
+  'userPromptGroupAccess',
+  'webAppPromptGroupCode',
+  'sslPromptGroupConnections',
+  'taskPromptGroupSchedule',
+  'auditUserEventPromptGroup',
+  'promptGroupTroubleshooting',
+  'promptGroupCapacity',
+  'promptGroupAgentSetup',
+  'promptGroupGettingStarted',
+];
+
+/**
+ * What is wrong with a declaration's `suggestedPrompts`, or `null` (Story 11.3, AD-5). A built
+ * screen declares them; an unbuilt one may leave them absent or `null`. Otherwise it is an array of
+ * at least `SUGGESTED_PROMPTS_MIN` objects, each carrying only `groupKey` and `textKey`, both
+ * non-empty string keys, the group one of `PROMPT_GROUP_KEYS`; that each resolves is
  * `declaredStringKeys`'s. `OcuPilot.Screen.Registry.SuggestedPromptsProblem` returns the same
  * sentence for every case.
  */
 export function suggestedPromptsProblem(declaration) {
   const prompts = declaration.suggestedPrompts;
-  if (prompts === undefined || prompts === null) return null;
+  if (prompts === undefined || prompts === null) {
+    return declaration.built === true ? `a built screen declares at least ${SUGGESTED_PROMPTS_MIN} suggestedPrompts` : null;
+  }
   if (!Array.isArray(prompts)) return 'suggestedPrompts is not an array of prompts';
   if (prompts.length < SUGGESTED_PROMPTS_MIN) {
     return `suggestedPrompts declares ${prompts.length}, and a screen that declares prompts declares at least ${SUGGESTED_PROMPTS_MIN}`;
@@ -1865,6 +1885,9 @@ export function suggestedPromptsProblem(declaration) {
       if (typeof prompt[key] !== 'string' || prompt[key] === '') {
         return `${where}.${key} is empty, and a prompt names the string key it reads`;
       }
+    }
+    if (!PROMPT_GROUP_KEYS.includes(prompt.groupKey)) {
+      return `${where}.groupKey '${prompt.groupKey}' is not one of the declared prompt groups`;
     }
   }
   return null;

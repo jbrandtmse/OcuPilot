@@ -34,6 +34,11 @@ XData Declaration
   "context": {"fields": ["Name", "ServerDefinition"], "secretFields": []},
   "emptyStateKey": "oauthResourceServersEmpty",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthResourceServerTabPrompt1"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthResourceServerTabPrompt2"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthResourceServerTabPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.OAuth2.ResourceServer.ConfigurationList",
   "classicLinkExemption": {
     "exempt": true,

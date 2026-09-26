@@ -39,6 +39,11 @@ XData Declaration
   "context": {"fields": ["EventName", "Enabled", "Total", "Written", "Lost"], "secretFields": []},
   "emptyStateKey": "auditSystemEventListEmpty",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "auditUserEventPromptGroup", "textKey": "auditSystemEventListPrompt1"},
+    {"groupKey": "auditUserEventPromptGroup", "textKey": "auditSystemEventListPrompt2"},
+    {"groupKey": "auditUserEventPromptGroup", "textKey": "auditSystemEventListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.Audit.SystemEvents",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

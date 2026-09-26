@@ -81,6 +81,11 @@ XData Declaration
   "fingerprintExcludes": [],
   "emptyStateKey": "webAppListEmpty",
   "commandAliases": ["web apps"],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupAccess", "textKey": "webAppListPrompt1"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "webAppListPrompt2"},
+    {"groupKey": "webAppPromptGroupCode", "textKey": "webAppListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.Applications.WebList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

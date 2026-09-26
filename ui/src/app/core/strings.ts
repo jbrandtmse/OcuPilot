@@ -1952,7 +1952,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:555 */
+  /** EXPERIENCE.md:600 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2186,6 +2186,282 @@ export const STRINGS = {
   tableColumnResizeKeys: 'Alt/Option+Shift+Left or Right',
   /** EXPERIENCE.md:513 */
   tableColumnWidthAnnouncement: '<column> column, <n> px wide',
+  // Story 11.3: the prompt task groups, every built screen's suggested prompts, and the
+  // application-errors line a refused or failed read answers.
+  /** EXPERIENCE.md:515 */
+  promptGroupTroubleshooting: 'Troubleshooting',
+  /** EXPERIENCE.md:515 */
+  promptGroupCapacity: 'Capacity',
+  /** EXPERIENCE.md:515 */
+  promptGroupAgentSetup: 'Agent setup',
+  /** EXPERIENCE.md:515 */
+  promptGroupGettingStarted: 'Getting started',
+  /** EXPERIENCE.md:516 */
+  agentDefinitionListPrompt1: 'Which agent definition is the default, and which model does it use?',
+  /** EXPERIENCE.md:516 */
+  agentDefinitionListPrompt2: 'Is any agent definition disabled or not yet verified?',
+  /** EXPERIENCE.md:516 */
+  agentDefinitionListPrompt3: 'Where does each definition send screen context?',
+  /** EXPERIENCE.md:517 */
+  agentDefinitionFormPrompt1: 'What does each setting on this definition control?',
+  /** EXPERIENCE.md:517 */
+  agentDefinitionFormPrompt2: 'Does this definition send data off this instance?',
+  /** EXPERIENCE.md:517 */
+  agentDefinitionFormPrompt3: 'Which model suits this provider for everyday questions?',
+  /** EXPERIENCE.md:518 */
+  agentSwitchesPrompt1: 'Is the agent read-only or switched off right now?',
+  /** EXPERIENCE.md:518 */
+  agentSwitchesPrompt2: 'What does the kill switch stop?',
+  /** EXPERIENCE.md:518 */
+  agentSwitchesPrompt3: 'How many rows of screen context does the agent send?',
+  /** EXPERIENCE.md:519 */
+  logAlertViewerPrompt1: 'Which alerts are the most recent, and what caused them?',
+  /** EXPERIENCE.md:519 */
+  logAlertViewerPrompt2: 'Are any alerts repeating?',
+  /** EXPERIENCE.md:519 */
+  logAlertViewerPrompt3: 'Which of these alerts need action?',
+  /** EXPERIENCE.md:520 */
+  logMessageViewerPrompt1: 'Summarize the warnings and errors in messages.log.',
+  /** EXPERIENCE.md:520 */
+  logMessageViewerPrompt2: 'Did the instance restart recently, and why?',
+  /** EXPERIENCE.md:520 */
+  logMessageViewerPrompt3: 'Which messages point to a configuration problem?',
+  /** EXPERIENCE.md:521 */
+  logErrorListPrompt1: 'Which namespace has the most application errors?',
+  /** EXPERIENCE.md:521 */
+  logErrorListPrompt2: 'What is the most common application error here, and where does it come from?',
+  /** EXPERIENCE.md:521 */
+  logErrorListPrompt3: 'Which of these errors can I safely delete?',
+  /** EXPERIENCE.md:522 */
+  auditListPrompt1: 'Were there any failed sign-ins recently?',
+  /** EXPERIENCE.md:522 */
+  auditListPrompt2: 'Which changes did the agent make?',
+  /** EXPERIENCE.md:522 */
+  auditListPrompt3: 'Who changed security settings today?',
+  /** EXPERIENCE.md:523 */
+  auditingConfigPrompt1: 'Is auditing turned on for this instance?',
+  /** EXPERIENCE.md:523 */
+  auditingConfigPrompt2: 'What stops being recorded if auditing is turned off?',
+  /** EXPERIENCE.md:523 */
+  auditingConfigPrompt3: 'Which audit events are turned off?',
+  /** EXPERIENCE.md:524 */
+  auditSystemEventListPrompt1: 'Which system events are enabled?',
+  /** EXPERIENCE.md:524 */
+  auditSystemEventListPrompt2: 'Which system events record failed sign-ins?',
+  /** EXPERIENCE.md:524 */
+  auditSystemEventListPrompt3: 'Which system events have recorded the most?',
+  /** EXPERIENCE.md:525 */
+  ldapConfigListPrompt1: 'Which LDAP configurations are enabled?',
+  /** EXPERIENCE.md:525 */
+  ldapConfigListPrompt2: 'Which LDAP configuration do users sign in through?',
+  /** EXPERIENCE.md:525 */
+  ldapConfigListPrompt3: 'Does any LDAP configuration connect without TLS?',
+  /** EXPERIENCE.md:526 */
+  sslConfigListPrompt1: 'Which SSL/TLS configurations are enabled?',
+  /** EXPERIENCE.md:526 */
+  sslConfigListPrompt2: 'Which configurations do not verify the server certificate?',
+  /** EXPERIENCE.md:526 */
+  sslConfigListPrompt3: 'Which configuration does OcuPilot use to reach its provider?',
+  /** EXPERIENCE.md:527 */
+  x509CredentialListPrompt1: 'Which X.509 credentials expire soonest?',
+  /** EXPERIENCE.md:527 */
+  x509CredentialListPrompt2: 'Has any credential already expired?',
+  /** EXPERIENCE.md:527 */
+  x509CredentialListPrompt3: 'Which credentials carry a private key?',
+  /** EXPERIENCE.md:528 */
+  x509FormPrompt1: 'When does this credential expire?',
+  /** EXPERIENCE.md:528 */
+  x509FormPrompt2: 'Who issued this certificate?',
+  /** EXPERIENCE.md:528 */
+  x509FormPrompt3: 'Does this credential carry a private key?',
+  /** EXPERIENCE.md:529 */
+  walletCollectionListPrompt1: 'Which wallet collections hold secrets?',
+  /** EXPERIENCE.md:529 */
+  walletCollectionListPrompt2: 'Who can use the secrets in each collection?',
+  /** EXPERIENCE.md:529 */
+  walletCollectionListPrompt3: 'What is the secrets wallet for?',
+  /** EXPERIENCE.md:530 */
+  walletSecretListPrompt1: 'Which secrets does this collection hold?',
+  /** EXPERIENCE.md:530 */
+  walletSecretListPrompt2: 'Which hosts may use these secrets?',
+  /** EXPERIENCE.md:530 */
+  walletSecretListPrompt3: 'Which of these secrets require TLS?',
+  /** EXPERIENCE.md:531 */
+  walletSecretFormPrompt1: 'What kind of secret is this?',
+  /** EXPERIENCE.md:531 */
+  walletSecretFormPrompt2: 'Which hosts may use this secret?',
+  /** EXPERIENCE.md:531 */
+  walletSecretFormPrompt3: 'Does this secret require a TLS connection?',
+  /** EXPERIENCE.md:532 */
+  oAuthServerDescriptionTabPrompt1: 'Which OAuth 2.0 servers does this instance trust?',
+  /** EXPERIENCE.md:532 */
+  oAuthServerDescriptionTabPrompt2: 'Which server descriptions have no client configured?',
+  /** EXPERIENCE.md:532 */
+  oAuthServerDescriptionTabPrompt3: 'What is an OAuth 2.0 server description for?',
+  /** EXPERIENCE.md:533 */
+  oAuthClientTabPrompt1: 'Which OAuth 2.0 clients are configured, and for which servers?',
+  /** EXPERIENCE.md:533 */
+  oAuthClientTabPrompt2: 'Which clients are confidential and which are public?',
+  /** EXPERIENCE.md:533 */
+  oAuthClientTabPrompt3: 'Which scopes does each client ask for by default?',
+  /** EXPERIENCE.md:534 */
+  oAuthResourceServerTabPrompt1: 'Which resource servers are configured?',
+  /** EXPERIENCE.md:534 */
+  oAuthResourceServerTabPrompt2: 'Which server does each resource server accept tokens from?',
+  /** EXPERIENCE.md:534 */
+  oAuthResourceServerTabPrompt3: 'What does an OAuth 2.0 resource server do?',
+  /** EXPERIENCE.md:535 */
+  oAuthServerTabPrompt1: 'Is this instance acting as an OAuth 2.0 authorization server?',
+  /** EXPERIENCE.md:535 */
+  oAuthServerTabPrompt2: 'Which grant types does this server allow?',
+  /** EXPERIENCE.md:535 */
+  oAuthServerTabPrompt3: 'How long do access tokens from this server last?',
+  /** EXPERIENCE.md:536 */
+  oAuthServerClientTabPrompt1: 'Which clients are registered with this authorization server?',
+  /** EXPERIENCE.md:536 */
+  oAuthServerClientTabPrompt2: 'Which redirect addresses does each client use?',
+  /** EXPERIENCE.md:536 */
+  oAuthServerClientTabPrompt3: 'Which clients may use the client credentials grant?',
+  /** EXPERIENCE.md:537 */
+  userListPrompt1: 'Which accounts are disabled or expired?',
+  /** EXPERIENCE.md:537 */
+  userListPrompt2: 'Which users hold %All?',
+  /** EXPERIENCE.md:537 */
+  userListPrompt3: 'Which users hold an administrative role?',
+  /** EXPERIENCE.md:538 */
+  roleListPrompt1: 'Which roles grant %All?',
+  /** EXPERIENCE.md:538 */
+  roleListPrompt2: 'Which roles does no user hold?',
+  /** EXPERIENCE.md:538 */
+  roleListPrompt3: 'Which roles grant write access to a database?',
+  /** EXPERIENCE.md:539 */
+  resourceListPrompt1: 'Which resources grant access to everyone?',
+  /** EXPERIENCE.md:539 */
+  resourceListPrompt2: 'Which resources protect databases?',
+  /** EXPERIENCE.md:539 */
+  resourceListPrompt3: 'Which resource guards the Management Portal?',
+  /** EXPERIENCE.md:540 */
+  serviceListPrompt1: 'Which services are turned off?',
+  /** EXPERIENCE.md:540 */
+  serviceListPrompt2: 'Which services accept a sign-in without a password?',
+  /** EXPERIENCE.md:540 */
+  serviceListPrompt3: 'Which services limit the addresses that may connect?',
+  /** EXPERIENCE.md:541 */
+  webAppListPrompt1: 'Which web applications can be reached without signing in?',
+  /** EXPERIENCE.md:541 */
+  webAppListPrompt2: 'Which web applications grant %All to their users?',
+  /** EXPERIENCE.md:541 */
+  webAppListPrompt3: 'Which class answers each REST web application?',
+  /** EXPERIENCE.md:542 */
+  restApiListPrompt1: 'Which REST APIs does this namespace publish?',
+  /** EXPERIENCE.md:542 */
+  restApiListPrompt2: 'Which web application serves each REST API?',
+  /** EXPERIENCE.md:542 */
+  restApiListPrompt3: 'Which REST APIs have an OpenAPI document?',
+  /** EXPERIENCE.md:543 */
+  openApiViewerPrompt1: 'Summarize the operations this API offers.',
+  /** EXPERIENCE.md:543 */
+  openApiViewerPrompt2: 'Which operations change data?',
+  /** EXPERIENCE.md:543 */
+  openApiViewerPrompt3: 'Which operations need authentication?',
+  /** EXPERIENCE.md:544 */
+  databaseListPrompt1: 'Which databases are close to their maximum size?',
+  /** EXPERIENCE.md:544 */
+  databaseListPrompt2: 'Which databases are not journaled?',
+  /** EXPERIENCE.md:544 */
+  databaseListPrompt3: 'Which databases are mounted read-only?',
+  /** EXPERIENCE.md:545 */
+  databaseDetailsPrompt1: 'How much free space does this database have?',
+  /** EXPERIENCE.md:545 */
+  databaseDetailsPrompt2: 'Is this database journaled?',
+  /** EXPERIENCE.md:545 */
+  databaseDetailsPrompt3: 'Can this database be written, or is it read-only?',
+  /** EXPERIENCE.md:546 */
+  databaseVolumeListPrompt1: 'How many volumes does this database have?',
+  /** EXPERIENCE.md:546 */
+  databaseVolumeListPrompt2: 'Which volume is the largest?',
+  /** EXPERIENCE.md:546 */
+  databaseVolumeListPrompt3: 'Where are the volume files for this database?',
+  /** EXPERIENCE.md:547 */
+  databaseFreeSpacePrompt1: 'Which database has the least free space?',
+  /** EXPERIENCE.md:547 */
+  databaseFreeSpacePrompt2: 'How much disk space is free for each database?',
+  /** EXPERIENCE.md:547 */
+  databaseFreeSpacePrompt3: 'Which databases could be compacted?',
+  /** EXPERIENCE.md:548 */
+  deviceListPrompt1: 'What is each device on this list used for?',
+  /** EXPERIENCE.md:548 */
+  deviceListPrompt2: 'Which devices are printers?',
+  /** EXPERIENCE.md:548 */
+  deviceListPrompt3: 'Which devices write to a file?',
+  /** EXPERIENCE.md:549 */
+  deviceFormPrompt1: 'What does this device type mean?',
+  /** EXPERIENCE.md:549 */
+  deviceFormPrompt2: 'Which settings on this device matter most?',
+  /** EXPERIENCE.md:549 */
+  deviceFormPrompt3: 'Which open mode should this device use?',
+  /** EXPERIENCE.md:550 */
+  lockListPrompt1: 'Which processes hold the most locks?',
+  /** EXPERIENCE.md:550 */
+  lockListPrompt2: 'Is any process waiting for a lock?',
+  /** EXPERIENCE.md:550 */
+  lockListPrompt3: 'Which globals are locked right now?',
+  /** EXPERIENCE.md:551 */
+  processListPrompt1: 'Which processes are doing the most work right now?',
+  /** EXPERIENCE.md:551 */
+  processListPrompt2: 'Is any process stuck or waiting?',
+  /** EXPERIENCE.md:551 */
+  processListPrompt3: 'Which processes belong to users rather than the system?',
+  /** EXPERIENCE.md:552 */
+  processDetailsPrompt1: 'What is this process doing right now?',
+  /** EXPERIENCE.md:552 */
+  processDetailsPrompt2: 'Is this process waiting on something?',
+  /** EXPERIENCE.md:552 */
+  processDetailsPrompt3: 'Is it safe to terminate this process?',
+  /** EXPERIENCE.md:553 */
+  systemUsagePrompt1: 'Is this instance under load right now?',
+  /** EXPERIENCE.md:553 */
+  systemUsagePrompt2: 'Which figure here should I watch most closely?',
+  /** EXPERIENCE.md:553 */
+  systemUsagePrompt3: 'Is the license close to its limit?',
+  /** EXPERIENCE.md:554 */
+  taskScheduleListPrompt1: 'Which tasks are suspended, and why?',
+  /** EXPERIENCE.md:554 */
+  taskScheduleListPrompt2: 'Which tasks run tonight?',
+  /** EXPERIENCE.md:554 */
+  taskScheduleListPrompt3: 'Which tasks failed on their last run?',
+  /** EXPERIENCE.md:555 */
+  taskDetailsPrompt1: 'When does this task run next?',
+  /** EXPERIENCE.md:555 */
+  taskDetailsPrompt2: 'Why did this task last fail?',
+  /** EXPERIENCE.md:555 */
+  taskDetailsPrompt3: 'What does this task do?',
+  /** EXPERIENCE.md:556 */
+  taskRunListPrompt1: 'Has this task failed recently?',
+  /** EXPERIENCE.md:556 */
+  taskRunListPrompt2: 'How long does this task usually take?',
+  /** EXPERIENCE.md:556 */
+  taskRunListPrompt3: 'When did this task last succeed?',
+  /** EXPERIENCE.md:557 */
+  taskOnDemandListPrompt1: 'What does each on-demand task do?',
+  /** EXPERIENCE.md:557 */
+  taskOnDemandListPrompt2: 'Which on-demand tasks have never run?',
+  /** EXPERIENCE.md:557 */
+  taskOnDemandListPrompt3: 'Which on-demand task ran most recently?',
+  /** EXPERIENCE.md:558 */
+  taskUpcomingListPrompt1: 'What runs in the next hour?',
+  /** EXPERIENCE.md:558 */
+  taskUpcomingListPrompt2: 'Which tasks run overnight?',
+  /** EXPERIENCE.md:558 */
+  taskUpcomingListPrompt3: 'Do any upcoming tasks run at the same time?',
+  /** EXPERIENCE.md:559 */
+  taskHistoryListPrompt1: 'Which task runs failed this week?',
+  /** EXPERIENCE.md:559 */
+  taskHistoryListPrompt2: 'Which task takes the longest to run?',
+  /** EXPERIENCE.md:559 */
+  taskHistoryListPrompt3: 'Did any task stop with an error today?',
+  /** EXPERIENCE.md:356 */
+  homeSuggestedApplicationErrorsUnread: 'Application errors in <NAMESPACE>: could not be read',
 } as const;
 
 /**

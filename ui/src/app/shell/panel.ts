@@ -56,6 +56,7 @@ import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 import { changeSentenceTemplate, formatChangeSentence } from '../core/toasts';
+import { promptGroups, type PromptGroup } from '../core/suggested-prompts';
 import { SuggestedView, type SuggestedLine } from '../core/suggested-view';
 import {
   TURN_PATH,
@@ -117,6 +118,8 @@ interface SuggestedRowView {
   readonly label: string;
   readonly tail: string;
   readonly counted: boolean;
+  /** A counted line whose read was refused or failed renders no count (DW-1147). */
+  readonly unread: boolean;
   readonly count: number;
   readonly href: string;
   readonly url: string;
@@ -337,7 +340,7 @@ interface PanelTurnView {
                   type="button"
                   class="ocu-suggested-prompt"
                   (click)="onSuggestion(row.text)"
-                >{{ row.label }}@if (row.counted) {<code class="ocu-suggested-count">{{ row.count }}</code>}{{ row.tail }}</button>
+                >{{ row.label }}@if (row.counted && !row.unread) {<code class="ocu-suggested-count">{{ row.count }}</code>}{{ row.tail }}</button>
                 <span class="ocu-suggested-open-slot">
                   <a
                     class="ocu-button-text ocu-suggested-open"
@@ -355,15 +358,30 @@ interface PanelTurnView {
                 </span>
               </li>
             }
-            @for (prompt of suggestedPrompts; track prompt) {
-              <li class="ocu-suggested-line">
-                <button type="button" class="ocu-suggested-starter" (click)="onSuggestion(prompt)">
-                  <span>{{ prompt }}</span>
-                  <span class="ocu-suggested-send-glyph" aria-hidden="true">{{ sendGlyph }}</span>
-                </button>
-              </li>
-            }
           </ul>
+          @if (homeBlockPrompts) {
+            @for (group of promptGroups; track group.key) {
+              <div class="ocu-prompt-group" role="group" [attr.aria-labelledby]="'ocu-block-prompt-group-' + group.key">
+                <p class="ocu-prompt-group-label" [id]="'ocu-block-prompt-group-' + group.key">{{ group.label }}</p>
+                <ul class="ocu-suggested-lines" role="list">
+                  @for (prompt of group.prompts; track prompt) {
+                    <li class="ocu-suggested-line">
+                      <button
+                        type="button"
+                        class="ocu-suggested-starter"
+                        [attr.aria-disabled]="promptAriaDisabled"
+                        [attr.aria-describedby]="promptDescribedBy"
+                        (click)="onSuggestedPrompt(prompt)"
+                      >
+                        <span>{{ prompt }}</span>
+                        <span class="ocu-suggested-send-glyph" aria-hidden="true">{{ sendGlyph }}</span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          }
         }
       </section>
 
@@ -393,16 +411,29 @@ interface PanelTurnView {
         } @else {
           @if (greetingVisible) {
             <p class="ocu-panel-greeting">{{ STRINGS.agentIdleGreeting }}</p>
-            <ul class="ocu-suggested-lines" role="list">
-              @for (prompt of starterPrompts; track prompt) {
-                <li class="ocu-suggested-line">
-                  <button type="button" class="ocu-suggested-starter" (click)="onSuggestion(prompt)">
-                    <span>{{ prompt }}</span>
-                    <span class="ocu-suggested-send-glyph" aria-hidden="true">{{ sendGlyph }}</span>
-                  </button>
-                </li>
+            @if (greetingPrompts) {
+              @for (group of promptGroups; track group.key) {
+                <div class="ocu-prompt-group" role="group" [attr.aria-labelledby]="'ocu-greeting-prompt-group-' + group.key">
+                  <p class="ocu-prompt-group-label" [id]="'ocu-greeting-prompt-group-' + group.key">{{ group.label }}</p>
+                  <ul class="ocu-suggested-lines" role="list">
+                    @for (prompt of group.prompts; track prompt) {
+                      <li class="ocu-suggested-line">
+                        <button
+                          type="button"
+                          class="ocu-suggested-starter"
+                          [attr.aria-disabled]="promptAriaDisabled"
+                          [attr.aria-describedby]="promptDescribedBy"
+                          (click)="onSuggestedPrompt(prompt)"
+                        >
+                          <span>{{ prompt }}</span>
+                          <span class="ocu-suggested-send-glyph" aria-hidden="true">{{ sendGlyph }}</span>
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                </div>
               }
-            </ul>
+            }
             <p class="ocu-panel-selection-hint">{{ STRINGS.agentIdleSelectionHint }}</p>
           }
           @for (turn of turns; track $index) {
@@ -1337,37 +1368,52 @@ export class Panel {
   }
 
   /**
-   * The counted rows, or -- when every counted line resolved to zero -- only the uncounted ones,
-   * which is what keeps the agent-status line present under the starter prompts (AC6).
+   * The rows to render, in declared order. A counted line whose read answered zero never renders
+   * (DW-1160), whatever `showPrompts()` answers; an unread one does (DW-1147). The uncounted
+   * agent-status line always does (AC6).
    */
   protected get suggestedRows(): readonly SuggestedRowView[] {
     this.generation();
-    const prompts = this.suggested.showPrompts();
     return this.suggested
       .lines()
-      .filter((line) => !prompts || !line.counted)
+      .filter((line) => !line.counted || line.unread || line.count !== 0)
       .map((line) => this.suggestedRow(line));
   }
 
-  /**
-   * The three published prompts while every counted line reads zero, else nothing -- and nothing
-   * while the greeting is already offering them, so exactly one prompt set is ever on screen.
-   * EXPERIENCE.md reads Home's panel as showing "its suggested view or, when nothing needs
-   * attention, three starter prompts"; it publishes the greeting "over the screen's three starter
-   * prompts, and beneath them the hint"; and its UJ-2 walkthrough describes the fresh-container
-   * state -- the one where both would otherwise fire -- as "the suggested view offering the three
-   * starter prompts", singular. The greeting keeps them because only its order is published; the
-   * block keeps its agent-status line either way (AC2).
-   */
-  protected get suggestedPrompts(): readonly string[] {
+  /** The current screen's suggested prompts, grouped by task (Story 11.3); none off a built screen. */
+  protected get promptGroups(): readonly PromptGroup[] {
     this.generation();
-    if (this.transcriptEmpty) return [];
-    return this.suggested.showPrompts() ? this.suggested.starterPrompts() : [];
+    return promptGroups(screenForUrl(this.router.url));
   }
 
-  /** The three published prompts, for the empty-transcript greeting, which never counts anything. */
-  protected get starterPrompts(): readonly string[] {
-    return this.suggested.starterPrompts();
+  /**
+   * Whether Home's block shows the prompts: it is visible and nothing needs attention. The greeting
+   * then shows none, so exactly one prompt set is on screen (DW-1158).
+   */
+  protected get homeBlockPrompts(): boolean {
+    return this.suggestedVisible && this.suggested.showPrompts();
+  }
+
+  /**
+   * Whether the greeting shows the prompts: never beside the block's set, and on Home not until the
+   * suggested view has answered, so Home's set never paints in the greeting and then moves into the
+   * block.
+   */
+  protected get greetingPrompts(): boolean {
+    if (this.homeBlockPrompts) return false;
+    return !this.onHome || this.suggested.answered();
+  }
+
+  /** A suggested prompt is unavailable exactly while Send is: the composer is, or a turn runs. */
+  protected get promptAriaDisabled(): string | null {
+    return this.composerUnavailable || this.busy ? 'true' : null;
+  }
+
+  /** The topmost reason a suggested prompt is unavailable: the kill switch, then a running turn. */
+  protected get promptDescribedBy(): string | null {
+    if (this.killSwitch) return KILL_SWITCH_ID;
+    if (this.busy) return BUSY_REASON_ID;
+    return null;
   }
 
   /**
@@ -1408,6 +1454,7 @@ export class Panel {
       label: line.label,
       tail: line.tail,
       counted: line.counted,
+      unread: line.unread,
       count: line.count,
       // Relative, so it resolves under the document's base href; the router takes the rooted form.
       href: url.replace(/^\//, ''),
@@ -1424,8 +1471,8 @@ export class Panel {
   }
 
   /**
-   * A line's text or a starter prompt was activated: it becomes the draft and the composer takes
-   * focus. It never starts a turn -- the user reads what they are about to ask and presses Send.
+   * A suggested-view line was activated: its text becomes the draft and the composer takes focus.
+   * It never starts a turn -- the user reads what they are about to ask and presses Send.
    *
    * Nothing while the composer is unavailable, as every other write into the draft does
    * (`onDraft`, `onComposerKeydown`): with the kill switch on the block still renders -- its
@@ -1436,6 +1483,16 @@ export class Panel {
     if (this.composerUnavailable) return;
     this.panel.setDraft(text);
     this.composerEl()?.nativeElement.focus();
+  }
+
+  /**
+   * A suggested prompt was chosen (Story 11.3): its text is sent as the user's message with this
+   * screen's context through Send's own path, leaving the draft as it is (AD-11 rule 1). A click
+   * while it is `aria-disabled` sends nothing; sharing off sends a `null` context, as Send does.
+   */
+  protected onSuggestedPrompt(text: string): void {
+    if (this.promptAriaDisabled !== null) return;
+    void this.sendWithContext(text, this.assembleContext());
   }
 
   /**

@@ -71,6 +71,11 @@ XData Declaration
   "context": {"fields": ["Directory", "Size", "MaxSize", "Status", "Resource"], "secretFields": []},
   "emptyStateKey": "databaseListEmpty",
   "commandAliases": ["databases", "disks"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupCapacity", "textKey": "databaseListPrompt1"},
+    {"groupKey": "promptGroupCapacity", "textKey": "databaseListPrompt2"},
+    {"groupKey": "promptGroupCapacity", "textKey": "databaseListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.OpDatabases",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

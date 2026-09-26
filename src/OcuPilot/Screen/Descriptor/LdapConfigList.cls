@@ -49,6 +49,11 @@ XData Declaration
   "context": {"fields": ["Name", "Enabled", "Description", "LDAPCACertFile"], "secretFields": []},
   "emptyStateKey": "ldapListEmpty",
   "commandAliases": ["kerberos"],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupSignIn", "textKey": "ldapConfigListPrompt1"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "ldapConfigListPrompt2"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "ldapConfigListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.LDAPs",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

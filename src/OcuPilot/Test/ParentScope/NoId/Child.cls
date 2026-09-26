@@ -26,6 +26,7 @@ XData Declaration
   "rowActions": [],
   "emptyStateKey": "",
   "commandAliases": [],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": ""},
   "toolIdentifier": "security.parentscopenoidchild"

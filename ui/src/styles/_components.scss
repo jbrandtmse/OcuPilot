@@ -6026,3 +6026,31 @@ app-data-table .ocu-data-table-header-cell {
     inset 0 -4px 0 0 var(--ocu-focus-ring-inner),
     inset -4px 0 0 0 var(--ocu-focus-ring-inner);
 }
+
+// Suggested prompts (Story 11.3): each task group is a labeled `role="group"` over its own rows,
+// in the greeting and in Home's suggested-view block. The label takes the eyebrow's type role. A
+// prompt is unavailable exactly while Send is, and reads as refused the way `.ocu-panel-explain`
+// does: `restrained` text at full opacity and no state layer.
+.ocu-prompt-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  margin: var(--ocu-space-2) 0 0;
+}
+
+.ocu-prompt-group-label {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-suggested-starter[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-suggested-starter[aria-disabled='true']:hover,
+.ocu-suggested-starter[aria-disabled='true']:active {
+  border-color: var(--ocu-outline-variant);
+}

@@ -29,6 +29,7 @@ XData Declaration
   "context": {"fields": ["Name", "ServerDefinition"], "secretFields": []},
   "emptyStateKey": "oauthResourceServersEmpty",
   "commandAliases": [],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "%CSP.UI.Portal.OAuth2.ResourceServer.ConfigurationList",
   "classicLinkExemption": {
     "exempt": true,

@@ -11,16 +11,19 @@ XData Cases
 {
 {
   "cases": [
-    {"name": "no prompts declared is sound", "declaration": {}, "expected": null},
-    {"name": "a null declares none", "declaration": {"suggestedPrompts": null}, "expected": null},
-    {"name": "three prompts are sound", "declaration": {"suggestedPrompts": [{"groupKey": "g", "textKey": "a"}, {"groupKey": "g", "textKey": "b"}, {"groupKey": "h", "textKey": "c"}]}, "expected": null},
-    {"name": "an object is not an array", "declaration": {"suggestedPrompts": {"groupKey": "g", "textKey": "a"}}, "expected": "suggestedPrompts is not an array of prompts"},
-    {"name": "two prompts are too few", "declaration": {"suggestedPrompts": [{"groupKey": "g", "textKey": "a"}, {"groupKey": "g", "textKey": "b"}]}, "expected": "suggestedPrompts declares 2, and a screen that declares prompts declares at least 3"},
+    {"name": "no prompts declared is sound on an unbuilt screen", "declaration": {"built": false}, "expected": null},
+    {"name": "a null declares none on an unbuilt screen", "declaration": {"built": false, "suggestedPrompts": null}, "expected": null},
+    {"name": "a built screen with no prompts", "declaration": {"built": true}, "expected": "a built screen declares at least 3 suggestedPrompts"},
+    {"name": "a built screen with null prompts", "declaration": {"built": true, "suggestedPrompts": null}, "expected": "a built screen declares at least 3 suggestedPrompts"},
+    {"name": "a group outside the vocabulary", "declaration": {"suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "a"}, {"groupKey": "misc", "textKey": "b"}, {"groupKey": "promptGroupCapacity", "textKey": "c"}]}, "expected": "suggestedPrompts[1].groupKey 'misc' is not one of the declared prompt groups"},
+    {"name": "three prompts are sound", "declaration": {"suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "a"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "b"}, {"groupKey": "promptGroupCapacity", "textKey": "c"}]}, "expected": null},
+    {"name": "an object is not an array", "declaration": {"suggestedPrompts": {"groupKey": "promptGroupTroubleshooting", "textKey": "a"}}, "expected": "suggestedPrompts is not an array of prompts"},
+    {"name": "two prompts are too few", "declaration": {"suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "a"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "b"}]}, "expected": "suggestedPrompts declares 2, and a screen that declares prompts declares at least 3"},
     {"name": "an empty list is too few", "declaration": {"suggestedPrompts": []}, "expected": "suggestedPrompts declares 0, and a screen that declares prompts declares at least 3"},
-    {"name": "a prompt that is a string", "declaration": {"suggestedPrompts": [{"groupKey": "g", "textKey": "a"}, "b", {"groupKey": "h", "textKey": "c"}]}, "expected": "suggestedPrompts[1] is not an object declaring its groupKey and textKey"},
-    {"name": "a prompt with an unknown key", "declaration": {"suggestedPrompts": [{"groupKey": "g", "textKey": "a", "text": "Why?"}, {"groupKey": "g", "textKey": "b"}, {"groupKey": "h", "textKey": "c"}]}, "expected": "suggestedPrompts[0] declares the unknown key 'text'"},
-    {"name": "a prompt with no group", "declaration": {"suggestedPrompts": [{"groupKey": "g", "textKey": "a"}, {"groupKey": "g", "textKey": "b"}, {"textKey": "c"}]}, "expected": "suggestedPrompts[2].groupKey is empty, and a prompt names the string key it reads"},
-    {"name": "a prompt with an empty text key", "declaration": {"suggestedPrompts": [{"groupKey": "g", "textKey": ""}, {"groupKey": "g", "textKey": "b"}, {"groupKey": "h", "textKey": "c"}]}, "expected": "suggestedPrompts[0].textKey is empty, and a prompt names the string key it reads"}
+    {"name": "a prompt that is a string", "declaration": {"suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "a"}, "b", {"groupKey": "promptGroupCapacity", "textKey": "c"}]}, "expected": "suggestedPrompts[1] is not an object declaring its groupKey and textKey"},
+    {"name": "a prompt with an unknown key", "declaration": {"suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "a", "text": "Why?"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "b"}, {"groupKey": "promptGroupCapacity", "textKey": "c"}]}, "expected": "suggestedPrompts[0] declares the unknown key 'text'"},
+    {"name": "a prompt with no group", "declaration": {"suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "a"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "b"}, {"textKey": "c"}]}, "expected": "suggestedPrompts[2].groupKey is empty, and a prompt names the string key it reads"},
+    {"name": "a prompt with an empty text key", "declaration": {"suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": ""}, {"groupKey": "promptGroupTroubleshooting", "textKey": "b"}, {"groupKey": "promptGroupCapacity", "textKey": "c"}]}, "expected": "suggestedPrompts[0].textKey is empty, and a prompt names the string key it reads"}
   ]
 }
 }

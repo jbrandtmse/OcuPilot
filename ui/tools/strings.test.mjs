@@ -547,9 +547,11 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // literals -- the two reduced forms' titles, fields, list controls and captions, their bare and
   // absent sentences, the serving-service refusal, two effects and six prompts -- and take the
   // table past 900.
+  //
+  // Story 11.3 moves the bound to 1100: its 45 rows and one extended row publish 137 literals.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 1000,
-    `expected between 150 and 1000 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 1100,
+    `expected between 150 and 1100 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

@@ -43,6 +43,11 @@ XData Declaration
   "context": {"fields": ["Name", "EditResource", "UseResource"], "secretFields": []},
   "emptyStateKey": "walletListEmpty",
   "commandAliases": ["secrets"],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupAccess", "textKey": "walletCollectionListPrompt1"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "walletCollectionListPrompt2"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "walletCollectionListPrompt3"}
+  ],
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

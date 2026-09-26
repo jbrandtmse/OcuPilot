@@ -364,7 +364,7 @@ Method TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTo
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,toolIdentifier", "the declared keys, a read among them, and no table or banner, since a form renders no grid: " _ tKeys)
+    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,read,toolIdentifier", "the declared keys, a read among them, and no table or banner, since a form renders no grid: " _ tKeys)
 
     Do $$$AssertEquals($ClassMethod(tClass, "IsBuilt"), 1, "it is built")
     Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 6, "and listed sixth in the Security side bar")
@@ -897,7 +897,7 @@ Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,toolIdentifier", "the twenty-three declared keys, and no read, table, banner or criteria among them: " _ tKeys)
+    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,toolIdentifier", "the twenty-four declared keys, and no read, table, banner or criteria among them: " _ tKeys)
 
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "a declaration with no read is a supported shape")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "and it declares no criteria")
@@ -1101,6 +1101,24 @@ Method TestAnUndeclaredSideBarPositionIsRefusedOnABuiltScreen()
 
     Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
     Do $$$AssertEquals(tProdProblem, "", "and every shipped descriptor declares one")
+    Do $$$AssertStatusOK(tProdSC, "so the shipped roster validates")
+}
+
+/// <p>Story 11.3 (AD-5) -- <method>OcuPilot.Screen.Registry.SuggestedPromptsProblem</method> refuses
+/// a built screen that declares no suggested prompts, admits an unbuilt one, and the shipped roster,
+/// every screen of which is built, validates.</p>
+/// <p>Mutation: drop the built arm from
+/// <method>OcuPilot.Screen.Registry.SuggestedPromptsProblem</method> -&gt; the two refusal assertions
+/// go red.</p>
+Method TestAPromptlessBuiltScreenIsRefused()
+{
+    Set tExpected = "a built screen declares at least 3 suggestedPrompts"
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SuggestedPromptsProblem({"built": true}), tExpected, "a built screen with no prompts is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SuggestedPromptsProblem({"built": true, "suggestedPrompts": null}), tExpected, "and so is one declaring null")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SuggestedPromptsProblem({"built": false}), "", "an unbuilt screen may declare none")
+
+    Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
+    Do $$$AssertEquals(tProdProblem, "", "every shipped descriptor declares its prompts")
     Do $$$AssertStatusOK(tProdSC, "so the shipped roster validates")
 }
 

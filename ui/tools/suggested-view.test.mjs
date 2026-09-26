@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-// Pins Home's suggested view (Story 4.10): which lines render and which do not, the all-zero
-// fallback to the published starter prompts, and that appending a source appends a line.
+// Pins Home's suggested view (Story 4.10): which lines render and which do not, when Home's prompts
+// stand in for them (Story 11.3), and that appending a source appends a line.
 //
 // `core/suggested-view.ts` is framework-free (AD-19), so this is the one leg that can execute it
 // directly -- DOM shape is `panel.spec.ts`'s and geometry is the browser spec's.
@@ -146,24 +146,39 @@ test('the agent-status line is projected live, so it cannot contradict a verdict
   assert.equal(view.lines()[0].text, STRINGS.statusReadOnlyByDefinition, 'the line follows the verdict');
 });
 
-test('a refused application-errors read renders no line, and is never retried (AD-8)', async () => {
-  // Mutation (Rule 19): make the application-errors source emit a zero-count line on a 403 ->
-  // both assertions here go red.
+/** The application-errors line a refused or faulted read answers (DW-1147). */
+function assertUnreadLine(view, namespace, message) {
+  const line = view.lines().find((row) => row.key === 'application-errors');
+  assert.ok(line, `${message}: the line renders`);
+  assert.equal(line.unread, true, `${message}: marked unread`);
+  assert.equal(line.counted, true, `${message}: still a counted line`);
+  assert.equal(line.count, 0, `${message}: carries no count`);
+  assert.equal(line.tail, '', `${message}: and no tail`);
+  const sentence = STRINGS.homeSuggestedApplicationErrorsUnread.replace('<NAMESPACE>', namespace);
+  assert.equal(line.label, sentence, `${message}: the label is the whole sentence`);
+  assert.equal(line.text, sentence, `${message}: and so is the text`);
+  assert.equal(view.showPrompts(), false, `${message}: an unread line holds the prompts back`);
+}
+
+test('a refused application-errors read renders the unread line, and is never retried (AD-8, DW-1147)', async () => {
+  // Mutation (Rule 19): make the non-ok branch answer `null` -> the unread-line assertions go red.
   const connectivity = parkRecorder();
   const view = viewOver({ api: apiAnswering(errorAt(403, 'AUTH.FORBIDDEN')), connectivity });
   await view.load();
 
   assert.equal(view.answered(), true, 'a refusal settles the source rather than leaving it pending');
-  assert.deepEqual(view.lines().map((line) => line.key), ['agent-status'], 'no zero, no skeleton row');
+  assert.deepEqual(view.lines().map((line) => line.key), ['agent-status', 'application-errors'], 'no zero, no skeleton row');
+  assertUnreadLine(view, 'HSCUSTOM', '403');
   assert.deepEqual(connectivity.parked, [], 'a 403 is reported and never retried');
 });
 
-test('a faulted or unreachable read renders no line and parks exactly one re-read, keyed by the path', async () => {
+test('a faulted or unreachable read renders the unread line and parks exactly one re-read, keyed by the path', async () => {
+  // Mutation (Rule 19): make the non-ok branch answer `null` -> the unread-line assertions go red.
   for (const result of [errorAt(500), errorAt(0), { kind: 'installing', status: 503, code: 'INSTALL.RUNNING' }]) {
     const connectivity = parkRecorder();
     const view = viewOver({ api: apiAnswering(result), connectivity });
     await view.load();
-    assert.deepEqual(view.lines().map((line) => line.key), ['agent-status'], JSON.stringify(result));
+    assertUnreadLine(view, 'HSCUSTOM', JSON.stringify(result));
     assert.deepEqual(
       connectivity.parked.map((park) => park.key),
       [`${ERROR_LOG_DATES_PATH}?namespace=HSCUSTOM`]
@@ -183,7 +198,7 @@ test('the parked re-read is what brings the line back once the instance answers 
   } };
   const view = viewOver({ api, connectivity });
   await view.load();
-  assert.deepEqual(view.lines().map((line) => line.key), ['agent-status'], 'the faulted line is absent');
+  assertUnreadLine(view, 'HSCUSTOM', 'the faulted read');
   assert.equal(connectivity.parked.length, 1);
 
   // The store's own notification is the settle point: `run` is `void`-ed, so awaiting it would
@@ -203,21 +218,18 @@ test('the parked re-read is what brings the line back once the instance answers 
 
   assert.deepEqual(view.lines().map((line) => line.key), ['agent-status', 'application-errors']);
   assert.equal(view.lines()[1].count, 5, 'the count the recovered read answered');
+  assert.equal(view.lines()[1].unread, false, 'which replaces the unread line');
   assert.equal(api.calls.length, 2, 'one re-read, not a loop');
 });
 
-test('zero rows is a count of zero, which selects the three published starter prompts', async () => {
+test('zero rows is a count of zero, which lets Home\'s prompts stand in', async () => {
   // Mutation (Rule 19): include the agent-status line in the zero test -> the "agent-status stays"
   // assertion goes red.
   const view = viewOver({ api: apiAnswering(ok({ rows: [] })) });
   await view.load();
 
   assert.equal(view.showPrompts(), true);
-  assert.deepEqual(view.starterPrompts(), [
-    STRINGS.homeStarterPromptExplainScreen,
-    STRINGS.homeStarterPromptExplainLog,
-    STRINGS.homeStarterPromptChangeOneThing,
-  ]);
+  assert.equal(view.lines().find((line) => line.key === 'application-errors').unread, false, 'a real zero is read');
   assert.deepEqual(
     view.lines().map((line) => line.key),
     ['agent-status', 'application-errors'],
@@ -226,29 +238,25 @@ test('zero rows is a count of zero, which selects the three published starter pr
   assert.equal(view.lines().find((line) => line.key === 'agent-status').counted, false);
 });
 
-test('an absent counted line leaves the zero test vacuously true, so the prompts stand in', async () => {
-  const view = viewOver({ api: apiAnswering(errorAt(403)) });
-  await view.load();
-  // Every counted line is absent, so "every counted line reads zero" is vacuously true and the
-  // prompts stand in -- which is the right answer: there is nothing needing attention on screen.
-  assert.equal(view.showPrompts(), true);
+test('a source that settles to no line leaves the zero test to the lines that render', async () => {
+  // A source answering `null` renders nothing, so it neither holds the prompts back nor counts.
+  const absent = { key: 'absent', read: (_view, state) => { state.answer = null; return Promise.resolve(); } };
+  SOURCES.push(absent);
+  try {
+    const view = viewOver({ api: apiAnswering(ok({ rows: [] })) });
+    await view.load();
+    assert.equal(view.showPrompts(), true);
+  } finally {
+    SOURCES.pop();
+  }
 });
 
-test('DW-1147 (owner to decide): today, a refused, faulted or unreachable counted read all fall through to the same fallback as a real zero', async () => {
-  // Pins current behaviour without changing it. The spec's own deferred item 1 names the gap:
-  // `showPrompts()` tests only the lines that answered (`view.lines()`), so a source the caller
-  // could not read at all -- refused, 5xx, or unreachable -- is simply absent from that test
-  // rather than counted as a known zero, and "nothing needs attention" renders either way. Whether
-  // "unknown" may present as "zero" is a product call this test does not make; it only pins what
-  // ships today so a later decision on DW-1147 has something to move.
-  //
-  // Mutation (Rule 19): add `if (this.lines().length < SOURCES.length) return false;` at the top
-  // of `showPrompts()` in `suggested-view.ts` -- every case here goes red (each leaves one source
-  // absent), while the all-real-zero-rows case above (both sources present) stays green.
+test('DW-1147: a refused, faulted or unreachable counted read never falls through to the prompts', async () => {
+  // Mutation (Rule 19): make `showPrompts()` ignore `unread` -> every case here goes red.
   for (const result of [errorAt(403), errorAt(500), errorAt(0), { kind: 'installing', status: 503, code: 'INSTALL.RUNNING' }]) {
     const view = viewOver({ api: apiAnswering(result) });
     await view.load();
-    assert.equal(view.showPrompts(), true, JSON.stringify(result));
+    assert.equal(view.showPrompts(), false, JSON.stringify(result));
   }
 });
 
@@ -263,6 +271,7 @@ test('AC5: a fourth source appended to the declared array appends a fourth line,
       state.answer = {
         key: 'alerts-log',
         counted: true,
+        unread: false,
         text: 'appended',
         count: 2,
         label: 'appended ',

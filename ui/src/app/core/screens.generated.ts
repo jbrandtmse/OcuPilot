@@ -650,6 +650,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentDefinitionFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentDefinitionFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentDefinitionFormPrompt3"
+      }
+    ],
     "classicPage": "",
     "classicLinkExemption": {
       "exempt": false,
@@ -727,6 +741,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "agent definitions",
       "definitions",
       "api key"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentDefinitionListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentDefinitionListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentDefinitionListPrompt3"
+      }
     ],
     "classicPage": "",
     "classicLinkExemption": {
@@ -848,6 +876,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "read-only",
       "switches"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentSwitchesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentSwitchesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentSwitchesPrompt3"
+      }
+    ],
     "classicPage": "",
     "classicLinkExemption": {
       "exempt": false,
@@ -937,6 +979,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "emptyStateKey": "auditListEmpty",
     "commandAliases": [
       "audit"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditListPrompt1"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditListPrompt2"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditListPrompt3"
+      }
     ],
     "classicPage": "%CSP.UI.Portal.Audit.View",
     "classicLinkExemption": {
@@ -1194,6 +1250,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "emptyStateKey": "auditSystemEventListEmpty",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditSystemEventListPrompt1"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditSystemEventListPrompt2"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditSystemEventListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Audit.SystemEvents",
     "classicLinkExemption": {
       "exempt": false,
@@ -1488,6 +1558,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "auditing"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditingConfigPrompt1"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditingConfigPrompt2"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditingConfigPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Audit.SystemEvents",
     "classicLinkExemption": {
       "exempt": false,
@@ -1587,6 +1671,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "emptyStateKey": "databaseDetailsGone",
     "commandAliases": [
       "database details"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "databaseDetailsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "databaseDetailsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "databaseDetailsPrompt3"
+      }
     ],
     "classicPage": "%CSP.UI.Portal.DatabaseDetails",
     "classicLinkExemption": {
@@ -1826,6 +1924,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "free space",
       "database free space"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "databaseFreeSpacePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "databaseFreeSpacePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "databaseFreeSpacePrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.OpDatabases",
     "classicLinkExemption": {
       "exempt": false,
@@ -1968,6 +2080,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "databases",
       "disks"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "databaseListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "databaseListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "databaseListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.OpDatabases",
     "classicLinkExemption": {
       "exempt": false,
@@ -2096,6 +2222,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "emptyStateKey": "databaseVolumeListEmpty",
     "commandAliases": [
       "volume files"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "databaseVolumeListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "databaseVolumeListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "databaseVolumeListPrompt3"
+      }
     ],
     "classicPage": "%CSP.UI.Portal.DatabaseDetails",
     "classicLinkExemption": {
@@ -2231,6 +2371,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "deviceFormPrompt1"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "deviceFormPrompt2"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "deviceFormPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Config.Device",
     "classicLinkExemption": {
       "exempt": false,
@@ -2294,6 +2448,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "devices",
       "device settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "deviceListPrompt1"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "deviceListPrompt2"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "deviceListPrompt3"
+      }
     ],
     "classicPage": "%CSP.UI.Portal.Config.Devices",
     "classicLinkExemption": {
@@ -2414,6 +2582,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "home",
       "start"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "homeStarterPromptExplainScreen"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "homeStarterPromptExplainLog"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "homeStarterPromptChangeOneThing"
+      }
     ],
     "classicPage": "%CSP.Portal.Home",
     "classicLinkExemption": {
@@ -2548,6 +2730,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "kerberos"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "ldapConfigListPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "ldapConfigListPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "ldapConfigListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.LDAPs",
     "classicLinkExemption": {
       "exempt": false,
@@ -2662,6 +2858,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "locks",
       "lock table"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "lockListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "lockListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "lockListPrompt3"
+      }
     ],
     "classicPage": "%CSP.UI.Portal.LocksView",
     "classicLinkExemption": {
@@ -2805,6 +3015,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "alerts",
       "alerts.log"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logAlertViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logAlertViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logAlertViewerPrompt3"
+      }
+    ],
     "classicPage": "%cspapp.op.utilsysconsolelog",
     "classicLinkExemption": {
       "exempt": false,
@@ -2926,6 +3150,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "application errors"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logErrorListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logErrorListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logErrorListPrompt3"
+      }
+    ],
     "classicPage": "%cspapp.op.utilsysapperrornamespaces",
     "classicLinkExemption": {
       "exempt": false,
@@ -2983,6 +3221,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "messages",
       "messages.log"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logMessageViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logMessageViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logMessageViewerPrompt3"
+      }
     ],
     "classicPage": "%cspapp.op.utilsysconsolelog",
     "classicLinkExemption": {
@@ -3098,6 +3350,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "emptyStateKey": "oauthClientsEmpty",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthClientTabPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthClientTabPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthClientTabPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.OAuth2.Client.ConfigurationList",
     "classicLinkExemption": {
       "exempt": true,
@@ -3249,6 +3515,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "emptyStateKey": "oauthResourceServersEmpty",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthResourceServerTabPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthResourceServerTabPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthResourceServerTabPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.OAuth2.ResourceServer.ConfigurationList",
     "classicLinkExemption": {
       "exempt": true,
@@ -3370,6 +3650,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "emptyStateKey": "oauthServerClientsEmpty",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerClientTabPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerClientTabPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerClientTabPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.OAuth2.Server.ClientList",
     "classicLinkExemption": {
       "exempt": true,
@@ -3510,6 +3804,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "oauth"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerDescriptionTabPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerDescriptionTabPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerDescriptionTabPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.OAuth2.Client.ServerList",
     "classicLinkExemption": {
       "exempt": true,
@@ -3631,6 +3939,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "emptyStateKey": "oauthServerEmpty",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerTabPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerTabPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerTabPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.OAuth2.Server.Configuration",
     "classicLinkExemption": {
       "exempt": true,
@@ -3777,6 +4099,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "emptyStateKey": "openApiViewerEmpty",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "openApiViewerPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "openApiViewerPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "openApiViewerPrompt3"
+      }
+    ],
     "classicPage": "",
     "classicLinkExemption": {
       "exempt": false,
@@ -3951,6 +4287,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "emptyStateKey": "processDetailsGone",
     "commandAliases": [
       "process details"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "processDetailsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "processDetailsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "processDetailsPrompt3"
+      }
     ],
     "classicPage": "%CSP.UI.Portal.ProcessDetails",
     "classicLinkExemption": {
@@ -4295,6 +4645,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "jobs"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "processListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "processListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "processListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Processes",
     "classicLinkExemption": {
       "exempt": false,
@@ -4439,6 +4803,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "security resources"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "resourceListPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "resourceListPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "resourceListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Resources",
     "classicLinkExemption": {
       "exempt": false,
@@ -4563,6 +4941,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "REST",
       "REST APIs"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "restApiListPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "restApiListPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "restApiListPrompt3"
+      }
     ],
     "classicPage": "",
     "classicLinkExemption": {
@@ -4776,6 +5168,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "security roles"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "roleListPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "roleListPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "roleListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Roles",
     "classicLinkExemption": {
       "exempt": false,
@@ -4965,6 +5371,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "security services"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "serviceListPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "serviceListPrompt2"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "serviceListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Services",
     "classicLinkExemption": {
       "exempt": false,
@@ -5097,6 +5517,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "emptyStateKey": "sslListEmpty",
     "commandAliases": [
       "certificates"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "sslConfigListPrompt1"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "sslConfigListPrompt2"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "sslConfigListPrompt3"
+      }
     ],
     "classicPage": "%CSP.UI.Portal.SSLList",
     "classicLinkExemption": {
@@ -5305,6 +5739,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "memory",
       "shared memory",
       "global references"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "systemUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "systemUsagePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "systemUsagePrompt3"
+      }
     ],
     "classicPage": "%cspapp.op.utilsysmonitor",
     "classicLinkExemption": {
@@ -5574,6 +6022,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "emptyStateKey": "taskDetailsGone",
     "commandAliases": [
       "task details"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskDetailsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskDetailsPrompt2"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskDetailsPrompt3"
+      }
     ],
     "classicPage": "%CSP.UI.Portal.TaskInfo",
     "classicLinkExemption": {
@@ -5896,6 +6358,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "task history",
       "task runs"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskHistoryListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskHistoryListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskHistoryListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.TaskHistory",
     "classicLinkExemption": {
       "exempt": false,
@@ -6075,6 +6551,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "on demand",
       "run task"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskOnDemandListPrompt1"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskOnDemandListPrompt2"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskOnDemandListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.TasksOnDemand",
     "classicLinkExemption": {
       "exempt": false,
@@ -6219,6 +6709,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "emptyStateKey": "taskRunsEmpty",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskRunListPrompt1"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskRunListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskRunListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.TaskHistoryId",
     "classicLinkExemption": {
       "exempt": false,
@@ -6405,6 +6909,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "task manager"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskScheduleListPrompt1"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskScheduleListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "taskScheduleListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.TaskSchedule",
     "classicLinkExemption": {
       "exempt": false,
@@ -6569,6 +7087,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "upcoming",
       "next runs"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskUpcomingListPrompt1"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskUpcomingListPrompt2"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskUpcomingListPrompt3"
+      }
     ],
     "classicPage": "%CSP.UI.Portal.TasksUpcoming",
     "classicLinkExemption": {
@@ -6816,6 +7348,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "accounts"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "userListPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "userListPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "userListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Users",
     "classicLinkExemption": {
       "exempt": false,
@@ -6959,6 +7505,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "secrets"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "walletCollectionListPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "walletCollectionListPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "walletCollectionListPrompt3"
+      }
+    ],
     "classicPage": "",
     "classicLinkExemption": {
       "exempt": false,
@@ -7065,6 +7625,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "walletSecretFormPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "walletSecretFormPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "walletSecretFormPrompt3"
+      }
+    ],
     "classicPage": "",
     "classicLinkExemption": {
       "exempt": false,
@@ -7130,6 +7704,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     ],
     "emptyStateKey": "walletSecretListEmpty",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "walletSecretListPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "walletSecretListPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "walletSecretListPrompt3"
+      }
+    ],
     "classicPage": "",
     "classicLinkExemption": {
       "exempt": false,
@@ -7344,6 +7932,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "web apps"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "webAppListPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "webAppListPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "webAppListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Applications.WebList",
     "classicLinkExemption": {
       "exempt": false,
@@ -7486,6 +8088,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "commandAliases": [
       "x509"
     ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "x509CredentialListPrompt1"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "x509CredentialListPrompt2"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "x509CredentialListPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.X509Credentials",
     "classicLinkExemption": {
       "exempt": false,
@@ -7621,6 +8237,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "x509FormPrompt1"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "x509FormPrompt2"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "x509FormPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.X509Credential",
     "classicLinkExemption": {
       "exempt": false,

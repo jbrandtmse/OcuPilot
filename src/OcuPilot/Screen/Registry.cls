@@ -379,7 +379,8 @@ ClassMethod EntityLabelProblem(pDeclaration As %DynamicObject) As %String
 /// <code>read</code>, <code>table</code>, <code>banner</code>, <code>tab</code>,
 /// <code>rowTarget</code>, <code>secretArguments</code>, <code>fingerprintExcludes</code>,
 /// <code>entityLabelKey</code> -- is sound, and a declaration missing a required one is already
-/// refused by the rule that reads it, with a sentence naming what it was for.</p>
+/// refused by the rule that reads it, with a sentence naming what it was for. <code>suggestedPrompts</code>
+/// is required on a built screen and optional on an unbuilt one (Story 11.3).</p>
 Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
 
 /// <p>What is wrong with <var>pDeclaration</var>'s own top-level keys, or <code>""</code> when
@@ -562,12 +563,13 @@ ClassMethod TabProblem(pDeclaration As %DynamicObject) As %String
 }
 
 /// <p>What is wrong with <var>pDeclaration</var>'s <code>suggestedPrompts</code>, or
-/// <code>""</code> (Story 11.3). Absent or <code>null</code> declares none. Otherwise it is an array
-/// of at least <parameter>SUGGESTEDPROMPTSMIN</parameter> objects, each carrying only
-/// <code>groupKey</code> and <code>textKey</code>, both non-empty string keys. That each key
-/// resolves is the build's check, over the string source this class cannot read.
-/// <file>ui/tools/screen-mirror.mjs</file>'s <code>suggestedPromptsProblem</code> returns the same
-/// sentence for every case.</p>
+/// <code>""</code> (Story 11.3, AD-5). A built screen declares them; an unbuilt one may leave them
+/// absent or <code>null</code>. Otherwise it is an array of at least
+/// <parameter>SUGGESTEDPROMPTSMIN</parameter> objects, each carrying only <code>groupKey</code> and
+/// <code>textKey</code>, both non-empty string keys, the group one of
+/// <parameter>PROMPTGROUPKEYS</parameter>. That each key resolves is the build's check, over the
+/// string source this class cannot read. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>suggestedPromptsProblem</code> returns the same sentence for every case.</p>
 ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
 {
     Set tProblem = ""
@@ -577,7 +579,10 @@ ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tType = pDeclaration.%GetTypeOf("suggestedPrompts")
-        If (tType = "unassigned") || (tType = "null") Quit
+        If (tType = "unassigned") || (tType = "null") {
+            If pDeclaration.%Get("built") = 1 Set tProblem = "a built screen declares at least " _ ..#SUGGESTEDPROMPTSMIN _ " suggestedPrompts"
+            Quit
+        }
         If tType '= "array" {
             Set tProblem = "suggestedPrompts is not an array of prompts"
             Quit
@@ -603,6 +608,11 @@ ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
                 }
             }
             If tProblem '= "" Quit
+            Set tGroup = tPrompt.%Get("groupKey")
+            If '$ListFind($ListFromString(..#PROMPTGROUPKEYS), tGroup) {
+                Set tProblem = tWhere _ ".groupKey '" _ tGroup _ "' is not one of the declared prompt groups"
+                Quit
+            }
         }
     } Catch ex {
         Set tProblem = "the suggested prompts could not be read: " _ ex.DisplayString()
@@ -2251,6 +2261,11 @@ Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-accou
 
 /// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
 Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;
+
+/// <p>The closed vocabulary a suggested prompt's <code>groupKey</code> is drawn from (Story 11.3),
+/// comma-separated. <file>ui/tools/screen-mirror.mjs</file>'s <code>PROMPT_GROUP_KEYS</code> holds
+/// the same list in the same order, pinned equal by <file>ui/tools/screen-mirror.test.mjs</file>.</p>
+Parameter PROMPTGROUPKEYS = "userPromptGroupSignIn,userPromptGroupAccess,webAppPromptGroupCode,sslPromptGroupConnections,taskPromptGroupSchedule,auditUserEventPromptGroup,promptGroupTroubleshooting,promptGroupCapacity,promptGroupAgentSetup,promptGroupGettingStarted";
 
 /// <p>The projections <method>DeclaredNames</method> fills, comma-separated. Declared as data
 /// because a generator reads it: <file>ui/tools/screen-mirror.mjs</file> parses this parameter and

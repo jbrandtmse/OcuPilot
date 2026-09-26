@@ -2,11 +2,11 @@
 title: 'Story 11.3: Suggested prompts per screen'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
-baseline_revision: '6618c5a41a4722a92cb3a5a2580aa063c12077dc'
-baseline_commit: '6618c5a41a4722a92cb3a5a2580aa063c12077dc'
+status: 'done'
+baseline_revision: 'c384fd2135361e0aa699511b35af3a0bb32afc56'
+baseline_commit: 'c384fd2135361e0aa699511b35af3a0bb32afc56'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-11-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -239,6 +239,19 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-25 — Review pass
+
+- verdicts: 8 findings — high 0, medium 3, low 4, false 1, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Browser (b) could not fail on a throwaway whose log holds errors, so AC4's browser pin was vacuous there — (b) now signs in on Users, answers the dates read `{rows: []}` in the page and asserts the set is the block's and the greeting has none; red under the AC4 mutation on the redeployed bundle.
+  - `[low]` `[patch]` AC6 had no `mutation:` line — recorded: `onSuggestion` no longer sets the draft -> 4.10's line-gesture leg red.
+  - `[medium]` `[patch]` On Home the greeting painted Home's set while the suggested view was in flight, then the set moved into the block — new `greetingPrompts` holds the greeting's set on Home until the view answers; panel leg "Home in flight" added, red under its mutation.
+  - `[low]` `[reject]` `strings.ts`'s `taskCreate` reference (`:1955`) was renumbered, the line Epic 12 also renumbers — forced by the Tasks and by `strings.test.mjs`'s reference check once rows land at the table's end; Design Notes ("Epic 12 at merge") and `footprint_extensions` accept it, and the merge re-derives that one line.
+  - `[false]` `[reject]` `app.ts` changes outside the named surfaces — no bad outcome: sign-out left `restored()` false, so no greeting or prompts rendered after an interactive sign-in; `void this.turn.restore()` fixes that, pinned in `app.spec.ts`, and merges cleanly with Epic 12's `app.ts` (merge-file check).
+  - `[low]` `[reject]` Most matrix rows are proven in jsdom, and browser (a) checks neither the kept draft nor the context — the spec's browser tier is (a) and (b); the draft and context are pinned by the panel "Choose" and "Sharing off" legs over the same Send path, and no failure mode here depends on layout.
+  - `[low]` `[reject]` The panel "Faulted read" leg re-loads rather than driving the parked re-read — the park and the recovery it brings are pinned in `suggested-view.test.mjs`; wiring connectivity into the panel harness adds machinery for no new failure.
+  - `[medium]` `[patch]` (intent-alignment) Home's set can move from the greeting to the block — same root cause and fix as the third row.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -386,11 +399,38 @@ The table:
 - AC5 DW-1147: the non-ok branch answers `null` → the `suggested-view.test.mjs` refused and faulted legs go red, and the panel refused leg goes red.
 - AC5 DW-1160: `suggestedRows` filters only under `showPrompts()` → the panel zero-line leg goes red.
 
+**Recorded mutations (implement stage, 2026-09-25).** Each was reverted byte-identical (`git status --short` and `git diff --stat` compared).
+
+- mutation: `promptGroups` getter answers `[]` off Home -> panel "Screen idle", "Choose", "Blocked", "Sharing off", "Editor" and the registry-driven AC1 leg red; browser (a) red.
+- mutation: `promptGroups()` puts every prompt in the first group -> `suggested-prompts.test.mjs` grouping-order test red.
+- mutation: `onSuggestedPrompt` calls `onSuggestion` -> panel "Choose", "Busy", "Sharing off" and 4.10's AC6 send leg red; browser (a) red.
+- mutation: `composerUnavailable` dropped from `promptAriaDisabled` -> panel "Blocked" (kill switch) leg red.
+- mutation: built arm dropped from `Registry.SuggestedPromptsProblem` -> `Descriptor` `TestAPromptlessBuiltScreenIsRefused` and `TestEveryPromptCorpusCaseGetsItsSentence` red (run 12968).
+- mutation: built arm dropped from `suggestedPromptsProblem` -> `screen-mirror.test.mjs` PromptCorpus test red.
+- mutation: group arm dropped from `Registry.SuggestedPromptsProblem` -> `Descriptor` `TestEveryPromptCorpusCaseGetsItsSentence` red on "a group outside the vocabulary" (run 12969).
+- mutation: group arm dropped from `suggestedPromptsProblem` -> `screen-mirror.test.mjs` PromptCorpus test red on "a group outside the vocabulary".
+- mutation: the greeting renders its groups whatever `homeBlockPrompts` answers -> panel "Home all-zero", 4.10's fresh-container leg and the registry-driven AC1 leg red; browser (b), whose dates read is answered clean in the page, red ("the greeting offers none").
+- mutation: the non-ok branch of `readApplicationErrors` answers `null` -> `suggested-view.test.mjs` refused, faulted, re-read and DW-1147 tests red; panel "Refused read", "Faulted read" and 4.10's AC2 leg red.
+- mutation: `suggestedRows` drops readable zero lines only under `showPrompts()` -> panel "Zero line" leg red.
+- mutation: `void this.turn.restore()` dropped after `turn.endSession()` in `app.ts` -> `app.spec.ts` sign-out leg red.
+- mutation: `greetingPrompts` drops its Home read gate (answers `true` once the block shows none) -> panel "Home in flight" red.
+- mutation (AC6): `onSuggestion` no longer sets the draft -> 4.10's "AC3: a line has two distinct controls" leg red.
+
 **Manual check (extra evidence, never the proof).** Use the owner's live-key rules. On `tasks/schedule`, with a live Anthropic definition, choose "Which tasks are suspended, and why?". The reply answers from the screen or the read tool and proposes nothing.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only (halt after planning). The spec was checked against the READY-FOR-DEVELOPMENT standard. The prompt table covers all 44 descriptors that declare no prompts, plus Home, and no prompt text collides with an existing `STRINGS` value. The ledger inbox (DW-1147, DW-1158 and DW-1160) is addressed by AC4 and AC5. Proposed AD-5 amendment for the lead: see Design Notes.
+**Change.** A built screen must declare at least three suggested prompts from a ten-key group vocabulary; `Registry.cls` and `screen-mirror.mjs` refuse a promptless built screen or an unknown group with the same sentence. 44 descriptors gained prompts and Home re-declares its three; the mirror is regenerated. The panel renders the screen's groups in the idle greeting, or in Home's block when nothing needs attention (one set at a time; on Home the greeting waits for the view to answer), and a prompt sends through `sendWithContext` behind Send's gate. A refused or failed errors read shows "could not be read" and holds the prompts back (DW-1147); a readable zero line never renders (DW-1160).
+
+**Files.** `Registry.cls`, `screen-mirror.mjs` (rule and vocabulary); 45 descriptors and `screens.generated.ts`; `PromptCorpus.cls`, `Descriptor.cls` and 23 fixtures; `strings.ts` (137 keys, `taskCreate` reference :555 -> :600), EXPERIENCE.md (45 rows; :356, :671, :673 amended); `core/suggested-prompts.ts` (new), `suggested-view.ts`, `panel.ts`, `_components.scss`; `app.ts` (sign-out marks the empty transcript restored); tests: `panel.spec.ts`, `app.spec.ts`, `suggested-view.test.mjs`, `suggested-prompts.test.mjs` (new), `screen-mirror.test.mjs`, `strings.test.mjs` (band 1100), `browser/suggested-prompts.browser-spec.mjs` (new), `browser/suggested-view.browser-spec.mjs`.
+
+**Review.** 8 findings: 3 patched (2 medium, 1 low), 0 deferred, 5 rejected (reasons in the triage log). Patched: browser (b) made falsifiable, the Home greeting gate (`greetingPrompts`) with its panel leg, and the AC6 mutation line. Follow-up review recommended: `true` (2 medium patched): the Home greeting gate holds prompts until the dates read settles, so a read that never settles leaves Home's greeting promptless, and browser (b) now rides a stubbed dates answer.
+
+**Verification.** `check-objectscript` 0 problems; `lint-docs` clean; `screen-mirror --check` up to date (53 descriptors). `test:tools` 1449/1449; `test:components` 1300/1300. Browser, one spec per call on the redeployed bundle: `suggested-prompts` 2/2, `suggested-view` 7/7, `explain-screen` 3/3, `a11y-structural-invariants` 10/10. ObjectScript sweep on `ocupilot-ci` after a full load (ERRCOUNT 0): 254 ran, 13 refused (arming), 1 known residue (`WireSecurityRead` task history); story classes green (`Descriptor` 52/52, run 13020, SQL-probed; `OAuthTabs` 17, `ProcessTerminate` 8, `ReadTool` 27, `ServiceUpdate` 7); `LdapUpdate` and `TaskCreate` are among the 13 refused. `smoke.sh --container ocupilot-ci`: 49/49 passed. Bundle initial total 1.62 MB (the build's own figure), under the 1670 kB warning. Mutations: see `## Verification`.
+
+**Residual risks.** Merging Epic 12 conflicts at the tails of `strings.ts`, `_components.scss` and the Fixed-strings table, at `strings.test.mjs`'s band and at the `taskCreate` reference (anticipated in Design Notes), and both validators go red until Epic 12's five OAuth editor descriptors declare prompts.
+
+**footprint_extensions:** contended, off Epic 12's hunks: `panel.ts`, `panel.spec.ts`, `strings.ts` (own tail + the `taskCreate` reference), `screens.generated.ts` (regenerated), the five OAuth tab descriptors, `AuditingConfig.cls`, `UserList.cls` (one member each). Outside Epic 11's footprint: `Registry.cls`, `screen-mirror.mjs` and their tests, corpus and 23 fixtures; the other 38 descriptors; `suggested-view.ts` and its test; `core/suggested-prompts.ts`; `strings.test.mjs`; `_components.scss` (own block); EXPERIENCE.md; `browser/suggested-view.browser-spec.mjs`; `app.ts` and `app.spec.ts` (also edited by Epic 12; merges cleanly).

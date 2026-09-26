@@ -87,6 +87,11 @@ XData Declaration
   "context": {"fields": ["Directory", "Size", "AvailableSpace", "DiskFree", "Mounted"], "secretFields": []},
   "emptyStateKey": "databaseListEmpty",
   "commandAliases": ["free space", "database free space"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupCapacity", "textKey": "databaseFreeSpacePrompt1"},
+    {"groupKey": "promptGroupCapacity", "textKey": "databaseFreeSpacePrompt2"},
+    {"groupKey": "promptGroupCapacity", "textKey": "databaseFreeSpacePrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.OpDatabases",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

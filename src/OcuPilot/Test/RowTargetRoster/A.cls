@@ -32,6 +32,7 @@ XData Declaration
   "context": {"fields": ["Name"], "secretFields": []},
   "emptyStateKey": "oauthResourceServersEmpty",
   "commandAliases": [],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": ""},
   "read": {

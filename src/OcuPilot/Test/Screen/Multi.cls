@@ -33,6 +33,7 @@ XData Declaration
   "rowActions": [{"id": "edit", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "emptyStateKey": "",
   "commandAliases": ["oauth", "oauth2"],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "OcuPilotTestClassicPageMulti",
   "classicLinkExemption": {"exempt": true, "reason": "the OAuth 2.0 tabs are a detail archetype and have no rebuilt equivalent yet", "label": "OcuPilot test classic page (Multi)", "href": "/csp/sys/OcuPilotTestClassicPageMulti.csp"},
   "toolIdentifier": "security.oauth"

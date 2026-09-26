@@ -1,6 +1,6 @@
 /**
- * Home's suggested view (Story 4.10): the attention lines above the transcript, and the starter
- * prompts that stand in for them when nothing needs attention.
+ * Home's suggested view (Story 4.10): the attention lines above the transcript, and whether Home's
+ * suggested prompts stand in for them because nothing needs attention (Story 11.3).
  *
  * **Lines come from a declared source array, so a later read joins by appending a source.** Each
  * entry carries its own key and one `read` that settles a line, `null` for "no line", or leaves
@@ -8,9 +8,10 @@
  * and one string key; nothing in the render path changes, because the render path iterates the
  * array and knows none of its keys.
  *
- * **A line renders only when its read has answered and the caller may perform it** (AD-8). A read
- * in flight, a fault and a 403 all produce *no line* -- never a zero, never a skeleton row -- and a
- * 403 is never retried. Anything that is not a refusal parks one re-read through
+ * **A line renders only when its read has answered** (AD-8). A read in flight produces *no line*,
+ * never a skeleton row. A refused (403) or faulted read produces an **unread** line saying the
+ * count could not be read -- never a zero (AD-29, DW-1147) -- and a 403 is never retried. Anything
+ * that is not a refusal parks one re-read through
  * `ConnectivityService.retryWhenReachable`, keyed by the path, the way every other reader does
  * (DW-135). `answered()` stays false until every source has answered or settled to absent, so the
  * block renders nothing rather than a partial block or a flash of prompts.
@@ -65,8 +66,14 @@ export const DATE_PLACEHOLDER = '<DATE>';
  */
 export interface SuggestedLine {
   readonly key: string;
-  /** Whether this line's value takes part in the all-zero test that selects the starter prompts. */
+  /** Whether this line's value takes part in the all-zero test that selects the prompts. */
   readonly counted: boolean;
+  /**
+   * Whether this counted line's read was refused or failed (DW-1147): its `label` is the whole
+   * "could not be read" sentence, `count` is `0` and renders no `<code>`, and it holds the prompts
+   * back. `false` on every line whose read answered.
+   */
+  readonly unread: boolean;
   readonly text: string;
   readonly count: number;
   /**
@@ -250,25 +257,13 @@ export class SuggestedView {
   }
 
   /**
-   * The three published starter prompts, in declaration order -- EXPERIENCE.md's
-   * "Home starter prompts, shown when nothing needs attention".
-   */
-  starterPrompts(): readonly string[] {
-    return [
-      STRINGS.homeStarterPromptExplainScreen,
-      STRINGS.homeStarterPromptExplainLog,
-      STRINGS.homeStarterPromptChangeOneThing,
-    ];
-  }
-
-  /**
-   * Whether the prompts stand in for the counted rows: every answered source has answered, and
-   * every **counted** line resolved to zero. The agent-status line is uncounted, which is what
-   * keeps it out of this test and present in the fallback.
+   * Whether Home's prompts stand in for the counted rows: every source has answered, and every
+   * **counted** line was read and resolved to zero. An unread line holds them back (DW-1147). The
+   * agent-status line is uncounted, which is what keeps it out of this test and present beside them.
    */
   showPrompts(): boolean {
     if (!this.answered()) return false;
-    return this.lines().every((line) => !line.counted || line.count === 0);
+    return this.lines().every((line) => !line.counted || (!line.unread && line.count === 0));
   }
 
   /** Read every declared source once. One call per line per Home entry (AD-24). */
@@ -306,6 +301,7 @@ export class SuggestedView {
     return {
       key: AGENT_STATUS_SOURCE.key,
       counted: false,
+      unread: false,
       text,
       count: 0,
       label: text,
@@ -327,7 +323,17 @@ export class SuggestedView {
     const result = await this.api.requestJson<unknown>(path, { scope: null });
     if (generation !== this.generation) return;
     if (result.kind !== 'ok') {
-      state.answer = null;
+      const unread = STRINGS.homeSuggestedApplicationErrorsUnread.split(NAMESPACE_PLACEHOLDER).join(namespace);
+      state.answer = {
+        key: APPLICATION_ERRORS_SOURCE.key,
+        counted: true,
+        unread: true,
+        text: unread,
+        count: 0,
+        label: unread,
+        tail: '',
+        descriptor: ERROR_LOG_DESCRIPTOR,
+      };
       const fault = classifyFault(result, path);
       // A 403 is reported and never retried (AD-8); everything else parks one re-read.
       if (fault !== null && fault.kind !== 'refused') {
@@ -343,6 +349,7 @@ export class SuggestedView {
     state.answer = {
       key: APPLICATION_ERRORS_SOURCE.key,
       counted: true,
+      unread: false,
       text: formatApplicationErrors(template, namespace, count, date),
       count,
       label,
