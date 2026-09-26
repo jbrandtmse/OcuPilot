@@ -580,8 +580,8 @@ test('AC3: the audit hand-off -- shell.screen.open with the declared marker crit
   // screen's declared read already run, and the write's own AgentWrite row rendered under the
   // confirming user's name.
   //
-  // Mutation (Rule 19): drop the `applyCriterion` call from `AgentNavigator.act`, rebuild and
-  // redeploy -> the screen arrives with an unticked filter and an unsearched form, and every
+  // Mutation (Rule 19): drop the `arrivals?.set` call from `AgentNavigator.act`, rebuild and
+  // redeploy -> the screen arrives on its default read with an unticked filter, and the marker
   // assertion below the navigation goes red.
   const { context, page, tag } = await listWithLiveCard();
   try {

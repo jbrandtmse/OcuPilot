@@ -1,0 +1,9 @@
+flowchart LR
+  B["Browser<br>Angular 22 shell and agent panel"] -- "JWT" --> A["/api/ocupilot<br>ObjectScript REST"]
+  A --> M["IRIS management APIs<br>/api/admin v2 in-process, Security.*, %SYS.Task, logs"]
+  A --> T["Agent turn<br>background job"]
+  T <-- "screen context, tools" --> P["Model provider<br>Anthropic, OpenAI, Gemini or local"]
+  T --> R["Proposal<br>minted and stored on the instance"]
+  B -- "Confirm" --> A
+  A -- "write as the user" --> M
+  A --> U[("IRIS audit database<br>OcuPilot/Security/AgentWrite")]

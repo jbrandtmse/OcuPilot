@@ -508,7 +508,7 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
     }
     Set tRow = ""
 
-    Set tNavSC = ##class(OcuPilot.Kernel.State.Nav).GuardedPending(pKey, .tNavSeq, .tNavRoute, .tNavEntity, .tNavSettled, .tNavOutcome, .tNavCode, .tNavCriterion)
+    Set tNavSC = ##class(OcuPilot.Kernel.State.Nav).GuardedPending(pKey, .tNavSeq, .tNavRoute, .tNavEntity, .tNavSettled, .tNavOutcome, .tNavCode, .tNavCriterion, .tNavCriteriaJson)
     If $$$ISOK(tNavSC) && (+tNavSeq > 0) && 'tNavSettled {
         Set tHasAnnounce = 0
         Set tStepIterator = tSteps.%GetIterator()
@@ -528,6 +528,14 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
                 Do tNav.%Set("entityId", tNavEntity, "string")
             }
             Do tNav.%Set("criterion", $Get(tNavCriterion), "string")
+            ; The arriving screen's search (Story 11.11, AD-11): always an object, empty for none.
+            Set tNavCriteria = {}
+            Try {
+                If $Get(tNavCriteriaJson) '= "" Set tNavCriteria = ##class(%DynamicAbstractObject).%FromJSON(tNavCriteriaJson)
+            } Catch {
+                Set tNavCriteria = {}
+            }
+            Do tNav.%Set("criteria", tNavCriteria)
             Do tView.%Set("navigation", tNav)
         }
     }

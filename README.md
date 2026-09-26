@@ -14,6 +14,7 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#get-a-model-key-in-two-minutes">Get a key</a> ·
   <a href="#a-change-from-question-to-audit-record">Walkthrough</a> ·
+  <a href="https://community.intersystems.com/post/ocupilot-ask-review-confirm-audit-ai-co-pilot-iris-management-portal">Article</a> ·
   <a href="docs/DEVELOPMENT.md">Developer reference</a>
 </p>
 
@@ -67,6 +68,18 @@ change and says what would be needed; Home marks the screens this user may not o
 
 </details>
 
+### A 90-second tour
+
+1. Open **[ocupilot.org](https://ocupilot.org)**, choose **Open the demo** and sign in as `demo`.
+2. Open **Web applications and REST API explorer → Web applications** from the rail on the left.
+3. In the agent panel, ask: *"Enable /csp/myapp and give it the %Development resource."*
+4. Read the proposal card: what changes, why, the privilege it needs and how to undo it.
+5. Press **Confirm**. The list refreshes and marks `/csp/myapp` as Changed.
+6. Open **Logs → Audit database**, tick **Agent-marked events only** and press **Search**: your
+   change is there.
+7. Sign out, sign in as `operator` / `ocupilot-operator`, and ask for the same change: the agent
+   explains what that account would need instead.
+
 ## Why OcuPilot
 
 - **Ask about what you are looking at.** The agent reads the screen you are on - the rows, the
@@ -75,7 +88,8 @@ change and says what would be needed; Home marks the screens this user may not o
   **Explain this screen** prompt and suggested questions.
 - **Changes are proposals, never surprises.** A write appears as a card with the target, an
   instance-computed before-and-after diff, the privilege it needs and how to reverse it. The agent
-  cannot confirm its own proposal; Confirm is a request only your browser can make.
+  cannot confirm its own proposal: Confirm comes only from you, in your browser or a script signed
+  in as you.
 - **It acts as you, and it is on the record.** A confirmed change runs with your roles, never an
   elevated service account. Each one is recorded in the IRIS audit database as
   `OcuPilot/Security/AgentWrite`, and the screen marks the changed row.
@@ -114,7 +128,7 @@ The first start takes a few minutes: IRIS for Health Community starts, then the 
 and installs OcuPilot. `--wait` returns once the health check reports OcuPilot installed.
 
 Then open **<http://localhost:52774/ocupilot/>** and sign in as `_SYSTEM` with the password `SYS`.
-Community Edition ships `_SYSTEM`'s password already expired; OcuPilot's first install clears that,
+Community Edition ships the `_SYSTEM` password already expired; OcuPilot's first install clears that,
 so you are not asked to change it.
 
 The host ports are 52774 (web) and 1973 (SuperServer), one above the IRIS defaults, so OcuPilot can
@@ -188,6 +202,9 @@ namespace):
 zpm "install ocupilot"
 ```
 
+If IPM answers that no repositories are configured, run `zpm "enable -community"` once, then
+install again.
+
 Then open `/ocupilot/` on that instance's web server. Two things differ from the container path:
 IPM never clears an expired `_SYSTEM` password, and it creates no demonstration objects. The
 installer grants the `OcuPilotAdmin` role to the account that runs the install when that is a named
@@ -252,19 +269,36 @@ the read-only state changes.
 - **Where it goes:** to the model provider you configured, and nowhere else. A definition marked
   local sends nothing off your network.
 
+## From a script
+
+Everything the portal does goes through OcuPilot's REST API at `/api/ocupilot`, which accepts your
+IRIS user name and password, so the same work can be scripted. Reading a screen returns its rows:
+
+```bash
+curl -s -u demo:ocupilot-demo \
+  "https://demo.ocupilot.org/api/ocupilot/screens/webapp.list/read?maxRows=5"
+```
+
+Asking the agent takes three calls: start a conversation, send a message, and follow the turn until
+it completes. Any change it wants to make comes back as a proposal, which you confirm with your own
+credentials:
+
+```bash
+B=https://demo.ocupilot.org/api/ocupilot
+C=$(curl -s -u demo:ocupilot-demo -X POST -H 'Content-Type: application/json' -d '{}' $B/conversation | jq -r .conversationId)
+T=$(curl -s -u demo:ocupilot-demo -X POST -H 'Content-Type: application/json' \
+  -d "{\"conversationId\":\"$C\",\"message\":\"Which web applications are disabled?\"}" $B/turn | jq -r .turnId)
+curl -s -u demo:ocupilot-demo $B/turn/$T/progress | jq '{state, reply, proposals}'
+# once a proposal is shown:  curl -s -u demo:ocupilot-demo -X POST -H 'Content-Type: application/json' -d '{}' $B/proposal/<proposalId>/confirm
+```
+
+Against your own install, use `http://localhost:52774/api/ocupilot` and your own account.
+
 ## How it is built
 
-```mermaid
-flowchart LR
-  B["Browser<br>Angular 22 shell and agent panel"] -- "JWT" --> A["/api/ocupilot<br>ObjectScript REST"]
-  A --> M["IRIS management APIs<br>/api/admin v2 in-process, Security.*, %SYS.Task, logs"]
-  A --> T["Agent turn<br>background job"]
-  T <-- "screen context, tools" --> P["Model provider<br>Anthropic, OpenAI, Gemini or local"]
-  T --> R["Proposal<br>minted and stored on the instance"]
-  B -- "Confirm" --> A
-  A -- "write as the user" --> M
-  A --> U[("IRIS audit database<br>OcuPilot/Security/AgentWrite")]
-```
+![How OcuPilot is built: the browser calls /api/ocupilot with a JWT; the API reads and writes through the IRIS management APIs as the user, starts the agent turn as a background job that exchanges screen context and tools with the model provider and mints proposals on the instance, and records agent writes in the IRIS audit database.](docs/images/09-architecture.png)
+
+<!-- Source: docs/images/09-architecture.mmd, rendered at 1600 px wide. Open Exchange does not render Mermaid. -->
 
 - **One install, served by IRIS.** The portal is static files in `/ocupilot`; the API, the agent
   runtime and the proposal store are ObjectScript classes in the install namespace. There is no
@@ -289,7 +323,7 @@ flowchart LR
 
 ## Troubleshooting
 
-- **HTTP 401 from everything on a fresh container:** `_SYSTEM`'s password is still expired. The
+- **HTTP 401 from everything on a fresh container:** the `_SYSTEM` password is still expired. The
   first install clears it, so this usually means an older `iris-data/` folder was reused. Clear it
   with:
 
@@ -318,6 +352,20 @@ that carry Community Opportunity status:
 - [DPI-I-574](https://ideas.intersystems.com/ideas/DPI-I-574), **AI analysis of error logs:** the
   agent explains any application error, `messages.log` line, alert or audit record in front of it
   and suggests what to do next.
+
+## Known limitations
+
+- **One instance at a time.** OcuPilot manages the instance it is installed on.
+- **Not every portal page yet.** Namespaces, database configuration, journals, mirroring and
+  Interoperability are still the classic portal's; the LDAP and Kerberos and the service editors
+  cover the common fields and link to the classic page for the rest.
+- **A model is needed for the agent.** Every screen works without one; the agent needs a key or a
+  local model. A turn that makes a change can take up to a minute, and a small local model may
+  propose changes that need correcting.
+- **IRIS 2026.2 or later.** OcuPilot relies on the admin API that version introduced.
+- **Auditing must be on for the audit record.** If it is switched off, the agent's changes still
+  need your Confirm, and the panel says plainly that they are not being marked.
+- **English only.**
 
 ## Roadmap
 

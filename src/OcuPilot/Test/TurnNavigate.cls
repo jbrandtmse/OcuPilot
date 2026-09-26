@@ -167,6 +167,30 @@ Method TestAC3ViewPairsThenOmitsOrphan()
     Do $$$AssertTrue('tView2.%IsDefined("navigation"), "an orphaned directive is never surfaced")
 }
 
+/// <p>Story 11.11, AD-11: the criteria a directive was requested with reach the progress payload's
+/// <code>navigation.criteria</code> as an object, and a directive requested with none carries an
+/// empty one.</p>
+/// <p>Mutation (Rule 19): drop the <code>Criteria</code> assignment in
+/// <method>OcuPilot.Kernel.State.Nav.GuardedRequest</method> -&gt; the payload reads
+/// <code>{}</code> and the first assertion goes red.</p>
+Method TestTheCriteriaReachTheProgressPayload()
+{
+    Set tId = ..Definition()
+    Set tKey = ..Reserve(tId)
+    Set tLimits = $ClassMethod(..#LOOP, "LimitsClass")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedAppend(tKey, "announce", "shell.screen.open", "running", "", "", "", tLimits, .tSeq, .tStored, "logs/audit", "", "", "", "", 0), "announced")
+    Set tCriteria = {"eventSources": "OcuPilot", "beginDateTime": "2026-09-26 08:00:00"}
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedRequest(tKey, tSeq, "logs/audit", "", "", tCriteria), "requested with criteria")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound, .tView), "the view reads")
+    Set tNav = $Select($IsObject(tView) && tView.%IsDefined("navigation"): tView.navigation, 1: "")
+    Do $$$AssertEquals($Select($IsObject(tNav) && $IsObject(tNav.criteria): tNav.criteria.%ToJSON(), 1: ""), tCriteria.%ToJSON(), "the payload carries the criteria")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedRequest(tKey, tSeq, "logs/audit", ""), "requested again with none")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound2, .tView2), "the view reads again")
+    Set tNav2 = $Select($IsObject(tView2) && tView2.%IsDefined("navigation"): tView2.navigation, 1: "")
+    Do $$$AssertEquals($Select($IsObject(tNav2) && $IsObject(tNav2.criteria): tNav2.criteria.%ToJSON(), 1: ""), "{}", "and an empty object when there are none")
+}
+
 /// <p>AC10: the settle claim itself -- a second settle for the same directive, and one naming the
 /// wrong seq, both answer <var>pClaimed</var> 0 (the caller renders 409); a directive settled once
 /// stays settled.</p>

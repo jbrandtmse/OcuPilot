@@ -1247,9 +1247,13 @@ Parameter CRITERIARESERVEDPARAMS = "maxRows,filter,sort,direction,ns";
 /// outside <code>options</code> before the port is called, because the vendor's own
 /// <code>$$AuthenticationDisplayToLogical^%SYS.SECURITY</code> answers <code>-1</code> for a name it
 /// does not know and <code>-1</code> matches nearly every row.</p>
-/// <p><b>A server-search screen never auto-refreshes</b> (AD-43): it renders nothing until Search
-/// is pressed, so a timer would have no rows to re-read and <file>EXPERIENCE.md</file> exempts it
-/// by name.</p>
+/// <p><b>A server-search screen never auto-refreshes</b> (AD-43): <file>EXPERIENCE.md</file> exempts
+/// it by name, and it re-reads only on open, Search and Refresh.</p>
+/// <p><b>A <code>datetime</code> criterion may declare <code>defaultHoursAgo</code></b> (a whole
+/// number from 1 to <parameter>CRITERIONMAXHOURS</parameter>), the default a caller that omits it
+/// takes, <b>or <code>atOrAfterField</code></b>, a <code>read.fields</code> member it is compared
+/// against on the instance rather than sent, which is why it never pairs with
+/// <code>vendorParam</code> (AD-36). Neither key is admitted on another kind.</p>
 /// <p><b>A parent-scoped read declares exactly one criterion</b> (AD-5). A declaration with a
 /// non-empty <code>parentScope</code> and a <code>read</code> is a sub-resource screen whose one
 /// criterion the client fills from the route id, so a read declaring none, or more than one, is
@@ -1292,7 +1296,7 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
 
-        Set tProblem = ..CriteriaFieldsProblem(tCriteria, .tParams)
+        Set tProblem = ..CriteriaFieldsProblem(tCriteria, .tParams, tRead.%Get("fields"))
         If tProblem '= "" Quit
         Set tProblem = ..CriteriaVendorParamProblem(tCriteria)
         If tProblem '= "" Quit
@@ -1308,7 +1312,7 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
         ; already confirmed above, since tParented reaching here means exactly one criterion -- so
         ; it may refresh in place (Story 6.7).
         If ''pDeclaration.%Get("refreshes") && 'tParented {
-            Set tProblem = "refreshes is declared with read.criteria, and a screen that searches on the server renders nothing until Search and does not auto-refresh (AD-43)"
+            Set tProblem = "refreshes is declared with read.criteria, and a screen that searches on the server does not auto-refresh (AD-43)"
         }
     } Catch ex {
         Set tProblem = "the criteria declaration could not be read: " _ ex.DisplayString()
@@ -1324,8 +1328,10 @@ ClassMethod ParentCriteriaProblem(pDeclaration As %DynamicObject) As %String [ P
 }
 
 /// <p>What is wrong with <var>pCriteria</var>'s <code>fields</code>, or <code>""</code>.
-/// <var>pParams</var> is the declared parameter names, as a <class>%List</class>.</p>
-ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As %List) As %String [ Private ]
+/// <var>pParams</var> is the declared parameter names, as a <class>%List</class>.
+/// <var>pReadFields</var> is the read's own <code>fields</code>, which an
+/// <code>atOrAfterField</code> must name.</p>
+ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As %List, pReadFields As %DynamicArray = "") As %String [ Private ]
 {
     Set pParams = ""
     If pCriteria.%GetTypeOf("fields") '= "array" Quit "read.criteria.fields is not an array of criterion declarations"
@@ -1343,7 +1349,7 @@ ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As
             Quit
         }
         Set tKind = tField.%Get("kind")
-        Set tAllowed = $ListBuild("param", "labelKey", "kind", "maxLength", "vendorParam")
+        Set tAllowed = $ListBuild("param", "labelKey", "kind", "maxLength", "vendorParam", "defaultHoursAgo", "atOrAfterField")
         If tKind = "choice" Set tAllowed = tAllowed _ $ListBuild("options")
         Set tProblem = ..UnknownKeyProblem(tField, tWhere, tAllowed)
         If tProblem '= "" Quit
@@ -1394,6 +1400,8 @@ ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As
         }
         Set tProblem = ..CriteriaMaxLengthProblem(tField, tWhere)
         If tProblem '= "" Quit
+        Set tProblem = ..CriteriaDefaultProblem(tField, tWhere, pReadFields)
+        If tProblem '= "" Quit
         If tKind '= "choice" Continue
         Set tProblem = ..CriteriaOptionsProblem(tField, tWhere)
         If tProblem '= "" Quit
@@ -1421,6 +1429,41 @@ ClassMethod CriteriaMaxLengthProblem(pField As %DynamicObject, pWhere As %String
     If (tType '= "number") || (tValue = "") || '$IsValidNum(tValue) || (tValue '= (tValue \ 1)) || (tValue '> 0) {
         Quit pWhere _ " maxLength '" _ tValue _ "' is not a whole number above zero"
     }
+    Quit ""
+}
+
+/// <p>The most hours a <code>defaultHoursAgo</code> may reach back: one year (AD-36).</p>
+Parameter CRITERIONMAXHOURS As INTEGER = 8760;
+
+/// <p>What is wrong with a criterion's <code>defaultHoursAgo</code> or <code>atOrAfterField</code>,
+/// or <code>""</code> (AD-36). Either is admitted on a <code>datetime</code> criterion alone;
+/// <code>defaultHoursAgo</code> is a whole number from 1 to <parameter>CRITERIONMAXHOURS</parameter>;
+/// <code>atOrAfterField</code> names one of <var>pReadFields</var> and is never declared with
+/// <code>vendorParam</code>, since its value is compared on the instance and never sent.</p>
+ClassMethod CriteriaDefaultProblem(pField As %DynamicObject, pWhere As %String, pReadFields As %DynamicArray) As %String [ Private ]
+{
+    Set tKind = pField.%Get("kind")
+    Set tHoursType = pField.%GetTypeOf("defaultHoursAgo")
+    If tHoursType '= "unassigned" {
+        If tKind '= "datetime" Quit pWhere _ " declares defaultHoursAgo on kind '" _ tKind _ "', and only a datetime criterion carries a default (AD-36)"
+        Set tHours = pField.%Get("defaultHoursAgo")
+        If (tHoursType '= "number") || (tHours = "") || '$IsValidNum(tHours) || (tHours '= (tHours \ 1)) || (tHours < 1) || (tHours > ..#CRITERIONMAXHOURS) {
+            Quit pWhere _ " defaultHoursAgo '" _ tHours _ "' is not a whole number of hours from 1 to " _ ..#CRITERIONMAXHOURS
+        }
+    }
+    Set tFieldType = pField.%GetTypeOf("atOrAfterField")
+    If tFieldType = "unassigned" Quit ""
+    If tKind '= "datetime" Quit pWhere _ " declares atOrAfterField on kind '" _ tKind _ "', and only a datetime criterion is compared against a read field (AD-36)"
+    Set tAgainst = pField.%Get("atOrAfterField")
+    Set tNamed = 0
+    If (tFieldType = "string") && $IsObject(pReadFields) && pReadFields.%IsA("%Library.DynamicArray") {
+        Set tIterator = pReadFields.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tName, .tNameType) {
+            If (tNameType = "string") && (tName = tAgainst) Set tNamed = 1
+        }
+    }
+    If 'tNamed Quit pWhere _ " atOrAfterField '" _ tAgainst _ "' is not one of read.fields"
+    If pField.%GetTypeOf("vendorParam") '= "unassigned" Quit pWhere _ " declares atOrAfterField with vendorParam, and a criterion compared on the instance is never sent to the vendor (AD-36)"
     Quit ""
 }
 

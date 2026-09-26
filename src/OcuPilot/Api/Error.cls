@@ -776,6 +776,12 @@ Parameter NAVENTITYNOTALLOWED = "NAV.ENTITYNOTALLOWED";
 /// criterion and never supplies its value.</p>
 Parameter NAVCRITERIONUNKNOWN = "NAV.CRITERIONUNKNOWN";
 
+/// <p>Tool-result code (Story 11.11, AD-11): a <code>criteria</code> value the target screen's own
+/// read would refuse -- not a string, or one its criterion check refuses (kind, length, options,
+/// datetime form). Refused by the tool body before any announcement exists, with
+/// <code>detail.criterion</code> naming it.</p>
+Parameter NAVCRITERIONINVALID = "NAV.CRITERIONINVALID";
+
 /// <p>Terminal tool-result code for the navigation announce step (Story 4.7, AD-11 invariant 3):
 /// the departing <code>form-page</code> was dirty and the operator declined "Leave without
 /// saving?". The announcement is withdrawn, and the call's own <code>tool_result</code> is an
@@ -881,6 +887,9 @@ Parameter REASONNAVENTITYNOTALLOWED = "This screen does not take a selected row.
 /// <p>Written sentence for <parameter>NAVCRITERIONUNKNOWN</parameter>.</p>
 Parameter REASONNAVCRITERIONUNKNOWN = "This screen declares no such filter.";
 
+/// <p>Written sentence for <parameter>NAVCRITERIONINVALID</parameter>.</p>
+Parameter REASONNAVCRITERIONINVALID = "That value is not one this screen's filter accepts.";
+
 /// <p>Written sentence for <parameter>NAVREFUSEDUNSAVED</parameter>.</p>
 Parameter REASONNAVREFUSEDUNSAVED = "The screen was left with unsaved changes, so the move was not made.";
 
@@ -949,7 +958,7 @@ ClassMethod ReasonForLedger(pCode As %String) As %String
 /// <method>ReasonForNav</method> to the vocabulary.</p>
 ClassMethod NavCodes() As %List
 {
-    Quit $ListBuild(..#NAVROUTEUNKNOWN, ..#NAVENTITYNOTALLOWED, ..#NAVCRITERIONUNKNOWN, ..#NAVREFUSEDUNSAVED, ..#NAVUNAVAILABLE, ..#NAVNOTINSTANCE)
+    Quit $ListBuild(..#NAVROUTEUNKNOWN, ..#NAVENTITYNOTALLOWED, ..#NAVCRITERIONUNKNOWN, ..#NAVREFUSEDUNSAVED, ..#NAVUNAVAILABLE, ..#NAVNOTINSTANCE, ..#NAVCRITERIONINVALID)
 }
 
 /// <p>The written sentence a <code>NAV.*</code> code carries, or <code>""</code> for any other
@@ -962,6 +971,7 @@ ClassMethod ReasonForNav(pCode As %String) As %String
     If pCode = ..#NAVREFUSEDUNSAVED Quit ..#REASONNAVREFUSEDUNSAVED
     If pCode = ..#NAVUNAVAILABLE Quit ..#REASONNAVUNAVAILABLE
     If pCode = ..#NAVNOTINSTANCE Quit ..#REASONNAVNOTINSTANCE
+    If pCode = ..#NAVCRITERIONINVALID Quit ..#REASONNAVCRITERIONINVALID
     Quit ""
 }
 

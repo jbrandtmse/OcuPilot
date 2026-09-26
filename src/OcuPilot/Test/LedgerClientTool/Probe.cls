@@ -36,15 +36,16 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 }
 
 /// <p><b>The signature mirrors <method>OcuPilot.Screen.Tool.Navigate.Directive</method> exactly</b>,
-/// trailing <var>pCriterion</var> included: <class>OcuPilot.Kernel.Agent.Dispatch</class> calls it
+/// trailing <var>pCriterion</var> and <var>pCriteria</var> included: <class>OcuPilot.Kernel.Agent.Dispatch</class> calls it
 /// positionally by name, and a near-miss compiles and answers <code>TOOL.UNAVAILABLE</code> rather
 /// than failing where it was written (Story 5.8).</p>
 /// <p>A fixed directive, needing no screen registry to resolve: the point of this fixture is the
 /// secret declaration <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method> reads, not
 /// route validation, which <class>OcuPilot.Screen.Tool.Navigate</class>'s own tests already cover.</p>
-ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, Output pRoute As %String, Output pEntityId As %String, Output pFault As %DynamicObject, Output pCriterion As %String) As %Status
+ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, Output pRoute As %String, Output pEntityId As %String, Output pFault As %DynamicObject, Output pCriterion As %String, Output pCriteria As %DynamicObject) As %Status
 {
     Set pCriterion = ""
+    Set pCriteria = ""
     Set pRoute = "probe/ledger/clientroute"
     Set pEntityId = ""
     Set pFault = ""

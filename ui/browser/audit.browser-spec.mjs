@@ -1,6 +1,6 @@
 /**
  * The audit database viewer in a real browser, against the throwaway instance: the criteria form
- * that renders nothing until Search (AC1), the agent-marker filter that narrows to a proper subset
+ * that opens on its default search (AC1), the agent-marker filter that narrows to a proper subset
  * (AC2), the detail dialog a row opens (AC3), the screen's own empty sentence (AC4), the off-list
  * authentication refusal (AC7), and the one thousand-row NFR-1 measurement DW-258 asks for (AC6).
  * The "AC1 regression" leg re-drives the story's own HIGH review finding -- a stuck skeleton on
@@ -312,7 +312,19 @@ async function signedInAtScreen() {
   // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one.
   await leaveFirstLoginGate(page, config.navigationTimeoutMs, LIST_URL);
   await page.waitForSelector('.ocu-criteria-form', { timeout: config.navigationTimeoutMs });
+  // The screen opens on its default search (Story 11.11): wait for that read to render, rows or
+  // the empty state, so a leg's own Search is never racing it.
+  await page.waitForFunction(
+    () => document.querySelector('[role="grid"] .ocu-data-table-body [role="row"]') !== null
+      || document.querySelector('.ocu-data-table-empty') !== null,
+    { timeout: config.navigationTimeoutMs }
+  );
   return { context, page, reads };
+}
+
+/** Empty the begin field, so the next Search reads all time rather than the opening window. */
+async function widenToAllTime(page) {
+  await typeCriterion(page, '#ocu-audit-criterion-beginDateTime', '');
 }
 
 /** Type `value` into the criterion control `selector` names, replacing whatever it holds. */
@@ -323,12 +335,18 @@ async function typeCriterion(page, selector, value) {
 }
 
 /**
- * Press Search and wait until the read it issued has landed -- either as rows or as the empty
- * state, both of which mean the answer rendered.
+ * Press Search and wait until the read it issued has answered and rendered -- as rows or as the
+ * empty state. The screen already shows its opening read's rows, so the wait is for this Search's
+ * own response first, never for rows alone.
  */
 async function search(page, reads) {
   const before = reads.length;
+  const answered = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === READ_PATH && response.request().method() === 'GET',
+    { timeout: config.navigationTimeoutMs }
+  );
   await page.click(SEARCH_BUTTON);
+  await answered;
   await page.waitForFunction(
     () => document.querySelector('[role="grid"] .ocu-data-table-body [role="row"]') !== null
       || document.querySelector('.ocu-data-table-empty') !== null,
@@ -406,14 +424,15 @@ async function setMaxRows(page, cap) {
   await page.keyboard.press('Enter');
 }
 
-test('AC1: the criteria form renders nine controls, reads nothing before Search, and lists rows under the declared headers after it', async () => {
+test('AC1: the criteria form renders nine controls, opens on one default read, and lists rows under the declared headers after a Search', async () => {
   const { context, page, reads } = await signedInAtScreen();
   try {
-    // Nothing before Search: no read, no table, no skeleton, no empty state (EXPERIENCE.md "criteria form first, skeleton").
-    assert.deepEqual(reads, [], 'no screen read is issued before Search');
-    assert.equal(await page.$('[role="grid"]'), null, 'and no table is rendered');
-    assert.equal(await page.$('.ocu-data-table-skeleton'), null, 'and no skeleton');
-    assert.equal(await page.$('.ocu-data-table-empty'), null, 'and no empty state');
+    // One read on open, carrying no criteria, so the instance applies its own default (EXPERIENCE.md
+    // "default search on open, skeleton until it answers"); the table is rendered and the skeleton gone.
+    assert.equal(reads.length, 1, `the screen issues exactly one read on open: ${JSON.stringify(reads)}`);
+    assert.ok(!reads[0].includes('beginDateTime'), `sending no begin, so the default applies: ${reads[0]}`);
+    assert.notEqual(await page.$('[role="grid"]'), null, 'the table is rendered');
+    assert.equal(await page.$('.ocu-data-table-skeleton'), null, 'and the skeleton is gone');
 
     const labels = await page.$$eval('.ocu-criteria-label', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(labels, [
@@ -428,15 +447,17 @@ test('AC1: the criteria form renders nine controls, reads nothing before Search,
       STRINGS.auditCriteriaAuthentication,
     ], 'one control per declared criterion, in declaration order');
 
-    // Search with the seed's Source: the search runs on the SERVER, so every row comes back under
-    // it -- which a client-side filter over the whole population could not produce.
+    // Search with the seed's Source over all time: the search runs on the SERVER, so every row
+    // comes back under it -- which a client-side filter over the whole population could not produce.
+    await widenToAllTime(page);
     await typeCriterion(page, SOURCE_FIELD, SEED_SOURCE);
     await search(page, reads);
     await waitForRows(page, config.navigationTimeoutMs);
 
-    assert.equal(reads.length, 1, `Search issues exactly one read: ${JSON.stringify(reads)}`);
-    assert.ok(reads[0].includes(`${READ_PATH}?maxRows=`), `and it is the screen's declared read: ${reads[0]}`);
-    assert.ok(reads[0].includes(`eventSources=${SEED_SOURCE}`), `carrying the declared criterion: ${reads[0]}`);
+    assert.equal(reads.length, 2, `Search issues exactly one read of its own: ${JSON.stringify(reads)}`);
+    assert.ok(reads[1].includes(`${READ_PATH}?maxRows=`), `and it is the screen's declared read: ${reads[1]}`);
+    assert.ok(reads[1].includes(`eventSources=${SEED_SOURCE}`), `carrying the declared criterion: ${reads[1]}`);
+    assert.ok(reads[1].includes('beginDateTime=&'), `and the emptied begin as an unset bound: ${reads[1]}`);
 
     const headers = await page.$$eval('.ocu-data-table-header-label', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(headers, [
@@ -468,22 +489,21 @@ test('AC1: the criteria form renders nine controls, reads nothing before Search,
       cap
     );
     assert.equal(await viewCount(page), cap, 'the view holds exactly the new cap');
-    assert.equal(reads.length, 2, 'the cap change re-read');
-    assert.ok(reads[1].includes(`maxRows=${cap}`), `at the new cap: ${reads[1]}`);
-    assert.ok(reads[1].includes(`eventSources=${SEED_SOURCE}`), `still carrying the criteria: ${reads[1]}`);
+    assert.equal(reads.length, 3, 'the cap change re-read');
+    assert.ok(reads[2].includes(`maxRows=${cap}`), `at the new cap: ${reads[2]}`);
+    assert.ok(reads[2].includes(`eventSources=${SEED_SOURCE}`), `still carrying the criteria: ${reads[2]}`);
   } finally {
     await context.close();
   }
 });
 
 test('AC1 regression: leaving the audit screen after a Search and returning re-reads automatically, with no skeleton left stuck', async () => {
-  // Story 2.10's own HIGH finding: a full re-bind clears `hasLoaded`, and this archetype has
-  // neither a timer nor a read on navigation, so without the patched `readNow()` in
-  // `AuditPage`'s constructor the table would render a skeleton nothing ever resolves. The fix
-  // was pinned only in jsdom over a stubbed API (`audit.page.spec.ts`'s "re-reads on a return to
-  // the screen"); this is the browser leg the follow-up review named, against the real instance.
+  // Story 2.10's own HIGH finding: a full re-bind clears `hasLoaded`, so without the
+  // constructor's own `readNow()` in `AuditPage` the table would render a skeleton nothing ever
+  // resolves. A return after a Search re-runs that Search (Story 11.11).
   const { context, page, reads } = await signedInAtScreen();
   try {
+    await widenToAllTime(page);
     await typeCriterion(page, SOURCE_FIELD, MARKER_SOURCE);
     await search(page, reads);
     await waitForRows(page, config.navigationTimeoutMs);
@@ -621,6 +641,9 @@ test('AC2: inside its own window, the agent-marker filter narrows to a proper no
 test('AC3: a row opens a read-only dialog that traps focus, closes on Escape and on Close, and leaves the shell chords inert', async () => {
   const { context, page, reads } = await signedInAtScreen();
   try {
+    // Over all time, so the rows do not depend on what the instance logged in the opening window;
+    // the open read is already on screen, and `search` waits for this Search's own answer.
+    await widenToAllTime(page);
     await typeCriterion(page, SOURCE_FIELD, MARKER_SOURCE);
     await search(page, reads);
     await waitForRows(page, config.navigationTimeoutMs);
@@ -745,10 +768,20 @@ test('AC6 (DW-258): with the throwaway seeded to a thousand rows, a 1,000-row Se
     const seeded = seedRowsPresent();
     assert.ok(seeded >= 1000, `the instance holds at least a thousand rows under ${SEED_SOURCE} to read: ${seeded}`);
 
+    await widenToAllTime(page);
     await typeCriterion(page, SOURCE_FIELD, SEED_SOURCE);
 
+    // Timed from the press to the first row of THIS Search's own answer: the opening read's rows
+    // are already in the DOM, so the clock stops only once the Search's response has landed and
+    // the frame after it has painted (Story 11.11).
+    const answered = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === READ_PATH && response.url().includes(`eventSources=${SEED_SOURCE}`),
+      { timeout: FIRST_ROW_WAIT_MS }
+    );
     const startedAt = Date.now();
     await page.click(SEARCH_BUTTON);
+    await answered;
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await page.waitForSelector(`${ROW_SELECTOR}[aria-rowindex="2"]`, { timeout: FIRST_ROW_WAIT_MS });
     const elapsed = Date.now() - startedAt;
 
@@ -801,14 +834,13 @@ test('AC7: an authentication value outside the declared options is refused by na
       return response.status;
     }, READ_PATH);
     assert.equal(served, 200, 'a declared value is served');
-    // The two reads above are this leg's own `fetch` calls, not the screen's: Search was never
-    // pressed, so no table was ever rendered.
+    // The screen's own opening read carried no authentication, and the other two reads are this
+    // leg's own `fetch` calls: Search was never pressed.
     assert.deepEqual(
       reads.map((url) => new URL(url).searchParams.get('authentication')),
-      ['Bogus', 'Password'],
-      `only this leg's own two requests reached the route: ${JSON.stringify(reads)}`
+      [null, 'Bogus', 'Password'],
+      `the opening read and this leg's own two requests reached the route: ${JSON.stringify(reads)}`
     );
-    assert.equal(await page.$('[role="grid"]'), null, 'and the screen itself rendered no table');
   } finally {
     await context.close();
   }

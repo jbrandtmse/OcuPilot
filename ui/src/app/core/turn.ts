@@ -277,6 +277,12 @@ export interface TurnNavigation {
    * and no caller anywhere -- supplies one.
    */
   readonly criterion: string;
+  /**
+   * The criteria values the arriving screen's read runs with (Story 11.11, AD-11), keyed by that
+   * screen's declared criteria and validated on the instance before the navigation was announced.
+   * Only string values are kept; `{}` for none.
+   */
+  readonly criteria: Readonly<Record<string, string>>;
 }
 
 /** One turn, restored from the conversation or held live while it runs. */
@@ -479,7 +485,19 @@ function parseNavigation(value: unknown, steps: readonly TurnStep[]): TurnNaviga
     route: textAt(row, 'route'),
     entityId: typeof entityIdRaw === 'string' ? entityIdRaw : '',
     criterion: textAt(row, 'criterion'),
+    criteria: stringMembers(row['criteria']),
   };
+}
+
+/** The string members of `value` when it is an object, and nothing else. */
+function stringMembers(value: unknown): Readonly<Record<string, string>> {
+  const members: Record<string, string> = {};
+  const record = asRecord(value);
+  if (record === null || Array.isArray(value)) return members;
+  for (const [key, member] of Object.entries(record)) {
+    if (typeof member === 'string') members[key] = member;
+  }
+  return members;
 }
 
 function parseProposalTarget(value: unknown): TurnProposalTarget {

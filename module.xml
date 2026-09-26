@@ -17,7 +17,7 @@
   <Document name="ocupilot.ZPM">
     <Module>
       <Name>ocupilot</Name>
-      <Version>1.0.0</Version>
+      <Version>1.0.1</Version>
       <Description>An agent co-pilot for the InterSystems IRIS System Management Portal: an Angular shell over an ObjectScript REST API.</Description>
       <Packaging>module</Packaging>
       <SourcesRoot>src</SourcesRoot>

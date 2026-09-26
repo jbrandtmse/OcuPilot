@@ -76,7 +76,8 @@ ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Bo
     Quit $ClassMethod(pDescriptor, "SecretArguments")
 }
 
-/// <p>The result <method>View</method> answers: <code>{fields, rows, truncated}</code>.</p>
+/// <p>The result <method>View</method> answers: <code>{fields, rows, truncated}</code>, plus
+/// <code>criteria</code> for a read that declares them.</p>
 ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Quit {
@@ -87,7 +88,8 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
             "truncated": {"type": "boolean", "description": "True when rows were cut by a cap or a field value was shortened."},
             "rowsSent": {"type": "integer", "description": "How many rows this result carries."},
             "rowsAvailable": {"type": "integer", "description": "How many rows the filtered view held before the row cap of this tool; the row cap of the read itself may already have limited it."},
-            "truncatedFields": {"type": "array", "items": {"type": "string"}, "description": "Field names whose value was shortened in this result, if any."}
+            "truncatedFields": {"type": "array", "items": {"type": "string"}, "description": "Field names whose value was shortened in this result, if any."},
+            "criteria": {"type": "object", "description": "The value each server-search criterion of this read applied, keyed by criterion; an empty string is an unset bound. Present only on a read that declares criteria."}
         },
         "required": ["fields", "rows", "truncated"],
         "additionalProperties": false
@@ -152,7 +154,9 @@ ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Pr
         Set tMaxLength = tField.%Get("maxLength")
         If tMaxLength > 0 Do tProperty.%Set("maxLength", tMaxLength, "number")
         If tKind = "datetime" {
-            Do tProperty.%Set("description", "A server-search criterion, as instance local time in the form YYYY-MM-DD HH:MM:SS. The time part is required; a date alone is refused before the search runs. Omit it to leave that bound unset.")
+            Set tHours = tField.%Get("defaultHoursAgo")
+            Set tOmit = $Select(tHours > 0: "Omit to use the screen's default (" _ tHours _ " hours back); an empty string leaves the bound unset.", 1: "Omit it to leave that bound unset.")
+            Do tProperty.%Set("description", "A server-search criterion, as instance local time in the form YYYY-MM-DD HH:MM:SS. The time part is required; a date alone is refused before the search runs. " _ tOmit)
         } ElseIf tKind = "choice" {
             Do tProperty.%Set("description", "A server-search criterion. One of the listed values, spelled exactly; any other value is refused before the search runs.")
             Do tProperty.%Set("enum", ##class(%DynamicAbstractObject).%FromJSON(tField.%Get("options").%ToJSON()))
@@ -172,7 +176,8 @@ ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Pr
 /// model's <code>maxRows</code> or the read's own row cap (<method>ReadCap</method>), whichever is
 /// smaller -- the rows a screen at that row limit reads -- so the filter and sort run over those
 /// rows, and only then is the result cut to <var>pContextCap</var>.</p>
-/// <p><var>pResult</var> is <code>{fields, rows, truncated}</code>: the read's fields and rows as
+/// <p><var>pResult</var> is <code>{fields, rows, truncated}</code>, plus the read's applied
+/// <code>criteria</code> when it declares any: the read's fields and rows as
 /// <method>OcuPilot.Screen.Read.Execute</method> answers them, secret fields already removed, at
 /// most <var>pContextCap</var> rows in <method>OcuPilot.Screen.Read.ApplyView</method>'s order, and
 /// <code>truncated</code> true when the read truncated or the context cap cut rows. A read failure is
@@ -207,7 +212,9 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
         Set tParams = $ClassMethod(..ReadClass(), "CriteriaParams", pDescriptor)
         For tI = 1:1:$ListLength(tParams) {
             Set tParam = $List(tParams, tI)
-            Set tCriteria(tParam) = tArgs.%Get(tParam)
+            ; Only a criterion the call carries: an omitted one takes its declared default, exactly
+            ; as the route's does (AD-36).
+            If tArgs.%IsDefined(tParam) Set tCriteria(tParam) = tArgs.%Get(tParam)
         }
         Set tSC = $ClassMethod(..ReadClass(), "Execute", pDescriptor, ..BoundedMaxRows(tArgs, ..ReadCap()), .tFetched, .pHttpStatus, .pFault, .tCriteria)
         If $$$ISERR(tSC) Quit
@@ -228,6 +235,9 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
         ; The real count before this cut, so the kernel cutter downstream (AD-24) can report a
         ; true rowsAvailable rather than one already narrowed by this method's own cap.
         Do pResult.%Set("rowsAvailable", tView.%Size(), "number")
+        ; The criteria the read applied, so the model can hand the same search to the screen it
+        ; opens (AD-11, AD-36).
+        If $IsObject(tFetched.%Get("criteria")) Do pResult.%Set("criteria", tFetched.%Get("criteria"))
         Set pHttpStatus = 200
         Set pFault = ""
     } Catch ex {
