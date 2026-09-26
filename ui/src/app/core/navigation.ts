@@ -30,7 +30,7 @@
 import type { ApiService } from './api';
 import type { ConnectivityService } from './connectivity';
 import { decodeEntityId, encodeEntityId } from './entity-id.ts';
-import { scopeFor } from './entity-ref.ts';
+import { INSTANCE_SCOPE, scopeFor } from './entity-ref.ts';
 import { AREAS, SCREENS, type AreaDeclaration, type ScreenDeclaration } from './screens.generated.ts';
 import { createSingleFlight } from './single-flight.ts';
 
@@ -641,6 +641,19 @@ export function withQuery(route: string, currentUrl: string): string {
   );
   if (namespace === null) return '/' + route;
   return '/' + route + '?' + NAMESPACE_PARAM + '=' + encodeURIComponent(namespace);
+}
+
+/**
+ * The URL that opens `route` on the row `entityId` (`''` for none) in data scope `scope` (AD-13,
+ * AD-44): the id is one segment encoded by `encodeEntityId`; a scope of `''` or `instance` keeps
+ * the namespace `currentUrl` carries (`withQuery`), and a namespace scope names that namespace.
+ * The agent's navigation and a citation chip both build their URL here, so a row opens at the
+ * same address whichever of them asked.
+ */
+export function entityUrl(route: string, entityId: string, scope: string, currentUrl: string): string {
+  const target = route + (entityId === '' ? '' : '/' + encodeEntityId(entityId));
+  if (scope === '' || scope === INSTANCE_SCOPE) return withQuery(target, currentUrl);
+  return '/' + target + '?' + NAMESPACE_PARAM + '=' + encodeURIComponent(scope);
 }
 
 /** The declared route a router URL names: no leading slash, no query, no fragment. */

@@ -2,8 +2,8 @@
 title: 'Story 11.4: Citation chips with click-through'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
-baseline_revision: '7ae16d6a4ae22fc77d018b60e02da6d71773f396'
+status: 'done'
+baseline_revision: '26ebf342e6d3e574294b0a80250e2dadba878aa8'
 baseline_commit: '7ae16d6a4ae22fc77d018b60e02da6d71773f396'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -268,6 +268,34 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-25 — Review pass
+
+- verdicts: 23 findings — high 0, medium 1, low 9, false 13, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` VG: a namespace-scoped candidate's `scope` (`ScopeFor`) was never asserted — added a RestApiList leg under `Scope.Set("USER")` to `TurnCitations`; its mutation reddens it.
+  - `[low]` `[patch]` VG: the stubbed-turn assertion claimed to pin the `'tIsError` guard, but an errored call carries no rows — reworded the message and doc comment to claim only what it pins.
+  - `[low]` `[patch]` VG: `CitationNavigator`'s release of an earlier pending check was untested — added a navigator-spec leg; dropping `this.release()` reddens it.
+  - `[low]` `[patch]` VG: the streamed-block "no button" assertion could not fail (no citations on the running poll, unclosed span) — the running poll now carries the citation and a closed span; binding citations onto the streamed reply reddens it.
+  - `[false]` `[reject]` VG: planned AC2 mutation line still names browser (a) — the fix is a spec edit; the observed line already records that browser (a) cannot redden.
+  - `[false]` `[reject]` VG: the result section disagreed with the frontmatter status — that section is written at finalize.
+  - `[low]` `[reject]` VG/IA-E: `Cite` over `FallbackReply` always yields an empty array — correct and harmless; the doc comment says empty only for a turn with no reply.
+  - `[low]` `[reject]` IA-A: the server scanner does not skip link-label spans, so a citation can be on the wire with no chip — only wastes one of 20 slots; aligning scanners adds complexity.
+  - `[false]` `[reject]` IA-B: presence waits for a read made after the click — `ScreenStores` outlive navigation, so a cached read would answer from stale rows; browser (b) shows the line appears.
+  - `[false]` `[reject]` IA-C: an unknown result leaves an earlier absent line — matches "Unknown shows nothing" and "present, or a later click that finds the row, clears it".
+  - `[low]` `[reject]` IA-D: an id whose normalized form is empty (a web app named `/`) is dropped even on an exact match — no such app in normal use; the fix adds a second index.
+  - `[false]` `[reject]` IA-F: EXPERIENCE.md reply-rules and `message-agent` edits — required by the spec's Tasks (Rule 5 tier 1).
+  - `[low]` `[reject]` IA: `screen_context`, `ErrorRead`, client and write tools are excluded by code, not by a test — candidates are only built in `AnswerTools` after `CitesRows` and `CitationSource`; a test per exclusion adds fixtures for no reachable failure.
+  - `[false]` `[reject]` IA: `Job.cls` wiring covered only by browser (a) — that is a real-runtime test through the poll and the reload.
+  - `[low]` `[patch]` IA: namespace scope never exercised on the server — same root as the first row; closed by the RestApiList leg.
+  - `[low]` `[reject]` IA: dirty-form row tested with a stub guard — any `navigateByUrl` runs the real guard, which `navigate.browser-spec` AC7 pins.
+  - `[false]` `[reject]` IA: hostile label only in jsdom — the chip is built with `textContent` from the label; `reply.spec.ts` pins the literal text and no `img`.
+  - `[false]` `[reject]` IA: canonical web-app presence untested on the client — `normalizeEntityId` is the shared AD-13 rule, pinned by its own tests.
+  - `[false]` `[reject]` IA: streamed equality only in jsdom — `stream-reply` (b) pins the final equality in a browser; chips only change which element a span becomes.
+  - `[false]` `[reject]` IA: the older-row case is simulated — a row stored before the property existed reads empty, the same value `AppendEntry` without citations stores.
+  - `[false]` `[reject]` IA: no C2 test — the navigator's `settle` returns on `unknown`, and the truncated leg asserts nothing is recorded.
+  - `[false]` `[reject]` IA: `AgentNavigator` URLs unpinned by a new test — `agent-navigator.spec.ts` and `navigate.browser-spec` ran green on the new builder.
+  - `[false]` `[reject]` IA: A1 chips every occurrence of a label — that is the spec's rule ("Only a `codespan` whose text equals a citation's `label`").
+
 ## Design Notes
 
 **Governing ADs:**
@@ -355,9 +383,44 @@ No AC contradicts an AD.
 - AC4: `citationPresence` answers `unknown` for no match → `citation-chips.test.mjs` goes red, and browser (b) goes red.
 - AC5: the panel passes `turn.citations` only to a turn that never streamed → the `panel.spec` equality leg goes red.
 
+Observed (each reverted byte-identical; `git status --short` and `git diff --stat` matched the baseline):
+
+- mutation: `Loop.Run` sets `citations` to `""` -> `TurnCitations.TestAFinishedTurnCarriesItsCitationsOnThePollAndTheRestore` red (outcome, poll and restore asserts); browser (a) red (no chip, 60 s timeout)
+- mutation: `Citations.Cite` takes candidate 0 for an unmatched span -> `TurnCitations.TestOnlyASpanNamingAReturnedRowCites` red, and the stubbed-turn leg red
+- mutation: `Registry.CitationSource` drops its `ParentScope` refusal -> `TurnCitations.TestCandidatesComeOnlyFromASelectableScreensRows` red ("a parent-scoped screen yields none")
+- mutation: `entityUrl` appends the raw id -> `citation-chips.test.mjs` "entityUrl encodes the id once" red; `citation-navigator.spec.ts` URL leg red. Browser (a) cannot redden: `_SYSTEM` encodes to itself
+- mutation: the chip built as `<a href>` -> `reply.spec.ts` three citation-chip legs red
+- mutation: `BUILTIN` carries the old sentence -> `TurnNavigate.TestAC12BuiltinCarriesBothSentences` red (both asserts)
+- mutation: `citationPresence` answers `unknown` for no match -> `citation-chips.test.mjs` absent leg red; `citation-navigator.spec.ts` two legs red; browser (b) red (rebuilt and redeployed)
+- mutation: the panel withholds `citations` from a turn that streamed -> `panel.spec.ts` "a streamed turn and a plain one end in the same turn DOM" red
+- mutation: `Citations.Candidates` keeps the declared scope instead of `ScopeFor` -> `TurnCitations.TestCandidatesComeOnlyFromASelectableScreensRows` red (the RestApiList leg; run 13252)
+- mutation: `CitationNavigator.open` drops `this.release()` -> `citation-navigator.spec.ts` "a newer open releases the check an earlier one left waiting" red
+- mutation: the streamed `<app-reply>` is bound to `turn.citations` -> `panel.spec.ts` "a streamed turn and a plain one end in the same turn DOM" red
+
 **Manual check (extra evidence, never the proof).** Use the owner's live-key rules. On `permissions/users`, ask "Which users hold %All?". The reply names the accounts as chips, has no "Shall I select" offer, and a chip selects its row.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** The instance derives a finished turn's citations (`Kernel/Agent/Citations.cls`: candidates from non-error descriptor-backed reads via `Registry.CitationSource`, spans matched exactly or by `NormalizedId`, at most 20) and stores them on `Turn` and `Entry` (`citations` on the poll and the restore). The client renders a matching code span as a `button` chip (`core/reply.ts`, `shell/reply.ts`), opens it through `entityUrl` and `navigateByUrl` (`shell/citation-navigator.ts`; `AgentNavigator` now uses the same builder), and shows "no longer present" under the reply for an absent row. The prompt sentence is swapped; EXPERIENCE.md carries the new Fixed-strings row and the two amended lines.
+
+**Deviation.** The descriptor checks sit in `Screen/Tool/Registry.CitationSource`, not in the kernel, because `check-objectscript` rule 19 refuses a `Screen.*` call from `Kernel/Agent/` other than the Registry. `TurnNavigate` asserts "and offer to select it" is absent, since the new sentence itself says "do not offer to select rows".
+
+**Review.** 23 findings: 4 patched (1 medium, 3 low: a namespace-scope leg in `TurnCitations`, a navigator release leg, a falsifiable streamed-block assertion, a reworded error-read assertion), 0 deferred, 19 rejected (see the triage log). `followup_review_recommended: false` (one medium patched, no high).
+
+**Verification.**
+
+- `check-objectscript` 0 problems; `lint-docs` 0 issues; `load.sh` LOADRESULT=OK, ERRCOUNT=0.
+- Targeted classes on `ocupilot-ci`, one per call, all green: `TurnCitations` (3), `TurnWire` (13), `TurnNavigate` (14), `ScreenGrounding` (12), `TurnLoop` (11), `TurnTools` (12), `TurnGrounding` (11). `TurnCitations` runs in about 0.72 s (`%UnitTest_Result` `Duration`, seconds).
+- `npm run test:tools` 1467/1467; `npm run test:components` 1449/1449.
+- Browser, rebuilt and redeployed: `citation-chips` 2/2, `stream-reply` 7/7 (leg b green), `reply` 5/5, `navigate` 6/6, `explain-screen` 3/3.
+- Bundle initial total 1,840,947 B, under the 1854 kB warning; no re-base.
+- Full ObjectScript sweep on `ocupilot-ci`: 291 classes, 276 ran green, 14 refused (arming), 1 known residue (`WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal`); 2305 tests, 1 failed.
+- `smoke.sh --container ocupilot-ci`: executed 49, passed 49.
+- Eleven mutations observed red and reverted byte-identical (see `## Verification`).
+
+**Residual risk.** The absent line needs the arriving list to read after the click; a failed read shows nothing. The `'tIsError` guard has no test that can fail, because no error result carries rows today.
+
+**footprint_extensions:** `Screen/Tool/Registry.cls`, `Kernel/State/{Turn,Entry,Convo}.cls`, `Test/TurnWire.cls`, `Test/TurnNavigate.cls`, `ui/src/app/core/navigation.ts`, `ui/src/app/shell/agent-navigator.ts`, `ui/src/styles/_components.scss` (own block), EXPERIENCE.md, `ui/src/app/core/strings.ts` (own tail plus the `taskCreate` reference).

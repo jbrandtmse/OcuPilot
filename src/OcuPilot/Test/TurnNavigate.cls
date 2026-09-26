@@ -476,12 +476,14 @@ Method TestADroppedAnnounceStepLapsesRatherThanFailingTheTurn()
 
 /// <hr/>
 /// <p>AC12 (DW-1084): the built-in system prompt carries the citation sentence and the navigation
-/// sentence verbatim, so Story 4.6's backtick renderer has a producer and the navigation tool has
-/// one instruction to use it.</p>
+/// sentence verbatim, so the backtick renderer has a producer and the navigation tool has one
+/// instruction to use it; since Story 11.4 the citation sentence names a clickable row and asks for
+/// no selection offer.</p>
 Method TestAC12BuiltinCarriesBothSentences()
 {
     Set tPrompt = ##class(OcuPilot.Kernel.Agent.Prompt).Builtin()
-    Do $$$AssertTrue(tPrompt [ "Name each row you report in backticks and offer to select it.", "the citation sentence is carried verbatim: " _ tPrompt)
+    Do $$$AssertTrue(tPrompt [ "Name each row you report by its identifying value in backticks, exactly as the tool returned it; the user can click that name to select the row, so do not offer to select rows.", "the citation sentence is carried verbatim (Story 11.4): " _ tPrompt)
+    Do $$$AssertTrue(tPrompt '[ "and offer to select it", "and the prompt no longer asks the model to offer a selection")
     Do $$$AssertTrue(tPrompt [ "Open a screen or select a row with the navigation tool, which announces the move before the browser moves and which the user may refuse.", "and the navigation sentence: " _ tPrompt)
 }
 

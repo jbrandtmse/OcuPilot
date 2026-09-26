@@ -36,6 +36,8 @@ import json from 'highlight.js/lib/languages/json';
 import sql from 'highlight.js/lib/languages/sql';
 import xml from 'highlight.js/lib/languages/xml';
 
+import type { Citation } from './citations.ts';
+
 /** The closed set of element tags `parseReply` ever produces (AD-11 rule 4, AD-33). */
 export type ReplyTag =
   | 'p'
@@ -50,7 +52,8 @@ export type ReplyTag =
   | 'pre'
   | 'a'
   | 'img'
-  | 'span';
+  | 'span'
+  | 'button';
 
 /**
  * Every tag a built reply may ever contain, `br` included (its own `ReplyNode` kind, not a
@@ -70,6 +73,7 @@ export const REPLY_TAGS: readonly string[] = [
   'a',
   'img',
   'span',
+  'button',
   'br',
 ];
 
@@ -85,11 +89,33 @@ export type ReplyNode =
       readonly src?: string;
       readonly alt?: string;
       readonly children: readonly ReplyNode[];
+    }
+  | {
+      /**
+       * A citation chip (Story 11.4): an inline code span whose text is a citation's `label`,
+       * outside any link. The caller builds it as a `button` whose text is the label; it carries no
+       * URL and makes no request (AD-11 rule 4).
+       */
+      readonly kind: 'citation';
+      readonly citation: Citation;
     };
 
 export interface ParseReplyOptions {
   /** The instance's own origin (e.g. `location.origin`), judged against every link and image. */
   readonly origin: string;
+  /**
+   * The reply's citations (Story 11.4). A code span whose text equals one's `label`, and that is
+   * not inside a link label, becomes that citation's chip; absent or empty, no chip is produced.
+   */
+  readonly citations?: readonly Citation[];
+}
+
+/** What every mapping function below is judged against: the origin, the citations, and whether
+ * the tokens being mapped sit inside a link's label. */
+interface ParseContext {
+  readonly origin: string;
+  readonly citations: readonly Citation[];
+  readonly inLink: boolean;
 }
 
 /** A fenced code block longer than this renders unhighlighted (Design Notes, Performance). */
@@ -168,29 +194,29 @@ function isSameOriginUrl(href: string, origin: string): boolean {
 }
 
 /** Every inline token type this module models by name, so an unlisted type falls to the raw-text rule. */
-function inlineTokenToNodes(token: Token, origin: string): readonly ReplyNode[] {
+function inlineTokenToNodes(token: Token, ctx: ParseContext): readonly ReplyNode[] {
   switch (token.type) {
     case 'text': {
       const withTokens = token as Tokens.Text;
-      if (withTokens.tokens !== undefined) return inlineTokensToNodes(withTokens.tokens, origin);
+      if (withTokens.tokens !== undefined) return inlineTokensToNodes(withTokens.tokens, ctx);
       return [textNode(withTokens.text)];
     }
     case 'escape':
       return [textNode((token as Tokens.Escape).text)];
     case 'strong':
-      return [elementNode('strong', [], inlineTokensToNodes((token as Tokens.Strong).tokens, origin))];
+      return [elementNode('strong', [], inlineTokensToNodes((token as Tokens.Strong).tokens, ctx))];
     case 'em':
-      return [elementNode('em', [], inlineTokensToNodes((token as Tokens.Em).tokens, origin))];
+      return [elementNode('em', [], inlineTokensToNodes((token as Tokens.Em).tokens, ctx))];
     case 'del':
-      return [elementNode('del', [], inlineTokensToNodes((token as Tokens.Del).tokens, origin))];
+      return [elementNode('del', [], inlineTokensToNodes((token as Tokens.Del).tokens, ctx))];
     case 'codespan':
-      return [elementNode('code', ['ocu-reply-code-inline'], [textNode((token as Tokens.Codespan).text)])];
+      return [codespanNode((token as Tokens.Codespan).text, ctx)];
     case 'br':
       return [BREAK_NODE];
     case 'link':
-      return linkNodes(token as Tokens.Link, origin);
+      return linkNodes(token as Tokens.Link, ctx);
     case 'image':
-      return [imageNode(token as Tokens.Image, origin)];
+      return [imageNode(token as Tokens.Image, ctx)];
     case 'html':
       return [textNode((token as Tokens.Tag).raw)];
     default:
@@ -200,8 +226,8 @@ function inlineTokenToNodes(token: Token, origin: string): readonly ReplyNode[] 
   }
 }
 
-function inlineTokensToNodes(tokens: readonly Token[], origin: string): readonly ReplyNode[] {
-  return tokens.flatMap((token) => inlineTokenToNodes(token, origin));
+function inlineTokensToNodes(tokens: readonly Token[], ctx: ParseContext): readonly ReplyNode[] {
+  return tokens.flatMap((token) => inlineTokenToNodes(token, ctx));
 }
 
 function rawTextOf(token: Token): string {
@@ -209,9 +235,22 @@ function rawTextOf(token: Token): string {
   return generic.raw ?? generic.text ?? '';
 }
 
-function linkNodes(token: Tokens.Link, origin: string): readonly ReplyNode[] {
-  const label = inlineTokensToNodes(token.tokens, origin);
-  if (!isAllowedLinkUrl(token.href, origin)) {
+/**
+ * An inline code span: the chip of the first citation whose `label` is exactly `text`, when the
+ * span is outside a link label; otherwise inline code. A span no citation names stays code.
+ */
+function codespanNode(text: string, ctx: ParseContext): ReplyNode {
+  if (!ctx.inLink) {
+    const citation = ctx.citations.find((entry) => entry.label === text);
+    if (citation !== undefined) return { kind: 'citation', citation };
+  }
+  return elementNode('code', ['ocu-reply-code-inline'], [textNode(text)]);
+}
+
+function linkNodes(token: Tokens.Link, ctx: ParseContext): readonly ReplyNode[] {
+  // A code span inside a link label stays code: a chip inside an anchor would nest two controls.
+  const label = inlineTokensToNodes(token.tokens, { ...ctx, inLink: true });
+  if (!isAllowedLinkUrl(token.href, ctx.origin)) {
     // A hostile scheme is not "an unmodelled token": the link is understood, and rejected. Only
     // the label renders, as if the link markup were never there (I/O matrix, Hostile scheme row).
     return label;
@@ -219,10 +258,10 @@ function linkNodes(token: Tokens.Link, origin: string): readonly ReplyNode[] {
   // The host caption is an external-link warning (AC4: "the full host follows the link text as
   // caption") -- a same-origin link needs no such warning, and would otherwise repeat the
   // instance's own hostname next to every in-app link.
-  if (isSameOriginUrl(token.href, origin)) {
+  if (isSameOriginUrl(token.href, ctx.origin)) {
     return [elementNode('a', [], label, { href: token.href })];
   }
-  const host = resolveUrl(token.href, origin)?.hostname ?? '';
+  const host = resolveUrl(token.href, ctx.origin)?.hostname ?? '';
   // The caption is a SIBLING of the anchor, never a child: DESIGN.md `message-agent` puts the
   // host "after the link text", and a caption inside the `a` would join the link's accessible
   // name ("docsdocs.example.com") and sit inside its activation area.
@@ -230,8 +269,8 @@ function linkNodes(token: Tokens.Link, origin: string): readonly ReplyNode[] {
   return [elementNode('a', [], label, { href: token.href }), caption];
 }
 
-function imageNode(token: Tokens.Image, origin: string): ReplyNode {
-  if (isSameOriginUrl(token.href, origin)) {
+function imageNode(token: Tokens.Image, ctx: ParseContext): ReplyNode {
+  if (isSameOriginUrl(token.href, ctx.origin)) {
     return elementNode('img', [], [], { src: token.href, alt: token.text });
   }
   // A remote image never becomes an <img> -- rendering strictly fewer things needs no CSP
@@ -241,10 +280,10 @@ function imageNode(token: Tokens.Image, origin: string): ReplyNode {
 }
 
 /** Maps a `list_item`'s own `tokens` entry: a tight item's inline wrapper renders inline. */
-function listItemChildren(token: Token, origin: string): readonly ReplyNode[] {
+function listItemChildren(token: Token, ctx: ParseContext): readonly ReplyNode[] {
   if (token.type === 'text') {
     const withTokens = token as Tokens.Text;
-    if (withTokens.tokens !== undefined) return inlineTokensToNodes(withTokens.tokens, origin);
+    if (withTokens.tokens !== undefined) return inlineTokensToNodes(withTokens.tokens, ctx);
     return [textNode(withTokens.text)];
   }
   // A GFM task list's `checkbox` token renders as its own literal marker, inline beside the item
@@ -252,27 +291,27 @@ function listItemChildren(token: Token, origin: string): readonly ReplyNode[] {
   // margin-bearing line of its own above every task (no checkbox input: an agent's reply is not
   // an interactive control, and `input` is outside `REPLY_TAGS`).
   if (token.type === 'checkbox') return [textNode(rawTextOf(token))];
-  return blockTokenToNodes(token, origin);
+  return blockTokenToNodes(token, ctx);
 }
 
 /** Every block token type this module models by name; an unlisted type falls to the raw-text rule. */
-function blockTokenToNodes(token: Token, origin: string): readonly ReplyNode[] {
+function blockTokenToNodes(token: Token, ctx: ParseContext): readonly ReplyNode[] {
   switch (token.type) {
     case 'space':
       return [];
     case 'paragraph':
-      return [elementNode('p', [], inlineTokensToNodes((token as Tokens.Paragraph).tokens, origin))];
+      return [elementNode('p', [], inlineTokensToNodes((token as Tokens.Paragraph).tokens, ctx))];
     case 'heading': {
       const heading = token as Tokens.Heading;
       return [
-        elementNode('p', [`ocu-reply-heading-${heading.depth}`], inlineTokensToNodes(heading.tokens, origin)),
+        elementNode('p', [`ocu-reply-heading-${heading.depth}`], inlineTokensToNodes(heading.tokens, ctx)),
       ];
     }
     case 'blockquote':
-      return [elementNode('blockquote', [], blockTokensToNodes((token as Tokens.Blockquote).tokens, origin))];
+      return [elementNode('blockquote', [], blockTokensToNodes((token as Tokens.Blockquote).tokens, ctx))];
     case 'list': {
       const list = token as Tokens.List;
-      const items = list.items.map((item) => elementNode('li', [], item.tokens.flatMap((t) => listItemChildren(t, origin))));
+      const items = list.items.map((item) => elementNode('li', [], item.tokens.flatMap((t) => listItemChildren(t, ctx))));
       return [elementNode(list.ordered ? 'ol' : 'ul', [], items)];
     }
     case 'code':
@@ -289,8 +328,8 @@ function blockTokenToNodes(token: Token, origin: string): readonly ReplyNode[] {
   }
 }
 
-function blockTokensToNodes(tokens: readonly Token[], origin: string): readonly ReplyNode[] {
-  return tokens.flatMap((token) => blockTokenToNodes(token, origin));
+function blockTokensToNodes(tokens: readonly Token[], ctx: ParseContext): readonly ReplyNode[] {
+  return tokens.flatMap((token) => blockTokenToNodes(token, ctx));
 }
 
 /** A registered language name, or `null` when `lang` is not one of the four this release vendors. */
@@ -349,7 +388,7 @@ export function parseReply(text: string, options: ParseReplyOptions): readonly R
   try {
     const lexer = new Lexer({ gfm: true, breaks: true });
     const tokens = lexer.lex(text);
-    return blockTokensToNodes(tokens, options.origin);
+    return blockTokensToNodes(tokens, { origin: options.origin, citations: options.citations ?? [], inLink: false });
   } catch {
     return [sourceNode(text)];
   }

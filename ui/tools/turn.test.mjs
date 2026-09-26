@@ -1811,3 +1811,57 @@ test("a confirm refused for a pair records that pair as the line's missing one",
   assert.equal(outcome.failedPair, '%Admin_Secure:USE');
   assert.deepEqual(turn.entries()[0].proposals[0].privilege, { requires: held.requires, missing: '%Admin_Secure:USE' });
 });
+
+// --- Story 11.4: citations on the poll and the restore ---------------------------------------
+//
+// Mutation (Rule 19): drop `citations` from the poll's spread in `pollOnce` -> "a finished turn's
+// final poll carries its citations" goes red.
+
+const CITED = { type: 'user', scope: 'instance', id: '_SYSTEM', route: 'permissions/users', label: '_SYSTEM' };
+
+test("a finished turn's final poll carries its citations; a running one carries none", async () => {
+  const storage = memoryStorage();
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      ok({ turnId: 'turn-1', state: 'running', steps: [], stepsDropped: 0, reply: null, citations: [], error: null }),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: '`_SYSTEM`', citations: [CITED, { ...CITED, route: 'no/such' }], error: null }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab(), schedule });
+  void turn.send('who holds %All?');
+  await settle();
+  await settle();
+  await settle();
+  assert.deepEqual(turn.entries().at(-1).citations, [], 'the live entry starts with none');
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.entries().at(-1).citations, [], 'a running poll carries none');
+  scheduled.shift().run();
+  await settle();
+  const finished = turn.entries().at(-1);
+  assert.equal(finished.live, false);
+  assert.deepEqual(finished.citations, [CITED], 'the final poll carries the citation; the unbuilt route is dropped');
+});
+
+test('a restored entry carries its citations, and an entry stored without any restores []', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const api = fakeApi({
+    [conversationReadPath('convo-1')]: [
+      ok({
+        conversationId: 'convo-1',
+        turns: [
+          { seq: 1, message: 'old', state: 'completed', reply: 'hello', error: null, steps: [], stepsDropped: 0 },
+          { seq: 2, message: 'new', state: 'completed', reply: '`_SYSTEM`', citations: [CITED], error: null, steps: [], stepsDropped: 0 },
+        ],
+      }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  const [older, newer] = turn.entries();
+  assert.deepEqual(older.citations, []);
+  assert.deepEqual(newer.citations, [CITED]);
+});

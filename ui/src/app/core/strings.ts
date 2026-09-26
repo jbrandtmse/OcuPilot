@@ -1952,7 +1952,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:613 */
+  /** EXPERIENCE.md:614 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2851,6 +2851,8 @@ export const STRINGS = {
   oauthRegisteredClientSecretEffect: 'The client\'s application must use the new secret from now on.',
   /** EXPERIENCE.md:521 */
   oauthRegisteredClientFormRefusedAction: 'change this server client description',
+  /** EXPERIENCE.md:573 */
+  citationAbsent: '<name> is no longer present on this instance, so there is nothing to select.',
 
 } as const;
 

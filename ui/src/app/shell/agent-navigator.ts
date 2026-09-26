@@ -2,8 +2,7 @@ import { DestroyRef, Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AuditSearch } from '../areas/logs/audit.store';
-import { encodeEntityId } from '../core/entity-id';
-import { formatNavigationHeading, screenForRoute, withQuery } from '../core/navigation';
+import { entityUrl, formatNavigationHeading, screenForRoute } from '../core/navigation';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
@@ -81,9 +80,10 @@ export class AgentNavigator {
   }
 
   /**
-   * Move, then answer. `directive.entityId` is appended as one more path segment, encoded the
-   * same way the data table's own name-cell link encodes it (AD-13, `encodeEntityId`), so the
-   * agent's URL and a click's URL are byte-identical for the same row.
+   * Move, then answer. The URL is `entityUrl`'s, in the current namespace: `directive.entityId`
+   * is appended as one more path segment, encoded the same way the data table's own name-cell
+   * link encodes it (AD-13, `encodeEntityId`), so the agent's URL, a citation chip's and a
+   * click's are byte-identical for the same row.
    *
    * **The directive is re-read first.** `NAVIGATIONDELAYMS` elapses between `check()` scheduling
    * this and this running, and a stop, a sign-out or a new turn inside that window ends the
@@ -92,9 +92,9 @@ export class AgentNavigator {
   private async act(directive: TurnNavigation): Promise<void> {
     const standing = this.turn.navigation();
     if (standing === null || standing.seq !== directive.seq) return;
-    const target =
-      directive.route + (directive.entityId === '' ? '' : '/' + encodeEntityId(directive.entityId));
-    const navigated = await this.router.navigateByUrl(withQuery(target, this.router.url)).catch(() => false);
+    const navigated = await this.router
+      .navigateByUrl(entityUrl(directive.route, directive.entityId, '', this.router.url))
+      .catch(() => false);
     if (navigated) {
       const screen = screenForRoute(directive.route);
       const title = screen === null ? '' : stringFor(screen.labelKey);

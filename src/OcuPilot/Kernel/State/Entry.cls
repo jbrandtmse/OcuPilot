@@ -56,12 +56,18 @@ Property TurnKey As %String(MAXLEN = 64);
 /// the turn's own <property>OcuPilot.Kernel.State.Turn.StepsDropped</property> at append time.</p>
 Property StepsDropped As %Integer [ InitialExpression = 0 ];
 
+/// <p>The reply's citations as JSON text, as the turn row stores them
+/// (<property>OcuPilot.Kernel.State.Turn.Citations</property>), or <code>""</code> for none.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b>: an entry appended before this property
+/// existed reads <code>""</code>, which restores as no citations.</p>
+Property Citations As %String(MAXLEN = "");
+
 Index ConvoSeqIdx On (ConvoKey, Seq) [ Unique ];
 
 /// <p>Append one entry to conversation <var>pConvoKey</var>. <var>pStepsJson</var> is the
 /// already-capped step array, serialized; <var>pTurnKey</var> is the turn it records, which a
-/// caller that has none may omit.</p>
-ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %String, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "") As %Status
+/// caller that has none may omit; <var>pCitations</var> is the reply's citations as JSON text.</p>
+ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %String, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "", pCitations As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -77,6 +83,7 @@ ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %
         Set tRow.ErrorSeq = +pErrorSeq
         Set tRow.StepsDropped = +pStepsDropped
         Set tRow.TurnKey = ##class(OcuPilot.Kernel.State.Turn).Cap(pTurnKey, 64, .tCutTurnKey)
+        Set tRow.Citations = pCitations
         If pStepsJson '= "" Do tRow.StepsJson.Write(pStepsJson)
         Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
         Set tRow = ""
@@ -87,8 +94,9 @@ ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %
 }
 
 /// <p>Every entry of conversation <var>pConvoKey</var>, in sequence order, as <code>{seq, message,
-/// state, reply, error, steps, stepsDropped}</code> -- <code>reply</code> and <code>error</code>
-/// are JSON null when the turn carries none; <code>error</code> is otherwise <code>{seq,
+/// state, reply, citations, error, steps, stepsDropped}</code> -- <code>reply</code> and
+/// <code>error</code> are JSON null when the turn carries none, and <code>citations</code> is always
+/// an array; <code>error</code> is otherwise <code>{seq,
 /// code}</code>, with no <code>reason</code> (AD-9's re-entry rule: see
 /// <class>OcuPilot.Kernel.State.Convo</class>). <code>steps</code> is the parsed array from
 /// <property>StepsJson</property>, or <code>[]</code> when it is empty or does not parse.</p>
@@ -117,6 +125,7 @@ ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray) As 
         } Else {
             Do tOut.%Set("reply", tReply, "string")
         }
+        Do tOut.%Set("citations", ##class(OcuPilot.Kernel.State.Turn).CitationsArray(tRow.Citations))
         Set tCode = ..Text(tRow.ErrorCode)
         If tCode = "" {
             Do tOut.%Set("error", "", "null")

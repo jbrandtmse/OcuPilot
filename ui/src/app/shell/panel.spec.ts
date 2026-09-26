@@ -4698,3 +4698,58 @@ describe('Story 11.3: suggested prompts per screen', () => {
     }
   });
 });
+
+// --- Story 11.4: citation chips in the transcript -------------------------------------------------
+
+describe('Story 11.4: citation chips', () => {
+  const CITED = { type: 'user', scope: 'instance', id: 'OcuPilotCiteGone', route: 'permissions/users', label: 'OcuPilotCiteGone' };
+
+  /** `progress` with `citations` on its body. */
+  function withCitations(progress: ReturnType<typeof modelProgress>, citations: unknown[]) {
+    return { ...progress, body: { ...progress.body, citations } };
+  }
+
+  it('the final reply draws a chip for a cited row, and a click on a gone row adds the absent line under that reply', async () => {
+    const reply = '`OcuPilotCiteGone` was here; `NotARow` never was.';
+    const done = withCitations(modelProgress('completed', 'ok', reply, reply), [CITED]);
+    const { host, fixture, scheduled, screenStores } = await mountAnswered([done]);
+    await nextPoll(scheduled, fixture);
+    const chips = host.querySelectorAll('.ocu-panel-message-agent app-reply button.ocu-reply-citation');
+    expect(chips).toHaveLength(1);
+    expect(chips[0].textContent).toBe('OcuPilotCiteGone');
+    expect(host.querySelector('.ocu-panel-message-agent app-reply code')?.textContent).toBe('NotARow');
+    expect(host.querySelector('.ocu-citation-absent')).toBeNull();
+
+    (chips[0] as HTMLButtonElement).click();
+    await turnSettle();
+    const users = SCREENS.find((screen) => screen.route === 'permissions/users');
+    expect(users).toBeDefined();
+    screenStores.for(users!.descriptor, users!.refreshRates).applyTick([{ Name: 'Admin' }], false, '', new Date());
+    fixture.detectChanges();
+    const absent = host.querySelector('.ocu-panel-turn .ocu-citation-absent');
+    expect(absent?.getAttribute('role')).toBe('status');
+    expect(absent?.textContent).toBe(STRINGS.citationAbsent.split('<name>').join('OcuPilotCiteGone'));
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('a streamed turn and a plain one end in the same turn DOM, chips included', async () => {
+    // Mutation (Rule 19): pass `turn.citations` only to a turn that never streamed -> this goes red.
+    const reply = 'Only `OcuPilotCiteGone` holds it.';
+    const done = withCitations(modelProgress('completed', 'ok', reply, reply), [CITED]);
+    // The running poll carries the citation too, so a streamed block handed citations would draw a chip.
+    const running = withCitations(modelProgress('running', 'running', 'Only `OcuPilotCiteGone` holds'), [CITED]);
+    const streamed = await mountAnswered([running, done]);
+    await nextPoll(streamed.scheduled, streamed.fixture);
+    expect(streamed.host.querySelector('.ocu-panel-message-streamed code')?.textContent).toBe('OcuPilotCiteGone');
+    expect(streamed.host.querySelector('.ocu-panel-message-streamed button')).toBeNull();
+    await nextPoll(streamed.scheduled, streamed.fixture);
+
+    const plain = await mountAnswered([modelProgress('running', 'running', ''), done]);
+    await nextPoll(plain.scheduled, plain.fixture);
+    await nextPoll(plain.scheduled, plain.fixture);
+
+    expect(plain.host.querySelectorAll('button.ocu-reply-citation')).toHaveLength(1);
+    const turnHtml = (host: HTMLElement) => (host.querySelector('.ocu-panel-turn') as HTMLElement).outerHTML;
+    expect(turnHtml(streamed.host)).toBe(turnHtml(plain.host));
+  });
+});

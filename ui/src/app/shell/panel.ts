@@ -20,6 +20,7 @@ import {
   restraintSentence,
 } from '../core/agent-status';
 import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
+import { type Citation, formatCitationAbsent } from '../core/citations';
 import { decodeEntityId } from '../core/entity-id';
 import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../core/explain-entry';
 import { classifyFault, isBannerFault } from '../core/fault';
@@ -70,6 +71,7 @@ import {
   turnErrorBanner,
 } from '../core/turn';
 import { isApplePlatform } from './command-box';
+import { CitationNavigator } from './citation-navigator';
 import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { TranscriptFollow } from './panel-follow';
@@ -180,6 +182,10 @@ interface PanelTurnView {
   /** The running model call's text so far (AD-33), or `null`; never beside a reply or a banner. */
   readonly streamed: string | null;
   readonly errorBanner: string | null;
+  /** The rows the final reply cites (Story 11.4); the streamed block is never given them. */
+  readonly citations: readonly Citation[];
+  /** The absent sentence for each cited row a click found gone, in citation order. */
+  readonly absent: readonly string[];
 }
 
 /**
@@ -467,8 +473,16 @@ interface PanelTurnView {
               @if (turn.reply !== null) {
                 <div class="ocu-panel-message-agent">
                   <span class="ocu-panel-message-avatar" aria-hidden="true"></span>
-                  <app-reply class="ocu-panel-message-agent-text" [text]="turn.reply" />
+                  <app-reply
+                    class="ocu-panel-message-agent-text"
+                    [text]="turn.reply"
+                    [citations]="turn.citations"
+                    (cite)="onCite($event)"
+                  />
                 </div>
+                @for (line of turn.absent; track $index) {
+                  <p class="ocu-citation-absent" role="status">{{ line }}</p>
+                }
               } @else {
                 @if (turn.streamed !== null) {
                   <div class="ocu-panel-message-agent ocu-panel-message-streamed" inert>
@@ -556,6 +570,7 @@ export class Panel {
   private readonly scope = inject(ScopeService);
   private readonly session = inject(Session);
   private readonly screenStores = inject(ScreenStores);
+  private readonly citationNavigator = inject(CitationNavigator);
   private readonly shell = inject(ShellState);
   private readonly suggested = inject(SuggestedView);
   /** A log or audit entry's explain request (Story 11.2). Optional, so a spec that needs none provides none. */
@@ -692,6 +707,7 @@ export class Panel {
         this.syncSuggested();
       }),
       this.suggested.subscribe(() => this.bump()),
+      this.citationNavigator.subscribe(() => this.bump()),
       this.shell.subscribe(() => {
         this.bump();
         this.syncSuggested();
@@ -906,9 +922,14 @@ export class Panel {
       const steps = entry.steps.filter(
         (step) => step.kind === 'tool' || step.kind === 'announce' || step.status === 'stopped'
       );
+      const citations = errorBanner === null ? entry.citations : [];
       return {
         message: entry.message,
         streamed: errorBanner === null ? streamedText(entry) : null,
+        citations,
+        absent: citations
+          .filter((citation) => this.citationNavigator.isAbsent(citation))
+          .map((citation) => formatCitationAbsent(citation.label)),
         // Tool steps, the agent's own navigation announcements (Story 4.7), a stop caught
         // before a model call -- which is the only record of that stop -- and, last, one card per
         // confirmed write of this turn, composed from the confirm's own answer (AD-15).
@@ -1878,6 +1899,11 @@ export class Panel {
   protected onTranscriptScroll(): void {
     const box = this.transcriptBox();
     if (box !== null && this.follow.onScroll(box)) this.bump();
+  }
+
+  /** A citation chip was clicked (Story 11.4): open its row. */
+  protected onCite(citation: Citation): void {
+    void this.citationNavigator.open(citation);
   }
 
   /** Jump to latest: scroll to the newest entry, follow again, and hand focus to the transcript. */

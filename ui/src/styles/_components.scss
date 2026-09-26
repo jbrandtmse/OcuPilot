@@ -6407,3 +6407,38 @@ app-data-table .ocu-data-table-header-cell {
   min-inline-size: 0;
   overflow-wrap: anywhere;
 }
+
+// --- Citation chips (Story 11.4) -------------------------------------------------------------
+//
+// A row name a reply cites, drawn as a button on the inline code's own typography and surface, with
+// an outline saying it can be pressed. Its absent line sits under the reply, in the caption face.
+
+.ocu-reply-citation {
+  @include typo.ocu-type('code');
+
+  display: inline;
+  margin: 0;
+  padding: 0 4px;
+  border: 1px solid var(--ocu-outline);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container);
+  color: var(--ocu-primary);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.ocu-reply-citation:hover {
+  background: var(--ocu-surface-container-high);
+}
+
+.ocu-reply-citation:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-citation-absent {
+  @include typo.ocu-type('caption');
+
+  margin: var(--ocu-space-1) 0 0;
+  padding-inline-start: calc(var(--ocu-avatar-size, 24px) + var(--ocu-space-2));
+  color: var(--ocu-on-surface-variant);
+}

@@ -489,6 +489,51 @@ ClassMethod FulfilmentOf(pTool As %DynamicObject) As %String
     Quit $Select(tFulfilment '= "": tFulfilment, 1: "instance")
 }
 
+/// <p>Whether a citation may name the rows <var>pDescriptor</var>'s read returns (Story 11.4), and
+/// if so where it points: the primary entity type <var>pType</var>, the declared scope
+/// <var>pScope</var>, the route <var>pRoute</var> and the row field <var>pField</var> a row's id is
+/// read from. Answers 0, with every output <code>""</code>, unless the descriptor is built, has no
+/// parent scope, can be opened on one row (<method>OcuPilot.Screen.Tool.Navigate.AcceptsEntityId</method>)
+/// and declares a type and a route. The field is the table's one <code>name</code> column for a
+/// <code>single</code> id, and the one part of a one-part <code>composite</code>.</p>
+ClassMethod CitationSource(pDescriptor As %String, Output pType As %String, Output pScope As %String, Output pRoute As %String, Output pField As %String) As %Boolean
+{
+    Set (pType, pScope, pRoute, pField) = ""
+    Set tSource = 0
+    Try {
+        If (pDescriptor = "") || '$ClassMethod(pDescriptor, "IsBuilt") Quit
+        If $ClassMethod(pDescriptor, "ParentScope") '= "" Quit
+        If '##class(OcuPilot.Screen.Tool.Navigate).AcceptsEntityId(pDescriptor) Quit
+        Set tField = ""
+        If $ClassMethod(pDescriptor, "IdKind") = "composite" {
+            Set tField = $List($ClassMethod(pDescriptor, "IdParts"), 1)
+        } Else {
+            Set tTable = $ClassMethod(pDescriptor, "Field", "table")
+            If '$IsObject(tTable) || (tTable.%GetTypeOf("columns") '= "array") Quit
+            Set tNames = 0
+            Set tIterator = tTable.%Get("columns").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tColumn) {
+                If '$IsObject(tColumn) || (tColumn.%Get("kind") '= "name") Continue
+                Set tNames = tNames + 1
+                Set tField = tColumn.%Get("field")
+            }
+            If tNames '= 1 Set tField = ""
+        }
+        Set tType = $ClassMethod(pDescriptor, "PrimaryEntityType")
+        Set tRoute = $ClassMethod(pDescriptor, "Route")
+        If (tField = "") || (tType = "") || (tRoute = "") Quit
+        Set pType = tType
+        Set pScope = $ClassMethod(pDescriptor, "Scope")
+        Set pRoute = tRoute
+        Set pField = tField
+        Set tSource = 1
+    } Catch ex {
+        Set (pType, pScope, pRoute, pField) = ""
+        Set tSource = 0
+    }
+    Quit tSource
+}
+
 /// <p>Call <var>pTool</var>'s view with <var>pArgs</var> under the row cap <var>pContextCap</var>,
 /// in the calling process (AD-1). Outputs are the view's (<method>OcuPilot.Screen.Tool.Base.View</method>);
 /// a view that throws answers an error status with <var>pFault</var> <code>""</code>.</p>

@@ -37,6 +37,7 @@
 
 import type { ApiService, JsonResult } from './api';
 import { CHANGE_ACTIONS, type ChangeAction, type ChangeBus } from './change-bus.ts';
+import { parseCitations, type Citation } from './citations.ts';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
 
@@ -297,6 +298,11 @@ export interface TurnEntry {
    * transcript is always shown that way, with Re-propose as the accommodation).
    */
   readonly proposals: readonly TurnProposal[];
+  /**
+   * The rows the final reply cites (Story 11.4), as the instance derived them; `[]` while the turn
+   * runs, when it cites none, and on an entry stored before citations existed.
+   */
+  readonly citations: readonly Citation[];
   /** True only for the turn this tab is currently running. Never true for a restored entry. */
   readonly live: boolean;
 }
@@ -639,6 +645,7 @@ function parseRestoredEntry(value: unknown): TurnEntry | null {
     steps: settledSteps(parseSteps(row['steps']), error),
     stepsDropped: numberAt(row, 'stepsDropped'),
     proposals: restoredProposals(row['proposals']),
+    citations: parseCitations(row['citations']),
     live: false,
   };
 }
@@ -1061,6 +1068,7 @@ export class TurnStore {
       steps: [],
       stepsDropped: 0,
       proposals: [],
+      citations: [],
       live: true,
     };
     this.notify();
@@ -1439,8 +1447,9 @@ export class TurnStore {
     // directive for a turn that has already ended.
     this.pendingNavigationValue = isTerminalState(state) ? null : parseNavigation(body['navigation'], steps);
     const proposals = parseProposals(body['proposals']);
+    const citations = parseCitations(body['citations']);
     if (this.liveEntryValue !== null) {
-      this.liveEntryValue = { ...this.liveEntryValue, state, steps, stepsDropped, reply, error, proposals };
+      this.liveEntryValue = { ...this.liveEntryValue, state, steps, stepsDropped, reply, error, proposals, citations };
       this.notify();
     }
     // Published after the store's own state is settled and its subscribers told, so a screen

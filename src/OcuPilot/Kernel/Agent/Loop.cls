@@ -102,7 +102,9 @@ ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %S
 /// <var>pStartedSeconds</var> the turn's start in
 /// <method>OcuPilot.Kernel.State.Turn.NowSeconds</method> units.</p>
 /// <p><var>pOutcome</var> comes back subscripted by <code>state</code>, <code>code</code>,
-/// <code>limit</code>, <code>reply</code> and <code>errorSeq</code>. An error status means the loop
+/// <code>limit</code>, <code>reply</code>, <code>citations</code> (the reply's citations as JSON
+/// text, <method>OcuPilot.Kernel.Agent.Citations.Cite</method>; <code>""</code> for a turn with no
+/// reply) and <code>errorSeq</code>. An error status means the loop
 /// itself failed; the outcome then reads <code>failed</code>.</p>
 /// <p><var>pContext</var> is the already-bounded screen-context payload JSON the turn request
 /// built, or <code>""</code> for a turn with none; with one, the messages this turn opens with
@@ -124,6 +126,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
     Set pOutcome("code") = ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE
     Set pOutcome("limit") = ""
     Set pOutcome("reply") = ""
+    Set pOutcome("citations") = ""
     Set pOutcome("errorSeq") = 0
     Set tLastSeq = 0
     ; The turn a tool call is being made on behalf of, stashed once for the length of the job
@@ -187,6 +190,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
         Set tInput = 0
         Set tOutput = 0
         Set tToolLog = []
+        Set tCandidates = []
         Kill tTools
         Set tAdvertiseSC = $ClassMethod(..DispatchClass(), "Advertise", .tTools)
         If $$$ISERR(tAdvertiseSC) {
@@ -240,9 +244,10 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
                 Set pOutcome("state") = ##class(OcuPilot.Kernel.State.Turn).#STATECOMPLETED
                 Set pOutcome("code") = ""
                 Set pOutcome("reply") = tResponse.Text
+                Set pOutcome("citations") = ##class(OcuPilot.Kernel.Agent.Citations).Cite(tResponse.Text, tCandidates).%ToJSON()
                 Quit
             }
-            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode, pContextRowCap, tContextRoute, tResponse.ContentJson)
+            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode, pContextRowCap, tContextRoute, tResponse.ContentJson, tCandidates)
             If $$$ISERR(tSC) Quit
             If tState '= "" {
                 Set pOutcome("state") = tState
@@ -255,6 +260,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
                 Set pOutcome("code") = ""
                 Set pOutcome("limit") = ##class(OcuPilot.Kernel.State.Turn).#LIMITITERATIONS
                 Set pOutcome("reply") = ..FallbackReply(tToolLog)
+                Set pOutcome("citations") = ##class(OcuPilot.Kernel.Agent.Citations).Cite(pOutcome("reply"), tCandidates).%ToJSON()
                 Quit
             }
         }
@@ -411,7 +417,10 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 /// when it parses to a non-empty array, that array is the echo, unchanged and in order, because a
 /// reply's reasoning blocks must go back to the provider as it sent them. Otherwise the echo is
 /// rebuilt from <var>pText</var> and <var>pToolUses</var>.</p>
-ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String, pContextRowCap As %Integer = 0, pRoute As %String = "", pContentJson As %String = "") As %Status
+/// <p><var>pCandidates</var>, when an array, gains the citation candidates of every non-error call
+/// to a descriptor-backed read tool answered here (<method>OcuPilot.Kernel.Agent.Citations.Candidates</method>),
+/// read from the bounded content the model was handed.</p>
+ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String, pContextRowCap As %Integer = 0, pRoute As %String = "", pContentJson As %String = "", pCandidates As %DynamicArray = "") As %Status
 {
     Set pState = ""
     Set pCode = ""
@@ -551,6 +560,9 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             ; dispatcher-failed finish above records none: there was no result.
             Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tName, $Select(tIsError: "error", 1: "ok"), tCode, pLimitsClass, tDetail.target, tDetail.arguments, tDetail.result, tDetail.reason, tDetail.failedPair, tDetail.argumentsTruncated, $Select($IsObject(tResult): tResult.%Get("content"), 1: ""))
             If $$$ISERR(tSC) Quit
+            If 'tIsError && $IsObject(tResult) && $IsObject(pCandidates) && ..CitesRows(tRunningResolved) {
+                Do ##class(OcuPilot.Kernel.Agent.Citations).Candidates(tRunningResolved.%Get("descriptor"), tResult.%Get("content"), pCandidates)
+            }
             Set tEntry = {}
             Do tEntry.%Set("name", tName, "string")
             Do tEntry.%Set("code", tCode, "string")
@@ -566,6 +578,18 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
     Set pMessages(pMessages, "role") = "user"
     Set pMessages(pMessages, "blocks") = tAnswered.%ToJSON()
     Quit $$$OK
+}
+
+/// <p>Whether the resolved tool <var>pTool</var> is one whose rows a citation may name: a read-kind,
+/// instance-fulfilled tool answered by the registry's descriptor-backed read class for a
+/// descriptor (Story 11.4).</p>
+ClassMethod CitesRows(pTool As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pTool) Quit 0
+    If (pTool.%Get("kind") '= "read") || (pTool.%Get("descriptor") = "") Quit 0
+    Set tRegistry = $ClassMethod(..DispatchClass(), "RegistryClass")
+    If $ClassMethod(tRegistry, "FulfilmentOf", pTool) '= "instance" Quit 0
+    Quit pTool.%Get("class") = $ClassMethod(tRegistry, "ReadToolClass")
 }
 
 /// <p>Answer one client-fulfilled tool call (Story 4.7, AD-11 rule 3): resolve and validate it

@@ -114,9 +114,9 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNa
             Set tCode = tUnavailable
         }
         Set tBegun = 0
-        Do ..AppendConvoEntry(tConvo, pKey, pMessage, tState, $Get(tOutcome("reply")), tCode, +$Get(tOutcome("errorSeq")), tLimits)
+        Do ..AppendConvoEntry(tConvo, pKey, pMessage, tState, $Get(tOutcome("reply")), tCode, +$Get(tOutcome("errorSeq")), tLimits, $Get(tOutcome("citations")))
         Set tConvo = ""
-        Do ..Finish(pKey, pUser, tState, tCode, $Get(tOutcome("limit")), $Get(tOutcome("reply")), +$Get(tOutcome("errorSeq")), tLimits)
+        Do ..Finish(pKey, pUser, tState, tCode, $Get(tOutcome("limit")), $Get(tOutcome("reply")), +$Get(tOutcome("errorSeq")), tLimits, $Get(tOutcome("citations")))
     } Catch ex {
         Do ..Log("the turn job failed", ex.AsStatus())
         ; Mirrors the normal-completion path above: append the conversation entry, then drop the
@@ -133,10 +133,11 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNa
 
 /// <p>Append turn <var>pKey</var>'s conversation entry onto <var>pConvo</var>: its final step
 /// projection (<method>OcuPilot.Kernel.State.Step.GuardedRows</method>), its dropped count and its
-/// own turn key, which is what a restored conversation reads a turn's proposals by. A
+/// own turn key, which is what a restored conversation reads a turn's proposals by, and the reply's
+/// citations <var>pCitations</var> (JSON text, <code>""</code> for none). A
 /// no-op when <var>pConvo</var> is not an open OREF. Failures are logged, never thrown -- the
 /// turn's own outcome does not depend on its conversation entry having been written.</p>
-ClassMethod AppendConvoEntry(pConvo As OcuPilot.Kernel.State.Convo, pKey As %String, pMessage As %String, pState As %String, pReply As %String, pCode As %String, pErrorSeq As %Integer, pLimitsClass As %String) [ Private ]
+ClassMethod AppendConvoEntry(pConvo As OcuPilot.Kernel.State.Convo, pKey As %String, pMessage As %String, pState As %String, pReply As %String, pCode As %String, pErrorSeq As %Integer, pLimitsClass As %String, pCitations As %String = "") [ Private ]
 {
     Try {
         If '$IsObject(pConvo) Quit
@@ -147,7 +148,7 @@ ClassMethod AppendConvoEntry(pConvo As OcuPilot.Kernel.State.Convo, pKey As %Str
         }
         Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedDropped(pKey, .tDropped)
         If $$$ISERR(tSC) Set tDropped = 0
-        Set tSC = ##class(OcuPilot.Kernel.State.Convo).AppendEntry(pConvo, pMessage, pState, pReply, pCode, pErrorSeq, tSteps, +tDropped, pLimitsClass, pKey)
+        Set tSC = ##class(OcuPilot.Kernel.State.Convo).AppendEntry(pConvo, pMessage, pState, pReply, pCode, pErrorSeq, tSteps, +tDropped, pLimitsClass, pKey, pCitations)
         If $$$ISERR(tSC) Do ..Log("the turn's conversation entry could not be appended", tSC)
     } Catch ex {
         Do ..Log("appending the turn's conversation entry failed", ex.AsStatus())
@@ -155,9 +156,9 @@ ClassMethod AppendConvoEntry(pConvo As OcuPilot.Kernel.State.Convo, pKey As %Str
 }
 
 /// <p><method>OcuPilot.Kernel.State.Turn.GuardedFinish</method>, with a failure logged.</p>
-ClassMethod Finish(pKey As %String, pUser As %String, pState As %String, pCode As %String, pLimitHit As %String, pReply As %String, pErrorSeq As %Integer, pLimitsClass As %String) [ Private ]
+ClassMethod Finish(pKey As %String, pUser As %String, pState As %String, pCode As %String, pLimitHit As %String, pReply As %String, pErrorSeq As %Integer, pLimitsClass As %String, pCitations As %String = "") [ Private ]
 {
-    Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(pKey, pUser, pState, pCode, pLimitHit, pReply, pErrorSeq, pLimitsClass)
+    Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(pKey, pUser, pState, pCode, pLimitHit, pReply, pErrorSeq, pLimitsClass, pCitations)
     If $$$ISERR(tSC) Do ..Log("the turn could not be finished", tSC)
 }
 
