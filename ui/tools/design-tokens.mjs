@@ -96,10 +96,12 @@ export const COLOR_ROLES = [
  * `toast-link` is DESIGN.md's `toast.link-color` / `link-color-dark` pair, the one
  * surface whose variant is reversed between modes (`MARGINAL_GUARDED`'s toast-link
  * guard names it); `server-flag-edge` is `server-flag-badge.edge-dark`, drawn in
- * dark mode only.
+ * dark mode only. `logo-tile` is the header lockup's tile, a fixed white the dark
+ * scope never re-points.
  */
 export const NON_ROLE_TOKENS = {
   'logo-gradient-stop': { hasDark: false },
+  'logo-tile': { hasDark: false },
   'elevation-1': { hasDark: true },
   'elevation-2': { hasDark: true },
   'elevation-3': { hasDark: true },
