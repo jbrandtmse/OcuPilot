@@ -39,8 +39,33 @@ instance. Sign in as `demo` with the password `ocupilot-demo`.
 - Everyone shares the one instance, and it resets to a clean state every hour, on the hour.
 - The `demo` account can administer all six areas. It cannot see or change the agent's own
   configuration, which holds the model key.
+- To see how OcuPilot treats a user with fewer privileges, sign in as `operator` with the password
+  `ocupilot-operator`: an operator who runs tasks and processes but holds no security privileges.
 
-<!-- SCREENSHOTS: the hero image and the gallery are added from the release build at the release cut. -->
+![The agent proposes enabling /csp/myapp: the proposal card beside the Web applications list shows the before-and-after comparison, the agent's rationale and expected impact, how to reverse the change, and the privilege it needs.](docs/images/02-proposal.png)
+
+<details>
+<summary><b>More screenshots</b></summary>
+
+**Asking about the screen you are on** - the agent reads the task schedule and history and explains
+what needs attention.
+
+![The agent explains three suspended tasks on the Task schedule screen.](docs/images/05-tasks-question.png)
+
+**Full editors** - here the SSL/TLS configuration editor, with its connection test.
+
+![The SSL/TLS configuration editor with its General, Verification, Credentials, Cryptographic settings and OCSP tabs.](docs/images/06-ssl-editor.png)
+
+**Fewer privileges, plainly explained** - signed in as `operator`, the agent declines a security
+change and says what would be needed; Home marks the screens this user may not open.
+
+![Signed in as operator, the agent explains it cannot enable /csp/myapp without %Admin_Secure:USE.](docs/images/08-operator-refusal.png)
+
+**Light and dark** - every screen in both themes.
+
+![Home in the dark theme, with suggested questions in the agent panel.](docs/images/07-dark-home.png)
+
+</details>
 
 ## Why OcuPilot
 
@@ -192,18 +217,25 @@ Uninstalling (`zpm "uninstall ocupilot"`) removes what the installer created.
 
 ## A change, from question to audit record
 
-<!-- WALKTHROUGH: a screenshot is added at each step from the release build at the release cut. -->
-
 1. **Open Web applications** and ask the agent: *"Enable /csp/myapp and give it the %Development
    resource."* If you ask from another screen, the agent opens this one first.
 2. **The proposal card appears.** It names the target, shows the fields that change with their
    current and new values - computed on the instance from a fresh read, not by the model - the
    privilege the change needs, and how to reverse it.
+
+   ![The proposal card for /csp/myapp beside the list.](docs/images/02-proposal.png)
+
 3. **Press Confirm.** OcuPilot re-checks that you still hold the privilege, that the target has not
    changed since the proposal was made, and that the change is not prohibited, then runs it as you.
-4. **The screen refreshes** and marks `/csp/myapp` as Changed.
+4. **The screen refreshes** and marks `/csp/myapp` as Changed; the panel shows the change done and
+   audit-marked, confirmed by you.
+
+   ![The Web applications list with /csp/myapp enabled and marked Changed, and the confirmed proposal in the panel.](docs/images/03-changed.png)
+
 5. **Open Logs → Audit database** and filter to agent writes: the change is there as an
    `OcuPilot/Security/AgentWrite` event.
+
+   ![The audit database filtered to agent-marked events, with the AgentWrite event by demo at the top.](docs/images/04-audit.png)
 
 A proposal expires after ten minutes and can be confirmed once. It is refused if, in between, the
 target changes, you are no longer the user who asked, or the conversation, the agent definition or
