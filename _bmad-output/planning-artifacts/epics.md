@@ -5674,6 +5674,8 @@ So that I can take its work into a process it is not allowed to bypass.
 - **When** the draft is taken
 - **Then** the proposal is resolved as a cancel rather than left live, and the panel says so.
 
+- DW-1081: DESIGN.md gives reply code blocks a copy icon button; Story 4.6 does not build one - build the copy control once, for reply code blocks too (ledger; routed by spec_gate 2026-09-26)
+
 ### Story 14.2: The tool governance policy
 
 As an OcuPilot administrator,
