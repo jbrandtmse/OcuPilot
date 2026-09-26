@@ -2,8 +2,8 @@
 /// AD-36's shell-chrome exception, AD-43).</p>
 /// <p><class>OcuPilot.Api.UiSystem</class> answers it as
 /// <code>GET /api/ocupilot/ui/system</code>. It is not a screen, a declared read or a tool, and
-/// it declares no auto-refresh: the panel settles with this one read and Home stays absent from
-/// AD-43's roster.</p>
+/// no refresh tick re-reads it: the panel settles with this one read, and on Home only the
+/// performance row refreshes (AD-43, Story 16.18).</p>
 /// <p><b>Each of the seven <method>Members</method> is read in the calling process behind its own
 /// <code>Try</code></b> (<method>Field</method>), so a refused or absent source degrades that one
 /// member to <code>""</code> and reaches the log, and the others still answer --

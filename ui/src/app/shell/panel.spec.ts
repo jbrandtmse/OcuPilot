@@ -4130,12 +4130,18 @@ describe('Story 11.1: Explain this screen', () => {
   });
 
   // Mutation (Rule 19): gate the button on `screen.read !== null` -> this and the form-page leg go red.
-  it('Home: the button shows, and the turn posts Home\'s route and namespace with no view', async () => {
+  // Story 16.18: Home's context carries its performance row, so it posts a view; with no row in
+  // its store, as here, the view carries none (AC4).
+  it('Home: the button shows, and the turn posts Home\'s route and namespace with a view of no rows', async () => {
     const { host, fixture, api } = await mountExplain({ url: '/?ns=HSCUSTOM' });
     expect(explainButton(host)).not.toBeNull();
     await clickExplain(host, fixture);
     const body = JSON.parse(turnPosts(api)[0]?.body ?? '{}') as { context?: unknown };
-    expect(body.context).toEqual({ route: '', namespace: 'HSCUSTOM' });
+    expect(body.context).toEqual({
+      route: '',
+      namespace: 'HSCUSTOM',
+      view: { rows: [], rowsAvailable: 0, sort: '', direction: '', filter: '' },
+    });
   });
 
   it('Form page: the button shows, and the turn posts identity only', async () => {

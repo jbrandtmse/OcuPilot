@@ -28,6 +28,7 @@ import { Session } from './app/core/session';
 import { ShellState } from './app/core/shell-state';
 import { SuggestedView } from './app/core/suggested-view';
 import { SystemInfo } from './app/core/system-info';
+import { PerformanceRow } from './app/core/performance';
 import { ThemeState } from './app/core/theme';
 import { TokenStore, readNavigationKind, readSessionStorage } from './app/core/token-store';
 import { TurnStore } from './app/core/turn';
@@ -210,9 +211,13 @@ const helpLinks = new HelpLinks({ api });
 
 // Home's System Information panel (Story 15.4). Built here like every other core service, and
 // scoped like every other call: its production member is per namespace, so it rides the shell's
-// own `?ns=` rather than naming one of its own (AD-44). It runs no timer -- Home is not on AD-43's
-// auto-refresh roster.
+// own `?ns=` rather than naming one of its own (AD-44). It runs no timer: on Home only the
+// performance row refreshes.
 const systemInfo = new SystemInfo({ api });
+
+// Home's performance row (Story 16.18). Its read is Home's refresh read, so the one refresh
+// framework times it (AD-43); it holds the last answer and the answers this Home view received.
+const performanceRow = new PerformanceRow({ api });
 
 // The one authority over Escape (DW-137). Built here like every other core service so the
 // command box, the account menu and the side bar all register with the same instance --
@@ -268,6 +273,7 @@ bootstrapApplication(App, {
     { provide: About, useValue: about },
     { provide: HelpLinks, useValue: helpLinks },
     { provide: SystemInfo, useValue: systemInfo },
+    { provide: PerformanceRow, useValue: performanceRow },
     { provide: SuggestedView, useValue: suggested },
   ],
 }).catch((err) => console.error(err));

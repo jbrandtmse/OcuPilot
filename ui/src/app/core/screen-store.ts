@@ -8,7 +8,8 @@
  *
  * **Two lifetimes.** `rate`, `sort`, `direction`, `filter`, `maxRows` and the column widths are what the user chose,
  * and survive leaving and returning to the screen -- and a sign-out (Story 15.5, AD-50): the rate
- * and the others are two rows on the instance, keyed by this screen's route, adopted on the
+ * and the others are two rows on the instance, keyed by this screen's route (Home's rate by
+ * `HOME_REFRESH_NAME`), adopted on the
  * first answered read of `AccountPreferences`. `data`, `truncated`, `banner`, `lastUpdate`, `selection`, `active`,
  * `changed`, `refusal` and
  * `scroll` are what the instance last said and where the user last was, so they live for as long
@@ -29,7 +30,7 @@
  * is where the refresh framework's own pins live.
  */
 
-import { AccountPreferences, REFRESH_KIND, VIEW_KIND } from './account-preferences.ts';
+import { AccountPreferences, HOME_REFRESH_NAME, REFRESH_KIND, VIEW_KIND } from './account-preferences.ts';
 import { screenForDescriptor } from './navigation.ts';
 import { type ReadBack, readBackLine } from './read-back.ts';
 import { isColumnWidth } from './table-model.ts';
@@ -43,8 +44,17 @@ export type ScreenRow = unknown;
 /** The default cap every read is bounded by (AD-36), until a screen's own control moves it. */
 export const DEFAULT_MAX_ROWS = 1000;
 
-/** Off, which is every screen's default refresh setting (EXPERIENCE.md "Auto-refresh off"). */
+/**
+ * Off, the published default refresh setting (EXPERIENCE.md "Auto-refresh off"). A screen may
+ * declare another default (`refreshDefault`, AD-43 as amended); only Home does.
+ */
 export const RATE_OFF = 0;
+
+/**
+ * Home's descriptor. Its route is the empty string, so its rate is remembered under
+ * `HOME_REFRESH_NAME` instead (Story 16.18); every other screen with no route remembers nothing.
+ */
+export const HOME_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.Home';
 
 /**
  * What a screen remembers of its table's view: its sort, direction, filter, max rows and the
@@ -82,11 +92,22 @@ export interface ScreenStoreOptions {
   readonly rates: readonly number[];
   /** Where the rate and the view choices are remembered (AD-50). */
   readonly account: AccountPreferences;
+  /**
+   * The name the rate is remembered under: the route, except Home's `HOME_REFRESH_NAME`. Defaults
+   * to `route`, and `''` remembers no rate.
+   */
+  readonly rateKey?: string;
+  /**
+   * The rate the store starts at while no rate is remembered: the descriptor's `refreshDefault`
+   * when it is one of `rates`, and off otherwise.
+   */
+  readonly defaultRate?: number;
 }
 
 export class ScreenStore {
   private readonly descriptor: string;
   private readonly route: string;
+  private readonly rateKey: string;
   private readonly permitted: readonly number[];
   private readonly account: AccountPreferences;
 
@@ -120,8 +141,11 @@ export class ScreenStore {
   constructor(options: ScreenStoreOptions) {
     this.descriptor = options.descriptor;
     this.route = options.route;
+    this.rateKey = options.rateKey ?? options.route;
     this.permitted = options.rates;
     this.account = options.account;
+    const defaultRate = options.defaultRate ?? RATE_OFF;
+    this.rateSeconds = this.permitted.includes(defaultRate) ? defaultRate : RATE_OFF;
     this.stopAccount = this.account.subscribe(() => this.adoptRemembered());
     this.adoptRemembered();
   }
@@ -129,25 +153,28 @@ export class ScreenStore {
   /**
    * Take the instance's remembered rate and view, once, on the first answer that carries them.
    *
-   * Until the read settles the published defaults render -- off, and a cap of `DEFAULT_MAX_ROWS`
-   * -- and a read that failed keeps them rather than clearing anything. A rate the descriptor no
-   * longer permits falls back to off, which is the published default and a state the chip can
-   * name; a view member of the wrong shape falls back field by field.
+   * Until the read settles the defaults render -- the screen's default rate (off, except Home's),
+   * and a cap of `DEFAULT_MAX_ROWS` -- and a read that failed keeps them rather than clearing
+   * anything. A remembered off is adopted like any rate, so a person who turned Home's refresh off
+   * finds it off; a rate the descriptor no longer permits is ignored and the default stands. A view
+   * member of the wrong shape falls back field by field.
    */
   private adoptRemembered(): void {
     if (!this.account.loaded()) {
       this.adopted = false;
       return;
     }
-    if (this.adopted || this.route === '') return;
+    if (this.adopted || (this.route === '' && this.rateKey === '')) return;
     this.adopted = true;
     let moved = false;
-    const rate = Number(this.account.refreshRates().get(this.route) ?? '');
-    if (Number.isFinite(rate) && this.permitted.includes(rate) && rate !== this.rateSeconds) {
+    const stored = this.rateKey === '' ? undefined : this.account.refreshRates().get(this.rateKey);
+    const rate = stored === undefined ? NaN : Number(stored);
+    const permitted = rate === RATE_OFF || this.permitted.includes(rate);
+    if (Number.isFinite(rate) && permitted && rate !== this.rateSeconds) {
       this.rateSeconds = rate;
       moved = true;
     }
-    const view = this.storedView();
+    const view = this.route === '' ? null : this.storedView();
     if (view !== null) {
       this.sortBy = view.sort;
       this.sortDirection = view.direction === 'asc' || view.direction === 'desc' ? view.direction : '';
@@ -494,7 +521,7 @@ export class ScreenStore {
   setRate(seconds: number): boolean {
     if (seconds !== RATE_OFF && !this.permitted.includes(seconds)) return false;
     this.rateSeconds = seconds;
-    if (this.route !== '') void this.account.setValue(REFRESH_KIND, this.route, String(seconds));
+    if (this.rateKey !== '') void this.account.setValue(REFRESH_KIND, this.rateKey, String(seconds));
     this.notify();
     return true;
   }
@@ -568,14 +595,28 @@ export class ScreenStores {
    * `route` is what the store's remembered rate and view are keyed by (Story 15.5). A caller
    * holding the screen declaration passes its own, which is what lets a declaration the mirror
    * does not carry -- a test's, a fixture's -- be remembered too; every other caller lets it
-   * resolve from the mirror, so no page has to hold both identities. A descriptor with neither,
-   * and Home, whose route is the empty string, remember nothing.
+   * resolve from the mirror, so no page has to hold both identities. A descriptor with neither
+   * remembers nothing. Home, whose route is the empty string, remembers its rate alone, under
+   * `HOME_REFRESH_NAME` (Story 16.18).
+   *
+   * `defaultRate` is the rate the store starts at while none is remembered; like the route, it
+   * resolves from the mirror's `refreshDefault` when the caller does not pass one, so whichever
+   * caller asks first creates the same store.
    */
-  for(descriptor: string, rates: readonly number[], route?: string): ScreenStore {
+  for(descriptor: string, rates: readonly number[], route?: string, defaultRate?: number): ScreenStore {
     const held = this.stores.get(descriptor);
     if (held !== undefined) return held;
-    const keyedBy = route ?? screenForDescriptor(descriptor)?.route ?? '';
-    const store = new ScreenStore({ descriptor, route: keyedBy, rates, account: this.account });
+    const declared = screenForDescriptor(descriptor);
+    const keyedBy = route ?? declared?.route ?? '';
+    const rateKey = descriptor === HOME_DESCRIPTOR ? HOME_REFRESH_NAME : keyedBy;
+    const store = new ScreenStore({
+      descriptor,
+      route: keyedBy,
+      rateKey,
+      rates,
+      account: this.account,
+      defaultRate: defaultRate ?? declared?.refreshDefault ?? RATE_OFF,
+    });
     this.stores.set(descriptor, store);
     return store;
   }

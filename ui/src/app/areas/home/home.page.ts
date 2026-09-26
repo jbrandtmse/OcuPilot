@@ -17,6 +17,10 @@ import {
 } from '../../core/account-preferences';
 import { About } from '../../core/about';
 import { InstanceService, serverFlagKind } from '../../core/instance';
+import { PerformanceRow, type PerformancePoint, type PerformanceValues } from '../../core/performance';
+import { RefreshService } from '../../core/refresh';
+import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { HOME_DESCRIPTOR } from '../../core/screen-store';
 import {
   SYSTEM_INFO_FIELDS,
   SystemInfo,
@@ -28,6 +32,7 @@ import {
   firstAllowedScreen,
   formatRequires,
   isListedScreen,
+  screenForDescriptor,
   screenForRoute,
   withQuery,
 } from '../../core/navigation';
@@ -38,6 +43,7 @@ import { ShellState } from '../../core/shell-state';
 import { STRINGS, stringFor } from '../../core/strings';
 import { AreaIcon } from '../../shell/rail-icon';
 import { ServerFlag } from '../../shell/server-flag';
+import { PerformanceRowComponent } from './performance-row';
 
 /** One screen name inside a tile's caption; every part but the first carries a separator. */
 interface CaptionPart {
@@ -230,6 +236,12 @@ interface LineSegment {
  * offers a remove or a Clear: they are fixed rosters, not stored lists, so there is nothing to
  * announce and neither uses the polite region below.
  *
+ * **The performance row comes first** (Story 16.18; EXPERIENCE.md "the performance row first"):
+ * five instance metrics and the ten-minute Global references line, drawn by `PerformanceRowComponent`
+ * once the instance has answered and never for a caller it refuses. It is a row of its own above
+ * the blocks rather than one of them, so the blocks wrap as they did. Home binds the shared refresh
+ * framework for it and nothing else on Home refreshes.
+ *
  * **System information is the fifth block** (Story 15.4, FR-73; EXPERIENCE.md
  * "Home - System Information panel - favorites - recents"): the same
  * `role="list"` shape, one labelled row per member of its own caller-own read. Every state word
@@ -258,8 +270,11 @@ interface LineSegment {
 @Component({
   selector: 'app-home-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AreaIcon, ServerFlag],
+  imports: [AreaIcon, ServerFlag, PerformanceRowComponent],
   template: `<section class="ocu-home">
+    @if (performanceValues) {
+      <app-performance-row [values]="performanceValues" [points]="performancePoints" />
+    }
     <div class="ocu-home-remembered">
       @for (block of blocks; track block.key) {
         <section class="ocu-home-block">
@@ -428,6 +443,9 @@ export class HomePage {
   private readonly preferences = inject(AccountPreferences);
   private readonly about = inject(About);
   private readonly systemInfo = inject(SystemInfo);
+  private readonly performance = inject(PerformanceRow);
+  private readonly refresh = inject(RefreshService);
+  private readonly actions = inject(ScreenActions);
 
   protected readonly STRINGS = STRINGS;
 
@@ -451,6 +469,9 @@ export class HomePage {
 
   /** Bumped whenever the System information read settles, so the panel follows it. */
   private readonly systemGeneration = signal(0);
+
+  /** Bumped whenever the performance row's store moves, so the row follows it. */
+  private readonly performanceGeneration = signal(0);
 
   /** The polite region's text: empty until a removal or a clear has changed the store. */
   private readonly announcementValue = signal('');
@@ -671,9 +692,9 @@ export class HomePage {
     );
     void this.about.load();
     // The System Information panel's own read (Story 15.4). It is chrome, not a declared read,
-    // and it runs no timer: Home is not on AD-43's auto-refresh roster, so the panel settles with
-    // this one call. Read here for the reason the About read is -- the panel is on Home, and a
-    // tab that never opens Home never spends the request.
+    // and no tick re-reads it: on Home only the performance row refreshes (AD-43, Story 16.18), so
+    // the panel settles with this one call. Read here for the reason the About read is -- the
+    // panel is on Home, and a tab that never opens Home never spends the request.
     const stopSystem = this.systemInfo.subscribe(() =>
       this.systemGeneration.set(this.systemGeneration() + 1)
     );
@@ -685,6 +706,22 @@ export class HomePage {
     // AD-44's "switching re-fetches rather than re-routing" on the channel `onScopeChange`
     // exists to carry -- an event, not a timer, so AD-43's closed roster is unaffected.
     const stopSystemScope = onScopeChange(this.scope, () => void this.systemInfo.load());
+    // The performance row (Story 16.18). Home is on AD-43's roster, so the shared framework owns
+    // its timer, its remembered rate and its Refresh action; the row's read is what a tick calls,
+    // and the one row it answers is Home's store row, which is what a turn's screen context sends
+    // (AD-24). Home starts at its declared default rate, every 10 s, until a remembered one lands.
+    const stopPerformance = this.performance.subscribe(() =>
+      this.performanceGeneration.set(this.performanceGeneration() + 1)
+    );
+    const home = screenForDescriptor(HOME_DESCRIPTOR);
+    let stopRefreshAction = (): void => {};
+    if (home !== null) {
+      this.refresh.bind(home, this.performance.read);
+      void this.refresh.readNow();
+      stopRefreshAction = this.actions.register(home.descriptor, REFRESH_ACTION_ID, () => {
+        void this.refresh.readNow();
+      });
+    }
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopInstance();
@@ -694,6 +731,11 @@ export class HomePage {
       stopAbout();
       stopSystem();
       stopSystemScope();
+      stopPerformance();
+      stopRefreshAction();
+      // The line plots only what this Home view received, so leaving Home clears it.
+      this.performance.clearHistory();
+      if (home !== null && this.refresh.descriptor() === home.descriptor) this.refresh.unbind();
     });
   }
 
@@ -721,6 +763,21 @@ export class HomePage {
 
   protected get systemRows(): readonly SystemRow[] {
     return this.resolvedSystemRows();
+  }
+
+  /**
+   * The performance row's last answer, or `null` -- before the first one, and after a 403, when
+   * the row is not drawn at all: no heading, no value and no zero.
+   */
+  protected get performanceValues(): PerformanceValues | null {
+    this.performanceGeneration();
+    return this.performance.values();
+  }
+
+  /** The answers this Home view received, which the row's line plots. */
+  protected get performancePoints(): readonly PerformancePoint[] {
+    this.performanceGeneration();
+    return this.performance.points();
   }
 
   /**

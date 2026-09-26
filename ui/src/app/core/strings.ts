@@ -1954,7 +1954,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:616 */
+  /** EXPERIENCE.md:617 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2899,6 +2899,18 @@ export const STRINGS = {
   readBackUnreadable: 'Read back: could not be read',
   /** EXPERIENCE.md:575 */
   readBackMore: ' and <n> more',
+  /** EXPERIENCE.md:576 */
+  performanceHeading: 'Performance',
+  /** EXPERIENCE.md:576 */
+  performanceDiskReads: 'Disk reads',
+  /** EXPERIENCE.md:576 */
+  performanceDiskWrites: 'Disk writes',
+  /** EXPERIENCE.md:576 */
+  performanceRateUnit: '/s',
+  /** EXPERIENCE.md:576 */
+  performanceCacheUnit: 'refs per block read or write',
+  /** EXPERIENCE.md:576 */
+  performanceSparklineLabel: 'Global references per second, last ten minutes',
 
 } as const;
 

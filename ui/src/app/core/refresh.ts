@@ -186,6 +186,15 @@ export class RefreshService {
 
   private stopBus: (() => void) | null = null;
 
+  /** Released on unbind: the bound store's own notifications, read for a rate it adopted. */
+  private stopStore: (() => void) | null = null;
+
+  /** The rate the last transition armed for, so a rate the store adopts later re-arms. */
+  private armedRate = RATE_OFF;
+
+  /** Set while `setRate` writes the store, which transitions on its own. */
+  private settingRate = false;
+
   private readonly listeners = new Set<() => void>();
 
   constructor(options: RefreshOptions) {
@@ -235,11 +244,13 @@ export class RefreshService {
       refreshes: screen.refreshes,
       screen,
       read,
-      store: this.stores.for(screen.descriptor, screen.refreshRates, screen.route),
+      store: this.stores.for(screen.descriptor, screen.refreshRates, screen.route, screen.refreshDefault),
     };
     this.lastFault = null;
     this.loadedOnce = false;
     this.stopBus = this.bus.subscribe((event) => this.onBusEvent(event));
+    const store = this.bound.store;
+    this.stopStore = store.subscribe(() => this.onStoreChanged(store));
     this.transition();
     this.notify();
   }
@@ -248,6 +259,8 @@ export class RefreshService {
   unbind(): void {
     this.stopBus?.();
     this.stopBus = null;
+    this.stopStore?.();
+    this.stopStore = null;
     this.bound = null;
     this.liveProposals.clear();
     this.suspended = false;
@@ -431,7 +444,14 @@ export class RefreshService {
   setRate(seconds: number): boolean {
     const bound = this.bound;
     if (bound === null) return false;
-    if (!bound.store.setRate(seconds)) return false;
+    this.settingRate = true;
+    let accepted = false;
+    try {
+      accepted = bound.store.setRate(seconds);
+    } finally {
+      this.settingRate = false;
+    }
+    if (!accepted) return false;
     this.transition();
     this.notify();
     return true;
@@ -461,6 +481,7 @@ export class RefreshService {
   private transition(): void {
     this.generation += 1;
     this.arm = 'none';
+    this.armedRate = this.rate();
     this.sweepExpired();
     const generation = this.generation;
 
@@ -592,6 +613,19 @@ export class RefreshService {
     this.transition();
     this.notify();
     if (!this.loadedOnce || (this.arm === 'none' && !this.paused())) void this.readNow();
+  }
+
+  /**
+   * The bound store notified. Only a rate it moved on its own matters here -- the remembered rate
+   * the instance answered after the bind (`ScreenStore.adoptRemembered`) -- and that re-arms, so
+   * the timer and the chip follow the adopted rate rather than the default the bind armed for. A
+   * tick's own write, and `setRate`, which transitions itself, change nothing here.
+   */
+  private onStoreChanged(store: ScreenStore): void {
+    if (this.settingRate || this.bound?.store !== store) return;
+    if (store.rate() === this.armedRate) return;
+    this.transition();
+    this.notify();
   }
 
   // --- The bus ----------------------------------------------------------------------------------

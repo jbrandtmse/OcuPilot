@@ -57,6 +57,7 @@ import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { SuggestedView } from './core/suggested-view';
 import { SystemInfo } from './core/system-info';
+import { PerformanceRow } from './core/performance';
 import { ThemeState } from './core/theme';
 import { AgentNavigator } from './shell/agent-navigator';
 import { RecentsRecorder } from './shell/recents-recorder';
@@ -228,6 +229,7 @@ export class App {
   private readonly about = inject(About);
   private readonly helpLinks = inject(HelpLinks);
   private readonly systemInfo = inject(SystemInfo);
+  private readonly performanceRow = inject(PerformanceRow);
   private readonly suggested = inject(SuggestedView);
   private readonly scope = inject(ScopeService);
   private readonly router = inject(Router);
@@ -630,6 +632,10 @@ export class App {
       // (Story 15.4, AD-8), so the next sign-in in this tab asks again rather than showing a
       // departed principal's answer.
       this.systemInfo.reset();
+      // The eighteenth: Home's performance row and its line, what the instance answered this
+      // caller (Story 16.18, AD-8). The next sign-in reads them again, and a caller the instance
+      // refuses sees no row rather than the departed principal's values.
+      this.performanceRow.reset();
       return;
     }
     void this.instance.verify();

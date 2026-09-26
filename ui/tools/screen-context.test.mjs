@@ -324,3 +324,31 @@ test('an empty or whitespace-only draft never triggers', () => {
   assert.equal(looksLikeSecret(''), false);
   assert.equal(looksLikeSecret('   '), false);
 });
+
+// --- Story 16.18: Home's performance row -----------------------------------------------------
+//
+// Mutation (Rule 19): empty Home's `context.fields` in its descriptor and regenerate the mirror ->
+// the first case goes red with no view.
+
+const { SCREENS } = await import(corePath('screens.generated.ts'));
+const SHIPPED_HOME = SCREENS.find((entry) => entry.descriptor === 'OcuPilot.Screen.Descriptor.Home');
+const PERFORMANCE = {
+  cacheEfficiency: 8745.8,
+  globalReferencesPerSecond: 47089,
+  globalUpdatesPerSecond: 1203,
+  diskReadsPerSecond: 12,
+  diskWritesPerSecond: 34,
+};
+
+test('Story 16.18 AC4: Home posts its one store row, the five performance values, as its view', () => {
+  const payload = assembleScreenContext(baseInputs({ descriptor: SHIPPED_HOME, rows: [PERFORMANCE] }));
+  assert.equal(payload.route, '');
+  assert.deepEqual(payload.view?.rows, [PERFORMANCE]);
+  assert.equal(payload.view?.rowsAvailable, 1);
+  assert.equal(contextRowsSent(baseInputs({ descriptor: SHIPPED_HOME, rows: [PERFORMANCE] })), 1);
+});
+
+test('Story 16.18 AC4: with the row absent Home posts a view of no rows', () => {
+  const payload = assembleScreenContext(baseInputs({ descriptor: SHIPPED_HOME, rows: [] }));
+  assert.deepEqual(payload.view?.rows, []);
+});

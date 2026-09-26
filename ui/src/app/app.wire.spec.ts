@@ -38,14 +38,16 @@ import { SystemInfo } from './core/system-info';
 import { HelpLinks } from './core/help';
 import { stubAbout, stubHelpLinks } from './testing/about';
 import { stubSystemInfo } from './testing/system-info';
+import { PerformanceRow } from './core/performance';
+import { stubPerformanceRow } from './testing/performance';
 
 /**
  * The one crossing left after `app.spec.ts` and the two bar specs: `app.spec.ts` mounts the real
  * `App` shell but over an empty route table and a `StubNavigation` that resolves no screen, so
  * nothing ever renders inside `router-outlet`; `command-bar.spec.ts` and `status-bar.spec.ts`
  * each mount their own component alone, with its own `RefreshService`. None of the three has
- * Home, which does not refresh, on screen at the same time as the framework's two
- * consumers sharing the ONE instance `src/main.ts` actually builds.
+ * Home on screen at the same time as the framework's two consumers sharing the ONE instance
+ * `src/main.ts` actually builds.
  *
  * This file wires the real `App`, routed through the real `NavigationService` and the real
  * generated mirror (`screens.generated.ts` via `app.routes.ts`'s `routes`) to the real
@@ -55,11 +57,10 @@ import { stubSystemInfo } from './testing/system-info';
  * `fault-banner.wire.spec.ts` uses), because a signed-in verdict needs a principal this suite
  * must not mint; the mirror, the route table and every component above are the shipped ones.
  *
- * **What this proves that nothing else does.** Home's own descriptor declares
- * `refreshes: false` (EXPERIENCE.md "**Auto-refresh controls.** On Processes"), so the first block is the residual risk this
- * story's Auto Run Result names -- "nothing calls `bind()` in the shipped shell" -- checked
- * against the real screen rather than a fixture built to refresh: the real chip and the real
- * stamp both render nothing around the real Home tiles. The second block binds a screen
+ * **What this proves that nothing else does.** Home's own descriptor declares that it refreshes,
+ * starting at every 10 s (EXPERIENCE.md "**Auto-refresh controls.** On Processes", Story 16.18), so
+ * the first block checks the real Home binding the real framework: the real chip reads Home's
+ * default rate and the real stamp appears once the performance row's read lands. The second block binds a screen
  * directly on that same shared instance, the way Story 2.3's first descriptor-declared read
  * will, and checks that AD-43's own words -- "one shared timer... serve[s]" -- hold as a fact
  * about two mounted, real chrome components agreeing with each other and with the routed
@@ -218,7 +219,7 @@ function memoryStorage() {
   };
 }
 
-/** A screen the framework binds directly on the shared instance -- Home never does (below). */
+/** A screen the framework binds directly on the shared instance, in place of Home's own binding. */
 const REFRESHING: ScreenDeclaration = screenDeclaration({
   descriptor: 'OcuPilot.Screen.Descriptor.Probe',
   route: 'os-management/processes',
@@ -267,6 +268,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
       providers: [
         { provide: About, useValue: stubAbout() },
         { provide: SystemInfo, useValue: stubSystemInfo() },
+        { provide: PerformanceRow, useValue: stubPerformanceRow() },
         { provide: HelpLinks, useValue: stubHelpLinks() },
         { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter(routes),
@@ -304,7 +306,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
     fixture.detectChanges();
   });
 
-  it('renders the real Home screen through the real router and mirror, with neither chip nor stamp', () => {
+  it('renders the real Home screen through the real router and mirror, bound at every 10 s with its stamp once the row lands', async () => {
     const root: HTMLElement = fixture.nativeElement;
 
     // The routed content is Home itself, reached through ScreenOutlet and the shipped mirror --
@@ -313,12 +315,13 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
     expect(home).not.toBeNull();
     expect(home?.querySelector('.ocu-area-tile-grid')).not.toBeNull();
 
-    // Mutation (Rule 19): change `RefreshService.refreshes()` to `return true` unconditionally
-    // (dropping the `this.bound?.refreshes === true` read) -> this goes red with a live
-    // "Auto-refresh: off" chip drawn over Home, which declares no such control and has nothing
-    // bound to serve it. Demonstrated 2026-09-12: both assertions below failed, reverted clean.
-    expect(chip()).toBeNull();
-    expect(stamp()).toBeNull();
+    // Story 16.18: Home binds the one framework for its performance row, at its declared default.
+    expect(refresh.descriptor()).toBe('OcuPilot.Screen.Descriptor.Home');
+    expect(chip()?.textContent?.trim()).toBe('Auto-refresh: every 10 s');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+    expect(stamp()?.textContent).toContain('Last update');
+    expect(root.querySelector('app-performance-row')).not.toBeNull();
   });
 
   it(

@@ -524,4 +524,33 @@ Method TestAClearEmptiesAValueKindToo()
     Do $$$AssertEquals(tAnswer.shell.%Size(), 0, "leaving nothing")
 }
 
+/// <p><b>Home's rate is remembered under <code>home</code>, and only as a rate</b> (Story 16.18,
+/// AD-43): Home's route is empty, so the refresh kind alone takes
+/// <parameter>OcuPilot.Kernel.State.Pref.HOMEREFRESHNAME</parameter> in its place. A favorite or a
+/// view keyed by that name is still refused as a route no built screen declares.</p>
+/// <p>Mutation: drop the <method>OcuPilot.Api.Preferences.IsHomeRefresh</method> test from
+/// <method>OcuPilot.Api.Preferences.HandleUpdate</method> -- the rate is refused 422 and the first
+/// leg goes red; widen it to every kind -- the favorite answers 200 and the second leg goes red.</p>
+Method TestHomesRateIsRememberedUnderItsOwnName()
+{
+    Set tHome = ##class(OcuPilot.Kernel.State.Pref).#HOMEREFRESHNAME
+    Set tRate = ##class(OcuPilot.Kernel.State.Pref).#KINDREFRESH
+    Set tSC = ..Call("POST", ..ValuePayload(tRate, "route", tHome, "0"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the set completes")
+    Do $$$AssertEquals(tStatus, 200, "Home's rate is accepted: " _ tBody)
+    Do $$$AssertTrue($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", "as application/json")
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(..ValueFor(tAnswer, "refreshRates", "route", tHome), "0", "and answered under its own name")
+
+    For tCase = $ListBuild(..Payload("favorite", "add", tHome), "a favorite"), $ListBuild(..ValuePayload(##class(OcuPilot.Kernel.State.Pref).#KINDSCREENVIEW, "route", tHome, "{}"), "a view") {
+        Set tSC = ..Call("POST", $List(tCase, 1), .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 2) _ ": the request completes")
+        Do $$$AssertEquals(tStatus, 422, $List(tCase, 2) _ " named home is refused: " _ tBody)
+        Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#PREFERENCESROUTE, $List(tCase, 2) _ ": as a route no built screen declares")
+    }
+    Do $$$AssertEquals(..Count("favorites"), 0, "and no favorite was written")
+    Do $$$AssertEquals(..Count("views"), 0, "nor a view")
+}
+
 }

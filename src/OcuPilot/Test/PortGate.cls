@@ -25,7 +25,7 @@ Parameter PORTPACKAGE = "OcuPilot.Port.";
 /// vendor's own resource check declares <parameter>VENDORGATE</parameter> instead.</p>
 /// <p><b>A class in the package and not on this roster fails.</b> That is the point: the roster is
 /// what a new port has to be added to, and adding it is what forces a gate to be named.</p>
-Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>";
+Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>";
 
 /// <p>The roster value for a port whose gate is the vendor's own <code>ResourcesOR()</code> check,
 /// which AD-29 fixes as a lower bound with the remedy at the screen descriptor's declared pair
@@ -47,6 +47,7 @@ Method OnAfterOneTest() As %Status
     Do ##class(OcuPilot.Test.LogSourceFixture).SetGateClass("")
     Do ##class(OcuPilot.Test.ErrorLogFixture).SetGateClass("")
     Do ##class(OcuPilot.Test.MgmntPortFixture).SetGateClass("")
+    Do ##class(OcuPilot.Test.MonitorPortFixture).Clear()
     Do ##class(OcuPilot.Test.ProviderGate).Allow()
     Quit $$$OK
 }
@@ -136,8 +137,9 @@ Method TestAMalformedPairSpecFailsClosed()
 /// <p><b>AC6</b> -- every port's outbound entry refuses <code>AUTH.NOPRIVILEGE</code> when its
 /// declared gate is not held, before the call it guards is made. Driven, not read.</p>
 /// <p>Mutation: remove <method>OcuPilot.Port.ProviderPort.Invoke</method>'s
-/// <code>GateAnyOfForUser</code> call, or <method>OcuPilot.Port.MgmntPort.Invoke</method>'s
-/// <code>EvaluateRequired</code> call -> this goes red.</p>
+/// <code>GateAnyOfForUser</code> call, or <method>OcuPilot.Port.MgmntPort.Invoke</method>'s or
+/// <method>OcuPilot.Port.MonitorPort.Performance</method>'s <code>EvaluateRequired</code> call -> this
+/// goes red.</p>
 Method TestEveryPortEvaluatesItsDeclaredGate()
 {
     Set tDenialCode = ##class(OcuPilot.Kernel.Denial).Code()
@@ -166,6 +168,12 @@ Method TestEveryPortEvaluatesItsDeclaredGate()
     Set tSC = ##class(OcuPilot.Test.MgmntPortFixture).Invoke("Applications", "LIST", .tQuery, "", .tRows, .tHttp3, .tFault3, .tDocument)
     Do $$$AssertStatusNotOK(tSC, "MgmntPort.Invoke refuses a caller holding none of its pairs")
     Do $$$AssertEquals(tHttp3 _ "|" _ $Select($IsObject(tFault3): tFault3.%Get("code"), 1: ""), ##class(OcuPilot.Kernel.Denial).#STATUS _ "|" _ tDenialCode, "with AUTH.NOPRIVILEGE")
+
+    ; MonitorPort: the same declared-set gate, and the collection is never taken.
+    Do ##class(OcuPilot.Test.MonitorPortFixture).SetGateClass(..#GATE)
+    Set tSC = ##class(OcuPilot.Test.MonitorPortFixture).Performance(.tValues6, .tHttp6, .tFault6)
+    Do $$$AssertStatusNotOK(tSC, "MonitorPort.Performance refuses a caller holding none of its pairs")
+    Do $$$AssertEquals(tHttp6 _ "|" _ $Select($IsObject(tFault6): tFault6.%Get("code"), 1: "") _ "|" _ ##class(OcuPilot.Test.MonitorPortFixture).SourceCalls(), ##class(OcuPilot.Kernel.Denial).#STATUS _ "|" _ tDenialCode _ "|0", "with AUTH.NOPRIVILEGE, before the sensors are collected")
 
     ; LogSourcePort, both entries, through the two fixtures that switch its gate.
     Do ##class(OcuPilot.Test.LogSourceFixture).SetGateClass(..#GATE)

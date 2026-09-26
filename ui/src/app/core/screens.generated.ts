@@ -345,6 +345,8 @@ export interface ScreenDeclaration {
   readonly refreshes: boolean;
   /** The rates, in whole seconds ascending, the chip may set. Empty unless `refreshes`. */
   readonly refreshRates: readonly number[];
+  /** The rate the framework starts at when none is remembered: one of `refreshRates`, or `0`, off. */
+  readonly refreshDefault: number;
   readonly privileges: readonly PrivilegePair[];
   readonly entityType: string;
   /** The string key of the singular noun for `entityType`, or `''` (AD-5, AD-14). */
@@ -684,6 +686,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "agent.definition",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -837,6 +840,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "agentDefinitionListEmptyAgent"
     },
     "toolIdentifier": "agent.definitions",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -910,6 +914,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "agent.switches",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -1195,6 +1200,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "logs.audit",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -1352,6 +1358,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "auditSystemEventListEmptyAgent"
     },
     "toolIdentifier": "security.auditsystemevents",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -1512,6 +1519,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "auditUserEventListEmptyAgent"
     },
     "toolIdentifier": "security.audituserevents",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -1622,6 +1630,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "paging": "cap"
     },
     "toolIdentifier": "security.auditing",
+    "refreshDefault": 0,
     "table": null,
     "banner": null,
     "tab": null,
@@ -1881,6 +1890,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.databasedetails",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2041,6 +2051,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.databasefreespace",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2187,6 +2198,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.databases",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2344,6 +2356,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.databasevolumes",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2414,6 +2427,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "osmgmt.deviceform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -2564,6 +2578,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "deviceListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.devices",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2579,8 +2594,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "sideBarPosition": 1,
     "archetype": "home",
     "built": true,
-    "refreshes": false,
-    "refreshRates": [],
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "refreshDefault": 10,
     "privileges": [],
     "entityType": "",
     "secondaryEntityTypes": [],
@@ -2591,7 +2612,13 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "context": {
-      "fields": [],
+      "fields": [
+        "cacheEfficiency",
+        "globalReferencesPerSecond",
+        "globalUpdatesPerSecond",
+        "diskReadsPerSecond",
+        "diskWritesPerSecond"
+      ],
       "secretFields": []
     },
     "primaryAction": {
@@ -2698,6 +2725,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": "/csp/sys/sec/%25CSP.UI.Portal.LDAPs.zen"
     },
     "toolIdentifier": "security.ldapform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -2820,6 +2848,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "security.ldap",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2988,6 +3017,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "field": "Pid"
     },
     "toolIdentifier": "osmgmt.locks",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "secretArguments": [],
@@ -3105,6 +3135,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "logs.alerts",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -3193,6 +3224,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "logs.applicationerrors",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -3312,6 +3344,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "logs.messages",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -3387,6 +3420,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.oauthclientform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -3558,6 +3592,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabClients"
     },
     "toolIdentifier": "security.oauthclients",
+    "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
     "fingerprintExcludes": [],
@@ -3632,6 +3667,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.oauthresourceserverform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -3762,6 +3798,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabResourceServers"
     },
     "toolIdentifier": "security.oauthresourceservers",
+    "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
     "fingerprintExcludes": [],
@@ -3832,6 +3869,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.oauthserverclientform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -3991,6 +4029,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabServerClients"
     },
     "toolIdentifier": "security.oauthserverclients",
+    "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
     "fingerprintExcludes": [],
@@ -4061,6 +4100,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.oauthserverdescriptionform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -4203,6 +4243,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabServerDescriptions"
     },
     "toolIdentifier": "security.oauthserverdescriptions",
+    "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
     "fingerprintExcludes": [],
@@ -4273,6 +4314,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.oauthserverform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -4446,6 +4488,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabServer"
     },
     "toolIdentifier": "security.oauthserver",
+    "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
     "fingerprintExcludes": [],
@@ -4579,6 +4622,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "webapp.openapi",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -4958,6 +5002,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "processListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.processdetails",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -5141,6 +5186,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "processListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.processes",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -5283,6 +5329,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "resourceListEmptyAgent"
     },
     "toolIdentifier": "permissions.resources",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -5420,6 +5467,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "webapp.restapis",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -5490,6 +5538,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "permissions.roleform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -5640,6 +5689,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "roleListEmptyAgent"
     },
     "toolIdentifier": "permissions.roles",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -5710,6 +5760,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": "/csp/sys/sec/%25CSP.UI.Portal.Services.zen"
     },
     "toolIdentifier": "permissions.serviceform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -5853,6 +5904,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "permissions.services",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -5990,6 +6042,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "sslListEmptyAgent"
     },
     "toolIdentifier": "security.ssl",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -6061,6 +6114,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.sslform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -6340,6 +6394,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.systemusage",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -6617,6 +6672,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "tasks.taskdetails",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -6687,6 +6743,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "tasks.scheduleform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -6890,6 +6947,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "tasks.history",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -7050,6 +7108,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "taskOnDemandEmptyAgent"
     },
     "toolIdentifier": "tasks.ondemand",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -7231,6 +7290,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "tasks.taskhistory",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -7436,6 +7496,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "toolIdentifier": "tasks.schedule",
+    "refreshDefault": 0,
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
@@ -7592,6 +7653,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "tasks.upcoming",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -7664,6 +7726,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "permissions.userform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -7862,6 +7925,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "userListEmptyAgent"
     },
     "toolIdentifier": "permissions.users",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -7983,6 +8047,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "security.wallet",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -8055,6 +8120,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.secretform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -8184,6 +8250,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "walletSecretListEmptyAgent"
     },
     "toolIdentifier": "security.secrets",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -8253,6 +8320,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "webapp.form",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -8432,6 +8500,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "webAppListEmptyAgent"
     },
     "toolIdentifier": "webapp.list",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null
@@ -8594,6 +8663,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "x509ListEmptyAgent"
     },
     "toolIdentifier": "security.x509",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -8667,6 +8737,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.x509form",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,

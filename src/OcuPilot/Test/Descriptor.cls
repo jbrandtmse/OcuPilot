@@ -1521,14 +1521,14 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }
 
-/// <p>AD-43's declaration half -- a screen says in its descriptor whether it refreshes and at
-/// what rates, and that is the only place either is said. The rates are whole seconds, so the
+/// <p>AD-43's declaration half -- a screen says in its descriptor whether it refreshes, at what
+/// rates and, for Home alone, at what rate it starts, and that is the only place any is said. The rates are whole seconds, so the
 /// value read here is what the framework multiplies into the delay it hands its timer seam.</p>
 /// <p>Mutation: drop <code>"refreshRates"</code> from
 /// <class>OcuPilot.Test.Screen.Refreshing</class>'s declaration -> the rate assertions go red,
 /// and <method>TestTheProductionRosterValidates</method>'s fixture sibling below goes red with
 /// them, because a refreshing screen with no rates is refused.</p>
-Method TestARefreshingScreenDeclaresItsRatesAndHomeDeclaresNone()
+Method TestARefreshingScreenDeclaresItsRatesAndHomeDefaultsToTen()
 {
     Set tClass = "OcuPilot.Test.Screen.Refreshing"
     Do $$$AssertTrue($ClassMethod(tClass, "Refreshes"), "a refreshing screen says so in its descriptor")
@@ -1536,14 +1536,35 @@ Method TestARefreshingScreenDeclaresItsRatesAndHomeDeclaresNone()
     Do $$$AssertEquals($ListLength(tRates), 1, "and declares the rates its chip may set")
     Do $$$AssertEquals($List(tRates, 1), 10, "in whole seconds")
 
-    Do $$$AssertTrue('$ClassMethod(..#HOMEDESCRIPTOR, "Refreshes"), "Home is not one of the auto-refresh screens")
-    Do $$$AssertEquals($ListLength($ClassMethod(..#HOMEDESCRIPTOR, "RefreshRates")), 0, "so it permits no rate")
+    ; Story 16.18: Home joins the roster, and is the one screen whose default rate is not off.
+    Do $$$AssertTrue($ClassMethod(..#HOMEDESCRIPTOR, "Refreshes"), "Home is one of the auto-refresh screens")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#HOMEDESCRIPTOR, "RefreshRates")), "5,10,30,60", "at the four declared rates")
+    Do $$$AssertEquals($ClassMethod(..#HOMEDESCRIPTOR, "RefreshDefault"), 10, "starting at every 10 s")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem($ClassMethod(..#HOMEDESCRIPTOR, "Refreshes"), $ClassMethod(..#HOMEDESCRIPTOR, "RefreshRates"), $ClassMethod(..#HOMEDESCRIPTOR, "RefreshDefault")), "", "which is a sound declaration")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#HOMEDESCRIPTOR, "ContextFields")), "cacheEfficiency,globalReferencesPerSecond,globalUpdatesPerSecond,diskReadsPerSecond,diskWritesPerSecond", "and its context carries the performance row's five values")
 
     ; A descriptor written before the pair existed declares neither, and reads as the screen it
     ; is: one the framework binds nothing for. The registry accepts that pair, so an older
     ; fixture is not retroactively malformed.
     Do $$$AssertTrue('$ClassMethod("OcuPilot.Test.Screen.Multi", "Refreshes"), "an omitted declaration reads as not refreshing")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(0, ""), "", "and that pair is sound")
+}
+
+/// <p>AD-43 as amended: Home alone declares a default rate, so every other built screen starts
+/// off, the published default.</p>
+/// <p>Mutation: add <code>"refreshDefault": 10</code> to
+/// <class>OcuPilot.Screen.Descriptor.SystemUsage</class> -&gt; this goes red naming it.</p>
+Method TestOnlyHomeDeclaresADefaultRate()
+{
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
+    Do $$$AssertStatusOK(tSC, "the registry lists its descriptors")
+    Set tDeclaring = ""
+    For tI = 1:1:$ListLength(tList) {
+        Set tClass = $List(tList, tI)
+        Set tDefault = $ClassMethod(tClass, "RefreshDefault")
+        If (tDefault '= "") && (tDefault '= 0) Set tDeclaring = tDeclaring _ $ListBuild(tClass)
+    }
+    Do $$$AssertEquals($ListToString(tDeclaring), ..#HOMEDESCRIPTOR, "Home is the one descriptor declaring a default rate")
 }
 
 /// <p>AD-43's refusal half -- every refresh declaration outside the permitted shapes is refused,
@@ -1566,6 +1587,12 @@ Method TestARefreshDeclarationOutsideThePermittedShapesIsRefused()
     Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild("ten")), "", "and so is a rate that is not a number")
     Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(10, 10)), "", "a repeat would make one step of the chip's cycle a no-op")
     Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(30, 10)), "", "and a descent would advance the chip backwards")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(5, 10, 30), 10), "", "a default rate that is one of the rates is sound")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(5, 10, 30), 15), "", "a default rate that is not one of them is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(5, 10, 30), 0), "", "zero is off, the published default")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(0, "", 0), "", "on a screen that does not refresh too")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(0, "", 10), "", "which has no other default rate")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(10), "?"), "", "and an object or array is refused rather than read as absent")
 
     Set tSC = ##class(OcuPilot.Test.RefreshRegistry).Validate(.tProblem)
     Do $$$AssertStatusNotOK(tSC, "a roster carrying a malformed refresh declaration is refused")

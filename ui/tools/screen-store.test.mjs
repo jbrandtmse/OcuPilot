@@ -374,3 +374,66 @@ test('Story 15.8: widths that would take the view past the instance\'s limit are
   await flush();
   assert.deepEqual(JSON.parse(held.views().get(ONE_ROUTE)).widths, { AVeryLongFieldNameIndeed: 1500 }, 'a width set again is the latest');
 });
+
+// --- Story 16.18: Home's rate ---------------------------------------------------------------
+//
+// Mutations (Rule 19):
+// - drop `HOME_DESCRIPTOR`'s `rateKey` in `ScreenStores.for` -> "AC5" goes red: Home's rate is
+//   written nowhere and a new store starts at its default again.
+// - start every store off, ignoring `defaultRate` -> "Home starts at every 10 s" goes red.
+// - refuse a remembered off in `adoptRemembered` -> "a remembered off" goes red.
+
+const { HOME_DESCRIPTOR, RATE_OFF } = await import(core('screen-store.ts'));
+const { HOME_REFRESH_NAME } = await import(core('account-preferences.ts'));
+const HOME = SCREENS.find((screen) => screen.descriptor === HOME_DESCRIPTOR);
+
+test('Story 16.18: Home starts at every 10 s while no rate is remembered, and every other screen starts off', async () => {
+  const held = await account();
+  const stores = new ScreenStores({ account: held });
+  assert.equal(stores.for(HOME_DESCRIPTOR, HOME.refreshRates).rate(), 10, 'Home, from the mirror\u2019s refreshDefault');
+  const refreshing = SCREENS.find((screen) => screen.refreshes && screen.descriptor !== HOME_DESCRIPTOR);
+  assert.equal(stores.for(refreshing.descriptor, refreshing.refreshRates).rate(), RATE_OFF, `${refreshing.descriptor} starts off`);
+  assert.equal(
+    new ScreenStores({ account: held }).for('OcuPilot.Screen.Descriptor.Probe', [5, 10], 'probe', 15).rate(),
+    RATE_OFF,
+    'a default the rates do not permit is not taken'
+  );
+});
+
+test('Story 16.18 AC5: Home\u2019s rate is remembered under home, and a new ScreenStores (a sign-in) adopts it', async () => {
+  const held = await account();
+  const first = new ScreenStores({ account: held }).for(HOME_DESCRIPTOR, HOME.refreshRates);
+  assert.equal(first.setRate(30), true);
+  await flush();
+  assert.equal(held.refreshRates().get(HOME_REFRESH_NAME), '30', 'written under home, not under the empty route');
+  assert.deepEqual([...held.views().keys()], [], 'and no view is written for Home');
+
+  const again = new ScreenStores({ account: held }).for(HOME_DESCRIPTOR, HOME.refreshRates);
+  assert.equal(again.rate(), 30);
+});
+
+test('Story 16.18: a remembered off is adopted, so Home turned off stays off', async () => {
+  const held = await settledAccountPreferences({ refreshRates: { [HOME_REFRESH_NAME]: '0' } });
+  assert.equal(new ScreenStores({ account: held }).for(HOME_DESCRIPTOR, HOME.refreshRates).rate(), RATE_OFF);
+});
+
+test('Story 16.18: a remembered rate the descriptor does not permit leaves the default standing', async () => {
+  const held = await settledAccountPreferences({ refreshRates: { [HOME_REFRESH_NAME]: '7' } });
+  assert.equal(new ScreenStores({ account: held }).for(HOME_DESCRIPTOR, HOME.refreshRates).rate(), 10);
+});
+
+test('Story 16.18: a rate remembered after the store was made is adopted when the account answers', async () => {
+  const held = stubAccountPreferences({ refreshRates: { [HOME_REFRESH_NAME]: '60' } });
+  const store = new ScreenStores({ account: held }).for(HOME_DESCRIPTOR, HOME.refreshRates);
+  assert.equal(store.rate(), 10, 'the default, before the account has answered');
+  await held.load();
+  assert.equal(store.rate(), 60, 'the remembered rate, once it has');
+});
+
+test('Story 16.18: the name home keys the refresh kind only -- another screen with no route still remembers nothing', async () => {
+  const held = await account();
+  const before = held.calls.length;
+  const store = new ScreenStores({ account: held }).for('OcuPilot.Screen.Descriptor.NotInTheMirror', [10]);
+  assert.equal(store.setRate(10), true);
+  assert.equal(held.calls.length, before, 'nothing is written');
+});

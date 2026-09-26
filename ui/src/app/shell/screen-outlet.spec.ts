@@ -34,6 +34,11 @@ import { SystemInfo } from '../core/system-info';
 import { HelpLinks } from '../core/help';
 import { stubAbout, stubHelpLinks } from '../testing/about';
 import { stubSystemInfo } from '../testing/system-info';
+import { PerformanceRow } from '../core/performance';
+import { RefreshService } from '../core/refresh';
+import { ScreenActions } from '../core/screen-actions';
+import { ScreenStores } from '../core/screen-store';
+import { homeRefresh, stubPerformanceRow } from '../testing/performance';
 
 /**
  * The deep-link path, rendered: a route the user's privileges do not allow shows the screen's
@@ -142,10 +147,16 @@ describe('the routed screen outlet', () => {
     TestBed.resetTestingModule();
     navigation = new StubNavigation();
     shell = new ShellState({ account: stubAccountPreferences() });
+    // Home, which the empty route resolves to, binds the refresh framework for its performance row.
+    const home = homeRefresh(stubAccountPreferences());
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: stubAbout() },
         { provide: SystemInfo, useValue: stubSystemInfo() },
+        { provide: PerformanceRow, useValue: stubPerformanceRow() },
+        { provide: RefreshService, useValue: home.refresh },
+        { provide: ScreenStores, useValue: home.stores },
+        { provide: ScreenActions, useValue: home.actions },
         { provide: HelpLinks, useValue: stubHelpLinks() },
         { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([

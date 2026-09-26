@@ -21,6 +21,7 @@ export function screenDeclaration(overrides: Partial<ScreenDeclaration> = {}): S
     built: true,
     refreshes: false,
     refreshRates: [],
+    refreshDefault: 0,
     privileges: [],
     entityType: 'user',
     entityLabelKey: '',

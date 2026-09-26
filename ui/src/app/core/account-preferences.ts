@@ -41,6 +41,13 @@ export const VIEW_KIND = 'view';
 /** The `kind` value naming one screen's remembered auto-refresh rate, keyed by route. */
 export const REFRESH_KIND = 'refresh';
 
+/**
+ * The one `REFRESH_KIND` key that is not a route: Home's rate (Story 16.18). Home's route is the
+ * empty string, which the instance never stores, so its rate is kept under this name --
+ * `OcuPilot.Kernel.State.Pref.HOMEREFRESHNAME`, which the instance accepts for this kind alone.
+ */
+export const HOME_REFRESH_NAME = 'home';
+
 /** The `kind` value naming a remembered piece of shell chrome, keyed by shell member. */
 export const SHELL_KIND = 'shell';
 

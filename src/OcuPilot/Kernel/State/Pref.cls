@@ -79,6 +79,11 @@ Parameter KINDSCREENVIEW As %String = "view";
 /// descriptor's, and this is only the rate one of them remembers.</p>
 Parameter KINDREFRESH As %String = "refresh";
 
+/// <p>The one <parameter>KINDREFRESH</parameter> key that is not a route: Home's remembered rate
+/// (Story 16.18). Home's route is the empty string, which is never stored, so its rate is kept
+/// under this name. Only the refresh kind accepts it.</p>
+Parameter HOMEREFRESHNAME As %String = "home";
+
 /// <p>The <property>Kind</property> value for a piece of shell chrome the user moved. Keyed by a
 /// member name from the closed set <method>IsShellMember</method> answers, never by a route.</p>
 Parameter KINDSHELL As %String = "shell";

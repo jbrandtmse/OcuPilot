@@ -257,7 +257,7 @@ ClassMethod Validate(Output pProblem As %String) As %Status
             ; what rates, so a malformed pair has to fail where it is declared. Refusing it here
             ; means install stops; the alternative is a screen that binds the shared framework at
             ; render time and arms a timer at a rate nobody declared.
-            Set tRefreshProblem = ..RefreshProblem($ClassMethod(tClass, "Refreshes"), $ClassMethod(tClass, "RefreshRates"))
+            Set tRefreshProblem = ..RefreshProblem($ClassMethod(tClass, "Refreshes"), $ClassMethod(tClass, "RefreshRates"), $ClassMethod(tClass, "RefreshDefault"))
             If tRefreshProblem '= "" {
                 Set pProblem = tClass _ ": " _ tRefreshProblem
                 Quit
@@ -375,13 +375,13 @@ ClassMethod EntityLabelProblem(pDeclaration As %DynamicObject) As %String
 /// order <class>OcuPilot.Screen.Descriptor.Base</class> reads them (AD-5).</p>
 /// <p>Ten are optional and the rest are not, but this parameter says nothing about which:
 /// <method>DeclarationProblem</method> is an <b>unknown-key</b> check, never a presence check. A
-/// declaration missing an optional key -- <code>refreshes</code>, <code>refreshRates</code>,
+/// declaration missing an optional key -- <code>refreshes</code>, <code>refreshRates</code>, <code>refreshDefault</code>,
 /// <code>read</code>, <code>table</code>, <code>banner</code>, <code>tab</code>,
 /// <code>rowTarget</code>, <code>secretArguments</code>, <code>fingerprintExcludes</code>,
 /// <code>entityLabelKey</code> -- is sound, and a declaration missing a required one is already
 /// refused by the rule that reads it, with a sentence naming what it was for. <code>suggestedPrompts</code>
 /// is required on a built screen and optional on an unbuilt one (Story 11.3).</p>
-Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
+Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,refreshDefault,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
 
 /// <p>What is wrong with <var>pDeclaration</var>'s own top-level keys, or <code>""</code> when
 /// nothing is (DW-271). Every key must be one of <parameter>DECLARATIONKEYS</parameter>.</p>
@@ -421,17 +421,25 @@ ClassMethod DeclarationProblem(pDeclaration As %DynamicObject) As %String
 /// rate the chip could advance through: a duplicate would make one step of the cycle a no-op, a
 /// fraction would arm a timer at a delay no copy names, and zero is spelled by turning the chip
 /// off rather than by declaring it.</p>
+/// <p><var>pDefault</var> is the declared <code>refreshDefault</code>: the rate the framework starts
+/// at when the person has remembered none. <code>""</code> (none declared) and <code>0</code> are
+/// off, the published default; any other value must be one of the rates, so a screen that does not
+/// refresh can declare no other.</p>
 /// <p><b>Public, unlike <method>MalformedPair</method></b>, so the shapes above can be exercised
 /// as values rather than as a fixture descriptor per shape -- six malformed declarations would
 /// otherwise be six fixture classes and six registries, because <method>Validate</method> reports
 /// only the first problem in a roster.</p>
-ClassMethod RefreshProblem(pRefreshes As %Boolean, pRates As %List) As %String
+ClassMethod RefreshProblem(pRefreshes As %Boolean, pRates As %List, pDefault As %String = "") As %String
 {
     Set tProblem = ""
     Try {
         Set tCount = $ListLength(pRates)
         If 'pRefreshes {
-            If tCount > 0 Set tProblem = "refreshRates declares " _ tCount _ " rate(s) while refreshes is false; a screen that does not refresh permits none"
+            If tCount > 0 {
+                Set tProblem = "refreshRates declares " _ tCount _ " rate(s) while refreshes is false; a screen that does not refresh permits none"
+            } ElseIf (pDefault '= "") && (pDefault '= 0) {
+                Set tProblem = ..RefreshDefaultSentence(pDefault)
+            }
             Quit
         }
         If tCount = 0 {
@@ -451,10 +459,18 @@ ClassMethod RefreshProblem(pRefreshes As %Boolean, pRates As %List) As %String
             }
             Set tPrevious = tRate
         }
+        If tProblem '= "" Quit
+        If (pDefault '= "") && (pDefault '= 0) && '$ListFind(pRates, pDefault) Set tProblem = ..RefreshDefaultSentence(pDefault)
     } Catch ex {
         Set tProblem = "the refresh declaration could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
+}
+
+/// <p>The refusal of a declared <code>refreshDefault</code> that is not one of the screen's rates.</p>
+ClassMethod RefreshDefaultSentence(pDefault As %String) As %String [ Private ]
+{
+    Quit "refreshDefault ('" _ pDefault _ "') is not one of refreshRates; a screen's default rate is a rate its chip may set"
 }
 
 /// <p>What is wrong with a <b>built</b> <var>pDeclaration</var>'s <code>sideBarPosition</code>, or

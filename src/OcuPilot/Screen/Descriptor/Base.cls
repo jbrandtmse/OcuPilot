@@ -29,7 +29,7 @@
 /// <code>commandAliases</code>, <code>classicPage</code> (the class name of the classic page
 /// this screen replaces, AD-27/AD-44), <code>classicLinkExemption</code> with its
 /// <code>reason</code>, <code>label</code> and <code>href</code> (AD-44),
-/// <code>refreshes</code> plus <code>refreshRates</code> (AD-43),
+/// <code>refreshes</code> plus <code>refreshRates</code> and an optional <code>refreshDefault</code> (AD-43),
 /// <code>read</code> (the one declared read, AD-36, or absent), <code>table</code> (the columns and
 /// empty-state keys a read's rows render with, declared exactly when <code>read</code> is),
 /// <code>banner</code> (a second declared port read whose value raises a strip above the table, or
@@ -444,6 +444,19 @@ ClassMethod RefreshRates() As %List
         Set tRates = ""
     }
     Quit tRates
+}
+
+/// <p>The rate, in whole seconds, the shared framework starts this screen at when the person has
+/// remembered none, or <code>""</code> when the screen declares none; <code>""</code> and
+/// <code>0</code> are off, the published default (AD-43). Declared only by a refreshing screen, as one of its
+/// <method>RefreshRates</method>; <method>OcuPilot.Screen.Registry.RefreshProblem</method> refuses
+/// any other value. An object or array reads as <code>"?"</code>, so the registry refuses it rather
+/// than reading it as absent.</p>
+ClassMethod RefreshDefault() As %String
+{
+    Set tValue = ..CachedValue("refreshDefault")
+    If $IsObject(tValue) Quit "?"
+    Quit tValue
 }
 
 /// <p>The stable identifier this screen's tools are named from (AD-5). Declared, never derived

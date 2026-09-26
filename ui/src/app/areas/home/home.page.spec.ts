@@ -20,6 +20,18 @@ import { SYSTEM_INFO_FIELDS, SystemInfo } from '../../core/system-info';
 import { stubSystemInfo, type StubbedSystemInfo } from '../../testing/system-info';
 import { SHORTCUT_ROUTES, shortcutScreens } from '../../core/shortcuts';
 import type { StubbedAbout } from '../../testing/about';
+import { PerformanceRow } from '../../core/performance';
+import { RefreshService } from '../../core/refresh';
+import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { HOME_DESCRIPTOR, ScreenStores } from '../../core/screen-store';
+import { assembleScreenContext } from '../../core/screen-context';
+import { screenForDescriptor } from '../../core/navigation';
+import {
+  homeRefresh,
+  stubPerformanceRow,
+  type ScheduledArm,
+  type StubbedPerformanceRow,
+} from '../../testing/performance';
 
 /**
  * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "Six tiles in daily-use order").
@@ -213,6 +225,11 @@ describe('Home', () => {
   let preferences: ReturnType<typeof stubAccountPreferences>;
   let about: StubbedAbout;
   let systemInfo: StubbedSystemInfo;
+  let performance: StubbedPerformanceRow;
+  let refresh: RefreshService;
+  let stores: ScreenStores;
+  let actions: ScreenActions;
+  let scheduled: ScheduledArm[];
 
   /**
    * The two remembered blocks. Story 15.3 added two more sections of the same shape beside them --
@@ -277,10 +294,15 @@ describe('Home', () => {
    */
   const buildWith = (account: ReturnType<typeof stubAccountPreferences>) => {
     preferences = account;
+    ({ refresh, stores, actions, scheduled } = homeRefresh(account));
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: about },
         { provide: SystemInfo, useValue: systemInfo },
+        { provide: PerformanceRow, useValue: performance },
+        { provide: RefreshService, useValue: refresh },
+        { provide: ScreenStores, useValue: stores },
+        { provide: ScreenActions, useValue: actions },
         { provide: AccountPreferences, useValue: account },
         provideRouter([
           { path: '', children: [] },
@@ -324,6 +346,7 @@ describe('Home', () => {
     // degrade row needs a stored route that resolves to nothing.
     about = stubAbout();
     systemInfo = stubSystemInfo();
+    performance = stubPerformanceRow();
     preferences = stubAccountPreferences({
       favorites: ['logs/alerts', 'no-such-area/no-such-screen'],
       // `agent/definitions/edit` is built but unlisted (sideBarPosition 0) and keyed by an entity
@@ -1162,11 +1185,12 @@ describe('Home', () => {
     expect(systemInfo.calls.length).toBe(before + 1);
   });
 
-  it('Story 15.4 (AD-43): the panel settles with its own read and starts no timer', async () => {
+  it('Story 15.4 (AD-43): the panel settles with its own read and no timer re-reads it', async () => {
     expect(systemInfo.calls.length).toBe(1);
     expect(systemInfo.calls[0].path).toBe('/api/ocupilot/ui/system');
 
-    // Home is not on the auto-refresh roster. The clock is faked **before** the component is
+    // Home's own refresh times the performance row alone, through the framework's `schedule`
+    // seam, which this spec holds (Story 16.18). The clock is faked **before** the component is
     // constructed, because a timer the constructor registers against the real clock is invisible
     // to a fake one installed afterwards; ten minutes of fake time then outruns any period the
     // product would plausibly use, and `vi.getTimerCount()` makes "registers no timer" an
@@ -1184,7 +1208,8 @@ describe('Home', () => {
     // fixed 100 ms held on node 26 and did not on node 24), and then advance the window
     // **synchronously**, which yields to the real loop not at all. A repeating timer still fires
     // and still re-registers under a synchronous advance, and a read it issues still lands in
-    // `systemInfo.calls`, so neither assertion below loses any of its reach.
+    // `systemInfo.calls`. The framework's own tick is held by this spec's `schedule` seam and never
+    // fires here; the Story 16.18 AC2 case below fires it and pins that it leaves the panel alone.
     //
     // The synchronous advance is what makes the measurement sound; the drain only narrows the one
     // remaining yield, the `advanceTimersByTimeAsync(0)` settle. So the drain is best-effort and
@@ -1241,4 +1266,189 @@ describe('Home', () => {
     expect(block.querySelector('.ocu-home-block-list')).not.toBeNull();
   });
 
+  // --- Story 16.18: the performance row -------------------------------------------------------
+
+  const performanceRow = (): HTMLElement | null => fixture.nativeElement.querySelector('app-performance-row');
+  const performanceItems = (): { label: string; value: string; unit: string }[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-home-performance-item') as NodeListOf<HTMLElement>).map((item) => ({
+      label: item.querySelector('.ocu-home-performance-label')?.textContent?.trim() ?? '',
+      value: item.querySelector('.ocu-home-performance-value')?.textContent?.trim() ?? '',
+      unit: item.querySelector('.ocu-home-performance-unit')?.textContent?.trim() ?? '',
+    }));
+  const sparkline = (): SVGElement | null => fixture.nativeElement.querySelector('.ocu-home-performance-sparkline');
+  const line = (): SVGPathElement | null => fixture.nativeElement.querySelector('.ocu-home-performance-line');
+
+  /** Let the bound read land and render. */
+  const settle = async (): Promise<void> => {
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+  };
+
+  /** Fire the one tick the framework has armed, and let its read land. */
+  const tick = async (atMs: number): Promise<void> => {
+    performance.setNow(atMs);
+    const armed = scheduled[scheduled.length - 1];
+    armed.run();
+    await settle();
+  };
+
+  it('Story 16.18 AC1: Home binds the refresh framework at every 10 s and renders five readings, each with its unit', async () => {
+    await settle();
+    expect(refresh.descriptor()).toBe(HOME_DESCRIPTOR);
+    expect(refresh.rate()).toBe(10);
+    expect(scheduled[scheduled.length - 1].delayMs).toBe(10_000);
+    expect(performance.calls.map((call) => call.path)).toEqual(['/api/ocupilot/ui/performance']);
+
+    const row = performanceRow() as HTMLElement;
+    expect(row).not.toBeNull();
+    expect(row.querySelector('.ocu-home-block-heading')?.textContent?.trim()).toBe(STRINGS.performanceHeading);
+    expect(performanceItems()).toEqual([
+      { label: STRINGS.systemUsageCacheEfficiency, value: '1,000.0', unit: STRINGS.performanceCacheUnit },
+      { label: STRINGS.processDetailsGlobalReferences, value: '2,000', unit: STRINGS.performanceRateUnit },
+      { label: STRINGS.systemUsageGlobalUpdates, value: '3,000', unit: STRINGS.performanceRateUnit },
+      { label: STRINGS.performanceDiskReads, value: '4,000', unit: STRINGS.performanceRateUnit },
+      { label: STRINGS.performanceDiskWrites, value: '5,000', unit: STRINGS.performanceRateUnit },
+    ]);
+    // The row sits before the blocks, the System Information panel among them.
+    const home = fixture.nativeElement.querySelector('.ocu-home') as HTMLElement;
+    expect(home.firstElementChild?.tagName.toLowerCase()).toBe('app-performance-row');
+  });
+
+  it('Story 16.18 AC2: the line is drawn only once two answers have arrived, through exactly the points received', async () => {
+    await settle();
+    const svg = sparkline() as SVGElement;
+    expect(svg).not.toBeNull();
+    expect(svg.namespaceURI).toBe('http://www.w3.org/2000/svg');
+    expect(svg.getAttribute('role')).toBe('img');
+    expect(svg.getAttribute('aria-label')).toBe(STRINGS.performanceSparklineLabel);
+    // It sits under Global references.
+    expect(svg.closest('.ocu-home-performance-item')?.querySelector('.ocu-home-performance-label')?.textContent?.trim()).toBe(
+      STRINGS.processDetailsGlobalReferences
+    );
+    expect(line()).toBeNull();
+
+    performance.setValues({ globalReferencesPerSecond: 4000 });
+    const panelReads = systemInfo.calls.length;
+    await tick(1_700_000_005_000);
+    expect(performance.points()).toHaveLength(2);
+    // The tick re-reads the performance row alone; the System Information panel settles once.
+    expect(systemInfo.calls.length).toBe(panelReads);
+    const path = line() as SVGPathElement;
+    expect(path).not.toBeNull();
+    expect(path.namespaceURI).toBe('http://www.w3.org/2000/svg');
+    expect(path.getAttribute('d')?.match(/[ML]/g)).toEqual(['M', 'L']);
+    // The values update silently: the reading moved, and nothing else was announced.
+    expect(performanceItems()[1].value).toBe('4,000');
+  });
+
+  it('Story 16.18 AC2: leaving Home clears the line and lets the framework go, and the next Home starts empty', async () => {
+    await settle();
+    await tick(1_700_000_005_000);
+    expect(performance.points()).toHaveLength(2);
+
+    fixture.destroy();
+    expect(performance.points()).toHaveLength(0);
+    expect(refresh.descriptor()).toBe('');
+    expect(actions.has(HOME_DESCRIPTOR, REFRESH_ACTION_ID)).toBe(false);
+
+    const next = TestBed.createComponent(HomePage);
+    next.detectChanges();
+    await next.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    next.detectChanges();
+    expect(performance.points()).toHaveLength(1);
+    expect(next.nativeElement.querySelector('.ocu-home-performance-line')).toBeNull();
+    next.destroy();
+  });
+
+  // Mutation (Rule 19): render the row whenever the store has answered, zeros included -> this
+  // goes red on the heading.
+  it('Story 16.18 AC3: a caller the instance refuses sees no heading, no value and no zero, and the rest of Home is unchanged', async () => {
+    // A fresh Home over an account the instance refuses from the first read.
+    fixture.destroy();
+    performance.reset();
+    performance.setStatus(403);
+    const before = performance.calls.length;
+    fixture = TestBed.createComponent(HomePage);
+    fixture.detectChanges();
+    await settle();
+
+    expect(performance.calls.length).toBe(before + 1);
+    expect(performanceRow()).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.performanceHeading);
+    expect(fixture.nativeElement.querySelectorAll('.ocu-home-performance-item')).toHaveLength(0);
+    // A 403 is an answer, not a fault: no fault stamp, and the store row is empty.
+    expect(refresh.fault()).toBeNull();
+    expect(stores.for(HOME_DESCRIPTOR, []).data()).toEqual([]);
+    // The rest of Home is as it was.
+    expect(tiles()).toHaveLength(6);
+    expect(fixedBlocks().length).toBeGreaterThan(0);
+  });
+
+  it('Story 16.18 AC3: a 403 after an answer clears the row and its line', async () => {
+    await settle();
+    expect(performanceRow()).not.toBeNull();
+    performance.setStatus(403);
+    await tick(1_700_000_005_000);
+    expect(performanceRow()).toBeNull();
+    expect(performance.points()).toHaveLength(0);
+    expect(stores.for(HOME_DESCRIPTOR, []).data()).toEqual([]);
+  });
+
+  it('Story 16.18: a fault after an answer keeps the last values, and the framework raises its own fault', async () => {
+    await settle();
+    performance.setStatus(500);
+    await tick(1_700_000_005_000);
+    expect(performanceItems()[1].value).toBe('2,000');
+    expect(refresh.fault()?.kind).toBe('server-fault');
+  });
+
+  it('Story 16.18 AC4: the screen context from Home carries the one store row with the same five numbers, and none when refused', async () => {
+    await settle();
+    const home = screenForDescriptor(HOME_DESCRIPTOR);
+    const store = stores.for(HOME_DESCRIPTOR, []);
+    const context = assembleScreenContext({
+      descriptor: home,
+      namespace: 'HSCUSTOM',
+      entity: '',
+      share: true,
+      rows: store.data(),
+      filter: store.filter(),
+      sort: store.sort(),
+      direction: store.direction(),
+      rowCap: 200,
+    });
+    expect(context?.view?.rows).toEqual([
+      {
+        cacheEfficiency: 1000,
+        globalReferencesPerSecond: 2000,
+        globalUpdatesPerSecond: 3000,
+        diskReadsPerSecond: 4000,
+        diskWritesPerSecond: 5000,
+      },
+    ]);
+
+    performance.setStatus(403);
+    await tick(1_700_000_005_000);
+    const refused = assembleScreenContext({
+      descriptor: home,
+      namespace: 'HSCUSTOM',
+      entity: '',
+      share: true,
+      rows: store.data(),
+      filter: '',
+      sort: '',
+      direction: '',
+      rowCap: 200,
+    });
+    expect(refused?.view?.rows).toEqual([]);
+  });
+
+  it('Story 16.18: Home registers the Refresh action, which reads the row again', async () => {
+    await settle();
+    expect(actions.run(HOME_DESCRIPTOR, REFRESH_ACTION_ID)).toBe(true);
+    await settle();
+    expect(performance.calls).toHaveLength(2);
+  });
 });

@@ -19,7 +19,7 @@ XData Cases
 {
   "declaration": {
     "route": "tasks/declaration-corpus", "area": "tasks", "labelKey": "taskListLabel", "sideBarPosition": 1,
-    "archetype": "list", "built": false, "refreshes": false, "refreshRates": [],
+    "archetype": "list", "built": false, "refreshes": false, "refreshRates": [], "refreshDefault": 0,
     "privileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
     "entityType": "task", "entityLabelKey": "proposalEntityTask", "secondaryEntityTypes": [],
     "scope": "instance", "parentScope": "", "id": {"kind": "single", "parts": []},
@@ -59,6 +59,7 @@ XData Cases
     {"name": "an absent optional table is sound", "addKey": "", "dropKey": "table", "expected": null},
     {"name": "an absent optional refreshes is sound", "addKey": "", "dropKey": "refreshes", "expected": null},
     {"name": "an absent optional refreshRates is sound", "addKey": "", "dropKey": "refreshRates", "expected": null},
+    {"name": "an absent optional refreshDefault is sound", "addKey": "", "dropKey": "refreshDefault", "expected": null},
     {"name": "an absent optional tab is sound", "addKey": "", "dropKey": "tab", "expected": null},
     {"name": "an absent optional rowTarget is sound", "addKey": "", "dropKey": "rowTarget", "expected": null},
     {"name": "an absent optional secretArguments is sound", "addKey": "", "dropKey": "secretArguments", "expected": null},

@@ -2,8 +2,8 @@
 title: "Story 16.18: Home's performance row"
 type: 'feature'
 created: '2026-09-26'
-status: 'ready-for-dev'
-baseline_revision: '6aa6d51c7d4c2cf4554c0ce3a56380825cc9ddce'
+status: 'done'
+baseline_revision: '585d73b023e3655fb35bc71d312ca2d17041edcd'
 baseline_commit: '6aa6d51c7d4c2cf4554c0ce3a56380825cc9ddce'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -198,6 +198,25 @@ Client:
 
 ## Review Triage Log
 
+### 2026-09-26 — Review pass
+
+- verdicts: 14 findings — high 0, medium 1, low 8, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Home's tick re-reading System Information would pass every test: the 15.4 timer case cannot see the framework tick, which `homeRefresh`'s `schedule` seam holds — patched: the AC2 tick case asserts `systemInfo.calls` unchanged, the 15.4 comment corrected; mutation recorded.
+  - `[low]` `[patch]` AC2 (clearHistory, fewer than two points), AC4 (store row) and AC5 (instance `home` key) had no `mutation:` line — patched: four mutations run and recorded under Verification.
+  - `[low]` `[patch]` `screen-context.test.mjs` asserted `contextRowsSent(... rows: [])` is 0, which cannot fail — patched: the assertion deleted; the `view.rows` assertion stays.
+  - `[low]` `[reject]` Browser AC2's first-answer check is conditional and its point count allows `received - 1` — the response event can precede the render; `home.page.spec.ts` pins "none on the first answer" and exactly `M L`, and a tighter browser sync adds machinery for no new reach.
+  - `[low]` `[patch]` `performance.test.mjs` asserted `denied()` false after `reset()` without ever denying — patched: the test is refused first and asserts `denied()` true before the reset; mutation recorded.
+  - `[low]` `[reject]` The metric-missing 500 is tested on the port, not over HTTP — the handler passes the port's fault to `Error.Render` unchanged (`pDetail` defaults to `""`); an HTTP leg needs a new fault-injection seam on the route.
+  - `[false]` `[reject]` A zero sensor-call count on denial is shown only with a test gate — the recorded "drop the gate" mutation turns `UiPerformanceWire`'s real-principal refusals red, so the gate order is proven on real principals too.
+  - `[low]` `[reject]` "Turned off stays off" is not exercised in the browser — pinned in `screen-store.test.mjs`, `refresh.test.mjs` and `PreferencesWire` (value "0" under `home`); a browser leg would duplicate them.
+  - `[low]` `[reject]` The rendered row (`PerformanceRow`) and the context row (`ScreenStore`) are two holders fed by one answer — both drop stale answers; the worst case is a context row one tick older than the row.
+  - `[low]` `[reject]` A denied caller keeps the chip, the "Last update" stamp and a 10 s 403 poll — spec-bound: the Decisions choose an `ok`/`[]` tick for a 403 and the intent's "a 403 at any time" needs the reads to continue; a denial writes no audit record (`Screen/Gate.cls`, `Kernel/Denial.cls`).
+  - `[false]` `[reject]` The shared framework change reaches all eight roster screens — for the others it only makes a remembered rate that lands after bind re-arm the timer, which AD-43/Story 15.5 already require; `refresh.test.mjs` pins it.
+  - `[false]` `[reject]` Home's turn now always carries a `view` — the matrix's Denied row requires context rows `[]`, which is that view.
+  - `[false]` `[reject]` One collection per read shortens external scrapers' windows — that is the intent's "one sensor collection per read" and AD-29's recorded (inference).
+  - `[false]` `[reject]` The spec's Auto Run Result still read ready-for-dev -- finalize writes it.
+
 ## Design Notes
 
 **Recorded in AD-43 and AD-29 at the spec gate (2026-09-26).** The halt as raised: A screen joins the auto-refresh set only by declaring it in its descriptor and appearing in the roster. AD-43's Rule enumerates the set as seven, so Home joining changes that Rule. It is the only AD-conformant path: any refresh on Home without joining is the per-screen refresh AD-43 exists to prevent.
@@ -270,7 +289,54 @@ The Where column: "Home's performance row (Story 16.18): its heading; two labels
 - `cd ui && npm test` (once, before dev_complete). Expected: green, with the bundle under 1900 kB.
 - Full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before dev_complete). Expected: green.
 
+**Mutations (Rule 19), 2026-09-26, implement pass.** Each applied, red observed, reverted; the tree was byte-identical afterwards (a checksum over `git status --short`, `git diff`, `git diff --stat` and every untracked file matched before and after).
+
+- mutation: append a point on a 403 in `core/performance.ts` `read` -> red: `performance.test.mjs` "a 403 clears the row" and "the line starts empty".
+- mutation: keep points older than 600 s (drop the window filter in `read`) -> red: `performance.test.mjs` "points older than ten minutes are dropped".
+- mutation: hold zeros instead of `null` on a 403 in `read` -> red: `home.page.spec.ts` both AC3 cases (no heading, no value, no zero).
+- mutation: key Home's rate by its empty route (drop `HOME_REFRESH_NAME` in `ScreenStores.for`) -> red: `screen-store.test.mjs` AC5, "a remembered off is adopted", "a rate remembered after the store was made".
+- mutation: drop the store subscription `RefreshService.bind` makes -> red: `refresh.test.mjs` "a remembered rate the account answers after the bind re-arms at it".
+- mutation: empty Home's `context.fields` in the mirror -> red: `screen-context.test.mjs` both AC4 cases.
+- mutation: drop the gate (`If 0`) in `MonitorPort.Performance`, recompiled with `MonitorPortFixture` on `ocupilot-ci` -> red: `OcuPilot.Test.MonitorPort` `TestTheGateRefusesBeforeAnySensorCall` and `OcuPilot.Test.UiPerformanceWire` `TestACallerLackingEitherPairIsRefusedNamingIt`.
+- mutation: accept a partial parse (`Continue` past a missing or non-numeric metric in `MonitorPort.Parse`) -> red: `OcuPilot.Test.MonitorPort` `TestAMissingOrNonNumericMetricFailsTheWholeRead` and `TestALabeledLineIsIgnored`.
+- mutation: drop `globalReferencesPerSecond` from `MonitorPort.METRICS`, recompiled on `ocupilot-ci` (the deployed bundle unchanged) -> red: `home-performance.browser-spec.mjs` AC1 (the row never renders; the route answered four members).
+
+**Mutations (Rule 19), 2026-09-26, review pass.** Same discipline; tree checksum identical before and after.
+
+- mutation: Home's bound read also calls `systemInfo.load()` -> red: `home.page.spec.ts` "AC2: the line is drawn only once two answers have arrived" (the panel re-read on the tick) and the 15.4 "no timer re-reads it" case.
+- mutation: drop `this.performance.clearHistory()` from `HomePage`'s destroy -> red: `home.page.spec.ts` "AC2: leaving Home clears the line ... the next Home starts empty".
+- mutation: `sparklinePath` draws from one point (`< 2` -> `< 1`) -> red: `performance.test.mjs` "draws nothing for fewer than two points", and both `home.page.spec.ts` AC2 cases.
+- mutation: a successful `read` answers `rows: []` -> red: `home.page.spec.ts` AC4 (the context row).
+- mutation: drop the `IsHomeRefresh` test from `Preferences.HandleUpdate`, recompiled on `ocupilot-ci` -> red: `home-performance.browser-spec.mjs` AC5 ("the instance remembers Home at 30 s under home"). `PreferencesWire` refuses on `ocupilot-ci` for its missing arming, so CI runs its leg.
+- mutation: `reset()` keeps `deniedValue` -> red: `performance.test.mjs` "clearHistory drops the line and keeps the values; reset forgets both".
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none (AD-43 and AD-29 amended by the lead at the spec gate on 2026-09-26; Home's default rate ruled every 10 s)
+Status: done
+Blocking condition: none
+
+**Change.** `MonitorPort` gates `%Admin_Operate:USE` and `%DB_IRISSYS:READ`, reads `SYS.Monitor.SAM.Sensors` once in `%SYS` and parses the five unlabeled metrics, all or nothing. `GET /ui/performance` serves them. Home joins AD-43's roster with a new `refreshDefault` key (Registry, mirror and store; Home alone at 10 s) and remembers its rate under `home`. `PerformanceRow` is the refresh read, the row and the ten-minute line, and its success row is Home's context row. `RefreshService` now re-arms when a remembered rate lands after bind, on every roster screen.
+
+**Files.**
+
+- Server, new: `Port/MonitorPort.cls`, `Kernel/Shell/Performance.cls`, `Api/UiPerformance.cls`.
+- Server, changed: `Api/Router.cls` (route after `/ui/system`), `Screen/Descriptor/Home.cls`, `Screen/Descriptor/Base.cls` and `Screen/Registry.cls` (`refreshDefault`), `Kernel/State/Pref.cls` and `Api/Preferences.cls` (`home`), `Kernel/Shell/SystemInfo.cls` (comment).
+- Client, new: `core/performance.ts`, `areas/home/performance-row.ts`, `testing/performance.ts`.
+- Client, changed: `home.page.ts`, `refresh.ts`, `screen-store.ts`, `account-preferences.ts`, `main.ts`, `app.ts`, `screen-mirror.mjs`, `screens.generated.ts`, `strings.ts`, `_components.scss`.
+- Docs: EXPERIENCE.md (:83 and :836 in place, row 576 appended; `taskCreate` citation 616 -> 617).
+- Tests: new `Test/MonitorPort.cls`, `Test/MonitorPortFixture.cls`, `Test/UiPerformanceWire.cls`, `tools/performance.test.mjs`, `browser/home-performance.browser-spec.mjs`. Updated: `Descriptor`, `DeclarationCorpus`, `EndpointCoverage`, `PortGate`, `PreferencesWire`, `ScreenGrounding`, `SurfaceCoverage`, five `*.spec.ts`, `explain-screen.browser-spec.mjs`, three `tools/*.test.mjs`. `scripts/ci-throwaway.sh` arms `UiPerformanceWire`.
+
+**Review.** 14 findings: 4 patched (1 medium, 3 low), 10 rejected (5 false, 5 low), none deferred (see the triage log). `followup_review_recommended: false`: one medium patched, no high.
+
+**Verification.**
+
+- Loop commands green: mirror check and seven tool files (211 tests), `home.page.spec.ts` (54), `MonitorPort`, `UiPerformanceWire` and `EndpointCoverage`, and the browser specs `home-performance`, `home-system-information` and `explain-screen` (9 tests).
+- `PreferencesWire` refuses on `ocupilot-ci` for missing arming. Checked by curl instead: `home` rate 200, `home` favorite 422.
+- `npm test`: 1,539 tool tests and 1,499 component tests green. Bundle 1.88 MB, under 1900 kB.
+- Full ObjectScript sweep: 298 classes. 282 ran, 16 refused (arming), 1 known residue (`WireSecurityRead` task history).
+- Lints clean: check-objectscript, lint-docs, client-lint.
+
+**Residual risks.**
+
+- About 30 browser specs outside this story land on Home, which now shows a chip, a stamp and the row. The full browser suite runs in CI (Rule 29).
+- A denied caller still polls a 403 every 10 s (by design, see the triage log).

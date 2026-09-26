@@ -6565,3 +6565,74 @@ app-data-table .ocu-data-table-header-cell {
   block-size: var(--ocu-space-6);
   margin: 0;
 }
+
+// Story 16.18. Home's performance row: a heading and five readings above the blocks. Each reading
+// is a small card -- its label, then its value with the unit beside it -- and the cards wrap onto
+// more lines rather than widening Home, down to the 720px floor. The Global references card also
+// carries the ten-minute line, stroked in the primary role so it follows the theme. No new token.
+.ocu-home-performance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  min-width: 0;
+}
+
+.ocu-home-performance-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-home-performance-item {
+  display: flex;
+  flex: 1 1 var(--ocu-tile-min-width);
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  min-width: 0;
+  padding: var(--ocu-space-2) var(--ocu-space-3);
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container-lowest);
+}
+
+.ocu-home-performance-label {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-home-performance-reading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ocu-space-1);
+  min-width: 0;
+}
+
+.ocu-home-performance-value {
+  @include typo.ocu-type('title');
+
+  color: var(--ocu-on-surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.ocu-home-performance-unit {
+  @include typo.ocu-type('caption');
+
+  min-width: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-home-performance-sparkline {
+  display: block;
+  inline-size: 100%;
+  block-size: var(--ocu-space-6);
+  overflow: visible;
+}
+
+.ocu-home-performance-line {
+  fill: none;
+  stroke: var(--ocu-primary);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
