@@ -92,11 +92,12 @@ Property Reply As %String(MAXLEN = "");
 Property ContextRoute As %String(MAXLEN = 512);
 
 /// <p>The reply's citations as JSON text (<method>OcuPilot.Kernel.Agent.Citations.Cite</method>'s
-/// array), or <code>""</code> for none. Stored as data, never as a reference the instance resolves
+/// array): <code>[]</code> when the reply cites nothing, <code>""</code> when the turn ended without
+/// a reply. Stored as data, never as a reference the instance resolves
 /// (AD-37), and never replayed to the model.</p>
 /// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions): a row stored
-/// before this property existed reads it back as <code>""</code>, which is the value a turn with no
-/// citations holds, so no older row is reinterpreted.</p>
+/// before this property existed reads it back as <code>""</code>, which reads as no citations, so no
+/// older row is reinterpreted.</p>
 Property Citations As %String(MAXLEN = "");
 
 Index TurnKeyIdx On TurnKey [ Unique ];

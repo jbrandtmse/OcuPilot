@@ -7149,3 +7149,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-9-removing-the-classic-link-outs.md (code review) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: target=_blank at locator-bar.ts:175 (Help), home.page.ts:339, sign-in.ts:172, instance-notice.ts:67; the banned-everywhere clause names none of them. Pre-existing; 12.9 removed only the OAuth wording.
 - 2026-09-26T00:00:58Z status=by-design owner=12-9-removing-the-classic-link-outs by=cr note=spec gate Q3 left the Help/new-tab claim to its owner; reopens only via a UX amendment naming the outbound doc links
+
+### DW-1684: A chip clicked while already on the cited list decides presence from the list's cached read
+- source: spec-11-4-citation-chips-with-click-through.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: citation-navigator.ts alreadyHere settles from store.data() read before the click; a row created elsewhere since that read shows a false no-longer-present line. Requiring a fresh read there needs a refresh the spec does not ask for.
+- 2026-09-26T04:44:16Z status=wontfix-accepted owner=11-4-citation-chips-with-click-through by=cr note=reopen_if=a no-longer-present line is observed for a row the instance still holds
+
+### DW-1685: The server span scanner and marked disagree on block grammar (inline triple backticks, mixed fence chars, indented or quoted code, tables, CRLF)
+- source: spec-11-4-citation-chips-with-click-through.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Citations.Cite toggles fences on any line opening with three backticks or tildes and scans indented, quoted and table lines; the client draws no chip there, so a citation can be missing or spend a cap slot on a span with no chip.
+- 2026-09-26T04:44:16Z status=wontfix-accepted owner=11-4-citation-chips-with-click-through by=cr note=reopen_if=a live reply shows a cited returned row as plain code, or 20 citations with fewer than 20 chips
+
+### DW-1686: A span matching rows of two entity types read in one turn cites the first-read type
+- source: spec-11-4-citation-chips-with-click-through.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Citations.Match takes the lowest candidate index across types, so a user and a role both named Admin, or task 12 and pid 12, chip to whichever read came first.
+- 2026-09-26T04:44:16Z status=wontfix-accepted owner=11-4-citation-chips-with-click-through by=cr note=reopen_if=a chip opens a different entity type than the reply's sentence names
+
+### DW-1687: A citation chip's accessible name is the bare id, with nothing saying it opens and selects the row
+- source: spec-11-4-citation-chips-with-click-through.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: reply.ts builds the button with textContent only; EXPERIENCE.md defines no accessible description, and adding one needs a Fixed-strings row and a strings.ts entry.
+- 2026-09-26T04:44:16Z status=wontfix-accepted owner=11-4-citation-chips-with-click-through by=cr note=reopen_if=an accessibility review or NFR-12 audit flags the chip's purpose as unannounced

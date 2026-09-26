@@ -57,7 +57,7 @@ Property TurnKey As %String(MAXLEN = 64);
 Property StepsDropped As %Integer [ InitialExpression = 0 ];
 
 /// <p>The reply's citations as JSON text, as the turn row stores them
-/// (<property>OcuPilot.Kernel.State.Turn.Citations</property>), or <code>""</code> for none.</p>
+/// (<property>OcuPilot.Kernel.State.Turn.Citations</property>).</p>
 /// <p><b>Added with no <code>SCHEMAVERSION</code> move</b>: an entry appended before this property
 /// existed reads <code>""</code>, which restores as no citations.</p>
 Property Citations As %String(MAXLEN = "");

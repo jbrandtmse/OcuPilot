@@ -109,9 +109,11 @@ Method TestCandidatesComeOnlyFromASelectableScreensRows()
 }
 
 /// <p>Matching: only a span equal to a returned id cites, exactly or in the type's canonical
-/// spelling, in order of first mention, once per row, never from a fenced block, and at most 20.</p>
+/// spelling (exactly, for a singleton type), in order of first mention, once per row, never from a
+/// fenced block, and at most 20.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.Agent.Citations.Cite</method> accepts any backticked span
-/// -> the not-returned assertion goes red.</p>
+/// -> the not-returned assertion goes red. Matching a singleton type by its normalized id -> the
+/// singleton assertion goes red.</p>
 Method TestOnlyASpanNamingAReturnedRowCites()
 {
     Set tCandidates = ..CandidatesOf(..#USERS, "Name", $ListBuild("_SYSTEM", "Admin", "Fenced"))
@@ -119,12 +121,21 @@ Method TestOnlyASpanNamingAReturnedRowCites()
     Set tLabels = ""
     For tI = 0:1:tCited.%Size() - 1 Set tLabels = tLabels _ tCited.%Get(tI).%Get("label") _ "|"
     Do $$$AssertEquals(tLabels, "Admin|_SYSTEM|", "a span that names no returned row does not cite, a repeat cites once, in order of first mention")
+    Set tFences = ##class(OcuPilot.Kernel.Agent.Citations).Cite("``Admin`` first" _ $Char(10) _ "~~~" _ $Char(10) _ "`_SYSTEM`" _ $Char(10) _ "~~~", tCandidates)
+    Do $$$AssertEquals(tFences.%Size() _ "|" _ $Select(tFences.%Size() > 0: tFences.%Get(0).%Get("label"), 1: ""), "1|Admin", "a double-backtick span cites, and a tilde fence is a fenced block")
     Do $$$AssertEquals(tCited.%Get(1).%ToJSON(), "{""type"":""user"",""scope"":""instance"",""id"":""_SYSTEM"",""route"":""permissions/users"",""label"":""_SYSTEM""}", "with the wire shape")
 
     Set tApps = []
     Do ##class(OcuPilot.Kernel.Agent.Citations).Candidates("OcuPilot.Screen.Descriptor.WebAppList", ..Content("Name", $ListBuild("/csp/user")), tApps)
     Set tCanonical = ##class(OcuPilot.Kernel.Agent.Citations).Cite("See `/CSP/USER/`.", tApps)
     Do $$$AssertEquals(tCanonical.%Size() _ "|" _ tCanonical.%Get(0).%Get("id") _ "|" _ tCanonical.%Get(0).%Get("label"), "1|/csp/user|/CSP/USER/", "a canonical spelling cites the returned id under the reply's label")
+
+    Set tMixed = ..CandidatesOf("OcuPilot.Screen.Descriptor.OAuthServerTab", "IssuerEndpoint", $ListBuild("https://probe/issuer"))
+    Do tMixed.%Push(tCandidates.%Get(0))
+    Set tSingleton = ##class(OcuPilot.Kernel.Agent.Citations).Cite("`_SYSTEM` and `%All` and `https://probe/issuer`", tMixed)
+    Set tLabels = ""
+    For tI = 0:1:tSingleton.%Size() - 1 Set tLabels = tLabels _ tSingleton.%Get(tI).%Get("type") _ ":" _ tSingleton.%Get(tI).%Get("label") _ "|"
+    Do $$$AssertEquals(tLabels, "user:_SYSTEM|oauth2-server:https://probe/issuer|", "a singleton type's row is cited by its own id only, never by every span")
 
     Set tIds = ""
     Set tReply = ""

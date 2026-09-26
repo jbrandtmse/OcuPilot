@@ -89,6 +89,14 @@ describe('the citation navigator', () => {
     expect(router.url).toBe(`/permissions/users/${encodeEntityId('a b/c')}?ns=HSCUSTOM`);
   });
 
+  // Mutation (Rule 19): `open` passes '' for the citation's scope -> this goes red.
+  it("a namespace-scoped row opens in the citation's namespace, not the current one", async () => {
+    await router.navigateByUrl('/?ns=HSCUSTOM');
+    const rest: Citation = { type: 'rest-service', scope: 'USER', id: '/api/probe', route: 'web-applications/rest-apis', label: '/api/probe' };
+    await navigator.open(rest);
+    expect(router.url).toBe(`/web-applications/rest-apis/${encodeEntityId('/api/probe')}?ns=USER`);
+  });
+
   it('a route no built screen declares opens nothing', async () => {
     await navigator.open({ ...SYSTEM, route: 'permissions/nosuch' });
     expect(router.url).toBe('/');

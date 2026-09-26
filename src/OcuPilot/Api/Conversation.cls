@@ -50,7 +50,7 @@ ClassMethod HandleCreate() As %Status
 }
 
 /// <p>Answer <code>GET /conversation/:id</code> for the caller's own conversation:
-/// <code>{conversationId, turns:[{seq, message, state, reply, error, steps, stepsDropped,
+/// <code>{conversationId, turns:[{seq, message, state, reply, citations, error, steps, stepsDropped,
 /// proposals}]}</code>. An id the caller does not own, matched exactly, is 404
 /// <code>TURN.CONVERSATION.NOTFOUND</code>, the same as an unknown one. Each turn's
 /// <code>error.reason</code> is added here, from the code

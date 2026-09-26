@@ -262,6 +262,33 @@ deferred: []
 - **AC5 (integration, Rule 1).** Given 11.7's streamed turn and 11.1/11.2's explain turns, when they finish, then they render through the same reply path unchanged.
   - Pinned by `stream-reply` (b), `panel.spec` `:3956` and `explain-screen`.
 
+### Review Findings
+
+Code review 2026-09-26 (`full-opus`; Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor). No high. AD-11, AD-13, AD-24, AD-37 and AD-9 checks clean; `AgentNavigator` URLs byte-identical; Rule 3 met by browser (a) and (b).
+
+- [x] [Review][Patch] (medium) A singleton-rule type (`oauth2-server`) matched every span, because `NormalizedId` answers `SYSTEM` for any input; an OAuth server read turned the first backticked span of the reply into a chip to that screen. Matching now keys a singleton type by its exact id [src/OcuPilot/Kernel/Agent/Citations.cls:141]
+- [x] [Review][Patch] (low) `TurnNavigate` asserted only the old clause absent; it now counts "offer to select" once [src/OcuPilot/Test/TurnNavigate.cls:486]
+- [x] [Review][Patch] (low) No test opened a namespace-scoped citation through the navigator; leg added [ui/src/app/shell/citation-navigator.spec.ts:93]
+- [x] [Review][Patch] (low) No leg covered a double-backtick span or a tilde fence; leg added [src/OcuPilot/Test/TurnCitations.cls:124]
+- [x] [Review][Patch] (low) EXPERIENCE.md's two restated lines lacked their `[AMENDED]` marker, and the UJ climax still ended "Shall I select them in the list?" [EXPERIENCE.md:248, :598, :924]
+- [x] [Review][Patch] (low) Doc comments: `GET /conversation/:id`'s shape omitted `citations`; `Turn`/`Entry.Citations` said `""` for none where a completed turn stores `[]` [src/OcuPilot/Api/Conversation.cls:53, Kernel/State/Turn.cls:94, Kernel/State/Entry.cls:59]
+- [x] [Review][Defer] (low) Presence on the list already open decides from its cached read [ui/src/app/shell/citation-navigator.ts:60] — wontfix-accepted DW-1684
+- [x] [Review][Defer] (low) Server span scanner and marked disagree on block grammar [src/OcuPilot/Kernel/Agent/Citations.cls:78] — wontfix-accepted DW-1685
+- [x] [Review][Defer] (low) A span matching two entity types cites the first-read one [src/OcuPilot/Kernel/Agent/Citations.cls:123] — wontfix-accepted DW-1686
+- [x] [Review][Defer] (low) The chip's accessible name is the bare id [ui/src/app/shell/reply.ts:40] — wontfix-accepted DW-1687
+
+Rejected:
+
+- low by-design: a second spelling of a cited row stays code, since the chip rule matches the stored `label`.
+- low by-design: the prompt says a name is clickable even when the turn answered from screen context; the sentence and the "No read" row are specified.
+- low by-design: no Component Patterns row for the chip; the spec scopes out a component entry.
+- false: the fenced-block client test can fail; rendering a fence as a code span turns it red.
+- false: a pending check left by an abandoned open settles later from a fresh read of the same screen, about the same row.
+- low: the `generation` guard is unexercised; a superseded navigation resolves `false` and returns first.
+- low: nested `role="status"` in the transcript's `role="log"` may double-announce (inference, no screen-reader evidence).
+- low: browser (b)'s `selected === false` and the no-citations reply leg are not load-bearing; neither is a pinning assertion.
+- spec-edit: the Presence rule's wording and the Auto Run Result counts (1449, eleven, 19 rejected) predate QA's leg.
+
 ## Spec Change Log
 
 - 2026-09-26, lead spec gate: the proposed AD-11 paragraph is written into the spine (Rule 20). This spec was planned before Epic 12 merged into the branch (`521e3f72`); Epic 12's branch is gone, so its "stay off Epic 12's hunks" constraints are lifted, but every Code Map line reference in `panel.ts`, `turn.ts`, `strings.ts` and EXPERIENCE.md may have moved (the `taskCreate` citation is now `:613`) and must be re-read before editing. The EXPERIENCE.md restatements at the former `:248` and `:584` are accepted as Rule 5 tier-1 apply-and-report edits.
@@ -396,6 +423,20 @@ Observed (each reverted byte-identical; `git status --short` and `git diff --sta
 - mutation: `Citations.Candidates` keeps the declared scope instead of `ScopeFor` -> `TurnCitations.TestCandidatesComeOnlyFromASelectableScreensRows` red (the RestApiList leg; run 13252)
 - mutation: `CitationNavigator.open` drops `this.release()` -> `citation-navigator.spec.ts` "a newer open releases the check an earlier one left waiting" red
 - mutation: the streamed `<app-reply>` is bound to `turn.citations` -> `panel.spec.ts` "a streamed turn and a plain one end in the same turn DOM" red
+
+**(QA) Gap coverage.** The implement stage's tests each resolve one citation's presence per turn. `panel.ts`'s `absent` array is a `.filter().map()` over the whole entry, so a second citation resolving absent must not overwrite, blend with, or crowd out the first -- untested by any existing leg. Added `ui/src/app/shell/panel.spec.ts` (Story 11.4 describe block): two cited rows in one turn, clicked and found gone one after the other, each keep their own absent line, in citation order.
+
+- mutation (QA): `panel.ts`'s `absent` mapping in the `turns` getter collapsed to `.slice(-1)` (keep only the latest resolved citation) -> "two absent citations in one turn each render their own line, in citation order" red (the first row's line disappeared once the second resolved); reverted, `git status --short` and `git diff --stat` matched the baseline. `npm run test:components` 1450/1450 after revert (was 1449/1449).
+
+`mutations_demonstrated=1` (QA pass; 11 carried over from implement, unchanged).
+
+Code review (each reverted byte-identical; whole package reloaded on `ocupilot-ci` for server mutations):
+
+- mutation (CR): `Citations.MatchKey` normalizes a singleton type like any other -> `TurnCitations.TestOnlyASpanNamingAReturnedRowCites` red ("a singleton type's row is cited by its own id only", run 13547)
+- mutation (CR): the fence pattern drops `~~~` -> same method red ("a double-backtick span cites, and a tilde fence is a fenced block", run 13552)
+- mutation (CR): `BUILTIN` gains a second "offer to select" -> `TurnNavigate.TestAC12BuiltinCarriesBothSentences` red (run 13548)
+- mutation (CR): `CitationNavigator.open` passes `''` for the scope -> `citation-navigator.spec.ts` "a namespace-scoped row opens in the citation's namespace" red
+- mutation (CR, AC2 allow-list): `parseCitations` keeps a route `citationScreen` refuses -> `citation-chips.test.mjs` "parseCitations keeps only routes the registry builds" red
 
 **Manual check (extra evidence, never the proof).** Use the owner's live-key rules. On `permissions/users`, ask "Which users hold %All?". The reply names the accounts as chips, has no "Shall I select" offer, and a chip selects its row.
 

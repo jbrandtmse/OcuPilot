@@ -483,7 +483,7 @@ Method TestAC12BuiltinCarriesBothSentences()
 {
     Set tPrompt = ##class(OcuPilot.Kernel.Agent.Prompt).Builtin()
     Do $$$AssertTrue(tPrompt [ "Name each row you report by its identifying value in backticks, exactly as the tool returned it; the user can click that name to select the row, so do not offer to select rows.", "the citation sentence is carried verbatim (Story 11.4): " _ tPrompt)
-    Do $$$AssertTrue(tPrompt '[ "and offer to select it", "and the prompt no longer asks the model to offer a selection")
+    Do $$$AssertEquals($Length(tPrompt, "offer to select") - 1, 1, "and the prompt names offering a selection only to forbid it")
     Do $$$AssertTrue(tPrompt [ "Open a screen or select a row with the navigation tool, which announces the move before the browser moves and which the user may refuse.", "and the navigation sentence: " _ tPrompt)
 }
 

@@ -4752,4 +4752,43 @@ describe('Story 11.4: citation chips', () => {
     const turnHtml = (host: HTMLElement) => (host.querySelector('.ocu-panel-turn') as HTMLElement).outerHTML;
     expect(turnHtml(streamed.host)).toBe(turnHtml(plain.host));
   });
+
+  // The two tests above only ever resolve one citation's presence per turn. `panel.ts`'s `absent`
+  // array is a `.filter().map()` over the whole entry's citations, so a second citation resolving
+  // absent must not overwrite, blend with, or crowd out the first -- this pins that a turn's two
+  // cited rows, found gone one after the other, each keep their own line, in citation order.
+  // Mutation (Rule 19): change the `absent` mapping in panel.ts's `turns` getter to keep only the
+  // latest resolved citation (e.g. `.slice(-1)`) -> the first row's line disappears once the
+  // second resolves, and this goes red.
+  it('two absent citations in one turn each render their own line, in citation order', async () => {
+    const GONE_A = { type: 'user', scope: 'instance', id: 'OcuPilotCiteGoneA', route: 'permissions/users', label: 'OcuPilotCiteGoneA' };
+    const GONE_B = { type: 'user', scope: 'instance', id: 'OcuPilotCiteGoneB', route: 'permissions/users', label: 'OcuPilotCiteGoneB' };
+    const reply = '`OcuPilotCiteGoneA` and `OcuPilotCiteGoneB` both held it once.';
+    const done = withCitations(modelProgress('completed', 'ok', reply, reply), [GONE_A, GONE_B]);
+    const { host, fixture, scheduled, screenStores } = await mountAnswered([done]);
+    await nextPoll(scheduled, fixture);
+
+    const chips = [...host.querySelectorAll('.ocu-panel-message-agent app-reply button.ocu-reply-citation')] as HTMLButtonElement[];
+    expect(chips.map((chip) => chip.textContent)).toEqual(['OcuPilotCiteGoneA', 'OcuPilotCiteGoneB']);
+    expect(host.querySelectorAll('.ocu-citation-absent')).toHaveLength(0);
+
+    const users = SCREENS.find((screen) => screen.route === 'permissions/users');
+    expect(users).toBeDefined();
+    const store = screenStores.for(users!.descriptor, users!.refreshRates);
+    const lineFor = (label: string) => STRINGS.citationAbsent.split('<name>').join(label);
+
+    chips[0].click();
+    await turnSettle();
+    store.applyTick([{ Name: 'Admin' }], false, '', new Date());
+    fixture.detectChanges();
+    let lines = [...host.querySelectorAll('.ocu-panel-turn .ocu-citation-absent')].map((p) => p.textContent);
+    expect(lines, 'only the clicked-and-gone row has a line so far').toEqual([lineFor('OcuPilotCiteGoneA')]);
+
+    chips[1].click();
+    await turnSettle();
+    fixture.detectChanges();
+    lines = [...host.querySelectorAll('.ocu-panel-turn .ocu-citation-absent')].map((p) => p.textContent);
+    expect(lines, 'both rows keep their own line, in citation order').toEqual([lineFor('OcuPilotCiteGoneA'), lineFor('OcuPilotCiteGoneB')]);
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
 });

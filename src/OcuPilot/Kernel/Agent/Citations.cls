@@ -53,7 +53,8 @@ ClassMethod Candidates(pDescriptor As %String, pContent As %String, pInto As %Dy
 
 /// <p>The citations <var>pReply</var> carries against <var>pCandidates</var>, in order of first
 /// mention: each single-line backticked span outside a fenced block that equals a candidate's id,
-/// exactly or after <method>OcuPilot.Kernel.EntityRef.NormalizedId</method> of both, becomes
+/// exactly or after <method>OcuPilot.Kernel.EntityRef.NormalizedId</method> of both (exactly only,
+/// for a singleton type), becomes
 /// <code>{type, scope, id, route, label}</code> with the candidate's triple and route and the span
 /// as <code>label</code>. One citation per distinct <code>(type, scope, id)</code>, at most
 /// <parameter>MAXCITATIONS</parameter>. A span that matches nothing adds nothing. Never throws.</p>
@@ -62,12 +63,12 @@ ClassMethod Cite(pReply As %String, pCandidates As %DynamicArray) As %DynamicArr
     Set tCited = []
     Try {
         If (pReply = "") || '$IsObject(pCandidates) || (pCandidates.%Size() = 0) Quit
-        ; Each candidate indexed once by its normalized id, per type; the first one wins.
+        ; Each candidate indexed once by its match key, per type; the first one wins.
         Kill tByNorm
         For tI = 0:1:pCandidates.%Size() - 1 {
             Set tCandidate = pCandidates.%Get(tI)
             Set tType = tCandidate.%Get("type")
-            Set tNorm = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(tType, tCandidate.%Get("id"))
+            Set tNorm = ..MatchKey(tType, tCandidate.%Get("id"))
             If tNorm = "" Continue
             If '$Data(tByNorm(tType, tNorm)) Set tByNorm(tType, tNorm) = tI
         }
@@ -127,11 +128,21 @@ ClassMethod Match(pSpan As %String, ByRef pByNorm) As %String [ Private ]
     For {
         Set tType = $Order(pByNorm(tType))
         If tType = "" Quit
-        Set tNorm = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(tType, pSpan)
+        Set tNorm = ..MatchKey(tType, pSpan)
         If (tNorm = "") || '$Data(pByNorm(tType, tNorm), tIndex) Continue
         If (tBest = "") || (tIndex < tBest) Set tBest = tIndex
     }
     Quit tBest
+}
+
+/// <p>The key <var>pId</var> is matched under for <var>pType</var>: its
+/// <method>OcuPilot.Kernel.EntityRef.NormalizedId</method>, unless that rule answers the same value
+/// for an empty id (a singleton type, whose every spelling is one id), when the id itself is the key.</p>
+ClassMethod MatchKey(pType As %String, pId As %String) As %String [ Private ]
+{
+    Set tNorm = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(pType, pId)
+    If tNorm = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(pType, "") Quit pId
+    Quit tNorm
 }
 
 /// <p>How many backticks run from position <var>pStart</var> of <var>pLine</var>.</p>
