@@ -15,3 +15,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-26T18:34:40Z	Epic 14	retro_review_skipped	reason=orchestrator_ruling_no_14.0_rule27 sources_checked=retro,ledger,action_items retro_files=0 owner_none=0 owner_unknown=0 x0_chartered=0
 2026-09-26T18:36:51Z	Epic 14	ledger_routed_planned	story=14-1-the-copy-out-draft entries=1 excess=0 by=load dw=DW-1081 note=epics.md_bullet_added_before_prewarm
 2026-09-26T18:36:51Z	Epic 14	epic_context_compiled	sha=pending reason=initial model=claude-opus-5-5[1m] path=_bmad-output/implementation-artifacts/epic-14-context.md lines=125 scope=14.1,14.8,14.3 held=14.2,14.4,14.5,14.6
+2026-09-26T18:37:47Z	Epic 14	throwaway_up	container=ocupilot-b-ci dir=/tmp/ocupilot-b-ci project=ocupilot-b-ci web=52777 super=1976 health=healthy started_by=epic-14-runner
+2026-09-26T18:37:47Z	Story 14.1	stage_spawned	stage=plan spawn_at=2026-09-26T18:37:47Z model=opus agent_name=14-1-the-copy-out-draft-plan-1 cycle_iteration=1
