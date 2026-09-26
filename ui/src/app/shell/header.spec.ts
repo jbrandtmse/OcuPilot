@@ -5,23 +5,62 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PreferenceStore } from '../core/preferences';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
+import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { Header } from './header';
+import { About } from '../core/about';
+import { AccountPreferences } from '../core/account-preferences';
+import { Session } from '../core/session';
+import { ThemeState } from '../core/theme';
+import { stubAbout } from '../testing/about';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The header's rendered contract (DESIGN.md `:1007-1017`, EXPERIENCE.md "`{spacing.header-height}` band").
  *
- * The band's *appearance* -- the gradient, the 32px lockup, the 100%-opacity rule -- is CSS
+ * The band's *appearance* -- the gradient, the tiled lockup, the 100%-opacity rule -- is CSS
  * and jsdom computes none of it; those are asserted against the shipped stylesheet in
- * `ui/tools/design-tokens.test.mjs`, and measured in the browser under Manual checks. What is
+ * `ui/tools/design-tokens.test.mjs`, and measured in the browser under Manual checks (the lockup
+ * by `ui/browser/header-lockup.browser-spec.mjs`). What is
  * here is the half a regex over the stylesheet cannot see: the landmark, the lockup's link and
- * accessible name, the command box's presence, the namespace slot, and the badge's absence.
+ * accessible name, the command box's presence, the namespace slot, the account button at the right
+ * end, and the badge's absence.
  */
+
+/** The session the account button names and signs out of. */
+class StubSession {
+  signOuts = 0;
+
+  constructor(private readonly name = '_SYSTEM') {}
+
+  userName(): string {
+    return this.name;
+  }
+
+  subscribe(): () => void {
+    return () => {};
+  }
+
+  async signOut(): Promise<void> {
+    this.signOuts += 1;
+  }
+}
+
+/** What the account menu mounted at the right end needs besides what the band already provides. */
+function accountProviders(session: StubSession = new StubSession()) {
+  return [
+    { provide: About, useValue: stubAbout() },
+    { provide: Session, useValue: session as unknown as Session },
+    {
+      provide: ThemeState,
+      useValue: new ThemeState({ account: stubAccountPreferences(), root: document.createElement('div') }),
+    },
+  ];
+}
 
 const ALLOWED: Verdict = { allowed: true, failedPair: '' };
 
@@ -99,6 +138,8 @@ describe('the header', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
+        ...accountProviders(),
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
@@ -110,7 +151,10 @@ describe('the header', () => {
         { provide: ScopeService, useValue: new StubScope() as unknown as ScopeService },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
-        { provide: ShellState, useValue: new ShellState({ preferences: new PreferenceStore({ storage: null }) }) },
+        // The command box this header hosts reads the current screen's selection to decide
+        // whether a row action is offered or explained (AD-53).
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
+        { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
       ],
     });
     fixture = TestBed.createComponent(Header);
@@ -119,13 +163,66 @@ describe('the header', () => {
     fixture.detectChanges();
   });
 
-  it('is a banner carrying the lockup, the command box and the namespace slot, in that order', () => {
+  it('is a banner carrying the lockup, the command box and the right end, in that order', () => {
     const banner = fixture.nativeElement.querySelector('[role="banner"]');
     expect(banner).not.toBeNull();
     expect(banner.tagName).toBe('HEADER');
 
     const slots = Array.from(banner.children).map((child) => (child as HTMLElement).tagName);
     expect(slots).toEqual(['A', 'APP-COMMAND-BOX', 'DIV']);
+    // Story 15.9: the right end is the namespace slot, then the account button.
+    const end = banner.lastElementChild as HTMLElement;
+    expect(end.classList.contains('ocu-header-end')).toBe(true);
+    expect(Array.from(end.children).map((child) => (child as HTMLElement).className || child.tagName)).toEqual([
+      'ocu-header-namespace',
+      'APP-ACCOUNT-MENU',
+    ]);
+  });
+
+  // Mutation (Rule 19): drop `<app-account-menu />` from the header -> this goes red.
+  it('the account button names the user and opens About, Change password, Dark theme and Sign out', () => {
+    const trigger: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.ocu-header-end #ocu-account-trigger'
+    );
+    expect(trigger).not.toBeNull();
+    expect(trigger.querySelector('.ocu-account-name')?.textContent?.trim()).toBe('_SYSTEM');
+
+    trigger.click();
+    fixture.detectChanges();
+    const items = [...fixture.nativeElement.querySelectorAll('.ocu-account-panel [role^="menuitem"]')];
+    expect(items.map((item) => (item as HTMLElement).firstChild?.textContent?.trim())).toEqual([
+      STRINGS.aboutTitle,
+      STRINGS.accountChangePassword,
+      STRINGS.accountDarkTheme,
+      STRINGS.actionSignOut,
+    ]);
+  });
+
+  // Mutation (Rule 19): cut the name in the component (`userName().slice(0, 20)`) -> red. The
+  // ellipsis is the stylesheet's, measured in `account-and-filter.browser-spec.mjs`.
+  it('a long user name reaches the account button whole, however the band cuts it', () => {
+    const long = 'A user name far too long for the header at any width to show whole';
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        ...accountProviders(new StubSession(long)),
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
+        provideRouter([{ path: '', children: [] }]),
+        {
+          provide: NavigationService,
+          useValue: new StubNavigation() as unknown as NavigationService,
+        },
+        { provide: ScopeService, useValue: new StubScope() as unknown as ScopeService },
+        { provide: OverlayStack, useValue: new OverlayStack() },
+        { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
+        { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
+      ],
+    });
+    const named = TestBed.createComponent(Header);
+    named.detectChanges();
+    const label = named.nativeElement.querySelector('#ocu-account-trigger .ocu-account-name');
+    expect(label?.textContent?.trim()).toBe(long);
   });
 
   it('the lockup links to Home and says so, with no second control on it', () => {
@@ -135,7 +232,7 @@ describe('the header', () => {
     // resolved through the deployment's base href -- `Location.prepareExternalUrl` is what
     // applies it, and the test harness's base is `/`.
     expect(lockup.getAttribute('href')).toBe(location.prepareExternalUrl('/'));
-    // No plate, no ground, no hover state: it is an anchor with nothing inside it.
+    // The tile is the anchor's own background and there is no hover state: nothing inside it.
     expect(lockup.children).toHaveLength(0);
     expect(lockup.textContent?.trim()).toBe('');
   });
@@ -221,6 +318,8 @@ describe('the header', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
+        ...accountProviders(),
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([{ path: '', children: [] }]),
         {
           provide: NavigationService,
@@ -229,7 +328,10 @@ describe('the header', () => {
         { provide: ScopeService, useValue: new StubScopeNamed() as unknown as ScopeService },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
-        { provide: ShellState, useValue: new ShellState({ preferences: new PreferenceStore({ storage: null }) }) },
+        // The command box this header hosts reads the current screen's selection to decide
+        // whether a row action is offered or explained (AD-53).
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
+        { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
       ],
     });
     const named = TestBed.createComponent(Header);

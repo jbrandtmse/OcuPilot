@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
@@ -113,23 +113,52 @@ export const DECLARED_GATES = [
   'npm ci',
   'npm run build',
   'npx puppeteer browsers install chrome',
+  'cat /proc/sys/net/ipv4/ip_local_port_range',
   'sh scripts/ci-throwaway.sh up',
   'sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/',
+  'node tools/admin-spec.mjs --origin http://localhost:52776',
+  'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781',
   'node tools/ci-runner.mjs --container ocupilot-ci',
   'sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS',
   'npm run test:browser',
   'sh scripts/ci-throwaway.sh logs',
   'sh scripts/ci-throwaway.sh down',
-  // images
+  // browser -- the same script fully parameterised onto a second throwaway, so the two suites
+  // that dominated the old instance job run side by side instead of end to end.
+  'npm ci',
+  'npm run build',
+  'cat /proc/sys/net/ipv4/ip_local_port_range',
+  'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781',
+  'sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci --web 52780 --super 1979',
+  'sh scripts/wait-readiness.sh --url http://localhost:52780/api/ocupilot/readiness/',
+  'sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-browser-ci',
+  'sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci',
+  // images -- compiled portless first, then installed on a throwaway of the same edition, which
+  // takes a third port pair so it never collides with the other two jobs' throwaways.
   'sh scripts/ci-image-compile.sh --image ${{ matrix.image }}',
+  'npm ci',
+  'npm run build',
+  'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781',
+  'sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --web 52781 --super 1980 --image ${{ matrix.image }}',
+  'sh scripts/wait-readiness.sh --url http://localhost:52781/api/ocupilot/readiness/',
+  'node tools/admin-spec.mjs --origin http://localhost:52781',
+  'sh scripts/smoke.sh --container ocupilot-images-ci --user _SYSTEM --password SYS',
+  `curl -fsS -u _SYSTEM:SYS http://localhost:52781/api/ocupilot/agent/providers | grep -q '"credentialsRungAvailable":true'`,
+  'sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-images-ci',
+  'sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --image ${{ matrix.image }}',
+  // package -- `npm ci` and `npm run build` run again here, in a job with its own checkout,
+  // because the IPM manifest copies the built bundle into the archive.
+  'npm ci',
+  'npm run build',
+  'sh scripts/ci-ipm-archive.sh --image intersystems/irishealth-community:2026.2',
 ];
 
 /**
  * Every `run:` command in the workflow, in order, with duplicates KEPT.
  *
  * De-duplicating would quietly weaken the equality this file's whole claim rests on: `npm ci`
- * and `npm run build` each appear in two jobs, so against a de-duplicated set, deleting one of
- * the two occurrences left both directions green and "a gate deleted from either side is red"
+ * and `npm run build` each appear in several jobs, so against a de-duplicated set, deleting one
+ * occurrence left both directions green and "a gate deleted from either side is red"
  * was false for exactly those commands. The declared list below therefore carries a command
  * once per occurrence.
  */
@@ -318,7 +347,15 @@ test('every file a gate command names actually exists', () => {
 
 // --- The absences ---------------------------------------------------------------------------
 
-test('nothing in the workflow publishes, releases or pushes to a registry (stealth policy)', () => {
+test('nothing in the workflow or the archive builder publishes, releases or pushes to a registry (stealth policy)', () => {
+  // The same seven patterns are applied to `scripts/ci-ipm-archive.sh` as well as to the workflow:
+  // that script builds the distributable archive, so a forbidden token inside it would publish
+  // exactly as effectively as one in a step that calls it. Comment lines are kept on the script
+  // side -- a comment naming an upload token is a reader's instruction to add one.
+  // `ui/tools/ipm-archive.test.mjs` runs a STRICTER version of this scan over the same script --
+  // the bare word `publish` rather than `npm publish`, plus a credential-variable pattern. This
+  // one is the floor the workflow and the script share; that one is the script's own.
+  const archive = readFileSync(join(REPO_ROOT, 'scripts', 'ci-ipm-archive.sh'), 'utf8');
   for (const [what, pattern] of [
     ['a secret reference', /secrets\./],
     ['npm publish', /npm\s+publish/],
@@ -333,6 +370,11 @@ test('nothing in the workflow publishes, releases or pushes to a registry (steal
       pattern,
       `the workflow carries ${what}; nothing in CI publishes before the owner's release (stealth policy)`
     );
+    assert.doesNotMatch(
+      archive,
+      pattern,
+      `scripts/ci-ipm-archive.sh carries ${what}; the archive builder never uploads what it builds (Story 13.3)`
+    );
   }
 });
 
@@ -344,10 +386,19 @@ test('no step can fail without failing the job', () => {
   // happened before it -- and is a defect anywhere else, because a gate that runs regardless is
   // a gate whose own failure does not stop the ones after it.
   const always = [...workflow.matchAll(/^\s*if:\s*always\(\)\s*$/gm)];
-  assert.equal(always.length, 1, `expected exactly one always() step (the teardown), found ${always.length}`);
-  const teardownAt = workflow.indexOf('tear the throwaway down');
-  assert.ok(teardownAt > 0, 'the teardown step is named');
-  assert.ok(always[0].index > teardownAt, 'and always() belongs to it');
+  const teardowns = [...workflow.matchAll(/tear the throwaway down/g)];
+  assert.ok(teardowns.length > 0, 'the teardown step is named');
+  assert.equal(
+    always.length,
+    teardowns.length,
+    `expected one always() step per teardown (${teardowns.length}), found ${always.length}`
+  );
+  // Each always() belongs to the teardown it follows, and to no other step: pairwise, in order.
+  teardowns.forEach((teardown, i) => {
+    assert.ok(always[i].index > teardown.index, `always() #${i + 1} belongs to its own teardown`);
+    const next = teardowns[i + 1];
+    if (next) assert.ok(always[i].index < next.index, `always() #${i + 1} does not belong to the next job's teardown`);
+  });
 });
 
 test('a failing instance job captures the throwaway before the teardown removes it (DW-232)', () => {
@@ -359,10 +410,15 @@ test('a failing instance job captures the throwaway before the teardown removes 
   //
   // Mutation (Rule 19): delete the capture step, or move it below the teardown, or narrow its
   // condition to `failure()` -> this goes red.
-  const instance = jobSlice(workflow, 'instance');
+  // Every throwaway-owning job, not just the first: the browser job was split out of instance on
+  // 2026-09-22 and the images job gained its own throwaway in Story 8.9, and each inherits the same
+  // hazard, so asserting only `instance` would let a newer job lose its capture silently -- which
+  // is the exact shape of the defect this test was written for.
+  for (const jobName of ['instance', 'browser', 'images']) {
+  const instance = jobSlice(workflow, jobName);
   const captureAt = instance.indexOf('capture the throwaway on failure');
   const teardownAt = instance.indexOf('tear the throwaway down');
-  assert.ok(captureAt > 0, 'the instance job captures the throwaway on the failure path');
+  assert.ok(captureAt > 0, `the ${jobName} job captures the throwaway on the failure path`);
   assert.ok(captureAt < teardownAt, 'before the teardown, which removes the container it would read');
 
   // Scoped to the instance job, and to a condition that covers cancellation. `timeout-minutes`
@@ -371,8 +427,9 @@ test('a failing instance job captures the throwaway before the teardown removes 
   // the `always()` teardown still removes the container. Counting conditions across the whole
   // file would also mean the images job could never grow a capture of its own.
   const failure = [...instance.matchAll(/^\s*if:\s*\$\{\{\s*failure\(\)\s*\|\|\s*cancelled\(\)\s*\}\}\s*$/gm)];
-  assert.equal(failure.length, 1, `expected exactly one failure()||cancelled() step in the instance job (the capture), found ${failure.length}`);
+  assert.equal(failure.length, 1, `expected exactly one failure()||cancelled() step in the ${jobName} job (the capture), found ${failure.length}`);
   assert.ok(failure[0].index > captureAt && failure[0].index < teardownAt, 'and the condition belongs to it');
+  }
 
   const logsGate = DECLARED_GATES.find((gate) => gate.endsWith('ci-throwaway.sh logs'));
   assert.ok(logsGate, 'the capture is a declared gate like every other step');
@@ -403,8 +460,10 @@ test('a superseded run is cancelled rather than queued behind the one that repla
   assert.match(workflow, /group: ci-/, 'grouped per workflow and ref');
 });
 
-test('the three jobs are declared, and the instance job waits on readiness before any suite', () => {
-  assert.deepEqual(jobNames(workflow), ['gates', 'instance', 'images']);
+test('the five jobs are declared, and the instance job waits on readiness before any suite', () => {
+  // An equality, not a superset: a job nothing here names is how a step nothing here describes
+  // arrives, which is the same reason the run-command list is held equal in both directions.
+  assert.deepEqual(jobNames(workflow), ['gates', 'instance', 'browser', 'images', 'package']);
 
   const waitAt = workflow.indexOf('scripts/wait-readiness.sh');
   const runnerAt = workflow.indexOf('tools/ci-runner.mjs');
@@ -417,6 +476,17 @@ test('the three jobs are declared, and the instance job waits on readiness befor
 
   const upAt = workflow.indexOf('ci-throwaway.sh up');
   assert.ok(upAt > 0 && upAt < waitAt, 'the throwaway comes up first');
+
+  // Both new steps are placed for their position, and the DECLARED_GATES equality above compares
+  // SORTED multisets -- so without these two assertions either could be moved with every gate
+  // green. DW-439's criterion is that the range is logged "whether or not the bind succeeded",
+  // which is only true while the probe runs BEFORE the bring-up that may fail; and the admin-spec
+  // step is placed to fail in seconds rather than forty minutes into the suites.
+  const rangeAt = workflow.indexOf('cat /proc/sys/net/ipv4/ip_local_port_range');
+  assert.ok(rangeAt > 0 && rangeAt < upAt, 'the ephemeral-range probe runs before the bind that may fail (DW-439)');
+  const adminSpecAt = workflow.indexOf('tools/admin-spec.mjs --origin');
+  assert.ok(adminSpecAt > waitAt, 'the admin API drift gate runs after readiness');
+  assert.ok(adminSpecAt < runnerAt, 'and before the long suites, so a vendor drift fails in seconds (AD-27)');
 });
 
 test('the images job covers both stock Community editions at the pinned version (NFR-13)', () => {
@@ -508,23 +578,41 @@ test('the gates job runs on the floor of every Node band the workspace declares 
   );
 });
 
-test('the instance job pins a Node the engines range admits', () => {
-  // The instance job is not a matrix -- it builds the bundle a container installs, once -- so it
-  // carries a literal, and the literal has to be inside the declared range like any other.
+test('every job that pins a literal Node pins one the engines range admits', () => {
+  // `instance` and `package` are not matrices -- each builds the bundle a container installs,
+  // once -- so each carries a literal, and a literal has to be inside the declared range like any
+  // other. Both are named here rather than only `instance`: a second job pinning a literal that
+  // this test did not read would keep a stale pin when the floor moves, and `engine-strict` would
+  // report it as an npm failure in a job no gate had ever looked at.
   const packageJson = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'));
   const declared = packageJson.engines.node;
-  const pinned = /node-version:\s*(\S+)/.exec(jobSlice(workflow, 'instance'));
-  assert.ok(pinned, 'the instance job pins a node version');
-  const [major, minor, patch] = pinned[1].split('.').map(Number);
-  assert.ok(
-    declared.includes(`^${major}.`),
-    `CI pins Node ${pinned[1]} and the workspace declares ${declared}; a pin outside the range fails at npm ci with engine-strict`
-  );
-  const floor = new RegExp(`\\^${major}\\.(\\d+)\\.(\\d+)`).exec(declared);
-  assert.ok(floor, `the engines range names a ^${major} band`);
-  assert.ok(
-    minor > Number(floor[1]) || (minor === Number(floor[1]) && patch >= Number(floor[2])),
-    `CI pins Node ${pinned[1]}, below the ${declared} floor`
+  const literalPinners = ['instance', 'browser', 'images', 'package'];
+  for (const job of literalPinners) {
+    const pinned = /node-version:\s*(\S+)/.exec(jobSlice(workflow, job));
+    assert.ok(pinned, `the ${job} job pins a node version`);
+    assert.doesNotMatch(pinned[1], /\$\{\{/, `the ${job} job pins a literal, not a matrix expression`);
+    const [major, minor, patch] = pinned[1].split('.').map(Number);
+    assert.ok(
+      declared.includes(`^${major}.`),
+      `the ${job} job pins Node ${pinned[1]} and the workspace declares ${declared}; a pin outside the range fails at npm ci with engine-strict`
+    );
+    const floor = new RegExp(`\\^${major}\\.(\\d+)\\.(\\d+)`).exec(declared);
+    assert.ok(floor, `the engines range names a ^${major} band`);
+    assert.ok(
+      minor > Number(floor[1]) || (minor === Number(floor[1]) && patch >= Number(floor[2])),
+      `the ${job} job pins Node ${pinned[1]}, below the ${declared} floor`
+    );
+  }
+  // And the list above is held equal to the jobs that actually carry one, so a third such job
+  // cannot be added without being covered here.
+  const withLiteralPin = jobNames(workflow).filter((job) => {
+    const pin = /node-version:\s*(\S+)/.exec(jobSlice(workflow, job));
+    return pin !== null && !pin[1].includes('${{');
+  });
+  assert.deepEqual(
+    withLiteralPin.sort(),
+    [...literalPinners].sort(),
+    'a job pins a literal Node version that this test does not check against engines.node'
   );
 });
 
@@ -1230,6 +1318,7 @@ test('the throwaway and the image probe refuse to touch the live container', () 
   assert.match(throwaway, /"\$PROJECT" = "ocupilot"/, 'and the live project name');
   assert.match(throwaway, /ocupilot-slot-\*\)/, 'and every slot dev-instance project name');
   assert.match(throwaway, /"\$WEB_PORT" = "52775"/, "and slot B's web port");
+  assert.match(throwaway, /"\$WEB_PORT" = "52778"/, "and slot C's web port");
   assert.match(throwaway, /"\$SUPER_PORT" = "1974"/, "and slot B's SuperServer port");
   assert.match(throwaway, /docker compose ls -a --format json[^\n]*Name/, 'and it asks Compose whether the project name is already taken');
   assert.match(throwaway, /ConfigFiles[^\n]*\$COMPOSE_FILE/, 'recognizing its own earlier run only by this config file');
@@ -1395,15 +1484,17 @@ test('the failure-path capture reads the containers and says so when there are n
   }
 });
 
-test("the throwaway's port and name are one fact, not five declarations of one", () => {
+test("the throwaway's port and name are one fact, not six declarations of one", () => {
   // 52776 was written independently in five places -- ci-throwaway.sh's WEB_PORT default, the
   // wait-readiness gate string, the browser job's `env:`, browser.config.mjs's DEFAULT_ORIGIN
   // and this file's DECLARED_GATES -- and nothing held any two of them equal. `runCommands()`
   // reads only `run:` lines, so the `env:` one was pinned by nothing at all. Changing the
   // throwaway's default leaves `npm test` green and breaks a job whose first run is the owner's.
+  // The admin-spec drift gate's `--origin` is the sixth.
   //
   // Mutation (Rule 19): change WEB_PORT in ci-throwaway.sh, or the port in either the
-  // wait-readiness gate, the `env:` line or browser.config.mjs -> this goes red naming the pair.
+  // wait-readiness gate, the admin-spec gate, the `env:` line or browser.config.mjs -> this goes
+  // red naming the pair.
   const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
   const browserConfig = readFileSync(join(REPO_ROOT, 'ui', 'browser.config.mjs'), 'utf8');
 
@@ -1415,9 +1506,45 @@ test("the throwaway's port and name are one fact, not five declarations of one",
   assert.ok(waitGate, 'a wait-readiness gate is declared');
   assert.match(waitGate, new RegExp(`localhost:${port}/`), `the readiness gate waits on the throwaway's own port ${port}`);
 
+  const adminSpecGate = DECLARED_GATES.find((gate) => gate.startsWith('node tools/admin-spec.mjs'));
+  assert.ok(adminSpecGate, 'an admin-spec drift gate is declared');
+  assert.match(
+    adminSpecGate,
+    new RegExp(`--origin http://localhost:${port}$`),
+    `the admin-spec gate reads the throwaway's own port ${port}`
+  );
+
+  // Since 2026-09-22 there are TWO throwaways: the instance job keeps ci-throwaway.sh's default
+  // pair, and the browser job passes its own on the command line so the two suites can run side
+  // by side. That does not weaken this test's claim -- it doubles it. The browser job's port and
+  // container are still one fact each, declared once on the `up` line and read back everywhere
+  // else, and the `env:` pair is still the part `runCommands()` cannot see.
+  const browserUp = DECLARED_GATES.find((gate) => gate.startsWith('sh scripts/ci-throwaway.sh up --dir'));
+  assert.ok(browserUp, 'the browser job declares its own throwaway');
+  const browserPort = /--web (\d+)/.exec(browserUp);
+  const browserProject = /--project (\S+)/.exec(browserUp);
+  assert.ok(browserPort && browserProject, 'that throwaway names its own port and project');
+  assert.notEqual(browserPort[1], port, 'and it is a different port from the instance throwaway, or the two jobs collide');
+
+  const browserWait = DECLARED_GATES.find((gate) => gate.startsWith('sh scripts/wait-readiness.sh') && gate.includes(browserPort[1]));
+  assert.ok(browserWait, `the browser job waits on its own port ${browserPort[1]}`);
+
   const browserOrigin = /OCUPILOT_BROWSER_ORIGIN:\s*(\S+)/.exec(workflow);
   assert.ok(browserOrigin, "the browser step sets OCUPILOT_BROWSER_ORIGIN -- the one setting runCommands() cannot see");
-  assert.equal(browserOrigin[1], `http://localhost:${port}`, "the browser step drives the throwaway's own port");
+  assert.equal(browserOrigin[1], `http://localhost:${browserPort[1]}`, "the browser step drives its own throwaway's port");
+
+  // Both variables or neither: browser.config.mjs carries its own container default, so a step
+  // that overrides only the origin execs into the OTHER throwaway's container (2026-09-16).
+  const browserContainer = /OCUPILOT_BROWSER_CONTAINER:\s*(\S+)/.exec(workflow);
+  assert.ok(browserContainer, 'the browser step sets OCUPILOT_BROWSER_CONTAINER beside the origin');
+  assert.equal(browserContainer[1], browserProject[1], "and it names its own throwaway, whose container_name follows --project");
+
+  // The reservation covers both ports, or DW-439 simply moves to the new one.
+  const reserve = DECLARED_GATES.find((gate) => gate.startsWith('sudo sysctl -w net.ipv4.ip_local_reserved_ports='));
+  assert.ok(reserve, 'the throwaway host ports are reserved against the ephemeral range (DW-439)');
+  for (const reserved of [port, browserPort[1]]) {
+    assert.match(reserve, new RegExp(`(=|,)${reserved}(,|$)`), `the reservation covers ${reserved}`);
+  }
 
   const defaultOrigin = /DEFAULT_ORIGIN = '([^']+)'/.exec(browserConfig);
   assert.ok(defaultOrigin, 'browser.config.mjs declares a DEFAULT_ORIGIN');
@@ -1426,9 +1553,60 @@ test("the throwaway's port and name are one fact, not five declarations of one",
 
   const project = /^PROJECT="([^"]+)"/m.exec(throwaway);
   assert.ok(project, 'ci-throwaway.sh declares a PROJECT default');
+
+  // The images job's throwaway (Story 8.9) is the third, and its facts are held the same way: its
+  // port is declared once on its `up` line and read back by the reservation, the readiness wait and
+  // the admin-spec origin; its project is the container smoke names and the project the teardown
+  // removes; and it installs the edition the matrix names, which is the point of the leg.
+  //
+  // Mutation (Rule 19): delete the images job's admin-spec step -> this goes red.
+  const images = jobSlice(workflow, 'images');
+  const imagesRuns = runCommands(images);
+  const imagesUp = imagesRuns.find((command) => command.startsWith('sh scripts/ci-throwaway.sh up'));
+  assert.ok(imagesUp, 'the images job brings up a throwaway of its own');
+  const imagesPort = /--web (\d+)/.exec(imagesUp);
+  const imagesProject = /--project (\S+)/.exec(imagesUp);
+  assert.ok(imagesPort && imagesProject, 'that throwaway names its own port and project');
+  assert.ok(![port, browserPort[1]].includes(imagesPort[1]), 'on a port neither other throwaway uses');
+  assert.notEqual(imagesProject[1], project[1], 'under a project the instance throwaway does not use');
+  assert.notEqual(imagesProject[1], browserProject[1], 'nor the browser throwaway');
+  assert.match(imagesUp, / --image \$\{\{ matrix\.image \}\}$/, 'installing the edition this leg of the matrix names');
+  assert.match(reserve, new RegExp(`(=|,)${imagesPort[1]}(,|$)`), `the reservation covers ${imagesPort[1]}`);
+  for (const job of ['instance', 'browser', 'images']) {
+    const reserved = runCommands(jobSlice(workflow, job)).find((command) => command.startsWith('sudo sysctl -w net.ipv4.ip_local_reserved_ports='));
+    assert.equal(reserved, reserve, `the ${job} job reserves the same three ports as every other job`);
+  }
+  assert.ok(
+    imagesRuns.includes(`sh scripts/wait-readiness.sh --url http://localhost:${imagesPort[1]}/api/ocupilot/readiness/`),
+    `the images job waits on its own port ${imagesPort[1]}`
+  );
+  assert.ok(
+    imagesRuns.includes(`node tools/admin-spec.mjs --origin http://localhost:${imagesPort[1]}`),
+    `the images job drift-checks /api/admin on its own port ${imagesPort[1]} (AC3)`
+  );
+  const imagesSmoke = imagesRuns.find((command) => command.startsWith('sh scripts/smoke.sh'));
+  assert.ok(imagesSmoke, 'the images job smokes the installed edition');
+  assert.equal(/--container (\S+)/.exec(imagesSmoke)?.[1], imagesProject[1], "smoke names the images throwaway's container, which follows --project");
+  assert.doesNotMatch(imagesSmoke, /--namespace/, "and names no namespace: the fallback to the one the install resolved is what is under test (AC1)");
+  assert.ok(
+    imagesRuns.includes(`curl -fsS -u _SYSTEM:SYS http://localhost:${imagesPort[1]}/api/ocupilot/agent/providers | grep -q '"credentialsRungAvailable":true'`),
+    `the images job reads the credentials rung as offered in the install namespace, on its own port ${imagesPort[1]} (AC2)`
+  );
+  const imagesDown = imagesRuns.find((command) => command.startsWith('sh scripts/ci-throwaway.sh down'));
+  assert.ok(imagesDown, 'the images job tears its throwaway down');
+  assert.equal(/--project (\S+)/.exec(imagesDown)?.[1], imagesProject[1], 'the teardown removes the project the bring-up created');
+  const imagesDir = /--dir (\S+)/.exec(imagesUp)?.[1];
+  assert.ok(imagesDir, 'the bring-up names its own directory');
+  for (const command of [imagesDown, imagesRuns.find((run) => run.startsWith('sh scripts/ci-throwaway.sh logs'))]) {
+    assert.equal(/--dir (\S+)/.exec(command ?? '')?.[1], imagesDir, `"${command}" names the directory the bring-up wrote`);
+  }
+
   for (const gate of DECLARED_GATES) {
     const named = /--container (\S+)/.exec(gate);
     if (named === null) continue;
+    // Each `--container` names the throwaway its own job created: the images job's smoke names
+    // that job's project, held above, and every other one names the default.
+    if (gate === imagesSmoke) continue;
     assert.equal(
       named[1],
       project[1],
@@ -1489,7 +1667,8 @@ test('the throwaway start path is the one docker-compose.yml ships', () => {
   // so CI's only real-instance job could validate a start path the repository no longer ships.
   //
   // Mutation (Rule 19): change the healthcheck interval, the restart policy, the command, the
-  // depends_on condition or any durable-init key in either file alone -> this goes red naming it.
+  // depends_on condition, the demo opt-in flag or any durable-init key in either file alone ->
+  // this goes red naming it.
   const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
   const compose = readFileSync(join(REPO_ROOT, 'docker-compose.yml'), 'utf8');
   const service = (text, name) => {
@@ -1510,6 +1689,13 @@ test('the throwaway start path is the one docker-compose.yml ships', () => {
     ['durable-init entrypoint', 'durable-init', /entrypoint:\s*(\[.*\])/],
     ['durable-init restart', 'durable-init', /restart:\s*(\S+)/],
     ['durable-init scripts mount', 'durable-init', /-\s*\S+(\/scripts:\/opt\/ocupilot\/scripts:ro)/],
+    // Story 5.8: the `instance` job's smoke run now executes two checks that exist only where the
+    // demo fixture does (`agentwrite`, `auditmarker`), so the flag that creates `/csp/myapp` is
+    // load-bearing for the gate and not only for the walkthrough. It was pinned by nothing --
+    // this comparison reads the service blocks and skipped the `environment:` block entirely --
+    // so dropping it from the throwaway would have turned two executed checks into two skips with
+    // every other gate green.
+    ['demo opt-in flag', 'iris', /OCUPILOT_DEMO:\s*(\S+)/],
   ]) {
     const fromCompose = pattern.exec(service(compose, name));
     const fromThrowaway = pattern.exec(service(throwaway, name));
@@ -1573,4 +1759,628 @@ test('discovery lists classes the framework would run, not every TestCase subcla
   const helper = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Test', 'Http.cls'), 'utf8');
   assert.match(helper, /Extends %UnitTest\.TestCase/, 'OcuPilot.Test.Http is still the shape this rule is for');
   assert.doesNotMatch(helper, /^(?:Class)?Method Test/m, 'and still declares no test method');
+});
+
+// --- The arming rosters (DW-1276) ------------------------------------------------------------
+
+/**
+ * The arming variables `ci-throwaway.sh` sets, each with the classes its comment block declares.
+ *
+ * A block declares its classes on `# classes:` lines, in `OcuPilot.Test.*` short form, so the
+ * roster is read from a shape rather than from English prose -- half the test package's class
+ * names are also ordinary words (`State`, `Version`, `Token`, `Static`, `Wire`), and a prose scan
+ * would read every one of them as a citation.
+ */
+export function declaredArmingRosters(source) {
+  const rosters = [];
+  let pending = [];
+  for (const line of source.split('\n')) {
+    const named = /^\s*#\s*classes:\s*(.+?)\s*$/.exec(line);
+    if (named !== null) {
+      pending.push(...named[1].split(',').map((name) => name.trim()).filter((name) => name !== ''));
+      continue;
+    }
+    const setting = /^\s*(OCUPILOT_ALLOW_[A-Z_]+):\s*"1"\s*$/.exec(line);
+    if (setting !== null) {
+      rosters.push({ variable: setting[1], classes: [...new Set(pending)].sort() });
+      pending = [];
+      continue;
+    }
+    if (/^\s*#/.test(line)) continue;
+    pending = [];
+  }
+  return rosters;
+}
+
+/**
+ * Every `.cls` under a directory, as `{shortName, code}` with comments removed -- `///` class
+ * documentation and `;` in-method comments alike. Stripping only the first would leave the
+ * derivation's own stated property ("a mention in a comment is not an arming declaration") true
+ * of one comment form and false of the other, which is the substring trap under a new spelling.
+ */
+function testClassSources(root, prefix = '') {
+  const classes = [];
+  for (const entry of readdirSync(root, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const full = join(root, entry.name);
+    if (entry.isDirectory()) {
+      classes.push(...testClassSources(full, `${prefix}${entry.name}.`));
+      continue;
+    }
+    if (!entry.name.endsWith('.cls')) continue;
+    const code = readFileSync(full, 'utf8')
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('///') && !line.trimStart().startsWith(';'))
+      .join('\n');
+    classes.push({ shortName: `${prefix}${entry.name.slice(0, -4)}`, code });
+  }
+  return classes;
+}
+
+/** The variables this roster is about. Both sides of the equality are filtered through it. */
+export const ARMING_VARIABLE_RE = /^OCUPILOT_ALLOW_[A-Z_]+$/;
+
+/**
+ * Which classes under `src/OcuPilot/Test/` STRUCTURALLY declare each arming variable: any
+ * `Parameter` whose VALUE is an arming variable, or an inline `$System.Util.GetEnviron` read of
+ * one. Doc comments are removed first.
+ *
+ * The variable comes from the value, never from an allowlist of parameter names: a class armed
+ * through a spelling no list anticipated would otherwise be absent from this side, and the roster
+ * comment would then be required not to name it while the class stayed armed -- the same
+ * substring-versus-structure trap one level up. A variable that is not an arming variable is not
+ * a member either, so both sides describe one population.
+ *
+ * Structural, never a substring scan over the file. `Test/SwitchesWire.cls` names
+ * `OCUPILOT_ALLOW_PRINCIPALS` in a doc comment and is not armed by it, so `grep -l` counts 23
+ * where the population is 22 -- the counted-by-substring pitfall this repository records.
+ */
+export function armedClasses(testRoot) {
+  const armed = new Map();
+  const add = (variable, shortName) => {
+    if (!ARMING_VARIABLE_RE.test(variable)) return;
+    if (!armed.has(variable)) armed.set(variable, new Set());
+    armed.get(variable).add(shortName);
+  };
+  for (const { shortName, code } of testClassSources(testRoot)) {
+    for (const m of code.matchAll(/Parameter\s+[A-Za-z][A-Za-z0-9]*\s*=\s*"([^"]+)"/g)) {
+      add(m[1], shortName);
+    }
+    for (const m of code.matchAll(/\$System\.Util\.GetEnviron\("([^"]+)"\)/gi)) {
+      add(m[1], shortName);
+    }
+  }
+  return armed;
+}
+
+test("DW-1276: each arming roster names exactly the classes that declare that variable", () => {
+  // The rosters had drifted in every direction at once: PRINCIPALS carried two overlapping lists
+  // with no joining sentence and named 13 of 22, PRODUCTION_INSTALL said "twelve" and omitted
+  // two, AUDIT_EVENTS named one of two, ERROR_SEED one of six and TEST_PROVIDER three of ten. A
+  // comment nothing holds equal is a comment that stops being true the first time a class moves.
+  //
+  // Mutation (Rule 19): remove UninstallSurvival from the OCUPILOT_ALLOW_AUDIT_EVENTS block ->
+  // red naming it. Add SwitchesWire to the PRINCIPALS block -> red naming it, because it mentions
+  // the variable in a doc comment and is not armed by it.
+  const source = readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8');
+  const declared = declaredArmingRosters(source);
+  const derived = armedClasses(join(REPO_ROOT, 'src', 'OcuPilot', 'Test'));
+
+  assert.deepEqual(
+    declared.map((roster) => roster.variable).sort(),
+    [...derived.keys()].sort(),
+    'the variables the throwaway arms and the variables the suite declares are the same set'
+  );
+  assert.ok(declared.length >= 7, `expected at least seven arming variables, found ${declared.length}`);
+
+  for (const { variable, classes } of declared) {
+    const structural = [...(derived.get(variable) ?? [])].sort();
+    assert.ok(structural.length > 0, `${variable} is declared by at least one class`);
+    assert.deepEqual(
+      classes,
+      structural,
+      `${variable}'s roster comment in ci-throwaway.sh and the classes that declare it have diverged.\n` +
+        `comment: ${JSON.stringify(classes)}\nsource:  ${JSON.stringify(structural)}`
+    );
+  }
+});
+
+test('DW-1276: a doc-comment mention is not an arming declaration', () => {
+  // The structural derivation's one load-bearing property, asserted on the file that has the
+  // property: `Test/SwitchesWire.cls` names OCUPILOT_ALLOW_PRINCIPALS in a `///` comment.
+  const path = join(REPO_ROOT, 'src', 'OcuPilot', 'Test', 'SwitchesWire.cls');
+  const raw = readFileSync(path, 'utf8');
+  assert.ok(raw.includes('OCUPILOT_ALLOW_PRINCIPALS'), 'the file mentions the variable');
+  const derived = armedClasses(join(REPO_ROOT, 'src', 'OcuPilot', 'Test'));
+  assert.ok(
+    !derived.get('OCUPILOT_ALLOW_PRINCIPALS').has('SwitchesWire'),
+    'and is not counted as arming it, which a grep -l would'
+  );
+});
+
+test('DW-1276: neither comment form is an arming declaration', () => {
+  // The property is asserted on the tree for `///` by the test above. ObjectScript has a second
+  // comment form -- `;` inside a method body -- and the derivation stripped only the first, so
+  // the stated property held for one spelling and not the other. No file carries such a comment
+  // today, which is exactly why it needs pinning here rather than being noticed later.
+  //
+  // Mutation (Rule 19): drop the `;` clause from testClassSources' filter -> this goes red.
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-arming-comments-'));
+  try {
+    writeFileSync(
+      join(root, 'CommentOnly.cls'),
+      [
+        'Class OcuPilot.Test.CommentOnly Extends %UnitTest.TestCase',
+        '{',
+        'Method TestSomething()',
+        '{',
+        '    ; OCUPILOT_ALLOW_PRINCIPALS is what SwitchesWire would arm on; this class does not.',
+        '    ; $System.Util.GetEnviron("OCUPILOT_ALLOW_PRINCIPALS") is not called here.',
+        '    Quit',
+        '}',
+        '}',
+      ].join('\n')
+    );
+    writeFileSync(
+      join(root, 'ReallyArmed.cls'),
+      [
+        'Class OcuPilot.Test.ReallyArmed Extends %UnitTest.TestCase',
+        '{',
+        'Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";',
+        '}',
+      ].join('\n')
+    );
+    const derived = armedClasses(root);
+    assert.deepEqual([...(derived.get('OCUPILOT_ALLOW_PRINCIPALS') ?? [])].sort(), ['ReallyArmed']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// --- The bounded bind retry (DW-439) ---------------------------------------------------------
+
+/** Run `ci-throwaway.sh up` against a stub docker that fails `up` a given number of times. */
+function runThrowawayUp({ fails, message, retrySeconds = '0' }) {
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-bind-'));
+  const bin = join(dir, 'bin');
+  const scratch = join(dir, 'scratch');
+  const capture = join(dir, 'docker-argv.txt');
+  const counter = join(dir, 'up-count.txt');
+  mkdirSync(bin);
+  writeStub(bin, 'docker', [
+    'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
+    'case "$*" in',
+    '  *"up -d --wait"*)',
+    '    n=$(cat "$OCUPILOT_UP_COUNT" 2>/dev/null || echo 0)',
+    '    n=$((n + 1))',
+    '    printf \'%s\' "$n" > "$OCUPILOT_UP_COUNT"',
+    '    if [ "$n" -le "$OCUPILOT_UP_FAILS" ]; then',
+    '      printf \'%s\\n\' "$OCUPILOT_UP_MESSAGE" >&2',
+    '      exit 1',
+    '    fi',
+    '    ;;',
+    'esac',
+    'for arg in "$@"; do',
+    '  case "$arg" in',
+    '    *:/scratch) target="${arg%:/scratch}"; chmod -R u+rwx "$target/data" 2>/dev/null; rm -rf "$target/data" ;;',
+    '  esac',
+    'done',
+    'exit 0',
+  ]);
+  try {
+    const run = spawnSync('sh', [join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'up', '--dir', scratch], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: stubEnv(bin, {
+        OCUPILOT_DOCKER_CAPTURE: capture,
+        OCUPILOT_UP_COUNT: counter,
+        OCUPILOT_UP_FAILS: String(fails),
+        OCUPILOT_UP_MESSAGE: message,
+        // The retry's growing wait. Callers that only care about the retry count or the final
+        // status pass the default '0' to keep the run fast; the backoff test below overrides it
+        // to observe the wait actually elapsing.
+        OCUPILOT_BIND_RETRY_SECONDS: retrySeconds,
+      }),
+    });
+    const argv = existsSync(capture) ? readFileSync(capture, 'utf8') : '';
+    return {
+      status: run.status,
+      output: `${run.stdout}${run.stderr}`,
+      ups: (argv.match(/up -d --wait/g) ?? []).length,
+      downs: (argv.match(/down -v/g) ?? []).length,
+    };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const BIND_MESSAGE =
+  'Error response from daemon: driver failed programming external connectivity on endpoint ocupilot-ci: Bind for 0.0.0.0:52776 failed: port is already allocated';
+
+test('DW-439: a bring-up that failed on a host-port bind is retried, and succeeds', () => {
+  // 52776 sits inside the range a Linux runner allocates outbound source ports from (the kernel
+  // default is 32768-60999); 1975 is an order of magnitude below that floor, so only the web port
+  // is at risk from an ephemeral allocation, and the superserver port only from another listener.
+  // Either way a transient occupant kills the instance job before a test runs. Moving the ports is
+  // not the fix -- CLAUDE.md, _bmad/custom/parallel.yaml and every parallel runner's spawn prompt
+  // carry them -- so the bind is retried, and only the bind.
+  //
+  // Mutation (Rule 19): delete the retry loop -> this goes red at the first failure.
+  const run = runThrowawayUp({ fails: 2, message: BIND_MESSAGE });
+  assert.equal(run.status, 0, `expected the third attempt to succeed: ${run.output}`);
+  assert.equal(run.ups, 3, 'three bring-up attempts');
+  assert.equal(run.downs, 2, 'with this project\'s containers removed between them');
+});
+
+test('DW-439: a bind that never clears exits naming the port and the measured ephemeral range', () => {
+  // Mutation (Rule 19): make the loop unbounded -> this never returns; drop the port or the
+  // range from the exhaustion message -> the matching assertion goes red.
+  const run = runThrowawayUp({ fails: 99, message: BIND_MESSAGE });
+  assert.notEqual(run.status, 0, 'an exhausted retry is a failure');
+  assert.equal(run.ups, 3, 'bounded at three attempts, so a deterministic bind cannot loop');
+  assert.match(run.output, /52776/, 'the message names the port');
+  assert.match(run.output, /ephemeral port range/, 'and the range this runner allocates from');
+});
+
+test('DW-439: the retry waits between attempts, and the wait is overridable', () => {
+  // Three cycles back to back would ask for the port again well inside the seconds a transient
+  // occupant holds it for, so the retry as written would have survived only an occupant that
+  // cleared within the teardown's own duration.
+  //
+  // Mutation (Rule 19): delete the sleep, or the OCUPILOT_BIND_RETRY_SECONDS default -> red.
+  const source = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
+  assert.match(source, /BIND_RETRY_SECONDS="\$\{OCUPILOT_BIND_RETRY_SECONDS:-[1-9]\d*\}"/, 'a non-zero default, overridable by the environment');
+  assert.match(source, /sleep \$\(\(BIND_RETRY_SECONDS \* ATTEMPT\)\)/, 'and the wait grows with the attempt');
+});
+
+test('DW-439: the bring-up is streamed, and its exit code read back beside the text', () => {
+  // A captured bring-up printed nothing until it finished, so a `--wait` that hung until the job
+  // was cancelled showed an empty log -- the situation this retry exists for. POSIX sh has no
+  // PIPESTATUS, so the code goes to a file inside the pipeline.
+  //
+  // Mutation (Rule 19): put `UP_OUTPUT=$(docker compose ... up -d --wait 2>&1)` back -> red.
+  const source = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
+  assert.match(source, /\{ docker compose -f "\$COMPOSE_FILE" up -d --wait 2>&1; echo "\$\?" > "\$UP_RC_FILE"; \} \| tee "\$UP_OUTPUT_FILE"/);
+  assert.doesNotMatch(source, /UP_OUTPUT=\$\(docker compose/, 'the bring-up is never captured instead of streamed');
+});
+
+test('DW-439: a failure that is not a host-port bind exits at once, unretried', () => {
+  // The half that keeps the retry from turning one clear error into three and then a misleading
+  // one about a port.
+  //
+  // Mutation (Rule 19): delete the bind-message guard so it retries on any failure -> this goes
+  // red with three attempts instead of one.
+  const run = runThrowawayUp({ fails: 99, message: 'Error response from daemon: pull access denied for intersystems/irishealth-community' });
+  assert.notEqual(run.status, 0, 'still a failure');
+  assert.equal(run.ups, 1, 'and only one attempt was made');
+  assert.equal(run.downs, 0, 'with nothing torn down in between');
+  assert.match(run.output, /not a host-port bind/, 'saying which of the two it is');
+});
+
+test('DW-439: the retry actually waits, and the second wait outlasts the first', () => {
+  // The two tests above pin the SHAPE of the backoff by reading the source text -- a non-zero,
+  // overridable default and a `sleep` keyed to `ATTEMPT`. Neither one runs the script and watches
+  // a clock, so a change that keeps both regexes matching but breaks the growth (a stray
+  // `ATTEMPT=1` reset between attempts, or a `$((BIND_RETRY_SECONDS))` that drops the
+  // multiplication) would still pass them. This drives the real retry with `OCUPILOT_BIND_RETRY_SECONDS`
+  // set to a real, small, non-zero value and asserts on the wall-clock elapsed, which is what
+  // downstream users actually experience.
+  //
+  // Mutation (Rule 19): replace `sleep $((BIND_RETRY_SECONDS * ATTEMPT))` with a constant
+  // `sleep $BIND_RETRY_SECONDS` -> the elapsed floor below (which needs the SECOND wait to be
+  // longer than the first, i.e. growth) goes red while the two source-text tests above stay green.
+  const start = Date.now();
+  const run = runThrowawayUp({ fails: 2, message: BIND_MESSAGE, retrySeconds: '1' });
+  const elapsedMs = Date.now() - start;
+  assert.equal(run.status, 0, `expected the third attempt to succeed: ${run.output}`);
+  assert.equal(run.ups, 3, 'three bring-up attempts');
+  // Attempt 1's wait is BIND_RETRY_SECONDS*1 = 1s, attempt 2's is BIND_RETRY_SECONDS*2 = 2s: the
+  // two real sleeps sum to at least 3s. A flat (non-growing) 1s-per-attempt backoff would total
+  // only ~2s, so this floor distinguishes growth from a fixed wait as well as from no wait at all.
+  assert.ok(elapsedMs >= 2900, `expected at least ~3s of growing backoff (1s + 2s), took ${elapsedMs}ms`);
+});
+
+test('DW-439: the bring-up streams output as it happens, never only at exit', () => {
+  // The regex test above pins the exit-code-to-file-plus-`tee` SHAPE in the source. It cannot
+  // observe whether output actually arrives while the command is still running, which is the one
+  // property DW-439 is about: a `--wait` that hangs until the job is cancelled must still have
+  // shown something on screen. This drives the real script asynchronously against a stub that
+  // prints a marker and then sleeps, and asserts the marker reaches this process's stdout well
+  // before the stub's sleep (and so the whole command) completes.
+  //
+  // Mutation (Rule 19): revert to `UP_OUTPUT=$(docker compose ... up -d --wait 2>&1)` (a captured,
+  // unstreamed form) -> the marker is buffered until the child exits, so it arrives only after the
+  // full sleep, and the "well before" assertion below goes red while the regex test stays green
+  // only if the reverted line still happened to match a stale pattern -- here it is read from
+  // observed timing, not text, so it cannot pass by accident.
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-stream-'));
+  const bin = join(dir, 'bin');
+  const scratch = join(dir, 'scratch');
+  const SLEEP_MS = 2000;
+  const MARKER = 'OCUPILOT_STREAM_MARKER';
+  mkdirSync(bin);
+  writeStub(bin, 'docker', [
+    'case "$*" in',
+    `  *"up -d --wait"*)`,
+    `    printf '%s\\n' '${MARKER}'`,
+    `    sleep ${SLEEP_MS / 1000}`,
+    '    exit 0',
+    '    ;;',
+    'esac',
+    'exit 0',
+  ]);
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    let markerAtMs = null;
+    const child = spawn('sh', [join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'up', '--dir', scratch], {
+      cwd: REPO_ROOT,
+      env: stubEnv(bin, { OCUPILOT_BIND_RETRY_SECONDS: '0' }),
+    });
+    child.stdout.on('data', (chunk) => {
+      if (markerAtMs === null && chunk.toString().includes(MARKER)) markerAtMs = Date.now() - start;
+    });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      const closeAtMs = Date.now() - start;
+      try {
+        rmSync(dir, { recursive: true, force: true });
+        assert.equal(code, 0, 'the bring-up itself still succeeds');
+        assert.ok(markerAtMs !== null, 'the marker line reached this process\'s stdout at all');
+        // Measured against the child's OWN exit, not against an absolute budget from `spawn`.
+        // Node's spawn, `sh` startup, the compose-file write and `rm_durable` all sit between
+        // `start` and the stub's first line, and on a loaded three-band matrix that overhead is
+        // unbounded -- a fixed budget would read "output was not streamed" when the runner was
+        // merely busy. The overhead shifts marker and close together, so their DISTANCE is the
+        // streamed-versus-captured property: streamed, the marker leads the close by the stub's
+        // whole sleep; captured, both arrive together.
+        assert.ok(
+          closeAtMs - markerAtMs > SLEEP_MS / 2,
+          `expected the marker at least ${SLEEP_MS / 2}ms before the bring-up finished (streamed); ` +
+            `observed the marker at ${markerAtMs}ms and the close at ${closeAtMs}ms (captured would put them together)`
+        );
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+});
+
+// --- The named failing checks (DW-1079) ------------------------------------------------------
+
+/** Run `smoke.sh` against a stub `iris` that prints `report` between the script's own markers. */
+function runSmokeOverReport(report, verdict = 'FAIL') {
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-smoke-report-'));
+  try {
+    const stub = join(dir, 'iris');
+    // Inline, and with RUNNER empty, the shape the two credential-guard tests above use: the stub
+    // is the whole instance, and nothing reads /proc/1/environ.
+    writeFileSync(
+      stub,
+      [
+        '#!/bin/sh',
+        'cat > /dev/null',
+        'printf \'%s\\n\' "OCUPILOT-SMOKE-REPORT-START:"',
+        'printf \'%s\\n\' "$OCUPILOT_SMOKE_REPORT"',
+        'printf \'%s\\n\' "OCUPILOT-SMOKE-VERDICT-START:$OCUPILOT_SMOKE_VERDICT:OCUPILOT-SMOKE-VERDICT-END"',
+        'exit 0',
+        '',
+      ].join('\n')
+    );
+    chmodSync(stub, 0o755);
+    const run = spawnSync(
+      '/bin/sh',
+      [join(REPO_ROOT, 'scripts', 'smoke.sh'), '--demo', '0', '--namespace', 'HSCUSTOM'],
+      {
+        cwd: REPO_ROOT,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${dir}:${process.env.PATH ?? ''}`,
+          OCUPILOT_SMOKE_REPORT: report,
+          OCUPILOT_SMOKE_VERDICT: verdict,
+        },
+      }
+    );
+    return { status: run.status, output: `${run.stdout}${run.stderr}` };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** One report row in the form OcuPilot.Install.Smoke renders: two spaces, the outcome padded to nine, the name. */
+function reportRow(outcome, name, reason = '') {
+  return `  ${`${outcome}         `.slice(0, 9)}${name}${reason === '' ? '' : ` -- ${reason}`}`;
+}
+
+test('DW-1079: a failing smoke run names every failing check on one quotable line', () => {
+  // The line said only "the failing check is named above", which in a CI log is an
+  // unattributable red -- and the class-side line names only the first of several. Mutation
+  // (Rule 19): drop the name from the quotable line, or narrow the awk to the first row -> this
+  // goes red on the missing name.
+  const report = [
+    'ocupilot-smoke: docker exec ocupilot-ci',
+    reportRow('pass', 'readiness'),
+    reportRow('fail', 'wallet', 'the demo wallet collection is absent on a demo-enabled instance'),
+    reportRow('skipped', 'signin'),
+    reportRow('fail', 'demofixture', 'the demo agent definition is absent'),
+    'ocupilot-smoke: executed=3 passed=1 failed=2 pending=0 skipped=1',
+    'ocupilot-smoke: FAILED -- 2 check(s) failed; the first is named above',
+  ].join('\n');
+  const run = runSmokeOverReport(report);
+  assert.equal(run.status, 1, `a failing smoke run exits non-zero: ${run.output}`);
+  assert.match(run.output, /^smoke: FAILED check\(s\): wallet, demofixture$/m, run.output);
+  assert.doesNotMatch(run.output, /^smoke: FAILED check\(s\):[^\n]*readiness/m, 'and names no check that passed');
+  assert.doesNotMatch(run.output, /^smoke: FAILED check\(s\):[^\n]*signin/m, 'nor one that was skipped');
+});
+
+test('DW-1079: a failure the row parser cannot name is reported as missing, not passed over', () => {
+  // The criterion is that the line names EVERY failing check. `Smoke.Render` fails closed on an
+  // outcome outside the four it writes -- it counts the row as a failure -- and such a row
+  // carries that outcome in $1, so the awk cannot see it. Without holding the named count equal
+  // to the class's own `failed=`, a line naming one of two failures reads exactly like a
+  // complete one.
+  //
+  // Mutation (Rule 19): delete the COUNTED/NAMED comparison from smoke.sh -> this goes red while
+  // the two-failure case above stays green.
+  const report = [
+    'ocupilot-smoke: docker exec ocupilot-ci',
+    reportRow('fail', 'wallet', 'the demo wallet collection is absent'),
+    reportRow('faild', 'mistyped', 'an outcome outside the four the class writes'),
+    'ocupilot-smoke: executed=2 passed=0 failed=2 pending=0 skipped=0',
+    'ocupilot-smoke: FAILED -- 2 check(s) failed; the first is named above',
+  ].join('\n');
+  const run = runSmokeOverReport(report);
+  assert.equal(run.status, 1, run.output);
+  assert.match(run.output, /^smoke: FAILED check\(s\): wallet$/m, run.output);
+  assert.match(run.output, /^smoke: the report counted 2 failure\(s\) and 1 could be named/m, run.output);
+});
+
+test('DW-1079: a report whose failures are all named says nothing about a shortfall', () => {
+  const report = [
+    'ocupilot-smoke: docker exec ocupilot-ci',
+    reportRow('fail', 'wallet'),
+    'ocupilot-smoke: executed=1 passed=0 failed=1 pending=0 skipped=0',
+    'ocupilot-smoke: FAILED -- 1 check(s) failed; the first is named above',
+  ].join('\n');
+  const run = runSmokeOverReport(report);
+  assert.match(run.output, /^smoke: FAILED check\(s\): wallet$/m, run.output);
+  assert.doesNotMatch(run.output, /could be named/, 'the complete case stays one line');
+});
+
+test('DW-1079: a FAIL verdict with no parseable row still says the run did not pass', () => {
+  const run = runSmokeOverReport(['ocupilot-smoke: docker exec ocupilot-ci', 'ocupilot-smoke: executed=0'].join('\n'));
+  assert.equal(run.status, 1);
+  assert.match(run.output, /smoke: the instance did not pass/, 'the fallback sentence, rather than an empty list');
+});
+
+// --- The install namespace smoke falls back to (Story 8.9) -----------------------------------
+
+/**
+ * Run `smoke.sh` against a stub `iris` that plays the instance's namespace answer.
+ *
+ * A session opened in `%SYS` is the namespace probe: the stub answers it with
+ * `OCUPILOT_STUB_NS_FLAGS` (`<HSCUSTOM exists>,<USER exists>`). Any other session is the report
+ * run, answered with a passing verdict. Every session's `-U` argument is recorded in order, so a
+ * leg reads which sessions ran and in which namespace. `OCUPILOT_NAMESPACE` is removed from the
+ * environment unless the leg supplies it, since with no container named the script reads it from
+ * this process's own environment.
+ */
+function runSmokeResolving(flags, argv, extraEnv = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-smoke-namespace-'));
+  try {
+    const sessions = join(dir, 'sessions.txt');
+    const stub = join(dir, 'iris');
+    writeFileSync(
+      stub,
+      [
+        '#!/bin/sh',
+        'printf \'%s\\n\' "$4" >> "$OCUPILOT_STUB_SESSIONS"',
+        'cat > /dev/null',
+        'if [ "$4" = "%SYS" ]; then',
+        '  printf \'%s\\n\' "OCUPILOT-SMOKE-NS-START:$OCUPILOT_STUB_NS_FLAGS:OCUPILOT-SMOKE-NS-END"',
+        '  exit 0',
+        'fi',
+        'printf \'%s\\n\' "OCUPILOT-SMOKE-REPORT-START:"',
+        'printf \'%s\\n\' "  pass     readiness"',
+        'printf \'%s\\n\' "OCUPILOT-SMOKE-VERDICT-START:PASS:OCUPILOT-SMOKE-VERDICT-END"',
+        'exit 0',
+        '',
+      ].join('\n')
+    );
+    chmodSync(stub, 0o755);
+    const env = { ...process.env };
+    delete env.OCUPILOT_NAMESPACE;
+    const run = spawnSync('/bin/sh', [join(REPO_ROOT, 'scripts', 'smoke.sh'), '--demo', '0', ...argv], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: {
+        ...env,
+        ...extraEnv,
+        PATH: `${dir}:${process.env.PATH ?? ''}`,
+        OCUPILOT_STUB_SESSIONS: sessions,
+        OCUPILOT_STUB_NS_FLAGS: flags,
+      },
+    });
+    const opened = existsSync(sessions) ? readFileSync(sessions, 'utf8').split('\n').filter((line) => line !== '') : [];
+    return { status: run.status, output: `${run.stdout}${run.stderr}`, sessions: opened };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('Story 8.9 AC1: with no --namespace, smoke runs in USER on an instance that has USER and no HSCUSTOM', () => {
+  // The defect the plain-Community probe found: the fallback was a literal HSCUSTOM, so on the
+  // stock plain image smoke opened a session in a namespace that does not exist and answered
+  // "Access Denied" with no verdict.
+  //
+  // Mutation (Rule 19): restore `NAMESPACE="HSCUSTOM"` as the fallback -> this goes red on the
+  // report session's namespace.
+  const run = runSmokeResolving('0,1', []);
+  assert.equal(run.status, 0, run.output);
+  assert.deepEqual(run.sessions, ['%SYS', 'USER'], 'the namespace is asked in %SYS, then the report runs in USER');
+
+  const both = runSmokeResolving('1,1', []);
+  assert.equal(both.status, 0, both.output);
+  assert.deepEqual(both.sessions, ['%SYS', 'HSCUSTOM'], 'and HSCUSTOM wins where it exists, as the install resolves it');
+});
+
+test('Story 8.9: an instance with neither HSCUSTOM nor USER is refused by name, and no report session opens', () => {
+  const run = runSmokeResolving('0,0', []);
+  assert.equal(run.status, 1, run.output);
+  assert.match(run.output, /HSCUSTOM/, 'the refusal names HSCUSTOM');
+  assert.match(run.output, /USER/, 'and USER');
+  assert.deepEqual(run.sessions, ['%SYS'], 'and only the probe session ran');
+
+  const silent = runSmokeResolving('', []);
+  assert.equal(silent.status, 1, `an instance that gave no answer is not a pass: ${silent.output}`);
+  assert.deepEqual(silent.sessions, ['%SYS'], 'and no report session opens over a guess');
+});
+
+test('Story 8.9: a garbled probe answer is refused with its own message and the raw output, never read as "neither exists"', () => {
+  // smoke.sh's `case "$PROBE" in` has two failing arms with different sentences: `0,0)` for an
+  // instance that definitively answered "neither exists", and `*)` for an answer the grep could
+  // not parse at all, which additionally dumps the raw session output for diagnosis. The test
+  // above only asserts that both mention "HSCUSTOM" and "USER" by name -- true of both arms'
+  // sentences -- so it cannot tell them apart, and collapsing the `*)` arm into the `0,0)` one
+  // (losing the distinct wording and the diagnostic dump) would leave every existing assertion
+  // green.
+  //
+  // Mutation (Rule 19): replace the `*)` arm's echo with the `0,0)` arm's sentence, and drop the
+  // `printf ... | tail -n 30 ...` dump -> this goes red on both the distinguishing phrase and the
+  // missing raw output below.
+  const garbled = runSmokeResolving('sideways-answer', []);
+  assert.equal(garbled.status, 1, garbled.output);
+  assert.match(garbled.output, /did not say whether/, 'the catch-all names itself distinctly from the explicit "neither" answer');
+  assert.doesNotMatch(garbled.output, /this instance has neither/, 'never the explicit-neither sentence for an answer that could not be parsed');
+  assert.match(garbled.output, /sideways-answer/, 'and the raw probe output is dumped for diagnosis');
+  assert.deepEqual(garbled.sessions, ['%SYS'], 'and no report session opens over a guess');
+
+  const neither = runSmokeResolving('0,0', []);
+  assert.match(neither.output, /this instance has neither/, 'the explicit "neither" answer gets its own sentence');
+  assert.doesNotMatch(neither.output, /did not say whether/, 'never the catch-all one');
+});
+
+test('Story 8.9: --namespace and OCUPILOT_NAMESPACE still name the namespace, with no probe', () => {
+  const named = runSmokeResolving('0,1', ['--namespace', 'HSCUSTOM']);
+  assert.equal(named.status, 0, named.output);
+  assert.deepEqual(named.sessions, ['HSCUSTOM'], 'the named namespace, unchanged from before');
+
+  const fromEnv = runSmokeResolving('0,1', [], { OCUPILOT_NAMESPACE: 'OCUPILOT' });
+  assert.equal(fromEnv.status, 0, fromEnv.output);
+  assert.deepEqual(fromEnv.sessions, ['OCUPILOT'], 'and the environment override, unchanged from before');
+});
+
+test("Story 8.9: smoke.sh's default install namespace is container-start.sh's, candidate for candidate", () => {
+  // Two copies of one choice: the install picks its namespace in container-start.sh, and smoke
+  // re-derives it from the same instance. Held equal here so they cannot drift apart.
+  //
+  // Mutation (Rule 19): swap smoke's `1,[01])` and `0,1)` answers -> this goes red.
+  const start = readFileSync(join(REPO_ROOT, 'scripts', 'container-start.sh'), 'utf8');
+  const smoke = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'smoke.sh'), 'utf8'));
+  const chosen = /tDefault=\$Select\(tHas\w+:"(\w+)",tHas\w+:"(\w+)",1:""\)/.exec(start);
+  assert.ok(chosen, 'container-start.sh chooses between two candidates');
+  const asked = /Exists\("(\w+)"\)_","_##class\(%SYS\.Namespace\)\.Exists\("(\w+)"\)/.exec(smoke);
+  assert.deepEqual(asked?.slice(1), chosen.slice(1), 'smoke asks about the same candidates, in the same order');
+  assert.match(smoke, new RegExp(`1,\\[01\\]\\) NAMESPACE="${chosen[1]}"`), `the first existing candidate wins: ${chosen[1]}`);
+  assert.match(smoke, new RegExp(`0,1\\) NAMESPACE="${chosen[2]}"`), `and the second only without it: ${chosen[2]}`);
 });

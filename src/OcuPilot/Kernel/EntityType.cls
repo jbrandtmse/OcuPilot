@@ -13,6 +13,15 @@
 /// server client. The admin API's sixth OAuth 2.0 endpoint,
 /// <code>ResourceServerMapping</code>, relates two of those rather than administering a thing
 /// of its own, so it has no key here; a story that needs one adds it.</p>
+/// <p><code>auditing-configuration</code> is the instance's own auditing settings, which is a
+/// configuration object rather than a thing with a name: it has exactly one instance and
+/// <class>OcuPilot.Kernel.EntityRef</class>'s <code>singleton</code> id rule canonicalizes every
+/// spelling of its id to that one. It is distinct from <code>audit-event</code>, which is one
+/// <b>system</b> event of the event roster, and from <code>audit-user-event</code>, one event an
+/// application registered; turning the instance's auditing on or off is not a change to any of
+/// those rows. The two event types are separate so that a change event's type names the list that
+/// shows the event, and a screen listens for its own type alone (DW-1529); a system event is one
+/// whose Source begins with <code>%</code>, which is how the vendor splits the two lists.</p>
 /// <p><code>agent-definition</code> and <code>agent-switch</code> are OcuPilot's own configuration
 /// rather than the instance's, and they are values here for the same reason every other one is: the
 /// Definitions list and the Switches screen publish AD-14's change event on them, and a key a slice
@@ -25,7 +34,7 @@ Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

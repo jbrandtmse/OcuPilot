@@ -41,24 +41,30 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { waitForRows } from './list-spec.mjs';
 import { GATE_PATH } from './shell-entry.mjs';
+import {
+  DEFINITIONS_PATH,
+  authHeader as sharedAuthHeader,
+  definitions as sharedDefinitions,
+} from './panel-spec.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
 const { SCREENS } = await import(join(uiRoot, 'src', 'app', 'core', 'screens.generated.ts'));
+const { actionLabel } = await import(join(uiRoot, 'src', 'app', 'core', 'screen-actions.ts'));
 
 /**
- * The id of the Definitions list's enable row action, read out of the generated mirror.
- *
- * The shipped table renders a row action's **id** as its menu item, not a published label, so this
- * is what the menu says today -- and reading it from the mirror rather than typing it means a
- * renamed action fails here rather than silently offering nothing to click.
+ * What the Definitions list's row menu says for its enable row action: the action is read out of
+ * the generated mirror, and its label is resolved through `actionLabel`, the one resolver the row
+ * menu, the command bar and the command box all draw with. Neither is typed here, so a renamed
+ * action or a reworded label fails here rather than silently offering nothing to click.
  */
 const ENABLE_ACTION = (() => {
   const list = SCREENS.find((screen) => screen.route === 'agent/definitions');
   assert.ok(list, 'the mirror declares the Definitions list');
   const action = list.rowActions.find((entry) => entry.id.includes('enable') && !entry.id.includes('dis'));
   assert.ok(action, 'and an enable row action on it');
-  return action.id;
+  return actionLabel(list.descriptor, action.id);
 })();
 
 const config = browserConfig();
@@ -71,7 +77,6 @@ const OTHER_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
  * about the destination, and two copies of a path is how one of them ends up pointing elsewhere.
  */
 const FORM_PATH = GATE_PATH;
-const DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 
 /** Every definition this spec creates is named with this prefix and removed in `after`. */
 const PREFIX = 'OcuPilotGateProbe';
@@ -95,17 +100,11 @@ after(async () => {
 });
 
 function authHeader() {
-  return 'Basic ' + Buffer.from(`${config.username}:${config.password}`).toString('base64');
+  return sharedAuthHeader(config);
 }
 
 async function definitions() {
-  const answer = await fetch(`${config.origin}${DEFINITIONS_PATH}`, { headers: { Authorization: authHeader() } });
-  // Never an empty list on a bad answer: `before()` asserts "no definition is enabled" from this,
-  // and a read that failed would satisfy that assertion while saying nothing at all.
-  assert.ok(answer.ok, `the definitions list is readable (HTTP ${answer.status})`);
-  const body = await answer.json();
-  assert.ok(Array.isArray(body.definitions), `and projects a definitions array: ${JSON.stringify(body)}`);
-  return body.definitions;
+  return sharedDefinitions(config);
 }
 
 async function enabledCount() {
@@ -115,10 +114,13 @@ async function enabledCount() {
 /**
  * Remove every definition this spec created, through the shipped route.
  *
- * **Every delete is checked.** This spec is the only one that enables a definition, and the seven
- * spec files that sort after it all render the panel on the premise that nothing is enabled. A
- * delete that quietly failed would leave an enabled row behind, turn `leaveFirstLoginGate` into a
- * no-op in all of them, and surface as an unrelated assertion in a file that did nothing wrong.
+ * **Every delete is checked.** Seven spec files enable a definition — this one and
+ * `panel.browser-spec.mjs` directly, and `context-chip`, `navigate`, `reply`, `suggested-view` and
+ * `turn` through `armProbeDefinition`, which reaches `TurnWireFixture.EnsureDefinition` and its
+ * `SetFlags(pId, 1, 1)`. Each is responsible for removing its own, and every spec file that does
+ * not enable one renders the panel on the premise that nothing is enabled. A delete that quietly
+ * failed would leave an enabled row behind, turn `leaveFirstLoginGate` into a no-op in all of them,
+ * and surface as an unrelated assertion in a file that did nothing wrong.
  */
 async function removeProbeDefinitions() {
   for (const row of await definitions()) {
@@ -173,6 +175,10 @@ function markVerified(id) {
 
 /** A fresh context, landed at `url`, with the sign-in card on screen and nothing typed yet. */
 async function atSignIn(url) {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
@@ -385,9 +391,8 @@ test('AC4: the composer and Send are reachable by Tab, aria-disabled, and never 
     // The Tab order itself: focus the composer, then Tab once, and Send is next. A browser skips a
     // natively disabled control, which is the whole reason `aria-disabled` is what is used here.
     await page.focus('.ocu-panel-composer');
-    assert.equal(
-      await page.evaluate(() => document.activeElement?.className ?? ''),
-      'ocu-panel-composer',
+    assert.ok(
+      await page.evaluate(() => document.activeElement?.classList.contains('ocu-panel-composer') ?? false),
       'the composer takes focus'
     );
     await page.keyboard.press('Tab');
@@ -445,7 +450,7 @@ test('AC6, Integration AC: the dot and the panel clear on the first render after
     await page.waitForFunction(() => document.querySelector('.ocu-rail-dot') === null, {
       timeout: config.navigationTimeoutMs,
     });
-    assert.equal(await page.$$eval('app-panel .ocu-panel', (nodes) => nodes.length), 0, 'the panel is gone with it');
+    assert.equal(await page.$$eval('app-panel .ocu-panel-banner', (nodes) => nodes.length), 0, 'the reminder banner is gone with it');
     assert.equal(await page.$$eval('.ocu-proposal-card', (nodes) => nodes.length), 0, 'and so is the example card');
     assert.equal(await enabledCount(), 1, 'and the instance really did change: the row is enabled');
   } finally {

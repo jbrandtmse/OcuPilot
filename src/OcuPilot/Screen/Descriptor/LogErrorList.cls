@@ -2,16 +2,10 @@
 /// through <code>SYS.ApplicationError</code>'s own queries and drilled namespaces &#8594; dates
 /// &#8594; errors &#8594; one error's captured detail (AD-48, FR-63). It is the Logs area's second
 /// screen.</p>
-/// <p><b>It declares no <code>read</code>, and that is not an omission</b> (AD-36). The
-/// declared-read pipeline is admin-port-only by two independent hard-codings --
-/// <method>OcuPilot.Screen.Registry.ReadProblem</method> and
-/// <file>ui/tools/screen-mirror.mjs</file> both refuse a <code>read.source.port</code> that is not
-/// <code>admin</code>, and <method>OcuPilot.Screen.Read.PortClass</method> hard-returns
-/// <class>OcuPilot.Port.AdminPort</class> while <method>OcuPilot.Screen.Read.Execute</method> never
-/// reads <code>source.port</code> at all -- so no port name would make this source reachable
-/// through it. Nor is that the only obstacle: <code>read</code> is singular with a closed key set,
-/// and the client's refresh framework holds exactly one binding, so three drill levels could not be
-/// one declared read however the port were named.</p>
+/// <p><b>It declares no <code>read</code>, and that is not an omission</b> (AD-36).
+/// <code>read</code> is singular with a closed key set, and the client's refresh framework holds
+/// exactly one binding, so three drill levels with three different column sets could not be one
+/// declared read whatever port served them.</p>
 /// <p>A descriptor that declares no read is a supported shape --
 /// <method>OcuPilot.Screen.Registry.ReadProblem</method> quits early,
 /// <method>OcuPilot.Screen.Registry.TableProblem</method> is never reached, and the
@@ -39,7 +33,8 @@
 /// refused by <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> besides.
 /// <method>OcuPilot.Port.LogSourcePort.PairsFor</method> resolves it at call time.</p>
 /// <p><b>The captured detail is secret by default</b> (AD-48). <code>context.fields</code> carries
-/// the five summary fields and nothing else, so the screen context a turn sends can never include a
+/// the five summary fields plus the drilled scope (<code>namespace</code> and <code>date</code>, two
+/// parts of the entry's id), never the detail, so the screen context a turn sends can never include a
 /// variable table -- every local at every stack level plus <code>$ROLES</code> and
 /// <code>$USERNAME</code>, which on an IRIS for Health instance can hold patient data. The user
 /// reads that table on screen; the agent does not. Secrecy here is enforced by <b>which query is
@@ -55,8 +50,14 @@
 /// controls roster -- Processes, Databases, Database details, Task schedule, Task details, System
 /// usage -- does not name it (AD-43). The roster is cited by its own words rather than by a line
 /// number, because an insert anywhere above it moves the number and nothing re-resolves it
-/// (DW-272). <b>No primary or row action</b>: AD-48's three
-/// delete scopes are Epic 5's, where a proposal, a confirm and an audit marker first exist.</p>
+/// (DW-272).</p>
+/// <p><b>One row action, <code>delete</code>, on every drill level</b> (AD-48, AD-53). The level
+/// is the scope: the target the screen sends is the prefix of the composite id its row names --
+/// the namespace, the namespace and date, or the namespace, date and error number -- and
+/// <class>OcuPilot.Screen.Tool.ErrorDelete</class> carries it out for both callers. One action
+/// rather than three, because the command bar offers every declared row action on every level.
+/// It declares no <code>selfProtection</code>: no application error is one OcuPilot must keep.
+/// No primary action.</p>
 /// <p><b>The classic page is <code>%cspapp.op.utilsysapperrornamespaces</code></b>, the drill's own
 /// entry point, spelled in the class's own case because the custom-resource lookup does not
 /// case-fold (AD-44). None of the four classic classes declares a <code>RESOURCE</code> or
@@ -81,15 +82,21 @@ XData Declaration
   "refreshRates": [],
   "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
   "entityType": "application-error",
+  "entityLabelKey": "errorLogListLabel",
   "secondaryEntityTypes": [],
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["namespace", "date", "errorNumber"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
-  "context": {"fields": ["errorNumber", "time", "errorText", "routine", "line"], "secretFields": []},
+  "rowActions": [{"id": "delete", "selfProtection": ""}],
+  "context": {"fields": ["namespace", "date", "errorNumber", "time", "errorText", "routine", "line"], "secretFields": []},
   "emptyStateKey": "errorLogEmptyInstance",
   "commandAliases": ["application errors"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "logErrorListPrompt1"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "logErrorListPrompt2"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "logErrorListPrompt3"}
+  ],
   "classicPage": "%cspapp.op.utilsysapperrornamespaces",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "logs.applicationerrors"

@@ -54,7 +54,7 @@ Parameter RELEASEVERB = "release";
 /// changes no restraint.</p>
 ClassMethod Fields() As %List
 {
-    Quit $ListBuild($ListBuild("killSwitch", "KillSwitch", "boolean", 1), $ListBuild("killSwitchReason", "KillSwitchReason", "string", 0), $ListBuild("enforcedReadOnly", "EnforcedReadOnly", "boolean", 1), $ListBuild("shareContextByDefault", "ShareContextByDefault", "boolean", 1))
+    Quit $ListBuild($ListBuild("killSwitch", "KillSwitch", "boolean", 1), $ListBuild("killSwitchReason", "KillSwitchReason", "string", 0), $ListBuild("enforcedReadOnly", "EnforcedReadOnly", "boolean", 1), $ListBuild("shareContextByDefault", "ShareContextByDefault", "boolean", 1), $ListBuild("contextRowCap", "ContextRowCap", "integer", 1))
 }
 
 /// <p>The wire names of the switch fields whose change is a security change, derived from
@@ -267,8 +267,13 @@ ClassMethod HandleHoldDelete(pId As %String) As %Status
 }
 
 /// <p>Answer <code>GET /agent/restraint</code>: the calling user's own verdict, as
-/// <method>OcuPilot.Kernel.Restraint.Resolved</method> answers it. <b>No OcuPilot administrative
-/// privilege required</b> -- see the class header.</p>
+/// <method>OcuPilot.Kernel.Restraint.Resolved</method> answers it, plus
+/// <code>writesMarked</code> -- whether the instance was marking agent writes when that was last
+/// observed (AD-15). <b>No OcuPilot administrative privilege required</b> -- see the class
+/// header.</p>
+/// <p><code>writesMarked</code> is a recorded fact rather than a live read, and the panel renders
+/// only its <b>false</b> arm: nothing anywhere says marking is working, so the fact being stale
+/// for one window costs a reader nothing they were told.</p>
 /// <p>A verdict that could not be read is a 500 rather than a body: the client renders banners and a
 /// footer line from this, and a permissive-looking answer over an unreadable store is the one thing
 /// it must not be handed.</p>
@@ -290,6 +295,10 @@ ClassMethod HandleRestraint() As %Status
         Do tBody.%Set("killSwitchAudience", tVerdict("killSwitchAudience"), "string")
         Do tBody.%Set("killSwitchReason", tVerdict("killSwitchReason"), "string")
         Do tBody.%Set("enforcedReadOnly", $Select(+tVerdict("enforcedReadOnly"): 1, 1: 0), "boolean")
+        ; Not part of the verdict: marking is not a restraint (AD-30), so Kernel.Restraint does not
+        ; answer it and the agent is not blocked by it. It rides this route because the panel
+        ; already reads it on every load, and because the banner it feeds is shown to every user.
+        Do tBody.%Set("writesMarked", $Select(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(): 1, 1: 0), "boolean")
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -314,6 +323,8 @@ ClassMethod Projection(ByRef pValues, pHolds As %DynamicArray) As %DynamicObject
         Set tValue = $Get(pValues(tField))
         If $List(tEntry, 3) = "boolean" {
             Do tOut.%Set(tField, $Select(+tValue: 1, 1: 0), "boolean")
+        } ElseIf $List(tEntry, 3) = "integer" {
+            Do tOut.%Set(tField, +tValue, "number")
         } Else {
             Do tOut.%Set(tField, tValue, "string")
         }
@@ -391,6 +402,10 @@ ClassMethod MergeBody(pBody As %DynamicObject, ByRef pValues)
         If ($List(tEntry, 3) = "string") && (tType '= "string") Continue
         Set tValue = pBody.%Get(tField)
         If $List(tEntry, 3) = "boolean" Set tValue = $Select(+tValue: 1, 1: 0)
+        ; An integer field takes a JSON number only (AD-4). A boolean or a numeric string would
+        ; otherwise read back as a plausible value by the time ValidateSwitches's regex sees it, so
+        ; any other type becomes "" and meets that rule's empty-value refusal.
+        If ($List(tEntry, 3) = "integer") && (tType '= "number") Set tValue = ""
         Set pValues(tField) = tValue
     }
 }
@@ -429,8 +444,9 @@ ClassMethod RenderConflict() As %Status
     Quit ##class(OcuPilot.Api.Definitions).RenderConflict()
 }
 
-/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, naming the stage
-/// <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> reported.</p>
+/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, carrying
+/// <parameter>OcuPilot.Api.Error.REASONAGENTBADBODY</parameter> alone; <var>pStatus</var>'s raw
+/// text reaches the log only (AD-39).</p>
 ClassMethod RenderBadBody(pStatus As %Status) As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).RenderBadBody(pStatus)

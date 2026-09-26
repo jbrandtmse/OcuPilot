@@ -32,10 +32,14 @@ export const SWITCH_FIELDS = [
   'killSwitchReason',
   'enforcedReadOnly',
   'shareContextByDefault',
+  'contextRowCap',
 ] as const;
 
 /** The switch fields whose value is a JSON boolean on the wire. */
 const BOOLEAN_FIELDS: readonly string[] = ['killSwitch', 'enforcedReadOnly', 'shareContextByDefault'];
+
+/** The switch fields whose value is a JSON number on the wire (Story 4.4). */
+const NUMBER_FIELDS: readonly string[] = ['contextRowCap'];
 
 /** The edit buffer: text for an input, a flag for a checkbox. */
 export type SwitchBuffer = Record<string, string | boolean>;
@@ -49,6 +53,15 @@ function textAt(source: unknown, key: string): string {
 function flagAt(source: unknown, key: string): boolean {
   if (source === null || typeof source !== 'object') return false;
   return (source as Record<string, unknown>)[key] === true;
+}
+
+/** A string or number field's value, rendered as text for the edit buffer. */
+function textOrNumberAt(source: unknown, key: string): string {
+  if (source === null || typeof source !== 'object') return '';
+  const value = (source as Record<string, unknown>)[key];
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  return '';
 }
 
 function holdsOf(body: unknown): readonly HoldRow[] {
@@ -71,6 +84,7 @@ function emptyBuffer(): SwitchBuffer {
     killSwitchReason: '',
     enforcedReadOnly: false,
     shareContextByDefault: true,
+    contextRowCap: '200',
   };
 }
 
@@ -388,6 +402,7 @@ export class SwitchesStore {
       type: AGENT_SWITCH_ENTITY,
       scope: AGENT_DEFINITION_SCOPE,
       id: AGENT_DEFINITION_SCOPE,
+      action: 'updated',
     });
   }
 
@@ -404,11 +419,26 @@ export class SwitchesStore {
     });
   }
 
-  /** The complete writable switch set, typed as the wire expects (AD-4). */
+  /**
+   * The complete writable switch set, typed as the wire expects (AD-4).
+   *
+   * **A number field sends a JSON number only when it parses as one.** A value that does not --
+   * `contextRowCap` typed as `"x"`, say -- is sent as the string the operator typed, so the
+   * server's own range-and-shape rule refuses it on the field rather than this store silently
+   * keeping the last valid number and reporting success for an edit that was never applied.
+   */
   private body(): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     for (const field of SWITCH_FIELDS) {
-      out[field] = BOOLEAN_FIELDS.includes(field) ? this.flag(field) : this.value(field);
+      if (BOOLEAN_FIELDS.includes(field)) {
+        out[field] = this.flag(field);
+      } else if (NUMBER_FIELDS.includes(field)) {
+        const raw = this.value(field);
+        const parsed = Number(raw);
+        out[field] = raw !== '' && Number.isFinite(parsed) ? parsed : raw;
+      } else {
+        out[field] = this.value(field);
+      }
     }
     return out;
   }
@@ -445,7 +475,13 @@ export class SwitchesStore {
   private absorb(body: unknown): void {
     const next: SwitchBuffer = {};
     for (const field of SWITCH_FIELDS) {
-      next[field] = BOOLEAN_FIELDS.includes(field) ? flagAt(body, field) : textAt(body, field);
+      if (BOOLEAN_FIELDS.includes(field)) {
+        next[field] = flagAt(body, field);
+      } else if (NUMBER_FIELDS.includes(field)) {
+        next[field] = textOrNumberAt(body, field);
+      } else {
+        next[field] = textAt(body, field);
+      }
     }
     this.buffer = next;
     this.holdRows = holdsOf(body);

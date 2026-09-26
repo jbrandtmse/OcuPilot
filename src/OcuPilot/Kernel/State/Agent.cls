@@ -50,12 +50,25 @@ Property EndpointUrl As %String(MAXLEN = 512);
 /// resolved address is loopback or one of this instance's own interface addresses. It licenses
 /// nothing in the link-local range, which is refused whatever this flag says.</p>
 /// <p>It is a request, not a grant: it takes effect only on a provider whose catalog row sets
-/// <code>allowsLocal</code>, and Release 1's one row does not, so setting it on a shipped
-/// definition is a validation failure rather than an escape.</p>
+/// <code>allowsLocal</code>, which is the <code>compatible</code> row alone, so setting it on a
+/// definition naming any vendor family is a validation failure rather than an escape.</p>
 Property MarkedLocal As %Boolean [ InitialExpression = 0 ];
 
-/// <p><code>env</code> or <code>creds</code> -- which rung of the credential ladder this
-/// definition's secret is read from. The choice is stored here; reading it is Story 3.3's.</p>
+/// <p>Whether the operator has accepted that this definition's credential crosses the network
+/// unencrypted, which a plain <code>http://</code> endpoint carrying a credential needs
+/// (<method>OcuPilot.Kernel.AgentRules.SchemeAccepted</method>). It licenses nothing on its own: an
+/// https endpoint never asks, and a <code>credType</code> of <code>none</code> carries no
+/// credential to expose.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions): a row stored
+/// before this property existed reads it back as 0, which is the conservative answer -- an
+/// untouched row licenses nothing it did not license before (the precedent is
+/// <property>RowVersion</property> and <property>CredentialCreated</property>).</p>
+Property HttpAcknowledged As %Boolean [ InitialExpression = 0 ];
+
+/// <p><code>env</code>, <code>creds</code> or <code>none</code> -- which rung of the credential
+/// ladder this definition's secret is read from, or that it has none. <code>none</code> is accepted
+/// only on a provider whose catalog row sets <code>allowsLocal</code>, which is the family that
+/// serves a keyless model on the operator's own network.</p>
 Property CredType As %String(MAXLEN = 8);
 
 /// <p>The environment variable holding the secret, when <property>CredType</property> is
@@ -81,8 +94,13 @@ Property CredentialCreated As %Boolean [ InitialExpression = 0 ];
 /// <p>Maximum tokens per provider call, 1-32000.</p>
 Property MaxTokens As %Integer [ InitialExpression = 32000 ];
 
-/// <p>Sampling temperature, 0-2.</p>
-Property Temperature As %Numeric(SCALE = 2) [ InitialExpression = 0 ];
+/// <p>Sampling temperature: <code>""</code> is unset and the provider's default applies; 0-2 is an
+/// explicit value, kept and sent to the families that take one.</p>
+/// <p><b><code>SCHEMAVERSION</code> does not move for the unset value.</b> A row stored before it
+/// holds an explicit number and still reads as that number, and an older build reading an unset
+/// row computes <code>+""</code>, which is 0 -- the value it would have written itself
+/// (inference).</p>
+Property Temperature As %Numeric(SCALE = 2);
 
 /// <p>Maximum tool-calling iterations within one turn, 1-100.</p>
 Property MaxIterationsPerTurn As %Integer [ InitialExpression = 10 ];
@@ -92,8 +110,13 @@ Property MaxIterationsPerTurn As %Integer [ InitialExpression = 10 ];
 Property SystemPromptOverride As %String(MAXLEN = 8192);
 
 /// <p>Whether this definition may only run read tools. <b>Stored here and enforced in Story
-/// 3.7</b>, which is the single enforcement point; nothing here reads it as a gate.</p>
-Property ReadOnly As %Boolean [ InitialExpression = 1 ];
+/// 3.7</b>, which is the single enforcement point; nothing here reads it as a gate. A new
+/// definition is read/write (developer tool first): every write it proposes still needs the
+/// user's confirmation.</p>
+/// <p><b><code>SCHEMAVERSION</code> does not move for the read/write default.</b> A stored row
+/// keeps the value it holds, read-only included, and nothing rewrites it; a default decides only
+/// what a new row starts with, not what a stored value means.</p>
+Property ReadOnly As %Boolean [ InitialExpression = 0 ];
 
 /// <p>How many days of this definition's conversation history are kept, 1-365. Inert until
 /// Story 14.4 enables the field and ships the purge task.</p>
@@ -128,16 +151,18 @@ Index DefaultIdx On DefaultMark [ Unique ];
 /// text rather than two copies of it.</p>
 Parameter DEFAULTDISABLEDREASON = "The default marker names the agent definition in force, and this one is not enabled";
 
-/// <p>The fields whose change disables a definition (AC5): the provider, the endpoint, the flag
-/// that licenses where that endpoint may point, and the three that name where the secret comes
-/// from. Declared once, and read by both <method>SnapshotSecurityFields</method> and
-/// <method>GuardedUpdate</method>, so the snapshot and the comparison cannot drift apart.</p>
+/// <p>The fields whose change disables a definition (AC5): the provider, the endpoint, the two
+/// flags that license where that endpoint may point and what may travel to it, and the three that
+/// name where the secret comes from. Declared once, and read by both
+/// <method>SnapshotSecurityFields</method> and <method>GuardedUpdate</method>, so the snapshot and
+/// the comparison cannot drift apart.</p>
 /// <p><property>MarkedLocal</property> belongs here because it changes which addresses the
-/// endpoint may resolve to: turning it on widens the definition's egress, and a definition whose
-/// egress widened has not been verified as configured.</p>
+/// endpoint may resolve to, and <property>HttpAcknowledged</property> because it decides whether a
+/// credential may cross an unencrypted one: turning either on widens the definition's egress, and a
+/// definition whose egress widened has not been verified as configured.</p>
 ClassMethod SecurityFields() As %List
 {
-    Quit $ListBuild("Provider", "EndpointUrl", "MarkedLocal", "CredType", "EnvVarName", "CredentialName")
+    Quit $ListBuild("Provider", "EndpointUrl", "MarkedLocal", "HttpAcknowledged", "CredType", "EnvVarName", "CredentialName")
 }
 
 /// <p>Record <var>pObject</var>'s security-relevant values, before a caller edits it, into
@@ -307,7 +332,9 @@ ClassMethod GuardedSetVerification(pId As %String, pExpectedVersion As %String =
 /// default rebalance stay where every other write puts them and no field reads as changed.</p>
 /// <p><b>Caller contract:</b> call it only where
 /// <method>OcuPilot.Kernel.Secret.Ladder.Store</method> reported that it brought the entry into
-/// being. This method records the claim; it does not check it.</p>
+/// being, or where the definition that owned the entry is leaving and this one survives it
+/// (<method>OcuPilot.Api.Definitions.ClearOwnedCredential</method>). This method records the claim;
+/// it does not check it. A row that already carries the mark is left unwritten.</p>
 ClassMethod GuardedMarkCredentialCreated(pId As %String) As %Status
 {
     Set tSC = $$$OK
@@ -316,6 +343,10 @@ ClassMethod GuardedMarkCredentialCreated(pId As %String) As %Status
         If $$$ISERR(tSC) Quit
         If '$IsObject(tRow) {
             Set tSC = $$$ERROR($$$GeneralError, "No agent definition with id " _ pId)
+            Quit
+        }
+        If tRow.CredentialCreated {
+            Set tRow = ""
             Quit
         }
         Do ..SnapshotSecurityFields(tRow, .tSnapshot)
@@ -350,9 +381,10 @@ ClassMethod GuardedDeleteId(pId As %String) As %Status
 /// <p><var>pIds</var> comes back as <code>pIds(1)</code>, <code>pIds(2)</code>, ... and is simply
 /// absent when no sibling names the reference, which is the ordinary answer rather than an
 /// error.</p>
-/// <p><b>Matched the way the store matches</b>: IRIS SQL folds case by default, and the credential
-/// entry's own id does too, so two definitions whose references differ only in case name the same
-/// entry and are siblings here.</p>
+/// <p><b>Matched exactly, the way the credential store keys its entries</b>: the entry's id is
+/// its <code>SystemName</code> and the vendor opens it case-sensitively, so two references that
+/// differ only in case name two entries and are not siblings. IRIS SQL folds case by default,
+/// which is why the column is wrapped in <code>%EXACT</code>.</p>
 /// <p>It runs over <method>OcuPilot.Kernel.State.Base.GuardedIdsWhere</method>, the one-parameter
 /// id query the package already has; <var>pExceptId</var> is dropped from the answer here rather
 /// than bound into a second placeholder, so no seam is widened for one caller. An empty
@@ -361,12 +393,26 @@ ClassMethod GuardedIdsByCredentialName(pName As %String, pExceptId As %String = 
 {
     Kill pIds
     If pName = "" Quit $$$OK
-    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE CredentialName = ? ORDER BY ID", pName, .tAll)
+    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE %EXACT(CredentialName) = ? ORDER BY ID", pName, .tAll)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:+$Get(tAll) {
         If tAll(tI) = pExceptId Continue
         Set pIds($Increment(pIds)) = tAll(tI)
     }
+    Quit tSC
+}
+
+/// <p>Whether some definition whose <property>CredentialName</property> is exactly
+/// <var>pName</var> carries <property>CredentialCreated</property> -- that is, whether OcuPilot
+/// created the entry behind that reference and may therefore overwrite it (AD-37).</p>
+/// <p>Matched exactly, for the reason <method>GuardedIdsByCredentialName</method> is. An empty
+/// <var>pName</var> is owned by nothing and is answered without a query.</p>
+ClassMethod GuardedCredentialOwned(pName As %String, Output pOwned As %Boolean) As %Status
+{
+    Set pOwned = 0
+    If pName = "" Quit $$$OK
+    Set tSC = ..GuardedIdsWhere("SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Agent WHERE %EXACT(CredentialName) = ? AND CredentialCreated = 1 ORDER BY ID", pName, .tIds)
+    If $$$ISOK(tSC) Set pOwned = ($Get(tIds(1)) '= "")
     Quit tSC
 }
 
@@ -421,20 +467,27 @@ ClassMethod ScreenRow(pObject As OcuPilot.Kernel.State.Agent) As %DynamicObject
 
 /// <p>Every definition as a <method>ScreenRow</method>, in the order
 /// <method>GuardedList</method> answers -- the rows a descriptor-declared read over OcuPilot's own
-/// protected state resolves to (AD-9, AD-36).</p>
+/// protected state resolves to (AD-9, AD-36). A positive <var>pMaxRows</var> reads at most that
+/// many ids, bound into <code>SELECT TOP ?</code> (AD-21); <code>""</code> reads every one.</p>
 /// <p><b>The contract a state-backed read source is resolved through.</b>
-/// <method>OcuPilot.Screen.Read.Execute</method> asks a kernel store for this and applies the same
-/// field projection, filter, sort, row cap and truncation signal it applies to a port answer, so
-/// the second source kind changes where the rows come from and nothing else. A store that wants a
-/// declared read implements this method and declares nothing else.</p>
+/// <method>OcuPilot.Screen.Read.Execute</method> asks a kernel store for at most one row more than its
+/// cap and applies the same field projection, filter, sort, row cap and truncation signal it applies
+/// to a port answer, so the second source kind changes where the rows come from and nothing else. A
+/// store that wants a declared read implements this method and declares nothing else.</p>
 /// <p><b>A row that cannot be opened is skipped rather than failing the read</b>, the way
 /// <method>OcuPilot.Api.Definitions.HandleList</method> skips it: the id came from this instance's
 /// own enumeration a moment ago, so a row that has gone was deleted between the two calls and is
 /// not on the list any more.</p>
-ClassMethod GuardedScreenRows(Output pRows As %DynamicArray) As %Status
+ClassMethod GuardedScreenRows(Output pRows As %DynamicArray, pMaxRows As %String = "") As %Status
 {
     Set pRows = ""
-    Set tSC = ..GuardedList(.tIds)
+    If pMaxRows = "" {
+        Set tSC = ..GuardedList(.tIds)
+    } ElseIf $Match(pMaxRows, "^[1-9][0-9]*$") {
+        Set tSC = ..GuardedIdsWhere("SELECT TOP ? ID FROM OcuPilot_Kernel_State.Agent ORDER BY ID", +pMaxRows, .tIds)
+    } Else {
+        Set tSC = $$$ERROR($$$GeneralError, "maxRows must be empty or a whole number above zero")
+    }
     If $$$ISERR(tSC) Quit tSC
     Set pRows = []
     For tI = 1:1:+$Get(tIds) {

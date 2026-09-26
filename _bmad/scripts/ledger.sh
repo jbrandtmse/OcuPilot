@@ -22,12 +22,13 @@ usage() {
   cat >&2 <<'EOF'
 usage: bash ledger.sh <deferred-work.md> <command> [args]
   load                        counts: total open routed escalated decision_pending terminal status_unknown owner_unknown, then owner:<key>=<n> for non-terminal
-                              (an owner that is not `burndown` and not a key in the sibling sprint-status.yaml is suffixed " UNKNOWN")
+                              (an owner that is not `burndown`, not `range-end-cleanup`, and not a key in the sibling sprint-status.yaml is suffixed " UNKNOWN")
   slice <owner>|all|unknown   non-terminal entries: DW-n TAB status TAB owner TAB summary (`unknown` = owners the tracker does not know)
   show DW-<n>                 print one entry verbatim
   next-id                     next unused DW number
   new "<summary>" "<source>" "<severity>" "<fix-risk>" "<footprint>" "<evidence>" "<status>" "<owner>" "<by>" "<note>"
                               append a canonical entry with the next id; prints DW-<n>
+                              (LEDGER_ID_COUNTER=<file>: claim the id from that shared counter under <file>.lock -- parallel epics)
   append DW-<n> "<trailer>"   add one trailer line to that entry (UTC prepended), e.g.
                               "status=resolved-by:3-4-retry-hardening by=adjudication note=commit 9f8e7d6"
 Owner validation: `new` and any `append` carrying owner= refuse an owner that is neither `burndown` nor a
@@ -100,6 +101,25 @@ scan() {
 
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
+# Parallel runs: each epic worktree holds its own copy of the ledger, so `scan next-id` (local max + 1) hands the
+# same id to two epics and the union merge keeps both headings. With LEDGER_ID_COUNTER set to a shared file, `new`
+# claims the id from it under a lock instead: max(counter, local next), and writes that + 1 back.
+claim_counter_id() {
+  counter="$1"; lock="$1.lock"; tries=0
+  until ( set -o noclobber; printf 'pid=%s acquired_at=%s\n' "$$" "$(now)" > "$lock" ) 2>/dev/null; do
+    tries=$((tries + 1))
+    [ "$tries" -lt 120 ] || { echo "ERROR: $lock held for 120 s; report it, never delete another party's lock" >&2; return 1; }
+    sleep 1
+  done
+  n="$(cat "$counter" 2>/dev/null || true)"
+  case "$n" in ''|*[!0-9]*) rm -f "$lock"; echo "ERROR: $counter does not hold a number" >&2; return 1 ;; esac
+  local_next="$(scan next-id)"
+  [ "$n" -ge "$local_next" ] || n="$local_next"
+  printf '%s\n' "$((n + 1))" > "$counter"
+  rm -f "$lock"
+  printf '%s\n' "$n"
+}
+
 # Owner validation (Rule 15/17). The tracker lives next to the ledger; its `development_status:` keys are the
 # only legal owners besides `burndown`. Field report 2026-08-30: two entries sat on a retitled story's old
 # key and were invisible to every drain, with no error and no count anomaly.
@@ -122,11 +142,17 @@ check_status() {
 trailer_field() { printf '%s' "$2" | awk -v k="$1" '{ for (i = 1; i <= NF; i++) { if ($i ~ /^note=/) exit; if (index($i, k "=") == 1) { print substr($i, length(k) + 2); exit } } }'; }
 check_owner() {
   owner_check_active || return 0
-  case "$1" in burndown|"") return 0 ;; esac
+  # `burndown` and `range-end-cleanup` are symbolic owners, not story keys: the first is the kit's
+  # own per-epic drain, the second is Rule 27's single range-end cleanup story, which is not
+  # chartered until Epic 12 merges and so has no tracker key while the gates are re-owning to it.
+  # Its charter is built by slicing the ledger on owner=range-end-cleanup, so the string has to be
+  # writable without LEDGER_OWNER_CHECK=off -- a bypass on every such append would switch owner
+  # validation off for the one owner the whole mechanism depends on.
+  case "$1" in burndown|range-end-cleanup|"") return 0 ;; esac
   if ! tracker_keys | grep -qx -- "$1"; then
     pre="$(printf '%s' "$1" | sed -E 's/^([0-9]+-[0-9]+)-.*/\1-/')"
     cand="$(tracker_keys | grep -- "^$pre" | head -3 | tr '\n' ' ')"
-    echo "ERROR: owner=$1 is not a story key in $TRACKER (same-number keys: ${cand:-none}). Use the exact key or burndown; LEDGER_OWNER_CHECK=off to bypass (migration only)." >&2
+    echo "ERROR: owner=$1 is not a story key in $TRACKER (same-number keys: ${cand:-none}). Use the exact key, burndown, or range-end-cleanup; LEDGER_OWNER_CHECK=off to bypass (migration only)." >&2
     return 1
   fi
 }
@@ -137,7 +163,7 @@ case "$CMD" in
       scan load | awk -v keys="$(tracker_keys | tr '\n' ' ')" '
         BEGIN { n = split(keys, a, " "); for (i = 1; i <= n; i++) known[a[i]] = 1 }
         /^total=/ { hdr = $0; next }
-        /^owner:/ { k = $0; sub(/^owner:/, "", k); sub(/=.*/, "", k); if (k != "burndown" && !(k in known)) { unknown++; $0 = $0 " UNKNOWN" } }
+        /^owner:/ { k = $0; sub(/^owner:/, "", k); sub(/=.*/, "", k); if (k != "burndown" && k != "range-end-cleanup" && !(k in known)) { unknown++; $0 = $0 " UNKNOWN" } }
         { lines[++m] = $0 }
         END { print hdr " owner_unknown=" unknown + 0; for (i = 1; i <= m; i++) print lines[i] }'
     else
@@ -159,7 +185,12 @@ case "$CMD" in
     case "$SUMMARY$SOURCE$EVID$NOTE" in *$'\n'*) echo "ERROR: arguments must be single-line" >&2; exit 1 ;; esac
     check_owner "$OWNER" || exit 1
     check_status "$STATUS" || exit 1
-    ID="DW-$(scan next-id)"
+    if [ -n "${LEDGER_ID_COUNTER:-}" ]; then
+      NUM="$(claim_counter_id "$LEDGER_ID_COUNTER")" || exit 1
+    else
+      NUM="$(scan next-id)"
+    fi
+    ID="DW-$NUM"
     {
       printf '\n### %s: %s\n' "$ID" "$SUMMARY"
       printf -- '- source: %s | severity: %s | fix-risk: %s | footprint: %s\n' "$SOURCE" "$SEV" "$RISK" "$FOOT"

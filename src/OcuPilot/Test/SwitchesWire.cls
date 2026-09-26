@@ -85,11 +85,13 @@ Method TestTheSwitchesReadAnswersTheDefaultsOnACleanInstance()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "killSwitch,killSwitchReason,enforcedReadOnly,shareContextByDefault,updatedAt,holds", "the six keys the screen reads")
+    Do $$$AssertEquals(tKeys, "killSwitch,killSwitchReason,enforcedReadOnly,shareContextByDefault,contextRowCap,updatedAt,holds", "the seven keys the screen reads")
     Do $$$AssertEquals(tAnswer.%GetTypeOf("killSwitch"), "boolean", "a flag arrives as a JSON boolean")
     Do $$$AssertEquals(tAnswer.killSwitch, 0, "the kill switch is off")
     Do $$$AssertEquals(tAnswer.enforcedReadOnly, 0, "read-only is not enforced")
     Do $$$AssertEquals(tAnswer.shareContextByDefault, 1, "and screen context is shared by default")
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("contextRowCap"), "number", "the row cap arrives as a JSON number")
+    Do $$$AssertEquals(tAnswer.contextRowCap, 200, "at the default")
     Do $$$AssertTrue($IsObject(tAnswer.holds), "the holds arrive as an array")
     Do $$$AssertEquals(tAnswer.holds.%Size(), 0, "which is empty")
     Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "and the read wrote no row")
@@ -297,11 +299,65 @@ Method TestDeletingAnAbsentHoldIsANamedNotFound()
     Do $$$AssertEquals(tAnswer.error, "not_found", "on the not-found slug")
 }
 
+/// <p><b>Story 5.6, AD-15/AD-17.</b> Recording the marking observation that is <b>already</b> the
+/// answer writes no row at all.</p>
+/// <p>That is not a micro-optimisation. <class>OcuPilot.Kernel.State.Switch</class> is a store whose
+/// defaults are parameters, so an instance nobody has configured holds no row -- and the absence of
+/// that row is exactly what
+/// <method>OcuPilot.Install.Smoke.CheckAgentSwitches</method> reads to tell an install that wrote no
+/// switches from one that did. Install records this fact on every container start, and the executor
+/// records it on every confirmed write, so a method that wrote unconditionally would destroy that
+/// signal permanently on the first start.</p>
+/// <p>Mutation (Rule 19): delete the <code>If ..WritesMarked() = ''pMarked Quit</code> guard from
+/// <method>OcuPilot.Kernel.Audit.Event.RecordMarking</method> -- the "writes no row" assertion goes
+/// red while the changed-value control below stays green.</p>
+Method TestRecordingTheMarkingFactAlreadyHeldWritesNoRow()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "the fixture left no switch row")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 1, "so the fact reads its default")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Audit.Event).RecordMarking(1), "recording the value already held succeeds")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "and writes no row")
+
+    ; The control: a value that differs does write one, so the assertion above is about the guard
+    ; rather than about a method that never writes anything.
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Audit.Event).RecordMarking(0), "recording a changed value succeeds")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 1, "and writes the row")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 0, "carrying the new observation")
+}
+
+/// <p><b>Story 5.6, AD-15.</b> The marking fact travels <code>GET /agent/restraint</code> in
+/// <b>both</b> directions. <method>TestTheRestraintReadAnswersTheCallersOwnVerdict</method> asserts
+/// the healthy arm, which is the one a clean instance answers; this one writes the recorded fact 0
+/// and reads the route back, because the panel renders only the <b>false</b> arm and a fact that
+/// could never arrive false would leave the banner unreachable with every gate green.</p>
+/// <p>Mutation (Rule 19): hard-code <code>1</code> in
+/// <method>OcuPilot.Api.Switches.HandleRestraint</method>'s <code>writesMarked</code> line -- this
+/// goes red while <method>TestTheRestraintReadAnswersTheCallersOwnVerdict</method> stays green.</p>
+Method TestTheRestraintReadCarriesARecordedNotMarkingFact()
+{
+    Kill tValues
+    Set tValues("writesMarked") = 0
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues), "the observed marking fact is recorded 0")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 0, "and reads back 0 through the emitter's own accessor")
+
+    Set tSC = ..Call("GET", "/agent/restraint", "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the restraint read runs")
+    Do $$$AssertEquals(tStatus, 200, "and answers 200: " _ tBody)
+    Set tAnswer = ##class(%DynamicAbstractObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("writesMarked"), "boolean", "the fact arrives as a JSON boolean")
+    Do $$$AssertEquals(tAnswer.writesMarked, 0, "carrying the recorded 0, which is the only arm the panel renders")
+    ; Marking is not a restraint (AD-30): nothing else about the verdict moves.
+    Do $$$AssertEquals(tAnswer.blocked, 0, "and the verdict itself is unchanged")
+    Do $$$AssertEquals(tAnswer.killSwitch, 0, "with the kill switch still off")
+}
+
 /// <p><b><code>GET /agent/restraint</code> answers the calling user's own verdict</b>, in the shape
 /// the panel renders its banners and its footer line from.</p>
 /// <p>It is the one switch route that gates on nothing beyond the router, for the reason
 /// <method>OcuPilot.Api.Definitions.HandleList</method> is: the audience for the kill-switch banner
-/// is precisely the people who cannot change it.</p>
+/// is precisely the people who cannot change it -- and, since Story 5.6, for the audience of the
+/// not-marked banner, which is every user whose writes are the ones not being marked.</p>
 Method TestTheRestraintReadAnswersTheCallersOwnVerdict()
 {
     Set tSC = ..Call("GET", "/agent/restraint", "", .tStatus, .tBody, .tHeaders)
@@ -314,8 +370,12 @@ Method TestTheRestraintReadAnswersTheCallersOwnVerdict()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "blocked,code,reason,footerKey,killSwitch,killSwitchAudience,killSwitchReason,enforcedReadOnly", "the eight keys the panel reads")
+    ; `writesMarked` is Story 5.6's and is not part of the verdict: marking is not a restraint
+    ; (AD-30), and only its false arm is ever rendered (AD-15).
+    Do $$$AssertEquals(tKeys, "blocked,code,reason,footerKey,killSwitch,killSwitchAudience,killSwitchReason,enforcedReadOnly,writesMarked", "the nine keys the panel reads")
     Do $$$AssertEquals(tAnswer.blocked, 0, "a clean instance restrains nothing")
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("writesMarked"), "boolean", "and marking arrives as a JSON boolean")
+    Do $$$AssertEquals(tAnswer.writesMarked, 1, "which an installed instance answers true, so no banner is drawn over a healthy one")
     Do $$$AssertEquals(tAnswer.footerKey, "statusReadOnlyOff", "and the footer line reads the off key")
     Do $$$AssertEquals(tAnswer.%GetTypeOf("killSwitch"), "boolean", "a flag arrives as a JSON boolean")
     Do $$$AssertEquals(tAnswer.killSwitchAudience, "", "with no audience to name")
@@ -481,6 +541,54 @@ Method TestTheSwitchRoutesAreDeclaredInTheShippedRouter()
     For tRoute = "<Route Url=""/agent/switches/holds/:id"" Method=""DELETE"" Call=""AgentSwitchHoldDelete""/>", "<Route Url=""/agent/switches/holds"" Method=""POST"" Call=""AgentSwitchHoldCreate""/>", "<Route Url=""/agent/switches"" Method=""GET"" Call=""AgentSwitchesRead""/>", "<Route Url=""/agent/switches"" Method=""PUT"" Call=""AgentSwitchesUpdate""/>", "<Route Url=""/agent/restraint"" Method=""GET"" Call=""AgentRestraint""/>" {
         Do $$$AssertTrue(tMap [ tRoute, "the router declares " _ tRoute)
     }
+}
+
+/// <p><b>The context row cap is a whole number from 1 to 1,000</b> (Story 4.4, AD-24): <code>0</code>,
+/// <code>1,001</code>, a boolean and any string, numeric or not, are each refused on the field
+/// <code>contextRowCap</code> with <code>AGENT.SWITCH.CONTEXTROWCAP</code>, and nothing is written;
+/// <code>500</code> is accepted and reads back.</p>
+/// <p>Mutation: widen the range check in <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method>
+/// -- one of the three refused values goes green where 422 is expected.</p>
+Method TestTheContextRowCapValidatesItsRange()
+{
+    For tCase = 0, 1001 {
+        Set tSC = ..Call("PUT", "/agent/switches", "{""contextRowCap"":" _ tCase _ "}", .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, tCase _ ": the request completes")
+        Do $$$AssertEquals(tStatus, 422, tCase _ ": is refused as a validation failure: " _ tBody)
+        If tStatus '= 422 Continue
+        Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tAnswer.detail.violations.%Size(), 1, tCase _ ": with one violation")
+        Set tFirst = tAnswer.detail.violations.%Get(0)
+        Do $$$AssertEquals(tFirst.field, "contextRowCap", tCase _ ": on its own field")
+        Do $$$AssertEquals(tFirst.code, ##class(OcuPilot.Api.Error).#AGENTSWITCHCONTEXTROWCAP, tCase _ ": with its own machine code")
+    }
+
+    Set tSC = ..Call("PUT", "/agent/switches", "{""contextRowCap"":""x""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "a non-numeric string completes")
+    Do $$$AssertEquals(tStatus, 422, "and is refused: " _ tBody)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.detail.violations.%Get(0).code, ##class(OcuPilot.Api.Error).#AGENTSWITCHCONTEXTROWCAP, "the string is refused, not silently kept")
+
+    ; A JSON boolean reads back as 1 or 0, the same as the JSON numbers 1 and 0 -- refused here
+    ; specifically so it cannot pass as a plausible row cap.
+    Set tSC = ..Call("PUT", "/agent/switches", "{""contextRowCap"":true}", .tBoolStatus, .tBoolBody, .tBoolHeaders)
+    Do $$$AssertStatusOK(tSC, "a boolean completes")
+    Do $$$AssertEquals(tBoolStatus, 422, "and is refused: " _ tBoolBody)
+    Set tBoolAnswer = ##class(%DynamicObject).%FromJSON(tBoolBody)
+    Do $$$AssertEquals(tBoolAnswer.detail.violations.%Get(0).code, ##class(OcuPilot.Api.Error).#AGENTSWITCHCONTEXTROWCAP, "the boolean is refused, not accepted as 1")
+
+    ; A numeric string is not a JSON number (AD-4).
+    Set tSC = ..Call("PUT", "/agent/switches", "{""contextRowCap"":""500""}", .tStrStatus, .tStrBody, .tStrHeaders)
+    Do $$$AssertStatusOK(tSC, "a numeric string completes")
+    Do $$$AssertEquals(tStrStatus, 422, "and is refused, not stored as 500: " _ tStrBody)
+
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "none of the five refused writes wrote a row")
+
+    Set tSC = ..Call("PUT", "/agent/switches", "{""contextRowCap"":500}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "a value in range completes")
+    Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.contextRowCap, 500, "and reads back as a number")
 }
 
 }

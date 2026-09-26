@@ -17,6 +17,12 @@
  * segment matches the credential pattern (Conventions, Secrets) classified anything but `secret`
  * is refused; a boolean or number never is.
  *
+ * **An entry may author a wrapper field** (`authored`, AD-3): a top-level name the endpoint's
+ * request wrapper carries and its template does not -- `Security.User`'s POST `Password` -- mapped
+ * to `secret`, the only class accepted. It is emitted as its own `secret` literal row marked
+ * `authored: true`. A name that is not one top-level segment, or that collides with a derived
+ * path, is refused.
+ *
  * Usage: `node tools/field-lists.mjs` writes `ToolFields.cls`; `--check` reports and exits 1 on
  * a refusal or when the committed file differs from what would be written.
  */
@@ -26,6 +32,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { extractXData } from './screen-mirror.mjs';
+import { CREDENTIAL_EXACT_NAMES, CREDENTIAL_EXCEPTIONS, CREDENTIAL_RE, CREDENTIAL_SUFFIXES, isCredentialName, lastSegment } from './credential-pattern.mjs';
+
+// Re-exported so the pattern has one home (`credential-pattern.mjs`) while
+// `credential-lists.test.mjs` keeps reading it here, beside the classifier it governs.
+export { CREDENTIAL_EXACT_NAMES, CREDENTIAL_EXCEPTIONS, CREDENTIAL_RE, CREDENTIAL_SUFFIXES, lastSegment };
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TOOL_DIR = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool');
@@ -41,7 +52,13 @@ export const CLASSES = ['ordinary', 'secret', 'opaque'];
 export const DEFAULT_CLASS = 'secret';
 
 /** The keys an entry may carry. */
-export const ENTRY_KEYS = ['fieldList', 'classification', 'required', 'enum', 'description'];
+export const ENTRY_KEYS = ['fieldList', 'classification', 'authored', 'required', 'enum', 'description'];
+
+/** The one class an authored wrapper field may carry. */
+export const AUTHORED_CLASS = 'secret';
+
+/** An authored field's name: one top-level segment, no member and no element. */
+const AUTHORED_NAME_RE = /^[A-Za-z][A-Za-z0-9]*$/;
 
 /** The keys reserved for the semantic half of a schema; until that half is defined, only empty. */
 export const RESERVED_KEYS = ['required', 'enum', 'description'];
@@ -55,14 +72,21 @@ function isEmptyValue(value) {
 /** `<area>.<screen>.<verb>`, lower case, dots only (Conventions, Tool naming). */
 export const TOOL_NAME_RE = /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/;
 
-/** The credential pattern (Conventions, Secrets), matched against a path's last segment. */
-export const CREDENTIAL_RE = /(password|passwd|pwd|secret|secret64|apikey|privatekey|token)$|^key$/i;
-
 const SHAPES = ['literal', 'object', 'array'];
 const SOURCES = ['template', 'class', 'none'];
 const LITERAL_TYPES = ['string', 'number', 'boolean', 'null'];
 const LIST_KEYS = ['endpoint', 'source', 'method', 'class', 'type', 'envelope', 'rows'];
 const ROW_KEYS = ['path', 'shape', 'templateType', 'itemType'];
+
+/**
+ * The two keys a class-derived metadata row may add (Story 12.5): the member's `kind`, and a
+ * `VALUELIST` member's allowed `values`. Only a `class` list carries them, and `values` only beside
+ * a `kind`.
+ */
+const ROW_KIND_KEYS = ['kind', 'values'];
+
+/** The kinds a metadata member may carry. */
+export const MEMBER_KINDS = ['uri', 'text', 'list', 'integer', 'flag', 'json'];
 const PATH_RE = /^[A-Za-z0-9_%]+(\[\])*(\.[A-Za-z0-9_%]+(\[\])*)*$/;
 
 function isObject(value) {
@@ -94,11 +118,6 @@ export function readSources() {
   };
 }
 
-/** A path's last segment with any `[]` removed: `Resources[].Name` -> `Name`, `CipherList[]` -> `CipherList`. */
-export function lastSegment(path) {
-  return path.split('.').pop().replace(/(\[\])+$/, '');
-}
-
 /** Whether `other` extends `path`: a member (`path.x`) or element (`path[]`) below it. */
 function extends_(other, path) {
   return other.startsWith(`${path}.`) || other.startsWith(`${path}[]`);
@@ -111,7 +130,7 @@ export function classifiableRows(rows) {
 
 /** Whether a derived row is a credential by name: a string literal whose last segment matches. */
 export function isCredential(row) {
-  return row.shape === 'literal' && row.templateType === 'string' && CREDENTIAL_RE.test(lastSegment(row.path));
+  return row.shape === 'literal' && row.templateType === 'string' && isCredentialName(row.path);
 }
 
 /** Every well-formedness problem in the derived lists, as strings naming the list and path. */
@@ -148,9 +167,19 @@ export function checkLists(lists) {
     }
     const shapes = new Map();
     for (const row of list.rows) {
-      if (!isObject(row) || !sameKeys(row, ROW_KEYS) || ROW_KEYS.some((name) => typeof row[name] !== 'string')) {
+      const base = isObject(row) ? Object.fromEntries(Object.entries(row).filter(([name]) => !ROW_KIND_KEYS.includes(name))) : row;
+      if (!isObject(row) || !sameKeys(base, ROW_KEYS) || ROW_KEYS.some((name) => typeof row[name] !== 'string')) {
         problems.push(`FieldLists.cls: list ${key} has a row that is not exactly ${ROW_KEYS.join(', ')} strings`);
         continue;
+      }
+      if ('kind' in row || 'values' in row) {
+        const kindOk = list.source === 'class' && MEMBER_KINDS.includes(row.kind);
+        const valuesOk =
+          !('values' in row) ||
+          (Array.isArray(row.values) && row.values.length > 0 && row.values.every((value) => typeof value === 'string' && value !== ''));
+        if (!kindOk || !valuesOk) {
+          problems.push(`FieldLists.cls: list ${key} path ${row.path} carries a kind or values a class-derived member cannot`);
+        }
       }
       if (!PATH_RE.test(row.path)) problems.push(`FieldLists.cls: list ${key} path "${row.path}" is not a path`);
       if (shapes.has(row.path)) problems.push(`FieldLists.cls: list ${key} path ${row.path} appears twice`);
@@ -242,6 +271,27 @@ export function classify(lists, entries) {
       }
       return { ...row, class: value };
     });
+    if (entry.authored !== undefined) {
+      if (!isObject(entry.authored)) {
+        refuse('authored is not a JSON object of name to class');
+      } else {
+        for (const [name, value] of Object.entries(entry.authored)) {
+          if (!AUTHORED_NAME_RE.test(name)) {
+            refuse(`authored name ${JSON.stringify(name)} is not one top-level field name`);
+            continue;
+          }
+          if (rows.some((row) => row.path === name || extends_(row.path, name))) {
+            refuse(`authored name ${name} collides with a derived path of list ${entry.fieldList}`);
+            continue;
+          }
+          if (value !== AUTHORED_CLASS) {
+            refuse(`authored name ${name} is classified ${JSON.stringify(value)}; an authored field may only be ${AUTHORED_CLASS}`);
+            continue;
+          }
+          fields.push({ path: name, shape: 'literal', templateType: 'string', class: AUTHORED_CLASS, authored: true });
+        }
+      }
+    }
     if (problems.length === before) tools[tool] = { fieldList: entry.fieldList, fields };
   }
   return { tools, problems };
@@ -261,13 +311,23 @@ export function buildToolFields(tools) {
   const entries = names.map((name) => {
     const { fieldList, fields } = tools[name];
     const rows = fields.map((field) =>
-      JSON.stringify({
-        path: field.path,
-        shape: field.shape,
-        templateType: field.templateType,
-        itemType: field.itemType,
-        class: field.class,
-      })
+      JSON.stringify(
+        field.authored === true
+          ? {
+              path: field.path,
+              shape: field.shape,
+              templateType: field.templateType,
+              class: field.class,
+              authored: true,
+            }
+          : {
+              path: field.path,
+              shape: field.shape,
+              templateType: field.templateType,
+              itemType: field.itemType,
+              class: field.class,
+            }
+      )
     );
     const head = `${JSON.stringify(name)}: {"fieldList":${JSON.stringify(fieldList)},"fields":[`;
     return rows.length === 0 ? `${head}]}` : `${head}\n  ${rows.join(',\n  ')}\n]}`;

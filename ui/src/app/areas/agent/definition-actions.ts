@@ -157,6 +157,7 @@ export class DefinitionActions {
       type: AGENT_DEFINITION_ENTITY,
       scope: AGENT_DEFINITION_SCOPE,
       id,
+      action: 'updated',
     });
   }
 }

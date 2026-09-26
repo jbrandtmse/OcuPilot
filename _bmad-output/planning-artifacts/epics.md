@@ -94,7 +94,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 #### PRD 5.3 - Agent tools, write model and governance
 
 - FR-16: One read tool per screen - every list and detail screen in the six areas plus the three shell reads (privilege map, namespace list, instance identity) has exactly one read tool over the same endpoint returning the same fields the screen shows; tools take the filters the screen offers and return row identifiers the panel turns into citations; no read tool runs free-form SQL in Release 1. Catalog: CP-11, CP-12 and every read row in 5.5-5.10.
-- FR-17: Write tools with propose, review, confirm - a write-tool call mints a server-side proposal holding the tool, resolved arguments and a fingerprint of the target read fresh; the card shows target, instance-computed before/after diff, every field the payload sends, the agent's labeled rationale and expected impact and how to reverse it; the write runs only on a separate authenticated confirmation carrying the proposal id, executed from stored arguments; confirmation is single-use, expires and is refused when user, conversation, definition, read-only state or fingerprint has changed; secrets are declared in schema, never accepted from the model, and travel only in the confirmation; a destructive proposal requires the user to type the target's name. Catalog: CP-13 and every write action in 5.5-5.10 including SS-04, SS-07, LG-04.
+- FR-17: Write tools with propose, review, confirm - a write-tool call mints a server-side proposal holding the tool, resolved arguments and a fingerprint of the target read fresh; the card shows target, instance-computed before/after diff, every field the payload sends, the agent's labeled rationale and expected impact and how to reverse it; the write runs only on a separate authenticated confirmation carrying the proposal id, executed from stored arguments; confirmation is single-use, expires and is refused when user, conversation, definition, read-only state or fingerprint has changed; secrets are declared in schema, never accepted from the model, and travel only in the confirmation; a destructive action taken on a screen requires the user to type the target's name, while a destructive agent proposal is drawn destructive and needs no typed name (owner, 2026-09-25). Catalog: CP-13 and every write action in 5.5-5.10 including SS-04, SS-07, LG-04.
 - FR-18: Execution strictly as the user - every tool runs under the caller's own IRIS privileges with no service account; a 403 is identical to the screen's and is reported, never retried; the full tool set stays advertised with privilege checked at call time; the Release 1 prohibited set is refused on the instance and never advertised; any escalation is confined to named storage and file-read methods and is not in effect while tool, admin API or provider code runs. Catalog: CP-14.
 - FR-19: Read-only mode - an OcuPilot administrator can enforce it instance-wide and any user can set their own session (build step 7); every write tool returns a structured "blocked by read-only mode" result, the agent states what it would have changed and on which screen, and no proposal card appears; the enforced-state settings also hold the context-sharing default and the per-user turn limits. Catalog: CP-21.
 - FR-20: Kill switch - an OcuPilot administrator can disable the agent globally or per user; turns are refused server-side, the panel renders disabled with the reason, every screen keeps working, and the switch is reachable through a screen that does not depend on the agent. Catalog: CP-22.
@@ -133,7 +133,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 
 - FR-42: SSL/TLS configurations - list, create, edit and delete covering certificates, key, CA, CRL, protocol minimum and maximum, ciphers, DH bits, OCSP and peer verification; private key material entered in the form is returned by no read. Catalog: SS-01, SS-15.
 - FR-43: X.509 credentials - list with subject, issuer and validity; import a certificate and optional private key; edit and delete. Catalog: SS-02, SS-11.
-- FR-44: OAuth 2.0 lists and views - client server descriptions, client configurations, resource servers and server client descriptions list; the authorization server configuration is viewable; client configurations and server client descriptions delete with a named confirmation; each entry links to the classic editor until the polish-week editors ship. Catalog: SS-03, SS-04, SS-05, SS-06, SS-07.
+- FR-44: OAuth 2.0 lists and views - client server descriptions, client configurations, resource servers and server client descriptions list; the authorization server configuration is viewable; client configurations and server client descriptions delete with a named confirmation; each entry opens OcuPilot's editor (FR-75) [AMENDED 2026-09-25, Story 12.9 review, Rule 5 tier-1: was "each entry links to the classic editor until the polish-week editors ship"]. Catalog: SS-03, SS-04, SS-05, SS-06, SS-07.
 - FR-45: LDAP and Kerberos configurations - list, create, edit and delete over the classic LDAP page's field set. Catalog: SS-08, SS-16.
 - FR-46: Wallet collections and secrets - list collections; list, create, edit and delete secrets in a collection with values write-only; access requires the wallet administrative resource and users without it see the screen disabled. Catalog: SS-10.
 - FR-47: Auditing configuration - enable and disable auditing, configure system audit events including the selective SQL auditing wizard and reset counters, and create, configure and delete user audit events; disabling auditing warns that agent writes will no longer be marked, and the agent's own proposal card must carry that warning. Catalog: SS-09, SS-12, SS-13.
@@ -150,7 +150,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 #### PRD 5.9 - OS management
 
 - FR-54: Processes list and details - list with filter, page size, max rows, persisted sort and auto-refresh; details show dashboard meters, client executable and address, open devices and the current SQL statement where available. Catalog: OS-01, OS-08.
-- FR-55: Process control - terminate with the optional error-to-job flag, suspend and resume, confirming by process id; acting on the user's own process is refused with an explanation. Catalog: OS-02, OS-03, OS-04.
+- FR-55: Process control - terminate with the optional error-to-job flag, suspend and resume, confirming by process id; acting on a process OcuPilot is itself running in - this request, or an agent turn - is refused with an explanation. Catalog: OS-02, OS-03, OS-04.
 - FR-56: System usage and dashboard meters - global references, routine calls, block reads and writes, journal entries and shared memory, plus the CPU, memory and performance meters on a refresh interval, with meter names and thresholds taken from `%CSP.UI.Portal.EnsembleMonitor`. Catalog: OS-05, OS-09.
 - FR-57: Locks view and removal - locks by namespace with filter and owner details linking to process details; remove one lock, all locks of a process or all locks from a remote client, warning when the owning process is in a transaction. Catalog: OS-06, OS-07.
 - FR-58: Databases list and details - local databases in general and free-space views showing size, maximum, free space, status, directory and mounted state, with free-space figures arriving asynchronously and rendering as they land; details show properties, volume files and background tasks under auto-refresh. Catalog: OS-10, OS-11.
@@ -192,7 +192,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 ### Non-functional requirements
 
 - NFR-1: Responsiveness - a list screen renders its first page within two seconds on a Community container at one thousand rows; a confirmed write's screen refresh completes within two seconds; a turn shows first visible progress (a tool-call card or the start of a reply) within ten seconds against a current cloud model.
-- NFR-2: Progress before streaming - Release 1 delivers per-step progress during a turn; token streaming ships in the polish week conditional on build step 7 finishing and ranked after FR-70 and FR-71. No turn may appear frozen longer than the interval between tool calls.
+- NFR-2: Progress before streaming - Release 1 delivers per-step progress during a turn; token streaming ships in the polish week conditional on build step 7 finishing, and runs first among Epic 11's remaining stories (owner re-order, 2026-09-22). No turn may appear frozen longer than the interval between tool calls.
 - NFR-3: Token hygiene - the token pair travels only as a Bearer header from per-tab storage, never by cookie and never as a password posted into an embedded frame.
 - NFR-4: No SQL or path from the caller - every OcuPilot API query binds caller values; no caller-supplied string is concatenated into SQL; file-serving endpoints accept no path.
 - NFR-5: Secrets never leave - API keys, private keys and wallet secret values are write-only through the UI and the API, and redacted from the agent audit ledger and every log line.
@@ -233,7 +233,7 @@ Technical requirements from the architecture spine (48 ADs, binding on every uni
 - **Write payload field lists are derived at build time, never transcribed** (AD-3). The endpoint's body-template method returns a prototype of placeholder values, not JSON Schema: no `required`, no `enum`, no `description`. Those three are authored **once per tool**, reviewed, and are the only hand-written part of a schema. The method is not uniformly named - `RequestBodySchema` (21), `PutRequestBodySchema` (17), `PutAndPostSchema` (1), `Schema` (1) across 70 classes - and the port resolves whichever exists in that order. "Generated" means a checked-in, reviewed artifact from a build step, never runtime reflection. **A write tool whose field list was typed by a human, for an endpoint that publishes a template, is a review failure.**
 - **Derivation is where credential fields are removed.** Generation classifies every derived field as ordinary or secret and emits the classification into the descriptor; a field the generator cannot classify is treated as secret; a field whose name matches the credential pattern emitted as ordinary fails the build.
 - **16 mutating endpoints publish no template; five are Release 1.** `Wallet.Secret` (FR-46) and `Security.Audit.Event` (FR-47) are field-bearing and need their field lists derived from the underlying `Security.*`/`%SYS.*` class and pinned by a test that fails when the instance disagrees; `Process` (FR-55), `Lock` (FR-57) and `Task.Manager` (FR-51) are action-style with trivial or empty bodies and need no template.
-- **OcuPilot computes the merge itself and sends a complete body** (AD-4). Get-merge-put is not a property of the admin API: of 47 `RunPut` implementations only 19 call `MergeJsonAndProperties`, and the 28 that do not include most Release 1 editors - `Security.User` (FR-35), `Task.CRUD` (FR-53), `Security.Resource` (FR-40), `Security.X509Credential` (FR-43), `Wallet.Secret` (FR-46), `Security.Audit.Event` (FR-47) and all four `Security.OAuth2.*` (FR-44). Read fresh, apply the diff, send the complete property set. Two endpoint behaviors are covered by the fresh read plus the fingerprint: `ValidateRequest` enforces required fields even on update, and `Wallet.Secret` and `Security.Audit.Event` PUTs are **upserts**.
+- **OcuPilot computes the merge itself and sends a complete body** (AD-4). Get-merge-put is not a property of the admin API: of 47 `RunPut` implementations only 19 call `MergeJsonAndProperties`, and the 28 that do not include most Release 1 editors - `Security.User` (FR-35), `Task.CRUD` (FR-53), `Security.Resource` (FR-40), `Security.X509Credential` (FR-43), `Wallet.Secret` (FR-46), `Security.Audit.Event` (FR-47) and all four `Security.OAuth2.*` (FR-44); of those, `Security.Resource`, `Wallet.Secret` and `Security.X509Credential` keep a field the body omits (measured, AD-4), and the rule is uniform all the same. [AMENDED 2026-09-24, Story 12.1 spec gate, Rule 20: X.509 measured to keep omitted fields (AD-4)] Read fresh, apply the diff, send the complete property set. Two endpoint behaviors are covered by the fresh read plus the fingerprint: `ValidateRequest` enforces required fields even on update, and `Wallet.Secret` and `Security.Audit.Event` PUTs are **upserts**.
 - **Async paths are handled in one place** (AD-26). `ShouldRunAsync()` is evaluated **per request type, never per class**. Only two paths exist: the AD-2 synchronous sequence, and a handoff through `%Api.Admin.Util.AsyncTaskEndpoint` with polling that the port exposes as an ordinary call resolving later, so no slice writes polling logic. The two Release 1 async paths are the **audit record LIST** (FR-61) and the **database directory info** call (FR-58 free space). Of the five CSP-touching classes, three use `%request` only to label an async task and take a synthetic label; `Database.AsyncTaskSysBackground` is reachable only from the async path; `Security.Encryption.Settings` is excluded by the v2 pin.
 - **The dependency is contained and always has a fallback** (AD-27). Every `%Api.Admin.*` class is `[ Hidden ]` with no stability contract. `AdminPort` verifies v2 and a named probe endpoint at startup and fails loudly. The endpoint inventory - 70 classes, which publish templates, which are async, which touch CSP state - is a **test fixture** re-derived from the running instance, so an upgrade fails the suite rather than a user. Every screen keeps FR-9's classic link as the user-visible fallback.
 - **Vendor error text is normalized at the port boundary** (AD-39), mapped to an OcuPilot slug and a written reason, with the raw text kept for the log and ledger only.
@@ -393,7 +393,7 @@ Actionable work items from the UX design contract (`DESIGN.md` for how it looks,
 #### Brand assets
 
 - UX-DR14: Wire the **logo asset pipeline**: the reversed horizontal lockup at 32px directly on the navy header (no plate, no ground, no hover state), the mark alone where only the mark fits (a slot under ~170px), the **navy-wordmark light lockup** on light grounds only (the form-login card, README, About - it is 1.02:1 on the shell and must never touch the chrome), the globe-iris favicon exported at 16, 32, 180 and 512px, and the robot crop as the agent's avatar at 256px and 64px. **The wordmark is never typeset** in Inter or any face, and the eye-and-globe motif has exactly one assignment - never an empty state illustration, sign-in hero or watermark. The seven transparent files are flood-fill cutouts an owner vector export supersedes file for file.
-- UX-DR15: Ship **icons**: the owner's set when it lands; until then one vendored Material Symbols Outlined glyph per slot (allowed under NFR-10, replaced file for file). **Never an initial in a circle**, which reads as a wireframe in a screenshot.
+- UX-DR15: Ship **icons**: the rail and Home's area tiles carry the icons drawn in `mockups/key-home.html` (owner decision 2026-09-23, Story 15.7); every other slot takes the owner's set when it lands, until then one vendored Material Symbols Outlined glyph (allowed under NFR-10, replaced file for file). **Never an initial in a circle**, which reads as a wireframe in a screenshot.
 
 #### Shell layout
 
@@ -466,7 +466,7 @@ Actionable work items from the UX design contract (`DESIGN.md` for how it looks,
 - UX-DR64: Enforce the **voice rules**: plain, direct, second person, sentences not labels; every error says what happened and what to do next; confirmations always name the target; warnings carry their consequence; **no exclamation marks, no "Oops", no emoji, no "successfully"**. The agent speaks in first person, never claims success it did not verify, names the screen it means, names in plain text the rows it used and offers to select them, and always labels rationale and expected impact as its own text. **"agent co-pilot" for the feature, "the agent" for the software, "the panel" for the UI - never "co-pilot" alone, anywhere, including code comments and commit messages.**
 - UX-DR65: Implement the **keyboard model**: Ctrl/Cmd+K opens the command box, Ctrl/Cmd+I focuses the composer **including during a turn**, Ctrl/Cmd+B toggles the side bar (and with focus inside it moves focus to that area's rail item) - all three inert while a dialog or the command box overlay is open; Escape closes the topmost overlay else returns focus to the last focused element in content; Enter sends and Shift+Enter makes a newline in the composer; Left/Right switch tabs and resize the panel handle by 16px; Tab/Shift+Tab follow the reading order skip link -> header -> rail -> side bar -> content -> panel -> toasts with a data table as one stop. Chords are shown on screen (command box chip, composer caption, rail tooltips) with the macOS glyph substituted. **No single-character shortcuts exist**, so WCAG 2.1.4 does not apply.
 - UX-DR66: Implement the **mouse and gesture rules**: click acts, one click selects a row, the name cell navigates, right-click opens the row menu; **hover reveals nothing the keyboard cannot reach**; double-click has no meaning; **no drag except the panel resize handle**. A proposal is confirmed **only** by its own Confirm button - no batch, no shortcut that confirms the newest card, no typed "yes"; a delete only in its dialog after the typed name.
-- UX-DR67: Enforce the **banned-everywhere list**: popups and new windows (only the classic-link-card and the classic OAuth editor links open a new tab); modal stacks; batch approval of proposals; hover-only affordances; infinite scroll (virtual scroll over a capped fetch is not infinite); page-size controls; **confirming a proposal for the user by any means the user did not perform**; rewriting the URL into another web application on a namespace change; and **natively disabling or removing a control while it holds focus**.
+- UX-DR67: Enforce the **banned-everywhere list**: popups and new windows (only the classic-link-card and a `rowLink` exemption's name cell open a new tab [AMENDED 2026-09-25, Story 12.9, Rule 5 tier-1: was "only the classic-link-card and the classic OAuth editor links open a new tab"]); modal stacks; batch approval of proposals; hover-only affordances; infinite scroll (virtual scroll over a capped fetch is not infinite); page-size controls; **confirming a proposal for the user by any means the user did not perform**; rewriting the URL into another web application on a namespace change; and **natively disabling or removing a control while it holds focus**.
 
 #### Accessibility floor
 
@@ -488,7 +488,7 @@ Actionable work items from the UX design contract (`DESIGN.md` for how it looks,
 
 - UX-DR78: Wire the **light/dark theme toggle** as a flag flip - both token sets already exist and are contrast-checked - in the status bar account menu alongside Change password (FR-73).
 - UX-DR79: Ship the polish-week UX: "Explain this screen" as a one-click panel action everywhere; an explain entry point per log and audit row; at least three suggested prompts per screen grouped by task; click-through citation chips replacing Release 1's plain-text row names; the data-egress line on every turn with context on; the agent audit viewer; the copy-out draft on any card; governance-disabled results ("This tool is disabled by policy", the tool still advertised); and the Transcripts history screen (New conversation's earlier conversation is not reopenable in Release 1).
-- UX-DR80: Close the five **`[ASSUMPTION]`** confirmations before the surfaces that depend on them ship: the 24px status bar height and its shell color (Bridge has no status bar); 28px log rows against a real tail; 640px as the content minimum below which content scrolls horizontally; the 720px form and 480px field widths (the sticky bar itself is decided); and the meter's 80% warning and 95% error thresholds (the behavior is decided).
+- UX-DR80: Close the four **`[ASSUMPTION]`** confirmations before the surfaces that depend on them ship: the 24px status bar height and its shell color (Bridge has no status bar); 28px log rows against a real tail; 640px as the content minimum below which content scrolls horizontally; and the meter's 80% warning and 95% error thresholds (the behavior is decided).
 - UX-DR81: Close the **`[NOTE FOR PRD]`** items: bound "visible rows" in the screen context so the context chip can carry a row count (**resolved by AD-24's 200-row and total-size cap** - wire the count into the chip and the read tool-call card); and give build step 7's per-user turn limits a "turn limit reached" banner and a refusal sentence **before that step ships** - the one UX item the architecture spine did not answer.
 - UX-DR82: Satisfy the three **release-blocking installer asks** the UX raised, all of which the architecture adopted, so the first screen a judge meets is not a defect: unexpire `_SYSTEM` at install (AD-17), enable auditing and register OcuPilot's audit events (AD-17), and seed the demo fixtures - a demo SSL/TLS configuration, a self-signed X.509 credential and a disabled `/csp/myapp` with no resource - under the compose flow's clearly named opt-in (AD-25), so five empty Security lists and a missing `/csp/myapp` do not greet the README walkthrough.
 
@@ -517,13 +517,13 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 #### Agent
 
 - FR-10: Epic 4 - the docked panel, resizable, remembered, never closed by navigation.
-- FR-11: Epic 4 - screen context per turn with its toggle, secret exclusion and the context chip.
+- FR-11: Epic 4 - screen context per turn with its toggle, secret exclusion and the context chip; Story 11.9 adds the screen's tools and the read-only verdict and teaches the prompt to use them.
 - FR-12: Epic 4 - turn execution, progress cards and the conversation lock.
 - FR-13: Epic 4 - sanitized Markdown from a vendored pipeline with no remote resource.
 - FR-14: Epic 5 - the change event, in-place re-fetch, highlight and off-screen toast.
 - FR-15: Epic 4 - agent-driven navigation over allow-listed route identifiers.
 - FR-16: Epic 2 (the descriptor-derived read tool for each area's step-1 screen), then Epic 4 (the registry, dispatch and the three shell reads), then Epic 6 (a read tool for every remaining screen).
-- FR-17: Epic 5 - propose, review, confirm in its floor form, including the target-fingerprint re-read (5.1, 5.3, 7.10); the typed-name confirmation in Epic 14.
+- FR-17: Epic 5 - propose, review, confirm in its floor form, including the target-fingerprint re-read (5.1, 5.3, 7.10); the typed-name confirmation on the screen path in Story 7.1.
 - FR-18: Epic 5 - execution strictly as the user, the 403 contract and the prohibited set.
 - FR-19: Epic 3 (enforced instance-wide read-only and the enforced-state settings), then Epic 14 (the per-user toggle and the per-user turn limits).
 - FR-20: Epic 3 - the kill switch, global and per user, reachable without the agent.
@@ -553,23 +553,23 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - FR-38: Epic 6 (the roles list), then Epic 9 (the role editor).
 - FR-39: Epic 8 - role create, resource grants and delete.
 - FR-40: Epic 6 (the resources list), then Epic 8 (the resource editor).
-- FR-41: Epic 6 (the services list), then Epic 9 (the service editor with its self-lockout warning).
+- FR-41: Epic 6 (the services list), then Epic 16 (the service editor with its self-lockout warning, 16.13; Story 9.9 ships the reduced form).
 
 #### Security and secrets
 
 - FR-42: Epic 2 (the SSL/TLS list), then Epic 9 (the SSL/TLS editor).
 - FR-43: Epic 6 (the X.509 list), then Epic 8 (import, edit and delete).
 - FR-44: Epic 6 (the four lists and the authorization-server view), then Epic 7 (the two deletes), then Epic 12 (the five full editors).
-- FR-45: Epic 6 (the LDAP and Kerberos list), then Epic 9 (the editor).
+- FR-45: Epic 6 (the LDAP and Kerberos list), then Epic 16 (the editor, 16.14; Story 9.9 ships the reduced form).
 - FR-46: Epic 6 (collections and secrets lists), then Epic 8 (the write-only secret form).
-- FR-47: Epic 5 (this area's step-2 confirmed agent write - auditing disable and re-enable, carrying its mandated warning), then Epic 7 (auditing on and off from the screen), then Epic 8 (system and user event configuration and the selective SQL auditing wizard).
+- FR-47: Epic 5 (this area's step-2 confirmed agent write - auditing disable and re-enable, carrying its mandated warning), then Epic 7 (auditing on and off from the screen, and system and user event configuration with the selective SQL auditing wizard, Story 7.11).
 
 #### Tasks
 
 - FR-48: Epic 2 (the task schedule list), then Epic 6 (on-demand and upcoming), then Epic 7 (run an on-demand task).
 - FR-49: Epic 6 - task history, per task and across tasks.
 - FR-50: Epic 6 - task details under auto-refresh.
-- FR-51: Epic 5 (this area's step-2 confirmed agent write - UJ-6's resume), then Epic 7 (run, suspend, delete and the three Task Manager controls).
+- FR-51: Epic 5 (this area's step-2 confirmed agent write - UJ-6's resume), then Epic 7 (run, suspend, delete) and Epic 16 (the three Task Manager controls, 16.11).
 - FR-52: Epic 9 - the New Task wizard over `%SYS.TaskSuper`'s documented property set.
 - FR-53: Epic 9 - Edit task, built from the same model so the field list matches by construction.
 
@@ -578,7 +578,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - FR-54: Epic 2 (the processes list), then Epic 6 (process details with its meters and open devices).
 - FR-55: Epic 5 (this area's step-2 confirmed agent write), then Epic 7 (terminate with its error-to-job flag, and the remaining controls).
 - FR-56: Epic 6 - system usage counters and the 25 dashboard meters.
-- FR-57: Epic 6 (the locks view), then Epic 7 (the three removal scopes with the transaction warning).
+- FR-57: Epic 6 (the locks view), then Epic 16 (the three removal scopes with the transaction warning, 16.12).
 - FR-58: Epic 6 - databases in both views, with free space arriving asynchronously.
 - FR-59: Epic 6 (the devices list), then Epic 8 (the device editor).
 
@@ -592,7 +592,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 #### Polish week
 
 - FR-70: Epic 11 - "Explain this screen", per-entry explain entry points and suggested prompts.
-- FR-71: Epic 11 - citation chips, the data-egress line and the agent audit viewer.
+- FR-71: Epic 11 (citation chips; the privilege line on the proposal card, 11.8), then Epic 16 (the data-egress line and the agent audit viewer, 16.15 and 16.16).
 - FR-72: Epic 14 - copy-out drafts, the governance policy, the sanitizer with its seeded-injection test, and transcripts with retention.
 - FR-73: Epic 15 - the eleven shell conveniences and the light or dark theme.
 - FR-74: Epic 16 - try-it, web sessions, effective privileges and the permission-check tool.
@@ -600,7 +600,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - FR-76: Epic 16 - task export and import, background tasks, broadcast, license usage and every dashboard meter group.
 - FR-77: Epic 16 - the six secondary log viewers and the unified log hub.
 - FR-78: Epic 16 - external language servers.
-- FR-79: Epic 13 - the optional bonuses, the uninstall hook, CI growth and the registry publish.
+- FR-79: Epic 13 - the uninstall hook, CI growth and the registry publish; the optional bonuses were scratched on 2026-09-19.
 
 #### Staged delivery
 
@@ -613,7 +613,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - NFR-3 token hygiene: Epic 1.
 - NFR-4 no SQL or path from the caller: Epic 1 (the rule and the static handler), Epic 2 (the log endpoints' fixed enum).
 - NFR-5 secrets never leave: Epic 3 (credentials), Epic 5 (proposal and ledger), Epic 8 (the wallet and X.509 forms).
-- NFR-6 untrusted content boundary: Epic 4 (invariants 1, 3 and 4), Epic 5 (invariant 2), Epic 10 (the seeded-injection test), Epic 14 (the polish-week sanitizer, which is additional and not the defense).
+- NFR-6 untrusted content boundary: Epic 4 (invariants 1, 3 and 4), Epic 5 (invariant 2), Epic 14 (the seeded-injection test, Story 14.8, and the polish-week sanitizer, which is additional and not the defense).
 - NFR-7 auditability: Epic 5.
 - NFR-8 API pinning: Epic 1 (the v2 guard), Epic 2 (the endpoint-inventory fixture in CI).
 - NFR-9 idempotence: Epic 1.
@@ -629,37 +629,37 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 
 | FR | Stories | FR | Stories |
 |---|---|---|---|
-| FR-1 | 1.6 | FR-41 | 6.2, 9.4 |
+| FR-1 | 1.6 | FR-41 | 6.2, 16.13 |
 | FR-2 | 1.7 | FR-42 | 2.7, 9.5 |
 | FR-3 | 1.8 | FR-43 | 6.3, 8.5 |
 | FR-4 | 1.9 | FR-44 | 6.4, 7.3, 12.4-12.8 |
-| FR-5 | 1.10, 1.11 | FR-45 | 6.3, 9.6 |
+| FR-5 | 1.10, 1.11 | FR-45 | 6.3, 16.14 |
 | FR-6 | 1.10 | FR-46 | 6.3, 8.6 |
-| FR-7 | 1.14 | FR-47 | 5.10, 7.4, 8.7 |
+| FR-7 | 1.14 | FR-47 | 5.10, 7.4, 7.11 |
 | FR-8 | 1.13 | FR-48 | 2.8, 6.5, 7.5 |
 | FR-9 | 1.15, 9.9 | FR-49 | 6.6 |
 | FR-10 | 4.3 | FR-50 | 6.7 |
-| FR-11 | 4.4 | FR-51 | 5.11, 7.6, 7.7 |
+| FR-11 | 4.4, 4.11, 11.9 | FR-51 | 5.11, 7.6, 16.11 |
 | FR-12 | 4.5 | FR-52 | 9.7 |
 | FR-13 | 4.6 | FR-53 | 9.8 |
 | FR-14 | 5.7 | FR-54 | 2.9, 6.8 |
 | FR-15 | 4.7 | FR-55 | 5.12, 7.8 |
-| FR-16 | 2.3, 4.2, 6.1-6.14 | FR-56 | 6.9 |
-| FR-17 | 5.1, 5.2, 5.3, 7.10, 14.7 | FR-57 | 6.10, 7.9 |
+| FR-16 | 2.3, 4.2, 6.1-6.14, 11.10 | FR-56 | 6.9 |
+| FR-17 | 5.1, 5.2, 5.3, 7.1, 7.10 | FR-57 | 6.10, 16.12 |
 | FR-18 | 5.4, 5.5 | FR-58 | 6.11 |
 | FR-19 | 3.7, 14.5, 14.6 | FR-59 | 6.12, 8.8 |
 | FR-20 | 3.7 | FR-60 | 6.13 |
 | FR-21 | 4.9 | FR-61 | 2.10 |
 | FR-22 | 5.6 | FR-62 | 2.11, 6.14 |
 | FR-23 | 4.8 | FR-63 | 2.12, 5.13, 7.10 |
-| FR-24 | 3.1, 3.5 | FR-64 | 1.16 |
+| FR-24 | 3.1, 3.5, 11.10 | FR-64 | 1.16 |
 | FR-25 | 3.2, 10.1-10.3 | FR-65 | 1.4, 1.5 |
 | FR-26 | 3.3 | FR-66 | 1.3, 1.4, 1.17 |
 | FR-27 | 3.4 | FR-67 | 1.4 |
 | FR-28 | 3.6 | FR-68 | 1.17, 8.9 |
 | FR-29 | 1.3, 3.8 | FR-69 | 17.1-17.7 |
 | FR-30 | 2.5, 9.2 | FR-70 | 11.1-11.3 |
-| FR-31 | 8.1 | FR-71 | 11.4-11.6 |
+| FR-31 | 8.1 | FR-71 | 11.4, 11.8, 16.15, 16.16 |
 | FR-32 | 5.8, 7.1 | FR-72 | 14.1-14.4 |
 | FR-33 | 6.1 | FR-73 | 15.1-15.6 |
 | FR-34 | 6.1 | FR-74 | 16.1-16.3 |
@@ -667,7 +667,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-36 | 8.2 | FR-76 | 16.4-16.7 |
 | FR-37 | 5.9, 7.2 | FR-77 | 16.8, 16.9 |
 | FR-38 | 6.2, 9.3 | FR-78 | 16.10 |
-| FR-39 | 8.3 | FR-79 | 13.1-13.4 |
+| FR-39 | 8.3 | FR-79 | 13.1-13.3 |
 | FR-40 | 6.2, 8.4 | FR-80 | every story in 18-22 |
 | | | NFR-2 | 4.5, 11.7 |
 
@@ -682,11 +682,11 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 1-8 (token layer, type ramp, vendored fonts, spacing and density, shapes, elevation, motion) | Story 1.2, established once; applied by every story thereafter |
 | 63-64 (the fixed-string table, the voice rules) | Story 1.2's copy layer, established once and enforced by lint; applied by every story that renders text. Story 14.6 is the only later story that *adds* a string to the table |
 | 9-13 (the contrast floor, the three marginal guard tests, the four rejected pairs, the seven color rules, three-colors-three-meanings) | Story 1.2; the dark half re-verified in Story 15.6 |
-| 14-15 (logo pipeline, icon policy) | Stories 1.10 and 1.2; the agent avatar in Story 4.3 |
+| 14-15 (logo pipeline, icon policy) | Stories 1.10 and 1.2; the agent avatar in Story 4.3; the rail and Home tiles in Story 15.7 |
 | 16-19 (the VS Code shell, the yield order, Home, reflow) | Stories 1.9, 1.10, 1.12, 4.3; the two-dimensional scrolling exception in Story 2.4 |
 | 20-26 (rail, rail item, attention dot, side bar, header, command box, status bar, server-flag badge) | Stories 1.9 and 1.10; the attention dot's agent conditions in Story 3.6 |
 | 27-28 (locator bar, command bar) | Story 1.10 |
-| 29-30 (data table, the APG grid keyboard model) | Story 2.4 |
+| 29-30 (data table, the APG grid keyboard model) | Stories 2.4 and 15.8 |
 | 31 (row-overflow menu) | Story 7.1 builds the component; Story 7.2 reuses it |
 | 32-33 (form-page, tabs) | Story 3.5 builds the form-page shell, Story 8.1 the first full form; Story 9.1 the first tabbed editor |
 | 34 (stepper) | Story 9.7 |
@@ -696,14 +696,14 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 40 (classic-link card) | Stories 1.15 and 9.9 |
 | 41 (area tile) | Story 1.12 |
 | 42-44 (panel, Send control, resize handle) | Story 4.3 |
-| 45 (context chip) | Story 4.4 |
+| 45 (context chip) | Story 4.11, over Story 4.4's server-side context |
 | 46-48 (user message, agent message, avatar) | Stories 4.5, 4.6 |
 | 49 (tool-call card) | Story 4.5 |
 | 50-51 (proposal card, diff row) | Story 5.2 |
 | 52 (banner, seven kinds) | Stories 3.6, 3.7, 4.3, 5.6 |
 | 53 (Home suggested view) | Story 4.10 |
 | 54 (toast) | Story 5.7 |
-| 55-57 (confirm dialog, typed-name field, masked-secret field) | Story 7.1 (confirm dialog), Story 3.3 (masked secret), Story 14.7 (typed name) |
+| 55-57 (confirm dialog, typed-name field, masked-secret field) | Story 7.1 (confirm dialog), Story 3.3 (masked secret), Story 7.1 (typed name) |
 | 58-59 (the four buttons, the focus ring on three grounds) | Stories 1.2, 1.9, 5.2 |
 | 60 (the privilege-gating mechanism) | Story 1.9, established once; applied by every gated control thereafter |
 | 61 (live-data behavior) | Stories 1.14 and 5.7 |
@@ -715,7 +715,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 78 (theme toggle) | Story 15.6 |
 | 79 (polish-week UX) | All of Epic 11, plus Story 14.1 |
 | 80 (the five assumption confirmations) | Story 1.10 (status bar height), Story 4.3 (content minimum), Story 6.9 (meter thresholds), Story 6.14 (log row height), Story 8.1 (form and field widths) |
-| 81 (the two PRD notes) | Story 4.4 (bounded visible rows, and the chip's row count) and Story 14.6 (the turn-limit banner, a blocking precondition) |
+| 81 (the two PRD notes) | Story 4.4 (bounded visible rows), Story 4.11 (the chip's row count) and Story 14.6 (the turn-limit banner, a blocking precondition) |
 | 82 (the three release-blocking installer asks) | Stories 1.3, 1.4 and 17.6 |
 
 ---
@@ -725,6 +725,40 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 **How these epics are ordered, and why.** The architecture is unusually settled - 47 binding ADs, a final UX contract with a state matrix and a canonical string table, and a spec whose companions are preservation-validated - so the guidance to prefer fewer, larger epics applies. What stops them being larger still is a hard external constraint: **PRD section 10.1's build order *is* the cut line**, every step must end in a publishable build that passes the smoke script, and any step must be able to become the cut without leaving a half-built one behind. (By owner decision of 2026-09-09 the *clean-clone* rehearsal of that build happens once, before the final application, rather than per step - see the deviation note in Additional Requirements.) So Epics 1 to 10 map onto the build steps, and the boundary between two epics is exactly a point at which the project could stop and still submit.
 
 **Owner re-sequence, 2026-09-16.** Step 7 is reduced to the provider adapters (Epic 10, three stories, needing only Epic 3); the plain-Community check is Story 8.9, the last act of the floor; the per-user restraints and the remaining write-path hardening are Stories 14.5 to 14.8 in the polish week, ranked after the OAuth 2.0 editors; and the target fingerprint re-read is closed as delivered by Stories 5.1, 5.3 and 7.10. Two things drove it: the kick-off named "OAuth setup" verbatim, and a judge holding an OpenAI key should be able to run the agent live before the release.
+
+**Parallel-run amendments, 2026-09-16.** Three forward references that serialized the epics under the parallel orchestrator moved to the story that has both halves: Story 6.7's UJ-6 replay to Story 7.6, Story 10.2's per-provider demo-prompt check to Story 17.7, and Story 8.7 to Epic 7 as Story 7.11. Nothing changed in what is built, only in which story verifies it, so Epic 6 depends on Epic 2 alone, Epic 10 on Epics 3 and 4, and Epic 8 on Epics 5 and 6.
+
+**Parallel-run amendments, 2026-09-17.** Two more forward references moved so Epic 12 runs beside Epic 9 rather than after Epic 11: the SSL/TLS test connection from Story 12.1 to Story 9.5, and suggested prompts, which every editor now declares in its own descriptor per Story 11.3's contract. Six stories above the floor moved to the polish week as Stories 16.11 to 16.16: Task Manager control (7.7) and lock removal (7.9), which build step 4's list never named; the service editor (9.4) and the LDAP and Kerberos editor (9.6), last in step 6's order, with their reduced forms in Story 9.9 and the LDAP test authentication following its editor; the data-egress line (11.5) and the agent audit viewer (11.6). Epic 11 depends on Epics 4, 5, 6 and 10; Epic 12 on Epics 6, 7 and 8.
+
+**Owner amendment, 2026-09-19.** Story 13.4 (optional bonus items) is scratched: no article, video or short is planned, and FR-79's bonus half is dropped. Epics 13 and 15 join the parallel run, each depending on Epic 1 alone, to fill the slot that would otherwise idle while Epic 5 runs; Story 13.3 (the registry publish) is held until the owner's release decision because what it publishes is public and is whatever the build is when it runs.
+
+**Owner amendment, 2026-09-20 (contest field).** Story 11.8 adds the privilege line to the proposal card from the endpoint's `ResourcesOR()` list and the shell's privilege map; Story 17.6 also ships the walkthrough as a static no-credentials page; Story 7.6 records the 2026.2 task-list `Suspended` quirk. No dependency changes.
+
+**Owner re-sequence, 2026-09-21.** Epic 12 is ranked ahead of Epic 11 in the polish week. At the pace measured through Story 5.8, two of Epics 9, 11 and 12 finish before the submission deadline, not three, and the OAuth 2.0 editors are what the task statement names; Epic 11's refinements can land in the voting week, where improvements are allowed. Dispatch after the floor follows the dependency graph: Epics 9 and 12 become eligible together once both Epics 7 and 8 have merged, and Epic 11 is dispatched only after both of them; the slot the first of Epics 7 and 8 frees takes Story 15.6, and waits if that finishes first. Epic 14 stays out of the run.
+
+**Owner triage, 2026-09-23.** Three findings from browsing the Epic 5 build. The rail shows letters where UX-DR15 requires icons: Story 15.7 ships the eight drawn in the Home mockup and runs with Story 15.6 in the window after the first of Epics 7 and 8 merges. Truncated cells cannot be read: Story 15.8 adds content-sized defaults, resizable columns, horizontal scrolling inside the table and a full-value tooltip; it changes the shared data table Epic 7 is editing, so it is dispatched once Epic 7 merges, ranked after Epic 12 and before Epic 11. Story 17.6's Anthropic key section says to scope the key to one workspace. If Stories 15.6 and 15.7 overrun the window, Epic 12 waits; that delay is accepted.
+
+**Owner triage, 2026-09-23 (providers), high priority.** Two findings from connecting live keys on slot C. OcuPilot's canonical temperature of 0 is refused by the default model of Anthropic, whose current models reject sampling parameters, and of OpenAI, whose default model accepts only 1: Story 10.4 sends none unless the operator sets one, and never to Anthropic. A connection test against a local model that is still loading is cut off by the Web Gateway's 60-second timeout with an empty 504: Story 10.5 answers first with OcuPilot's own reason. Both run in one runner on the first slot to free, ahead of Epic 12, Story 15.8 and Epic 11; Epic 12 starts that much later.
+
+**Owner request, 2026-09-24 (agent grounding), high priority.** The screen context already carries the rows on screen, but the system prompt never mentions it, every tool is offered on every screen with nothing saying which act on the one in view, and the model is not told when it is read-only. Story 11.9 fixes all three before submission: it runs first and alone on slot B, with Epic 12 handed back at its first boundary and resumed after 11.9 merges. Screen data stays out of the system prompt (AD-11).
+
+**Owner request, 2026-09-24 (first-time success), high priority.** A judge should succeed the first time. New definitions start read-only, so a first request for a change is declined, and the agent did not open the web applications screen when asked to create a web app until told to navigate. Story 11.10 makes new definitions read/write - every write still needs the user's confirmation - and tells the agent to open the screen under discussion, as EXPERIENCE.md's "Primary navigation is the agent" already intends; the owner also found that the panel's transcript never scrolls to a new message, so a sent message and its answer can land out of sight, and 11.10 makes it follow. It runs alone on slot B at Epic 12's next story boundary.
+
+**Owner triage, 2026-09-24 (shell).** A visitor could not find sign-out: it lives only in the account menu behind the user name in the status bar, and the command search has no sign-out command although EXPERIENCE.md assumed one. Separately, the command bar renders its filter field on every screen, so Home, the form pages and the application-error drill-down show a filter that filters nothing. Story 15.9 fixes both and runs after Story 15.8 in the same runner.
+
+**Owner triage, 2026-09-24 (reliability), high priority.** Live turns on Claude Opus 5 failed intermittently - three of about ten in an hour - with "The turn stopped at provider": the connection broke within a second of the call, before any reply (`<READ>` in `%Net.HttpRequest`), and a transport failure is never retried. Separately, the panel reported a confirmed create as "was updated". Story 10.6 fixes both; it runs alone on slot B at Epic 12's next story boundary.
+
+**Owner plan, 2026-09-25 (voting week).** Epics 14 and 16 run in the voting week, where improvements are allowed, starting once the submission build is cut. Order: Story 16.1 (the try-it console), then Stories 16.17 to 16.19 (the read-back line, Home's performance row and impact lines on removals, added from the contest survey the same evening) and Story 16.20 (older messages.log files, Community Idea DPI-I-966), then Stories 16.8 and 16.9 (the secondary log viewers and the hub); then Story 14.1 (the copy-out draft), Stories 14.3 and 14.8 (defanging and the seeded-injection test), Story 16.3 (effective privileges) and Story 16.16 (the agent audit viewer); then the rest of Epic 16; then Story 14.5, with Stories 14.2, 14.4 and 14.6 last. The first two groups close the gaps a judge sees when comparing entries and show what only the agent does. `main` moves only at planned releases - after each of the first two groups and at the end of the week - each a pull request with green CI, a clean-clone check and a new package version, so a judge never installs a half-finished build. Story 14.7 is scratched: a user acting on a screen still types the target's name, while a destructive agent proposal takes the destructive bar, a destructive Confirm and the user's own press, without a typed name. FR-17 and Stories 5.10 and 7.2 are amended to match. Epics 18 to 22 stay after the contest.
+
+**Owner triage, 2026-09-25 (logo), high priority.** The header draws the reversed lockup, a white wordmark on a transparent cut-out whose anti-aliased edges fringe against the navy chrome. Story 15.10 draws the navy-wordmark lockup on a white rounded tile instead, as the demo landing page does, and amends DESIGN.md at origin. It runs alone on slot B, free since Epic 12 merged, and the submission cut waits for it.
+
+**Owner triage, 2026-09-25 (model), high priority.** Anthropic has released Claude Opus 5.5, and the public demo already runs on it, verified by a connection test and a tool-calling turn. Story 10.7 makes `claude-opus-5-5` the default model of a new Anthropic definition, so a judge's fresh install starts on it. It runs on the first slot to free, and the submission cut waits for it.
+
+**Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
+instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
+the archive is proven by a dry-run build and a local install, and a third criterion forbids touching the
+registry or any credential at all. Story 15.6 is sequenced after Epic 5 merges, because it edits the
+style tokens Epic 5 is editing, so Epic 15 ships Stories 15.1 to 15.5 and 15.6 is dispatched afterwards.
 
 That choice was weighed against organizing by portal area instead - one epic each for Web applications, Permissions, Security, Tasks, OS management and Logs. Area epics would touch fewer files per epic, but they cannot express the floor, which demands one live list in **every** area before any area's editors, and one confirmed agent write in **every** area by the end of step 2. An area-shaped plan would let the project arrive at 2026-09-27 with two finished areas and four empty ones, which is the thin interface the contest rules reject.
 
@@ -750,7 +784,7 @@ A user opens each of the six areas and sees real data from the instance they are
 
 **Implementation notes:** `AdminPort` is built here and is the **only** code that will ever name an `%Api.Admin.*` class (AD-2, AD-27) - eight steps reproducing the vendor dispatcher, four of them load-bearing and each easy to omit silently. AD-27's endpoint-inventory fixture goes into CI in this epic, which is what retires "exercise the payload on the instance" as a per-story task. **Two source readings resolved here, both flagged for the user:** (1) PRD section 10.1 requires one live list per area including Logs, while `EXPERIENCE.md`'s IA table puts every Logs screen at step 3 - section 10.1 is authoritative by the IA table's own note, so Logs gets screens in this epic; (2) the Logs area needs **two** surfaces this early, not one - the audit database viewer, because UJ-3's resolution and SM-4's one-minute demo both end at a marked audit event, and the application error drill-down, because AD-48 requires the delete's namespace to come from the level the user has drilled to, which needs the screen to exist before Epic 5's confirmed write can be AD-48-compliant.
 
-## Epic 3: Configure the agent, and hold the switches that restrain it
+### Epic 3: Configure the agent, and hold the switches that restrain it
 
 An OcuPilot administrator picks a provider, pastes a key, proves it works before enabling it, and from then on holds two switches that restrain or silence the agent instance-wide without any screen losing function - while a user with no agent configured still gets every screen and a panel that shows them what a proposal would look like. First half of build step 2, and a prerequisite for every turn.
 
@@ -784,31 +818,31 @@ A user reaches every list, detail and viewer the six areas offer - no dead side 
 
 ### Epic 7: Act on any row
 
-A user does the small things that make up most daily administration - enable, disable, run, suspend, resume, terminate, remove and delete - from the row or from the command bar, with the row updating in place, and can ask the agent to do any of them instead through a confirmed proposal. Build step 4; completing it clears the last floor requirement below the create-and-edit line.
+A user does the small things that make up most daily administration - enable, disable, run, suspend, resume, terminate, remove and delete - from the row or from the command bar, with the row updating in place, and can ask the agent to do any of them instead through a confirmed proposal. Build step 4; completing it clears the last floor requirement below the create-and-edit line. Task Manager control and lock removal moved to Epic 16 (16.11, 16.12) on 2026-09-17: build step 4's list never named them.
 
-**FRs covered:** FR-32 (screen actions), FR-37 (remaining), FR-44 (deletes), FR-47 (auditing on and off), FR-48 (on-demand run), FR-51 (remaining, plus Task Manager control), FR-55 (remaining), FR-57 (removal), FR-63 (remaining delete scopes)
+**FRs covered:** FR-32 (screen actions), FR-37 (remaining), FR-44 (deletes), FR-47 (auditing on and off, system and user event configuration), FR-48 (on-demand run), FR-51 (remaining, plus Task Manager control), FR-55 (remaining), FR-57 (removal), FR-63 (remaining delete scopes)
 
-**Implementation notes:** Every action here is two callers of one operation - the row and the write tool - so a story is not done when the button works. The self-protection rules are UI affordances, **not** prohibitions: refusing to disable the current user, act on the user's own process or delete OcuPilot's own applications is enforced on the instance by AD-10 and merely explained in the row menu. Three warnings carry consequences the user must see before proceeding: suspending the Task Manager, disabling auditing, and disabling the web service OcuPilot itself runs on. AD-48's three delete scopes complete here - by namespace, **by date** and by error - with `DeleteByDate` either implemented or explicitly refused, never left for a builder to discover, and the fingerprint always the enumerated id set rather than a count.
+**Implementation notes:** Every action here is two callers of one operation - the row and the write tool - so a story is not done when the button works. The self-protection rules are UI affordances, **not** prohibitions: refusing to disable the current user or delete OcuPilot's own applications is enforced on the instance by AD-10 and merely explained in the row menu. Three warnings carry consequences the user must see before proceeding: suspending the Task Manager, disabling auditing, and disabling the web service OcuPilot itself runs on. AD-48's three delete scopes complete here - by namespace, **by date** and by error - with `DeleteByDate` either implemented or explicitly refused, never left for a builder to discover, and the fingerprint always the enumerated id set rather than a count.
 
 ### Epic 8: Create and import
 
-A user creates the things the six areas administer - a web application, a user, a role and its grants, a resource, a device, a wallet secret, an X.509 credential, an audit event - through medium forms that validate server-side and open the new entity on success. Build step 5; **at least one create or edit form per area from this step is part of the 2026-09-27 floor.**
+A user creates the things the six areas administer - a web application, a user, a role and its grants, a resource, a device, a wallet secret, an X.509 credential - through medium forms that validate server-side and open the new entity on success. Build step 5; **at least one create or edit form per area from this step is part of the 2026-09-27 floor.**
 
-**FRs covered:** FR-31, FR-36, FR-39, FR-40 (editor), FR-43 (import, edit, delete), FR-46 (secret form), FR-47 (event configuration), FR-59 (device editor), FR-68 (the plain-Community verification, Story 8.9)
+**FRs covered:** FR-31, FR-36, FR-39, FR-40 (editor), FR-43 (import, edit, delete), FR-46 (secret form), FR-59 (device editor), FR-68 (the plain-Community verification, Story 8.9)
 
-**Implementation notes:** Two of the five Release 1 endpoints that publish **no** body template are in this epic - `Wallet.Secret` and `Security.Audit.Event` - so their field lists derive from the underlying `Security.*` / `%SYS.*` class and are pinned by a test that fails when the instance disagrees. Both are also **upserts**, so a body sent against a target deleted since the read silently creates a stub rather than failing - which is what the fresh read plus fingerprint covers. Every secret field here - the wallet value, the X.509 private key, the new user's password - is write-only end to end and excluded from screen context by schema declaration, never by name matching. Story 8.9 runs the plain-Community check as the floor's last act, by owner decision, with the late-failure risk accepted.
+**Implementation notes:** Two of the five Release 1 endpoints that publish **no** body template are built here and in Story 7.11 - `Wallet.Secret` in this epic, `Security.Audit.Event` there - so their field lists derive from the underlying `Security.*` / `%SYS.*` class and are pinned by a test that fails when the instance disagrees. Both are also **upserts**, so a body sent against a target deleted since the read silently creates a stub rather than failing - which is what the fresh read plus fingerprint covers. Every secret field here - the wallet value, the X.509 private key, the new user's password - is write-only end to end and excluded from screen context by schema declaration, never by name matching. Story 8.9 runs the plain-Community check as the floor's last act, by owner decision, with the late-failure risk accepted.
 
 ### Epic 9: The full editors
 
-A user opens the editors that carry the classic portal's whole field set - user, web application, role, service, SSL/TLS, LDAP, and the task wizard and its editor - and edits an instance the way an administrator actually does. Build step 6, in that order; the eight largest forms in Release 1 and the first place FR-9's reduced-form rule may be exercised.
+A user opens the editors that carry the classic portal's whole field set - user, web application, role, service, SSL/TLS, LDAP, and the task wizard and its editor - and edits an instance the way an administrator actually does. Build step 6, in that order; the six largest forms in Release 1 and the first place FR-9's reduced-form rule may be exercised. The service editor and the LDAP and Kerberos editor moved to Epic 16 (16.13, 16.14) on 2026-09-17; Story 9.9 ships their reduced forms.
 
 **FRs covered:** FR-30 (editor), FR-35 (editor), FR-38 (editor), FR-41 (editor), FR-42 (editor), FR-45 (editor), FR-52, FR-53, FR-9 (per cut editor)
 
-**Implementation notes:** This is where the cut line is most likely to bite, and FR-9 is the designed response: a cut editor ships as a reduced form of the fields daily administration uses plus a `classic-link-card`, **never a half-working full form**, and its write tool ships regardless so the agent stays a conduit for that edit. FR-52 and FR-53's field lists and legal-value semantics come from the 49 documented properties on `%SYS.TaskSuper` - including `DailyFrequency`'s quadruple with `DailyFrequencyTime`, a 120-fold ambiguity if dropped - with two gaps to fill by testing rather than citation: the three `Expires*` offsets carry no descriptions, and `RunAsUser`'s documented `%Admin_Secure:Use` requirement is not verifiable from the shipped code. Four of AD-4's non-merging endpoints are here.
+**Implementation notes:** This is where the cut line is most likely to bite, and FR-9 is the designed response: a cut editor ships as a reduced form of the fields daily administration uses plus a `classic-link-card`, **never a half-working full form**, and its write tool ships regardless so the agent stays a conduit for that edit. FR-52 and FR-53's field lists and legal-value semantics come from the 47 documented properties declared on `%SYS.TaskSuper` (49 with `%%OID` and `%Concurrency`) - including `DailyFrequency`'s quadruple with `DailyFrequencyTime`, a 120-fold ambiguity if dropped - with two gaps to fill by testing rather than citation: the three `Expires*` offsets carry no descriptions, and `RunAsUser`'s documented `%Admin_Secure:Use` requirement is not verifiable from the shipped code. Four of AD-4's non-merging endpoints are here.
 
 ### Epic 10: Run on any model, and harden the write path
 
-An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
+An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), a connection test that answers before the Web Gateway's timeout (10.5), turns that survive a dropped connection (10.6), and Claude Opus 5.5 as the Anthropic default (10.7). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
 
 **FRs covered:** FR-25 (the three remaining families)
 
@@ -816,23 +850,23 @@ An operator runs the agent on OpenAI, Google Gemini or a local model on their ow
 
 ### Epic 11: The agent explains itself, cites its work, and streams
 
-During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked first after any step-7 leftovers, because these are what voters see.
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. Stories 11.9 and 11.10 run first, each alone on slot B ahead of Epic 12 (owner, 2026-09-24); the rest run in the order 11.7, 11.8, 11.1, 11.2, 11.3, 11.4 (owner re-order, 2026-09-22): streaming and the privilege line first, so a partial epic merged before the deadline carries the two refinements a judge can see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
 
 **FRs covered:** FR-70, FR-71, NFR-2 (token streaming)
 
-**Implementation notes:** All three modify the same panel transcript render path, which is why they are one epic rather than three. Streaming is **conditional**: it ships only if Epic 10 finished, and is ranked after FR-70 and FR-71, because it changes the render path and must not put a Release 1 agent write at risk. AD-7 and AD-33 are unchanged in contract - the turn still runs in a background job and the panel still polls - and the panel gains an incremental-append mode. Citation chips replace Release 1's plain-text row names plus an offer to select them; the agent audit viewer is gated by the resources recorded per ledger row, and that gate lives with the ledger, not the screen.
+**Implementation notes:** All three modify the same panel transcript render path, which is why they are one epic rather than three. Streaming is **conditional**: it ships only if Epic 10 finished, because it changes the render path and must not put a Release 1 agent write at risk; it runs first among the epic's remaining stories (owner re-order, 2026-09-22). AD-7 and AD-33 are unchanged in contract - the turn still runs in a background job and the panel still polls - and the panel gains an incremental-append mode. Citation chips replace Release 1's plain-text row names plus an offer to select them; the agent audit viewer is gated by the resources recorded per ledger row, and that gate lives with the ledger, not the screen.
 
 ### Epic 12: The OAuth 2.0 editors and the security-area tests
 
-A user completes the area the contest names most specifically: five OAuth 2.0 editors that round-trip create, edit and delete, plus the test and detail actions that make SSL/TLS, X.509 and LDAP administration self-checking. Polish week, ranked next, because the task statement names OAuth setup.
+A user completes the area the contest names most specifically: five OAuth 2.0 editors that round-trip create, edit and delete, plus the test and detail actions that make SSL/TLS, X.509 and LDAP administration self-checking. Polish week, ranked first by the owner's re-sequence of 2026-09-21, because the task statement names OAuth setup.
 
 **FRs covered:** FR-75
 
-**Implementation notes:** This closes an accepted Release 1 risk rather than adding a new capability - at the deadline OAuth 2.0 is lists, views and deletes with each entry linking out to the classic editor, which the contest reviewer flagged and the owner accepted. Every classic link removed here counts back against SM-C1. All four `Security.OAuth2.*` endpoints are AD-4 non-mergers, so each editor reads fresh and sends the complete property set. LDAP test connection is the only Release-1-adjacent async endpoint type on `Security.LDAP`; list, get and put stay synchronous.
+**Implementation notes:** This closes an accepted Release 1 risk rather than adding a new capability - at the deadline OAuth 2.0 is lists, views and deletes with each entry linking out to the classic editor, which the contest reviewer flagged and the owner accepted. Every classic link removed here counts back against SM-C1. All four `Security.OAuth2.*` endpoints call no merge helper; each story measures its endpoint's `RunPut` on a throwaway and records the result in AD-4, and each editor reads fresh and sends the complete property set whatever the measurement says. [AMENDED 2026-09-24, Story 12.1 spec gate, Rule 20: X.509 measured to keep omitted fields (AD-4)] LDAP test connection is the only Release-1-adjacent async endpoint type on `Security.LDAP`; list, get and put stay synchronous.
 
 ### Epic 13: Bonus deliverables and engineering hygiene
 
-The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, the package on the community registry, and whichever bonus items the technology-bonuses post makes worth writing. Polish week, ranked after the OAuth editors, and re-planned against the 2026-09-14 kick-off.
+The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline.
 
 **FRs covered:** FR-79
 
@@ -840,15 +874,15 @@ The entry reads as finished: an uninstall hook that removes everything the insta
 
 ### Epic 14: Governance, restraint and transcripts
 
-An OcuPilot administrator can disable any write tool by tool and action, a user can take a script instead of an execution, log and tool content is defanged before it reaches the model, and every conversation persists per user under a retention policy. It also carries the per-user read-only toggle and turn limits, the typed-name confirmation for destructive tools and the seeded-injection test (Stories 14.5 to 14.8, from Epic 10 by owner re-sequence 2026-09-16), ranked after the OAuth 2.0 editors. Polish week, in "the rest as time allows".
+An OcuPilot administrator can disable any write tool by tool and action, a user can take a script instead of an execution, log and tool content is defanged before it reaches the model, and every conversation persists per user under a retention policy. It also carries the per-user read-only toggle, turn limits and the seeded-injection test (Stories 14.5, 14.6 and 14.8, from Epic 10 by owner re-sequence 2026-09-16). Voting week, in the owner's order of 2026-09-25.
 
-**FRs covered:** FR-72, FR-19 (per-user toggle and turn limits), FR-17 (typed-name confirmation), NFR-6 (the seeded-injection test)
+**FRs covered:** FR-72, FR-19 (per-user toggle and turn limits), NFR-6 (the seeded-injection test)
 
 **Implementation notes:** AD-22 fixed the shape in Release 1 so this fits without rework: keys are `tool` or `tool:action`; the **frozen baseline captured at the Release 1 freeze** means "pre-existing, therefore enabled", which is what keeps SM-3 holding through 2026-10-04; a key absent from it is disabled by default when it mutates; the baseline is never regenerated to grow; layers resolve with a null-coalescing cascade so an explicit `false` at any layer is honored; the read-only preset blocks anything it cannot classify; and **the audit ledger is configuration, not a governed tool**. The sanitizer is *additional* to NFR-6's invariants and is never the defense. An administrator opening another user's transcript is ledgered and sees tool results only when holding every resource that transcript's calls required. The per-user work is **data and UI, not a new enforcement point**: the gate already exists and is evaluated at the write. Per-user turn limits need a "turn limit reached" banner and a refusal sentence before Story 14.6 ships (UX-DR81).
 
 ### Epic 15: Shell conveniences and the theme
 
-A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, and a dark theme the community has been asking for. Polish week.
+A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, a dark theme the community has been asking for, the rail's icons, columns wide enough to read, sign-out where people look for it, and a header logo that looks finished. Polish week.
 
 **FRs covered:** FR-73
 
@@ -856,7 +890,7 @@ A user makes the portal their own - own password, favorites, recents, menu searc
 
 ### Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Polish week, last, as time allows.
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20).
 
 **FRs covered:** FR-74, FR-76, FR-77, FR-78
 
@@ -2634,6 +2668,44 @@ So that the agent configuration surface is not shipped with known holes in the p
 
 A user on any screen types a question into a panel that already knows where they are, watches the agent read through the same endpoints the screen reads from, and gets an answer that names the rows it used - with every call recorded in a ledger and nothing on the instance changed. Second half of build step 2; delivers UJ-1 and the read-only half of UJ-4 complete.
 
+### Story 4.0: Epic 3 Deferred Cleanup
+
+As the builder,
+I want the credential and egress decisions taken at Epic 3's close implemented before the turn starts calling providers,
+So that the first code path that sends a stored key anywhere sends it only where the owner decided it may go, and every configuration write leaves a record something reads back.
+
+**Acceptance Criteria:**
+
+- **Given** a decision recorded at Epic 3's merge gate (DW-337, DW-342, DW-349, DW-357)
+- **When** this story closes
+- **Then** the behavior the decision names is implemented and a test observes it, under a stripped role wherever `_SYSTEM`'s `%All` would hide it.
+
+- **Given** the credential rung cannot be reached, or raises while it is read
+- **When** a definition's credential is resolved
+- **Then** the call fails with a named reason and the definition is not disabled, because an unreadable store is not a removed entry.
+
+- **Given** a configuration write that disables or deletes something besides the definition posted to
+- **When** it lands
+- **Then** the change record names what it disabled or deleted, and a delete that removed nothing says so
+- **And** every configuration write verb's audit row is read back by a test.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-342: storing a key into a credential entry OcuPilot did not create is refused by name; naming an existing entry as a reference stays allowed and writes nothing (ledger; decided at the Epic 3 merge gate, routed by x0 2026-09-16)
+- DW-349: a store without `%Ens_Credentials:WRITE` answers a named refusal naming the resource to grant, not an opaque 500 and not an install-time grant (ledger; decided at the Epic 3 merge gate, routed by x0 2026-09-16)
+- DW-357: the stored credential goes only to the stored endpoint; a body-supplied endpoint stays testable and carries no stored key (ledger; decided at the Epic 3 merge gate, routed by x0 2026-09-16)
+- DW-337: the proxy host is judged by the same egress policy as the endpoint, and an https endpoint CONNECT-tunnels through it (ledger; decided at the Epic 3 merge gate, routed by x0 2026-09-16)
+- DW-397: a Test connection against values the row does not hold that faults is recorded, like the answered path (ledger; routed by x0 2026-09-16)
+- DW-410: an unreachable credential rung is reported as an absence and disables every creds definition on a namespace that is not interoperability-enabled (ledger; routed by x0 2026-09-16)
+- DW-424: `CredentialsRungAvailable`'s own Catch answers 0 on a raise, so a failing store disables the definition where DW-343's transient flag should hold (ledger; routed by x0 2026-09-16)
+- DW-408: the sibling credential query folds case where `Ens.Config.Credentials` keys exactly, and its doc comment states the opposite of the vendor source (ledger; routed by x0 2026-09-16)
+- DW-411: a credential entry OcuPilot deletes, and a delete that removed nothing, are both recorded nowhere (ledger; routed by x0 2026-09-16)
+- DW-428: the `CredentialCreated` mark stays on the deleted owner, so an entry OcuPilot created can outlive every definition that named it (ledger; routed by x0 2026-09-16)
+- DW-409: a credential store under a shared reference disables sibling definitions the change record never names (ledger; routed by x0 2026-09-16)
+- DW-404: five of the ten configuration write verbs emit an audit row nothing reads back, and the default-marker write is classified `ConfigChange` although it selects the endpoint and credential the agent uses (ledger; routed by x0 2026-09-16)
+
 ### Story 4.1: The turn runs in a background job and returns immediately
 
 As a developer-administrator,
@@ -2657,17 +2729,18 @@ So that a ninety-second turn never looks like a hung page and never needs an ope
 
 - **Given** the job holds the `$USERNAME` and `$ROLES` copy it inherited at spawn, for its whole life
 - **When** it moves between steps
-- **Then** it re-checks that the user is still enabled and still holds the privilege each remaining step needs, and abandons the turn otherwise
-- **And** it re-reads enforced read-only, the kill switch and its stop flag **between every step**, abandoning at the next boundary when any has changed.
+- **Then** it re-checks that the user still exists and still holds the privilege each remaining step needs, read from current grants, and abandons the turn otherwise; a disabled account's turn is bounded by the wall-clock limit, because the instance keeps honouring its token (AD-31) [AMENDED 2026-09-16 — see the story change log]
+- **And** it re-reads enforced read-only, the kill switch and its stop flag **between every step**, abandoning at the next boundary when any has changed
+- **And** it abandons the turn at the next boundary once the owner's authenticated polls have not renewed it within the poll lease.
 
 - **Given** a turn
 - **When** it runs
 - **Then** it is bounded by a maximum iteration count, a maximum wall-clock duration and a maximum total provider token spend, so no job can outlive its session indefinitely
 - **And** a user has a bounded number of concurrent turns - one in Release 1, **enforced on the instance** rather than only by the panel's lock.
 
-- **Given** the user signs out
+- **Given** the user signs out through OcuPilot
 - **When** the session ends
-- **Then** their running turns are abandoned.
+- **Then** their running turns are abandoned, because the sign-out first asks the instance to abandon them; a session that ends any other way lapses its turns' poll lease (AD-31) [AMENDED 2026-09-16 — see the story change log].
 
 - **Given** the job is started from a process that may hold OcuPilot's escalated role
 - **When** it is spawned
@@ -2683,10 +2756,10 @@ So that a ninety-second turn never looks like a hung page and never needs an ope
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-23: `Kernel.Utils.ReadRequestBody` has no production call site - every route before this one is a GET or is intercepted by the CSP server, so this story's `POST /api/ocupilot/turn` is where the request-body read path first executes in production (ledger; routed by spec_gate 2026-09-12)
-- DW-250: `AdminPort.Invoke` fails 500 when its caller already holds a `%SYS.Capture` with buffered output; if the turn job or tool executor captures around a tool call, release or nest it (ledger; routed by harvest 2026-09-14)
 - DW-333: `ProviderPort` carries a definition's `systemPromptOverride` and nothing reads it back; settle precedence between it and the turn's own system prompt, and consume it (ledger; routed by harvest 2026-09-15)
-- DW-334: every endpoint judgement costs four resolver lookups plus a `GetInterfacesInfo` read, unbounded and uncached, on every provider call (ledger; routed by the burn-down gate 2026-09-16)
-- DW-397: a Test connection that faults against values the row does not hold records nothing, so a call carrying the credential elsewhere leaves no trace (ledger; routed by the burn-down gate 2026-09-16)
+- DW-347: no single test carries a key from `POST /agent/definitions/:id/credential` through to a served turn; the turn's test provider seam is the first place one can (ledger; routed by x0 2026-09-16)
+- DW-400: `check_handler_wire_tests` keys a route by substring and ignores the method, and `/turn` is a leading prefix of `/turn/:id` (ledger; routed by x0 2026-09-16)
+- DW-422: `Test/Dispatch` seeds a request body through `%CSP.Request.InsertMimeData`, which the vendor marks Final and Internal; the turn's POST is the next body-carrying route to test (ledger; routed by x0 2026-09-16)
 
 ### Story 4.2: The tool registry, its one gate point, and the three shell reads
 
@@ -2733,11 +2806,11 @@ So that its answers cannot describe an instance that differs from the one in fro
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-295: The registry's two tool sources expose different `View` arities and `Screen.Tool.Base` declares none, so this dispatcher must reconcile them - declare `View` on the base or key on `KIND` (ledger; routed by harvest 2026-09-15)
+- DW-298: the class tool's `View` drops the port's http status and fault, and passes a model-supplied `maxRows` to the port unbounded (ledger; routed by cr 2026-09-15)
 - DW-387: `Kernel/Restraint.Verdict` has no write-path caller yet, so AC1's caller half is open - this is the first story with a write path to gate, and the caller-enumeration test is already there to keep it the only one (ledger; routed by harvest 2026-09-16)
+- DW-390: `Kernel/Restraint.Verdict`'s fail-closed path has no seam, and 4.2 adds the first real caller that could drive one (ledger; routed by the burn-down gate 2026-09-16)
 - DW-393: `check_restraint_containment`'s code regex is single-line, so a restraint code assembled across a concatenation is not seen (ledger; routed by qa 2026-09-16)
 - DW-394: the containment rule reads ObjectScript only and skips comments and XData, so a client naming a restraint code and refusing for itself passes every gate (ledger; routed by cr 2026-09-16)
-- DW-400: `check_handler_wire_tests` still keys a route by substring, so a route whose path is a leading prefix of another's is covered by its sibling's assertions (ledger; routed by harvest 2026-09-16)
-- DW-390: `Kernel/Restraint.Verdict`'s fail-closed path has no seam, and 4.2 adds the first real caller that could drive one (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 4.3: The docked panel, present on every route
 
@@ -2758,7 +2831,7 @@ So that asking about a screen never means leaving it.
 
 - **Given** the panel's left edge
 - **When** the user drags it
-- **Then** it resizes between the minimum and the point where content reaches its 640px minimum, with a `col-resize` cursor and a grip that turns `restrained` at the stop, and the width persists per browser
+- **Then** it resizes between the minimum and the point where content reaches its 640px minimum, with a `col-resize` cursor and a grip that turns `restrained` at either stop - the minimum and the 640px content point [AMENDED 2026-09-17 — see the story change log] - and the width persists per browser
 - **And** it is the **only** resizable edge in the shell - the side bar has no sash, grip or resize cursor
 - **And** the handle is `role="separator"`, `aria-orientation="vertical"`, focusable, with `aria-valuenow/min/max` in px, Left and Right arrows changing width by 16px, Escape releasing, and the new width announced through the value.
 
@@ -2782,34 +2855,37 @@ So that asking about a screen never means leaving it.
 
 - **Given** the assumed **640px content minimum**, below which content scrolls horizontally (UX-DR80)
 - **When** this story is built
-- **Then** the figure is confirmed against the panel's docked and resized widths on the narrowest supported viewport rather than carried as an assumption.
+- **Then** the figure is confirmed against the panel's docked and resized widths on the narrowest supported viewport, 1,280px (EXPERIENCE.md's Full shell row), rather than carried as an assumption [AMENDED 2026-09-17 — see the story change log].
 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
-- DW-160: Home's panel-widening criterion could not be surface-anchored in Epic 1 - no panel existed; this story builds the docked panel and owns the remembered width it restores on leaving Home (ledger; routed by harvest 2026-09-12)
-- DW-379: the panel is the default width on every route where `DESIGN.md` gives it a wider Home width over a 120ms transition, and `--ocu-panel-home` is declared with no consumer (ledger; routed by harvest 2026-09-16)
-- DW-382: `DESIGN.md`'s Yield order is two thirds unbuilt - no media query, `matchMedia` or `ResizeObserver` exists in `ui/src`, and the panel is what first puts the row into the width budget (ledger; routed by cr 2026-09-16)
 - DW-377: the administrator reminder banner carries no link, which `EXPERIENCE.md` publishes for it (ledger; routed by the burn-down gate 2026-09-16)
+- DW-378: every browser assertion runs as `_SYSTEM`, so no browser run sees the non-administrator panel; sign in as the throwaway's least-privileged principal (ledger; routed by x0 2026-09-16)
+- DW-380: `refusedValues` is snapshotted when a refusal arrives rather than when the request is sent, and a read failing during sign-in spends the one-shot fresh-sign-in flag (ledger; routed by the burn-down gate 2026-09-16)
+- DW-381: nothing exercises the rail tooltip's rendered reveal, so the attention dot's effect on it is asserted only through CSS (ledger; routed by the burn-down gate 2026-09-16)
+- DW-382: `DESIGN.md`'s Yield order is two thirds unbuilt - no media query, `matchMedia` or `ResizeObserver` exists in `ui/src`, and the panel is what first puts the row into the width budget (ledger; routed by cr 2026-09-16)
 - DW-386: a form sign-in issues two definitions reads, because `runSubmit` notifies again after `adopt` already did (ledger; routed by the burn-down gate 2026-09-16)
-- DW-371: the initial bundle is 551 kB against a 500 kB warning and no gate pins the figure (ledger; routed by the burn-down gate 2026-09-16)
 
-### Story 4.4: Screen context on every turn, capped, with its toggle and chip
+### Story 4.4: Screen context reaches the turn, capped and secret-free
 
 As a developer-administrator,
 I want the agent to know which screen I am on without me describing it, and to be able to switch that off,
 So that "what am I looking at?" is a question I can just ask - and so I can stop sending anything when I need to.
 
+The chip that shows this context, its toggle and the paste warning are Story 4.11; this story is the server side they read from. [AMENDED 2026-09-17 — see the story change log]
+
 **Acceptance Criteria:**
 
-- **Given** a turn is sent
-- **When** context is assembled
-- **Then** it is built **fresh from the screen the user is on at that moment** - so navigating between turns changes what the agent sees - and carries route, namespace, selected entity, and the visible rows with the active sort and filter.
+- **Given** a turn is posted with its screen context
+- **When** the context is accepted
+- **Then** it carries route, namespace, selected entity, and the screen's filtered and sorted view with the active sort and filter, cut to the row cap - the client builds it fresh from the screen the user is on when Send is pressed (Story 4.11) [AMENDED 2026-09-17 — see the story change log].
 
-- **Given** a screen descriptor declares its context serializer
-- **When** the kernel serializes
-- **Then** it enforces an instance-wide cap of **200 rows**, operator-settable, **truncating rather than refusing** and recording the number actually sent
-- **And** the cap is on **content, not only rows**: the payload is bounded by total size as well, and each field is truncated to a declared maximum with the truncation marked
-- **And** a serializer that emits an uncapped collection or an unbounded field fails review.
+- **Given** a context payload or a read tool's result
+- **When** the kernel bounds it
+- **Then** rows are cut at the instance-wide row cap, operator-settable on Switches as an integer from 1 to 1,000 (default 200), gated by the OcuPilot administrative resource and audited, **truncating rather than refusing**; the same cap bounds a read tool's result
+- **And** the cap is on **content, not only rows**: the payload is at most 65,536 characters, cut by whole rows from the end, and each field is cut at 1,000 characters unless its descriptor declares a lower maximum, a cut value ending in U+2026
+- **And** the payload reports `rowsSent`, `rowsAvailable`, `truncated` and `truncatedFields`
+- **And** the kernel applies these bounds itself, so no serializer's output leaves unbounded, and the descriptor registry refuses a context field whose declared maximum exceeds the default (AD-24). [AMENDED 2026-09-17 — see the story change log]
 
 - **Given** any field the descriptor types as secret - a password, private key, secret value, API key or token
 - **When** context is assembled
@@ -2817,31 +2893,28 @@ So that "what am I looking at?" is a question I can just ask - and so I can stop
 - **And** a screen carrying such fields sends route and entity identity only, never form values
 - **And** the exclusion is schema-driven from the descriptor, never a name-pattern match, because a wallet secret field named `Value` defeats any matcher - a name matcher runs only as a backstop that can add redaction and never remove it.
 
-- **Given** the context chip
-- **When** it renders with sharing on
-- **Then** it reads `<Screen>, <NAMESPACE> - <N rows> - <provider> - <endpoint host>`
-- **And** when the endpoint host is not on a private network it carries the pill "leaves the instance" with the tooltip "Screen context is sent to <host>", computed from the same configuration the request actually uses so the two cannot disagree
-- **And** a screen with secret-typed fields adds a key glyph.
+- **Given** the context reaches the model
+- **When** the turn's messages are built
+- **Then** it enters as a synthetic `screen.context` tool call and its result, placed before the user's message in the canonical message shape and never advertised as a tool
+- **And** a model-issued call with that name is refused as an unknown tool (AD-11). [AMENDED 2026-09-17 — see the story change log]
 
-- **Given** the user turns sharing off
-- **When** subsequent turns are sent
-- **Then** no screen data is sent, and the chip reads "Screen context off - nothing from this screen is sent."
-- **And** the toggle defaults to on, is remembered per user, and an OcuPilot administrator can set the instance default to off.
+- **Given** the user has turned sharing off
+- **When** subsequent turns are posted
+- **Then** no screen data is sent
+- **And** the choice is remembered per user on the instance, and a user who has not chosen follows the instance default, which an OcuPilot administrator can set to off. [AMENDED 2026-09-17 — see the story change log]
 
-- **Given** the chip is live
-- **When** the route, namespace, selection or visible rows change
-- **Then** it updates.
-
-- **Given** the user is on a screen carrying secret-typed fields
-- **When** their draft looks like a password or key
-- **Then** an inline warning appears above the input - "This looks like a password or key. Send anyway?" - with Send anyway and Edit.
+- **Given** the default definition's status read
+- **When** it resolves
+- **Then** it exposes `provider`, `endpointHost` and `leavesInstance`, computed on the instance from the provider port's own resolution: the context stays on the instance only when the definition is marked local, or every resolved address of the host is loopback, link-local, RFC 1918 or `fc00::/7`; an unresolvable host leaves. [AMENDED 2026-09-17 — see the story change log]
 
 ---
 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
+- DW-281: AD-24's field-level bound is unimplemented, so a read tool's payload carries an unbounded `EventData` blob per row (ledger; routed by harvest 2026-09-15)
 - DW-398: the anchored credential backstop cannot mask a secret word that is not final in a key name (ledger; routed by the burn-down gate 2026-09-16)
 - DW-399: nothing compares the audit redactor's suffix list with `field-lists.mjs`'s `CREDENTIAL_RE`, which its own doc says it mirrors (ledger; routed by the burn-down gate 2026-09-16)
+- DW-452: one model reply's tool results have no aggregate bound, so a few capped reads can overflow the provider context or the string limit (ledger; routed by cr 2026-09-17)
 
 ### Story 4.5: A turn, watched: progress cards and the conversation lock
 
@@ -2890,6 +2963,44 @@ So that a slow answer is legible as work rather than as a hang.
 - **When** the panel renders it
 - **Then** it is rendered as **data, never as markup and never as OcuPilot's own voice**, and no rendered progress causes a request to any host.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-451: a tool step records no count of rows actually sent, which the read card shows (ledger; routed by harvest 2026-09-16)
+- DW-1048: the sign-out browser leg reads the composer before it renders once in a full browser-suite run; wait for the composer before reading it (ledger; routed by lead 2026-09-17)
+
+### Story 4.11: The context chip, its toggle and the paste warning
+
+As a developer-administrator,
+I want to see what screen context the next turn will carry and where it goes, and to be warned before I paste a secret,
+So that sharing is a visible choice rather than an assumption.
+
+Split from Story 4.4 on 2026-09-17 (see its change log); it follows Story 4.5, whose Send it attaches to. [AMENDED 2026-09-17 — see the story change log]
+
+**Acceptance Criteria:**
+
+- **Given** a turn is sent from the panel
+- **When** context is assembled
+- **Then** it is built **fresh from the screen the user is on at that moment** - so navigating between turns changes what the agent sees - and posted with the turn as Story 4.4 accepts it.
+
+- **Given** the context chip
+- **When** it renders with sharing on
+- **Then** it reads `<Screen>, <NAMESPACE> - <N rows> - <provider> - <endpoint host>`, where `<N rows>` is the count the next turn would send
+- **And** when Story 4.4's status read says the context leaves the instance it carries the pill "leaves the instance" with the tooltip "Screen context is sent to <host>", from the same configuration the request uses so the two cannot disagree
+- **And** a screen with secret-typed fields adds a key glyph named "Secret fields on this screen are never sent".
+
+- **Given** the user turns sharing off
+- **When** the toggle changes
+- **Then** the chip reads "Screen context off - nothing from this screen is sent." and the choice is stored per user on the instance.
+
+- **Given** the chip is live
+- **When** the route, namespace, selection, or the screen's filtered and sorted view changes
+- **Then** it updates.
+
+- **Given** the user's draft
+- **When** it starts with `sk-`, `-----BEGIN`, `AKIA`, `ghp_`, `xox` or `AIza`, or holds a whitespace-free run of at least 24 characters using at least three of lower case, upper case, digit and symbol and containing none of `/ . : ^ (`
+- **Then** an inline warning appears above the input - "This looks like a password or key. Send anyway?" - with Send anyway, which sends that text, and Edit, which returns focus to the composer, once per draft text
+- **And** a URL, a dotted class name and a global reference do not raise it, each pinned by a test.
+
 ### Story 4.6: Replies render safely and offline
 
 As a security-minded operator,
@@ -2928,6 +3039,10 @@ So that a compromised or manipulated model cannot use the panel as a channel.
 - **Then** it renders as an error banner in the agent's slot reading "The turn stopped at <step>: <reason>."
 - **And** a turn the user **stopped** is not an error and takes the tool-call card's stopped status instead.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-371: the initial bundle is 551 kB against a 500 kB warning and no gate pins the figure; the vendored renderer, highlighter and sanitizer are the next large addition (ledger; routed by x0 2026-09-16)
+
 ### Story 4.7: The agent takes you to a screen
 
 As a developer-administrator,
@@ -2961,6 +3076,11 @@ So that following its answer does not mean hunting through a menu.
 - **When** they are listed to the model
 - **Then** they appear in the tool set as read tools and run client-side.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1084: the built-in system prompt never asks the model to name the rows it used in backticks or to offer to select them, so Story 4.6's citation rendering has no producer until the selection tool exists (ledger; routed by the lead 2026-09-18)
+- DW-1086: the turnprobe fixture helpers are copied into each browser spec that needs them - ten duplicated helpers and two marker conventions - and the pattern DW-267 already solved once by extracting a shared spec module (ledger; routed by cr 2026-09-18)
+
 ### Story 4.8: A slow or rate-limited provider degrades the turn rather than failing it
 
 As a developer-administrator on a busy account,
@@ -2988,6 +3108,14 @@ So that transient provider trouble is not indistinguishable from a broken produc
 - **Given** the installer reports the Web Gateway response timeout
 - **When** an operator reads that report
 - **Then** it is information, not a prerequisite - because the background-job turn holds no request open, the stock 60 seconds suffices, and a clean clone works unmodified.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-334: every endpoint judgement costs four resolver lookups plus a `GetInterfacesInfo` read, unbounded and uncached, on every provider call; a slow resolver is a slow step (ledger; routed by x0 2026-09-16)
+- DW-413: `Egress.Addresses`' single-form `HostNameToAddr` fallback sits outside the `MultiLookup` seam, so a probe cannot control the whole address set (ledger; routed by x0 2026-09-16)
+- DW-441: a configured proxy is applied to a marked-local plain-http endpoint too, which then goes through the proxy in cleartext (ledger; routed by harvest 2026-09-16)
+- DW-1053: the turn error banner reads "The turn stopped at : <reason>." when the failure names no step (ledger; routed by cr 2026-09-17)
+- DW-1054: a Send refused with anything other than 409 shows the user nothing (ledger; routed by cr 2026-09-17)
 
 ### Story 4.9: The agent audit ledger
 
@@ -3026,6 +3154,10 @@ So that what the agent did is recoverable afterwards without correlating across 
 - **When** a user referenced by ledger rows is deleted
 - **Then** the rows survive - the ledger is an audit record and outlives its subject - while that user's sessions are invalidated and their running turns abandoned.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-448: `BoundedWhere` has no guarded helper that runs its fragment with a parameter array, so the ledger view's time window has no path yet (ledger; routed by harvest 2026-09-16)
+
 ### Story 4.10: Home's suggested view and the starter prompts
 
 As a developer-administrator arriving in the morning,
@@ -3037,7 +3169,7 @@ So that the agent is useful before I have thought of a question.
 - **Given** Home with an enabled definition
 - **When** the panel renders
 - **Then** a "Suggested view" block sits above the transcript with attention lines - each a 32px row with its count in `code`
-- **And** a line appears only when the read behind it exists: tasks suspended after an error (from the task schedule list, Story 2.8), application errors today per namespace (Story 2.12) and agent status (Story 3.7) are available now, while the **new alerts.log entries** line joins when the alerts read lands in Story 6.13 - the block being built to take lines rather than being rewritten to add one
+- **And** a line appears only when the read behind it exists: application errors per namespace (Story 2.12, counted on the newest date the instance's own log names, since no response carries the instance's local calendar date) and agent status (Story 3.7) are available now, while the **new alerts.log entries** line joins when the alerts read lands in Story 6.13 and the **tasks suspended after an error** line joins when a task read that answers `Suspended` truthfully exists - the vendor LIST coerces it to false (DW-269), so the source is not there today - the block being built to take lines rather than being rewritten to add one [AMENDED 2026-09-18 - see the story change log]
 - **And** each line's text is a button **distinct from** its "Open >" link, and activating the line places its text in the composer as a prompt for the user to send.
 
 - **Given** every attention line would read zero, as on a fresh container
@@ -3052,6 +3184,65 @@ So that the agent is useful before I have thought of a question.
 - **When** the width changes
 - **Then** it animates over 120ms, or not at all under reduced motion, and restores the remembered width on leaving Home.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-160: Home's panel-widening criterion is this story's last AC; it could not be surface-anchored before a panel existed (ledger; routed by x0 2026-09-16)
+- DW-379: the panel is the default width on Home where `DESIGN.md` gives it a wider width over a 120ms transition, and `--ocu-panel-home` has no consumer (ledger; routed by x0 2026-09-16)
+- DW-269: the vendor tasks LIST coerces `Suspended` to false, so the 'tasks suspended after an error' line needs the task INFO read AD-36 allows - declined in this story with a reason, because the read grammar and the descriptor that would carry it are another epic's footprint, and the line joins later like the alerts one (ledger; routed by cr 2026-09-14)
+
+### Story 4.12: Epic 4 burn-down
+
+As the team that has to live with Epic 4,
+I want the residue the epic's own gates found closed before it merges,
+So that the panel is not shipped with known holes in the places that decide what a test proves and what a reader is told.
+
+**Acceptance Criteria:**
+
+- **Given** the fourteen entries this story charters
+- **When** each is closed
+- **Then** it is either fixed with a demonstrated mutation, or made terminal with the reason recorded on the entry - never left `routed`.
+
+- **Given** the gates this epic found could not fail (DW-1154, DW-1091, DW-1092, DW-1048)
+- **When** they are settled
+- **Then** a deleted stylesheet rule reddens a test, the error-log truncation assertion holds on an instance of any age, and neither the navigation nor the sign-out browser leg fails opaquely because another run left state behind.
+
+- **Given** the bundle gate (DW-1153)
+- **When** it is settled
+- **Then** the budget names a number measured in this story, raised in one commit that states the measurement, with `angular.json` and the pinned literal moving together - or the bundle is trimmed back under the standing number.
+
+- **Given** the envelope and vocabulary entries (DW-447, DW-1127, DW-1129)
+- **When** they are settled
+- **Then** no 400 carries a vendor exception's text, the ledger's refusal names what it refused rather than a tool call, and the rule count a contributor reads matches the checker's own.
+
+- **Given** the turn and ledger holes (DW-1095, DW-1096, DW-1124, DW-1125)
+- **When** they are settled
+- **Then** a settle for a turn that has already ended is refused like any other stale write, a schema states the types it emits, and a bound lives in one place so raising it cannot cut silently.
+
+- **Given** the secret backstop (DW-398)
+- **When** it is settled
+- **Then** the credential-name matcher masks a secret word wherever it sits in a key name, or the anchoring is recorded as deliberate with the reason on the entry.
+
+- **Given** every entry this story does not charter
+- **When** the epic closes
+- **Then** each is still owned by `burndown` with its status and reason recorded, so a later epic's burn-down inherits a queue rather than a surprise.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-398: the anchored credential-name backstop cannot mask a secret word that is not final in a key name (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-447: `Api.Definitions` and `Api.Switches` render `ReadRequestBody`'s vendor exception text in their 400s (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1048: the sign-out browser leg reads the composer right after the first-login gate settles, and flakes in a full suite (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1091: `ReadTool`'s error-log truncation assertion depends on the instance having two entries on one date (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1092: `navigate.browser-spec.mjs` fails opaquely when another turn still holds the user's slot (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1095: `Navigate.ResultSchema` declares `entityId` and `code` as strings while the settle emits JSON null (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1096: `POST /turn/:id/navigation` accepts a settle for a turn that has already ended (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1124: the 4096 and 512 column bounds are duplicated as literals beside their `Limits` parameters (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1125: an over-long `RequiredPairs` fails the whole row's write rather than losing a pair (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1127: the ledger's only 403 reuses a sentence that names a tool call (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1129: `check-objectscript.py` reports 21 rules while `CLAUDE.md` states 18 (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1149: `ERROR_LOG_DATES_PATH` duplicates the error-log store's prefix with nothing pinning them equal (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1153: the client bundle is 778.37 kB against the 780 kB gate (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1154: nothing pins the presence of a stylesheet rule (ledger; chartered by the burn-down gate 2026-09-18)
+
 ---
 
 ## Epic 5: Propose, confirm, and find it in the audit database
@@ -3063,6 +3254,47 @@ A user asks the agent to change something, reviews a diff the instance computed 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-269: The tasks LIST reports every task as not suspended, so this story's "tasks suspended after an error" line has no source; declare a `rowGet` of type `INFO` (AD-36) or drop the line (ledger; routed by spec_gate 2026-09-14)
+
+### Story 5.0: Epic 4 Deferred Cleanup
+
+As the builder,
+I want Epic 4's unclosed ledger residue fixed before the write path is built on top of it,
+So that the dispatch, ledger and panel code every Epic 5 story extends is pinned by tests that can fail and carries no duplicated rule it will diverge from.
+
+**Acceptance Criteria:**
+
+- **Given** a branch of the turn's dispatch, ledger or panel path that Epic 4 shipped with no executing assertion
+- **When** this story closes
+- **Then** a test observes that branch, and a named mutation applied to the branch reddens it.
+
+- **Given** a rule, helper or precedence order that exists in two copies
+- **When** this story closes
+- **Then** there is one copy, or a test pins the copies equal - never two copies and no test.
+
+- **Given** a string-shaped invariant the ledger and the audit redactor depend on - a `(resource, permission)` pair round trip, a redaction marker
+- **When** a value that breaks it is supplied
+- **Then** the invariant refuses it rather than round-tripping it wrongly, and a caller-sent literal redaction marker is never read as evidence that a key was redacted.
+
+- **Given** a documented command a later gate in this repository runs
+- **When** it is read
+- **Then** it names the path the build actually writes.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1123: six ledger write and read branches have no assertion - a provider row's `error` leg, the boundary-stop refusal writer, the three client-call writers, and `truncated` reading true (ledger; routed by x0 2026-09-19)
+- DW-1162: `_components.scss`'s `.ocu-panel-empty` is pinned by nothing, and DW-1154's leg pins named rules rather than the population of rules a template depends on (ledger; routed by x0 2026-09-19)
+- DW-1173: two port classes may now open an output capture, and nothing proves one cannot open inside the other (ledger; routed by x0 2026-09-19)
+- DW-1161: four byte-identical privilege-reason rule blocks cost the eager bundle 1.3 kB (ledger; routed by x0 2026-09-19)
+- DW-1097: `Dispatch.ResolveClientCall`'s registry-read, gate-read and Directive-threw branches have no pinning test, so their refusal-not-failure normalization could be reverted with nothing red (ledger; routed by x0 2026-09-19)
+- DW-1126: `PairsToString`/`StringToPairs` accept a resource or permission containing `,` or `:` and cannot round-trip it, and `RedactedKeys` treats a caller-sent literal `[redacted]` as evidence that a key was redacted (ledger; routed by x0 2026-09-19)
+- DW-1150: the agent-status line re-implements the panel's own sentence precedence and nothing pins the two copies equal (ledger; routed by x0 2026-09-19)
+- DW-1128: a ledger read opens up to 201 rows one at a time through the escalated `GuardedOpenId`, and every append runs a `COUNT(*)` over the turn's rows first (ledger; routed by x0 2026-09-19)
+- DW-1133: a tool step's argument string still gets the name pattern alone when the wire name resolved no tool, where the ledger row now withholds the blob (ledger; routed by x0 2026-09-19)
+- DW-1151: `suggested-view.browser-spec.mjs` copies three helpers from `panel.browser-spec.mjs` (ledger; routed by x0 2026-09-19)
+- DW-1134: `Test/Ledger.cls` is 778 lines against the 500-line guidance, and every method shares one teardown (ledger; routed by x0 2026-09-19)
+- DW-1168: `objectscript-testing.md`'s redeploy path says `dist/ocupilot` where the build writes `dist/ocupilot-ui` (ledger; routed by x0 2026-09-19)
 
 ### Story 5.1: The proposal is minted on the instance, from a fresh read
 
@@ -3113,6 +3345,13 @@ So that what I confirm cannot differ from what will run.
 - **Then** it is refused, because a proposal is bound to its turn's outcome as well as to its own expiry
 - **And** a turn that ended **normally** leaves its proposals confirmable until their own expiry - a turn ends the moment it emits the proposal card, so the ordinary path must not be caught by this rule
 - **And** the turn record carries its terminal state and outlives the job for at least the proposal expiry window, so confirm can read it.
+
+- DW-445: AD-7's Rule still places turn progress in a temp global while AD-33 and the shipped `Turn`/`Step` tables keep it in protected storage; amend the stale clause at the spine step (ledger; routed by merge_gate 2026-09-18)
+- DW-1052: the expanded tool-call card's result block is never populated, because no tool step stores the tool's output (ledger; routed by merge_gate 2026-09-18)
+- DW-1170: `REASONAGENTBADBODY` offers "or no body at all" on routes that refuse an absent body (ledger; routed by merge_gate 2026-09-18)
+- DW-1121: `SecretArguments` declared on the abstract intermediates `Kernel/Shell/ReadTool` and `Screen/Tool/Read` makes every subclass inherit "declares none", so the mandatory-declaration refusal cannot bite those two subtrees (ledger; routed by x0 2026-09-19)
+- DW-454: `Prompt.BUILTIN` tells the model "your tools read this instance and change nothing", which this story's first write tool makes untrue - restate the tool sentence to say what a proposal is, in this same change (ledger; routed by cr 2026-09-17, bulleted 2026-09-19)
+- DW-449: the dispatcher's write branch is exercised only with a forced restraint verdict, so an argument-order slip in `Dispatch.Restraint` stays green - the first real write tool pins it through `Kernel.Restraint.Verdict` on the throwaway (ledger; routed by harvest 2026-09-17, bulleted 2026-09-19)
 
 ### Story 5.2: The proposal card - the diff the user reviews
 
@@ -3165,6 +3404,8 @@ So that confirming is a judgment rather than a leap of faith.
 - **Given** the countdown
 - **When** it runs
 - **Then** it is announced to assistive technology **once, at 1:00** - "One minute left to confirm" - and never per second.
+
+- DW-1213: a proposal restored after a reload is dropped on the premise that it is always expired, though a reload one minute after a mint leaves nine confirmable minutes and proposals ride only the progress poll - reconcile this against this story's own "a restored card is **always** shown expired" clause, or declare which of the two governs (ledger; routed by cr 2026-09-19)
 
 ### Story 5.3: Confirm is a user-originated request, and the write is one atomic transition
 
@@ -3245,6 +3486,9 @@ So that adopting it does not widen anyone's access, including mine.
 - **Then** they require the same resource the classic portal's log pages require, and each port declares and evaluates its own gate before any call - because unlike `AdminPort` they inherit no vendor gate, and `/api/monitor/metrics` answers **anonymously** on this instance
 - **And** a metric, a log line or an audit row reaches a user through OcuPilot only if that user could have read it directly.
 
+- DW-444: a disabled IRIS account keeps full OcuPilot access until its token pair lapses, and `/refresh` keeps minting pairs - check `Enabled` at authentication and refuse refresh for a disabled user (ledger; routed by merge_gate 2026-09-18)
+- DW-1120: an `llm` row and a pre-dispatch refusal row carry an empty `RequiredPairs`, and an empty pair set is held by everyone - fix it with a separate required-pairs evaluation, not by inverting `EvaluatePairs`, whose empty list is how an ungated screen is declared (ledger; routed by merge_gate 2026-09-18, corrected by spec_gate 2026-09-19)
+
 ### Story 5.5: Prohibited actions are absent from the tool set
 
 As a security-minded operator,
@@ -3275,7 +3519,9 @@ So that no policy change or configuration mistake can make them reachable.
 - **Then** it is **never advertised as a tool** and is refused on the instance whatever the caller
 - **And** governance can disable a permitted tool but can **never enable a prohibited one**.
 
-- **Given** a screen enforces a self-protection rule in its UI - refusing to disable the current user, act on the user's own process, or delete OcuPilot's own applications
+- DW-1207 (**floor-blocking**, owner decision 2026-09-19): `AutheEnabled`, `Resource` and `DispatchClass` are settable ordinary arguments of the first write tool, so a confirmed write can make a web application unauthenticated, drop its authorization resource, or repoint its dispatch at arbitrary compiled code. AD-10's set exists so some actions are never offered **even with confirmation**; this must ship in Release 1, and Story 5.3 left `Write.ProhibitedClass()` as the single seam inside the atomic transition for it (ledger; routed by merge_gate 2026-09-19)
+
+- **Given** a screen enforces a self-protection rule in its UI - refusing to disable the current user or delete OcuPilot's own applications
 - **When** that rule is assessed
 - **Then** it is an affordance, **not a prohibition**: the instance refuses it on the write path regardless of what the UI does.
 
@@ -3318,6 +3564,8 @@ So that I can prove what changed and how, from the instance's own record.
 - **Given** the pairing metric
 - **When** it is measured across the voting week
 - **Then** no confirmed proposal exists without a matching marked event and no marked event without a confirmed proposal - the metric measuring the **pair**, which holds precisely because a failed marker is itself recorded and surfaced rather than silent.
+
+- DW-1174: the audit spec's agent-marker leg renders every OcuPilot-source row, so it cannot pass on an instance that has been tested on for days - scope the assertion to this proposal's own marker (ledger; routed by x0 2026-09-19)
 
 ### Story 5.7: The screen shows the change
 
@@ -3375,8 +3623,7 @@ So that the product's central claim is visible in under a minute.
 - **Given** the Web applications list shows `/csp/myapp` disabled with no resource
 - **When** the user types "enable /csp/myapp and give it the %Development resource"
 - **Then** a read tool-call card runs and completes, then a proposal card appears headed "Proposal - Web application /csp/myapp" with two diff rows - Enabled: No to Yes, Resource: (none) to %Development - and the remaining fields collapsed under "N unchanged fields"
-- **And** the rationale and expected impact render as the agent's labeled text, with "Reverse: disable /csp/myapp and clear its resource"
-- **And** the list's auto-refresh chip reads paused.
+- **And** the rationale and expected impact render as the agent's labeled text, with "Reverse: disable /csp/myapp and clear its resource" [AMENDED 2026-09-21, Epic 5 runner, Rule 5 tier-1 (orchestrator-authorised): the deleted clause read "**And** the list's auto-refresh chip reads paused." Story 5.7's final AC owns the pause, conditioned on `**When** that screen's auto-refresh is on`; the Web applications list declares `refreshes: false` and is absent from AD-43's seven-screen roster, so the condition is not met here. The deleted clause restated 5.7's promise without the condition that makes it true, asserting the chip reads paused on a screen that has no chip]
 
 - **Given** the user presses Confirm
 - **When** the write runs
@@ -3394,6 +3641,11 @@ So that the product's central claim is visible in under a minute.
 - **Given** the target is one of OcuPilot's own web applications
 - **When** a delete or disable is proposed
 - **Then** it is refused on the instance and was never advertised as a tool.
+
+- DW-1223: the card's "N unchanged fields" disclosure has no rows behind it - `WireRow` emits only `unchangedCount`, so this story's own "remaining fields collapsed" clause has nothing to collapse; exclude secret-typed fields from whatever is added (ledger; routed by cr 2026-09-19)
+- DW-1208: the write tool must require `%Admin_Secure:USE`, not `:WRITE` - no shipped role grants WRITE on a built-in `%Admin_*` resource, so a WRITE pair is a gate only `%All` can pass, and USE is exactly what the classic editor's `%CSP.Portal.Application.CheckSecurity` checks, which is what makes this story's "the same 403 the editor would give" satisfiable (ledger; decided by merge_gate 2026-09-21)
+- DW-1426: a refused confirm produces **no write tool-call card at all** (`panel.ts:1012-1018` returns early), so this story's own AC4 `failed - <resource>` has no producer; `panel.spec.ts:3130-3157` pins that absence and must be refined, not loosened. (Supersedes DW-1252, which was dropped as a duplicate of DW-1348 - that entry's code half landed in Story 5.6.) (ledger; routed by merge_gate 2026-09-21)
+- DW-1382: `smoke.sh`'s `agentwrite` and `auditmarker` checks are still `pending`, and AD-45's Rule names one confirmed agent write and its audit marker as part of the one smoke path - this story is the first end-to-end confirmed write in a real area, so it is where they stop being pending (ledger; routed by harvest 2026-09-20)
 
 ### Story 5.9: Permissions - the area's first confirmed user write
 
@@ -3426,6 +3678,8 @@ So that the most common daily administration task is reachable through the agent
 - **Given** the write completes
 - **When** the list re-fetches
 - **Then** the row highlights within two seconds and the audit database carries the marked event.
+- DW-1431: a principal holding exactly the pairs the descriptor declares still cannot reach the confirm endpoint - it needs `READ` on the install namespace's own code database, a lower IRIS access-control layer beneath the AD-8 pairs, and the resulting 403 arrives before any dispatch code runs so it carries **no error envelope and therefore no reason** (measured on `ocupilot-ci`). Either the install grants it or the prerequisite is documented; either way the refusal must carry a reason (ledger; routed by qa 2026-09-21)
+- DW-1412: the change toast is placed bottom-right of the *content area* and offset by the panel's live width, so it never overlays the panel's Send button; DESIGN.md:1211 and its token are amended to match (ledger; routed by merge_gate 2026-09-21)
 
 ### Story 5.10: Security and secrets - disable and re-enable auditing
 
@@ -3438,7 +3692,7 @@ So that the safety model is demonstrated rather than described.
 - **Given** the user asks the agent to disable auditing
 - **When** the proposal card renders
 - **Then** it carries the warning "Agent writes will no longer be marked in the audit database." **inside the card** - the agent never proposes disabling auditing or OcuPilot's own audit events without it
-- **And** the write is declared **destructive**, so it draws the `destructive` bar and the typed-name confirmation of Story 14.7 as well as the warning: it removes the mechanism FR-22, FR-7 and NFR-7 rest on, and must not be easier to confirm than deleting a device
+- **And** the write is declared **destructive**, so it draws the `destructive` bar and a destructive Confirm as well as the warning: it removes the mechanism FR-22, FR-7 and NFR-7 rest on [AMENDED 2026-09-25, owner: the agent path takes no typed name; Story 14.7 is scratched]
 - **And** it is deliberately **not** in the prohibited set, because an operator must be able to reach it; the restraint is confirmation friction, not absence.
 
 - **Given** the user confirms
@@ -3457,11 +3711,19 @@ So that the safety model is demonstrated rather than described.
 
 - **Given** the disable write itself
 - **When** its marker is emitted
-- **Then** it is marked while auditing is still on, and the re-enable write's marker lands once auditing is back - the gap being visible on the ledger rows rather than silent.
+- **Then** the emission is attempted at the one site AD-15 names, is dropped because the audit channel it would write to is by then closed, and **the drop is recorded rather than silent** — a not-marked ledger row, "done · audit not marked", and the banner
+- **And** the re-enable write's marker lands once auditing is back, so the ledger shows exactly one unmarked row **bracketed by marked ones** — the gap one write wide and legible rather than merely absent. [AMENDED 2026-09-21, Story 5.10, orchestrator-authorised: the previous wording asked both that the disable's marker land "while auditing is still on" and that "the gap being visible on the ledger rows rather than silent" — **the two cannot both hold, because if the marker lands there is no gap.** The incompatible clause is removed and the observable one kept. No marker can land in a database that is closed; AD-15 carries the impossibility, scoped to a write that closes the audit channel.]
 
 - **Given** `Security.Audit.Event` publishes no body template and its PUT is an **upsert**
 - **When** an event-level change is proposed instead
 - **Then** its field list is derived from the underlying class and pinned by a test, and a body sent against a target deleted since the read would create a stub rather than fail - which is what the fresh read plus fingerprint covers.
+
+- DW-1171: a dropped `SecurityChange` audit emission is logged as a configuration change (ledger; routed by merge_gate 2026-09-18)
+- DW-1206: a `secretArguments` entry that names nothing is accepted, so the field it meant to protect stays settable and reachable by the model. **Decided 2026-09-21:** the set is the write tool's settable fields union everything the screen's read declares (read fields and declared flag criteria); it is extracted **once** and consumed by both this validator and `fingerprintExcludes`, never derived twice, and `screen-mirror.mjs` reads it from the kernel's declaration rather than re-implementing it. Falsified both ways: a misspelled entry fails, a read-only screen's criterion-as-secret still passes (ledger; routed by merge_gate 2026-09-21)
+- DW-1226: `Mint.WarnsAuditingOff` answers false for a non-boolean auditing argument, so `0`, `false` or a null would mint an auditing-off write carrying no in-card warning - the one thing this story's first acceptance criterion promises (ledger; routed by cr 2026-09-19)
+- DW-1244: `Mint`'s audit-warning constants name a tool and a field that do not exist until this story, and the only test that reads them asserts the constants against themselves (ledger; routed by cr 2026-09-19)
+- DW-1251: the panel hands the confirm request an empty secrets map, so AD-35's client half has no data path (ledger; routed by cr 2026-09-19)
+- DW-1278: `ChannelProblem`'s accept arm and its structured-secret guard are executed by no test, because no shipped descriptor declares a secret - this is the story that ships one (ledger; routed by cr 2026-09-19)
 
 ### Story 5.11: Tasks - resume a task suspended after an error
 
@@ -3478,12 +3740,12 @@ So that a question becomes a fix without me navigating anywhere myself.
 - **Given** the user says yes
 - **When** the agent navigates
 - **Then** it posts its announcement first, the route changes about a second later, and the heading announces it was opened by the agent
-- **And** the destination at this point is the **Task schedule list** with that task selected, because Task details does not exist until Story 6.7 - the navigation tool takes allow-listed route identifiers, so pointing it at the details route is a one-line change in that later story rather than a rewrite here
+- **And** the destination at this point is the **Task schedule list** with that task selected - the navigation tool takes allow-listed route identifiers, so pointing it at the details route is a one-line change Story 7.6 makes, rather than a rewrite here [AMENDED 2026-09-19, Epic 5 runner, Rule 5 tier-1 (orchestrator-authorised): the deleted clause read "because Task details does not exist until Story 6.7", which Epic 6's merge made false; the retarget stays with 7.6, which is where the owner put it]
 - **And** a proposal follows with the diff row Status: Suspended to Scheduled, the rationale citing the last error, and the expected impact.
 
 - **Given** the user confirms
 - **When** the write runs
-- **Then** the task resumes as that user, the schedule list re-fetches and the row highlights within two seconds, and the agent's reply names the next run and offers the audit entry.
+- **Then** the task resumes as that user, and the schedule list re-fetches and the row highlights within two seconds. [AMENDED 2026-09-23, orchestrator ruling on DW-1463, Rule 5 tier-1: the clause ended "and the agent's reply names the next run and offers the audit entry"; a confirm is a user request outside any turn (AD-40), so no agent reply follows it and nothing could produce that sentence.]
 
 - **Given** the task's own history
 - **When** it is opened afterwards
@@ -3492,6 +3754,9 @@ So that a question becomes a fix without me navigating anywhere myself.
 - **Given** the error recurs on the next run
 - **When** the user asks again
 - **Then** the agent's follow-up cites that history row by name rather than claiming success.
+
+- DW-269: the vendor tasks LIST coerces every task's `Suspended` to false, so a suspended task cannot be told from a running one in a list read - declare the `INFO` `rowGet` AD-36 names, or state why this story does not need it (ledger; routed by x0 2026-09-19, first routed by spec_gate 2026-09-14)
+- DW-1419: AC4's "with the entity selected" is unimplemented - the toast's route names the entity and nothing selects it, because `list-page.ts` injects no `ActivatedRoute` and never reads the id segment. This story's own navigation target is the Task schedule list **with that task selected**, so the second clause lands here (ledger; routed by cr 2026-09-21)
 
 ### Story 5.12: OS management - suspend and resume a process
 
@@ -3505,9 +3770,10 @@ So that the area's most consequential actions carry the same confirmation as eve
 - **When** the user asks the agent to suspend that process
 - **Then** a proposal is minted naming the process id, and confirming it suspends the process as that user through the same endpoint the screen uses.
 
-- **Given** the target is the user's **own** process
+- **Given** the target is a process **OcuPilot is itself running in** - the job serving the confirmation, or a job running an agent turn
 - **When** the action is proposed
-- **Then** it is refused with an explanation.
+- **Then** it is refused with an explanation, whoever owns that process [AMENDED 2026-09-22, Epic 5 runner, Rule 5 tier-1 (orchestrator-decided): the clause read "the target is the user's **own** process". AD-10's self-protection items are accounts, the serving path and IRIS system processes and it nowhere names process ownership, so the broad reading was a new rule borrowing AD-10's authority - and it prohibited the feature's most likely legitimate use, an administrator quieting their own runaway job, which signing in again recovers. Suspending the confirming job kills the write inside AD-34's transition and suspending a turn job strands another user's turn, so one predicate now refuses exactly those two]
+- **And** a process the user owns which is neither is proposable like any other.
 
 - **Given** the target is an IRIS system process
 - **When** a terminate is proposed
@@ -3541,7 +3807,7 @@ So that the Logs area has a real, auditable write rather than being read-only.
 
 - **Given** the delete executes
 - **When** it runs
-- **Then** it goes through `SYS.ApplicationError`'s `DeleteByNamespace`, under the port's own per-namespace gate resolved at call time, with the same proposal, server-computed diff, explicit confirmation and agent marker as any other write
+- **Then** it removes **exactly the enumerated ids**, executed as `SYS.ApplicationError`'s `DeleteByError(ns, date, <ids>)` once per enumerated date, under the port's own per-namespace gate resolved at call time, with the same proposal, server-computed diff, explicit confirmation and agent marker as any other write [AMENDED 2026-09-22, Epic 5 runner, Rule 5 tier-1 (orchestrator-approved): the clause read "goes through `SYS.ApplicationError`'s `DeleteByNamespace`", which removes every error for every date and so contradicts this story's own preceding criteria — it deletes rows the user never saw and leaves no residue to be correct. The scope named was right and the method wrong; `DeleteByError` is one of AD-48's three sanctioned methods and AD-48's enumerated-id-set rule is unchanged]
 - **And** the absence of an admin API endpoint changes none of those invariants - a builder reading "no `AdminPort` call" as "not a real write" would produce exactly the unconfirmed, unaudited deletion this rule exists to prevent.
 
 - **Given** the delete is destructive
@@ -3556,6 +3822,56 @@ So that the Logs area has a real, auditable write rather than being read-only.
 - **Given** the captured detail of any error
 - **When** the agent reads the log
 - **Then** the read tool returns **summary fields only** - time, error number, routine, line, error text - and the variable tables never reach the model.
+
+### Story 5.14: Epic 5 burn-down
+
+As the team shipping the floor,
+I want the defects Epic 5 filed against its own surfaces closed before the floor date,
+So that the agent write path the contest demonstrates is sound where it is most visible.
+
+Chartered by the burn-down gate from the ledger. Each bullet is a filed entry whose reason for
+being here is floor-blocking or downstream-blocking; everything else Epic 5 filed re-owned to
+`range-end-cleanup`.
+
+**Acceptance Criteria:**
+
+- DW-1336: the agent panel's prompt entry box is too small and its Send button too large, so the
+  panel's primary input reads as an afterthought. The panel is the product's centrepiece and every
+  demo frame shows it. The composer and Send are token-driven (`_components.scss:3523`, `:3530`),
+  so this may be a token change rather than a layout rewrite. **(inference)** the two symptoms may
+  be one cause - the composer is `flex: 1 1 auto; min-width: 0` while Send sizes intrinsically
+  beside it, so a Send that is too wide necessarily narrows the box; measure it in the browser tier
+  rather than assuming it, since jsdom computes no layout. If the fix changes the panel's overflow
+  behavior, say so on DW-1388 so Story 15.6 takes its baseline against the corrected tree.
+- DW-1437: AD-10's user-account set is enumerated by verb and by role name, so two equivalent-effect
+  lockouts are permitted - stripping `%All` from the last holder, and a service account nobody can
+  sign in as counting as another holder.
+- DW-1438: the prohibited set has no account-side analogue of its serving-path predicate, so
+  disabling `CSPSystem` is permitted and would break every CSP request including OcuPilot's own - a
+  self-destruct through the product's own tool surface, the class Story 5.5 exists to prevent.
+- DW-1467 was chartered here and **withdrawn at the spec gate**: its premise was measured false.
+  `epics.md:3677` is Story 5.10's delivered AC declaring the write destructive for the **proposal
+  card**, while `EXPERIENCE.md:426`'s *Use* column scopes its non-destructive warning to the
+  **screen's** dialogs. Two surfaces, both true; the entry is terminal.
+- DW-1447: `resetRememberedState` clears only three value kinds, so `recent` rows accumulate and the
+  browser suite is not idempotent on a reused instance - and `suggested-view` imports the reset
+  without ever calling it.
+- DW-1448: `browser-reset.mjs` counts only two literal context spellings, so any spec that gets its
+  page from a helper escapes the reset requirement. This is its **third** under-detection: re-key it
+  on context **creation wherever it occurs, including inside a helper**, because the spellings are a
+  proxy and not the invariant.
+- DW-1452: `OcuPilot.Test.ProhibitedRoute` is armed class-wide, so on a throwaway predating
+  `OCUPILOT_ALLOW_AUDIT_TOGGLE` its nine pre-existing least-privileged legs silently do not run -
+  coverage that reads as green.
+- DW-1473: `AdminPort.MUTATINGTYPES` admits a request type by bare suffix, so admitting
+  `Process/SUSPEND` also opens `Task.CRUD/SUSPEND`. Not exploitable today, but Story 7.6 and Epic 9
+  add action types and the widening compounds with each; `BODYLESSTYPES` already keys by
+  `(endpoint, type)` in the same file.
+- DW-1479: nine documents still state the broad process-ownership rule the narrowing replaced -
+  `epics.md:153`, `:807`, `:3506-3508`, `:5686`; `EXPERIENCE.md:93`, `:220`, `:414`; `prd.md:806`;
+  `SPEC.md:99` - including a worked example that now teaches a false rule, and `spec-5-12`'s
+  `## Verification` recipes naming `OwnedByCaller`, a method that no longer exists. The
+  `EXPERIENCE.md` three are published copy and a UX call governs them.
 
 ---
 
@@ -3647,7 +3963,7 @@ So that the area the contest names most specifically reads completely.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-49: Mark the checked-in demo X.509 pair a disposable fixture in Install/Fixture.cls's header and beside the literal (owner decision: keep it checked in) (ledger; routed by burndown 2026-09-13)
-- DW-233: Generate the demo X.509 pair at install through %SYS.X509Credentials.LoadCertificate, which also fills the metadata DW-59 accepted as empty; AD-21's path constraint is the open question (owner decision) (ledger; routed by merge_gate 2026-09-13)
+- DW-233: Generate the demo X.509 pair at install instead of shipping a checked-in one (owner decision, with the checked-in pair as the fallback) (ledger; routed by merge_gate 2026-09-13) [AMENDED 2026-09-16, Story 6.3 spec gate: no supported certificate-generation API exists on the pinned 2026.2 image (no `PKI.*` class compiled in `%SYS` or `HSCUSTOM`), and the demo credential's subject, issuer, validity and private-key flag are already populated, so the owner's fallback stands and the entry is closed]
 
 ### Story 6.4: The OAuth 2.0 screen
 
@@ -3685,7 +4001,7 @@ So that I can plan around the instance's schedule rather than discover it.
 
 - **Given** the On-demand tasks screen
 - **When** it loads
-- **Then** it lists on-demand tasks, each row offering Run - the action itself arriving in Epic 7.
+- **Then** it lists on-demand tasks, each row offering Run - the action itself arriving in Epic 7. [AMENDED 2026-09-17, Story 6.5 spec gate: no inert Run control ships; Story 7.5 declares the Run row action together with its handler, as Story 2.8 did for Resume]
 
 - **Given** the Upcoming tasks screen
 - **When** it loads
@@ -3712,6 +4028,12 @@ So that "why did this stop?" has an answer on screen.
 - **When** it renders
 - **Then** it shows start, end, status and error text where present, and the running user where the admin API returns it.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1020: A parent-scoped screen's route id names its parent, while its descriptor's entity type names its rows (the Secrets list pairs a collection name with `wallet-secret`); decide once, for both parent-scoped screens, how the route id's entity type is declared (ledger; routed by harvest 2026-09-16)
+
 ### Story 6.7: Task details
 
 As a developer-administrator,
@@ -3726,7 +4048,7 @@ So that the agent has somewhere to take me when it finds one that stopped.
 
 - **Given** the screen declares auto-refresh
 - **When** the user turns it on
-- **Then** it refreshes silently through the shared framework, and pauses while a proposal against a task is live.
+- **Then** it refreshes silently through the shared framework - the pause while a proposal against a task is live is Story 5.7's rule for every auto-refreshing screen.
 
 - **Given** the screen
 - **When** it renders
@@ -3735,10 +4057,6 @@ So that the agent has somewhere to take me when it finds one that stopped.
 - **Given** the agent navigates here
 - **When** it arrives
 - **Then** the route carries the task's scoped identity, the row is selected, and the locator bar names it - which is what UJ-6 depends on.
-
-- **Given** this screen now exists
-- **When** the agent's navigation target for a suspended task is re-pointed from the schedule list to Task details
-- **Then** UJ-6 is replayed end to end: the agent navigates to **Task details**, the Status **field** highlights, and a toast reads the change with "Open in Task schedule" - completing the journey as the PRD writes it, with no earlier story left unverified.
 
 ### Story 6.8: Process details
 
@@ -3750,7 +4068,7 @@ So that I can decide whether to act on it before I act on it.
 
 - **Given** Process details
 - **When** it opens
-- **Then** it shows the dashboard meters, the client executable and address, open devices, and the current SQL statement where the instance makes it available.
+- **Then** it shows the dashboard meters, the client executable and address, open devices, and whether the process is executing a cached SQL query, named by its routine; the statement text is Story 19.10's. [AMENDED 2026-09-17, Story 6.8 spec gate (orchestrator-approved): no admin API endpoint or port carries statement text, which lives only in `INFORMATION_SCHEMA.CURRENT_STATEMENTS` behind Story 19.10's SQL activity screen; was "and the current SQL statement where the instance makes it available"]
 
 - **Given** the Locks view's owner link
 - **When** it is followed
@@ -3774,7 +4092,7 @@ So that I can see load without leaving for the classic portal.
 
 - **Given** the CPU, memory and performance meters
 - **When** they render
-- **Then** their names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`'s 25 meter definitions, already readable in `irislib/` - **not** from the classic `UtilSysMonitor` page, whose source is unrecoverable and is not needed.
+- **Then** their names and values come from the admin API's `Monitor` answers (`SYSTEMUSAGE`, `SYSTEMUSAGESHM`, `DASHBOARDMAIN`) through `AdminPort`: global references per second and cache efficiency, shared memory used as a percentage of allocated, and the database space, journal space, lock table and write daemon status meters in the vendor's own words; CPU belongs to FR-76's full System Dashboard - **not** the classic `UtilSysMonitor` page, whose source is unrecoverable and is not needed. [AMENDED 2026-09-17, Story 6.9 spec gate (orchestrator-approved): `%CSP.UI.Portal.EnsembleMonitor` is the Interoperability production monitor, with 28 meters, none of them CPU, memory or performance, and no thresholds; was "their names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`'s 25 meter definitions, already readable in `irislib/`"]
 
 - **Given** a meter
 - **When** it renders
@@ -3782,7 +4100,7 @@ So that I can see load without leaving for the classic portal.
 
 - **Given** the assumed 80% and 95% thresholds
 - **When** this story is built
-- **Then** they are confirmed against the meter definitions rather than carried as an assumption - the behavior is decided, the numbers are not.
+- **Then** they are confirmed against the meter definitions rather than carried as an assumption - the behavior is decided, the numbers are not. [AMENDED 2026-09-17, Story 6.9 spec gate (orchestrator-approved): no meter definition carries a threshold; status meters take the dashboard's own word, and percentage meters use 85% and 95%, recorded in DESIGN.md as an assumption borrowed from the vendor's lock-table cut-off (`SYS.Stats.Dashboard.cls:92`)]
 
 ### Story 6.10: The locks view
 
@@ -3794,15 +4112,15 @@ So that I can find the owner of a blocked operation.
 
 - **Given** the Locks screen
 - **When** it loads
-- **Then** it lists locks for the selected namespace with a filter and owner details.
+- **Then** it lists every lock the instance holds, with a filter, owner details, and each lock's database directory and system, so a row says where its lock lives. [AMENDED 2026-09-17, Story 6.10 spec gate (orchestrator-approved): the lock table is instance-wide and a lock's scope marker is a database directory, not a namespace - the same read answers the identical rows from HSCUSTOM and USER, and the vendor's own View Locks page is pinned to `%SYS` (`AUTONS = 0`); a namespace filter over `Directory` would have hidden all seven locks held on the probed instance, since globals mapped in from IRISSYS keep their own database's directory; was "it lists locks for the selected namespace with a filter and owner details"]
 
 - **Given** a lock's owner
 - **When** the user follows it
 - **Then** it links to that process's details.
 
 - **Given** a lock whose owning process is in a transaction
-- **When** the row renders
-- **Then** that condition is visible, so the removal warning in Epic 7 is not the first the user hears of it.
+- **When** its removal is proposed in Story 16.12
+- **Then** that story warns before the confirm, from the admin endpoint's own 409 `is currently in a transaction` refusal. [AMENDED 2026-09-17, Story 6.10 spec gate (orchestrator-approved): the condition is a removal concern, as FR-57 states it, and no field the locks list returns carries it - buying a column would cost new read-source grammar and an undocumented per-row probe for a warning about an action Release 1 does not ship, so 6.10 ships no transaction column; removal is Story 16.12, not Epic 7; was "when the row renders / then that condition is visible, so the removal warning in Epic 7 is not the first the user hears of it"]
 
 ### Story 6.11: Databases, with free space arriving as it lands
 
@@ -3818,12 +4136,12 @@ So that the contest's "disks" reads as real operational data.
 
 - **Given** the free-space figures come from an **asynchronous** directory call - one of the two Release 1 async endpoint paths
 - **When** the list renders
-- **Then** rows appear immediately with **per-row skeleton cells** that fill as each figure lands, and **the table never reflows** as they arrive
+- **Then** rows render with **skeleton cells** where the free-space figures go, the figures arrive together when the asynchronous call resolves, and **the table never reflows** as they land. [AMENDED 2026-09-17, Story 6.11 spec gate (orchestrator-approved): the read contract answers one envelope and `rowGet` is issued per row inside the read, so per-figure arrival is not declarable; the whole read costs 0.852 s for fourteen databases against NFR-1's 2 s, so it is issued as one read with `rowGet.type` `INFO`; was "rows appear immediately with per-row skeleton cells that fill as each figure lands"]
 - **And** the polling is done by `AdminPort`, which exposes it to the slice as an ordinary call that resolves later - the slice writes no polling logic.
 
 - **Given** Database details
 - **When** it opens
-- **Then** it shows properties, volume files and the background tasks running against that database, under auto-refresh.
+- **Then** it shows properties and volume files, under auto-refresh. [AMENDED 2026-09-17, Story 6.11 spec gate (orchestrator-approved): the background tasks running against a database have no admin-API surface - only `%SYS.BackgroundTask:RunningInDatabase`, a `Final Internal` class query the classic page reads, which no `%Api.Admin.*` class references - so that section is chartered to the owner's decision sheet rather than bought with a new AD-36 source kind under deadline; was "properties, volume files and the background tasks running against that database"]
 
 ### Story 6.12: The devices list
 
@@ -3847,11 +4165,11 @@ So that I can tell whether something has been going wrong for a while.
 
 - **Given** the alerts.log screen
 - **When** it loads
-- **Then** it merges the entries the monitoring API reports since its last scrape with a **bounded tail** of the file served through the OcuPilot API.
+- **Then** it shows a **bounded tail** of `alerts.log` served through the OcuPilot API, read from the file itself. [AMENDED 2026-09-18, Story 6.13 spec gate (orchestrator-approved): the monitoring API reads the same file (`%SYSTEM/Monitor.cls:60`) and reads it lossily - it drops pid and category, quotes severity and appends a false `Z` to a local stamp - so the merge buys no data the tail lacks, while every call advances the instance-wide SAM cursor `^IRIS.Temp.SAM("LastAlertSent")` whatever tag is passed (measured: kill the global, a five-second control with no call leaves it undefined, one call defines it; empty, bogus and matching tags all advance it), so a second SAM consumer on the operator's instance would silently lose every alert this screen's read moved past. DW-1116 carries the measurement and FR-76's story re-takes it where a consumer exists; was "it merges the entries the monitoring API reports since its last scrape with a bounded tail"]
 
-- **Given** `MonitorPort`
-- **When** it fetches
-- **Then** it declares and evaluates its own resource gate before the call, because the monitoring API answers **anonymously** on this instance and that anonymity is a property of that API, never of OcuPilot.
+- **Given** `LogSourcePort`
+- **When** it serves the tail
+- **Then** it declares and evaluates its own resource gate before the read, because a log line reaches a user through OcuPilot only if that user could have read it directly. [AMENDED 2026-09-18, Story 6.13 spec gate (orchestrator-approved): `MonitorPort` is not shipped by this story - see AC1's amendment - so the gate this criterion asks for is the port that does serve the screen; the anonymity of `/api/monitor` stays recorded in AD-29 and in DW-1116; was "Given `MonitorPort` / When it fetches"]
 
 - **Given** entries render
 - **When** the viewer draws them
@@ -3880,7 +4198,7 @@ So that I can find a repeating warning and ask the agent what it means.
 
 - **Given** a severity chip
 - **When** the user clicks it
-- **Then** that severity becomes the filter, and the command bar shows the active filter with Clear.
+- **Then** that severity becomes the filter, and the log viewer's own bar shows the active filter with Clear. [AMENDED 2026-09-18, Story 6.14 spec gate: the viewer's bar is where Story 6.13 put its search, jumps and Raw toggle, so Clear ships beside the chips rather than in the shell command bar (DW-1109, DW-1138); was "the command bar shows the active filter with Clear"]
 
 - **Given** the assumed **28px log row height** (UX-DR80)
 - **When** this story is built
@@ -3892,10 +4210,11 @@ So that I can find a repeating warning and ask the agent what it means.
 
 - DW-148: The fault banner's "Open messages.log" link navigates without `ShellState.showArea`, leaving the side bar on the previous area; this story builds the screen it reaches (ledger; routed by adjudication 2026-09-14)
 - DW-278: The Logs area gates on `%Admin_Secure:USE` for the audit viewer, which this screen does not need; decide whether this screen declares the pair or the area splits (ledger; routed by spec_gate 2026-09-14)
+- DW-1025: A fresh instance logs repeated `<PROTECT>%DeleteData` errors from the audit LIST's async-task cleanup; find whether they originate in `AdminPort`'s poll before this viewer shows them (ledger; routed by harvest 2026-09-17)
 
 ## Epic 7: Act on any row
 
-A user does the small things that make up most daily administration - enable, disable, run, suspend, resume, terminate, remove and delete - from the row or from the command bar, with the row updating in place, and can ask the agent to do any of them instead through a confirmed proposal. Build step 4; completing it clears the last floor requirement below the create-and-edit line.
+A user does the small things that make up most daily administration - enable, disable, run, suspend, resume, terminate, remove and delete - from the row or from the command bar, with the row updating in place, and can ask the agent to do any of them instead through a confirmed proposal. Build step 4; completing it clears the last floor requirement below the create-and-edit line. Task Manager control and lock removal moved to Epic 16 (16.11, 16.12) on 2026-09-17: build step 4's list never named them.
 
 **Applies to every story in this epic.** Each action is **two callers of one operation** - the row (or command bar) and the agent's write tool - so a story is not done when the button works. Every action's write tool follows the full model: a server-minted proposal from a fresh read, an instance-computed diff, an explicit confirmation on a separate authenticated request executed from stored arguments, the prohibited set and both switches evaluated at the write inside the atomic transition, and the agent marker. Every action updates the row in place through the change-event bus, and a destructive one confirms by name in a dialog whose action button is `button-destructive` labeled with the verb and target. Self-protection refusals are UI affordances, never prohibitions - the instance refuses them regardless. These are not restated per story.
 
@@ -3919,6 +4238,13 @@ So that the area's screen offers the same actions the agent does.
 - **When** a delete or disable is attempted from any surface
 - **Then** it is **refused with an explanation** - and refused on the instance's write path regardless of what the UI shows.
 
+- DW-1136: `ForgetTask`'s guard leaves a vendor async-task row behind on every unprivileged async read, permanently and silently (ledger; routed by merge_gate 2026-09-18)
+- DW-1137: `AdminPort.ASYNCTASKPAIR` is a literal, so on an instance whose IRISLOCALDATA carries a non-default resource the guard denies every caller (ledger; routed by merge_gate 2026-09-18)
+- DW-1099: no assertion observes a shipped descriptor's `read.filter`, `read.sort.fields` or per-column kind except the Devices list (ledger; routed by merge_gate 2026-09-18)
+- DW-389: Switches declares create and delete row actions its page registers no handler for, so the surfaces draw a permanently disabled action (ledger; routed by x0 2026-09-22)
+- DW-1001: the derived `webapp.openapi.read` criterion is described as a comma list with a `*` wildcard while `MgmntPort` accepts one exact name (ledger; routed by x0 2026-09-22)
+- DW-1013: `permissions.services.read` answers a bare `[]` for an unrestricted service and nothing tells the model that `[]` means any address (ledger; routed by x0 2026-09-22)
+
 ### Story 7.2: User enable, disable, delete, password and roles
 
 As a developer-administrator,
@@ -3940,9 +4266,12 @@ So that the commonest administrative task takes one click rather than an editor.
 - **When** a disable or delete is attempted
 - **Then** it is refused with an explanation, in the UI **and** on the instance.
 
-- **Given** the change would add `%All` or any `%Admin_*` role
-- **When** it is attempted through the agent
-- **Then** it is refused - privilege grants are prohibited in Release 1 at any confirmation level - while the screen's own role management remains available to a privileged user.
+- **Given** the change would add `%All`, any `%Admin_*` role, or a role that carries them
+- **When** it is attempted, from the screen or through the agent
+- **Then** it is permitted: the agent's proposal is drawn destructive and its diff names the privilege granted [AMENDED 2026-09-25, owner: no typed name on the agent path], and the screen's Add role dialog shows a consequence line when a privileged role is selected; the account protections (the signed-in user, `_SYSTEM`, the service account, the last `%All` holder) are unchanged. [AMENDED 2026-09-23, owner decision: privilege grants permitted at typed confirmation; was "refused whatever the caller". The earlier tier-1 amendment of the same day, on the orchestrator's 8.2 AC3 ruling, is superseded; Epic 8 implements the predicate, confirmation-level and `privilegedGrantEffect` changes, and this story consumes them.]
+
+- DW-1486: PROHIBITED.SERVICEACCOUNT is scoped to the disable verb while LASTALLHOLDER is scoped by effect, so a Roles delta stripping %All from the service account is permitted; with 7.2's delete hole, evaluate every account predicate by effect for delete, disable and a Roles delta stripping %All (AD-10 as amended 2026-09-23) (ledger; routed by spec_gate 2026-09-23)
+- DW-1499: Prohibited.ReasonFor's sentences other than SERVINGPATH say the change is not something the agent can propose, which AD-53 makes a defect once a screen caller reaches that arm (ledger; routed by cr 2026-09-23)
 
 ### Story 7.3: Delete an OAuth 2.0 client configuration or server client description
 
@@ -4012,25 +4341,13 @@ So that fixing a stopped task does not need an editor.
 - **When** the write completes
 - **Then** its history records the manual resume attributed to that user.
 
-### Story 7.7: Start, suspend and resume the Task Manager
+- **Given** Task details (Story 6.7) and the agent's resume proposal (Story 5.11) both exist
+- **When** the agent's navigation target for a suspended task is re-pointed from the schedule list to Task details
+- **Then** UJ-6 is replayed end to end: the agent navigates to **Task details** and the Suspended **field** highlights - completing the journey as the PRD writes it, with no earlier story left unverified. [AMENDED 2026-09-23, Epic 7 runner, Rule 5 tier-1: "the Status field" restated as the Suspended field, the one Task details carries.] [AMENDED 2026-09-23, orchestrator: the toast is delivered after the Epic 7/8 merge — a change toast opens the entity's list at the row and is hidden only when that list is open (PRD UJ-6); DW-1546]
 
-As a production administrator,
-I want to stop and start the instance's scheduler,
-So that I can hold maintenance during a change window.
+- DW-1463: two of Story 5.11's epic clauses about what the agent's reply says are unimplemented, and the fifth clause never reached a spec (ledger; routed by merge_gate 2026-09-22)
 
-**Acceptance Criteria:**
-
-- **Given** the Task schedule command bar
-- **When** the user suspends the Task Manager
-- **Then** a warning dialog states that **no scheduled task will run until it is resumed**, before proceeding.
-
-- **Given** the Task Manager is suspended
-- **When** the screen renders
-- **Then** the warning banner sits above the table with a Resume action, privilege-gated, and the rows still list.
-
-- **Given** `Task.Manager` publishes no body template
-- **When** the tool is built
-- **Then** it is recorded as action-style with a trivial body needing no template, rather than being given a hand-typed field list.
+**Vendor quirk, recorded 2026-09-20 from another entry's validation notes (IRIS 2026.2):** the task list's `Suspended` field does not reflect a suspend or resume that has just been applied, while the task's own info read does. The in-place row update and the write's verification read task info, never the list's field.
 
 ### Story 7.8: Terminate, suspend and resume a process
 
@@ -4044,33 +4361,19 @@ So that I can recover an instance without a terminal.
 - **When** the user terminates it
 - **Then** a dialog offers the optional error-to-job flag, names the process id, and requires the typed id before the destructive button enables.
 
-- **Given** the target is the user's **own** process
+- **Given** the target is the process serving this request, or any OcuPilot turn job
 - **When** any control action is attempted
-- **Then** it is refused with an explanation.
+- **Then** it is refused with an explanation. [AMENDED 2026-09-22, orchestrator-authorised, Rule 5 tier-1: was "the target is the user's **own** process". Story 5.12 narrowed this predicate to the certain harm and AD-10 declares the prohibited set once in the kernel, refused "whatever the caller", so the screen evaluates the same rule the agent does - a broader clause here would need a second predicate AD-10 forbids. The broad reading also refused this story's own user story, since an administrator stopping a runaway process is usually stopping their own.]
 
 - **Given** the target is an IRIS system process
 - **When** a terminate is attempted
 - **Then** it is refused on the instance and was never advertised as a tool.
 
-### Story 7.9: Remove locks - one, all of a process, all of a remote client
-
-As a production administrator,
-I want to clear a stuck lock,
-So that a blocked operation can proceed.
-
-**Acceptance Criteria:**
-
-- **Given** a lock row
-- **When** the user removes it
-- **Then** the three scopes are offered - this lock, all locks of the owning process, all locks from a remote client - each naming what it will remove.
-
-- **Given** the owning process is in a transaction
-- **When** removal is requested
-- **Then** the dialog **warns** before proceeding, because removing such a lock has consequences beyond the lock itself.
-
-- **Given** `Lock` publishes no body template
-- **When** the tool is built
-- **Then** it is recorded as action-style needing no template.
+- DW-1155: the fault banner and its control are re-created while a screen refreshes, so a click in that instant is lost and UX-DR52's non-dismissible banner is not honoured; the fix is framework-level (ledger; routed by merge_gate 2026-09-18)
+- DW-1189: the fault banner may clear and be re-raised during initial settle when every screen read is refused, a visible flicker beside DW-1155's refresh-tick case (ledger; routed by cr 2026-09-19)
+- DW-1486 (**floor-blocking**): `PROHIBITED.SERVICEACCOUNT` is gated inside `Disables()` while the same class scopes `LASTALLHOLDER` by effect, so a Roles-only delta stripping `%All` from the serving account is permitted; moving the arm out of `Disables()` needs an AD-10 amendment under Rule 20 (ledger; routed by merge_gate 2026-09-22) [Re-owned to Story 7.2 on 2026-09-23 by the orchestrator: one restructure with 7.2's delete hole. It returns here only if 7.2's adjudication re-owns a residual.] [Resolved by Story 7.2, 2026-09-23: no residual.]
+- DW-1499: Prohibited.ReasonFor's OCUPILOTPROCESS and SYSTEMPROCESS sentences still say the change is not something the agent can propose; 7.8's process row actions are the first screen caller to reach them (AD-53) (ledger; routed by adjudication 2026-09-23)
+- DW-1553: the initial bundle has 105 bytes of headroom under the 1,120 kB maximumWarning, so the next client bytes fail the DW-371 bundle test; re-base under DW-1166's owner policy (ledger; routed by harvest 2026-09-23)
 
 ### Story 7.10: The remaining application error delete scopes
 
@@ -4096,11 +4399,42 @@ So that clearing the error log is precise rather than all-or-nothing.
 - **When** it is evaluated
 - **Then** it resolves **per namespace** - `%Admin_Operate` plus read and write on the database holding that namespace's `^ERRORS` global - because a single static descriptor resource cannot express it.
 
+### Story 7.11: System and user audit event configuration
+
+As a developer-administrator,
+I want to choose which events this instance audits,
+So that the audit database records what matters here rather than everything or nothing.
+
+**Acceptance Criteria:**
+
+- **Given** the system events list
+- **When** the user acts on a row
+- **Then** an event can be enabled, disabled and have its counter reset.
+
+- **Given** the selective SQL auditing wizard
+- **When** it is used
+- **Then** it configures the SQL audit events it covers.
+
+- **Given** the user events list
+- **When** the user acts
+- **Then** an event can be enabled, disabled, reset and deleted. [AMENDED 2026-09-23, orchestrator: create and configure follow the Epic 7/8 merge on AD-54/AD-55 — DW-1573]
+
+- **Given** `Security.Audit.Event` publishes **no** body template and its PUT is an **upsert**
+- **When** the write tool is built
+- **Then** its field list is derived from the underlying class and pinned by a test, and the upsert path is covered.
+
+- **Given** OcuPilot's own audit event types
+- **When** a disable is attempted
+- **Then** the consequence is stated - agent writes stop being marked - and the panel's banner appears the moment it takes effect.
+
+- DW-1529: Both audit event lists declare entity type audit-event, so screenForEntityType resolves every audit-event reference, a user event's included, to the system-event list (ledger; routed by cr 2026-09-23)
+- DW-1530: The screen caller's post-write Security.Audit.Event GET is never run as a principal holding exactly the declared pairs (ledger; routed by cr 2026-09-23)
+
 ---
 
 ## Epic 8: Create and import
 
-A user creates the things the six areas administer - a web application, a user, a role and its grants, a resource, a device, a wallet secret, an X.509 credential, an audit event - through medium forms that validate server-side and open the new entity on success. Build step 5; **at least one create or edit form per area from this step is part of the 2026-09-27 floor.**
+A user creates the things the six areas administer - a web application, a user, a role and its grants, a resource, a device, a wallet secret, an X.509 credential - through medium forms that validate server-side and open the new entity on success. Build step 5; **at least one create or edit form per area from this step is part of the 2026-09-27 floor.**
 
 **Applies to every story in this epic.** Each form is a full-page route under the locator bar following the `form-page` contract: one column at most 720px wide with fields no wider than 480px, fields in **the classic order**, Material outlined fields with labels above and helper text beneath, an asterisk plus a legend for required fields, and a sticky 56px action bar with Save as the one primary and Cancel as a text button. Validation is inline on blur and on Save with server rules landing on the field they name; a failed Save moves focus to an error summary banner with a link per field, sets `aria-invalid` and `aria-describedby`, and focuses the first invalid field. Save on a create route opens the new entity's editor. Navigating away with unsaved changes asks first - **and agent navigation waits for the same answer**. Every write ships with its agent write tool over the derived field list, and a save publishes to the change-event bus so an open list updates. These are not restated per story.
 
@@ -4150,8 +4484,13 @@ So that a new account is usable without a second trip to the editor.
 - **Then** it is sent **once** and returned by no read, entered in a masked field that never pre-fills or echoes.
 
 - **Given** the roles being granted
-- **When** they include `%All` or any `%Admin_*` role and the request comes through the agent
-- **Then** it is refused, while a privileged user creating the account through the screen may grant them.
+- **When** they include `%All`, any `%Admin_*` role or a role that carries one
+- **Then** the grant is permitted at the strongest confirmation, whatever the caller, through the one tool (AD-10, AD-55): an agent proposal is confirmed as a delete is and its diff names the privilege; on the screen a consequence line (`privilegedGrantEffect`) appears at the Roles field while such a role is selected. [AMENDED 2026-09-23, owner decision: privilege grants permitted at typed confirmation; was "refused whatever the caller" (and, before that, "refused through the agent while a privileged user creating the account through the screen may grant them")]
+
+**Routed from the deferred-work ledger** - must be addressed in this story or declined with a reason:
+
+- DW-1495: the web-application create (Story 8.1, `webapp.list.create` and `POST /web-applications`) accepts `WSGIAppLocation`, a caller-supplied filesystem directory, and copies it into `Path`, against AD-21's "no OcuPilot endpoint accepts a filesystem path from a caller". **HIGH, floor-blocking, lands before Epic 8 merges.** The caller supplies only a relative directory name, resolved under one fixed root found on the instance and computed at call time (never cached); a literal `..` is rejected and a strict name pattern enforced, per AD-21's static-handler precedent; both callers go through the one tool (AD-55); the form shows the resolved path read-only; arbitrary locations stay a classic-portal action in Release 1. A test that fails when containment is removed: `..`, an absolute path and a sibling escape are each refused on BOTH the screen route and `webapp.list.create`. A needed hint string is a tier-1 Fixed-strings row (ledger; routed by orchestrator 2026-09-23)
+- DW-1489: a web application reachable unauthenticated is **not** prohibited (owner ruling (b)); instead the agent's `webapp.list.create` proposal names the unauthenticated consequence, and the create form names it at the authentication-method field, since the screen has no confirmation dialog (AD-55). The copy is a tier-1 Fixed-strings row (ledger; routed by orchestrator 2026-09-23)
 
 ### Story 8.3: Create a role, and manage its resource grants
 
@@ -4171,11 +4510,11 @@ So that access can be shaped without hand-editing security tables.
 
 - **Given** a role granted to users
 - **When** a delete is requested
-- **Then** the confirmation **warns with the count of users holding it** before proceeding, and requires the typed name.
+- **Then** the confirmation **warns with the count of users holding it** before proceeding, and requires the typed name. [AMENDED 2026-09-23, orchestrator-authorised, Rule 5 partial deferral: this story ships the agent's confirmed delete (`permissions.roles.delete`) with its AD-10 refusals; the Roles-list Delete row action - its typed-name confirmation carrying the holder count - moves to Story 9.3 as DW-1513, because AD-53's row-action route and handler exist only on Epic 7's branch until both epics merge.]
 
-- **Given** the grant would add a role to a resource in a way that escalates privilege
-- **When** it is proposed through the agent
-- **Then** it is refused, because privilege grants are prohibited in Release 1 through any path.
+- **Given** the grant would add a role to a resource in a way that escalates privilege, or a granted role that carries `%All` or an `%Admin_*` resource
+- **When** it is requested, whatever the caller
+- **Then** it is permitted at the strongest confirmation through the one tool: an agent proposal is confirmed as a delete is and its diff names the privilege; on the screen the consequence line (`privilegedGrantEffect`) appears at the field and in the grant dialog. [AMENDED 2026-09-23, owner decision: privilege grants permitted at typed confirmation; was "refused whatever the caller"]
 
 ### Story 8.4: The resource editor
 
@@ -4191,11 +4530,15 @@ So that the permission model is editable from the portal.
 
 - **Given** a system resource
 - **When** it is listed
-- **Then** it is shown but **not deletable**, the delete gated with that as its stated reason rather than hidden.
+- **Then** it is shown but **not deletable**, the delete gated with that as its stated reason rather than hidden. [AMENDED 2026-09-23, orchestrator-authorised, Rule 5 partial deferral: this story ships the agent's `permissions.resources.delete`, refusing a resource whose vendor `AllowDelete` is false and OcuPilot's own two resources; the Resources-list Delete row action drawn disabled with that reason moves to Story 9.3 as DW-1528, because AD-53's row-action route and self-protection rendering exist only on Epic 7's branch until both epics merge.]
 
 - **Given** `Security.Resource` does **not** merge
 - **When** an edit is saved
 - **Then** it sends the complete property set from a fresh read.
+
+**Routed from the deferred-work ledger** - must be addressed in this story or declined with a reason:
+
+- DW-1524: the user-update path (`Prohibited.User`) still refuses a privilege-granting role delta and any `EscalationRoles` change, against AD-10 as amended by the owner; permit both, minted destructive with the privilege named, keeping only the account protections (Epic 7's). **Floor-blocking.** `src/OcuPilot/Test/UserUpdate.cls` is contended with Epic 7: recode only the methods that assert the refusal, and add a test that fails when the update-path permission regresses (ledger; routed by orchestrator 2026-09-23)
 
 ### Story 8.5: X.509 import, edit and delete
 
@@ -4221,6 +4564,10 @@ So that outbound TLS and signed exchanges can be configured here.
 - **When** an edit is saved
 - **Then** it sends the complete property set from a fresh read
 - **And** the edit body is the PUT contract - `OwnerList`, `CAFile` and `PeerNames` only (published spec, 2026-09-16); the certificate, private key and password travel only in the import body, which is a different request.
+
+**Routed from the deferred-work ledger** - must be addressed in this story or declined with a reason:
+
+- DW-1456: the union's settable spelling is never bound to `Write.FieldRows`' own drop, so a divergence between the three copies of the `[]`-stripping rule would accept a declared secret the tool still advertises; this story ships the first non-empty `secretArguments` (AD-3 names `X509Credential`'s `PrivateKeyPassword` a template credential field), so it is the first that can redden a test for it (ledger; routed by adjudication 2026-09-22)
 
 ### Story 8.6: The wallet secret form
 
@@ -4254,34 +4601,6 @@ So that the wallet area the contest names can actually hold something.
 - **When** the story is planned
 - **Then** `Usage` and `Secret` are settled on the instance first: the class-derived rows read `Usage` as a number and `Secret` as a string, while the published spec's example sends `Usage: ["HTTP"]` and `Secret: {user, password}`.
 
-### Story 8.7: System and user audit event configuration
-
-As a developer-administrator,
-I want to choose which events this instance audits,
-So that the audit database records what matters here rather than everything or nothing.
-
-**Acceptance Criteria:**
-
-- **Given** the system events list
-- **When** the user acts on a row
-- **Then** an event can be enabled, disabled and have its counter reset.
-
-- **Given** the selective SQL auditing wizard
-- **When** it is used
-- **Then** it configures the SQL audit events it covers.
-
-- **Given** the user events list
-- **When** the user acts
-- **Then** an event can be created, configured and deleted.
-
-- **Given** `Security.Audit.Event` publishes **no** body template and its PUT is an **upsert**
-- **When** the write tool is built
-- **Then** its field list is derived from the underlying class and pinned by a test, and the upsert path is covered.
-
-- **Given** OcuPilot's own audit event types
-- **When** a disable is attempted
-- **Then** the consequence is stated - agent writes stop being marked - and the panel's banner appears the moment it takes effect.
-
 ### Story 8.8: The device editor
 
 As a developer-administrator,
@@ -4296,7 +4615,7 @@ So that the "devices" the contest names is editable, not just readable.
 
 - **Given** a device is created, edited or deleted
 - **When** the write completes
-- **Then** the list reflects it without a manual refresh, and delete confirms by name.
+- **Then** the list reflects it without a manual refresh, and delete confirms by name. [AMENDED 2026-09-23, orchestrator: the screen's Delete row action follows Epic 7's merge on AD-53's route -- DW-1562; the agent's delete ships here]
 
 ### Story 8.9: Plain IRIS Community verification
 
@@ -4326,9 +4645,9 @@ So that a claim in the README is either true or corrected before anyone relies o
 
 ## Epic 9: The full editors
 
-A user opens the editors that carry the classic portal's whole field set - user, web application, role, service, SSL/TLS, LDAP, and the task wizard and its editor - and edits an instance the way an administrator actually does. Build step 6, **in that order**; the eight largest forms in Release 1 and the first place FR-9's reduced-form rule may be exercised.
+A user opens the editors that carry the classic portal's whole field set - user, web application, role, service, SSL/TLS, LDAP, and the task wizard and its editor - and edits an instance the way an administrator actually does. Build step 6, **in that order**; the six largest forms in Release 1 and the first place FR-9's reduced-form rule may be exercised. The service editor and the LDAP and Kerberos editor moved to Epic 16 (16.13, 16.14) on 2026-09-17; Story 9.9 ships their reduced forms.
 
-**Applies to every story in this epic.** Each editor is a full-page route following the `form-page` contract, with its sections in Material tabs mirroring the classic editor's tab names. **One form spans all tabs** - Save applies everything; a validation error switches to the tab holding it, that tab showing a `destructive` dot and adding ", N errors" to its accessible name. Every save reads fresh, applies the diff and sends the **complete property set**, because most of these endpoints do not merge. Every editor ships with its agent write tool over the derived field list. These are not restated per story.
+**Applies to every story in this epic.** Each editor is a full-page route following the `form-page` contract, with its sections in Material tabs mirroring the classic editor's tab names. **One form spans all tabs** - Save applies everything; a validation error switches to the tab holding it, that tab showing a `destructive` dot and adding ", N errors" to its accessible name. Every save reads fresh, applies the diff and sends the **complete property set**, because most of these endpoints do not merge. Every editor ships with its agent write tool over the derived field list, and declares its suggested prompts in its descriptor per Story 11.3's contract whether or not Epic 11 has landed. These are not restated per story.
 
 ### Story 9.1: The user editor
 
@@ -4354,6 +4673,15 @@ So that account administration does not send me back to the classic portal.
 - **When** it lands
 - **Then** its tab, validation, error-summary and unsaved-changes behavior is the pattern the remaining seven follow.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1501: Story 7.2 AC1's editor half (every user action also available from the user editor) has no surface on Epic 7: no user editor exists until Story 9.1 (ledger; routed by merge_gate 2026-09-23)
+- DW-1516: The agent path can leave the change-on-login flag cleared: a flag proposal confirmed before the password proposal is undone by the vendor's password change (ledger; routed by merge_gate 2026-09-23)
+- DW-1520: Set password and the change-on-login flag are permitted on _SYSTEM, the signed-in account and a service account; AD-10's account arms fire only on delete, disable and a %All strip (ledger; routed by merge_gate 2026-09-23)
+- DW-1523: The Users list's Add role dialog shows no consequence line when a privileged role is selected: privilegedGrantEffect had not landed on Epic 8's branch by Story 7.2's review (ledger; routed by merge_gate 2026-09-23)
+- DW-1546: UJ-6's change toast ('Open in Task schedule') cannot appear on Task details: a change toast opens the entity's details and is hidden while that screen is open, where the PRD wants it to open the list at the row and hide only while the list is open (ledger; routed by merge_gate 2026-09-23)
+- DW-1576: The reset tools' card row reads Total before "" after 0: its before is not derived from the fresh read, which AD-51 requires (ledger; routed by merge_gate 2026-09-23)
+
 ### Story 9.2: The web application editor
 
 As a developer-administrator,
@@ -4374,6 +4702,15 @@ So that configuring a REST service is a single task.
 - **When** a change would disable it, or set application or matching roles on it
 - **Then** it is refused on the instance - setting `MatchRoles` or `Roles` here is a privilege grant, prohibited in Release 1 through any path, and would make every later request run elevated.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1490: The web-applications/list/edit/:id route does not re-read the created application on a cold load; it draws an empty create form at an id-bearing URL (ledger; routed by merge_gate 2026-09-23)
+- DW-1493: A confirmed agent create writes the name in AD-13's canonical spelling while the screen's Save writes it as typed, so one input creates /csp/myapp or /csp/MyApp depending on the caller (ledger; routed by merge_gate 2026-09-23)
+- DW-1577: An agent update that sets Enabled to its current value mints a proposal with no changed rows instead of the 400 TOOL.ARGUMENTS no-op refusal (ledger; routed by merge_gate 2026-09-23)
+- DW-1502: PROHIBITED.PRIVILEGEGRANT's caller-neutral sentence is server-shipped only; AD-53 (Epic 7) publishes a refusal sentence in EXPERIENCE.md Fixed strings with a pin test (ledger; routed by merge_gate 2026-09-23)
+- DW-1595: The toast stack's published placement (DESIGN.md toast recipe :1210, toast-host.ts header :48) still says spacing.4 above the status bar, while on a form page the stack is lifted above the form bar (ledger; routed by harvest 2026-09-24)
+- DW-1596: A form page taller than the content area does not keep its sticky form bar on screen: Save and Cancel sit below the fold until the content scrolls (ledger; routed by harvest 2026-09-24)
+
 ### Story 9.3: The role editor
 
 As a developer-administrator,
@@ -4390,25 +4727,11 @@ So that I can audit and adjust access from one screen.
 - **When** the dialog opens
 - **Then** it shows the current grant and the resulting grant, as it does from the create path.
 
-### Story 9.4: The service editor
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
-As a developer-administrator,
-I want to configure a service's state, addresses, roles and authentication,
-So that service administration is complete here.
-
-**Acceptance Criteria:**
-
-- **Given** the editor
-- **When** it opens
-- **Then** it covers enabled state, allowed IP addresses with add and delete, roles, and authentication methods.
-
-- **Given** the user disables the web service OcuPilot itself depends on
-- **When** they attempt it from the screen
-- **Then** a warning dialog states that it will lock them out of OcuPilot, before proceeding.
-
-- **Given** the same disable is proposed **by the agent**
-- **When** it reaches the write path
-- **Then** it is **refused on the instance and was never advertised as a tool** - the warning is the screen's affordance for a human decision; the prohibition is absolute for the agent, and covers the web application, the web service behind it and the superserver.
+- DW-1513: The Roles-list Delete row action (Story 8.3 AC3's screen caller): SCREENACTIONS on RoleDelete, rowActions on RoleList, a holder-count read, the count in the typed-name confirmation, its Fixed-strings row (ledger; routed by merge_gate 2026-09-23)
+- DW-1528: The Resources-list Delete row action (Story 8.4 AC2's screen caller): drawn disabled with its reason when the vendor's AllowDelete is false, on AD-53's route (ledger; routed by merge_gate 2026-09-23)
+- DW-1598: PROHIBITED.UNCOVEREDFIELD's reason names the agent while the screen's create and Save share the predicate (AD-53); rewrite caller-neutral, publish and pin it (ledger; routed by smoke 2026-09-24)
 
 ### Story 9.5: The SSL/TLS editor
 
@@ -4420,7 +4743,7 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 
 - **Given** the editor
 - **When** it opens
-- **Then** its tabs cover certificates, key, CA, CRL, protocol minimum and maximum, ciphers, DH bits, OCSP and peer verification.
+- **Then** its tabs cover certificates, key, CA, protocol minimum and maximum, ciphers, DH bits, OCSP and peer verification, and the CRL slot is a caption saying the setting is deprecated and not exposed [AMENDED 2026-09-24 - see the story change log: `CRLFile` is `[Deprecated, Internal]`, absent from the endpoint's template and from its GET, so no reachable outcome shows or sets it; orchestrator ruling at the 9.5 spec gate].
 
 - **Given** private key material entered in the form
 - **When** any read is made afterwards
@@ -4430,6 +4753,14 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 - **When** it is edited here
 - **Then** editing it is possible but its role is visible, because the agent's own outbound calls depend on it.
 
+- **Given** an SSL/TLS configuration
+- **When** the user runs its test connection
+- **Then** the instance's own result text is reported, success or failure (moved from Story 12.1 by the 2026-09-17 amendment).
+
+- **Given** an SSL/TLS configuration on its list
+- **When** the user deletes it, or the agent proposes deleting it
+- **Then** it is deleted through the one delete tool on AD-53's route after the typed-name confirmation, and deleting OcuPilot's own provider configuration is refused on both callers under AD-10 [ADDED 2026-09-24 - see the story change log: FR-42's delete had no owning story; orchestrator ruling at the 9.5 spec gate].
+
 ---
 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
@@ -4437,22 +4768,8 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 - DW-268: The build's credential-name guard is suffix-anchored, so it misses `PrivateKeyFile`, `PrivateKeyType`, `CertificateFile`, `CAFile` and `CAPath` - the fields this editor's detail read carries (ledger; routed by adjudication 2026-09-14)
 - DW-332: the destructive-test guard does not cover `Security.SSLConfigs` create or delete, so three classes act unarmed (ledger; routed by the burn-down gate 2026-09-16)
 - DW-391: a form-page with no list has no published sentence for an absent entity (ledger; routed by the burn-down gate 2026-09-16)
-
-### Story 9.6: The LDAP and Kerberos editor
-
-As a developer-administrator,
-I want to configure directory authentication,
-So that the instance can be joined to an existing identity system from here.
-
-**Acceptance Criteria:**
-
-- **Given** the editor
-- **When** it opens
-- **Then** it covers the fields of the classic LDAP page, whose exported source in `irislib/` is the field list.
-
-- **Given** the `Security.LDAP` endpoint's **test connection** request type is asynchronous while its list, get and put are not
-- **When** this editor is built
-- **Then** list, get and put stay synchronous, and the test action is a polish-week item rather than being wired here.
+- DW-1541: The X.509-list Delete row action (Story 8.5's screen delete): SCREENACTIONS on the delete tool, rowActions on the X.509 list, the typed-name confirmation, on AD-53's route (ledger; routed by merge_gate 2026-09-23)
+- DW-1556: Deleting a wallet secret (FR-46): the agent delete tool and the Secrets-list row action; FR-46's delete has no other owning story (ledger; routed by merge_gate 2026-09-23)
 
 ### Story 9.7: The New Task wizard
 
@@ -4468,7 +4785,7 @@ So that I never have to leave for the one screen that defines the instance's hou
 
 - **Given** the field list and its legal values
 - **When** they are authored
-- **Then** they come from the task class's inherited property set - **49 of its 66 compiled properties carry documentation, all declared on `%SYS.TaskSuper` rather than `%SYS.Task`** - not from the classic page, whose source is unrecoverable and not needed.
+- **Then** they come from the task class's inherited property set - **49 of its 66 compiled properties carry documentation: 47 declared on `%SYS.TaskSuper` rather than `%SYS.Task`, plus `%%OID` and `%Concurrency`** [AMENDED 2026-09-24 - see the story change log: the count was measured on the instance at the 9.7 plan] - not from the classic page, whose source is unrecoverable and not needed.
 
 - **Given** the schedule vocabulary
 - **When** it is implemented
@@ -4508,7 +4825,10 @@ So that fixing a schedule does not mean deleting and recreating it.
 
 - **Given** a task's next-scheduled time changes as a side effect of the write
 - **When** the proposal's fingerprint is computed
-- **Then** that field is **excluded** by the descriptor's declared exclusions, so a legitimate write is not refused as "target changed".
+- **Then** that field is outside the fingerprint - the tool's fresh read does not carry it (measured) - and a test pins that a proposal whose task ran before confirm still writes, so a legitimate write is not refused as "target changed" [AMENDED 2026-09-24 - see the story change log: measured at the 9.8 plan, the task's fresh read carries no next-scheduled time, and a descriptor exclusion would break the run tool's fingerprint subject].
+
+- DW-1624: Task details shows a wizard-created task's schedule and Priority, not its output file, suspend, reschedule or email values; the edit tabs show every field of a wizard-created task (ledger; routed by cr 2026-09-24)
+- DW-1631: The 9.7 wizard draws a `%SYS.Task.Password`-typed setting (DiagnosticReport's SMTPPass) as an ordinary setting; one classifier makes it classic-only for create and edit (ledger; routed by spec_gate 2026-09-24)
 
 ### Story 9.9: A cut editor ships reduced, never half-working
 
@@ -4532,13 +4852,50 @@ So that a gap reads as a decision rather than a defect.
 
 - **Given** the 2026-09-27 floor
 - **When** it is assessed
-- **Then** **at least one create or edit form per area** exists, and **no list screen in the six areas links out** - a link-out on a list counts against the counter-metric, and one on an editor is a recorded cost.
+- **Then** **at least one create or edit form exists in each of the five areas that administers an object** - Logs administers none and has no editor to build, and a test pins it at zero forms - and **no list screen in the six areas links out** - a link-out on a list counts against the counter-metric, and one on an editor is a recorded cost [AMENDED 2026-09-24 - see the story change log: Story 9.9 spec gate, orchestrator ruling 2dca0322; was at least one form per area, which Logs cannot meet].
+
+- **Given** the service editor and the LDAP and Kerberos editor, deferred to Stories 16.13 and 16.14 by the 2026-09-17 amendment
+- **When** this story ships
+- **Then** each has its reduced form plus `classic-link-card` here, and its agent write tool.
+
+---
+
+### Story 9.10: The user audit event editor
+
+**Chartered by the owner, 2026-09-24**, from DW-1573: Story 7.11 shipped enable, disable, reset and delete on the user events list, and left create and configure for after the Epic 7/8 merge, because they need AD-54's create write kind and AD-55's screen Save. Runs last in Epic 9's order.
+
+As a developer-administrator,
+I want to create a user audit event and edit its description from OcuPilot,
+So that I can define the events my own code emits without going back to the classic portal.
+
+**Acceptance Criteria:**
+
+- **Given** the user events list
+- **When** the user chooses Create
+- **Then** a dialog editor takes the event's Source, Type and Name, its Description and whether it is enabled, and Save creates it through the write tool (AD-55); the agent proposes the same create through the same tool, with AD-54's absence fingerprint, so a name taken since the proposal was minted is refused rather than overwritten - `Security.Audit.Event`'s PUT is an upsert.
+
+- **Given** an existing user event
+- **When** the user edits its description
+- **Then** the edit reads fresh, changes only what the user changed, and saves through the same tool; the event's own identity - Source, Type and Name - is read-only once created.
+
+- **Given** the vendor's own rules for a user event's Source, Type and Name
+- **When** they are enforced
+- **Then** they are measured on the instance and checked before the call, so a refusal reads as OcuPilot's own sentence on the field rather than a vendor error; a system event cannot be created or edited through the user event tools.
+
+- **Given** the new labels and refusal sentences
+- **When** they render
+- **Then** they are rows in EXPERIENCE.md's fixed-string table and keys in the string table, like every other published sentence.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1573: User audit events cannot be created or configured (Description edited) from OcuPilot: 7.11 ships enable, disable, reset and delete, and create and configure need AD-54's create kind and AD-55's screen Save (ledger; routed by owner charter 2026-09-24)
+- DW-1575: Each audit event tool accepts the other list's events, so a user event changed through a system tool publishes audit-event (and the reverse) (ledger; routed by owner charter 2026-09-24)
 
 ---
 
 ## Epic 10: Run on any model, and harden the write path
 
-An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
+An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), a connection test that answers before the Web Gateway's timeout (10.5), turns that survive a dropped connection (10.6), and Claude Opus 5.5 as the Anthropic default (10.7). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
 
 ### Story 10.1: The message and tool-definition adapters
 
@@ -4560,6 +4917,8 @@ So that adding a provider is adapter work rather than a change to the loop, the 
 - **When** the change is reviewed
 - **Then** **no part of the agent loop, the tool registry, the proposal lifecycle or any screen has changed** - only an adapter and a form entry.
 
+- DW-1104: one provider call's worst case is the attempt budget plus the stored per-call timeout, because the deadline only gates when an attempt may start (ledger; routed by merge_gate 2026-09-18)
+
 ### Story 10.2: The OpenAI and Google Gemini adapters
 
 As an operator with an existing OpenAI or Google account,
@@ -4571,10 +4930,6 @@ So that adopting it does not mean opening a new vendor relationship.
 - **Given** either adapter
 - **When** it is configured and tested
 - **Then** Test connection succeeds and reports the model's reply, and a turn completes with tool calls.
-
-- **Given** the write path needs a model that makes reliable multi-field tool calls
-- **When** the UJ-3 and UJ-6 demo prompts are run against each shipped provider
-- **Then** they pass **before the demo freeze**, and the README's primary path names a capable model.
 
 - **Given** each adapter
 - **When** it handles a failure
@@ -4602,7 +4957,7 @@ So that screen data and log text never leave the instance at all.
 
 - **Given** a loopback or private-network endpoint
 - **When** it is validated
-- **Then** it is **allowed**, because local models are a supported case - while the link-local metadata range stays refused, and the definition must be explicitly marked local to name a loopback or link-local address.
+- **Then** it is **allowed**, because local models are a supported case - while a cloud instance-metadata endpoint stays refused in every address family and the marked-local flag licenses none, and the definition must be explicitly marked local to name a loopback or link-local address. [AMENDED 2026-09-19 - see the story change log]
 
 - **Given** a local provider is in use
 - **When** the context chip renders
@@ -4614,11 +4969,284 @@ So that screen data and log text never leave the instance at all.
 
 ---
 
+- DW-441: a configured proxy is applied even to a marked-local plain-`http` endpoint, which is then requested through the proxy in cleartext; decided at the Epic 4 merge gate: bypass the proxy for a marked-local endpoint (ledger; routed by merge_gate 2026-09-18)
+
+### Story 10.4: Sampling parameters left to the provider
+
+**High priority (owner triage, 2026-09-23).** Dispatched with Story 10.5 on the first slot to free, ahead of Epic 12.
+
+As an operator who accepts OcuPilot's defaults,
+I want a new definition to reach its provider's default model,
+So that the connection test passes on the first try instead of being refused by the provider.
+
+**Acceptance Criteria:**
+
+- **Given** a new definition for any provider
+- **When** the Definition form opens
+- **Then** its temperature reads "Provider default" and is stored unset; validation accepts unset, and an explicit value from 0 to 2 stays possible where the provider takes one.
+
+- **Given** a definition whose temperature is unset
+- **When** OcuPilot calls OpenAI, Google Gemini or an OpenAI-compatible endpoint
+- **Then** the request carries no temperature, and the provider's default applies.
+
+- **Given** any Anthropic definition
+- **When** OcuPilot calls the Messages API
+- **Then** the request carries no `temperature`, `top_p` or `top_k` whatever the definition holds, because the current Claude models in the catalog refuse them, and the form shows the field as not applicable for Anthropic with that reason.
+
+- **Given** Claude Opus 5, which thinks by default, and a turn that calls a tool and then answers
+- **When** the adapter builds the next request of that turn
+- **Then** it sends the assistant turn's thinking blocks back unchanged, pinned by a stub that returns a thinking block beside a tool call and asserts it returns byte for byte.
+
+- **Given** CI calls no live provider
+- **When** the suite runs
+- **Then** stub assertions pin every request body - no sampling parameter to Anthropic ever, no temperature to the others when unset - and the live proof on each catalog default model is the owner's check in Story 17.7.
+
+- **Given** a definition saved before this story
+- **When** it is read
+- **Then** a stored temperature is kept as an explicit value; nothing rewrites it.
+
+- DW-1590: The OpenAI adapter sends tools on chat/completions without reasoning_effort, and the catalog default gpt-5.6-terra refuses function tools there unless reasoning_effort is none, so every tool-bearing turn on OpenAI's default model fails with a 400 (ledger; routed by spec_gate 2026-09-24)
+- DW-1591: Gemini 3 function calls carry a thoughtSignature that GeminiToCanonical drops, and the catalog default gemini-3.8-flash refuses the next request of a tool-calling turn without it (ledger; routed by spec_gate 2026-09-24)
+
+---
+
+### Story 10.5: A connection test that answers before the gateway does
+
+**High priority (owner triage, 2026-09-23).** Runs after Story 10.4 in the same runner.
+
+As an operator testing a local model that has been idle,
+I want the test to tell me the model is still loading,
+So that a slow first answer does not read as a broken portal.
+
+**Acceptance Criteria:**
+
+- **Given** a provider that has not answered
+- **When** Test connection has waited a bound safely below the Web Gateway's configured response timeout - the `Server_Response_Timeout` the installer already reads, 60 seconds when unread - so raising that setting lengthens the test
+- **Then** it returns OcuPilot's own reason instead of the gateway's empty 504: for a definition marked local, that the model may still be loading and to test again in a minute; for any other, the provider and how long it waited.
+
+- **Given** a test that timed out
+- **When** its result is stored
+- **Then** the definition is not marked verified, and a later passing test enables it as usual.
+
+- **Given** an agent turn whose first provider call takes longer than the gateway's timeout
+- **When** it runs
+- **Then** it completes, because the turn runs in a background job (AD-7), pinned by a stub that delays past the gateway's bound.
+
+- **Given** the new reasons
+- **When** they render
+- **Then** they are rows in EXPERIENCE.md's fixed-string table and keys in the string table, like every other published sentence.
+
+- DW-1600: Every Gemini turn is refused on its first provider call because the navigate tool's route enum carries Home's empty route and Gemini refuses an empty enum value (ledger; routed by smoke 2026-09-24)
+- DW-1601: Test connection on Gemini's default model answers an empty or cut-off reply because the 32-token test budget is spent on Gemini 3's default thinking (ledger; routed by smoke 2026-09-24)
+
+---
+
+### Story 10.6: A turn survives a dropped connection, and a create says created
+
+**High priority (owner, 2026-09-24).** Runs alone on slot B at Epic 12's next story boundary; Epic 12 resumes after this story merges.
+
+As a judge trying the agent,
+I want a momentary network failure not to end my turn, and the result line to say what actually happened,
+So that the agent reads as reliable on the first try.
+
+**Acceptance Criteria:**
+
+- **Given** a call to a model provider that fails in transport - the connection breaks before a status line arrives, as `ERROR #6097 <READ>` did on slot C
+- **When** the adapter handles it
+- **Then** it retries the call once on a new connection, within the existing attempt and delay budget, and only if that retry also fails does the turn stop with its present reason
+- **And** AD-42 records at origin that a model call may be retried after a transport failure because it changes nothing on the instance, while every write keeps the never-retry-mid-flight rule.
+
+- **Given** any provider call
+- **When** its request is built
+- **Then** it does not reuse a kept-open connection (`SocketTimeout` 0), so a connection the provider or the network closed while idle is never read from.
+
+- **Given** CI calls no live provider
+- **When** the suite runs
+- **Then** a stub that breaks the first connection proves the retry succeeds on the second, a stub that breaks both proves the turn stops with `PROVIDER.TRANSPORT`, and a test pins that no write tool call is ever retried.
+
+- **Given** a confirmed proposal from a tool that declares `created` - every create tool already does (inference: the fault is on the path from the confirm to the panel)
+- **When** the panel and the toast report the outcome
+- **Then** they read "<entity> was created", and a browser spec pins it end to end for a web-application create.
+
+### Story 10.7: Claude Opus 5.5 as the Anthropic default
+
+**Owner triage, 2026-09-25, high priority.** Runs on the first slot to free and merges before the submission cut.
+
+As an operator creating an Anthropic definition,
+I want it to start on Anthropic's current flagship model,
+So that a first install gets the strongest agent without editing the model name.
+
+**Acceptance Criteria:**
+
+- **Given** the provider catalog's Anthropic row
+- **When** a new Anthropic definition is created without a model
+- **Then** its model is `claude-opus-5-5`, and the row's model suggestions list `claude-opus-5-5` first while keeping `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5` and `claude-fable-5-1`
+- **And** a definition that already stores a model keeps it: nothing migrates stored rows.
+
+- **Given** Story 10.4's rule that no sampling parameter is sent to Anthropic
+- **When** a definition on `claude-opus-5-5` calls the model
+- **Then** it sends none, as it does for `claude-opus-5`; the owner verified a connection test and a tool-calling turn on `claude-opus-5-5` on the public demo on 2026-09-25, and this story needs no live key.
+
+- **Given** the tests and fixtures that pin the Anthropic row or its canonical default
+- **When** this story completes
+- **Then** they name `claude-opus-5-5`, test data that merely needs some model name may keep `claude-opus-5`, and the README's provider table states the new default.
+
+---
+
 ## Epic 11: The agent explains itself, cites its work, and streams
 
-During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked first after any step-7 leftovers, because these are what voters see.
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. Stories 11.9 and 11.10 run first, each alone on slot B ahead of Epic 12 (owner, 2026-09-24); the rest run in the order 11.7, 11.8, 11.1, 11.2, 11.3, 11.4 (owner re-order, 2026-09-22): streaming and the privilege line first, so a partial epic merged before the deadline carries the two refinements a judge can see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
 
 **Applies to every story in this epic.** All of these modify the same panel transcript render path, which is why they are one epic rather than three. Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Every new tool declares `read` or `write` at definition time or the build fails, and every new write key is added to the governance baseline in Epic 14 rather than left to default.
+
+### Story 11.9: The agent knows the screen it is on
+
+**High priority (owner, 2026-09-24).** Runs first and alone on slot B; Epic 12 hands back at its first boundary and resumes after this story merges.
+
+As a judge trying the agent for the first time,
+I want it to answer about the screen in front of me without fetching what I can already see, and to know which of its tools act on that screen,
+So that its first answers are quick, grounded and honest about what it can do.
+
+**Acceptance Criteria:**
+
+- **Given** the built-in system prompt
+- **When** this story completes
+- **Then** it is still one build-time constant with nothing read at runtime joined to it (AD-11 rule 1), and it also says, in substance: a turn may open with the screen the user is viewing - its route, namespace and selected row, the rows as shown with how many were available, the tools that act on that screen, and whether the agent is read-only; answer from it when it holds what was asked, and call a read tool when it does not or when its rows were cut; a change confirmed through one of the screen's tools refreshes that screen and marks the changed row; when read-only, say so and describe the change instead of proposing it; use only the tools offered, and when none can do what was asked, say so rather than describe a capability it lacks.
+
+- **Given** a turn that carries screen context
+- **When** the kernel forwards it to the model
+- **Then** it adds two members derived on the instance, never taken from the request: the wire names of the screen's read tool and of the write tools behind its row actions and primary action, from the descriptor registry; and the turn's read-only verdict, the same one dispatch enforces (AD-30)
+- **And** a request that carries either member itself is refused as an invalid context.
+
+- **Given** the application-error list, which loads through its own endpoint
+- **When** a turn is sent from it
+- **Then** its context carries the rows it shows, narrowed to its declared summary fields and capped like every other screen, and the captured variable table never goes, as Story 11.2 states.
+
+- **Given** AD-11's existing pins and AD-24's bounds
+- **When** the suite runs
+- **Then** both pass unchanged, the added members count within AD-24's bounds, and AD-24 records at origin that the kernel adds them; the seeded-injection test, when Story 14.8 writes it, runs against this prompt. [AMENDED 2026-09-24 - see the story change log: the seeded-injection test is Story 14.8's and does not exist yet]
+
+- **Given** CI calls no live model
+- **When** the suite runs
+- **Then** tests pin the prompt's required statements, the derived members for a list screen with row actions, a detail screen and a form page, and the refusal of a request that sends them; the behavior itself - answering from the context without a read, naming the screen's actions, declining to propose while read-only - is proven live in the owner's check in Story 17.7 on a list and a detail screen.
+
+- **Given** the form pages and Home
+- **When** this story completes
+- **Then** they still send no field values or rows; a form page's context gains only the two derived members.
+
+---
+
+### Story 11.10: A judge succeeds the first time
+
+**High priority (owner, 2026-09-24).** Runs alone on slot B at Epic 12's next story boundary; Epic 12 resumes after this story merges.
+
+As a judge configuring the agent for the first time,
+I want a new definition to be able to propose changes, the agent to take me to the screen we are talking about, and the panel to show its answer as it arrives,
+So that my first request for a change ends in a proposal I can confirm, on the screen that will show it.
+
+**Acceptance Criteria:**
+
+- **Given** a new definition, created through the form or the API
+- **When** it is saved without the read-only flag being touched
+- **Then** it is read/write - the flag starts off both in the stored default and in the form's initial values - while every write still needs the user's confirmation, and the prohibited set and enforced read-only are unchanged.
+
+- **Given** a definition saved before this story
+- **When** it is read
+- **Then** its stored read-only value is kept; nothing rewrites it.
+
+- **Given** the tests that pin a created definition's defaults
+- **When** this story completes
+- **Then** they pin read/write, and a mutation back to read-only reddens them.
+
+- **Given** the built-in system prompt
+- **When** this story completes
+- **Then** it is still one build-time constant (AD-11 rule 1), and it also says, in substance: when the user asks about, or asks to change, something a screen shows and they are not on that screen, open it with the navigation tool first, before answering or proposing, so they see what is being discussed and the change when it lands; do not navigate when they are already there
+- **And** the move stays announced and reversible with Back, as AD-11 rule 3 and Story 4.7 require.
+
+- **Given** CI calls no live model
+- **When** the suite runs
+- **Then** tests pin the new defaults and the prompt statement; the navigation behavior is proven live in the owner's check in Story 17.7, where "Can you create a web app for me?" asked from Home opens the web applications list before the proposal appears.
+
+- **Given** the user presses Send
+- **When** the message is accepted
+- **Then** the transcript scrolls so that the message and its progress card are in view.
+
+- **Given** the transcript is scrolled to its newest entry
+- **When** progress, a reply or a proposal card arrives
+- **Then** the transcript follows it, so the newest entry stays in view.
+
+- **Given** the user has scrolled up to read an earlier entry
+- **When** a new entry arrives
+- **Then** the transcript does not move; a "Jump to latest" control appears, returns to the newest entry, and goes away once the newest entry is in view
+- **And** its text is a row in EXPERIENCE.md's fixed-string table and a key in the string table.
+
+- **Given** reduced motion is requested
+- **When** the transcript scrolls
+- **Then** it moves instantly, with no animation.
+
+- **Given** EXPERIENCE.md says only that the transcript keeps "newest at the bottom, scrolls independently"
+- **When** this story completes
+- **Then** the panel's Body paragraph states the follow rule at origin, and a browser spec pins it: a long conversation shows a sent message in view, a scrolled-up transcript stays put and offers Jump to latest.
+
+---
+
+### Story 11.7: Token streaming
+
+As a developer-administrator watching a long answer,
+I want to see it arrive as it is written,
+So that a slow model reads as thinking rather than as a hang.
+
+**Acceptance Criteria:**
+
+- **Given** build step 7 finished
+- **When** this story is scheduled
+- **Then** it ships; **if step 7 did not finish, it does not** - the condition is the owner's, and it exists because streaming changes the panel's render path and must not put a Release 1 agent write at risk.
+
+- **Given** it ships
+- **When** it is ranked
+- **Then** it runs first among this epic's remaining stories, ahead of the explain and transparency work, by the owner's re-order of 2026-09-22, so a partial epic merged before the deadline carries streaming.
+
+- **Given** streaming is on
+- **When** a reply arrives
+- **Then** the panel appends incrementally, while the turn still runs in a background job and the panel still polls progress - **the contract of both is unchanged**, only the render path gains an append mode.
+
+- **Given** streamed text
+- **When** it renders
+- **Then** it is subject to every Release 1 rule: sanitized, markup-free by construction, no remote resource, and rendered as data rather than as OcuPilot's own voice.
+
+- **Given** reduced motion or a failure mid-stream
+- **When** either occurs
+- **Then** the reply still resolves to the same final rendering a non-streamed turn would produce.
+
+---
+
+### Story 11.8: The proposal names the privilege it needs
+
+As a developer-administrator reviewing a proposal,
+I want the card to tell me which `%Admin_*` resource the write requires and whether I hold it,
+So that a refusal is predictable before Confirm rather than discovered after it.
+
+**Acceptance Criteria:**
+
+- **Given** a proposal card for any write tool
+- **When** it renders
+- **Then** it carries one line naming the pairs the write's own gate requires, the endpoint's `ResourcesOR()` resource among them (AD-29) and AD-8's extra pairs, and whether the signed-in user holds them, evaluated on the instance by the check Confirm's gate makes (AD-8) at each read of the proposal; no new derivation and no second source of truth. [AMENDED 2026-09-25, Story 11.8 spec gate, Rule 5 tier-1: was "the resource the endpoint declares through its `ResourcesOR()` list ... read from the privilege map the shell already loads (Story 1.9, FR-4)". Measured in the tree at planning: `ResourcesOR()` is evaluated only inside a running endpoint call (`AdminPort`), and the shell's privilege map answers yes or no per area and screen, never per pair, and is re-read only at sign-in or after a refusal; answering either as worded needs a new derivation. The intent - the card predicts Confirm's refusal from facts the write path already holds - is unchanged.]
+
+- **Given** the user lacks the resource
+- **When** the card renders
+- **Then** Confirm stays enabled - the instance is the authority and refuses as it does today - the line reads as a warning naming the missing resource, and the audit marker and the ledger are unchanged.
+
+- **Given** `ResourcesOR()` is a lower bound (AD-29: some vendor queries refuse for resources the list does not name)
+- **When** the line is worded
+- **Then** it says "requires", never "sufficient"; the instance's answer remains the verdict.
+
+- **Given** a row action or a form's Save on a screen from Epics 7 to 9 and 12
+- **When** the same two facts are at hand
+- **Then** the action's tooltip or the Save bar may carry the same line at no extra derivation; where it is not wired, that is a recorded omission rather than a defect.
+
+*Added 2026-09-20 from the contest field: one competing entry previews the required privilege per operation; OcuPilot already holds both facts.*
+
+---
 
 ### Story 11.1: "Explain this screen"
 
@@ -4640,6 +5268,11 @@ So that understanding a screen does not mean leaving for the documentation.
 - **When** it is placed
 - **Then** it is available on **every** screen, from the panel, as one click.
 
+- DW-458: at the viewport where the remembered width makes the side bar yield, a narrowed panel brings the side bar back and cannot be widened again (ledger; routed by merge_gate 2026-09-18)
+- DW-460: while the panel is full screen the rail stays live, so a rail click changes a side bar or a route the panel covers (ledger; routed by merge_gate 2026-09-18)
+- DW-1077: on Home the context chip names a screen and namespace no turn carries, because Home's declared route is the empty string (ledger; routed by merge_gate 2026-09-18)
+- DW-1112: a status-0 Send raises two identical `role=alert` banners, the panel's fallback restating the shell's connectivity strip (ledger; routed by merge_gate 2026-09-18)
+
 ### Story 11.2: Explain a log or audit entry
 
 As a production administrator staring at an unfamiliar error,
@@ -4660,6 +5293,8 @@ So that a log line becomes an explanation in one gesture.
 - **When** it reaches the model
 - **Then** it arrives as delimited tool-result content, never as instruction.
 
+- DW-1610: The error list's context rows reach the turn labeled with the shell's namespace and no date, so the agent misattributes them and cannot scope logs.applicationerrors.read or a delete to them (ledger; routed by cr 2026-09-24)
+
 ### Story 11.3: Suggested prompts per screen
 
 As a developer-administrator who does not yet know what to ask,
@@ -4678,7 +5313,11 @@ So that the agent is useful before I have thought of a question.
 
 - **Given** the screen contract
 - **When** a screen is added after this story
-- **Then** its prompts are declared in its descriptor alongside its command box aliases, so a new screen arrives with prompts rather than needing them retrofitted.
+- **Then** its prompts are declared in its descriptor alongside its command box aliases, so a new screen arrives with prompts rather than needing them retrofitted. This story covers every screen that exists when it runs; the editors of Epics 9 and 12 declare their own, whichever order the epics land in.
+
+- DW-1147: the all-zero starter-prompt fallback also fires when the read behind a line was refused, so a caller who may not read a source is told nothing needs attention (ledger; routed by merge_gate 2026-09-18)
+- DW-1158: Home's block yields its starter prompts to the empty-transcript greeting; decided at the Epic 4 merge gate: EXPERIENCE.md is canonical, so Home shows its prompts (ledger; routed by merge_gate 2026-09-18)
+- DW-1160: a counted line answering zero renders a dateless sentence, which the all-zero fallback hides today (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 11.4: Citation chips with click-through
 
@@ -4704,109 +5343,27 @@ So that verifying the agent's answer costs one click rather than a search.
 - **When** it is clicked
 - **Then** it reports that the row is no longer present rather than failing the screen - stored references are weak by contract.
 
-### Story 11.5: The data-egress line
-
-As a security-minded operator,
-I want each turn to tell me whether my screen data left the instance,
-So that egress is visible per turn rather than only in a chip I might not read.
-
-**Acceptance Criteria:**
-
-- **Given** a turn with context sharing on
-- **When** it runs
-- **Then** the panel shows a data-egress line naming the provider in use and stating whether screen data leaves the instance.
-
-- **Given** the statement
-- **When** it is computed
-- **Then** it derives from the **same configuration the request actually uses**, so the line and the destination cannot disagree.
-
-- **Given** a local provider on a private network
-- **When** the line renders
-- **Then** it says the data did not leave the instance, matching the context chip's absence of the egress pill.
-
-### Story 11.6: The agent audit viewer
-
-As an OcuPilot administrator,
-I want to see what the agent has been doing across the instance,
-So that the ledger is readable without SQL.
-
-**Acceptance Criteria:**
-
-- **Given** the agent audit viewer
-- **When** it opens
-- **Then** it lists ledger rows with filters by user, screen and date, and opens the arguments and result of any row.
-
-- **Given** an ordinary user
-- **When** they open it
-- **Then** they see **their own** rows.
-
-- **Given** an OcuPilot administrator
-- **When** they open another user's rows
-- **Then** they see them, and their access is gated by the **resources recorded on each row** - the gate living with the ledger rather than with the screen.
-
-- **Given** any row
-- **When** it renders
-- **Then** secrets are absent, because they were excluded at write time by schema rather than redacted afterwards.
-
-### Story 11.7: Token streaming
-
-As a developer-administrator watching a long answer,
-I want to see it arrive as it is written,
-So that a slow model reads as thinking rather than as a hang.
-
-**Acceptance Criteria:**
-
-- **Given** build step 7 finished
-- **When** this story is scheduled
-- **Then** it ships; **if step 7 did not finish, it does not** - the condition is the owner's, and it exists because streaming changes the panel's render path and must not put a Release 1 agent write at risk.
-
-- **Given** it ships
-- **When** it is ranked
-- **Then** it comes **after** the explain and transparency work in this epic, never before.
-
-- **Given** streaming is on
-- **When** a reply arrives
-- **Then** the panel appends incrementally, while the turn still runs in a background job and the panel still polls progress - **the contract of both is unchanged**, only the render path gains an append mode.
-
-- **Given** streamed text
-- **When** it renders
-- **Then** it is subject to every Release 1 rule: sanitized, markup-free by construction, no remote resource, and rendered as data rather than as OcuPilot's own voice.
-
-- **Given** reduced motion or a failure mid-stream
-- **When** either occurs
-- **Then** the reply still resolves to the same final rendering a non-streamed turn would produce.
-
----
-
 ## Epic 12: The OAuth 2.0 editors and the security-area tests
 
-A user completes the area the contest names most specifically: five OAuth 2.0 editors that round-trip create, edit and delete, plus the test and detail actions that make SSL/TLS, X.509 and LDAP administration self-checking. Polish week, ranked next, because the task statement names OAuth setup.
+A user completes the area the contest names most specifically: five OAuth 2.0 editors that round-trip create, edit and delete, plus the test and detail actions that make SSL/TLS, X.509 and LDAP administration self-checking. Polish week, ranked first by the owner's re-sequence of 2026-09-21, because the task statement names OAuth setup.
 
-**Applies to every story in this epic.** All four `Security.OAuth2.*` endpoints and `Security.X509Credential` are among the 28 that do **not** merge, so every save here reads fresh, applies the diff and sends the **complete property set**. Each editor is a full-page route on the `form-page` contract with tabs mirroring the classic editor, ships with its agent write tool over the derived field list, and publishes to the change-event bus. Every secret - a client secret, a private key, an initial access token - is write-only end to end and never returned by any read. The four OAuth 2.0 editors derive their `Metadata.*` field sets from the published spec (`mainspec_v2.json`), which enumerates 30 to 70 members each where the derived lists carry `Metadata` as one opaque object; `ClientId`, `JWTInterval` and `ServerDefinition` are in the template lists and absent from the spec's PUT, so their fate is verified on the instance before the form is built. These are not restated per story.
+**Applies to every story in this epic.** All four `Security.OAuth2.*` endpoints and `Security.X509Credential` are among the 28 that call no merge helper. `Security.X509Credential` and `Security.OAuth2.Client.ServerDefinition` were measured to keep a field their body omits (AD-4, 2026-09-24), and each OAuth 2.0 story measures its own endpoint on a throwaway before designing its save; either way, every save here reads fresh, applies the diff and sends the **complete property set** (AD-4's rule is uniform). [AMENDED 2026-09-24, Story 12.1 spec gate, Rule 20: X.509 measured to keep omitted fields (AD-4)] Each editor is a full-page route on the `form-page` contract with tabs mirroring the classic editor, ships with its agent write tool over the derived field list, and publishes to the change-event bus. Every secret - a client secret, a private key, an initial access token - is write-only end to end and never returned by any read. The four OAuth 2.0 editors derive their `Metadata.*` field sets from the vendor's metadata class for the entity (`OAuth2.Server.Metadata` for a server description, `OAuth2.Client.Metadata` for a client configuration), whose generated `ImportJSON` is what the endpoint applies (the published `mainspec_v2.json` enumerates 30 to 70 members each but is not vendored), where the derived lists carry `Metadata` as one opaque object; [AMENDED 2026-09-24, Story 12.4 spec gate, Rule 5: member source and the measured merge] `ClientId`, `JWTInterval` and `ServerDefinition` are in the template lists and absent from the spec's PUT, which names the last `OAuth2ServerDefinition`; verified on the instance on 2026-09-16, the endpoint reads and returns all three under the template's names and rejects an unrecognized key, so the derived list is the wire contract and the metadata class supplies only `Metadata.*`. Each editor declares its suggested prompts in its descriptor per Story 11.3's contract, and the tabbed `form-page` behavior is UX-DR32 and UX-DR33's, so whichever of Story 9.1 and Story 12.4 lands first sets the shared tab component and the other adopts it at its merge; this epic therefore depends on Epics 6, 7 and 8 only and runs beside Epic 9. These are not restated per story.
 
 ### Story 12.1: The security-area test and detail actions
 
 As a developer-administrator,
-I want to prove a TLS configuration or a directory binding works from the screen that defines it,
+I want the security screens' detail and test actions on the screen that defines each configuration,
 So that a misconfiguration surfaces here rather than in whatever fails later.
 
 **Acceptance Criteria:**
-
-- **Given** an SSL/TLS configuration
-- **When** the user runs its test connection
-- **Then** the instance's own result text is reported, success or failure.
 
 - **Given** an X.509 credential
 - **When** the user opens its details
 - **Then** the certificate's details render - and the private key does not.
 
-- **Given** an LDAP configuration
-- **When** the user runs test authentication
-- **Then** the instance's own result text is reported.
-
-- **Given** `Security.LDAP`'s test-connection request type is **asynchronous** while its list, get and put are not
-- **When** the test runs
-- **Then** it goes through `AdminPort`'s async path, which the port exposes as an ordinary call resolving later - the slice writes no polling logic.
+- **Given** the SSL/TLS test connection and the LDAP test authentication
+- **When** this story is assessed
+- **Then** neither is built here: the SSL/TLS test is Story 9.5's, on the editor that defines the configuration, and the LDAP test moved with its editor to Story 16.14 - so this epic depends on Epics 6, 7 and 8 only.
 
 ### Story 12.2: Revoke a user's OAuth 2.0 tokens
 
@@ -4843,7 +5400,7 @@ So that auditing can stay on without growing without bound.
 
 - **Given** a purge proposed by the agent
 - **When** it reaches the write path
-- **Then** it carries the full model - proposal, instance-computed diff, explicit confirmation, the agent marker - and, because it destroys the record the marker lives in, the card states that consequence.
+- **Then** it carries the full model - proposal, instance-computed diff, explicit confirmation, the agent marker - and, because it destroys the record the marker lives in, the card states that consequence. [AMENDED 2026-09-24, Story 12.3 spec gate: delivered by Story 14.2, which advertises the purge; this story pins its absence from every agent-visible roster]
 
 - **Given** the governance policy has **not** yet shipped, Epic 14 being ranked after this one
 - **When** purge is exposed
@@ -4851,7 +5408,7 @@ So that auditing can stay on without growing without bound.
 
 - **Given** the governance policy from Epic 14
 - **When** its baseline is computed
-- **Then** purge is among the destructive keys that default to disabled for any key added after the Release 1 freeze.
+- **Then** purge is among the destructive keys that default to disabled for any key added after the Release 1 freeze. [AMENDED 2026-09-24, Story 12.3 spec gate: delivered by Story 14.2, which advertises the purge; this story pins its absence from every agent-visible roster]
 
 ### Story 12.4: The OAuth 2.0 client server-description editor
 
@@ -4892,6 +5449,7 @@ So that an application can obtain tokens from this instance's configuration.
 - **Given** any secret or initial access token
 - **When** it is entered
 - **Then** it is masked, write-only, never pre-filled and never returned by any read.
+- DW-1640: IRIS writes the OAuth registration access token in plain text into its own audit rows' EventData; the audit read masks the keys declared per named vendor event on the screen and the agent path (AD-35). (ledger; routed by merge_gate 2026-09-25)
 
 ### Story 12.6: The OAuth 2.0 resource server editor
 
@@ -4904,6 +5462,8 @@ So that token audiences and service mappings are configurable here.
 - **Given** the editor
 - **When** it opens
 - **Then** it round-trips create, edit and delete covering the definition, its service mappings and its audiences.
+
+- DW-1644: Switch 12.5's sectioned client-configuration editor to `app-form-tabs`, and build 12.6-12.8 on it directly, now that Epic 9's `form-tabs.ts` is on feature (ledger; routed by merge_gate 2026-09-25)
 
 ### Story 12.7: The OAuth 2.0 authorization server editor
 
@@ -4955,17 +5515,18 @@ So that the area the task statement names reads as rebuilt.
 
 - **Given** the counter-metric that counts every link-out on a Release 1 screen against the entry
 - **When** this story completes
-- **Then** the one place in the six areas where a **list** carried an outbound link is closed, and the count returns to zero.
+- **Then** the one place in the six areas where a table's name cell carried an outbound link is closed [AMENDED 2026-09-25, Story 12.9 review, Rule 5 tier-1: was "where a **list** carried"], and the OAuth exemption's count returns to zero; the two reduced editors' exemptions (`ServiceForm`, `LdapConfigForm`) stay counted until Stories 16.13 and 16.14 remove them. [AMENDED 2026-09-25, Epic 12 runner at Story 12.9's plan, Rule 5 tier-1: was "and the count returns to zero", written before orchestrator ruling 2dca0322 (Story 9.9) added the two reduced editors' exemptions to AD-44]
 
 - **Given** the accepted Release 1 risk that OAuth is lists, views and deletes at the deadline
 - **When** this epic completes
 - **Then** that risk is closed rather than carried, and the closure is recorded.
+- DW-1643: AD-44 and the epic context counted the OAuth tabs declaring the classic-link exemption; Stories 12.4-12.8 each removed their tab's declaration as its editor shipped, so none remains. This story removes the OAuth exemption's leftover prose and makes AD-44's count read two exemptions (the reduced service and LDAP editors) throughout. (ledger; routed by cr 2026-09-25) [AMENDED 2026-09-25, Epic 12 runner at Story 12.9's plan: was "removes the remaining three"]
 
 ---
 
 ## Epic 13: Bonus deliverables and engineering hygiene
 
-The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, the package on the community registry, and whichever bonus items the technology-bonuses post makes worth writing. Polish week, ranked after the OAuth editors, and re-planned against the 2026-09-14 kick-off.
+The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline.
 
 ### Story 13.1: The uninstall hook
 
@@ -5007,13 +5568,23 @@ So that a polish-week change cannot silently break a Release 1 write.
 - **When** it is extended
 - **Then** it keeps at least one test per OcuPilot API endpoint, the confirmation-binding tests, the state-protection test and the audit-marker round trip, and grows from there.
 
-- **Given** any polish-week change
-- **When** it lands
-- **Then** the suite proves no Release 1 screen and no Release 1 agent write regressed - which is the mechanical form of the rule that nothing in the polish week may break either.
+- **Given** the Release 1 screen set (every descriptor `Screen/Registry` declares built) and the Release 1 agent write set (every tool `Screen/Tool/Registry` classifies `write`)
+- **When** CI runs on any push
+- **Then** every member of both sets carries at least one pinning test the suite executes, held equal in both directions by a derived-versus-declared check, so a member gained with no test - or a test deleted from a member - fails CI naming the member. This is the mechanical form of the rule that nothing in the polish week may break a Release 1 screen or a Release 1 agent write. [AMENDED 2026-09-19 - see the story change log in spec-13-2: the previous wording, "the suite proves no Release 1 screen and no Release 1 agent write regressed", is a negative over an open set with an unbounded subject and has no pinning test short of deleting the suite.]
 
 - **Given** the published admin API spec (`intersystems-community/sysadmin-api-specification`, `mainspec_v2.json`)
 - **When** CI runs
-- **Then** the file is vendored with its commit SHA and a test diffs its v2 path and method set against the instance's generated spec (`GET /api/mgmnt/v1/%25SYS/spec/api/admin`), so 2027.1 drift fails with a named source rather than a user.
+- **Then** the **derived v2 path-and-method table** is vendored, carrying the upstream commit SHA it was derived from, alongside the checked-in derivation that regenerates it from the upstream document, and a test diffs that table against the instance's generated spec (`GET /api/mgmnt/v1/%25SYS/spec/api/admin`), so 2027.1 drift fails with a named source rather than a user. The table is cited in `ATTRIBUTIONS.md` with the repository, the commit SHA and the retrieval date, and says the document itself is deliberately not vendored. [AMENDED 2026-09-19 by the orchestrator's decision - see the story change log in spec-13-2: the previous wording vendored `mainspec_v2.json` itself, and that repository declares no license (`license: null`, no LICENSE file), so copying the document into this public repository would be a redistribution nobody has a grant for. A table of paths and methods is a set of facts about an API rather than the document describing it, which moots the question instead of requiring a ruling on it; the commit SHA is kept because it is what makes a drift attributable.]
+
+- DW-439: the CI throwaway's fixed host port can already be bound when the instance job starts, killing it before a test runs - probe for a free pair or retry the bind (ledger; routed by merge_gate 2026-09-18)
+- DW-1015: browser specs that exec into a container refuse only the live `ocupilot`, never an owner-managed `ocupilot-slot-*` (ledger; routed by merge_gate 2026-09-18)
+- DW-1079: a Wallet test deletes shared demo data, which makes later suites on that instance read a false red (ledger; routed by merge_gate 2026-09-18)
+- DW-1119: `smoke.sh`'s failure line does not name the check that failed, so a failure is not quotable in a report (ledger; routed by merge_gate 2026-09-18)
+- DW-1146: the audit spec's thousand-row seed read 919 after a full sweep on the same instance, and CI runs that order (ledger; routed by merge_gate 2026-09-18)
+- DW-1156: a browser spec that holds an element handle across a re-render fails `Node is detached from document`; the press must re-resolve its control (ledger; routed by merge_gate 2026-09-19, then **re-owned to Epic 5** by merge_gate 2026-09-19 - Epic 5 owns `ui/browser/**` and repairs it under orchestrator directive; not this story's work)
+- DW-1175: the browser suite loses a different single test per CI run - a press fired into a settling router right after a Save is absorbed (ledger; routed by merge_gate 2026-09-19, then **re-owned to Epic 5** by merge_gate 2026-09-19 - repaired there under orchestrator directive; not this story's work)
+
+- DW-1087: `client-lint.mjs`'s `no-off-origin-url` rule is defeated by string concatenation, so the reviewed-diff guarantee on absolute URLs is void (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 13.3: Publish the package to the community registry
 
@@ -5021,42 +5592,43 @@ As an operator who installs through IPM,
 I want OcuPilot on the registry,
 So that installing it is one command against a source I already trust.
 
+**HELD by the owner.** Everything up to the publish is planned and implemented; the publish itself is
+performed by the owner, by hand. The acceptance criteria below are deliberately written so that every
+one of them is satisfiable **without** contacting the registry - the earlier wording ("when it is
+published to the community registry, then it installs from there") could only be closed by publishing,
+which is a public, irreversible act that ships whatever the build is at that moment
+[AMENDED 2026-09-19 by merge_gate on the owner's instruction].
+
 **Acceptance Criteria:**
 
 - **Given** the IPM module
-- **When** it is published to the community registry
-- **Then** it installs from there on an instance that has IPM, with the built bundle inside the archive.
+- **When** the archive is produced by the publish path running in its local (`package`) form, which contacts no
+  registry [AMENDED 2026-09-20 - see the story change log in spec-13-3: IPM 0.10.5's `publish` declares only
+  `repo` and `use-external-name` and has no dry-run modifier, so the criterion named a flag that does not exist.
+  `package` runs the same lifecycle through the `Package` phase that `%IPM.Lifecycle.Base:%Publish` itself calls
+  before resolving an upload server, so it is the publish path minus the upload - the local form the owner's hold
+  already permits. Observed: `package ocupilot -path ...` reached `Package SUCCESS` and wrote a 1,083,507-byte
+  archive of 172 members]
+- **Then** the archive carries the built bundle, and installing it from the local file on a fresh
+  instance that has IPM yields a working OcuPilot - the same assertion the registry would have proven,
+  taken one step earlier.
 
 - **Given** the manifest
-- **When** it is published
+- **When** the archive is produced
 - **Then** it was generated from the same roster the installer compiles, so it cannot have drifted.
 
-### Story 13.4: Optional bonus items, re-planned after the kick-off
-
-As the builder,
-I want to spend bonus effort only where the contest actually awards it,
-So that writing is not guesswork against a precedent that may not hold.
-
-**Acceptance Criteria:**
-
-- **Given** the technology-bonuses post, expected around the 2026-09-14 kick-off
-- **When** it is published
-- **Then** the bonus plan is re-made against it, because the Full Stack 2026 precedent carried **no Angular, AI or REST bonus** and the current plan rests on that precedent alone.
-
-- **Given** a Developer Community article, a YouTube video or a short is worth writing
-- **When** it is produced
-- **Then** it happens in the **voting week, after the final submission** - the owner's decision that no video exists before submission bounds this too, and the 2026-09-09 stealth decision (Epic 17) independently forbids publishing any of them before the release - and each published item is linked from the README
-- **And** this placement rests on voting-week publication still earning the bonus, which is **unconfirmed** and is one of the two questions Story 17.4 takes to the kick-off. If bonuses turn out to be scoped to the 2026-09-27 deadline, every item here moves into the 2026-09-24 to 2026-09-27 window, which already carries the collateral pass, the single clean-build rehearsal and the approval buffer - and the honest response is then to cut bonus items rather than to crowd that window.
-
-- **Given** no bonus item is worth the time it would take
-- **When** the decision is made
-- **Then** none is produced, and the effort goes to screens and writes instead - the counter-metric that polish must not precede the floor applying here as everywhere.
+- **Given** this story is held
+- **When** it is implemented, reviewed and reported
+- **Then** nothing in it contacts the public registry, no registry credential or token is read,
+  configured, requested or used, the publish command is exercised only in its dry-run or local form,
+  and the story is **not** reported done by having published. A gate that can only be closed by
+  publishing is an unmet gate, to be escalated rather than closed - the release is the owner's alone.
 
 ---
 
 ## Epic 14: Governance, restraint and transcripts
 
-An OcuPilot administrator can disable any write tool by tool and action, a user can take a script instead of an execution, log and tool content is defanged before it reaches the model, and every conversation persists per user under a retention policy. It also carries the per-user read-only toggle and turn limits, the typed-name confirmation for destructive tools and the seeded-injection test (Stories 14.5 to 14.8, from Epic 10 by owner re-sequence 2026-09-16), ranked after the OAuth 2.0 editors. Polish week, in "the rest as time allows".
+An OcuPilot administrator can disable any write tool by tool and action, a user can take a script instead of an execution, log and tool content is defanged before it reaches the model, and every conversation persists per user under a retention policy. It also carries the per-user read-only toggle, turn limits and the seeded-injection test (Stories 14.5, 14.6 and 14.8, from Epic 10 by owner re-sequence 2026-09-16). Voting week, in the owner's order of 2026-09-25.
 
 ### Story 14.1: The copy-out draft
 
@@ -5119,6 +5691,8 @@ So that I can adopt the parts of it my organization is ready for.
 - **Given** a **prohibited** action
 - **When** any policy is written
 - **Then** it can never be enabled - governance disables permitted tools and has no power over the prohibited set.
+
+- Routed from Story 12.3 (its epic AC3 and AC5; orchestrator ruling 2026-09-24, by=merge_gate): the policy advertises `security.auditing.purge` (flips its `ADVERTISED = 0`, AD-53), its key is among the destructive keys that default to disabled after the Release 1 freeze, and an agent-proposed purge carries the full model - proposal, instance-computed diff, explicit confirmation, the agent marker - with the card stating that it destroys the record the marker lives in. [AMENDED 2026-09-24, Story 12.3 spec gate, Rule 5]
 
 ### Story 14.3: Tool and log content is defanged before it reaches the model
 
@@ -5214,27 +5788,6 @@ So that the agent's cost is bounded per person rather than only per turn.
 - **When** they land
 - **Then** they are added to the canonical Fixed strings table, not invented at the component.
 
-### Story 14.7: The typed-name confirmation for destructive tools
-
-As a developer-administrator,
-I want a destructive agent proposal to make me type the target's name,
-So that the agent's most consequential writes carry the same friction the screens do.
-
-**Acceptance Criteria:**
-
-- **Given** a write tool declared destructive
-- **When** its proposal card renders
-- **Then** it carries a typed-name field and a 3px `destructive` bar beneath the header rule, and its Confirm is `button-destructive` labeled with the verb and target.
-
-- **Given** the typed name
-- **When** it is entered
-- **Then** an **exact, case-sensitive** match is required before Confirm leaves `aria-disabled`; paste is allowed; a mismatch on blur reports "Does not match" with `aria-invalid` and the message in `aria-describedby` - **reported, never silent**, because a disabled Confirm with no reason gives a screen-reader user nothing
-- **And** Enter submits only once the name matches.
-
-- **Given** the same field in a delete dialog
-- **When** both are compared
-- **Then** they look and behave identically, so the screen path and the agent path teach the same gesture.
-
 ### Story 14.8: The seeded-injection test
 
 As a security-minded operator,
@@ -5260,7 +5813,7 @@ So that "the model is assumed compromised" is a tested claim rather than a postu
 
 ## Epic 15: Shell conveniences and the theme
 
-A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, and a dark theme the community has been asking for. Polish week.
+A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, a dark theme the community has been asking for, the rail's icons, columns wide enough to read, sign-out where people look for it, and a header logo that looks finished. Polish week.
 
 ### Story 15.1: Change your own password
 
@@ -5277,6 +5830,12 @@ So that a routine task does not send me to the classic portal.
 - **Given** the instance's password policy
 - **When** a new password is rejected
 - **Then** the instance's own reason is shown rather than a generic failure.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-115: The account menu ships role=menu/role=menuitem without the arrow, Home/End or roving tabindex model those roles imply; Change password is the second menuitem its `reopen_if` named (ledger; routed by load 2026-09-20)
 
 ### Story 15.2: Favorites, recent items and menu search
 
@@ -5362,15 +5921,21 @@ So that my sort, my filter and my panel width are not re-set every morning.
 
 ### Story 15.6: The light and dark theme
 
+**Sequenced after Epic 5 merges** [AMENDED 2026-09-19 by merge_gate on the owner's instruction]. The
+toggle is a flag flip, but it lands in `ui/src/styles/**` and its contrast guards run in both modes,
+and Epic 5 is styling the proposal card in those same token files while Epic 15 runs. Epic 15 therefore
+ships Stories 15.1 to 15.5 and leaves this one in `backlog`; the orchestrator dispatches it once Epic 5
+has merged. It is not dropped, and an Epic 15 run that reports done without it is correct.
+
 As a developer-administrator who works at night,
 I want a dark theme,
 So that the portal is usable in the conditions I actually use it in.
 
 **Acceptance Criteria:**
 
-- **Given** both token sets already exist and are contrast-checked in both modes
+- **Given** every color role has a dark value - the 30 `--mat-sys-*` roles and the 34 `--ocu-*` roles, which DW-39 measured as theme-static (the dark scope re-points 30 `--mat-sys-*` variables and redefines 0 `--ocu-*` roles) - defined in the token files and contrast-checked in both modes
 - **When** the toggle is wired
-- **Then** it is a **flag flip**, not a re-theming exercise.
+- **Then** it is a **flag flip**, not a per-component re-theming exercise. [AMENDED 2026-09-23, orchestrator-authorised at the pre-dispatch AC audit, Rule 5 tier-1: was "**Given** both token sets already exist and are contrast-checked in both modes". DW-39 and DW-118, both routed here, measured that premise false for the `--ocu-*` layer; the intent - a toggle that is a flag flip over complete token sets - is unchanged, and defining the missing dark values is now stated as this story's work rather than assumed done.]
 
 - **Given** the toggle
 - **When** it is placed
@@ -5386,9 +5951,148 @@ So that the portal is usable in the conditions I actually use it in.
 
 ---
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-39: The dark class flip does not reach the 34 OcuPilot-only color roles, only the 30 with a --mat-sys-* counterpart (ledger; routed by merge_gate 2026-09-23)
+- DW-1337: Nothing in the verification strategy looks at a rendered screen as a whole, so a visual defect only fails if some story happened to pin the exact figure it broke (ledger; routed by merge_gate 2026-09-23)
+- DW-1388: Resizing a tab from 1440px to 720px leaves the document scrolling horizontally by about 22px, and the overflowing element is the agent panel rather than Home (ledger; routed by merge_gate 2026-09-23)
+
+### Story 15.7: The rail's icons
+
+**Dispatched with Story 15.6** in the window after the first of Epics 7 and 8 merges (owner triage, 2026-09-23).
+
+As a developer-administrator,
+I want each area on the rail to carry its own icon,
+So that the shell reads as a finished product rather than a wireframe of letters.
+
+**Acceptance Criteria:**
+
+- **Given** the rail's eight items
+- **When** they render
+- **Then** each shows the icon drawn for its area in the rail of `ux-designs/ux-OcuPilot-2026-09-08/mockups/key-home.html` - Home, Logs, OS management, Tasks, Permissions, Web applications and REST API explorer, Security and secrets, Agent co-pilot - as inline SVG on its 20 by 20 view box with a 1.5 stroke in `currentColor`, and no letter remains.
+
+- **Given** Home's area tiles
+- **When** they render
+- **Then** each carries the 24px version of the same icon from the same mockup.
+
+- **Given** the rail's states - rest, hover, active, gated and the attention dot
+- **When** each applies
+- **Then** the icon takes that state's color through `currentColor`, in both themes, at the contrast DESIGN.md's `rail-item` rows already record.
+
+- **Given** the icons are decorative
+- **When** a screen reader reaches a rail item or a tile
+- **Then** it hears the area name and nothing from the icon, and nothing loads from outside the bundle.
+
+- **Given** DESIGN.md's rail paragraph names an interim Material Symbols set
+- **When** this story completes
+- **Then** it names the mockup's icons instead; the other interim-glyph slots - empty states, inline notices, sign-in - are outside this story.
+
+---
+
+### Story 15.8: Columns you can read
+
+**Dispatched after Epic 7 merges** and ranked after Epic 12, before Epic 11 (owner triage, 2026-09-23). It changes the data table every list uses, which Epic 7 is editing.
+
+As a developer-administrator scanning a list,
+I want columns wide enough to read, and the whole value when one is cut,
+So that a long path or class name never hides behind an ellipsis.
+
+**Acceptance Criteria:**
+
+- **Given** a list
+- **When** it first renders
+- **Then** each column's default width follows what it holds - identifier and code columns wide, status and number columns narrow - and no header label is ever cut: the label sets the column's minimum.
+
+- **Given** the columns are wider than the content area
+- **When** the table renders
+- **Then** it scrolls horizontally inside its own frame with the sticky header aligned to the body, under the two-dimensional exception UX-DR19 grants data tables, and the page never scrolls sideways.
+
+- **Given** a column edge in the header
+- **When** the user drags it
+- **Then** the column resizes, never below its label
+- **And** the same is possible from the keyboard on the grid's active column, with the binding listed in the shortcuts menu and the new width announced.
+
+- **Given** a width the user set
+- **When** they return to the screen, or sign out and back in
+- **Then** it is restored, stored per screen beside sort, filter and max rows in the instance-side UI state of Story 15.5.
+
+- **Given** a cell whose value is cut
+- **When** the pointer rests on it, or the grid's active cell moves onto it
+- **Then** a tooltip shows the whole value; a cell that is not cut shows none; and the value is never carried by a bare `title` attribute (DW-146).
+
+- **Given** the virtualized list's fixed row height
+- **When** columns resize or the table scrolls
+- **Then** row and header heights do not change, and the browser specs that pin them stay green.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1586: Structural gate baseline: a data-table name link can render narrower than the 24px control floor (devices 7.2px, users 21.6px, at both widths) (ledger; routed by adjudication 2026-09-24)
+
+---
+
+### Story 15.9: Sign-out where people look, and no filter where there is nothing to filter
+
+**Owner triage, 2026-09-24.** Runs after Story 15.8 in the same runner, once Epic 7 has merged.
+
+As a judge trying OcuPilot for the first time,
+I want to find sign-out where web applications put it, and to see no control that does nothing,
+So that the shell reads as finished.
+
+**Acceptance Criteria:**
+
+- **Given** any signed-in screen
+- **When** it renders
+- **Then** the header's right end, beside the namespace switch, carries a button naming the signed-in user that opens the account menu - About, Change password, Dark theme and Sign out, with the same actions they have today
+- **And** the status bar keeps the user name as information only, so the menu has one trigger.
+
+- **Given** the command search
+- **When** the user types "sign out"
+- **Then** a Sign out command appears and signs out exactly as the menu does, resolving EXPERIENCE.md's assumption.
+
+- **Given** a screen that declares no read - Home, the form pages and the application-error drill-down
+- **When** it renders
+- **Then** the command bar shows no filter field and no match count, and a command bar left with nothing to show does not render at all; list screens keep their filter unchanged.
+
+- **Given** EXPERIENCE.md's status-bar and Sign out rows
+- **When** this story completes
+- **Then** they state the header placement at origin, and browser specs pin that the header button opens the menu and signs out, that Home shows no filter field, and that a list still filters.
+
+- DW-1597: An editor's own Save raises a change toast that DESIGN.md's toast recipe forbids; suppress it for the open screen's own Save, keep it for agent writes and writes made elsewhere (ledger; routed by merge_gate 2026-09-25)
+- DW-1649: The shared browser helper `clickRowCentre` never checks where its click lands, so a re-render between measuring and clicking misclicks and the caller times out on the row trigger instead of the helper naming the miss (ledger; routed by cr 2026-09-25)
+- DW-1648: Pin the row-action column to the table frame's right edge so the row menu is always visible without horizontal scroll; column widths stay as Story 15.8 set them, and the "Trigger reach" spec's two "starts past the frame" assertions change with it (ledger; routed by merge_gate 2026-09-25)
+
+### Story 15.10: The header logo on a white tile
+
+**Owner triage, 2026-09-25, high priority.** Runs alone on slot B and merges before the submission cut.
+
+As a judge opening OcuPilot for the first time,
+I want the logo in the header to look clean,
+So that the first thing I see looks finished.
+
+**Acceptance Criteria:**
+
+- **Given** the header
+- **When** it renders
+- **Then** the lockup is the navy-wordmark file `OcuPilot-Lockup-horizontal.png`, the one the sign-in card uses, on a white tile with rounded corners and even padding, sized to sit inside the header band
+- **And** the reversed file, whose transparent cut-out fringes against the chrome, is no longer drawn in the header.
+
+- **Given** the light and the dark theme
+- **When** the header renders in each
+- **Then** the tile looks the same in both, because the chrome does not change with the theme.
+
+- **Given** keyboard focus on the logo link
+- **When** it is focused
+- **Then** the focus ring surrounds the tile, and the link still goes Home under the same accessible name.
+
+- **Given** DESIGN.md's header lockup section and EXPERIENCE.md's logo-lockup row, both of which name the reversed file with no plate
+- **When** this story completes
+- **Then** both state the tile at origin, `header.ts`'s doc comment says the same, and a browser spec pins that the header draws the navy lockup on a white tile.
+
+---
+
 ## Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Polish week, last, as time allows.
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20).
 
 **Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
 
@@ -5430,7 +6134,7 @@ So that I can clear a stuck or unwanted session from here.
 
 - **Given** the user's **own** session
 - **When** an end is attempted
-- **Then** it is refused with an explanation, in the UI and on the instance - the same self-protection shape as the user's own process.
+- **Then** it is refused with an explanation, in the UI and on the instance - the same self-protection shape as a process OcuPilot is itself running in.
 
 ### Story 16.3: Effective privileges and the permission-check tool
 
@@ -5447,6 +6151,8 @@ So that "can they do this?" has a direct answer rather than a manual trace throu
 - **Given** the permission-check tool
 - **When** the agent or the user asks whether a user or role holds a resource permission
 - **Then** it answers **yes or no and names the granting role**, short-circuiting on `%All`.
+
+- DW-1018: the area privilege union gates a whole rail item, falsely denying screens the user can read; decided at the Epic 6 merge gate: a rail item is allowed when ANY of its screens is, and each screen keeps its own gate (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 16.4: Task export and import
 
@@ -5487,6 +6193,9 @@ So that a stuck background job is visible and stoppable.
 - **Given** the admin API's `/async-results` tracks only **its own** asynchronous tasks and not the classic portal's background jobs
 - **When** this screen is built
 - **Then** it needs **both** halves - the admin API route for the tasks it owns, and a custom endpoint for the rest - and shipping only the first is partial parity, stated rather than discovered.
+
+- DW-1080: Database details' background-tasks section has no admin-API surface; take the port decision here, where FR-76 owns background tasks (ledger; routed by merge_gate 2026-09-18)
+- DW-1101: async task rows survive for a `_SYSTEM` caller with no error logged, so `AdminPort.ForgetTask` does not always run (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 16.6: Broadcast a message to processes
 
@@ -5540,6 +6249,9 @@ So that "all the logs" is literally true.
 - **When** it renders a row
 - **Then** the row carries an explain entry point sending that entry alone.
 
+- DW-1102: the log viewer's next and previous match controls have no accessible name; approved copy is "Next match" and "Previous match" (ledger; routed by merge_gate 2026-09-18)
+- DW-1110: `LogViewerStore` is absent from sign-out teardown, so one principal's log lines survive a sign-out in the same tab (ledger; routed by merge_gate 2026-09-18)
+
 ### Story 16.9: The unified log hub
 
 As a developer-administrator investigating an incident,
@@ -5585,6 +6297,240 @@ So that the last unmapped polish-week area is covered.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
+
+### Story 16.11: Start, suspend and resume the Task Manager
+
+As a production administrator,
+I want to stop and start the instance's scheduler,
+So that I can hold maintenance during a change window.
+*Moved here from Story 7.7 by the 2026-09-17 parallel-run amendment; above the 2026-09-27 floor.*
+
+**Acceptance Criteria:**
+
+- **Given** the Task schedule command bar
+- **When** the user suspends the Task Manager
+- **Then** a warning dialog states that **no scheduled task will run until it is resumed**, before proceeding.
+
+- **Given** the Task Manager is suspended
+- **When** the screen renders
+- **Then** the warning banner sits above the table with a Resume action, privilege-gated, and the rows still list.
+
+- **Given** `Task.Manager` publishes no body template
+- **When** the tool is built
+- **Then** it is recorded as action-style with a trivial body needing no template, rather than being given a hand-typed field list.
+
+### Story 16.12: Remove locks - one, all of a process, all of a remote client
+
+As a production administrator,
+I want to clear a stuck lock,
+So that a blocked operation can proceed.
+*Moved here from Story 7.9 by the 2026-09-17 parallel-run amendment; above the 2026-09-27 floor.*
+
+**Acceptance Criteria:**
+
+- **Given** a lock row
+- **When** the user removes it
+- **Then** the three scopes are offered - this lock, all locks of the owning process, all locks from a remote client - each naming what it will remove.
+
+- **Given** the owning process is in a transaction
+- **When** removal is requested
+- **Then** the dialog **warns** before proceeding, because removing such a lock has consequences beyond the lock itself.
+
+- **Given** `Lock` publishes no body template
+- **When** the tool is built
+- **Then** it is recorded as action-style needing no template.
+
+- DW-1074: a remote-owner lock row links to Process details, which then reports that the process does not exist; suppress the link instead (ledger; routed by merge_gate 2026-09-18)
+
+### Story 16.13: The service editor
+
+As a developer-administrator,
+I want to configure a service's state, addresses, roles and authentication,
+So that service administration is complete here.
+*Moved here from Story 9.4 by the 2026-09-17 parallel-run amendment; above the 2026-09-27 floor.*
+
+**Acceptance Criteria:**
+
+- **Given** the editor
+- **When** it opens
+- **Then** it covers enabled state, allowed IP addresses with add and delete, roles, and authentication methods.
+
+- **Given** the user disables the web service OcuPilot itself depends on
+- **When** they attempt it from the screen
+- **Then** the control is drawn disabled with the published sentence, because AD-10 refuses disabling the service that serves OcuPilot (`%Service_WebGateway`) whoever the caller is [AMENDED 2026-09-24 - see the story change log: Story 9.9 spec gate, orchestrator ruling 2dca0322; was a warning dialog before proceeding, which AD-10 and AD-55 refuse].
+
+- **Given** the same disable is proposed **by the agent**
+- **When** it reaches the write path
+- **Then** it is **refused on the instance and was never advertised as a tool** - the warning is the screen's affordance for a human decision; the prohibition is absolute for the agent, and covers the web application, the web service behind it and the superserver.
+
+- DW-1016: a proposal diff row has no empty-cell word, so restricting a list reads as `(none) -> 10.0.0.1` (ledger; routed by merge_gate 2026-09-18)
+
+### Story 16.14: The LDAP and Kerberos editor
+
+As a developer-administrator,
+I want to configure directory authentication,
+So that the instance can be joined to an existing identity system from here.
+*Moved here from Story 9.6 by the 2026-09-17 parallel-run amendment; above the 2026-09-27 floor.*
+
+**Acceptance Criteria:**
+
+- **Given** the editor
+- **When** it opens
+- **Then** it covers the fields of the classic LDAP page, whose exported source in `irislib/` is the field list.
+
+- **Given** the `Security.LDAP` endpoint's **test connection** request type is asynchronous while its list, get and put are not
+- **When** this editor is built
+- **Then** list, get and put stay synchronous, and the test action below goes through the async path.
+
+- **Given** an LDAP configuration
+- **When** the user runs test authentication
+- **Then** the instance's own result text is reported.
+
+- **Given** `Security.LDAP`'s test-connection request type is **asynchronous** while its list, get and put are not
+- **When** the test runs
+- **Then** it goes through `AdminPort`'s async path, which the port exposes as an ordinary call resolving later - the slice writes no polling logic.
+
+### Story 16.15: The data-egress line
+
+As a security-minded operator,
+I want each turn to tell me whether my screen data left the instance,
+So that egress is visible per turn rather than only in a chip I might not read.
+*Moved here from Story 11.5 by the 2026-09-17 parallel-run amendment; above the 2026-09-27 floor.*
+
+**Acceptance Criteria:**
+
+- **Given** a turn with context sharing on
+- **When** it runs
+- **Then** the panel shows a data-egress line naming the provider in use and stating whether screen data leaves the instance.
+
+- **Given** the statement
+- **When** it is computed
+- **Then** it derives from the **same configuration the request actually uses**, so the line and the destination cannot disagree.
+
+- **Given** a local provider on a private network
+- **When** the line renders
+- **Then** it says the data did not leave the instance, matching the context chip's absence of the egress pill.
+
+### Story 16.16: The agent audit viewer
+
+As an OcuPilot administrator,
+I want to see what the agent has been doing across the instance,
+So that the ledger is readable without SQL.
+*Moved here from Story 11.6 by the 2026-09-17 parallel-run amendment; above the 2026-09-27 floor.*
+
+**Acceptance Criteria:**
+
+- **Given** the agent audit viewer
+- **When** it opens
+- **Then** it lists ledger rows with filters by user, screen and date, and opens the arguments and result of any row.
+
+- **Given** an ordinary user
+- **When** they open it
+- **Then** they see **their own** rows.
+
+- **Given** an OcuPilot administrator
+- **When** they open another user's rows
+- **Then** they see them, and their access is gated by the **resources recorded on each row** - the gate living with the ledger rather than with the screen.
+
+- **Given** any row
+- **When** it renders
+- **Then** secrets are absent, because they were excluded at write time by schema rather than redacted afterwards.
+
+### Story 16.17: The read-back line
+
+As a developer-administrator who just confirmed a change,
+I want the screen to say the instance now holds what was written,
+So that I can trust the change without re-opening the record.
+
+**Owner survey, 2026-09-25.** Meridian, Ops Studio and OpsDeck sell "verified" writes; OcuPilot already re-reads the target when the screen refreshes, and this story shows the comparison.
+
+**Acceptance Criteria:**
+
+- **Given** a confirmed write, from the agent's proposal or from a screen's own form or action
+- **When** the affected screen refreshes and marks the changed row
+- **Then** the row carries "Read back: matches" when every field the write sent reads back with the value sent, compared on the instance rather than in the browser.
+
+- **Given** a field that reads back with a different value, or a target that no longer reads at all
+- **When** the comparison runs
+- **Then** the row says "Read back: differs" and names the fields, or "Read back: not found", and the proposal card's closing line says the same, **never** a silent success.
+
+- **Given** a field the instance normalizes on save, such as a path's trailing slash or a list's order
+- **When** it is compared
+- **Then** the descriptor's field list declares how that field is compared, so a normalized value is not reported as a difference, and a secret field is reported as written without its value being read back.
+
+### Story 16.18: Home's performance row
+
+As a developer-administrator opening OcuPilot,
+I want the instance's pulse on the first screen,
+So that I can tell at a glance whether it is busy or struggling.
+
+**Owner survey, 2026-09-25.** IRIS-Operations-Center and LuminIRIS lead with live metrics; Home shows system information and no motion.
+
+**Acceptance Criteria:**
+
+- **Given** Home
+- **When** it renders
+- **Then** it shows a performance row - cache efficiency, global references per second, global updates per second and disk reads and writes per second - read from the instance's own dashboard metrics, each with its unit.
+
+- **Given** the auto-refresh framework
+- **When** Home stays open
+- **Then** the row refreshes on the framework's interval, and global references per second draws a small line of the last ten minutes that grows while the screen is open, starting empty rather than inventing history.
+
+- **Given** a caller who may not read the metrics
+- **When** Home renders
+- **Then** the row is absent rather than showing zeros, and the agent's Home context carries the same values when it is present.
+
+### Story 16.19: Impact lines on removals
+
+As a developer-administrator about to remove something,
+I want to be told what else depends on it,
+So that I do not break access I did not know about.
+
+**Owner survey, 2026-09-25.** FlightDeck's dry run and Meridian's home page both lead with impact; Story 11.8's privilege line is the sibling this extends.
+
+**Acceptance Criteria:**
+
+- **Given** a proposal or a screen dialog that deletes a role
+- **When** it renders
+- **Then** it carries an impact line naming how many users hold the role and how many web applications grant it, with the first few names.
+
+- **Given** removing a role from a user
+- **When** it renders
+- **Then** the impact line names the resources and permissions the user loses, net of what their other roles still grant.
+
+- **Given** deleting a resource
+- **When** it renders
+- **Then** the impact line names the roles that grant it and the web applications and databases it guards.
+
+- **Given** an impact that cannot be computed because the caller may not read a source
+- **When** the line renders
+- **Then** it says which part could not be checked rather than reporting no impact, and the counts are read fresh when the proposal is minted or the dialog opens.
+
+### Story 16.20: Older messages.log files
+
+As a developer-administrator finding out what happened before messages.log rolled over,
+I want to open the older messages files from the portal,
+So that I do not need a shell on the server to read them.
+
+**Community Idea DPI-I-966, owner decision 2026-09-25.** "Option to show older message.log in IRIS SMP" has Community Opportunity status; the classic portal shows only the current file.
+
+**Acceptance Criteria:**
+
+- **Given** the messages.log viewer
+- **When** it opens
+- **Then** it offers a file choice listing `messages.log` and every rotated messages file in the instance's manager directory, such as `messages.old_20260412_1`, newest first, each with its size and last-modified time.
+
+- **Given** an older file is chosen
+- **When** it loads
+- **Then** it pages, searches and filters exactly as `messages.log` does, its address names the file so it can be shared, and the agent's screen context and "explain this entry" work on its lines.
+
+- **Given** the file choice reaches the server
+- **When** it is resolved
+- **Then** only a name matching the rotated messages-file pattern inside the manager directory is accepted - never a caller-supplied path - and reading it requires exactly the privilege `messages.log` requires.
+
+- **Given** the README and the Open Exchange listing
+- **When** this story completes
+- **Then** both name DPI-I-966 among the Community Ideas OcuPilot implements.
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
@@ -5765,11 +6711,17 @@ So that the entry's central claim is legible to me even though I will not run it
 
 - **Given** each provider OcuPilot ships
 - **When** the README describes getting started
-- **Then** it carries a "get a key in two minutes" section for that provider.
+- **Then** it carries a "get a key in two minutes" section for that provider
+- **And** the Anthropic section says to create a key scoped to one workspace, because a key for all workspaces is refused without an `anthropic-workspace-id` header, which OcuPilot does not send
+- **And** the local-model section says that a slow model's first answer can outlast the Web Gateway's response timeout during Test connection, so an operator may need to raise the gateway's `Server_Response_Timeout`; agent turns do not depend on it (AD-7), and OcuPilot never changes the setting itself.
 
 - **Given** no hosted demo instance ships, at any point
 - **When** the judge-without-a-key path is assessed
 - **Then** the screenshots and the per-provider key guidance are the whole mitigation, and that is a recorded owner decision rather than an omission.
+
+- **Given** the contest field on 2026-09-20 (three of five competing entries ship a static, no-credentials walkthrough)
+- **When** the walkthrough is assembled
+- **Then** it also ships as a **static page** in the repository (`docs/walkthrough/`, publishable on GitHub Pages) that a judge opens with no instance, no key and no sign-in: the UJ-2 and UJ-3 screenshots in order with captions, labeled plainly as captured from a real build and not live. It is collateral, produced in the same one pass as the screenshots, and it is not an "online demo".
 
 - **Given** the walkthrough's screenshots
 - **When** they are captured
@@ -5802,6 +6754,10 @@ So that the one pass in which collateral is made is made against a build that wi
 - **When** it is made
 - **Then** the application is in, the description is final, and a video is linked **if one was recorded in this pass** - the video remaining optional by owner decision, and being the only point at which one is recorded at all
 - **And** 2026-09-27 23:59 US Eastern is the hard bound this pass must complete inside.
+
+- **Given** the write path needs a model that makes reliable multi-field tool calls, and each shipped provider (Story 10.2)
+- **When** the UJ-3 and UJ-6 demo prompts are run against each of them
+- **Then** they pass **before the demo freeze**, and the README's primary path names a capable model.
 
 ---
 

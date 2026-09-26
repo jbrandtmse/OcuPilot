@@ -227,7 +227,9 @@ Method TestAPlainHttpEndpointNeedsTheRowsPermissionAtCallTime()
 Method TestAnHttpsCallCarriesTheConfiguredRequest()
 {
     Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#OKBODY)
-    Set tStored("proxyServer") = "proxy.probe.invalid"
+    ; A documentation-reserved literal (RFC 5737 TEST-NET-1): the proxy is judged like the endpoint,
+    ; and this classifies public without a name lookup.
+    Set tStored("proxyServer") = "192.0.2.10"
     Set tStored("proxyPort") = 3128
     Set tStored("proxyHttps") = 1
     Set tStored("proxyTunnel") = 1
@@ -240,9 +242,9 @@ Method TestAnHttpsCallCarriesTheConfiguredRequest()
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "sslConfiguration"), ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG, "the request carries the installer-created configuration name, never DefaultSSL")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "sslCheckServerIdentity"), 1, "with server-identity checking on")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "timeout"), 45, "the stored timeout, not a class parameter")
-    Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyServer"), "proxy.probe.invalid", "the stored proxy host")
+    Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyServer"), "192.0.2.10", "the stored proxy host")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyPort"), 3128, "its port")
-    Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyHttps"), 1, "whether the proxy leg is encrypted")
+    Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyHttps"), 1, "whether the target is requested as https inside the tunnel")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyTunnel"), 1, "and whether it is tunnelled")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "and the stored settings are removed again")
 }
@@ -408,36 +410,48 @@ Method TestAnUnresolvedCredentialDisablesTheStoredDefinition()
     Set tRow = ""
 }
 
-/// <p><b>DW-343 -- a store that could not be read leaves the definition enabled.</b> DW-22's flag
-/// answers "the reference names nothing", which is a real and permanent state an operator has to
-/// see. A store that raised says nothing about the reference, and disabling on it takes a
-/// correctly-configured definition out of service because the credential store was busy for a
-/// moment, with nothing to put it back.</p>
-/// <p>The call still fails, with the same <code>PROVIDER.CREDENTIAL</code> refusal: what changes is
-/// the row, and the reason goes to the log instead.</p>
-/// <p>The failure is produced by arming <class>OcuPilot.Test.SecretProbe</class>'s rung predicate
-/// to raise, which the shipped <method>OcuPilot.Kernel.Secret.Ladder.Credential</method> catches --
-/// a real failure of the store on the real path, not a flag a test set.</p>
-/// <p>Mutation: leave <var>pTransient</var> 0 on
-/// <method>OcuPilot.Kernel.Secret.Ladder.Credential</method>'s <code>Catch</code>, or drop the
-/// transient test from <method>OcuPilot.Port.ProviderPort.FlagUnresolvedCredential</method> -- the
-/// two flag assertions go red, reading 0.</p>
+/// <p><b>A credential store that could not be read faults <code>PROVIDER.CREDENTIALSTORE</code>
+/// and leaves the definition enabled</b> (DW-343, DW-410, DW-424). "The reference names nothing"
+/// is a real and permanent state an operator has to see; a store that could not be read says
+/// nothing about the reference, and disabling on it takes a correctly-configured definition out of
+/// service with nothing to put it back.</p>
+/// <p>Three ways the store goes unread, each through a ladder whose only difference from the
+/// shipped one is where it fails: <class>OcuPilot.Test.SecretProbe</class> raising from its
+/// predicate override (caught by <method>OcuPilot.Kernel.Secret.Ladder.Credential</method>'s own
+/// <code>Catch</code>), <class>OcuPilot.Test.SecretNotInterop</class> answering that the namespace
+/// is not interoperability-enabled, and <class>OcuPilot.Test.SecretRaisingRung</class> raising
+/// inside the predicate's own <code>Try</code>.</p>
+/// <p>Mutation: make <method>OcuPilot.Kernel.Secret.Ladder.Credential</method>'s unreachable-rung
+/// arm leave <var>pTransient</var> 0 -- the two rung legs go red, faulting
+/// <code>PROVIDER.CREDENTIAL</code> and reading the row back disabled.</p>
 Method TestACredentialStoreThatCouldNotBeReadLeavesTheDefinitionEnabled()
 {
     Set tId = ..StoredCredsDefinition("Transient")
     If tId = "" Quit
-    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the definition is enabled and verified before the turn")
-    Do ##class(OcuPilot.Test.SecretProbe).SetRungAvailable("raise")
+    For tLeg = "OcuPilot.Test.SecretProbe|raise", "OcuPilot.Test.SecretNotInterop|", "OcuPilot.Test.SecretRaisingRung|" {
+        Set tClass = $Piece(tLeg, "|", 1)
+        Do ##class(OcuPilot.Test.ProviderStub).Reset()
+        Do ##class(OcuPilot.Test.SecretProbe).Forget()
+        If $Piece(tLeg, "|", 2) = "raise" Do ##class(OcuPilot.Test.SecretProbe).SetRungAvailable("raise")
+        Do $ClassMethod(..#PORT, "SetSecretClass", tClass)
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), tClass _ ": the definition is enabled and verified before the turn")
 
-    Do ..Messages(.tMessages)
-    Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
-    Do ..AssertTurnError(tSC, tResponse, tFault, ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL, "a credential store that raised on the read")
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and no socket was opened")
+        Do ..Messages(.tMessages)
+        Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+        Do ..AssertTurnError(tSC, tResponse, tFault, ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE, tClass _ ": a credential store that could not be read")
+        Do $$$AssertEquals(tHttpStatus, 503, tClass _ ": answered 503")
+        If $IsObject(tFault) Do $$$AssertTrue(tFault.reason [ "OcuPilotProbeNoSuchCredentialEntry", tClass _ ": naming the reference: " _ tFault.reason)
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, tClass _ ": and no socket was opened")
+        Set tLogged = $Piece($ClassMethod(..#PORT, "Logged"), $Char(10), *)
+        Do $$$AssertTrue((tLogged [ "left enabled") && (tLogged [ "OcuPilotProbeNoSuchCredentialEntry"), tClass _ ": and the log line saying it was left enabled names the reference: " _ tLogged)
 
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow), "the definition reads back")
-    Do $$$AssertEquals(tRow.Enabled, 1, "still enabled: nothing was learned about the reference")
-    Do $$$AssertEquals(tRow.ConnectionVerified, 1, "and still verified, so the next turn tries again rather than waiting for an operator")
-    Set tRow = ""
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow), tClass _ ": the definition reads back")
+        If $IsObject(tRow) {
+            Do $$$AssertEquals(tRow.Enabled, 1, tClass _ ": still enabled: nothing was learned about the reference")
+            Do $$$AssertEquals(tRow.ConnectionVerified, 1, tClass _ ": and still verified, so the next turn tries again rather than waiting for an operator")
+        }
+        Set tRow = ""
+    }
     Do ##class(OcuPilot.Test.SecretProbe).Forget()
 }
 
@@ -513,10 +527,16 @@ Method StoredCredsDefinition(pSuffix As %String) As %String
 /// <p><b>The attempt ceiling a caller may lower and may not raise.</b>
 /// <method>OcuPilot.Port.ProviderPort.Dispatch</method> takes <code>pValues("maxAttempts")</code>
 /// only when it is a positive whole number <i>below</i> the instance's resolved bound. That is
-/// what Story 3.4's Test connection spends to make exactly one call: a retry ladder can add two
-/// honoured <code>Retry-After</code> waits of up to thirty seconds each, which makes the
-/// interaction unbounded from the operator's side, and a 429 has already answered the question
-/// they asked.</p>
+/// what Story 3.4's Test connection spends to make exactly one call: a retry ladder still adds an
+/// honoured <code>Retry-After</code> wait to an operator who is holding focus on a button, and a
+/// 429 has already answered the question they asked. How long the ladder itself may add is
+/// <parameter>OcuPilot.Kernel.Provider.Retry.RETRYBUDGETSECONDS</parameter>'s, not this
+/// ceiling's.</p>
+/// <p><b>The queued answers below carry no <code>Retry-After</code></b>, so the legs measure the
+/// ceiling and nothing else: a hint at its own cap spends the whole retry budget on the first wait
+/// and stops the ladder short of the attempt bound, which is
+/// <class>OcuPilot.Test.ProviderRetry</class>'s subject and would make these call counts about the
+/// budget instead.</p>
 /// <p><b>The fourth leg is what keeps a turn out of it.</b> <method>InvokeDraft</method> and
 /// <method>OcuPilot.Port.ProviderPort.Invoke</method> share <method>Dispatch</method>, so the new
 /// key is on the turn's path too; what stops a turn taking it is that
@@ -540,7 +560,7 @@ Method TestACallerMayLowerTheAttemptCeilingAndMayNotRaiseIt()
     Do $$$AssertTrue(tBound > 1, "the instance's resolved bound leaves room to lower it, or none of the legs below can tell the ceiling from its absence: " _ tBound)
     If tBound '> 1 Quit
 
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY)
     Do ..Draft("probe-local", "https://api.anthropic.com/v1/messages", 0, .tOne)
     Set tOne("maxAttempts") = 1
     Set tSC = ..CallDraft(.tOne, .tResponse, .tHttpStatus, .tFault)
@@ -549,7 +569,7 @@ Method TestACallerMayLowerTheAttemptCeilingAndMayNotRaiseIt()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Waits(), "", "and takes no backoff wait at all")
 
     Do ##class(OcuPilot.Test.ProviderStub).Reset()
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY)
     Do ..Draft("probe-local", "https://api.anthropic.com/v1/messages", 0, .tDefault)
     Set tDefaultSC = ..CallDraft(.tDefault, .tResponse2, .tHttpStatus2, .tFault2)
     Do ..AssertTurnError(tDefaultSC, tResponse2, tFault2, ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE, "the same answer with no ceiling named")
@@ -557,7 +577,7 @@ Method TestACallerMayLowerTheAttemptCeilingAndMayNotRaiseIt()
     Do $$$AssertNotEquals(##class(OcuPilot.Test.ProviderStub).Waits(), "", "and waits between the attempts")
 
     Do ##class(OcuPilot.Test.ProviderStub).Reset()
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY)
     Do ..Draft("probe-local", "https://api.anthropic.com/v1/messages", 0, .tHigher)
     Set tHigher("maxAttempts") = tBound + 5
     Set tHigherSC = ..CallDraft(.tHigher, .tResponse3, .tHttpStatus3, .tFault3)
@@ -566,7 +586,7 @@ Method TestACallerMayLowerTheAttemptCeilingAndMayNotRaiseIt()
 
     ; And the stored entry -- a turn -- names no ceiling, so it spends the instance's whole ladder.
     Do ##class(OcuPilot.Test.ProviderStub).Reset()
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY)
     Set tId = ..StoredDefinition("Ladder")
     If tId = "" Quit
     Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the stored definition is enabled so the stored entry will call it")

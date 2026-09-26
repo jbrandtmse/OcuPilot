@@ -13,8 +13,8 @@
  * - `visibleArea` -- the area whose side bar is listed. A rail click sets it **without
  *   navigating**, which is the whole point of the rail: you can look at one area's screens
  *   while another area's screen is open.
- * - `open` -- whether the side bar is showing. Remembered per browser through
- *   `PreferenceStore`, which is the only module that touches persistent storage.
+ * - `open` -- whether the side bar is showing. Remembered per user on the instance through
+ *   `AccountPreferences` (Story 15.5, AD-50); the browser holds nothing of it.
  *
  * The fourth is `holdScreen`/`screenHeld`, which is about the routed screen rather than the chrome
  * around it: while the shell is still deciding where this browser belongs, `ScreenOutlet` mounts
@@ -25,30 +25,80 @@
 
 // The `.ts` extension is what lets `node --test` resolve this at runtime; see
 // `tsconfig.json`'s `allowImportingTsExtensions`.
-import { PreferenceStore } from './preferences.ts';
+import { AccountPreferences, SHELL_KIND, SHELL_SIDE_BAR_OPEN } from './account-preferences.ts';
 
 /** The side bar starts open, so a first-time visitor sees the screen list exists. */
 export const SIDE_BAR_OPEN_DEFAULT = true;
 
+/** The two values the remembered open state is stored as; the wire carries strings. */
+const OPEN_STORED = '1';
+const CLOSED_STORED = '0';
+
 export interface ShellStateOptions {
-  readonly preferences: PreferenceStore;
+  readonly account: AccountPreferences;
 }
 
 export class ShellState {
-  private readonly preferences: PreferenceStore;
+  private readonly account: AccountPreferences;
 
   private currentActiveArea = '';
   private currentVisibleArea = '';
   private currentOpen: boolean;
 
+  /**
+   * Whether the instance's own answer has been adopted since the last sign-in.
+   *
+   * **The published default renders until the read settles, and the remembered state applies
+   * once, on the answer.** A later notification -- another preference being written -- must not
+   * re-apply it over a toggle the user has made since, and `endSession()` drops it on sign-out so
+   * the next principal's answer is adopted in its turn.
+   */
+  private adopted = false;
+
   /** How many holds are outstanding on the routed screen; see `holdScreen`. */
   private holds = 0;
+
+  /**
+   * The most recent agent-navigation arrival (Story 4.7, AD-11 rule 3): the route it landed on
+   * and the heading announcement `locator-bar.ts` reads as that screen's `aria-label`, so the
+   * label is present only on the arrival it describes and never on an ordinary, user-initiated
+   * one. `null` route means no arrival is standing.
+   */
+  private arrivalRoute: string | null = null;
+  private arrivalAnnouncementValue = '';
+
+  /** Bumped on every `announceArrival`, so `arrivalToken` can tell two arrivals at the same
+   * screen apart even when they carry the identical announcement text -- the title is the only
+   * thing the heading announcement names, so opening the same screen twice in a row produces the
+   * same string both times. */
+  private arrivalSeq = 0;
 
   private readonly listeners = new Set<() => void>();
 
   constructor(options: ShellStateOptions) {
-    this.preferences = options.preferences;
-    this.currentOpen = this.preferences.sideBarOpen(SIDE_BAR_OPEN_DEFAULT);
+    this.account = options.account;
+    this.currentOpen = SIDE_BAR_OPEN_DEFAULT;
+    this.account.subscribe(() => this.adoptRemembered());
+    this.adoptRemembered();
+  }
+
+  /**
+   * Take the instance's remembered open state, once, on the first answer that carries it. A read
+   * that has not settled leaves the published default standing, and a read that failed never
+   * clears anything.
+   */
+  private adoptRemembered(): void {
+    if (!this.account.loaded()) {
+      this.adopted = false;
+      return;
+    }
+    if (this.adopted) return;
+    this.adopted = true;
+    const stored = this.account.shell().get(SHELL_SIDE_BAR_OPEN);
+    const next = stored === undefined ? SIDE_BAR_OPEN_DEFAULT : stored === OPEN_STORED;
+    if (next === this.currentOpen) return;
+    this.currentOpen = next;
+    this.notify();
   }
 
   subscribe(listener: () => void): () => void {
@@ -73,6 +123,43 @@ export class ShellState {
   /** Whether a hold is outstanding, so `ScreenOutlet` must mount no page yet. */
   screenHeld(): boolean {
     return this.holds > 0;
+  }
+
+  /**
+   * Record that the agent's own navigation just landed on `route`, carrying the heading
+   * announcement `locator-bar.ts` reads for that route's segment (Story 4.7).
+   */
+  announceArrival(route: string, announcement: string): void {
+    this.arrivalRoute = route;
+    this.arrivalAnnouncementValue = announcement;
+    this.arrivalSeq += 1;
+    this.notify();
+  }
+
+  /** The standing arrival announcement for `route`, or `null` when none is standing there. */
+  arrivalAnnouncement(route: string): string | null {
+    return this.arrivalRoute === route ? this.arrivalAnnouncementValue : null;
+  }
+
+  /**
+   * A token that changes on every fresh arrival at `route`, or `null` when none is standing
+   * there -- a reader that needs to tell two arrivals apart (to focus the heading again on a
+   * second, identical announcement) compares this rather than the announcement text.
+   */
+  arrivalToken(route: string): number | null {
+    return this.arrivalRoute === route ? this.arrivalSeq : null;
+  }
+
+  /**
+   * Drop the standing arrival, so it does not survive the navigation that follows it -- the
+   * announcement is for the one screen the agent opened, not for whatever the user goes to next.
+   * `app.ts` calls this on every `NavigationStart`, agent-initiated or not.
+   */
+  clearArrival(): void {
+    if (this.arrivalRoute === null) return;
+    this.arrivalRoute = null;
+    this.arrivalAnnouncementValue = '';
+    this.notify();
   }
 
   /**
@@ -118,9 +205,9 @@ export class ShellState {
    *
    * **Home's collapse is not the user's preference (DW-134).** Home has no screen list, so
    * the bar goes away because there is nothing to show -- the user never asked for it to be
-   * closed. Writing that through to storage made the next area they opened start collapsed,
-   * which is why this branch moves the visible state without touching `PreferenceStore`,
-   * while `toggleOpen()`, where the user did ask, still persists.
+   * closed. Writing that through made the next area they opened start collapsed, which is why
+   * this branch moves the visible state without touching the remembered one, while
+   * `toggleOpen()`, where the user did ask, still persists.
    *
    * Returns whether the caller should navigate, so the routing half stays in the component
    * that has a `Router` and this class stays framework-free.
@@ -163,10 +250,10 @@ export class ShellState {
    * Collapse the side bar **without** remembering it (**DW-144**).
    *
    * Escape is a dismissal, not an answer: it says "not this, now", where Ctrl/Cmd+B says "keep
-   * it closed". Routing Escape through `toggleOpen()` wrote the dismissal into
-   * `PreferenceStore`, so the next area the user opened -- and the next tab they loaded --
-   * started collapsed against a preference they had set to open and never changed. This moves
-   * the visible state alone, the way `activateArea`'s Home branch already does.
+   * it closed". Routing Escape through `toggleOpen()` wrote the dismissal to the instance, so the
+   * next area the user opened -- and the next tab they loaded -- started collapsed against a
+   * preference they had set to open and never changed. This moves the visible state alone, the
+   * way `activateArea`'s Home branch already does.
    */
   collapse(): void {
     if (!this.currentOpen) return;
@@ -181,9 +268,27 @@ export class ShellState {
     this.notify();
   }
 
+  /**
+   * Drop the departing principal's side bar back to the published default (Story 15.5, AD-8).
+   *
+   * The open state is one account's row on the instance now, not the browser's, so without this
+   * the next sign-in in this tab renders the departed principal's bar until their own read
+   * settles -- and indefinitely if it never does. `PanelState.endSession` does the same for the
+   * width; this is the side bar's half of it.
+   */
+  endSession(): void {
+    this.adopted = false;
+    if (this.currentOpen === SIDE_BAR_OPEN_DEFAULT) return;
+    this.currentOpen = SIDE_BAR_OPEN_DEFAULT;
+    this.notify();
+  }
+
   private setOpen(next: boolean): void {
     this.currentOpen = next;
-    this.preferences.setSideBarOpen(next);
+    // Never awaited: the bar has already moved, and the instance's answer re-settles the store
+    // rather than deciding what is on screen. A refusal is recorded as a fault the shell's own
+    // surfaces announce (DW-1326).
+    void this.account.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, next ? OPEN_STORED : CLOSED_STORED);
   }
 
   private notify(): void {

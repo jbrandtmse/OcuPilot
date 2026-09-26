@@ -27,6 +27,23 @@ Class OcuPilot.Screen.Gate Extends %RegisteredObject
 /// <p>The permission a classic page's custom resource is required at.</p>
 Parameter CLASSICPERMISSION = "USE";
 
+/// <p>The closed list of IRIS administrative resources, comma-separated. Holding <b>any one</b>
+/// of them at <parameter>ADMINPERMISSION</parameter> is the instance-level floor: what
+/// <method>OcuPilot.Api.Router.HoldsAdminResource</method> requires of a caller before any route
+/// runs, and what <method>OcuPilot.Port.ProviderPort.Invoke</method> requires before an outbound
+/// provider request leaves (AD-8, AD-29).</p>
+/// <p>Read from the instance on 2026-09-11 (<code>Security.Resources:List</code> over
+/// <code>%Admin*</code>) -- all thirteen it defines. A closed list, not a wildcard scan: what
+/// OcuPilot admits must not silently widen because a later IRIS release adds a resource, and a
+/// list is what a reviewer can check.</p>
+/// <p><b>This is the list's one home.</b> The router and the provider port derive their own
+/// parameters from it at compile time rather than restating it, so the floor a request meets and
+/// the floor a provider call meets cannot come apart.</p>
+Parameter ADMINRESOURCES = "%Admin_ExternalLanguageServerEdit,%Admin_FileSystemAccess,%Admin_Journal,%Admin_Manage,%Admin_OAuth2_Client,%Admin_OAuth2_Registration,%Admin_OAuth2_Server,%Admin_Operate,%Admin_RoleEdit,%Admin_Secure,%Admin_Task,%Admin_UserEdit,%Admin_Wallet";
+
+/// <p>The permission each <parameter>ADMINRESOURCES</parameter> member is required at.</p>
+Parameter ADMINPERMISSION = "USE";
+
 /// <p>The user names that are not an authenticated principal, comma-separated: IRIS's
 /// unauthenticated placeholder and its public one.</p>
 Parameter ANONYMOUSPRINCIPALS = "UnknownUser,_PUBLIC";
@@ -104,8 +121,14 @@ ClassMethod RequiredPairs(pDescriptor As %String, Output pResolved As %Boolean) 
     Quit tPairs
 }
 
-/// <p>Whether every pair in <var>pPairs</var> is held. An empty set is held by everyone, which
-/// is how an area or a screen that never gates is expressed.</p>
+/// <p>Whether the <b>declared</b> requirement <var>pPairs</var> is met. An empty set is held by
+/// everyone, because a declared-empty set is how a screen that never gates is expressed --
+/// <class>OcuPilot.Screen.Descriptor.Home</class> declares <code>"privileges": []</code>
+/// deliberately, and refusing it would lock every account out of Home.</p>
+/// <p><b>This is not the question "has a requirement been named at all".</b> A caller holding a
+/// set it did not declare -- a stored row's recorded requirement, a port's
+/// <code>Parameter</code> -- must never read an empty set as satisfied, and asks
+/// <method>EvaluateRequired</method> instead (DW-1120).</p>
 ClassMethod EvaluatePairs(pPairs As %List, Output pFailedPair As %String) As %Boolean
 {
     Set pFailedPair = ""
@@ -126,6 +149,102 @@ ClassMethod EvaluatePairs(pPairs As %List, Output pFailedPair As %String) As %Bo
         Set pFailedPair = ""
     }
     Quit tAllowed
+}
+
+/// <p>Whether the calling process holds every pair in <var>pPairs</var>, where an <b>empty
+/// requirement is never held</b> (DW-1120). <var>pFailedPair</var> is the first pair that failed,
+/// and <code>""</code> both when the answer is yes and when there was no pair to name.</p>
+/// <p><b>The two entry points answer two different questions</b> and that is why there are two.
+/// <method>EvaluatePairs</method> asks whether a screen's declared requirement is met, and a
+/// screen may declare none. This one asks whether a requirement was named and is held, which is
+/// what a ledger row's recorded pair set and a port's declared <code>Parameter</code> need: a set
+/// that resolved to nothing records a check nobody made, so releasing on it would release on a
+/// requirement nobody named.</p>
+ClassMethod EvaluateRequired(pPairs As %List, Output pFailedPair As %String) As %Boolean
+{
+    Set pFailedPair = ""
+    If '$ListValid(pPairs) || ($ListLength(pPairs) = 0) Quit 0
+    Quit ..EvaluatePairs(pPairs, .pFailedPair)
+}
+
+/// <p>Whether the calling process holds <b>any one</b> pair in <var>pPairs</var> -- an OR-set,
+/// where <method>EvaluateRequired</method> is an AND-set. An empty or unreadable set is never
+/// held, for the same reason.</p>
+/// <p><var>pFailedPair</var> is <code>""</code> when the answer is yes; when it is no, it is the
+/// <b>first</b> pair of the set, which is the one the caller would have to be granted. No single
+/// pair failed the caller here -- all of them did -- so naming the last one tried would name an
+/// arbitrary member of the list.</p>
+ClassMethod EvaluateAnyOf(pPairs As %List, Output pFailedPair As %String) As %Boolean
+{
+    Set pFailedPair = ""
+    If '$ListValid(pPairs) || ($ListLength(pPairs) = 0) Quit 0
+    Set tAllowed = 0
+    Try {
+        For tI = 1:1:$ListLength(pPairs) {
+            Set tPair = $List(pPairs, tI)
+            If '$ListValid(tPair) || ($ListLength(tPair) '= 2) Continue
+            If ..HoldsPrivilege($List(tPair, 1), $List(tPair, 2)) {
+                Set tAllowed = 1
+                Quit
+            }
+        }
+        If 'tAllowed {
+            Set tFirst = $List(pPairs, 1)
+            If $ListValid(tFirst) && ($ListLength(tFirst) = 2) Set pFailedPair = $List(tFirst, 1) _ ":" _ $List(tFirst, 2)
+        }
+    } Catch {
+        Set tAllowed = 0
+        Set pFailedPair = ""
+    }
+    Quit tAllowed
+}
+
+/// <p><parameter>ADMINRESOURCES</parameter> spelled as the comma-separated
+/// <code>resource:permission</code> specification every declared pair set in this tree uses, each
+/// member at <parameter>ADMINPERMISSION</parameter>.</p>
+/// <p>Read at <b>compile</b> time by the two classes that declare the administrative floor as a
+/// parameter of their own, so neither holds a copy of the list.</p>
+ClassMethod AdminPairSpec() As %String
+{
+    Set tSpec = ""
+    For tI = 1:1:$Length(..#ADMINRESOURCES, ",") {
+        Set tResource = $Piece(..#ADMINRESOURCES, ",", tI)
+        If tResource = "" Continue
+        Set tSpec = tSpec _ $Select(tSpec = "": "", 1: ",") _ tResource _ ":" _ ..#ADMINPERMISSION
+    }
+    Quit tSpec
+}
+
+/// <p><var>pSpec</var>, a comma-separated list of <code>resource:permission</code>, as the
+/// <code>%List</code> of two-element <code>%List</code>s this gate's evaluators take.</p>
+/// <p><b>A member without both halves voids the whole specification</b>, which
+/// <method>EvaluateRequired</method> then refuses. Dropping only the unreadable member would
+/// leave an <code>AND</code> gate evaluating fewer pairs than its <code>Parameter</code>
+/// declares -- a port measurably weaker than the declaration a reader checks it against -- and
+/// a shorter list is exactly what such a gate cannot notice. An empty member, from a trailing
+/// separator, is skipped rather than treated as malformed; an empty specification parses to an
+/// empty list, which the evaluator already refuses.</p>
+ClassMethod ParsePairSpec(pSpec As %String) As %List
+{
+    Set tPairs = ""
+    For tI = 1:1:$Length(pSpec, ",") {
+        Set tMember = $Piece(pSpec, ",", tI)
+        If tMember = "" Continue
+        Set tResource = $Piece(tMember, ":", 1)
+        Set tPermission = $Piece(tMember, ":", 2)
+        If (tResource = "") || (tPermission = "") Quit
+        Set tPairs = tPairs _ $ListBuild($ListBuild(tResource, tPermission))
+    }
+    If $Length(pSpec, ",") > 0, tPairs '= "" {
+        ; The loop stops on the first malformed member; a short answer therefore means "the rest
+        ; was never read", which must not be handed to an evaluator as a requirement.
+        Set tDeclared = 0
+        For tI = 1:1:$Length(pSpec, ",") {
+            If $Piece(pSpec, ",", tI) '= "" Set tDeclared = tDeclared + 1
+        }
+        If $ListLength(tPairs) '= tDeclared Set tPairs = ""
+    }
+    Quit tPairs
 }
 
 /// <p>Whether the calling process holds one pair. The single point at which this gate consults

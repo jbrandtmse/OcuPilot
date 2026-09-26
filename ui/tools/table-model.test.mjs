@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 // - `reconcile` keeps the active index instead of the key -> "an active key still in the view stays
 //   active wherever it moved" goes red.
 // - `parseMaxRows` accepts 0 -> "DW-17 bad cap" goes red.
+// - `cellView` ignores its `emptyKey` -> "a column's emptyKey" goes red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const core = (name) => join(uiRoot, 'src', 'app', 'core', name);
@@ -66,6 +67,29 @@ test('a boolean outside a status column reads Yes or No with no disc, and an arr
   assert.equal(roles.text, '%All, OcuPilotAdmin');
   assert.equal(roles.code, true);
   assert.equal(model.cellView([], 'identifier').text, STRINGS.tableEmptyValue, 'an empty array reads (none)');
+});
+
+test("a column's emptyKey: an empty value reads that key's string as a word, and any other value is untouched", () => {
+  for (const value of [null, undefined, '', []]) {
+    const cell = model.cellView(value, 'identifier', 'serviceAllowedUnrestricted');
+    assert.deepEqual(
+      cell,
+      { text: STRINGS.serviceAllowedUnrestricted, empty: false, disc: null, code: false, link: false, numeric: false },
+      `${JSON.stringify(value)} reads Unrestricted, in the body face and not as the muted (none)`
+    );
+  }
+  assert.equal(STRINGS.serviceAllowedUnrestricted, 'Unrestricted');
+  const listed = model.cellView(['10.0.0.1', '127.0.0.1'], 'identifier', 'serviceAllowedUnrestricted');
+  assert.equal(listed.text, '10.0.0.1, 127.0.0.1', 'a non-empty array still reads its members');
+  assert.equal(listed.code, true, 'in the code face');
+  assert.equal(model.cellView(false, 'status', 'serviceAllowedUnrestricted').text, STRINGS.tableStatusNo, 'a boolean is never empty');
+  assert.equal(model.cellView([], 'identifier').text, STRINGS.tableEmptyValue, 'with no emptyKey an empty array still reads (none)');
+  assert.equal(model.cellView([], 'identifier', '', () => 'unused').text, STRINGS.tableEmptyValue, 'and an empty emptyKey is none declared');
+  assert.equal(
+    model.cellView(null, 'text', 'anyKey', (key) => `looked up ${key}`).text,
+    'looked up anyKey',
+    'the word comes through the lookup the caller supplies'
+  );
 });
 
 test('At the cap: the footer reads "500 rows" and the notice names the cap; DW-141: "2 rows"', () => {
@@ -190,4 +214,115 @@ test('write-capable means a primary action or a row action, and picks the empty 
     next: 'Or ask the agent: create a web application.',
   });
   assert.equal(model.isWriteCapable(screenDeclaration({ primaryAction: { id: 'create', selfProtection: '' } })), true);
+});
+
+// Story 6.4, AD-44 / AD-47: a row link under a complete exemption is the declared href with each param
+// appended from the row, percent-encoded, and no link at all when any param's field reads empty.
+//
+// Mutation (Rule 19): drop the empty-text return from `classicRowHref` -> the blank-IssuerEndpointID
+// assertions go red.
+test('classicRowHref appends each row link param from the row, and opens nothing for a blank value', () => {
+  const clients = screenDeclaration({
+    classicLinkExemption: {
+      exempt: true,
+      reason: 'r',
+      label: 'OAuth 2.0 Client Configuration',
+      href: '/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen',
+      rowLink: {
+        params: [
+          { name: 'PID', field: 'ApplicationName' },
+          { name: 'IssuerEndpointID', field: 'ServerDefinitionID' },
+          { name: 'IssuerEndpoint', field: 'IssuerEndpoint' },
+        ],
+      },
+    },
+  });
+  const row = { ApplicationName: 'OcuPilot Test&B', ServerDefinitionID: 2, IssuerEndpoint: 'https://ocupilottest.invalid/b' };
+  assert.equal(
+    model.classicRowHref(row, clients),
+    '/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen?PID=OcuPilot%20Test%26B&IssuerEndpointID=2&IssuerEndpoint=https%3A%2F%2Focupilottest.invalid%2Fb'
+  );
+  for (const blank of [null, undefined, '']) {
+    const partial = { ...row, ServerDefinitionID: blank };
+    if (blank === undefined) delete partial.ServerDefinitionID;
+    assert.equal(model.classicRowHref(partial, clients), '', `a ${String(blank)} IssuerEndpointID opens no editor`);
+  }
+  const queried = screenDeclaration({
+    classicLinkExemption: { ...clients.classicLinkExemption, href: '/csp/sys/page.zen?x=1', rowLink: { params: [{ name: 'PID', field: 'ApplicationName' }] } },
+  });
+  assert.equal(model.classicRowHref(row, queried), '/csp/sys/page.zen?x=1&PID=OcuPilot%20Test%26B', 'an href with a query takes &');
+  const noParams = screenDeclaration({ classicLinkExemption: { ...clients.classicLinkExemption, rowLink: { params: [] } } });
+  assert.equal(model.classicRowHref({}, noParams), clients.classicLinkExemption.href, 'a row link with no params is the href alone');
+  assert.equal(model.classicRowHref(row, screenDeclaration()), '', 'a screen with no exemption links no row');
+  assert.equal(
+    model.classicRowHref(row, screenDeclaration({ classicLinkExemption: { ...clients.classicLinkExemption, exempt: false } })),
+    '',
+    'nor does a row link without an exemption'
+  );
+  assert.equal(
+    model.formatClassicRowLinkDescription(STRINGS.classicRowLinkDescription, 'OAuth 2.0 Client Configuration'),
+    'Opens OAuth 2.0 Client Configuration in the classic portal in a new tab.'
+  );
+});
+
+// --- Column widths (Story 15.8) ----------------------------------------------------------------
+//
+// Mutations (Rule 19):
+// - `COLUMN_DEFAULT_PX.name` 240 -> 40 -> "each kind takes its default" goes red.
+// - drop the `min` clamp from `resizedWidth` -> "a resize never goes below the label" goes red.
+
+const COLUMNS = [
+  { field: 'Name', kind: 'name' },
+  { field: 'NameSpace', kind: 'identifier' },
+  { field: 'Count', kind: 'number' },
+  { field: 'Enabled', kind: 'status' },
+  { field: 'Note', kind: 'text' },
+];
+
+test('Story 15.8: each kind takes its default, identifiers wide and numbers and states narrow', () => {
+  assert.deepEqual(model.COLUMN_DEFAULT_PX, { name: 240, identifier: 240, text: 160, number: 112, status: 112 });
+  const layout = model.columnLayout(COLUMNS, new Map(), new Map(), false);
+  assert.equal(
+    layout.template,
+    'minmax(240px, 240fr) minmax(240px, 240fr) minmax(112px, 112fr) minmax(112px, 112fr) minmax(160px, 160fr)'
+  );
+  assert.equal(layout.minWidthPx, 240 + 240 + 112 + 112 + 160);
+});
+
+test('Story 15.8: a label wider than its default floors the column, a user width is plain pixels, and the trigger track follows', () => {
+  const layout = model.columnLayout(
+    COLUMNS,
+    new Map([['NameSpace', 300], ['Enabled', 50], ['Gone', 200]]),
+    new Map([['Count', 130.2], ['Enabled', 90]]),
+    true
+  );
+  assert.equal(
+    layout.template,
+    `minmax(240px, 240fr) 300px minmax(131px, 112fr) 90px minmax(160px, 160fr) ${model.TRIGGER_TRACK}`,
+    'Count floors at its label; Enabled never goes under its label; a field no column declares is ignored'
+  );
+  assert.equal(layout.minWidthPx, 240 + 300 + 131 + 90 + 160 + model.TRIGGER_TRACK_PX);
+  assert.equal(model.TRIGGER_TRACK, 'calc(28px + 2 * var(--ocu-space-3))', 'the trigger track is unchanged');
+});
+
+test('Story 15.8: a stored width of the wrong shape is ignored by the layout', () => {
+  for (const bad of [0, -4, 1.5, 9999, Number.NaN]) {
+    const layout = model.columnLayout(COLUMNS.slice(0, 1), new Map([['Name', bad]]), new Map(), false);
+    assert.equal(layout.template, 'minmax(240px, 240fr)', `ignored: ${bad}`);
+  }
+  assert.equal(model.isColumnWidth(2000), true);
+  assert.equal(model.isColumnWidth(2001), false);
+  assert.equal(model.isColumnWidth('200'), false);
+});
+
+test('Story 15.8: a resize never goes below the label, rounds to whole pixels and stops at the maximum', () => {
+  assert.equal(model.resizedWidth(240, 80, 60), 320);
+  assert.equal(model.resizedWidth(320, -600, 60.2), 61, 'stops at the label, rounded up');
+  assert.equal(model.resizedWidth(250.6, model.COLUMN_RESIZE_STEP_PX, 60), 267);
+  assert.equal(model.resizedWidth(1990, 100, 60), model.COLUMN_WIDTH_MAX);
+  assert.equal(model.COLUMN_RESIZE_STEP_PX, 16);
+});
+
+test('Story 15.8: the width announcement names the column and its width', () => {
+  assert.equal(model.formatColumnWidth(STRINGS.tableColumnWidthAnnouncement, 'Name', 272), 'Name column, 272 px wide');
 });

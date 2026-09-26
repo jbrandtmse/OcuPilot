@@ -193,9 +193,10 @@ Method TestACreateRecordsTheFieldsItCreatedAtTheirDefaults()
     Do $$$AssertTrue(tData [ """type"":""agent-definition""", "and the target's entity type")
     Do $$$AssertTrue(tData [ ("""scope"":""" _ ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE _ """"), "and the instance scope")
 
-    ; The five fields the body never named and the class's own InitialExpressions supplied. Each
+    ; The four fields the body never named and the class's own InitialExpressions supplied. Each
     ; carries an empty "old", which is what "a create has no before-state" looks like in the record.
-    For tField = "markedLocal", "temperature", "maxIterationsPerTurn", "readOnly", "retentionDays" {
+    ; Story 10.4 creates temperature unset, so it matches the empty before-state and records no change.
+    For tField = "markedLocal", "maxIterationsPerTurn", "readOnly", "retentionDays" {
         Do $$$AssertTrue(tData [ ("""" _ tField _ """:{""old"":"""","), "the record carries " _ tField _ ", created at its default, with an empty old value: " _ tData)
     }
     Do $$$AssertTrue(tData [ """maxTokens"":{""old"":"""",""new"":""32000""}", "and maxTokens in clear, not redacted (DW-329): " _ tData)
@@ -286,11 +287,39 @@ Method TestASwitchWriteIsRecordedAgainstTheSwitchTarget()
     Do $$$AssertTrue(tData [ """killSwitch"":{""old"":""0"",""new"":""1""}", "carrying the flag that moved: " _ tData)
 }
 
+/// <p>Story 4.4 -- <code>contextRowCap</code> is a security field
+/// (<method>OcuPilot.Api.Switches.Fields</method>): a write at either edge of its valid range, 1
+/// and 1,000, is accepted and lands as a security-change audit row naming the field's old and new
+/// values, driven through <method>OcuPilot.Api.Switches.HandleUpdate</method> over HTTP.</p>
+/// <p>Mutation (QA): narrow the lower bound in
+/// <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> from <code>&lt; 1</code> to
+/// <code>&lt; 2</code> -- the boundary value 1 is refused where 200 (accepted) is expected, and
+/// this goes red.</p>
+Method TestAContextRowCapWriteAtItsBoundariesIsRecordedAsASecurityChange()
+{
+    Set tSC = ..Call("PUT", "/agent/switches", "{""contextRowCap"":1}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the low-boundary write completes")
+    Do $$$AssertEquals(tStatus, 200, "1 is accepted: " _ tBody)
+    If tStatus '= 200 Quit
+
+    Set tData = ..RowCarrying(..PreparedSince, 1, """contextRowCap"":{""old"":""200"",""new"":""1""}", .tRows)
+    Do $$$AssertEquals(tRows, 1, "exactly one security-change row carries the low-boundary write: " _ tRows)
+    If tRows '= 1 Quit
+    Do $$$AssertTrue(tData [ """verb"":""switches""", "naming the verb: " _ tData)
+
+    Set tSC2 = ..Call("PUT", "/agent/switches", "{""contextRowCap"":1000}", .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC2, "the high-boundary write completes")
+    Do $$$AssertEquals(tStatus2, 200, "1,000 is accepted: " _ tBody2)
+    If tStatus2 '= 200 Quit
+
+    Set tData2 = ..RowCarrying(..PreparedSince, 1, """contextRowCap"":{""old"":""1"",""new"":""1000""}", .tRows2)
+    Do $$$AssertEquals(tRows2, 1, "exactly one security-change row carries the high-boundary write: " _ tRows2)
+}
+
 /// <p>AC2 -- <b>a Test connection is recorded whether or not it wrote the row</b> (DW-358), and the
 /// classification follows what was tested: the stored values are an ordinary configuration change
 /// recording the verification flag, and values the row does not hold are a security change naming
-/// both endpoints, because a call carrying this definition's credential left the instance for an
-/// address nobody audited (AD-42).</p>
+/// both endpoints, because a call left the instance for an address nobody audited (AD-42).</p>
 /// <p>Driven in process through <class>OcuPilot.Test.DefinitionsProbe</class>, whose port answers
 /// from <class>OcuPilot.Test.ProviderStub</class>, so no socket is opened.</p>
 /// <p>Mutation (Rule 19): restore

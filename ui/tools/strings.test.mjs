@@ -160,6 +160,101 @@ function extractServerFaultBanner(markdown) {
   return [match[1], ...match[2].split(' and ').map((name) => name.trim())];
 }
 
+/**
+ * The transcript's accessible name, from the panel's Body rule: `(\`role="log"\`, polite,
+ * \`aria-label="Conversation"\`, ...)`. Anchored on the Body paragraph so the Accessibility Floor's
+ * second statement of the same attribute cannot stand in for a reworded first one.
+ */
+function extractTranscriptName(markdown) {
+  const body = markdown.split('\n').find((line) => line.startsWith('**Body.** Banners, in order'));
+  assert.ok(body, "EXPERIENCE.md must carry the panel's Body rule");
+  const match = /`aria-label="([^"]*)"`/.exec(body);
+  assert.ok(match, "the panel's Body rule must name the transcript");
+  return [match[1]];
+}
+
+/**
+ * The composer caption as macOS spells it. The table row publishes the Ctrl+I form and says, in its
+ * Where cell, which chord replaces it there -- `(\u2318I on macOS)` -- so the macOS value is that
+ * substitution over the row's own literal, never a second spelling typed here.
+ */
+function extractMacComposerCaption(rows) {
+  const row = rows.find((candidate) => /^composer caption \((\S+) on macOS\)$/.test(candidate.where));
+  assert.ok(row, 'the Fixed strings table carries the composer caption row with its macOS chord');
+  const chord = /^composer caption \((\S+) on macOS\)$/.exec(row.where)[1];
+  assert.equal(row.literals.length, 1, 'the caption row publishes one literal');
+  assert.ok(row.literals[0].includes('Ctrl+I'), 'and it carries the Ctrl+I chord the macOS form replaces');
+  return [row.literals[0].replace('Ctrl+I', chord)];
+}
+
+/**
+ * The tool-call-card's "done" and "failed — <reason>" status words, from its Component
+ * Patterns row's own status list: `"running" (spinner) · "done" · "done · audit marked" ·
+ * "done · audit not marked" (...) · "failed — <reason>" · "blocked by read-only mode" ·
+ * "Stopped by you at <step>"`. Read positionally off every quoted span on that row rather than
+ * typed here, so a reworded status list is what goes red, not a copy of it.
+ */
+function extractToolCallCardStatuses(markdown) {
+  const row = markdown.split('\n').find((line) => line.startsWith('| tool-call-card |'));
+  assert.ok(row, 'EXPERIENCE.md must carry the tool-call-card Component Patterns row');
+  const quoted = [...row.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
+  assert.equal(
+    quoted.length,
+    7,
+    `expected 7 quoted statuses on the tool-call-card row, found ${quoted.length}: ${JSON.stringify(quoted)}`
+  );
+  assert.equal(quoted[0], 'running', 'the first status must be "running"');
+  assert.equal(quoted[4].startsWith('failed'), true, 'the fifth status must be the failed template');
+  // The third is the marked status the confirmed-write card reads (Story 5.6). Its sibling, the
+  // fourth, is `REQUIRED_ALONGSIDE_TABLE`'s first entry and stays there: that array is the
+  // three it was, and this one is re-derived from the document like every other prose literal.
+  assert.equal(quoted[2], `${quoted[1]} \u00b7 audit marked`, 'the third status is the marked one');
+  return [quoted[1], quoted[2], quoted[4]];
+}
+
+/**
+ * Story 4.5's composer-locked reason, from the panel's Busy State Patterns row: `the composer
+ * stays focusable and editable (\`aria-disabled\`, reason "A turn is in progress")`.
+ */
+function extractComposerLockedReason(markdown) {
+  const match = /reason "([^"]+)"\); New conversation/.exec(markdown);
+  assert.ok(match, 'EXPERIENCE.md\'s Busy row must publish the composer\'s locked reason');
+  return [match[1]];
+}
+
+/**
+ * Story 4.5's New-conversation locked reason, from the panel header row: `while a turn runs
+ * it is \`aria-disabled\` with the reason "Stop the turn first"`.
+ */
+function extractNewConversationLockedReason(markdown) {
+  const match = /with the reason "([^"]+)" `\[ASSUMPTION\]`\./.exec(markdown);
+  assert.ok(match, 'EXPERIENCE.md\'s panel header row must publish New conversation\'s locked reason');
+  return [match[1]];
+}
+
+/**
+ * Story 5.13's two removal forms, from the `diff-row` Component Patterns row: `it shows the
+ * target's identifying fields as \`field \u00b7 value \u2192 (removed)\`, reads "<field>:
+ * <value>, removed"`.
+ *
+ * Two literals, because the row publishes two: the marker the after cell draws, and the direction
+ * word that replaces "was"/"now" so the row is spoken as the row says it reads. A targeted read
+ * rather than "every quoted span on that row", which would also drag in `"Reverse:"` -- already a
+ * Fixed strings literal, and the overlap test below would then fail rather than merely be
+ * generous.
+ */
+function extractRemovalForms(markdown) {
+  const match =
+    /identifying fields as `field [^`]*\((removed)\)`, reads "<field>: <value>, (removed)"/.exec(
+      markdown
+    );
+  assert.ok(
+    match,
+    "EXPERIENCE.md's diff-row row must publish the delete row's drawn and spoken removed forms"
+  );
+  return [`(${match[1]})`, match[2]];
+}
+
 const fixedStringsRows = extractFixedStringsTable(experienceMdRaw);
 const expectedLiterals = fixedStringsRows.flatMap((row) => row.literals);
 const expectedLandmarkNames = extractLandmarkNames(experienceMdRaw);
@@ -171,6 +266,13 @@ const [expectedUnreachableSentence, expectedRetryAction] =
   extractUnreachableBanner(experienceMdRaw);
 const [expectedServerFaultSentence, ...expectedServerFaultActions] =
   extractServerFaultBanner(experienceMdRaw);
+const expectedTranscriptName = extractTranscriptName(experienceMdRaw);
+const expectedMacComposerCaption = extractMacComposerCaption(fixedStringsRows);
+const [expectedToolCallDone, expectedToolCallMarked, expectedToolCallFailed] =
+  extractToolCallCardStatuses(experienceMdRaw);
+const expectedComposerLockedReason = extractComposerLockedReason(experienceMdRaw);
+const expectedNewConversationLockedReason = extractNewConversationLockedReason(experienceMdRaw);
+const expectedRemovalForms = extractRemovalForms(experienceMdRaw);
 
 /**
  * The third category: literals EXPERIENCE.md states in prose rather than in the Fixed strings
@@ -185,6 +287,14 @@ const EXTRACTED_FROM_PROSE = [
   ...expectedServerFlagWords,
   expectedUnreachableSentence,
   expectedServerFaultSentence,
+  ...expectedTranscriptName,
+  ...expectedMacComposerCaption,
+  expectedToolCallDone,
+  expectedToolCallMarked,
+  expectedToolCallFailed,
+  ...expectedComposerLockedReason,
+  ...expectedNewConversationLockedReason,
+  ...expectedRemovalForms,
 ];
 
 test('the three navigation landmarks are named in EXPERIENCE.md and reach the string source', () => {
@@ -232,6 +342,60 @@ test("the header's two accessible names and the four flag words are EXPERIENCE.m
   assert.equal(stringsValues.serverFlagTest, expectedServerFlagWords[1]);
   assert.equal(stringsValues.serverFlagFailover, expectedServerFlagWords[2]);
   assert.equal(stringsValues.serverFlagDevelopment, expectedServerFlagWords[3]);
+});
+
+test("the panel's transcript name and the macOS composer caption are EXPERIENCE.md's own", () => {
+  assert.equal(stringsValues.agentConversationLabel, expectedTranscriptName[0]);
+  assert.equal(stringsValues.agentComposerCaptionMac, expectedMacComposerCaption[0]);
+  assert.ok(stringsValues.agentComposerCaptionMac.includes('\u2318I'), 'the macOS form spells the command glyph');
+  assert.equal(
+    stringsValues.agentComposerCaptionMac.replace('\u2318I', 'Ctrl+I'),
+    stringsValues.agentComposerCaption,
+    'and differs from the published caption by the chord alone'
+  );
+});
+
+test("Story 4.5's tool-call status words and the two locked-control reasons are EXPERIENCE.md's own", () => {
+  assert.equal(stringsValues.toolCallStatusDone, expectedToolCallDone);
+  assert.equal(stringsValues.toolCallStatusFailed, expectedToolCallFailed);
+  assert.ok(stringsValues.toolCallStatusFailed.includes('<reason>'));
+  assert.equal(stringsValues.agentComposerLockedReason, expectedComposerLockedReason[0]);
+  assert.equal(stringsValues.agentNewConversationLockedReason, expectedNewConversationLockedReason[0]);
+});
+
+test("Story 5.13's two removal forms are EXPERIENCE.md's own, and the residue sentence is the table's", () => {
+  assert.equal(stringsValues.proposalDiffRemovedValue, expectedRemovalForms[0]);
+  assert.equal(stringsValues.proposalDiffRemoved, expectedRemovalForms[1]);
+  // The drawn marker is the spoken word in parentheses, which is what lets the card render one
+  // `aria-hidden` and the other visually hidden without publishing a third spelling.
+  assert.equal(expectedRemovalForms[0], `(${expectedRemovalForms[1]})`);
+  assert.ok(
+    expectedLiterals.includes(stringsValues.proposalResidue),
+    "the residue sentence is the Fixed strings table's own"
+  );
+  assert.ok(stringsValues.proposalResidue.includes('<n>'), 'and keeps its count placeholder');
+});
+
+test('AD-48: the residue sentence keeps both its facts, independent of the citation match (QA)', () => {
+  // The test above only requires `proposalResidue` to equal SOME row EXPERIENCE.md's Fixed
+  // strings table publishes. A rewrite that tightens the wording for card width and updates
+  // EXPERIENCE.md to match would still pass that check even if it dropped the second fact -- the
+  // spec's own warning ("a version saying only 'removes <n> errors' fails the AC's second half").
+  // This test reads the string's own content for AD-48's two facts, independent of the citation.
+  //
+  // Mutation (Rule 19): shorten `proposalResidue` in `strings.ts` to its first sentence alone
+  // ("Removes exactly the <n> errors listed here.") -- the second assertion below goes red even
+  // though the count placeholder survives and even if the Fixed strings table's own row were
+  // rewritten to match.
+  const sentence = stringsValues.proposalResidue;
+  assert.ok(
+    /exactly the <n> errors/i.test(sentence),
+    'fact 1 (what the confirm removes): exactly the enumerated count, never a live re-query'
+  );
+  assert.ok(
+    /will remain/i.test(sentence),
+    "fact 2 (the residue AD-48 requires): an error logged since the proposal is not among them and survives"
+  );
 });
 
 test("the connectivity banners' sentences and actions are EXPERIENCE.md's own, from the rows that publish them", () => {
@@ -311,13 +475,92 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // the action slot a refused Switches call resolves. (Story 3.6 added rows but no entry: at 236
   // literals it still fit the band.)
   //
-  // Why the upper bound moves to 260 rather than to the 246 the table now holds: the band is a
+  // Why the upper bound moves to 260 rather than to the 246 the table then held: the band is a
   // tripwire against unbounded string growth, not a cap on one screen. It has held because every
   // widening was deliberate and documented here, and 260 leaves headroom for Story 3.8 and the
-  // burn-down without making the next widening automatic.
+  // burn-down without making the next widening automatic. Story 6.1's two rows carry 14 -- the REST
+  // API explorer's three and the OpenAPI document viewer's eleven -- and take the table to 261, so
+  // the bound moves to 300, the headroom Epic 6's remaining screens need. Story 6.4's three OAuth 2.0 rows carry 22 and take the table past 300, so the bound moves to 330. Story 6.6's two rows
+  // carry 13 distinct literals -- "Error number" is reused from the Application errors row rather
+  // than counted again -- and take the table past 330, so the bound moves to 350. Story 6.7's one
+  // row carries 38: eleven Task details field and chrome labels, ten TimePeriod/DailyFrequency
+  // phrase templates, five DailyFrequencyTime phrase templates, seven weekday names and five
+  // ordinals -- the schedule-in-words vocabulary AD-3 has the client compose rather than take from
+  // the vendor -- and takes the table past 350, so the bound moves to 400. Story 6.8's one row
+  // carries 24: the screen title, the "no longer exists" empty state, three group headings and
+  // nineteen field labels beyond the shared Process ID, User, Namespace, Priority, Routine, State,
+  // Commands and "Started" -- and takes the table to 399, still inside the 400 bound Story 6.7 set.
+  // Story 6.9's one row carries 17: the screen title, eight counters-group labels beyond the
+  // Process details row's "Global references", seven meter labels and the empty state -- the
+  // meter state word itself (Normal / Warning / Troubled) is vendor data rendered as reported
+  // rather than a translated string, so it carries no literal here -- and takes the table to 416,
+  // past the 400 bound, so the bound moves to 450. Story 6.10's one row carries 7 (Locks' title,
+  // three column headers beyond the Processes row's own, the local-system word and the empty
+  // state) and takes the table to 423, still inside the 450 bound Story 6.9 set. Story 6.11's one
+  // row carries 24: the Databases screen title, the Free-space view's own title (also the View
+  // control's second option), the View control's accessible name, five column headers beyond the
+  // Locks row's "Directory", the Task history row's "Status" and the Web applications row's
+  // "Resource", the list's empty state, Database details' title, its "no longer exists" empty
+  // state, eight of its remaining field labels, and the volume-files section's heading, three
+  // column headers beyond its own reused ones and its own empty state -- and takes the table to
+  // 447, three short of the 450 bound left after Story 6.9. Three of headroom for one story and
+  // none for 6.12 through 6.14 is not headroom, so the bound moves to 520 now rather than at the
+  // next story that would have exceeded it.
+  //
+  // Epic 4's panel rows arrive with this merge: Story 4.4's five (Definitions, Full screen, the
+  // resize handle's name, the context row count and the secret-fields warning), Story 4.11's four
+  // (the paste warning with its two actions, and the chip's key glyph), Story 4.8's one (the banner
+  // for a turn whose failure names no step) and Story 4.10's three (the suggested view's eyebrow,
+  // its open control and the application-errors line). The 520 bound Story 6.11 set absorbs them,
+  // so no widening is needed here -- only the measured figure in the message moves.
+  //
+  // **Story 15.2 moves the bound to 600, which is this file's documented widening protocol rather
+  // than a loosening of the assertion.** Its one row publishes fifteen literals -- the two Home
+  // blocks' headings, empty states, per-row remove names and Clear controls, the locator bar's
+  // favorite toggle in its two states, and the five polite confirmations the two surfaces announce
+  // -- taking the table to 505. Fifteen of headroom against the four Epic 15 stories still to land
+  // (15.3's About, help, shortcuts and links panel alone publishes more than that) is not headroom,
+  // so the bound moves now rather than inside the story that would have tripped it. What the
+  // tripwire is for is unchanged -- it catches a run that read a fraction of the table or far too
+  // much of the document -- and the exact count assertion below, derived from the table itself, is
+  // what still holds strings.ts to the table literal for literal.
+  //
+  // Story 8.5 moves the bound to 700 under the same protocol: its five rows publish fourteen
+  // literals -- the X.509 list's Import and agent invitation, the credential form's title, seven
+  // labels, its Load from file button and two helpers, and the proposal card's optional mark -- and
+  // take the table past 600.
+  //
+  // Story 9.1 moves the bound to 800 under the same protocol: its four rows publish nineteen
+  // literals -- the sign-in refusal, the user editor's ten labels and empty state, the tab
+  // error names and five suggested-prompt literals -- and take the table past 700, with the rest of
+  // Epic 9's editors still to land.
+  //
+  // Story 9.5 moves the bound to 900 under the same protocol: its ten rows publish fifty-seven
+  // literals -- the SSL/TLS editor's title, tabs, labels and select words, its captions, effect,
+  // refusal, Test connection panel and prompts, three delete consequences and the list-less absent
+  // sentence -- and take the table past 800.
+  //
+  // Story 11.10 moves the bound to 750 under the same protocol: its one row publishes one literal,
+  // "Jump to latest", and takes the table to 701.
+  //
+  // Story 12.1 moves the bound to 800 under the same protocol: its one row's two literals take the
+  // table past 700, with Epic 12's OAuth editors still to publish theirs.
+  //
+  // Story 9.9 moves the bound to 1000 under the same protocol: its six rows publish twenty-nine
+  // literals -- the two reduced forms' titles, fields, list controls and captions, their bare and
+  // absent sentences, the serving-service refusal, two effects and six prompts -- and take the
+  // table past 900.
+  //
+  // Epic 12's integration of Epic 9 moves the bound to 1100 under the same protocol: Stories
+  // 12.1-12.5's rows and Epic 9's together take the table past 1000.
+  //
+  // Story 12.8 moves the bound to 1200 under the same protocol: its one row's fifteen literals take
+  // the table past 1100.
+  // Story 11.3 adds 45 rows and one extended row, 137 literals, beside Epic 12's; merged at Epic
+  // 12's integration, the bound moves to 1400 under the same protocol.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 260,
-    `expected roughly 246 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 1400,
+    `expected between 150 and 1400 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 
@@ -355,10 +598,14 @@ test('the string source holds nothing the documents do not authorize -- the tabl
     [],
     `values in strings.ts that appear in no source document: ${JSON.stringify(unauthorized, null, 2)}`
   );
+  // Distinct literals: a table row may publish a word another row already does ("Definitions" is
+  // both the Definitions list's title and the reminder banner's link), and every value here is
+  // held by exactly one key.
+  const distinctLiterals = new Set(expectedLiterals).size;
   assert.equal(
     Object.keys(stringsValues).length,
-    expectedLiterals.length + EXTRACTED_FROM_PROSE.length + REQUIRED_ALONGSIDE_TABLE.length,
-    `expected ${expectedLiterals.length} table literals + ${EXTRACTED_FROM_PROSE.length} extracted from prose + ${REQUIRED_ALONGSIDE_TABLE.length} named extras, found ${Object.keys(stringsValues).length} keys`
+    distinctLiterals + EXTRACTED_FROM_PROSE.length + REQUIRED_ALONGSIDE_TABLE.length,
+    `expected ${distinctLiterals} distinct table literals + ${EXTRACTED_FROM_PROSE.length} extracted from prose + ${REQUIRED_ALONGSIDE_TABLE.length} named extras, found ${Object.keys(stringsValues).length} keys`
   );
 });
 
@@ -386,13 +633,15 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // application error log publishes for a namespace this log does not carry -- so on this screen
   // there IS now a sentence for an unknown namespace, which supersedes the claim this roster
   // carried for DW-126: the shell is silent for a namespace only where no screen publishes copy.
+  // `userFormNamespace` is a field label, not a sentence about a namespace: the create-a-user
+  // form's startup namespace, which the account enters on sign-in.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
   assert.deepEqual(
     namespaceSentences.map(([key]) => key).sort(),
-    ['errorLogEmptyNamespace', 'errorLogRefusedNamespace', 'headerNamespaceLabel'],
-    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state and one named refusal'
+    ['errorLogEmptyNamespace', 'errorLogRefusedNamespace', 'headerNamespaceLabel', 'userFormNamespace'],
+    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, one named refusal and one field label'
   );
 });
 

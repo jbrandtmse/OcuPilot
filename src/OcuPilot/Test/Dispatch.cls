@@ -28,16 +28,20 @@ Class OcuPilot.Test.Dispatch Extends %RegisteredObject
 /// <p>Returns the dispatched <class>%Status</class>; <var>pBody</var> is the captured,
 /// <b>unparsed</b> response body, <var>pStatus</var> is the numeric HTTP status
 /// <code>%response.Status</code> was left at, and <var>pAllowHeader</var> is whatever
-/// <code>%response</code>'s <code>Allow</code> header was set to (empty when none was set).</p>
+/// <code>%response</code>'s <code>Allow</code> header was set to (empty when none was set), and
+/// <var>pContentType</var> whatever its <code>ContentType</code> was left at.</p>
+/// <p><b>Every answer is an output, because the stubs do not outlive the call</b> (DW-1184): they
+/// are <code>New</code>ed in this frame, so a caller reading <code>%response</code> after this
+/// returns would read its own, not the dispatch's.</p>
 /// <p><var>pApplication</var>, when supplied, is the web application the CSP server would
 /// have matched. Only a handler that reads <code>%request.Application</code> needs it —
 /// <class>OcuPilot.Api.StaticHandler</class> resolves its bundle directory from it (AD-21),
 /// so without it every path resolves against an empty root and a refusal test could not tell
 /// a working check from a broken one.</p>
-/// <p><var>pRequestBody</var>, when supplied, is seeded as the request's <code>BODY</code> MIME
-/// stream -- the one <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> reads and the one the
-/// CSP server itself fills, so a handler that takes a body runs the same read here as it does over
-/// a socket.</p>
+/// <p><var>pRequestBody</var>, when supplied, is seeded as the request's
+/// <property>%CSP.Request.Content</property> stream -- where the CSP server delivers a JSON body,
+/// and the stream <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> falls back to -- so a
+/// handler that takes a body runs the same read here as it does over a socket.</p>
 /// <p>It is applied through the request's own <code>UpdateURL</code>, which is how the CSP
 /// server itself fills the property in: <code>ApplicationSet</code> is
 /// <code>[ Private ]</code>, so the property cannot be assigned from here, and going through
@@ -45,13 +49,17 @@ Class OcuPilot.Test.Dispatch Extends %RegisteredObject
 /// rather than one this harness asserted. <code>UpdateURL</code> switches to the
 /// application's namespace, so the caller's namespace is saved and restored around it
 /// (AD-16).</p>
-ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String, pParams As %DynamicObject = "", Output pBody As %String, Output pStatus As %Integer, Output pAllowHeader As %String, pApplication As %String = "", pRequestBody As %String = "") As %Status
+ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String, pParams As %DynamicObject = "", Output pBody As %String, Output pStatus As %Integer, Output pAllowHeader As %String, pApplication As %String = "", pRequestBody As %String = "", Output pContentType As %String) As %Status
 {
     Set tSC = $$$OK
     Set pBody = ""
     Set pStatus = 0
     Set pAllowHeader = ""
+    Set pContentType = ""
     Set tCapturing = 0
+    ; The stubs are this call's, not the process's: without New they outlive the dispatch and the
+    ; next thing in the same process reads a request nobody made (DW-1184).
+    New %request, %response
     Try {
         Set %request = ##class(%CSP.Request).%New()
         If pApplication '= "" {
@@ -72,17 +80,16 @@ ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String,
             }
         }
         If pRequestBody '= "" {
-            ; Seeded as the MIME stream named BODY, which is where
-            ; OcuPilot.Kernel.Utils.ReadRequestBody looks and how the CSP server itself delivers a
-            ; request body. A handler that reads one therefore takes the same path here as it does
-            ; over a socket, rather than a second body channel invented for the harness.
+            ; Assigned to Content, the public property the CSP server fills for a JSON body.
+            ; InsertMimeData is [ Final, Internal ] on %CSP.Request, and a harness is no place to
+            ; lean on either.
             Set tRequestStream = ##class(%Stream.GlobalBinary).%New()
             Set tWriteSC = tRequestStream.Write(pRequestBody)
             If $$$ISERR(tWriteSC) {
                 Set tSC = tWriteSC
                 Quit
             }
-            Do %request.InsertMimeData("BODY", tRequestStream)
+            Set %request.Content = tRequestStream
             Set tRequestStream = ""
         }
         Set %response = ##class(%CSP.Response).%New()
@@ -110,6 +117,7 @@ ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String,
         Set pBody = $Get(%OcuPilotDispatchCap, "")
         Set pStatus = +%response.Status
         Set pAllowHeader = %response.GetHeader("Allow")
+        Set pContentType = %response.ContentType
     } Catch ex {
         ; Restore first (AD-16). UpdateURL switches to the matched application's namespace,
         ; so a throw from it -- or from anything after it -- would otherwise leave this
@@ -145,6 +153,7 @@ ClassMethod InvokeHttp500(pRouterClass As %String, pStatus As %Status, Output pB
     Set pBody = ""
     Set pHttpStatus = 0
     Set tCapturing = 0
+    New %request, %response
     Try {
         Set %request = ##class(%CSP.Request).%New()
         Set %response = ##class(%CSP.Response).%New()
@@ -166,6 +175,63 @@ ClassMethod InvokeHttp500(pRouterClass As %String, pStatus As %Status, Output pB
 
         Set pBody = $Get(%OcuPilotDispatchCap, "")
         Set pHttpStatus = +%response.Status
+    } Catch ex {
+        If tCapturing {
+            Do ##class(%Library.Device).ReDirectIO(0)
+            Use tInitIO
+            Close tNull
+        }
+        Set tSC = ex.AsStatus()
+    }
+    Kill %OcuPilotDispatchCap
+    Quit tSC
+}
+
+/// <p>Capture what <var>pHandlerClass</var>'s no-argument <var>pMethod</var> writes, against
+/// <class>%CSP.Request</class> / <class>%CSP.Response</class> stubs carrying <var>pParams</var> as
+/// query parameters. <var>pBody</var> is the unparsed response body and <var>pStatus</var> the
+/// numeric HTTP status <code>%response.Status</code> was left at.</p>
+/// <p><b>The route table is not involved, deliberately.</b> A handler the router's
+/// <code>UrlMap</code> names by class offers no seam a fixture subclass can arrive through, so a
+/// fixture is driven at the handler's own entry point instead. Everything above it -- the matcher
+/// and <method>OcuPilot.Api.Router.OnPreDispatch</method> -- is <method>Invoke</method>'s subject
+/// and is exercised over the wire besides.</p>
+ClassMethod InvokeHandler(pHandlerClass As %String, pMethod As %String = "Handle", pParams As %DynamicObject = "", Output pBody As %String, Output pStatus As %Integer) As %Status
+{
+    Set tSC = $$$OK
+    Set pBody = ""
+    Set pStatus = 0
+    Set tCapturing = 0
+    New %request, %response
+    Try {
+        Set %request = ##class(%CSP.Request).%New()
+        Set %response = ##class(%CSP.Response).%New()
+        If $IsObject(pParams) {
+            Set tIter = pParams.%GetIterator()
+            While tIter.%GetNext(.tKey, .tVal) {
+                Do %request.Set(tKey, tVal)
+            }
+        }
+
+        Set tInitIO = $IO
+        Set tNull = ##class(%Library.Device).GetNullDevice()
+        Set %OcuPilotDispatchCap = ""
+        ; Armed before the three statements that can strand the process in the mnemonic space,
+        ; for the reason Invoke's own comment gives.
+        Set tCapturing = 1
+        Open tNull:::1
+        Use tNull::("^" _ $ZNAME)
+        Do ##class(%Library.Device).ReDirectIO(1)
+
+        Set tSC = $ClassMethod(pHandlerClass, pMethod)
+
+        Do ##class(%Library.Device).ReDirectIO(0)
+        Use tInitIO
+        Close tNull
+        Set tCapturing = 0
+
+        Set pBody = $Get(%OcuPilotDispatchCap, "")
+        Set pStatus = +%response.Status
     } Catch ex {
         If tCapturing {
             Do ##class(%Library.Device).ReDirectIO(0)

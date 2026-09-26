@@ -1,14 +1,21 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 
-import { ApiService, type JsonResult } from '../../core/api';
+import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
+import { ChangeBus } from '../../core/change-bus';
+import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../../core/explain-entry';
 import { NavigationService } from '../../core/navigation';
+import { OverlayStack } from '../../core/overlay-stack';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
-import { ErrorLogPage } from './error-log.page';
+import { ScreenActionHandler } from '../../shell/screen-action-handler';
+import { stubAccountPreferences } from '../../testing/account-preferences';
+import { stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
+import { ErrorLogPage, LOG_ERROR_LIST } from './error-log.page';
 import { ErrorLogDrill } from './error-log.store';
 
 /** The screen this page renders, resolved from the mirror as the shell's outlet resolves it. */
@@ -52,6 +59,12 @@ class StubApi {
   /** Every request's `init`, so the scope the store asked for is readable. */
   readonly inits: unknown[] = [];
 
+  /** Every screen-action POST's parsed body, in order (Story 7.10). */
+  readonly actions: unknown[] = [];
+
+  /** What the screen-action route answers: the deleted target, or a refusal envelope. */
+  actionAnswer: JsonResult<unknown> | null = null;
+
   answer(level: string, body: unknown): void {
     this.bodies[level] = body;
     delete this.installs[level];
@@ -88,6 +101,16 @@ class StubApi {
   }
 
   async requestJson<T>(path: string, init: unknown): Promise<JsonResult<T>> {
+    if (path.startsWith('/api/ocupilot/screens/')) {
+      const body = JSON.parse((init as ApiRequestInit).body ?? '{}') as { id?: string };
+      this.actions.push(body);
+      const answer = this.actionAnswer ?? {
+        kind: 'ok',
+        status: 200,
+        body: { action: 'deleted', target: { type: 'application-error', scope: 'instance', id: (body.id ?? '').toLowerCase() } },
+      };
+      return answer as JsonResult<T>;
+    }
     this.paths.push(path);
     this.inits.push(init);
     const level = path.replace('/api/ocupilot/logs/errors/', '').split('?')[0];
@@ -110,10 +133,14 @@ class StubApi {
 }
 
 describe('ErrorLogPage', () => {
-  function mount(api: StubApi): {
+  function mount(
+    api: StubApi,
+    explain: ExplainEntry | null = null
+  ): {
     fixture: ComponentFixture<ErrorLogPage>;
     drill: ErrorLogDrill;
     actions: ScreenActions;
+    bus: ChangeBus;
   } {
     TestBed.configureTestingModule({
       providers: [
@@ -124,11 +151,20 @@ describe('ErrorLogPage', () => {
           useValue: { screenForUrl: () => ERROR_LOG_SCREEN } as unknown as NavigationService,
         },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ChangeBus, useValue: new ChangeBus() },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
+        { provide: OverlayStack, useValue: new OverlayStack() },
+        ...(explain === null ? [] : [{ provide: ExplainEntry, useValue: explain }]),
       ],
     });
     const fixture = TestBed.createComponent(ErrorLogPage);
     fixture.detectChanges();
-    return { fixture, drill: TestBed.inject(ErrorLogDrill), actions: TestBed.inject(ScreenActions) };
+    return {
+      fixture,
+      drill: TestBed.inject(ErrorLogDrill),
+      actions: TestBed.inject(ScreenActions),
+      bus: TestBed.inject(ChangeBus),
+    };
   }
 
   function emptyTitle(fixture: ComponentFixture<ErrorLogPage>): string {
@@ -146,10 +182,10 @@ describe('ErrorLogPage', () => {
     return node === null ? '' : (node.textContent ?? '').trim();
   }
 
-  /** The rendered rows, each as its cells' text. */
+  /** The rendered rows, each as its data cells' text; the row menu's trigger cell is not data. */
   function rowCells(fixture: ComponentFixture<ErrorLogPage>): string[][] {
     return Array.from(fixture.nativeElement.querySelectorAll('[role="row"][data-ocu-row]')).map((row) =>
-      Array.from((row as HTMLElement).querySelectorAll('[role="gridcell"]')).map((cell) =>
+      Array.from((row as HTMLElement).querySelectorAll('[role="gridcell"]:not(.ocu-data-table-cell-trigger)')).map((cell) =>
         ((cell as HTMLElement).textContent ?? '').trim()
       )
     );
@@ -178,7 +214,7 @@ describe('ErrorLogPage', () => {
     expect(emptyTitle(fixture)).toContain('HSCUSTOM');
     expect(emptyTitle(fixture)).toContain('09/14/2026');
 
-    // The second line is the shared read-only one: this screen declares no action to invite.
+    // The second line is the shared read-only one: an empty level has nothing to act on.
     const next = fixture.nativeElement.querySelector('.ocu-data-table-empty-next') as HTMLElement;
     expect(next.textContent?.trim()).toBe(STRINGS.tableReadOnlyEmptyNext);
 
@@ -252,7 +288,7 @@ describe('ErrorLogPage', () => {
     await drill.openList('09/14/2026');
     fixture.detectChanges();
     const cells = Array.from(
-      fixture.nativeElement.querySelectorAll('[role="row"][data-ocu-row] [role="gridcell"]')
+      fixture.nativeElement.querySelectorAll('[role="row"][data-ocu-row] [role="gridcell"]:not(.ocu-data-table-cell-trigger)')
     ).map((cell) => ((cell as HTMLElement).textContent ?? '').trim());
     expect(cells).toEqual([
       '25',
@@ -604,5 +640,544 @@ describe('ErrorLogPage', () => {
     expect(drill.level()).toBe('list');
     expect(scopeText(fixture)).toBe('HSCUSTOM \u00b7 09/14/2026');
     expect(rowCells(fixture)).toEqual(rowsBefore);
+  });
+
+  it('AD-14: a confirmed delete re-reads the level in place, and another namespace\u2019s does not', async () => {
+    // The screen binds no `RefreshService`, so this is its own subscription rather than a refresh
+    // binding -- and it re-READS rather than removing a row, which is what AD-14 means by "screens
+    // re-fetch, never patch".
+    //
+    // Mutation (Rule 19): drop the namespace comparison in `applyDeleted` -> the
+    // other-namespace leg goes red, and every delete anywhere would re-read a drill standing
+    // somewhere else. Drop the `event.action !== 'deleted'` guard -> the `updated` leg goes red,
+    // because a non-delete change on this type would re-read the level and could step it up.
+    const api = new StubApi();
+    api.answer('list', { namespace: 'HSCUSTOM', date: '09/14/2026', rows: [], truncated: false });
+    const { fixture, drill, bus } = mount(api);
+    await drill.openDates('HSCUSTOM');
+    await drill.openList('09/14/2026');
+    fixture.detectChanges();
+    const before = api.paths.length;
+
+    // Another namespace's delete: the drill is inside HSCUSTOM and nothing about it moved.
+    expect(
+      bus.publish({
+        kind: 'changed',
+        type: 'application-error',
+        scope: 'instance',
+        id: 'USER',
+        action: 'deleted',
+      })
+    ).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(api.paths.length).toBe(before);
+
+    // This namespace's, but not a delete: AD-14's other two actions are not this screen's
+    // business, and the drill must not re-read on one. Only `deleted` reaches `applyDeleted`.
+    expect(
+      bus.publish({
+        kind: 'changed',
+        type: 'application-error',
+        scope: 'instance',
+        id: 'hscustom',
+        action: 'updated',
+      })
+    ).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(api.paths.length).toBe(before);
+
+    // This namespace's, published under the canonical lower-case id the instance records (AD-13).
+    expect(
+      bus.publish({
+        kind: 'changed',
+        type: 'application-error',
+        scope: 'instance',
+        id: 'hscustom',
+        action: 'deleted',
+      })
+    ).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(api.paths.length).toBe(before + 1);
+    expect(api.paths[api.paths.length - 1]).toBe(
+      '/api/ocupilot/logs/errors/list?namespace=HSCUSTOM&date=09%2F14%2F2026'
+    );
+    expect(drill.level()).toBe('list');
+  });
+
+  it('AD-14: the drill steps up when the level it is standing on has gone', async () => {
+    // A by-namespace delete leaves the namespace with no dates, so the level the user is on stops
+    // existing and the port answers its own refusal code for it. The drill walks back until it
+    // reaches one the instance still serves rather than showing an empty frame under a scope line
+    // that is no longer true.
+    //
+    // Mutation (Rule 19): drop the step-up loop from `applyDeleted` -> the level stays `list` and
+    // this goes red.
+    const api = new StubApi();
+    api.answer('list', { namespace: 'HSCUSTOM', date: '09/14/2026', rows: [], truncated: false });
+    const { fixture, drill, bus } = mount(api);
+    await drill.openDates('HSCUSTOM');
+    await drill.openList('09/14/2026');
+    fixture.detectChanges();
+
+    api.refuse('list', 404, 'LOG.DATE');
+    api.refuse('dates', 404, 'LOG.NAMESPACE');
+    api.answer('namespaces', { rows: [], truncated: false });
+    bus.publish({
+      kind: 'changed',
+      type: 'application-error',
+      scope: 'instance',
+      id: 'hscustom',
+      action: 'deleted',
+    });
+    for (let tick = 0; tick < 12; tick += 1) await Promise.resolve();
+    fixture.detectChanges();
+    expect(drill.level()).toBe('namespaces');
+    expect(scopeText(fixture)).toBe('');
+  });
+
+  // --- Story 7.10: one Delete on every drill level ------------------------------------------------
+
+  const SEP = '\u0001';
+
+  async function settle(fixture: ComponentFixture<ErrorLogPage>): Promise<void> {
+    for (let pass = 0; pass < 6; pass += 1) await new Promise((resolve) => setTimeout(resolve, 2));
+    fixture.detectChanges();
+  }
+
+  /** The selection the command bar and the handler read: this screen's own store. */
+  function storeSelection(): readonly string[] {
+    return TestBed.inject(ScreenStores).for(LOG_ERROR_LIST, []).selection();
+  }
+
+  function row(fixture: ComponentFixture<ErrorLogPage>, key: string): HTMLElement {
+    const found = Array.from(fixture.nativeElement.querySelectorAll('[role="row"][data-ocu-row]')).find(
+      (element) => (element as HTMLElement).getAttribute('data-ocu-row') === key
+    );
+    return found as HTMLElement;
+  }
+
+  /** Open `key`'s row menu and press its Delete, as a person would. */
+  async function deleteFromMenu(fixture: ComponentFixture<ErrorLogPage>, key: string): Promise<void> {
+    (row(fixture, key).querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const item = fixture.nativeElement.querySelector('.ocu-data-table-menu-item') as HTMLButtonElement;
+    expect(item.textContent?.trim()).toBe(STRINGS.actionDelete);
+    item.click();
+    await settle(fixture);
+  }
+
+  function dialog(fixture: ComponentFixture<ErrorLogPage>): HTMLElement | null {
+    return fixture.nativeElement.querySelector('app-typed-name-dialog') as HTMLElement | null;
+  }
+
+  function typeAndConfirm(fixture: ComponentFixture<ErrorLogPage>, typed: string): void {
+    const field = dialog(fixture)?.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = typed;
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (dialog(fixture)?.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    fixture.detectChanges();
+  }
+
+  function seeded(): StubApi {
+    const api = new StubApi();
+    api.answer('namespaces', { rows: [{ namespace: 'USER' }], truncated: false });
+    api.answer('dates', { namespace: 'USER', rows: [{ date: '09/23/2026', count: 2 }], truncated: false });
+    api.answer('list', {
+      namespace: 'USER',
+      date: '09/23/2026',
+      rows: [
+        { errorNumber: 4, time: '17:01:38', errorText: '<DIVIDE>x^y', routine: 'y', line: ' s x=1/0', username: 'Dana', process: '4711' },
+      ],
+      truncated: false,
+    });
+    api.answer('detail', { expressions: [], stack: [], variables: [], truncated: false });
+    return api;
+  }
+
+  it('Story 7.10: the row menu selects each level\u2019s own composite id, and a level change clears it', async () => {
+    // Mutation (Rule 19): key the dates level by the row's date alone in `selectionKey` -> the
+    // date leg reads '09/23/2026' and goes red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    await drill.openNamespaces();
+    fixture.detectChanges();
+
+    const headers = Array.from(fixture.nativeElement.querySelectorAll('[role="columnheader"]')).map((cell) =>
+      ((cell as HTMLElement).textContent ?? '').trim()
+    );
+    expect(headers).toEqual([STRINGS.headerNamespaceLabel, STRINGS.commandBoxGroupActions]);
+
+    (row(fixture, 'USER').querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual(['USER']);
+    expect(row(fixture, 'USER').getAttribute('aria-selected')).toBe('true');
+    expect(fixture.nativeElement.querySelector('[role="menu"]')).not.toBeNull();
+
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([]);
+    expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeNull();
+    (row(fixture, '09/23/2026').querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026`]);
+
+    await drill.openList('09/23/2026');
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([]);
+    // A click on the row outside its link selects it too.
+    (row(fixture, '4').querySelectorAll('[role="gridcell"]')[2] as HTMLElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
+    expect(row(fixture, '4').getAttribute('aria-selected')).toBe('true');
+
+    // The detail level selects the error it shows, once it has loaded.
+    await drill.openDetail(4);
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
+  });
+
+  it('Story 7.10: the dialog names each scope, types its last part, and releases only on it', async () => {
+    // Mutation (Rule 19): drop the page's typed-name dialog block -> no dialog is found, red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    await drill.openNamespaces();
+    fixture.detectChanges();
+
+    await deleteFromMenu(fixture, 'USER');
+    expect(dialog(fixture)?.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(`${STRINGS.errorDeleteEveryVerb} USER`);
+    expect(dialog(fixture)?.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(
+      STRINGS.errorDeleteEveryConsequence
+    );
+    // A mismatch sends nothing.
+    typeAndConfirm(fixture, 'user');
+    await settle(fixture);
+    expect(api.actions).toEqual([]);
+    expect(dialog(fixture)).not.toBeNull();
+    (dialog(fixture)?.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(dialog(fixture)).toBeNull();
+    expect(api.actions).toEqual([]);
+
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    await deleteFromMenu(fixture, '09/23/2026');
+    expect(dialog(fixture)?.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(
+      `${STRINGS.errorDeleteDateVerb} 09/23/2026`
+    );
+    expect(dialog(fixture)?.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(
+      STRINGS.errorDeleteDateConsequence
+    );
+
+    await drill.openList('09/23/2026');
+    await settle(fixture);
+    await deleteFromMenu(fixture, '4');
+    expect(dialog(fixture)?.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(`${STRINGS.errorDeleteOneVerb} 4`);
+    expect(dialog(fixture)?.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(
+      STRINGS.errorDeleteOneConsequence
+    );
+    typeAndConfirm(fixture, '4');
+    await settle(fixture);
+    expect(api.actions).toEqual([{ action: 'delete', id: `USER${SEP}09/23/2026${SEP}4` }]);
+    expect(dialog(fixture)).toBeNull();
+  });
+
+  it('Story 7.10 AC3: the posted id\u2019s namespace is the drilled one, whatever the route\u2019s ?ns= says', async () => {
+    // Mutation (Rule 19): build `selectionKey`'s namespace from the route's `ns` parameter -> the
+    // posted id names OTHER and this goes red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    await TestBed.inject(Router).navigateByUrl('/logs/errors?ns=OTHER');
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    await deleteFromMenu(fixture, '09/23/2026');
+    typeAndConfirm(fixture, '09/23/2026');
+    await settle(fixture);
+    expect(api.actions).toEqual([{ action: 'delete', id: `USER${SEP}09/23/2026` }]);
+  });
+
+  it('Story 7.10: a refused delete shows the envelope\u2019s own sentence as an alert, and nothing re-reads', async () => {
+    const api = seeded();
+    api.actionAnswer = {
+      kind: 'error',
+      status: 403,
+      code: 'AUTH.NOPRIVILEGE',
+      reason: 'You need %DB_USER:WRITE to delete these errors.',
+      detail: { failedPair: '%DB_USER:WRITE' },
+    } as unknown as JsonResult<unknown>;
+    const { fixture, drill } = mount(api);
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    const before = api.paths.length;
+    await deleteFromMenu(fixture, '09/23/2026');
+    typeAndConfirm(fixture, '09/23/2026');
+    await settle(fixture);
+    const alert = fixture.nativeElement.querySelector('[data-ocu-drill="action-refusal"]') as HTMLElement | null;
+    expect(alert?.getAttribute('role')).toBe('alert');
+    expect(alert?.textContent).toContain('You need %DB_USER:WRITE to delete these errors.');
+    expect(api.paths.length).toBe(before);
+
+    // Mutation (Rule 19): drop the page's refusal reset on a drill move -> the alert survives the
+    // step to the namespaces level and this goes red.
+    await drill.openNamespaces();
+    await settle(fixture);
+    expect(fixture.nativeElement.querySelector('[data-ocu-drill="action-refusal"]')).toBeNull();
+  });
+
+  it('Story 7.10: a dialog left open does not outlive the page it was opened on', async () => {
+    // Mutation (Rule 19): drop the page's `cancelPending()` on destroy -> the handler still holds
+    // the namespace delete after the page is gone, and this goes red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    await deleteFromMenu(fixture, 'USER');
+    const handler = TestBed.inject(ScreenActionHandler);
+    expect(handler.pending()?.descriptor).toBe(LOG_ERROR_LIST);
+
+    fixture.destroy();
+    expect(handler.pending()).toBeNull();
+    expect(api.actions).toEqual([]);
+  });
+
+  it('Story 7.10: a composite deleted event re-reads its namespace, steps up when the level has gone, and clears the selection', async () => {
+    // Mutation (Rule 19): compare the whole id in `applyDeleted` -> a date-scoped event names no
+    // namespace the drill holds, nothing re-reads, and this goes red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    await drill.openDates('USER');
+    await drill.openList('09/23/2026');
+    fixture.detectChanges();
+    (row(fixture, '4').querySelectorAll('[role="gridcell"]')[1] as HTMLElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
+
+    api.refuse('list', 404, 'LOG.DATE');
+    api.answer('dates', { namespace: 'USER', rows: [{ date: '09/22/2026', count: 1 }], truncated: false });
+    await deleteFromMenu(fixture, '4');
+    typeAndConfirm(fixture, '4');
+    for (let tick = 0; tick < 4; tick += 1) await settle(fixture);
+    expect(api.actions).toEqual([{ action: 'delete', id: `USER${SEP}09/23/2026${SEP}4` }]);
+    expect(drill.level()).toBe('dates');
+    expect(storeSelection()).toEqual([]);
+    expect(rowCells(fixture)[0]?.[0]).toBe('09/22/2026');
+  });
+
+  it('Story 7.10: Delete on the detail level names that error, and the drill steps up to the list', async () => {
+    // Mutation (Rule 19): drop the detail branch from `syncSelection` -> nothing is selected on the
+    // detail level, the action has no target, no dialog opens, and this goes red.
+    const api = seeded();
+    const { fixture, drill, actions } = mount(api);
+    await drill.openDates('USER');
+    await drill.openList('09/23/2026');
+    await drill.openDetail(4);
+    await settle(fixture);
+    expect(actions.run(LOG_ERROR_LIST, 'delete')).toBe(true);
+    await settle(fixture);
+    expect(dialog(fixture)?.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(`${STRINGS.errorDeleteOneVerb} 4`);
+
+    api.refuse('detail', 404, 'LOG.ENTRY');
+    api.answer('list', { namespace: 'USER', date: '09/23/2026', rows: [], truncated: false });
+    typeAndConfirm(fixture, '4');
+    for (let tick = 0; tick < 4; tick += 1) await settle(fixture);
+    expect(api.actions).toEqual([{ action: 'delete', id: `USER${SEP}09/23/2026${SEP}4` }]);
+    expect(drill.level()).toBe('list');
+  });
+
+  it('Story 7.10: a re-read the selected row is no longer in clears the selection', async () => {
+    const api = seeded();
+    const { fixture, drill, actions } = mount(api);
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    (row(fixture, 'USER').querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual(['USER']);
+
+    api.answer('namespaces', { rows: [{ namespace: 'HSCUSTOM' }], truncated: false });
+    expect(actions.run(ERROR_LOG_SCREEN.descriptor, REFRESH_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    expect(storeSelection()).toEqual([]);
+
+    // A re-read the instance refuses shows no rows, so it clears the selection too.
+    // Mutation (Rule 19): drop the reset from the store's fault branch -> 'HSCUSTOM' stays selected.
+    (row(fixture, 'HSCUSTOM').querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual(['HSCUSTOM']);
+    api.refuse('namespaces', 500, null);
+    expect(actions.run(ERROR_LOG_SCREEN.descriptor, REFRESH_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    expect(storeSelection()).toEqual([]);
+  });
+  it('Story 11.9: the store holds the error rows at the list level and none at namespaces, dates or detail', async () => {
+    // Mutation (Rule 19): publish `errors()` at every level in `publishRows` -> the detail leg holds
+    // the list's rows and goes red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    const store = TestBed.inject(ScreenStores).for(LOG_ERROR_LIST, []);
+
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    expect(store.data()).toEqual([]);
+
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    expect(store.data()).toEqual([]);
+
+    await drill.openList('09/23/2026');
+    fixture.detectChanges();
+    expect(store.data()).toEqual(drill.scopedErrors());
+    expect(store.data().length).toBe(1);
+    expect(store.truncated()).toBe(false);
+
+    // Publishing leaves the selection as it was.
+    (row(fixture, '4').querySelectorAll('[role="gridcell"]')[2] as HTMLElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
+    expect(store.data()).toEqual(drill.scopedErrors());
+
+    // A same-level re-read (Refresh, or the re-read after a delete) publishes its new rows.
+    // Mutation: `publishRows` skips a same-level publish once that level holds rows -> this leg keeps one row.
+    const added = { errorNumber: 5, time: '17:02:00', errorText: '<UNDEFINED>z', routine: 'z', line: ' w q', username: 'Dana', process: '4712' };
+    api.answer('list', { namespace: 'USER', date: '09/23/2026', rows: [...drill.errors(), added], truncated: true });
+    await drill.reopen();
+    fixture.detectChanges();
+    expect(drill.errors().length).toBe(2);
+    expect(store.data()).toEqual(drill.scopedErrors());
+    expect(store.truncated()).toBe(true);
+
+    await drill.openDetail(4);
+    fixture.detectChanges();
+    expect(store.data()).toEqual([]);
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
+
+    // Backing out of the list keeps its rows in the drill, so these legs hold rows to leak.
+    await drill.back();
+    fixture.detectChanges();
+    expect(store.data()).toEqual(drill.scopedErrors());
+    await drill.back();
+    fixture.detectChanges();
+    expect(drill.level()).toBe('dates');
+    expect(drill.errors().length).toBe(2);
+    expect(store.data()).toEqual([]);
+    await drill.back();
+    fixture.detectChanges();
+    expect(drill.level()).toBe('namespaces');
+    expect(drill.errors().length).toBe(2);
+    expect(store.data()).toEqual([]);
+  });
+
+  // --- Story 11.2: DW-1610 and "Explain this entry" ----------------------------------------------
+
+  // Mutation (Rule 19): publish unscoped `errors()` in `publishRows` -> this goes red on the scope.
+  it('Story 11.2 (DW-1610): each published list row carries the drilled namespace and date', async () => {
+    const { fixture, drill } = mount(seeded());
+    await drill.openNamespaces();
+    await drill.openDates('USER');
+    await drill.openList('09/23/2026');
+    fixture.detectChanges();
+    const [published] = TestBed.inject(ScreenStores).for(LOG_ERROR_LIST, []).data() as Record<string, unknown>[];
+    expect(published['namespace']).toBe('USER');
+    expect(published['date']).toBe('09/23/2026');
+    expect(published['errorNumber']).toBe(4);
+    expect(drill.scopedErrors()).toBe(drill.scopedErrors());
+  });
+
+  /** `seeded()` with a second list-level error, so a test can explain a row other than the first. */
+  function seededTwo(): StubApi {
+    const api = seeded();
+    api.answer('list', {
+      namespace: 'USER',
+      date: '09/23/2026',
+      rows: [
+        { errorNumber: 4, time: '17:01:38', errorText: '<DIVIDE>x^y', routine: 'y', line: ' s x=1/0', username: 'Dana', process: '4711' },
+        { errorNumber: 5, time: '17:02:10', errorText: '<UNDEFINED>z^y', routine: 'y', line: ' s a=b', username: 'Dana', process: '4712' },
+      ],
+      truncated: false,
+    });
+    return api;
+  }
+
+  async function atList(gate: Partial<ExplainEntryState> = {}) {
+    const stub = stubExplainEntry(gate);
+    const mounted = mount(seededTwo(), stub.entry);
+    await mounted.drill.openNamespaces();
+    await mounted.drill.openDates('USER');
+    await mounted.drill.openList('09/23/2026');
+    mounted.fixture.detectChanges();
+    return { ...mounted, ...stub };
+  }
+
+  function openMenu(fixture: ComponentFixture<ErrorLogPage>, key: string): HTMLButtonElement[] {
+    (row(fixture, key).querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    return Array.from(fixture.nativeElement.querySelectorAll('.ocu-data-table-menu-item'));
+  }
+
+  it('Story 11.2: the list level\u2019s row menu adds "Explain this entry" after Delete, which hands over the scoped row', async () => {
+    const { fixture, entry } = await atList();
+    const items = openMenu(fixture, '5');
+    expect(items.map((item) => item.textContent?.trim())).toEqual([STRINGS.actionDelete, STRINGS.agentExplainEntryAction]);
+    expect(items[1].getAttribute('aria-disabled')).toBeNull();
+    items[1].click();
+    fixture.detectChanges();
+    const taken = entry.take();
+    expect(taken?.screen.route).toBe('logs/errors');
+    expect(taken?.row).toMatchObject({ namespace: 'USER', date: '09/23/2026', errorNumber: 5, time: '17:02:10' });
+    expect(fixture.nativeElement.querySelector('.ocu-data-table-menu')).toBeNull();
+  });
+
+  it('Story 11.2: the namespaces, dates and detail levels offer no explain item, and Delete stays first', async () => {
+    const stub = stubExplainEntry();
+    const { fixture, drill } = mount(seeded(), stub.entry);
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    expect(openMenu(fixture, 'USER').map((item) => item.textContent?.trim())).toEqual([STRINGS.actionDelete]);
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    expect(openMenu(fixture, '09/23/2026').map((item) => item.textContent?.trim())).toEqual([STRINGS.actionDelete]);
+    await drill.openList('09/23/2026');
+    await drill.openDetail(4);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent ?? '').not.toContain(STRINGS.agentExplainEntryAction);
+  });
+
+  // Mutation (Rule 19): drop the page's `explainEntry.subscribe` -> this goes red on the stale item.
+  it('Story 11.2: a gate that changes while the row menu is open re-renders its explain item', async () => {
+    const { fixture, state, fire } = await atList();
+    expect(openMenu(fixture, '4')[1].getAttribute('aria-disabled')).toBeNull();
+    state.busy = true;
+    fire();
+    fixture.detectChanges();
+    const item = fixture.nativeElement.querySelectorAll('.ocu-data-table-menu-item')[1] as HTMLButtonElement;
+    expect(item.getAttribute('aria-disabled')).toBe('true');
+    expect(item.getAttribute('aria-describedby')).toBe(BUSY_REASON_ID);
+  });
+
+  it('Story 11.2: unconfigured, the list level offers no explain item', async () => {
+    const { fixture } = await atList({ configured: false });
+    expect(openMenu(fixture, '4').map((item) => item.textContent?.trim())).toEqual([STRINGS.actionDelete]);
+  });
+
+  it('Story 11.2: blocked, the item is aria-disabled with its reason, and a click hands nothing over', async () => {
+    const cases: [Partial<ExplainEntryState>, string][] = [
+      [{ killSwitch: true }, KILL_SWITCH_ID],
+      [{ busy: true }, BUSY_REASON_ID],
+      [{ share: false }, CONTEXT_CHIP_OFF_ID],
+    ];
+    for (const [gate, reasonId] of cases) {
+      const { fixture, entry } = await atList(gate);
+      const item = openMenu(fixture, '4')[1];
+      expect(item.getAttribute('aria-disabled'), JSON.stringify(gate)).toBe('true');
+      expect(item.getAttribute('aria-describedby'), JSON.stringify(gate)).toBe(reasonId);
+      item.click();
+      expect(entry.take(), JSON.stringify(gate)).toBeNull();
+      TestBed.inject(ErrorLogDrill).reset();
+      TestBed.resetTestingModule();
+    }
   });
 });

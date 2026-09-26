@@ -703,7 +703,7 @@ test('run as a process over a drifted tree, --check exits 1 and prints the viola
   withTree({ manifest: '<Export generator="Cache" version="25"/>\n' }, (tree) => {
     const tools = join(tree.root, 'ui', 'tools');
     mkdirSync(tools, { recursive: true });
-    for (const name of ['ipm-manifest.mjs', 'screen-mirror.mjs', 'strings.mjs']) {
+    for (const name of ['ipm-manifest.mjs', 'screen-mirror.mjs', 'credential-pattern.mjs', 'strings.mjs']) {
       copyFileSync(join(here, name), join(tools, name));
     }
 

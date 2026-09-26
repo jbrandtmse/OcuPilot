@@ -1,0 +1,1867 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+// Pins the turn store (Story 4.5): send ensures a conversation, polls every 1,000 ms, stops,
+// locks on busy or 409, restores with the navigation-kind rule, starts a new conversation, and
+// clears itself at sign-out. Every I/O & Edge-Case Matrix row of the spec is a test below.
+//
+// **No test here waits on a clock.** The 1,000 ms poll is driven by hand through the injected
+// `schedule` seam, the same idiom `refresh.test.mjs` uses: a fake schedule records
+// `{run, delayMs}` and a test calls `run()` itself.
+//
+// Mutations (Rule 19):
+// - drop the `busyValue` guard at the top of `send()` -> "a second send while busy is refused
+//   locally" goes red, and two turns would race the same slot.
+// - stop clearing `lockedValue` at the start of a fresh `send()` -> "the lock clears on the next
+//   attempt" goes red, and a stale 409 would lock the composer forever.
+// - answer the error banner for a `stopped` entry -> "a stop is never an error" goes red.
+// - adopt the stored id whatever the navigation kind -> "a fresh or duplicated tab starts with no
+//   conversation and drops a stray stored id" goes red.
+// - drop the `generation` check after `restore()`'s read -> "restore() lands nothing when
+//   endSession() ran while its read was in flight" goes red.
+
+const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
+
+const {
+  TurnStore,
+  CONVERSATION_PATH,
+  TURN_PATH,
+  CONVERSATION_STORAGE_KEY,
+  conversationReadPath,
+  turnProgressPath,
+  turnStopPath,
+  turnNavigationPath,
+  proposalConfirmPath,
+  proposalCancelPath,
+  NAV_REFUSED_UNSAVED_CODE,
+  stepLabel,
+  confirmedWriteStep,
+  turnErrorBanner,
+  streamedText,
+  isTerminalState,
+} = await import(corePath('turn.ts'));
+const { STRINGS } = await import(corePath('strings.ts'));
+
+function ok(body, status = 200) {
+  return { kind: 'ok', status, body };
+}
+
+function err(status, code, reason = 'refused', detail = null) {
+  return { kind: 'error', status, code, reason, detail };
+}
+
+/** One wire proposal, as a poll or a restore carries it. */
+function wireProposal(overrides = {}) {
+  return {
+    proposalId: 'p1',
+    target: { type: 'web-application', scope: 'instance', id: '/csp/myapp' },
+    expiresAt: '2026-09-19T10:05:00Z',
+    tool: 'webapp.list.update',
+    changed: [{ field: 'Enabled', before: 'false', after: 'true' }],
+    unchangedCount: 2,
+    rationale: 'because',
+    expectedImpact: 'it serves',
+    reverse: 'set it back',
+    state: 'live',
+    closedReason: '',
+    confirmedAt: '',
+    auditWarning: false,
+    ...overrides,
+  };
+}
+
+/** A fixed moment inside the fixture proposals' own window. */
+const NOW_MS = Date.parse('2026-09-19T10:00:00Z');
+
+/** A bus that records what was published, over the same fixed moment. */
+function recordingBus() {
+  const events = [];
+  return {
+    events,
+    publish: (event) => events.push(event),
+    subscribe: () => () => {},
+  };
+}
+
+/** Per-path response queues, and every call recorded (path, method, body). */
+function fakeApi(responses = {}) {
+  const calls = [];
+  const seen = new Map();
+  return {
+    calls,
+    requestJson: async (path, init = {}) => {
+      calls.push({ path, method: init.method ?? 'GET', body: init.body });
+      const list = responses[path] ?? [];
+      const index = seen.get(path) ?? 0;
+      seen.set(path, index + 1);
+      if (list.length === 0) return ok({});
+      return list[Math.min(index, list.length - 1)];
+    },
+  };
+}
+
+function memoryStorage(initial = {}) {
+  const map = new Map(Object.entries(initial));
+  return {
+    getItem: (key) => (map.has(key) ? map.get(key) : null),
+    setItem: (key, value) => map.set(key, value),
+    removeItem: (key) => map.delete(key),
+    map,
+  };
+}
+
+function fakeSchedule() {
+  const scheduled = [];
+  const schedule = (run, delayMs) => scheduled.push({ run, delayMs });
+  return { schedule, scheduled };
+}
+
+function freshTab() {
+  return () => 'navigate';
+}
+
+function reloadedTab() {
+  return () => 'reload';
+}
+
+const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+function step(overrides = {}) {
+  return {
+    seq: 1,
+    kind: 'tool',
+    name: 'shell.namespaces.read',
+    status: 'ok',
+    summary: '',
+    text: '',
+    code: '',
+    truncated: false,
+    target: '',
+    arguments: '',
+    result: null,
+    reason: '',
+    failedPair: '',
+    ...overrides,
+  };
+}
+
+// --- Construction / navigation-kind adoption --------------------------------------------------
+
+test('a fresh or duplicated tab starts with no conversation and drops a stray stored id', () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'stale-id' });
+  const api = fakeApi();
+  const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+  assert.equal(turn.conversationId(), null);
+  assert.equal(storage.getItem(CONVERSATION_STORAGE_KEY), null);
+});
+
+test('a reload adopts a stored conversation id', () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const api = fakeApi();
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  assert.equal(turn.conversationId(), 'convo-1');
+});
+
+// --- restore() ---------------------------------------------------------------------------------
+
+test('restore() with no adopted id settles at once with an empty transcript', async () => {
+  const api = fakeApi();
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab() });
+  await turn.restore();
+  assert.equal(turn.restored(), true);
+  assert.deepEqual(turn.entries(), []);
+  assert.equal(api.calls.length, 0);
+});
+
+test('Reload: restore() replays both a completed and a stopped turn, with no running card', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const api = fakeApi({
+    [conversationReadPath('convo-1')]: [
+      ok({
+        conversationId: 'convo-1',
+        turns: [
+          { seq: 1, message: 'hi', state: 'completed', reply: 'hello', error: null, steps: [step()], stepsDropped: 0 },
+          {
+            seq: 2,
+            message: 'stop me',
+            state: 'stopped',
+            reply: null,
+            error: { seq: 1, code: 'TURN.STOPPED', reason: 'Stopped' },
+            steps: [step({ status: 'stopped' })],
+            stepsDropped: 0,
+          },
+        ],
+      }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  const entries = turn.entries();
+  assert.equal(entries.length, 2);
+  assert.equal(entries[0].reply, 'hello');
+  assert.equal(entries[1].state, 'stopped');
+  for (const entry of entries) {
+    assert.equal(entry.live, false);
+    assert.ok(entry.steps.every((s) => s.status !== 'running'), 'no restored step is running');
+  }
+});
+
+test('restore() drops the id on a 404 -- the conversation is gone', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const api = fakeApi({
+    [conversationReadPath('convo-1')]: [err(404, 'TURN.CONVERSATION.NOTFOUND')],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  assert.equal(turn.conversationId(), null);
+  assert.equal(storage.getItem(CONVERSATION_STORAGE_KEY), null);
+  assert.deepEqual(turn.entries(), []);
+});
+
+test('restore() keeps the id over a transport fault -- only a confirmed 404 drops it', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const api = fakeApi({ [conversationReadPath('convo-1')]: [err(0, null)] });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  assert.equal(turn.conversationId(), 'convo-1');
+});
+
+// --- send(): one read, ensuring a conversation ---------------------------------------------
+
+test('Send, one read: ensures a conversation, posts the turn, polls to a card then a reply', async () => {
+  const storage = memoryStorage();
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      ok({ turnId: 'turn-1', state: 'running', steps: [step({ status: 'running' })], stepsDropped: 0, reply: null, error: null }),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [step()], stepsDropped: 0, reply: 'the answer', error: null }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab(), schedule });
+
+  const sent = turn.send('list namespaces');
+  assert.equal(turn.busy(), true, 'busy synchronously, before either network call is even issued');
+  await settle();
+  await settle();
+  await settle();
+  assert.equal(turn.conversationId(), 'convo-1');
+  assert.equal(storage.getItem(CONVERSATION_STORAGE_KEY), 'convo-1');
+
+  assert.equal(scheduled.length, 1, 'one poll armed at 1,000 ms');
+  assert.equal(scheduled[0].delayMs, 1000);
+  let live = turn.entries().at(-1);
+  assert.equal(live.live, true);
+  assert.equal(live.message, 'list namespaces');
+
+  scheduled.shift().run();
+  await settle();
+  live = turn.entries().at(-1);
+  assert.equal(live.steps.length, 1);
+  assert.equal(live.steps[0].status, 'running');
+  assert.equal(live.state, 'running');
+  assert.equal(turn.busy(), true, 'still running after the first card');
+
+  assert.equal(scheduled.length, 1, 'the next poll is armed');
+  scheduled.shift().run();
+  await settle();
+
+  const outcome = await sent;
+  assert.equal(outcome, 'sent');
+  assert.equal(turn.busy(), false);
+  const finished = turn.entries().at(-1);
+  assert.equal(finished.live, false);
+  assert.equal(finished.state, 'completed');
+  assert.equal(finished.reply, 'the answer');
+  assert.equal(turnErrorBanner(finished, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner), null, 'a completed turn shows no error banner');
+});
+
+// --- Story 4.11: `context` reaches the POST body ---------------------------------------------
+
+test('send(message, context): a non-null context reaches the POST body verbatim; a null one omits the key', async () => {
+  const context = { route: 'permissions/users', namespace: 'HSCUSTOM', view: { rows: [], rowsAvailable: 0, sort: '', direction: '', filter: '' } };
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202), ok({ turnId: 'turn-2' }, 202)],
+    [turnProgressPath('turn-1')]: [ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'ok', error: null })],
+    [turnProgressPath('turn-2')]: [ok({ turnId: 'turn-2', state: 'completed', steps: [], stepsDropped: 0, reply: 'ok', error: null })],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+
+  await turn.send('with context', context);
+  const firstBody = JSON.parse(api.calls.find((c) => c.path === TURN_PATH).body);
+  assert.deepEqual(firstBody.context, context);
+  scheduled.shift().run();
+  await settle();
+
+  await turn.send('no context');
+  const secondCall = api.calls.filter((c) => c.path === TURN_PATH).at(-1);
+  const secondBody = JSON.parse(secondCall.body);
+  assert.equal('context' in secondBody, false, 'a null context omits the key entirely');
+});
+
+test("send()'s promise settles as soon as the turn is accepted, not once it ends -- panel.ts clears the draft on this", async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [ok({ turnId: 'turn-1', state: 'running', steps: [], stepsDropped: 0, reply: null, error: null })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+
+  const outcome = await turn.send('hi');
+  assert.equal(outcome, 'sent');
+  assert.equal(turn.busy(), true, 'the turn is still running -- send() did not wait for it to end');
+  assert.equal(scheduled.length, 1, 'polling continues on its own after send() has already resolved');
+});
+
+test('send(): a failed conversation-creation resolves \'error\', clears busy, and never posts a turn', async () => {
+  const api = fakeApi({ [CONVERSATION_PATH]: [err(500, 'INTERNAL')] });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab() });
+
+  const outcome = await turn.send('hi');
+  assert.equal(outcome, 'error');
+  assert.equal(turn.busy(), false);
+  assert.equal(api.calls.some((c) => c.path === TURN_PATH), false, 'no POST /turn when the conversation could not be created');
+});
+
+test('createConversation(): endSession() while POST /conversation is in flight leaves the id and storage untouched', async () => {
+  const storage = memoryStorage();
+  const calls = [];
+  const releases = [];
+  const api = {
+    calls,
+    requestJson: async (path, init = {}) => {
+      calls.push({ path, method: init.method ?? 'GET', body: init.body });
+      if (path === CONVERSATION_PATH) {
+        return new Promise((resolve) => releases.push(resolve));
+      }
+      return ok({});
+    },
+  };
+  const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+
+  const sent = turn.send('hi');
+  await settle();
+  assert.equal(turn.busy(), true);
+  assert.equal(releases.length, 1, 'the POST /conversation call is in flight');
+
+  turn.endSession();
+  assert.equal(turn.conversationId(), null);
+  assert.equal(storage.getItem(CONVERSATION_STORAGE_KEY), null);
+
+  releases[0](ok({ conversationId: 'convo-1' }, 201));
+  await settle();
+  await settle();
+
+  assert.equal(turn.conversationId(), null, 'the departed request must not resurrect a conversation id');
+  assert.equal(storage.getItem(CONVERSATION_STORAGE_KEY), null, 'nor write it back into storage');
+  assert.equal(await sent, 'error');
+});
+
+// --- Stop mid-call -------------------------------------------------------------------------
+
+test('Stop mid-call: the tool step the loop was about to run becomes a stopped step, no reply, no error banner', async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      ok({
+        turnId: 'turn-1',
+        state: 'stopped',
+        steps: [step({ status: 'stopped', name: 'shell.namespaces.read', target: '' })],
+        stepsDropped: 0,
+        reply: null,
+        error: { seq: 1, code: 'TURN.STOPPED', reason: 'Stopped by the caller' },
+      }),
+    ],
+    [turnStopPath('turn-1')]: [ok({ stopRequested: true })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+
+  const sent = turn.send('do something slow');
+  await settle();
+  await settle();
+
+  const stopResult = turn.stop();
+  scheduled.shift().run();
+  await settle();
+  assert.equal(await stopResult, true, 'the stop endpoint answered stopRequested true');
+
+  const outcome = await sent;
+  assert.equal(outcome, 'sent');
+  const finished = turn.entries().at(-1);
+  assert.equal(finished.state, 'stopped');
+  assert.equal(finished.reply, null);
+  assert.equal(turnErrorBanner(finished, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner), null, 'a stop is never an error');
+  assert.equal(finished.steps[0].status, 'stopped');
+  assert.equal(stepLabel(finished.steps[0]), 'shell.namespaces.read');
+
+  const stopCall = api.calls.find((c) => c.path === turnStopPath('turn-1'));
+  assert.ok(stopCall, 'POST /turn/:id/stop was called');
+  assert.equal(stopCall.method, 'POST');
+});
+
+// --- Second send: local busy, and a 409 from another tab -----------------------------------
+
+test('Second send: a second send while this tab is busy is refused locally, no request, lock banner', async () => {
+  const { schedule } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [ok({ turnId: 'turn-1', state: 'running', steps: [], stepsDropped: 0, reply: null, error: null })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+
+  void turn.send('first');
+  await settle();
+  await settle();
+  assert.equal(turn.busy(), true);
+  const callsBefore = api.calls.length;
+
+  const second = await turn.send('second');
+  assert.equal(second, 'locked');
+  assert.equal(turn.locked(), true);
+  assert.equal(api.calls.length, callsBefore, 'no network call for the locally-refused send');
+  assert.equal(turn.entries().length, 1, 'no second message appended');
+});
+
+test('Second send: another tab holding the slot answers 409, and this tab shows the same lock banner', async () => {
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [err(409, 'TURN.BUSY', STRINGS.agentTurnLockBanner)],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab() });
+
+  const outcome = await turn.send('hello');
+  assert.equal(outcome, 'locked');
+  assert.equal(turn.locked(), true);
+  assert.equal(turn.busy(), false, 'busy clears once the refusal is in');
+  assert.equal(turn.entries().length, 0, 'nothing rendered for a refused send');
+});
+
+test('the lock clears on the next attempt that gets past the local busy check', async () => {
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [err(409, 'TURN.BUSY'), ok({ turnId: 'turn-2' }, 202)],
+    [turnProgressPath('turn-2')]: [ok({ turnId: 'turn-2', state: 'completed', steps: [], stepsDropped: 0, reply: 'ok', error: null })],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+
+  assert.equal(await turn.send('first'), 'locked');
+  assert.equal(turn.locked(), true);
+
+  const second = turn.send('second');
+  await settle();
+  assert.equal(turn.locked(), false, 'cleared as soon as a fresh attempt passes the local check');
+  scheduled.shift().run();
+  await settle();
+  assert.equal(await second, 'sent');
+});
+
+test('locked() clears when the turn that was busy finishes, without a second send attempt', async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'ok', error: null })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+
+  const sent = turn.send('first');
+  await settle();
+  await settle();
+  assert.equal(turn.busy(), true);
+
+  // A same-tab Enter-while-busy attempt raises the lock banner, with no second network call.
+  const second = await turn.send('second');
+  assert.equal(second, 'locked');
+  assert.equal(turn.locked(), true);
+
+  scheduled.shift().run();
+  await settle();
+
+  assert.equal(await sent, 'sent');
+  assert.equal(turn.busy(), false);
+  assert.equal(turn.locked(), false, 'the banner clears when this tab\'s own turn ends');
+});
+
+// --- New conversation -----------------------------------------------------------------------
+
+test('newConversation() is refused while busy, and clears the transcript and the lock when it is not', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-0' });
+  const api = fakeApi({
+    [conversationReadPath('convo-0')]: [
+      ok({ conversationId: 'convo-0', turns: [{ seq: 1, message: 'hi', state: 'completed', reply: 'hello', error: null, steps: [], stepsDropped: 0 }] }),
+    ],
+    [TURN_PATH]: [err(409, 'TURN.BUSY')],
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  assert.equal(await turn.send('another tab is busy'), 'locked');
+  assert.equal(turn.entries().length, 1);
+  assert.equal(turn.locked(), true);
+
+  const { schedule } = fakeSchedule();
+  const busyApi = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [ok({ turnId: 'turn-1', state: 'running', steps: [], stepsDropped: 0, reply: null, error: null })],
+  });
+  const busyTurn = new TurnStore({ api: busyApi, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  void busyTurn.send('x');
+  await settle();
+  await settle();
+  assert.equal(await busyTurn.newConversation(), false);
+
+  assert.equal(await turn.newConversation(), true);
+  assert.equal(turn.conversationId(), 'convo-1');
+  assert.deepEqual(turn.entries(), []);
+  assert.equal(turn.locked(), false);
+});
+
+test('restore() lands nothing when endSession() ran while its read was in flight', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const api = {
+    calls: [],
+    requestJson: async () => {
+      await gate;
+      return ok({ conversationId: 'convo-1', turns: [{ seq: 1, message: 'theirs', state: 'completed', reply: 'secret', error: null, steps: [], stepsDropped: 0 }] });
+    },
+  };
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  const restoring = turn.restore();
+  turn.endSession();
+  release();
+  await restoring;
+  assert.deepEqual(turn.entries(), []);
+  assert.equal(turn.restored(), false);
+});
+
+test('restore() and a finished live turn settle a step still running into a failed one', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const abandoned = { seq: 1, code: 'TURN.ABANDONED.LEASE', reason: 'The turn was abandoned.' };
+  const api = fakeApi({
+    [conversationReadPath('convo-1')]: [
+      ok({ conversationId: 'convo-1', turns: [{ seq: 1, message: 'hi', state: 'abandoned', reply: null, error: abandoned, steps: [step({ status: 'running' })], stepsDropped: 0 }] }),
+    ],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      ok({ turnId: 'turn-1', state: 'running', steps: [step({ status: 'running' })], stepsDropped: 0, reply: null, error: null }),
+      ok({ turnId: 'turn-1', state: 'abandoned', steps: [step({ status: 'running' })], stepsDropped: 0, reply: null, error: abandoned }),
+    ],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), schedule });
+  await turn.restore();
+  assert.equal(turn.entries()[0].steps[0].status, 'error');
+  assert.equal(turn.entries()[0].steps[0].reason, 'The turn was abandoned.');
+
+  const sent = turn.send('again');
+  await settle();
+  scheduled.shift().run();
+  await settle();
+  assert.equal(turn.entries().at(-1).steps[0].status, 'running', 'the live turn still shows its running step');
+  scheduled.shift().run();
+  await settle();
+  await sent;
+  assert.equal(turn.entries().at(-1).steps[0].status, 'error', 'and settles it once the turn ends');
+});
+
+test('a transient poll failure keeps polling; the turn still ends on its terminal state', async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      err(0, null),
+      err(503, null),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  const sent = turn.send('hi');
+  await settle();
+  await settle();
+  for (let tick = 0; tick < 2; tick += 1) {
+    scheduled.shift().run();
+    await settle();
+    assert.equal(turn.busy(), true, `still busy after transient failure ${tick + 1}`);
+  }
+  scheduled.shift().run();
+  await settle();
+  await sent;
+  assert.equal(turn.busy(), false);
+  assert.equal(turn.entries().at(-1).state, 'completed');
+  assert.equal(turn.entries().at(-1).reply, 'done');
+});
+
+test('a send refused 404 (the conversation is gone) drops the id, so the next send starts a fresh one', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'gone' });
+  const api = fakeApi({
+    [conversationReadPath('gone')]: [err(0, null)],
+    [TURN_PATH]: [err(404, 'TURN.CONVERSATION.NOTFOUND')],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  assert.equal(await turn.send('hi'), 'error');
+  assert.equal(turn.conversationId(), null);
+  assert.equal(storage.getItem(CONVERSATION_STORAGE_KEY), null);
+});
+
+// --- endSession ------------------------------------------------------------------------------
+
+test('endSession cancels a pending poll and clears the id, in memory and in storage', async () => {
+  const storage = memoryStorage();
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [ok({ turnId: 'turn-1', state: 'running', steps: [], stepsDropped: 0, reply: null, error: null })],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab(), schedule });
+
+  const sent = turn.send('hi');
+  await settle();
+  await settle();
+  assert.equal(turn.busy(), true);
+
+  turn.endSession();
+  assert.equal(turn.busy(), false);
+  assert.equal(turn.conversationId(), null);
+  assert.equal(storage.getItem(CONVERSATION_STORAGE_KEY), null);
+  assert.deepEqual(turn.entries(), []);
+
+  // The poll that was already armed still fires (nothing cancels a timer, per `refresh.ts`'s own
+  // idiom), but its generation is stale, so it changes nothing.
+  const before = turn.entries();
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.entries(), before);
+  await sent;
+});
+
+// --- Pure projections: stepLabel / turnErrorBanner ------------------------------------------
+
+test('stepLabel is the name alone with no target, and "name target" with one', () => {
+  assert.equal(stepLabel({ name: 'provider', target: '' }), 'provider');
+  assert.equal(stepLabel({ name: 'shell.webapps.read', target: '/csp/myapp' }), 'shell.webapps.read /csp/myapp');
+});
+
+test('turnErrorBanner names the step at error.seq and substitutes both placeholders', () => {
+  const entry = {
+    state: 'failed',
+    error: { seq: 2, code: 'PROVIDER.TIMEOUT', reason: 'The provider timed out.' },
+    steps: [step({ seq: 1, name: 'provider', kind: 'model' }), step({ seq: 2, name: 'shell.namespaces.read', status: 'error' })],
+  };
+  const banner = turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner);
+  assert.equal(banner, 'The turn stopped at shell.namespaces.read: The provider timed out.');
+});
+
+test('turnErrorBanner is null with no error, and null for completed/stopped even with one', () => {
+  assert.equal(turnErrorBanner({ state: 'running', error: null, steps: [] }, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner), null);
+  assert.equal(
+    turnErrorBanner(
+      { state: 'completed', error: { seq: 1, code: 'X', reason: 'r' }, steps: [] },
+      STRINGS.agentTurnStoppedBanner,
+      STRINGS.agentTurnStoppedNoStepBanner
+    ),
+    null
+  );
+  assert.equal(
+    turnErrorBanner(
+      { state: 'stopped', error: { seq: 1, code: 'TURN.STOPPED', reason: 'r' }, steps: [] },
+      STRINGS.agentTurnStoppedBanner,
+      STRINGS.agentTurnStoppedNoStepBanner
+    ),
+    null
+  );
+});
+
+// --- Story 4.8: the no-step banner (DW-1053) and a refused Send (DW-1054) --------------------
+
+test('turnErrorBanner: a failure naming no step uses the no-step wording and never renders "at :"', () => {
+  // Mutation (Rule 19): restore the single-template `turnErrorBanner` -- both legs go red, the
+  // first rendering "The turn stopped at : ..." and the second the same.
+  //
+  // Two real paths reach here. A job-level refusal finishes with `errorSeq` 0, which no step can
+  // carry; and `Step.GuardedAppend` answers a seq for a row it did not store once `MAXSTEPS` is
+  // reached, so the projection holds a seq past every step it shipped.
+  const jobLevel = {
+    state: 'failed',
+    error: { seq: 0, code: 'TURN.UNAVAILABLE', reason: 'The turn could not be started.' },
+    steps: [step({ seq: 1, name: 'provider', kind: 'model' })],
+  };
+  assert.equal(turnErrorBanner(jobLevel, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner),
+    'The turn stopped: The turn could not be started.');
+
+  const pastCap = {
+    state: 'failed',
+    error: { seq: 4096, code: 'PROVIDER.TIMEOUT', reason: 'The provider did not answer within the time this instance allows' },
+    steps: [step({ seq: 1, name: 'provider', kind: 'model' }), step({ seq: 2 })],
+  };
+  const banner = turnErrorBanner(pastCap, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner);
+  assert.equal(banner, 'The turn stopped: The provider did not answer within the time this instance allows.');
+  assert.equal(banner.includes('at :'), false, 'and never the empty-step wording');
+});
+
+test('turnErrorBanner: a step that is found but renders no label takes the no-step wording too', () => {
+  // Mutation (Rule 19): select the template on `step === null` instead of on the rendered label --
+  // this goes red with "The turn stopped at : ...", the wording AC7 removes.
+  //
+  // `stepLabel` is name plus target, and both are `''` for a projected row that carried neither, so
+  // the `<step>` substitution would put nothing between "at" and the colon.
+  const entry = {
+    state: 'failed',
+    error: { seq: 3, code: 'PROVIDER.TIMEOUT', reason: 'The provider did not answer within the time this instance allows' },
+    steps: [step({ seq: 3, name: '', target: '', status: 'error' })],
+  };
+  const banner = turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner);
+  assert.equal(banner, 'The turn stopped: The provider did not answer within the time this instance allows.');
+  assert.equal(banner.includes('at :'), false, 'and never the empty-step wording');
+});
+
+test('turnErrorBanner still names the step when one is there, so the no-step wording is the miss alone', () => {
+  const entry = {
+    state: 'failed',
+    error: { seq: 1, code: 'PROVIDER.TIMEOUT', reason: 'The provider did not answer within the time this instance allows' },
+    steps: [step({ seq: 1, name: 'provider', kind: 'model', status: 'error' })],
+  };
+  assert.equal(
+    turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner),
+    'The turn stopped at provider: The provider did not answer within the time this instance allows.'
+  );
+});
+
+test('sendError records every non-409 refusal of POST /turn and 409 raises the lock banner alone', async () => {
+  // Mutation (Rule 19): drop the `sendErrorValue` assignment from the non-409 branch -- every leg
+  // but 409 goes red with `sendError()` null.
+  for (const status of [401, 404, 422, 500]) {
+    const storage = memoryStorage();
+    const api = fakeApi({
+      [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+      [TURN_PATH]: [err(status, 'AUTH.EXPIRED', 'Your session ended. Sign in to continue.')],
+    });
+    const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+    assert.equal(await turn.send('hello'), 'error', `${status}: the send is refused`);
+    assert.deepEqual(turn.sendError(), { status, code: 'AUTH.EXPIRED', reason: 'Your session ended. Sign in to continue.' },
+      `${status}: and the refusal is recorded with the envelope's own reason`);
+    assert.equal(turn.locked(), false, `${status}: which is not the lock banner`);
+    assert.equal(turn.busy(), false, `${status}: and the store is idle again`);
+    assert.equal(turn.entries().length, 0, `${status}: with nothing appended to the transcript`);
+  }
+
+  // Status 0 is the browser's own spelling for "no answer arrived", so there is no envelope to
+  // parse and the refusal carries neither code nor reason -- the shape the panel falls back for.
+  {
+    const storage = memoryStorage();
+    const api = fakeApi({
+      [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+      [TURN_PATH]: [err(0, null, null)],
+    });
+    const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+    assert.equal(await turn.send('hello'), 'error', '0: the send is refused');
+    assert.deepEqual(turn.sendError(), { status: 0, code: null, reason: null },
+      '0: and is recorded with no envelope, because none arrived');
+    assert.equal(turn.locked(), false, '0: which is not the lock banner');
+    assert.equal(turn.entries().length, 0, '0: with nothing appended to the transcript');
+  }
+
+  const storage = memoryStorage();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [err(409, 'TURN.BUSY', 'A turn is in progress.')],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+  assert.equal(await turn.send('hello'), 'locked', '409 is the lock refusal');
+  assert.equal(turn.sendError(), null, 'and raises no send-error banner');
+  assert.equal(turn.locked(), true, 'only the lock one');
+});
+
+test('sendError records a conversation mint that failed, and clears on the next send and at sign-out', async () => {
+  const storage = memoryStorage();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [err(500, 'STATE.UNAVAILABLE', 'Something failed on the instance.'), ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+  });
+  const { schedule } = fakeSchedule();
+  const turn = new TurnStore({ api, storage, navigationType: freshTab(), schedule });
+  assert.equal(await turn.send('first'), 'error', 'a send whose conversation cannot be minted is refused');
+  assert.deepEqual(turn.sendError(), { status: 500, code: 'STATE.UNAVAILABLE', reason: 'Something failed on the instance.' },
+    'and the mint refusal is what the banner carries');
+
+  assert.equal(await turn.send('second'), 'sent', 'the next send gets through');
+  assert.equal(turn.sendError(), null, 'and the banner is cleared by it');
+});
+
+test('newConversation whose mint the instance refuses raises the same banner, and starts nothing', async () => {
+  // Mutation (Rule 19): drop the `sendErrorValue` assignment from `newConversation()`'s refused-mint
+  // branch -- this goes red with `sendError()` null, the press having shown the user nothing.
+  const storage = memoryStorage();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [err(500, 'STATE.UNAVAILABLE', 'Something failed on the instance.')],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+  assert.equal(await turn.newConversation(), false, 'the mint is refused, so no fresh conversation starts');
+  assert.deepEqual(turn.sendError(), { status: 500, code: 'STATE.UNAVAILABLE', reason: 'Something failed on the instance.' },
+    'and the refusal the press met is what the banner carries, rather than the press failing silently');
+  assert.equal(turn.conversationId(), null, 'with no id adopted');
+  assert.equal(turn.busy(), false, 'and nothing left running');
+});
+
+test('sendError clears when a new conversation is started', async () => {
+  const storage = memoryStorage();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201), ok({ conversationId: 'convo-2' }, 201)],
+    [TURN_PATH]: [err(422, 'TURN.MESSAGE.LENGTH', 'That message is too long.')],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+  await turn.send('hello');
+  assert.notEqual(turn.sendError(), null, 'the refusal is recorded');
+  assert.equal(await turn.newConversation(), true, 'a new conversation is minted');
+  assert.equal(turn.sendError(), null, 'and the banner does not float over the empty transcript it left behind');
+});
+
+test('sendError clears at sign-out', async () => {
+  const storage = memoryStorage();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [err(422, 'TURN.MESSAGE.LENGTH', 'That message is too long.')],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+  await turn.send('hello');
+  assert.notEqual(turn.sendError(), null, 'the refusal is recorded');
+  turn.endSession();
+  assert.equal(turn.sendError(), null, 'and sign-out drops it with everything else');
+});
+
+// --- Failed tool -----------------------------------------------------------------------------
+
+test('Failed tool: a failed step carries its reason and failedPair through restore unchanged', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const api = fakeApi({
+    [conversationReadPath('convo-1')]: [
+      ok({
+        conversationId: 'convo-1',
+        turns: [
+          {
+            seq: 1,
+            message: 'disable it',
+            state: 'failed',
+            reply: null,
+            error: { seq: 1, code: 'AUTH.NOPRIVILEGE', reason: 'no privilege' },
+            steps: [
+              step({
+                status: 'error',
+                code: 'AUTH.NOPRIVILEGE',
+                reason: 'no privilege',
+                failedPair: '%Admin_Secure:USE',
+              }),
+            ],
+            stepsDropped: 0,
+          },
+        ],
+      }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  const entry = turn.entries()[0];
+  assert.equal(entry.steps[0].failedPair, '%Admin_Secure:USE');
+  assert.equal(entry.steps[0].reason, 'no privilege');
+});
+
+// --- Markup is carried, never interpreted here ----------------------------------------------
+
+test('Markup in a reply or a step is carried as a literal string -- rendering is the template\'s job, not the store\'s', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const markup = '<img src="http://203.0.113.9/x">';
+  const api = fakeApi({
+    [conversationReadPath('convo-1')]: [
+      ok({
+        conversationId: 'convo-1',
+        turns: [{ seq: 1, message: 'hi', state: 'completed', reply: markup, error: null, steps: [], stepsDropped: 0 }],
+      }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  assert.equal(turn.entries()[0].reply, markup);
+});
+
+// --- Story 4.7: the navigation directive ------------------------------------------------------
+//
+// Mutations (Rule 19):
+// - drop `parseNavigation`'s pairing check against `steps` -> the orphan-directive test goes
+//   red, and a reader could observe a directive whose announcement it cannot also see (AC3).
+// - drop the `seq <= actedNavigationSeq` guard in `navigation()` -> the one-shot test goes red,
+//   and a directive still unsettled on the wire would be acted on twice.
+// - stop resetting `actedNavigationSeq` in `send()` -> the fresh-turn test goes red.
+
+test('navigation() is null with no announce step to pair it with, and exposed once the step lands (AC3)', async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      // The directive names seq 2, but no announce step at that seq is in `steps` yet.
+      ok({
+        turnId: 'turn-1',
+        state: 'running',
+        steps: [step({ seq: 1, kind: 'tool', name: 'shell.screen.open', status: 'running' })],
+        stepsDropped: 0,
+        reply: null,
+        error: null,
+        navigation: { seq: 2, route: 'permissions/users', entityId: null },
+      }),
+      // Now the announce step is present at seq 2 -- the pairing holds.
+      ok({
+        turnId: 'turn-1',
+        state: 'running',
+        steps: [
+          step({ seq: 1, kind: 'tool', name: 'shell.screen.open', status: 'running' }),
+          step({ seq: 2, kind: 'announce', name: 'shell.screen.open', status: 'running', target: 'permissions/users' }),
+        ],
+        stepsDropped: 0,
+        reply: null,
+        error: null,
+        navigation: { seq: 2, route: 'permissions/users', entityId: null },
+      }),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  void turn.send('open users');
+  await settle();
+  await settle();
+  await settle();
+  assert.equal(turn.navigation(), null, 'nothing polled yet');
+
+  scheduled.shift().run();
+  await settle();
+  assert.equal(turn.navigation(), null, 'the directive names an announce step that is not in `steps`');
+
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.navigation(), { seq: 2, route: 'permissions/users', entityId: '', criterion: '' });
+
+  scheduled.shift().run();
+  await settle();
+});
+
+test("navigation() carries the directive's declared criterion, and none where the wire sends none (Story 5.8)", async () => {
+  // AD-21: the criterion is a NAME the target screen declares, applied on arrival through that
+  // screen's own store. It travels on the directive rather than as a query parameter, which is
+  // why it is read here and not by `withQuery`.
+  //
+  // Mutation (Rule 19): drop the `criterion` line from `parseNavigation` -> this goes red, and an
+  // arriving audit screen would render an unsearched criteria form.
+  const { schedule, scheduled } = fakeSchedule();
+  const body = () =>
+    ok({
+      turnId: 'turn-1',
+      state: 'running',
+      steps: [step({ seq: 2, kind: 'announce', name: 'shell.screen.open', status: 'running', target: 'logs/audit' })],
+      stepsDropped: 0,
+      reply: null,
+      error: null,
+      navigation: { seq: 2, route: 'logs/audit', entityId: null, criterion: 'marker' },
+    });
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [body(), ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  void turn.send('show the audit entry');
+  await settle();
+  await settle();
+  await settle();
+
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.navigation(), {
+    seq: 2,
+    route: 'logs/audit',
+    entityId: '',
+    criterion: 'marker',
+  });
+
+  scheduled.shift().run();
+  await settle();
+});
+
+test('settleNavigation posts opened with no code key, and the directive is acted on exactly once', async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const navBody = () =>
+    ok({
+      turnId: 'turn-1',
+      state: 'running',
+      steps: [step({ seq: 2, kind: 'announce', name: 'shell.screen.open', status: 'running', target: 'permissions/users', text: '_SYSTEM' })],
+      stepsDropped: 0,
+      reply: null,
+      error: null,
+      navigation: { seq: 2, route: 'permissions/users', entityId: '_SYSTEM' },
+    });
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    // The server keeps answering the same unsettled-looking directive on the poll that lands
+    // right after the settle POST goes out -- a real race, not a hypothetical one.
+    [turnProgressPath('turn-1')]: [navBody(), navBody(), ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null })],
+    [turnNavigationPath('turn-1')]: [ok({ settled: true })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  void turn.send('open users');
+  await settle();
+  await settle();
+  await settle();
+
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.navigation(), { seq: 2, route: 'permissions/users', entityId: '_SYSTEM', criterion: '' });
+
+  const settled = await turn.settleNavigation('opened');
+  assert.equal(settled, true);
+  const navCalls = api.calls.filter((call) => call.path === turnNavigationPath('turn-1'));
+  assert.equal(navCalls.length, 1);
+  assert.equal(navCalls[0].method, 'POST');
+  assert.deepEqual(JSON.parse(navCalls[0].body), { seq: 2, outcome: 'opened' });
+  assert.equal(turn.navigation(), null, 'acted on -- not exposed a second time from this same directive');
+
+  // A second call for the same directive posts nothing further and answers false.
+  const secondAttempt = await turn.settleNavigation('opened');
+  assert.equal(secondAttempt, false);
+  assert.equal(api.calls.filter((call) => call.path === turnNavigationPath('turn-1')).length, 1);
+
+  scheduled.shift().run();
+  await settle();
+  assert.equal(turn.navigation(), null, 'the next poll still carries the same wire shape; the guard hides it anyway');
+
+  scheduled.shift().run();
+  await settle();
+});
+
+test('settleNavigation posts refused with the one closed-vocabulary code this client ever authors', async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      ok({
+        turnId: 'turn-1',
+        state: 'running',
+        steps: [step({ seq: 1, kind: 'announce', name: 'shell.screen.open', status: 'running', target: 'agent/switches' })],
+        stepsDropped: 0,
+        reply: null,
+        error: null,
+        navigation: { seq: 1, route: 'agent/switches', entityId: null },
+      }),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null }),
+    ],
+    [turnNavigationPath('turn-1')]: [ok({ settled: true })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  void turn.send('open switches');
+  await settle();
+  await settle();
+  await settle();
+  scheduled.shift().run();
+  await settle();
+  assert.notEqual(turn.navigation(), null);
+
+  await turn.settleNavigation('refused', NAV_REFUSED_UNSAVED_CODE);
+  const call = api.calls.find((c) => c.path === turnNavigationPath('turn-1'));
+  assert.deepEqual(JSON.parse(call.body), { seq: 1, outcome: 'refused', code: 'NAV.REFUSEDUNSAVED' });
+
+  scheduled.shift().run();
+  await settle();
+});
+
+test('settleNavigation() with no directive pending posts nothing and answers false', async () => {
+  const api = fakeApi();
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab() });
+  assert.equal(await turn.settleNavigation('opened'), false);
+  assert.equal(api.calls.length, 0);
+});
+
+test('a fresh send() drops the previous turn\'s acted-on guard, so the next turn\'s own directive is not suppressed', async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const navBody = (seq) =>
+    ok({
+      turnId: 'turn-1',
+      state: 'running',
+      steps: [step({ seq, kind: 'announce', name: 'shell.screen.open', status: 'running', target: 'permissions/users' })],
+      stepsDropped: 0,
+      reply: null,
+      error: null,
+      navigation: { seq, route: 'permissions/users', entityId: null },
+    });
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202), ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      navBody(1),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null }),
+      // The second turn's own directive reuses seq 1 -- a fresh turn's own numbering, not a
+      // continuation of the first turn's.
+      navBody(1),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null }),
+    ],
+    [turnNavigationPath('turn-1')]: [ok({ settled: true })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+
+  void turn.send('open users');
+  await settle();
+  await settle();
+  await settle();
+  scheduled.shift().run();
+  await settle();
+  assert.notEqual(turn.navigation(), null);
+  await turn.settleNavigation('opened');
+  assert.equal(turn.navigation(), null);
+  scheduled.shift().run();
+  await settle();
+
+  void turn.send('open users again');
+  await settle();
+  await settle();
+  await settle();
+  scheduled.shift().run();
+  await settle();
+  // Mutation (Rule 19): stop resetting `actedNavigationSeq` in `send()` -> this reads `null`,
+  // since seq 1 from the first turn is still recorded as acted on.
+  assert.deepEqual(turn.navigation(), { seq: 1, route: 'permissions/users', entityId: '', criterion: '' });
+  scheduled.shift().run();
+  await settle();
+});
+
+test("parseStep recognizes kind 'announce', through restore()", async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const api = fakeApi({
+    [conversationReadPath('convo-1')]: [
+      ok({
+        conversationId: 'convo-1',
+        turns: [
+          {
+            seq: 1,
+            message: 'open users',
+            state: 'completed',
+            reply: 'Opened.',
+            error: null,
+            steps: [step({ seq: 1, kind: 'announce', name: 'shell.screen.open', target: 'permissions/users', status: 'ok' })],
+            stepsDropped: 0,
+          },
+        ],
+      }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  assert.equal(turn.entries()[0].steps[0].kind, 'announce');
+});
+
+// --- isTerminalState ---------------------------------------------------------------------------
+
+test('isTerminalState is true for the four terminal states and false for queued/running', () => {
+  assert.equal(isTerminalState('completed'), true);
+  assert.equal(isTerminalState('stopped'), true);
+  assert.equal(isTerminalState('abandoned'), true);
+  assert.equal(isTerminalState('failed'), true);
+  assert.equal(isTerminalState('queued'), false);
+  assert.equal(isTerminalState('running'), false);
+});
+
+// --- Confirm and cancel (Story 5.3) ------------------------------------------------------------
+
+test('confirmProposal posts the id in the route and only the declared secrets in the body', async () => {
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z' })],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const outcome = await turn.confirmProposal('p1', { Password: 'hunter2' });
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.state, 'confirmed');
+  assert.equal(outcome.confirmedAt, '2026-09-19T10:01:02Z');
+
+  const posted = api.calls.filter((call) => call.method === 'POST');
+  assert.equal(posted.length, 1);
+  assert.equal(posted[0].path, proposalConfirmPath('p1'), 'the id travels in the route');
+  assert.deepEqual(JSON.parse(posted[0].body), { Password: 'hunter2' }, 'and the body is the secrets alone');
+  // AD-6: nothing of the stored proposal is sent back.
+  for (const key of ['changed', 'payload', 'unchangedCount', 'fingerprint', 'target']) {
+    assert.equal(posted[0].body.includes(key), false, `the body carries no ${key}`);
+  }
+
+  const [entry] = turn.entries();
+  assert.equal(entry.proposals[0].state, 'confirmed', "the store records the instance's own answer");
+  assert.equal(entry.proposals[0].confirmedAt, '2026-09-19T10:01:02Z');
+});
+
+test('a refusal that closed the row records the state it closed in, from the envelope detail', async () => {
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      err(409, 'PROPOSAL.TARGETCHANGED', 'the target changed', { state: 'canceled', closedReason: 'target-changed' }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const outcome = await turn.confirmProposal('p1');
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.code, 'PROPOSAL.TARGETCHANGED');
+  assert.equal(outcome.state, 'canceled');
+  assert.equal(outcome.closedReason, 'target-changed');
+  assert.equal(turn.entries()[0].proposals[0].closedReason, 'target-changed');
+});
+
+test('a refusal that left the row live records nothing, so the card offers Confirm again', async () => {
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [err(403, 'AGENT.READONLY.ENFORCED', 'read-only is enforced')],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const before = turn.entries()[0].proposals[0];
+  const outcome = await turn.confirmProposal('p1');
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.state, '', 'the instance said nothing about the row, so nothing is recorded');
+  assert.deepEqual(turn.entries()[0].proposals[0], before);
+});
+
+// --- The audit marker and the refusal surface (Story 5.6) --------------------------------------
+
+test("confirmProposal carries the instance's own auditMarked answer, both ways", async () => {
+  // AD-15: a dropped marker is recorded on the answer and changes nothing else about it -- the
+  // status is 200 and the row is confirmed exactly as a marked write's is.
+  //
+  // mutation: read `auditMarked` from anywhere but the 200 body in `decideProposal` (hard-code
+  // `true`) -> the dropped leg goes red while the marked leg stays green.
+  for (const marked of [true, false]) {
+    const api = fakeApi({
+      [conversationReadPath('c1')]: [
+        ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+      ],
+      [proposalConfirmPath('p1')]: [
+        ok({
+          proposalId: 'p1',
+          state: 'confirmed',
+          closedReason: '',
+          confirmedAt: '2026-09-19T10:01:02Z',
+          auditMarked: marked,
+        }),
+      ],
+    });
+    const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+    const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+    await turn.restore();
+
+    const outcome = await turn.confirmProposal('p1');
+    assert.equal(outcome.ok, true, 'a dropped marker never fails the confirm');
+    assert.equal(outcome.state, 'confirmed');
+    assert.equal(outcome.auditMarked, marked);
+  }
+});
+
+test('an answer with no auditMarked key reads false, and a cancel never claims a marker', async () => {
+  // The instance sends the key only where a write was made, so a cancel's answer carries none.
+  // `false` is the safe reading: it claims nothing was marked, which is true of a cancel.
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalCancelPath('p1')]: [
+      ok({ proposalId: 'p1', state: 'canceled', closedReason: 'you', confirmedAt: '' }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const outcome = await turn.cancelProposal('p1');
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.auditMarked, false);
+});
+
+test('DW-1348: a refusal that left the row live is published per proposal, and cleared by the next answer', async () => {
+  // The row is unchanged -- that half is the test above -- and what is new is that the refusal is
+  // no longer lost: the envelope's own code and reason are readable per proposal, which is what
+  // the card renders beside the Confirm it goes back to offering.
+  //
+  // mutation: delete the `recordProposalRefusal` call from `decideProposal`'s error path ->
+  // `proposalRefusal` answers null and this goes red.
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      err(403, 'PROHIBITED.PRIVILEGEGRANT', 'Granting privilege is not something the agent may propose.'),
+      ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z', auditMarked: true }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  assert.equal(turn.proposalRefusal('p1'), null, 'nothing is published before a decision is made');
+  await turn.confirmProposal('p1');
+  const refusal = turn.proposalRefusal('p1');
+  assert.notEqual(refusal, null, 'the refusal is published for the card that met it');
+  assert.equal(refusal.status, 403);
+  assert.equal(refusal.code, 'PROHIBITED.PRIVILEGEGRANT');
+  assert.equal(refusal.reason, 'Granting privilege is not something the agent may propose.');
+  // And it is about that proposal alone.
+  assert.equal(turn.proposalRefusal('p2'), null);
+
+  // The condition cleared and the second press was accepted: the reason goes with it.
+  await turn.confirmProposal('p1');
+  assert.equal(turn.proposalRefusal('p1'), null, 'an accepted decision clears the refusal it replaced');
+});
+
+test('confirmedWriteStep composes a card from the proposal and the confirm answer, and nothing else', () => {
+  // The instance sends no step for a confirmed write, so this is what the transcript appends.
+  // mutation: return `status: 'error'` instead of `'ok'` -> the status assertion goes red, and a
+  // write that happened would render as a failure (AD-15).
+  const proposal = { tool: 'webapp.list.update', target: { type: 'web-application', scope: 'instance', id: '/csp/myapp' } };
+  const step = confirmedWriteStep(proposal, false, 7);
+  assert.equal(step.seq, 7);
+  assert.equal(step.kind, 'tool');
+  assert.equal(step.name, 'webapp.list.update');
+  assert.equal(step.target, '/csp/myapp');
+  assert.equal(step.status, 'ok', 'a dropped marker is never a failed write');
+  assert.equal(step.auditMarked, false);
+  assert.equal(stepLabel(step), 'webapp.list.update /csp/myapp');
+  assert.equal(confirmedWriteStep(proposal, true, 1).auditMarked, true);
+});
+
+test('a step the instance sent carries no marker outcome, so its card reads the plain word', () => {
+  // `auditMarked` is null for every parsed step: a marker belongs to a confirmed write, and a
+  // turn's own steps are not writes.
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({
+        turns: [
+          {
+            seq: 1,
+            message: 'do it',
+            state: 'completed',
+            steps: [{ seq: 1, kind: 'tool', name: 'webapp.list.read', status: 'ok' }],
+          },
+        ],
+      }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  return turn.restore().then(() => {
+    assert.equal(turn.entries()[0].steps[0].auditMarked, null);
+  });
+});
+
+test('cancelProposal posts the cancel route and records the row the instance closed', async () => {
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalCancelPath('p1')]: [ok({ proposalId: 'p1', state: 'canceled', closedReason: 'you', confirmedAt: '' })],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const outcome = await turn.cancelProposal('p1');
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.closedReason, 'you');
+  assert.equal(turn.entries()[0].proposals[0].state, 'canceled');
+  const posted = api.calls.filter((call) => call.method === 'POST');
+  assert.equal(posted[0].path, proposalCancelPath('p1'));
+});
+
+test('a confirm closes the AD-43 pause and then publishes the write, in that order', async () => {
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [turnProgressPath('turn-1')]: [
+      ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+    ],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+    [proposalConfirmPath('p1')]: [ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z' })],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift()?.run();
+  await settle();
+  assert.deepEqual(bus.events.map((event) => event.kind), ['proposal-open']);
+
+  await turn.confirmProposal('p1');
+  assert.deepEqual(
+    bus.events.map((event) => event.kind),
+    ['proposal-open', 'proposal-closed', 'changed'],
+    'the pause lifts on the confirm rather than waiting for a poll that will not come, and the ' +
+      'write is published after it so the re-fetch it asks for is not issued into a paused screen'
+  );
+  const changed = bus.events[2];
+  assert.equal(changed.type, 'web-application', "the proposal's own canonical triple, not a re-derived one");
+  assert.equal(changed.scope, 'instance');
+  assert.equal(changed.id, '/csp/myapp');
+  assert.equal(changed.action, 'updated', 'an answer that names no action reads as the default every merge write performs');
+});
+
+test("the published action is the instance's own, and an unknown word reads as the default (AD-14)", async () => {
+  // Story 5.13's application-error delete is the first write whose action is not `updated`, and
+  // the tool declares it (`OcuPilot.Screen.Tool.Write.CHANGEACTION`) rather than this client
+  // inferring it from the shape of the diff. A screen routes on the action -- a deleted row leaves
+  // -- so a client-authored guess is the one field that must not be guessed.
+  //
+  // Mutation (Rule 19): hard-code `action: 'updated'` in `confirmProposal` again -> the deleted leg
+  // goes red, and the error log's drill would never re-read after the delete it just confirmed.
+  for (const [answered, published] of [
+    ['deleted', 'deleted'],
+    ['created', 'created'],
+    ['removed', 'updated'],
+    ['', 'updated'],
+  ]) {
+    const bus = recordingBus();
+    const confirmBody = { proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z' };
+    if (answered !== '') confirmBody.action = answered;
+    const api = fakeApi({
+      [conversationReadPath('c1')]: [
+        ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+      ],
+      [turnProgressPath('turn-1')]: [
+        ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+      ],
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+      [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+      [proposalConfirmPath('p1')]: [ok(confirmBody)],
+    });
+    const { schedule, scheduled } = fakeSchedule();
+    const turn = new TurnStore({
+      api,
+      storage: memoryStorage(),
+      navigationType: freshTab(),
+      schedule,
+      now: () => NOW_MS,
+      bus,
+    });
+    await turn.send('do it');
+    await settle();
+    scheduled.shift()?.run();
+    await settle();
+    await turn.confirmProposal('p1');
+    const event = bus.events.find((candidate) => candidate.kind === 'changed');
+    assert.ok(event, `a confirm answering ${JSON.stringify(answered)} publishes a change`);
+    assert.equal(event.action, published, `answered ${JSON.stringify(answered)}`);
+  }
+});
+
+test("a confirmed create's change carries the instance's own createdId, else the proposal target's id (AD-14)", async () => {
+  // Story 9.7: a task create's proposal names its target by name, while the instance allocates the
+  // task's numeric id on the write and the confirm answers it as `createdId`. The event carries the
+  // id a screen keys the task by.
+  //
+  // Mutation (Rule 19): publish `target.id` again in `confirmProposal` -> the createdId leg goes red.
+  for (const [answered, published] of [
+    ['1391', '1391'],
+    ['', '/csp/myapp'],
+  ]) {
+    const bus = recordingBus();
+    const confirmBody = { proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z', action: 'created' };
+    if (answered !== '') confirmBody.createdId = answered;
+    const api = fakeApi({
+      [conversationReadPath('c1')]: [
+        ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+      ],
+      [turnProgressPath('turn-1')]: [
+        ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+      ],
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+      [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+      [proposalConfirmPath('p1')]: [ok(confirmBody)],
+    });
+    const { schedule, scheduled } = fakeSchedule();
+    const turn = new TurnStore({
+      api,
+      storage: memoryStorage(),
+      navigationType: freshTab(),
+      schedule,
+      now: () => NOW_MS,
+      bus,
+    });
+    await turn.send('do it');
+    await settle();
+    scheduled.shift()?.run();
+    await settle();
+    await turn.confirmProposal('p1');
+    const event = bus.events.find((candidate) => candidate.kind === 'changed');
+    assert.ok(event, `a confirm answering createdId ${JSON.stringify(answered)} publishes a change`);
+    assert.equal(event.id, published, `answered createdId ${JSON.stringify(answered)}`);
+    assert.equal(event.action, 'created');
+  }
+});
+
+test("a confirm's outcome carries the instance's own action and createdId, which the panel's change sentence reads (Story 10.6)", async () => {
+  // The panel names the change from the outcome, so the outcome must carry what the change event
+  // carries: the action through the same closed-set reading, and the createdId verbatim.
+  //
+  // Mutation (Rule 19): set `changeAction: 'updated'` in the ok literal of `decideProposal` -> the
+  // created leg goes red.
+  for (const [answer, action, id] of [
+    [{ action: 'created', createdId: '1391' }, 'created', '1391'],
+    [{ action: 'created' }, 'created', ''],
+    [{ action: 'deleted' }, 'deleted', ''],
+    [{ action: 'updated' }, 'updated', ''],
+    [{}, 'updated', ''],
+    [{ action: 'removed' }, 'updated', ''],
+  ]) {
+    const confirmBody = { proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z', ...answer };
+    const api = fakeApi({
+      [conversationReadPath('c1')]: [
+        ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+      ],
+      [turnProgressPath('turn-1')]: [
+        ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+      ],
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+      [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+      [proposalConfirmPath('p1')]: [ok(confirmBody)],
+    });
+    const { schedule, scheduled } = fakeSchedule();
+    const turn = new TurnStore({
+      api,
+      storage: memoryStorage(),
+      navigationType: freshTab(),
+      schedule,
+      now: () => NOW_MS,
+      bus: recordingBus(),
+    });
+    await turn.send('do it');
+    await settle();
+    scheduled.shift()?.run();
+    await settle();
+    const outcome = await turn.confirmProposal('p1');
+    assert.equal(outcome.changeAction, action, `answered ${JSON.stringify(answer)}: the action`);
+    assert.equal(outcome.changedId, id, `answered ${JSON.stringify(answer)}: the created id`);
+  }
+});
+
+test('a confirm the instance refused publishes no change, and neither does a cancel', async () => {
+  // Mutation (Rule 19): publish whenever `result.kind === 'ok'` rather than on
+  // `state === 'confirmed'` -> the cancel leg goes red, and a canceled proposal would re-fetch
+  // every screen showing its entity as though the instance had changed.
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [turnProgressPath('turn-1')]: [
+      ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+    ],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+    [proposalConfirmPath('p1')]: [
+      err(403, 'PROHIBITED.GRANT'),
+    ],
+    [proposalCancelPath('p1')]: [ok({ proposalId: 'p1', state: 'canceled', closedReason: 'you', confirmedAt: '' })],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift()?.run();
+  await settle();
+
+  await turn.confirmProposal('p1');
+  assert.equal(
+    bus.events.filter((event) => event.kind === 'changed').length,
+    0,
+    'a refusal that left the row live changed nothing on the instance'
+  );
+
+  await turn.cancelProposal('p1');
+  assert.equal(
+    bus.events.filter((event) => event.kind === 'changed').length,
+    0,
+    'and a cancel closes the row without writing'
+  );
+  assert.ok(
+    bus.events.some((event) => event.kind === 'proposal-closed'),
+    'the pause still lifts, because the row is no longer live'
+  );
+});
+
+test('a live row past its own expiresAt opens no pause (DW-1209)', async () => {
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+    [turnProgressPath('turn-1')]: [
+      ok({ state: 'running', steps: [], stepsDropped: 0, reply: null, error: null, proposals: [wireProposal()] }),
+    ],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    // Ten minutes after the fixture proposal's own window closed.
+    now: () => Date.parse('2026-09-19T10:15:00Z'),
+    bus,
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift()?.run();
+  await settle();
+  assert.deepEqual(bus.events, [], 'a row the instance would project expired holds no screen');
+});
+
+test('New conversation closes every proposal this store had open (DW-1243)', async () => {
+  const bus = recordingBus();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c2' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+    ],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift()?.run();
+  await settle();
+  assert.deepEqual(bus.events.map((event) => event.kind), ['proposal-open']);
+
+  assert.equal(await turn.newConversation(), true);
+  assert.deepEqual(bus.events.map((event) => event.kind), ['proposal-open', 'proposal-closed']);
+  assert.deepEqual(turn.entries(), []);
+});
+
+// --- Story 11.7: the streamed text of a running model call -----------------------------------
+//
+// Mutations (Rule 19):
+// - drop the `live` test from `streamedText` -> "a non-live entry" goes red.
+// - drop the `state` test from `streamedText` -> "a live entry whose turn has ended" goes red.
+
+/** A model step, running with `text` unless overridden. */
+function modelStep(overrides = {}) {
+  return step({ kind: 'model', name: 'provider', status: 'running', ...overrides });
+}
+
+test('streamedText answers the running model step\'s text on the live, running entry', () => {
+  const entry = { live: true, state: 'running', steps: [step(), modelStep({ seq: 2, text: 'Hel' })] };
+  assert.equal(streamedText(entry), 'Hel');
+});
+
+test('streamedText is null for a finished model step, an empty text, a non-live entry and an ended turn', () => {
+  assert.equal(streamedText({ live: true, state: 'running', steps: [modelStep({ status: 'ok', text: 'Hello' })] }), null, 'a finished model step');
+  assert.equal(streamedText({ live: true, state: 'running', steps: [modelStep({ text: '' })] }), null, 'an empty text');
+  assert.equal(streamedText({ live: false, state: 'running', steps: [modelStep({ text: 'Hel' })] }), null, 'a non-live entry');
+  assert.equal(streamedText({ live: true, state: 'stopped', steps: [modelStep({ text: 'Hel' })] }), null, 'a live entry whose turn has ended');
+  assert.equal(streamedText({ live: true, state: 'running', steps: [modelStep({ text: 'Hel' }), step({ seq: 2 })] }), 'Hel', 'a tool step after it does not hide it');
+  assert.equal(streamedText({ live: true, state: 'running', steps: [modelStep({ status: 'ok', text: 'old' }), step({ seq: 2 })] }), null, 'the last model step decides');
+});
+
+for (const ending of ['completed', 'failed', 'stopped']) {
+  test(`streamedText grows across two polls and is null once the turn ends ${ending}`, async () => {
+    const { schedule, scheduled } = fakeSchedule();
+    const error = ending === 'completed' ? null : { seq: 1, code: 'PROVIDER.TRANSPORT', reason: 'The provider call did not complete' };
+    const api = fakeApi({
+      [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+      [turnProgressPath('turn-1')]: [
+        ok({ turnId: 'turn-1', state: 'running', steps: [modelStep({ text: 'Hel' })], stepsDropped: 0, reply: null, error: null }),
+        ok({ turnId: 'turn-1', state: 'running', steps: [modelStep({ text: 'Hello, wor' })], stepsDropped: 0, reply: null, error: null }),
+        ok({
+          turnId: 'turn-1',
+          state: ending,
+          steps: [modelStep({ status: ending === 'completed' ? 'ok' : 'running', text: ending === 'completed' ? 'Hello, world' : 'Hello, wor' })],
+          stepsDropped: 0,
+          reply: ending === 'completed' ? 'Hello, world' : null,
+          error,
+        }),
+      ],
+    });
+    const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+    const sent = turn.send('say hello');
+    await settle();
+    await settle();
+    await settle();
+    scheduled.shift().run();
+    await settle();
+    assert.equal(streamedText(turn.entries().at(-1)), 'Hel', 'the first poll shows the first snapshot');
+    scheduled.shift().run();
+    await settle();
+    assert.equal(streamedText(turn.entries().at(-1)), 'Hello, wor', 'the second shows it grown');
+    scheduled.shift().run();
+    await settle();
+    await sent;
+    assert.equal(streamedText(turn.entries().at(-1)), null, `and once the turn ends ${ending} there is none`);
+  });
+}
+
+// --- Story 11.8: the proposal's privilege line -------------------------------------------------
+
+const { parseProposals: parsePrivilegeProposals } = await import(corePath('turn.ts'));
+
+/** The `privilege` a wire row carrying `privilege` parses to. */
+function parsedPrivilege(privilege) {
+  const row = wireProposal();
+  if (privilege !== undefined) row.privilege = privilege;
+  const [proposal] = parsePrivilegeProposals([row]);
+  return proposal.privilege;
+}
+
+test('parseProposal carries a well-formed privilege as the instance sent it', () => {
+  assert.deepEqual(parsedPrivilege({ requires: ['%Admin_Secure:USE', '%DB_IRISSYS:READ'], missing: '' }), {
+    requires: ['%Admin_Secure:USE', '%DB_IRISSYS:READ'],
+    missing: '',
+  });
+  assert.deepEqual(parsedPrivilege({ requires: ['%Admin_Secure:USE'], missing: '%Admin_Secure:USE' }), {
+    requires: ['%Admin_Secure:USE'],
+    missing: '%Admin_Secure:USE',
+  });
+});
+
+test('parseProposal reads an absent, null or malformed privilege as null', () => {
+  assert.equal(parsedPrivilege(undefined), null, 'absent');
+  assert.equal(parsedPrivilege(null), null, 'null');
+  assert.equal(parsedPrivilege({ requires: '%Admin_Secure:USE', missing: '' }), null, 'requires not an array');
+  assert.equal(parsedPrivilege({ requires: [], missing: '' }), null, 'requires empty');
+  assert.equal(parsedPrivilege({ requires: ['%Admin_Secure:USE', 7], missing: '' }), null, 'a non-string member');
+  assert.equal(parsedPrivilege({ requires: ['%Admin_Secure:USE'], missing: null }), null, 'missing not a string');
+  assert.equal(parsedPrivilege({ requires: ['%Admin_Secure:USE'] }), null, 'missing absent');
+});
+
+test("a confirm refused for a pair records that pair as the line's missing one", async () => {
+  // mutation: drop the `recordProposalMissingPair` call from `decideProposal`'s refusal branch ->
+  // the line keeps saying the set is held and this goes red.
+  const held = { requires: ['%Admin_Secure:USE', '%DB_IRISSYS:READ'], missing: '' };
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal({ privilege: held })] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      err(403, 'AUTH.NOPRIVILEGE', 'A privilege this action requires is missing.', { failedPair: '%Admin_Secure:USE' }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+  assert.deepEqual(turn.entries()[0].proposals[0].privilege, held);
+
+  const outcome = await turn.confirmProposal('p1');
+  assert.equal(outcome.failedPair, '%Admin_Secure:USE');
+  assert.deepEqual(turn.entries()[0].proposals[0].privilege, { requires: held.requires, missing: '%Admin_Secure:USE' });
+});
+
+// --- Story 11.4: citations on the poll and the restore ---------------------------------------
+//
+// Mutation (Rule 19): drop `citations` from the poll's spread in `pollOnce` -> "a finished turn's
+// final poll carries its citations" goes red.
+
+const CITED = { type: 'user', scope: 'instance', id: '_SYSTEM', route: 'permissions/users', label: '_SYSTEM' };
+
+test("a finished turn's final poll carries its citations; a running one carries none", async () => {
+  const storage = memoryStorage();
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      ok({ turnId: 'turn-1', state: 'running', steps: [], stepsDropped: 0, reply: null, citations: [], error: null }),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: '`_SYSTEM`', citations: [CITED, { ...CITED, route: 'no/such' }], error: null }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab(), schedule });
+  void turn.send('who holds %All?');
+  await settle();
+  await settle();
+  await settle();
+  assert.deepEqual(turn.entries().at(-1).citations, [], 'the live entry starts with none');
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.entries().at(-1).citations, [], 'a running poll carries none');
+  scheduled.shift().run();
+  await settle();
+  const finished = turn.entries().at(-1);
+  assert.equal(finished.live, false);
+  assert.deepEqual(finished.citations, [CITED], 'the final poll carries the citation; the unbuilt route is dropped');
+});
+
+test('a restored entry carries its citations, and an entry stored without any restores []', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const api = fakeApi({
+    [conversationReadPath('convo-1')]: [
+      ok({
+        conversationId: 'convo-1',
+        turns: [
+          { seq: 1, message: 'old', state: 'completed', reply: 'hello', error: null, steps: [], stepsDropped: 0 },
+          { seq: 2, message: 'new', state: 'completed', reply: '`_SYSTEM`', citations: [CITED], error: null, steps: [], stepsDropped: 0 },
+        ],
+      }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  const [older, newer] = turn.entries();
+  assert.deepEqual(older.citations, []);
+  assert.deepEqual(newer.citations, [CITED]);
+});

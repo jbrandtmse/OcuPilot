@@ -30,6 +30,9 @@ export const ROW_SELECTOR = '[role="grid"] .ocu-data-table-body [role="row"]';
 /** The command bar's filter field, which every list screen renders. */
 export const FILTER_SELECTOR = '#ocu-command-bar-filter';
 
+/** How long `clickRowCentre` waits for the rows, then its target, to hold still. */
+const SETTLE_LIMIT_MS = 2000;
+
 /** Wait until the table has rendered at least one body row. */
 export async function waitForRows(page, timeoutMs) {
   await page.waitForSelector(ROW_SELECTOR, { timeout: timeoutMs });
@@ -151,20 +154,60 @@ export async function filterToSubset(page, { text, expectRow, total, timeoutMs }
  * painted over the coordinates the rows' layout boxes still occupied, so a pointer at a row's
  * centre reached `.ocu-data-table-footer`. A synthetic event carries no coordinates and is never
  * hit tested, so it reached the handler anyway and no spec could see that a user could not click
- * a row. Here the geometry *is* the assertion: the target's centre is measured,
- * `document.elementFromPoint` at that centre must resolve inside the row, and only then does
- * Puppeteer's own hit-tested `page.click` fire. A regression in the height chain fails this
+ * a row. Here the geometry *is* the assertion: the centre of the target's visible part is measured,
+ * `document.elementFromPoint` at that centre must resolve inside the row, and only then does a real
+ * pointer click fire at that same point. A regression in the height chain fails this
  * helper before it fails anything the click would have caused.
+ *
+ * The point is measured only once the rendered rows, and then the target, have held still for two
+ * animation frames. A filter or a scroll can re-render the rows a frame after the event, so a point
+ * measured before that render lands where the row used to be, and the click selects nothing.
  *
  * Name the target one of three ways: `link: true` for the row's own `.ocu-data-table-link`
  * (the drill and the id-bearing name cell), `cell: n` for the nth `[role="gridcell"]` (the two
  * selection cases, which must not open a link), or neither for the row box itself. Choose the row
  * by `text` -- its first cell's trimmed text -- or by `index` among the rendered rows.
  *
+ * **Where the click landed is checked, not assumed (DW-1649).** Measuring and clicking are separate
+ * round trips, so a re-render in between can move another row under the point. The wanted row's
+ * first-cell text is recorded however the row was chosen, and a one-shot capture-phase
+ * `pointerdown` probe reads what the click actually reached: no pointerdown, a row with other
+ * first-cell text, or a place outside the requested link or cell each throw, naming the miss. The
+ * row's trigger cell is pinned over the frame's right edge (DW-1648), so a data cell's visible part
+ * ends where that cell begins.
+ *
  * Returns what was measured, so a caller that wants the numbers (the height-chain spec does) can
  * assert on them rather than re-reading the DOM.
  */
 export async function clickRowCentre(page, { text = null, index = 0, cell = null, link = false } = {}) {
+  const settled = await page.evaluate(
+    async (rowSelector, limitMs) => {
+      const layout = () =>
+        Array.from(document.querySelectorAll(rowSelector))
+          .map((row) => {
+            const box = row.getBoundingClientRect();
+            return `${row.querySelector('[role="gridcell"]')?.textContent?.trim() ?? ''}@${box.left},${box.top}`;
+          })
+          .join('|');
+      const deadline = performance.now() + limitMs;
+      let previous = layout();
+      let still = 0;
+      while (still < 2) {
+        if (performance.now() > deadline) return false;
+        await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+        const next = layout();
+        still = next === previous ? still + 1 : 0;
+        previous = next;
+      }
+      return true;
+    },
+    ROW_SELECTOR,
+    SETTLE_LIMIT_MS
+  );
+  if (!settled) {
+    throw new Error(`clickRowCentre: the rendered rows kept moving for ${SETTLE_LIMIT_MS} ms, so there is no point to click`);
+  }
+
   const marked = await page.evaluate(
     (rowSelector, wanted, at, nth, wantLink) => {
       for (const node of document.querySelectorAll('[data-ocu-hit-target], [data-ocu-hit-row]')) {
@@ -195,7 +238,12 @@ export async function clickRowCentre(page, { text = null, index = 0, cell = null
       }
       row.setAttribute('data-ocu-hit-row', '');
       target.setAttribute('data-ocu-hit-target', '');
-      return { ok: true, reason: '', rendered: [] };
+      return {
+        ok: true,
+        reason: '',
+        rendered: [],
+        firstText: row.querySelector('[role="gridcell"]')?.textContent?.trim() ?? '',
+      };
     },
     ROW_SELECTOR,
     text,
@@ -207,12 +255,38 @@ export async function clickRowCentre(page, { text = null, index = 0, cell = null
     throw new Error(`clickRowCentre: ${marked.reason}; rendered: ${JSON.stringify(marked.rendered)}`);
   }
 
-  const hit = await page.evaluate(() => {
+  const hit = await page.evaluate(async (limitMs) => {
     const target = document.querySelector('[data-ocu-hit-target]');
     const row = document.querySelector('[data-ocu-hit-row]');
     target.scrollIntoView({ block: 'center', inline: 'nearest' });
+    const place = () => {
+      const box = target.getBoundingClientRect();
+      return `${target.isConnected}@${box.left},${box.top},${box.width},${box.height}`;
+    };
+    const deadline = performance.now() + limitMs;
+    let previous = place();
+    let still = 0;
+    while (still < 2 && performance.now() <= deadline) {
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      const next = place();
+      still = next === previous ? still + 1 : 0;
+      previous = next;
+    }
     const rect = target.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
+    // A row wider than its table's frame scrolls sideways inside it (Story 15.8), so the centre is
+    // taken over the part its scroll viewport shows.
+    const scroller = target.closest('cdk-virtual-scroll-viewport, .ocu-data-table-viewport');
+    let left = rect.left;
+    let right = rect.right;
+    if (scroller !== null) {
+      const box = scroller.getBoundingClientRect();
+      left = Math.max(left, box.left + scroller.clientLeft);
+      right = Math.min(right, box.left + scroller.clientLeft + scroller.clientWidth);
+    }
+    // The pinned trigger cell covers whatever scrolls beneath it (DW-1648).
+    const pinned = row.querySelector('.ocu-data-table-cell-trigger');
+    if (pinned !== null && !pinned.contains(target)) right = Math.min(right, pinned.getBoundingClientRect().left);
+    const x = left + (right - left) / 2;
     const y = rect.top + rect.height / 2;
     const landed = document.elementFromPoint(x, y);
     const describe = (node) =>
@@ -223,14 +297,20 @@ export async function clickRowCentre(page, { text = null, index = 0, cell = null
     return {
       x,
       y,
-      width: rect.width,
+      width: Math.max(0, right - left),
       height: rect.height,
       insideRow: landed !== null && row.contains(landed),
       insideTarget: landed !== null && target.contains(landed),
       landedOn: describe(landed),
       viewportHeight: viewport === null ? null : viewport.clientHeight,
+      held: still >= 2 && target.isConnected,
     };
-  });
+  }, SETTLE_LIMIT_MS);
+  if (!hit.held) {
+    throw new Error(
+      `clickRowCentre: the target did not hold still for ${SETTLE_LIMIT_MS} ms after it was scrolled into view, or left the DOM`
+    );
+  }
   if (hit.width === 0 || hit.height === 0) {
     throw new Error(
       `clickRowCentre: the target has no area (${hit.width}x${hit.height}), so there is no point to click`
@@ -244,12 +324,56 @@ export async function clickRowCentre(page, { text = null, index = 0, cell = null
     );
   }
 
-  await page.click('[data-ocu-hit-target]');
-  await page.evaluate(() => {
+  // DW-1649: a one-shot capture-phase probe records what the click's own pointerdown reached.
+  await page.evaluate(
+    (rowSelector, nth, wantLink) => {
+      window.__ocuHitProbe = null;
+      const probe = (event) => {
+        const node = event.target instanceof Element ? event.target : null;
+        const row = node?.closest(rowSelector) ?? null;
+        const cellEl = node?.closest('[role="gridcell"]') ?? null;
+        const inKind = wantLink
+          ? (node?.closest('.ocu-data-table-link') ?? null) !== null
+          : nth === null
+            ? row !== null
+            : cellEl !== null && row !== null && Array.prototype.indexOf.call(row.children, cellEl) + 1 === nth;
+        window.__ocuHitProbe = {
+          row: row === null ? null : (row.querySelector('[role="gridcell"]')?.textContent?.trim() ?? ''),
+          inKind: row !== null && inKind,
+          landedOn: node === null ? 'nothing' : `${node.tagName.toLowerCase()}${typeof node.className === 'string' && node.className !== '' ? `.${node.className.trim().split(/\s+/).join('.')}` : ''}`,
+        };
+      };
+      document.addEventListener('pointerdown', probe, { capture: true, once: true });
+      window.__ocuHitProbeStop = () => document.removeEventListener('pointerdown', probe, { capture: true });
+    },
+    ROW_SELECTOR,
+    cell,
+    link
+  );
+  await page.mouse.click(hit.x, hit.y);
+  const probed = await page.evaluate(() => {
+    window.__ocuHitProbeStop?.();
+    delete window.__ocuHitProbeStop;
+    const found = window.__ocuHitProbe ?? null;
+    delete window.__ocuHitProbe;
     for (const node of document.querySelectorAll('[data-ocu-hit-target], [data-ocu-hit-row]')) {
       node.removeAttribute('data-ocu-hit-target');
       node.removeAttribute('data-ocu-hit-row');
     }
+    return found;
   });
+  const wanted = JSON.stringify(marked.firstText);
+  const kind = link ? '.ocu-data-table-link' : cell === null ? 'the row' : `cell ${cell}`;
+  if (probed === null) {
+    throw new Error(`clickRowCentre: no pointerdown arrived for the click at (${Math.round(hit.x)},${Math.round(hit.y)}) on row ${wanted}`);
+  }
+  if (probed.row !== marked.firstText) {
+    throw new Error(
+      `clickRowCentre: the click meant for row ${wanted} landed in ${probed.row === null ? 'no row' : `row ${JSON.stringify(probed.row)}`} (on ${probed.landedOn})`
+    );
+  }
+  if (!probed.inKind) {
+    throw new Error(`clickRowCentre: the click landed in row ${wanted} but outside ${kind} (on ${probed.landedOn})`);
+  }
   return hit;
 }

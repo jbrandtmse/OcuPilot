@@ -33,7 +33,9 @@
 /// <code>read</code> (the one declared read, AD-36, or absent), <code>table</code> (the columns and
 /// empty-state keys a read's rows render with, declared exactly when <code>read</code> is),
 /// <code>banner</code> (a second declared port read whose value raises a strip above the table, or
-/// absent), and <code>toolIdentifier</code>.</p>
+/// absent), <code>tab</code> (<code>{group, position, labelKey}</code>: the route of the tab group
+/// this screen is one tab of, its position in the strip and its label's string key, AD-5, or absent),
+/// and <code>toolIdentifier</code>.</p>
 /// <p><b><code>refreshes</code> and <code>refreshRates</code> are the whole of a screen's
 /// live-data declaration</b> (AD-43). The shared framework owns the timer, the persisted
 /// per-screen setting and the silent re-fetch; no screen implements refresh of its own. Rates are
@@ -286,6 +288,39 @@ ClassMethod ContextSecretFields() As %List
     Quit ..NestedStringList("context", "secretFields")
 }
 
+/// <p>This screen's declared <code>context.maxLength</code> map, as <var>pLengths</var>
+/// subscripted by field name -> the declared whole number (AD-24). A field this screen's
+/// <code>context.fields</code> names but <code>maxLength</code> does not is simply absent; a
+/// caller falls back to <parameter>OcuPilot.Kernel.Agent.Limits.FIELDMAXLENGTH</parameter> for
+/// it.</p>
+ClassMethod ContextMaxLengths(Output pLengths)
+{
+    Kill pLengths
+    Try {
+        Set tMap = ..NestedField("context", "maxLength")
+        If '$IsObject(tMap) || 'tMap.%IsA("%Library.DynamicObject") Quit
+        Set tIterator = tMap.%GetIterator()
+        While tIterator.%GetNext(.tField, .tValue) {
+            If tField '= "" Set pLengths(tField) = +tValue
+        }
+    } Catch {
+        Kill pLengths
+    }
+}
+
+/// <p>This screen's declared <code>rowTarget</code> as a copy, or <code>""</code> for a screen
+/// that declares none (AD-5, Story 6.10). A row target is a list's single cross-screen row link,
+/// resolved ahead of the paired-surface chain in <file>ui/src/app/shell/data-table.ts</file> and
+/// validated by <method>OcuPilot.Screen.Registry.RowTargetProblem</method> and
+/// <method>OcuPilot.Screen.Registry.RowTargetResolutionProblem</method>.</p>
+ClassMethod RowTarget() As %DynamicObject
+{
+    Set tTarget = ..Field("rowTarget")
+    If '$IsObject(tTarget) Quit ""
+    If 'tTarget.%IsA("%Library.DynamicObject") Quit ""
+    Quit tTarget
+}
+
 /// <p>The primary action's identifier (Create, Import, or <code>""</code> for none).</p>
 ClassMethod PrimaryActionId() As %String
 {
@@ -418,6 +453,40 @@ ClassMethod ToolIdentifier() As %String
     Quit ..Field("toolIdentifier")
 }
 
+/// <p>The client string key holding the <b>singular</b> noun for this screen's primary entity type
+/// (AD-5, AD-14), or <code>""</code> for a screen that publishes none yet.</p>
+/// <p>A proposal card's title is the entity noun and the target's own name, and neither the wire's
+/// entity-type slug nor <method>LabelKey</method>'s plural screen label is that noun -- so it is
+/// declared here, once, beside the entity type it belongs to.
+/// <method>OcuPilot.Screen.Registry.EntityLabelProblem</method> is the grammar.</p>
+ClassMethod EntityLabelKey() As %String
+{
+    Quit ..Field("entityLabelKey")
+}
+
+/// <p>The top-level argument names this screen's write tools take as secret (AD-3, AD-6). Declared
+/// here rather than on a tool class because the confirm channel is the descriptor's: the only keys
+/// a client may supply at confirm are the fields declared secret for that tool, and a tool's input
+/// schema never admits one at all.</p>
+/// <p>An absent key is an empty list, which is the answer for every screen that has no secret
+/// field -- and is a declaration, not silence: <method>OcuPilot.Screen.Registry.Validate</method>
+/// refuses a descriptor whose declared criteria carry a credential-pattern name this list does not
+/// hold, so an unlisted secret is a refusal rather than a default.</p>
+ClassMethod SecretArguments() As %List
+{
+    Quit ..StringList("secretArguments")
+}
+
+/// <p>The payload paths a proposal's fingerprint leaves out (AD-6): the fields the endpoint itself
+/// moves as a side effect -- a next-scheduled time, a last-modified stamp -- which would otherwise
+/// make every confirm read a target that had changed under it.</p>
+/// <p>An absent key is an empty list, and the default is "everything else": a slice never chooses
+/// which fields the fingerprint covers, only which ones it does not.</p>
+ClassMethod FingerprintExcludes() As %List
+{
+    Quit ..StringList("fingerprintExcludes")
+}
+
 /// <p>One value nested one level under <var>pParent</var>, or <code>""</code>. An object or array
 /// value is a copy.</p>
 ClassMethod NestedField(pParent As %String, pName As %String) As %RawString [ Private ]
@@ -461,6 +530,37 @@ ClassMethod CopyOf(pValue As %RawString) As %RawString [ Private ]
 {
     If '$IsObject(pValue) Quit pValue
     Quit ##class(%DynamicAbstractObject).%FromJSON(pValue.%ToJSON())
+}
+
+/// <p>The names of the <b>flag</b> criteria this screen's declared read carries: a criterion whose
+/// value is the descriptor's own, not a caller's, and which is therefore nameable by an agent
+/// navigation (AD-21, Story 5.8). The audit database viewer's <code>marker</code> is the one such
+/// criterion in Release 1.</p>
+/// <p>A flag is well-formed only when it declares both the query parameter it sends and the value
+/// it sends under it; a half-declared one is not a flag and is not named here, so a caller can
+/// never reach a criterion whose value nobody declared. The <code>fields</code> half of
+/// <code>criteria</code> is deliberately absent: those take the value a person typed, and naming
+/// one would be a caller value reaching a read.</p>
+ClassMethod FlagCriteria() As %List
+{
+    Set tNames = ""
+    Try {
+        Set tRead = ..Read()
+        If '$IsObject(tRead) Quit
+        Set tCriteria = tRead.%Get("criteria")
+        If '$IsObject(tCriteria) || 'tCriteria.%IsA("%Library.DynamicObject") Quit
+        Set tIterator = tCriteria.%GetIterator()
+        While tIterator.%GetNext(.tName, .tValue) {
+            If tName = "fields" Continue
+            If '$IsObject(tValue) || 'tValue.%IsA("%Library.DynamicObject") Continue
+            If tValue.%Get("param") = "" Continue
+            If tValue.%GetTypeOf("value") = "unassigned" Continue
+            Set tNames = tNames _ $ListBuild(tName)
+        }
+    } Catch {
+        Set tNames = ""
+    }
+    Quit tNames
 }
 
 /// <p>A declared array of strings as a <class>%List</class>, with empties dropped.</p>

@@ -12,9 +12,11 @@
  * **It reports on every run, clean or not.** A checker that exits 0 silently cannot be told
  * apart from a checker that looked at nothing, which is the failure the acceptance criterion
  * names. Every run prints the scanned descriptor count, the per-link-out-class tally, one line
- * per honored exemption, and the stable count line
+ * per descriptor declaring an honored exemption, and the stable count line
  * `classic-links: N exemption(s) honored (SM-C1)` -- durable and greppable, since SM-C1 is
- * expanded in no planning artifact and there is no register to write into.
+ * expanded in no planning artifact and there is no register to write into. N counts exemptions,
+ * not declarations: descriptors declaring the same reason declare one exemption (AD-44), and a
+ * classified run prints how many descriptors declare them beside it.
  *
  * **The population is asserted three ways, and only one of them is a second look at the same
  * directory.** (1) Descriptors are read through `screen-mirror.mjs`'s `readSources()` over the
@@ -115,12 +117,16 @@ export function classicLinkProblem(declaration, linkOutFor) {
     return 'classicLinkExemption.exempt is not a JSON boolean; declare true or false (AD-44)';
   }
   const exempt = exemption.exempt === true;
+  const hasRowLink = exemption.rowLink !== undefined && exemption.rowLink !== null;
   if (!exempt) {
     if (href !== '') {
       return 'classicLinkExemption declares an href while exempt is false; link parts without an exemption are a half-made declaration';
     }
     if (label !== '') {
       return 'classicLinkExemption declares a label while exempt is false; link parts without an exemption are a half-made declaration';
+    }
+    if (hasRowLink) {
+      return 'classicLinkExemption declares a rowLink while exempt is false; link parts without an exemption are a half-made declaration';
     }
     return null;
   }
@@ -137,7 +143,65 @@ export function classicLinkProblem(declaration, linkOutFor) {
     return "classicLinkExemption declares exempt with no label, and the card's action names the classic page it opens";
   }
   const bad = hrefProblem(href);
-  return bad === null ? null : `classicLinkExemption ${bad}`;
+  if (bad !== null) return `classicLinkExemption ${bad}`;
+  return hasRowLink ? rowLinkProblem(declaration, exemption) : null;
+}
+
+/** Whether `value` is a JSON object: not `null` and not an array. */
+function isObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** A declared value as the refusal sentences spell it: `''` for an absent or `null` one. */
+function shown(value) {
+  return value === undefined || value === null ? '' : String(value);
+}
+
+/**
+ * What is wrong with a complete exemption's declared `rowLink`, or `null` (AD-44, AD-47).
+ *
+ * A row link turns each row's name cell into the exemption's `href` with the declared params appended
+ * from that row, so it is declared only on a screen with a read. It is an object carrying only
+ * `params`, an array of objects carrying only `name` (a query parameter name, declared once) and
+ * `field` (one of `read.fields`, never one of `context.secretFields`).
+ * `OcuPilot.Screen.Registry.RowLinkProblem` returns the same sentence for every case in
+ * `OcuPilot.Test.ClassicLinkCorpus`.
+ */
+export function rowLinkProblem(declaration, exemption) {
+  const where = 'classicLinkExemption.rowLink';
+  if (!isObject(declaration.read)) {
+    return `${where} is declared on a screen with no read, and a row link reads its values from the read's rows (AD-44)`;
+  }
+  const { rowLink } = exemption;
+  if (!isObject(rowLink)) return `${where} is not an object declaring its params (AD-44)`;
+  const unknown = Object.keys(rowLink).find((key) => key !== 'params');
+  if (unknown !== undefined) return `${where} declares the unknown key '${unknown}'`;
+  if (!Array.isArray(rowLink.params)) return `${where}.params is not an array of row link params`;
+  const fields = Array.isArray(declaration.read.fields) ? declaration.read.fields : [];
+  const secrets =
+    isObject(declaration.context) && Array.isArray(declaration.context.secretFields)
+      ? declaration.context.secretFields
+      : [];
+  const seen = [];
+  for (let index = 0; index < rowLink.params.length; index += 1) {
+    const param = rowLink.params[index];
+    const at = `${where}.params entry #${index + 1}`;
+    if (!isObject(param)) return `${at} is not an object declaring its name and field`;
+    const extra = Object.keys(param).find((key) => key !== 'name' && key !== 'field');
+    if (extra !== undefined) return `${at} declares the unknown key '${extra}'`;
+    if (typeof param.name !== 'string' || !/^[A-Za-z][A-Za-z0-9]*$/.test(param.name)) {
+      return `${at} name '${shown(param.name)}' is not a query parameter name`;
+    }
+    if (seen.includes(param.name)) return `${at} names the param '${param.name}' twice`;
+    seen.push(param.name);
+    if (typeof param.field !== 'string' || !fields.includes(param.field)) {
+      return `${at} field '${shown(param.field)}' is not one of read.fields`;
+    }
+    if (secrets.includes(param.field)) {
+      return `${at} field '${param.field}' is a secret field, and a secret never leaves the instance in a link (AD-35)`;
+    }
+  }
+  return null;
 }
 
 /** The `.cls` files under `dir` that declare a screen -- everything but the abstract base. */
@@ -343,7 +407,8 @@ export function checkClassicLinks({
         `${entry.reason}; label "${entry.label}"; href ${entry.href}`
     );
   }
-  report.push(`classic-links: ${honored.length} exemption(s) honored (SM-C1)`);
+  report.push(`classic-links: ${new Set(honored.map((entry) => entry.reason)).size} exemption(s) honored (SM-C1)`);
+  report.push(`classic-links: ${honored.length} descriptor(s) declare them (AD-44)`);
 
   // The second assertion of the population, and it is an equality rather than a floor.
   // `readSources()` throws on a descriptor it cannot parse rather than skipping it, so fewer

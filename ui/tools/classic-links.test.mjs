@@ -148,7 +148,10 @@ test('an unreadable vocabulary is reported, not an empty set', () => {
 
 // AD-44, DW-186: every case in `OcuPilot.Test.ClassicLinkCorpus`, read off disk from the same XData
 // block `OcuPilot.Test.Descriptor` reads through the class dictionary, gets its exact sentence or
-// `null` from `classicLinkProblem`.
+// `null` from `classicLinkProblem`, the `rowLink` cases among them.
+//
+// Mutation (Rule 19): drop the secret-field arm from `rowLinkProblem` -> the "a param over a secret
+// field" case goes red.
 test('classicLinkProblem returns every sentence OcuPilot.Test.ClassicLinkCorpus declares', () => {
   const body = extractXData(readFileSync(CORPUS_SOURCE, 'utf8'), 'Cases');
   assert.ok(body !== null, 'the corpus block is found');
@@ -208,7 +211,7 @@ test('an honored exemption is reported by name, archetype, reason, label and hre
   const result = withTree(
     {
       'Home.cls': declaration({ archetype: 'home' }),
-      'OAuth.cls': declaration({ archetype: 'form-page (tabs)', classicLinkExemption: exemption }),
+      'Reduced.cls': declaration({ archetype: 'form-page (tabs)', classicLinkExemption: exemption }),
     },
     ({ dir, screens }) => checkClassicLinks({ descriptorDir: dir, screens })
   );
@@ -217,7 +220,7 @@ test('an honored exemption is reported by name, archetype, reason, label and hre
   assert.equal(result.honored.length, 1);
 
   const printed = result.report.join('\n');
-  assert.match(printed, /honored exemption -- OAuth\.cls/, 'the report names the descriptor');
+  assert.match(printed, /honored exemption -- Reduced\.cls/, 'the report names the descriptor');
   assert.match(printed, /archetype "form-page \(tabs\)"/, 'and its archetype');
   assert.match(printed, new RegExp(exemption.reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'and the reason');
   assert.match(printed, /label "OcuPilot test classic page"/, 'and the label');
@@ -434,8 +437,25 @@ test('the shipped descriptor roster passes, and its population matches the tree 
     'every .cls under the descriptor directory but the base was classified'
   );
   assert.ok(result.scanned >= 1, 'at least Home is declared');
-  assert.equal(result.honored.length, 0, 'Release 1 has no honored exemption yet -- 6.4 lands the first');
-  assert.match(result.report.join('\n'), /exemption\(s\) honored \(SM-C1\)/);
+  // AD-44 honors two exemptions, the reduced service and LDAP forms, each under its own reason; no
+  // OAuth 2.0 descriptor declares one.
+  //
+  // Mutation (Rule 19): restore any OAuth 2.0 tab's exemption -> the honored set and both counts go red.
+  const reduced = {
+    'LdapConfigForm.cls': 'Reduced until the full LDAP and Kerberos editor ships (Story 16.14); counted against SM-C1',
+    'ServiceForm.cls': 'Reduced until the full service editor ships (Story 16.13); counted against SM-C1',
+  };
+  assert.deepEqual(
+    result.honored.map((entry) => entry.file).sort(),
+    Object.keys(reduced).sort(),
+    'the honored set is exactly the two reduced forms'
+  );
+  for (const entry of result.honored) {
+    assert.equal(entry.archetype, 'form-page', `${entry.file} is a reduced form`);
+    assert.equal(entry.reason, reduced[entry.file], `${entry.file} carries its own reason`);
+  }
+  assert.match(result.report.join('\n'), /^classic-links: 2 exemption\(s\) honored \(SM-C1\)$/m);
+  assert.match(result.report.join('\n'), /^classic-links: 2 descriptor\(s\) declare them \(AD-44\)$/m);
 });
 
 // --- The gates ---------------------------------------------------------------------------------

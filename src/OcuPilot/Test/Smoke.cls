@@ -113,8 +113,8 @@ Method TestTheCountsArePrintedOnEveryRun()
 }
 
 /// <p>The real check list, against the instance this suite is executing inside: it executes
-/// more than zero checks, it names the endpoint it addressed, and it carries the three pending
-/// items with the epics that make them real.</p>
+/// more than zero checks, it names the endpoint it addressed, and nothing in it is
+/// <code>pending</code> -- Story 5.8 landed the last two, so the outcome has no producer left.</p>
 /// <p><b>The verdict is deliberately not asserted here.</b> Whether this instance passes is a
 /// property of the instance -- this repository's own long-lived container was created before
 /// the start hook existed and carries no demo fixtures -- and asserting it would make this
@@ -133,7 +133,191 @@ Method TestTheRealListExecutesSomething()
     ; real live-list check, Logs included, so a note saying otherwise would be a false claim about
     ; the report's own coverage rather than an honest gap.
     Do $$$AssertEquals(..Line(tReport, "arealists"), "", "no area-list pending note survives, because every built area's list is a real check")
-    Do $$$AssertTrue(tReport [ "Epic 3", "while the two the agent brings are still pending")
+    ; Story 5.8 landed the last two: `agentwrite` and `auditmarker` are executed checks on a
+    ; container carrying the demo fixture and skipped where it is absent, so nothing in the real
+    ; list is `pending` any more.
+    Do $$$AssertTrue(tCounts [ "pending=0", "no check in the real list is pending: " _ tCounts)
+    ; Asked per line rather than as a substring of the whole report: the outcome column is
+    ; right-padded to a fixed width by Render, so a scan for the padded word would go vacuously
+    ; true the moment that width changed rather than red.
+    Do $$$AssertTrue(..Line(tReport, "agentwrite") '[ "pending", "and the agentwrite line reports no pending outcome: " _ ..Line(tReport, "agentwrite"))
+    Do $$$AssertTrue(..Line(tReport, "auditmarker") '[ "pending", "nor the auditmarker line: " _ ..Line(tReport, "auditmarker"))
+}
+
+/// <p>Story 5.8, DW-1382, and the fifth AC: the whole <code>agentwrite</code> and
+/// <code>auditmarker</code> sequence, driven through the shipped check against an application the
+/// instance spells in <b>mixed case</b> -- a proposal minted and confirmed, the target read back
+/// enabled with the resource, one audit row carrying the proposal id, and the fixture put back
+/// disabled with no resource.</p>
+/// <p><code>/csp/myapp</code> folds to itself, so the container's own run proves the sequence and
+/// not the resolution. This drives it against one that can tell the two apart.</p>
+/// <p>Mutation (Rule 19): have <method>OcuPilot.Install.Smoke.ApplicationName</method> answer
+/// <var>pPath</var> instead of the instance's own <code>Name</code> -- the case-preserved
+/// assertion goes red while the sequence stays green, which is exactly the shape Story 5.7's two
+/// defects had.</p>
+Method TestTheAgentWriteCheckRunsOnACasePreservedTarget()
+{
+    If '..ArmMixedCase(0) Quit
+    Try {
+        ; Asked with the FOLDED path, which is the spelling EntityRef.Key stores and the one a
+        ; check keyed off the proposal's TargetRef would carry. The answer has to be the
+        ; instance's own, case preserved -- asking with the literal would compare the argument
+        ; against itself and hold whatever this method did with it.
+        Set tFolded = $ZConvert(##class(OcuPilot.Test.ProposalFixture).#WRITETARGETMIXEDCASE, "L")
+        Do $$$AssertNotEquals(tFolded, ##class(OcuPilot.Test.ProposalFixture).#WRITETARGETMIXEDCASE, "the probe path and its fold differ, so the assertion below can fail")
+        Do $$$AssertEquals(##class(OcuPilot.Test.SmokeWriteProbe).ApplicationName(tFolded), ##class(OcuPilot.Test.ProposalFixture).#WRITETARGETMIXEDCASE, "the check resolves the application by the spelling the instance stores, whatever spelling it is handed")
+
+        Kill tChecks
+        Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tChecks, "1")
+        Do $$$AssertEquals(..Outcome(.tChecks, "agentwrite"), "pass", "the confirmed write executed and passed: " _ ..Reason(.tChecks, "agentwrite"))
+        Do $$$AssertEquals(..Outcome(.tChecks, "auditmarker"), "pass", "and one audit row carries its proposal id: " _ ..Reason(.tChecks, "auditmarker"))
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Enabled"), 0, "and the fixture is left disabled")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Resource"), "", "with no resource")
+    } Catch ex {
+        Do $$$AssertEquals(ex.DisplayString(), "", "the probe run raised")
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveMixedCaseWriteTarget()
+}
+
+/// <p>Story 5.8, the third AC: a repeat run executes both checks again and leaves the fixture
+/// disabled with no resource, as the first did. The restore is what makes it idempotent -- without
+/// it the second run finds a target already enabled, which is the state the check refuses to
+/// assert against.</p>
+Method TestARepeatRunExecutesAgainAndLeavesTheFixtureDisabled()
+{
+    If '..ArmMixedCase(0) Quit
+    Try {
+        Kill tFirst
+        Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tFirst, "1")
+        Do $$$AssertEquals(..Outcome(.tFirst, "agentwrite"), "pass", "the first run passes: " _ ..Reason(.tFirst, "agentwrite"))
+        Kill tSecond
+        Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tSecond, "1")
+        Do $$$AssertEquals(..Outcome(.tSecond, "agentwrite"), "pass", "and so does the second: " _ ..Reason(.tSecond, "agentwrite"))
+        Do $$$AssertEquals(..Outcome(.tSecond, "auditmarker"), "pass", "with its own marker row: " _ ..Reason(.tSecond, "auditmarker"))
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Enabled"), 0, "and the fixture is disabled afterwards")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Resource"), "", "with no resource")
+    } Catch ex {
+        Do $$$AssertEquals(ex.DisplayString(), "", "the probe run raised")
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveMixedCaseWriteTarget()
+}
+
+/// <p>Story 5.8, the fourth AC: no demo opt-in and an unowned fixture are each <code>skipped</code>
+/// with the reason naming the cause -- never <code>pending</code>, never <code>fail</code>, and
+/// never a write. DW-1402's rule: the reason travels even where the count cannot.</p>
+/// <p>Both arms here return before the target is resolved, so "never a write" is free of them.
+/// The arm where it is not is the turn slot's, pinned by
+/// <method>TestASkippedWriteCheckLeavesTheInstanceAlone</method>.</p>
+/// <p>Mutation (Rule 19): note <code>fail</code> instead of <code>skipped</code> on either arm of
+/// <method>OcuPilot.Install.Smoke.CheckAgentWrite</method>'s skip -- this goes red and the
+/// verdict of every container without the fixture flips.</p>
+Method TestTheWriteChecksSkipWhereTheEnvironmentCannotCarryThem()
+{
+    Kill tNoDemo
+    Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tNoDemo, "0")
+    For tName = "agentwrite", "auditmarker" {
+        Do $$$AssertEquals(..Outcome(.tNoDemo, tName), "skipped", tName _ " is skipped with no demo opt-in")
+        Do $$$AssertTrue(..Reason(.tNoDemo, tName) [ "demo opt-in", tName _ "'s reason names the cause: " _ ..Reason(.tNoDemo, tName))
+    }
+
+    Kill tUnowned
+    Do ##class(OcuPilot.Test.SmokeUnownedProbe).RunWriteChecks(.tUnowned, "1")
+    For tName = "agentwrite", "auditmarker" {
+        Do $$$AssertEquals(..Outcome(.tUnowned, tName), "skipped", tName _ " is skipped on a fixture this install did not create")
+        Do $$$AssertTrue(..Reason(.tUnowned, tName) [ "did not create", tName _ "'s reason names the cause: " _ ..Reason(.tUnowned, tName))
+    }
+}
+
+/// <p>Story 5.8: a target that is not in the state its install creates is a <code>fail</code>
+/// naming which half, not a pass. A write over an application already enabled with the resource
+/// changes nothing, and every assertion after it would hold of a write that did nothing -- which
+/// is the vacuous pass the whole check list exists to make impossible.</p>
+Method TestAWriteThatWouldChangeNothingFailsNamingIt()
+{
+    ; Armed ENABLED, which is the state the check refuses to assert against: the write would then
+    ; change the resource alone, and every assertion after it would hold of a write that left the
+    ; application reachable exactly as it found it.
+    If '..ArmMixedCase(1) Quit
+    Try {
+        Kill tChecks
+        Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tChecks, "1")
+        Do $$$AssertEquals(..Outcome(.tChecks, "agentwrite"), "fail", "a write that would change nothing fails")
+        Do $$$AssertTrue(..Reason(.tChecks, "agentwrite") [ "disabled, no-resource state", "naming which half: " _ ..Reason(.tChecks, "agentwrite"))
+        Do $$$AssertEquals(..Outcome(.tChecks, "auditmarker"), "fail", "and so does the marker, which would account for nothing")
+        ; And the fixture is put back, which is what the failure's own reason promises ("it is put
+        ; back and the next run asserts against it"). This is the path that needs the restore most:
+        ; a container whose fixture has drifted is exactly the run that fails here, and a restore
+        ; that happened only on the success path would leave it failing on every run after this one.
+        ;
+        ; Mutation (Rule 19): move CheckAgentWrite's RestoreWriteTarget call inside the Try, after
+        ; its last Note -- these two go red while every other smoke assertion stays green, because
+        ; an early Quit then skips the restore. Guarding the call on `tProblem = ""` instead does
+        ; NOT falsify it and is not the mutation: tProblem is never set on the paths that Quit
+        ; early, so $Get answers "" and the guard passes.
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Enabled"), 0, "and the fixture is left disabled even though the check failed")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Resource"), "", "with no resource")
+    } Catch ex {
+        Do $$$AssertEquals(ex.DisplayString(), "", "the probe run raised")
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveMixedCaseWriteTarget()
+}
+
+/// <p>Story 5.8: the two seams <class>OcuPilot.Test.SmokeWriteProbe</class> overrides answer, in
+/// the <b>shipped</b> class, what AD-25's own fixture is. Every other test of these checks runs
+/// through the probe's overrides, and the one test that runs the real list passes demo
+/// <code>"0"</code> and so skips before reaching either -- so without this the shipped bodies could
+/// name a fixture that does not exist and only <code>scripts/smoke.sh</code> in CI would notice.</p>
+/// <p>Mutation (Rule 19): have <method>OcuPilot.Install.Smoke.WriteTarget</method> answer any other
+/// path -- this goes red naming both.</p>
+Method TestTheShippedCheckNamesTheDemoFixture()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Install.Smoke).WriteTarget(), ##class(OcuPilot.Install.Fixture).#APPPATH, "the shipped check writes to AD-25's own demo fixture")
+    Do $$$AssertEquals(##class(OcuPilot.Install.Smoke).WriteTargetOwned(), ##class(OcuPilot.Install.Fixture).WebAppOwnedByProfile(""), "and asks the install's own inventory whether it created it")
+}
+
+/// <p>Create the mixed-case probe application <var>pEnabled</var> with no resource, and answer
+/// whether it is there. Answers 0 on an instance the fixture refuses to write to -- one without
+/// its arming variable -- so the tests above assert nothing rather than failing there.</p>
+Method ArmMixedCase(pEnabled As %Boolean) As %Boolean [ Private ]
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveMixedCaseWriteTarget()
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).EnsureMixedCaseWriteTarget(, .tCreated, pEnabled)
+    If $$$ISERR(tSC) || 'tCreated {
+        ; Said out loud rather than returned silently: a test method that asserts nothing reads as
+        ; a pass, and the three below assert nothing on an instance the fixture refuses. The class
+        ; itself still runs everywhere -- its other checks need no principal.
+        Do ..LogMessage("the mixed-case probe application was not created (" _ $Select($$$ISERR(tSC): $System.Status.GetErrorText(tSC), 1: "the fixture answered no creation") _ "), so this test asserted nothing; scripts/ci-throwaway.sh sets the variable it needs")
+        Quit 0
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Enabled"), ''pEnabled, "the probe application is armed in the state this test needs")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Resource"), "", "and with no resource")
+    Quit 1
+}
+
+/// <p>The value of <var>pField</var> noted for check <var>pName</var> in the check set
+/// <var>pChecks</var>, or <code>""</code> when that set holds no such check.</p>
+ClassMethod Noted(ByRef pChecks, pName As %String, pField As %String) As %String [ Private ]
+{
+    Set tValue = ""
+    For tI = 1:1:+$Get(pChecks) {
+        If $Get(pChecks(tI, "name")) '= pName Continue
+        Set tValue = $Get(pChecks(tI, pField))
+        Quit
+    }
+    Quit tValue
+}
+
+/// <p>The outcome noted for <var>pName</var>, or <code>""</code>.</p>
+ClassMethod Outcome(ByRef pChecks, pName As %String) As %String [ Private ]
+{
+    Quit ..Noted(.pChecks, pName, "outcome")
+}
+
+/// <p>The reason noted for <var>pName</var>, or <code>""</code> -- what an assertion message
+/// quotes when the outcome is not the one expected.</p>
+ClassMethod Reason(ByRef pChecks, pName As %String) As %String [ Private ]
+{
+    Quit ..Noted(.pChecks, pName, "reason")
 }
 
 /// <p>DW-228 -- with credentials, the run signs out the pair it minted and confirms the minted
@@ -238,6 +422,91 @@ Method TestTheAuditListIsALiveCheck()
     Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
 }
 
+/// <p>Story 6.2 -- with credentials, the <code>roles</code>, <code>resources</code> and
+/// <code>services</code> checks each read their list's first row through the screen-read route and
+/// pass, before the sign-out. The configured test account must hold <code>%Admin_Secure:USE</code>
+/// and <code>%DB_IRISSYS:READ</code>.</p>
+/// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.SERVICELISTTOOL</parameter> to
+/// <code>permissions.nosuch</code> -&gt; the route answers 404 and the services check fails.</p>
+Method TestThePermissionsListsAreLiveChecks()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Set tSignOutAt = $Find(tReport, "sign-out")
+    For tName = "roles", "resources", "services" {
+        Do $$$AssertTrue(tReport [ ("  pass     " _ tName), "the " _ tName _ " list is read: " _ ..Line(tReport, "  " _ tName))
+        Set tListAt = $Find(tReport, "  pass     " _ tName)
+        Do $$$AssertTrue((tListAt > 0) && (tSignOutAt > tListAt), "and it ran before the pair was signed out")
+    }
+}
+
+/// <p>Story 6.3 -- with credentials, the <code>x509</code>, <code>ldap</code> and <code>wallet</code>
+/// checks each read their list's first row through the screen-read route and pass, before the
+/// sign-out. The configured test account must hold <code>%Admin_Secure:USE</code>,
+/// <code>%Admin_Wallet:USE</code> and <code>%DB_IRISSYS:READ</code>, and the instance needs the demo
+/// fixture, whose X.509 credential and wallet collection give those two lists a row.</p>
+/// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.WALLETLISTTOOL</parameter> to
+/// <code>security.nosuch</code> -&gt; the route answers 404 and the wallet check fails.</p>
+Method TestTheSecurityListsAreLiveChecks()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Set tSignOutAt = $Find(tReport, "sign-out")
+    For tName = "x509", "ldap", "wallet" {
+        Do $$$AssertTrue(tReport [ ("  pass     " _ tName), "the " _ tName _ " list is read: " _ ..Line(tReport, "  " _ tName))
+        Set tListAt = $Find(tReport, "  pass     " _ tName)
+        Do $$$AssertTrue((tListAt > 0) && (tSignOutAt > tListAt), "and it ran before the pair was signed out")
+    }
+}
+
+/// <p>Story 6.4 -- with credentials, the five OAuth 2.0 tab checks each read their tab through the
+/// screen-read route and pass, before the sign-out. The configured test account must hold the three
+/// <code>%Admin_OAuth2_*</code> resources, <code>%Admin_Secure:USE</code> and
+/// <code>%DB_IRISSYS:READ</code>; the instance needs no OAuth 2.0 object, because each check passes on
+/// zero rows or one.</p>
+/// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.OAUTHSERVERTOOL</parameter> to
+/// <code>security.nosuch</code> -&gt; the route answers 404 and the oauthserver check fails.</p>
+Method TestTheOAuthTabsAreLiveChecks()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Set tSignOutAt = $Find(tReport, "sign-out")
+    For tName = "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients" {
+        Do $$$AssertTrue(tReport [ ("  pass     " _ tName _ $Char(10)), "the " _ tName _ " tab is read: " _ ..Line(tReport, "  " _ tName))
+        Set tListAt = $Find(tReport, "  pass     " _ tName)
+        Do $$$AssertTrue((tListAt > 0) && (tSignOutAt > tListAt), "and it ran before the pair was signed out")
+    }
+}
+
+/// <p>Story 6.4 -- an OAuth 2.0 tab check passes on a 200 answering zero rows, and fails on a body with
+/// no <code>rows</code> array or with more than one row.
+/// Drives <class>OcuPilot.Test.SmokeListFault</class>.</p>
+/// <p>Mutation: require exactly one row of the OAuth 2.0 checks in
+/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> -&gt; the empty-rows pass assertions go
+/// red.</p>
+Method TestAnOAuthTabCheckPassesOnZeroOrOneRow()
+{
+    For tCase = $ListBuild("{""rows"":[]}", "pass"), $ListBuild("{""rows"":[{""Name"":""one""}]}", "pass"), $ListBuild("{""rows"":[{""Name"":""one""},{""Name"":""two""}]}", "fail"), $ListBuild("<!doctype html><html></html>", "fail") {
+        Do ##class(OcuPilot.Test.SmokeListFault).Arm(200, $List(tCase, 1))
+        Set tOk = ##class(OcuPilot.Test.SmokeListFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "1", .tReport, .tCounts)
+        Do ##class(OcuPilot.Test.SmokeListFault).Disarm()
+        For tName = "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients" {
+            Set tWanted = "  " _ $List(tCase, 2) _ $Justify("", 9 - $Length($List(tCase, 2))) _ tName _ $Select($List(tCase, 2) = "pass": $Char(10), 1: " -- ")
+            Do $$$AssertTrue(tReport [ tWanted, "a 200 carrying " _ $List(tCase, 1) _ " makes " _ tName _ " " _ $List(tCase, 2) _ ": " _ ..Line(tReport, "  " _ tName))
+        }
+    }
+}
+
+/// <p>Story 6.1 -- with credentials, the <code>webapp.restapis</code> check reads the REST API
+/// explorer's first row through the screen-read route and passes, before the sign-out. The configured
+/// test account must hold <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>.</p>
+/// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.RESTAPILISTTOOL</parameter> to
+/// <code>webapp.nosuch</code> -&gt; the route answers 404 and the check fails.</p>
+Method TestTheRestApiExplorerIsALiveCheck()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do $$$AssertTrue(tReport [ ("  pass     webapp.restapis"), "the REST API explorer is read: " _ ..Line(tReport, "webapp.restapis"))
+    Set tListAt = $Find(tReport, "  pass     webapp.restapis")
+    Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
+}
+
 /// <p>Story 2.11 -- with credentials, the <code>messageslog</code> check reads a bounded page of the
 /// instance's own <file>messages.log</file> through <code>GET /logs/messages</code> and passes,
 /// before the sign-out. The configured test account must hold <code>%Admin_Operate:USE</code>. It is
@@ -258,7 +527,7 @@ Method TestTheMessagesLogIsALiveCheck()
 /// <p><b>Why the passing leg above is not enough.</b> It runs against a healthy instance, so it
 /// stays green with every guard in the check deleted -- which is how a live check decays into an
 /// always-pass. This is the leg that holds the guards, in the shape
-/// <method>TestAScreenReadWithoutOneRowFailsTheListCheck</method> holds the six area lists'.</p>
+/// <method>TestAScreenReadWithoutOneRowFailsTheListCheck</method> holds the seven area lists'.</p>
 /// <p>Mutation: delete the <code>tLines &lt; 0</code> refusal from
 /// <method>OcuPilot.Install.Smoke.CheckMessagesLog</method> -&gt; the first three bodies pass and
 /// their legs go red. Delete the non-200 refusal -&gt; the 403 leg goes red.</p>
@@ -356,6 +625,35 @@ Method TestTheTaskScheduleIsALiveCheck()
     Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
 }
 
+/// <p>Story 6.7 -- with credentials, the <code>taskdetails</code> check finds an id from the task
+/// schedule's own first row and reads Task details for it through the screen-read route, passing
+/// on exactly one row, before the sign-out. The configured test account needs the task schedule's
+/// own pairs and at least one task on the instance.</p>
+/// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.TASKDETAILSTOOL</parameter> to
+/// <code>tasks.nosuch</code> -&gt; the route answers 404 and the check fails.</p>
+Method TestTheTaskDetailsIsALiveCheck()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do $$$AssertTrue(tReport [ ("  pass     taskdetails"), "task details is read, keyed by the schedule's first row: " _ ..Line(tReport, "  taskdetails"))
+    Set tListAt = $Find(tReport, "  pass     taskdetails")
+    Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
+}
+
+/// <p>Story 6.8 -- with credentials, the <code>processdetails</code> check finds a pid from the
+/// processes list's own first row and reads Process details for it through the screen-read route,
+/// passing on exactly one row, before the sign-out. The configured test account needs the
+/// processes list's own three pairs and at least one process on the instance -- which is always
+/// true, since the read itself is one.</p>
+/// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.PROCESSDETAILSTOOL</parameter> to
+/// <code>osmgmt.nosuch</code> -&gt; the route answers 404 and the check fails.</p>
+Method TestTheProcessDetailsIsALiveCheck()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do $$$AssertTrue(tReport [ ("  pass     processdetails"), "process details is read, keyed by the processes list's first row: " _ ..Line(tReport, "  processdetails"))
+    Set tListAt = $Find(tReport, "  pass     processdetails")
+    Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
+}
+
 /// <p>Story 2.6 AC10 -- with credentials, the <code>users</code> check reads the users list's first
 /// row through the screen-read route and passes, before the sign-out. The configured test account
 /// must hold <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>.</p>
@@ -369,18 +667,39 @@ Method TestTheUsersListIsALiveCheck()
     Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
 }
 
+/// <p>Story 6.11 -- with credentials, against the real instance: the Databases General view and
+/// Free-space view both pass generically (fourteen real databases, never empty on a mounted
+/// instance), and Database details and Database volumes both pass keyed by the General view's own
+/// first row's <code>Directory</code>, all before the sign-out.</p>
+/// <p>Mutation: change <code>DatabaseVolumeList</code>'s source type to <code>LIST</code> ->
+/// <code>databasevolumes</code> answers the database list's own fields instead of a volume row, and
+/// this goes red naming the mismatch through <method>OcuPilot.Test.ScreenRead</method>'s own
+/// dedicated assertion, not this one, which only pins that the check passes at all.</p>
+Method TestTheDatabasesChecksAreLiveChecks()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    For tName = "databases", "databasefreespace", "databasedetails", "databasevolumes" {
+        Do $$$AssertTrue(tReport [ ("  pass     " _ tName), tName _ " is read: " _ ..Line(tReport, tName))
+        Set tListAt = $Find(tReport, "  pass     " _ tName)
+        Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), tName _ " ran before the pair was signed out")
+    }
+}
+
 /// <p>A screen read that answers 200 without a one-row <code>rows</code> array -- an empty array, or
 /// an HTML page where JSON was expected -- fails the <code>webapplications</code>, <code>users</code>,
-/// <code>ssl</code>, <code>tasks</code>, <code>processes</code> and <code>audit</code> checks rather
-/// than passing on the status alone. Drives <class>OcuPilot.Test.SmokeListFault</class>.</p>
+/// <code>ssl</code>, <code>tasks</code>, <code>processes</code>, <code>audit</code>,
+/// <code>webapp.restapis</code>, <code>roles</code>, <code>resources</code>, <code>services</code>,
+/// <code>x509</code>, <code>ldap</code> and <code>wallet</code> checks rather than passing on the
+/// status alone. The run asks for the demo, so the X.509 and Wallet checks fail on an empty array
+/// too. Drives <class>OcuPilot.Test.SmokeListFault</class>.</p>
 /// <p>Mutation: replace <code>If tCount '= 1</code> in
-/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> with <code>If 0</code> -> all six fail
+/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> with <code>If 0</code> -> all thirteen fail
 /// assertions go red.</p>
 Method TestAScreenReadWithoutOneRowFailsTheListCheck()
 {
     For tBody = "{""rows"":[]}", "<!doctype html><html></html>" {
         Do ##class(OcuPilot.Test.SmokeListFault).Arm(200, tBody)
-        Set tOk = ##class(OcuPilot.Test.SmokeListFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+        Set tOk = ##class(OcuPilot.Test.SmokeListFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "1", .tReport, .tCounts)
         Do ##class(OcuPilot.Test.SmokeListFault).Disarm()
         Do $$$AssertTrue(tReport [ ("  fail     webapplications"), "a 200 carrying " _ tBody _ " fails the list check: " _ ..Line(tReport, "webapplications"))
         Do $$$AssertTrue(tReport [ ("  fail     users"), "and the users list check: " _ ..Line(tReport, "  users"))
@@ -388,14 +707,52 @@ Method TestAScreenReadWithoutOneRowFailsTheListCheck()
         Do $$$AssertTrue(tReport [ ("  fail     tasks"), "and the task schedule check: " _ ..Line(tReport, "  tasks"))
         Do $$$AssertTrue(tReport [ ("  fail     processes"), "and the processes list check: " _ ..Line(tReport, "  processes"))
         Do $$$AssertTrue(tReport [ ("  fail     audit"), "and the audit database viewer check: " _ ..Line(tReport, "  audit"))
+        Do $$$AssertTrue(tReport [ ("  fail     webapp.restapis"), "and the REST API explorer check: " _ ..Line(tReport, "webapp.restapis"))
+        Do $$$AssertTrue(tReport [ ("  fail     roles"), "and the roles list check: " _ ..Line(tReport, "  roles"))
+        Do $$$AssertTrue(tReport [ ("  fail     resources"), "and the resources list check: " _ ..Line(tReport, "  resources"))
+        Do $$$AssertTrue(tReport [ ("  fail     services"), "and the services list check: " _ ..Line(tReport, "  services"))
+        Do $$$AssertTrue(tReport [ ("  fail     x509"), "and the X.509 list check: " _ ..Line(tReport, "  x509"))
+        Do $$$AssertTrue(tReport [ ("  fail     ldap"), "and the LDAP / Kerberos list check: " _ ..Line(tReport, "  ldap"))
+        Do $$$AssertTrue(tReport [ ("  fail     wallet"), "and the Wallet list check: " _ ..Line(tReport, "  wallet"))
         Do $$$AssertEquals(tOk, 0, "and the run does not pass")
     }
 }
 
+/// <p>Story 6.3 (AD-25) -- on a run that did not ask for the demo, an empty X.509 or Wallet list is
+/// skipped, because only the demo fixture puts a row there, while an empty LDAP / Kerberos list still
+/// fails. Drives <class>OcuPilot.Test.SmokeListFault</class>.</p>
+/// <p>Mutation: drop the skip arm from <method>OcuPilot.Install.Smoke.CheckAreaLists</method> -&gt;
+/// the two skipped assertions go red.</p>
+Method TestAnEmptyDemoListIsSkippedWithoutTheDemo()
+{
+    Do ##class(OcuPilot.Test.SmokeListFault).Arm(200, "{""rows"":[]}")
+    Set tOk = ##class(OcuPilot.Test.SmokeListFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do ##class(OcuPilot.Test.SmokeListFault).Disarm()
+    Do $$$AssertTrue(tReport [ ("  skipped  x509"), "an empty X.509 list is skipped without the demo: " _ ..Line(tReport, "  x509"))
+    Do $$$AssertTrue(tReport [ ("  skipped  wallet"), "and so is an empty Wallet list: " _ ..Line(tReport, "  wallet"))
+    Do $$$AssertTrue(tReport [ ("  fail     ldap"), "while an empty LDAP / Kerberos list still fails: " _ ..Line(tReport, "  ldap"))
+}
+
 /// <p>Story 2.7 AC8 -- each <method>OcuPilot.Install.Smoke.CheckAreaLists</method> index reads the
 /// screen its name stands for: the <code>webapplications</code>, <code>users</code>,
-/// <code>ssl</code>, <code>tasks</code> and <code>processes</code> checks issue exactly those five
-/// screen reads, in that order, and nothing else in a run reads a screen.</p>
+/// <code>ssl</code>, <code>tasks</code>, <code>processes</code>, <code>audit</code>,
+/// <code>webapp.restapis</code>, <code>roles</code>, <code>resources</code>, <code>services</code>,
+/// <code>x509</code>, <code>ldap</code>, <code>wallet</code>, five OAuth 2.0 tab, <code>ondemand</code>,
+/// <code>upcoming</code>, <code>taskhistory</code>, <code>systemusage</code> and <code>locks</code>
+/// (Story 6.10), plus <code>databases</code> and <code>databasefreespace</code> (Story 6.11),
+/// <code>devices</code> (Story 6.12), <code>alerts</code> (Story 6.13) and <code>messages</code>
+/// (Story 6.14) checks, issue exactly those twenty-eight screen reads, in that order, and nothing else in
+/// <method>CheckAreaLists</method> reads a screen.
+/// <method>OcuPilot.Install.Smoke.CheckTaskDetails</method> (Story 6.7) runs after it and re-reads
+/// the task schedule for an id first, a twenty-ninth screen path; under this fixture's one-row,
+/// no-<code>Id</code> body that lookup finds none, so <code>taskdetails</code> itself fails
+/// without reading its own path. <code>CheckProcessDetails</code> (Story 6.8) runs after that and
+/// re-reads the processes list for a pid, a thirtieth screen path; under the same one-row,
+/// no-<code>Pid</code> body that lookup also finds none, so <code>processdetails</code> fails too.
+/// <code>CheckDatabaseDetails</code> (Story 6.11) runs last and re-reads the Databases list for a
+/// directory, a thirty-first and last screen path, shared by <code>databasedetails</code> and
+/// <code>databasevolumes</code>, which both fail under the same one-row, no-<code>Directory</code>
+/// body.</p>
 /// <p><b>Why the report cannot say this.</b> A report line carries the check's name and its
 /// outcome, never the tool behind it, so transposing two <code>$Select</code> arms leaves every
 /// name-and-outcome assertion in this class green while each check reads the other's list. Driven
@@ -412,13 +769,26 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
     Set tPaths = ##class(OcuPilot.Test.SmokeListFault).Paths()
     Do ##class(OcuPilot.Test.SmokeListFault).ClearPaths()
 
-    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit" {
-        Do $$$AssertTrue(tReport [ ("  pass     " _ tName), "a one-row body passes the " _ tName _ " check (run ok=" _ tOk _ "): " _ ..Line(tReport, tName))
+    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "systemusage", "locks", "databases", "databasefreespace", "devices", "alerts", "messages" {
+        ; Matched to the end of the line: "messages" is a prefix of "messageslog", so an unterminated
+        ; match is satisfied by the console-log page check even with no messages check at all. Every
+        ; name in this roster is a CheckAreaLists name, and CheckAreaLists runs before the checks
+        ; below it, so each of these lines is followed by another.
+        Do $$$AssertTrue(tReport [ ("  pass     " _ tName _ $Char(10)), "a one-row body passes the " _ tName _ " check (run ok=" _ tOk _ "): " _ ..Line(tReport, tName))
     }
-    Do $$$AssertEquals($ListLength(tPaths), 6, "a credentialed run reads exactly six screens: " _ $ListToString(tPaths, " | "))
-    If $ListLength(tPaths) '= 6 Quit
-    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL)
-    For tI = 1:1:6 {
+    ; taskdetails, processdetails and Story 6.11's databasedetails/databasevolumes all fail under
+    ; this fixture: the armed row carries no Id, no Pid and no Directory to key their own reads by,
+    ; so each re-reads its own parent list (one more path apiece) and stops there --
+    ; databasedetails and databasevolumes share the one re-read of the Databases list, since
+    ; OcuPilot.Install.Smoke.CheckDatabaseDetails looks the directory up once for both.
+    Do $$$AssertTrue(tReport [ ("  fail     taskdetails"), "and taskdetails fails for lack of an id to key its read by: " _ ..Line(tReport, "taskdetails"))
+    Do $$$AssertTrue(tReport [ ("  fail     processdetails"), "and processdetails fails for lack of a pid to key its read by: " _ ..Line(tReport, "processdetails"))
+    Do $$$AssertTrue(tReport [ ("  fail     databasedetails"), "and databasedetails fails for lack of a directory to key its read by: " _ ..Line(tReport, "databasedetails"))
+    Do $$$AssertTrue(tReport [ ("  fail     databasevolumes"), "and databasevolumes fails for lack of a directory to key its read by: " _ ..Line(tReport, "databasevolumes"))
+    Do $$$AssertEquals($ListLength(tPaths), 31, "a credentialed run reads exactly thirty-one screens: the twenty-eight generic lists, then taskdetails' own re-read of the task schedule, processdetails' own re-read of the processes list, and databasedetails/databasevolumes' shared re-read of the Databases list: " _ $ListToString(tPaths, " | "))
+    If $ListLength(tPaths) '= 31 Quit
+    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL, ##class(OcuPilot.Install.Smoke).#RESTAPILISTTOOL, ##class(OcuPilot.Install.Smoke).#ROLELISTTOOL, ##class(OcuPilot.Install.Smoke).#RESOURCELISTTOOL, ##class(OcuPilot.Install.Smoke).#SERVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#X509LISTTOOL, ##class(OcuPilot.Install.Smoke).#LDAPLISTTOOL, ##class(OcuPilot.Install.Smoke).#WALLETLISTTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHDESCRIPTIONSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHRESOURCESERVERSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#TASKONDEMANDTOOL, ##class(OcuPilot.Install.Smoke).#TASKUPCOMINGTOOL, ##class(OcuPilot.Install.Smoke).#TASKHISTORYTOOL, ##class(OcuPilot.Install.Smoke).#SYSTEMUSAGETOOL, ##class(OcuPilot.Install.Smoke).#LOCKLISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASELISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASEFREESPACELISTTOOL, ##class(OcuPilot.Install.Smoke).#DEVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#ALERTLISTTOOL, ##class(OcuPilot.Install.Smoke).#MESSAGESLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASELISTTOOL)
+    For tI = 1:1:31 {
         Set tWanted = "/screens/" _ $List(tExpected, tI) _ "/read?maxRows=1"
         Do $$$AssertTrue($List(tPaths, tI) [ tWanted, "check " _ tI _ " reads " _ tWanted _ ", not " _ $List(tPaths, tI))
     }
@@ -429,13 +799,14 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
 /// comma-separated name list, and its catch-all answers the empty string rather than reusing an
 /// earlier list's tool identifier. Read from the compiled class's own source and derived from
 /// whatever the name list currently says, because the method is private and it is the
-/// declaration's shape -- not its runtime behavior at the five lists that ship today -- that the
+/// declaration's shape -- not its runtime behavior at the lists that ship today -- that the
 /// next list would break. Which tool each index actually reads is
 /// <method>TestEachAreaListCheckReadsItsOwnScreen</method>'s.</p>
-/// <p>Mutation: add a seventh name to the comma-separated list and raise the loop bound to
-/// <code>7</code> in <method>CheckAreaLists</method>, without adding its own <code>tI = 7</code>
-/// arm to the <code>$Select</code> -&gt; the arm-count assertion goes red, because the seventh name
-/// would otherwise reach the catch-all silently instead of by a checked invariant.</p>
+/// <p>Mutation: add one more name to the comma-separated list and raise the loop bound with it in
+/// <method>CheckAreaLists</method>, without adding that index's own arm to the
+/// <code>$Select</code> -&gt; the arm-count assertion goes red, because the added name would
+/// otherwise reach the catch-all silently instead of by a checked invariant. Stated without an
+/// ordinal: the list grows with every area list that ships.</p>
 Method TestCheckAreaListsHasOneSelectArmPerNameAndAnEmptyCatchAll()
 {
     Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, "OcuPilot.Install.Smoke", .tSource)
@@ -451,7 +822,10 @@ Method TestCheckAreaListsHasOneSelectArmPerNameAndAnEmptyCatchAll()
     Set tNameMarker = "Set tName = $Piece(" _ tQuote
     Set tNameMarkerAt = ..LastMarkerAt(tPrefix, tNameMarker)
     Do $$$AssertTrue(tNameMarkerAt > 0, "CheckAreaLists' comma-separated name list is found immediately before the tool lookup")
-    Set tNames = $Piece($Extract(tText, tNameMarkerAt, tNameMarkerAt + 200), tQuote, 1)
+    ; The window has to outlast the list, which grows by one name per area list that ships: it
+    ; stood at 288 characters after Story 6.14, and a window shorter than the list makes $Piece
+    ; return a truncated roster whose name count reddens this method on a correct declaration.
+    Set tNames = $Piece($Extract(tText, tNameMarkerAt, tNameMarkerAt + 1000), tQuote, 1)
     Set tNameCount = $Length(tNames, ",")
     Do $$$AssertTrue(tNameCount > 0, "the name list read from the source is not empty: " _ tNames)
 
@@ -513,10 +887,54 @@ ClassMethod Line(pReport As %String, pName As %String) As %String
 Method TestNoCredentialsSkipsRatherThanPasses()
 {
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport, .tCounts)
-    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "messageslog", "applicationerrors", "sign-out" {
-        Do $$$AssertTrue(tReport [ ("  skipped  " _ tName), tName _ " is skipped: " _ ..Line(tReport, tName))
+    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "systemusage", "locks", "databases", "databasefreespace", "devices", "alerts", "messages", "taskdetails", "processdetails", "databasedetails", "databasevolumes", "messageslog", "applicationerrors", "sign-out" {
+        ; Matched through the reason separator for the same reason as above: without it
+        ; "  skipped  messages" is satisfied by the messageslog line. Every skipped line carries a
+        ; reason, so " -- " terminates the name on all of them -- including sign-out, the last line,
+        ; which a newline would not.
+        Do $$$AssertTrue(tReport [ ("  skipped  " _ tName _ " -- "), tName _ " is skipped: " _ ..Line(tReport, tName))
     }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")
+}
+
+/// <p>Story 5.8: <b>a skipped check does not touch the instance.</b> The sibling method's doc
+/// promises "never a write" of every skip arm; this is the arm where that is not free. The demo
+/// and ownership arms return before the target has even been resolved, but the turn-slot arm is
+/// reached after the fresh read and after the restore body has been built, so the check has an
+/// object in hand that would put the fixture back -- and putting it back would be normalising a
+/// state this run did not cause, on a run that reports it did nothing.</p>
+/// <p>Driven with the probe armed <b>enabled</b>, because that is the only state in which a
+/// restore is observable at all: against an application already disabled with no resource, the
+/// restore's own PUT and no PUT leave exactly the same row.</p>
+/// <p>Mutation (Rule 19): drop the <code>Set tRestoreBody = ""</code> line from
+/// <method>OcuPilot.Install.Smoke.CheckAgentWrite</method>'s turn-slot arm -- the still-enabled
+/// assertion goes red, and the two outcome assertions stay green, which is the point: the outcome
+/// was always right and the side effect was not.</p>
+Method TestASkippedWriteCheckLeavesTheInstanceAlone()
+{
+    If '..ArmMixedCase(1) Quit
+    Set tTurnKey = ""
+    Try {
+        Set tReserveSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, "", ##class(OcuPilot.Api.Error).#TURNABANDONEDJOBLOST, ##class(OcuPilot.Install.Smoke).#LIMITS, .tTurnKey, .tBusy, .tSweepSC)
+        If $$$ISERR(tReserveSC) || tBusy || (tTurnKey = "") {
+            ; Said out loud rather than returned silently, as ArmMixedCase does: the one turn slot
+            ; is instance-wide, so a run beside a live turn cannot take it and this method would
+            ; otherwise read as a pass having asserted nothing.
+            Do ..LogMessage("the one turn slot of " _ $Username _ " was already taken, so this test asserted nothing")
+            Quit
+        }
+        Kill tChecks
+        Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tChecks, "1")
+        For tName = "agentwrite", "auditmarker" {
+            Do $$$AssertEquals(..Outcome(.tChecks, tName), "skipped", tName _ " is skipped when the one turn slot is already taken")
+            Do $$$AssertTrue(..Reason(.tChecks, tName) [ "turn", tName _ "'s reason names the cause: " _ ..Reason(.tChecks, tName))
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Enabled"), 1, "and the fixture is left exactly as the skip found it, because a check that did not run wrote nothing")
+    } Catch ex {
+        Do $$$AssertEquals(ex.DisplayString(), "", "the probe run raised")
+    }
+    If tTurnKey '= "" Do ##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tTurnKey)
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveMixedCaseWriteTarget()
 }
 
 }

@@ -15,13 +15,14 @@ Class OcuPilot.Test.EventProbe Extends OcuPilot.Kernel.Audit.Event
 /// <p>Capture into the process-private global <code>^||OcuPilotEventProbe</code> rather than
 /// logging. Subscripts follow ObjectScript identifier rules (no hyphens) per
 /// <file>.claude/rules/objectscript-basics.md</file>.</p>
-ClassMethod LogFailure(pVerb As %String, pType As %String, pId As %String, pStatus As %Status)
+ClassMethod LogFailure(pVerb As %String, pType As %String, pId As %String, pStatus As %Status, pMessage As %String = {..#DROPPEDCONFIG})
 {
     Set ^||OcuPilotEventProbe("calls") = $Get(^||OcuPilotEventProbe("calls"), 0) + 1
     Set ^||OcuPilotEventProbe("verb") = pVerb
     Set ^||OcuPilotEventProbe("entityType") = pType
     Set ^||OcuPilotEventProbe("id") = pId
     Set ^||OcuPilotEventProbe("reason") = $System.Status.GetErrorText(pStatus)
+    Set ^||OcuPilotEventProbe("message") = pMessage
 }
 
 /// <p>Discard anything a previous capture left behind.</p>
@@ -32,7 +33,7 @@ ClassMethod Clear()
 
 /// <p>Read one captured field back, or <code>""</code> when nothing was captured -- which is
 /// itself a failure signal for a test that expected a report.</p>
-/// @param pField One of "calls", "verb", "entityType", "id", "reason"
+/// @param pField One of "calls", "verb", "entityType", "id", "reason", "message"
 ClassMethod Captured(pField As %String) As %String
 {
     Quit $Get(^||OcuPilotEventProbe(pField), "")

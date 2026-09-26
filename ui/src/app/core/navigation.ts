@@ -29,6 +29,8 @@
 
 import type { ApiService } from './api';
 import type { ConnectivityService } from './connectivity';
+import { decodeEntityId, encodeEntityId } from './entity-id.ts';
+import { INSTANCE_SCOPE, scopeFor } from './entity-ref.ts';
 import { AREAS, SCREENS, type AreaDeclaration, type ScreenDeclaration } from './screens.generated.ts';
 import { createSingleFlight } from './single-flight.ts';
 
@@ -169,13 +171,210 @@ export const EDITOR_ROUTE_SUFFIX = 'edit';
  *
  * A row's name cell is a link to the entity's own surface (EXPERIENCE.md's `data-table`), and for
  * a list paired with a form that surface is the form, not the list's own route with an id on the
- * end. Both halves are required: the editor is built, it is unlisted (so this cannot resolve to an
- * ordinary sibling screen that merely sorts after the list), and it is keyed by an id.
+ * end. It is `createFormFor`'s form less the `CREATE_ONLY_FORMS`, which read no id and so cannot
+ * open the row's entity.
  */
 export function editorScreenFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const editor = createFormFor(screen);
+  if (editor === null || CREATE_ONLY_FORMS.has(editor.descriptor)) return null;
+  return editor;
+}
+
+/**
+ * The form a list's Create opens, or `null` when the list has none. Both halves are required: the
+ * form is built, it is unlisted (so this cannot resolve to an ordinary sibling screen that merely
+ * sorts after the list), and it is keyed by an id.
+ */
+export function createFormFor(screen: ScreenDeclaration): ScreenDeclaration | null {
   const editor = screenForRoute(`${screen.route}/${EDITOR_ROUTE_SUFFIX}`);
   if (editor === null || !editor.built || isListedScreen(editor) || !hasIdRoute(editor)) return null;
   return editor;
+}
+
+/**
+ * Paired forms that create and never open an existing entity: their `:id` route exists, but the page
+ * reads no id, so neither a row's name cell nor a change toast may open one. Epic 9's editors read
+ * the id, and their stories removed the entries -- the User form's with Story 9.1, the Web
+ * application form's with Story 9.2, the Role form's with Story 9.3 and the New Task wizard's with
+ * Story 9.8's Edit task. The set is empty; a later create-only form declares itself here.
+ */
+export const CREATE_ONLY_FORMS: ReadonlySet<string> = new Set<string>([]);
+
+/**
+ * Screens whose editor is a dialog over the screen itself rather than a paired `form-page`: the
+ * Resources list (Story 8.4) and the User events list (Story 9.10), whose editors open from their
+ * Create and from a row's name cell. Their
+ * routes carry the unsaved-changes guard a `form-page` route carries (`app.routes.ts`), so leaving
+ * one while its dialog holds a change asks first.
+ */
+export const DIALOG_EDITORS: ReadonlySet<string> = new Set([
+  'OcuPilot.Screen.Descriptor.ResourceList',
+  'OcuPilot.Screen.Descriptor.AuditUserEventList',
+]);
+
+/**
+ * The route segment a list's own document viewer is declared under, appended to the list's route.
+ *
+ * The same convention as `EDITOR_ROUTE_SUFFIX`: a viewer paired with a list lives at
+ * `<list route>/document`, declares `sideBarPosition` 0, and is reached from that list's name cell.
+ */
+export const DOCUMENT_ROUTE_SUFFIX = 'document';
+
+/**
+ * The document viewer a list's rows open, or `null` when the list has none. The same three halves
+ * as `editorScreenFor`: built, unlisted, and keyed by an id.
+ */
+export function documentScreenFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const viewer = screenForRoute(`${screen.route}/${DOCUMENT_ROUTE_SUFFIX}`);
+  if (viewer === null || !viewer.built || isListedScreen(viewer) || !hasIdRoute(viewer)) return null;
+  return viewer;
+}
+
+/** The list `screen` is the document viewer of (`documentScreenFor`'s inverse), or `null`. */
+export function listForDocumentScreen(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const suffix = `/${DOCUMENT_ROUTE_SUFFIX}`;
+  if (!screen.route.endsWith(suffix)) return null;
+  const list = screenForRoute(screen.route.slice(0, -suffix.length));
+  return list !== null && documentScreenFor(list)?.route === screen.route ? list : null;
+}
+
+/**
+ * The sub-resource list a list's rows open, or `null` when the list has none (AD-5).
+ *
+ * The pairing is the child's own declaration rather than a route convention: the child declares
+ * the list's route as its `parentScope`. The same three halves as `editorScreenFor` hold -- built,
+ * unlisted and keyed by an id -- because the child is reached from the name cell with the row's id
+ * and never from a navigation surface. The Wallet list's Secrets list is the first.
+ *
+ * **Skips a `detail`-class screen** (Story 6.7): `detailScreenFor` is the pairing for one, so a
+ * parent naming both a per-row detail screen and a sub-resource list -- Task schedule's Task
+ * details and its per-task History both declare `parentScope` `tasks/schedule` -- resolves each
+ * through its own function rather than this one picking whichever sorts first.
+ */
+export function childListFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  if (screen.route === '') return null;
+  return (
+    SCREENS.find(
+      (child) =>
+        child.parentScope === screen.route &&
+        child.built &&
+        !isListedScreen(child) &&
+        hasIdRoute(child) &&
+        child.archetype !== 'detail'
+    ) ?? null
+  );
+}
+
+/**
+ * The built, unlisted, id-keyed `detail`-archetype screen a list's rows open, or `null` when the
+ * list has none (Story 6.7). The same pairing `childListFor` is, narrowed to the one archetype a
+ * per-row detail screen takes: no `tab`, since a tabbed screen's own group is a different pairing
+ * (`tabGroupFor`), and one entity is a field list rather than a table of rows.
+ */
+export function detailScreenFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  if (screen.route === '') return null;
+  return (
+    SCREENS.find(
+      (child) =>
+        child.parentScope === screen.route &&
+        child.built &&
+        !isListedScreen(child) &&
+        hasIdRoute(child) &&
+        child.archetype === 'detail' &&
+        child.tab === null
+    ) ?? null
+  );
+}
+
+/**
+ * The list `screen` is the sub-resource list or per-row detail screen of (`childListFor`'s and
+ * `detailScreenFor`'s shared inverse), or `null`.
+ */
+export function parentListFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  if (screen.parentScope === '') return null;
+  const parent = screenForRoute(screen.parentScope);
+  if (parent === null) return null;
+  if (childListFor(parent)?.route === screen.route) return parent;
+  if (detailScreenFor(parent)?.route === screen.route) return parent;
+  return null;
+}
+
+/**
+ * The built tabs of the tab group `screen` is one tab of, in position order, or `[]` for a screen
+ * that is no tab (AD-5).
+ *
+ * A tabbed screen is one descriptor per tab, grouped by a declared `tab`, so the strip is read off
+ * the mirror rather than typed out: every built screen whose `tab.group` is this screen's group.
+ */
+export function tabMembersFor(screen: ScreenDeclaration): readonly ScreenDeclaration[] {
+  const group = screen.tab?.group;
+  if (group === undefined) return [];
+  return SCREENS.filter((member) => member.built && member.tab?.group === group).sort(
+    (a, b) => (a.tab?.position ?? 0) - (b.tab?.position ?? 0)
+  );
+}
+
+/**
+ * The first tab of the group `screen` is one tab of -- the built screen at the group's route that
+ * declares that group -- or `null` for a screen that is no tab (AD-5). The side bar lists this one
+ * member, and the locator names it for every tab.
+ */
+export function tabGroupFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const group = screen.tab?.group;
+  if (group === undefined) return null;
+  const head = screenForRoute(group);
+  return head !== null && head.built && head.tab?.group === group ? head : null;
+}
+
+/**
+ * The criteria a parent-scoped list's read carries, from the router URL it renders at: its one
+ * declared criterion set to the URL's id segment, decoded (AD-13), or `{}` for a screen that
+ * declares no parent, does not declare exactly one criterion, or is rendered with no id.
+ *
+ * The id arrives as the router serialises it -- percent-encoded as the address bar carries it -- so
+ * the segment is decoded once for the router's own pass and once by `decodeEntityId`, which is the
+ * encode-twice, decode-once contract read off a URL rather than off a route parameter.
+ */
+export function parentCriteria(screen: ScreenDeclaration, url: string): Readonly<Record<string, string>> {
+  const fields = screen.read?.criteria?.fields ?? [];
+  if (screen.parentScope === '' || fields.length !== 1) return {};
+  const path = routeFromUrl(url);
+  const prefix = `${screen.route}/`;
+  if (!path.startsWith(prefix)) return {};
+  const segment = path.slice(prefix.length);
+  if (segment === '' || segment.includes('/')) return {};
+  const id = decodeEntityId(decodeEntityId(segment));
+  return id === '' ? {} : { [fields[0].param]: id };
+}
+
+/**
+ * The id a screen's **own** route segment carries, decoded (AD-13), or `''` when the URL is the
+ * screen's bare route, when the screen takes no id route, or when what follows the route is not
+ * one segment.
+ *
+ * The companion to `parentCriteria`, which reads a **parent's** id into a sub-resource's one
+ * criterion: this reads the screen's own id, which is what a list selects a row by. One helper
+ * serves both callers that produce such a URL -- the agent's `shell.screen.open` with an
+ * `entityId`, and a change toast's "Open in <screen>" -- so the row is selected on arrival
+ * whichever of them moved the browser (DW-1419).
+ *
+ * **A parent-scoped screen answers `''`.** Its trailing segment is the *parent's* id, which is
+ * what `parentCriteria` reads it as, and no row of such a list is keyed by it -- a run of task
+ * history is keyed by its run id, not by the task the route names. Reading it here would select
+ * whichever row happened to share the parent's key.
+ *
+ * The segment is decoded twice for the reason `parentCriteria` decodes twice: the router hands
+ * over the URL as the address bar carries it, and `encodeEntityId` encodes twice because the web
+ * server consumes one decoding in transit.
+ */
+export function ownIdSegment(screen: ScreenDeclaration, url: string): string {
+  if (screen.route === '' || screen.parentScope !== '' || !hasIdRoute(screen)) return '';
+  const path = routeFromUrl(url);
+  const prefix = `${screen.route}/`;
+  if (!path.startsWith(prefix)) return '';
+  const segment = path.slice(prefix.length);
+  if (segment === '' || segment.includes('/')) return '';
+  return decodeEntityId(decodeEntityId(segment));
 }
 
 /** The screen declared at `route`, or `null`. Home's route is the empty string. */
@@ -183,9 +382,155 @@ export function screenForRoute(route: string): ScreenDeclaration | null {
   return SCREENS.find((screen) => screen.route === route) ?? null;
 }
 
+/**
+ * The screen declared by `descriptor`, or `null`. The companion to `screenForRoute` for a caller
+ * that holds a descriptor's class name rather than its route -- which is the identity AD-5 makes
+ * stable, so a screen whose route moves keeps its reference.
+ */
+export function screenForDescriptor(descriptor: string): ScreenDeclaration | null {
+  return SCREENS.find((screen) => screen.descriptor === descriptor) ?? null;
+}
+
+/** The archetypes whose screens are lists of rows a route id selects one of (AD-5, AD-13). */
+const LIST_ARCHETYPES: ReadonlySet<string> = new Set(['list', 'list (two views)', 'list (server criteria)']);
+
+/**
+ * The entity's list: the built list-archetype screen whose own primary `entityType` is `type`, or
+ * `null` (AD-5, AD-14, DW-1546).
+ *
+ * The entity-type vocabulary is the kernel's closed enum and a screen selects from it, so this is
+ * the one way a caller holding a reference triple -- a change event -- reaches the screen a change
+ * toast opens and names ("Open in <list>", PRD UJ-6): the entity's list, with the entity selected, so
+ * a change made on a details or editor screen still offers its row. Unbuilt screens are skipped: they
+ * declare no surface.
+ *
+ * Several lists may show one type (Task schedule, On-demand tasks, Upcoming tasks), so the one taken
+ * is the listed one earliest in its side bar -- the lowest non-zero `sideBarPosition` -- and else any
+ * built list, in roster order. A type no list shows falls back to the first built screen declaring
+ * it that is not one of `CREATE_ONLY_FORMS`, which open nothing (the Switches form, Auditing
+ * configuration).
+ */
+export function screenForEntityType(type: string): ScreenDeclaration | null {
+  if (type === '') return null;
+  const lists = SCREENS.filter((screen) => screen.built && screen.entityType === type && LIST_ARCHETYPES.has(screen.archetype));
+  const listed = lists.filter((screen) => screen.sideBarPosition > 0);
+  if (listed.length > 0) {
+    return listed.reduce((best, screen) => (screen.sideBarPosition < best.sideBarPosition ? screen : best));
+  }
+  if (lists.length > 0) return lists[0];
+  return (
+    SCREENS.find((screen) => screen.built && screen.entityType === type && !CREATE_ONLY_FORMS.has(screen.descriptor)) ??
+    null
+  );
+}
+
+/**
+ * The screen whose declared `toolIdentifier` owns the tool named `tool`, or `null` (AD-5).
+ *
+ * A tool's canonical name is `<area>.<screen>.<verb>` and its screen's identifier is the first two
+ * segments, which is how `OcuPilot.Screen.Tool.Registry` resolves a tool to its descriptor and how
+ * `OcuPilot.Screen.Registry.ConfirmChannelProblem` finds a tool's field list. A tool name is
+ * claimed by exactly one source -- the registry refuses a second claimant -- so this answers one
+ * screen or none, which `screenForEntityType` cannot: two screens may declare one entity type.
+ *
+ * **Unbuilt screens are included, and that is the point.** A write tool's declarations -- its
+ * screen's singular noun and its secret argument names -- are properties of the operation, not of
+ * a rendered surface, and an operation may ship before its screen does
+ * (`OcuPilot.Screen.Descriptor.AuditingConfig`). Keying the card's lookup on the entity type
+ * instead would answer `null` for such a proposal and silently ask for no secret at all.
+ */
+export function screenForToolName(tool: string): ScreenDeclaration | null {
+  const parts = tool.split('.');
+  if (parts.length < 2) return null;
+  const identifier = parts.slice(0, 2).join('.');
+  return SCREENS.find((screen) => screen.toolIdentifier === identifier) ?? null;
+}
+
+/**
+ * The two halves of a reference a caller tests a screen against: the entity type and the resolved
+ * scope (AD-13). Structural, so a `ChangeEvent` and a toast entry both satisfy it without either
+ * module importing the other.
+ */
+export interface EntityReference {
+  readonly type: string;
+  readonly scope: string;
+}
+
+/**
+ * Whether `screen` shows the entity `event` names, in the namespace the shell is scoped to
+ * (AD-13, AD-14): the type is the screen's primary or one of its secondaries, and the scope is
+ * the one the screen's declared `scope` resolves to.
+ *
+ * **One predicate, two callers, and that is the point.** `RefreshService` asks it to decide
+ * whether to re-fetch and highlight; the toast store asks it to decide whether to raise a toast
+ * at all, which is the same question with the opposite answer. Two inline copies would be two
+ * answers, and a screen that re-fetched *and* raised a toast -- or did neither -- is exactly the
+ * divergence AD-14's last sentence is about.
+ */
+export function screenShowsEntity(
+  screen: ScreenDeclaration,
+  event: EntityReference,
+  namespace: string
+): boolean {
+  const types = [screen.entityType, ...screen.secondaryEntityTypes].filter((type) => type !== '');
+  if (!types.includes(event.type)) return false;
+  return event.scope === scopeFor(screen.scope, namespace);
+}
+
+/** The screen a change can be opened in, and the route that opens it with the entity named. */
+export interface ChangeTarget {
+  readonly screen: ScreenDeclaration;
+  readonly route: string;
+}
+
+/**
+ * The built screen that shows `type`, with the route that opens it on `id`, or `null` when no
+ * built screen shows that entity type (AD-5, AD-13).
+ *
+ * The route is the screen's own plus the entity as one percent-encoded segment, through the one
+ * shared encoder -- never a second grammar -- so the locator bar reads the entity the toast
+ * named. A screen whose descriptor declares no id route takes the bare route: there is no segment
+ * for the entity to occupy, and appending one would be a URL the route table does not hold.
+ *
+ * `null` is not a fault. It is the "a type no built screen shows" row of this story's matrix: the
+ * toast still says what changed, with no action to offer.
+ */
+export function screenForChange(event: { readonly type: string; readonly id: string }): ChangeTarget | null {
+  const screen = screenForEntityType(event.type);
+  if (screen === null) return null;
+  const route =
+    hasIdRoute(screen) && event.id !== '' ? `${screen.route}/${encodeEntityId(event.id)}` : screen.route;
+  return { screen, route };
+}
+
 /** Whether a screen is keyed by an id, and therefore carries an `/:id` route. */
 export function hasIdRoute(screen: ScreenDeclaration): boolean {
   return screen.id.kind !== 'none';
+}
+
+/**
+ * Home's own area key, as `OcuPilot.Screen.Descriptor.Home` declares it and the generated mirror
+ * carries it. Named here so a reader of the shell's own state -- `PanelState`, which learns where
+ * it is from `ShellState.activeArea()` -- tests against one constant rather than a literal.
+ */
+export const HOME_AREA_KEY = 'home';
+
+/**
+ * The entity type `screen`'s route id identifies (DW-1020, AD-5, AD-13): the parent screen's own
+ * `entityType` for a sub-resource screen, resolved through `parentScope` and never declared a
+ * second time -- task history is not a task, and its route id names the task `parentListFor`
+ * resolves to, while its rows keep their own `entityType`. A screen with no parent answers its own
+ * `entityType`, which is also what a stale or unresolved `parentScope` falls back to, since this
+ * function has no refusal of its own to raise (`OcuPilot.Screen.Registry.RouteEntityType`'s
+ * server-side twin, and `OcuPilot.Screen.Registry.ParentScopeResolutionProblem` is what keeps the
+ * production roster from ever needing that fallback).
+ */
+export function routeEntityType(screen: ScreenDeclaration): string {
+  if (screen.parentScope !== '') {
+    const parent = screenForRoute(screen.parentScope);
+    if (parent !== null) return parent.entityType;
+  }
+  return screen.entityType;
 }
 
 /** The placeholder the Fixed strings table leaves for an area's own name. */
@@ -238,6 +583,38 @@ export function formatDeniedAction(template: string, failedPair: string, action:
   return template.split(RESOURCE_PLACEHOLDER).join(failedPair).split(ACTION_PLACEHOLDER).join(action);
 }
 
+/** The placeholder the Fixed strings table leaves for the entity a navigation opened. */
+export const ENTITY_PLACEHOLDER = '<entity>';
+
+/**
+ * The agent's navigation announcement -- EXPERIENCE.md's Fixed strings row for
+ * "I'm opening <screen> for <entity> -- use Back to return." -- resolved to the target screen's
+ * title and, when a row was selected, its entity id -- both model-supplied and therefore
+ * untrusted (AD-33): the caller renders the result as `textContent`, never as markup. An empty
+ * `entityId` selects the no-entity form, the same words minus the clause with nothing to fill.
+ */
+export function formatNavigationAnnouncement(
+  entityTemplate: string,
+  noEntityTemplate: string,
+  screenTitle: string,
+  entityId: string
+): string {
+  if (entityId === '') return noEntityTemplate.split(SCREEN_PLACEHOLDER).join(screenTitle);
+  return entityTemplate.split(SCREEN_PLACEHOLDER).join(screenTitle).split(ENTITY_PLACEHOLDER).join(entityId);
+}
+
+/** The placeholder the Fixed strings table leaves for the arrived screen's own title. */
+export const TITLE_PLACEHOLDER = '<title>';
+
+/**
+ * The arrival heading announcement -- EXPERIENCE.md's Fixed strings row for
+ * "<title> -- opened by the agent; Back returns" -- resolved to the arrived screen's own title.
+ * `locator-bar.ts`'s `#ocu-locator-screen` takes it as its `aria-label` once per arrival.
+ */
+export function formatNavigationHeading(template: string, screenTitle: string): string {
+  return template.split(TITLE_PLACEHOLDER).join(screenTitle);
+}
+
 /** The one query parameter that is data scope rather than screen state (AD-44). */
 export const NAMESPACE_PARAM = 'ns';
 
@@ -264,6 +641,19 @@ export function withQuery(route: string, currentUrl: string): string {
   );
   if (namespace === null) return '/' + route;
   return '/' + route + '?' + NAMESPACE_PARAM + '=' + encodeURIComponent(namespace);
+}
+
+/**
+ * The URL that opens `route` on the row `entityId` (`''` for none) in data scope `scope` (AD-13,
+ * AD-44): the id is one segment encoded by `encodeEntityId`; a scope of `''` or `instance` keeps
+ * the namespace `currentUrl` carries (`withQuery`), and a namespace scope names that namespace.
+ * The agent's navigation and a citation chip both build their URL here, so a row opens at the
+ * same address whichever of them asked.
+ */
+export function entityUrl(route: string, entityId: string, scope: string, currentUrl: string): string {
+  const target = route + (entityId === '' ? '' : '/' + encodeEntityId(entityId));
+  if (scope === '' || scope === INSTANCE_SCOPE) return withQuery(target, currentUrl);
+  return '/' + target + '?' + NAMESPACE_PARAM + '=' + encodeURIComponent(scope);
 }
 
 /** The declared route a router URL names: no leading slash, no query, no fragment. */

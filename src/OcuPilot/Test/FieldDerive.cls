@@ -10,8 +10,12 @@
 /// keyed by the endpoint name). The two field-bearing template-less endpoints are derived from
 /// their underlying classes (<code>source</code> <code>class</code>, keyed
 /// <code>&lt;endpoint&gt;:&lt;class&gt;</code>): one list per wallet secret <code>Type</code>, and
-/// one for the audit event. The action-style endpoints in <parameter>NOTEMPLATE</parameter> are
-/// recorded with <code>source</code> <code>none</code> and no rows.</p>
+/// one for the audit event. The server description's <code>Metadata</code> members are derived from
+/// <parameter>SERVERMETADATACLASS</parameter> the same way, beside that endpoint's template list, and
+/// the client configuration's from <parameter>CLIENTMETADATACLASS</parameter>, whose rows also carry
+/// each member's <code>kind</code> and a <code>VALUELIST</code> member's <code>values</code>. The
+/// action-style endpoints in <parameter>NOTEMPLATE</parameter> are recorded with <code>source</code>
+/// <code>none</code> and no rows.</p>
 /// <p><b>Rows.</b> Each row is <code>path|shape|templateType|itemType</code>. Every node of a
 /// template is a row, in the template's own order: a literal is <code>literal</code> with its
 /// placeholder's JSON type; an object is <code>object</code> and its members follow as
@@ -21,7 +25,9 @@
 /// non-<code>Internal</code>, non-<code>%</code> property, identifying properties excluded, in name
 /// order: a <code>LIST</code> is a member-less <code>array</code>, anything else a
 /// <code>literal</code> whose type is mapped from its <code>ClientDataType</code>. The placeholder
-/// type is information; the shape is contract.</p>
+/// type is information; the shape is contract. A row of a <parameter>KINDCLASSES</parameter> list
+/// adds <code>kind</code> (<method>MemberKind</method>) and, for a <code>VALUELIST</code> property,
+/// <code>values</code>, the list's non-empty entries in its own order.</p>
 /// <p>Every derivation failure is an error status, never a shorter list: an endpoint whose
 /// template does not evaluate, a class with no readable property, an unmapped
 /// <code>ClientDataType</code>, or a class-derived or no-template endpoint the inventory does not
@@ -60,6 +66,28 @@ Parameter AUDITEVENTIDENTIFYING = "Source,Type,Name";
 
 /// <p>The mutating endpoints whose bodies are trivial or empty and need no field list.</p>
 Parameter NOTEMPLATE = "Lock,Process,Task.Manager";
+
+/// <p>The OAuth 2.0 server description endpoint, whose template carries <code>Metadata</code> as a
+/// member-less object.</p>
+Parameter SERVERDEFINITIONENDPOINT = "Security.OAuth2.Client.ServerDefinition";
+
+/// <p>The class the endpoint imports <code>Metadata</code> into, member by member, through its
+/// generated <code>ImportJSON</code>: the members' list is derived from it.</p>
+Parameter SERVERMETADATACLASS = "OAuth2.Server.Metadata";
+
+/// <p>The body member the server description's metadata members sit under.</p>
+Parameter SERVERMETADATAENVELOPE = "Metadata";
+
+/// <p>The OAuth 2.0 client configuration endpoint, whose template carries <code>Metadata</code> as a
+/// member-less object too (Story 12.5).</p>
+Parameter CLIENTCONFIGURATIONENDPOINT = "Security.OAuth2.Client.ClientConfiguration";
+
+/// <p>The class that endpoint imports <code>Metadata</code> into through its generated
+/// <code>ImportJSON</code>.</p>
+Parameter CLIENTMETADATACLASS = "OAuth2.Client.Metadata";
+
+/// <p>The classes whose derived rows carry each member's kind and allowed values.</p>
+Parameter KINDCLASSES = "OAuth2.Client.Metadata";
 
 /// <p>Derive every list from the running instance. <var>pLists</var> comes back subscripted by
 /// list key: <code>pLists(key)</code> is
@@ -112,6 +140,19 @@ ClassMethod Derive(Output pLists) As %Status
         Set tSC = ..ClassRows(..#AUDITEVENTCLASS, ..#AUDITEVENTIDENTIFYING, tKey, .pLists)
         If $$$ISERR(tSC) Quit
 
+        ; The server description's Metadata members, beside its template list, which carries
+        ; Metadata as one member-less object. The endpoint has a template, so the template-less
+        ; inventory check above does not apply to it.
+        Set tKey = ..#SERVERDEFINITIONENDPOINT _ ":" _ ..#SERVERMETADATACLASS
+        Set pLists(tKey) = ..Header(..#SERVERDEFINITIONENDPOINT, "class", "", ..#SERVERMETADATACLASS, "", ..#SERVERMETADATAENVELOPE)
+        Set tSC = ..ClassRows(..#SERVERMETADATACLASS, "", tKey, .pLists)
+        If $$$ISERR(tSC) Quit
+
+        Set tKey = ..#CLIENTCONFIGURATIONENDPOINT _ ":" _ ..#CLIENTMETADATACLASS
+        Set pLists(tKey) = ..Header(..#CLIENTCONFIGURATIONENDPOINT, "class", "", ..#CLIENTMETADATACLASS, "", ..#SERVERMETADATAENVELOPE)
+        Set tSC = ..ClassRows(..#CLIENTMETADATACLASS, "", tKey, .pLists)
+        If $$$ISERR(tSC) Quit
+
         Set tNone = $ListFromString(..#NOTEMPLATE)
         For tI = 1:1:$ListLength(tNone) {
             Set tName = $ListGet(tNone, tI)
@@ -150,7 +191,18 @@ ClassMethod Stored(Output pLists) As %Status
             Set pLists(tKey) = ..Header(tList.endpoint, tList.source, tList.method, tList.class, tList.type, tList.envelope)
             For tN = 0:1:(tList.rows.%Size() - 1) {
                 Set tRow = tList.rows.%Get(tN)
-                Set pLists(tKey, tN + 1) = tRow.path _ "|" _ tRow.shape _ "|" _ tRow.templateType _ "|" _ tRow.itemType
+                Set tLine = tRow.path _ "|" _ tRow.shape _ "|" _ tRow.templateType _ "|" _ tRow.itemType
+                If tRow.%IsDefined("kind") {
+                    Set tValues = ""
+                    If $IsObject(tRow.values) {
+                        Set tValueIterator = tRow.values.%GetIterator()
+                        While tValueIterator.%GetNext(.tValueIndex, .tValue) {
+                            Set tValues = tValues _ $Select(tValues = "": "", 1: ",") _ tValue
+                        }
+                    }
+                    Set tLine = tLine _ "|" _ tRow.kind _ "|" _ tValues
+                }
+                Set pLists(tKey, tN + 1) = tLine
             }
         }
     } Catch ex {
@@ -211,6 +263,14 @@ ClassMethod Regenerate(Output pSource As %String) As %Status
                 Do tRowObject.%Set("shape", $Piece(tRow, "|", 2))
                 Do tRowObject.%Set("templateType", $Piece(tRow, "|", 3))
                 Do tRowObject.%Set("itemType", $Piece(tRow, "|", 4))
+                If $Piece(tRow, "|", 5) '= "" {
+                    Do tRowObject.%Set("kind", $Piece(tRow, "|", 5))
+                    If $Piece(tRow, "|", 6) '= "" {
+                        Set tValueArray = []
+                        For tV = 1:1:$Length($Piece(tRow, "|", 6), ",") Do tValueArray.%Push($Piece($Piece(tRow, "|", 6), ",", tV))
+                        Do tRowObject.%Set("values", tValueArray)
+                    }
+                }
                 Set tText = tText _ tLF _ "  " _ tRowObject.%ToJSON() _ $Select(tN < tCount: ",", 1: "")
             }
             Set tText = tText _ $Select(tCount > 0: tLF, 1: "") _ "]}"
@@ -229,11 +289,12 @@ ClassMethod Header(pEndpoint As %String, pSource As %String, pMethod As %String,
     Quit pEndpoint _ "|" _ pSource _ "|" _ pMethod _ "|" _ pClass _ "|" _ pType _ "|" _ pEnvelope
 }
 
-/// <p>Append one row to list <var>pKey</var>.</p>
-ClassMethod AddRow(pKey As %String, pPath As %String, pShape As %String, pTemplateType As %String, pItemType As %String, ByRef pLists) [ Private ]
+/// <p>Append one row to list <var>pKey</var>, with <var>pKind</var> and <var>pValues</var> appended
+/// when <var>pKind</var> is given.</p>
+ClassMethod AddRow(pKey As %String, pPath As %String, pShape As %String, pTemplateType As %String, pItemType As %String, ByRef pLists, pKind As %String = "", pValues As %String = "") [ Private ]
 {
     Set tN = $Order(pLists(pKey, ""), -1) + 1
-    Set pLists(pKey, tN) = pPath _ "|" _ pShape _ "|" _ pTemplateType _ "|" _ pItemType
+    Set pLists(pKey, tN) = pPath _ "|" _ pShape _ "|" _ pTemplateType _ "|" _ pItemType _ $Select(pKind = "": "", 1: "|" _ pKind _ "|" _ pValues)
 }
 
 /// <p>Emit a row for every member of the object or array <var>pContainer</var> at
@@ -288,8 +349,9 @@ ClassMethod ClassRows(pClass As %String, pIdentifying As %String, pKey As %Strin
     Try {
         Set tExcluded = $ListFromString(pIdentifying)
         Set $NAMESPACE = "%SYS"
+        Set tKinds = ''$ListFind($ListFromString(..#KINDCLASSES), pClass)
         Set tStmt = ##class(%SQL.Statement).%New()
-        Set tSC = tStmt.%Prepare("SELECT %EXACT(p.Name) AS Name, p.Collection AS Collection, c.ClientDataType AS ClientDataType FROM %Dictionary.CompiledProperty p LEFT JOIN %Dictionary.CompiledClass c ON c.Name = p.Type WHERE %EXACT(p.parent) = ? AND p.Private = 0 AND p.Internal = 0 AND NOT (p.Name %STARTSWITH '%') ORDER BY %EXACT(p.Name)")
+        Set tSC = tStmt.%Prepare("SELECT %EXACT(p.Name) AS Name, p.Collection AS Collection, c.ClientDataType AS ClientDataType, %EXACT(p.Type) AS Type FROM %Dictionary.CompiledProperty p LEFT JOIN %Dictionary.CompiledClass c ON c.Name = p.Type WHERE %EXACT(p.parent) = ? AND p.Private = 0 AND p.Internal = 0 AND NOT (p.Name %STARTSWITH '%') ORDER BY %EXACT(p.Name)")
         If $$$ISERR(tSC) {
             Set $NAMESPACE = tOrigNS
             Quit
@@ -315,7 +377,16 @@ ClassMethod ClassRows(pClass As %String, pIdentifying As %String, pKey As %Strin
                 Quit
             }
             Set tRows = tRows + 1
-            Do ..AddRow(pKey, tName, $Select(tJsonType = "array": "array", 1: "literal"), tJsonType, "", .pLists)
+            Set (tKind, tValues) = ""
+            If tKinds {
+                Set tKind = ..MemberKind(tRs.%Get("Type"), tClientType)
+                If tKind = "" {
+                    Set tSC = $$$ERROR($$$GeneralError, pClass _ "." _ tName _ " has type '" _ tRs.%Get("Type") _ "', which maps to no member kind")
+                    Quit
+                }
+                Set tValues = ..AllowedValues(pClass, tName)
+            }
+            Do ..AddRow(pKey, tName, $Select(tJsonType = "array": "array", 1: "literal"), tJsonType, "", .pLists, tKind, tValues)
         }
         Set tSQLCODE = tRs.%SQLCODE
         Set $NAMESPACE = tOrigNS
@@ -330,6 +401,36 @@ ClassMethod ClassRows(pClass As %String, pIdentifying As %String, pKey As %Strin
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The kind of a metadata member whose property type is <var>pType</var> and whose client data
+/// type is <var>pClientDataType</var>: <code>uri</code>, <code>json</code>, <code>list</code>,
+/// <code>integer</code>, <code>flag</code> or <code>text</code>, or <code>""</code> when none is
+/// mapped.</p>
+ClassMethod MemberKind(pType As %String, pClientDataType As %String) As %String [ Private ]
+{
+    If pType = "%OAuth2.uri" Quit "uri"
+    If pType = "%OAuth2.JSONString" Quit "json"
+    Quit $Case(pClientDataType, "LIST": "list", "INTEGER": "integer", "BOOLEAN": "flag", "VARCHAR": "text", : "")
+}
+
+/// <p>The non-empty entries of property <var>pProperty</var>'s <code>VALUELIST</code> on
+/// <var>pClass</var>, comma-separated in the list's own order, or <code>""</code>. The caller has
+/// switched to the namespace the class is compiled in.</p>
+ClassMethod AllowedValues(pClass As %String, pProperty As %String) As %String [ Private ]
+{
+    Set tProperty = ##class(%Dictionary.CompiledProperty).%OpenId(pClass _ "||" _ pProperty)
+    If '$IsObject(tProperty) Quit ""
+    Set tList = tProperty.Parameters.GetAt("VALUELIST")
+    Set tProperty = ""
+    If tList = "" Quit ""
+    Set tDelimiter = $Extract(tList, 1)
+    Set tValues = ""
+    For tI = 2:1:$Length(tList, tDelimiter) {
+        Set tValue = $Piece(tList, tDelimiter, tI)
+        If tValue '= "" Set tValues = tValues _ $Select(tValues = "": "", 1: ",") _ tValue
+    }
+    Quit tValues
 }
 
 /// <p>The JSON type a property of <var>pClientDataType</var> takes in a request body, or

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from './app';
 import { routes } from './app.routes';
+import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
 import type { ApiService } from './core/api';
 import { ChangeBus } from './core/change-bus';
@@ -12,17 +13,31 @@ import { FormDirty } from './core/form-dirty';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
-import { PreferenceStore } from './core/preferences';
 import { RefreshService } from './core/refresh';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/scope';
 import { ScreenActions } from './core/screen-actions';
 import { ScreenStores } from './core/screen-store';
 import type { ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
+import { PanelState } from './core/panel-layout';
+import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
+import { ThemeState } from './core/theme';
 import { STRINGS } from './core/strings';
+import { SuggestedView } from './core/suggested-view';
+import { stubAgentContext } from './testing/agent-context';
+import { ViewOptions } from './core/view-options';
 import { stubAgentStatus } from './testing/agent-status';
+import { stubSuggestedView } from './testing/suggested-view';
+import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
+import { AccountPreferences } from './core/account-preferences';
+import { stubAccountPreferences } from './testing/account-preferences';
+import { About } from './core/about';
+import { SystemInfo } from './core/system-info';
+import { HelpLinks } from './core/help';
+import { stubAbout, stubHelpLinks } from './testing/about';
+import { stubSystemInfo } from './testing/system-info';
 
 /**
  * The one crossing left after `app.spec.ts` and the two bar specs: `app.spec.ts` mounts the real
@@ -63,6 +78,10 @@ class StubSession {
   }
 
   /** Never fresh: this file is about the chip and the stamp, not about the first-login gate. */
+  hasFreshSignIn(): boolean {
+    return false;
+  }
+
   consumeFreshSignIn(): boolean {
     return false;
   }
@@ -96,6 +115,11 @@ class StubInstance {
 
   instanceName(): string {
     return 'IRIS';
+  }
+
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
   }
 
   instanceVersion(): string {
@@ -221,7 +245,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
     scheduled = [];
     bus = new ChangeBus();
     const connectivity = new StubConnectivity() as unknown as ConnectivityService;
-    const screenStores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    const screenStores = new ScreenStores({ account: stubAccountPreferences() });
     refresh = new RefreshService({
       stores: screenStores,
       connectivity,
@@ -237,8 +261,14 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
     } as unknown as ApiService;
     const navigation = new NavigationService({ api, connectivity, namespace: () => 'HSCUSTOM' });
 
+    const shellPreferences = stubAccountPreferences();
+    const shellState = new ShellState({ account: shellPreferences });
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: stubAbout() },
+        { provide: SystemInfo, useValue: stubSystemInfo() },
+        { provide: HelpLinks, useValue: stubHelpLinks() },
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter(routes),
         { provide: Session, useValue: new StubSession() as unknown as Session },
         { provide: InstanceService, useValue: new StubInstance() as unknown as InstanceService },
@@ -246,17 +276,21 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         { provide: ScopeService, useValue: new StubScope() as unknown as ScopeService },
         { provide: ConnectivityService, useValue: connectivity },
         { provide: RefreshService, useValue: refresh },
+        { provide: ChangeBus, useValue: bus },
         { provide: ScreenStores, useValue: screenStores },
-        {
-          provide: ShellState,
-          useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
-        },
+        { provide: ShellState, useValue: shellState },
+        { provide: ThemeState, useValue: new ThemeState({ account: shellPreferences, root: document.createElement('div') }) },
+        { provide: PanelState, useValue: new PanelState({ account: shellPreferences, shell: shellState }) },
+        { provide: TurnStore, useValue: stubTurnStore() },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ViewOptions, useValue: new ViewOptions() },
         { provide: FormDirty, useValue: new FormDirty() },
         // Unanswered on purpose: this file is about the chip and the stamp around the real Home
         // screen, and a panel that has picked an audience would be a second subject in it.
         { provide: AgentStatus, useValue: stubAgentStatus() },
+        { provide: AgentContext, useValue: stubAgentContext() },
+        { provide: SuggestedView, useValue: stubSuggestedView() },
       ],
     });
 

@@ -11,6 +11,7 @@ import { OverlayStack } from '../../core/overlay-stack';
 import { STRINGS } from '../../core/strings';
 import { stubAgentStatus } from '../../testing/agent-status';
 import { DefinitionFormPage } from './definition-form.page';
+import { DefinitionForm } from './definition-form.store';
 
 /**
  * The Definition form over stubs of the two things an instance supplies -- the URL's screen and
@@ -23,8 +24,8 @@ const PROVIDERS_BODY = {
     {
       key: 'anthropic',
       label: 'Anthropic',
-      defaultModel: 'claude-opus-5',
-      modelSuggestions: ['claude-opus-5', 'claude-sonnet-5'],
+      defaultModel: 'claude-opus-5-5',
+      modelSuggestions: ['claude-opus-5-5', 'claude-sonnet-5'],
       // The one absolute URL `ui/tools/client-lint.mjs` admits: a fixture endpoint that is never
       // fetched, and which nothing in this spec asks a browser to reach (AD-47, NFR-10).
       defaultEndpoint: 'https://ocupilot.invalid/v1/messages',
@@ -52,6 +53,40 @@ const TWO_PROVIDERS = {
       modelSuggestions: ['gpt-5'],
       defaultEndpoint: 'https://ocupilot.invalid/v1/chat',
       keyPrefix: 'sk-',
+    },
+  ],
+};
+
+/**
+ * A plain-`http://` value for the endpoint field. The scheme alone, because the scheme is all
+ * `showHttpAcknowledge` reads and `ui/tools/client-lint.mjs`'s off-origin rule holds a closed list
+ * of absolute URLs `ui/src` may carry that a plain-http host is not on -- and assembling one past
+ * that scanner is the trick this project refuses elsewhere. With no host it names no resource, and
+ * nothing here fetches it: it is typed into an input and read back.
+ */
+const PLAIN_HTTP = 'http://';
+
+/**
+ * Two rows where the second licenses a local address and a keyless rung (Story 10.3's
+ * `compatible` row). Every other fixture in this file sets `allowsLocal` false, so without this
+ * one `localAllowed` is never true and the three controls it gates have no test host at all.
+ */
+const LOCAL_PROVIDERS = {
+  providers: [
+    PROVIDERS_BODY.providers[0],
+    {
+      ...PROVIDERS_BODY.providers[0],
+      key: 'compatible',
+      label: 'OpenAI-compatible',
+      defaultModel: '',
+      modelSuggestions: [],
+      defaultEndpoint: '',
+      endpointRequired: true,
+      defaultEnvVarName: 'OPENAI_COMPATIBLE_API_KEY',
+      defaultCredentialName: 'OcuPilotCompatible',
+      keyPrefix: '',
+      allowsLocal: true,
+      keyShapeReason: '',
     },
   ],
 };
@@ -111,6 +146,13 @@ async function mount(
   // in this file that predates it.
   const agentStatus = stubAgentStatus(options.definitions ?? []);
   if (options.definitions !== undefined) await agentStatus.load();
+  // The real bus, with every event this form publishes captured: AD-14's action is what the
+  // subscribers act on, and nothing else in this file observes a publish (DW-1404).
+  const bus = new ChangeBus();
+  const changes: { kind: string; action: string; id: string; type: string }[] = [];
+  bus.subscribe((event) => {
+    changes.push({ kind: event.kind, action: event.action, id: event.id, type: event.type });
+  });
   TestBed.configureTestingModule({
     providers: [
       provideRouter([{ path: '**', children: [] }]),
@@ -118,7 +160,7 @@ async function mount(
       { provide: NavigationService, useValue: stubNavigation(options.verdict ?? UNGATED, options.mapLoaded ?? true) },
       { provide: AgentStatus, useValue: agentStatus },
       { provide: FormDirty, useValue: formDirty },
-      { provide: ChangeBus, useValue: new ChangeBus() },
+      { provide: ChangeBus, useValue: bus },
       { provide: OverlayStack, useValue: new OverlayStack() },
     ],
   });
@@ -127,7 +169,7 @@ async function mount(
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
   await settle(fixture);
-  return { fixture, calls, formDirty, agentStatus, host: fixture.nativeElement as HTMLElement };
+  return { fixture, calls, formDirty, agentStatus, changes, host: fixture.nativeElement as HTMLElement };
 }
 
 const ok = (body: unknown): JsonResult<unknown> => ({ kind: 'ok', status: 200, body });
@@ -354,6 +396,79 @@ describe('the Definition form', () => {
     expect(host.querySelector('.ocu-form-bar-status')?.textContent?.trim()).toContain(STRINGS.formSavedPendingTest);
   });
 
+  it('Story 11.10: a create posts readOnly false, and an edit of a read-only definition sends it back true', async () => {
+    const createAnswer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') return created(definition({ readOnly: false }));
+      return ok({ definitions: [] });
+    };
+    const create = await mount(createAnswer);
+    ([...create.host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(create.fixture);
+    const posted = create.calls.find((call) => call.method === 'POST');
+    expect(posted).toBeDefined();
+    expect(JSON.parse(posted!.body).readOnly).toBe(false);
+
+    const editAnswer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') return ok(definition({ readOnly: true }));
+      return ok(definition({ readOnly: true }));
+    };
+    const edit = await mount(editAnswer, '/agent/definitions/edit/7');
+    ([...edit.host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(edit.fixture);
+    const put = edit.calls.find((call) => call.method === 'PUT');
+    expect(put).toBeDefined();
+    expect(JSON.parse(put!.body).readOnly).toBe(true);
+  });
+
+  it('DW-1404: a create publishes `created`, an edit publishes `updated`, and the gate path publishes `created`', async () => {
+    // AD-14's action is a closed vocabulary that carries meaning: `created` is the only action
+    // that asks the list to put the caret on the new row (`RefreshService.onBusEvent`), and it is
+    // the word an off-screen toast reads back. One `publishChange()` served both routes and said
+    // `updated` for all of them, so no shipped publisher could ever emit `created`.
+    //
+    // Mutation (Rule 19): hard-code `'updated'` in `publishChange` again -> the create and
+    // gate-path legs go red; the edit leg stays green, which is what makes the three legs
+    // together the pin rather than any one of them.
+    const createAnswer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') return created(definition({ enabled: false }));
+      return ok({ definitions: [] });
+    };
+    const create = await mount(createAnswer);
+    const createSave = [...create.host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement;
+    createSave.click();
+    await settle(create.fixture);
+    expect(create.changes).toEqual([{ kind: 'changed', action: 'created', id: '7', type: 'agent-definition' }]);
+
+    const editAnswer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') return ok(definition({ enabled: true }));
+      return ok(definition());
+    };
+    const edit = await mount(editAnswer, '/agent/definitions/edit/7');
+    const editSave = [...edit.host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement;
+    editSave.click();
+    await settle(edit.fixture);
+    expect(edit.changes).toEqual([{ kind: 'changed', action: 'updated', id: '7', type: 'agent-definition' }]);
+
+    // The gate's own path creates through Test connection, with no Save between (AC3 above), so
+    // it is a second create publisher and not a variant of the first.
+    const gateAnswer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (path.endsWith('/test')) {
+        return ok({ connected: true, reply: 'Hello', replyTruncated: false, latencyMs: 9, connectionVerified: true, testedAsStored: true });
+      }
+      if (init.method === 'POST') return created(definition());
+      return ok({ definitions: [] });
+    };
+    const gate = await mount(gateAnswer);
+    (gate.host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+    await settle(gate.fixture);
+    expect(gate.changes.map((change) => change.action)).toEqual(['created']);
+  });
+
   it('AC3: an edit whose answer reads enabled renders the saved sentence, and one that does not renders pending-test', async () => {
     const enabledAnswer: Answer = (path, init) => {
       if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
@@ -509,6 +624,48 @@ describe('the Definition form', () => {
     await settle(tls.fixture);
     expect(tls.host.querySelector('.ocu-form-test .ocu-form-error')?.textContent?.trim()).toBe(
       "The TLS configuration this instance's provider calls are made through is not present"
+    );
+  });
+
+  it('Story 10.5: a test that waited its bound reads the published sentence, resolved from the detail', async () => {
+    const timedOut =
+      (code: string, detail: Record<string, unknown> | null): Answer =>
+      (path) => {
+        if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+        if (path.endsWith('/test')) {
+          return { kind: 'error', status: 504, code, reason: 'the envelope reason, not the published sentence', detail };
+        }
+        return ok(definition());
+      };
+    const failureAfterPress = async (answer: Answer): Promise<string | undefined> => {
+      const mounted = await mount(answer, '/agent/definitions/edit/7');
+      (mounted.host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+      await settle(mounted.fixture);
+      return mounted.host.querySelector('.ocu-form-test .ocu-form-error')?.textContent?.trim();
+    };
+
+    // Mutation (Rule 19): render `reason` for PROVIDER.TESTTIMEOUTLOCAL in `absorbTestRefusal` ->
+    // this goes red on the envelope's reason.
+    expect(
+      await failureAfterPress(
+        timedOut('PROVIDER.TESTTIMEOUTLOCAL', { waitedSeconds: 50, providerLabel: 'OpenAI-compatible' })
+      )
+    ).toBe(STRINGS.agentDefinitionTestTimeoutLocal.replace('<n>', '50'));
+
+    expect(
+      await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', { waitedSeconds: 50, providerLabel: 'Google Gemini' }))
+    ).toBe(STRINGS.agentDefinitionTestTimeout.replace('<provider>', 'Google Gemini').replace('<n>', '50'));
+
+    // Without the detail the sentence cannot be resolved, so the envelope's own reason renders.
+    expect(await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', null))).toBe(
+      'the envelope reason, not the published sentence'
+    );
+    expect(await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUTLOCAL', { providerLabel: 'x' }))).toBe(
+      'the envelope reason, not the published sentence'
+    );
+    // Mutation (Rule 19): have `testTimeoutText` stringify the label unchecked -> this reads "(undefined)".
+    expect(await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', { waitedSeconds: 50 }))).toBe(
+      'the envelope reason, not the published sentence'
     );
   });
 
@@ -692,7 +849,7 @@ describe('the Definition form', () => {
 
   it('a definition that could not be read draws its refusal, and no editable form over it', async () => {
     // Before the read resolves, and after it fails, the buffer holds the class's own defaults --
-    // an empty name, no provider, credType `creds`, readOnly true. Drawing the fields over them
+    // an empty name, no provider, credType `creds`, readOnly false. Drawing the fields over them
     // offers an editable form for a definition nobody has seen, under the id in the URL, and its
     // Save sends those defaults to the instance.
     const answer: Answer = (path) =>
@@ -906,6 +1063,64 @@ describe('the Definition form', () => {
     expect(name.getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('DW-380: a refusal describes the values the request carried, not an edit typed while it was out', async () => {
+    // The operator types a name while the save is in flight. The refusal judged the empty name the
+    // request carried, so the first blur after it arrives finds the field moved and drops it.
+    //
+    // Mutation (Rule 19): snapshot the refused values in `rememberRefusal` when the answer arrives
+    // rather than taking the `sent` record -> this goes red, the violation standing over a name the
+    // refusal never saw.
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') {
+        const typed = document.querySelector('#ocu-definition-name') as HTMLInputElement;
+        typed.value = 'Typed while saving';
+        typed.dispatchEvent(new Event('input'));
+        return refused([
+          { field: 'name', code: 'AGENT.NAME.REQUIRED', reason: 'Give the definition a name of 1 to 64 characters.' },
+        ]);
+      }
+      return ok({ definitions: [] });
+    };
+    const { fixture, host } = await mount(answer);
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    expect(name.value).toBe('Typed while saving');
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    name.dispatchEvent(new Event('blur'));
+    await settle(fixture);
+    expect(name.getAttribute('aria-invalid')).toBe('false');
+  });
+
+  it('DW-380: a refused Test connection describes the values the request carried, not an edit typed while it was out', async () => {
+    // Mutation (Rule 19): take `sentToTest` after the awaited `/test` post in `testConnection` rather
+    // than before it -> this goes red, the violation standing over a name the refusal never saw.
+    const answer: Answer = (path) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (path.endsWith('/test')) {
+        const typed = document.querySelector('#ocu-definition-name') as HTMLInputElement;
+        typed.value = 'Typed while testing';
+        typed.dispatchEvent(new Event('input'));
+        return refused([
+          { field: 'name', code: 'AGENT.NAME.REQUIRED', reason: 'Give the definition a name of 1 to 64 characters.' },
+        ]);
+      }
+      return ok(definition());
+    };
+    const { fixture, host } = await mount(answer, '/agent/definitions/edit/7');
+    (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    expect(name.value).toBe('Typed while testing');
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    name.dispatchEvent(new Event('blur'));
+    await settle(fixture);
+    expect(name.getAttribute('aria-invalid')).toBe('false');
+  });
+
   it("AC7: a Test connection refused for privilege does not raise the save's action sentence", async () => {
     // `POST /:id/test` refuses 403 AUTH.NOPRIVILEGE with a `failedPair` of its own
     // (`src/OcuPilot/Test/AgentWireSecurity.cls`). The published action phrase this screen
@@ -1007,5 +1222,585 @@ describe('the Definition form', () => {
       mapLoaded: false,
     });
     expect(noMap.host.querySelector('.ocu-form-gate-banner')).toBeNull();
+  });
+
+  it('Story 10.3 AC2: the local controls render only on a row that licenses them, and the acknowledgment only for a key crossing plain http', async () => {
+    // The gap this closes: the three controls are gated on `allowsLocal`, which no other fixture
+    // in this file sets, so inverting `showHttpAcknowledge` to `false` reddened nothing.
+    const { fixture, host } = await mount((path) =>
+      path.endsWith('/agent/providers') ? ok(LOCAL_PROVIDERS) : ok({ definitions: [] })
+    );
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    const endpoint = host.querySelector('#ocu-definition-endpointUrl') as HTMLInputElement;
+
+    // On the vendor row the row licenses nothing, so neither the declaration nor the keyless
+    // choice is offered -- and a plain-http endpoint does not summon the acknowledgment either,
+    // because the server refuses that endpoint on its own field there.
+    endpoint.value = PLAIN_HTTP;
+    endpoint.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-markedLocal')).toBeNull();
+    expect(host.querySelector('#ocu-definition-credType')).toBeNull();
+    expect(host.querySelector('#ocu-definition-httpAcknowledged')).toBeNull();
+
+    provider.value = 'compatible';
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-markedLocal')).not.toBeNull();
+    expect(host.querySelector('#ocu-definition-credType')).not.toBeNull();
+
+    // The cascade emptied the endpoint with the row's own default, so type it again.
+    endpoint.value = PLAIN_HTTP;
+    endpoint.dispatchEvent(new Event('input'));
+    await settle(fixture);
+
+    // Still not offered: the row licenses a local address but the definition has not declared
+    // itself one, and `AgentRules.SchemeAccepted` refuses plain http on `endpointUrl` itself
+    // until both terms hold -- a refusal this control cannot clear.
+    expect(host.querySelector('#ocu-definition-httpAcknowledged')).toBeNull();
+    const markedLocal = host.querySelector('#ocu-definition-markedLocal') as HTMLInputElement;
+    markedLocal.checked = true;
+    markedLocal.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    const acknowledge = host.querySelector('#ocu-definition-httpAcknowledged') as HTMLInputElement;
+    expect(acknowledge).not.toBeNull();
+    expect(acknowledge.closest('.ocu-field')?.classList.contains('ocu-field-egress')).toBe(true);
+    expect(acknowledge.parentElement?.textContent?.trim()).toBe(STRINGS.agentDefinitionHttpAcknowledge);
+
+    // An encrypted endpoint is never asked.
+    endpoint.value = 'https://ocupilot.invalid/v1';
+    endpoint.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-httpAcknowledged')).toBeNull();
+
+    // Neither is a keyless definition: there is no key to expose.
+    endpoint.value = PLAIN_HTTP;
+    endpoint.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    const noKey = host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    noKey.checked = true;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-httpAcknowledged')).toBeNull();
+  });
+
+  it('Story 10.3 AC2: ticking the acknowledgment sends it, and unticking No API key restores the rung it displaced', async () => {
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(LOCAL_PROVIDERS);
+      if (init.method === 'POST') return created(definition({ provider: 'compatible' }));
+      return ok({ definitions: [] });
+    });
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = 'compatible';
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    // Tick the keyless choice and untick it: the rung must come back as it was, not as `creds`
+    // chosen for the operator.
+    const noKey = host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    noKey.checked = true;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    noKey.checked = false;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Local';
+    name.dispatchEvent(new Event('input'));
+    const model = host.querySelector('#ocu-definition-model') as HTMLInputElement;
+    model.value = 'llama-3.3-70b-instruct';
+    model.dispatchEvent(new Event('input'));
+    const endpoint = host.querySelector('#ocu-definition-endpointUrl') as HTMLInputElement;
+    endpoint.value = PLAIN_HTTP;
+    endpoint.dispatchEvent(new Event('input'));
+    await settle(fixture);
+
+    const markedLocal = host.querySelector('#ocu-definition-markedLocal') as HTMLInputElement;
+    markedLocal.checked = true;
+    markedLocal.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const acknowledge = host.querySelector('#ocu-definition-httpAcknowledged') as HTMLInputElement;
+    acknowledge.checked = true;
+    acknowledge.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+    const posted = JSON.parse(calls.filter((call) => call.method === 'POST').at(-1)?.body ?? '{}');
+    expect(posted.httpAcknowledged).toBe(true);
+    expect(posted.markedLocal).toBe(true);
+    expect(posted.credType).toBe('creds');
+  });
+
+  it('Story 10.3: cascading off the local row clears the two flags and the keyless rung, so no control leaves the screen holding a value', async () => {
+    // Without the clear-down the buffer keeps `credType: none` and `markedLocal: true` after the
+    // controls have gone, and Save is refused on two fields the form renders nothing for.
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(LOCAL_PROVIDERS);
+      if (init.method === 'POST') return created(definition());
+      return ok({ definitions: [] });
+    });
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = 'compatible';
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    (host.querySelector('#ocu-definition-markedLocal') as HTMLInputElement).checked = true;
+    (host.querySelector('#ocu-definition-markedLocal') as HTMLInputElement).dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    // The acknowledgment is ticked before the cascade, so the assertion below observes the
+    // clear-down rather than the buffer's own initial `false`: without it, `httpAcknowledged`
+    // is never true on this path and the POST would read `false` whether or not the row's
+    // `allowsLocal` clause exists.
+    const endpoint = host.querySelector('#ocu-definition-endpointUrl') as HTMLInputElement;
+    endpoint.value = PLAIN_HTTP;
+    endpoint.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    const acknowledge = host.querySelector('#ocu-definition-httpAcknowledged') as HTMLInputElement;
+    acknowledge.checked = true;
+    acknowledge.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    const noKey = host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    noKey.checked = true;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    provider.value = 'anthropic';
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-markedLocal')).toBeNull();
+    expect(host.querySelector('#ocu-definition-credType')).toBeNull();
+
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Claude';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+    const posted = JSON.parse(calls.filter((call) => call.method === 'POST').at(-1)?.body ?? '{}');
+    expect(posted.markedLocal).toBe(false);
+    expect(posted.httpAcknowledged).toBe(false);
+    expect(posted.credType).toBe('creds');
+  });
+
+  it('Story 10.3 AC2: unticking No API key restores an `env` rung rather than forcing `creds`', async () => {
+    // The gap this closes: the only other observation of the restore starts from `creds`, which
+    // is also what the behaviour it replaced produced, so it could not tell the two apart. A
+    // stored `env` definition is the only state that can. `credType` is a security field
+    // (`State/Agent.SecurityFields`), so a silent move would disable the definition until Test
+    // connection passed again, against a rung the operator never chose.
+    const stored = definition({
+      name: 'Local',
+      provider: 'compatible',
+      model: 'llama-3.3-70b-instruct',
+      endpointUrl: 'https://ocupilot.invalid/v1',
+      credType: 'env',
+      envVarName: 'OPENAI_COMPATIBLE_API_KEY',
+      credentialName: '',
+    });
+    const { fixture, host, calls } = await mount(
+      (path) => (path.endsWith('/agent/providers') ? ok(LOCAL_PROVIDERS) : ok(stored)),
+      '/agent/definitions/edit/7'
+    );
+
+    const noKey = host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    expect(noKey.checked).toBe(false);
+    noKey.checked = true;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    noKey.checked = false;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    // A benign edit, so the save is issued whatever the dirty tracking makes of a value that
+    // left and came back.
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Local model';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+    const posted = JSON.parse(calls.filter((call) => call.method === 'PUT').at(-1)?.body ?? '{}');
+    expect(posted.credType).toBe('env');
+    expect(posted.envVarName).toBe('OPENAI_COMPATIBLE_API_KEY');
+  });
+
+  // --- Story 8.9 AC2: env mode, where the namespace cannot reach the credentials rung ----------
+
+  /** The providers answer with the rung flag the server publishes beside the rows. */
+  const withRung = (body: { providers: unknown[] }, available: boolean | undefined) =>
+    available === undefined ? body : { ...body, credentialsRungAvailable: available };
+
+  /** Two vendor rows whose environment-variable defaults differ, so a cascade is observable. */
+  const ENV_PROVIDERS = {
+    providers: [
+      PROVIDERS_BODY.providers[0],
+      { ...TWO_PROVIDERS.providers[1], defaultEnvVarName: 'OPENAI_API_KEY' },
+    ],
+  };
+
+  /**
+   * Every route the form issues, answered the way the instance does: a create echoes the body it
+   * was sent under a new id, an empty variable is refused on its own field, and Test connection
+   * passes.
+   */
+  const envAnswer =
+    (providers: unknown): Answer =>
+    (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(providers);
+      if (path.endsWith('/test')) return ok({ reply: 'Hello', connectionVerified: true, testedAsStored: true });
+      if (init.method === 'POST' || init.method === 'PUT') {
+        const sent = JSON.parse(init.body ?? '{}') as Record<string, unknown>;
+        if (sent['envVarName'] === '') {
+          return refused([{ field: 'envVarName', code: 'AGENT.ENVVAR.REQUIRED', reason: 'Name the environment variable the key is read from.' }]);
+        }
+        return init.method === 'POST' ? created(definition({ ...sent, id: '9' })) : ok(definition(sent));
+      }
+      return path.endsWith('/definitions') ? ok({ definitions: [] }) : ok(definition());
+    };
+
+  const saveButton = (host: HTMLElement) =>
+    [...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement;
+
+  const lastBody = (calls: { method: string; body: string }[], method: string) =>
+    JSON.parse(calls.filter((call) => call.method === method).at(-1)?.body ?? '{}') as Record<string, unknown>;
+
+  it('Story 8.9 AC2: in env mode a create offers the environment variable in the key field\'s place and sends `env`', async () => {
+    // Mutation (Rule 19): render the API-key field whatever the flag says -> this goes red on the
+    // key field being present.
+    const { fixture, host, calls } = await mount(envAnswer(withRung(PROVIDERS_BODY, false)));
+
+    expect(host.querySelector('#ocu-definition-apiKey')).toBeNull();
+    expect(host.querySelector('.ocu-reveal-toggle')).toBeNull();
+    expect(host.textContent).not.toContain(STRINGS.formSecretStored);
+
+    const envVar = host.querySelector('#ocu-definition-envVarName') as HTMLInputElement;
+    expect(envVar).not.toBeNull();
+    expect(envVar.value).toBe('ANTHROPIC_API_KEY');
+    const labels = [...host.querySelectorAll('.ocu-field-label')].map((label) => label.textContent?.trim());
+    expect(labels).toEqual([
+      STRINGS.tableColumnName,
+      STRINGS.tableColumnProvider,
+      STRINGS.tableColumnModel,
+      STRINGS.agentDefinitionFieldEndpoint,
+      STRINGS.agentDefinitionFieldEnvVar,
+    ]);
+    const caption = host.querySelector('#ocu-definition-envVarName-caption') as HTMLElement;
+    expect(caption.textContent?.trim()).toBe(STRINGS.agentDefinitionEnvVarCaption);
+    expect(envVar.getAttribute('aria-describedby')).toBe('ocu-definition-envVarName-caption');
+
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Claude';
+    name.dispatchEvent(new Event('input'));
+    envVar.value = '';
+    envVar.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'POST')['credType']).toBe('env');
+    const reason = host.querySelector('#ocu-definition-envVarName-reason') as HTMLElement;
+    expect(reason.textContent?.trim()).toBe('Name the environment variable the key is read from.');
+    expect(document.activeElement?.id).toBe('ocu-definition-envVarName');
+
+    const again = host.querySelector('#ocu-definition-envVarName') as HTMLInputElement;
+    again.value = 'MY_ANTHROPIC_KEY';
+    again.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    saveButton(host).click();
+    await settle(fixture);
+    const posted = calls.filter((call) => call.method === 'POST');
+    const body = JSON.parse(posted.at(-1)?.body ?? '{}') as Record<string, unknown>;
+    expect(body['credType']).toBe('env');
+    expect(body['envVarName']).toBe('MY_ANTHROPIC_KEY');
+  });
+
+  it('Story 8.9 AC2: in env mode a provider change and an unticked No API key restore `env`, never `creds`', async () => {
+    const vendor = await mount(envAnswer(withRung(ENV_PROVIDERS, false)));
+    const provider = vendor.host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = 'openai';
+    provider.dispatchEvent(new Event('change'));
+    await settle(vendor.fixture);
+    expect((vendor.host.querySelector('#ocu-definition-envVarName') as HTMLInputElement).value).toBe('OPENAI_API_KEY');
+    const name = vendor.host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'GPT';
+    name.dispatchEvent(new Event('input'));
+    await settle(vendor.fixture);
+    saveButton(vendor.host).click();
+    await settle(vendor.fixture);
+    expect(lastBody(vendor.calls, 'POST')['credType']).toBe('env');
+    expect(lastBody(vendor.calls, 'POST')['envVarName']).toBe('OPENAI_API_KEY');
+
+    const local = await mount(envAnswer(withRung(LOCAL_PROVIDERS, false)));
+    const localProvider = local.host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    localProvider.value = 'compatible';
+    localProvider.dispatchEvent(new Event('change'));
+    await settle(local.fixture);
+    const noKey = local.host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    noKey.checked = true;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(local.fixture);
+    noKey.checked = false;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(local.fixture);
+    const localName = local.host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    localName.value = 'Local';
+    localName.dispatchEvent(new Event('input'));
+    await settle(local.fixture);
+    saveButton(local.host).click();
+    await settle(local.fixture);
+    expect(lastBody(local.calls, 'POST')['credType']).toBe('env');
+
+    // A stored keyless definition has no rung for the checkbox to have remembered, so unticking
+    // falls back to the default rung -- which in env mode is `env`.
+    const keyless = definition({
+      provider: 'compatible',
+      model: 'llama-3.3-70b-instruct',
+      endpointUrl: 'https://ocupilot.invalid/v1',
+      credType: 'none',
+      envVarName: '',
+      credentialName: '',
+    });
+    const stored = await mount(
+      (path, init) => (init.method === undefined && /\/definitions\/7$/.test(path) ? ok(keyless) : envAnswer(withRung(LOCAL_PROVIDERS, false))(path, init)),
+      '/agent/definitions/edit/7'
+    );
+    const storedNoKey = stored.host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    expect(storedNoKey.checked).toBe(true);
+    storedNoKey.checked = false;
+    storedNoKey.dispatchEvent(new Event('change'));
+    await settle(stored.fixture);
+    const storedEnv = stored.host.querySelector('#ocu-definition-envVarName') as HTMLInputElement;
+    storedEnv.value = 'OPENAI_COMPATIBLE_API_KEY';
+    storedEnv.dispatchEvent(new Event('input'));
+    await settle(stored.fixture);
+    saveButton(stored.host).click();
+    await settle(stored.fixture);
+    expect(lastBody(stored.calls, 'PUT')['credType']).toBe('env');
+  });
+
+  it('Story 8.9 AC2: in env mode a stored `creds` definition opens on `env`, as an unsaved change', async () => {
+    const { fixture, host, calls, formDirty } = await mount(
+      envAnswer(withRung(PROVIDERS_BODY, false)),
+      '/agent/definitions/edit/7'
+    );
+    expect(host.querySelector('#ocu-definition-apiKey')).toBeNull();
+    // An edit is where the key field's "Stored." caption would render, so this is the leg that can
+    // see it leak into env mode; the create leg cannot, since a create never shows it.
+    expect(host.textContent).not.toContain(STRINGS.formSecretStored);
+    expect((host.querySelector('#ocu-definition-envVarName') as HTMLInputElement).value).toBe('ANTHROPIC_API_KEY');
+    // Nothing was written by opening it: the move is the operator's to save, and the leave guard
+    // holds it until they do.
+    expect(calls.filter((call) => call.method !== 'GET')).toEqual([]);
+    expect(formDirty.dirty()).toBe(true);
+
+    saveButton(host).click();
+    await settle(fixture);
+    const body = lastBody(calls, 'PUT');
+    expect(body['credType']).toBe('env');
+    expect(body['envVarName']).toBe('ANTHROPIC_API_KEY');
+  });
+
+  it('Story 8.9 AC2: in env mode Test connection posts no credential, even with a key held', async () => {
+    // Mutation (Rule 19): drop `&& !this.envMode()` from testConnection's credential post -> this
+    // goes red on the `/credential` POST.
+    const { fixture, host, calls } = await mount(envAnswer(withRung(PROVIDERS_BODY, false)));
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Claude';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    // No control can type a key in env mode; the store is handed one directly so the guard, not
+    // the missing field, is what stands between it and the credential route.
+    TestBed.inject(DefinitionForm).setKey('sk-ant-held-before-env-mode');
+    (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+    await settle(fixture);
+    const posts = calls.filter((call) => call.method === 'POST').map((call) => call.path);
+    expect(posts.some((path) => path.endsWith('/credential'))).toBe(false);
+    expect(posts.some((path) => path.endsWith('/test'))).toBe(true);
+    expect(JSON.parse(calls.find((call) => call.method === 'POST')?.body ?? '{}')['credType']).toBe('env');
+  });
+
+  it('Story 8.9 AC2: in env mode a refused variable keeps its reason across a provider change until blurred', async () => {
+    const { fixture, host } = await mount(envAnswer(withRung(ENV_PROVIDERS, false)));
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Claude';
+    name.dispatchEvent(new Event('input'));
+    const envVar = host.querySelector('#ocu-definition-envVarName') as HTMLInputElement;
+    envVar.value = '';
+    envVar.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-envVarName-reason')).not.toBeNull();
+
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = 'openai';
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const rewritten = host.querySelector('#ocu-definition-envVarName') as HTMLInputElement;
+    expect(rewritten.value).toBe('OPENAI_API_KEY');
+    expect(host.querySelector('#ocu-definition-envVarName-reason')).not.toBeNull();
+
+    rewritten.dispatchEvent(new Event('blur'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-envVarName-reason')).toBeNull();
+  });
+
+  it('Story 8.9 AC2: in env mode the gate landing banner asks for the variable, never for a key', async () => {
+    // Mutation (Rule 19): render `agentGateLandingBanner` whatever `envMode` says -> this goes red.
+    const { host } = await mount(envAnswer(withRung(PROVIDERS_BODY, false)), '/agent/definitions/edit', { definitions: [] });
+    const banner = host.querySelector('.ocu-form-gate-banner') as HTMLElement;
+    expect(banner.textContent).toContain(STRINGS.agentGateLandingBannerEnv);
+    expect(banner.textContent).not.toContain(STRINGS.agentGateLandingBanner);
+  });
+
+  it('Story 8.9 AC2: where the rung is reachable, or the flag is absent, the form is unchanged', async () => {
+    for (const available of [true, undefined]) {
+      const { fixture, host, calls } = await mount(envAnswer(withRung(PROVIDERS_BODY, available)));
+      expect(host.querySelector('#ocu-definition-apiKey')).not.toBeNull();
+      expect(host.querySelector('#ocu-definition-envVarName')).toBeNull();
+      const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+      name.value = 'Claude';
+      name.dispatchEvent(new Event('input'));
+      await settle(fixture);
+      saveButton(host).click();
+      await settle(fixture);
+      expect(lastBody(calls, 'POST')['credType']).toBe('creds');
+    }
+  });
+
+  /** Story 10.4's catalog shape: no row declares a canonical temperature, and the first takes none. */
+  const SAMPLING_PROVIDERS = {
+    providers: [
+      { ...PROVIDERS_BODY.providers[0], canonicalTemperature: null, acceptsTemperature: false },
+      { ...TWO_PROVIDERS.providers[1], canonicalTemperature: null, acceptsTemperature: true },
+    ],
+  };
+
+  const samplingAnswer =
+    (stored: Record<string, unknown> = {}): Answer =>
+    (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(SAMPLING_PROVIDERS);
+      if (init.method === 'POST') return created(definition({ ...JSON.parse(init.body ?? '{}'), id: '9' }));
+      if (init.method === 'PUT') return ok(definition({ ...stored, ...JSON.parse(init.body ?? '{}') }));
+      return path.endsWith('/definitions') ? ok({ definitions: [] }) : ok(definition(stored));
+    };
+
+  const openAdvanced = async (fixture: ComponentFixture<unknown>, host: HTMLElement) => {
+    (host.querySelector('.ocu-form-disclosure') as HTMLButtonElement).click();
+    await settle(fixture);
+  };
+
+  const chooseProvider = async (fixture: ComponentFixture<unknown>, host: HTMLElement, key: string) => {
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = key;
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+  };
+
+  const temperatureInput = (host: HTMLElement) => host.querySelector('#ocu-definition-temperature') as HTMLInputElement;
+
+  it('Story 10.4 AC1: a row that declares no canonical temperature cascades an empty field, and it saves unset', async () => {
+    // Mutation (Rule 19): cascade `String(row.canonicalTemperature)` with no null check -> this goes
+    // red, the field reading 'null'.
+    const { fixture, host, calls } = await mount(samplingAnswer());
+    await chooseProvider(fixture, host, 'openai');
+    await openAdvanced(fixture, host);
+    expect(temperatureInput(host).value).toBe('');
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'GPT';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'POST')['temperature']).toBe('');
+  });
+
+  it('Story 10.4 AC1: on a row that takes a temperature the empty field reads Provider default and stays editable', async () => {
+    const { fixture, host } = await mount(samplingAnswer());
+    await chooseProvider(fixture, host, 'openai');
+    await openAdvanced(fixture, host);
+    const input = temperatureInput(host);
+    expect(input.getAttribute('placeholder')).toBe(STRINGS.agentDefinitionTemperatureProviderDefault);
+    expect(input.hasAttribute('readonly')).toBe(false);
+    expect(input.hasAttribute('aria-disabled')).toBe(false);
+    expect(host.querySelector('#ocu-definition-temperature-caption')).toBeNull();
+    expect(input.getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('Story 10.4 AC3: on a row that takes no temperature the field is readonly, aria-disabled and captioned', async () => {
+    // Mutation (Rule 19): drop the not-applicable branch -- render the field as the applicable
+    // one whatever the row says -> this goes red on every assertion below.
+    const { fixture, host } = await mount(samplingAnswer());
+    await openAdvanced(fixture, host);
+    const input = temperatureInput(host);
+    expect(input.getAttribute('placeholder')).toBe(STRINGS.agentDefinitionTemperatureNotApplicable);
+    expect(input.hasAttribute('readonly')).toBe(true);
+    expect(input.getAttribute('aria-disabled')).toBe('true');
+    expect(input.hasAttribute('disabled')).toBe(false);
+    expect(host.querySelector('#ocu-definition-temperature-caption')?.textContent?.trim()).toBe(
+      STRINGS.agentDefinitionTemperatureNotApplicableCaption
+    );
+    expect(input.getAttribute('aria-describedby')).toBe('ocu-definition-temperature-caption');
+  });
+
+  it('Story 10.4: the field follows the acceptsTemperature column, never the provider name', async () => {
+    // Mutation (Rule 19): `temperatureApplies()` keyed on the name
+    // (`this.value('provider') !== 'anthropic'`) -> this goes red on both rows.
+    const inverted = {
+      providers: [
+        { ...SAMPLING_PROVIDERS.providers[0], acceptsTemperature: true },
+        { ...SAMPLING_PROVIDERS.providers[1], acceptsTemperature: false },
+      ],
+    };
+    const base = samplingAnswer();
+    const { fixture, host } = await mount((path, init) =>
+      path.endsWith('/agent/providers') ? ok(inverted) : base(path, init)
+    );
+    await openAdvanced(fixture, host);
+    expect(temperatureInput(host).hasAttribute('readonly')).toBe(false);
+    expect(temperatureInput(host).getAttribute('placeholder')).toBe(STRINGS.agentDefinitionTemperatureProviderDefault);
+    await chooseProvider(fixture, host, 'openai');
+    const input = temperatureInput(host);
+    expect(input.hasAttribute('readonly')).toBe(true);
+    expect(input.getAttribute('aria-disabled')).toBe('true');
+    expect(host.querySelector('#ocu-definition-temperature-caption')?.textContent?.trim()).toBe(
+      STRINGS.agentDefinitionTemperatureNotApplicableCaption
+    );
+  });
+
+  it('Story 10.4: a value stored on a row that takes no temperature is shown as held and survives a save', async () => {
+    const { fixture, host, calls } = await mount(samplingAnswer({ temperature: 0.7 }), '/agent/definitions/edit/7');
+    await openAdvanced(fixture, host);
+    const input = temperatureInput(host);
+    expect(input.value).toBe('0.7');
+    expect(input.hasAttribute('readonly')).toBe(true);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'PUT')['temperature']).toBe(0.7);
+    expect(temperatureInput(host).value).toBe('0.7');
+  });
+
+  it('Story 10.4: a definition stored unset loads its JSON null as an empty field and saves it unset', async () => {
+    // Mutation (Rule 19): `absorb` reads the temperature through `numberAt` -> this goes red, the
+    // field reading '0' and the next save storing 0.
+    const { fixture, host, calls } = await mount(
+      samplingAnswer({ provider: 'openai', temperature: null }),
+      '/agent/definitions/edit/7'
+    );
+    await openAdvanced(fixture, host);
+    const input = temperatureInput(host);
+    expect(input.value).toBe('');
+    expect(input.getAttribute('placeholder')).toBe(STRINGS.agentDefinitionTemperatureProviderDefault);
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Renamed';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'PUT')['temperature']).toBe('');
   });
 });

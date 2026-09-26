@@ -109,7 +109,7 @@ Items the brief asked about that did NOT appear in S5's list: Angular, AI/LLM, C
 - **No technology-bonuses post for this contest** — searched twice (WebSearch on community.intersystems.com; Perplexity with 1-month recency on community + openexchange domains). Not yet published.
 - **No FAQ page** specific to this contest was found; S2 directs questions to the Discord contest channel or post comments.
 - **No definition of "management APIs"** — none of S1, S2, S4 names /api/mgmnt, /api/monitor, /api/atelier, %SYS classes or any other API. The choice of API surface is left to the entrant.
-- **No statement on whether all six functional areas are required** for a valid entry; only the discretionary "complexity and usefulness" approval standard (S2).
+- **All six functional areas are required** - stated at the 2026-09-14 kick-off webinar (owner's report, recorded 2026-09-16); the pages read on 2026-09-08 carried only the discretionary "complexity and usefulness" approval standard (S2).
 - **Prize amounts are single-source (S2)** — S1 shows a "Prizes and Awards" heading but the amounts did not render through curl or WebFetch.
 - **Vote counting for this contest** — only precedent (S8); this contest's "Time to vote" post is expected ~2026-09-28.
 - **Winners announcement date** — not found.

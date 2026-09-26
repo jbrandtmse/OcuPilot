@@ -4,10 +4,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
 import { entityRefKey } from '../../core/entity-ref';
-import { PreferenceStore } from '../../core/preferences';
 import { ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { screenForRoute } from '../../core/navigation';
+import { stubAccountPreferences } from '../../testing/account-preferences';
 import {
   CREATE_ACTION,
   DEFINITION_LIST_DESCRIPTOR,
@@ -58,7 +58,7 @@ function mount(answer: JsonResult<unknown> = { kind: 'ok', status: 200, body: {}
   const bus = new ChangeBus();
   const events: ChangeEvent[] = [];
   bus.subscribe((event) => events.push(event));
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   TestBed.configureTestingModule({
     providers: [
       { provide: ApiService, useValue: api as unknown as ApiService },
@@ -105,6 +105,7 @@ describe('the Definitions list row actions', () => {
         // Composed from the triple, not read back out of the event under test: reading the actual
         // into the expected made this one field assert nothing.
         key: entityRefKey('agent-definition', 'instance', '7'),
+        action: 'updated',
         proposalId: '',
         expiresAt: 0,
       },

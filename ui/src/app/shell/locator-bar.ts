@@ -1,22 +1,36 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   inject,
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AccountPreferences, FAVORITE_KIND } from '../core/account-preferences';
 import { decodeEntityId } from '../core/entity-id';
+import { HelpLinks } from '../core/help';
 import {
   NavigationService,
   areaByKey,
   firstAllowedScreen,
   formatRequires,
+  isListedScreen,
+  listForDocumentScreen,
+  parentListFor,
+  tabGroupFor,
   withQuery,
 } from '../core/navigation';
+import { textOf } from '../core/screen-read';
+import { ScreenStores } from '../core/screen-store';
+import { fieldOf, rowKey } from '../core/table-model';
 import { ShellState } from '../core/shell-state';
+import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
 
 /** One locator segment, resolved for rendering. */
@@ -84,6 +98,28 @@ const UNGATED_SEGMENT = {
  * screens their own `screenVerdict` refuses, is gated here too rather than navigating into a
  * refusal page.
  *
+ * **The favorite toggle sits beside the screen segment** (Story 15.2, AD-50). It is the one
+ * control the shell offers for pinning a screen, it is on every route that names one, and
+ * `aria-pressed` is what says whether this screen is pinned -- so the same control reads the state
+ * and changes it. Home is the exception and carries none: it declares the empty route, it is where
+ * the two lists are read, and the instance refuses an empty route outright.
+ *
+ * **The Help control sits beside the toggle** (Story 15.3, AD-44). It opens the classic page this
+ * screen replaces at that page's own documentation address, resolved on the instance from the
+ * descriptor's `classicPage` -- so no screen-descriptor key was added for it and the mirror is
+ * consumed read-only. It is rendered only once an address has been resolved, and it is the one
+ * outbound link on this bar: `target="_blank"`, `rel="noreferrer"`, the house pattern.
+ *
+ * **The confirmation is announced from this component's own polite region**, not from the toggle:
+ * the toggle's accessible name changes as a consequence of the change, and a name that changes
+ * under focus is not an announcement of what happened. The region is visually hidden
+ * (`account-menu.ts`'s idiom) rather than a caption, so one toggle does not leave a sentence
+ * standing beside the screen title for the component's life. It is written **after** the write
+ * settles and only when the store's answer actually moved, so the cap's refusal announces
+ * nothing rather than announcing a pin that did not happen; clearing it first is what gives a
+ * repeat action a change to announce at all, and a route change clears it again so a sentence
+ * about one screen is not left standing beside the next.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
@@ -95,41 +131,129 @@ const UNGATED_SEGMENT = {
       @if (segment.separated) {
         <span class="ocu-locator-separator" aria-hidden="true">{{ separatorGlyph }}</span>
       }
-      @if (segment.navigates) {
-        <span class="ocu-locator-link-slot">
+      @if (segment.key === 'screen') {
+        <h2
+          id="ocu-locator-screen"
+          class="ocu-locator-heading"
+          tabindex="-1"
+          [attr.aria-label]="screenHeadingLabel"
+        >
+          @if (segment.navigates) {
+            <button
+              type="button"
+              class="ocu-locator-link"
+              [attr.aria-disabled]="segment.ariaDisabled"
+              [attr.aria-describedby]="segment.describedBy"
+              (click)="open(segment)"
+            >
+              {{ segment.label }}
+            </button>
+          } @else {
+            <span
+              class="ocu-locator-segment ocu-locator-current"
+              [class.ocu-locator-entity]="segment.entity"
+              [attr.aria-current]="segment.ariaCurrent"
+              >{{ segment.label }}</span
+            >
+          }
+        </h2>
+        @if (favoriteToggle) {
           <button
             type="button"
-            class="ocu-locator-link"
-            [attr.aria-disabled]="segment.ariaDisabled"
-            [attr.aria-describedby]="segment.describedBy"
-            (click)="open(segment)"
+            class="ocu-locator-favorite"
+            [attr.aria-pressed]="favoritePressed"
+            [attr.aria-label]="favoriteLabel"
+            (click)="toggleFavorite()"
           >
-            {{ segment.label }}
+            <span class="ocu-locator-favorite-glyph" aria-hidden="true">{{ favoriteGlyph }}</span>
           </button>
-          @if (segment.gated) {
-            <span class="ocu-locator-reason" role="tooltip" [id]="segment.reasonId">{{
-              segment.reason
-            }}</span>
-          }
-        </span>
+        }
+        @if (helpControl) {
+          <a
+            class="ocu-locator-help"
+            [href]="helpHref"
+            target="_blank"
+            rel="noreferrer"
+            [attr.aria-label]="STRINGS.helpForScreen"
+          >
+            <span class="ocu-locator-help-word">{{ STRINGS.helpLabel }}</span>
+            <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>
+          </a>
+        }
       } @else {
-        <span
-          class="ocu-locator-segment"
-          [class.ocu-locator-current]="segment.ariaCurrent"
-          [class.ocu-locator-entity]="segment.entity"
-          [attr.aria-current]="segment.ariaCurrent"
-          >{{ segment.label }}</span
-        >
+        @if (segment.navigates) {
+          <span class="ocu-locator-link-slot">
+            <button
+              type="button"
+              class="ocu-locator-link"
+              [attr.aria-disabled]="segment.ariaDisabled"
+              [attr.aria-describedby]="segment.describedBy"
+              (click)="open(segment)"
+            >
+              {{ segment.label }}
+            </button>
+            @if (segment.gated) {
+              <span class="ocu-locator-reason" role="tooltip" [id]="segment.reasonId">{{
+                segment.reason
+              }}</span>
+            }
+          </span>
+        } @else {
+          <span
+            class="ocu-locator-segment"
+            [class.ocu-locator-current]="segment.ariaCurrent"
+            [class.ocu-locator-entity]="segment.entity"
+            [attr.aria-current]="segment.ariaCurrent"
+            >{{ segment.label }}</span
+          >
+        }
       }
     }
+    <span class="ocu-locator-status ocu-visually-hidden" role="status">{{
+      favoriteAnnouncement
+    }}</span>
+    <span class="ocu-locator-status ocu-visually-hidden" role="alert">{{ favoriteRefusal }}</span>
   </nav>`,
 })
 export class LocatorBar {
   private readonly navigation = inject(NavigationService);
   private readonly router = inject(Router);
   private readonly shell = inject(ShellState);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly injector = inject(Injector);
+  private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly preferences = inject(AccountPreferences);
+  private readonly help = inject(HelpLinks);
+
+  /** The polite region's text: empty until a toggle has changed the store, then its sentence. */
+  private readonly announcement = signal('');
+
+  /**
+   * The two glyphs the toggle draws, produced in TypeScript so no non-ASCII byte enters a
+   * template (Rule 14). Both are `aria-hidden`: the control's accessible name is its
+   * `aria-label`, which says what activating it does.
+   */
+  protected readonly pinnedGlyph = '\u2605';
+
+  protected readonly unpinnedGlyph = '\u2606';
+
+  /** The arrival token last focused (Story 4.7, AC5), so a re-render for an unrelated reason --
+   * a navigation-map verdict changing, a router event on the same route -- does not steal focus
+   * again. `ShellState.arrivalToken` changes on every fresh arrival even when the announcement
+   * text repeats, which a text comparison here could not tell apart from "already focused". */
+  private lastFocusedToken: number | null = null;
+  private readonly stores = inject(ScreenStores);
+
+  protected readonly STRINGS = STRINGS;
 
   protected readonly landmark = STRINGS.navLocatorLandmark;
+
+  /**
+   * The north-east arrow every outbound link in the shell carries (`instance-notice.ts`,
+   * `classic-link-card.ts`), written as its escape so no non-ASCII byte enters a source file
+   * (Rule 14). `aria-hidden`, so the link's accessible name is its own.
+   */
+  protected readonly externalGlyph = '\u2197';
 
   /**
    * The single right-angle-quote separator, produced in TypeScript so no non-ASCII byte
@@ -161,6 +285,12 @@ export class LocatorBar {
   });
 
   private readonly resolved = computed<readonly LocatorSegment[]>(() => {
+    // Read directly, not only through `screen`/`entityId`: a store tick that leaves the route (and
+    // so their own computed values) unchanged still has to invalidate this computed, because
+    // `entityLabel` below reads the store fresh every time this runs (Story 6.7). `screen` and
+    // `entityId` computeds absorbing a same-value bump is exactly what would otherwise leave this
+    // memoized forever after the first render on a detail route.
+    this.generation();
     const screen = this.screen();
     if (screen === null) return [];
     const screenLabel = stringFor(screen.labelKey);
@@ -211,9 +341,13 @@ export class LocatorBar {
       label: screenLabel,
       separated: segments.length > 0,
       // A link back to the list once the entity segment follows it (DW-142); otherwise the
-      // current segment, so it is not a link.
+      // current segment, so it is not a link. A document viewer's list is the one it is paired
+      // with, because its own route with no id reads no document, and a sub-resource list's is
+      // its parent, for the same reason. A tab's is its group's first tab, the screen the side bar
+      // lists (AD-5).
       navigates: hasEntity,
-      route: screen.route,
+      route:
+        parentListFor(screen)?.route ?? listForDocumentScreen(screen)?.route ?? tabGroupFor(screen)?.route ?? screen.route,
       ariaCurrent: hasEntity ? null : 'page',
       entity: false,
       ...UNGATED_SEGMENT,
@@ -221,7 +355,7 @@ export class LocatorBar {
     if (hasEntity) {
       segments.push({
         key: 'entity',
-        label: entity,
+        label: this.entityLabel(screen, entity),
         separated: true,
         navigates: false,
         route: '',
@@ -234,16 +368,201 @@ export class LocatorBar {
   });
 
   constructor() {
-    const stopRouter = this.router.events.subscribe(() => this.bump());
+    // A parent-scoped detail screen's entity label reads the store once its row has loaded
+    // (`entityLabel`), so this bar re-renders on that store's own tick too -- not only on a
+    // router event -- and follows the screen from one detail route to the next (Story 6.7).
+    //
+    // Kept a plain RxJS subscription rather than an `effect()`: `effect()`'s first run is
+    // scheduled, not synchronous, so a read fast enough to land before that first flush notified
+    // a listener that was not registered yet -- the store held the row, nothing had told this bar
+    // to look again, and the segment was stuck on the id (observed in the browser spec, never in
+    // a component test whose stub read is a resolved promise already). `router.events` fires this
+    // callback synchronously the moment the URL changes, before any read starts, so the
+    // subscription below is always in place first.
+    let stopStore: (() => void) | null = null;
+    let subscribedDescriptor = '';
+    const syncStoreSubscription = (): void => {
+      const screen = this.screen();
+      const descriptor = screen === null ? '' : screen.descriptor;
+      if (descriptor === subscribedDescriptor) return;
+      subscribedDescriptor = descriptor;
+      stopStore?.();
+      stopStore = null;
+      if (screen === null || screen.archetype !== 'detail' || screen.parentScope === '') return;
+      const store = this.stores.for(screen.descriptor, screen.refreshRates);
+      stopStore = store.subscribe(() => this.bump());
+    };
+
+    const stopRouter = this.router.events.subscribe(() => {
+      this.bump();
+      syncStoreSubscription();
+      this.syncHelp();
+      // This bar lives for the shell, so a confirmation left standing would sit in the
+      // accessibility tree beside every screen the user opened afterwards, readable by a virtual
+      // cursor as text about a screen they have left. It announced once, on the screen it was
+      // about; leaving it is a second, stale claim. A refusal is dropped on the same terms.
+      this.announcement.set('');
+      this.preferences.clearFault();
+    });
     const stopNavigation = this.navigation.subscribe(() => this.bump());
+    const stopShell = this.shell.subscribe(() => this.bump());
+    // The toggle's pressed state is the store's answer, so this bar re-renders when another tab's
+    // change, or this one's own write, settles it.
+    const stopPreferences = this.preferences.subscribe(() => this.bump());
+    // The resolved help address arrives after the route does, so this bar re-renders when it
+    // lands. `HelpLinks.load` is idempotent per route and asks nothing at all for a screen the
+    // mirror says has no classic page, so a router event costs at most one request per screen.
+    const stopHelp = this.help.subscribe(() => this.bump());
+    syncStoreSubscription();
+    this.syncHelp();
+
     inject(DestroyRef).onDestroy(() => {
       stopRouter.unsubscribe();
       stopNavigation();
+      stopShell();
+      stopPreferences();
+      stopHelp();
+      stopStore?.();
     });
   }
 
   protected get segments(): readonly LocatorSegment[] {
     return this.resolved();
+  }
+
+  /** Whether this route is one that can be pinned: a built screen that names a route at all. */
+  protected get favoriteToggle(): boolean {
+    return this.favoriteRoute() !== '';
+  }
+
+  /** `"true"` while this screen is pinned, and `"false"` while it is not -- never absent. */
+  protected get favoritePressed(): string {
+    return this.isPinned() ? 'true' : 'false';
+  }
+
+  /** The control's accessible name: what activating it does, not what it currently is. */
+  protected get favoriteLabel(): string {
+    return this.isPinned() ? STRINGS.favoritesRemove : STRINGS.favoritesAdd;
+  }
+
+  protected get favoriteGlyph(): string {
+    return this.isPinned() ? this.pinnedGlyph : this.unpinnedGlyph;
+  }
+
+  protected get favoriteAnnouncement(): string {
+    return this.announcement();
+  }
+
+  /**
+   * The instance's own sentence for a refused preference write, `''` for none (DW-1326).
+   *
+   * Assertive rather than polite, because it says the pin the user asked for did not happen
+   * (EXPERIENCE.md "Status messages (WCAG 4.1.3)"); the text is the server's (AD-39) and this
+   * component publishes none of it. Cleared before each toggle, so a refusal about one screen is
+   * never left standing beside the next.
+   */
+  protected get favoriteRefusal(): string {
+    this.generation();
+    return this.preferences.fault();
+  }
+
+  /**
+   * Whether this screen offers a Help control: the instance resolved a documentation address for
+   * it.
+   *
+   * Presence is the resolved address rather than the mere presence of a `classicPage`, because
+   * several shipped screens' classic pages are CSP pages that publish no `HELPADDRESS` at all --
+   * and a control that opened nothing would be the inert control this epic's contract forbids.
+   * The mirror is what decides whether the instance is asked (`hasClassicPage`), so a screen with
+   * no classic equivalent costs no request and shows no control.
+   */
+  protected get helpControl(): boolean {
+    return this.helpHref !== '';
+  }
+
+  protected get helpHref(): string {
+    this.generation();
+    const screen = this.screen();
+    return screen === null ? '' : this.help.hrefFor(screen.route);
+  }
+
+  /**
+   * Pin or unpin the screen on display, and announce which happened once it has.
+   *
+   * The navigation is never awaited on this, but the announcement is: the store re-settles from
+   * the instance's own answer, so a refusal -- an unknown route, the favorites cap, an instance
+   * that did not reply -- leaves the toggle unpressed and confirms nothing. What it does leave is
+   * the instance's own sentence, which `favoriteRefusal` announces assertively (DW-1326).
+   */
+  protected toggleFavorite(): void {
+    const route = this.favoriteRoute();
+    if (route === '') return;
+    const pinned = this.preferences.isFavorite(route);
+    // Both regions cleared first, so a second toggle has a change to announce rather than
+    // re-writing a sentence already standing, which a live region does not read out again.
+    this.announcement.set('');
+    this.preferences.clearFault();
+    const pending = pinned
+      ? this.preferences.remove(FAVORITE_KIND, route)
+      : this.preferences.add(FAVORITE_KIND, route);
+    void pending.then(() => {
+      if (this.preferences.isFavorite(route) === pinned) return;
+      this.announcement.set(pinned ? STRINGS.favoritesRemoved : STRINGS.favoritesAdded);
+      this.changeDetector.markForCheck();
+    });
+  }
+
+  /**
+   * The route the toggle acts on, or `''` when this screen is not one to pin.
+   *
+   * Home names no route. An **unlisted** screen (`sideBarPosition` 0) names one that is not the
+   * screen on display: it is keyed by an entity id, and the declared route is the id-less parent,
+   * so pinning it would put a row on Home whose button opens a create form. The command box
+   * filters the same roster the same way, so a favorite it could never rank is one this control
+   * does not offer either.
+   */
+  private favoriteRoute(): string {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null || !isListedScreen(screen)) return '';
+    return screen.route;
+  }
+
+  private isPinned(): boolean {
+    this.generation();
+    const route = this.favoriteRoute();
+    return route !== '' && this.preferences.isFavorite(route);
+  }
+
+  /**
+   * The screen heading's `aria-label` (Story 4.7, AC5): the standing arrival announcement for
+   * the screen currently on display, or `null` when none is standing -- an ordinary,
+   * user-initiated arrival names no `aria-label` at all, so the heading's accessible name falls
+   * back to its own text content.
+   */
+  protected get screenHeadingLabel(): string | null {
+    const screen = this.screen();
+    return screen === null ? null : this.shell.arrivalAnnouncement(screen.route);
+  }
+
+  /**
+   * The entity segment's label: on a parent-scoped `detail` screen, once its one row has loaded,
+   * the value of its `name` column (Story 6.7) -- Task details names the task rather than its id --
+   * and otherwise the decoded id every other entity view already showed.
+   *
+   * Matched by `rowKey` rather than taken as `store.data()[0]` unconditionally, so a store still
+   * holding the previous id's row mid-navigation falls back to the id instead of naming the wrong
+   * task for one tick.
+   */
+  private entityLabel(screen: ScreenDeclaration, entity: string): string {
+    if (screen.archetype !== 'detail' || screen.parentScope === '') return entity;
+    const nameColumn = screen.table?.columns.find((column) => column.kind === 'name');
+    if (nameColumn === undefined) return entity;
+    const store = this.stores.for(screen.descriptor, screen.refreshRates);
+    const row = store.data().find((candidate) => rowKey(candidate, screen) === entity);
+    if (row === undefined) return entity;
+    const text = textOf(fieldOf(row, nameColumn.field));
+    return text === '' ? entity : text;
   }
 
   /**
@@ -266,7 +585,34 @@ export class LocatorBar {
     void this.router.navigateByUrl(withQuery(segment.route, this.router.url));
   }
 
+  /** Ask the instance for this screen's documentation address, once per screen. */
+  private syncHelp(): void {
+    const screen = this.screen();
+    if (screen === null) return;
+    void this.help.load(screen.route);
+  }
+
   private bump(): void {
     this.generation.set(this.generation() + 1);
+    this.changeDetector.markForCheck();
+    this.syncHeadingFocus();
+  }
+
+  /**
+   * Focus `#ocu-locator-screen` once per fresh arrival (Story 4.7, AC5), and never for any other
+   * reason a re-render fires this component -- a navigation-map verdict changing, a router event
+   * that leaves the screen and its arrival token unchanged. Deferred with `afterNextRender`
+   * (`app.ts`'s own convention for the same problem): the token just changed in the same tick
+   * that the heading's new `aria-label` did, before Angular has painted it.
+   */
+  private syncHeadingFocus(): void {
+    const screen = this.screen();
+    const token = screen === null ? null : this.shell.arrivalToken(screen.route);
+    if (token === null || token === this.lastFocusedToken) return;
+    this.lastFocusedToken = token;
+    afterNextRender(
+      () => this.host.nativeElement.querySelector<HTMLElement>('#ocu-locator-screen')?.focus(),
+      { injector: this.injector }
+    );
   }
 }

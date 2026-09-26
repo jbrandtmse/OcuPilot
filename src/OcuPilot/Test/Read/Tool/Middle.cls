@@ -5,4 +5,11 @@ Class OcuPilot.Test.Read.Tool.Middle Extends OcuPilot.Screen.Tool.Base [ Abstrac
 
 Parameter KIND = "write";
 
+/// <p>Declared: none (AD-3). Fixture.</p>
+ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 1
+    Quit ""
+}
+
 }

@@ -17,8 +17,11 @@ import { RefreshService } from '../core/refresh';
 import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
 import { applyView } from '../core/screen-read';
 import { ScreenStores, type SortDirection } from '../core/screen-store';
+import { selfProtectionReason } from '../core/self-protection';
+import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
-import { formatRowCount } from '../core/table-model';
+import { formatRowCount, rowFor } from '../core/table-model';
+import { ViewOptions } from '../core/view-options';
 
 /**
  * The count region's id, bound rather than typed twice: renaming it on the region alone would
@@ -38,6 +41,15 @@ export const SORT_MENU_ID = 'ocu-command-bar-sort-menu';
 /** The sort menu's name on the overlay stack, so the shell's one Escape handler closes it. */
 export const SORT_MENU_OVERLAY_ID = 'command-bar-sort';
 
+/** The View menu's trigger id, which the menu names as its own label (`aria-labelledby`). */
+export const VIEW_TRIGGER_ID = 'ocu-command-bar-view-trigger';
+
+/** The View menu's id, which the trigger's `aria-controls` names while it is open. */
+export const VIEW_MENU_ID = 'ocu-command-bar-view-menu';
+
+/** The View menu's name on the overlay stack, so the shell's one Escape handler closes it. */
+export const VIEW_MENU_OVERLAY_ID = 'command-bar-view';
+
 /** One command-bar action, resolved for rendering. */
 interface CommandAction {
   readonly id: string;
@@ -45,6 +57,19 @@ interface CommandAction {
   readonly reasonId: string;
   readonly ariaDisabled: string | null;
   readonly describedBy: string | null;
+  /**
+   * Why the action cannot be taken right now, or `''`. Either "Select a row first" with nothing
+   * selected, or the selected row's own self-protection sentence (AD-53); an action that can be
+   * taken carries none and is drawn as an ordinary control.
+   */
+  readonly reason: string;
+}
+
+/** One entry of the View menu, resolved from the registered `ViewOptionsBinding`. */
+interface ViewMenuOption {
+  readonly route: string;
+  readonly label: string;
+  readonly checked: string;
 }
 
 /** One entry of the sort menu: a declared sort field, or one of the two directions. */
@@ -95,20 +120,30 @@ interface SortOption {
  * `setDirection`, which persist per screen through `rememberView()` (AD-19). Its shape is
  * `DESIGN.md:1039`'s: a `button-secondary` with a down triangle, as the View menu is.
  *
- * **Two slots are declared and deliberately unrendered**, because nothing can fill them yet and
- * drawing an empty control would be a lie about what the screen can do:
+ * **The View menu renders only for a screen whose page registered one** (`ViewOptions`, Story
+ * 6.11): a page with more than one route for its screen family -- Databases' General and
+ * Free-space views are the first (AD-5's `list (two views)`) -- registers its options, current
+ * route and chooser, and this component draws the menu without knowing what "Databases" or
+ * "General" mean, the same separation `ScreenActions` keeps for a declared action's handler. A
+ * screen whose page registers nothing draws no control, for the reason the primary action above
+ * does not: an unregistered slot is a control nothing can act on.
  *
- * - **view options** -- EXPERIENCE.md "below the locator-bar" names it and `DESIGN.md:1039` specifies a View menu,
- *   but neither document publishes a label for it or for its options. Filed rather than invented.
- * - **the last-update stamp** -- `DESIGN.md:1039` puts one here and `:890`/`:1021` and
- *   EXPERIENCE.md "`{spacing.status-bar-height}` band" put it in the status bar, with no precedence rule (**DW-139**). The
- *   status bar carries it, because `:338` states the division of labour outright and the band
- *   already holds the slot; this row carries the control.
+ * **The last-update stamp stays a declared, deliberately unrendered slot**: `DESIGN.md:1039` puts
+ * one here and `:890`/`:1021` and EXPERIENCE.md "`{spacing.status-bar-height}` band" put it in the
+ * status bar, with no precedence rule (**DW-139**). The status bar carries it, because `:338`
+ * states the division of labour outright and the band already holds the slot; this row carries
+ * the control.
  *
  * **Row actions are `aria-disabled`, never `disabled`, with "Select a row first" as their
  * reason on hover and focus** (EXPERIENCE.md "**Mechanism** (the accessibility contract; component rows point here).", "below the locator-bar"). There is no row selection
  * anywhere in Epic 1, so that is every row action's state here -- which is the state this
  * story can pin, not a placeholder.
+ *
+ * **The filter renders only on a screen that declares a read** (AD-5): a screen whose declaration
+ * has `read === null` -- Home, most form pages, the error drill-down -- has nothing to filter, so the
+ * field and its count are not drawn, and no list of such screens is written here. **The bar itself
+ * is not drawn when every slot is empty** (`hasContent`): no primary action, filter, row action,
+ * View or Sort control, Refresh action or chip.
  *
  * **The filter is the current screen's store's** (AD-19): the field is named "Filter rows"
  * (`commandBarFilterLabel`), reads and writes the filter of the store the screen's table renders,
@@ -123,7 +158,8 @@ interface SortOption {
 @Component({
   selector: 'app-command-bar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<div class="ocu-command-bar">
+  template: `@if (hasContent) {
+  <div class="ocu-command-bar">
     @if (hasPrimaryAction) {
       <button
         type="button"
@@ -133,17 +169,19 @@ interface SortOption {
         {{ primaryActionLabel }}
       </button>
     }
-    <input
-      [id]="filterId"
-      class="ocu-command-bar-filter"
-      type="search"
-      autocomplete="off"
-      [attr.aria-label]="STRINGS.commandBarFilterLabel"
-      [attr.aria-describedby]="filterDescribedBy"
-      [value]="filterValue"
-      (input)="onFilter($event)"
-    />
-    <p [id]="countId" class="ocu-command-bar-count" role="status">{{ matchCount }}</p>
+    @if (hasFilter) {
+      <input
+        [id]="filterId"
+        class="ocu-command-bar-filter"
+        type="search"
+        autocomplete="off"
+        [attr.aria-label]="STRINGS.commandBarFilterLabel"
+        [attr.aria-describedby]="filterDescribedBy"
+        [value]="filterValue"
+        (input)="onFilter($event)"
+      />
+      <p [id]="countId" class="ocu-command-bar-count" role="status">{{ matchCount }}</p>
+    }
     @for (action of rowActions; track action.id) {
       <span class="ocu-command-bar-action-slot">
         <button
@@ -151,12 +189,58 @@ interface SortOption {
           class="ocu-button-text ocu-command-bar-action"
           [attr.aria-disabled]="action.ariaDisabled"
           [attr.aria-describedby]="action.describedBy"
+          (click)="onRowAction(action)"
         >
           {{ action.label }}
         </button>
-        <span class="ocu-command-bar-reason" role="tooltip" [id]="action.reasonId">{{
-          STRINGS.privilegeSelectRowFirst
-        }}</span>
+        @if (action.reason) {
+          <span class="ocu-command-bar-reason" role="tooltip" [id]="action.reasonId">{{
+            action.reason
+          }}</span>
+        }
+      </span>
+    }
+    @if (hasViewControl) {
+      <span #viewControl class="ocu-command-bar-sort ocu-command-bar-view" (focusout)="onViewFocusOut($event)">
+        <button
+          #viewTrigger
+          type="button"
+          [id]="viewTriggerId"
+          class="ocu-button-secondary ocu-command-bar-sort-trigger ocu-command-bar-view-trigger"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="viewOpen"
+          [attr.aria-controls]="viewControls"
+          (click)="onToggleView()"
+        >
+          <span class="ocu-command-bar-sort-label">{{ STRINGS.viewMenuLabel }}</span>
+          <span class="ocu-command-bar-sort-caret" aria-hidden="true">{{ caretGlyph }}</span>
+        </button>
+        @if (viewOpen) {
+          <div
+            #viewMenu
+            class="ocu-command-bar-sort-menu ocu-command-bar-view-menu"
+            role="menu"
+            [id]="viewMenuId"
+            [attr.aria-labelledby]="viewTriggerId"
+            (keydown)="onViewKeydown($event)"
+            (mousedown)="onViewMouseDown($event)"
+          >
+            <div role="group">
+              @for (option of viewMenuItems; track option.route) {
+                <button
+                  type="button"
+                  class="ocu-command-bar-sort-item ocu-command-bar-view-item"
+                  role="menuitemradio"
+                  tabindex="-1"
+                  [attr.aria-checked]="option.checked"
+                  (click)="onChooseView(option.route)"
+                >
+                  {{ option.label }}
+                </button>
+              }
+            </div>
+          </div>
+        }
       </span>
     }
     @if (hasSortControl) {
@@ -237,7 +321,8 @@ interface SortOption {
         {{ refreshChipLabel }}
       </button>
     }
-  </div>`,
+  </div>
+}`,
 })
 export class CommandBar {
   private readonly navigation = inject(NavigationService);
@@ -246,6 +331,11 @@ export class CommandBar {
   private readonly router = inject(Router);
   private readonly stores = inject(ScreenStores);
   private readonly overlays = inject(OverlayStack);
+  private readonly session = inject(Session, { optional: true });
+  // Optional: a harness that never mounts a page with a View control (most of them) need not
+  // provide one. The fallback is a private instance nothing else can reach, so it is permanently
+  // empty -- exactly the "no control registered" state such a harness wants.
+  private readonly viewOptionsSvc = inject(ViewOptions, { optional: true }) ?? new ViewOptions();
 
   protected readonly STRINGS = STRINGS;
 
@@ -256,6 +346,10 @@ export class CommandBar {
   protected readonly sortTriggerId = SORT_TRIGGER_ID;
 
   protected readonly sortMenuId = SORT_MENU_ID;
+
+  protected readonly viewTriggerId = VIEW_TRIGGER_ID;
+
+  protected readonly viewMenuId = VIEW_MENU_ID;
 
   /**
    * The down triangle DESIGN.md `:1039` gives the View menu, which this control borrows rather
@@ -276,30 +370,60 @@ export class CommandBar {
   /** Trigger and menu together, which is the region focus has to leave for the menu to close. */
   private readonly sortControlEl = viewChild<ElementRef<HTMLElement>>('sortControl');
 
+  private readonly viewMenuOpen = signal(false);
+
+  private readonly viewTriggerEl = viewChild<ElementRef<HTMLButtonElement>>('viewTrigger');
+
+  private readonly viewMenuEl = viewChild<ElementRef<HTMLElement>>('viewMenu');
+
+  /** Trigger and menu together, which is the region focus has to leave for the menu to close. */
+  private readonly viewControlEl = viewChild<ElementRef<HTMLElement>>('viewControl');
+
   private readonly screen = computed(() => {
     this.generation();
     return this.navigation.screenForUrl(this.router.url);
   });
 
   private readonly resolved = computed<readonly CommandAction[]>(() => {
+    this.generation();
     const screen = this.screen();
     if (screen === null) return [];
+    // Asked of every screen that declares a row action, not only one that declares a read: a
+    // screen with no read simply has no selection, and guarding on the read would make the reason
+    // depend on a fact that has nothing to do with it.
+    const selected = screen.rowActions.length === 0
+      ? ''
+      : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
+    const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
     return screen.rowActions
       .filter((action) => action.id !== '')
-      .map((action) => ({
-        id: action.id,
-        // Resolved through the one label map, as the command box already does (Story 3.5), and
-        // scoped by the descriptor (DW-370): a declared action carries no label key, so its id is
-        // its name until a screen publishes words for it, and one id can mean two things on two
-        // screens. When a screen does publish words, the bar and the box have to say the same
-        // word, which is what this spec's own reachability assertion compares.
-        label: actionLabel(screen.descriptor, action.id),
-        reasonId: `ocu-command-bar-reason-${action.id}`,
-        // Never the `disabled` attribute: a gated or unavailable control keeps its place in
-        // the Tab order and keeps announcing why (EXPERIENCE.md, Privilege Gating).
-        ariaDisabled: 'true',
-        describedBy: `ocu-command-bar-reason-${action.id}`,
-      }));
+      // DW-389: a declared action with no registered handler is a control nothing can act on, so
+      // it is not drawn at all -- the same test the primary action above already applies.
+      .filter((action) => this.actions.has(screen.descriptor, action.id))
+      .map((action) => {
+        // Two reasons, in this order: with nothing selected the action has no target, and with a
+        // self-protected row selected the instance would refuse it -- with this very sentence
+        // (AD-10, AD-53). Neither is enforcement: the route refuses it identically if it is
+        // pressed anyway.
+        const reason = selected === ''
+          ? STRINGS.privilegeSelectRowFirst
+          : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
+        return {
+          id: action.id,
+          // Resolved through the one label map, as the command box already does (Story 3.5), and
+          // scoped by the descriptor (DW-370): a declared action carries no label key, so its id is
+          // its name until a screen publishes words for it, and one id can mean two things on two
+          // screens. When a screen does publish words, the bar and the box have to say the same
+          // word, which is what this spec's own reachability assertion compares.
+          label: actionLabel(screen.descriptor, action.id),
+          reasonId: `ocu-command-bar-reason-${action.id}`,
+          // Never the `disabled` attribute: a gated or unavailable control keeps its place in
+          // the Tab order and keeps announcing why (EXPERIENCE.md, Privilege Gating).
+          ariaDisabled: reason === '' ? null : 'true',
+          describedBy: reason === '' ? null : `ocu-command-bar-reason-${action.id}`,
+          reason,
+        };
+      });
   });
 
   /**
@@ -340,14 +464,38 @@ export class CommandBar {
     return { fields, directions };
   });
 
+  /**
+   * The View menu's entries, resolved through the registered `ViewOptionsBinding` (`ViewOptions`,
+   * Story 6.11): this component draws whatever the current page registered, checking the option
+   * whose route matches the binding's own `current()` -- never the URL directly, since a page may
+   * have its own notion of "current" (Databases resolves it from the mirror's own route field).
+   */
+  private readonly viewMenuOptions = computed<readonly ViewMenuOption[]>(() => {
+    this.generation();
+    const current = this.viewOptionsSvc.current();
+    return this.viewOptionsSvc.options().map((option) => ({
+      route: option.route,
+      label: option.label,
+      checked: option.route === current ? 'true' : 'false',
+    }));
+  });
+
   constructor() {
     // The bar is the shell's, not the route's, so its `DestroyRef` never fires on a navigation.
     // An open sort menu therefore has to be closed here: left open it would either survive onto a
     // screen whose sort fields are not the ones it lists, or -- where the next screen draws no
     // control at all -- be dropped by the `@if` with its overlay entry still registered, which
     // would swallow the next Escape.
+    // The row actions read the current screen's SELECTION, which moves without the router, the
+    // framework or the action registry moving: a click on a row, a row menu opening, a change
+    // event selecting a row. So the bar follows the screen's own store too, re-subscribing on
+    // every navigation because the store it follows is the one the current screen owns.
+    let stopStore = this.bindStore();
     const stopRouter = this.router.events.subscribe(() => {
       this.closeSort(false);
+      this.closeView(false);
+      stopStore();
+      stopStore = this.bindStore();
       this.bump();
     });
     const stopNavigation = this.navigation.subscribe(() => this.bump());
@@ -355,12 +503,18 @@ export class CommandBar {
     // proposal expiring all move what it reads without the URL changing.
     const stopRefresh = this.refresh.subscribe(() => this.bump());
     const stopActions = this.actions.subscribe(() => this.bump());
+    // The View menu's own binding changes independently of the router (a page registers it once
+    // mounted, after the navigation that mounted it has already fired).
+    const stopViewOptions = this.viewOptionsSvc.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopRouter.unsubscribe();
+      stopStore();
       stopNavigation();
       stopRefresh();
       stopActions();
+      stopViewOptions();
       this.overlays.remove(SORT_MENU_OVERLAY_ID);
+      this.overlays.remove(VIEW_MENU_OVERLAY_ID);
     });
 
     // A `role="menu"` that never takes focus is a menu only in name, and the entries do not exist
@@ -371,6 +525,27 @@ export class CommandBar {
       if (!this.sortMenuOpen()) return;
       this.sortMenuEl()?.nativeElement.querySelector<HTMLElement>('[role="menuitemradio"]')?.focus();
     });
+    effect(() => {
+      if (!this.viewMenuOpen()) return;
+      this.viewMenuEl()?.nativeElement.querySelector<HTMLElement>('[role="menuitemradio"]')?.focus();
+    });
+  }
+
+  /**
+   * Follow the current screen's store, and answer the function that stops. The row actions read
+   * its selection, which moves without the router, the framework or the action registry moving.
+   *
+   * A screen with neither a declared read nor a row action has no selection to follow -- and
+   * asking the map for its store would create one, which is a side effect a subscription has no
+   * business having. A screen that declares row actions without a read, such as the application
+   * error log's drill-down (Story 7.10), writes its own selection into its store, so it is
+   * followed.
+   */
+  private bindStore(): () => void {
+    const screen = this.screen();
+    if (screen === null) return () => {};
+    if (screen.read === null && !screen.rowActions.some((action) => action.id !== '')) return () => {};
+    return this.stores.for(screen.descriptor, screen.refreshRates).subscribe(() => this.bump());
   }
 
   /** A declared primary action with a registered handler. */
@@ -396,6 +571,29 @@ export class CommandBar {
 
   protected get rowActions(): readonly CommandAction[] {
     return this.resolved();
+  }
+
+  /**
+   * Whether the screen declares a read, which is what the filter and its count filter. A route no
+   * declaration answers has no read either.
+   */
+  protected get hasFilter(): boolean {
+    this.generation();
+    const screen = this.screen();
+    return screen !== null && screen.read !== null;
+  }
+
+  /** Whether any slot has something to draw; a bar with nothing in it is not drawn at all. */
+  protected get hasContent(): boolean {
+    return (
+      this.hasPrimaryAction ||
+      this.hasFilter ||
+      this.rowActions.length > 0 ||
+      this.hasViewControl ||
+      this.hasSortControl ||
+      this.hasRefreshAction ||
+      this.hasRefreshChip
+    );
   }
 
   /**
@@ -594,6 +792,97 @@ export class CommandBar {
     return menu === undefined ? [] : Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitemradio"]'));
   }
 
+  // --- The View control ------------------------------------------------------------------------
+
+  protected get hasViewControl(): boolean {
+    this.generation();
+    return this.viewOptionsSvc.has();
+  }
+
+  protected get viewMenuItems(): readonly ViewMenuOption[] {
+    return this.viewMenuOptions();
+  }
+
+  protected get viewOpen(): boolean {
+    return this.viewMenuOpen();
+  }
+
+  /** The menu's id while it is open, so the trigger never names an element that is not there. */
+  protected get viewControls(): string | null {
+    return this.viewMenuOpen() ? VIEW_MENU_ID : null;
+  }
+
+  /**
+   * Open the menu and move focus to its first entry, or close it and give focus back, exactly as
+   * `onToggleSort` does for its own menu.
+   */
+  protected onToggleView(): void {
+    if (this.viewMenuOpen()) {
+      this.closeView(true);
+      return;
+    }
+    this.overlays.push(VIEW_MENU_OVERLAY_ID, () => this.closeView(true));
+    this.viewMenuOpen.set(true);
+  }
+
+  /** Arrow, Home and End move between entries, the menu pattern the sort menu already follows. */
+  protected onViewKeydown(event: KeyboardEvent): void {
+    const items = this.viewItems();
+    if (items.length === 0) return;
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    let next = -1;
+    if (event.key === 'ArrowDown') next = (at + 1) % items.length;
+    else if (event.key === 'ArrowUp') next = (at - 1 + items.length) % items.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = items.length - 1;
+    if (next < 0) return;
+    event.preventDefault();
+    items[next].focus();
+  }
+
+  /** Keep focus where it is while an entry is pressed, exactly as `onSortMouseDown` does. */
+  protected onViewMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+  }
+
+  /** Focus leaving the trigger-and-menu region closes it, exactly as `onSortFocusOut` does. */
+  protected onViewFocusOut(event: FocusEvent): void {
+    const control = this.viewControlEl()?.nativeElement;
+    const next = event.relatedTarget;
+    if (control === undefined || (next instanceof Node && control.contains(next))) return;
+    this.closeView(false);
+  }
+
+  /** Choose `route` through the registered binding -- ordinarily a navigation, never a toggle. */
+  protected onChooseView(route: string): void {
+    this.closeView(true);
+    this.viewOptionsSvc.choose(route);
+  }
+
+  private closeView(returnFocus: boolean): void {
+    if (!this.viewMenuOpen()) return;
+    if (returnFocus) this.viewTriggerEl()?.nativeElement.focus();
+    this.viewMenuOpen.set(false);
+    this.overlays.remove(VIEW_MENU_OVERLAY_ID);
+  }
+
+  private viewItems(): HTMLElement[] {
+    const menu = this.viewMenuEl()?.nativeElement;
+    return menu === undefined ? [] : Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitemradio"]'));
+  }
+
+  /**
+   * Run a row action on the selected row. An action carrying a reason is `aria-disabled` rather
+   * than `disabled`, so the click still arrives here and is refused -- which is what keeps the
+   * control focusable and its reason announced (EXPERIENCE.md, Privilege Gating).
+   */
+  protected onRowAction(action: CommandAction): void {
+    const screen = this.screen();
+    if (screen === null || action.reason !== '') return;
+    this.actions.run(screen.descriptor, action.id);
+    this.bump();
+  }
+
   protected onPrimaryAction(): void {
     const screen = this.screen();
     if (screen === null) return;
@@ -614,5 +903,13 @@ export class CommandBar {
 
   private bump(): void {
     this.generation.set(this.generation() + 1);
+  }
+
+  /**
+   * The account this tab is signed in as, which the `protected-account` rule compares a row
+   * against (AD-53). Optional, so a surface rendered without a session explains nothing by it.
+   */
+  private signedIn(): string {
+    return this.session?.userName() ?? '';
   }
 }

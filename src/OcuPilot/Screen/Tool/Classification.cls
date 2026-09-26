@@ -7,9 +7,12 @@
 /// (<code>&lt;area&gt;.&lt;screen&gt;.&lt;verb&gt;</code>, lower case, dots only). Each entry holds
 /// <code>fieldList</code>, a list key <class>OcuPilot.Screen.Tool.FieldLists</class> carries, and
 /// <code>classification</code>, an object mapping a classifiable path of that list (a row no other
-/// row's path extends) to <code>ordinary</code>, <code>secret</code> or <code>opaque</code>. The
-/// keys <code>required</code>, <code>enum</code> and <code>description</code> are reserved for the
-/// semantic half of a tool's schema and accept no content yet; no other key is accepted.</p>
+/// row's path extends) to <code>ordinary</code>, <code>secret</code> or <code>opaque</code>. An
+/// optional <code>authored</code> object maps a top-level name the endpoint's request wrapper
+/// carries and its template does not to <code>secret</code>, the only class it accepts; such a name
+/// may not collide with a derived path. The keys <code>required</code>, <code>enum</code> and
+/// <code>description</code> are reserved for the semantic half of a tool's schema and accept no
+/// content yet; no other key is accepted.</p>
 /// <p><b>It fails closed.</b> A classifiable path the entry does not name is emitted
 /// <code>secret</code>. <code>opaque</code> is for a member-less object or array only, and a
 /// member-less object or array may not be <code>ordinary</code>. A string literal whose last path
@@ -18,10 +21,898 @@
 Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 {
 
-/// <p>The reviewed entries. No write tool exists yet.</p>
+/// <p>The reviewed entries, one per write tool.</p>
+/// <p><b><code>webapp.list.update</code></b> classifies every classifiable row of
+/// <code>WebApp.App</code> as <code>ordinary</code> except the <code>MatchRoles</code> subtree,
+/// which is left unnamed and so emitted <code>secret</code> by the generator's fail-closed default:
+/// the schema subset a provider is sent describes no member below a property, so the tools that
+/// set application roles author that argument themselves
+/// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.MATCHROLESARGUMENT</parameter>).</p>
+/// <p><b><code>ordinary</code> here is not "the tool admits it".</b> Classification decides how a
+/// path may be carried; which paths a write tool advertises is that tool's own positive list
+/// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>, twenty-five of these
+/// rows), and the rest stay <code>ordinary</code> and unadvertised.</p>
+/// <p><b><code>security.auditsystemevents.update</code></b> and
+/// <b><code>security.audituserevents.update</code></b> classify the class-derived
+/// <code>Security.Audit.Event:Security.Events</code> list's two literals <code>ordinary</code>; the
+/// system tool admits <code>Enabled</code> alone (<class>OcuPilot.Screen.Tool.AuditEventUpdate</class>)
+/// and the user tool <code>Description</code> too, as <b><code>security.audituserevents.create</code></b>
+/// does over the same list.</p>
+/// <p><b><code>security.auditing.update</code></b> classifies the one row of
+/// <code>Security.Audit.Enabled</code> -- the derived <code>Enabled</code> boolean --
+/// <code>ordinary</code>. A path no entry names is emitted <code>secret</code>, and a secret row
+/// never reaches a schema (<method>OcuPilot.Screen.Tool.Write.FieldRows</method>), so without this
+/// entry the tool would advertise the id property and nothing to change.</p>
+/// <p><b><code>webapp.list.create</code></b> classifies the same <code>WebApp.App</code> list the
+/// same way, and for the same reason: classification decides how a path may be carried, not which
+/// paths a tool advertises. The two tools' <b>advertised</b> sets differ -- a create admits
+/// <code>WSGIAppLocation</code> as one directory name and a change admits no location (AD-21) --
+/// and that difference lives in each tool's own positive list, never here.</p>
+/// <p><b><code>permissions.users.update</code></b> classifies <code>Security.User</code>'s fourteen
+/// literals <code>ordinary</code> and its two arrays -- <code>Roles</code> and
+/// <code>EscalationRoles</code> -- <code>opaque</code>: the endpoint's template answers
+/// <code>[]</code> for both, which types no member, and AD-3 names this endpoint's empty
+/// <code>Roles</code> as its own <code>opaque</code> example. The generator refuses
+/// <code>ordinary</code> on a member-less array, so <code>opaque</code> is also the only class
+/// either row can carry. The tool's one authored array argument is its semantic half
+/// (<class>OcuPilot.Screen.Tool.UserUpdate</class>), not a derived field.</p>
+/// <p><b><code>permissions.users.create</code></b> classifies the same <code>Security.User</code>
+/// list as the update entry does, and authors <code>Password</code> as <code>secret</code>: the
+/// vendor's POST body is <code>{User, Password}</code>, whose outer <code>Password</code> the
+/// template never shows, so AD-3's "the write tool authors [wrapper fields] as secret fields of its
+/// own" is stated here, where the generator can check it.</p>
+/// <p><b><code>permissions.roles.create</code></b> classifies <code>Security.Role</code>'s every
+/// classifiable row <code>ordinary</code>. <code>Resources</code> itself is not classifiable -- its
+/// template describes each grant's <code>Name</code> and <code>Permissions</code>, so those two are
+/// the rows -- and no nested path reaches a schema
+/// (<method>OcuPilot.Screen.Tool.Write.FieldRows</method>): the tool carries <code>Resources</code>
+/// as an authored argument of its own (<class>OcuPilot.Screen.Tool.RoleCreate</class>).
+/// <code>EscalationOnly</code> is <code>ordinary</code> here and absent from the tool's positive
+/// list, so it is never advertised.</p>
+/// <p><b><code>permissions.roles.update</code></b> classifies the same rows the same way. Its
+/// positive list admits <code>Description</code> and <code>EscalationOnly</code>, and it carries
+/// <code>GrantedRoles</code> and <code>Resources</code> as authored arguments of its own
+/// (<class>OcuPilot.Screen.Tool.RoleUpdate</class>).</p>
+/// <p><b><code>security.x509.import</code></b> and <b><code>security.x509.update</code></b> classify
+/// <code>Security.X509Credential</code>'s alias, two lists, CA file and certificate file
+/// <code>ordinary</code> and its key password and key file <code>secret</code>. Each tool's positive
+/// list admits the two lists alone, so no path is ever advertised (AD-21). The import authors
+/// <code>Certificate</code> and <code>PrivateKey</code> as <code>secret</code>: the port completes
+/// the import from that content (AD-27), and the template, which names only file paths, never
+/// shows it.</p>
+/// <p><b><code>security.ssl.create</code></b> and <b><code>security.ssl.update</code></b> (Story
+/// 9.5) classify <code>Security.SSLConfig</code>'s every classifiable row <code>ordinary</code> but
+/// <code>PrivateKeyPassword</code>, the template's one credential field, which is
+/// <code>secret</code>. The file locations are locations, not key material, and each tool's positive
+/// list admits none of them, so no path is ever advertised (AD-21); the update carries the password
+/// as a declared secret of its own (<class>OcuPilot.Screen.Tool.SslUpdate</class>).</p>
+/// <p><b><code>security.secrets.create</code></b> and <b><code>security.secrets.update</code></b>
+/// classify <code>%Wallet.KeyValue</code>'s class-derived list (AD-3): <code>Usage</code> and
+/// <code>RequireTLS</code> <code>ordinary</code>, the member-less <code>AllowedHosts</code> array
+/// <code>opaque</code>, which each tool adds back as a string array of its own, and the value,
+/// <code>Secret</code> and <code>Secret64</code>, <code>secret</code>.</p>
+/// <p><b><code>permissions.users.create</code></b> classifies the same <code>Security.User</code>
+/// list as the update entry does, and authors <code>Password</code> as <code>secret</code>: the
+/// vendor's POST body is <code>{User, Password}</code>, whose outer <code>Password</code> the
+/// template never shows, so AD-3's "the write tool authors [wrapper fields] as secret fields of its
+/// own" is stated here, where the generator can check it.</p>
+/// <p><b><code>permissions.users.password</code></b> classifies the same list again and authors
+/// <code>Password</code> as <code>secret</code>: its write sends that declared secret and nothing
+/// else (AD-56), under the vendor's <code>CHANGEPWD</code> key the port renames it to.</p>
+/// <p><b><code>tasks.schedule.create</code></b> (Story 9.7) classifies <code>Task.CRUD</code>'s
+/// every literal row <code>ordinary</code> and its member-less <code>Settings</code> object
+/// <code>opaque</code>, which the tool adds back as an object of the chosen type's own values
+/// (<class>OcuPilot.Screen.Tool.TaskCreate</class>). <code>OutputDirectory</code> is
+/// <code>ordinary</code> here and absent from the tool's positive list, so no caller names it
+/// (AD-21).</p>
+/// <p><b><code>tasks.schedule.update</code></b> (Story 9.8) classifies the same list the same way;
+/// its tool's positive list also leaves out <code>TaskClass</code> and <code>NameSpace</code>, which
+/// an edit never changes (<class>OcuPilot.Screen.Tool.TaskUpdate</class>).</p>
+/// <p><b><code>security.oauthserverclients.create</code></b>, <b><code>.update</code></b> and
+/// <b><code>.setsecret</code></b> (Story 12.8) classify <code>Security.OAuth2.ServerClients</code>'s
+/// literals and the redirect URL list <code>ordinary</code> and the member-less
+/// <code>Metadata</code> object <code>opaque</code>, which the create and the edit add back as an
+/// object argument of their own. The secret tool authors <code>ClientSecret</code> as
+/// <code>secret</code>: the vendor's secret type takes it, and the template never shows it.</p>
 XData Entries
 {
 {
+  "permissions.users.update": {
+    "fieldList": "Security.User",
+    "classification": {
+      "AccountNeverExpires": "ordinary",
+      "AutheEnabled": "ordinary",
+      "ChangePassword": "ordinary",
+      "Comment": "ordinary",
+      "EmailAddress": "ordinary",
+      "Enabled": "ordinary",
+      "ExpirationDate": "ordinary",
+      "FullName": "ordinary",
+      "HOTPKeyDisplay": "ordinary",
+      "NameSpace": "ordinary",
+      "PasswordNeverExpires": "ordinary",
+      "PhoneNumber": "ordinary",
+      "PhoneProvider": "ordinary",
+      "Roles": "opaque",
+      "EscalationRoles": "opaque",
+      "Routine": "ordinary"
+    }
+  },
+  "security.auditsystemevents.update": {
+    "fieldList": "Security.Audit.Event:Security.Events",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary"
+    }
+  },
+  "security.audituserevents.update": {
+    "fieldList": "Security.Audit.Event:Security.Events",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary"
+    }
+  },
+  "security.audituserevents.create": {
+    "fieldList": "Security.Audit.Event:Security.Events",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary"
+    }
+  },
+  "security.auditing.update": {
+    "fieldList": "Security.Audit.Enabled",
+    "classification": {
+      "Enabled": "ordinary"
+    }
+  },
+  "webapp.list.create": {
+    "fieldList": "WebApp.App",
+    "classification": {
+      "AutheEnabled": "ordinary",
+      "AutoCompile": "ordinary",
+      "ChangePasswordPage": "ordinary",
+      "CookiePath": "ordinary",
+      "CorsAllowlist[]": "ordinary",
+      "CorsCredentialsAllowed": "ordinary",
+      "CorsHeadersList[]": "ordinary",
+      "CSPZENEnabled": "ordinary",
+      "CSRFToken": "ordinary",
+      "DeepSeeEnabled": "ordinary",
+      "Description": "ordinary",
+      "DispatchClass": "ordinary",
+      "Enabled": "ordinary",
+      "ErrorPage": "ordinary",
+      "EventClass": "ordinary",
+      "GroupById": "ordinary",
+      "iKnowEnabled": "ordinary",
+      "InbndWebServicesEnabled": "ordinary",
+      "IsNameSpaceDefault": "ordinary",
+      "JWTAuthEnabled": "ordinary",
+      "JWTAccessTokenTimeout": "ordinary",
+      "JWTRefreshTokenTimeout": "ordinary",
+      "LockCSPName": "ordinary",
+      "LoginPage": "ordinary",
+      "NameSpace": "ordinary",
+      "Package": "ordinary",
+      "Path": "ordinary",
+      "PermittedClasses": "ordinary",
+      "Recurse": "ordinary",
+      "RedirectEmptyPath": "ordinary",
+      "Resource": "ordinary",
+      "ServeFiles": "ordinary",
+      "ServeFilesTimeout": "ordinary",
+      "SuperClass": "ordinary",
+      "Timeout": "ordinary",
+      "TraceEnabled": "ordinary",
+      "TwoFactorEnabled": "ordinary",
+      "UseCookies": "ordinary",
+      "SessionScope": "ordinary",
+      "UserCookieScope": "ordinary",
+      "WSGIAppLocation": "ordinary",
+      "WSGIAppName": "ordinary",
+      "WSGICallable": "ordinary",
+      "WSGIDebug": "ordinary",
+      "WSGIType": "ordinary"
+    }
+  },
+  "webapp.list.update": {
+    "fieldList": "WebApp.App",
+    "classification": {
+      "AutheEnabled": "ordinary",
+      "AutoCompile": "ordinary",
+      "ChangePasswordPage": "ordinary",
+      "CookiePath": "ordinary",
+      "CorsAllowlist[]": "ordinary",
+      "CorsCredentialsAllowed": "ordinary",
+      "CorsHeadersList[]": "ordinary",
+      "CSPZENEnabled": "ordinary",
+      "CSRFToken": "ordinary",
+      "DeepSeeEnabled": "ordinary",
+      "Description": "ordinary",
+      "DispatchClass": "ordinary",
+      "Enabled": "ordinary",
+      "ErrorPage": "ordinary",
+      "EventClass": "ordinary",
+      "GroupById": "ordinary",
+      "iKnowEnabled": "ordinary",
+      "InbndWebServicesEnabled": "ordinary",
+      "IsNameSpaceDefault": "ordinary",
+      "JWTAuthEnabled": "ordinary",
+      "JWTAccessTokenTimeout": "ordinary",
+      "JWTRefreshTokenTimeout": "ordinary",
+      "LockCSPName": "ordinary",
+      "LoginPage": "ordinary",
+      "NameSpace": "ordinary",
+      "Package": "ordinary",
+      "Path": "ordinary",
+      "PermittedClasses": "ordinary",
+      "Recurse": "ordinary",
+      "RedirectEmptyPath": "ordinary",
+      "Resource": "ordinary",
+      "ServeFiles": "ordinary",
+      "ServeFilesTimeout": "ordinary",
+      "SuperClass": "ordinary",
+      "Timeout": "ordinary",
+      "TraceEnabled": "ordinary",
+      "TwoFactorEnabled": "ordinary",
+      "UseCookies": "ordinary",
+      "SessionScope": "ordinary",
+      "UserCookieScope": "ordinary",
+      "WSGIAppLocation": "ordinary",
+      "WSGIAppName": "ordinary",
+      "WSGICallable": "ordinary",
+      "WSGIDebug": "ordinary",
+      "WSGIType": "ordinary"
+    }
+  },
+  "permissions.users.create": {
+    "fieldList": "Security.User",
+    "classification": {
+      "AccountNeverExpires": "ordinary",
+      "AutheEnabled": "ordinary",
+      "ChangePassword": "ordinary",
+      "Comment": "ordinary",
+      "EmailAddress": "ordinary",
+      "Enabled": "ordinary",
+      "ExpirationDate": "ordinary",
+      "FullName": "ordinary",
+      "HOTPKeyDisplay": "ordinary",
+      "NameSpace": "ordinary",
+      "PasswordNeverExpires": "ordinary",
+      "PhoneNumber": "ordinary",
+      "PhoneProvider": "ordinary",
+      "Roles": "opaque",
+      "EscalationRoles": "opaque",
+      "Routine": "ordinary"
+    },
+    "authored": {
+      "Password": "secret"
+    }
+  },
+  "permissions.roles.create": {
+    "fieldList": "Security.Role",
+    "classification": {
+      "Description": "ordinary",
+      "GrantedRoles[]": "ordinary",
+      "EscalationOnly": "ordinary",
+      "Resources[].Name": "ordinary",
+      "Resources[].Permissions": "ordinary"
+    }
+  },
+  "permissions.roles.update": {
+    "fieldList": "Security.Role",
+    "classification": {
+      "Description": "ordinary",
+      "GrantedRoles[]": "ordinary",
+      "EscalationOnly": "ordinary",
+      "Resources[].Name": "ordinary",
+      "Resources[].Permissions": "ordinary"
+    }
+  },
+  "permissions.resources.create": {
+    "fieldList": "Security.Resource",
+    "classification": {
+      "Description": "ordinary",
+      "PublicPermission": "ordinary"
+    }
+  },
+  "permissions.resources.update": {
+    "fieldList": "Security.Resource",
+    "classification": {
+      "Description": "ordinary",
+      "PublicPermission": "ordinary"
+    }
+  },
+  "security.x509.import": {
+    "fieldList": "Security.X509Credential",
+    "classification": {
+      "Alias": "ordinary",
+      "OwnerList[]": "ordinary",
+      "PeerNames[]": "ordinary",
+      "CAFile": "ordinary",
+      "CertificateFile": "ordinary",
+      "PrivateKeyPassword": "secret",
+      "PrivateKeyFile": "secret"
+    },
+    "authored": {
+      "Certificate": "secret",
+      "PrivateKey": "secret"
+    }
+  },
+  "security.x509.update": {
+    "fieldList": "Security.X509Credential",
+    "classification": {
+      "Alias": "ordinary",
+      "OwnerList[]": "ordinary",
+      "PeerNames[]": "ordinary",
+      "CAFile": "ordinary",
+      "CertificateFile": "ordinary",
+      "PrivateKeyPassword": "secret",
+      "PrivateKeyFile": "secret"
+    }
+  },
+  "security.ssl.create": {
+    "fieldList": "Security.SSLConfig",
+    "classification": {
+      "AuthorizeCN": "ordinary",
+      "CAFile": "ordinary",
+      "CAPath": "ordinary",
+      "CertificateFile": "ordinary",
+      "CipherList[]": "ordinary",
+      "Ciphersuites[]": "ordinary",
+      "Description": "ordinary",
+      "DiffieHellmanBits": "ordinary",
+      "Enabled": "ordinary",
+      "OCSP": "ordinary",
+      "OCSPIssuerCert": "ordinary",
+      "OCSPResponseFile": "ordinary",
+      "OCSPTimeout": "ordinary",
+      "OCSPURL": "ordinary",
+      "PrivateKeyFile": "ordinary",
+      "PrivateKeyType": "ordinary",
+      "TLSMaxVersion": "ordinary",
+      "TLSMinVersion": "ordinary",
+      "Type": "ordinary",
+      "VerifyDepth": "ordinary",
+      "VerifyPeer": "ordinary",
+      "PrivateKeyPassword": "secret"
+    }
+  },
+  "security.ssl.update": {
+    "fieldList": "Security.SSLConfig",
+    "classification": {
+      "AuthorizeCN": "ordinary",
+      "CAFile": "ordinary",
+      "CAPath": "ordinary",
+      "CertificateFile": "ordinary",
+      "CipherList[]": "ordinary",
+      "Ciphersuites[]": "ordinary",
+      "Description": "ordinary",
+      "DiffieHellmanBits": "ordinary",
+      "Enabled": "ordinary",
+      "OCSP": "ordinary",
+      "OCSPIssuerCert": "ordinary",
+      "OCSPResponseFile": "ordinary",
+      "OCSPTimeout": "ordinary",
+      "OCSPURL": "ordinary",
+      "PrivateKeyFile": "ordinary",
+      "PrivateKeyType": "ordinary",
+      "TLSMaxVersion": "ordinary",
+      "TLSMinVersion": "ordinary",
+      "Type": "ordinary",
+      "VerifyDepth": "ordinary",
+      "VerifyPeer": "ordinary",
+      "PrivateKeyPassword": "secret"
+    }
+  },
+  "security.secrets.create": {
+    "fieldList": "Wallet.Secret:%Wallet.KeyValue",
+    "classification": {
+      "AllowedHosts": "opaque",
+      "RequireTLS": "ordinary",
+      "Secret": "secret",
+      "Secret64": "secret",
+      "Usage": "ordinary"
+    }
+  },
+  "security.secrets.update": {
+    "fieldList": "Wallet.Secret:%Wallet.KeyValue",
+    "classification": {
+      "AllowedHosts": "opaque",
+      "RequireTLS": "ordinary",
+      "Secret": "secret",
+      "Secret64": "secret",
+      "Usage": "ordinary"
+    }
+  },
+  "osmgmt.devices.create": {
+    "fieldList": "Device.Standard",
+    "classification": {
+      "Alias": "ordinary",
+      "Description": "ordinary",
+      "OpenParameters": "ordinary",
+      "PhysicalDevice": "ordinary",
+      "AlternateDevice": "ordinary",
+      "Prompt": "ordinary",
+      "SubType": "ordinary",
+      "Type": "ordinary"
+    }
+  },
+  "osmgmt.devices.update": {
+    "fieldList": "Device.Standard",
+    "classification": {
+      "Alias": "ordinary",
+      "Description": "ordinary",
+      "OpenParameters": "ordinary",
+      "PhysicalDevice": "ordinary",
+      "AlternateDevice": "ordinary",
+      "Prompt": "ordinary",
+      "SubType": "ordinary",
+      "Type": "ordinary"
+    }
+  },
+  "security.oauthserverdescriptions.create": {
+    "fieldList": "Security.OAuth2.Client.ServerDefinition",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "ServerCredentials": "ordinary",
+      "Metadata": "opaque"
+    }
+  },
+  "security.oauthserverdescriptions.update": {
+    "fieldList": "Security.OAuth2.Client.ServerDefinition",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "ServerCredentials": "ordinary",
+      "Metadata": "opaque"
+    }
+  },
+  "security.oauthserverdescriptions.settoken": {
+    "fieldList": "Security.OAuth2.Client.ServerDefinition",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "ServerCredentials": "ordinary",
+      "Metadata": "opaque"
+    },
+    "authored": {
+      "InitialAccessToken": "secret"
+    }
+  },
+  "security.oauthclients.create": {
+    "fieldList": "Security.OAuth2.Client.ClientConfiguration",
+    "classification": {
+      "ServerDefinition": "ordinary",
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "RedirectionEndpoint": "ordinary",
+      "JWTAudience": "ordinary",
+      "JWTInterval": "ordinary",
+      "ClientId": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthclients.update": {
+    "fieldList": "Security.OAuth2.Client.ClientConfiguration",
+    "classification": {
+      "ServerDefinition": "ordinary",
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "RedirectionEndpoint": "ordinary",
+      "JWTAudience": "ordinary",
+      "JWTInterval": "ordinary",
+      "ClientId": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthclients.setsecrets": {
+    "fieldList": "Security.OAuth2.Client.ClientConfiguration",
+    "classification": {
+      "ServerDefinition": "ordinary",
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "RedirectionEndpoint": "ordinary",
+      "JWTAudience": "ordinary",
+      "JWTInterval": "ordinary",
+      "ClientId": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    },
+    "authored": {
+      "ClientSecret": "secret",
+      "ClientPassword": "secret",
+      "RegistrationAccessToken": "secret"
+    }
+  },
+  "security.oauthresourceservers.create": {
+    "fieldList": "Security.OAuth2.ResourceServer",
+    "classification": {
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "IssuerEndpoint": "ordinary",
+      "ScopeRequiredToConnect": "ordinary",
+      "Audiences[]": "ordinary",
+      "AccessTokenIsJWT": "ordinary",
+      "AlwaysCallIntrospection": "ordinary",
+      "ClientId": "ordinary",
+      "IntrospectionAuthMethod": "ordinary",
+      "UseOIDC": "ordinary",
+      "Authenticator.Namespace": "ordinary",
+      "Authenticator.Implementation": "ordinary"
+    }
+  },
+  "security.oauthresourceservers.update": {
+    "fieldList": "Security.OAuth2.ResourceServer",
+    "classification": {
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "IssuerEndpoint": "ordinary",
+      "ScopeRequiredToConnect": "ordinary",
+      "Audiences[]": "ordinary",
+      "AccessTokenIsJWT": "ordinary",
+      "AlwaysCallIntrospection": "ordinary",
+      "ClientId": "ordinary",
+      "IntrospectionAuthMethod": "ordinary",
+      "UseOIDC": "ordinary",
+      "Authenticator.Namespace": "ordinary",
+      "Authenticator.Implementation": "ordinary"
+    }
+  },
+  "security.oauthresourceservers.setsecret": {
+    "fieldList": "Security.OAuth2.ResourceServer",
+    "classification": {
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "IssuerEndpoint": "ordinary",
+      "ScopeRequiredToConnect": "ordinary",
+      "Audiences[]": "ordinary",
+      "AccessTokenIsJWT": "ordinary",
+      "AlwaysCallIntrospection": "ordinary",
+      "ClientId": "ordinary",
+      "IntrospectionAuthMethod": "ordinary",
+      "UseOIDC": "ordinary",
+      "Authenticator.Namespace": "ordinary",
+      "Authenticator.Implementation": "ordinary"
+    },
+    "authored": {
+      "ClientSecret": "secret"
+    }
+  },
+  "security.oauthserver.create": {
+    "fieldList": "Security.OAuth2.Server",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "Description": "ordinary",
+      "AccessTokenInterval": "ordinary",
+      "AuthorizationCodeInterval": "ordinary",
+      "RefreshTokenInterval": "ordinary",
+      "SessionInterval": "ordinary",
+      "ClientSecretInterval": "ordinary",
+      "SupportedScopes[].Description": "ordinary",
+      "SupportedScopes[].Scope": "ordinary",
+      "AllowUnsupportedScope": "ordinary",
+      "ReturnRefreshToken": "ordinary",
+      "SupportSession": "ordinary",
+      "AudRequired": "ordinary",
+      "AllowPublicClientRefresh": "ordinary",
+      "ForcePKCEForPublicClients": "ordinary",
+      "ForcePKCEForConfidentialClients": "ordinary",
+      "CustomizationRoles[]": "ordinary",
+      "CustomizationNamespace": "ordinary",
+      "AuthenticateClass": "ordinary",
+      "SessionClass": "ordinary",
+      "ValidateUserClass": "ordinary",
+      "GenerateTokenClass": "ordinary",
+      "RevokeTokenClass": "ordinary",
+      "ServerCredentials": "ordinary",
+      "SigningAlgorithm": "ordinary",
+      "EncryptionAlgorithm": "ordinary",
+      "KeyAlgorithm": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthserver.update": {
+    "fieldList": "Security.OAuth2.Server",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "Description": "ordinary",
+      "AccessTokenInterval": "ordinary",
+      "AuthorizationCodeInterval": "ordinary",
+      "RefreshTokenInterval": "ordinary",
+      "SessionInterval": "ordinary",
+      "ClientSecretInterval": "ordinary",
+      "SupportedScopes[].Description": "ordinary",
+      "SupportedScopes[].Scope": "ordinary",
+      "AllowUnsupportedScope": "ordinary",
+      "ReturnRefreshToken": "ordinary",
+      "SupportSession": "ordinary",
+      "AudRequired": "ordinary",
+      "AllowPublicClientRefresh": "ordinary",
+      "ForcePKCEForPublicClients": "ordinary",
+      "ForcePKCEForConfidentialClients": "ordinary",
+      "CustomizationRoles[]": "ordinary",
+      "CustomizationNamespace": "ordinary",
+      "AuthenticateClass": "ordinary",
+      "SessionClass": "ordinary",
+      "ValidateUserClass": "ordinary",
+      "GenerateTokenClass": "ordinary",
+      "RevokeTokenClass": "ordinary",
+      "ServerCredentials": "ordinary",
+      "SigningAlgorithm": "ordinary",
+      "EncryptionAlgorithm": "ordinary",
+      "KeyAlgorithm": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthserver.setpassword": {
+    "fieldList": "Security.OAuth2.Server",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "Description": "ordinary",
+      "AccessTokenInterval": "ordinary",
+      "AuthorizationCodeInterval": "ordinary",
+      "RefreshTokenInterval": "ordinary",
+      "SessionInterval": "ordinary",
+      "ClientSecretInterval": "ordinary",
+      "SupportedScopes[].Description": "ordinary",
+      "SupportedScopes[].Scope": "ordinary",
+      "AllowUnsupportedScope": "ordinary",
+      "ReturnRefreshToken": "ordinary",
+      "SupportSession": "ordinary",
+      "AudRequired": "ordinary",
+      "AllowPublicClientRefresh": "ordinary",
+      "ForcePKCEForPublicClients": "ordinary",
+      "ForcePKCEForConfidentialClients": "ordinary",
+      "CustomizationRoles[]": "ordinary",
+      "CustomizationNamespace": "ordinary",
+      "AuthenticateClass": "ordinary",
+      "SessionClass": "ordinary",
+      "ValidateUserClass": "ordinary",
+      "GenerateTokenClass": "ordinary",
+      "RevokeTokenClass": "ordinary",
+      "ServerCredentials": "ordinary",
+      "SigningAlgorithm": "ordinary",
+      "EncryptionAlgorithm": "ordinary",
+      "KeyAlgorithm": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    },
+    "authored": {
+      "ServerPassword": "secret"
+    }
+  },
+  "security.oauthserverclients.create": {
+    "fieldList": "Security.OAuth2.ServerClients",
+    "classification": {
+      "Name": "ordinary",
+      "RedirectURL[]": "ordinary",
+      "LaunchURL": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthserverclients.update": {
+    "fieldList": "Security.OAuth2.ServerClients",
+    "classification": {
+      "Name": "ordinary",
+      "RedirectURL[]": "ordinary",
+      "LaunchURL": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthserverclients.setsecret": {
+    "fieldList": "Security.OAuth2.ServerClients",
+    "classification": {
+      "Name": "ordinary",
+      "RedirectURL[]": "ordinary",
+      "LaunchURL": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    },
+    "authored": {
+      "ClientSecret": "secret"
+    }
+  },
+  "permissions.users.create": {
+    "fieldList": "Security.User",
+    "classification": {
+      "AccountNeverExpires": "ordinary",
+      "AutheEnabled": "ordinary",
+      "ChangePassword": "ordinary",
+      "Comment": "ordinary",
+      "EmailAddress": "ordinary",
+      "Enabled": "ordinary",
+      "ExpirationDate": "ordinary",
+      "FullName": "ordinary",
+      "HOTPKeyDisplay": "ordinary",
+      "NameSpace": "ordinary",
+      "PasswordNeverExpires": "ordinary",
+      "PhoneNumber": "ordinary",
+      "PhoneProvider": "ordinary",
+      "Roles": "opaque",
+      "EscalationRoles": "opaque",
+      "Routine": "ordinary"
+    },
+    "authored": {
+      "Password": "secret"
+    }
+  },
+  "permissions.users.password": {
+    "fieldList": "Security.User",
+    "classification": {
+      "AccountNeverExpires": "ordinary",
+      "AutheEnabled": "ordinary",
+      "ChangePassword": "ordinary",
+      "Comment": "ordinary",
+      "EmailAddress": "ordinary",
+      "Enabled": "ordinary",
+      "ExpirationDate": "ordinary",
+      "FullName": "ordinary",
+      "HOTPKeyDisplay": "ordinary",
+      "NameSpace": "ordinary",
+      "PasswordNeverExpires": "ordinary",
+      "PhoneNumber": "ordinary",
+      "PhoneProvider": "ordinary",
+      "Roles": "opaque",
+      "EscalationRoles": "opaque",
+      "Routine": "ordinary"
+    },
+    "authored": {
+      "Password": "secret"
+    }
+  },
+  "tasks.schedule.create": {
+    "fieldList": "Task.CRUD",
+    "classification": {
+      "Name": "ordinary",
+      "RunAsUser": "ordinary",
+      "EmailOnCompletion[]": "ordinary",
+      "EmailOnError[]": "ordinary",
+      "EmailOnExpiration[]": "ordinary",
+      "EmailOutput": "ordinary",
+      "Expires": "ordinary",
+      "ExpiresDays": "ordinary",
+      "ExpiresHours": "ordinary",
+      "ExpiresMinutes": "ordinary",
+      "OpenOutputFile": "ordinary",
+      "OutputDirectory": "ordinary",
+      "OutputFilename": "ordinary",
+      "OutputFileIsBinary": "ordinary",
+      "SuspendOnError": "ordinary",
+      "SuspendTerminated": "ordinary",
+      "Priority": "ordinary",
+      "TaskClass": "ordinary",
+      "IsBatch": "ordinary",
+      "NameSpace": "ordinary",
+      "TimePeriod": "ordinary",
+      "TimePeriodEvery": "ordinary",
+      "TimePeriodDay": "ordinary",
+      "DailyFrequency": "ordinary",
+      "DailyFrequencyTime": "ordinary",
+      "DailyIncrement": "ordinary",
+      "DailyStartTime": "ordinary",
+      "DailyEndTime": "ordinary",
+      "StartDate": "ordinary",
+      "EndDate": "ordinary",
+      "RunAfterGUID": "ordinary",
+      "MirrorStatus": "ordinary",
+      "RescheduleOnStart": "ordinary",
+      "Description": "ordinary",
+      "Settings": "opaque"
+    }
+  },
+  "tasks.schedule.update": {
+    "fieldList": "Task.CRUD",
+    "classification": {
+      "Name": "ordinary",
+      "RunAsUser": "ordinary",
+      "EmailOnCompletion[]": "ordinary",
+      "EmailOnError[]": "ordinary",
+      "EmailOnExpiration[]": "ordinary",
+      "EmailOutput": "ordinary",
+      "Expires": "ordinary",
+      "ExpiresDays": "ordinary",
+      "ExpiresHours": "ordinary",
+      "ExpiresMinutes": "ordinary",
+      "OpenOutputFile": "ordinary",
+      "OutputDirectory": "ordinary",
+      "OutputFilename": "ordinary",
+      "OutputFileIsBinary": "ordinary",
+      "SuspendOnError": "ordinary",
+      "SuspendTerminated": "ordinary",
+      "Priority": "ordinary",
+      "TaskClass": "ordinary",
+      "IsBatch": "ordinary",
+      "NameSpace": "ordinary",
+      "TimePeriod": "ordinary",
+      "TimePeriodEvery": "ordinary",
+      "TimePeriodDay": "ordinary",
+      "DailyFrequency": "ordinary",
+      "DailyFrequencyTime": "ordinary",
+      "DailyIncrement": "ordinary",
+      "DailyStartTime": "ordinary",
+      "DailyEndTime": "ordinary",
+      "StartDate": "ordinary",
+      "EndDate": "ordinary",
+      "RunAfterGUID": "ordinary",
+      "MirrorStatus": "ordinary",
+      "RescheduleOnStart": "ordinary",
+      "Description": "ordinary",
+      "Settings": "opaque"
+    }
+  },
+  "permissions.services.update": {
+    "fieldList": "Security.Service",
+    "classification": {
+      "AutheEnabled": "ordinary",
+      "ClientSystems[]": "ordinary",
+      "Description": "ordinary",
+      "Enabled": "ordinary"
+    }
+  },
+  "security.ldap.update": {
+    "fieldList": "Security.LDAP",
+    "classification": {
+      "Description": "ordinary",
+      "LDAPAttributes[]": "ordinary",
+      "LDAPAttributeComment": "ordinary",
+      "LDAPAttributeFullName": "ordinary",
+      "LDAPAttributeMail": "ordinary",
+      "LDAPAttributeMobile": "ordinary",
+      "LDAPAttributeMobileProvider": "ordinary",
+      "LDAPAttributeNameSpace": "ordinary",
+      "LDAPAttributeRoutine": "ordinary",
+      "LDAPAttributeRoles": "ordinary",
+      "LDAPAttributeEscalationRoles": "ordinary",
+      "LDAPBaseDN": "ordinary",
+      "LDAPBaseDNForGroups": "ordinary",
+      "LDAPCACertFile": "ordinary",
+      "LDAPClientTimeout": "ordinary",
+      "LDAPFlags": "ordinary",
+      "LDAPGroupId": "ordinary",
+      "LDAPHostNames[]": "ordinary",
+      "LDAPInstanceId": "ordinary",
+      "OrganizationId": "ordinary",
+      "GroupId": "ordinary",
+      "InstanceId": "ordinary",
+      "RoleId": "ordinary",
+      "EscalationRoleId": "ordinary",
+      "RoutineId": "ordinary",
+      "NamespaceId": "ordinary",
+      "DelimiterId": "ordinary",
+      "LDAPSearchUsername": "ordinary",
+      "LDAPServerTimeout": "ordinary",
+      "LDAPUniqueDNIdentifier": "ordinary"
+    }
+  }
 }
 }
 

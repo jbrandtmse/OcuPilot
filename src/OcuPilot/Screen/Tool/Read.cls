@@ -3,9 +3,9 @@
 /// <code>&lt;toolIdentifier&gt;.read</code> for each descriptor that declares a read, and this class
 /// answers for all of them, taking the descriptor as its first argument.</p>
 /// <p><b>The tool's view is the screen's view, narrowed.</b> <method>View</method> runs the same
-/// <method>OcuPilot.Screen.Read.Execute</method> the screen's route runs and the same
-/// <method>OcuPilot.Screen.Read.ApplyView</method> the screen's table applies, then keeps the first
-/// <var>pContextCap</var> rows. The descriptor's <code>context.secretFields</code> are already gone:
+/// <method>OcuPilot.Screen.Read.Execute</method> the screen's route runs, under the screen's row cap,
+/// the same <method>OcuPilot.Screen.Read.ApplyView</method> the screen's table applies, and then the
+/// context cap. The descriptor's <code>context.secretFields</code> are already gone:
 /// <method>OcuPilot.Screen.Read.Execute</method> strips them for the route and the tool alike. It
 /// never issues a wider or separately written query.</p>
 /// <p><b>A read that searches on the server carries its criteria into the tool</b> (AD-21). The
@@ -30,11 +30,68 @@ ClassMethod ReadClass() As %String
     Quit "OcuPilot.Screen.Read"
 }
 
+/// <p>The most rows the executor reads when its caller names no cap: the cap a screen's read is
+/// bounded by (<parameter>OcuPilot.Screen.Read.DEFAULTMAXROWS</parameter>).</p>
+ClassMethod ReadCap() As %Integer
+{
+    Quit +$Parameter(..ReadClass(), "DEFAULTMAXROWS")
+}
+
 /// <p>The read tool's name for <var>pDescriptor</var>: its declared <code>toolIdentifier</code>
 /// followed by <parameter>VERB</parameter>, never derived from its route (AD-5).</p>
 ClassMethod NameFor(pDescriptor As %String) As %String
 {
     Quit $ClassMethod(pDescriptor, "ToolIdentifier") _ "." _ ..#VERB
+}
+
+/// <p>The description the model is given: <parameter>DESCRIPTION</parameter> with the descriptor's
+/// <code>toolIdentifier</code> in place of "the named screen", so each read tool says which screen it
+/// reads.</p>
+ClassMethod Description(pDescriptor As %String = "") As %String
+{
+    Quit $Replace(..#DESCRIPTION, "the named screen", "the " _ $ClassMethod(pDescriptor, "ToolIdentifier") _ " screen")
+}
+
+/// <p>What <var>pDescriptor</var> requires of the caller:
+/// <method>OcuPilot.Screen.Gate.RequiredPairs</method>, the screen's declared pairs unioned with its
+/// classic page's custom resource, so the tool requires what the screen requires (AD-8, AD-44).</p>
+ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
+{
+    Quit ##class(OcuPilot.Screen.Gate).RequiredPairs(pDescriptor, .pResolved)
+}
+
+/// <p>What <var>pDescriptor</var> declares secret (AD-3), which for a read tool is its
+/// <code>secretArguments</code> list -- empty for every screen shipped so far, because a declared
+/// read's criteria are search values the screen itself sends on its own route and a descriptor's
+/// <code>context.secretFields</code> are removed from the result rather than accepted as an
+/// argument.</p>
+/// <p><b>Read from the descriptor rather than answered as a constant</b> (DW-1121): a constant here
+/// answers for every screen this class serves, so a screen that did declare a secret criterion
+/// would have had that declaration overruled by an intermediate class. The registry's own refusal
+/// over a credential-pattern criterion is what makes the declaration load-bearing.</p>
+ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 1
+    If pDescriptor = "" Quit ""
+    Quit $ClassMethod(pDescriptor, "SecretArguments")
+}
+
+/// <p>The result <method>View</method> answers: <code>{fields, rows, truncated}</code>.</p>
+ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
+{
+    Quit {
+        "type": "object",
+        "properties": {
+            "fields": {"type": "array", "items": {"type": "string"}, "description": "The read's field names, secret fields removed."},
+            "rows": {"type": "array", "items": {"type": "object"}, "description": "One object per row, carrying exactly the fields."},
+            "truncated": {"type": "boolean", "description": "True when rows were cut by a cap or a field value was shortened."},
+            "rowsSent": {"type": "integer", "description": "How many rows this result carries."},
+            "rowsAvailable": {"type": "integer", "description": "How many rows the filtered view held before the row cap of this tool; the row cap of the read itself may already have limited it."},
+            "truncatedFields": {"type": "array", "items": {"type": "string"}, "description": "Field names whose value was shortened in this result, if any."}
+        },
+        "required": ["fields", "rows", "truncated"],
+        "additionalProperties": false
+    }
 }
 
 /// <p>The input schema for <var>pDescriptor</var>'s read tool: optional <code>filter</code>
@@ -59,7 +116,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
             "filter": {"type": "string", "description": "Keep the rows whose filterable fields contain this text."},
             "sort": {"type": "string", "description": "The field to sort on."},
             "direction": {"type": "string", "enum": ["asc", "desc"], "description": "The sort direction."},
-            "maxRows": {"type": "integer", "minimum": 1, "description": "The most rows to read."}
+            "maxRows": {"type": "integer", "minimum": 1, "description": "The most rows to read before the filter and sort apply, as the screen's own row limit does. Absent, or above the screen's row cap, reads that cap."}
         },
         "required": [],
         "additionalProperties": false
@@ -107,32 +164,41 @@ ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Pr
 }
 
 /// <p>The tool's view of <var>pDescriptor</var>'s read. <var>pArgs</var> is validated against
-/// <method>InputSchema</method> before anything is read; a refusal is an error status naming the
-/// argument and the rule, and no port is called. <var>pContextCap</var> is the row cap on what
-/// the tool returns (AD-24), supplied by the caller; it is a whole number above zero.</p>
+/// <method>InputSchema</method> before anything is read; a refusal is 400
+/// <code>TOOL.ARGUMENTS</code> naming the argument and the rule, and no port is called.
+/// <var>pContextCap</var> is the row cap on what the tool returns (AD-24), supplied by the caller;
+/// it is a whole number above zero.</p>
+/// <p><b>It reads what the screen reads, then narrows it</b> (AD-36). The executor is asked for the
+/// model's <code>maxRows</code> or the read's own row cap (<method>ReadCap</method>), whichever is
+/// smaller -- the rows a screen at that row limit reads -- so the filter and sort run over those
+/// rows, and only then is the result cut to <var>pContextCap</var>.</p>
 /// <p><var>pResult</var> is <code>{fields, rows, truncated}</code>: the read's fields and rows as
 /// <method>OcuPilot.Screen.Read.Execute</method> answers them, secret fields already removed, at
-/// most <var>pContextCap</var> rows in
-/// <method>OcuPilot.Screen.Read.ApplyView</method>'s order, and <code>truncated</code> true when the
-/// read truncated or the cap cut rows. A read failure is returned as its error status, with
-/// <var>pResult</var> empty.</p>
-ClassMethod View(pDescriptor As %String, pArgs As %DynamicObject, pContextCap As %Integer, Output pResult As %DynamicObject) As %Status
+/// most <var>pContextCap</var> rows in <method>OcuPilot.Screen.Read.ApplyView</method>'s order, and
+/// <code>truncated</code> true when the read truncated or the context cap cut rows. A read failure is
+/// returned as the executor's status, HTTP status and fault, with <var>pResult</var> empty.</p>
+ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pContextCap As %Integer, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set tSC = $$$OK
     Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
     Try {
         Set tRead = $ClassMethod(pDescriptor, "Read")
         If '$IsObject(tRead) {
-            Set tSC = $$$ERROR($$$GeneralError, pDescriptor _ " declares no read")
+            Set tSC = ..InternalRefusal(pDescriptor _ " declares no read", .pHttpStatus, .pFault)
             Quit
         }
         If '$Match(pContextCap, "^[1-9][0-9]*$") {
-            Set tSC = $$$ERROR($$$GeneralError, "the context cap must be a whole number above zero")
+            Set tSC = ..InternalRefusal("the context cap must be a whole number above zero", .pHttpStatus, .pFault)
             Quit
         }
         Set tArgs = $Select($IsObject(pArgs): pArgs, pArgs = "": {}, 1: pArgs)
-        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(..InputSchema(pDescriptor), tArgs, .tProblem)
-        If $$$ISERR(tSC) Quit
+        Set tValidSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(..InputSchema(pDescriptor), tArgs, .tProblem)
+        If $$$ISERR(tValidSC) {
+            Set tSC = ..ArgumentsRefusal(tProblem, .pHttpStatus, .pFault)
+            Quit
+        }
 
         ; The declared roster again (AD-21): a criterion reaches the executor only where the
         ; descriptor names it, which is the same allow-list the route is filtered through, so the
@@ -143,7 +209,7 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicObject, pContextCap As
             Set tParam = $List(tParams, tI)
             Set tCriteria(tParam) = tArgs.%Get(tParam)
         }
-        Set tSC = $ClassMethod(..ReadClass(), "Execute", pDescriptor, tArgs.%Get("maxRows"), .tFetched, .tHttp, .tFault, .tCriteria)
+        Set tSC = $ClassMethod(..ReadClass(), "Execute", pDescriptor, ..BoundedMaxRows(tArgs, ..ReadCap()), .tFetched, .pHttpStatus, .pFault, .tCriteria)
         If $$$ISERR(tSC) Quit
 
         Set tView = $ClassMethod(..ReadClass(), "ApplyView", tFetched.rows, tRead, tArgs.%Get("filter"), tArgs.%Get("sort"), tArgs.%Get("direction"))
@@ -159,9 +225,14 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicObject, pContextCap As
         Do pResult.%Set("fields", tFetched.fields)
         Do pResult.%Set("rows", tRows)
         Do pResult.%Set("truncated", ''tFetched.truncated || (tView.%Size() > +pContextCap), "boolean")
+        ; The real count before this cut, so the kernel cutter downstream (AD-24) can report a
+        ; true rowsAvailable rather than one already narrowed by this method's own cap.
+        Do pResult.%Set("rowsAvailable", tView.%Size(), "number")
+        Set pHttpStatus = 200
+        Set pFault = ""
     } Catch ex {
         Set pResult = ""
-        Set tSC = ex.AsStatus()
+        Set tSC = ..InternalRefusal("the read tool failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
     Quit tSC
 }

@@ -51,6 +51,11 @@ XData Declaration
   "context": {"fields": [], "secretFields": []},
   "emptyStateKey": "",
   "commandAliases": ["kill switch", "read-only", "switches"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupAgentSetup", "textKey": "agentSwitchesPrompt1"},
+    {"groupKey": "promptGroupAgentSetup", "textKey": "agentSwitchesPrompt2"},
+    {"groupKey": "promptGroupAgentSetup", "textKey": "agentSwitchesPrompt3"}
+  ],
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "agent.switches"

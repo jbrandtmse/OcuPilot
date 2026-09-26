@@ -2,13 +2,17 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { NavigationService, type Verdict } from '../core/navigation';
-import { PreferenceStore } from '../core/preferences';
+import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
+import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { LocatorBar } from './locator-bar';
+import { AccountPreferences } from '../core/account-preferences';
+import { stubAccountPreferences } from '../testing/account-preferences';
+import { HelpLinks } from '../core/help';
+import { stubHelpLinks, type StubbedHelpLinks } from '../testing/about';
 
 /**
  * The locator bar's rendered contract (EXPERIENCE.md "locator-bar | top of content", "link is the first Tab stop"; DESIGN.md `:1033`).
@@ -42,6 +46,8 @@ class StubNavigation {
     const path = url.split('?')[0].replace(/^\/+/, '');
     if (path === '') return HOME;
     if (path.startsWith('permissions/users')) return USERS;
+    if (path.startsWith('web-applications/rest-apis/document/')) return screenForRoute('web-applications/rest-apis/document');
+    if (path.startsWith('security/oauth/clients')) return screenForRoute('security/oauth/clients');
     return null;
   }
 
@@ -85,6 +91,15 @@ describe('the locator bar', () => {
   let router: Router;
   let navigation: StubNavigation;
   let shell: ShellState;
+  let preferences: ReturnType<typeof stubAccountPreferences>;
+  let help: StubbedHelpLinks;
+  let helpHrefs: Record<string, string>;
+
+  const toggle = (): HTMLButtonElement | null =>
+    fixture.nativeElement.querySelector('.ocu-locator-favorite');
+
+  const helpLink = (): HTMLAnchorElement | null =>
+    fixture.nativeElement.querySelector('.ocu-locator-help');
 
   const segments = (): HTMLElement[] =>
     Array.from(
@@ -97,17 +112,26 @@ describe('the locator bar', () => {
     fixture.detectChanges();
   };
 
-  beforeEach(() => {
-    navigation = new StubNavigation();
-    shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  /**
+   * Mount the bar over whatever `preferences` currently holds. Split out of `beforeEach` so a
+   * spec about a refused write can seed its own store first: `AccountPreferences` is read at
+   * construction, so swapping it afterwards would leave the component on the first one.
+   */
+  const build = () => {
     TestBed.configureTestingModule({
       providers: [
+        { provide: HelpLinks, useValue: help },
+        { provide: AccountPreferences, useValue: preferences },
         provideRouter([
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
           { path: 'permissions/users/:id', children: [] },
           // DW-161's second screen: the area segment's target when the first one is refused.
           { path: 'permissions/roles', children: [] },
+          { path: 'permissions/users/details/:id', children: [] },
+          { path: 'web-applications/rest-apis/document/:id', children: [] },
+          { path: 'security/oauth/clients/:id', children: [] },
+          { path: 'agent/definitions/edit/:id', children: [] },
           { path: '**', children: [] },
         ]),
         {
@@ -115,11 +139,23 @@ describe('the locator bar', () => {
           useValue: navigation as unknown as NavigationService,
         },
         { provide: ShellState, useValue: shell },
+        // Story 6.7: the locator injects ScreenStores to read a parent-scoped detail screen's
+        // loaded row for its entity label.
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
       ],
     });
     fixture = TestBed.createComponent(LocatorBar);
     router = TestBed.inject(Router);
     fixture.detectChanges();
+  };
+
+  beforeEach(() => {
+    navigation = new StubNavigation();
+    shell = new ShellState({ account: stubAccountPreferences() });
+    preferences = stubAccountPreferences();
+    helpHrefs = {};
+    help = stubHelpLinks(helpHrefs);
+    build();
   });
 
   it('is a nav named Breadcrumb, with the area navigating and the screen current', async () => {
@@ -214,6 +250,42 @@ describe('the locator bar', () => {
     expect(fixture.nativeElement.querySelector('.ocu-locator-entity')).toBeNull();
   });
 
+  it('Story 6.7: on a parent-scoped detail screen the entity segment names the loaded row, and the decoded id until then', async () => {
+    const DETAIL: ScreenDeclaration = screenDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.DetailStub',
+      route: 'permissions/users/details',
+      area: 'permissions',
+      labelKey: 'navAreaPermissions',
+      archetype: 'detail',
+      parentScope: 'permissions/users',
+      id: { kind: 'composite', parts: ['Id'] },
+      table: {
+        columns: [{ field: 'Name', labelKey: 'tableColumnName', kind: 'name' }],
+        emptyNextKey: '',
+        emptyAgentKey: '',
+      },
+    });
+    navigation.screenForUrl = (url: string) => {
+      const path = url.split('?')[0].replace(/^\/+/, '');
+      return path.startsWith('permissions/users/details') ? DETAIL : null;
+    };
+
+    // Before the row has loaded: the id, decoded, exactly as any other entity segment.
+    await go('/permissions/users/details/42');
+    let entity = fixture.nativeElement.querySelector('.ocu-locator-entity');
+    expect(entity.textContent.trim()).toBe('42');
+
+    // The row lands on the shared store with no navigation after it, as the page's own read does
+    // on a cold deep link: the entity segment reads its name column instead of the id.
+    const store = TestBed.inject(ScreenStores).for(DETAIL.descriptor, DETAIL.refreshRates);
+    store.applyTick([{ Id: 42, Name: 'The forty-second row' }], false, '', new Date());
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    entity = fixture.nativeElement.querySelector('.ocu-locator-entity');
+    expect(entity.textContent.trim()).toBe('The forty-second row');
+  });
+
   it('DW-142: once an entity is selected, the screen segment becomes a link back to the list', async () => {
     await go('/permissions/users/_SYSTEM?ns=USER');
 
@@ -232,6 +304,31 @@ describe('the locator bar', () => {
     screenLink?.click();
     await fixture.whenStable();
     expect(router.url).toBe('/permissions/users?ns=USER');
+  });
+
+  it('DW-1004: on an open OpenAPI document, the screen segment links back to the explorer it was opened from', async () => {
+    await go('/web-applications/rest-apis/document/%252Fapi%252Focupilot?ns=HSCUSTOM');
+
+    const links: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('.ocu-locator-link'));
+    const screenLink = links.find((el) => el.textContent?.trim() === STRINGS.openApiViewerLabel);
+    expect(screenLink).not.toBeUndefined();
+    expect(fixture.nativeElement.querySelector('.ocu-locator-entity').textContent.trim()).toBe('/api/ocupilot');
+
+    screenLink?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/web-applications/rest-apis?ns=HSCUSTOM');
+  });
+
+  it('Story 6.4: on a tab of a tabbed screen, the screen segment routes to the group', async () => {
+    // Mutation (Rule 19): drop `tabGroupFor(screen)` from the screen segment's route in
+    // `locator-bar.ts` -> the segment opens the tab's own route and this goes red.
+    await go('/security/oauth/clients/OcuPilotTestB?ns=HSCUSTOM');
+    const links: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('.ocu-locator-link'));
+    const screenLink = links.find((el) => el.textContent?.trim() === STRINGS.oauthTabClients);
+    expect(screenLink).not.toBeUndefined();
+    screenLink?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/security/oauth?ns=HSCUSTOM');
   });
 
   it('DW-143: a denied area segment stays listed and refuses, exactly as the rail does', async () => {
@@ -319,6 +416,76 @@ describe('the locator bar', () => {
     expect(router.url).toBe('/permissions/users?ns=USER');
   });
 
+  it('Story 4.7 AC5: the screen segment is a focusable heading, unlabelled with no arrival standing', async () => {
+    await go('/permissions/users');
+    const heading: HTMLElement = fixture.nativeElement.querySelector('#ocu-locator-screen');
+    expect(heading).not.toBeNull();
+    expect(heading.tagName).toBe('H2');
+    expect(heading.getAttribute('tabindex')).toBe('-1');
+    expect(heading.getAttribute('aria-label')).toBeNull();
+    expect(heading.textContent?.trim()).toBe(STRINGS.navAreaSecurity);
+  });
+
+  it('Story 4.7 AC5: an arrival announcement labels the heading and focuses it once', async () => {
+    await go('/permissions/users');
+    const heading: HTMLElement = fixture.nativeElement.querySelector('#ocu-locator-screen');
+    document.body.appendChild(fixture.nativeElement);
+    try {
+      shell.announceArrival('permissions/users', 'Security -- opened by the agent; Back returns');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(heading.getAttribute('aria-label')).toBe('Security -- opened by the agent; Back returns');
+      expect(document.activeElement).toBe(heading);
+    } finally {
+      fixture.nativeElement.remove();
+    }
+  });
+
+  it('Story 4.7 AC5: a second arrival at the same screen, even with identical text, focuses the heading again', async () => {
+    await go('/permissions/users');
+    const heading: HTMLElement = fixture.nativeElement.querySelector('#ocu-locator-screen');
+    document.body.appendChild(fixture.nativeElement);
+    try {
+      shell.announceArrival('permissions/users', 'same words');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      heading.blur();
+      expect(document.activeElement).not.toBe(heading);
+
+      // Mutation (Rule 19): comparing the announcement text instead of `ShellState`'s own
+      // arrival token would treat this as "already focused" and skip it, since the text is
+      // unchanged from the first arrival.
+      shell.announceArrival('permissions/users', 'same words');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(heading);
+    } finally {
+      fixture.nativeElement.remove();
+    }
+  });
+
+  it('Story 4.7 AC5: clearing the arrival drops the label, so it does not survive the next navigation', async () => {
+    await go('/permissions/users');
+    const heading: HTMLElement = fixture.nativeElement.querySelector('#ocu-locator-screen');
+    shell.announceArrival('permissions/users', 'Security -- opened by the agent; Back returns');
+    fixture.detectChanges();
+    expect(heading.getAttribute('aria-label')).not.toBeNull();
+
+    // What `app.ts` does on every `NavigationStart`: a later, user-initiated arrival at this same
+    // screen must not be announced as the agent's.
+    shell.clearArrival();
+    fixture.detectChanges();
+    expect(heading.getAttribute('aria-label')).toBeNull();
+  });
+
+  it('an ordinary arrival at a different screen carries no aria-label here', async () => {
+    await go('/permissions/users');
+    shell.announceArrival('permissions/roles', 'Permissions -- opened by the agent; Back returns');
+    fixture.detectChanges();
+    const heading: HTMLElement = fixture.nativeElement.querySelector('#ocu-locator-screen');
+    expect(heading.getAttribute('aria-label')).toBeNull();
+  });
+
   it('a URL naming no declared screen renders no segments at all', async () => {
     await go('/');
     expect(segments()).toHaveLength(1);
@@ -326,4 +493,148 @@ describe('the locator bar', () => {
     fixture.detectChanges();
     expect(segments()).toHaveLength(0);
   });
+
+  // --- Story 15.2: the favorite toggle -------------------------------------------------------
+
+  it('Story 15.2: a built screen that names a route carries the toggle, unpressed and named for what it does', async () => {
+    await go('/permissions/users');
+
+    const control = toggle();
+    expect(control).not.toBeNull();
+    expect(control?.getAttribute('aria-pressed')).toBe('false');
+    expect(control?.getAttribute('aria-label')).toBe(STRINGS.favoritesAdd);
+    // The glyph is decorative: the accessible name is the label alone.
+    expect(
+      control?.querySelector('.ocu-locator-favorite-glyph')?.getAttribute('aria-hidden')
+    ).toBe('true');
+  });
+
+  it('Story 15.2: Home names no route, so it carries no toggle', async () => {
+    await go('/');
+    expect(toggle()).toBeNull();
+  });
+
+  it('Story 15.2: an unlisted screen carries no toggle, because the route it would pin is not the screen on display', async () => {
+    // `agent/definitions/edit` declares sideBarPosition 0 and takes an entity id, so its declared
+    // route is the id-less parent. Pinning that would put a row on Home whose button opens the
+    // Definition form with no definition, and the command box -- which filters the same roster the
+    // same way -- could never rank the favorite either.
+    //
+    // Mutation (Rule 19): drop `|| !isListedScreen(screen)` from `LocatorBar.favoriteRoute` ->
+    // this goes red, and the star appears on every entity editor in the product.
+    navigation.screenForUrl = (url: string) => {
+      const path = url.split('?')[0].replace(/^\/+/, '');
+      return path.startsWith('agent/definitions/edit')
+        ? screenForRoute('agent/definitions/edit')
+        : null;
+    };
+
+    await go('/agent/definitions/edit/42');
+    expect(toggle()).toBeNull();
+  });
+
+  it('Story 15.2: activating the toggle pins the screen, flips aria-pressed and announces it politely', async () => {
+    await go('/permissions/users');
+    toggle()?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(preferences.favorites()).toEqual(['permissions/users']);
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('true');
+    expect(toggle()?.getAttribute('aria-label')).toBe(STRINGS.favoritesRemove);
+
+    const status: HTMLElement = fixture.nativeElement.querySelector('.ocu-locator-status');
+    expect(status.getAttribute('role')).toBe('status');
+    expect(status.textContent?.trim()).toBe(STRINGS.favoritesAdded);
+  });
+
+  it('Story 15.2: a second activation unpins it, and the toggle reads unpressed again', async () => {
+    await go('/permissions/users');
+    toggle()?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    toggle()?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(preferences.favorites()).toEqual([]);
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('false');
+    expect(
+      fixture.nativeElement.querySelector('.ocu-locator-status').textContent?.trim()
+    ).toBe(STRINGS.favoritesRemoved);
+  });
+
+  it("Story 15.5 (DW-1326): a refused pin is announced assertively, in the instance's own words", async () => {
+    // Mutation (Rule 19): drop the `role="alert"` region, or make `favoriteRefusal` read `''` ->
+    // this goes red, and the cap's refusal would again be surfaced nowhere at all.
+    TestBed.resetTestingModule();
+    preferences = stubAccountPreferences({
+      writeAnswer: 'refused',
+      refusalReason: 'This account already holds as many favorites as the instance keeps.',
+    });
+    build();
+
+    await go('/permissions/users');
+    toggle()?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const regions: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-locator-status')
+    );
+    const alert = regions.find((region) => region.getAttribute('role') === 'alert');
+    const polite = regions.find((region) => region.getAttribute('role') === 'status');
+    expect(alert?.textContent?.trim()).toBe(
+      'This account already holds as many favorites as the instance keeps.'
+    );
+    // The pin did not happen, so nothing confirms it politely.
+    expect(polite?.textContent?.trim()).toBe('');
+    expect(preferences.favorites()).toEqual([]);
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('Story 15.2: the toggle reads pressed on return to a screen pinned elsewhere', async () => {
+    await preferences.add('favorite', 'permissions/users');
+    await go('/permissions/users');
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('Story 15.3: a screen whose classic page publishes a help address gets a Help control opening it in a new tab', async () => {
+    await go('/permissions/users');
+    // The address arrives from the instance after the route does; `reset()` lets this spec seed an
+    // answer for a route the component has already asked about once.
+    helpHrefs['permissions/users'] = 'https://ocupilot.invalid/docs/page?KEY=A%2CB';
+    help.reset();
+    await help.load('permissions/users');
+    fixture.detectChanges();
+
+    const link = helpLink();
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('https://ocupilot.invalid/docs/page?KEY=A%2CB');
+    expect(link?.getAttribute('target')).toBe('_blank');
+    expect(link?.getAttribute('rel')).toBe('noreferrer');
+    // Its visible word is Help and its accessible name says which screen's help it is.
+    expect(link?.textContent).toContain(STRINGS.helpLabel);
+    expect(link?.getAttribute('aria-label')).toBe(STRINGS.helpForScreen);
+  });
+
+  it('Story 15.3: a screen whose classic page publishes no help address gets no control at all', async () => {
+    await go('/permissions/users');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    // The stub answered unavailable, which is what a classic page with no HELPADDRESS answers.
+    expect(help.calls.map((call) => call.path)).toEqual([
+      '/api/ocupilot/ui/help?route=permissions%2Fusers',
+    ]);
+    expect(helpLink()).toBeNull();
+  });
+
+  it('Story 15.3: a screen with no classic page is never asked about, and gets no control', async () => {
+    await go('/');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(help.calls).toEqual([]);
+    expect(helpLink()).toBeNull();
+  });
+
 });

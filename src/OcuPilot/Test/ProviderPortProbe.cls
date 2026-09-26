@@ -11,7 +11,9 @@
 /// TLS-configuration answer are each a switch with an unset state that falls through to the
 /// shipped behaviour, so a test that sets none of them exercises production's own path.</p>
 /// <p><b>No method of the port itself is replaced.</b> The gate order, the endpoint judgement, the
-/// adapter resolution, the request configuration and the fault are the shipped ones.</p>
+/// adapter resolution, the request configuration and the fault are the shipped ones.
+/// <method>LogRaw</method> records each line before calling the shipped one, so a test can read
+/// what reached the log.</p>
 Class OcuPilot.Test.ProviderPortProbe Extends OcuPilot.Port.ProviderPort
 {
 
@@ -71,6 +73,16 @@ ClassMethod GateClass() As %String
     Quit "OcuPilot.Test.ProviderGate"
 }
 
+/// <p>The per-user question <method>OcuPilot.Port.ProviderPort.Invoke</method> asks (DW-1309),
+/// answered from the same switch <method>GateClass</method> names, for the same reason: the suite
+/// runs as <code>%All</code> and neither the process check nor the per-user one can be made to
+/// refuse against the instance. Which account it is asked about is
+/// <class>OcuPilot.Test.ProviderOwnerProbe</class>'s subject, not this class's.</p>
+ClassMethod HoldsPairForUser(pUser As %String, pResource As %String, pPermission As %String) As %Boolean
+{
+    Quit $ClassMethod(..GateClass(), "HoldsPrivilege", pResource, pPermission)
+}
+
 /// <p>The switched credential class, or the shipped one when no test set it.</p>
 ClassMethod SecretClass() As %String
 {
@@ -83,6 +95,25 @@ ClassMethod ResolvedUsername() As %String
 {
     If $Data(^||OcuPilotProviderPortProbe("user")) Quit ^||OcuPilotProviderPortProbe("user")
     Quit ##super()
+}
+
+/// <p>Record each line the port logs as <code>message | code | status text</code>, then write it
+/// through the shipped <method>OcuPilot.Port.ProviderPort.LogRaw</method>.</p>
+ClassMethod LogRaw(pMessage As %String, pStatus As %Status, pCode As %String = "")
+{
+    Set ^||OcuPilotProviderPortProbe("log", $Increment(^||OcuPilotProviderPortProbe("log"))) = pMessage _ " | " _ pCode _ " | " _ $System.Status.GetErrorText(pStatus)
+    Do ##super(pMessage, pStatus, pCode)
+}
+
+/// <p>Every line recorded since the last <method>Reset</method>, joined by <code>$Char(10)</code>,
+/// or <code>""</code> when none was.</p>
+ClassMethod Logged() As %String
+{
+    Set tLines = ""
+    For tI = 1:1:+$Get(^||OcuPilotProviderPortProbe("log")) {
+        Set tLines = tLines _ $Select(tI = 1: "", 1: $Char(10)) _ $Get(^||OcuPilotProviderPortProbe("log", tI))
+    }
+    Quit tLines
 }
 
 /// <p>The switched TLS answer, or the real <code>%SYS</code> read when no test set one.</p>

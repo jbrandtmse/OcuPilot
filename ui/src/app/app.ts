@@ -8,36 +8,83 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { NavigationStart, Router, RouterOutlet } from '@angular/router';
 
 import { DefinitionActions } from './areas/agent/definition-actions';
+import { WebAppActions } from './areas/web-applications/web-app-actions';
+import { UserActions } from './areas/permissions/user-actions';
+import { UserCreateForm } from './areas/permissions/user-create-form.store';
+import { RoleActions } from './areas/permissions/role-actions';
+import { RoleCreateForm } from './areas/permissions/role-create-form.store';
+import { ResourceActions } from './areas/permissions/resource-actions';
+import { ResourceEditor } from './areas/permissions/resource-editor.store';
+import { AuditEventActions } from './areas/security/audit-event-actions';
+import { AuditEventEditor } from './areas/security/audit-event-editor.store';
+import { WalletActions } from './areas/security/wallet-actions';
+import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
+import { SslActions } from './areas/security/ssl-actions';
+import { TaskActions } from './areas/tasks/task-actions';
+import { SslForm } from './areas/security/ssl-form.store';
+import { X509Actions } from './areas/security/x509-actions';
+import { X509Form } from './areas/security/x509-form.store';
+import { DeviceActions } from './areas/os-management/device-actions';
+import { DeviceForm } from './areas/os-management/device-form.store';
+import { OAuthActions } from './areas/security/oauth-actions';
+import { OAuthServerDescriptionForm } from './areas/security/oauth-server-description-form.store';
+import { OAuthClientForm } from './areas/security/oauth-client-form.store';
+import { OAuthResourceServerForm } from './areas/security/oauth-resource-server-form.store';
+import { OAuthServerForm } from './areas/security/oauth-server-form.store';
+import { OAuthRegisteredClientForm } from './areas/security/oauth-registered-client-form.store';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { About } from './core/about';
+import { AccountPreferences } from './core/account-preferences';
+import { AgentContext } from './core/agent-context';
 import { AgentStatus, DEFINITIONS_ROUTE } from './core/agent-status';
 import { ConnectivityService } from './core/connectivity';
+import { HelpLinks } from './core/help';
 import { FormDirty } from './core/form-dirty';
 import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService, editorScreenFor, routeFromUrl, screenForRoute, withQuery } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
+import { PanelState } from './core/panel-layout';
+import { TurnStore } from './core/turn';
 import { RefreshService } from './core/refresh';
 import { ScopeService } from './core/scope';
 import { Session, isInstallStateUnreadable, isSignedIn } from './core/session';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { SuggestedView } from './core/suggested-view';
+import { SystemInfo } from './core/system-info';
+import { ThemeState } from './core/theme';
+import { AgentNavigator } from './shell/agent-navigator';
+import { RecentsRecorder } from './shell/recents-recorder';
 import { CommandBar } from './shell/command-bar';
 import { FaultBanner } from './shell/fault-banner';
 import { Header } from './shell/header';
 import { InstanceNotice } from './shell/instance-notice';
 import { LocatorBar } from './shell/locator-bar';
-import { Panel } from './shell/panel';
+import { COMPOSER_ID, Panel } from './shell/panel';
 import { Rail } from './shell/rail';
-import { SideBar } from './shell/side-bar';
+import { SIDE_BAR_OVERLAY_ID, SideBar } from './shell/side-bar';
 import { SignIn } from './shell/sign-in';
+import { StaleBundleNotice } from './shell/stale-bundle-notice';
 import { StatusBar } from './shell/status-bar';
+import { ToastHost } from './shell/toast-host';
 
 /** The content area's own element, which Escape returns focus to when nothing is open. */
 const CONTENT_ID = 'ocu-content';
+
+/** The chord that focuses the composer, on both platforms (EXPERIENCE.md Keyboard model: Ctrl/Cmd+I). */
+export function isComposerChord(event: KeyboardEvent): boolean {
+  return (
+    (event.ctrlKey || event.metaKey) &&
+    !event.altKey &&
+    !event.shiftKey &&
+    event.key.toLowerCase() === 'i'
+  );
+}
 
 /**
  * The root component: the two gates between a browser and the product, and the page frame
@@ -79,6 +126,12 @@ const CONTENT_ID = 'ocu-content';
  * return focus to the screen". No overlay handles Escape itself, so one key press closes one
  * thing.
  *
+ * **The row's widths are `PanelState`'s** (Story 4.3). This component is the one viewport listener:
+ * it feeds the measured width into the store, binds the panel's width from the layout the store
+ * resolves, and marks the side bar and the content column `inert` while the panel is full screen.
+ * Ctrl/Cmd+I focuses the composer from anywhere unless a dialog, the command box or the account
+ * menu is open.
+ *
  * **The requested route is preserved by doing nothing to it.** The router resolves the URL
  * the server answered with `index.html`, and this component withholds the outlet rather
  * than redirecting, so the address never changes and the screen appears at the moment both
@@ -108,6 +161,7 @@ const CONTENT_ID = 'ocu-content';
     SignIn,
     InstanceNotice,
     FaultBanner,
+    StaleBundleNotice,
     Header,
     Rail,
     SideBar,
@@ -115,8 +169,13 @@ const CONTENT_ID = 'ocu-content';
     CommandBar,
     StatusBar,
     Panel,
+    ToastHost,
   ],
-  host: { '(document:keydown.escape)': 'onEscape()' },
+  host: {
+    '(document:keydown.escape)': 'onEscape()',
+    '(document:keydown)': 'onComposerChord($event)',
+    '(window:resize)': 'measureViewport()',
+  },
   template: `@if (frameShown) {
       <a class="ocu-skip-link" [href]="skipHref" (click)="onSkipToContent($event)">{{
         STRINGS.navSkipToContent
@@ -124,23 +183,31 @@ const CONTENT_ID = 'ocu-content';
     }
     <h1 class="ocu-product-heading">{{ STRINGS.productName }}</h1>
     <app-fault-banner />
+    <app-stale-bundle-notice />
     @if (installUnreadable) {
       <app-instance-notice />
     } @else {
       @if (signedIn) {
         @if (instanceReady) {
           <app-header />
-          <div class="ocu-shell">
+          <div
+            class="ocu-shell"
+            [class.ocu-shell-full-screen]="fullScreen"
+            [style.--ocu-panel-live-width]="panelLiveWidth"
+          >
             <app-rail />
-            <app-side-bar />
-            <div class="ocu-shell-content">
-              <app-locator-bar />
-              <app-command-bar />
-              <main [id]="contentId" class="ocu-content" tabindex="-1">
-                <router-outlet />
-              </main>
+            <app-side-bar [attr.inert]="coveredInert" />
+            <div class="ocu-shell-content" [attr.inert]="coveredInert">
+              <div class="ocu-shell-content-floor">
+                <app-locator-bar />
+                <app-command-bar />
+                <main [id]="contentId" class="ocu-content" tabindex="-1">
+                  <router-outlet />
+                </main>
+              </div>
             </div>
-            <app-panel />
+            <app-panel [style.width.px]="panelWidth" />
+            <app-toast-host />
           </div>
           <app-status-bar />
         } @else {
@@ -156,11 +223,18 @@ export class App {
   private readonly instance = inject(InstanceService);
   private readonly navigation = inject(NavigationService);
   private readonly agentStatus = inject(AgentStatus);
+  private readonly agentContext = inject(AgentContext);
+  private readonly accountPreferences = inject(AccountPreferences);
+  private readonly about = inject(About);
+  private readonly helpLinks = inject(HelpLinks);
+  private readonly systemInfo = inject(SystemInfo);
+  private readonly suggested = inject(SuggestedView);
   private readonly scope = inject(ScopeService);
   private readonly router = inject(Router);
   private readonly connectivity = inject(ConnectivityService);
   private readonly refresh = inject(RefreshService);
   private readonly shell = inject(ShellState);
+  private readonly theme = inject(ThemeState);
 
   private readonly auditSearch = inject(AuditSearch);
   private readonly errorLogDrill = inject(ErrorLogDrill);
@@ -170,7 +244,63 @@ export class App {
   // its three row actions are registered by this service rather than by a page of its own
   // (`areas/agent/definition-actions.ts`). Injecting it here is what brings it into existence.
   private readonly definitionActions = inject(DefinitionActions);
+  // Constructed for its own sake, the same way, and for the same reason DW-246 gives: the Web
+  // applications list is served by the generic `ListPage`, so its declared Create is registered by
+  // a service rather than by a page -- and registering it here, before the first change-detection
+  // pass, is what keeps `CommandBar`'s own signal write out of a pass that has already checked it
+  // (`areas/web-applications/web-app-actions.ts`).
+  private readonly webAppActions = inject(WebAppActions);
+  // Constructed for its own sake, the same way and for the same reason: the Users list's declared
+  // Create (`areas/permissions/user-actions.ts`).
+  private readonly userActions = inject(UserActions);
+  private readonly userCreateForm = inject(UserCreateForm);
+  // The Roles list's declared Create, the same way (`areas/permissions/role-actions.ts`).
+  private readonly roleActions = inject(RoleActions);
+  private readonly roleCreateForm = inject(RoleCreateForm);
+  // The Resources list's declared Create, the same way, which opens the resource editor dialog
+  // (`areas/permissions/resource-actions.ts`).
+  private readonly resourceActions = inject(ResourceActions);
+  private readonly resourceEditor = inject(ResourceEditor);
+  // The User events list's declared Create, the same way, which opens the user audit event editor
+  // (`areas/security/audit-event-actions.ts`).
+  private readonly auditEventActions = inject(AuditEventActions);
+  private readonly auditEventEditor = inject(AuditEventEditor);
+  // The OAuth 2.0 Server descriptions tab's declared Create, the same way (`areas/security/oauth-actions.ts`).
+  private readonly oauthActions = inject(OAuthActions);
+  private readonly oauthServerDescriptionForm = inject(OAuthServerDescriptionForm);
+  // The Client configurations tab's Create, the same way (Story 12.5).
+  private readonly oauthClientForm = inject(OAuthClientForm);
+  // The Resource servers tab's Create, the same way (Story 12.6).
+  private readonly oauthResourceServerForm = inject(OAuthResourceServerForm);
+  // The Authorization server tab's Create, the same way (Story 12.7).
+  private readonly oauthServerForm = inject(OAuthServerForm);
+  // The Server client descriptions tab's Create, the same way (Story 12.8).
+  private readonly oauthRegisteredClientForm = inject(OAuthRegisteredClientForm);
+  // The X.509 list's declared Create, labelled Import, the same way (`areas/security/x509-actions.ts`).
+  private readonly x509Actions = inject(X509Actions);
+  private readonly x509Form = inject(X509Form);
+  // The Secrets list's declared Create, the same way (`areas/security/wallet-actions.ts`).
+  private readonly walletActions = inject(WalletActions);
+  private readonly walletSecretForm = inject(WalletSecretForm);
+  // The Devices list's declared Create, the same way (`areas/os-management/device-actions.ts`).
+  private readonly deviceActions = inject(DeviceActions);
+  private readonly deviceForm = inject(DeviceForm);
+  // The SSL/TLS list's declared Create, the same way (`areas/security/ssl-actions.ts`).
+  private readonly sslActions = inject(SslActions);
+  private readonly sslForm = inject(SslForm);
+  // The Task schedule's declared Create, which opens the New Task wizard, the same way
+  // (`areas/tasks/task-actions.ts`). The wizard's store resets when its page is left.
+  private readonly taskActions = inject(TaskActions);
+  // Constructed for its own sake, the same way: there is no component whose job it is to act on
+  // the agent's navigation directive, so injecting it here is what brings it into existence for
+  // the life of the tab (`shell/agent-navigator.ts`).
+  private readonly agentNavigator = inject(AgentNavigator);
+  // Constructed for its own sake, the same way: nothing renders the recents recorder, and it has
+  // to live for the tab so every arrival at a built screen is registered (Story 15.2).
+  private readonly recentsRecorder = inject(RecentsRecorder);
   private readonly overlays = inject(OverlayStack);
+  private readonly panel = inject(PanelState);
+  private readonly turn = inject(TurnStore);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   private readonly injector = inject(Injector);
@@ -197,6 +327,9 @@ export class App {
 
   private readonly instanceStatus = signal(this.instance.status());
 
+  /** Bumped by `PanelState`, so the row's bindings re-read it under `OnPush`. */
+  private readonly panelGeneration = signal(0);
+
   constructor() {
     const stopSession = this.session.subscribe(() => {
       this.sessionState.set(this.session.state());
@@ -207,10 +340,29 @@ export class App {
       this.instanceStatus.set(this.instance.status());
       this.focusOnFrameArrival();
     });
+    const stopPanel = this.panel.subscribe(() => this.panelGeneration.update((value) => value + 1));
+    // A read that settles after the fresh-sign-in flag was left unspent gives the gate its next pass.
+    const stopStatus = this.agentStatus.subscribe(() => this.retryFirstLoginGate());
+    const stopNavigation = this.navigation.subscribe(() => this.retryFirstLoginGate());
+    const stopRouter = this.router.events.subscribe((event) => {
+      if (event instanceof NavigationStart) {
+        this.spendSignInOnNavigation();
+        // The arrival announcement is for the one screen the agent's own navigation opened
+        // (Story 4.7); it must not survive into whatever navigation comes next, agent-initiated
+        // or not. `AgentNavigator` sets a fresh one only after its own `navigateByUrl` promise
+        // resolves, which is after the `NavigationStart` this clears.
+        this.shell.clearArrival();
+      }
+    });
     inject(DestroyRef).onDestroy(() => {
       stopSession();
       stopInstance();
+      stopPanel();
+      stopStatus();
+      stopNavigation();
+      stopRouter.unsubscribe();
     });
+    this.measureViewport();
 
     // The tab may already be signed in when this component is constructed -- a reload
     // holding a live pair never changes state, so the subscription above would never fire.
@@ -238,12 +390,67 @@ export class App {
     return !this.installUnreadable && this.signedIn && this.instanceReady;
   }
 
+  /** Whether the panel covers the side bar and the content. */
+  protected get fullScreen(): boolean {
+    this.panelGeneration();
+    return this.panel.fullScreen();
+  }
+
+  /** `inert` on what full screen covers, and no attribute at all otherwise. */
+  protected get coveredInert(): string | null {
+    return this.fullScreen ? '' : null;
+  }
+
+  /** The docked panel's width; full screen sizes the panel by the row instead. */
+  protected get panelWidth(): number | null {
+    this.panelGeneration();
+    return this.panel.fullScreen() ? null : this.panel.layout().panelWidth;
+  }
+
+  /**
+   * The docked panel's live width, published on `.ocu-shell` as a custom property so a sibling can
+   * offset against it (DW-1412).
+   *
+   * DESIGN.md's toast recipe places the stack "offset from the right edge by the panel's live
+   * width", and that width existed only as a number in a framework-free store and as this row's own
+   * inline binding -- nothing a stylesheet or another component could read. It is published from
+   * the one getter that already re-reads it, so the two cannot disagree about how wide the panel
+   * is. `'0px'` in full screen, where the panel covers the content area and `app-toast-host` places
+   * no toast at all.
+   */
+  protected get panelLiveWidth(): string {
+    const width = this.panelWidth;
+    return (width === null ? 0 : width) + 'px';
+  }
+
+  /** The one viewport listener: the root element's width, which excludes a scrollbar the page never has. */
+  protected measureViewport(): void {
+    const width = document.documentElement.clientWidth;
+    if (width > 0) this.panel.setViewport(width);
+  }
+
+  /**
+   * Ctrl/Cmd+I focuses the composer from content, side bar or rail. Ignored while a dialog is open
+   * or anything but the side bar is on the overlay stack -- the command box and the account menu.
+   */
+  protected onComposerChord(event: KeyboardEvent): void {
+    if (!isComposerChord(event)) return;
+    if (document.querySelector('[role="dialog"]') !== null) return;
+    const top = this.overlays.top();
+    if (top !== '' && top !== SIDE_BAR_OVERLAY_ID) return;
+    const composer = this.host.nativeElement.querySelector<HTMLElement>('#' + COMPOSER_ID);
+    if (composer === null) return;
+    event.preventDefault();
+    composer.focus();
+  }
+
   /**
    * Move focus to the content area without navigating. The default is prevented because the
    * document's base href would resolve the fragment into a different URL.
    */
   protected onSkipToContent(event: Event): void {
     event.preventDefault();
+    if (this.panel.fullScreen()) return;
     this.focusContent();
   }
 
@@ -254,6 +461,13 @@ export class App {
    * focus to it never adds a Tab stop.
    */
   protected onEscape(): void {
+    // Full screen covers the side bar and the content, both `inert`: Escape neither collapses the
+    // covered bar nor moves focus into content that cannot hold it, so focus stays where it is.
+    if (this.panel.fullScreen()) {
+      const top = this.overlays.top();
+      if (top !== '' && top !== SIDE_BAR_OVERLAY_ID) this.overlays.closeTop();
+      return;
+    }
     if (this.overlays.closeTop()) return;
     this.focusContent();
   }
@@ -342,12 +556,80 @@ export class App {
       // pasted API key that has not been stored yet (AD-35) -- and its dirty flag would otherwise
       // make the next principal's first navigation ask about work that is not theirs.
       this.definitionForm.reset();
+      // The create-a-user form holds a password THIS principal typed and has not saved (AD-35).
+      this.userCreateForm.reset();
+      // The create-a-role form holds a role THIS principal was composing and has not saved.
+      this.roleCreateForm.reset();
+      // The resource editor holds a resource THIS principal was creating or editing and has not saved.
+      this.resourceEditor.reset();
+      // The user audit event editor holds an event THIS principal was creating or editing and has not saved.
+      this.auditEventEditor.reset();
+      // The X.509 form holds a certificate, a private key and its password THIS principal pasted and has not saved (AD-35).
+      this.x509Form.reset();
+      // The server description editor holds a registration access token THIS principal typed and has not saved (AD-35).
+      this.oauthServerDescriptionForm.reset();
+      // The client configuration editor holds secrets THIS principal typed and has not saved (AD-35).
+      this.oauthClientForm.reset();
+      // The resource server editor holds a client secret THIS principal typed and has not saved (AD-35).
+      this.oauthResourceServerForm.reset();
+      // The authorization server editor holds a key password THIS principal typed and has not saved (AD-35).
+      this.oauthServerForm.reset();
+      // The server client description editor holds a client secret THIS principal typed or generated and has not saved (AD-35).
+      this.oauthRegisteredClientForm.reset();
+      // The wallet secret form holds a value THIS principal typed and has not saved (AD-35).
+      this.walletSecretForm.reset();
+      // The device editor holds a device THIS principal was creating or editing and has not saved.
+      this.deviceForm.reset();
+      // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).
+      this.sslForm.reset();
       this.formDirty.reset();
       // The ninth: whether the instance holds an enabled definition is a read THIS principal
       // made, and the panel and the rail's dot pick an audience from it beside the navigation
       // map's verdict. Dropped in the same gesture as the map, so the two can never be one
       // principal's answer and another's (AD-8).
       this.agentStatus.reset();
+      // The draft, the full screen and the remembered width are all this principal's (Story 15.5:
+      // the width is one account's row on the instance, not the browser's), and so is the side
+      // bar's open state, which is the same row family.
+      this.panel.endSession();
+      this.shell.endSession();
+      // The theme is the same row family (Story 15.6): back to light before the next principal's
+      // read, rather than rendering the departed principal's choice until it settles.
+      this.theme.endSession();
+      // The tenth: the conversation id and transcript are this principal's own (Story 4.5); the
+      // next sign-in in this tab must start fresh rather than adopting a departed principal's
+      // conversation (AD-8), and any poll this principal's turn left running must stop.
+      this.turn.endSession();
+      // With no conversation left the transcript is known empty, so it reads restored: the next
+      // sign-in in this tab shows the idle greeting and its suggested prompts (Story 11.3) without
+      // waiting for a bootstrap restore that has already run.
+      void this.turn.restore();
+      // The eleventh: the context chip's sharing choice is per user (Story 4.11), and the
+      // instance's own answer about where a turn's provider call goes belongs to no one until
+      // the next principal reads it fresh.
+      this.agentContext.reset();
+      // The twelfth: Home's suggested view holds this principal's own answers -- how many
+      // application errors they may read in the namespace they were scoped to. The next sign-in
+      // in this tab reads them again rather than rendering a departed principal's counts (AD-8).
+      this.suggested.reset();
+      // The thirteenth: the favorites and recent items are one account's rows (Story 15.2,
+      // AD-50), and Home renders them. The next sign-in in this tab reads them again rather than
+      // showing a departed principal's list (AD-8).
+      this.accountPreferences.reset();
+      // The fourteenth: the recorder's own memory of the last route registered. Sign-out leaves
+      // the tab on the same URL, so a recorder that still held it would silently skip the one
+      // screen the next principal resumes on (Story 15.2, AD-8).
+      this.recentsRecorder.reset();
+      // The fifteenth and sixteenth: the instance overview the About dialog and Home's links panel
+      // render, and the per-screen help addresses the locator bar resolved. Both are the
+      // instance's answers to this caller (Story 15.3, AD-8), and the next sign-in asks again.
+      this.about.reset();
+      this.helpLinks.reset();
+      // The seventeenth: the instance state Home's System Information panel renders. Every member
+      // is what the instance answered *this* caller, degrading where their privileges refused
+      // (Story 15.4, AD-8), so the next sign-in in this tab asks again rather than showing a
+      // departed principal's answer.
+      this.systemInfo.reset();
       return;
     }
     void this.instance.verify();
@@ -363,6 +645,14 @@ export class App {
     // without an authentication, and a status read left to the gate alone would leave the panel
     // with nothing to answer from on exactly the path FR-28 says the reminder must survive.
     const status = this.agentStatus.load();
+    // The fifth: the context chip's own answer, read beside the status so the chip is never
+    // showing off a definition that Enable/kill-switch just changed underneath it.
+    void this.agentContext.load();
+    // The sixth: the remembered lists the locator toggle, Home's two blocks and the command box's
+    // ranking all read. Issued on every signed-in pass for the same reason the status read is --
+    // a reloaded tab reaches `signed-in` without an authentication, and Home may be the first
+    // screen it paints.
+    void this.accountPreferences.load();
     void this.runFirstLoginGate(map, status);
   }
 
@@ -370,15 +660,17 @@ export class App {
    * The first-login gate (FR-28): an administrator who signs in while no definition is enabled
    * lands on the Definition form, under its landing banner.
    *
-   * **It keys off an authentication, never off `signed-in`.** `consumeFreshSignIn()` answers true
-   * once per `adopt()`, which is the one path a genuine authentication takes -- the silent probe
-   * and an accepted form login both. A tab resuming a stored pair reaches `signed-in` through
-   * `start()` without it, so a reload is not a login and the requested URL survives, which is the
-   * promise the withheld outlet already makes.
+   * **It keys off an authentication, never off `signed-in`.** `Session` raises its fresh-sign-in
+   * flag once per `adopt()`, which is the one path a genuine authentication takes -- the silent
+   * probe and an accepted form login both. A tab resuming a stored pair reaches `signed-in` through
+   * `start()` without it, so a reload is not a login and the requested URL survives.
    *
-   * **The flag is consumed before anything is awaited.** Several passes of change detection can
-   * reach this method while the two reads are in flight, and exactly one of them may be the
-   * sign-in; reading the one-shot after the await would let a second pass claim it as well.
+   * **The flag is spent only once both reads have answered.** A pass that finds the map unloaded
+   * or the definitions unanswered returns with the flag still raised, and the next read to settle
+   * gives the gate another pass (`retryFirstLoginGate`), until the user's own first navigation
+   * spends it (`spendSignInOnNavigation`). The flag is claimed with
+   * `consumeFreshSignIn()` after the awaits and before anything else, so of several passes awaiting
+   * the same reads exactly one acts.
    *
    * **Nothing about the gate is stored.** What decides whether it fires is the instance's own
    * definition rows and the map's verdict, both re-read on every signed-in pass above; this waits
@@ -386,11 +678,10 @@ export class App {
    * condition clearing and the gate costs no extra request.
    *
    * It declines quietly in every other case: a caller the map refuses, an instance that already
-   * holds an enabled definition, a read that did not answer, and a browser already on the form.
+   * holds an enabled definition, and a browser already on the form.
    */
   private async runFirstLoginGate(map: Promise<void>, status: Promise<void>): Promise<void> {
-    const fresh = this.session.consumeFreshSignIn();
-    if (!fresh) return;
+    if (!this.session.hasFreshSignIn()) return;
     // No screen mounts from here until this method settles, whichever way it settles: the
     // requested screen would otherwise issue its declared read (AD-36) for rows the navigation
     // below throws away, and read again when the user came back by Back. `ScreenOutlet` still
@@ -399,11 +690,13 @@ export class App {
     const release = this.shell.holdScreen();
     try {
       await Promise.all([map, status]);
-      if (!this.agentStatus.answered() || this.agentStatus.configured()) return;
       // `loaded()`, not `answered()`: a map read that completed with a failure leaves every verdict
       // `UNGATED`, so reading the verdict alone would take a caller who holds nothing to a form the
-      // instance will refuse them at. Declining is the safe half of that question.
-      if (!this.navigation.loaded()) return;
+      // instance will refuse them at. Either read unanswered leaves the flag for a later pass.
+      if (!this.agentStatus.answered() || !this.navigation.loaded()) return;
+      if (!isSignedIn(this.session.state())) return;
+      if (!this.session.consumeFreshSignIn()) return;
+      if (this.agentStatus.configured()) return;
       if (!this.navigation.screenVerdict(DEFINITIONS_ROUTE).allowed) return;
       const list = screenForRoute(DEFINITIONS_ROUTE);
       const form = list === null ? null : editorScreenFor(list);
@@ -423,5 +716,29 @@ export class App {
     } finally {
       release();
     }
+  }
+
+  /**
+   * Another pass at the gate once a read settles, for a sign-in whose flag a failed read left
+   * unspent. Taken only when both reads now answer, so a pass never holds the screen for a read
+   * that is still out.
+   */
+  /**
+   * The redirect belongs to the sign-in: the user's first navigation after it spends the flag, so a
+   * read that settles later never moves them off a screen they chose. The router's own first
+   * navigation and a `replaceUrl` correction (the scope replacing a namespace the instance will not
+   * admit) are not the user's and leave the flag alone.
+   */
+  private spendSignInOnNavigation(): void {
+    if (!this.router.navigated) return;
+    if (!isSignedIn(this.session.state()) || !this.session.hasFreshSignIn()) return;
+    if (this.router.currentNavigation()?.extras.replaceUrl === true) return;
+    this.session.consumeFreshSignIn();
+  }
+
+  private retryFirstLoginGate(): void {
+    if (!isSignedIn(this.session.state()) || !this.session.hasFreshSignIn()) return;
+    if (!this.agentStatus.answered() || !this.navigation.loaded()) return;
+    void this.runFirstLoginGate(Promise.resolve(), Promise.resolve());
   }
 }

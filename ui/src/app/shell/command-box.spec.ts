@@ -4,13 +4,22 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PreferenceStore } from '../core/preferences';
 import { ScreenActions } from '../core/screen-actions';
+import { ScreenStores } from '../core/screen-store';
+import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
+import { tableDeclaration } from '../testing/table-declaration';
 import { COMMAND_BOX_OVERLAY_ID, CommandBox } from './command-box';
+import { AccountPreferences } from '../core/account-preferences';
+import {
+  SHELL_SIDE_BAR_OPEN,
+  type StubbedAccountPreferences,
+  lastRemembered,
+  stubAccountPreferences,
+} from '../testing/account-preferences';
 
 /**
  * The command box's rendered contract (EXPERIENCE.md "Opens on click or Ctrl/Cmd+K; typing", "*Header, center.* Opens on click"; DESIGN.md `:1017`),
@@ -85,10 +94,11 @@ describe('the command box', () => {
   let fixture: ComponentFixture<CommandBox>;
   let navigation: StubNavigation;
   let shell: ShellState;
-  let preferences: PreferenceStore;
+  let accountPreferences: StubbedAccountPreferences;
   let overlays: OverlayStack;
   let actions: ScreenActions;
   let creates: number;
+  let signOuts: number;
   let unregisterCreate: () => void;
   const planted: HTMLElement[] = [];
 
@@ -112,15 +122,24 @@ describe('the command box', () => {
 
   beforeEach(() => {
     navigation = new StubNavigation();
-    preferences = new PreferenceStore({ storage: memoryStorage() });
-    shell = new ShellState({ preferences });
+    accountPreferences = stubAccountPreferences();
+    shell = new ShellState({ account: accountPreferences });
     overlays = new OverlayStack();
     // USERS' primary action has a registered handler, as it would once a screen runs it.
     actions = new ScreenActions();
     creates = 0;
+    signOuts = 0;
     unregisterCreate = actions.register(USERS.descriptor, 'create', () => (creates += 1));
+    // DW-389: a declared row action with no registered handler is offered on no surface, so the
+    // stub screen's own `delete` needs one for the box to list it at all.
+    actions.register(USERS.descriptor, 'delete', () => {});
+    actions.register('OcuPilot.Screen.Descriptor.AgentSwitches', 'delete', () => {});
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: accountPreferences },
+        // The box reads the current screen's selection to decide whether a row action is offered
+        // or explained (AD-53), so the stores are real here as they are on the command bar.
+        { provide: ScreenStores, useValue: new ScreenStores({ account: accountPreferences }) },
         provideRouter([
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
@@ -130,6 +149,15 @@ describe('the command box', () => {
         { provide: OverlayStack, useValue: overlays },
         { provide: ScreenActions, useValue: actions },
         { provide: ShellState, useValue: shell },
+        {
+          provide: Session,
+          useValue: {
+            userName: () => 'Dana',
+            signOut: async () => {
+              signOuts += 1;
+            },
+          } as unknown as Session,
+        },
       ],
     });
     fixture = TestBed.createComponent(CommandBox);
@@ -267,7 +295,7 @@ describe('the command box', () => {
 
     expect(router.url).toBe('/permissions/users');
     expect(shell.open()).toBe(false);
-    expect(preferences.sideBarOpen(true)).toBe(false);
+    expect(lastRemembered(accountPreferences.calls, SHELL_SIDE_BAR_OPEN)).toBe('0');
   });
 
   it('choosing a screen whose area navigates (Home) leaves the side bar where it was', async () => {
@@ -353,7 +381,7 @@ describe('the command box', () => {
     // `create` carries published copy in `ACTION_LABELS`, so both surfaces draw it as "Create"
     // -- the same resolution `disable` already goes through.
     const primary = actions.find((option) => label(option) === STRINGS.actionCreate);
-    const rowAction = actions.find((option) => label(option) === 'delete');
+    const rowAction = actions.find((option) => label(option) === STRINGS.actionDelete);
     expect(primary?.getAttribute('aria-disabled')).toBeNull();
     expect(rowAction?.getAttribute('aria-disabled')).toBe('true');
     expect(rowAction?.textContent).toContain(STRINGS.privilegeSelectRowFirst);
@@ -363,6 +391,107 @@ describe('the command box', () => {
     rowAction?.click();
     fixture.detectChanges();
     expect(field().getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it("AD-53: with a row selected, a self-protected action is listed with the instance's own sentence", () => {
+    // The box says what the bar and the row menu say about the same action on the same row: the
+    // reason is the published one, inline after the label, and the entry stays `aria-disabled`
+    // rather than `disabled`.
+    //
+    // Mutation (Rule 19): drop the `selected` lookup from `actionCandidates` -> the box falls back
+    // to "Select a row first" while a row is selected, and this goes red.
+    navigation.current = screen('web-applications/list', 'navAreaWebApps', 'web-applications', {
+      descriptor: 'OcuPilot.Screen.Descriptor.WebAppList',
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }],
+    });
+    TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.WebAppList', 'delete', () => {});
+    TestBed.inject(ScreenStores)
+      .for('OcuPilot.Screen.Descriptor.WebAppList', [])
+      .setSelection(['/api/ocupilot']);
+    chord();
+
+    const entry = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).find(
+      (option) =>
+        (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim() ===
+        STRINGS.actionDelete
+    ) as HTMLElement | undefined;
+    expect(entry).toBeDefined();
+    expect(entry?.textContent).toContain(STRINGS.webAppServesOcuPilotRefusal);
+    expect(entry?.getAttribute('aria-disabled')).toBe('true');
+    expect(entry?.hasAttribute('disabled')).toBe(false);
+  });
+
+  it("Story 7.2: with the signed-in account selected, the box lists its protected-account action with the published sentence", () => {
+    // Mutation (Rule 19): drop `this.signedIn()` from `actionCandidates`' call -> no reason, red.
+    navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'protected-account' }],
+    });
+    TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.UserList', 'delete', () => {});
+    TestBed.inject(ScreenStores).for('OcuPilot.Screen.Descriptor.UserList', []).setSelection(['dana']);
+    chord();
+    const entry = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).find(
+      (option) =>
+        (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim() ===
+        STRINGS.actionDelete
+    ) as HTMLElement | undefined;
+    expect(entry?.textContent).toContain(STRINGS.userRefusalCurrentUser);
+    expect(entry?.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it("Story 9.3: with a not-deletable row selected, the box lists its system-resource action with the published sentence", () => {
+    // Mutation (Rule 19): drop `row` from `actionCandidates`' call -> no reason, red.
+    const base = tableDeclaration();
+    navigation.current = tableDeclaration({
+      route: 'permissions/resources',
+      labelKey: 'navAreaPermissions',
+      area: 'permissions',
+      descriptor: 'OcuPilot.Screen.Descriptor.ResourceList',
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'system-resource' }],
+      read: base.read === null ? null : { ...base.read, fields: [...base.read.fields, 'AllowDelete'] },
+    });
+    TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.ResourceList', 'delete', () => {});
+    const store = TestBed.inject(ScreenStores).for('OcuPilot.Screen.Descriptor.ResourceList', navigation.current.refreshRates);
+    store.applyTick([{ Name: 'alpha', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n', AllowDelete: false }], false, '', new Date());
+    store.setSelection(['alpha']);
+    chord();
+    const entry = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).find(
+      (option) =>
+        (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim() ===
+        STRINGS.actionDelete
+    ) as HTMLElement | undefined;
+    expect(entry?.textContent).toContain(STRINGS.resourceRefusalSystem);
+    expect(entry?.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('DW-389: a declared row action with no registered handler is not listed, beside one that is registered', () => {
+    // Per action, not all-or-nothing: the stub screen registers `delete` (beforeEach) and nothing
+    // for `enable`, which it declares beside it.
+    //
+    // Mutation (Rule 19): drop `&& this.actions.has(screen.descriptor, action.id)` from the row-action
+    // loop in `command-box.ts` -> `enable` is listed beside `delete`, red.
+    navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [
+        { id: 'enable', selfProtection: '' },
+        { id: 'delete', selfProtection: 'current-user' },
+      ],
+    });
+    chord();
+    const labels = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).map((option) => (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim());
+    expect(labels).toEqual([STRINGS.actionDelete]);
+    expect(count()).toBe('2 screens, 1 actions');
   });
 
   it("DW-370: a screen's own published words for an action reach the box's option, not only the bar's button", () => {
@@ -396,7 +525,7 @@ describe('the command box', () => {
     const labels = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
     ).map((option) => (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim());
-    expect(labels).toEqual(['delete']);
+    expect(labels).toEqual([STRINGS.actionDelete]);
     expect(count()).toBe('2 screens, 1 actions');
   });
 
@@ -531,5 +660,127 @@ describe('the command box', () => {
     expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
     expect(fixture.nativeElement.querySelector('[class*="avatar"]')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('input')).toHaveLength(1);
+  });
+
+  // --- Story 15.2: menu search is this box, and only its ranking moves ------------------------
+
+  it('Story 15.2: a favorited screen is listed first within Screens, and nothing else about the box moves', async () => {
+    // Declaration order is USERS then LOGS; pinning the second puts it first.
+    await accountPreferences.add('favorite', 'logs/messages');
+    fixture.detectChanges();
+    chord();
+
+    const groups = fixture.nativeElement.querySelectorAll('[role="group"]');
+    expect(groups).toHaveLength(2);
+    const screens: HTMLElement[] = Array.from(groups[0].querySelectorAll('[role="option"]'));
+    expect(screens).toHaveLength(2);
+    expect(screens[0].textContent).toContain(STRINGS.navAreaLogs);
+    expect(screens[1].textContent).toContain(STRINGS.navAreaPermissions);
+
+    // One input, two groups, the same count sentence: the ranking is the only change.
+    expect(fixture.nativeElement.querySelectorAll('input')).toHaveLength(1);
+    expect(count()).toBe('2 screens, 2 actions');
+  });
+
+  it('Story 15.2: with nothing pinned, the Screens group keeps the declaration order', () => {
+    chord();
+    const screens: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="group"]')[0].querySelectorAll('[role="option"]')
+    );
+    expect(screens[0].textContent).toContain(STRINGS.navAreaPermissions);
+    expect(screens[1].textContent).toContain(STRINGS.navAreaLogs);
+  });
+
+  it('Story 15.2 (AD-37): a favorite naming no built screen adds no row here, and the count is unchanged', async () => {
+    // The stored row survives on the instance; what it cannot do is put an option in this box.
+    // Rows come from the navigation roster alone -- a favorite only partitions them -- so a route
+    // the roster does not hold has nothing to rank.
+    await accountPreferences.add('favorite', 'no-such-area/no-such-screen');
+    fixture.detectChanges();
+    chord();
+
+    expect(accountPreferences.favorites()).toEqual(['no-such-area/no-such-screen']);
+    const screens: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="group"]')[0].querySelectorAll('[role="option"]')
+    );
+    expect(screens).toHaveLength(2);
+    expect(screens[0].textContent).toContain(STRINGS.navAreaPermissions);
+    expect(count()).toBe('2 screens, 2 actions');
+  });
+
+  // Story 15.9 (AD-28, AD-31). Mutation (Rule 19): drop the Sign out row -> the typed-needle leg and
+  // the choose leg go red.
+  it('Story 15.9: a typed needle lists Sign out last among the actions; an empty query does not', () => {
+    chord();
+    expect(fixture.nativeElement.querySelector('#ocu-command-box-account-sign-out')).toBeNull();
+    expect(count()).toBe('2 screens, 2 actions');
+
+    type('sign out');
+    const actionRows: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="group"]')[1].querySelectorAll('[role="option"]')
+    );
+    expect(actionRows[actionRows.length - 1].id).toBe('ocu-command-box-account-sign-out');
+    expect(actionRows[actionRows.length - 1].textContent?.trim()).toBe(STRINGS.actionSignOut);
+
+    type('');
+    expect(fixture.nativeElement.querySelector('#ocu-command-box-account-sign-out')).toBeNull();
+    expect(count()).toBe('2 screens, 2 actions');
+  });
+
+  // Mutation (Rule 19): list the account row before the actions -> red.
+  it('Story 15.9: a needle that also matches the screen\'s actions lists Sign out after them', () => {
+    chord();
+    type('t');
+    const actionRows: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="group"]')[1].querySelectorAll('[role="option"]')
+    );
+    expect(actionRows.length).toBeGreaterThan(1);
+    expect(actionRows[actionRows.length - 1].id).toBe('ocu-command-box-account-sign-out');
+  });
+
+  // Mutation (Rule 19): drop the `this.session === null` guard -> red.
+  it('Story 15.9: with no Session injected there is no Sign out row', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: AccountPreferences, useValue: accountPreferences },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: accountPreferences }) },
+        provideRouter([{ path: '', children: [] }]),
+        { provide: NavigationService, useValue: navigation as unknown as NavigationService },
+        { provide: OverlayStack, useValue: overlays },
+        { provide: ScreenActions, useValue: actions },
+        { provide: ShellState, useValue: shell },
+      ],
+    });
+    fixture = TestBed.createComponent(CommandBox);
+    fixture.detectChanges();
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    chord();
+    type('sign out');
+    expect(fixture.nativeElement.querySelector('#ocu-command-box-account-sign-out')).toBeNull();
+  });
+
+  it('Story 15.9: choosing Sign out closes the box and calls Session.signOut once', () => {
+    chord();
+    type('sign out');
+    const row = fixture.nativeElement.querySelector('#ocu-command-box-account-sign-out') as HTMLElement;
+    expect(field().getAttribute('aria-activedescendant')).toBe(row.id);
+    field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    fixture.detectChanges();
+
+    expect(signOuts).toBe(1);
+    expect(field().getAttribute('aria-expanded')).toBe('false');
+    expect(listbox()).toBeNull();
+  });
+
+  it('Story 15.2: the ranking survives a filter, and the count still reports what is listed', async () => {
+    await accountPreferences.add('favorite', 'logs/messages');
+    fixture.detectChanges();
+    chord();
+    type('a');
+
+    expect(count()).toBe('2 screens, 1 actions');
+    expect(options()[0].textContent).toContain(STRINGS.navAreaLogs);
   });
 });

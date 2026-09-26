@@ -6,20 +6,23 @@ import { ChangeBus } from '../core/change-bus';
 import type { ConnectivityService } from '../core/connectivity';
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PreferenceStore } from '../core/preferences';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
+import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
+import { ViewOptions } from '../core/view-options';
 import { ApiService } from '../core/api';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { tableDeclaration } from '../testing/table-declaration';
-import { CommandBar, SORT_MENU_OVERLAY_ID } from './command-bar';
+import { CommandBar, SORT_MENU_OVERLAY_ID, VIEW_MENU_OVERLAY_ID } from './command-bar';
 import { CommandBox } from './command-box';
 import { ListPage } from './list-page';
+import { AccountPreferences } from '../core/account-preferences';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The command bar's rendered contract (EXPERIENCE.md "below the locator-bar", DESIGN.md `:1037`), including the
@@ -56,7 +59,7 @@ function memoryStorage() {
 /** The real framework, with its timer seam neutralized and its connectivity park a no-op. */
 function realRefresh(): { refresh: RefreshService; bus: ChangeBus; stores: ScreenStores } {
   const bus = new ChangeBus();
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
@@ -103,6 +106,7 @@ describe('the command bar', () => {
   let stores: ScreenStores;
   let actions: ScreenActions;
   let overlays: OverlayStack;
+  let viewOptionsSvc: ViewOptions;
   let apiRows: unknown[] = [];
   const planted: HTMLElement[] = [];
 
@@ -113,8 +117,10 @@ describe('the command bar', () => {
     ({ refresh, bus, stores } = realRefresh());
     actions = new ScreenActions();
     overlays = new OverlayStack();
+    viewOptionsSvc = new ViewOptions();
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([{ path: '', children: [] }, { path: '**', children: [] }]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: RefreshService, useValue: refresh },
@@ -127,7 +133,9 @@ describe('the command bar', () => {
         },
         { provide: ScreenActions, useValue: actions },
         { provide: OverlayStack, useValue: overlays },
-        { provide: ShellState, useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }) },
+        { provide: ViewOptions, useValue: viewOptionsSvc },
+        { provide: Session, useValue: { userName: () => 'Dana' } as unknown as Session },
+        { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
         { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
       ],
     });
@@ -142,7 +150,14 @@ describe('the command bar', () => {
     for (const element of planted.splice(0)) element.remove();
   });
 
-  beforeEach(() => build(screenDeclaration()));
+  /**
+   * A screen that declares a read and no table: the filter is drawn, and there is nothing to sort
+   * by. Its own descriptor, so its store is never the one a test binds the refresh framework to.
+   */
+  const READING = (overrides: Partial<ScreenDeclaration> = {}) =>
+    screenDeclaration({ descriptor: 'OcuPilot.Screen.Descriptor.Reading', read: tableDeclaration().read, ...overrides });
+
+  beforeEach(() => build(READING()));
 
   it('holds the filter field and its polite count region', () => {
     const filter: HTMLInputElement = fixture.nativeElement.querySelector('.ocu-command-bar-filter');
@@ -166,7 +181,7 @@ describe('the command bar', () => {
   });
 
   it('a registered handler draws the primary action, a click runs it once, and unregistering removes it', () => {
-    const declared = screenDeclaration({ primaryAction: { id: 'create', selfProtection: '' } });
+    const declared = READING({ primaryAction: { id: 'create', selfProtection: '' } });
     build(declared);
     let runs = 0;
     const unregister = actions.register(declared.descriptor, 'create', () => (runs += 1));
@@ -197,17 +212,20 @@ describe('the command bar', () => {
     //
     // Mutation (Rule 19): change `actionLabel(screen.descriptor, action.id)` in `command-bar.ts`
     // to `actionLabel('', action.id)` -> this goes red, the button drawing the bare id.
-    build(
-      screenDeclaration({
-        descriptor: 'OcuPilot.Screen.Descriptor.AgentSwitches',
-        rowActions: [{ id: 'delete', selfProtection: '' }],
-      })
-    );
+    const declared = screenDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AgentSwitches',
+      rowActions: [{ id: 'delete', selfProtection: '' }],
+    });
+    build(declared);
+    // DW-389: a declared action with no registered handler is not drawn at all, so the surface
+    // this test is about only exists once something can act on it.
+    actions.register(declared.descriptor, 'delete', () => {});
+    fixture.detectChanges();
 
-    const actions: HTMLButtonElement[] = Array.from(
+    const drawn: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')
     );
-    expect(actions.map((action) => action.textContent?.trim())).toEqual([
+    expect(drawn.map((action) => action.textContent?.trim())).toEqual([
       STRINGS.agentSwitchesHoldRemove,
     ]);
     // And the same id on a screen that publishes nothing for it still draws the bare id, so the
@@ -216,24 +234,26 @@ describe('the command bar', () => {
   });
 
   it('row actions are aria-disabled with "Select a row first" on hover and focus', () => {
-    build(
-      screenDeclaration({
-        rowActions: [
-          { id: 'delete', selfProtection: 'current-user' },
-          { id: 'disable', selfProtection: '' },
-        ],
-      })
-    );
+    const declared = screenDeclaration({
+      rowActions: [
+        { id: 'delete', selfProtection: 'current-user' },
+        { id: 'disable', selfProtection: '' },
+      ],
+    });
+    build(declared);
+    actions.register(declared.descriptor, 'delete', () => {});
+    actions.register(declared.descriptor, 'disable', () => {});
+    fixture.detectChanges();
 
-    const actions: HTMLButtonElement[] = Array.from(
+    const drawn: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')
     );
-    expect(actions.map((action) => action.textContent?.trim())).toEqual([
-      'delete',
+    expect(drawn.map((action) => action.textContent?.trim())).toEqual([
+      STRINGS.actionDelete,
       STRINGS.agentDefinitionDisable,
     ]);
 
-    for (const action of actions) {
+    for (const action of drawn) {
       expect(action.getAttribute('aria-disabled')).toBe('true');
       // Never the attribute: a control that cannot act keeps its place in the Tab order.
       expect(action.hasAttribute('disabled')).toBe(false);
@@ -245,6 +265,146 @@ describe('the command bar', () => {
       expect(reason.getAttribute('role')).toBe('tooltip');
     }
     expect(fixture.nativeElement.querySelectorAll('[disabled]')).toHaveLength(0);
+  });
+
+  it('Story 7.10: on a screen with row actions and no declared read, the bar follows the selection the page writes', () => {
+    // The application error log's drill-down declares no read and writes its own selection into
+    // its store; the bar has to see it move.
+    //
+    // Mutation (Rule 19): restore `bindStore`'s early return for every screen with no read -> the
+    // action stays "Select a row first" after the selection lands, red.
+    const declared = screenDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.LogErrorList',
+      entityType: 'application-error',
+      rowActions: [{ id: 'delete', selfProtection: '' }],
+    });
+    build(declared);
+    let runs = 0;
+    actions.register(declared.descriptor, 'delete', () => (runs += 1));
+    fixture.detectChanges();
+    const button = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(declared.read).toBeNull();
+    expect(button().getAttribute('aria-disabled')).toBe('true');
+
+    stores.for(declared.descriptor, declared.refreshRates).setSelection(['USER\u000109/23/2026']);
+    fixture.detectChanges();
+    expect(button().hasAttribute('aria-disabled')).toBe(false);
+    button().click();
+    fixture.detectChanges();
+    expect(runs).toBe(1);
+  });
+
+  it('DW-389: a declared row action with no registered handler draws no button, beside one that is registered', () => {
+    // Per action, not all-or-nothing: the same screen declares two and registers one.
+    //
+    // Mutation (Rule 19): drop the `.filter((action) => this.actions.has(screen.descriptor,
+    // action.id))` line from `command-bar.ts` -> `enable` is drawn beside `disable`, red.
+    const declared = screenDeclaration({
+      rowActions: [
+        { id: 'enable', selfProtection: '' },
+        { id: 'disable', selfProtection: '' },
+      ],
+    });
+    build(declared);
+    actions.register(declared.descriptor, 'disable', () => {});
+    fixture.detectChanges();
+
+    const drawn = Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')).map((action) =>
+      (action as HTMLElement).textContent?.trim()
+    );
+    expect(drawn).toEqual([STRINGS.agentDefinitionDisable]);
+    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.agentDefinitionEnable);
+  });
+
+  it("AD-53: with a self-protected row selected, the bar's action carries the instance's own sentence and runs nothing", () => {
+    // The bar says what the command box and the row menu say about the same action on the same row:
+    // `aria-disabled`, never `disabled`, with the published reason as its tooltip. An ordinary row
+    // selected afterwards gets an ordinary control that runs its handler.
+    //
+    // Mutation (Rule 19): make the bar's `selfProtectionReason(...)` call answer `''` -> the
+    // protected row's button is drawn as an ordinary control and its click runs the handler, red.
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.WebAppList',
+      rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }],
+    });
+    build(declared);
+    let runs = 0;
+    actions.register(declared.descriptor, 'delete', () => (runs += 1));
+    const store = stores.for(declared.descriptor, declared.refreshRates);
+    store.setSelection(['/api/ocupilot']);
+    fixture.detectChanges();
+
+    const button = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(button().textContent?.trim()).toBe(STRINGS.actionDelete);
+    expect(button().getAttribute('aria-disabled')).toBe('true');
+    expect(button().hasAttribute('disabled')).toBe(false);
+    const reason = fixture.nativeElement.querySelector(`#${button().getAttribute('aria-describedby')}`);
+    expect(reason?.textContent?.trim()).toBe(STRINGS.webAppServesOcuPilotRefusal);
+    expect(reason?.getAttribute('role')).toBe('tooltip');
+    button().click();
+    fixture.detectChanges();
+    expect(runs).toBe(0);
+
+    store.setSelection(['/csp/myapp']);
+    fixture.detectChanges();
+    expect(button().hasAttribute('aria-disabled')).toBe(false);
+    expect(button().hasAttribute('aria-describedby')).toBe(false);
+    button().click();
+    fixture.detectChanges();
+    expect(runs).toBe(1);
+  });
+
+  it("Story 9.3: a system-resource action reads the selected row's own AllowDelete", () => {
+    // Mutation (Rule 19): drop `row` from the bar's `selfProtectionReason` call -> the not-deletable
+    // row's button is drawn as an ordinary control, red.
+    const base = tableDeclaration();
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.ResourceList',
+      rowActions: [{ id: 'delete', selfProtection: 'system-resource' }],
+      read: base.read === null ? null : { ...base.read, fields: [...base.read.fields, 'AllowDelete'] },
+    });
+    build(declared);
+    actions.register(declared.descriptor, 'delete', () => {});
+    const store = stores.for(declared.descriptor, declared.refreshRates);
+    store.applyTick(
+      [
+        { Name: 'alpha', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n', AllowDelete: false },
+        { Name: 'beta', NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n', AllowDelete: true },
+      ],
+      false,
+      '',
+      new Date()
+    );
+    store.setSelection(['alpha']);
+    fixture.detectChanges();
+    const button = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(button().getAttribute('aria-disabled')).toBe('true');
+    expect(fixture.nativeElement.querySelector(`#${button().getAttribute('aria-describedby')}`)?.textContent?.trim()).toBe(
+      STRINGS.resourceRefusalSystem
+    );
+    store.setSelection(['beta']);
+    fixture.detectChanges();
+    expect(button().hasAttribute('aria-disabled')).toBe(false);
+  });
+
+  it("Story 7.2: with the signed-in account selected, the bar's protected-account action carries its sentence and runs nothing", () => {
+    // Mutation (Rule 19): drop `this.signedIn()` from the bar's call -> the button runs, red.
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      rowActions: [{ id: 'disable', selfProtection: 'protected-account' }],
+    });
+    build(declared);
+    let runs = 0;
+    actions.register(declared.descriptor, 'disable', () => (runs += 1));
+    stores.for(declared.descriptor, declared.refreshRates).setSelection(['dana']);
+    fixture.detectChanges();
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    const reason = fixture.nativeElement.querySelector(`#${button.getAttribute('aria-describedby')}`);
+    expect(reason?.textContent?.trim()).toBe(STRINGS.userRefusalCurrentUser);
+    button.click();
+    fixture.detectChanges();
+    expect(runs).toBe(0);
   });
 
   it('no chip renders for a screen the framework has not bound, or one that does not refresh', () => {
@@ -360,18 +520,114 @@ describe('the command bar', () => {
     expect(count.contains(node)).toBe(false);
   });
 
-  it('DW-147 (pinned, not built): no view-options control renders -- named by the AC and by DESIGN.md:1039, but EXPERIENCE.md publishes no label for it or its options', () => {
-    // The sort slot beside it is no longer in this family: Story 2.9 published "Sort", "Ascending"
-    // and "Descending" as a Fixed strings row and built the control. View still has no label of any
-    // kind, so it stays unrendered rather than being invented.
-    expect(fixture.nativeElement.querySelector('.ocu-command-bar-view-options')).toBeNull();
+  it('DW-147: no View control renders for a screen whose page registered no binding', () => {
+    // Story 6.11 built the mechanism and Databases is its first registrant (`databases.page.ts`),
+    // so the generic case left here is a screen with nothing registered, not a screen with no
+    // published label -- EXPERIENCE.md now publishes one. This fixture's screen registers nothing.
+    expect(viewOptionsSvc.has()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-view-trigger')).toBeNull();
     const buttons: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('button')
     );
-    expect(buttons.map((button) => button.textContent?.trim())).not.toContain('View');
+    expect(buttons.map((button) => button.textContent?.trim())).not.toContain(STRINGS.viewMenuLabel);
     // The one menu trigger this row can draw is the sort control's, and this screen declares no
     // read, so there is none here either.
     expect(fixture.nativeElement.querySelector('[aria-haspopup="menu"]')).toBeNull();
+  });
+
+  // --- The View control (Story 6.11) -----------------------------------------------------------
+  //
+  // EXPERIENCE.md "the command-bar View control" and DESIGN.md `:1039` name it; `ViewOptions` is
+  // the seam a page registers through (`databases.page.spec.ts` pins the registration itself).
+  // These pin the generic drawing: nothing renders for an unregistered screen (above), and once a
+  // page registers, the shape, the checked entry and the click-through to `choose` are exactly the
+  // sort menu's, because this component draws both from the same markup pattern.
+
+  const viewTrigger = (): HTMLButtonElement | null =>
+    fixture.nativeElement.querySelector('.ocu-command-bar-view-trigger');
+
+  const viewItems = (): HTMLButtonElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-bar-view-item'));
+
+  const openView = () => {
+    viewTrigger()?.click();
+    fixture.detectChanges();
+  };
+
+  /**
+   * A stand-in for a page's own two-route registration, with a spy on `choose`. Plants the bar in
+   * the document, because `focus()` and `document.activeElement` mean nothing for a detached tree
+   * (`buildSortable`'s own reason).
+   */
+  const registerView = (current = 'route-a') => {
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    let currentRoute = current;
+    const choose = (route: string) => {
+      currentRoute = route;
+    };
+    const unregister = viewOptionsSvc.register({
+      options: () => [
+        { route: 'route-a', label: 'Alpha' },
+        { route: 'route-b', label: 'Bravo' },
+      ],
+      current: () => currentRoute,
+      choose,
+    });
+    return { unregister, currentRoute: () => currentRoute };
+  };
+
+  it('draws the trigger named "View" with a caret once a page registers, and no menu until opened', () => {
+    registerView();
+    fixture.detectChanges();
+    const button = viewTrigger();
+    expect(button).not.toBeNull();
+    expect(button?.textContent).toContain(STRINGS.viewMenuLabel);
+    expect(button?.getAttribute('aria-expanded')).toBe('false');
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-view-menu')).toBeNull();
+  });
+
+  it('opening it offers the registered options in order, the current one checked', () => {
+    registerView('route-b');
+    fixture.detectChanges();
+    openView();
+    const items = viewItems();
+    expect(items.map((item) => item.textContent?.trim())).toEqual(['Alpha', 'Bravo']);
+    expect(items[0].getAttribute('aria-checked')).toBe('false');
+    expect(items[1].getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('choosing an entry runs the registered choose and closes the menu, returning focus to the trigger', () => {
+    const { currentRoute } = registerView('route-a');
+    fixture.detectChanges();
+    openView();
+    viewItems()[1].click();
+    fixture.detectChanges();
+    expect(currentRoute()).toBe('route-b');
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-view-menu')).toBeNull();
+    expect(document.activeElement).toBe(viewTrigger());
+  });
+
+  it('a navigation closes an open View menu and releases its overlay entry', async () => {
+    registerView();
+    fixture.detectChanges();
+    openView();
+    expect(overlays.ids()).toContain(VIEW_MENU_OVERLAY_ID);
+
+    await TestBed.inject(Router).navigateByUrl('/somewhere-else');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-view-menu')).toBeNull();
+    expect(overlays.ids()).not.toContain(VIEW_MENU_OVERLAY_ID);
+  });
+
+  it('unregistering removes the control', () => {
+    const { unregister } = registerView();
+    fixture.detectChanges();
+    expect(viewTrigger()).not.toBeNull();
+    unregister();
+    fixture.detectChanges();
+    expect(viewTrigger()).toBeNull();
   });
 
   it('DW-141 (description half, fixed): the filter is described by nothing at all while the count is empty', () => {
@@ -838,11 +1094,45 @@ describe('the command bar', () => {
     }
   });
 
-  it('a URL naming no declared screen renders the bar with no actions at all', () => {
+  it('a URL naming no declared screen draws no bar at all: nothing to act on and nothing to filter', () => {
     build(null);
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-filter')).toBeNull();
+  });
+
+  // --- Story 15.9: no filter where there is nothing to filter ---------------------------------
+  //
+  // Mutations (Rule 19): render the filter unconditionally -> the Home and error-drill legs go red;
+  // force `hasContent` true -> the Home leg goes red; hide the filter on every screen -> the list
+  // leg goes red.
+
+  it('Home, which declares no read and registers nothing, draws no command bar', () => {
+    build(screenDeclaration({ route: '', archetype: 'home', read: null }));
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#ocu-command-bar-filter')).toBeNull();
+  });
+
+  it('the error drill-down declares no read: the bar draws its Refresh and row action with no filter or count', () => {
+    const declared = screenDeclaration({
+      route: 'logs/errors',
+      read: null,
+      rowActions: [{ id: 'delete', selfProtection: '' }],
+    });
+    build(declared);
+    actions.register(declared.descriptor, REFRESH_ACTION_ID, () => {});
+    actions.register(declared.descriptor, 'delete', () => {});
+    fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ocu-command-bar')).not.toBeNull();
-    expect(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')).toHaveLength(0);
-    expect(fixture.nativeElement.querySelector('.ocu-command-bar-primary')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-refresh-action')).not.toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action:not(.ocu-command-bar-refresh-action)')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-filter')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[role="status"]')).toBeNull();
+  });
+
+  it('a list, which declares a read, keeps its filter and its count region', () => {
+    build(tableDeclaration());
+    expect(fixture.nativeElement.querySelector('#ocu-command-bar-filter')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-count')?.getAttribute('role')).toBe('status');
   });
 
   it('DW-260: the bar draws Refresh only where a handler is registered for it', () => {
@@ -886,6 +1176,9 @@ describe('the command bar', () => {
     // Refresh is a command-bar action too (DW-260), so the reachability invariant covers it: a
     // control the bar draws and the box does not offer is a surface a keyboard user cannot reach.
     actions.register(declared.descriptor, REFRESH_ACTION_ID, () => {});
+    // DW-389: and the row actions, which neither surface draws without one.
+    actions.register(declared.descriptor, 'delete', () => {});
+    actions.register(declared.descriptor, 'disable', () => {});
     fixture.detectChanges();
     const barActions = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-primary, .ocu-command-bar-action')
@@ -910,7 +1203,7 @@ describe('the command bar', () => {
 
     expect(barActions).toEqual([
       STRINGS.actionCreate,
-      'delete',
+      STRINGS.actionDelete,
       STRINGS.agentDefinitionDisable,
       STRINGS.actionRefresh,
     ]);
@@ -926,7 +1219,7 @@ describe('the command bar', () => {
     );
     expect(byLabel.get(STRINGS.actionCreate)?.getAttribute('aria-disabled')).toBeNull();
     expect(byLabel.get(STRINGS.actionRefresh)?.getAttribute('aria-disabled')).toBeNull();
-    for (const rowAction of ['delete', STRINGS.agentDefinitionDisable]) {
+    for (const rowAction of [STRINGS.actionDelete, STRINGS.agentDefinitionDisable]) {
       const option = byLabel.get(rowAction);
       expect(option?.getAttribute('aria-disabled')).toBe('true');
       expect(option?.textContent).toContain(STRINGS.privilegeSelectRowFirst);

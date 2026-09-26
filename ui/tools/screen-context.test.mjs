@@ -1,0 +1,326 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+// Pins the one function that builds both a turn's `context` and the chip's row count
+// (`assembleScreenContext`, `contextRowsSent`), and the paste-warning backstop
+// (`looksLikeSecret`), Story 4.11.
+//
+// Mutations (Rule 19):
+// - drop the `share` guard from `assembleScreenContext` -> the sharing-off case goes red.
+// - drop the secret-fields guard from `computeView` -> the secret-screen case goes red, and a
+//   `view` (with no rows key at all server-side) would be posted for a secret-typed screen.
+// - slice AFTER narrowing rather than before -> the cap-below-view case's `rowsAvailable` goes red.
+// - keep requiring a declared read in `computeView` -> the no-read case goes red (Story 11.9).
+// - restore the `route === ''` exclusion in `assembleScreenContext` -> the Home case goes red
+//   (Story 11.1).
+// - return `false` for a `sk-` prefix -> the prefix cases redden; return `true` for
+//   `%Api.Mgmnt.v2` -> the non-trigger cases redden.
+// - `assembleEntryContext` skips `narrowRow` -> the narrowing and not-an-object entry cases
+//   redden (Story 11.2). That only the one entry goes is pinned where the panel picks it
+//   (`panel.spec.ts`, Story 11.2).
+
+const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
+const { screenDeclaration } = await import(join(uiRoot, 'src', 'app', 'testing', 'screen-declaration.ts'));
+
+const { assembleEntryContext, assembleScreenContext, contextRowsSent, contextViewDeclared, looksLikeSecret } = await import(
+  corePath('screen-context.ts')
+);
+
+const READ = {
+  source: { port: 'admin', endpoint: 'WebApp.App', type: 'LIST' },
+  fields: ['Name', 'NameSpace', 'Enabled'],
+  filter: ['Name'],
+  sort: { fields: ['Name'], default: 'Name', direction: 'asc' },
+  paging: 'cap',
+};
+
+function screen(overrides = {}) {
+  return screenDeclaration({
+    route: 'permissions/users',
+    read: READ,
+    context: { fields: ['Name', 'Enabled'], secretFields: [] },
+    ...overrides,
+  });
+}
+
+function rows(...names) {
+  return names.map((name, index) => ({ Name: name, Enabled: index % 2 === 0, NameSpace: 'HSCUSTOM' }));
+}
+
+function baseInputs(overrides = {}) {
+  return {
+    descriptor: screen(),
+    namespace: 'HSCUSTOM',
+    entity: '',
+    share: true,
+    rows: rows('c', 'a', 'b'),
+    filter: '',
+    sort: '',
+    direction: '',
+    rowCap: 200,
+    ...overrides,
+  };
+}
+
+// --- assembleScreenContext -----------------------------------------------------------------
+
+test('a fully resolved screen posts route, namespace and a view narrowed to the declared fields', () => {
+  const payload = assembleScreenContext(baseInputs());
+  assert.equal(payload.route, 'permissions/users');
+  assert.equal(payload.namespace, 'HSCUSTOM');
+  assert.equal('entity' in payload, false, 'no entity on a list screen');
+  assert.equal(payload.view.rowsAvailable, 3);
+  assert.deepEqual(payload.view.rows, [
+    { Name: 'a', Enabled: false },
+    { Name: 'b', Enabled: true },
+    { Name: 'c', Enabled: true },
+  ]);
+  // `NameSpace` is not a declared context field and must not leak into the payload.
+  for (const row of payload.view.rows) assert.equal('NameSpace' in row, false);
+});
+
+test('entity is included only when non-empty', () => {
+  assert.equal('entity' in assembleScreenContext(baseInputs({ entity: '' })), false);
+  assert.equal(assembleScreenContext(baseInputs({ entity: 'admin' })).entity, 'admin');
+});
+
+test('sharing off posts no context at all', () => {
+  assert.equal(assembleScreenContext(baseInputs({ share: false })), null);
+});
+
+test('no resolved descriptor posts no context at all', () => {
+  assert.equal(assembleScreenContext(baseInputs({ descriptor: null })), null);
+});
+
+test('Home, whose route is the empty string, posts its route and namespace and no view', () => {
+  const home = screen({ route: '', read: null, context: { fields: [], secretFields: [] } });
+  assert.deepEqual(assembleScreenContext(baseInputs({ descriptor: home, rows: [] })), { route: '', namespace: 'HSCUSTOM' });
+});
+
+test('an unresolved namespace posts no context at all', () => {
+  assert.equal(assembleScreenContext(baseInputs({ namespace: '' })), null);
+});
+
+test('a screen with no declared read posts route and namespace but no view', () => {
+  const payload = assembleScreenContext(baseInputs({ descriptor: screen({ read: null, context: { fields: [], secretFields: [] } }) }));
+  assert.equal('view' in payload, false);
+});
+
+test('a screen whose context declares no fields posts no view', () => {
+  const payload = assembleScreenContext(baseInputs({ descriptor: screen({ context: { fields: [], secretFields: [] } }) }));
+  assert.equal('view' in payload, false);
+});
+
+test('a screen declaring any secret field posts identity only, no view', () => {
+  const secretScreen = screen({ read: null, context: { fields: [], secretFields: ['apiKey'] } });
+  const payload = assembleScreenContext(baseInputs({ descriptor: secretScreen, rows: [] }));
+  assert.equal(payload.route, 'permissions/users');
+  assert.equal('view' in payload, false);
+});
+
+test('the row cap slices after the full filtered-and-sorted view, so rowsAvailable is the pre-cap count', () => {
+  const payload = assembleScreenContext(baseInputs({ rowCap: 1 }));
+  assert.equal(payload.view.rows.length, 1);
+  assert.deepEqual(payload.view.rows, [{ Name: 'a', Enabled: false }]);
+  assert.equal(payload.view.rowsAvailable, 3, 'the full post-filter count, not the capped one');
+});
+
+test('a filter narrows both the sent rows and rowsAvailable', () => {
+  const payload = assembleScreenContext(baseInputs({ filter: 'a' }));
+  assert.equal(payload.view.rowsAvailable, 1);
+  assert.deepEqual(payload.view.rows, [{ Name: 'a', Enabled: false }]);
+});
+
+test('sort, direction and filter are carried through verbatim as the caller supplied them', () => {
+  const payload = assembleScreenContext(baseInputs({ sort: 'Name', direction: 'desc', filter: 'a' }));
+  assert.equal(payload.view.sort, 'Name');
+  assert.equal(payload.view.direction, 'desc');
+  assert.equal(payload.view.filter, 'a');
+});
+
+// --- contextViewDeclared ---------------------------------------------------------------------
+
+test('contextViewDeclared agrees with assembleScreenContext about whether a view would post', () => {
+  assert.equal(contextViewDeclared(screen()), true);
+  assert.equal(contextViewDeclared(null), false);
+  assert.equal(contextViewDeclared(screen({ read: null })), true, 'declared fields send a view with no read');
+  assert.equal(contextViewDeclared(screen({ read: null, context: { fields: [], secretFields: [] } })), false);
+  assert.equal(contextViewDeclared(screen({ context: { fields: [], secretFields: [] } })), false);
+  assert.equal(contextViewDeclared(screen({ context: { fields: ['Name'], secretFields: ['apiKey'] } })), false);
+});
+
+// --- contextRowsSent -------------------------------------------------------------------------
+
+test('contextRowsSent agrees with the payload it would produce', () => {
+  const inputs = baseInputs({ rowCap: 2 });
+  assert.equal(contextRowsSent(inputs), assembleScreenContext(inputs).view.rows.length);
+  assert.equal(contextRowsSent(inputs), 2);
+});
+
+test('contextRowsSent is 0 exactly when the row segment would be omitted', () => {
+  assert.equal(contextRowsSent(baseInputs({ descriptor: screen({ read: null, context: { fields: [], secretFields: [] } }) })), 0);
+  assert.equal(contextRowsSent(baseInputs({ descriptor: screen({ context: { fields: [], secretFields: [] } }) })), 0);
+  assert.equal(
+    contextRowsSent(baseInputs({ descriptor: screen({ context: { fields: ['Name'], secretFields: ['apiKey'] } }) })),
+    0
+  );
+});
+
+// --- a screen with no declared read (Story 11.9) --------------------------------------------
+
+const ERROR_FIELDS = ['errorNumber', 'time', 'errorText', 'routine', 'line'];
+
+function errorScreen() {
+  return screen({ route: 'logs/errors', read: null, context: { fields: ERROR_FIELDS, secretFields: [] } });
+}
+
+function errorRows(...numbers) {
+  return numbers.map((errorNumber) => ({
+    errorNumber,
+    time: `17:0${errorNumber}:38`,
+    errorText: '<DIVIDE>x^y',
+    routine: 'y',
+    line: ' s x=1/0',
+    username: 'Dana',
+    process: '4711',
+  }));
+}
+
+test('a screen with no declared read sends the rows it was given, in order, narrowed and capped', () => {
+  const inputs = baseInputs({
+    descriptor: errorScreen(),
+    rows: errorRows(3, 1, 2),
+    filter: '17:02:38',
+    sort: 'time',
+    direction: 'desc',
+    rowCap: 2,
+  });
+  const payload = assembleScreenContext(inputs);
+  assert.equal(payload.route, 'logs/errors');
+  assert.deepEqual(
+    payload.view.rows.map((row) => row.errorNumber),
+    [3, 1],
+    'the supplied order, cut at the row cap -- a time sort in either direction, or the filter matching row 2 alone, would differ'
+  );
+  for (const row of payload.view.rows) {
+    assert.deepEqual(Object.keys(row), ERROR_FIELDS, 'the declared summary fields alone');
+    assert.equal('username' in row, false, 'the user name never goes');
+    assert.equal('process' in row, false, 'nor the process');
+  }
+  assert.equal(payload.view.rowsAvailable, 3, 'rowsAvailable is the supplied count');
+  assert.equal(payload.view.sort, '');
+  assert.equal(payload.view.direction, '');
+  assert.equal(payload.view.filter, '');
+});
+
+test('the chip agrees with a no-read screen: its row segment shows, counting what the payload sends', () => {
+  const inputs = baseInputs({ descriptor: errorScreen(), rows: errorRows(1, 2, 3), rowCap: 2 });
+  assert.equal(contextViewDeclared(errorScreen()), true);
+  assert.equal(contextRowsSent(inputs), assembleScreenContext(inputs).view.rows.length);
+  assert.equal(contextRowsSent(inputs), 2);
+  assert.equal(contextRowsSent(baseInputs({ descriptor: errorScreen(), rows: [] })), 0, 'a level with no rows sends none');
+});
+
+test('a form page (no read, no context fields) posts identity only: no view, no rows, no row segment', () => {
+  const form = screen({ route: 'os-management/devices/edit', read: null, context: { fields: [], secretFields: [] } });
+  const inputs = baseInputs({ descriptor: form, rows: [{ Name: 'typed', Description: 'unsaved' }] });
+  const payload = assembleScreenContext(inputs);
+  assert.deepEqual(payload, { route: 'os-management/devices/edit', namespace: 'HSCUSTOM' });
+  assert.equal(contextViewDeclared(form), false);
+  assert.equal(contextRowsSent(inputs), 0);
+});
+
+// --- assembleEntryContext (Story 11.2) --------------------------------------------------------
+
+const SCOPED_ERROR_FIELDS = ['namespace', 'date', ...ERROR_FIELDS];
+
+function scopedErrorScreen() {
+  return screen({ route: 'logs/errors', read: null, context: { fields: SCOPED_ERROR_FIELDS, secretFields: [] } });
+}
+
+function entryInputs(overrides = {}) {
+  const [row] = errorRows(2);
+  return {
+    descriptor: scopedErrorScreen(),
+    namespace: 'HSCUSTOM',
+    share: true,
+    row: { namespace: 'USER', date: '09/25/2026', ...row, stack: 'captured', variables: 'captured' },
+    ...overrides,
+  };
+}
+
+test('an entry posts its screen and the shell scope with a one-row view, and no entity', () => {
+  const payload = assembleEntryContext(entryInputs());
+  assert.deepEqual(Object.keys(payload), ['route', 'namespace', 'view']);
+  assert.equal(payload.route, 'logs/errors');
+  assert.equal(payload.namespace, 'HSCUSTOM', 'the shell scope, which the instance requires');
+  assert.equal(payload.view.rows.length, 1, 'that one entry and no other');
+  assert.equal(payload.view.rowsAvailable, 1);
+  assert.equal(payload.view.sort, '');
+  assert.equal(payload.view.direction, '');
+  assert.equal(payload.view.filter, '');
+});
+
+test("an entry's row is narrowed to the declared fields: no user, process or captured detail", () => {
+  const [row] = assembleEntryContext(entryInputs()).view.rows;
+  assert.deepEqual(Object.keys(row), SCOPED_ERROR_FIELDS);
+  assert.equal(row.namespace, 'USER', 'the drilled namespace travels with the row');
+  assert.equal(row.date, '09/25/2026');
+  for (const dropped of ['username', 'process', 'stack', 'variables']) assert.equal(dropped in row, false, dropped);
+});
+
+test('an entry sends nothing with sharing off, no descriptor, no namespace, or a screen with no view', () => {
+  assert.equal(assembleEntryContext(entryInputs({ share: false })), null, 'sharing off');
+  assert.equal(assembleEntryContext(entryInputs({ descriptor: null })), null, 'no descriptor');
+  assert.equal(assembleEntryContext(entryInputs({ namespace: '' })), null, 'no namespace');
+  assert.equal(
+    assembleEntryContext(entryInputs({ descriptor: screen({ context: { fields: ['Name'], secretFields: ['Password'] } }) })),
+    null,
+    'a screen declaring secret fields'
+  );
+  assert.equal(
+    assembleEntryContext(entryInputs({ descriptor: screen({ context: { fields: [], secretFields: [] } }) })),
+    null,
+    'a screen declaring no context fields'
+  );
+});
+
+test('an entry that is not an object sends one empty row rather than the value', () => {
+  assert.deepEqual(assembleEntryContext(entryInputs({ row: 'raw text' })).view.rows, [{}]);
+});
+
+// --- looksLikeSecret -------------------------------------------------------------------------
+
+test('a known key prefix always triggers, however short the rest of the draft', () => {
+  for (const prefix of ['sk-ant-api03-x', '-----BEGIN PRIVATE KEY-----', 'AKIAABCDEF', 'ghp_x', 'xoxb-1', 'AIzaSyX']) {
+    assert.equal(looksLikeSecret(prefix), true, prefix);
+    assert.equal(looksLikeSecret('  ' + prefix + '  '), true, `trimmed: ${prefix}`);
+  }
+});
+
+test('a long, mixed-class, unbroken token triggers even with no known prefix', () => {
+  assert.equal(looksLikeSecret('correct horse battery staple ' + 'aB3' + 'xyzxyzxyzxyzxyzxyzxyzxyz'), true);
+});
+
+test('a token under 24 characters never triggers on entropy alone', () => {
+  assert.equal(looksLikeSecret('aB3xyzxyzxyzxyzxyzxyz'), false);
+});
+
+test('a token using fewer than three character classes never triggers', () => {
+  assert.equal(looksLikeSecret('abcdefghijklmnopqrstuvwx'), false, 'lower case only');
+  assert.equal(looksLikeSecret('abcdefghijklmnopqrstuvwxABCDEF'), false, 'two classes');
+});
+
+test('a token holding an excluded character never triggers, whatever its other substrings', () => {
+  assert.equal(looksLikeSecret('https://localhost:52774/csp/sys/UtilHome.csp'), false);
+  assert.equal(looksLikeSecret('%Api.Mgmnt.v2'), false);
+  assert.equal(looksLikeSecret('^OcuPilotTurnSlot("_SYSTEM")'), false);
+});
+
+test('an empty or whitespace-only draft never triggers', () => {
+  assert.equal(looksLikeSecret(''), false);
+  assert.equal(looksLikeSecret('   '), false);
+});

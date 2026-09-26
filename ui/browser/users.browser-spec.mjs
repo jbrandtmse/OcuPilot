@@ -24,6 +24,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -117,6 +118,10 @@ after(async () => {
 
 /** A fresh context signed in through the shell's own form at the list's deep link, with its read requests counted. */
 async function signedInAtList(user, password) {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
@@ -169,8 +174,10 @@ test('AC1: the list reads once, with roles from the detail call, under the decla
       STRINGS.userColumnExpired,
       STRINGS.tableColumnType,
       STRINGS.userColumnRoles,
+      // Story 7.2's row actions give the list the row-menu column the table draws for them.
+      STRINGS.commandBoxGroupActions,
     ]);
-    assert.deepEqual(headers, ['Name', 'Full name', 'Enabled', 'Account expired', 'Type', 'Roles']);
+    assert.deepEqual(headers, ['Name', 'Full name', 'Enabled', 'Account expired', 'Type', 'Roles', 'Actions']);
 
     // Each filter leg runs from the whole list and must leave a proper, non-empty subset
     // (DW-267): chained onto the previous leg, a needle the survivors already carried satisfied
@@ -215,6 +222,9 @@ test('AC2: a disabled account reads No after an outline disc, an expired one rea
   }
 });
 
+// AC7. The name cell opens the user editor (Story 9.1), whose route carries the id as its last
+// segment. Mutation (Rule 19): drop the UserForm entry from `DESCRIPTOR_EDIT_PAGES` and redeploy ->
+// the editor's name field never reads _SYSTEM and this goes red.
 test('AC7: the _SYSTEM name link carries the id in one route segment', async () => {
   const { context, page } = await signedInAtList(config.username, config.password);
   try {
@@ -228,11 +238,14 @@ test('AC7: the _SYSTEM name link carries the id in one route segment', async () 
     // A real hit-tested pointer click at the name link's own centre (DW-273), which is what a user
     // does; `clickRowCentre` refuses first if that point resolves outside the row.
     await clickRowCentre(page, { text: '_SYSTEM', link: true });
-    await page.waitForFunction(() => window.location.pathname.endsWith('/permissions/users/_SYSTEM'), {
+    await page.waitForFunction(() => window.location.pathname.endsWith('/permissions/users/edit/_SYSTEM'), {
       timeout: config.navigationTimeoutMs,
     });
     await page.waitForSelector('.ocu-screen-outlet[data-id="_SYSTEM"]', { timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval('.ocu-screen-outlet', (outlet) => outlet.getAttribute('data-id')), '_SYSTEM');
+    await page.waitForFunction(() => document.querySelector('#ocu-user-edit-Name')?.value === '_SYSTEM', {
+      timeout: config.navigationTimeoutMs,
+    });
   } finally {
     await context.close();
   }

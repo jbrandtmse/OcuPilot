@@ -8,17 +8,35 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import {
+  AccountPreferences,
+  FAVORITE_KIND,
+  RECENT_KIND,
+  formatNamed,
+  type PreferenceKind,
+} from '../../core/account-preferences';
+import { About } from '../../core/about';
 import { InstanceService, serverFlagKind } from '../../core/instance';
 import {
+  SYSTEM_INFO_FIELDS,
+  SystemInfo,
+  type SystemInfoField,
+} from '../../core/system-info';
+import {
   NavigationService,
+  areaByKey,
   firstAllowedScreen,
   formatRequires,
+  isListedScreen,
+  screenForRoute,
   withQuery,
 } from '../../core/navigation';
-import { ScopeService } from '../../core/scope';
+import { ScopeService, onScopeChange } from '../../core/scope';
+import { SHORTCUT_KEYS, shortcutScreens } from '../../core/shortcuts';
 import { Session } from '../../core/session';
 import { ShellState } from '../../core/shell-state';
 import { STRINGS, stringFor } from '../../core/strings';
+import { AreaIcon } from '../../shell/rail-icon';
 import { ServerFlag } from '../../shell/server-flag';
 
 /** One screen name inside a tile's caption; every part but the first carries a separator. */
@@ -43,6 +61,98 @@ interface AreaTile {
   readonly route: string;
   readonly hasScreen: boolean;
 }
+
+/** One remembered screen, resolved for rendering in the Favorites or Recent items block. */
+interface RememberedRow {
+  readonly route: string;
+  readonly label: string;
+  readonly gated: boolean;
+  readonly ariaDisabled: string | null;
+  /** The failed `(resource, permission)` pair, rendered inside the row's own accessible name. */
+  readonly reason: string;
+  /** The remove control's accessible name, with `<name>` resolved to this screen. */
+  readonly removeLabel: string;
+  /** The area whose side bar opening the row shows, as a tile activation does. */
+  readonly area: string;
+}
+
+/** One of the two remembered-screen blocks above the tile grid, resolved for rendering. */
+interface RememberedBlock {
+  readonly key: string;
+  readonly kind: PreferenceKind;
+  readonly heading: string;
+  readonly emptyLabel: string;
+  readonly clearLabel: string;
+  /** The polite sentence removing one row announces. */
+  readonly removedLabel: string;
+  /** The polite sentence clearing the block announces. */
+  readonly clearedLabel: string;
+  readonly rows: readonly RememberedRow[];
+  /**
+   * Whether the instance holds any row for this block at all, before `rowsFor` drops the ones
+   * naming no screen this build serves (DW-1328).
+   *
+   * **It is not `rows.length`.** A block whose every stored row names a screen that is gone still
+   * holds rows, and rendering the ordinary empty state with no Clear control would make them
+   * invisible and unclearable -- a weak reference rendered as absent rather than as no longer
+   * present, which AD-37 refuses.
+   */
+  readonly hasStored: boolean;
+}
+
+/** One shortcut, resolved for rendering in the fixed Shortcuts block. */
+interface ShortcutRow {
+  readonly route: string;
+  readonly label: string;
+  readonly gated: boolean;
+  readonly ariaDisabled: string | null;
+  /** The failed `(resource, permission)` pair, rendered inside the row's own accessible name. */
+  readonly reason: string;
+  /** The area whose side bar opening the row shows, as a tile activation does. */
+  readonly area: string;
+}
+
+/** One key binding the Shortcuts block lists as text after its screen rows (Story 15.8). */
+interface ShortcutKeyRow {
+  readonly label: string;
+  readonly keys: string;
+}
+
+/** One destination of the links panel, resolved for rendering. */
+interface LinkRow {
+  readonly key: string;
+  readonly label: string;
+  readonly href: string;
+}
+
+/** One row of the System Information panel, resolved for rendering. */
+interface SystemRow {
+  readonly key: string;
+  readonly label: string;
+  /** The value the instance reported, or the not-reported word when it reported none. */
+  readonly value: string;
+  /** Whether that value is the not-reported word rather than something the instance said. */
+  readonly absent: boolean;
+}
+
+/**
+ * The panel's row labels, one per member the read carries.
+ *
+ * Two are keys that already exist: "Locks" is the Locks view's own word and "Write daemon" is
+ * System usage's, and a value published once belongs to one key (`ui/tools/strings.test.mjs`
+ * refuses a duplicate value). The state words themselves are never keys here -- they are the
+ * dashboard's, the mirror accessor's and the interoperability runtime's own, rendered as those
+ * sources report them.
+ */
+const SYSTEM_INFO_LABELS: Readonly<Record<SystemInfoField, string>> = {
+  uptime: STRINGS.systemInfoUptime,
+  mirror: STRINGS.systemInfoMirror,
+  databaseSpace: STRINGS.systemInfoDatabase,
+  journalSpace: STRINGS.systemInfoJournal,
+  lockTable: STRINGS.lockListLabel,
+  writeDaemon: STRINGS.systemUsageWriteDaemon,
+  production: STRINGS.systemInfoProduction,
+};
 
 /** One value on the instance line. The flag segment is a badge rather than text. */
 interface LineSegment {
@@ -71,12 +181,11 @@ interface LineSegment {
  * create a second source for every screen name beside its descriptor's `labelKey`, which is
  * the drift AD-5 exists to prevent.
  *
- * **The icon is a 24px `aria-hidden` slot.** DESIGN.md `:1102` publishes the size and the
- * colour; the glyphs themselves are the owner's and unpublished, and nothing here may reach a
- * CDN for one (NFR-10, AD-47). The slot reserves the published geometry, as the rail's glyph
- * does, and contributes nothing to the tile's accessible name. That name is the button's own
- * text: the area name today, and the area name followed by its caption once an area has built
- * screens to caption with.
+ * **The icon is the area's 24px drawing in an `aria-hidden` slot.** The mockup draws it separately
+ * from the rail's 20px icon; both come from `shell/rail-icons.ts` (DESIGN.md's
+ * `mockups/key-home.html`). It strokes in the slot's `currentColor`, so DESIGN.md `area-tile`'s
+ * `primary` and a gated tile's `restrained` are the slot's own rules. It contributes nothing to the tile's accessible name. That name is the button's own
+ * text: the area name, followed by its caption once an area has built screens to caption with.
  *
  * **A gated tile stays listed, focusable and `aria-disabled="true"`** -- never the `disabled`
  * attribute, never hidden -- with the failed `(resource, permission)` pair as its reason on
@@ -102,14 +211,164 @@ interface LineSegment {
  * instance version is readable (**DW-146**): the 24px status bar has to truncate it to a
  * `title`, and this is page content that wraps instead.
  *
+ * **Favorites and Recent items sit above the grid** (DESIGN.md `:898`; EXPERIENCE.md
+ * "Home — System Information panel · favorites · recents", whose Where column reads "fit
+ * above/beside the tile row"; Story 15.2, AD-50). Each is a `role="list"` of `role="listitem"` rows wrapping real buttons --
+ * the page's own keyboard model, the same one the tile grid uses, so no roving-tabindex model is
+ * invented here. A row whose route no longer resolves to a built screen is **dropped** rather than
+ * rendered as a button that opens nothing (AD-37 degrade); the row stays stored, because what the
+ * user saved is not this client's to delete. A row the user may no longer open stays listed,
+ * focusable and `aria-disabled="true"` with its reason inside the button's own content, which is
+ * the shape the command box uses for the same verdict.
+ *
+ * **Shortcuts and Links sit beside them** (Story 15.3, FR-73; DESIGN.md `:898`). Shortcuts is the
+ * classic portal's own fixed roster named as OcuPilot routes (`core/shortcuts.ts`) -- a roster, not
+ * a second finder, because the command box is the one finder -- and a row naming no built screen is
+ * dropped. Links is the three destinations the classic links panel names, as anchors carrying the
+ * house outbound pattern; nothing on either block fetches from another host, so the only off-origin
+ * traffic either can cause is a navigation the user clicks (AD-11 rule 4, AD-47). Neither block
+ * offers a remove or a Clear: they are fixed rosters, not stored lists, so there is nothing to
+ * announce and neither uses the polite region below.
+ *
+ * **System information is the fifth block** (Story 15.4, FR-73; EXPERIENCE.md
+ * "Home - System Information panel - favorites - recents"): the same
+ * `role="list"` shape, one labelled row per member of its own caller-own read. Every state word
+ * is the instance's own -- the dashboard's Normal / Warning / Troubled, the mirror accessor's
+ * word and the interoperability runtime's -- rendered as the source reports it and never
+ * translated, and each row carries that word as text so colour is never the only signal. It
+ * reports uptime and mirror state because About declines both, so the product reports each once.
+ * A read that has never answered renders the connectivity fault in place of the rows, because
+ * seven not-reported rows would be a confident claim about an instance that did not reply.
+ * With five blocks the row wraps rather than widening: `.ocu-home-remembered` is already a
+ * wrapping flex row and `.ocu-home-block` already carries `min-width: 0`, and
+ * `ui/browser/home-system-information.browser-spec.mjs` is what pins that against a regression,
+ * because jsdom computes no layout.
+ *
+ * **The two remembered blocks are announced from one polite region on this page**, not from the row that
+ * disappears: a removed row cannot announce its own removal. The region is visually hidden
+ * (`account-menu.ts`'s idiom) rather than a caption, so one removal does not leave a sentence
+ * standing under the blocks for the component's life. It is written **after** the write settles
+ * and only when the block's stored list actually moved, so a refusal or an unreachable instance
+ * announces nothing rather than a removal that did not happen; clearing it first is what gives a
+ * second removal a change to announce at all.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
 @Component({
   selector: 'app-home-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ServerFlag],
+  imports: [AreaIcon, ServerFlag],
   template: `<section class="ocu-home">
+    <div class="ocu-home-remembered">
+      @for (block of blocks; track block.key) {
+        <section class="ocu-home-block">
+          <h2 class="ocu-home-block-heading">{{ block.heading }}</h2>
+          @if (block.rows.length) {
+            <div class="ocu-home-block-list" role="list">
+              @for (row of block.rows; track row.route) {
+                <span class="ocu-home-block-row" role="listitem">
+                  <button
+                    type="button"
+                    class="ocu-home-block-open"
+                    [attr.aria-disabled]="row.ariaDisabled"
+                    (click)="openRemembered(row)"
+                  >
+                    <span class="ocu-home-block-label" [title]="row.label">{{ row.label }}</span>
+                    @if (row.gated) {
+                      <span class="ocu-home-block-reason">{{ row.reason }}</span>
+                    }
+                  </button>
+                  <button
+                    type="button"
+                    class="ocu-home-block-remove"
+                    [attr.aria-label]="row.removeLabel"
+                    (click)="removeRemembered(block, row)"
+                  >
+                    <span class="ocu-home-block-glyph" aria-hidden="true">{{ removeGlyph }}</span>
+                  </button>
+                </span>
+              }
+            </div>
+          } @else {
+            <p class="ocu-home-block-empty">{{ block.emptyLabel }}</p>
+          }
+          @if (block.hasStored) {
+            <button type="button" class="ocu-home-block-clear" (click)="clearRemembered(block)">
+              {{ block.clearLabel }}
+            </button>
+          }
+        </section>
+      }
+      <section class="ocu-home-block ocu-home-block-fixed">
+        <h2 class="ocu-home-block-heading">{{ STRINGS.shortcutsHeading }}</h2>
+        @if (shortcuts.length) {
+          <div class="ocu-home-block-list" role="list">
+            @for (row of shortcuts; track row.route) {
+              <span class="ocu-home-block-row" role="listitem">
+                <button
+                  type="button"
+                  class="ocu-home-block-open"
+                  [attr.aria-disabled]="row.ariaDisabled"
+                  (click)="openShortcut(row)"
+                >
+                  <span class="ocu-home-block-label" [title]="row.label">{{ row.label }}</span>
+                  @if (row.gated) {
+                    <span class="ocu-home-block-reason">{{ row.reason }}</span>
+                  }
+                </button>
+              </span>
+            }
+          </div>
+        } @else {
+          <p class="ocu-home-block-empty">{{ STRINGS.shortcutsEmpty }}</p>
+        }
+        <dl class="ocu-home-shortcut-keys">
+          @for (binding of shortcutKeys; track binding.label) {
+            <dt>{{ binding.label }}</dt>
+            <dd><kbd>{{ binding.keys }}</kbd></dd>
+          }
+        </dl>
+      </section>
+      @if (links.length) {
+        <section class="ocu-home-block ocu-home-block-fixed">
+          <h2 class="ocu-home-block-heading">{{ STRINGS.linksHeading }}</h2>
+          <div class="ocu-home-block-list" role="list">
+            @for (row of links; track row.key) {
+              <span class="ocu-home-block-row" role="listitem">
+                <a class="ocu-home-block-link" [href]="row.href" target="_blank" rel="noreferrer">
+                  <span class="ocu-home-block-label" [title]="row.label">{{ row.label }}</span>
+                  <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>
+                </a>
+              </span>
+            }
+          </div>
+        </section>
+      }
+      <section class="ocu-home-block ocu-home-block-fixed">
+        <h2 class="ocu-home-block-heading">{{ STRINGS.systemInfoHeading }}</h2>
+        @if (systemUnanswered) {
+          <p class="ocu-home-block-empty">{{ STRINGS.connectivityServerFault }}</p>
+        }
+        @if (systemAnswered) {
+          <div class="ocu-home-block-list" role="list">
+            @for (row of systemRows; track row.key) {
+              <span class="ocu-home-block-row ocu-home-system-row" role="listitem">
+                <span class="ocu-home-system-label">{{ row.label }}</span>
+                <span
+                  class="ocu-home-system-value"
+                  [class.ocu-home-system-absent]="row.absent"
+                  [title]="row.value"
+                  >{{ row.value }}</span
+                >
+              </span>
+            }
+          </div>
+        }
+      </section>
+    </div>
+    <span class="ocu-home-status ocu-visually-hidden" role="status">{{ announcement }}</span>
+    <span class="ocu-home-status ocu-visually-hidden" role="alert">{{ refusal }}</span>
     <div class="ocu-area-tile-grid" role="list">
       @for (tile of tiles; track tile.key) {
         <span class="ocu-area-tile-slot" role="listitem">
@@ -120,7 +379,7 @@ interface LineSegment {
             [attr.aria-describedby]="tile.describedBy"
             (click)="activate(tile)"
           >
-            <span class="ocu-area-tile-icon" aria-hidden="true"></span>
+            <span class="ocu-area-tile-icon" aria-hidden="true"><svg [ocuAreaIcon]="tile.key" [size]="24"></svg></span>
             <span class="ocu-area-tile-name">{{ tile.label }}</span>
             <span class="ocu-area-tile-caption">
               @for (part of tile.caption; track part.key) {
@@ -166,6 +425,11 @@ export class HomePage {
   private readonly session = inject(Session);
   private readonly shell = inject(ShellState);
   private readonly router = inject(Router);
+  private readonly preferences = inject(AccountPreferences);
+  private readonly about = inject(About);
+  private readonly systemInfo = inject(SystemInfo);
+
+  protected readonly STRINGS = STRINGS;
 
   /**
    * The middle dot DESIGN.md `:896` and EXPERIENCE.md "Six tiles in daily-use order" join with, produced in TypeScript
@@ -178,6 +442,32 @@ export class HomePage {
 
   /** Bumped whenever the navigation map changes, so the tiles' verdicts follow it. */
   private readonly mapGeneration = signal(0);
+
+  /** Bumped whenever the remembered lists change, so the two blocks follow them. */
+  private readonly preferenceGeneration = signal(0);
+
+  /** Bumped whenever the About read settles, so the links panel follows it. */
+  private readonly aboutGeneration = signal(0);
+
+  /** Bumped whenever the System information read settles, so the panel follows it. */
+  private readonly systemGeneration = signal(0);
+
+  /** The polite region's text: empty until a removal or a clear has changed the store. */
+  private readonly announcementValue = signal('');
+
+  /**
+   * The remove control's glyph, produced in TypeScript so no non-ASCII byte enters a template
+   * (Rule 14). It is `aria-hidden`, so the control's accessible name is its `aria-label` alone --
+   * which names the screen it removes.
+   */
+  protected readonly removeGlyph = '\u00d7';
+
+  /**
+   * The north-east arrow every outbound link in the shell carries (`instance-notice.ts`,
+   * `classic-link-card.ts`), written as its escape so no non-ASCII byte enters a template
+   * (Rule 14). `aria-hidden`, so each link's accessible name is its own word.
+   */
+  protected readonly externalGlyph = '\u2197';
 
   /** Mirrors the framework-free services into the reactive graph, as the status bar does. */
   private readonly serverName = signal(this.instance.serverName());
@@ -237,6 +527,100 @@ export class HomePage {
       });
   });
 
+  private readonly resolvedBlocks = computed<readonly RememberedBlock[]>(() => {
+    this.preferenceGeneration();
+    this.mapGeneration();
+    return [
+      {
+        key: 'favorites',
+        kind: FAVORITE_KIND,
+        heading: STRINGS.favoritesHeading,
+        emptyLabel: this.emptyLabelFor(this.preferences.favorites(), STRINGS.favoritesEmpty),
+        clearLabel: STRINGS.favoritesClear,
+        removedLabel: STRINGS.favoritesRemoved,
+        clearedLabel: STRINGS.favoritesCleared,
+        rows: this.rowsFor(this.preferences.favorites(), STRINGS.favoritesRemoveNamed),
+        hasStored: this.preferences.favorites().length > 0,
+      },
+      {
+        key: 'recents',
+        kind: RECENT_KIND,
+        heading: STRINGS.recentsHeading,
+        emptyLabel: this.emptyLabelFor(this.preferences.recents(), STRINGS.recentsEmpty),
+        clearLabel: STRINGS.recentsClear,
+        removedLabel: STRINGS.recentsRemoved,
+        clearedLabel: STRINGS.recentsCleared,
+        rows: this.rowsFor(this.preferences.recents(), STRINGS.recentsRemoveNamed),
+        hasStored: this.preferences.recents().length > 0,
+      },
+    ];
+  });
+
+  /**
+   * The fixed shortcuts roster, less the rows naming no built screen (AD-37 degrade), each
+   * carrying this user's own verdict for it.
+   */
+  private readonly resolvedShortcuts = computed<readonly ShortcutRow[]>(() => {
+    this.mapGeneration();
+    return shortcutScreens().map((screen) => {
+      const verdict = this.navigation.screenVerdict(screen.route);
+      return {
+        route: screen.route,
+        label: stringFor(screen.labelKey),
+        gated: !verdict.allowed,
+        ariaDisabled: verdict.allowed ? null : 'true',
+        reason: formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),
+        area: screen.area,
+      };
+    });
+  });
+
+  /**
+   * The three links-panel destinations, in the classic portal's own order, less any the instance
+   * did not answer an address for -- an anchor with no `href` is not a link.
+   *
+   * When that leaves none -- a read that has not answered yet, or one that failed with nothing
+   * held -- the block does not render at all. A heading standing over an empty list says there are
+   * no links when the truth is that the instance has not said; and unlike the remembered blocks
+   * beside it, there is nothing here a person did that an empty state could report back to them.
+   */
+  private readonly resolvedLinks = computed<readonly LinkRow[]>(() => {
+    this.aboutGeneration();
+    const links = this.about.links();
+    return [
+      { key: 'documentation', label: STRINGS.linksDocumentation, href: links.documentation },
+      { key: 'support', label: STRINGS.linksSupport, href: links.support },
+      { key: 'intersystems', label: STRINGS.linksInterSystems, href: links.intersystems },
+    ].filter((row) => row.href !== '');
+  });
+
+  /**
+   * The panel's seven rows, in the order the read carries them, each with the value the instance
+   * reported.
+   *
+   * **A value the instance did not report shows the not-reported word, never a blank cell.** A
+   * member reads `''` for three different reasons -- the source refused, the Application Monitor
+   * has not collected that metric, or this namespace is not production-enabled -- and none of
+   * them is a state the row could show instead. The row keeps its label either way, so the panel
+   * has the same seven rows whatever the instance answers.
+   *
+   * **Colour is never the only signal**: the word is the cell's own text, and
+   * `.ocu-home-system-absent` only restrains a not-reported value rather than encoding one.
+   */
+  private readonly resolvedSystemRows = computed<readonly SystemRow[]>(() => {
+    this.systemGeneration();
+    const fields = this.systemInfo.fields();
+    return SYSTEM_INFO_FIELDS.map((field) => {
+      const value = fields[field];
+      return {
+        key: field,
+        label: SYSTEM_INFO_LABELS[field],
+        value: value === '' ? STRINGS.systemInfoNotReported : value,
+        absent: value === '',
+      };
+    });
+  });
+
   /**
    * The five values in DESIGN.md `:896`'s order, with the ones the instance could not report
    * dropped. The flag is a segment like any other so the separators fall where the rendered
@@ -267,16 +651,119 @@ export class HomePage {
     });
     const stopScope = this.scope.subscribe(() => this.namespace.set(this.scope.namespace()));
     const stopSession = this.session.subscribe(() => this.userName.set(this.session.userName()));
+    const stopPreferences = this.preferences.subscribe(() =>
+      this.preferenceGeneration.set(this.preferenceGeneration() + 1)
+    );
+    // Read the remembered lists on arrival, not only once at sign-in. `App.verifyWhenSignedIn`
+    // issues the tab's first read, but it fires on a session *state change*, so a tab that stays
+    // signed in never reads again -- and this is the only surface that renders both lists. Without
+    // this, a write whose answer the store parked (a newer request settled first, or the instance
+    // did not reply) leaves Home showing the wrong lists for the life of the tab, and arriving at
+    // Home is exactly the gesture that cannot repair it. A failed read still parks rather than
+    // clearing, so the matrix's unreachable-instance row is unchanged.
+    void this.preferences.load();
+    // The links panel's three destinations come from the same caller-own read About uses: the
+    // documentation one follows whether this instance serves its own copy, so a second source for
+    // it could disagree with the Help control about where the documentation is. Read here because
+    // Home is where the panel is; a tab that never opens Home never spends the request.
+    const stopAbout = this.about.subscribe(() =>
+      this.aboutGeneration.set(this.aboutGeneration() + 1)
+    );
+    void this.about.load();
+    // The System Information panel's own read (Story 15.4). It is chrome, not a declared read,
+    // and it runs no timer: Home is not on AD-43's auto-refresh roster, so the panel settles with
+    // this one call. Read here for the reason the About read is -- the panel is on Home, and a
+    // tab that never opens Home never spends the request.
+    const stopSystem = this.systemInfo.subscribe(() =>
+      this.systemGeneration.set(this.systemGeneration() + 1)
+    );
+    void this.systemInfo.load();
+    // The production member is scoped to the request's namespace, so the panel has to re-read
+    // when the shell's namespace moves: Home is not re-created by a switch (it subscribes to
+    // `scope` above for exactly that reason), and without this the Production row keeps the
+    // previous namespace's word beside an instance line already showing the new one. This is
+    // AD-44's "switching re-fetches rather than re-routing" on the channel `onScopeChange`
+    // exists to carry -- an event, not a timer, so AD-43's closed roster is unaffected.
+    const stopSystemScope = onScopeChange(this.scope, () => void this.systemInfo.load());
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopInstance();
       stopScope();
       stopSession();
+      stopPreferences();
+      stopAbout();
+      stopSystem();
+      stopSystemScope();
     });
   }
 
   protected get tiles(): readonly AreaTile[] {
     return this.resolvedTiles();
+  }
+
+  protected get blocks(): readonly RememberedBlock[] {
+    return this.resolvedBlocks();
+  }
+
+  protected get shortcuts(): readonly ShortcutRow[] {
+    return this.resolvedShortcuts();
+  }
+
+  /** The key bindings after the screen rows, or after their empty state: text, not controls. */
+  protected readonly shortcutKeys: readonly ShortcutKeyRow[] = SHORTCUT_KEYS.map((binding) => ({
+    label: stringFor(binding.labelKey),
+    keys: stringFor(binding.keysKey),
+  }));
+
+  protected get links(): readonly LinkRow[] {
+    return this.resolvedLinks();
+  }
+
+  protected get systemRows(): readonly SystemRow[] {
+    return this.resolvedSystemRows();
+  }
+
+  /**
+   * Whether the panel has nothing the instance said -- a read that failed with no earlier answer
+   * held. Seven "Not reported" rows would be a confident claim about an instance that never
+   * replied, so the block renders the connectivity fault instead; once a read has answered, a
+   * later failure leaves that answer standing (`about-dialog.ts`'s shape).
+   */
+  protected get systemUnanswered(): boolean {
+    this.systemGeneration();
+    return !this.systemInfo.answered() && this.systemInfo.failed();
+  }
+
+  /**
+   * Whether the instance has answered this panel's read at least once.
+   *
+   * **The rows exist only once it has.** Before the first read settles the store holds seven
+   * empty members, and rendering them would say "Not reported" about an instance that has not
+   * been asked yet -- the same confident claim `systemUnanswered` exists to prevent on the
+   * failed path, and one that stands indefinitely against an instance that never replies.
+   * `.ocu-home-system-row` is therefore also a correct "the read has settled" signal for
+   * `browser/home-system-information.browser-spec.mjs`, which waits on it.
+   */
+  protected get systemAnswered(): boolean {
+    this.systemGeneration();
+    return this.systemInfo.answered();
+  }
+
+  protected get announcement(): string {
+    return this.announcementValue();
+  }
+
+  /**
+   * The instance's own sentence for a refused preference write, `''` for none (DW-1326).
+   *
+   * It is announced assertively rather than politely, because it says a thing the user asked for
+   * did not happen (EXPERIENCE.md "Status messages (WCAG 4.1.3)"). The text is the server's
+   * (AD-39); this page publishes none of it. It is cleared before each write, so a refusal about
+   * the last action is never left standing beside the next.
+   */
+  protected get refusal(): string {
+    this.preferenceGeneration();
+    return this.preferences.fault();
   }
 
   protected get instanceLine(): readonly LineSegment[] {
@@ -298,5 +785,121 @@ export class HomePage {
     this.shell.showArea(tile.key);
     if (!tile.hasScreen) return;
     void this.router.navigateByUrl(withQuery(tile.route, this.router.url));
+  }
+
+  /**
+   * Open a remembered screen. A gated row does nothing: `aria-disabled` carries no behaviour of
+   * its own, so the refusal has to be here -- the same shape the tiles and the command box use.
+   *
+   * An open side bar is moved to the screen's area first, so the list beside the screen is that
+   * screen's own; a collapsed one stays collapsed, because Ctrl/Cmd+B's choice is remembered. The
+   * current query travels, because `?ns=` is data scope (AD-44).
+   */
+  protected openRemembered(row: RememberedRow): void {
+    if (row.gated) return;
+    const area = areaByKey(row.area);
+    if (area !== null && !area.navigates && this.shell.open()) this.shell.showArea(area.key);
+    void this.router.navigateByUrl(withQuery(row.route, this.router.url));
+  }
+
+  /**
+   * Open a shortcut. A gated row does nothing, the same shape the tiles, the remembered rows and
+   * the command box use for the same verdict: `aria-disabled` carries no behaviour of its own.
+   *
+   * An open side bar is moved to the screen's area first, so the list beside the screen is that
+   * screen's own; a collapsed one stays collapsed. The current query travels, because `?ns=` is
+   * data scope (AD-44).
+   */
+  protected openShortcut(row: ShortcutRow): void {
+    if (row.gated) return;
+    const area = areaByKey(row.area);
+    if (area !== null && !area.navigates && this.shell.open()) this.shell.showArea(area.key);
+    void this.router.navigateByUrl(withQuery(row.route, this.router.url));
+  }
+
+  /**
+   * Drop one row, and announce which list it left once the instance's answer says it did. That
+   * answer re-renders the block, so a removal the instance refused -- or never heard -- leaves
+   * the row where it is and announces nothing.
+   */
+  protected removeRemembered(block: RememberedBlock, row: RememberedRow): void {
+    this.announceOnChange(block.kind, block.removedLabel, () =>
+      this.preferences.remove(block.kind, row.route)
+    );
+  }
+
+  /** Empty one block, and announce it on the same terms. */
+  protected clearRemembered(block: RememberedBlock): void {
+    this.announceOnChange(block.kind, block.clearedLabel, () => this.preferences.clear(block.kind));
+  }
+
+  /**
+   * Announce <code>label</code> once <code>write</code> has settled, and only when the stored list
+   * for <code>kind</code> no longer holds what it held when the write was issued.
+   *
+   * <code>write</code> is a function rather than a promise so the list it is compared against is
+   * read before the request goes out, whatever the store does synchronously on the way.
+   *
+   * The comparison is on membership rather than on length, because a concurrent visit can add a
+   * row as this one removes one and leave the length where it was -- which would announce nothing
+   * although the row the user asked about did go.
+   *
+   * Cleared before the wait for two reasons: a sentence the region already carries is not read
+   * out again when it is re-written, and a refusal must not leave the previous action's
+   * confirmation standing as though it were this one's.
+   */
+  private announceOnChange(kind: PreferenceKind, label: string, write: () => Promise<void>): void {
+    const held = [...this.stored(kind)];
+    this.announcementValue.set('');
+    this.preferences.clearFault();
+    void write().then(() => {
+      const now = this.stored(kind);
+      if (held.every((route) => now.includes(route)) && held.length === now.length) return;
+      this.announcementValue.set(label);
+    });
+  }
+
+  /** The routes the store holds for one kind, whatever this page renders of them. */
+  private stored(kind: PreferenceKind): readonly string[] {
+    return kind === FAVORITE_KIND ? this.preferences.favorites() : this.preferences.recents();
+  }
+
+  /**
+   * The empty state a block shows: its own wording when the instance holds nothing for it, and
+   * DW-1328's when it holds rows that all name screens this build does not serve. The second says
+   * the rows exist rather than claiming the block is empty, and the Clear control stands beside it.
+   */
+  private emptyLabelFor(routes: readonly string[], ownLabel: string): string {
+    return routes.length === 0 ? ownLabel : STRINGS.rememberedNoScreensHere;
+  }
+
+  /**
+   * One block's rows: the routes the instance answered, less the ones that no longer name a built
+   * screen (AD-37 -- dropped from the rendering, never from the store), each carrying the verdict
+   * this user's navigation map holds for it.
+   *
+   * An **unlisted** screen is dropped on the same terms. `sideBarPosition` 0 marks one reached only
+   * from its own list and keyed by an entity id, so the stored route is the id-less parent and a
+   * row for it would open the screen with no entity -- a create form the user did not ask for.
+   * `recents-recorder.ts` no longer records one; this drops the rows an earlier build stored.
+   */
+  private rowsFor(routes: readonly string[], removeTemplate: string): readonly RememberedRow[] {
+    const rows: RememberedRow[] = [];
+    for (const route of routes) {
+      const screen = screenForRoute(route);
+      if (screen === null || !screen.built || !isListedScreen(screen)) continue;
+      const label = stringFor(screen.labelKey);
+      const verdict = this.navigation.screenVerdict(route);
+      rows.push({
+        route,
+        label,
+        gated: !verdict.allowed,
+        ariaDisabled: verdict.allowed ? null : 'true',
+        reason: formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),
+        removeLabel: formatNamed(removeTemplate, label),
+        area: screen.area,
+      });
+    }
+    return rows;
   }
 }

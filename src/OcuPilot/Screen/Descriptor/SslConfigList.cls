@@ -11,11 +11,10 @@
 /// vendor builds that row by excluding two columns from <code>Security.SSLConfigs</code>' own
 /// <code>List</code> query, so no key material is in it by construction.
 /// <class>OcuPilot.Test.ScreenRead</class> holds every declared field to the live first row.</p>
-/// <p><b>It declares no <code>rowGet</code>, and that is what keeps key material out of reach.</b>
-/// The endpoint's GET carries eighteen further fields, <code>PrivateKeyFile</code> and
-/// <code>PrivateKeyType</code> among them, and no acceptance criterion of this screen needs one --
-/// so no GET is ever issued and <code>context.secretFields</code> is empty because the read carries
-/// no secret to strip (AD-35, Conventions, Secrets).</p>
+/// <p><b>It declares no <code>rowGet</code>.</b> The endpoint's GET carries eighteen further fields
+/// the list does not show -- file locations among them, which are locations and not key material --
+/// and never the private key password, so <code>context.secretFields</code> is empty because the
+/// read carries no secret to strip (AD-35, Conventions, Secrets).</p>
 /// <p><b>The privilege set is the vendor's <code>ResourcesOR()</code> for this endpoint,
 /// <code>%Admin_Secure:USE</code>, plus <code>%DB_IRISSYS:READ</code></b>: without the database read
 /// the vendor endpoint fails inside <code>%SYS</code> and the port answers 500, so the pair is what
@@ -24,8 +23,14 @@
 /// <p><b>The classic page is <code>%CSP.UI.Portal.SSLList</code></b>, spelled in the class's own
 /// case because the custom-resource lookup does not case-fold (AD-44). As a list archetype it links
 /// out to nothing.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next rather than
-/// inviting the agent, and it does not refresh (AD-43).</p>
+/// <p><b>Its primary action is Create</b>: it opens <class>OcuPilot.Screen.Descriptor.SslForm</class>
+/// at <code>security/ssl/edit</code>, and a row's name cell opens the same form for that
+/// configuration; both save through the SSL/TLS tools (AD-55). <b>Its row action is Delete</b>
+/// (AD-53), through <class>OcuPilot.Screen.Tool.SslDelete</class>, drawn refused on OcuPilot's own
+/// provider configuration (<code>ocupilot-ssl</code>), which the instance refuses whatever the
+/// caller (AD-10). Its empty state invites the agent, and it does not refresh (AD-43).</p>
+/// <p><b><code>PrivateKeyPassword</code> is its <code>secretArguments</code></b> (AD-3, AD-6): the
+/// change tool's one secret, supplied only at confirm and never read back by any read.</p>
 Class OcuPilot.Screen.Descriptor.SslConfigList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -46,11 +51,17 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "create", "selfProtection": ""},
+  "rowActions": [{"id": "delete", "selfProtection": "ocupilot-ssl"}],
   "context": {"fields": ["Name", "Description", "Enabled", "Type"], "secretFields": []},
+  "secretArguments": ["PrivateKeyPassword"],
   "emptyStateKey": "sslListEmpty",
   "commandAliases": ["certificates"],
+  "suggestedPrompts": [
+    {"groupKey": "sslPromptGroupConnections", "textKey": "sslConfigListPrompt1"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "sslConfigListPrompt2"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "sslConfigListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.SSLList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
@@ -67,8 +78,8 @@ XData Declaration
       {"field": "Enabled", "labelKey": "tableColumnEnabled", "kind": "status"},
       {"field": "Type", "labelKey": "tableColumnType", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "sslListEmptyAgent"
   },
   "toolIdentifier": "security.ssl"
 }

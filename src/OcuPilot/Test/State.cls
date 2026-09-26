@@ -17,7 +17,7 @@
 /// (<method>TestDeniedUserCannotReachAnyStateClass</method>): each class's own SQL table, and the
 /// data global the dictionary gives it, so a store added to
 /// <package>OcuPilot.Kernel.State</package> is asked FR-29's question by existing rather than by
-/// anyone remembering to add a line. <b>The eight classes share one data global</b>
+/// anyone remembering to add a line. <b>Every class in the package shares one data global</b>
 /// (<code>^OcuPilot.Kernel.State.BaseD</code>, read from
 /// <class>%Dictionary.CompiledStorage</class>), so the discriminating half of the sweep is the
 /// per-class table; the global half is the same reference re-read per class and is kept because

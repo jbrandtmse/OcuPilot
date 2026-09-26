@@ -1,22 +1,26 @@
 /// <p>Test-only <class>OcuPilot.Kernel.Provider.Catalog</class> subclass that answers the shipped
-/// table plus five extra rows: one whose <code>endpointRequired</code> is true, one whose
+/// table plus seven extra rows: one whose <code>endpointRequired</code> is true, one whose
 /// <code>allowsLocal</code> is true, one whose <code>keyPrefix</code> is the shipped row's so
 /// AC6's canary has the shape of a real key, one whose <code>adapterClass</code> names a class
-/// this instance does not compile at all, and one whose adapter forces a real <code>^ERRORS</code>
-/// entry from inside the shape gate. All but the fourth name a stub <code>adapterClass</code>, so
+/// this instance does not compile at all, one whose adapter forces a real <code>^ERRORS</code>
+/// entry from inside the shape gate, and two whose adapter translates the canonical shapes into
+/// another family's dialect. All but the fourth name a stub <code>adapterClass</code>, so
 /// no call driven through any of them opens a socket; the fourth is never dispatched to, which
 /// is the point of it.</p>
-/// <p>It exists because Release 1 ships exactly one provider row, and that row exercises neither
-/// column: it requires no endpoint and allows no local address. A rule with no failing case is not
-/// enforced, it is merely written, so the seam is what makes both falsifiable -- and the second row
-/// is what makes "the adapter comes from the row" an observation rather than an assertion against
-/// one possible answer.</p>
+/// <p>It exists because no <b>vendor</b> row exercises either column. Since Story 10.3 the shipped
+/// <code>compatible</code> row sets both, and the rules are pinned over it directly
+/// (<class>OcuPilot.Test.Egress</class>, <class>OcuPilot.Test.AgentRules</class>); these rows keep
+/// what a shipped row still cannot supply -- either column paired with a provider the shipped
+/// catalog does not declare. A rule with no failing case is not enforced, it is merely written, so
+/// the seam is what makes both falsifiable -- and the second row is what makes "the adapter comes
+/// from the row" an observation rather than an assertion against one possible answer.</p>
 /// <p>Overriding <method>Table</method> alone is enough: <method>Keys</method>,
 /// <method>Row</method> and <method>IsKnown</method> all read the table through <code>..</code>
 /// dispatch, so they answer the extra rows too.</p>
 /// <p><b>Additive only.</b> <class>OcuPilot.Test.AgentRules</class> asserts that the <i>shipped</i>
-/// table declares exactly <code>anthropic</code>, so a row added to the shipped XData is a
-/// regression while a row added here is a fixture.</p>
+/// table declares exactly <code>anthropic</code>, <code>openai</code> and <code>gemini</code>, in
+/// that order, so a row added to the shipped XData is a regression while a row added here is a
+/// fixture.</p>
 Class OcuPilot.Test.CatalogProbe Extends OcuPilot.Kernel.Provider.Catalog
 {
 
@@ -67,8 +71,30 @@ Parameter SHAPELEAKKEY = "probe-shape-leak";
 /// canary the shape gate is driven with is a value of the shape a real key has.</p>
 Parameter SHAPELEAKADAPTER = "OcuPilot.Test.ProviderStubShapeLeak";
 
+/// <p>The provider key of the row whose adapter translates the canonical shapes into the OpenAI
+/// dialect, so <class>OcuPilot.Test.Adapter</class> can drive a family that exists only as this
+/// row plus <class>OcuPilot.Test.AdapterProvider</class> (Story 10.1, AD-42). No shipped row
+/// names that adapter and none is added: the families themselves arrive in Stories 10.2
+/// and 10.3.</p>
+Parameter OPENAIKEY = "probe-openai";
+
+/// <p>The provider key of the row whose adapter translates into the Gemini dialect. A second row
+/// for the same adapter class, because a family is a row and the dialect is that adapter's own
+/// affair -- the two rows are what show one adapter serving two dialects without the port
+/// reading either.</p>
+Parameter GEMINIKEY = "probe-gemini";
+
+/// <p>The adapter both those rows name.</p>
+Parameter DIALECTADAPTER = "OcuPilot.Test.AdapterProvider";
+
+/// <p>The key prefix both those rows declare, so the probe credential already in use passes
+/// their shape gate.</p>
+Parameter DIALECTKEYPREFIX = "probe-local-";
+
 /// <p>The shipped table with <parameter>PROBEKEY</parameter>, <parameter>LOCALKEY</parameter>,
-/// <parameter>CANARYKEY</parameter> and <parameter>MISSINGADAPTERKEY</parameter> appended.</p>
+/// <parameter>CANARYKEY</parameter>, <parameter>MISSINGADAPTERKEY</parameter>,
+/// <parameter>SHAPELEAKKEY</parameter>, <parameter>OPENAIKEY</parameter> and
+/// <parameter>GEMINIKEY</parameter> appended.</p>
 ClassMethod Table(Output pObject As %DynamicObject) As %Status
 {
     Set tSC = ##super(.pObject)
@@ -153,6 +179,26 @@ ClassMethod Table(Output pObject As %DynamicObject) As %Status
     Do tShapeLeak.%Set("allowsLocal", 0, "boolean")
     Do tShapeLeak.%Set("authVersion", "2023-06-01")
     Do pObject.providers.%Push(tShapeLeak)
+    For tDialectKey = ..#OPENAIKEY, ..#GEMINIKEY {
+        Set tDialect = {}
+        Do tDialect.%Set("key", tDialectKey)
+        Do tDialect.%Set("label", "Probe (" _ tDialectKey _ " dialect)")
+        Do tDialect.%Set("defaultModel", tDialectKey _ "-model-1")
+        Do tDialect.%Set("modelSuggestions", [(tDialectKey _ "-model-1")])
+        ; The shipped row's endpoint, deliberately: the endpoint is not what these rows exercise,
+        ; and a host the address policy cannot resolve would refuse the call before any adapter ran.
+        Do tDialect.%Set("defaultEndpoint", "https://api.anthropic.com/v1/messages")
+        Do tDialect.%Set("endpointRequired", 0, "boolean")
+        Do tDialect.%Set("canonicalMaxTokens", 4000, "number")
+        Do tDialect.%Set("canonicalTemperature", 0, "number")
+        Do tDialect.%Set("defaultEnvVarName", "OCUPILOT_PROBE_LOCAL_KEY")
+        Do tDialect.%Set("defaultCredentialName", "OcuPilotProbeDialectCredential")
+        Do tDialect.%Set("keyPrefix", ..#DIALECTKEYPREFIX)
+        Do tDialect.%Set("adapterClass", ..#DIALECTADAPTER)
+        Do tDialect.%Set("allowsLocal", 0, "boolean")
+        Do tDialect.%Set("authVersion", "probe-version-4")
+        Do pObject.providers.%Push(tDialect)
+    }
     Quit tSC
 }
 

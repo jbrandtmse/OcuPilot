@@ -11,6 +11,7 @@ import { Router } from '@angular/router';
 
 import { withQuery } from '../core/navigation';
 import { STRINGS } from '../core/strings';
+import { AccountMenu } from './account-menu';
 import { CommandBox } from './command-box';
 import { NamespaceSwitch } from './namespace-switch';
 
@@ -18,22 +19,24 @@ import { NamespaceSwitch } from './namespace-switch';
  * The header: the 48px `banner` band across the top of the shell (DESIGN.md `:1007-1017`,
  * EXPERIENCE.md "The VS Code-shaped shell", "`{spacing.header-height}` band").
  *
- * Three things and nothing else, left to right: the reversed lockup linking Home, the command
- * box centred in the header's own width, and the namespace slot at the right. Server,
- * instance, user, licensed-to and the server flag are the status bar's -- the badge never
- * appears here (DESIGN.md `:1025`).
+ * Four things and nothing else, left to right: the lockup on its tile linking Home, the command
+ * box centred in the header's own width, and at the right end the namespace slot and then the
+ * account button naming the user, which opens the account menu (`account-menu.ts`). Server,
+ * instance, licensed-to and the server flag are the status bar's -- the badge never appears here
+ * (DESIGN.md `:1025`). The status bar still shows the user name, as information only, so the menu
+ * has one trigger.
  *
  * **No text in the header is drawn below 100%** (DESIGN.md `:1007`). The namespace eyebrow
  * sits on the gradient's `shell-edge` end, where full-strength `on-shell` is 5.35:1 and the
  * 72% the rail uses for icons at rest would be 3.60:1 -- which is why the rule is absolute
  * rather than per-element, and why the command box's placeholder is drawn at 100% too.
  *
- * **The lockup is the reversed file, vendored** (`ui/src/assets/lockup/`, AD-47, NFR-10): the
- * navy-wordmark file is 1.02:1 on the chrome and is the sign-in card's, never this band's. It
- * is drawn as a CSS background for the reason the fonts are -- a `url()` reference is what
- * makes the application builder treat the file as a build input, hash it and copy it into the
- * bundle, so `angular.json`'s `assets` array stays empty. No plate, no ground, no hover
- * state; its accessible name says both the product and where the link goes.
+ * **The lockup is the navy-wordmark file on a white rounded tile, vendored** (`ui/src/assets/lockup/`,
+ * AD-47, NFR-10): the sign-in card's file, 1.02:1 on the chrome and so never there without its
+ * tile. The anchor is the tile, the same white in both themes, so the focus ring surrounds it. It
+ * is a CSS background because a `url()` reference makes the application builder hash the file and
+ * copy it into the bundle, so `angular.json`'s `assets` array stays empty. No hover state; its
+ * accessible name says both the product and where the link goes.
  *
  * **The namespace slot carries the eyebrow; the switch carries the value.** The band and the
  * eyebrow's authority are this component's (DESIGN.md `:1007`: the eyebrow is `on-shell` at 100%
@@ -51,7 +54,7 @@ import { NamespaceSwitch } from './namespace-switch';
 @Component({
   selector: 'app-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommandBox, NamespaceSwitch],
+  imports: [AccountMenu, CommandBox, NamespaceSwitch],
   template: `<header class="ocu-header" role="banner">
     <a
       class="ocu-header-lockup"
@@ -60,9 +63,12 @@ import { NamespaceSwitch } from './namespace-switch';
       (click)="goHome($event)"
     ></a>
     <app-command-box />
-    <div class="ocu-header-namespace">
-      <span class="ocu-header-namespace-eyebrow" id="ocu-header-namespace-eyebrow">{{ STRINGS.headerNamespaceLabel }}</span>
-      <app-namespace-switch />
+    <div class="ocu-header-end">
+      <div class="ocu-header-namespace">
+        <span class="ocu-header-namespace-eyebrow" id="ocu-header-namespace-eyebrow">{{ STRINGS.headerNamespaceLabel }}</span>
+        <app-namespace-switch />
+      </div>
+      <app-account-menu />
     </div>
   </header>`,
 })

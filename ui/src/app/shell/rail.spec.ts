@@ -1,15 +1,24 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { AgentStatus, formatKillSwitch } from '../core/agent-status';
 import { NavigationService, type Verdict } from '../core/navigation';
-import { PreferenceStore } from '../core/preferences';
+import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generated';
 import { stubAgentStatus } from '../testing/agent-status';
 import { Rail } from './rail';
+import { AREA_ICON_STROKE_WIDTH, areaIcon } from './rail-icons';
+import { AreaIcon } from './rail-icon';
+import {
+  SHELL_SIDE_BAR_OPEN,
+  type StubbedAccountPreferences,
+  lastRemembered,
+  stubAccountPreferences,
+} from '../testing/account-preferences';
 
 /**
  * The rail's rendered contract (EXPERIENCE.md "`{spacing.rail-width}` icon", "**Mechanism** (the accessibility contract; component rows point here)."; DESIGN.md `:972-1003`), asserted
@@ -21,20 +30,42 @@ import { Rail } from './rail';
  * `OcuPilot.Test.Wire`'s, over the wire.
  */
 
-function memoryStorage() {
-  const map = new Map<string, string>();
-  return {
-    getItem: (key: string) => map.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      map.set(key, value);
-    },
-    removeItem: (key: string) => {
-      map.delete(key);
-    },
-  };
+const ALLOWED: Verdict = { allowed: true, failedPair: '' };
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** An icon's children as `{tag, attrs}` with attributes in DOM order, framework attributes aside. */
+function renderedShapes(svg: Element) {
+  return Array.from(svg.children).map((child) => {
+    expect(child.namespaceURI, `<${child.localName}> is an SVG element, not an HTML one`).toBe(SVG_NS);
+    return {
+      tag: child.localName,
+      attrs: Array.from(child.attributes)
+        .filter((attr) => !attr.name.startsWith('_ng') && !attr.name.startsWith('ng-'))
+        .map((attr) => [attr.name, attr.value]),
+    };
+  });
 }
 
-const ALLOWED: Verdict = { allowed: true, failedPair: '' };
+/** The module's shapes for `key` at `size`, in the same form, or `[]` where it has none. */
+function expectedShapes(key: string, size: 20 | 24) {
+  return (areaIcon(key, size) ?? []).map((shape) => ({ tag: shape.tag, attrs: Object.entries(shape.attrs) }));
+}
+
+/** The icon root: an SVG element, decorative, sized and stroked as the module publishes. */
+function expectIconRoot(svg: Element, size: 20 | 24): void {
+  expect(svg.namespaceURI).toBe(SVG_NS);
+  expect(svg.localName).toBe('svg');
+  expect(svg.getAttribute('viewBox')).toBe(`0 0 ${size} ${size}`);
+  expect(svg.getAttribute('width')).toBe(String(size));
+  expect(svg.getAttribute('height')).toBe(String(size));
+  expect(svg.getAttribute('fill')).toBe('none');
+  expect(svg.getAttribute('stroke')).toBe('currentColor');
+  expect(svg.getAttribute('stroke-width')).toBe(AREA_ICON_STROKE_WIDTH);
+  expect(svg.getAttribute('aria-hidden')).toBe('true');
+  expect(svg.getAttribute('focusable')).toBe('false');
+  expect(svg.querySelector('title, desc'), 'no title or desc to announce').toBeNull();
+}
 
 function area(key: string, labelKey: string, position: number, extra: Partial<AreaDeclaration> = {}) {
   return {
@@ -110,6 +141,9 @@ describe('the activity rail', () => {
   /** The verdict the stubbed restraint read answers with. Mutated to arrange a kill switch. */
   let restraint: Record<string, unknown>;
   let shell: ShellState;
+  let panel: PanelState;
+  /** The account store behind both the shell's and the panel's remembered state. */
+  let account: StubbedAccountPreferences;
 
   /** The attention dot, or null. There is at most one on the whole rail, ever. */
   const dot = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-rail-dot');
@@ -122,7 +156,9 @@ describe('the activity rail', () => {
     definitionRows = [];
     restraint = {};
     agentStatus = stubAgentStatus(definitionRows, restraint);
-    shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    account = stubAccountPreferences();
+    shell = new ShellState({ account });
+    panel = new PanelState({ account, shell });
     TestBed.configureTestingModule({
       providers: [
         // Two real routes, so a navigation that does not happen is observable. With an empty
@@ -135,6 +171,7 @@ describe('the activity rail', () => {
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: AgentStatus, useValue: agentStatus },
         { provide: ShellState, useValue: shell },
+        { provide: PanelState, useValue: panel },
       ],
     });
     fixture = TestBed.createComponent(Rail);
@@ -169,6 +206,25 @@ describe('the activity rail', () => {
     expect(bottom[0].querySelector('.ocu-rail-item').getAttribute('aria-label')).toBe(
       STRINGS.navAreaAgent
     );
+  });
+
+  it('draws each area icon as one decorative 20x20 svg holding the module shapes, and no letter (Story 15.7)', () => {
+    const rendered = items();
+    expect(rendered).toHaveLength(AREAS.length);
+    for (const [index, item] of rendered.entries()) {
+      const key = AREAS[index].key;
+      const glyph = item.children[0];
+      expect(glyph.classList.contains('ocu-rail-glyph')).toBe(true);
+      expect(glyph.getAttribute('aria-hidden')).toBe('true');
+      expect(glyph.textContent, `${key}: the glyph holds no text`).toBe('');
+      expect(glyph.children).toHaveLength(1);
+      const svg = glyph.children[0];
+      expectIconRoot(svg, 20);
+      expect(renderedShapes(svg), `${key}: the rendered shapes are the module's`).toEqual(
+        expectedShapes(key, 20)
+      );
+      expect(renderedShapes(svg).length, `${key}: every rail area has a drawing`).toBeGreaterThan(0);
+    }
   });
 
   it('is one Tab stop, with Up and Down moving between items', () => {
@@ -276,6 +332,29 @@ describe('the activity rail', () => {
     // Home is the one rail item that moves the router, and this is the assertion that makes
     // the routing half of `Rail.activate` falsifiable at all.
     expect(router.url).toBe('/');
+  });
+
+  it('Yield order: the visible area\'s item reopens a yielded side bar and releases it again, writing no preference either time', () => {
+    // Mutation (Rule 19): drop the `sideBarReopened()` branch from `Rail.activate` -> the second
+    // click goes through `activateArea`, which closes the bar and stores "false", and this goes red.
+    shell.showArea('logs');
+    panel.setViewport(1280);
+    fixture.detectChanges();
+    expect(panel.sideBarYielded()).toBe(true);
+    const stored = lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN);
+    expect(stored).toBe('1');
+
+    items()[1].click();
+    fixture.detectChanges();
+    expect(panel.sideBarReopened()).toBe(true);
+    expect(lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN)).toBe(stored);
+
+    items()[1].click();
+    fixture.detectChanges();
+    expect(panel.sideBarReopened()).toBe(false);
+    expect(panel.sideBarYielded()).toBe(true);
+    expect(shell.open()).toBe(true);
+    expect(lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN)).toBe(stored);
   });
 
   it('DW-134: a rail navigation keeps the namespace the route is scoped to', async () => {
@@ -421,5 +500,34 @@ describe('the activity rail', () => {
     fixture.detectChanges();
     expect(shell.visibleArea()).toBe('');
     expect(shell.open()).toBe(true);
+  });
+});
+
+@Component({
+  imports: [AreaIcon],
+  template: `<svg [ocuAreaIcon]="key" [size]="size"></svg>`,
+})
+class IconHost {
+  key = 'home';
+  size: 20 | 24 = 20;
+}
+
+describe('the area icon', () => {
+  it('draws nothing -- never a letter -- for an area with no drawing at that size', () => {
+    const fixture = TestBed.createComponent(IconHost);
+    fixture.componentInstance.key = 'no-such-area';
+    fixture.detectChanges();
+    const svg: Element = fixture.nativeElement.querySelector('svg');
+    expectIconRoot(svg, 20);
+    expect(svg.children).toHaveLength(0);
+    expect(svg.textContent).toBe('');
+
+    // Home has a rail drawing and no tile.
+    const tile = TestBed.createComponent(IconHost);
+    tile.componentInstance.size = 24;
+    tile.detectChanges();
+    const tileSvg: Element = tile.nativeElement.querySelector('svg');
+    expectIconRoot(tileSvg, 24);
+    expect(tileSvg.children).toHaveLength(0);
   });
 });

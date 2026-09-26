@@ -7,9 +7,9 @@ import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import type { ConnectivityService } from '../../core/connectivity';
 import { joinCompositeId } from '../../core/entity-id';
+import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../../core/explain-entry';
 import { NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
-import { PreferenceStore } from '../../core/preferences';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -17,7 +17,9 @@ import { ScreenStores } from '../../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { AuditPage } from './audit.page';
-import { AuditSearch } from './audit.store';
+import { AuditSearch, MARKER_CRITERION } from './audit.store';
+import { stubAccountPreferences } from '../../testing/account-preferences';
+import { stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
 
 /**
  * The audit database viewer, wired end to end over stubs of the two things an instance supplies --
@@ -79,7 +81,7 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 
 const planted: HTMLElement[] = [];
 
-async function mount(initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')]) {
+async function mount(initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')], explain: ExplainEntry | null = null) {
   TestBed.resetTestingModule();
   let answerRows = initialRows;
   const paths: string[] = [];
@@ -94,7 +96,7 @@ async function mount(initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')]) 
   // a router outlet, as `list-page.spec.ts` creates its subject, so the segment is pushed here; the
   // real `<route>/:id` wiring is the browser leg's.
   const params = new BehaviorSubject(convertToParamMap({}));
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
@@ -120,6 +122,7 @@ async function mount(initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')]) 
         useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService,
       },
       { provide: ActivatedRoute, useValue: { paramMap: params } as unknown as ActivatedRoute },
+      ...(explain === null ? [] : [{ provide: ExplainEntry, useValue: explain }]),
     ],
   });
   // One store per test, so a search in one does not leak into the next.
@@ -272,6 +275,67 @@ describe('the audit database viewer', () => {
     expect(paths[1]).not.toContain('eventSources=OcuPilot');
   });
 
+  it('AC3 (Story 5.8): an agent arrival applies the declared marker, searches, and refuses a declaration that is not this screen\'s', async () => {
+    // `openWith` is the non-interactive path an agent navigation arrives through, and this is where
+    // it is driven for real -- `shell/agent-navigator.spec.ts` stubs the store, so it can say who
+    // was asked but not what the asking does.
+    //
+    // Mutation (Rule 19): drop the `searchedOnce = true` line from `openWith` -> the row assertion
+    // goes red, because the archetype renders nothing until this screen has searched.
+    const { fixture, host, paths } = await mount();
+    const store = TestBed.inject(AuditSearch);
+    store.openWith(AUDIT, MARKER_CRITERION);
+    await settle(fixture);
+    const box = host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    expect(paths[0]).toContain('&eventSources=OcuPilot');
+    expect(rowNames(host)).toEqual(['RoleGranted']);
+
+    // The arrival runs the screen's DECLARED read, not the user's last one. This store is
+    // root-provided and outlives the screen, so a criterion the user typed on an earlier visit is
+    // still held -- and `criteria()` sends every declared criterion the form holds a value for, so
+    // an arrival that kept it would narrow the marker filter by a username nobody asked about and
+    // show no row for the write the agent just made.
+    //
+    // `usernames` deliberately, and not `eventSources`: the marker overrides its own parameter
+    // (see `criteria`), so a stale value there would be replaced whatever this does. The stale
+    // value that survives is one on a criterion the marker does not name, and narrowing by it is
+    // what loses the row.
+    //
+    // Mutation (Rule 19): drop the `this.values = {}` line from `openWith` -> the second assertion
+    // goes red, carrying `&usernames=someone-else` into the arrival's own read.
+    const stale = await mount();
+    const store2 = TestBed.inject(AuditSearch);
+    store2.setValue('usernames', 'someone-else');
+    store2.openWith(AUDIT, MARKER_CRITERION);
+    await settle(stale.fixture);
+    expect(stale.paths[0]).toContain('&eventSources=OcuPilot');
+    expect(stale.paths[0]).not.toContain('someone-else');
+    expect(rowNames(stale.host)).toEqual(['RoleGranted']);
+
+    // A criterion name this screen does not declare applies nothing: there is no filter to arrive
+    // with, and nothing may invent one.
+    const fresh = await mount();
+    const other = TestBed.inject(AuditSearch);
+    other.openWith(AUDIT, 'nosuchthing');
+    await settle(fresh.fixture);
+    expect((fresh.host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement).checked).toBe(false);
+    expect(fresh.paths).toEqual([]);
+
+    // And a declaration belonging to another screen applies nothing either, however well formed.
+    // Mutation (Rule 19): drop the `declaration.descriptor !== AUDIT_DESCRIPTOR` guard from
+    // `openWith` -> this goes red, and this store would filter and bind a screen nobody opened.
+    const foreign = await mount();
+    const store3 = TestBed.inject(AuditSearch);
+    store3.openWith(
+      { ...AUDIT, descriptor: 'OcuPilot.Screen.Descriptor.TaskList' } as ScreenDeclaration,
+      MARKER_CRITERION
+    );
+    await settle(foreign.fixture);
+    expect((foreign.host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement).checked).toBe(false);
+    expect(foreign.paths).toEqual([]);
+  });
+
   it('a zero-row answer reads the screen\'s own empty sentence, with no skeleton and no fault', async () => {
     const { host, search, setRows } = await mount([]);
     setRows([]);
@@ -365,5 +429,74 @@ describe('the audit database viewer', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(paths).toHaveLength(3);
     expect(paths[2]).toContain('&eventSources=OcuPilotSeed');
+  });
+
+  // --- Story 11.2: "Explain this entry" in the row's dialog --------------------------------------
+
+  const ROW_ID = joinCompositeId(['2026-09-14 09:30:45', 'IRIS', '8']);
+
+  /** The dialog open over the second of two seeded rows, at its own `<route>/<id>` URL, with `gate` arranged. */
+  async function openDialog(gate: Partial<ExplainEntryState> = {}) {
+    const stub = stubExplainEntry(gate);
+    const mounted = await mount([row('RoleGranted', 'OcuPilot'), { ...row('UserCreated', 'OcuPilot'), AuditIndex: 8 }], stub.entry);
+    await mounted.search();
+    await mounted.router.navigateByUrl(`/logs/audit/${encodeURIComponent(ROW_ID)}?ns=HSCUSTOM`);
+    await mounted.openId(ROW_ID);
+    const url = mounted.router.url;
+    return { ...mounted, ...stub, url };
+  }
+
+  const explainAction = (host: HTMLElement) => host.querySelector('[role="dialog"] [data-ocu-audit="explain"]') as HTMLButtonElement | null;
+
+  it('Story 11.2: the dialog\u2019s explain action hands over the open row, then closes the dialog back to the bare route', async () => {
+    const { host, fixture, entry, router, url } = await openDialog();
+    const action = explainAction(host) as HTMLButtonElement;
+    expect(action.textContent?.trim()).toBe(STRINGS.agentExplainEntryAction);
+    expect(action.getAttribute('aria-disabled')).toBeNull();
+    action.click();
+    await settle(fixture);
+    const taken = entry.take();
+    expect(taken?.screen.route).toBe('logs/audit');
+    expect((taken?.row as Record<string, unknown>)['Event']).toBe('UserCreated');
+    expect(router.url).not.toBe(url);
+    expect(router.url).toBe('/logs/audit?ns=HSCUSTOM');
+    expect(TestBed.inject(AuditSearch).takeGridFocusRequest()).toBe(true);
+  });
+
+  // Mutation (Rule 19): drop the page's `explainEntry.subscribe` -> this goes red on the stale action.
+  it('Story 11.2: a gate that changes while the dialog is open re-renders its action', async () => {
+    const { host, fixture, state, fire } = await openDialog();
+    expect(explainAction(host)?.getAttribute('aria-disabled')).toBeNull();
+    state.busy = true;
+    fire();
+    await settle(fixture);
+    expect(explainAction(host)?.getAttribute('aria-disabled')).toBe('true');
+    expect(explainAction(host)?.getAttribute('aria-describedby')).toBe(BUSY_REASON_ID);
+  });
+
+  it('Story 11.2: unconfigured, the dialog carries no explain action', async () => {
+    const { host } = await openDialog({ configured: false });
+    expect(host.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(explainAction(host)).toBeNull();
+  });
+
+  it('Story 11.2: blocked, the action is aria-disabled with its reason, hands nothing over, and the dialog stays', async () => {
+    const cases: [Partial<ExplainEntryState>, string][] = [
+      [{ killSwitch: true }, KILL_SWITCH_ID],
+      [{ busy: true }, BUSY_REASON_ID],
+      [{ share: false }, CONTEXT_CHIP_OFF_ID],
+    ];
+    for (const [gate, reasonId] of cases) {
+      const { host, fixture, entry, router, url } = await openDialog(gate);
+      const action = explainAction(host) as HTMLButtonElement;
+      expect(action.getAttribute('aria-disabled'), JSON.stringify(gate)).toBe('true');
+      expect(action.getAttribute('aria-describedby'), JSON.stringify(gate)).toBe(reasonId);
+      action.click();
+      await settle(fixture);
+      expect(entry.take(), JSON.stringify(gate)).toBeNull();
+      expect(router.url, JSON.stringify(gate)).toBe(url);
+      expect(host.querySelector('[role="dialog"]'), JSON.stringify(gate)).not.toBeNull();
+      for (const node of planted.splice(0)) node.remove();
+    }
   });
 });

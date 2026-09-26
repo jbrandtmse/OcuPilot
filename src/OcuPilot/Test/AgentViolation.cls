@@ -44,7 +44,8 @@ ClassMethod Call(pMethod As %String, pSuffix As %String, pBody As %String, Outpu
 Method TestEveryViolationCodeHasAPublishedSentence()
 {
     Set tCodes = ##class(OcuPilot.Api.Error).ViolationCodes()
-    Do $$$AssertEquals($ListLength(tCodes), 27, "the vocabulary holds twenty-seven field-level codes; adding one is a deliberate edit in OcuPilot.Api.Error")
+    ; 32 since Story 8.9 added AGENT.CREDTYPE.UNAVAILABLE to OcuPilot.Api.Error.
+    Do $$$AssertEquals($ListLength(tCodes), 32, "the vocabulary holds thirty-two field-level codes; adding one is a deliberate edit in OcuPilot.Api.Error")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation(tCode)
@@ -74,7 +75,7 @@ Method TestViolationCodesHoldsEveryDeclaredFieldLevelCode()
     ; restraint codes, whose sentences live in ReasonForRestraint and are asserted by
     ; OcuPilot.Test.Restraint. Named here, because "which codes are field-level" is the one fact
     ; this check cannot derive.
-    Set tEnvelope = $ListBuild("AGENTVALIDATION", "AGENTNOTFOUND", "AGENTBADBODY", "AGENTHOLDNOTFOUND", "AGENTREADONLYENFORCED", "AGENTREADONLYDEFINITION", "AGENTKILLSWITCHGLOBAL", "AGENTKILLSWITCHUSER")
+    Set tEnvelope = $ListBuild("AGENTVALIDATION", "AGENTNOTFOUND", "AGENTBADBODY", "AGENTHOLDNOTFOUND", "AGENTREADONLYENFORCED", "AGENTREADONLYDEFINITION", "AGENTKILLSWITCHGLOBAL", "AGENTKILLSWITCHUSER", "AGENTCONTEXTSHARE")
     Set tDeclared = ##class(OcuPilot.Api.Error).ViolationCodes()
     Set tFound = 0
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.CompiledParameter WHERE parent = ?", "OcuPilot.Api.Error")
@@ -87,7 +88,8 @@ Method TestViolationCodesHoldsEveryDeclaredFieldLevelCode()
         Do $$$AssertTrue($ListFind(tDeclared, tCode) > 0, "field-level code '" _ tName _ "' = '" _ tCode _ "' is in ViolationCodes(), so the sentence check reaches it")
     }
     ; A sweep that found nothing would pass every row above having tested nothing.
-    Do $$$AssertTrue(tFound >= 27, "the sweep read the declared parameters rather than an empty roster (found " _ tFound _ ")")
+    ; The same 32 as above.
+    Do $$$AssertTrue(tFound >= 32, "the sweep read the declared parameters rather than an empty roster (found " _ tFound _ ")")
     Do $$$AssertEquals($ListLength(tDeclared), tFound, "and ViolationCodes() holds no code the class does not declare")
 }
 
@@ -209,7 +211,8 @@ Method TestTheProviderCatalogRouteServesTheCascadeColumns()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "key,label,defaultModel,modelSuggestions,defaultEndpoint,endpointRequired,canonicalMaxTokens,canonicalTemperature,defaultEnvVarName,defaultCredentialName,keyPrefix,allowsLocal,keyShapeReason", "the twelve cascade columns and the derived sentence, and neither adapterClass nor authVersion")
+    ; acceptsTemperature is Story 10.4's column, shipped for the Definition form's Temperature field.
+    Do $$$AssertEquals(tKeys, "key,label,defaultModel,modelSuggestions,defaultEndpoint,endpointRequired,canonicalMaxTokens,canonicalTemperature,defaultEnvVarName,defaultCredentialName,keyPrefix,allowsLocal,acceptsTemperature,keyShapeReason", "the twelve cascade columns and the derived sentence, and neither adapterClass nor authVersion")
     Do $$$AssertEquals(tRow.key, "anthropic", "the shipped row")
     Do $$$AssertEquals(tRow.%GetTypeOf("endpointRequired"), "boolean", "a flag arrives as a JSON boolean")
     Do $$$AssertEquals(tRow.%GetTypeOf("canonicalMaxTokens"), "number", "and a count as a JSON number")

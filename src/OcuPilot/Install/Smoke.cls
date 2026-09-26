@@ -45,6 +45,17 @@ Parameter REQUESTTIMEOUT As %Integer = 20;
 /// <code>webapplications</code> check issues.</p>
 Parameter WEBAPPLISTTOOL = "webapp.list";
 
+/// <p>The write tool the <code>agentwrite</code> and <code>auditmarker</code> checks drive
+/// (AD-45): the one shipped write, aimed at AD-25's own demo fixture.</p>
+Parameter WEBAPPUPDATETOOL = "webapp.list.update";
+
+/// <p>The resource that write grants: setting one where none was set, the one authorization
+/// change AD-10 permits, and the change UJ-3 itself makes.</p>
+Parameter WRITERESOURCE = "%Development";
+
+/// <p>The limits class the mint and the turn row are bounded by, the same one the API uses.</p>
+Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
+
 /// <p>The tool identifier of the users list, whose screen read the <code>users</code> check
 /// issues.</p>
 Parameter USERLISTTOOL = "permissions.users";
@@ -64,6 +75,131 @@ Parameter PROCESSLISTTOOL = "osmgmt.processes";
 /// <p>The tool identifier of the audit database viewer, whose screen read the <code>audit</code>
 /// check issues.</p>
 Parameter AUDITLISTTOOL = "logs.audit";
+
+/// <p>The tool identifier of the REST API explorer, whose screen read the
+/// <code>webapp.restapis</code> check issues.</p>
+Parameter RESTAPILISTTOOL = "webapp.restapis";
+
+/// <p>The tool identifier of the roles list, whose screen read the <code>roles</code> check
+/// issues.</p>
+Parameter ROLELISTTOOL = "permissions.roles";
+
+/// <p>The tool identifier of the resources list, whose screen read the <code>resources</code> check
+/// issues.</p>
+Parameter RESOURCELISTTOOL = "permissions.resources";
+
+/// <p>The tool identifier of the services list, whose screen read the <code>services</code> check
+/// issues.</p>
+Parameter SERVICELISTTOOL = "permissions.services";
+
+/// <p>The tool identifier of the X.509 credentials list, whose screen read the <code>x509</code>
+/// check issues.</p>
+Parameter X509LISTTOOL = "security.x509";
+
+/// <p>The tool identifier of the LDAP / Kerberos configurations list, whose screen read the
+/// <code>ldap</code> check issues.</p>
+Parameter LDAPLISTTOOL = "security.ldap";
+
+/// <p>The tool identifier of the Wallet list, whose screen read the <code>wallet</code> check
+/// issues.</p>
+Parameter WALLETLISTTOOL = "security.wallet";
+
+/// <p>The tool identifier of the OAuth 2.0 screen's Client server descriptions tab, whose screen read
+/// the <code>oauthdescriptions</code> check issues.</p>
+Parameter OAUTHDESCRIPTIONSTOOL = "security.oauthserverdescriptions";
+
+/// <p>The tool identifier of the OAuth 2.0 Client configurations tab, whose screen read the
+/// <code>oauthclients</code> check issues.</p>
+Parameter OAUTHCLIENTSTOOL = "security.oauthclients";
+
+/// <p>The tool identifier of the OAuth 2.0 Resource servers tab, whose screen read the
+/// <code>oauthresourceservers</code> check issues.</p>
+Parameter OAUTHRESOURCESERVERSTOOL = "security.oauthresourceservers";
+
+/// <p>The tool identifier of the OAuth 2.0 Authorization server tab, whose screen read the
+/// <code>oauthserver</code> check issues.</p>
+Parameter OAUTHSERVERTOOL = "security.oauthserver";
+
+/// <p>The tool identifier of the OAuth 2.0 Server client descriptions tab, whose screen read the
+/// <code>oauthserverclients</code> check issues.</p>
+Parameter OAUTHSERVERCLIENTSTOOL = "security.oauthserverclients";
+
+/// <p>The tool identifier of the On-demand tasks list, whose screen read the <code>ondemand</code>
+/// check issues.</p>
+Parameter TASKONDEMANDTOOL = "tasks.ondemand";
+
+/// <p>The tool identifier of the Upcoming tasks list, whose screen read the <code>upcoming</code>
+/// check issues.</p>
+Parameter TASKUPCOMINGTOOL = "tasks.upcoming";
+
+/// <p>The tool identifier of Task history (all tasks), whose screen read the
+/// <code>taskhistory</code> check issues (Story 6.6).</p>
+Parameter TASKHISTORYTOOL = "tasks.history";
+
+/// <p>The tool identifier of Task details, whose screen read the <code>taskdetails</code> check
+/// issues, keyed by the task schedule's own first row (Story 6.7).</p>
+Parameter TASKDETAILSTOOL = "tasks.taskdetails";
+
+/// <p>The tool identifier of Process details, whose screen read the <code>processdetails</code>
+/// check issues, keyed by the processes list's own first row (Story 6.8).</p>
+Parameter PROCESSDETAILSTOOL = "osmgmt.processdetails";
+
+/// <p>The tool identifier of System usage, read generically by <method>CheckAreaLists</method>
+/// like any other single-object list, since it needs no parent id (Story 6.9).</p>
+Parameter SYSTEMUSAGETOOL = "osmgmt.systemusage";
+
+/// <p>The tool identifier of the Locks list, read generically by <method>CheckAreaLists</method>
+/// like any other list (Story 6.10). The check expects the same exactly-one-row shape at
+/// <code>maxRows=1</code> as <code>processes</code> and <code>systemusage</code>, not the
+/// zero-or-one shape a possibly-empty list takes, because the locks an idle instance holds are its
+/// own daemons' -- the license monitor's, the system monitor's, the task manager's and the work
+/// queue's (observed: seven rows, all daemon-held, on the slot B instance, 2026-09-17). That is an
+/// observation about this build, not a guarantee: a run that finds the table empty fails here, and
+/// such a failure is environmental rather than a defect in the screen.</p>
+Parameter LOCKLISTTOOL = "osmgmt.locks";
+
+/// <p>The tool identifier of the Databases General view, read generically by
+/// <method>CheckAreaLists</method> like any other unparented list (Story 6.11): the vendor's own
+/// database directory table, never empty on any mounted instance.</p>
+Parameter DATABASELISTTOOL = "osmgmt.databases";
+
+/// <p>The tool identifier of the Databases Free-space view, read generically by
+/// <method>CheckAreaLists</method> (Story 6.11): the same rows as <parameter>DATABASELISTTOOL</parameter>,
+/// merged with the asynchronous <code>INFO</code> figures. Its declared read takes no criterion, so
+/// it fits the generic sweep exactly as the General view does.</p>
+Parameter DATABASEFREESPACELISTTOOL = "osmgmt.databasefreespace";
+
+/// <p>The tool identifier of Database details, whose <code>CheckDatabaseDetails</code> check issues
+/// it keyed by the Databases list's own first row's <code>Directory</code> (Story 6.11).</p>
+Parameter DATABASEDETAILSTOOL = "osmgmt.databasedetails";
+
+/// <p>The tool identifier of Database volumes ("Volume files"), whose <code>CheckDatabaseDetails</code>
+/// check issues it keyed by the same <code>Directory</code> (Story 6.11). It is not in
+/// <method>CheckAreaLists</method>'s generic name list: <code>Database.SysCRUD</code>'s own
+/// <code>ValidateQueryParams</code> requires <code>dir</code> for every request type but
+/// <code>POST</code> and <code>LIST</code> (verified against the instance: a <code>VOLUMELIST</code>
+/// with no <code>dir</code> answers 400 <code>PORT.VALIDATION</code>), so this parent-scoped read
+/// needs a real directory the same way <parameter>PROCESSDETAILSTOOL</parameter> needs a real pid.</p>
+Parameter DATABASEVOLUMESTOOL = "osmgmt.databasevolumes";
+
+/// <p>The tool identifier of the Devices list, read generically by
+/// <method>CheckAreaLists</method> like any other unparented list (Story 6.12): the vendor's own
+/// device table, never empty on any mounted instance.</p>
+Parameter DEVICELISTTOOL = "osmgmt.devices";
+
+/// <p>The tool identifier of the alerts.log viewer, read generically by
+/// <method>CheckAreaLists</method> (Story 6.13). Its declared read is a bounded tail of a file the
+/// instance writes only when it has something to say, so it is a <b>zero-or-one</b> list: an
+/// instance whose alerts.log is still empty answers no row without anything being wrong.</p>
+Parameter ALERTLISTTOOL = "logs.alerts";
+
+/// <p>The tool identifier of the messages.log viewer, read generically by
+/// <method>CheckAreaLists</method> (Story 6.14). Unlike <parameter>ALERTLISTTOOL</parameter> this is
+/// an <b>exactly-one</b> list: every instance writes its own startup lines to
+/// <file>messages.log</file>, so an empty answer here is a real failure. Distinct from the
+/// <code>messageslog</code> check, which reads the same file through the page route
+/// (<parameter>MESSAGESLOGPATH</parameter>) rather than through the screen's declared read.</p>
+Parameter MESSAGESLISTTOOL = "logs.messages";
 
 /// <p>The console-log page's path under the API application, and the window the
 /// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
@@ -98,9 +234,13 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckDeepLink(.tChecks)
         Do ..CheckSignIn(.tChecks, pUsername, pPassword, .tAccessToken, .tRefreshToken)
         Do ..CheckApiReads(.tChecks, tAccessToken)
-        Do ..CheckAreaLists(.tChecks, tAccessToken)
+        Do ..CheckAreaLists(.tChecks, tAccessToken, pDemo)
+        Do ..CheckTaskDetails(.tChecks, tAccessToken)
+        Do ..CheckProcessDetails(.tChecks, tAccessToken)
+        Do ..CheckDatabaseDetails(.tChecks, tAccessToken)
         Do ..CheckMessagesLog(.tChecks, tAccessToken)
         Do ..CheckApplicationErrors(.tChecks, tAccessToken)
+        Do ..CheckScreenAction(.tChecks, tAccessToken, pDemo)
     } Catch ex {
         Do ..Note(.tChecks, "smoke", "fail", "the smoke run raised " _ ex.DisplayString())
     }
@@ -114,7 +254,8 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckAuditEvent(.tChecks)
         Do ..CheckAgentSwitches(.tChecks)
         Do ..CheckDemoFixture(.tChecks, pDemo)
-        Do ..AddPending(.tChecks)
+        Do ..CheckAgentWrite(.tChecks, pDemo)
+        Do ..CheckAgentDelete(.tChecks, pDemo)
     } Catch ex {
         Do ..Note(.tChecks, "smoke", "fail", "the smoke run raised " _ ex.DisplayString())
     }
@@ -458,29 +599,66 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
     }
 }
 
-/// <p>The first live list of each portal area built so far (AD-45), read with the minted access
-/// token: the web applications list (<code>webapplications</code>), the users list
+/// <p>One live read for each built list screen (AD-45 asks for at least one per area), read with the
+/// minted access token: the web applications list (<code>webapplications</code>), the users list
 /// (<code>users</code>), the SSL/TLS configurations list (<code>ssl</code>), the task schedule
-/// (<code>tasks</code>), the processes list (<code>processes</code>) and the audit database viewer
-/// (<code>audit</code>), each one screen read
-/// at <code>maxRows=1</code> that answers 200 with a
+/// (<code>tasks</code>), the processes list (<code>processes</code>), the audit database viewer
+/// (<code>audit</code>), the REST API explorer (<code>webapp.restapis</code>), the roles, resources
+/// and services lists (<code>roles</code>, <code>resources</code>, <code>services</code>), and the
+/// X.509, LDAP / Kerberos and Wallet lists (<code>x509</code>, <code>ldap</code>,
+/// <code>wallet</code>), each one screen read at <code>maxRows=1</code> that answers 200 with a
 /// <code>rows</code> array of exactly one row. The signed-in principal needs each list's pairs --
 /// <code>%DB_IRISSYS:READ</code> throughout, with <code>%Admin_Secure:USE</code> for the first three,
 /// <code>%Admin_Task:USE</code> for the fourth, <code>%Admin_Operate:USE</code> plus
 /// <code>%Admin_Manage:USE</code> for the fifth, and <code>%Admin_Secure:USE</code> plus
-/// <code>%Admin_Operate:USE</code> for the sixth -- or the read answers 403 and the
-/// check fails. Skipped, like the shell reads, when no token was minted.</p>
+/// <code>%Admin_Operate:USE</code> for the sixth, <code>%Admin_Secure:USE</code> for the seventh
+/// through the twelfth, and <code>%Admin_Wallet:USE</code> for the thirteenth -- or the read answers
+/// 403 and the check fails. Skipped, like the shell reads, when no token was minted.</p>
+/// <p><b>The five OAuth 2.0 tabs</b> (<code>oauthdescriptions</code>, <code>oauthclients</code>,
+/// <code>oauthresourceservers</code>, <code>oauthserver</code>, <code>oauthserverclients</code>) read
+/// the same way and pass on a 200 answering zero rows or one: no fixture creates OAuth 2.0 objects
+/// (AD-25), so an instance may hold none. They need <code>%Admin_OAuth2_Client:USE</code> for the
+/// first two, <code>%Admin_Secure:USE</code> for the third, <code>%Admin_OAuth2_Server:USE</code> for
+/// the fourth and <code>%Admin_OAuth2_Registration:USE</code> for the fifth, each with
+/// <code>%DB_IRISSYS:READ</code>.</p>
+/// <p><b>The On-demand and Upcoming tasks lists</b> (<code>ondemand</code>, <code>upcoming</code>) read
+/// the same way at <code>maxRows=1</code>, needing the task schedule's pairs, and expect exactly one
+/// row: the vendor answers every task as on demand, and several stock system tasks run within any
+/// 24 hours, so both hold one on a clean container. Upcoming is read with no horizon, which the vendor
+/// answers as 24 hours.</p>
+/// <p><b>Task history</b> (<code>taskhistory</code>) reads the same way at <code>maxRows=1</code>
+/// with no criteria, needing the task schedule's pairs, and passes on zero or one row like the OAuth
+/// 2.0 checks: a fresh container may hold no run history yet, so an empty answer is not a
+/// failure.</p>
+/// <p><b>The X.509 and Wallet lists hold a row only where the demo fixture put one</b> (AD-25), so
+/// when the demo was not requested (<var>pDemo</var>, resolved as
+/// <method>CheckDemoFixture</method> resolves it) a 200 answering an empty <code>rows</code> array
+/// skips those two checks rather than failing them. With the demo requested, an empty array fails
+/// them as it fails every other list.</p>
 /// <p>The audit read is the one that crosses the port's async path (AD-26), so it is also the
 /// check that says the self-queued LIST is polled to an answer on a live instance.</p>
-ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String) [ Private ]
+/// <p><b>System usage</b> (<code>systemusage</code>, Story 6.9) reads the same way at
+/// <code>maxRows=1</code> with no criteria and expects exactly one row, like
+/// <code>processes</code>: the vendor's <code>Monitor</code> endpoint always answers, so an
+/// instance with no row is a real failure, not an empty-fixture case.</p>
+/// <p><b>Locks</b> (<code>locks</code>, Story 6.10) reads the same way at <code>maxRows=1</code>
+/// with no criteria and expects exactly one row, like <code>processes</code> and
+/// <code>systemusage</code>, because an idle instance's locks are its own daemons';
+/// <parameter>LOCKLISTTOOL</parameter> records what was observed and how to read a failure.</p>
+/// <p><b>messages.log</b> (<code>messages</code>, Story 6.14) reads the same way at
+/// <code>maxRows=1</code> and expects exactly one row, for
+/// <parameter>MESSAGESLISTTOOL</parameter>'s reason: every instance writes its own startup lines to
+/// that file, so unlike <code>alerts</code> it is not a zero-or-one list.</p>
+ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %String = "") [ Private ]
 {
+    Set tDemoWanted = ($Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO")) = "1")
     Set tBase = ..RosterPath("api")
-    For tI = 1:1:6 {
-        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit", ",", tI)
-        ; Every index names its own tool and the last arm names none: a seventh list added to the
-        ; bound and the name list without its own arm reads an empty path and fails, rather than
-        ; re-reading the sixth list under the seventh's name and passing.
-        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, 1: "")
+    For tI = 1:1:28 {
+        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients,ondemand,upcoming,taskhistory,systemusage,locks,databases,databasefreespace,devices,alerts,messages", ",", tI)
+        ; Every index names its own tool and the last arm names none: a list added to the bound and
+        ; the name list without its own arm reads an empty path and fails, rather than re-reading
+        ; the previous list under the new name and passing.
+        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, tI = 19: ..#TASKONDEMANDTOOL, tI = 20: ..#TASKUPCOMINGTOOL, tI = 21: ..#TASKHISTORYTOOL, tI = 22: ..#SYSTEMUSAGETOOL, tI = 23: ..#LOCKLISTTOOL, tI = 24: ..#DATABASELISTTOOL, tI = 25: ..#DATABASEFREESPACELISTTOOL, tI = 26: ..#DEVICELISTTOOL, tI = 27: ..#ALERTLISTTOOL, tI = 28: ..#MESSAGESLISTTOOL, 1: "")
         If tBase = "" {
             Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
             Continue
@@ -506,12 +684,270 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String) [ Private ]
         } Catch {
             Set tCount = -1
         }
+        If (tCount = 0) && 'tDemoWanted && ((tName = "x509") || (tName = "wallet")) {
+            Do ..Note(.pChecks, tName, "skipped", "the list is empty and the demo opt-in flag is not set for this instance, so no demo fixture row was expected (AD-25)")
+            Continue
+        }
+        Set tZeroOrOne = ''$ListFind($ListBuild("oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "taskhistory", "alerts"), tName)
+        If tZeroOrOne && ((tCount = 0) || (tCount = 1)) {
+            Do ..Note(.pChecks, tName, "pass")
+            Continue
+        }
+        If tZeroOrOne {
+            Do ..Note(.pChecks, tName, "fail", "GET " _ tPath _ " answered 200 without a rows array of zero rows or one")
+            Continue
+        }
         If tCount '= 1 {
             Do ..Note(.pChecks, tName, "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
             Continue
         }
         Do ..Note(.pChecks, tName, "pass")
     }
+}
+
+/// <p>Task details (<code>taskdetails</code>, Story 6.7): the task schedule's own first row supplies
+/// the <code>taskId</code> its parent-scoped read requires, so this check reads
+/// <parameter>TASKLISTTOOL</parameter> again at <code>maxRows=1</code> to find one, needing the
+/// same pairs <code>tasks</code> already checked, and then reads
+/// <parameter>TASKDETAILSTOOL</parameter> for that id, expecting exactly one row that names that
+/// <code>Id</code> and carries the task's own <code>TimePeriod</code>. Skipped, like
+/// <method>CheckMessagesLog</method>, when no token was minted; failed, naming why, when the
+/// schedule read answers no row to key the second read by -- a fresh container without even the
+/// stock system tasks is not one this check can pass on, unlike the zero-or-one lists above.</p>
+ClassMethod CheckTaskDetails(ByRef pChecks, pAccessToken As %String) [ Private ]
+{
+    Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        Do ..Note(.pChecks, "taskdetails", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Quit
+    }
+    If pAccessToken = "" {
+        Do ..Note(.pChecks, "taskdetails", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Quit
+    }
+    Set tSchedulePath = tBase _ "/screens/" _ ..#TASKLISTTOOL _ "/read?maxRows=1"
+    Set tSC = ..Request("GET", tSchedulePath, "Bearer " _ pAccessToken, "", .tScheduleStatus, .tScheduleText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "taskdetails", "fail", "the task schedule could not be reached to find an id: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tScheduleStatus '= 200 {
+        Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tSchedulePath _ " answered HTTP " _ tScheduleStatus)
+        Quit
+    }
+    Set tTaskId = ""
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tScheduleText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") && (tRows.%Size() > 0) Set tTaskId = tRows.%Get(0).%Get("Id")
+    } Catch {
+        Set tTaskId = ""
+    }
+    If tTaskId = "" {
+        Do ..Note(.pChecks, "taskdetails", "fail", "the task schedule answered no row to read a task id from")
+        Quit
+    }
+    Set tPath = tBase _ "/screens/" _ ..#TASKDETAILSTOOL _ "/read?maxRows=1&taskId=" _ tTaskId
+    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "taskdetails", "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tStatus '= 200 {
+        Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+        Quit
+    }
+    Set tCount = -1
+    Set tSameTask = 0
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
+        If tCount = 1 Set tSameTask = (tRows.%Get(0).%Get("Id") = tTaskId) && (tRows.%Get(0).%GetTypeOf("TimePeriod") '= "unassigned")
+    } Catch {
+        Set tCount = -1
+    }
+    If tCount '= 1 {
+        Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
+        Quit
+    }
+    If 'tSameTask {
+        Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tPath _ " answered a row that is not task " _ tTaskId _ "'s details")
+        Quit
+    }
+    Do ..Note(.pChecks, "taskdetails", "pass")
+}
+
+/// <p>Process details (<code>processdetails</code>, Story 6.8): the processes list's own first row
+/// supplies the <code>pid</code> its parent-scoped read requires, so this check reads
+/// <parameter>PROCESSLISTTOOL</parameter> again at <code>maxRows=1</code> to find one, needing the
+/// same pairs <code>processes</code> already checked, and then reads
+/// <parameter>PROCESSDETAILSTOOL</parameter> for that pid, expecting exactly one row that names
+/// that <code>Pid</code>. Skipped, like <method>CheckMessagesLog</method>, when no token was
+/// minted; failed, naming why, when the extracted <code>pid</code> is empty -- no row, or a row
+/// with no <code>Pid</code> key -- to key the second read by. A live instance always has at
+/// least one process (this one), so that is a real failure.</p>
+ClassMethod CheckProcessDetails(ByRef pChecks, pAccessToken As %String) [ Private ]
+{
+    Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        Do ..Note(.pChecks, "processdetails", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Quit
+    }
+    If pAccessToken = "" {
+        Do ..Note(.pChecks, "processdetails", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Quit
+    }
+    Set tListPath = tBase _ "/screens/" _ ..#PROCESSLISTTOOL _ "/read?maxRows=1"
+    Set tSC = ..Request("GET", tListPath, "Bearer " _ pAccessToken, "", .tListStatus, .tListText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "processdetails", "fail", "the processes list could not be reached to find a pid: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tListStatus '= 200 {
+        Do ..Note(.pChecks, "processdetails", "fail", "GET " _ tListPath _ " answered HTTP " _ tListStatus)
+        Quit
+    }
+    Set tPid = ""
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tListText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") && (tRows.%Size() > 0) Set tPid = tRows.%Get(0).%Get("Pid")
+    } Catch {
+        Set tPid = ""
+    }
+    If tPid = "" {
+        Do ..Note(.pChecks, "processdetails", "fail", "the processes list answered no row with a Pid to read")
+        Quit
+    }
+    Set tPath = tBase _ "/screens/" _ ..#PROCESSDETAILSTOOL _ "/read?maxRows=1&pid=" _ tPid
+    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "processdetails", "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tStatus '= 200 {
+        Do ..Note(.pChecks, "processdetails", "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+        Quit
+    }
+    Set tCount = -1
+    Set tSamePid = 0
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
+        If tCount = 1 Set tSamePid = (tRows.%Get(0).%Get("Pid") = tPid)
+    } Catch {
+        Set tCount = -1
+    }
+    If tCount '= 1 {
+        Do ..Note(.pChecks, "processdetails", "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
+        Quit
+    }
+    If 'tSamePid {
+        Do ..Note(.pChecks, "processdetails", "fail", "GET " _ tPath _ " answered a row that is not process " _ tPid _ "'s details")
+        Quit
+    }
+    Do ..Note(.pChecks, "processdetails", "pass")
+}
+
+/// <p>Database details and Database volumes (<code>databasedetails</code>,
+/// <code>databasevolumes</code>, Story 6.11): the Databases General view's own first row supplies
+/// the <code>dir</code> both parent-scoped reads require, so this check reads
+/// <parameter>DATABASELISTTOOL</parameter> again at <code>maxRows=1</code> to find one, needing the
+/// same pairs <code>databases</code> already checked, and then reads
+/// <parameter>DATABASEDETAILSTOOL</parameter> and <parameter>DATABASEVOLUMESTOOL</parameter> for
+/// that directory, each expecting at least one row. <code>dir</code> travels unescaped in the query
+/// string: RFC 3986 lets <code>/</code> represent data inside a <code>query</code> component, so a
+/// directory path's separators need no percent-encoding there -- unlike a route's own single path
+/// segment (AD-13), which is a different position with a different rule. It is not that
+/// <code>/</code> is unreserved; it is reserved, and permitted in this one position. Skipped, like
+/// <method>CheckMessagesLog</method>, when no token was minted; failed, naming why, when the
+/// Databases list answers no row to key the two reads by -- a mounted instance always has at least
+/// one database (its own IRISSYS), so that is a real failure. Database details expects exactly one
+/// row naming that <code>Directory</code>; Database volumes expects at least one row, since a
+/// multi-file database answers more than one.</p>
+ClassMethod CheckDatabaseDetails(ByRef pChecks, pAccessToken As %String) [ Private ]
+{
+    Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        Do ..Note(.pChecks, "databasedetails", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Do ..Note(.pChecks, "databasevolumes", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Quit
+    }
+    If pAccessToken = "" {
+        Do ..Note(.pChecks, "databasedetails", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Do ..Note(.pChecks, "databasevolumes", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Quit
+    }
+    Set tListPath = tBase _ "/screens/" _ ..#DATABASELISTTOOL _ "/read?maxRows=1"
+    Set tSC = ..Request("GET", tListPath, "Bearer " _ pAccessToken, "", .tListStatus, .tListText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "databasedetails", "fail", "the Databases list could not be reached to find a directory: " _ $System.Status.GetErrorText(tSC))
+        Do ..Note(.pChecks, "databasevolumes", "fail", "the Databases list could not be reached to find a directory: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tListStatus '= 200 {
+        Do ..Note(.pChecks, "databasedetails", "fail", "GET " _ tListPath _ " answered HTTP " _ tListStatus)
+        Do ..Note(.pChecks, "databasevolumes", "fail", "GET " _ tListPath _ " answered HTTP " _ tListStatus)
+        Quit
+    }
+    Set tDir = ""
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tListText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") && (tRows.%Size() > 0) Set tDir = tRows.%Get(0).%Get("Directory")
+    } Catch {
+        Set tDir = ""
+    }
+    If tDir = "" {
+        Do ..Note(.pChecks, "databasedetails", "fail", "the Databases list answered no row with a Directory to read")
+        Do ..Note(.pChecks, "databasevolumes", "fail", "the Databases list answered no row with a Directory to read")
+        Quit
+    }
+
+    Set tPath = tBase _ "/screens/" _ ..#DATABASEDETAILSTOOL _ "/read?maxRows=1&dir=" _ tDir
+    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "databasedetails", "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+    } ElseIf tStatus '= 200 {
+        Do ..Note(.pChecks, "databasedetails", "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+    } Else {
+        Set tCount = -1
+        Set tSameDir = 0
+        Try {
+            Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
+            If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
+            If tCount = 1 Set tSameDir = (tRows.%Get(0).%Get("Directory") = tDir)
+        } Catch {
+            Set tCount = -1
+        }
+        If tCount '= 1 {
+            Do ..Note(.pChecks, "databasedetails", "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
+        } ElseIf 'tSameDir {
+            Do ..Note(.pChecks, "databasedetails", "fail", "GET " _ tPath _ " answered a row that is not " _ tDir _ "'s details")
+        } Else {
+            Do ..Note(.pChecks, "databasedetails", "pass")
+        }
+    }
+
+    Set tVolPath = tBase _ "/screens/" _ ..#DATABASEVOLUMESTOOL _ "/read?maxRows=10&dir=" _ tDir
+    Set tSC = ..Request("GET", tVolPath, "Bearer " _ pAccessToken, "", .tVolStatus, .tVolText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "databasevolumes", "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tVolStatus '= 200 {
+        Do ..Note(.pChecks, "databasevolumes", "fail", "GET " _ tVolPath _ " answered HTTP " _ tVolStatus)
+        Quit
+    }
+    Set tVolCount = -1
+    Try {
+        Set tVolRows = ##class(%DynamicAbstractObject).%FromJSON(tVolText).%Get("rows")
+        If $IsObject(tVolRows) && tVolRows.%IsA("%Library.DynamicArray") Set tVolCount = tVolRows.%Size()
+    } Catch {
+        Set tVolCount = -1
+    }
+    If tVolCount < 1 {
+        Do ..Note(.pChecks, "databasevolumes", "fail", "GET " _ tVolPath _ " answered 200 without a rows array of at least one row -- every mounted database has at least its primary volume file")
+        Quit
+    }
+    Do ..Note(.pChecks, "databasevolumes", "pass")
 }
 
 /// <p>The console-log page, read with the minted access token: one bounded page of the instance's
@@ -748,13 +1184,543 @@ ClassMethod CheckDemoFixture(ByRef pChecks, pDemo As %String = "") [ Private ]
     Do ..Note(.pChecks, "demofixture", "pass")
 }
 
-/// <p>The checks this instance cannot make yet, each naming the epic that makes it real. They
-/// are listed rather than omitted so the report is honest about its own coverage, and they
-/// never move the verdict.</p>
-ClassMethod AddPending(ByRef pChecks) [ Private ]
+/// <p>The other caller of the same operation (AD-53): a person's own row action on the demo
+/// fixture, over the real <code>POST /screens/:screen/action</code> route as the browser makes it,
+/// with the bearer token this run already signed in for.</p>
+/// <p>It asserts the consumer's own tier rather than the operation's internal state: the route
+/// answers the AD-14 verb, and the instance's own record of the application moves. Enable then
+/// disable, so the fixture ends in the disabled, no-resource state its install creates -- which is
+/// the state <method>CheckAgentWrite</method> asserts against later in the same run. A run that
+/// stops after the enable landed puts the fixture back disabled before it returns.</p>
+/// <p>Skipped, not failed, where the demo fixture was never created or is not this install's
+/// (AD-25 forbids modifying an application OcuPilot did not make), and where this run minted no
+/// token.</p>
+ClassMethod CheckScreenAction(ByRef pChecks, pAccessToken As %String, pDemo As %String = "") [ Private ]
 {
-    Do ..Note(.pChecks, "agentwrite", "pending", "a confirmed agent write, proposed, reviewed and applied -- Epic 3")
-    Do ..Note(.pChecks, "auditmarker", "pending", "the audit row that write leaves behind -- Epic 3")
+    Set tSkip = ""
+    Try {
+        Set tWanted = $Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO"))
+        If tWanted '= "1" {
+            Set tSkip = "the demo opt-in flag is not set for this instance, so the " _ ..WriteTarget() _ " fixture a row action needs was never created (AD-25)"
+            Quit
+        }
+        If '..WriteTargetOwned() {
+            Set tSkip = ..WriteTarget() _ " is absent, or carries an application this install did not create, which AD-25 forbids modifying"
+            Quit
+        }
+        Set tSpelling = ..ApplicationName(..WriteTarget())
+        If tSpelling = "" {
+            Set tSkip = "this instance's own record of " _ ..WriteTarget() _ " could not be read, so there is no application to act on"
+            Quit
+        }
+        Set tBase = ..RosterPath("api")
+        If tBase = "" {
+            Set tSkip = "the install roster declares no API application path"
+            Quit
+        }
+        If pAccessToken = "" {
+            Set tSkip = "no token pair was minted by this run, so the authenticated row action was not attempted"
+            Quit
+        }
+        Set tPath = tBase _ "/screens/" _ ..#WEBAPPLISTTOOL _ "/action"
+
+        Set tEnableSC = ..ScreenAction(tPath, pAccessToken, "enable", tSpelling, .tEnableStatus, .tEnableText)
+        If $$$ISERR(tEnableSC) || (tEnableStatus '= 200) {
+            Do ..Note(.pChecks, "screenaction", "fail", "the row's enable answered HTTP " _ +$Get(tEnableStatus) _ ": " _ $Extract($Get(tEnableText), 1, 200))
+            Quit
+        }
+        Set tAnswer = ##class(%DynamicAbstractObject).%FromJSON(tEnableText)
+        If '$IsObject(tAnswer) || (tAnswer.%Get("action") '= "updated") {
+            Do ..Note(.pChecks, "screenaction", "fail", "the row's enable answered no 'updated' action: " _ $Extract($Get(tEnableText), 1, 200))
+            Quit
+        }
+        Set tEnabled = 1
+        If ..ApplicationEnabled(..WriteTarget()) '= 1 {
+            Do ..Note(.pChecks, "screenaction", "fail", "the route answered 200 and this instance still reports " _ ..WriteTarget() _ " disabled")
+            Quit
+        }
+
+        Set tDisableSC = ..ScreenAction(tPath, pAccessToken, "disable", tSpelling, .tDisableStatus, .tDisableText)
+        If $$$ISERR(tDisableSC) || (tDisableStatus '= 200) {
+            Do ..Note(.pChecks, "screenaction", "fail", "the row's disable answered HTTP " _ +$Get(tDisableStatus) _ ": " _ $Extract($Get(tDisableText), 1, 200))
+            Quit
+        }
+        Set tDisabled = ##class(%DynamicAbstractObject).%FromJSON(tDisableText)
+        If '$IsObject(tDisabled) || (tDisabled.%Get("action") '= "updated") {
+            Do ..Note(.pChecks, "screenaction", "fail", "the row's disable answered no 'updated' action: " _ $Extract($Get(tDisableText), 1, 200))
+            Quit
+        }
+        If ..ApplicationEnabled(..WriteTarget()) '= 0 {
+            Do ..Note(.pChecks, "screenaction", "fail", "the fixture was left enabled, which is not the state its install creates")
+            Quit
+        }
+        Set tEnabled = 0
+        Do ..Note(.pChecks, "screenaction", "pass", "the row's enable and disable ran over " _ tPath _ " and this instance's own record moved both ways")
+    } Catch ex {
+        Set tSkip = ""
+        Do ..Note(.pChecks, "screenaction", "fail", "the row-action check raised " _ ex.DisplayString())
+    }
+    If $Get(tEnabled) Do ..DisableWriteTarget()
+    If tSkip '= "" Do ..Note(.pChecks, "screenaction", "skipped", tSkip)
+}
+
+/// <p>Put the demo fixture back disabled, the state its install creates, after a
+/// <method>CheckScreenAction</method> that stopped with it enabled. Only ever called for
+/// <method>WriteTarget</method> once that check has established the fixture is this install's.
+/// <b>Best effort, and silent</b>, for the reason <method>RestoreWriteTarget</method> gives.
+/// Switches to <code>%SYS</code> and restores, restoring first on the error path (AD-16).</p>
+ClassMethod DisableWriteTarget() [ Private ]
+{
+    Set tPath = ..WriteTarget()
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        Set tProps("Enabled") = 0
+        Do ##class(Security.Applications).Modify(tPath, .tProps)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+}
+
+/// <p>One row action over the wire: <code>POST</code> <var>pPath</var> carrying
+/// <code>{action, id}</code>, as the browser sends it.</p>
+ClassMethod ScreenAction(pPath As %String, pAccessToken As %String, pAction As %String, pId As %String, Output pStatus As %Integer, Output pText As %String) As %Status [ Private ]
+{
+    Set tBody = {}
+    Do tBody.%Set("action", pAction, "string")
+    Do tBody.%Set("id", pId, "string")
+    Quit ..Request("POST", pPath, "Bearer " _ pAccessToken, tBody.%ToJSON(), .pStatus, .pText)
+}
+
+/// <p>Whether this instance reports the web application at <var>pPath</var> enabled, or
+/// <code>""</code> when it holds none. Switches to <code>%SYS</code> and restores, restoring first
+/// on the error path (AD-16).</p>
+ClassMethod ApplicationEnabled(pPath As %String) As %String [ Private ]
+{
+    Set tEnabled = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(pPath, .tApp, .tSC), $IsObject(tApp) Set tEnabled = ''tApp.Enabled
+        Set tApp = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tEnabled = ""
+    }
+    Quit tEnabled
+}
+
+/// <p>AD-45's two remaining checks, driven as one sequence because they are one event: a proposal
+/// minted and confirmed through the shipped path against AD-25's demo fixture
+/// (<code>agentwrite</code>), and the <code>AgentWrite</code> row that write leaves in the audit
+/// database (<code>auditmarker</code>).</p>
+/// <p><b>The only check that writes to the instance, so it restores what it changed.</b> The
+/// fixture is created disabled with no resource and AD-25 forbids modifying one this install did
+/// not make, so a run that left it enabled would contradict
+/// <class>OcuPilot.Install.Fixture</class>'s own created-state contract and make a second run
+/// assert against a target in a state no install produced. The restore sends the instance's own
+/// record of the application with those two fields put back to the state the install creates, not
+/// the state this run found: a run interrupted between the write and the restore would otherwise
+/// have its own drift restored by every run after it.</p>
+/// <p><b>A fixture not in that state is a <code>fail</code>, not a pass.</b> A write over an
+/// application already enabled with the resource changes nothing, and every assertion after it
+/// would hold of a write that did nothing -- so the mint's own diff is checked to name both
+/// fields, and the fixture is put back either way.</p>
+/// <p><b>Every read, the write and the restore are keyed by one resolution</b>:
+/// <method>ApplicationName</method>'s reading of <class>Security.Applications</class>, which
+/// answers the spelling the instance stores. The proposal's <code>TargetRef</code> is never used
+/// as an id here -- <method>OcuPilot.Kernel.EntityRef.Key</method> folds it (AD-13's canonical
+/// form), and a check that took its id from there would be reporting on an application it
+/// resolved by a name the instance does not hold. <b>Measured on this build, and the reason this
+/// is a correctness property rather than a refusal:</b> both
+/// <method>Security.Applications.Exists</method> and the vendor's <code>WebApp.App</code>
+/// <code>GET</code> resolve a web-application name case-insensitively, so a folded id would find
+/// the same application and answer plausibly. <class>OcuPilot.Test.Smoke</class> drives the whole
+/// check against an application the instance spells in mixed case, and pins that resolution
+/// directly.</p>
+/// <p><b><code>skipped</code>, never <code>fail</code>, where the environment cannot carry it</b>
+/// -- no demo opt-in, no fixture, a fixture this install did not create, or a turn of this user
+/// already running. The reason travels even where the assertion cannot (DW-1402), so
+/// <code>executed=</code> stays honest, and it names the cause it actually met rather than the
+/// likeliest one. <b>No skip writes.</b> A skipped check did not run, so it has nothing to put
+/// back, and a restore on that path would be normalising a drift this run did not cause. The
+/// restore on a <code>fail</code> is the opposite case and is deliberate: there the state was
+/// asserted against and found wrong, and the next run has to be able to assert against it again.</p>
+/// <p><b><code>OcuPilot.PKG</code> classes only</b> (this class's own scope wall): the turn row
+/// comes from <class>OcuPilot.Kernel.State.Turn</class>'s guarded reserve, begin and finish, and
+/// the write target is AD-25's fixture rather than a probe application a test class would make.</p>
+ClassMethod CheckAgentWrite(ByRef pChecks, pDemo As %String = "") [ Private ]
+{
+    Set tSkip = ""
+    Set tTurnKey = ""
+    Try {
+        Set tWanted = $Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO"))
+        If tWanted '= "1" {
+            Set tSkip = "the demo opt-in flag is not set for this instance, so the " _ ..WriteTarget() _ " fixture a confirmed write needs was never created (AD-25)"
+            Quit
+        }
+        If '..WriteTargetOwned() {
+            Set tSkip = ..WriteTarget() _ " is absent, or carries an application this install did not create, which AD-25 forbids modifying"
+            Quit
+        }
+        Set tSpelling = ..ApplicationName(..WriteTarget())
+        If tSpelling = "" {
+            Set tSkip = "this instance's own record of " _ ..WriteTarget() _ " could not be read, so there is no application to write to"
+            Quit
+        }
+
+        Kill tQuery
+        Set tQuery(##class(OcuPilot.Screen.Tool.Write).IdParam()) = tSpelling
+        Set tReadSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tBefore, .tReadHttp, .tReadFault)
+        If $$$ISERR(tReadSC) || '$IsObject($Get(tBefore)) {
+            Do ..Note(.pChecks, "agentwrite", "fail", "the fixture could not be read fresh before the write (HTTP " _ +$Get(tReadHttp) _ ")")
+            Do ..Note(.pChecks, "auditmarker", "fail", "no write was made, so no audit row could be looked for")
+            Quit
+        }
+        ; The body the restore sends: the instance's own record of the application with the two
+        ; fields this write changes put back to the state Fixture.CreateWebApp creates -- not the
+        ; state this run happened to find. A run interrupted between the write and the restore
+        ; would otherwise have its own drift restored by the next one, forever.
+        Set tRestoreBody = ##class(%DynamicAbstractObject).%FromJSON(tBefore.%ToJSON())
+        Do tRestoreBody.%Set("Enabled", 0, "boolean")
+        Do tRestoreBody.%Set("Resource", "", "string")
+
+        Set tReserveSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, "", ##class(OcuPilot.Api.Error).#TURNABANDONEDJOBLOST, ..#LIMITS, .tTurnKey, .tBusy, .tSweepSC)
+        If $$$ISERR(tReserveSC) || tBusy || (tTurnKey = "") {
+            ; The reason names the cause rather than the likeliest cause (DW-1402): a reserve that
+            ; errored is not a busy slot, and reporting it as one sends the reader at the wrong
+            ; thing. And the restore body is dropped: this arm has written nothing, so putting the
+            ; fixture back would be restoring a state this run did not cause -- a skip means the
+            ; check did not run, and a check that did not run touches the instance not at all.
+            Set tSkip = $Select($$$ISERR(tReserveSC): "a turn row could not be reserved for this check: " _ $System.Status.GetErrorText(tReserveSC), 1: "a turn of " _ $Username _ " is already running on this instance, so this check would race it for the one turn slot")
+            Set tTurnKey = ""
+            Set tRestoreBody = ""
+            Quit
+        }
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tTurnKey, $Username, ..#LIMITS, .tBegun, .tStarted)
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tTurnKey, $Username, "completed", "", "", "", 0, ..#LIMITS)
+
+        Set tArgs = {}
+        Do tArgs.%Set(##class(OcuPilot.Screen.Tool.Write).IdArgument(), tSpelling, "string")
+        Do tArgs.%Set("Enabled", 1, "boolean")
+        Do tArgs.%Set("Resource", ..#WRITERESOURCE, "string")
+        Set tMintSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint(##class(OcuPilot.Screen.Tool.WebAppUpdate).#DESCRIPTORCLASS, ..#WEBAPPUPDATETOOL, $Username, "", tTurnKey, tArgs, ..#LIMITS, .tProposal, .tMintHttp, .tMintFault, ##class(OcuPilot.Screen.Tool.WebAppUpdate).Endpoint(), ##class(OcuPilot.Screen.Tool.Write).IdParam(), tSpelling, ##class(OcuPilot.Screen.Tool.Write).IdArgument(), ##class(OcuPilot.Screen.Tool.WebAppUpdate).SettableFields())
+        If $$$ISERR(tMintSC) || '$IsObject($Get(tProposal)) {
+            Do ..Note(.pChecks, "agentwrite", "fail", "the proposal could not be minted: " _ $System.Status.GetErrorText(tMintSC))
+            Do ..Note(.pChecks, "auditmarker", "fail", "no write was made, so no audit row could be looked for")
+            Quit
+        }
+        Set tProposalId = tProposal.%Get("proposalId")
+        ; A fixture already enabled with the resource yields a diff with no rows, and every
+        ; assertion below would then hold of a write that changed nothing. The state is asserted
+        ; through the mint's own diff rather than through a second read, because the diff is what
+        ; the user would have reviewed.
+        Set tChanged = ""
+        Set tChangedIterator = tProposal.%Get("changed").%GetIterator()
+        While tChangedIterator.%GetNext(.tChangedIndex, .tChangedRow) {
+            Set tChanged = tChanged _ $Select(tChanged = "": "", 1: ",") _ tChangedRow.%Get("field")
+        }
+        If (tChanged '= "Enabled,Resource") && (tChanged '= "Resource,Enabled") {
+            Do ..Note(.pChecks, "agentwrite", "fail", ..WriteTarget() _ " was not in the disabled, no-resource state its install creates, so this write would have changed '" _ tChanged _ "' rather than both fields; it is put back and the next run asserts against it")
+            Do ..Note(.pChecks, "auditmarker", "fail", "the write this row would account for changed nothing")
+            Quit
+        }
+        Set tSince = ..AuditNow()
+        Set tConfirmSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposalId, "", $Username, .tResult, .tConfirmHttp, .tConfirmCode, .tConfirmDetail)
+        If $$$ISERR(tConfirmSC) {
+            Do ..Note(.pChecks, "agentwrite", "fail", "the confirm was refused at HTTP " _ +$Get(tConfirmHttp) _ " with " _ $Get(tConfirmCode))
+            Do ..Note(.pChecks, "auditmarker", "fail", "no write was made, so no audit row could be looked for")
+            Quit
+        }
+
+        Kill tQuery
+        Set tQuery(##class(OcuPilot.Screen.Tool.Write).IdParam()) = tSpelling
+        Set tBackSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tAfter, .tBackHttp, .tBackFault)
+        Set tProblem = ""
+        If $$$ISERR(tBackSC) || '$IsObject($Get(tAfter)) {
+            Set tProblem = "the target could not be read back after the write (HTTP " _ +$Get(tBackHttp) _ ")"
+        } ElseIf ''tAfter.%Get("Enabled") '= 1 {
+            Set tProblem = "the confirmed write did not enable " _ tSpelling
+        } ElseIf tAfter.%Get("Resource") '= ..#WRITERESOURCE {
+            Set tProblem = "the confirmed write left the resource '" _ tAfter.%Get("Resource") _ "' rather than " _ ..#WRITERESOURCE
+        }
+        If tProblem = "" {
+            Do ..Note(.pChecks, "agentwrite", "pass")
+        } Else {
+            Do ..Note(.pChecks, "agentwrite", "fail", tProblem)
+        }
+
+        Set tRows = ..MarkerRows(tSince, tProposalId)
+        If tRows = 1 {
+            Do ..Note(.pChecks, "auditmarker", "pass")
+        } ElseIf tRows < 0 {
+            Do ..Note(.pChecks, "auditmarker", "fail", "the audit database could not be read, so whether the write was marked is unknown")
+        } Else {
+            Do ..Note(.pChecks, "auditmarker", "fail", tRows _ " audit row(s) carry this write's proposal id; the marker AD-15 requires is one")
+        }
+    } Catch ex {
+        Do ..Note(.pChecks, "agentwrite", "fail", "the agent-write check raised " _ ex.DisplayString())
+        Do ..Note(.pChecks, "auditmarker", "fail", "no write could be accounted for")
+        Set tSkip = ""
+    }
+    ; Its own frame: the fixture is restored and the turn row removed whatever the checks above
+    ; decided, including on the raise, so a failed run leaves nothing behind for the next one.
+    Do ..RestoreWriteTarget($Get(tSpelling), $Get(tRestoreBody), tTurnKey)
+    If tSkip '= "" {
+        Do ..Note(.pChecks, "agentwrite", "skipped", tSkip)
+        Do ..Note(.pChecks, "auditmarker", "skipped", tSkip)
+    }
+}
+
+/// <p>Story 7.1's integration check (<code>agentdelete</code>): the agent's own delete tool,
+/// <class>OcuPilot.Screen.Tool.WebAppDelete</class>, mints a proposal against AD-25's demo fixture
+/// through its tool entry point on a completed turn, the card's own row for it reads destructive,
+/// the user's confirm runs through the shipped transition, and this instance's own record no
+/// longer holds the application.</p>
+/// <p><b>It puts the fixture back as install creates it</b>, through
+/// <method>OcuPilot.Install.Fixture.Create</method> -- install's own creator, which recreates an
+/// absent fixture disabled with no resource and keeps the inventory row that already records it, so
+/// <method>WriteTargetOwned</method> still answers yes and the next run finds what this one found.
+/// That call does to the other demo fixtures what every container start does: each one present is
+/// left as it is, and one application-error entry is seeded. A fixture that did not come back in
+/// that state is a <code>fail</code>.</p>
+/// <p>Runs after every other check that reads the fixture. <code>skipped</code>, never
+/// <code>fail</code>, where <method>CheckAgentWrite</method> skips, and where
+/// <method>WriteTarget</method> is not the path that creator makes: an application it did not make
+/// is one this check could not put back.</p>
+ClassMethod CheckAgentDelete(ByRef pChecks, pDemo As %String = "") [ Private ]
+{
+    Set tSkip = ""
+    Set tProblem = ""
+    Set tTurnKey = ""
+    Set tNamespace = ""
+    Set tAttempted = 0
+    Try {
+        Set tWanted = $Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO"))
+        If tWanted '= "1" {
+            Set tSkip = "the demo opt-in flag is not set for this instance, so the " _ ..WriteTarget() _ " fixture a confirmed delete needs was never created (AD-25)"
+            Quit
+        }
+        If ..WriteTarget() '= ##class(OcuPilot.Install.Fixture).#APPPATH {
+            Set tSkip = ..WriteTarget() _ " is not the application install's own fixture creator makes, so a delete of it could not be put back"
+            Quit
+        }
+        If '..WriteTargetOwned() {
+            Set tSkip = ..WriteTarget() _ " is absent, or carries an application this install did not create, which AD-25 forbids modifying"
+            Quit
+        }
+        Set tSpelling = ..ApplicationName(..WriteTarget())
+        If tSpelling = "" {
+            Set tSkip = "this instance's own record of " _ ..WriteTarget() _ " could not be read, so there is no application to delete"
+            Quit
+        }
+
+        ; The namespace install bound the fixture to, which is the one the restore binds it to again.
+        Kill tQuery
+        Set tQuery(##class(OcuPilot.Screen.Tool.WebAppDelete).IdParam()) = tSpelling
+        Set tReadSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tBefore, .tReadHttp, .tReadFault)
+        If $$$ISOK(tReadSC) && $IsObject($Get(tBefore)) Set tNamespace = tBefore.%Get("NameSpace")
+        If tNamespace = "" {
+            Set tProblem = "the fixture's namespace could not be read before the delete (HTTP " _ +$Get(tReadHttp) _ "), so it could not be put back afterwards"
+            Quit
+        }
+
+        Set tReserveSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, "", ##class(OcuPilot.Api.Error).#TURNABANDONEDJOBLOST, ..#LIMITS, .tTurnKey, .tBusy, .tSweepSC)
+        If $$$ISERR(tReserveSC) || tBusy || (tTurnKey = "") {
+            Set tSkip = $Select($$$ISERR(tReserveSC): "a turn row could not be reserved for this check: " _ $System.Status.GetErrorText(tReserveSC), 1: "a turn of " _ $Username _ " is already running on this instance, so this check would race it for the one turn slot")
+            Set tTurnKey = ""
+            Quit
+        }
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tTurnKey, $Username, ..#LIMITS, .tBegun, .tStarted)
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tTurnKey, $Username, "completed", "", "", "", 0, ..#LIMITS)
+
+        ; The tool's own entry point, acting for that turn as the turn job does; the stash is
+        ; cleared before the confirm, which refuses a call made on a turn's behalf (AD-40).
+        Set tArgs = {}
+        Do tArgs.%Set(##class(OcuPilot.Screen.Tool.WebAppDelete).IdArgument(), tSpelling, "string")
+        Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)
+        Set tMintSC = ##class(OcuPilot.Screen.Tool.WebAppDelete).View("", tArgs, 0, .tProposal, .tMintHttp, .tMintFault)
+        Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+        If $$$ISERR(tMintSC) || '$IsObject($Get(tProposal)) {
+            Set tProblem = "the delete proposal could not be minted (HTTP " _ +$Get(tMintHttp) _ "): " _ $System.Status.GetErrorText(tMintSC)
+            Quit
+        }
+        Set tProposalId = tProposal.%Get("proposalId")
+
+        ; Asserted on the row the card itself is drawn from, not on the tool's declaration.
+        Set tDestructive = ""
+        Set tRowsSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurnKey, $Username, .tRows)
+        If $$$ISOK(tRowsSC) && $IsObject($Get(tRows)) {
+            Set tRowIterator = tRows.%GetIterator()
+            While tRowIterator.%GetNext(.tRowIndex, .tRow) {
+                If $IsObject(tRow) && (tRow.%Get("proposalId") = tProposalId) Set tDestructive = tRow.%Get("destructive")
+            }
+        }
+        If tDestructive '= 1 {
+            Set tProblem = "the minted delete proposal's card row does not read destructive"
+            Quit
+        }
+
+        Set tAttempted = 1
+        Set tConfirmSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposalId, "", $Username, .tResult, .tConfirmHttp, .tConfirmCode, .tConfirmDetail)
+        If $$$ISERR(tConfirmSC) {
+            Set tProblem = "the confirm was refused at HTTP " _ +$Get(tConfirmHttp) _ " with " _ $Get(tConfirmCode)
+            Quit
+        }
+        If ..ApplicationName(..WriteTarget()) '= "" {
+            Set tProblem = "the confirm answered and this instance still holds " _ ..WriteTarget()
+            Quit
+        }
+    } Catch ex {
+        Set tSkip = ""
+        Set tProblem = "the agent-delete check raised " _ ex.DisplayString()
+    }
+    ; Its own frame: whatever the checks above decided, a fixture this check may have removed is
+    ; put back, and the turn row and its proposal are removed.
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Try {
+        If tAttempted && (tNamespace '= "") && (..ApplicationName(..WriteTarget()) = "") {
+            Kill tReports
+            Do ##class(OcuPilot.Install.Fixture).Create("", .tReports, , tNamespace)
+        }
+        If tAttempted {
+            Kill tQuery
+            Set tQuery(##class(OcuPilot.Screen.Tool.WebAppDelete).IdParam()) = ..WriteTarget()
+            Set tBackSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tAfter, .tBackHttp, .tBackFault)
+            If $$$ISERR(tBackSC) || '$IsObject($Get(tAfter)) {
+                Set tProblem = tProblem _ $Select(tProblem = "": "", 1: "; ") _ ..WriteTarget() _ " was not put back (HTTP " _ +$Get(tBackHttp) _ ")"
+            } ElseIf ('..WriteTargetOwned()) || (''tAfter.%Get("Enabled") '= 0) || (tAfter.%Get("Resource") '= "") {
+                Set tProblem = tProblem _ $Select(tProblem = "": "", 1: "; ") _ ..WriteTarget() _ " was put back, but not disabled, with no resource and recorded as this install's own"
+            }
+        }
+    } Catch exRestore {
+        Set tProblem = tProblem _ $Select(tProblem = "": "", 1: "; ") _ "putting " _ ..WriteTarget() _ " back raised " _ exRestore.DisplayString()
+    }
+    Do ..RestoreWriteTarget("", "", tTurnKey)
+    If tSkip '= "" {
+        Do ..Note(.pChecks, "agentdelete", "skipped", tSkip)
+    } ElseIf tProblem '= "" {
+        Do ..Note(.pChecks, "agentdelete", "fail", tProblem)
+    } Else {
+        Do ..Note(.pChecks, "agentdelete", "pass", "a destructive webapp.list.delete proposal was minted and confirmed, " _ ..WriteTarget() _ " was gone, and install's own creator put it back")
+    }
+}
+
+/// <p>The web application AD-25's demo fixture creates and the <code>agentwrite</code> check
+/// writes to. Overridable so <class>OcuPilot.Test.Smoke</class> can drive the same check against
+/// an application whose spelling is not its own fold; production never overrides it.</p>
+ClassMethod WriteTarget() As %String
+{
+    Quit ##class(OcuPilot.Install.Fixture).#APPPATH
+}
+
+/// <p>Whether this install's own inventory records <method>WriteTarget</method> as a fixture it
+/// created (AD-25). Overridable beside <method>WriteTarget</method>, for the same reason.</p>
+ClassMethod WriteTargetOwned() As %Boolean
+{
+    Quit ##class(OcuPilot.Install.Fixture).WebAppOwnedByProfile("")
+}
+
+/// <p>The name <var>pPath</var>'s web application carries on this instance, <b>case-preserved</b>,
+/// or <code>""</code> when the instance holds none. <class>Security.Applications</class> resolves
+/// a name case-insensitively and answers the spelling it stores, which is the spelling every read
+/// and every write this check makes is keyed by.</p>
+/// <p>Switches to <code>%SYS</code> and restores, restoring first on the error path (AD-16).</p>
+/// <p><b>Public, not <code>[ Private ]</code></b> -- the same documented deviation
+/// <method>Note</method> and <method>Render</method> carry: it is the one place this class decides
+/// what a web application is called, and <class>OcuPilot.Test.Smoke</class> asserts its answer
+/// against an application the instance spells in mixed case. It resolves nothing and writes
+/// nothing.</p>
+ClassMethod ApplicationName(pPath As %String) As %String
+{
+    Set tName = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(pPath, .tApp, .tSC), $IsObject(tApp) Set tName = tApp.Name
+        Set tApp = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tName = ""
+    }
+    Quit tName
+}
+
+/// <p>Put <var>pBody</var> back on <var>pName</var>, and remove the turn row <var>pTurnKey</var>
+/// and its proposals. <var>pBody</var> is the instance's own record of the application with the two
+/// fields this check changes returned to the state <method>OcuPilot.Install.Fixture.CreateWebApp</method>
+/// creates -- <b>a <class>%DynamicObject</class>, never its JSON text</b>: the port's body is
+/// parsed by the vendor endpoint, which reads a string as carrying no properties at all and
+/// answers 200 having written nothing.</p>
+/// <p><b>Best effort, and silent.</b> It reports nothing of its own: a restore that failed does
+/// not change what the checks above observed, and the next run reads a fixture that is not in its
+/// created state and fails naming that, which is where a failed restore surfaces.</p>
+ClassMethod RestoreWriteTarget(pName As %String = "", pBody As %DynamicObject = "", pTurnKey As %String = "") [ Private ]
+{
+    Try {
+        If (pName '= "") && $IsObject(pBody) {
+            Kill tQuery
+            Set tQuery(##class(OcuPilot.Screen.Tool.Write).IdParam()) = pName
+            Do ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "PUT", .tQuery, pBody, .tWritten, .tHttp, .tFault)
+        }
+    } Catch {
+    }
+    Try {
+        If pTurnKey '= "" {
+            Do ##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForTurn(pTurnKey)
+            Do ##class(OcuPilot.Kernel.State.Turn).GuardedDelete(pTurnKey)
+        }
+    } Catch {
+    }
+}
+
+/// <p>The audit database's own clock, in the form <code>%SYS.Audit.UTCTimeStamp</code> carries --
+/// the lower bound the marker read below is bounded by.</p>
+/// <p><b>Truncated to whole seconds deliberately.</b> That column is <class>%String</class>
+/// (<code>%SYS.Audit.cls</code>), so <code>&gt;=</code> compares lexicographically, and a bound
+/// carrying more fractional digits than the stored value sorts <i>after</i> the very row it must
+/// include. This build writes three fractional digits, so the widths happen to agree today --
+/// which is a measurement, not a contract, and widening the bound costs nothing because the
+/// proposal id and not the time is what identifies the row.</p>
+ClassMethod AuditNow() As %String [ Private ]
+{
+    Quit $ZDateTime($ZTimeStamp, 3, , 0)
+}
+
+/// <p>How many <code>AgentWrite</code> rows the audit database holds since <var>pSince</var>
+/// carrying <var>pProposalId</var>, or <code>-1</code> when the read itself failed.</p>
+/// <p><b>Bounded by <code>UTCTimeStamp</code> and <code>%NOINDEX</code> on the event predicates</b>
+/// (DW-85): the table's event indexes are brought up to date by a background pass, so a row this
+/// process has just written is not yet in them, and an indexed read would answer zero for a marker
+/// that landed.</p>
+ClassMethod MarkerRows(pSince As %String, pProposalId As %String) As %Integer [ Private ]
+{
+    If pProposalId = "" Quit -1
+    Set tSource = ##class(OcuPilot.Kernel.Audit.Event).Source()
+    Set tType = ##class(OcuPilot.Kernel.Audit.Event).Type()
+    Set tEvent = ##class(OcuPilot.Kernel.Audit.Event).#EVENTAGENTWRITE
+    Set tRows = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT EventData FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ? AND %NOINDEX EventType = ? AND %NOINDEX Event = ?", pSince, tSource, tType, tEvent)
+        If tRS.%SQLCODE >= 0 {
+            Set tRows = 0
+            While tRS.%Next() {
+                If tRS.%Get("EventData") [ pProposalId Set tRows = tRows + 1
+            }
+        }
+        Set tRS = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tRows = -1
+    }
+    Quit tRows
 }
 
 /// <p>Render the report and decide the verdict. One line per check, the counts last, and the

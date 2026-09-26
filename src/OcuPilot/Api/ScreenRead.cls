@@ -54,12 +54,10 @@ ClassMethod Handle(pScreen As %String) As %Status
 
         Set tFailedPair = ""
         If '$ClassMethod(..GateClass(), "Evaluate", tDescriptor, .tFailedPair) {
-            Set tDetail = ""
-            If tFailedPair '= "" {
-                Set tDetail = {}
-                Do tDetail.%Set("failedPair", tFailedPair)
-            }
-            Set tSC = ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, "This account may not read that screen", ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, tDetail)
+            ; The screen half of the one privilege refusal (AD-39): the code, the sentence and
+            ; detail.failedPair are OcuPilot.Kernel.Denial's, so this envelope and the tool
+            ; result a dispatcher builds for the same missing pair cannot diverge.
+            Set tSC = ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
             Quit
         }
 

@@ -12,8 +12,21 @@ import {
   SET_DEFAULT_ACTION,
 } from './areas/agent/definition-actions';
 import { DefinitionForm } from './areas/agent/definition-form.store';
+import { RoleCreateForm } from './areas/permissions/role-create-form.store';
+import { ResourceEditor } from './areas/permissions/resource-editor.store';
+import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
+import { X509Form } from './areas/security/x509-form.store';
+import { SslForm } from './areas/security/ssl-form.store';
+import { OAuthServerDescriptionForm } from './areas/security/oauth-server-description-form.store';
+import { OAuthClientForm } from './areas/security/oauth-client-form.store';
+import { OAuthResourceServerForm } from './areas/security/oauth-resource-server-form.store';
+import { OAuthServerForm } from './areas/security/oauth-server-form.store';
+import { OAuthRegisteredClientForm } from './areas/security/oauth-registered-client-form.store';
+import { DeviceForm } from './areas/os-management/device-form.store';
+import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
 import { ApiService } from './core/api';
 import { ChangeBus } from './core/change-bus';
@@ -23,17 +36,30 @@ import type { Fault, FaultKind } from './core/fault';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService, type Verdict } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
-import { PreferenceStore } from './core/preferences';
 import { RefreshService } from './core/refresh';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/scope';
 import { ScreenActions } from './core/screen-actions';
 import { ScreenStores } from './core/screen-store';
 import type { AreaDeclaration, ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
+import { PanelState } from './core/panel-layout';
+import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
+import { ThemeState } from './core/theme';
 import { STRINGS } from './core/strings';
+import { SuggestedView } from './core/suggested-view';
+import { stubAgentContext } from './testing/agent-context';
 import { stubAgentStatus } from './testing/agent-status';
+import { stubSuggestedView } from './testing/suggested-view';
+import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
+import { AccountPreferences } from './core/account-preferences';
+import { stubAccountPreferences } from './testing/account-preferences';
+import { About } from './core/about';
+import { SystemInfo } from './core/system-info';
+import { HelpLinks } from './core/help';
+import { stubAbout, stubHelpLinks, type StubbedAbout, type StubbedHelpLinks } from './testing/about';
+import { stubSystemInfo, type StubbedSystemInfo } from './testing/system-info';
 
 /**
  * The frame itself (DW-138, UX-DR80): which bands render, in what order, and around what.
@@ -60,7 +86,8 @@ class StubSession {
   /** What `consumeFreshSignIn()` will answer once. Default false: a reload is not a sign-in. */
   fresh = false;
 
-  consumed = 0;
+  /** How many times the gate asked whether a sign-in is waiting. */
+  asked = 0;
 
   private readonly listeners = new Set<() => void>();
 
@@ -68,8 +95,12 @@ class StubSession {
     return this.current;
   }
 
+  hasFreshSignIn(): boolean {
+    this.asked += 1;
+    return this.fresh;
+  }
+
   consumeFreshSignIn(): boolean {
-    this.consumed += 1;
     if (!this.fresh) return false;
     this.fresh = false;
     return true;
@@ -118,6 +149,11 @@ class StubInstance {
 
   instanceName(): string {
     return 'IRIS';
+  }
+
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
   }
 
   instanceVersion(): string {
@@ -181,8 +217,11 @@ class StubNavigation {
     return [];
   }
 
+  /** What `screenForUrl` answers -- null by default, the way this file's other tests need it. */
+  screenForUrlAnswer: ScreenDeclaration | null = null;
+
   screenForUrl(): ScreenDeclaration | null {
-    return null;
+    return this.screenForUrlAnswer;
   }
 
   areaVerdict(): Verdict {
@@ -193,8 +232,16 @@ class StubNavigation {
     return this.denied.has(route) ? { allowed: false, failedPair: 'OcuPilotAdmin:USE' } : ALLOWED;
   }
 
-  subscribe(): () => void {
-    return () => {};
+  private readonly listeners = new Set<() => void>();
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /** A map read settling, the way the live service tells its readers. */
+  notify(): void {
+    for (const listener of this.listeners) listener();
   }
 
   async load(): Promise<void> {}
@@ -320,12 +367,23 @@ describe('the shell frame', () => {
   let instance: StubInstance;
   let navigation: StubNavigation;
   let agentStatus: AgentStatus;
+  let agentContext: AgentContext;
+  let suggested: SuggestedView;
+  /** Captured, so the signed-in read and the sign-out drop are both observable (Story 15.2). */
+  let accountPreferences: AccountPreferences;
+  let about: StubbedAbout;
+  let systemInfo: StubbedSystemInfo;
+  let helpLinks: StubbedHelpLinks;
   /** The definitions the stubbed read answers with. Mutated to arrange an Enable. */
   let definitionRows: { enabled: boolean }[];
   let scope: StubScope;
   let connectivity: StubConnectivity;
   let refresh: RefreshService;
   let overlays: OverlayStack;
+  let panelState: PanelState;
+  let shellState: ShellState;
+  let turn: TurnStore;
+  let turnStorage: Map<string, string>;
   const planted: HTMLElement[] = [];
 
   /** The connectivity banner's own alert, never another component's. */
@@ -341,20 +399,55 @@ describe('the shell frame', () => {
     // panel and the gate `load()` it themselves.
     definitionRows = [];
     agentStatus = stubAgentStatus(definitionRows);
+    // Unanswered by default too, for the same reason: the chip renders nothing until a test that
+    // is about it loads it.
+    agentContext = stubAgentContext();
+    // Unanswered by default, for the same reason: Home's suggested view renders nothing until a
+    // test that is about it loads it.
+    suggested = stubSuggestedView();
+    // Not loaded here: `App`'s own signed-in pass is what settles it, which is the line the
+    // sign-out test below pins.
+    accountPreferences = stubAccountPreferences();
+    // Story 15.3: both are the instance's answers to *this* caller, so both are dropped at
+    // sign-out; held by name so the sign-out row below can see whether they were.
+    about = stubAbout();
+    systemInfo = stubSystemInfo();
+    helpLinks = stubHelpLinks({ 'permissions/users': '/csp/docbook/DocBook.UI.PortalHelpPage.cls?KEY=Users' });
     scope = new StubScope();
     connectivity = new StubConnectivity();
     // The real framework, timer seam neutralized: the frame mounts the chip and the stamp, and
     // this file is about the frame. `refresh.test.mjs` and the two bar specs drive the framework.
-    const screenStores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    const screenStores = new ScreenStores({ account: stubAccountPreferences() });
+    // One bus, shared with the toast host the frame mounts (Story 5.7): two would be two
+    // channels, and the host's subscription would hear nothing the framework published.
+    const changeBus = new ChangeBus();
     refresh = new RefreshService({
       stores: screenStores,
       connectivity: connectivity as unknown as ConnectivityService,
-      bus: new ChangeBus(),
+      bus: changeBus,
       schedule: () => {},
     });
     overlays = new OverlayStack();
+    const shellPreferences = stubAccountPreferences();
+    shellState = new ShellState({ account: shellPreferences });
+    panelState = new PanelState({ account: shellPreferences, shell: shellState });
+    // A reload-adopted id, so the sign-out test below can observe `App` dropping it -- the same
+    // shape the real `readNavigationKind`/`readSessionStorage` pair produces in `main.ts`.
+    turnStorage = new Map([['ocupilot.conversation', 'convo-1']]);
+    turn = stubTurnStore({
+      storage: {
+        getItem: (key) => (turnStorage.has(key) ? (turnStorage.get(key) as string) : null),
+        setItem: (key, value) => turnStorage.set(key, value),
+        removeItem: (key) => turnStorage.delete(key),
+      },
+      navigationType: () => 'reload',
+    });
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: about },
+        { provide: SystemInfo, useValue: systemInfo },
+        { provide: HelpLinks, useValue: helpLinks },
+        { provide: AccountPreferences, useValue: accountPreferences },
         // Three real routes, so "the gate navigated" and "the gate did not" are different
         // observations rather than the same `/`. The two the gate names are the mirror's own.
         provideRouter([
@@ -368,16 +461,19 @@ describe('the shell frame', () => {
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: AgentStatus, useValue: agentStatus },
-        {
-          provide: ShellState,
-          useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
-        },
+        { provide: AgentContext, useValue: agentContext },
+        { provide: SuggestedView, useValue: suggested },
+        { provide: ShellState, useValue: shellState },
+        { provide: ThemeState, useValue: new ThemeState({ account: shellPreferences, root: document.createElement('div') }) },
+        { provide: PanelState, useValue: panelState },
+        { provide: TurnStore, useValue: turn },
         { provide: ScopeService, useValue: scope as unknown as ScopeService },
         {
           provide: ConnectivityService,
           useValue: connectivity as unknown as ConnectivityService,
         },
         { provide: RefreshService, useValue: refresh },
+        { provide: ChangeBus, useValue: changeBus },
         { provide: ScreenStores, useValue: screenStores },
         { provide: OverlayStack, useValue: overlays },
         { provide: ScreenActions, useValue: new ScreenActions() },
@@ -410,16 +506,20 @@ describe('the shell frame', () => {
     expect(order).toEqual(['app-header', 'div', 'app-status-bar']);
 
     const shell = root.querySelector('.ocu-shell') as HTMLElement;
-    // The panel is the row's last member, after the content column: the reading order is header,
-    // rail, side bar, content, panel (EXPERIENCE.md's Focus order).
+    // The panel is the row's last laid-out member, after the content column: the reading order is
+    // header, rail, side bar, content, panel (EXPERIENCE.md's Focus order). The change-toast
+    // region follows the panel, so Tab reaches it last of the row (Story 5.7); it is fixed to the
+    // viewport and takes no space in the row.
     expect(Array.from(shell.children).map((child) => child.tagName.toLowerCase())).toEqual([
       'app-rail',
       'app-side-bar',
       'div',
       'app-panel',
+      'app-toast-host',
     ]);
 
-    const content = shell.querySelector('.ocu-shell-content') as HTMLElement;
+    // The content region scrolls its 640px floor, which holds the column's three bands.
+    const content = shell.querySelector('.ocu-shell-content > .ocu-shell-content-floor') as HTMLElement;
     expect(Array.from(content.children).map((child) => child.tagName.toLowerCase())).toEqual([
       'app-locator-bar',
       'app-command-bar',
@@ -506,6 +606,222 @@ describe('the shell frame', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     fixture.detectChanges();
     expect(document.activeElement).toBe(fixture.nativeElement.querySelector('main'));
+  });
+
+  it('Ctrl/Cmd+I focuses the composer from content, side bar or rail, and is ignored under a dialog or the command box', () => {
+    // Mutation (Rule 19): drop the overlay-stack check from `App.onComposerChord` -> the command-box
+    // leg goes red, focus leaving the open command box for the composer.
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    const composer = (): HTMLElement => fixture.nativeElement.querySelector('#ocu-panel-composer');
+    const chord = (init: KeyboardEventInit) => {
+      const event = new KeyboardEvent('keydown', { key: 'i', bubbles: true, cancelable: true, ...init });
+      document.dispatchEvent(event);
+      fixture.detectChanges();
+      return event;
+    };
+
+    for (const init of [{ ctrlKey: true }, { metaKey: true }]) {
+      (fixture.nativeElement.querySelector('main') as HTMLElement).focus();
+      const event = chord(init);
+      expect(document.activeElement).toBe(composer());
+      expect(event.defaultPrevented).toBe(true);
+    }
+
+    // Send is `aria-disabled` throughout, which changes nothing about where the chord goes.
+    const send = fixture.nativeElement.querySelector('.ocu-panel-send') as HTMLElement;
+    expect(send.getAttribute('aria-disabled')).toBe('true');
+    send.focus();
+    chord({ ctrlKey: true });
+    expect(document.activeElement).toBe(composer());
+
+    const rail = fixture.nativeElement.querySelector('.ocu-rail-item') as HTMLElement;
+    rail.focus();
+    chord({ metaKey: true });
+    expect(document.activeElement).toBe(composer());
+
+    rail.focus();
+    overlays.push('command-box', () => {});
+    const ignored = chord({ ctrlKey: true });
+    expect(document.activeElement).toBe(rail);
+    expect(ignored.defaultPrevented).toBe(false);
+    overlays.remove('command-box');
+
+    // Mutation (Rule 19): let the chord through when the top is `account-menu` -> this leg goes red.
+    overlays.push('account-menu', () => {});
+    chord({ metaKey: true });
+    expect(document.activeElement).toBe(rail);
+    overlays.remove('account-menu');
+
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    document.body.appendChild(dialog);
+    planted.push(dialog);
+    chord({ ctrlKey: true });
+    expect(document.activeElement).toBe(rail);
+
+    // Ctrl+Shift+I is the browser's own developer tools chord, not this one.
+    dialog.remove();
+    chord({ ctrlKey: true, shiftKey: true });
+    expect(document.activeElement).toBe(rail);
+  });
+
+  it('full screen marks the side bar and content inert only while on, and the docked width binds from the layout', () => {
+    // Mutation (Rule 19): bind `inert` unconditionally -> the restored leg goes red.
+    const sideBar = (): HTMLElement => fixture.nativeElement.querySelector('app-side-bar');
+    const content = (): HTMLElement => fixture.nativeElement.querySelector('.ocu-shell-content');
+    const host = (): HTMLElement => fixture.nativeElement.querySelector('app-panel');
+    const toggle = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-panel-full-screen-toggle');
+
+    expect(host().style.width).toBe('400px');
+    expect(sideBar().hasAttribute('inert')).toBe(false);
+    expect(content().hasAttribute('inert')).toBe(false);
+    expect(toggle().getAttribute('aria-expanded')).toBe('false');
+
+    toggle().click();
+    fixture.detectChanges();
+    expect(sideBar().hasAttribute('inert')).toBe(true);
+    expect(content().hasAttribute('inert')).toBe(true);
+    expect(host().hasAttribute('inert')).toBe(false);
+    expect(toggle().getAttribute('aria-expanded')).toBe('true');
+
+    toggle().click();
+    fixture.detectChanges();
+    expect(sideBar().hasAttribute('inert')).toBe(false);
+    expect(content().hasAttribute('inert')).toBe(false);
+    expect(host().style.width).toBe('400px');
+
+    panelState.setViewport(1024);
+    fixture.detectChanges();
+    expect(host().style.width).toBe('336px');
+  });
+
+  it('full screen: Escape and the skip link leave focus where it is, and the covered side bar stays open', () => {
+    // Mutation (Rule 19): drop the `fullScreen()` branch from `App.onEscape` -> the first Escape closes
+    // the covered side bar and the second focuses the inert `main`, and this goes red; drop the
+    // `fullScreen()` return from `App.onSkipToContent` -> the skip-link assertion goes red.
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    const shell = TestBed.inject(ShellState);
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+    expect(overlays.top()).toBe('side-bar');
+
+    const toggle = fixture.nativeElement.querySelector('.ocu-panel-full-screen-toggle') as HTMLButtonElement;
+    toggle.click();
+    fixture.detectChanges();
+    toggle.focus();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(toggle);
+    expect(shell.open()).toBe(true);
+    expect(overlays.top()).toBe('side-bar');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(toggle);
+
+    (fixture.nativeElement.querySelector('.ocu-skip-link') as HTMLElement).click();
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(toggle);
+  });
+
+  it('leaving the signed-in state clears the draft, full screen and the departed width', async () => {
+    // Mutation (Rule 19): delete `this.panel.endSession()` from `App.verifyWhenSignedIn` -> the draft
+    // and full-screen assertions go red.
+    panelState.setViewport(1920);
+    panelState.resizeBy(16);
+    panelState.setDraft('Why is /csp/myapp disabled?');
+    panelState.toggleFullScreen();
+    // The side bar is the other half of the same row family (Story 15.5), and it is the one the
+    // next principal signing in on this tab sees first. Closed here so the reset below is
+    // observable rather than a no-op.
+    shellState.toggleOpen();
+    expect(shellState.open()).toBe(false);
+    expect(turn.conversationId()).toBe('convo-1');
+
+    // The context chip's sharing choice is this principal's own (Story 4.11); loaded here so the
+    // sign-out assertion below observes a real drop rather than a value that started false.
+    await agentContext.load();
+    expect(agentContext.answered()).toBe(true);
+    await suggested.load();
+    expect(suggested.answered()).toBe(true);
+    // Mutation (Rule 19): delete `void this.accountPreferences.load()` from
+    // `App.verifyWhenSignedIn` -> this goes red, and the locator toggle, Home's two blocks and
+    // the command box's ranking would all render off a store nothing ever read.
+    await fixture.whenStable();
+    expect(accountPreferences.answered()).toBe(true);
+
+    // Visit a screen before signing out, so the recorder is holding that route as `lastRoute`.
+    // Without this the reset below would be a no-op and the assertion at the end of this test
+    // could not fail.
+    navigation.screenForUrlAnswer = screenDeclaration({ route: 'permissions/users' });
+    await TestBed.inject(Router).navigateByUrl('/permissions/users');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(accountPreferences.recents()).toEqual(['permissions/users']);
+
+    // Prime all three, so the resets below are observable rather than no-ops.
+    await about.load();
+    await helpLinks.load('permissions/users');
+    await systemInfo.load();
+    expect(about.answered()).toBe(true);
+    expect(systemInfo.answered()).toBe(true);
+    expect(helpLinks.hrefFor('permissions/users')).toBe(
+      '/csp/docbook/DocBook.UI.PortalHelpPage.cls?KEY=Users'
+    );
+
+    session.move('form');
+    fixture.detectChanges();
+
+    expect(panelState.draft()).toBe('');
+    expect(panelState.fullScreen()).toBe(false);
+    expect(panelState.remembered()).toBe(400);
+    // Mutation (Rule 19): delete `this.shell.endSession()` from the same branch -> this goes red,
+    // and the next principal signing in on this tab would look at the departed principal's
+    // collapsed side bar, indefinitely if their own read never settles (AD-8). The width's half of
+    // this reset was pinned above; the side bar's was pinned only on `ShellState` itself.
+    expect(shellState.open()).toBe(true);
+    // Mutation (Rule 19): delete `this.turn.endSession()` from the same branch -> this goes red,
+    // and the next principal to sign in on this tab would adopt a departed principal's
+    // conversation (AD-8).
+    expect(turn.conversationId()).toBe(null);
+    // Mutation (Rule 19): delete `void this.turn.restore()` from the same branch -> this goes red,
+    // and the idle greeting and its suggested prompts never render after an interactive sign-in
+    // (Story 11.3).
+    expect(turn.restored()).toBe(true);
+    // Mutation (Rule 19): delete `this.agentContext.reset()` from the same branch -> this goes
+    // red, and the next principal's first paint would carry the previous principal's sharing
+    // choice and provider answer.
+    expect(agentContext.answered()).toBe(false);
+    // Mutation (Rule 19): delete `this.suggested.reset()` from the same branch -> this goes red,
+    // and Home's first paint for the next principal would carry the previous principal's counts.
+    expect(suggested.answered()).toBe(false);
+    // Mutation (Rule 19): delete `this.accountPreferences.reset()` from the same branch -> this
+    // goes red, and Home would show a departed principal's favorites and recent items.
+    expect(accountPreferences.answered()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.about.reset()` from the same branch -> this goes red, and
+    // Home's Links block and the About dialog would open on the departed principal's answer about
+    // the instance, licensee included (AD-8).
+    expect(about.answered()).toBe(false);
+    // Mutation (Rule 19): delete `this.helpLinks.reset()` from the same branch -> this goes red.
+    // The addresses are the instance's rather than the account's, but a sign-out is also the one
+    // gesture after which the shell underneath may have been upgraded.
+    expect(helpLinks.hrefFor('permissions/users')).toBe('');
+    // Mutation (Rule 19): delete `this.systemInfo.reset()` from the same branch -> this goes red,
+    // and Home's System Information panel would open on the state the departed principal's own
+    // privileges answered, degraded members included (AD-8).
+    expect(systemInfo.answered()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.recentsRecorder.reset()` from the same branch -> this goes
+    // red, answering []. The next principal resumes on the screen this tab is already on, and a
+    // recorder still holding that route as `lastRoute` skips it -- so the one screen they land on
+    // is the one screen their recents never get. `recents-recorder.spec.ts` calls `reset()`
+    // itself, so nothing there can see whether the shell ever does.
+    await TestBed.inject(Router).navigateByUrl('/');
+    await TestBed.inject(Router).navigateByUrl('/permissions/users');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(accountPreferences.recents()).toEqual(['permissions/users']);
   });
 
   it('an unverified instance renders the blocking notice and none of the frame', () => {
@@ -595,12 +911,40 @@ describe('the shell frame', () => {
     expect(bannerAlert()).toBeNull();
     // and `app.spec`'s own pin on the content column still holds -- the banner is a sibling of
     // the gates, never a child of the column.
-    const content = fixture.nativeElement.querySelector('.ocu-shell-content') as HTMLElement;
+    const content = fixture.nativeElement.querySelector('.ocu-shell-content-floor') as HTMLElement;
     expect(Array.from(content.children).map((child) => child.tagName.toLowerCase())).toEqual([
       'app-locator-bar',
       'app-command-bar',
       'main',
     ]);
+  });
+
+  it('Story 15.3: the stale-bundle notice is `<app-fault-banner />`\'s sibling, not the signed-in branch\'s', () => {
+    // Deferred finding (spec-15-3): the band-order proof above covers `<app-fault-banner />` but
+    // was never extended to its new neighbour. Same proof, same shape: present while signed out,
+    // present again once the frame is up, and immediately after the banner both times.
+    //
+    // Mutation (Rule 19): move `<app-stale-bundle-notice />` inside the signed-in branch in
+    // `app.ts` -> the sign-in-state assertion below goes red.
+    session.move('form');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-sign-in')).not.toBeNull();
+    const rootChildrenSignedOut = Array.from(fixture.nativeElement.children as HTMLCollection).map(
+      (child) => (child as HTMLElement).tagName.toLowerCase()
+    );
+    const bannerAt = rootChildrenSignedOut.indexOf('app-fault-banner');
+    expect(bannerAt).toBeGreaterThanOrEqual(0);
+    expect(rootChildrenSignedOut[bannerAt + 1]).toBe('app-stale-bundle-notice');
+
+    session.move('signed-in');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ocu-shell')).not.toBeNull();
+    const rootChildrenSignedIn = Array.from(fixture.nativeElement.children as HTMLCollection).map(
+      (child) => (child as HTMLElement).tagName.toLowerCase()
+    );
+    const bannerAtSignedIn = rootChildrenSignedIn.indexOf('app-fault-banner');
+    expect(bannerAtSignedIn).toBeGreaterThanOrEqual(0);
+    expect(rootChildrenSignedIn[bannerAtSignedIn + 1]).toBe('app-stale-bundle-notice');
   });
 
   it("AC4: the shell brings the Definitions list's action handlers into existence", () => {
@@ -617,6 +961,27 @@ describe('the shell frame', () => {
     for (const id of [ENABLE_ACTION, DISABLE_ACTION, SET_DEFAULT_ACTION, CREATE_ACTION]) {
       expect(actions.has(DEFINITION_LIST_DESCRIPTOR, id)).toBe(true);
     }
+  });
+
+  it('Story 15.2 AC3: the shell brings the recents recorder into existence, so visiting a built screen registers it', async () => {
+    // `RecentsRecorder` subscribes to router navigation in its own constructor, and nothing
+    // constructs it except `App`'s injection of it (DW-1330) -- `recents-recorder.spec`'s own
+    // spec injects the service itself, so its assertions hold whether or not the shipped shell
+    // ever builds it. This is the composition: the real router, navigated to a built screen,
+    // through the whole `App` tree.
+    //
+    // Mutation (Rule 19): replace `inject(RecentsRecorder)` in `app.ts` with `{ reset: () => {} }`
+    // -> this goes red, and Recent items stays permanently empty on the real screen while the
+    // whole client suite (including `recents-recorder.spec.ts`) stays green. Deleting the field
+    // outright is not the mutation: `App`'s sign-out branch calls `this.recentsRecorder.reset()`,
+    // so that reddens the build rather than this assertion.
+    navigation.screenForUrlAnswer = screenDeclaration({ route: 'permissions/users' });
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    // A visit is fire and forget by contract (`recents-recorder.ts`), so one macrotask is what
+    // drains the stubbed request's microtasks -- the same wait `recents-recorder.spec.ts` uses.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(accountPreferences.recents()).toEqual(['permissions/users']);
   });
 
   it('AD-8: leaving the signed-in state drops this principal\'s namespace list', async () => {
@@ -668,6 +1033,89 @@ describe('the shell frame', () => {
     expect(definitionForm.key()).not.toBe('');
     expect(formDirty.dirty()).toBe(true);
 
+    // The same answer for the create-a-user form (Story 8.2): a password THIS principal typed and
+    // has not saved, in a root-provided store (AD-35).
+    const userCreateForm = TestBed.inject(UserCreateForm);
+    userCreateForm.setPassword('a-password-this-principal-typed');
+    expect(userCreateForm.password()).not.toBe('');
+
+    // The same answer for the create-a-role form (Story 8.3): a half-composed role THIS principal
+    // typed and has not saved, in a root-provided store.
+    const roleCreateForm = TestBed.inject(RoleCreateForm);
+    roleCreateForm.setValue('Name', 'a-role-this-principal-typed');
+    roleCreateForm.applyGrant('%DB_USER', 'RW');
+    expect(roleCreateForm.grants().length).toBe(1);
+
+    // The same answer for the resource editor (Story 8.4): a description THIS principal typed and
+    // has not saved, in a root-provided store.
+    const resourceEditor = TestBed.inject(ResourceEditor);
+    resourceEditor.setDescription('a-description-this-principal-typed');
+    expect(resourceEditor.description()).not.toBe('');
+
+    // The same answer for the X.509 credential form (Story 8.5): a certificate, a private key and
+    // its password THIS principal pasted and has not saved, in a root-provided store (AD-35).
+    const x509Form = TestBed.inject(X509Form);
+    x509Form.setCertificate('a-certificate-this-principal-pasted');
+    x509Form.setPrivateKey('a-key-this-principal-pasted');
+    x509Form.setPassword('a-password-this-principal-typed');
+    expect(x509Form.privateKey()).not.toBe('');
+
+    // The same answer for the OAuth 2.0 server description editor (Story 12.4): a registration
+    // access token THIS principal typed and has not saved, in a root-provided store (AD-35).
+    const oauthServerDescriptionForm = TestBed.inject(OAuthServerDescriptionForm);
+    oauthServerDescriptionForm.setToken('ocupilotappspecprobe000');
+    expect(oauthServerDescriptionForm.token()).not.toBe('');
+
+    // The same answer for the OAuth 2.0 client configuration editor (Story 12.5): a client secret
+    // THIS principal typed and has not saved, in a root-provided store (AD-35). A create takes input
+    // before its form read is made.
+    const oauthClientForm = TestBed.inject(OAuthClientForm);
+    oauthClientForm.setSecret('ClientSecret', 'ocupilotappspecprobe000');
+    expect(oauthClientForm.secret('ClientSecret')).not.toBe('');
+
+    // The same answer for the OAuth 2.0 resource server editor (Story 12.6): a client secret THIS
+    // principal typed and has not saved, in a root-provided store (AD-35). A create takes input
+    // before its form read is made.
+    const oauthResourceServerForm = TestBed.inject(OAuthResourceServerForm);
+    oauthResourceServerForm.setSecret('ocupilotappspecprobe000');
+    expect(oauthResourceServerForm.secret()).not.toBe('');
+
+    // The same answer for the OAuth 2.0 authorization server editor (Story 12.7): a key password
+    // THIS principal typed and has not saved, in a root-provided store (AD-35). A create takes input
+    // before its form read is made.
+    const oauthServerForm = TestBed.inject(OAuthServerForm);
+    oauthServerForm.setPassword('ocupilotappspecprobe000');
+    expect(oauthServerForm.password()).not.toBe('');
+
+    // The same answer for the OAuth 2.0 server client description editor (Story 12.8): a client
+    // secret THIS principal typed or generated and has not saved, in a root-provided store (AD-35). A
+    // create takes input before its form read is made.
+    const oauthRegisteredClientForm = TestBed.inject(OAuthRegisteredClientForm);
+    oauthRegisteredClientForm.setSecret('ocupilotappspecprobe000');
+    expect(oauthRegisteredClientForm.secret()).not.toBe('');
+
+    // The same answer for the wallet secret form (Story 8.6): a value THIS principal typed and has
+    // not saved, in a root-provided store (AD-35). A create in a collection takes input before its
+    // form read is made.
+    const walletSecretForm = TestBed.inject(WalletSecretForm);
+    walletSecretForm.setSecret('a-value-this-principal-typed');
+    expect(walletSecretForm.secretText()).not.toBe('');
+
+    // The same answer for the device editor (Story 8.8): a device THIS principal typed and has not
+    // saved, in a root-provided store. A create takes input before its form read is made.
+    const deviceForm = TestBed.inject(DeviceForm);
+    deviceForm.setValue('Name', 'a-device-this-principal-typed');
+    deviceForm.setValue('PhysicalDevice', '/tmp/a-path-this-principal-typed');
+    expect(deviceForm.value('Name')).not.toBe('');
+
+    // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
+    // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
+    // only in an edit, which is set before its form read answers.
+    const sslForm = TestBed.inject(SslForm);
+    await sslForm.open('a-configuration-this-principal-opened');
+    sslForm.setPassword('a-password-this-principal-typed');
+    expect(sslForm.password()).not.toBe('');
+
     // The ninth answer of the same kind (Story 3.6, AC5). Whether the instance holds an enabled
     // definition is a read THIS principal made, and the panel and the rail's dot pick an audience
     // from it. Left standing, the next principal's first paint shows an administrator's reminder
@@ -701,6 +1149,59 @@ describe('the shell frame', () => {
     expect(definitionForm.key()).toBe('');
     expect(definitionForm.value('name')).toBe('');
     expect(formDirty.dirty()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.userCreateForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's tab holds the previous one's typed password.
+    expect(userCreateForm.password()).toBe('');
+
+    // Mutation (Rule 19): delete `this.roleCreateForm.reset()` from `App.verifyWhenSignedIn` ->
+    // these two go red, and the next principal's role form holds the previous one's name and grants.
+    expect(roleCreateForm.value('Name')).toBe('');
+    expect(roleCreateForm.grants().length).toBe(0);
+
+    // Mutation (Rule 19): delete `this.resourceEditor.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's editor holds the previous one's typed description.
+    expect(resourceEditor.description()).toBe('');
+
+    // Mutation (Rule 19): delete `this.x509Form.reset()` from `App.verifyWhenSignedIn` -> these
+    // three go red, and the next principal's X.509 form holds the previous one's pasted key.
+    expect(x509Form.certificate()).toBe('');
+    expect(x509Form.privateKey()).toBe('');
+    expect(x509Form.password()).toBe('');
+
+    // Mutation (Rule 19): delete `this.oauthServerDescriptionForm.reset()` from
+    // `App.verifyWhenSignedIn` -> this goes red, and the next principal's editor holds the previous
+    // one's typed token.
+    expect(oauthServerDescriptionForm.token()).toBe('');
+
+    // Mutation (Rule 19): delete `this.oauthClientForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's editor holds the previous one's typed client secret.
+    expect(oauthClientForm.secret('ClientSecret')).toBe('');
+
+    // Mutation (Rule 19): delete `this.oauthResourceServerForm.reset()` from `App.verifyWhenSignedIn`
+    // -> this goes red, and the next principal's editor holds the previous one's typed client secret.
+    expect(oauthResourceServerForm.secret()).toBe('');
+
+    // Mutation (Rule 19): delete `this.oauthServerForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's editor holds the previous one's typed key password.
+    expect(oauthServerForm.password()).toBe('');
+
+    // Mutation (Rule 19): delete `this.oauthRegisteredClientForm.reset()` from `App.verifyWhenSignedIn`
+    // -> this goes red, and the next principal's editor holds the previous one's client secret.
+    expect(oauthRegisteredClientForm.secret()).toBe('');
+
+    // Mutation (Rule 19): delete `this.walletSecretForm.reset()` from `App.verifyWhenSignedIn` ->
+    // this goes red, and the next principal's wallet form holds the previous one's typed value.
+    expect(walletSecretForm.secretText()).toBe('');
+
+    // Mutation (Rule 19): delete `this.deviceForm.reset()` from `App.verifyWhenSignedIn` -> these
+    // two go red, and the next principal's device editor holds the previous one's typed device.
+    expect(deviceForm.value('Name')).toBe('');
+    expect(deviceForm.value('PhysicalDevice')).toBe('');
+
+    // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
+    // red, and the next principal's SSL/TLS form holds the previous one's typed key password.
+    expect(sslForm.password()).toBe('');
 
     expect(scope.resets).toBe(1);
     // The fourth answer of the same kind (Story 1.13). A re-read parked with connectivity is a
@@ -786,7 +1287,7 @@ describe('the shell frame', () => {
   };
 
   it('AC1: a fresh sign-in with nothing enabled and the verdict allowed lands on the Definition form', async () => {
-    // Mutation (Rule 19): move the gate check out of `consumeFreshSignIn()` so it runs on every
+    // Mutation (Rule 19): move the gate check out of `hasFreshSignIn()` so it runs on every
     // `signed-in` -> AC1b below goes red, because a reload would redirect too.
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/permissions/users');
@@ -801,7 +1302,7 @@ describe('the shell frame', () => {
     // A completed-but-failed map read leaves every verdict `UNGATED` (allowed). Redirecting on
     // that takes a caller who may hold nothing to a form the instance will refuse them at.
     //
-    // Mutation (Rule 19): drop the `if (!this.navigation.loaded()) return;` line -> this goes red.
+    // Mutation (Rule 19): drop `!this.navigation.loaded()` from the answered check -> this goes red.
     const router = TestBed.inject(Router);
     navigation.loadedFlag = false;
     await router.navigateByUrl('/permissions/users');
@@ -810,6 +1311,88 @@ describe('the shell frame', () => {
     session.move('signed-in');
     await settleGate();
     expect(router.url).toBe('/permissions/users');
+  });
+
+  it('DW-380: a read that failed during sign-in leaves the sign-in unspent, and the gate acts when the read answers', async () => {
+    // Mutation (Rule 19): spend the flag with `consumeFreshSignIn()` before the awaits, as the gate
+    // did -> this goes red, because the failed map read has already used up the one sign-in.
+    const router = TestBed.inject(Router);
+    navigation.loadedFlag = false;
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/permissions/users');
+    expect(session.fresh).toBe(true);
+
+    navigation.loadedFlag = true;
+    navigation.notify();
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
+    expect(session.fresh).toBe(false);
+  });
+
+  it('DW-380: a status read that answers after sign-in gives the gate its pass', async () => {
+    // Mutation (Rule 19): delete the `agentStatus.subscribe(() => this.retryFirstLoginGate())`
+    // subscription from `App` -> this goes red at `/permissions/users`.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    const load = agentStatus.load.bind(agentStatus);
+    agentStatus.load = async () => {};
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(agentStatus.answered()).toBe(false);
+    expect(session.fresh).toBe(true);
+
+    agentStatus.load = load;
+    await agentStatus.load();
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
+    expect(session.fresh).toBe(false);
+  });
+
+  it('DW-459: the user\'s first navigation after sign-in spends it, so a read answering later does not move them', async () => {
+    // Mutation (Rule 19): delete the `consumeFreshSignIn()` call from `App.spendSignInOnNavigation`
+    // -> this goes red: the navigation leaves the sign-in unspent for the late map read to act on.
+    const router = TestBed.inject(Router);
+    navigation.loadedFlag = false;
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(session.fresh).toBe(true);
+
+    await router.navigateByUrl('/');
+    expect(session.fresh).toBe(false);
+
+    navigation.loadedFlag = true;
+    navigation.notify();
+    await settleGate();
+    expect(router.url).toBe('/');
+  });
+
+  it('DW-459: a replaceUrl correction is not the user\'s navigation and leaves the sign-in to the gate', async () => {
+    // Mutation (Rule 19): drop the `replaceUrl` check from `App.spendSignInOnNavigation` -> this goes
+    // red, because the scope's namespace correction would spend the sign-in.
+    const router = TestBed.inject(Router);
+    navigation.loadedFlag = false;
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+
+    await router.navigateByUrl('/', { replaceUrl: true });
+    expect(session.fresh).toBe(true);
+
+    navigation.loadedFlag = true;
+    navigation.notify();
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
   });
 
   it('AC1: the gate declines for a caller the map refuses, and the requested route stands', async () => {
@@ -864,7 +1447,7 @@ describe('the shell frame', () => {
     session.move('signed-in');
     await settleGate();
     expect(router.url).toBe('/permissions/users');
-    expect(session.consumed).toBeGreaterThan(0);
+    expect(session.asked).toBeGreaterThan(0);
 
     // And the status is still read: the panel and the dot render from it on every route, and a
     // read left to the gate alone would leave a reloaded tab with no panel at all.

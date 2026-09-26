@@ -43,3 +43,14 @@ modified, and are not redistributed — see
 Handler bodies harvested from the four sibling projects keep their call sites but never their
 names; the harvest plans are under
 `_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/harvest/`.
+
+`spec/admin-v2-paths.json` is a derived table of the admin API's v2 paths and the HTTP methods
+each answers, produced by `ui/tools/admin-spec.mjs --derive` from `mainspec_v2.json` in
+[intersystems-community/sysadmin-api-specification](https://github.com/intersystems-community/sysadmin-api-specification)
+at commit `f764aea427e5c0b1dd08a4c18a0457e0ff7b3b34`, retrieved 2026-09-19. **The specification
+document itself is deliberately not vendored**: that repository declares no license and this one
+is public, so copying the document in would be a redistribution nobody has granted, while a table
+of paths and methods is a set of facts about an API. The table reaches neither the built bundle
+nor the IPM archive -- `module.xml`'s one `<FileCopy>` is the Angular bundle, and no roster
+package names a top-level directory -- so it is read only by the CI drift gate that compares it
+with the instance's own generated spec.

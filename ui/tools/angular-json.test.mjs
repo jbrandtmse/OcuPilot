@@ -343,3 +343,98 @@ test('the harness build configuration has its own entry, document, tsconfig and 
   assert.equal(packageJson.scripts['pretest:browser'], 'ng build --configuration production,harness');
   assert.ok(!packageJson.scripts.build.includes('harness'), 'npm run build does not build the harness');
 });
+
+// --- DW-371: the bundle-size budget is a deliberate, pinned figure -----------------------------
+//
+// Story 4.6 raised `maximumWarning` off the stock 500kB default to make room for three vendored
+// libraries (`marked`, `dompurify`, `lowlight`+`highlight.js`).
+//
+// The figure is re-based under the owner's standing policy on DW-1166: at each epic close the
+// warning is set about 5% above the measured initial total, and `maximumError`'s 2000kB is the
+// hard stop. Story 8.5 set 1261kB against a measured 1,200,871 bytes (5.01% above), the X.509
+// form page, store and actions having added 26,053, and a tight figure keeps each raise a reviewed
+// diff rather than a silent drift. `build-output.test.mjs` measures
+// the actual emitted bytes against this figure; this file pins the figure itself, so a later
+// change to it is a reviewed diff here rather than a silent edit nothing else notices.
+//
+// Story 9.9 raised it to 1561kB, the measured 1,560,536-byte initial total rounded up to the next
+// kB, under the orchestrator's 2dca0322 ruling (between 1551kB and the 1580kB stop line); DW-1166's
+// re-base at epic close follows.
+// Story 9.10 raised it to 1577kB, the measured 1,576,569-byte initial total rounded up to the next
+// kB, under the same ruling and its spec gate (below the 1580kB stop line).
+//
+// Mutations (Rule 19):
+// - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "2MB") -> the
+//   "no other initial budget exists" and "warning under error" assertions still pass, but this
+//   test's own exact-string assertion goes red, which is the point: any edit to the literal is
+//   visible here.
+// - add a second `budgets` entry -> the "exactly one budget" assertion goes red.
+test('DW-371: exactly one initial budget, maximumWarning under maximumError, and the literal is pinned', () => {
+  const budgets = parsed.projects['ocupilot-ui'].architect.build.configurations.production.budgets;
+  assert.equal(budgets.length, 1, 'expected exactly one budget entry');
+  const [budget] = budgets;
+  assert.equal(budget.type, 'initial');
+  assert.equal(budget.maximumWarning, '1854kB', 'DW-1166, Story 12.7: 5% above the measured 1,764,919 bytes; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumError, '2000kB');
+
+  // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and
+  // an MB is 1000 kB. The error budget moved from `1MB` to `1600kB` when Epic 4 and Epic 6's
+  // clients merged, and to `2000kB` for Release 1 by the owner's decision on DW-1166, so the parser reads either unit rather than one each.
+  const parseSize = (value) => {
+    const text = String(value);
+    if (text.endsWith('MB')) return Number(text.replace(/MB$/, '')) * 1000 * 1000;
+    return Number(text.replace(/kB$/, '')) * 1000;
+  };
+  assert.ok(parseSize(budget.maximumWarning) < parseSize(budget.maximumError), 'maximumWarning must stay under maximumError');
+});
+
+// DW-215 precedent: every declared dependency is an exact `x.y.z`, `save-exact=true` in `.npmrc`
+// notwithstanding -- a caret or tilde range is a version nobody reviewed landing on the next
+// `npm install`. `highlight.js` carries the extra constraint `lowlight` (a runtime dependency,
+// not a devDependency the build could freely diverge from) declares in its own `package.json`:
+// `~11.11.0`, i.e. 11.11.x and nothing else.
+//
+// Mutations (Rule 19):
+// - loosen any dependency to a caret range -> the exact-pin assertion goes red naming it.
+// - bump `highlight.js` to 11.12.0 -> the lowlight-range assertion goes red.
+test('DW-215: every dependency and devDependency is pinned to an exact x.y.z, and highlight.js stays inside lowlight\'s declared range', () => {
+  const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const packageJson = JSON.parse(readFileSync(join(uiRoot, 'package.json'), 'utf8'));
+  const EXACT_VERSION_RE = /^\d+\.\d+\.\d+$/;
+  for (const section of ['dependencies', 'devDependencies']) {
+    for (const [name, version] of Object.entries(packageJson[section] ?? {})) {
+      assert.match(version, EXACT_VERSION_RE, `${section}.${name} must be an exact version, got ${JSON.stringify(version)}`);
+    }
+  }
+
+  const lowlightPackageJson = JSON.parse(readFileSync(join(uiRoot, 'node_modules', 'lowlight', 'package.json'), 'utf8'));
+  const declaredRange = lowlightPackageJson.dependencies['highlight.js'];
+  assert.equal(declaredRange, '~11.11.0', 'lowlight\'s own declared range for highlight.js, read from the installed package');
+  const pinned = packageJson.dependencies['highlight.js'];
+  const [major, minor] = pinned.split('.').map(Number);
+  assert.equal(major, 11);
+  assert.equal(minor, 11, `highlight.js ${pinned} must stay inside lowlight's declared ~11.11.0 range`);
+});
+
+test("DW-1168: the redeploy line agents follow names the directory angular.json's outputPath declares", () => {
+  // The rule file tells an agent how to put a fresh bundle in front of a browser spec. It named
+  // `dist/ocupilot/`, a directory no build writes, so the copy silently moved nothing and the spec
+  // read the bundle the container came up with. A one-time correction cannot stop that recurring,
+  // and this project pins its cross-file literals rather than trusting two files to stay equal
+  // (compose.test.mjs and ci.test.mjs do the same for the ports and the Node bands).
+  //
+  // Mutation (Rule 19): change either side -- the `outputPath` in angular.json, or the path in the
+  // rule file's `docker cp` line -- and this goes red naming both.
+  const outputPath = parsed.projects['ocupilot-ui'].architect.build.options.outputPath;
+  assert.equal(typeof outputPath, 'string', 'angular.json declares a string outputPath');
+
+  const rulePath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.claude', 'rules', 'objectscript-testing.md');
+  const rule = readFileSync(rulePath, 'utf8');
+  const copyLine = /docker cp (\S+)\/browser\/\.\s/.exec(rule);
+  assert.ok(copyLine, 'expected a `docker cp <dist>/browser/.` line in .claude/rules/objectscript-testing.md');
+  assert.equal(
+    copyLine[1],
+    outputPath,
+    `the rule file copies from ${copyLine[1]} while angular.json writes ${outputPath}`
+  );
+});

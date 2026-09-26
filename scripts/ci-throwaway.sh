@@ -62,6 +62,10 @@ if [ "$WEB_PORT" = "52775" ] || [ "$SUPER_PORT" = "1974" ]; then
     echo "ci-throwaway: 52775 and 1974 are slot B's published ports; a throwaway never takes them"
     exit 2
 fi
+if [ "$WEB_PORT" = "52778" ] || [ "$SUPER_PORT" = "1977" ]; then
+    echo "ci-throwaway: 52778 and 1977 are slot C's published ports; a throwaway never takes them"
+    exit 2
+fi
 # `down` removes $DIR recursively, and $DIR is caller-supplied. Every other destructive surface
 # in this script and in ci-image-compile.sh is guarded by name (52774, 1973, project `ocupilot`,
 # container `ocupilot`); this one was not, so a mistyped --dir deleted whatever it named.
@@ -72,6 +76,24 @@ case "$DIR" in
 esac
 
 COMPOSE_FILE="$DIR/compose.yml"
+
+# How many times a bring-up that failed on a host-port bind is retried (DW-439), and the base of
+# the wait between attempts. The wait grows with the attempt (2s, then 4s), because three cycles
+# run back to back would otherwise ask for the port again well inside the seconds a transient
+# occupant holds it for. Overridable so a test that stubs docker can set it to 0.
+BIND_ATTEMPTS=3
+BIND_RETRY_SECONDS="${OCUPILOT_BIND_RETRY_SECONDS:-2}"
+
+# The kernel's ephemeral port range, named in the exhaustion message so the next occurrence is a
+# measurement rather than the inference the ledger entry recorded. Linux only; anywhere else it
+# says so rather than printing nothing.
+ephemeral_range() {
+    if [ -r /proc/sys/net/ipv4/ip_local_port_range ]; then
+        tr '\t' '-' < /proc/sys/net/ipv4/ip_local_port_range | tr -d '\n'
+    else
+        printf 'not readable on this platform'
+    fi
+}
 
 # Remove the throwaway's durable directory, whoever owns what is in it.
 #
@@ -147,52 +169,155 @@ services:
     environment:
       ISC_DATA_DIRECTORY: /durable/iris
       OCUPILOT_DEMO: "1"
-      # Arms OcuPilot.Test.LogSourceRotation, which rotates the instance's own messages.log.
-      # Set here and nowhere else: this container is discarded, and the test refuses to run
-      # anywhere the variable is absent rather than trusting a doc comment to keep it off a
-      # development instance.
+      # ARMING ROSTERS. Each block below carries one or more \`classes:\` lines naming, in
+      # OcuPilot.Test.* short form, every class that declares that variable -- and nothing else
+      # does. ui/tools/ci.test.mjs derives the same set from the declarations under
+      # src/OcuPilot/Test/ and holds the two equal in both directions, so a class that gains or
+      # loses an arming declaration reddens here rather than leaving a roster nobody re-read.
+      # The derivation is structural (the arming Parameter, or an inline \$System.Util.GetEnviron),
+      # never a substring scan: a variable named in a comment and not armed by it is not a
+      # member, and counting one as a member is how a grep-shaped count came out wrong by one.
+      # What is held equal is DECLARING the variable, not refusing on it: a fixture supplies the
+      # destructive helper, declares the variable its callers refuse on, and holds no refusal of
+      # its own (TurnWireFixture). Keeping a declared variable while deleting the refusal beside
+      # it is a change these rosters cannot see -- scripts/check-objectscript.py's
+      # destructive-test-guard rule is what reads that, and DW-419 is where its limits are
+      # recorded.
+      #
+      # Rotates the instance's own messages.log. Set here and nowhere else: this container is
+      # discarded, and the test refuses to run anywhere the variable is absent rather than
+      # trusting a doc comment to keep it off a development instance.
+      # classes: LogSourceRotation
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
-      # Arms every test class that creates or deletes IRIS principals: AgentWireSecurity,
-      # ConfigGate, LogSourceDenial, ErrorLogDenial, State, Token, UnexpireScope, Version, Wire
-      # and WireSecurityRead.
-      # Same reasoning, same single home: test classes are selected by package, so a runner
-      # pointed at an instance someone cares about would otherwise create principals on it.
-      # scripts/check-objectscript.py's destructive-test-guard rule holds the population.
+      # Every class that creates or deletes IRIS principals, or the OAuth 2.0 configuration
+      # objects handled the same way. Same reasoning, same single home: test classes are selected
+      # by package, so a runner pointed at an instance someone cares about would otherwise create
+      # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
+      # population. AuditCopy and AuditStarted also copy the instance's audit database into USER and empty USER's
+      # audit globals, and AuditCopy's least-privilege leg sends a purge the route must refuse.
+      # classes: TurnGrounding
+      # classes: AccountPasswordWire, AgentConnectionRoles, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
+      # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
+      # classes: OAuthTabs
+      # classes: TokenProbe, TokenRevoke
+      # classes: OAuthServerCreate, OAuthServerDelete, OAuthServerDiscover, OAuthServerJwks, OAuthServerToken, OAuthServerUpdate, OAuthServerWire
+      # classes: OAuthClientCreate, OAuthClientKeys, OAuthClientRegister, OAuthClientSecrets, OAuthClientUpdate, OAuthClientWire, AuditVendorSecrets
+      # classes: OAuthResourceServerAuthenticator, OAuthResourceServerCreate, OAuthResourceServerMappings, OAuthResourceServerSecret, OAuthResourceServerUpdate, OAuthResourceServerWire, OAuthResourceServerAuditMask
+      # classes: OAuthAuthorizationServerClients, OAuthAuthorizationServerCreate, OAuthAuthorizationServerKeys, OAuthAuthorizationServerSecret, OAuthAuthorizationServerUpdate, OAuthAuthorizationServerWire
+      # classes: OAuthRegisteredClientCreate, OAuthRegisteredClientJwks, OAuthRegisteredClientSecret, OAuthRegisteredClientUpdate, OAuthRegisteredClientWire
+      # classes: AuditCopy, AuditStarted
+      # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
+      # classes: ToolSetFull
+      # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
+      # classes: TurnStream
+      # classes: WebAppWire
+      # classes: UserCreateWire, RoleWire, ResourceWire, X509Wire, WalletWire, DeviceWire, DeviceWriteGate
+      # classes: UserSave, UserSignIn, WebAppSave, WebAppWeakening
+      # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
+      # classes: RoleSave, RoleUpdate
+      # classes: SslWire
+      # classes: TaskWire
+      # classes: ServiceEdit, LdapEdit, ServiceLdapProbe
+      # classes: AuditEventEditor
       OCUPILOT_ALLOW_PRINCIPALS: "1"
-      # Arms OcuPilot.Test.ErrorLogSeed, which writes an application error to a namespace's own
-      # ^ERRORS. Same reasoning again, and one degree worse: an application error cannot be
-      # un-logged -- the delete is Epic 5's -- so a runner pointed elsewhere would leave it there.
+      # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
+      # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
+      # would leave it there.
+      # classes: ErrorDelete, ErrorLogSeed, ProviderSecret, ProviderStub, ProviderStubTransport
+      # classes: SecretLeak, SecretStoreProbe
       OCUPILOT_ALLOW_ERROR_SEED: "1"
-      # Arms OcuPilot.Test.AuditEvent, which deletes OcuPilot's own audit event registrations to
-      # prove an unregistered triple drops its row, then reinstalls to put them back. It deletes
-      # the configuration triple, and in the smoke-check method the BASELINE RoleGranted triple
-      # that every install since Story 1.3 registers and that EnsureGrant itself emits through.
-      # Same reasoning, one degree worse again: while a registration is gone every row OcuPilot
-      # would write under that triple is dropped with no error and no log line, so a runner
-      # pointed at an instance someone cares about would silently stop auditing it.
+      # Deletes OcuPilot's own audit event registrations to prove an unregistered triple drops
+      # its row, then reinstalls to put them back -- the configuration triple, and the BASELINE
+      # RoleGranted triple every install registers. One degree worse again: while a registration
+      # is gone every row OcuPilot would write under that triple is dropped with no error and no
+      # log line, so a runner pointed at an instance someone cares about would silently stop
+      # auditing it. AuditMarker deletes the AgentWrite triple for the same reason and creates a
+      # web application to write to, so it declares OCUPILOT_ALLOW_PRINCIPALS as well.
+      # classes: AuditEvent, AuditMarker, UninstallSurvival
+      # classes: AuditEventEditor
       OCUPILOT_ALLOW_AUDIT_EVENTS: "1"
-      # Arms the eleven test classes that run OcuPilot's PRODUCTION install and had no arming
-      # variable of their own: AuditRecord, Static, InstallNamespaceSource, GatewayGapIpmPath,
-      # Manifest, WebApp, UninstallGuard, GrantReadBack, Provenance, Installer and DemoOptIn
-      # (which reaches the install through OcuPilot.Test.InstallerProbe.StartPath rather than by
-      # naming the installer).
-      # It is not the whole population that installs: seven further classes -- ConfigGate, State,
-      # Token, UnexpireScope, Version, Wire and AuditEvent -- run the same install and were already
-      # armed, by OCUPILOT_ALLOW_PRINCIPALS or OCUPILOT_ALLOW_AUDIT_EVENTS. They are protected,
-      # under a variable named for a narrower effect than the one they have.
-      # A production install is not one side effect but a whole set of them -- a database, a
-      # resource, a role, three web applications, the audit registrations and the _SYSTEM unexpire
-      # -- which is why it gets a variable of its own rather than riding on
-      # OCUPILOT_ALLOW_AUDIT_EVENTS: naming it after one of those would mislead the next reader
-      # about what arming it permits.
-      # Consequence, stated plainly: after this, those eleven classes run here and on CI, never on a
-      # development container someone cares about.
+      # Runs OcuPilot's PRODUCTION install. A production install is not one side effect but a
+      # whole set of them -- a database, a resource, a role, three web applications, the audit
+      # registrations and the _SYSTEM unexpire -- which is why it has a variable of its own
+      # rather than riding on a narrower one. It is not the whole population that installs:
+      # seven further classes run the same install and are armed by OCUPILOT_ALLOW_PRINCIPALS or
+      # OCUPILOT_ALLOW_AUDIT_EVENTS instead, under a variable named for a narrower effect than
+      # the one they have. Consequence, stated plainly: the classes below run here and on CI,
+      # never on a development container someone cares about.
+      # classes: AuditRecord, AuditVerbs, DefinitionDefaults, DemoOptIn, GatewayGapIpmPath, GrantReadBack
+      # classes: IdentityInstall, InstallNamespaceSource, Installer, Manifest, Provenance, Static
+      # classes: UninstallGuard, UninstallResidue, UninstallSurvival, WebApp
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
-      # Arms OcuPilot.Test.ProviderSsl, which runs the installer's EnsureSslConfiguration step
-      # under the probe profile and so creates -- and leaves -- a TLS configuration in the
-      # instance's own security database. Same reasoning as the three above: a runner pointed at
-      # an instance someone cares about would otherwise add a security object to it.
+      # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
+      # -- and leaves -- a TLS configuration in the instance's own security database. Same
+      # reasoning as the blocks above: a runner pointed at an instance someone cares about would
+      # otherwise add a security object to it. The demo fixture's classes create and remove its
+      # TLS configuration, X.509 credential and wallet collection, and the SSL/TLS editor's
+      # classes create and delete probe configurations by exact name, for the same reason.
+      # classes: ProviderSsl
+      # classes: Demo, DemoFaults, FixtureNamespace, SslSave, SslSecret, SslTest
+      # classes: SslWire
       OCUPILOT_ALLOW_SSL_CONFIG: "1"
+      # Turns the instance's own auditing OFF and back on through the shipped confirm path, which
+      # is the widest effect any class here has: while it is off nothing on this instance is
+      # audited at all, not only OcuPilot's own events. Its own variable rather than riding on
+      # OCUPILOT_ALLOW_AUDIT_EVENTS, which deletes a registration and leaves the channel open.
+      # Each class restores auditing in an in-method frame and asserts the restore in its
+      # teardown, so a run that aborts mid-sequence still leaves this instance audited.
+      # ProhibitedRoute confirms one real disable as a least-privileged principal (AD-29), so it
+      # declares this variable as well as OCUPILOT_ALLOW_PRINCIPALS.
+      # classes: AuditingUpdate, ProhibitedRoute
+      OCUPILOT_ALLOW_AUDIT_TOGGLE: "1"
+      # Suspends and resumes a REAL process on this instance through the shipped confirm path.
+      # A suspended process holds every lock and open transaction it had, so a runner pointed at
+      # an instance someone cares about could stop work nobody there asked to stop. The class
+      # JOBs its own probe process, never a daemon, the Task Manager, a Work Queue worker or
+      # WRTDMN, and halts it on every exit path.
+      # classes: ProcessControl
+      OCUPILOT_ALLOW_PROCESS_CONTROL: "1"
+      # Creates a task in this instance's Task Manager and resumes it. Same reasoning as the
+      # block above, one degree narrower: the effect is a task that runs where nobody scheduled
+      # one. OcuPilot.Test.TaskResume shipped in Story 5.11 without a guard (DW-1458); this is
+      # that guard's home. The New Task wizard's classes create probe tasks and delete each by
+      # id once its exact name reads back. Edit task's classes edit and run their own probe tasks,
+      # never a vendor task.
+      # classes: TaskResume
+      # classes: TaskCreate, TaskRules, TaskSave, TaskWire
+      # classes: TaskUpdate, TaskEdit
+      OCUPILOT_ALLOW_TASK_CONTROL: "1"
+      # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
+      # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted
+      # application error is gone, and the variable table it captured with it, so a runner pointed
+      # at an instance someone cares about would destroy the record of a fault nobody had read yet.
+      # The class seeds every error it removes and clears its own namespace on exit; it declares
+      # OCUPILOT_ALLOW_ERROR_SEED as well, because it seeds through that class's own guarded helper.
+      # classes: ErrorDelete
+      OCUPILOT_ALLOW_ERROR_DELETE: "1"
+      # Writes a service and LDAP configurations in this instance's own security database through
+      # the shipped Save and confirm paths. The service classes write only %Service_CallIn, which is
+      # disabled, and restore the snapshot they took; they refuse outright where it is enabled. The
+      # LDAP classes create ocup99* configurations and delete each once its exact name reads back.
+      # The service OcuPilot is served through is never written: its legs mint only, or save
+      # through a port that records a PUT and never sends it.
+      # classes: ServiceEdit, LdapEdit, LdapUpdate, ServiceLdapProbe
+      OCUPILOT_ALLOW_SERVICE_CONFIG: "1"
+      # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
+      # and with it the classes that spawn turn jobs or Test connection children against that row's
+      # scripted adapter. Either is a separate process no in-process stub reaches, so the row is
+      # armed by the environment, and only here.
+      # classes: TurnGrounding
+      # classes: TurnStream
+      # classes: AgentConnectionBound, AgentConnectionRoles, AgentConnectionWire, LedgerWire, ToolWire, TurnChain
+      # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnStore
+      # classes: TurnWire, TurnWireFixture
+      OCUPILOT_ALLOW_TEST_PROVIDER: "1"
+      # Purges the instance's own audit database through the shipped screen route: every record
+      # dated before today is removed, the agent's audit markers among them, and nothing puts one
+      # back. Its own variable because no narrower one names that effect. The purge leg of
+      # ui/browser/audit-copy-purge.browser-spec.mjs has the same effect and runs only against this
+      # container, which its own assertThrowaway checks.
+      # classes: AuditPurge
+      OCUPILOT_ALLOW_AUDIT_PURGE: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro
@@ -217,7 +342,54 @@ services:
       - $DIR/scripts:/opt/ocupilot/scripts:ro
 EOF
         echo "ci-throwaway: wrote $COMPOSE_FILE ($IMAGE, web $WEB_PORT, superserver $SUPER_PORT)"
-        docker compose -f "$COMPOSE_FILE" up -d --wait
+        # The bring-up, retried a BOUNDED number of times and ONLY on a host-port bind (DW-439).
+        #
+        # 52776 sits inside the ephemeral range a Linux runner allocates outbound source ports
+        # from -- the kernel default is 32768-60999 -- so an outbound connection opened by
+        # anything else on the box can hold it when compose asks for it, a failure that is over in
+        # seconds and is not about this container at all. 1975 is an order of magnitude below that
+        # floor and cannot be taken that way; a bind failure there is another listener, which the
+        # same retry survives only if that listener goes away. Moving the ports is not the fix:
+        # 52776/1975 are written into CLAUDE.md, _bmad/custom/parallel.yaml and every parallel
+        # runner's spawn prompt.
+        #
+        # Every other failure exits at once. A retry loop that swallows "the image is not
+        # available" or "the install failed" turns one clear error into three and then a
+        # misleading one about a port.
+        #
+        # The bring-up is STREAMED, not captured: the first start takes several minutes, and a
+        # `--wait` that hangs until the job is cancelled printed nothing at all under a captured
+        # bring-up -- the exact situation DW-439 exists for. POSIX sh has no PIPESTATUS, so the
+        # exit code goes to a file inside the pipeline and is read back beside the text.
+        UP_OUTPUT_FILE="$DIR/up-output.txt"
+        UP_RC_FILE="$DIR/up-rc.txt"
+        ATTEMPT=1
+        while : ; do
+            # Cleared first: the exit code is written from inside the pipeline, so if that write
+            # never happens -- the left side killed, the file unwritable -- `cat` would otherwise
+            # read whatever an earlier attempt or an earlier run of this script left behind, and a
+            # stale `0` reads as a bring-up that succeeded. Absent, it reads empty, which is not
+            # "0" and takes the failure path.
+            rm -f "$UP_RC_FILE"
+            { docker compose -f "$COMPOSE_FILE" up -d --wait 2>&1; echo "$?" > "$UP_RC_FILE"; } | tee "$UP_OUTPUT_FILE"
+            if [ "$(cat "$UP_RC_FILE" 2>/dev/null)" = "0" ]; then break; fi
+            UP_OUTPUT=$(cat "$UP_OUTPUT_FILE")
+            case "$UP_OUTPUT" in
+                *"address already in use"*|*"port is already allocated"*|*"ports are not available"*|*"Bind for "*) ;;
+                *)
+                    echo "ci-throwaway: the bring-up failed for a reason that is not a host-port bind; not retried"
+                    exit 1
+                    ;;
+            esac
+            if [ "$ATTEMPT" -ge "$BIND_ATTEMPTS" ]; then
+                echo "ci-throwaway: host port $WEB_PORT (or superserver $SUPER_PORT) was still bound after $BIND_ATTEMPTS attempt(s); this runner's ephemeral port range is $(ephemeral_range), which bears on $WEB_PORT -- $SUPER_PORT is below any default range's floor, so a bind failure there is another listener"
+                exit 1
+            fi
+            echo "ci-throwaway: host port $WEB_PORT is bound; removing this project's containers and retrying (attempt $ATTEMPT of $BIND_ATTEMPTS)"
+            docker compose -f "$COMPOSE_FILE" down -v || true
+            if [ "$BIND_RETRY_SECONDS" -gt 0 ]; then sleep $((BIND_RETRY_SECONDS * ATTEMPT)); fi
+            ATTEMPT=$((ATTEMPT + 1))
+        done
         docker compose -f "$COMPOSE_FILE" ps
         ;;
     logs)

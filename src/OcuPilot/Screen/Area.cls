@@ -39,14 +39,15 @@
 /// <class>OcuPilot.Screen.Descriptor.ProcessList</class> records the vendor line and the choice of
 /// the narrower half. An area covers every pair its screens declare, so the area carries it too.</p>
 /// <p><b>The union stands, and the false denial it produces for a narrower screen is accepted</b>
-/// (DW-275, decided in Story 2.13). Only <class>OcuPilot.Screen.Descriptor.ProcessList</class>
-/// needs <code>%Admin_Manage:USE</code>; Stories 6.8 and 6.10 add os-management screens that
-/// plausibly do not <b>(inference</b> -- from the <code>ResourcesOR()</code> probe recorded above,
-/// not from those stories' acceptance criteria, which name no privilege; it is settled by running
-/// each new read as a least-privileged principal on a throwaway when the screen lands<b>)</b>. An
+/// (DW-275, decided in Story 2.13). <class>OcuPilot.Screen.Descriptor.ProcessList</class> was the
+/// first screen to need <code>%Admin_Manage:USE</code> and Story 6.11's three Databases reads and
+/// Story 6.12's Devices list need it too; Stories 6.8's and 6.10's screens do not, which was
+/// settled by running each new read as
+/// a least-privileged principal on a throwaway as that screen landed rather than inferred from the
+/// <code>ResourcesOR()</code> probe recorded above. An
 /// operator holding only <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code> will
-/// therefore see the whole OS management rail entry denied on a pair only one screen in it
-/// requires. That is a false denial, and it is preferred to the alternative: relaxing
+/// therefore see the whole OS management rail entry denied on a pair six of its nine screens
+/// require. That is a false denial, and it is preferred to the alternative: relaxing
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> to per-screen coverage trades it
 /// for the false admission AD-8 exists to prevent -- an area that reads allowed while every screen
 /// inside it refuses. DW-278's owner-delegated decision of 2026-09-14 declined that relaxation in
@@ -54,12 +55,43 @@
 /// <method>OcuPilot.Screen.Gate.Evaluate</method> say the same. Splitting the area is not
 /// available either: the vocabulary here is closed at eight and
 /// <class>OcuPilot.Test.Descriptor</class> pins it.</p>
-/// <p><b>What this costs, counted:</b> 0 of 1 os-management screens falsely denied today, 2 of 3
-/// once 6.8 and 6.10 land. <b>What it must not become:</b> dropping
+/// <p><b>What this costs, counted:</b> 2 of 4 os-management screens falsely denied before Story
+/// 6.11 (<class>OcuPilot.Screen.Descriptor.LockList</class> and
+/// <class>OcuPilot.Screen.Descriptor.SystemUsage</class>), 5 of 8 with its four descriptors
+/// landed, 6 of 9 with <class>OcuPilot.Screen.Descriptor.DeviceList</class> landed (Story 6.12).
+/// A screen is falsely denied when its own pair set is a strict subset of this union,
+/// because <method>OcuPilot.Screen.Gate.EvaluatePairs</method> requires every pair the area names:
+/// <class>OcuPilot.Screen.Descriptor.DatabaseDetails</class> joins the two above, denied on
+/// <code>%Admin_Manage:USE</code>, and <class>OcuPilot.Screen.Descriptor.DatabaseList</class>,
+/// <code>DatabaseVolumeList</code> and <code>DeviceList</code> are this area's screens denied on
+/// <code>%Admin_Operate:USE</code> instead -- each declares <code>%Admin_Manage:USE</code> and
+/// <code>%DB_IRISSYS:READ</code> and needs no Operate pair, which
+/// <class>OcuPilot.Test.WireSecurityRead</class> establishes against a real least-privileged
+/// principal on the throwaway: its <code>MANAGEUSER</code>, holding those two pairs and no
+/// Operate pair, reads all three at 200, while its <code>MANAGEONLYUSER</code>, holding
+/// <code>%Admin_Manage:USE</code> alone, is refused naming <code>%DB_IRISSYS:READ</code>. Only
+/// <code>DatabaseFreeSpace</code> declares the whole union, and it alone of the four Story 6.11
+/// descriptors is not falsely denied. <b>What it must not become:</b> dropping
 /// <code>%Admin_Manage:USE</code> from this area to make the narrow screens reachable makes
 /// <code>AreaCoverageProblem</code> refuse <code>ProcessList</code> at install --
 /// <class>OcuPilot.Test.NarrowArea</class> pins both halves, so the decision cannot be reversed by
 /// accident.</p>
+/// <p><b>Security and secrets names <code>%Admin_Wallet:USE</code> third</b>, after its screens'
+/// shared <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>: the Wallet list and its
+/// Secrets list declare it, and an area covers every pair its screens declare. Appended rather than
+/// placed first, so a caller short of <code>%Admin_Secure:USE</code> is still named that pair. The
+/// union is kept on the ground DW-275 and DW-278 give for OS management, and it costs the same kind
+/// of false denial: a caller holding <code>%Admin_Secure:USE</code> and
+/// <code>%DB_IRISSYS:READ</code> without <code>%Admin_Wallet:USE</code> sees the Security rail item
+/// gated, and a gated rail item opens no side bar, while SSL/TLS, X.509 and LDAP / Kerberos -- 3 of
+/// the area's 5 built screens -- would serve them and stay reachable by the command box and a deep
+/// link.</p>
+/// <p><b>It then names <code>%Admin_OAuth2_Client:USE</code>, <code>%Admin_OAuth2_Server:USE</code> and
+/// <code>%Admin_OAuth2_Registration:USE</code></b>, in that order, which the OAuth 2.0 tabs declare.
+/// The cost is the same kind of false denial: a caller holding the secure, system-database and wallet
+/// pairs without an OAuth resource sees the rail item gated while 6 of the area's 10 built screens
+/// would serve them. The stock <code>%Manager</code> and <code>%SecurityAdministrator</code> roles hold
+/// all three OAuth resources (observed on slot B), so no stock role is newly denied by them.</p>
 /// <p><b>A pair set is an AND and cannot express the admin API's OR.</b>
 /// <code>Task.CRUD</code> accepts <code>%Admin_Task</code> <i>or</i> <code>%Admin_Operate</code>
 /// (same probe). Tasks therefore names the narrower <code>%Admin_Task</code>, so a holder of
@@ -87,7 +119,7 @@ XData Areas
   {"key":"tasks","railPosition":4,"labelKey":"navAreaTasks","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Task","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"permissions","railPosition":5,"labelKey":"navAreaPermissions","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"web-applications","railPosition":6,"labelKey":"navAreaWebApplications","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
-  {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
+  {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"},{"resource":"%Admin_Wallet","permission":"USE"},{"resource":"%Admin_OAuth2_Client","permission":"USE"},{"resource":"%Admin_OAuth2_Server","permission":"USE"},{"resource":"%Admin_OAuth2_Registration","permission":"USE"}]},
   {"key":"agent","railPosition":8,"labelKey":"navAreaAgent","navigates":false,"pinBottom":true,"privileges":[]}
 ]}
 }

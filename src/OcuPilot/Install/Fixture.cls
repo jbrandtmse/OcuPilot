@@ -1,10 +1,15 @@
-/// <p>The five opt-in walkthrough fixtures (AD-25, AC9-AC12): a disabled web application
+/// <p>The six opt-in walkthrough fixtures (AD-25, AC9-AC12): a disabled web application
 /// at <parameter>APPPATH</parameter> carrying no resource, a demo SSL/TLS configuration,
-/// a self-signed X.509 credential, a task suspended after a real, controlled error
-/// (DW-14), and at least one application-error-log entry (DW-15). Every one of them
+/// a self-signed X.509 credential, a wallet collection holding one generated secret, a task
+/// suspended after a real, controlled error (DW-14), and at least one application-error-log
+/// entry (DW-15). Every one of them
 /// except the web-application path carries the <parameter>DEMOPREFIX</parameter> name
 /// prefix; the web application is namespaced by <i>behavior</i> instead, per this
 /// story's Design Notes ("DW-13 -- addressed, with the branch taken and why").</p>
+/// <p><b>The X.509 credential's certificate and private key are a disposable demo fixture</b>
+/// (<method>DemoCertificatePem</method>, <method>DemoPrivateKeyPem</method>): a self-signed
+/// <code>CN=OcuPilotDemo</code> prop that secures nothing. The key is public by being checked in, so
+/// the pair is never to be reused for anything but this walkthrough.</p>
 /// <p>A separate class from <class>OcuPilot.Install.Installer</class> deliberately (this
 /// story's Design Notes, "Reading of AD-17's 'one installer class'"): the demo fixture is
 /// a distinct, opt-in concern absent from the IPM path entirely, so folding it into the
@@ -17,8 +22,8 @@
 /// want the underlying detail read <var>pReports</var> directly -- there is no probe
 /// subclass here, unlike <class>OcuPilot.Test.InstallerProbe</class>, because the report
 /// array is already a public output parameter.</p>
-/// <p>Switches to <code>%SYS</code> for the four <code>%SYS</code>-scoped fixtures
-/// (Security.Applications/SSLConfigs/X509Credentials, %SYS.Task) and restores before the
+/// <p>Switches to <code>%SYS</code> for the five <code>%SYS</code>-scoped fixtures
+/// (Security.Applications/SSLConfigs/X509Credentials, %Wallet.Collection, %SYS.Task) and restores before the
 /// error-log fixture, which must write into the <b>install namespace's own</b>
 /// <code>^ERRORS</code> (DW-15, AC12) -- and before recording
 /// <class>OcuPilot.Kernel.State.Demo</class> inventory rows, an OcuPilot class compiled
@@ -32,7 +37,7 @@
 /// "why no <class>OcuPilot.Test.InstallerProbe</class>-shaped capture subclass" and is
 /// unchanged by <class>DemoAppProbe</class>'s existence.
 /// <class>OcuPilot.Test.FixtureFault</class> (rework iteration 5) is a second such
-/// subclass, for fault injection into the three <code>Delete</code> calls
+/// subclass, for fault injection into the four <code>Delete</code> calls
 /// <method>RemoveOne</method> makes and into <method>OpenTask</method>.</p>
 /// <p><b>Correction at its origin (rework iteration 5, 2026-09-11) -- the error-log
 /// fixture no longer depends on the Task Manager daemon.</b> An earlier version of
@@ -66,6 +71,13 @@ Parameter APPPATH = "/csp/myapp";
 /// <p>Name prefix every fixture object except <parameter>APPPATH</parameter> carries
 /// (AC9).</p>
 Parameter DEMOPREFIX = "OcuPilotDemo";
+
+/// <p>The resource the demo wallet collection is created with, which becomes both its use and its
+/// edit resource: the wallet administrative resource, so no new resource is created for it.</p>
+Parameter WALLETRESOURCE = "%Admin_Wallet:USE";
+
+/// <p>The name, within the demo wallet collection, of its one secret.</p>
+Parameter WALLETSECRET = "Sample";
 
 /// <p>Append one report line, matching
 /// <method>OcuPilot.Install.Installer.Report</method>'s shape exactly so a caller can
@@ -141,6 +153,7 @@ ClassMethod Create(pProfile As %String = "", ByRef pReports, Output pErrorEntryI
         Do ..CreateWebApp(pProfile, tInstallNs, tWebAppOwned, .pReports, .tRows)
         Do ..CreateSslConfig(pProfile, .pReports, .tRows)
         Do ..CreateX509Credential(pProfile, .pReports, .tRows)
+        Do ..CreateWalletCollection(pProfile, .pReports, .tRows)
         Do ..CreateTask(pProfile, tInstallNs, .pReports, .tRows)
 
         Set $NAMESPACE = tOrigNS
@@ -339,12 +352,9 @@ ClassMethod CreateSslConfig(pProfile As %String, ByRef pReports, ByRef pRows) [ 
 /// <code>%SYSTEM.Encryption</code> reads and verifies certificates but does not create
 /// them, and shelling out to an external tool from an install path was rejected as
 /// exactly the undocumented-internals risk AD-27 exists to confine.</p>
-/// <p><b>Corrected (code review round 3):</b> this used to say there is no supported
-/// ObjectScript API that generates an X.509 certificate at all. <code>PKI.CAServer.Configure</code>
-/// does -- this instance's own <code>%ZHSLIB.TLS.Utils.ConfigureDemoCAServer</code> calls it
-/// -- but it writes a CA certificate and key to files and configures a CA server on the
-/// instance, a heavier footprint than a demo fixture. Whether to take that route instead of
-/// the checked-in key is DW-49's decision (escalated), not settled here.</p>
+/// <p>No supported API on IRIS 2026.2 creates a certificate: no <code>PKI.*</code> class exists.
+/// <code>CertificateSet</code> fills the subject and issuer DNs, the serial number and the
+/// thumbprint from the DER it is given, so the credential reads like any imported one.</p>
 ClassMethod CreateX509Credential(pProfile As %String, ByRef pReports, ByRef pRows) [ Private ]
 {
     Try {
@@ -378,6 +388,46 @@ ClassMethod CreateX509Credential(pProfile As %String, ByRef pReports, ByRef pRow
         Do ..Report(.pReports, "info", "Created the demo self-signed X.509 credential fixture", {"alias": (tAlias)})
     } Catch ex {
         Do ..Report(.pReports, "warn", "Demo X.509 credential fixture failed", {"error": (ex.DisplayString())})
+    }
+}
+
+/// <p>The demo wallet collection (AD-25, AD-35): collection <code>&lt;prefix&gt;</code> whose use
+/// and edit resource is <parameter>WALLETRESOURCE</parameter>, holding one
+/// <class>%Wallet.KeyValue</class> secret <code>&lt;prefix&gt;.</code><parameter>WALLETSECRET</parameter>.
+/// The secret's value is generated here from <code>$System.Encryption.GenCryptRand</code>, held in
+/// one local that is cleared as soon as the create returns, and never put in a report, a log line
+/// or a status: a failed secret is reported without the vendor's error text, and an exception by its
+/// name and location only, never its data.</p>
+/// <p>Guard-then-act, as <method>CreateX509Credential</method> is: a collection that already
+/// exists is left untouched and not recorded. The collection is recorded as soon as it is created,
+/// so a secret that then fails still leaves an inventory row that removes the collection.
+/// <b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod CreateWalletCollection(pProfile As %String, ByRef pReports, ByRef pRows) [ Private ]
+{
+    Set tValue = ""
+    Try {
+        Set tName = ..ResolvedPrefix(pProfile)
+        If ##class(%Wallet.Collection).Exists(tName) {
+            Do ..Report(.pReports, "info", "Demo wallet collection fixture already exists -- left untouched, not re-recorded in this run's inventory", {"name": (tName)})
+            Quit
+        }
+        Set tSC = ##class(%Wallet.Collection).Create(tName, {"Resource": (..#WALLETRESOURCE)})
+        If $$$ISERR(tSC) {
+            Do ..Report(.pReports, "warn", "Could not create the demo wallet collection fixture", {"error": ($System.Status.GetErrorText(tSC))})
+            Quit
+        }
+        Do ..NoteRow(.pRows, "walletcollection", tName, "instance")
+        Set tValue = $System.Encryption.Base64Encode($System.Encryption.GenCryptRand(24), 1)
+        Set tSecretSC = ##class(%Wallet.KeyValue).Create(tName _ "." _ ..#WALLETSECRET, {"Secret": {"value": (tValue)}})
+        Set tValue = ""
+        If $$$ISERR(tSecretSC) {
+            Do ..Report(.pReports, "warn", "Created the demo wallet collection fixture but could not create its secret", {"name": (tName)})
+            Quit
+        }
+        Do ..Report(.pReports, "info", "Created the demo wallet collection fixture with one secret", {"name": (tName)})
+    } Catch ex {
+        Set tValue = ""
+        Do ..Report(.pReports, "warn", "Demo wallet collection fixture failed", {"name": (..ResolvedPrefix(pProfile)), "error": (ex.Name _ " at " _ ex.Location)})
     }
 }
 
@@ -764,6 +814,12 @@ ClassMethod DeleteX509Credential(pName As %String) As %Status
     Quit ##class(%SYS.X509Credentials).Delete(pName)
 }
 
+/// <p>Delete one wallet collection and the secrets it holds -- see <method>DeleteWebApp</method>.</p>
+ClassMethod DeleteWalletCollection(pName As %String) As %Status
+{
+    Quit ##class(%Wallet.Collection).Delete(pName)
+}
+
 /// <p>Record one <code>{kind, name, scope}</code> row to be saved as a
 /// <class>OcuPilot.Kernel.State.Demo</class> inventory row once back in the install
 /// namespace. Never called for the DW-13 collision branch -- that path notes nothing,
@@ -930,6 +986,14 @@ ClassMethod RemoveOne(pKind As %String, pName As %String, pScope As %String, ByR
                     Do ..Report(.pReports, "warn", "Could not delete the demo X.509 credential fixture", {"name": (pName), "error": ($System.Status.GetErrorText(tDelSC3))})
                 }
             }
+        } ElseIf pKind = "walletcollection" {
+            If ##class(%Wallet.Collection).Exists(pName) {
+                Set tDelSC4 = ..DeleteWalletCollection(pName)
+                If $$$ISERR(tDelSC4) {
+                    Set tOk = 0
+                    Do ..Report(.pReports, "warn", "Could not delete the demo wallet collection fixture", {"name": (pName), "error": ($System.Status.GetErrorText(tDelSC4))})
+                }
+            }
         } ElseIf pKind = "task" {
             ; Review finding (MED): this used to query with namespace "" (every
             ; namespace) regardless of the inventory row's own recorded Scope (the
@@ -1054,6 +1118,8 @@ ClassMethod ObjectState(pKind As %String, pName As %String, pScope As %String) A
             Set tState = $Select(##class(Security.SSLConfigs).Exists(pName, .tE2, .tS2): "still on the instance", 1: "already removed")
         } ElseIf pKind = "x509credential" {
             Set tState = $Select(##class(%SYS.X509Credentials).Exists(pName, .tE3, .tS3): "still on the instance", 1: "already removed")
+        } ElseIf pKind = "walletcollection" {
+            Set tState = $Select(##class(%Wallet.Collection).Exists(pName): "still on the instance", 1: "already removed")
         } ElseIf pKind = "task" {
             Kill tIds
             Set tQSC = ..TaskIds("OcuPilot.Install.DemoTask", pName, pScope, .tIds)
@@ -1071,9 +1137,9 @@ ClassMethod ObjectState(pKind As %String, pName As %String, pScope As %String) A
 
 /// <p>The demo X.509 credential's certificate, as PEM text (<method>CreateX509Credential</method>
 /// decodes it to DER before setting <property>%SYS.X509Credentials.Certificate</property>).
-/// Self-signed, RSA 2048, SHA-256, 10-year validity, generated once for this fixture
-/// (<code>CN=OcuPilotDemo</code>) -- see this class's header for why it is a fixed,
-/// checked-in pair rather than generated at install time.</p>
+/// Self-signed, RSA 2048, SHA-256, 10-year validity (<code>CN=OcuPilotDemo</code>).
+/// <b>A disposable demo fixture:</b> a prop that secures nothing, whose key is checked in beside
+/// it, and never to be reused.</p>
 ClassMethod DemoCertificatePem() As %String [ Private ]
 {
     Set tCert = ""
@@ -1101,8 +1167,9 @@ ClassMethod DemoCertificatePem() As %String [ Private ]
     Quit tCert
 }
 
-/// <p>The demo X.509 credential's matching private key, as PKCS#8 unencrypted PEM text --
-/// see <method>DemoCertificatePem</method>.</p>
+/// <p>The demo X.509 credential's matching private key, as PKCS#8 unencrypted PEM text.
+/// <b>A disposable demo fixture:</b> public by being checked in, it secures nothing and is never
+/// to be reused -- see <method>DemoCertificatePem</method>.</p>
 ClassMethod DemoPrivateKeyPem() As %String [ Private ]
 {
     Set tKey = ""

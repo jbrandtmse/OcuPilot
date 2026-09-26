@@ -8,7 +8,7 @@
 /// never through IPM (AC14, DW-73), forward-migrates OcuPilot's own protected state
 /// against a version stamp (<class>OcuPilot.Kernel.State.Version</class>, AD-38, AC5/AC6),
 /// reports the CSP Gateway registration gap and its response timeout as information
-/// (AC8), and, under an explicit opt-in flag, creates and removes the five demo
+/// (AC8), and, under an explicit opt-in flag, creates and removes the six demo
 /// walkthrough fixtures through <class>OcuPilot.Install.Fixture</class> (AD-25, AC9).
 /// <method>StartPath</method> is the container start hook's single install entry point (Story
 /// 1.4); the hook's one other call, <method>MarkInstalling</method> before it recompiles,
@@ -67,9 +67,10 @@ Class OcuPilot.Install.Installer Extends %RegisteredObject
 /// first, then raise this number, never the other way round.</p>
 Parameter SCHEMAVERSION As %Integer = 1;
 
-/// <p>The deployed build identity, recorded on the version row alongside the schema
-/// version (Story 1.5's DW-3: a stale browser bundle can eventually be prompted to
-/// reload). Opaque and unversioned by this story.</p>
+/// <p>The build identity recorded on the version row when the install deployed no hashed client
+/// bundle it could name (Story 1.5's DW-3). <method>BundleIdentity</method> is what the row
+/// normally carries; this is its fallback, so a run that installed no bundle still records
+/// something rather than clearing the stamp.</p>
 Parameter BUILDIDENTITY As %String = "dev";
 
 /// <p>The names this class refuses as an install target, whatever the caller's current
@@ -155,10 +156,24 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
         Set pNames("adminResource") = ##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE _ tSuffix
         Set pNames("adminRole") = pNames("adminResource")
         Set pNames("application") = ##class(OcuPilot.Kernel.State.Base).#APPLICATION _ tSuffix
+        ; The second privileged routine application and its role (DW-444). Its role is a role of
+        ; its own rather than a %DB_ resource's implicit one, because the read it covers is not a
+        ; read of OcuPilot's own data; the two names are equal for the reason adminRole and
+        ; adminResource are.
+        Set pNames("identityApplication") = ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION _ tSuffix
+        Set pNames("identityRole") = pNames("identityApplication")
+        ; Resolved here, in the install namespace, for the reason every other name above is:
+        ; EnsureIdentityApplication runs switched to %SYS, where an OcuPilot class reference
+        ; raises <CLASS DOES NOT EXIST> (this class's own header).
+        Set pNames("identityResources") = ##class(OcuPilot.Kernel.State.Base).#IDENTITYRESOURCES
         Set pNames("mappingPattern") = $Select(tIsProbe: "ProbeOcuPilotState*", 1: ##class(OcuPilot.Kernel.State.Base).#MAPPINGPATTERN)
         Set pNames("eventSource") = ##class(OcuPilot.Kernel.State.Base).#AUDITSOURCE
         Set pNames("eventType") = ##class(OcuPilot.Kernel.State.Base).#AUDITTYPE
         Set pNames("eventName") = ##class(OcuPilot.Kernel.State.Base).#AUDITNAME _ tSuffix
+        ; The roster entry a confirmed agent write is marked with (AD-15, Story 5.6). Resolved
+        ; here for the same reason every other name is, and asserted against the roster below so a
+        ; rename cannot leave install observing a registration nothing carries.
+        Set pNames("markerEvent") = ##class(OcuPilot.Kernel.Audit.Event).#EVENTAGENTWRITE _ tSuffix
 
         ; The audit-event roster (AD-15). Declared by OcuPilot.Kernel.Audit.Event, which is also
         ; the only class that emits through it, so the set registration carries and the set the
@@ -178,6 +193,10 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
         }
         If '$ListFind(tRosterNames, pNames("eventName")) {
             Set tSC = $$$ERROR($$$GeneralError, "the audit-event roster does not carry the grant marker '" _ pNames("eventName") _ "', which EnsureGrant emits; every triple emitted is one registration carries")
+            Quit
+        }
+        If '$ListFind(tRosterNames, pNames("markerEvent")) {
+            Set tSC = $$$ERROR($$$GeneralError, "the audit-event roster does not carry the agent-write marker '" _ pNames("markerEvent") _ "', which every confirmed write emits; every triple emitted is one registration carries")
             Quit
         }
         Set pNames("sslConfig") = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG _ tSuffix
@@ -815,6 +834,9 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set tFailingStep = "EnsureApplication"
         Set tSC = ..EnsureApplication(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureIdentityApplication"
+        Set tSC = ..EnsureIdentityApplication(.tNames, tInstallNs, .tReports)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureMapping"
         Set tSC = ..EnsureMapping(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
@@ -855,6 +877,12 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set tFailingStep = "EnsureAuditingEnabled"
         Set tSC = ..EnsureAuditingEnabled(.tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        ; AD-15, AD-17, AD-38: install is one of the two parties that can see whether this
+        ; instance marks agent writes, so it reads the answer here, inside the %SYS window, and
+        ; records it after the restore -- OcuPilot's own classes are not reachable from %SYS.
+        Set tFailingStep = "ObserveAuditMarking"
+        Set tSC = ..ObserveAuditMarking(.tNames, .tMarkingObserved, .tReports)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureGrant"
         Set tSC = ..EnsureGrant(.tNames, .tGrantOutcome, .tGrantedUser, .tGrantCommand, $Username, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
@@ -881,6 +909,11 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set tSC = ..RecordApplicationProvenance(pProfile, .tRecordedApps)
         If $$$ISERR(tSC) Quit
         Set tFailingStep = ""
+
+        ; The observation above, stored where the panel's banner reads it. Never fails install
+        ; (AD-15): a banner that could not be refreshed is a stale fact, and the fact makes no
+        ; positive claim -- nothing anywhere says marking is working.
+        Do ..RecordAuditMarking($Get(tMarkingObserved, 1), .tReports)
 
         ; Never fails install (AD-27's fallback) -- ReportGatewayGap always returns OK. Moved
         ; out of the %SYS window in Story 1.17: it reads the provenance record, which is an
@@ -955,7 +988,7 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
 /// refused identically (AC13) rather than reaching <method>Install</method> and being
 /// refused a frame later. Always installs the production profile
 /// (<code>""</code>); only when that succeeds, and only when <var>pDemo</var> is true,
-/// creates the five opt-in demo fixtures through <class>OcuPilot.Install.Fixture</class>
+/// creates the six opt-in demo fixtures through <class>OcuPilot.Install.Fixture</class>
 /// (AD-25) -- there is no reason to seed a walkthrough on top of a failed install.</p>
 /// <p>It is the one caller that asks <method>Install</method> for the <code>_SYSTEM</code>
 /// unexpire step (<var>pUnexpire</var> = 1; DW-73, AD-17): a fresh Community container
@@ -1390,7 +1423,7 @@ ClassMethod EnsureVersion(pProfile As %String, pPhase As %String, pFailingStep A
         Set tRow.Phase = pPhase
         Set tRow.FailingStep = pFailingStep
         Set tRow.UpdatedAt = $Translate($ZDateTime($ZTimeStamp, 3, 1), " ", "T") _ "Z"
-        Set tRow.BuildIdentity = ..#BUILDIDENTITY
+        Set tRow.BuildIdentity = ..BundleIdentity(.pNames)
         Set tSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
         If $$$ISERR(tSC) Quit
         Do ..Report(.pReports, $Select(pPhase = "failed": "warn", 1: "info"), "Recorded the version row", {"profile": (pProfile), "phase": (pPhase), "schemaVersion": (pSchemaVersion), "failingStep": (pFailingStep)})
@@ -1398,6 +1431,48 @@ ClassMethod EnsureVersion(pProfile As %String, pPhase As %String, pFailingStep A
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The identity of the client bundle installed under the shell application's own directory: the
+/// hashed <code>main-*.js</code> filename <code>outputHashing: all</code> guarantees, or
+/// <parameter>BUILDIDENTITY</parameter> when there is no hashed main to name (Story 15.3, DW-3,
+/// AD-38).</p>
+/// <p><b>This is the whole of the stale-bundle comparison's server half.</b> The running client
+/// reads its own <code>main-*.js</code> name out of the document it was served, so one artifact is
+/// both sides of the comparison and there is no second thing to keep in step. A directory that
+/// holds no hashed main -- a run that installed no bundle, or a build with hashing off -- records
+/// the fallback, so the About dialog's Build row still says something; the fallback is not a bundle
+/// name, and <file>ui/src/app/core/build-identity.ts</file> compares only two bundle names, so it
+/// is never read as a mismatch.</p>
+/// <p><var>pNames</var> need not be populated: a caller that has not resolved
+/// <code>shellDirectory</code> reads the fallback rather than failing.</p>
+ClassMethod BundleIdentity(ByRef pNames) As %String [ Private ]
+{
+    Set tIdentity = ..#BUILDIDENTITY
+    Try {
+        Set tDirectory = $Get(pNames("shellDirectory"))
+        If tDirectory = "" Quit
+        If '##class(%File).DirectoryExists(tDirectory) Quit
+        Set tRS = ##class(%ResultSet).%New("%File:FileSet")
+        Set tSC = tRS.Execute(tDirectory, "main-*.js", "", 0)
+        If $$$ISERR(tSC) Quit
+        Set tFound = ""
+        While tRS.Next() {
+            Set tLeaf = tRS.Get("ItemName")
+            If tLeaf = "" Continue
+            ; Deterministic rather than "whichever came first": EnsureShellFiles clears the
+            ; directory before it copies, so there is one, and a second would otherwise make the
+            ; recorded stamp depend on directory order.
+            If (tFound = "") || (tLeaf ] tFound) Set tFound = tLeaf
+        }
+        If tFound '= "" Set tIdentity = tFound
+    } Catch {
+        Set tIdentity = ..#BUILDIDENTITY
+    }
+    ; Closed on every path, including the three early quits above and the catch: the result set
+    ; holds a process-private global for as long as it is open.
+    If $IsObject($Get(tRS)) { Do tRS.Close() }
+    Quit tIdentity
 }
 
 /// <p>Unexpire <var>pAccount</var>'s password, on a genuinely first install only (AC14)
@@ -2058,6 +2133,97 @@ ClassMethod EnsureApplication(ByRef pNames, pInstallNs As %String, ByRef pReport
             Set tSC = ##class(Security.Applications).Create(tName, .tProps2)
             If $$$ISERR(tSC) Quit
             Do ..Report(.pReports, "info", "Created the privileged routine application", {"application": (tName)})
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Ensure the <b>second</b> privileged routine application and its role exist, enabled,
+/// granting that role unconditionally (<code>MatchRoles = ":&lt;identityRole&gt;"</code>) to the
+/// one class allowed to call it
+/// (<code>Routines = "OcuPilot.Kernel.State.Base:&lt;codeDatabase&gt;:1"</code>) -- the same shape
+/// <method>EnsureApplication</method> gives the storage escalation, for a separate purpose
+/// (AD-9, DW-444).</p>
+/// <p><b>Separate from <code>OcuPilotState</code> on purpose.</b> Adding this role to that
+/// application would give every guarded storage call the right to read the security database;
+/// a second application, whose <code>Routines</code> entry admits only
+/// <class>OcuPilot.Kernel.State.Base</class>, confines it to that one file. The role's resource set is
+/// <parameter>OcuPilot.Kernel.State.Base.IDENTITYRESOURCES</parameter> and reaches none of
+/// OcuPilot's own data.</p>
+/// <p>Guard-then-act with drift repair, like every other ensure step.</p>
+ClassMethod EnsureIdentityApplication(ByRef pNames, pInstallNs As %String, ByRef pReports) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tRole = pNames("identityRole")
+        Set tName = pNames("identityApplication")
+        Set tWantResources = pNames("identityResources")
+        Set tNsObj = ##class(Config.Namespaces).Open(pInstallNs)
+        If '$IsObject(tNsObj) {
+            Set tSC = $$$ERROR($$$GeneralError, "Could not open namespace configuration for " _ pInstallNs)
+            Quit
+        }
+        Set tCodeDb = tNsObj.Routines
+        If tCodeDb = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "Could not resolve the routine database for namespace " _ pInstallNs)
+            Quit
+        }
+        Set tWantRoutines = "OcuPilot.Kernel.State.Base:" _ tCodeDb _ ":1"
+        Set tWantMatchRoles = ":" _ tRole
+
+        If ##class(Security.Roles).Exists(tRole, .tRoleObj, .tRoleExistSC) {
+            Set tSC = ##class(Security.Roles).Get(tRole, .tRoleProps)
+            If $$$ISERR(tSC) Quit
+            If ($Get(tRoleProps("Resources")) '= tWantResources) || ($Get(tRoleProps("GrantedRoles")) '= "") {
+                Set tRoleMod("Resources") = tWantResources
+                Set tRoleMod("GrantedRoles") = ""
+                Set tRoleMod("ForceSave") = 2
+                Set tSC = ##class(Security.Roles).Modify(tRole, .tRoleMod)
+                If $$$ISERR(tSC) Quit
+                Do ..Report(.pReports, "warn", "Repaired the identity role's resources", {"role": (tRole)})
+            } Else {
+                Do ..Report(.pReports, "info", "Identity role already correct", {"role": (tRole)})
+            }
+        } Else {
+            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot identity read", tWantResources, "")
+            If $$$ISERR(tSC) Quit
+            Do ..Report(.pReports, "info", "Created the identity role", {"role": (tRole)})
+        }
+
+        If ##class(Security.Applications).Exists(tName, .tExisting, .tExistSC) {
+            Set tSC = ##class(Security.Applications).Get(tName, .tProps)
+            If $$$ISERR(tSC) Quit
+            Set tNeedsRepair = 0
+            If +$Get(tProps("Enabled")) '= 1 Set tNeedsRepair = 1
+            If $Get(tProps("MatchRoles")) '= tWantMatchRoles Set tNeedsRepair = 1
+            If $Get(tProps("Routines")) '= tWantRoutines Set tNeedsRepair = 1
+            ; Type too: an application of any other type grants no role, so AddRoles refuses and
+            ; every account on the instance is refused. Repairing it may be rejected by the
+            ; instance, which fails the install loudly -- the AD-38-correct outcome, and the one
+            ; a comparison that omitted Type could not reach.
+            If +$Get(tProps("Type")) '= 4 Set tNeedsRepair = 1
+            If tNeedsRepair {
+                Set tModProps("Type") = 4
+                Set tModProps("Enabled") = 1
+                Set tModProps("MatchRoles") = tWantMatchRoles
+                Set tModProps("Routines") = tWantRoutines
+                Set tSC = ##class(Security.Applications).Modify(tName, .tModProps)
+                If $$$ISERR(tSC) Quit
+                Do ..Report(.pReports, "warn", "Repaired the identity routine application", {"application": (tName)})
+            } Else {
+                Do ..Report(.pReports, "info", "Identity routine application already correct", {"application": (tName)})
+            }
+        } Else {
+            Set tProps2("Type") = 4
+            Set tProps2("Enabled") = 1
+            Set tProps2("Description") = "OcuPilot identity read"
+            Set tProps2("MatchRoles") = tWantMatchRoles
+            Set tProps2("Routines") = tWantRoutines
+            Set tSC = ##class(Security.Applications).Create(tName, .tProps2)
+            If $$$ISERR(tSC) Quit
+            Do ..Report(.pReports, "info", "Created the identity routine application", {"application": (tName)})
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -2902,6 +3068,64 @@ ClassMethod EnableInstanceAuditing() As %Status [ Private ]
     Quit ##class(Security.System).Modify("SYSTEM", .tProps)
 }
 
+/// <p>Read whether this instance is marking agent writes (AD-15): instance-wide auditing is on
+/// <b>and</b> the roster's agent-write registration exists and is enabled. Both are
+/// <code>%SYS</code>-only reads, which is why install is one of the two parties that can make
+/// them at all.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>, and
+/// <method>RecordAuditMarking</method> stores the answer after the restore.</p>
+/// <p><b>Read from the instance, never through <method>AuditEnabledSetting</method>'s seam.</b>
+/// That seam exists so <class>OcuPilot.Test.AuditOff</class> can report auditing as off without
+/// turning it off; this answer is written into state every later session reads, so a test's
+/// reported answer must not become the instance's recorded one.</p>
+/// <p>A read that fails answers 1 and says so: the banner this feeds must not be shown because a
+/// read did not happen, since its absence is never a claim that marking works.</p>
+ClassMethod ObserveAuditMarking(ByRef pNames, Output pMarked As %Boolean, ByRef pReports) As %Status [ Private ]
+{
+    Set pMarked = 1
+    Set tSC = $$$OK
+    Try {
+        Set tSysSC = ##class(Security.System).Get("SYSTEM", .tSysProps)
+        If $$$ISERR(tSysSC) {
+            Do ..Report(.pReports, "warn", "The instance auditing flag could not be read, so agent-write marking is recorded as on", "")
+            Quit
+        }
+        Set tAuditing = +$Get(tSysProps("AuditEnabled"))
+        Set tName = $Get(pNames("markerEvent"))
+        Set tEventEnabled = 0
+        If (tName '= "") && ##class(Security.Events).Exists(pNames("eventSource"), pNames("eventType"), tName, .tEvObj, .tEvSC) {
+            Set tGetSC = ##class(Security.Events).Get(pNames("eventSource"), pNames("eventType"), tName, .tEvProps)
+            If $$$ISOK(tGetSC) Set tEventEnabled = (+$Get(tEvProps("Enabled")) = 1)
+        }
+        Set pMarked = (tAuditing = 1) && tEventEnabled
+        Do ..Report(.pReports, $Select(pMarked: "info", 1: "warn"), $Select(pMarked: "Agent writes are being marked in the audit database", 1: "Agent writes are NOT being marked in the audit database"), {"auditEnabled": (tAuditing), "markerEnabled": ($Select(tEventEnabled: 1, 1: 0)), "event": (tName)})
+    } Catch ex {
+        Set pMarked = 1
+        Do ..Report(.pReports, "warn", "The agent-write marking state could not be read, so it is recorded as on", "")
+    }
+    Quit tSC
+}
+
+/// <p>Store what <method>ObserveAuditMarking</method> read, where
+/// <code>GET /agent/restraint</code> reads it back
+/// (<property>OcuPilot.Kernel.State.Switch.WritesMarked</property>).</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must be the install namespace again --
+/// <class>OcuPilot.Kernel.Audit.Event</class> is not reachable from <code>%SYS</code>. It never
+/// fails install (AD-15).</p>
+ClassMethod RecordAuditMarking(pMarked As %Boolean, ByRef pReports) [ Private ]
+{
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Audit.Event).RecordMarking(pMarked)
+        If $$$ISERR(tSC) {
+            Do ..Report(.pReports, "warn", "The observed agent-write marking state could not be recorded", {"reason": ($System.Status.GetErrorText(tSC))})
+            Quit
+        }
+        Do ..Report(.pReports, "info", "Recorded the observed agent-write marking state", {"writesMarked": ($Select(pMarked: 1, 1: 0))})
+    } Catch ex {
+        Do ..Report(.pReports, "warn", "The observed agent-write marking state could not be recorded", {"reason": (ex.DisplayString())})
+    }
+}
+
 /// <p>Ensure the administrative role is granted (AC9, DW-16), using the process's own
 /// <code>$Username</code> as the candidate by default. Takes the candidate username as
 /// an explicit parameter (rather than reading <code>$Username</code> only internally) so
@@ -3216,6 +3440,27 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
             Set tAppRoutines = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tAppProps("Routines")))
         }
 
+        ; DW-444, added at Story 5.4's code review: the identity pair is folded exactly as the
+        ; state pair above is. Drift on it is not cosmetic -- the escalation it carries is read
+        ; on every dispatched request, and an application that is disabled or a role that has
+        ; lost a resource refuses every account on the instance. An oracle that did not fold it
+        ; would report a drifted instance as correct.
+        Set tIdentityRoleResources = ""
+        If ##class(Security.Roles).Exists(tNames("identityRole"), .tIdRoleObj, .tIdRoleSC) {
+            Set tGetSC = ##class(Security.Roles).Get(tNames("identityRole"), .tIdRoleProps, .tIdRoleObj2)
+            Set tIdentityRoleResources = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tIdRoleProps("Resources")))
+        }
+
+        Set tIdentityAppEnabled = ""
+        Set tIdentityAppMatchRoles = ""
+        Set tIdentityAppRoutines = ""
+        If ##class(Security.Applications).Exists(tNames("identityApplication"), .tIdAppObj, .tIdAppSC) {
+            Set tGetSC = ##class(Security.Applications).Get(tNames("identityApplication"), .tIdAppProps)
+            Set tIdentityAppEnabled = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tIdAppProps("Enabled")))
+            Set tIdentityAppMatchRoles = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tIdAppProps("MatchRoles")))
+            Set tIdentityAppRoutines = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tIdAppProps("Routines")))
+        }
+
         Set tMapDatabase = ""
         If ##class(Config.MapGlobals).Exists(tInstallNs, tNames("mappingPattern"), .tMapObj, .tMapSC) {
             Set tGetSC = ##class(Config.MapGlobals).Get(tInstallNs, tNames("mappingPattern"), .tMapProps)
@@ -3283,7 +3528,7 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
             Set tAppFold = tAppFold _ "|" _ tFRoleResources _ "|" _ ..ApplicationFingerprint($Get(tNames("appName", tFKey)), $Get(tNames("appProperties", tFKey)))
         }
 
-        Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled _ "|" _ tVerSchemaVersion _ "|" _ tVerPhase _ tAppFold
+        Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled _ "|" _ tVerSchemaVersion _ "|" _ tVerPhase _ "|" _ tIdentityRoleResources _ "|" _ tIdentityAppEnabled _ "|" _ tIdentityAppMatchRoles _ "|" _ tIdentityAppRoutines _ tAppFold
     } Catch ex {
         Set tResult = "ERROR:" _ ex.DisplayString()
     }
@@ -3342,6 +3587,8 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
     If ##class(Security.Resources).Exists(pNames("adminResource"), .t3, .s3) Quit 1
     If ##class(Security.Roles).Exists(pNames("adminRole"), .t4, .s4) Quit 1
     If ##class(Security.Applications).Exists(pNames("application"), .t5, .s5) Quit 1
+    If ##class(Security.Applications).Exists(pNames("identityApplication"), .t5b, .s5b) Quit 1
+    If ##class(Security.Roles).Exists(pNames("identityRole"), .t5c, .s5c) Quit 1
     If ##class(Config.MapGlobals).Exists(pInstallNs, pNames("mappingPattern"), .t6, .s6) Quit 1
     If ##class(%File).Exists(pNames("directory") _ "IRIS.DAT") Quit 1
     ; Every triple the roster declares, so a registration an uninstall left behind is residue
@@ -3534,7 +3781,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
                 If tURole '= "" Set tRoleList = tRoleList _ $Select(tRoleList = "": "", 1: ", ") _ "'" _ tURole _ "'"
             }
             If tAppList = "" Set tAppList = "(no web application carries a provenance record, so none would be removed)"
-            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit events '" _ ..EventList(.tNames) _ "', TLS configuration '" _ tNames("sslConfig") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "' and '" _ tNames("identityRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "', '" _ tNames("identityApplication") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit events '" _ ..EventList(.tNames) _ "', TLS configuration '" _ tNames("sslConfig") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
             Set $NAMESPACE = tOrigNS
             Quit
         }
@@ -3647,18 +3894,22 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             Set tRemovedKeys(tDKey) = ""
         }
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
-        ; DW-94: only the roles of applications this run actually REMOVED. Deleting a role
-        ; strips its name from every application still matching it (verified on this build, and
-        ; pinned by OcuPilot.Test.WebApp), so deleting the role of an application uninstall
-        ; deliberately left in place would take that application's AD-21 privilege floor with
-        ; it -- leaving an anonymous application that cannot load its own dispatch class and
-        ; answers 500 with a <PROTECT> naming the database directory. "Left in place" has to
-        ; mean still working, or uninstall has damaged something it does not own.
+        ; A roster-declared matching role is kept only while an application still sits at that
+        ; key's roster path, and removed otherwise. Two cases, and they are not the same:
+        ; DW-94 -- an application uninstall deliberately LEFT IN PLACE (present, no provenance
+        ; row) keeps its role, because deleting a role strips its name from every application
+        ; still matching it (verified on this build, and pinned by OcuPilot.Test.WebApp), which
+        ; would take that application's AD-21 privilege floor with it and leave an anonymous
+        ; application that cannot load its own dispatch class and answers 500 with a <PROTECT>
+        ; naming the database directory. "Left in place" has to mean still working. An
+        ; application that is ALREADY ABSENT -- removed this run, or by another hand before it
+        ; -- has no floor to preserve, so its role goes: no roster-declared role survives when
+        ; no application sits at its roster path (AD-21's both-directions invariant).
         For tRI = 1:1:$Length(tNames("appKeys"), ",") {
             Set tRKey = $Piece(tNames("appKeys"), ",", tRI)
-            If '$Data(tRemovedKeys(tRKey)) Continue
             Set tRRole = $Get(tNames("appRole", tRKey))
             If tRRole = "" Continue
+            If '$Data(tRemovedKeys(tRKey)), ##class(Security.Applications).Exists($Get(tNames("appName", tRKey)), .tEW2, .tSW2) Continue
             If '##class(Security.Roles).Exists(tRRole, .tEW3, .tSW3) Continue
             Set tSC = ##class(Security.Roles).Delete(tRRole)
             If $$$ISERR(tSC) Quit
@@ -3679,6 +3930,16 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         }
         If ##class(Security.Applications).Exists(tNames("application"), .tE2, .tS2) {
             Set tSC = ##class(Security.Applications).Delete(tNames("application"))
+            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        }
+        ; The identity application before its role: an application still naming a deleted role
+        ; is drift nothing removes (the EnsureApplicationRoles ordering, for the same reason).
+        If ##class(Security.Applications).Exists(tNames("identityApplication"), .tE2b, .tS2b) {
+            Set tSC = ##class(Security.Applications).Delete(tNames("identityApplication"))
+            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        }
+        If ##class(Security.Roles).Exists(tNames("identityRole"), .tE2c, .tS2c) {
+            Set tSC = ##class(Security.Roles).Delete(tNames("identityRole"))
             If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         }
         If ##class(Security.Roles).Exists(tNames("adminRole"), .tE3, .tS3) {

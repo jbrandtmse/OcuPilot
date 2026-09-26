@@ -384,7 +384,7 @@ its own.
 - `[low]` `[reject]` `Restraint.Resolved` discards `Verdict`'s status on the `ResolveDefault` error
   path — the verdict is forced `blocked` and the real cause is the status returned.
 - `[low]` `[reject]` The hold-add fields are outside the unsaved-changes guard; `shareContextByDefault`
-  has no reader until Story 4.3; `reload()` swallows a failed re-read; `DESCRIPTOR_PAGES` and
+  has no reader until Story 4.4; `reload()` swallows a failed re-read; `DESCRIPTOR_PAGES` and
   `DESCRIPTOR_ACTION_LABELS` are keyed by unchecked strings; a hold deleted mid-request records an
   empty change set. Each is real and each fix is larger than the state it guards.
 - `[false]` `[reject]` "The four new `Api/Error` reason sentences are unpublished copy" — server

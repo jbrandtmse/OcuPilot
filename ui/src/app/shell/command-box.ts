@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AccountPreferences } from '../core/account-preferences';
 import {
   NavigationService,
   areaByKey,
@@ -19,9 +20,13 @@ import {
 } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
+import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
+import { selfProtectionReason } from '../core/self-protection';
+import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
+import { rowFor } from '../core/table-model';
 
 /** The command box's name on the overlay stack (DW-137). */
 export const COMMAND_BOX_OVERLAY_ID = 'command-box';
@@ -35,6 +40,9 @@ export function isCommandBoxChord(event: KeyboardEvent): boolean {
     event.key.toLowerCase() === 'k'
   );
 }
+
+/** The command box's Sign out row id: the account's row, listed last among the actions. */
+export const SIGN_OUT_ROW_ID = 'ocu-command-box-account-sign-out';
 
 /** The placeholders the Fixed strings table leaves for the two result counts. */
 export const SCREEN_COUNT_PLACEHOLDER = '<n>';
@@ -94,6 +102,18 @@ interface CommandRow {
  * gave the account menu, and for the same reason: the field is a Tab stop while the sheet is
  * shut, so a box left open covered the screen with `aria-expanded="true"` while the user
  * worked elsewhere. Like the menu's, that dismissal does not move focus.
+ *
+ * **Favorited screens are listed first within Screens** (Story 15.2): "menu search" is this box
+ * and nothing else -- EXPERIENCE.md's Rejected list already records "menu-only search with a
+ * 220 ms typeahead" as rejected in favour of the command box -- so this story adds no input, no
+ * group and no change to the count sentence. Only the order inside the Screens group moves, and it is a stable partition: among
+ * favorites, and among the rest, the declaration order the mirror already fixes is unchanged.
+ *
+ * **Sign out is the one account row** (EXPERIENCE.md "the last Actions row once typed"): the last row of the
+ * Actions group on every screen, listed only while a typed needle matches its label, so the list
+ * and the count at an empty query are what they were. Choosing it closes the box and calls
+ * `Session.signOut()`, the call the account menu makes (AD-28, AD-31); with no session there is no
+ * row.
  *
  * **It is not a channel to the agent** (EXPERIENCE.md "Gated entries stay listed and arrow-reachable"): typed text never becomes a
  * turn and the avatar never appears here.
@@ -200,8 +220,15 @@ export class CommandBox {
   private readonly navigation = inject(NavigationService);
   private readonly overlays = inject(OverlayStack);
   private readonly actions = inject(ScreenActions);
+  /**
+   * Read for one thing only: which row the current screen has selected, which is what a
+   * self-protection rule is judged against (AD-53). The box writes to no store.
+   */
+  private readonly stores = inject(ScreenStores);
   private readonly router = inject(Router);
+  private readonly session = inject(Session, { optional: true });
   private readonly shell = inject(ShellState);
+  private readonly preferences = inject(AccountPreferences);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   protected readonly STRINGS = STRINGS;
@@ -229,17 +256,25 @@ export class CommandBox {
   private readonly rows = computed<readonly CommandRow[]>(() => {
     this.generation();
     const needle = this.query().trim().toLowerCase();
-    return [...this.screenCandidates(needle), ...this.actionCandidates(needle)];
+    return [
+      ...this.screenCandidates(needle),
+      ...this.actionCandidates(needle),
+      ...this.accountCandidates(needle),
+    ];
   });
 
   constructor() {
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     const stopRouter = this.router.events.subscribe(() => this.bump());
     const stopActions = this.actions.subscribe(() => this.bump());
+    // Which screens are favorited decides the Screens group's order, so a change to the lists
+    // re-ranks an open box rather than waiting for the next router event.
+    const stopPreferences = this.preferences.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopRouter.unsubscribe();
       stopActions();
+      stopPreferences();
       this.overlays.remove(COMMAND_BOX_OVERLAY_ID);
     });
   }
@@ -253,7 +288,7 @@ export class CommandBox {
   }
 
   protected get actionRows(): readonly CommandRow[] {
-    return this.rows().filter((row) => row.kind === 'action');
+    return this.rows().filter((row) => row.kind === 'action' || row.kind === 'account');
   }
 
   /** The active row's id while the list is open, else `null` -- never a dangling reference. */
@@ -354,6 +389,12 @@ export class CommandBox {
    */
   protected choose(row: CommandRow): void {
     if (row.gated) return;
+    if (row.kind === 'account') {
+      this.returnFocus = null;
+      this.close();
+      void this.session?.signOut();
+      return;
+    }
     if (row.kind === 'screen') {
       this.returnFocus = null;
       this.close();
@@ -419,7 +460,16 @@ export class CommandBox {
         ariaDisabled: verdict.allowed ? null : 'true',
       });
     }
-    return rows;
+    // Story 15.2: favorited screens first, everything else after, each half in the order it was
+    // already in. A stable partition rather than a sort, so the declaration order the mirror
+    // fixes is the tie-break -- a comparator returning 0 leaves that to the engine.
+    const favorite: CommandRow[] = [];
+    const rest: CommandRow[] = [];
+    for (const row of rows) {
+      if (this.preferences.isFavorite(row.route)) favorite.push(row);
+      else rest.push(row);
+    }
+    return [...favorite, ...rest];
   }
 
   /**
@@ -435,7 +485,7 @@ export class CommandBox {
   private actionCandidates(needle: string): readonly CommandRow[] {
     const screen = this.navigation.screenForUrl(this.router.url);
     if (screen === null) return [];
-    const declared: { id: string; rowScoped: boolean }[] = [];
+    const declared: { id: string; rowScoped: boolean; reason?: string }[] = [];
     // Refresh first, and only where a handler is registered -- which is the same test the bar
     // applies, so a screen that cannot re-read offers it on neither surface (DW-260).
     if (this.actions.has(screen.descriptor, REFRESH_ACTION_ID)) {
@@ -444,8 +494,25 @@ export class CommandBox {
     if (this.actions.has(screen.descriptor, screen.primaryAction.id)) {
       declared.push({ id: screen.primaryAction.id, rowScoped: false });
     }
+    // The row a self-protection rule is judged against is the one the screen has selected, read
+    // from the same store the command bar reads (AD-53). With nothing selected the reason stays
+    // "Select a row first", which is what both surfaces already say.
+    const selected = screen.rowActions.length === 0
+      ? ''
+      : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
+    const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
     for (const action of screen.rowActions) {
-      if (action.id !== '') declared.push({ id: action.id, rowScoped: true });
+      // DW-389: the same test the primary action above already applies -- a declared action with
+      // no registered handler is a control nothing can act on, so no surface offers it.
+      if (action.id !== '' && this.actions.has(screen.descriptor, action.id)) {
+        declared.push({
+          id: action.id,
+          rowScoped: true,
+          reason: selected === ''
+            ? STRINGS.privilegeSelectRowFirst
+            : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row),
+        });
+      }
     }
     return declared
       .filter(
@@ -458,18 +525,53 @@ export class CommandBox {
         kind: 'action',
         label: actionLabel(screen.descriptor, action.id),
         detail: '',
-        reason: action.rowScoped ? STRINGS.privilegeSelectRowFirst : '',
-        gated: action.rowScoped,
+        // A row action is offered while nothing stands in its way, and listed with the reason
+        // inline when something does -- "Select a row first", or the selected row's own
+        // self-protection sentence (AD-53). The bar resolves the same two in the same order.
+        reason: action.reason ?? '',
+        gated: (action.reason ?? '') !== '',
         route: '',
         area: '',
         descriptor: screen.descriptor,
         actionId: action.id,
-        ariaDisabled: action.rowScoped ? 'true' : null,
+        ariaDisabled: (action.reason ?? '') !== '' ? 'true' : null,
       }));
+  }
+
+  /**
+   * The Sign out row, only while a typed needle is part of its label and a session is there to
+   * sign out of. An empty query lists no account row, so the roster at rest is unchanged.
+   */
+  private accountCandidates(needle: string): readonly CommandRow[] {
+    if (this.session === null || needle === '') return [];
+    if (!STRINGS.actionSignOut.toLowerCase().includes(needle)) return [];
+    return [
+      {
+        id: SIGN_OUT_ROW_ID,
+        kind: 'account',
+        label: STRINGS.actionSignOut,
+        detail: '',
+        reason: '',
+        gated: false,
+        route: '',
+        area: '',
+        descriptor: '',
+        actionId: '',
+        ariaDisabled: null,
+      },
+    ];
   }
 
   private bump(): void {
     this.generation.set(this.generation() + 1);
+  }
+
+  /**
+   * The account this tab is signed in as, which the `protected-account` rule compares a row
+   * against (AD-53). Optional, so a surface rendered without a session explains nothing by it.
+   */
+  private signedIn(): string {
+    return this.session?.userName() ?? '';
   }
 }
 
@@ -486,7 +588,7 @@ function matchesScreen(screen: ScreenDeclaration, label: string, needle: string)
  * the only synchronous signal every supported browser answers; a miss costs the chip's
  * spelling and nothing else, so there is no fallback worth a round trip.
  */
-function isApplePlatform(): boolean {
+export function isApplePlatform(): boolean {
   const source = `${navigator.platform ?? ''} ${navigator.userAgent ?? ''}`;
   return /mac|iphone|ipad|ipod/i.test(source);
 }

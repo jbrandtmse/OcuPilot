@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, sep } from 'node:path';
 
@@ -691,25 +691,19 @@ test("requestJson's classification is the session's two INSTALL predicates, row 
 // --- The source scan: no other credential channel exists anywhere in the client -------------
 
 /**
- * The one file exempt from the `localStorage` half of the scan, by exact path and never by a
- * pattern -- the precedent `client-lint.mjs`'s `TOKEN_STYLESHEET_PATH` sets for the one file
- * allowed to hold a colour literal.
+ * **There is no exemption.** Story 15.5 moved the last six things the client remembered --
+ * per-screen sort, filter, max rows and refresh rate, the side bar's open state and the panel's
+ * width -- onto the instance (AD-50), and deleted `src/app/core/preferences.ts` with its four
+ * declared keys. `localStorage` is now banned everywhere under `ui/src`, like every other rule
+ * here, and the browser holds only the per-tab token pair (AD-28, AD-47).
  *
- * EXPERIENCE.md "`{spacing.side-bar-width}` (240 px, fixed — no drag)" says the side bar's open state is "remembered per browser", which
- * `sessionStorage` does not deliver. The ban this exempts is about credential channels and
- * cross-tab broadcast (AD-28, AD-47), and a remembered side bar is neither -- but the carve-out
- * is only as narrow as its four parts: one module, this exact path, a declared key allow-list
- * the module refuses to step outside (asserted below), and no `storage` listener or
- * `BroadcastChannel`, which stay forbidden here as everywhere.
+ * The ban was narrowed, never widened: the exact-path exemption, the key allow-list it needed and
+ * the tests that held both are gone, while the `storage`-listener and `BroadcastChannel` bans stay
+ * exactly as they were.
  */
-const PREFERENCE_MODULE_PATH = 'src/app/core/preferences.ts';
-
-/** Everything stays forbidden in the exempt module except the one API it exists to hold. */
-const PREFERENCE_MODULE_ALLOWS = /\blocalStorage\b/;
-
 const FORBIDDEN = [
   { pattern: /\bdocument\s*\.\s*cookie\b/, why: 'a token must never be written to a cookie (AD-28)' },
-  { pattern: PREFERENCE_MODULE_ALLOWS, why: 'token storage is per tab, never persistent (AD-47)' },
+  { pattern: /\blocalStorage\b/, why: 'token storage is per tab, never persistent (AD-47)' },
   { pattern: /\bBroadcastChannel\b/, why: 'no cross-tab broadcast of session state (AD-47)' },
   {
     pattern: /addEventListener\s*\(\s*['"]storage['"]/,
@@ -751,7 +745,6 @@ test('no code under ui/src writes a cookie, persistent storage, a cross-tab chan
     code.split('\n').forEach((line, idx) => {
       for (const { pattern, why } of FORBIDDEN) {
         if (!pattern.test(line)) continue;
-        if (relativePath === PREFERENCE_MODULE_PATH && pattern === PREFERENCE_MODULE_ALLOWS) continue;
         offenders.push(`${relativePath}:${idx + 1}: ${line.trim()} -- ${why}`);
       }
     });
@@ -759,14 +752,10 @@ test('no code under ui/src writes a cookie, persistent storage, a cross-tab chan
   assert.deepEqual(offenders, [], `forbidden credential channels found:\n${offenders.join('\n')}`);
 });
 
-test('the exemption is one exact path and one API -- every other shape still fails inside it', () => {
-  // The exemption is a value in FORBIDDEN, not a copy of the pattern, so a rewritten rule
-  // cannot leave an exemption pointing at nothing and silently ban the module's own reason to
-  // exist -- nor can it widen to a second API.
-  assert.ok(
-    FORBIDDEN.some(({ pattern }) => pattern === PREFERENCE_MODULE_ALLOWS),
-    'the exempted pattern must be the very rule object the scan iterates'
-  );
+test('the localStorage ban has no exempted path, and every forbidden shape still fails everywhere', () => {
+  // Story 15.5 removed the one exemption. This asserts the narrowing rather than the absence of a
+  // constant: a fixture line for each rule must be caught with no path allowed to escape, so a
+  // reintroduced carve-out cannot pass by being spelled differently.
   const hostile = [
     'const held = localStorage.getItem("k");',
     'document.cookie = "x=1";',
@@ -774,78 +763,18 @@ test('the exemption is one exact path and one API -- every other shape still fai
     "window.addEventListener('storage', handler);",
     'frame.postMessage(token, "*");',
   ];
-  const offenders = [];
+  const caught = [];
   hostile.forEach((line, idx) => {
     for (const { pattern } of FORBIDDEN) {
-      if (!pattern.test(line)) continue;
-      if (pattern === PREFERENCE_MODULE_ALLOWS) continue;
-      offenders.push(idx + 1);
+      if (pattern.test(line)) caught.push(idx + 1);
     }
   });
-  assert.deepEqual(offenders, [2, 3, 4, 5], 'inside the exempt module, only localStorage is allowed');
-});
-
-test('the raw storage handle stays inside the exempt module and its bootstrap', () => {
-  // `readPreferenceStorage()` returns the real `localStorage`, so a module that imported it
-  // could call `setItem` with any key at all and never mention `localStorage` for the scan
-  // above to catch. The allow-list lives on `PreferenceStore`, not on the handle -- so the
-  // handle's import sites are what keeps the carve-out as narrow as preferences.ts claims.
-  const allowed = new Set(['src/main.ts', PREFERENCE_MODULE_PATH]);
-  const offenders = [];
-  walk(join(uiRoot, 'src'), (fullPath, text) => {
-    const relativePath = relative(uiRoot, fullPath).split(sep).join('/');
-    if (allowed.has(relativePath)) return;
-    if (/\breadPreferenceStorage\b/.test(blankComments(text))) offenders.push(relativePath);
-  });
-  assert.deepEqual(
-    offenders,
-    [],
-    `the raw preference storage handle must not leave its module: ${offenders.join(', ')}`
+  assert.deepEqual(caught, [1, 2, 3, 4, 5], 'every forbidden shape is caught, localStorage included');
+  assert.equal(
+    existsSync(corePath('preferences.ts')),
+    false,
+    'the browser-storage preference module is gone; per-user state lives on the instance (AD-50)'
   );
-});
-
-test('the preference store refuses a key outside its declared allow-list', async () => {
-  const { PreferenceStore, PREFERENCE_KEYS, SIDE_BAR_OPEN_KEY, SCREEN_REFRESH_RATES_KEY, SCREEN_VIEWS_KEY } =
-    await import(corePath('preferences.ts'));
-  const store = new PreferenceStore({ storage: memoryStorage() });
-
-  assert.ok(PREFERENCE_KEYS.includes(SIDE_BAR_OPEN_KEY), 'the side bar key is declared');
-  // The closed list, exactly: one key per preference kind, never one per screen (AD-47).
-  assert.deepEqual(PREFERENCE_KEYS, [SIDE_BAR_OPEN_KEY, SCREEN_REFRESH_RATES_KEY, SCREEN_VIEWS_KEY]);
-  assert.deepEqual(PREFERENCE_KEYS, ['ocupilot.side-bar.open', 'ocupilot.screen.refresh-rates', 'ocupilot.screen.views']);
-  store.write(SIDE_BAR_OPEN_KEY, 'true');
-  assert.equal(store.read(SIDE_BAR_OPEN_KEY), 'true');
-
-  assert.throws(
-    () => store.write('ocupilot.access-token', 'secret'),
-    /declared keys/,
-    'a key outside the allow-list is a programming error, not a quiet miss'
-  );
-  assert.throws(() => store.read('ocupilot.access-token'), /declared keys/);
-});
-
-test('the preference store survives a browser that refuses persistent storage', async () => {
-  const { PreferenceStore, SIDE_BAR_OPEN_KEY } = await import(corePath('preferences.ts'));
-
-  const absent = new PreferenceStore({ storage: null });
-  absent.setSideBarOpen(false);
-  assert.equal(absent.sideBarOpen(true), true, 'nothing stored falls back to the caller default');
-
-  const throwing = new PreferenceStore({
-    storage: {
-      getItem: () => {
-        throw new Error('blocked');
-      },
-      setItem: () => {
-        throw new Error('blocked');
-      },
-      removeItem: () => {
-        throw new Error('blocked');
-      },
-    },
-  });
-  throwing.setSideBarOpen(false);
-  assert.equal(throwing.read(SIDE_BAR_OPEN_KEY), null, 'a refused read is null, never a throw');
 });
 
 test('the scan itself catches each forbidden shape on a fixture, and ignores a comment that names one', () => {

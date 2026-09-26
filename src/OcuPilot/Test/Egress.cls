@@ -3,11 +3,16 @@
 /// <p><b>It resolves real names against this instance's own resolver</b>, which is the point: the
 /// obfuscated loopback literals are only refused because the resolver canonicalises them, and a
 /// fixture that answered canned addresses would pin the test's own arithmetic instead of the
-/// instance's. Nothing here writes anything, and no address is connected to.</p>
-/// <p>The marked-local escape is driven through <class>OcuPilot.Test.CatalogProbe</class>'s
-/// <code>probe-local</code> row, because Release 1's one shipped row sets
-/// <code>allowsLocal</code> false -- so at this floor the escape has no shipped case, and a rule
-/// with no case either way is not enforced.</p>
+/// instance's. No address named here is connected to, and all but one of these methods write
+/// nothing at all -- the exception is named two paragraphs below.</p>
+/// <p>The marked-local escape has a <b>shipped</b> case: the <code>compatible</code> row is the one
+/// shipped row that sets <code>allowsLocal</code>, and the AC3 matrix is driven against it.
+/// <class>OcuPilot.Test.CatalogProbe</class>'s <code>probe-local</code> row is kept beside it for
+/// the field-level legs, whose other rows pair that column with values no shipped row holds.</p>
+/// <p>One method drives <method>OcuPilot.Port.ProviderPort.Dispatch</method> through
+/// <class>OcuPilot.Test.ProviderPortProbe</class> to read the request a marked-local call actually
+/// carries (DW-441); it writes the instance's one outbound-settings row and
+/// <method>OnAfterOneTest</method> removes it.</p>
 Class OcuPilot.Test.Egress Extends %UnitTest.TestCase
 {
 
@@ -17,6 +22,28 @@ Parameter EGRESS = "OcuPilot.Kernel.Egress";
 /// <p>The validator reading <class>OcuPilot.Test.CatalogProbe</class>, so the two extra provider
 /// rows are in the vocabulary.</p>
 Parameter RULES = "OcuPilot.Test.AgentRulesProbe";
+
+/// <p>The port entry, for the one method that reads the request a marked-local call carries.</p>
+Parameter PORT = "OcuPilot.Test.ProviderPortProbe";
+
+/// <p>The catalog that re-adapts the shipped <code>compatible</code> row to its stub, so that
+/// method opens no socket.</p>
+Parameter SHIPPEDCATALOG = "OcuPilot.Test.CatalogProbeShipped";
+
+/// <p>The one shipped provider key whose row allows local.</p>
+Parameter LOCALPROVIDER = "compatible";
+
+/// Set by the one method that stores an outbound-settings row, read by
+/// <method>OnAfterOneTest</method> so no other method's teardown deletes the instance's own.
+/// Prefix must not begin with "Test" -- see .claude/rules/objectscript-testing.md
+Property StoredEgressRow As %Boolean [ InitialExpression = 0 ];
+
+/// <p>A proxy host (RFC 5737 TEST-NET-1) that classifies public, so it is permitted and would be
+/// set on the request if a marked-local call carried one.</p>
+Parameter PUBLICPROXY = "192.0.2.10";
+
+/// <p>A Chat Completions reply the shipped <code>compatible</code> adapter can read.</p>
+Parameter COMPATIBLEREPLY = "{""choices"":[{""index"":0,""message"":{""role"":""assistant"",""content"":""ok""},""finish_reason"":""stop""}]}";
 
 /// <p>A host name that resolves to nothing, in a reserved-for-failure top-level domain so it
 /// cannot start resolving because somebody registered it.</p>
@@ -155,6 +182,161 @@ Method TestTheProbeReplacesTheLookupAndNotTheUnionAboveIt()
     If $IsObject(tLookup) Do $$$AssertEquals(tLookup.Origin, "OcuPilot.Test.EgressProbe", "and it is the probe's, which is the one seam this class substitutes")
 }
 
+/// <p>AC9 (DW-413) -- the single-record lookup is <b>inside</b> the seam, so an armed probe's set is
+/// the whole set even for a host the instance's own resolver answers for. Until the move,
+/// <method>OcuPilot.Kernel.Egress.Addresses</method> called
+/// <method>$System.INetInfo.HostNameToAddr</method> itself, so a real host's real addresses were
+/// unioned in behind the probe's back and this case could not be written at all.</p>
+/// <p><code>localhost</code> is the host chosen because every instance resolves it -- the test is
+/// only meaningful against a name the resolver does answer for -- and the assertion is that the
+/// probe's own public address is the verdict, which the real <code>127.0.0.1</code> would outrank
+/// if it were still being unioned in.</p>
+/// <p>Mutation: move the <code>HostNameToAddr</code> call back out of
+/// <method>OcuPilot.Kernel.Egress.MultiLookup</method> into
+/// <method>OcuPilot.Kernel.Egress.Addresses</method> -- this goes red, reporting
+/// <code>loopback</code>.</p>
+Method TestAnArmedProbeOwnsTheWholeAddressSetEvenForAResolvableHost()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Kernel.Egress).Classify("localhost", .tRealKind, .tRealAddress)
+    Do $$$AssertEquals(tRealKind, "loopback", "this instance's own resolver does answer for localhost, which is what makes the next leg a test: " _ tRealAddress)
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("localhost", .tKind, .tAddress)
+    Do $$$AssertEquals(tKind _ "|" _ tAddress, "public|93.184.216.34", "with the probe armed the set is exactly the probe's, with no real address unioned in")
+}
+
+/// <p>AC10 (DW-334) -- a verdict is reused for
+/// <parameter>OcuPilot.Kernel.Egress.JUDGEMENTCACHESECONDS</parameter>: three classifications of
+/// one host inside the window perform one set of family lookups and one interface read, and the
+/// first classification after the window performs them again.</p>
+/// <p>The claim is a count, and counts are what this asserts -- through
+/// <class>OcuPilot.Test.EgressProbe</class>'s own counters, because a cache is a claim about how
+/// often something is read. The TTL itself is the one thing that can only be waited out; five
+/// seconds is cheaper than a second clock seam.</p>
+/// <p>Mutation: set that parameter to 0 -- the cached legs go red, reporting six lookups and three
+/// interface reads.</p>
+Method TestAVerdictIsReusedForTheDeclaredTtlAndTakenAgainAfterIt()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34")
+    For tCall = 1:1:3 {
+        Do ##class(OcuPilot.Test.EgressProbe).Classify("cache.example.invalid", .tKind, .tAddress)
+        Do $$$AssertEquals(tKind, "public", "call " _ tCall _ " answers the same verdict")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).MultiLookups(), 2, "one set of family lookups served all three classifications")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 1, "and this instance's interface set was read once")
+    ; The TTL is short by design, so waiting it out is cheaper than a second clock seam -- and it
+    ; is the bound itself that is under test, not a stand-in for it.
+    Hang $Parameter("OcuPilot.Kernel.Egress", "JUDGEMENTCACHESECONDS") + 1
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("cache.example.invalid", .tKind, .tAddress)
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).MultiLookups(), 4, "once the window has passed the lookups are taken again")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 2, "and so is the interface set, so nothing is held past the declared TTL")
+}
+
+/// <p>AC10 -- the interface set is cached in its own right: two <b>different</b> hosts judged
+/// inside one window pay two sets of family lookups and share a single
+/// <method>GetInterfacesInfo</method> read.</p>
+/// <p>Its own method because the repeat-host case cannot see this half at all: the second and
+/// third judgements of one host answer from the verdict cache and never enter
+/// <method>OcuPilot.Kernel.Egress.InstanceAddresses</method>, so their interface count is 1
+/// whether that cache exists or not.</p>
+/// <p>Mutation: remove the cache read and write from
+/// <method>OcuPilot.Kernel.Egress.InstanceAddresses</method> -- this goes red, reporting two
+/// interface reads.</p>
+Method TestTheInterfaceSetIsCachedAcrossDifferentHosts()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("first.example.invalid", .tFirstKind, .tFirstAddress)
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("second.example.invalid", .tSecondKind, .tSecondAddress)
+    Do $$$AssertEquals(tFirstKind _ "|" _ tSecondKind, "public|public", "both hosts are judged, so both reached the classifier")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).MultiLookups(), 4, "each host paid its own family lookups, so neither answered from the other's verdict")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 1, "and this instance's interface set was read once for the two of them")
+}
+
+/// <p>AC10 -- a verdict reached with nothing resolved is never cached: an unresolvable host
+/// classified twice inside <parameter>OcuPilot.Kernel.Egress.JUDGEMENTCACHESECONDS</parameter>
+/// pays its family lookups both times, because <code>Classify</code> only caches a host that
+/// resolved to at least one address.</p>
+/// <p>A cached refusal would answer "unresolvable" for the whole TTL even if the resolver started
+/// answering for that host a moment later, and the write-time and call-time paths would then
+/// disagree with a resolver that had already recovered.</p>
+/// <p>Mutation: drop the <code>If $Data(tResolved)</code> guard in
+/// <method>OcuPilot.Kernel.Egress.Classify</method> so every verdict is cached regardless -- this
+/// goes red, reporting 2 lookups instead of 4.</p>
+Method TestAnUnresolvedHostsVerdictIsNeverCached()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Test.EgressProbe).Classify(..#UNRESOLVABLE, .tFirstKind, .tFirstAddress)
+    Do $$$AssertEquals(tFirstKind, "unresolvable", "the host resolves to nothing")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).MultiLookups(), 2, "the first classification pays its own two family lookups")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify(..#UNRESOLVABLE, .tSecondKind, .tSecondAddress)
+    Do $$$AssertEquals(tSecondKind, "unresolvable", "and resolves to nothing again")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).MultiLookups(), 4, "a verdict reached with nothing resolved is never cached, so the second classification pays the lookups again rather than answering from a cached refusal")
+}
+
+/// <p>AC10 -- an empty <code>GetInterfacesInfo</code> answer is never cached either: caching it
+/// would classify this instance's own address <code>public</code> for
+/// <parameter>OcuPilot.Kernel.Egress.JUDGEMENTCACHESECONDS</parameter>, because an empty interface
+/// set means nothing is ever this instance's. Only a read that produced at least one address is
+/// cached (<method>OcuPilot.Kernel.Egress.CacheInterfaces</method>'s own doc comment); this is the
+/// test that reads it back.</p>
+/// <p>Driven through <method>OcuPilot.Test.EgressProbe.ArmEmptyInterfacesOnce</method>, because
+/// this probe cannot make the real <code>GetInterfacesInfo</code> answer nothing on demand.</p>
+/// <p>Mutation: set <code>tRead = 1</code> unconditionally in
+/// <method>OcuPilot.Kernel.Egress.InstanceAddresses</method> before the emptiness check -- this
+/// goes red, reporting 1 interface read for the two classifications instead of 2.</p>
+Method TestAnEmptyInterfaceReadIsNotCachedAsAnEmptySet()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34")
+    Do ##class(OcuPilot.Test.EgressProbe).ArmEmptyInterfacesOnce()
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("empty-interfaces-first.example.invalid", .tFirstKind, .tFirstAddress)
+    Do $$$AssertEquals(tFirstKind, "public", "the address itself still classifies, whatever the interface read answered")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 1, "one interface read was attempted, and it answered nothing")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("empty-interfaces-second.example.invalid", .tSecondKind, .tSecondAddress)
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 2, "an empty answer is not cached, so the next classification reads the interface set live again rather than reusing an empty one")
+}
+
+/// <p>AC10 -- an interface description that names an interface but carries no address is not cached
+/// either. The guard is on the set the parse produced, not on the raw description: a read this
+/// class can take no address from has answered nothing, and holding it would classify this
+/// instance's own address <code>public</code> for the whole TTL exactly as an empty read would.</p>
+/// <p>Driven through <method>OcuPilot.Test.EgressProbe.ArmInterfacesOnce</method>: an interface
+/// with no address section is a shape this container's own
+/// <code>$System.INetInfo.GetInterfacesInfo</code> does not produce on demand.</p>
+/// <p>Mutation: guard the cache write on the raw read
+/// (<code>If tRead Do ..CacheInterfaces(.pAddresses)</code>) in
+/// <method>OcuPilot.Kernel.Egress.InstanceAddresses</method> -- this goes red, reporting 1
+/// interface read for the two classifications instead of 2.</p>
+Method TestAnInterfaceReadCarryingNoAddressIsNotCachedEither()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34")
+    Do ##class(OcuPilot.Test.EgressProbe).ArmInterfacesOnce("eth0")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("addressless-first.example.invalid", .tFirstKind, .tFirstAddress)
+    Do $$$AssertEquals(tFirstKind, "public", "the address itself still classifies, whatever the interface read answered")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 1, "one interface read was attempted, and it named an interface carrying no address")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("addressless-second.example.invalid", .tSecondKind, .tSecondAddress)
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 2, "a read the parse took no address from is not cached, so the next classification reads the interface set live again rather than reusing an empty one")
+}
+
+/// <p>AC10 -- arming the resolver empties the verdict cache, so a set a test supplies can never be
+/// masked by a judgement reached before it was armed.</p>
+/// <p>Mutation: drop the <method>OcuPilot.Kernel.Egress.ClearJudgementCache</method> call from
+/// <method>OcuPilot.Test.EgressProbe.SetAddresses</method> -- this goes red, the second
+/// classification answering <code>public</code> from the verdict the first set left behind.</p>
+Method TestArmingTheResolverEmptiesTheVerdictCache()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("swap.example.invalid", .tFirstKind, .tFirstAddress)
+    Do $$$AssertEquals(tFirstKind, "public", "the first set is judged public")
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("127.0.0.1")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("swap.example.invalid", .tSecondKind, .tSecondAddress)
+    Do $$$AssertEquals(tSecondKind, "loopback", "and the second set is judged on its own, not on the verdict the first left behind")
+}
+
 /// <p>Classify through the probe and assert the kind and the address that decided it.</p>
 Method AssertProbeKind(pKind As %String, pAddress As %String, pWhat As %String)
 {
@@ -163,10 +345,19 @@ Method AssertProbeKind(pKind As %String, pAddress As %String, pWhat As %String)
     Do $$$AssertEquals(tAddress, pAddress, pWhat _ ": and names the address that decided it")
 }
 
-/// <p>Leave the resolver seam clear for the next method, or the next class.</p>
+/// <p>Leave the resolver seam, the port switches and the instance's outbound settings clear for
+/// the next method, or the next class.</p>
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do $ClassMethod(..#PORT, "Reset")
+    ; Only the method that stored a row deletes one. An unconditional delete here made running
+    ; any single method of this class remove the instance's own outbound-settings row, although
+    ; all but one of them never write it.
+    If ..StoredEgressRow {
+        Set ..StoredEgressRow = 0
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "no outbound settings row survives this method")
+    }
     Quit $$$OK
 }
 
@@ -254,7 +445,11 @@ Method TestTheRuleReportsTheRightCodeOnTheRightField()
     Do ..ProbeValues("anthropic", "https://api.anthropic.com/v1/messages", 1, .tUnsupported)
     Do ..AssertViolation(.tUnsupported, "markedLocal", ##class(OcuPilot.Api.Error).#AGENTLOCALUNSUPPORTED, "marked local on a provider whose row forbids it")
 
+    ; The acknowledgment is what a credential crossing an unencrypted hop needs (Story 10.3); this
+    ; leg's definition names one, so it carries it. The refusal without it is
+    ; OcuPilot.Test.AgentRules.TestPlainHttpWithAStoredCredentialNeedsTheAcknowledgment's.
     Do ..ProbeValues("probe-local", "http://127.0.0.1:11434/v1/messages", 1, .tPlain)
+    Set tPlain("httpAcknowledged") = 1
     Set tCount = $ClassMethod(..#RULES, "Validate", .tPlain, "", .tViolations)
     Do $$$AssertEquals(tCount, 0, "a plain-HTTP loopback endpoint, marked local on a row that allows local, is accepted (" _ $ClassMethod(..#RULES, "ViolationsJson", .tViolations).%ToJSON() _ ")")
 
@@ -322,6 +517,116 @@ ClassMethod FirstInterfaceAddress() As %String
     Set tInfo = $System.INetInfo.GetInterfacesInfo()
     If tInfo = "" Quit ""
     Quit $Piece($Piece($Piece(tInfo, $Char(0), 1), $Char(1), 2), "/", 1)
+}
+
+/// <p>AC3 -- the shipped <code>compatible</code> row's own <code>allowsLocal</code> column, read
+/// from the catalog rather than passed in: a loopback endpoint and a private-network endpoint are
+/// both permitted to a definition marked local on that row, and the link-local range is refused
+/// anyway. The two are enforced <b>separately</b>, which is what the third leg shows.</p>
+/// <p>mutation: set the <code>compatible</code> row's <code>allowsLocal</code> false in
+/// <class>OcuPilot.Kernel.Provider.Catalog</class>'s <code>Providers</code> XData -- red on the
+/// loopback leg, the link-local leg staying green because that range has no escape.</p>
+Method TestTheShippedCompatibleRowAllowsLoopbackAndPrivateAndStillRefusesLinkLocal()
+{
+    Set tAllows = ##class(OcuPilot.Kernel.AgentRules).AllowsLocal(..#LOCALPROVIDER)
+    Do $$$AssertEquals(''tAllows, 1, "the shipped " _ ..#LOCALPROVIDER _ " row allows local, read through the rule that reads the column")
+    Do ..AssertPermitted("http://127.0.0.1:11434/v1", 1, tAllows, 1, "a loopback endpoint marked local on the shipped row")
+    Do ..AssertPermitted("http://127.0.0.1:11434/v1", 0, tAllows, 0, "the same endpoint with no marked-local declaration")
+    ; A private-network endpoint needs no escape at all: AD-42 names the instance, loopback and
+    ; link-local, and a private address is none of them.
+    Do ..AssertKind("https://10.0.0.5/v1", "public", "a private-network endpoint")
+    Do ..AssertPermitted("https://10.0.0.5/v1", 1, tAllows, 1, "a private-network endpoint marked local on the shipped row")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Egress).LeavesInstance("10.0.0.5", 0), 0, "and it answers leavesInstance false, which is the chip's own question")
+    Do ..AssertPermitted("https://169.254.169.254/v1", 1, tAllows, 0, "and the link-local metadata address is refused on the shipped row too")
+}
+
+/// <p>AC3's metadata arm (DW-1214) -- a published cloud instance-metadata address is refused in
+/// <b>every</b> address family, marked local or not, which is the no-escape treatment IPv4
+/// link-local already had. AWS's and GCP's IPv6 metadata addresses are unique-local, so before this
+/// they classified public and the marked-local branch admitted them.</p>
+/// <p><b>The second half is the point.</b> A legitimate unique-local address -- a private IPv6 LAN,
+/// which is where a local model actually sits -- is still permitted, so a fix that refused all of
+/// <code>fc00::/7</code> would not pass this method.</p>
+/// <p>mutation: remove the metadata arm from <method>OcuPilot.Kernel.Egress.KindOf</method> -- red
+/// on the three IPv6 metadata spellings alone. Counter-mutation, which is what makes the
+/// demonstration two-sided: refuse the whole of <code>fc00::/7</code> there instead -- red on
+/// the <code>fd12:3456:789a::1</code> legs alone.</p>
+Method TestACloudMetadataAddressIsRefusedInEveryFamily()
+{
+    Set tAllows = ##class(OcuPilot.Kernel.AgentRules).AllowsLocal(..#LOCALPROVIDER)
+    For tUrl = "https://169.254.169.254/latest/meta-data", "https://169.254.170.2/v2/credentials", "https://[fd00:ec2::254]/latest/meta-data", "https://[fd20:ce::254]/computeMetadata/v1", "https://[FD00:0EC2:0:0:0:0:0:0254]/latest/meta-data" {
+        Do ..AssertKind(tUrl, "linklocal", "a published metadata address")
+        Do ..AssertPermitted(tUrl, 0, 0, 0, "a metadata address with no escape asked for")
+        Do ..AssertPermitted(tUrl, 1, tAllows, 0, "and marked local on the one shipped row that allows local")
+    }
+    ; The half that keeps the guard an address list rather than a range refusal.
+    Do ..AssertKind("https://[fd12:3456:789a::1]/v1", "public", "a private IPv6 LAN address that is not a metadata address")
+    Do ..AssertPermitted("https://[fd12:3456:789a::1]/v1", 1, tAllows, 1, "which is still permitted to a marked-local definition, because fc00::/7 is how a private IPv6 network is addressed")
+    Do ..AssertPermitted("https://[fd12:3456:789a::1]/v1", 0, 0, 1, "and needs no escape, being neither loopback, link-local nor this instance's own")
+}
+
+/// <p>DW-441 -- a marked-local call carries <b>no proxy</b>: the request the transport was handed
+/// names no proxy server and no tunnel, although the instance has a permitted public proxy stored.
+/// Read off the recorded request rather than off the settings, through
+/// <class>OcuPilot.Test.ProviderPortProbe</class> and the shipped row's stub, so no socket is
+/// opened.</p>
+/// <p>The control is the same proxy on the same row <b>unmarked</b>, which does reach the request --
+/// without it, a port that had simply stopped setting a proxy at all would pass.</p>
+/// <p>mutation: delete <method>OcuPilot.Port.ProviderPort.Dispatch</method>'s marked-local proxy
+/// blanking -- red on the recorded proxy server and tunnel.</p>
+Method TestAMarkedLocalCallCarriesNoProxy()
+{
+    Do $ClassMethod(..#PORT, "Reset")
+    Do $ClassMethod(..#PORT, "SetCatalogClass", ..#SHIPPEDCATALOG)
+    Do $ClassMethod(..#PORT, "SetSslState", "present")
+    Set tStored("proxyServer") = ..#PUBLICPROXY
+    Set tProxyPort = 3128
+    Set tStored("proxyPort") = tProxyPort
+    Set tStored("proxyTunnel") = 1
+    Set tStored("proxyHttps") = 1
+    Set ..StoredEgressRow = 1
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tStored), "a permitted public proxy is stored")
+
+    Do $ClassMethod("OcuPilot.Test.Provider", "Messages", .tMessages)
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#COMPATIBLEREPLY)
+    Do ..DraftValues("http://127.0.0.1:11434/v1", 1, .tLocal)
+    Set tSC = $ClassMethod(..#PORT, "InvokeDraft", .tLocal, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+    Do $$$AssertStatusOK(tSC, "the marked-local call returns $$$OK")
+    Do $$$AssertTrue('$IsObject(tFault), "and is not refused: " _ $Select($IsObject(tFault): tFault.%ToJSON(), 1: ""))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "it reached the transport")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyServer", 1), "", "carrying no proxy server")
+    Do $$$AssertNotEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyPort", 1), tProxyPort, "not the stored proxy's port, which OcuPilot.Kernel.Provider.Base.NewRequest only sets when one is given")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyTunnel", 1), 0, "no tunnel")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyHttps", 1), 0, "and no proxy TLS flag, although all four are stored")
+
+    ; The control: unmarked, on a public endpoint the same row serves, the stored proxy does reach
+    ; the request.
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#COMPATIBLEREPLY)
+    Do ..DraftValues("https://192.0.2.1/v1", 0, .tPublic)
+    Set tPublicSC = $ClassMethod(..#PORT, "InvokeDraft", .tPublic, .tMessages, .tTools, "", .tPublicResponse, .tPublicStatus, .tPublicFault)
+    Do $$$AssertStatusOK(tPublicSC, "the unmarked call returns $$$OK")
+    Do $$$AssertTrue('$IsObject(tPublicFault), "and is not refused: " _ $Select($IsObject(tPublicFault): tPublicFault.%ToJSON(), 1: ""))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyServer", 1), ..#PUBLICPROXY, "through the stored proxy")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyPort", 1), tProxyPort, "on the stored port")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyTunnel", 1), 1, "and the tunnel an https endpoint always takes")
+}
+
+/// <p>The draft values one port call reads: the shipped <code>compatible</code> row,
+/// <var>pEndpoint</var>, <var>pMarkedLocal</var>, and a key source of <code>none</code> so no
+/// credential has to be resolvable for a method that is about the proxy.</p>
+ClassMethod DraftValues(pEndpoint As %String, pMarkedLocal As %Boolean, Output pValues)
+{
+    Kill pValues
+    Set pValues("provider") = ..#LOCALPROVIDER
+    Set pValues("model") = "llama-3.3-70b-instruct"
+    Set pValues("endpointUrl") = pEndpoint
+    Set pValues("markedLocal") = pMarkedLocal
+    Set pValues("credType") = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE
+    Set pValues("keySource") = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE
+    Set pValues("maxTokens") = 32000
+    Set pValues("temperature") = 0
 }
 
 }

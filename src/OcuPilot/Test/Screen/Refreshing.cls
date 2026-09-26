@@ -34,9 +34,10 @@ XData Declaration
   "id": {"kind": "single", "parts": []},
   "context": {"fields": ["pid", "user", "routine"], "secretFields": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "terminate", "selfProtection": "never an IRIS system process"}],
+  "rowActions": [{"id": "terminate", "selfProtection": ""}],
   "emptyStateKey": "",
   "commandAliases": ["processes"],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "OcuPilotTestClassicPageRefreshing",
   "classicLinkExemption": {"exempt": false, "reason": ""},
   "toolIdentifier": "osmgmt.processes"

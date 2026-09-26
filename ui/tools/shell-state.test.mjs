@@ -10,35 +10,38 @@ import { dirname, join } from 'node:path';
 // - a rail click opens an area's side bar WITHOUT navigating;
 // - clicking the item whose list is already showing collapses it;
 // - Home navigates and collapses, because it has no screen list;
-// - the open/closed state is remembered per browser.
+// - the open/closed state is remembered per user, on the instance (Story 15.5, AD-50).
 //
 // Mutations (Rule 19):
 // - make `activateArea` always return true -> the "opens without navigating" rows go red, and
 //   every rail click would move the user off the screen they are on.
-// - drop the `preferences.setSideBarOpen` call -> the persistence row goes red.
+// - drop the `account.setValue` call in `setOpen` -> the persistence rows go red.
+// - make `adoptRemembered` run on every notification rather than once -> the row where a toggle
+//   survives a later, unrelated write goes red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
 const { ShellState, SIDE_BAR_OPEN_DEFAULT } = await import(corePath('shell-state.ts'));
-const { PreferenceStore, SIDE_BAR_OPEN_KEY } = await import(corePath('preferences.ts'));
+const { settledAccountPreferences, stubAccountPreferences, lastRemembered, SHELL_SIDE_BAR_OPEN } =
+  await import(new URL('../src/app/testing/account-preferences.ts', import.meta.url).href);
 
-function memoryStorage(seed = {}) {
-  const map = new Map(Object.entries(seed));
-  return {
-    map,
-    getItem: (k) => (map.has(k) ? map.get(k) : null),
-    setItem: (k, v) => map.set(k, v),
-    removeItem: (k) => map.delete(k),
-  };
+/** An account store that has already answered, so a `ShellState` over it adopts what it holds. */
+function settled(seed = {}) {
+  return settledAccountPreferences({ shell: seed });
 }
 
-function shellOver(storage) {
-  return new ShellState({ preferences: new PreferenceStore({ storage }) });
+function shellOver(account) {
+  return new ShellState({ account });
+}
+
+/** Let the writes this store issued settle, so a second `ShellState` over it sees them. */
+async function flush() {
+  await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 test('a rail click opens an area without navigating, and the same click again collapses it', () => {
-  const shell = shellOver(memoryStorage());
+  const shell = shellOver(stubAccountPreferences());
   assert.equal(shell.activateArea('logs', false), false, 'opening an area is not navigating to it');
   assert.equal(shell.visibleArea(), 'logs');
   assert.equal(shell.open(), true);
@@ -52,7 +55,7 @@ test('a rail click opens an area without navigating, and the same click again co
 });
 
 test('Home navigates and collapses, because it has no screen list', () => {
-  const shell = shellOver(memoryStorage());
+  const shell = shellOver(stubAccountPreferences());
   shell.activateArea('logs', false);
   assert.equal(shell.open(), true);
 
@@ -62,7 +65,7 @@ test('Home navigates and collapses, because it has no screen list', () => {
 });
 
 test('the router sets the active area, and fills the side bar only when it is not showing another', () => {
-  const shell = shellOver(memoryStorage());
+  const shell = shellOver(stubAccountPreferences());
   shell.setActiveArea('permissions');
   assert.equal(shell.activeArea(), 'permissions');
   assert.equal(shell.visibleArea(), 'permissions', 'a cold deep link fills the side bar');
@@ -77,52 +80,54 @@ test('the router sets the active area, and fills the side bar only when it is no
   );
 });
 
-test('Ctrl/Cmd+B toggles, and remembers the answer per browser', () => {
-  const storage = memoryStorage();
-  const first = shellOver(storage);
+test('Ctrl/Cmd+B toggles, and remembers the answer per user on the instance', async () => {
+  const account = await settled();
+  const first = shellOver(account);
   assert.equal(first.open(), SIDE_BAR_OPEN_DEFAULT, 'nothing remembered yet');
 
   first.setActiveArea('tasks');
   first.toggleOpen();
   assert.equal(first.open(), !SIDE_BAR_OPEN_DEFAULT);
-  assert.equal(storage.map.get(SIDE_BAR_OPEN_KEY), String(!SIDE_BAR_OPEN_DEFAULT));
+  assert.equal(lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN), SIDE_BAR_OPEN_DEFAULT ? '0' : '1');
 
-  const reloaded = shellOver(storage);
-  assert.equal(reloaded.open(), !SIDE_BAR_OPEN_DEFAULT, 'a new tab in the same browser remembers');
+  await flush();
+  const reloaded = shellOver(account);
+  assert.equal(reloaded.open(), !SIDE_BAR_OPEN_DEFAULT, 'another tab -- and another machine -- remembers');
 });
 
-test("Home's collapse is not the user's preference, so it is never written through (DW-134)", () => {
+test("Home's collapse is not the user's preference, so it is never written through (DW-134)", async () => {
   // Home has no screen list, so the bar goes away because there is nothing to show -- the
   // user never asked for it to be closed. Persisting that made the next area they opened
   // start collapsed, on a preference they had set to open and never changed.
-  const storage = memoryStorage();
-  const shell = shellOver(storage);
+  const account = await settled();
+  const shell = shellOver(account);
   shell.activateArea('logs', false);
   assert.equal(shell.open(), true);
-  assert.equal(storage.map.get(SIDE_BAR_OPEN_KEY), 'true', 'opening an area is the user asking');
+  assert.equal(lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN), '1', 'opening an area is the user asking');
 
   assert.equal(shell.activateArea('home', true), true, 'the caller is told to navigate');
   assert.equal(shell.open(), false, 'and the bar collapses for Home');
   assert.equal(
-    storage.map.get(SIDE_BAR_OPEN_KEY),
-    'true',
+    lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN),
+    '1',
     "the remembered preference still reads the user's own answer"
   );
 
-  const reloaded = shellOver(storage);
-  assert.equal(reloaded.open(), true, 'so a new tab in the same browser still opens the bar');
+  await flush();
+  const reloaded = shellOver(account);
+  assert.equal(reloaded.open(), true, 'so another tab still opens the bar');
 });
 
-test("a tile shows its area's list and never toggles it shut (Story 1.12)", () => {
+test("a tile shows its area's list and never toggles it shut (Story 1.12)", async () => {
   // A tile is not the rail item: the rail's click-to-collapse branch is about clicking the
   // item whose list is already showing, and activating a tile twice must leave the area open.
-  const storage = memoryStorage();
-  const shell = shellOver(storage);
+  const account = await settled();
+  const shell = shellOver(account);
 
   shell.showArea('logs');
   assert.equal(shell.visibleArea(), 'logs');
   assert.equal(shell.open(), true);
-  assert.equal(storage.map.get(SIDE_BAR_OPEN_KEY), 'true', 'opening an area is the user asking');
+  assert.equal(lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN), '1', 'opening an area is the user asking');
 
   shell.showArea('logs');
   assert.equal(shell.open(), true, 'a second activation does not toggle it shut');
@@ -131,31 +136,32 @@ test("a tile shows its area's list and never toggles it shut (Story 1.12)", () =
   // The contentious case, pinned rather than left to the doc comment: a user who answered
   // "keep it closed" with Ctrl/Cmd+B and then clicks a tile has asked for the area, so the
   // answer is replaced -- the same thing activateArea's opening branch does from the rail.
-  const stored = memoryStorage({ [SIDE_BAR_OPEN_KEY]: 'false' });
+  const stored = await settled({ [SHELL_SIDE_BAR_OPEN]: '0' });
   const reopened = shellOver(stored);
   assert.equal(reopened.open(), false, 'starting from the remembered answer');
   reopened.showArea('logs');
   assert.equal(reopened.open(), true, 'the tile opens it anyway');
-  assert.equal(stored.map.get(SIDE_BAR_OPEN_KEY), 'true', 'and replaces the answer it found');
+  assert.equal(lastRemembered(stored.calls, SHELL_SIDE_BAR_OPEN), '1', 'and replaces the answer it found');
 });
 
-test('a dismissal collapses the bar without writing the preference (DW-144)', () => {
+test('a dismissal collapses the bar without writing the preference (DW-144)', async () => {
   // Escape says "not this, now"; Ctrl/Cmd+B says "keep it closed". Routing both through
   // toggleOpen() made one Escape start every later area, and every later tab, collapsed.
-  const storage = memoryStorage();
-  const shell = shellOver(storage);
+  const account = await settled();
+  const shell = shellOver(account);
   shell.activateArea('logs', false);
-  assert.equal(storage.map.get(SIDE_BAR_OPEN_KEY), 'true');
+  assert.equal(lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN), '1');
 
   shell.collapse();
   assert.equal(shell.open(), false, 'the bar goes away');
-  assert.equal(storage.map.get(SIDE_BAR_OPEN_KEY), 'true', 'the remembered answer does not');
+  assert.equal(lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN), '1', 'the remembered answer does not');
 
-  assert.equal(shellOver(storage).open(), true, 'so a new tab in the same browser opens it');
+  await flush();
+  assert.equal(shellOver(account).open(), true, 'so another tab opens it');
 });
 
 test('collapsing an already-collapsed bar is a no-op, and notifies nobody', () => {
-  const shell = shellOver(memoryStorage());
+  const shell = shellOver(stubAccountPreferences());
   shell.setActiveArea('logs');
   shell.toggleOpen();
   assert.equal(shell.open(), false);
@@ -169,8 +175,8 @@ test('collapsing an already-collapsed bar is a no-op, and notifies nobody', () =
   assert.equal(notified, 0, 'nothing changed, so nothing redraws');
 });
 
-test('the toggle has an area to show even when nothing has been opened yet', () => {
-  const shell = shellOver(memoryStorage({ [SIDE_BAR_OPEN_KEY]: 'false' }));
+test('the toggle has an area to show even when nothing has been opened yet', async () => {
+  const shell = shellOver(await settled({ [SHELL_SIDE_BAR_OPEN]: '0' }));
   shell.setActiveArea('logs');
   shell.toggleOpen();
   assert.equal(shell.open(), true);
@@ -178,7 +184,7 @@ test('the toggle has an area to show even when nothing has been opened yet', () 
 });
 
 test('every state change notifies, so the rail and the side bar redraw together', () => {
-  const shell = shellOver(memoryStorage());
+  const shell = shellOver(stubAccountPreferences());
   let notified = 0;
   const stop = shell.subscribe(() => {
     notified += 1;
@@ -189,4 +195,63 @@ test('every state change notifies, so the rail and the side bar redraw together'
   stop();
   shell.toggleOpen();
   assert.equal(notified, 3, 'three changes while subscribed, none after unsubscribing');
+});
+
+// The agent-navigation arrival slot (Story 4.7, AC5). `locator-bar.spec.ts` pins the consumer;
+// this pins the store's own contract, including the clearing `app.ts` calls on NavigationStart.
+//
+// Mutation (Rule 19): make `clearArrival` a no-op -> the third row below goes red, and an
+// agent-navigation announcement would label that screen's heading on every later, user-initiated
+// arrival at it.
+
+test('an arrival is standing only for the route it names', () => {
+  const shell = shellOver(stubAccountPreferences());
+  assert.equal(shell.arrivalAnnouncement('permissions/users'), null, 'nothing is standing to begin with');
+  shell.announceArrival('permissions/users', 'Users -- opened by the agent; Back returns');
+  assert.equal(shell.arrivalAnnouncement('permissions/users'), 'Users -- opened by the agent; Back returns');
+  assert.equal(shell.arrivalAnnouncement('tasks/schedule'), null, 'and never on another route');
+});
+
+test('a fresh arrival at the same route changes the token even when the text repeats', () => {
+  const shell = shellOver(stubAccountPreferences());
+  shell.announceArrival('permissions/users', 'same words');
+  const first = shell.arrivalToken('permissions/users');
+  shell.announceArrival('permissions/users', 'same words');
+  assert.notEqual(shell.arrivalToken('permissions/users'), first, 'the reader can tell two arrivals apart');
+  assert.equal(shell.arrivalToken('tasks/schedule'), null);
+});
+
+test('clearing the arrival drops it, so it never survives into the next navigation', () => {
+  const shell = shellOver(stubAccountPreferences());
+  shell.announceArrival('permissions/users', 'Users -- opened by the agent; Back returns');
+  let notified = 0;
+  const stop = shell.subscribe(() => {
+    notified += 1;
+  });
+  shell.clearArrival();
+  assert.equal(shell.arrivalAnnouncement('permissions/users'), null, 'no announcement is standing');
+  assert.equal(shell.arrivalToken('permissions/users'), null, 'and no token either');
+  assert.equal(notified, 1, 'the clear redraws the locator bar');
+  shell.clearArrival();
+  stop();
+  assert.equal(notified, 1, 'clearing nothing changes nothing');
+});
+
+test("sign-out returns the bar to the published default, so it is not the departed principal's (Story 15.5)", async () => {
+  // Mutation (Rule 19): drop `this.currentOpen = SIDE_BAR_OPEN_DEFAULT` from `endSession` -> this
+  // goes red. The open state left browser storage in this story, so a fresh sign-in in the same
+  // tab no longer starts from a blank slate by construction: without this the next principal sees
+  // the departed one's bar until their own read settles, and for good if it never does.
+  const account = await settled({ [SHELL_SIDE_BAR_OPEN]: SIDE_BAR_OPEN_DEFAULT ? '0' : '1' });
+  const shell = shellOver(account);
+  assert.equal(shell.open(), !SIDE_BAR_OPEN_DEFAULT, 'A signed in with the bar they remembered');
+
+  account.reset();
+  shell.endSession();
+  assert.equal(shell.open(), SIDE_BAR_OPEN_DEFAULT, 'sign-out leaves the published default standing');
+
+  // And the next principal's answer is still adopted in its turn: `endSession` drops `adopted`, so
+  // the first read that settles after it applies rather than being skipped as already taken.
+  await account.load();
+  assert.equal(shell.open(), !SIDE_BAR_OPEN_DEFAULT, "the next principal's own answer is adopted");
 });

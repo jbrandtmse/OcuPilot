@@ -12,10 +12,13 @@
  *   sibling (AD-34) or died with its turn (AD-40). Every one of those is the same event here,
  *   because the pause resumes on all five.
  *
- * **Nothing publishes yet.** Epic 2's writes publish `changed`; Epic 5's proposal lifecycle
- * publishes the other two. The bus ships now because the pause AD-43 describes has nothing to
- * ride on otherwise, and because a channel invented per publisher is how two slices end up
- * naming one entity two ways.
+ * **Four publishers, all client-side.** `TurnStore` publishes the two proposal kinds from the
+ * turn poll and `changed` from a confirmed write (Story 5.7); the Definitions list, the
+ * Definition form and the Switches screen publish `changed` from their own saves. There is no
+ * server-to-client push channel: a confirm answers its own request, and the client already holds
+ * the proposal's canonical triple, so the moment the confirm answers is the moment the event is
+ * published. A channel invented per publisher is how two slices end up naming one entity two
+ * ways, which is what this one bus exists to prevent.
  *
  * **The triple is validated, never re-derived.** `entityRefKey` already owns what a reference is
  * -- a type from the kernel's closed enum, a non-empty scope and id -- so an event that is not
@@ -29,6 +32,16 @@ import { entityRefKey } from './entity-ref.ts';
 
 export type ChangeEventKind = 'changed' | 'proposal-open' | 'proposal-closed';
 
+/**
+ * What a `changed` event says happened to the entity (AD-14). A closed set, because a screen
+ * decides what to do with the re-fetch from it -- a created row is selected, a deleted one leaves
+ * -- and a free string would be a vocabulary each publisher invented.
+ */
+export type ChangeAction = 'created' | 'updated' | 'deleted';
+
+/** The set itself, so a publisher's value is checked against one list rather than a type alone. */
+export const CHANGE_ACTIONS: readonly ChangeAction[] = ['created', 'updated', 'deleted'];
+
 /** AD-6's server-side constant, mirrored for the one case below where nothing else can supply it. */
 export const PROPOSAL_EXPIRY_MS = 10 * 60 * 1000;
 
@@ -40,7 +53,12 @@ export interface ChangeEvent {
   readonly id: string;
   /** The reference key of the triple, so a subscriber matches on a value rather than three. */
   readonly key: string;
-  /** The proposal this is about; `''` for `changed`. */
+  /** What happened to the entity; `''` for the two proposal kinds, which are not changes. */
+  readonly action: ChangeAction | '';
+  /**
+   * The proposal this is about. On `changed` it is the confirmed proposal for an agent's write and
+   * `''` for a screen's own write, which is what the toast store tells the two apart by.
+   */
   readonly proposalId: string;
   /**
    * When the proposal stops being live, in epoch milliseconds; `0` for `changed` and for
@@ -55,6 +73,8 @@ export interface ChangeEventInput {
   readonly type: string;
   readonly scope: string;
   readonly id: string;
+  /** Required on `changed`, and refused on the two proposal kinds. */
+  readonly action?: ChangeAction;
   readonly proposalId?: string;
   readonly expiresAt?: number;
 }
@@ -101,12 +121,28 @@ export class ChangeBus {
    * epoch *seconds* lands exactly there. Clamping is not defensive tidying: ten minutes is the
    * value AD-6 gives a proposal, so no honest publisher sends more, and a pause that lifts itself
    * ten minutes early is recoverable where one that never happened is not.
+   *
+   * **A `changed` carries exactly one action from the closed set, and a proposal kind carries
+   * none.** Both halves are refused rather than defaulted, for the reason the unknown type is: a
+   * subscriber that had to cope with a missing action would be deciding, per subscriber, what a
+   * change with no verb means -- and an action on a `proposal-open` would be a publisher saying
+   * something happened that has not happened yet.
+   *
+   * **The key is the normalized one.** `entityRefKey` folds the id by the type's declared rule,
+   * so the key a subscriber matches on is the one the instance recorded, whatever spelling the
+   * publisher held (DW-1364). `id` is left as the publisher sent it, because that is the spelling
+   * the publisher read the object under.
    */
   publish(input: ChangeEventInput): boolean {
     const key = entityRefKey(input.type, input.scope, input.id);
     if (key === null) return false;
     const proposalId = input.proposalId ?? '';
     if (input.kind !== 'changed' && proposalId === '') return false;
+    if (input.kind === 'changed') {
+      if (input.action === undefined || !CHANGE_ACTIONS.includes(input.action)) return false;
+    } else if (input.action !== undefined) {
+      return false;
+    }
     const expiresAt = input.kind === 'proposal-open' ? this.expiryFor(input.expiresAt) : 0;
     const event: ChangeEvent = {
       kind: input.kind,
@@ -114,6 +150,7 @@ export class ChangeBus {
       scope: input.scope,
       id: input.id,
       key,
+      action: input.kind === 'changed' ? (input.action as ChangeAction) : '',
       proposalId,
       expiresAt,
     };

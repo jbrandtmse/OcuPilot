@@ -89,15 +89,44 @@ export const COLOR_ROLES = [
 /**
  * Custom properties the token stylesheet declares that carry a literal color
  * value but are explicitly documented as NOT color roles (DESIGN.md rules 2 and
- * 8) -- excluded from `COLOR_ROLES` and from the 64-role count. `hasDark` says
- * whether a `-dark` sibling is expected for that name.
+ * 8, and two component keys) -- excluded from `COLOR_ROLES` and from the 64-role
+ * count. `hasDark` says whether a `-dark` sibling is expected for that name; the
+ * dark scope in `_theme.scss` re-points every name that has one.
+ *
+ * `toast-link` is DESIGN.md's `toast.link-color` / `link-color-dark` pair, the one
+ * surface whose variant is reversed between modes (`MARGINAL_GUARDED`'s toast-link
+ * guard names it); `server-flag-edge` is `server-flag-badge.edge-dark`, drawn in
+ * dark mode only. `logo-tile` is the header lockup's tile, a fixed white the dark
+ * scope never re-points.
  */
 export const NON_ROLE_TOKENS = {
   'logo-gradient-stop': { hasDark: false },
+  'logo-tile': { hasDark: false },
   'elevation-1': { hasDark: true },
   'elevation-2': { hasDark: true },
   'elevation-3': { hasDark: true },
+  'toast-link': { hasDark: true },
+  'server-flag-edge': { hasDark: true },
 };
+
+/**
+ * The `--ocu-*` re-points a dark scope block declares, as `[{name, target}]` in source
+ * order: `--ocu-shell: var(--ocu-shell-dark)` reads `{name: 'shell', target: 'shell-dark'}`,
+ * and a declaration whose value is not one bare `var(--ocu-...)` reads `target: null`.
+ * `css` is the whole stylesheet; only the `:root.ocu-theme-dark { ... }` block is read.
+ */
+export function darkScopeRepoints(css) {
+  const open = css.indexOf(':root.ocu-theme-dark {');
+  if (open === -1) return null;
+  const close = css.indexOf('\n}', open);
+  const block = css.slice(open, close === -1 ? css.length : close);
+  const out = [];
+  for (const m of block.matchAll(/--ocu-([a-z0-9-]+):\s*([^;]+);/g)) {
+    const target = /^var\(--ocu-([a-z0-9-]+)\)$/.exec(m[2].trim());
+    out.push({ name: m[1], target: target === null ? null : target[1] });
+  }
+  return out;
+}
 
 // --- Parsing ---------------------------------------------------------------
 
@@ -280,6 +309,9 @@ export const MARGINAL_GUARDED = [
   },
   {
     label: 'toast link (secondary text on inverse-surface)',
+    // The non-role token pair the toast draws this link from; its two sides are these
+    // two foregrounds' hexes (`design-tokens.test.mjs` holds them equal).
+    token: 'toast-link',
     floor: 4.5,
     light: { fg: { role: 'secondary', variant: 'dark' }, bg: { role: 'inverse-surface', variant: 'light' } },
     dark: { fg: { role: 'secondary', variant: 'light' }, bg: { role: 'inverse-surface', variant: 'dark' } },

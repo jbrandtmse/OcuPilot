@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: 09-16-2026 06:43
+last_updated: '09-26-2026 00:35'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -86,122 +86,128 @@ development_status:
   3-9-epic-3-burn-down: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1-the-turn-runs-in-a-background-job-and-returns-immediately: backlog
-  4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea: backlog
-  4-3-the-docked-panel-present-on-every-route: backlog
-  4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip: backlog
-  4-5-a-turn-watched-progress-cards-and-the-conversation-lock: backlog
-  4-6-replies-render-safely-and-offline: backlog
-  4-7-the-agent-takes-you-to-a-screen: backlog
-  4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha: backlog
-  4-9-the-agent-audit-ledger: backlog
-  4-10-home-s-suggested-view-and-the-starter-prompts: backlog
+  epic-4: done
+  4-0-epic-3-deferred-cleanup: done
+  4-1-the-turn-runs-in-a-background-job-and-returns-immediately: done
+  4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea: done
+  4-3-the-docked-panel-present-on-every-route: done
+  4-4-screen-context-reaches-the-turn-capped-and-secret-free: done
+  4-5-a-turn-watched-progress-cards-and-the-conversation-lock: done
+  4-11-the-context-chip-its-toggle-and-the-paste-warning: done
+  4-6-replies-render-safely-and-offline: done
+  4-7-the-agent-takes-you-to-a-screen: done
+  4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha: done
+  4-9-the-agent-audit-ledger: done
+  4-10-home-s-suggested-view-and-the-starter-prompts: done
+  4-12-epic-4-burn-down: done
   epic-4-retrospective: optional
 
-  epic-5: backlog
-  5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read: backlog
-  5-2-the-proposal-card-the-diff-the-user-reviews: backlog
-  5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at: backlog
-  5-4-execution-strictly-as-the-user: backlog
-  5-5-prohibited-actions-are-absent-from-the-tool-set: backlog
-  5-6-the-agent-marker-and-what-happens-when-it-fails: backlog
-  5-7-the-screen-shows-the-change: backlog
-  5-8-web-applications-enable-a-disabled-application-and-grant-it: backlog
-  5-9-permissions-the-area-s-first-confirmed-user-write: backlog
-  5-10-security-and-secrets-disable-and-re-enable-auditing: backlog
-  5-11-tasks-resume-a-task-suspended-after-an-error: backlog
-  5-12-os-management-suspend-and-resume-a-process: backlog
-  5-13-logs-delete-application-errors-by-namespace: backlog
+  epic-5: done
+  5-0-epic-4-deferred-cleanup: done
+  5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read: done
+  5-2-the-proposal-card-the-diff-the-user-reviews: done
+  5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at: done
+  5-4-execution-strictly-as-the-user: done
+  5-5-prohibited-actions-are-absent-from-the-tool-set: done
+  5-6-the-agent-marker-and-what-happens-when-it-fails: done
+  5-7-the-screen-shows-the-change: done
+  5-8-web-applications-enable-a-disabled-application-and-grant-it: done
+  5-9-permissions-the-area-s-first-confirmed-user-write: done
+  5-10-security-and-secrets-disable-and-re-enable-auditing: done
+  5-11-tasks-resume-a-task-suspended-after-an-error: done
+  5-12-os-management-suspend-and-resume-a-process: done
+  5-13-logs-delete-application-errors-by-namespace: done
+  5-14-epic-5-burn-down: done
   epic-5-retrospective: optional
 
-  epic-6: backlog
-  6-1-the-rest-api-explorer-and-its-openapi-document-viewer: backlog
-  6-2-the-roles-resources-and-services-lists: backlog
-  6-3-the-x-509-ldap-kerberos-and-wallet-lists: backlog
-  6-4-the-oauth-2-0-screen: backlog
-  6-5-on-demand-and-upcoming-tasks: backlog
-  6-6-task-history-per-task-and-across-tasks: backlog
-  6-7-task-details: backlog
-  6-8-process-details: backlog
-  6-9-system-usage-and-the-dashboard-meters: backlog
-  6-10-the-locks-view: backlog
-  6-11-databases-with-free-space-arriving-as-it-lands: backlog
-  6-12-the-devices-list: backlog
-  6-13-the-alerts-log-viewer: backlog
-  6-14-the-messages-log-viewer: backlog
+  epic-6: done
+  6-1-the-rest-api-explorer-and-its-openapi-document-viewer: done
+  6-2-the-roles-resources-and-services-lists: done
+  6-3-the-x-509-ldap-kerberos-and-wallet-lists: done
+  6-4-the-oauth-2-0-screen: done
+  6-5-on-demand-and-upcoming-tasks: done
+  6-6-task-history-per-task-and-across-tasks: done
+  6-7-task-details: done
+  6-8-process-details: done
+  6-9-system-usage-and-the-dashboard-meters: done
+  6-10-the-locks-view: done
+  6-11-databases-with-free-space-arriving-as-it-lands: done
+  6-12-the-devices-list: done
+  6-13-the-alerts-log-viewer: done
+  6-14-the-messages-log-viewer: done
   epic-6-retrospective: optional
 
-  epic-7: backlog
-  7-1-enable-disable-and-delete-a-web-application: backlog
-  7-2-user-enable-disable-delete-password-and-roles: backlog
-  7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de: backlog
-  7-4-turn-auditing-on-and-off-from-the-screen: backlog
-  7-5-run-an-on-demand-task: backlog
-  7-6-run-suspend-resume-and-delete-a-task: backlog
-  7-7-start-suspend-and-resume-the-task-manager: backlog
-  7-8-terminate-suspend-and-resume-a-process: backlog
-  7-9-remove-locks-one-all-of-a-process-all-of-a-remote-client: backlog
-  7-10-the-remaining-application-error-delete-scopes: backlog
+  epic-7: done
+  7-1-enable-disable-and-delete-a-web-application: done
+  7-2-user-enable-disable-delete-password-and-roles: done
+  7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de: done
+  7-4-turn-auditing-on-and-off-from-the-screen: done
+  7-5-run-an-on-demand-task: done
+  7-6-run-suspend-resume-and-delete-a-task: done
+  7-8-terminate-suspend-and-resume-a-process: done
+  7-10-the-remaining-application-error-delete-scopes: done
+  7-11-system-and-user-audit-event-configuration: done
   epic-7-retrospective: optional
 
-  epic-8: backlog
-  8-1-create-a-web-application: backlog
-  8-2-create-a-user: backlog
-  8-3-create-a-role-and-manage-its-resource-grants: backlog
-  8-4-the-resource-editor: backlog
-  8-5-x-509-import-edit-and-delete: backlog
-  8-6-the-wallet-secret-form: backlog
-  8-7-system-and-user-audit-event-configuration: backlog
-  8-8-the-device-editor: backlog
-  8-9-plain-iris-community-verification: backlog
+  epic-8: done
+  8-1-create-a-web-application: done
+  8-2-create-a-user: done
+  8-3-create-a-role-and-manage-its-resource-grants: done
+  8-4-the-resource-editor: done
+  8-5-x-509-import-edit-and-delete: done
+  8-6-the-wallet-secret-form: done
+  8-8-the-device-editor: done
+  8-9-plain-iris-community-verification: done
   epic-8-retrospective: optional
 
-  epic-9: backlog
-  9-1-the-user-editor: backlog
-  9-2-the-web-application-editor: backlog
-  9-3-the-role-editor: backlog
-  9-4-the-service-editor: backlog
-  9-5-the-ssl-tls-editor: backlog
-  9-6-the-ldap-and-kerberos-editor: backlog
-  9-7-the-new-task-wizard: backlog
-  9-8-edit-task: backlog
-  9-9-a-cut-editor-ships-reduced-never-half-working: backlog
+  epic-9: done
+  9-1-the-user-editor: done
+  9-2-the-web-application-editor: done
+  9-3-the-role-editor: done
+  9-5-the-ssl-tls-editor: done
+  9-7-the-new-task-wizard: done
+  9-8-edit-task: done
+  9-9-a-cut-editor-ships-reduced-never-half-working: done
+  9-10-the-user-audit-event-editor: done
   epic-9-retrospective: optional
 
-  epic-10: backlog
-  10-1-the-message-and-tool-definition-adapters: backlog
-  10-2-the-openai-and-google-gemini-adapters: backlog
-  10-3-the-openai-compatible-adapter-and-local-models: backlog
+  epic-10: done
+  10-1-the-message-and-tool-definition-adapters: done
+  10-2-the-openai-and-google-gemini-adapters: done
+  10-3-the-openai-compatible-adapter-and-local-models: done
+  10-4-sampling-parameters-left-to-the-provider: done
+  10-5-a-connection-test-that-answers-before-the-gateway-does: done
+  10-6-a-turn-survives-a-dropped-connection-and-a-create-says-creat: done
+  10-7-claude-opus-5-5-as-the-anthropic-default: done
   epic-10-retrospective: optional
 
-  epic-11: backlog
-  11-1-explain-this-screen: backlog
-  11-2-explain-a-log-or-audit-entry: backlog
-  11-3-suggested-prompts-per-screen: backlog
-  11-4-citation-chips-with-click-through: backlog
-  11-5-the-data-egress-line: backlog
-  11-6-the-agent-audit-viewer: backlog
-  11-7-token-streaming: backlog
+  epic-11: done
+  11-9-the-agent-knows-the-screen-it-is-on: done
+  11-10-a-judge-succeeds-the-first-time: done
+  11-7-token-streaming: done
+  11-8-the-proposal-names-the-privilege-it-needs: done
+  11-1-explain-this-screen: done
+  11-2-explain-a-log-or-audit-entry: done
+  11-3-suggested-prompts-per-screen: done
+  11-4-citation-chips-with-click-through: done
   epic-11-retrospective: optional
 
-  epic-12: backlog
-  12-1-the-security-area-test-and-detail-actions: backlog
-  12-2-revoke-a-user-s-oauth-2-0-tokens: backlog
-  12-3-copy-and-purge-the-audit-database: backlog
-  12-4-the-oauth-2-0-client-server-description-editor: backlog
-  12-5-the-oauth-2-0-client-configuration-editor: backlog
-  12-6-the-oauth-2-0-resource-server-editor: backlog
-  12-7-the-oauth-2-0-authorization-server-editor: backlog
-  12-8-the-oauth-2-0-server-client-description-editor: backlog
-  12-9-removing-the-classic-link-outs: backlog
+  epic-12: done
+  12-1-the-security-area-test-and-detail-actions: done
+  12-2-revoke-a-user-s-oauth-2-0-tokens: done
+  12-3-copy-and-purge-the-audit-database: done
+  12-4-the-oauth-2-0-client-server-description-editor: done
+  12-5-the-oauth-2-0-client-configuration-editor: done
+  12-6-the-oauth-2-0-resource-server-editor: done
+  12-7-the-oauth-2-0-authorization-server-editor: done
+  12-8-the-oauth-2-0-server-client-description-editor: done
+  12-9-removing-the-classic-link-outs: done
   epic-12-retrospective: optional
 
-  epic-13: backlog
-  13-1-the-uninstall-hook: backlog
-  13-2-the-test-suite-grows-in-ci-against-a-stock-image: backlog
-  13-3-publish-the-package-to-the-community-registry: backlog
-  13-4-optional-bonus-items-re-planned-after-the-kick-off: backlog
+  epic-13: done
+  13-1-the-uninstall-hook: done
+  13-2-the-test-suite-grows-in-ci-against-a-stock-image: done
+  13-3-publish-the-package-to-the-community-registry: done
   epic-13-retrospective: optional
 
   epic-14: backlog
@@ -211,17 +217,20 @@ development_status:
   14-4-transcripts-retention-and-administrator-access: backlog
   14-5-the-per-user-read-only-toggle: backlog
   14-6-per-user-turn-limits-and-the-banner-they-need: backlog
-  14-7-the-typed-name-confirmation-for-destructive-tools: backlog
   14-8-the-seeded-injection-test: backlog
   epic-14-retrospective: optional
 
-  epic-15: backlog
-  15-1-change-your-own-password: backlog
-  15-2-favorites-recent-items-and-menu-search: backlog
-  15-3-about-help-shortcuts-and-the-links-panel: backlog
-  15-4-home-s-system-information-panel: backlog
-  15-5-ui-state-that-survives-a-sign-out: backlog
-  15-6-the-light-and-dark-theme: backlog
+  epic-15: done
+  15-1-change-your-own-password: done
+  15-2-favorites-recent-items-and-menu-search: done
+  15-3-about-help-shortcuts-and-the-links-panel: done
+  15-4-home-s-system-information-panel: done
+  15-5-ui-state-that-survives-a-sign-out: done
+  15-6-the-light-and-dark-theme: done
+  15-7-the-rail-s-icons: done
+  15-8-columns-you-can-read: done
+  15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth: done
+  15-10-the-header-logo-on-a-white-tile: done
   epic-15-retrospective: optional
 
   epic-16: backlog
@@ -235,6 +244,16 @@ development_status:
   16-8-the-six-secondary-log-viewers: backlog
   16-9-the-unified-log-hub: backlog
   16-10-external-language-servers: backlog
+  16-11-start-suspend-and-resume-the-task-manager: backlog
+  16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client: backlog
+  16-13-the-service-editor: backlog
+  16-14-the-ldap-and-kerberos-editor: backlog
+  16-15-the-data-egress-line: backlog
+  16-16-the-agent-audit-viewer: backlog
+  16-17-the-read-back-line: backlog
+  16-18-home-s-performance-row: backlog
+  16-19-impact-lines-on-removals: backlog
+  16-20-older-messages-log-files: backlog
   epic-16-retrospective: optional
 
   epic-17: backlog
@@ -310,3 +329,21 @@ development_status:
   22-1-the-exclusion-register: backlog
   22-2-picking-up-a-row-when-its-gate-clears: backlog
   epic-22-retrospective: optional
+action_items:
+  - id: "epic-4-retro-item-1-run-an-architecture-update-intent-on-the"
+    epic: 4
+    action: "Run an architecture Update intent on the spine dependency-direction line:
+      registry-layer classes in two shipped epics name kernel and API classes the
+      line forbids (DW-456)"
+    owner: "user"
+    status: open
+    ref: ""
+  - id: "epic-8-merge-gate-report-the-resource-publicpermission-vendor-defect"
+    epic: 8
+    action: "Report to the contest's feedback channel (sysadmin-api-specification):
+      the admin API's Security.Resource PUT refuses every encoding of an empty PublicPermission
+      (it maps 'none' to 0, then rejects 0), so a private resource cannot be created
+      or a public permission cleared through the API (DW-1527)"
+    owner: "user"
+    status: open
+    ref: "DW-1527"

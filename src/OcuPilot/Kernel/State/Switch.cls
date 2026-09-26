@@ -25,8 +25,20 @@ Parameter DEFAULTKILLSWITCH As %Integer = 0;
 Parameter DEFAULTENFORCEDREADONLY As %Integer = 0;
 
 /// <p>Whether a new conversation shares screen context on an instance that has stored nothing
-/// (FR-11). On, which is what the panel's own per-session switch starts at.</p>
+/// (FR-11). On, which is what the caller's own per-user choice starts at when no row names
+/// them.</p>
 Parameter DEFAULTSHARECONTEXT As %Integer = 1;
+
+/// <p>Whether the instance was marking agent writes when that was last observed, on an instance
+/// that has stored nothing. <b>On</b>: an instance nobody has observed is not announced as
+/// unmarked, and the banner's absence is never a positive claim that marking works (AD-15).</p>
+Parameter DEFAULTWRITESMARKED As %Integer = 1;
+
+/// <p>The row cap a turn's screen context, and every read tool result, is bounded to on an
+/// instance that has stored nothing, or that stored an empty or out-of-range value (Story 4.4,
+/// AD-24). Every read tool, whether descriptor-derived or a class of its own -- this switch is the
+/// one row-count cap <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> resolves per turn.</p>
+Parameter DEFAULTCONTEXTROWCAP As %Integer = 200;
 
 /// <p>Whether the agent is switched off for everyone.</p>
 Property KillSwitch As %Boolean [ InitialExpression = 0 ];
@@ -39,12 +51,47 @@ Property KillSwitchReason As %String(MAXLEN = 512);
 /// <p>Whether every user's agent is restrained to reads (FR-19).</p>
 Property EnforcedReadOnly As %Boolean [ InitialExpression = 0 ];
 
-/// <p>The instance default for screen-context sharing, which seeds the panel's own per-session
-/// switch (FR-11).</p>
+/// <p>The instance default for screen-context sharing (FR-11), which is what a caller with no row
+/// of their own in <class>OcuPilot.Kernel.State.Sharing</class> reads as their effective
+/// choice.</p>
 Property ShareContextByDefault As %Boolean [ InitialExpression = 1 ];
+
+/// <p>The row cap a turn's screen context and every read tool result -- descriptor-derived or a
+/// class of its own -- are bounded to (Story 4.4, AD-24). Kept in range by
+/// <method>Resolve</method> and by <class>OcuPilot.Kernel.SwitchRules</class>'s write-time check;
+/// a row somehow holding an out-of-range value reads back at the default rather than widening the
+/// bound. Only the per-field cut inside <class>OcuPilot.Kernel.Agent.Bound</class> is scoped to
+/// descriptor-derived tools; the row count this property names is not.</p>
+Property ContextRowCap As %Integer [ InitialExpression = 200 ];
+
+/// <p>Whether the instance is marking agent writes in its audit database, as the last party that
+/// could see the answer observed it (AD-15).</p>
+/// <p><b>Observed, never operator-set.</b> It is not in <method>OcuPilot.Api.Switches.Fields</method>'s
+/// table, so no request can write it and it is absent from <code>GET /agent/switches</code>; the two
+/// writers are install, which reads the instance flag and the marker registration's own
+/// <code>Enabled</code> in <code>%SYS</code>, and the confirm executor, whose emission return value
+/// is the instance's own answer. It can therefore be stale for one window, which is acceptable only
+/// because the banner it feeds makes no positive claim: nothing says marking is working.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions: when
+/// SCHEMAVERSION moves). A row stored before this property existed holds nothing in its slot and
+/// reads back <code>""</code>, which <code>''</code> normalizes to 0 -- so an older row would read
+/// as "not marking" and show the banner. <method>Resolve</method> therefore reads the slot's
+/// presence rather than its truth: an untouched row answers
+/// <parameter>DEFAULTWRITESMARKED</parameter>, exactly as an instance with no row does, and the
+/// first observation writes the real answer. No older row means anything different.</p>
+Property WritesMarked As %Boolean [ InitialExpression = 1 ];
 
 /// <p>ISO-8601 UTC timestamp of the last write to this row.</p>
 Property UpdatedAt As %String(MAXLEN = 32);
+
+/// <p>The singleton discriminator: <code>1</code> on the instance's one row, and the same value on
+/// any second row a concurrent first create would write -- which the unique index below then
+/// refuses (DW-435). Without it two callers that both read "no row" would both create one and
+/// <code>SELECT TOP 1 ... ORDER BY ID</code> would silently answer the older of the two for ever
+/// after.</p>
+Property Singleton As %Integer [ InitialExpression = 1 ];
+
+Index SwitchSingletonIdx On Singleton [ Unique ];
 
 /// <p>The switches in force, as <var>pValues</var> subscripted by <code>killSwitch</code>,
 /// <code>killSwitchReason</code>, <code>enforcedReadOnly</code>, <code>shareContextByDefault</code>
@@ -61,6 +108,8 @@ ClassMethod Resolve(Output pValues) As %Status
     Set pValues("killSwitchReason") = ""
     Set pValues("enforcedReadOnly") = ..#DEFAULTENFORCEDREADONLY
     Set pValues("shareContextByDefault") = ..#DEFAULTSHARECONTEXT
+    Set pValues("contextRowCap") = ..#DEFAULTCONTEXTROWCAP
+    Set pValues("writesMarked") = ..#DEFAULTWRITESMARKED
     Set pValues("updatedAt") = ""
     Set tSC = $$$OK
     Try {
@@ -71,6 +120,11 @@ ClassMethod Resolve(Output pValues) As %Status
         Set pValues("killSwitchReason") = ..Text(tRow.KillSwitchReason)
         Set pValues("enforcedReadOnly") = ''tRow.EnforcedReadOnly
         Set pValues("shareContextByDefault") = ''tRow.ShareContextByDefault
+        Set tRowCap = +tRow.ContextRowCap
+        If (tRowCap >= 1) && (tRowCap <= 1000) Set pValues("contextRowCap") = tRowCap
+        ; The slot's presence, not its truth -- a row written before this property existed holds
+        ; nothing there, and reading that as 0 would show the banner over a healthy instance.
+        If tRow.WritesMarked '= "" Set pValues("writesMarked") = ''tRow.WritesMarked
         Set pValues("updatedAt") = ..Text(tRow.UpdatedAt)
         Set tRow = ""
     } Catch ex {
@@ -98,11 +152,14 @@ ClassMethod SetGuarded(ByRef pValues, pExpectedVersion As %String = "") As %Stat
         Set tSC = ..GuardedCurrent(.tRow)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tRow) Set tRow = ..%New()
+        Set tRow.Singleton = 1
         Set tVersion = $Select(pExpectedVersion '= "": +pExpectedVersion, 1: +tRow.RowVersion)
         If $Data(pValues("killSwitch")) Set tRow.KillSwitch = ''+pValues("killSwitch")
         If $Data(pValues("killSwitchReason")) Set tRow.KillSwitchReason = pValues("killSwitchReason")
         If $Data(pValues("enforcedReadOnly")) Set tRow.EnforcedReadOnly = ''+pValues("enforcedReadOnly")
         If $Data(pValues("shareContextByDefault")) Set tRow.ShareContextByDefault = ''+pValues("shareContextByDefault")
+        If $Data(pValues("contextRowCap")) Set tRow.ContextRowCap = +pValues("contextRowCap")
+        If $Data(pValues("writesMarked")) Set tRow.WritesMarked = ''+pValues("writesMarked")
         Set tRow.UpdatedAt = ..Timestamp()
         Set tSC = ..GuardedSaveIfCurrent(tRow, tVersion)
         Set tRow = ""

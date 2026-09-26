@@ -11,21 +11,20 @@ import { InstanceService } from '../core/instance';
 import { RefreshService, formatLastUpdate } from '../core/refresh';
 import { Session, isSignedIn } from '../core/session';
 import { STRINGS } from '../core/strings';
-import { AccountMenu } from './account-menu';
 import { ServerFlag } from './server-flag';
 
 /**
  * The status bar: the 24px `contentinfo` band along the bottom of the shell
- * (DESIGN.md `:1021`, EXPERIENCE.md "server · instance · user ▾", "`{spacing.status-bar-height}` band").
+ * (DESIGN.md `:1021`, EXPERIENCE.md "server · instance · user", "`{spacing.status-bar-height}` band").
  *
  * Left, in DESIGN.md's order: server, instance name and version, the user, licensed-to.
  * Right: the server-flag badge, the auto-refresh stamp and the connection state. **A segment
  * whose value is `''` does not render** -- a field the instance could not report (its own
  * per-field `Try` in `OcuPilot.Api.Instance`) leaves a gap rather than an empty label.
  *
- * **The user segment is the band's only interactive element** (DESIGN.md `:1021`): it is the
- * account menu, moved here from `app.ts`'s interim mount now that the band it was drawn for
- * exists. Nothing else in the bar is a control or has a hover state.
+ * **The band holds no control** (DESIGN.md `:1021`): the user segment is the signed-in name as
+ * information only, and the account menu it once opened is the header's (`header.ts`). Nothing in
+ * the bar is a control or has a hover state.
  *
  * **The connection state's disc is never the only signal** -- each state's coloured disc is
  * always followed by its word, and the segment is a polite `role="status"` so a transition is
@@ -67,7 +66,7 @@ import { ServerFlag } from './server-flag';
 @Component({
   selector: 'app-status-bar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AccountMenu, ServerFlag],
+  imports: [ServerFlag],
   template: `<footer class="ocu-status-bar" role="contentinfo">
     <div class="ocu-status-bar-group">
       @if (hasServerName) {
@@ -87,7 +86,9 @@ import { ServerFlag } from './server-flag';
           instanceVersion()
         }}</span>
       }
-      <app-account-menu />
+      @if (hasUserName) {
+        <span class="ocu-status-bar-segment ocu-status-bar-user">{{ userName() }}</span>
+      }
       @if (hasLicensedTo) {
         <span class="ocu-status-bar-segment"
           ><span class="ocu-status-bar-label">{{ STRINGS.statusSegmentLicensedTo }}</span>
@@ -134,6 +135,9 @@ export class StatusBar {
 
   private readonly sessionState = signal(this.session.state());
 
+  /** Mirrors the framework-free session's user name, as `account-menu.ts` does for its trigger. */
+  protected readonly userName = signal(this.session.userName());
+
   /** Bumped whenever the connectivity verdict moves, so the segment follows it. */
   private readonly connectivityGeneration = signal(0);
 
@@ -148,7 +152,10 @@ export class StatusBar {
       this.licensedTo.set(this.instance.licensedTo());
       this.serverFlag.set(this.instance.serverFlag());
     });
-    const stopSession = this.session.subscribe(() => this.sessionState.set(this.session.state()));
+    const stopSession = this.session.subscribe(() => {
+      this.sessionState.set(this.session.state());
+      this.userName.set(this.session.userName());
+    });
     const stopConnectivity = this.connectivity.subscribe(() =>
       this.connectivityGeneration.set(this.connectivityGeneration() + 1)
     );
@@ -173,6 +180,10 @@ export class StatusBar {
 
   protected get hasInstanceVersion(): boolean {
     return this.instanceVersion() !== '';
+  }
+
+  protected get hasUserName(): boolean {
+    return this.userName() !== '';
   }
 
   protected get hasLicensedTo(): boolean {

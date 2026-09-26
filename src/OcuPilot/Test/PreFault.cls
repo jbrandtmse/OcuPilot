@@ -16,7 +16,9 @@
 /// code can be asserted as slug-derived (<code>ROUTE.FORBIDDEN</code>) rather than numeric.
 /// The framework's own <code>AccessCheck</code> 403 never reaches
 /// <method>ReportHttpStatusCode</method> at all, so this is that branch's only reachable
-/// caller shape.</p>
+/// caller shape. Measured for DW-1431 on a throwaway container (2026-09-21) rather than
+/// inferred: that refusal is answered 403 with an empty body, and it is pinned by
+/// <method>OcuPilot.Test.ProhibitedRoute.TestAnAccountWithoutTheCodeDatabaseReadIsRefusedABareForbidden</method>.</p>
 /// <p>Extends <class>OcuPilot.Test.RouterFixture</class> and its <code>UrlMap</code>
 /// (<code>Extend="true"</code>), so the twelve fixture routes the entity-id corpus and the
 /// routing invariants use are all still reachable through this one class — which is what

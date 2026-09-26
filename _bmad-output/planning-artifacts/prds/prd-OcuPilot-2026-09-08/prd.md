@@ -295,7 +295,7 @@ Every classic portal page in the six areas that OcuPilot has not rebuilt is reac
 
 **Consequences (testable):**
 
-- A cut large editor ships as a reduced form of the fields that daily administration uses plus a link to the classic page for the rest, never as a half-working full form; a list screen never links out. A **detail view** may link out, and only where its descriptor declares a `classicLinkExemption` with a reason; the automated check honors that flag, reports every exemption it honors, and counts them against SM-C1. The OAuth 2.0 tabs (FR-44) are the one such exemption in Release 1.
+- A cut large editor ships as a reduced form of the fields that daily administration uses plus a link to the classic page for the rest, never as a half-working full form; a list screen never links out. A **detail view** may link out, and only where its descriptor declares a `classicLinkExemption` with a reason; the automated check honors that flag, reports every exemption it honors, and counts them against SM-C1. Two such exemptions remain in Release 1, the reduced service and LDAP editors, until Stories 16.13 and 16.14 replace them [AMENDED 2026-09-25, Story 12.9, Rule 5 tier-1: was "The OAuth 2.0 tabs (FR-44) are the one such exemption in Release 1"].
 - The agent's write tool for that editor's action still ships (5.3), so the change can be made through a confirmed proposal even while the form links out.
 - The link opens in a new tab where the user is expected to be signed in already (FR-1); if the classic portal does not honor the browser login, its own form appears once.
 
@@ -311,13 +311,13 @@ A user sees the panel on every screen and can resize it or expand it to full scr
 
 **Consequences (testable):**
 
-- The panel has a minimum width and a remembered width per browser; screen content reflows to the remaining width.
+- The panel has a minimum width and a width remembered per user, on the instance [AMENDED 2026-09-20, Story 15.5: FR-73's own done-condition, this story's AC2 and AD-50 all scope this state to the user on the instance; was "a remembered width per browser"]; screen content reflows to the remaining width.
 - Route changes keep the panel and its conversation.
 - There is no close control in Release 1. Narrow-viewport behavior below about 900 px is a UX decision, not a requirement here.
 
 #### FR-11: Screen context on every turn, with a toggle
 
-The agent receives the current screen context with every turn, and the user can turn context sharing off for the session. Realizes UJ-1. Catalog: CP-09, CP-10.
+The agent receives the current screen context with every turn, and the user can turn context sharing off, a choice remembered per user. Realizes UJ-1. Catalog: CP-09, CP-10.
 
 **Consequences (testable):**
 
@@ -695,7 +695,7 @@ A user can list OAuth 2.0 client server descriptions, client configurations, res
 
 **Consequences (testable):**
 
-- The five tabs are **detail views rather than lists** - they administer a configuration entry by entry - and each links to the classic portal editor for the entry under its declared `classicLinkExemption` (FR-9) until the polish-week editors (FR-75) ship. This is the one classic-link exemption in the six areas, and it is counted against SM-C1.
+- The five tabs are **detail views rather than lists** - they administer a configuration entry by entry - and each opens OcuPilot's editor for the entry (FR-75). Their classic-link exemption (FR-9) closed when the FR-75 editors replaced it (Stories 12.4-12.8) [AMENDED 2026-09-25, Story 12.9, Rule 5 tier-1: was "each links to the classic portal editor for the entry under its declared `classicLinkExemption` (FR-9) until the polish-week editors (FR-75) ship. This is the one classic-link exemption in the six areas, and it is counted against SM-C1"].
 - Delete asks for confirmation naming the entry.
 
 #### FR-45: LDAP and Kerberos configurations
@@ -803,7 +803,7 @@ A user can terminate, suspend and resume a process. Catalog: OS-02, OS-03, OS-04
 **Consequences (testable):**
 
 - Terminate offers the optional error-to-job flag and asks for confirmation naming the process id.
-- Acting on the user's own process is refused with an explanation.
+- Acting on a process OcuPilot is itself running in - this request, or an agent turn - is refused with an explanation.
 
 #### FR-56: System usage and dashboard meters
 
@@ -812,11 +812,11 @@ A user can view system usage counters and shared memory, and the CPU, memory and
 **Consequences (testable):**
 
 - Counters cover global references, routine calls, block reads and writes and journal entries.
-- Meter names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`, a readable Zen class already in the reference export, which defines the twenty-five dashboard meters and their thresholds. The classic `UtilSysMonitor` page source is not available and is not needed (Open Question 7).
+- Meter names and values come from the admin API's `Monitor` system-usage and dashboard answers: performance (global references per second, cache efficiency), shared memory as a percentage of allocated, and the database space, journal space, lock table and write daemon status in the vendor's own words. CPU is FR-76's. The classic `UtilSysMonitor` page source is not available and is not needed (Open Question 7). [AMENDED 2026-09-17, Story 6.9: `%CSP.UI.Portal.EnsembleMonitor` is the Interoperability production monitor and defines neither these meters nor thresholds]
 
 #### FR-57: Locks view and removal
 
-A user can view locks by namespace with filter and owner details, and remove one lock, all locks of a process, or all locks from a remote client. Catalog: OS-06, OS-07.
+A user can view every lock the instance holds, with filter, owner details and each lock's database directory, and remove one lock, all locks of a process, or all locks from a remote client. Catalog: OS-06, OS-07. [AMENDED 2026-09-17, Story 6.10 spec gate (orchestrator-approved): the lock table is instance-wide and a lock's scope marker is a database directory, not a namespace - the same read answers identical rows from two namespaces and the vendor's own page is pinned to `%SYS`; was "view locks by namespace"]
 
 **Consequences (testable):**
 
@@ -1066,7 +1066,7 @@ OcuPilot grows toward classic-portal parity in versioned increments, and every s
 ## 6. Cross-Cutting Non-Functional Requirements
 
 - **NFR-1 Responsiveness.** A list screen renders its first page within two seconds of navigation on a Community container with one thousand rows, and a confirmed write's screen refresh completes within two seconds; both are within OcuPilot's control. A turn shows its first visible progress, a tool-call card or the start of a reply, within ten seconds of the message being sent when measured against a current cloud model. Model latency is outside OcuPilot's control, and a local model may be slower than that target; NFR-2 governs how the wait is shown.
-- **NFR-2 Progress before streaming.** Release 1 delivers per-step progress during a turn; token streaming ships in the polish week by owner decision on 2026-09-08, conditional on build step 7 finishing first and ranked after FR-70 and FR-71 (section 10.2). No turn may appear frozen for longer than the interval between tool calls.
+- **NFR-2 Progress before streaming.** Release 1 delivers per-step progress during a turn; token streaming ships in the polish week by owner decision on 2026-09-08, conditional on build step 7 finishing first, and runs first among Epic 11's remaining stories by the owner's re-order of 2026-09-22 (section 10.2). No turn may appear frozen for longer than the interval between tool calls.
 - **NFR-3 Token hygiene.** The token pair travels only as a Bearer header from per-tab storage, never by cookie and never as a password posted into an embedded frame (FR-1, section 8).
 - **NFR-4 No SQL or path from the caller.** Every OcuPilot API query binds caller values; no caller-supplied string is concatenated into SQL, and file-serving endpoints accept no path.
 - **NFR-5 Secrets never leave.** API keys, private keys and wallet secret values are write-only through the UI and the OcuPilot API, redacted from the agent audit ledger and from every log line.
@@ -1092,7 +1092,7 @@ OcuPilot grows toward classic-portal parity in versioned increments, and every s
 
 ### 7.2 Privacy and data egress
 
-- Screen context sharing is on by default and toggleable per session; when off, no screen data is sent with a turn (FR-11).
+- Screen context sharing is on by default and toggleable per user; when off, no screen data is sent with a turn (FR-11).
 - A local model keeps every prompt on the instance's network; the context chip says whether data leaves the instance, and the polish week adds the egress line (FR-11, FR-71).
 - Transcripts are stored on the instance per user and purged by a retention task; an OcuPilot administrator's view of another user's transcript is gated by the resources recorded per ledger row, and the agent audit viewer follows the same rule (FR-72).
 - OcuPilot sends nothing to any endpoint other than the instance and the configured provider.
@@ -1142,7 +1142,11 @@ The commitment, the listing build, the stealth release targeting 2026-09-24 and 
 6. Large editors, in this order: user edit and web application edit first (FR-35, FR-30), then role edit, service edit, SSL/TLS, LDAP, the task wizard and edit task (FR-38, FR-41, FR-42, FR-45, FR-52, FR-53).
 7. Stretch, in this order: the remaining provider adapters, OpenAI, Google Gemini and OpenAI-compatible including local models (FR-25); the per-user read-only toggle (FR-19); the remaining safety hardening, namely the target fingerprint re-read, the typed-name confirmation for destructive tools, the per-user turn limits and the seeded-injection test (FR-17, FR-19, NFR-6). Anything in this step not reached by the deadline ships first in the polish week.
 
-**Owner deviation, 2026-09-16 - step 7 is split.** The provider adapters stay step 7 and run as soon as the agent core is merged (Epic 10). The plain-Community check closes step 5 (Story 8.9). The per-user read-only toggle, the per-user turn limits, the typed-name confirmation and the seeded-injection test move to the polish week (Epic 14), ranked after the OAuth 2.0 editors, because the kick-off named OAuth setup verbatim. The target fingerprint re-read belongs to step 2 (FR-17's re-read is Stories 5.1 and 5.3).
+**Owner deviation, 2026-09-16 - step 7 is split.** The provider adapters stay step 7 and run as soon as the agent core is merged (Epic 10). The plain-Community check closes step 5 (Story 8.9). The per-user read-only toggle, the per-user turn limits, the typed-name confirmation and the seeded-injection test move to the polish week (Epic 14), ranked after the OAuth 2.0 editors, because the kick-off named OAuth setup verbatim. The target fingerprint re-read belongs to step 2 (FR-17's re-read is Stories 5.1 and 5.3). Audit event configuration (FR-47's second half) moves from step 5 to step 4, landing a step earlier as Story 7.11 (parallel-run amendment, 2026-09-16).
+
+**Owner deviation, 2026-09-17 - six stories deferred to the polish week for schedule.** Task Manager control and lock removal (step 4's list never named them), the service editor and the LDAP and Kerberos editor (last in step 6's order; they ship reduced per FR-9 with their agent write tools), the data-egress line and the agent audit viewer move to Epic 16 as Stories 16.11 to 16.16. The OAuth 2.0 editors (Epic 12) run beside step 6 rather than after the polish-week Epic 11. The 2026-09-27 floor is unchanged.
+
+**Owner deviation, 2026-09-19 - the optional bonus items are scratched.** Story 13.4 and FR-79's bonus half (the article, the video and the short, and the re-plan against the technology-bonuses post) are dropped: nothing beyond the entry itself is produced before the deadline. The hygiene half of FR-79 stands.
 
 A cut large editor follows FR-9; its write tool ships in step 2 or step 4 as a get-merge-put over the exported endpoint schema, so the agent remains a conduit for that edit. The sizing of the read and write tools assumes they are generated from the screens' endpoint descriptors (FR-16).
 
@@ -1152,7 +1156,7 @@ A cut large editor follows FR-9; its write tool ships in step 2 or step 4 as a g
 
 ### 10.2 Release 1, polish week: P1 rows 2026-09-28 to 2026-10-04
 
-In scope: 5.12, 61 rows, plus token streaming by the 2026-09-08 owner decision (NFR-2). Order inside the week: anything left from step 7 of the build order first; then FR-70 and FR-71 because voters see them; then token streaming, but only if step 7 finished, since it changes the panel's render path and must not put a Release 1 agent write at risk; then the OAuth 2.0 editors (FR-75), since the task statement names OAuth setup; then FR-79's optional bonus items as the bonus post dictates; then the rest as time allows. Three of the seven days are reserved for reacting to judge and voter feedback. Nothing in the polish week may break a Release 1 screen or a Release 1 agent write; a P1 item that risks either waits for Stage 2.
+In scope: 5.12, 61 rows, plus token streaming by the 2026-09-08 owner decision (NFR-2). Order inside the week: anything left from step 7 of the build order first; then token streaming, but only if step 7 finished, since it changes the panel's render path and must not put a Release 1 agent write at risk; then FR-70 and FR-71 because voters see them (streaming moved ahead of them by the owner's re-order of 2026-09-22); then the OAuth 2.0 editors (FR-75), since the task statement names OAuth setup; then FR-79's optional bonus items as the bonus post dictates; then the rest as time allows. Three of the seven days are reserved for reacting to judge and voter feedback. Nothing in the polish week may break a Release 1 screen or a Release 1 agent write; a P1 item that risks either waits for Stage 2.
 
 ### 10.3 Stages 2 through 6: staged delivery to parity
 
@@ -1191,7 +1195,7 @@ The top risks, each with the mitigation this PRD adopts. The full register is in
 | The admin API is experimental until IRIS 2027.1 and its 2026.2 form may change; roughly forty Release 1 write rows and every write tool depend on it | FR-3 and NFR-8 pin v2 and test the generated document; write-tool schemas are generated from the endpoints' own body templates and a CI inventory fixture fails the build on a vendor change (section 8); FR-9 covers any write that cannot be made to work. Residual exposure is narrowed to the five Release 1 endpoints that publish no template |
 | One developer, 19 days, about 45 developer-days of specified work by the feasibility review's budget | The owner keeps all P0 as the commitment; the build order in 10.1 makes every step a publishable build so any step can be the cut; the listing-build readiness bar and the 2026-09-27 floor; the dated first-week decisions; FR-9 and the budget in the addendum, section 15 |
 | A judge without an LLM key sees no agent | Accepted by the owner: README key guidance per shipped provider and a walkthrough with screenshots (FR-69); no local-model profile, and no hosted demo at any point (FR-79, Open Question 8) |
-| "OAuth setup" is lists and deletes only at the deadline | Accepted by the owner: the OAuth 2.0 editors ship early in the polish week (10.2); the agent's OAuth delete tools exist at the deadline |
+| "OAuth setup" is lists and deletes only at the deadline | **Closed** 2026-09-25: Stories 12.4-12.8 shipped the five OAuth 2.0 editors, and Story 12.9 confirmed that no OAuth 2.0 tab links to the classic portal [AMENDED 2026-09-25, Story 12.9, Rule 5 tier-1: was "Accepted by the owner: the OAuth 2.0 editors ship early in the polish week (10.2); the agent's OAuth delete tools exist at the deadline"] |
 | Group by ID, which silent login depends on, is documented "do not use" | FR-1's form login is the built-in fallback; the exposure is one extra login for portal-first users |
 | The legacy CSP pages behind the task wizard, edit task, the dashboard meters, messages.log and the application error log ship compiled-only and their source cannot be recovered at all | Closed by probe on 2026-09-08, and the mitigation changed: the field lists come from the backing models instead, which are richer than the pages. `%SYS.Task` for FR-52 and FR-53, `%CSP.UI.Portal.EnsembleMonitor` for FR-56, `%CSP.UI.Portal.Audit.*` and the admin API audit-event endpoint for FR-47 |
 | Wallet, X.509, messages.log and application errors have no confirmed backing class or payload on the instance | Closed. X.509 is `%SYS.X509Credentials` and the wallet endpoint classes exist (Open Question 6); messages.log has no class and is a plain file, and the application error log is the `^ERRORS` global per namespace (Open Question 4). FR-43, FR-46, FR-62 and FR-63 no longer carry a probe as their first task |
@@ -1219,7 +1223,7 @@ Re-triaged on 2026-09-08 after the architecture spine's probes, a further round 
 11. **Closed 2026-09-08 by probe: yes mechanically, no as shipped.** `/api/atelier` has JWT disabled and sits outside the `%ISCMgtPortal` group. Enabling JWT would work, but it means modifying a vendor web application, which OcuPilot does not do on an operator's instance. Stage 3 keeps the OcuPilot API or an explicit Basic header (section 8).
 12. **Live.** When are winners announced? Not stated in any source read.
 13. **Closed during finalize.** The brief's "22 large P0 rows" was a prose error in the research; the catalog has 12 and this PRD uses that figure.
-14. **Closed 2026-09-08 by owner decision.** Streaming (CP-34) ships in the polish week, conditional on build step 7 finishing and ranked after FR-70 and FR-71 — not Stage 5 and not Stage 2. See NFR-2 and section 10.2.
+14. **Closed 2026-09-08 by owner decision.** Streaming (CP-34) ships in the polish week, conditional on build step 7 finishing — not Stage 5 and not Stage 2; the owner ranked it first among Epic 11's remaining stories on 2026-09-22. See NFR-2 and section 10.2.
 15. **Closed 2026-09-08 by configuration probe.** `/csp/sys`, `/api/admin` and `/ui/interop` all carry `GroupById = %ISCMgtPortal`, and `/ui/interop` is the application the auth spike already watched share the session, so the classic portal shares the browser login by the same mechanism. Two caveats changed FR-1 and FR-2: `/csp/sys` is not JWT-enabled, so it rides the CSP session cookie rather than the token pair; and it permits unauthenticated access, so sign-out ends the authenticated session without guaranteeing a login form appears.
 16. **Deferred, not closed.** Do install and the credential rungs work on plain IRIS Community, where install falls to `USER` and the namespace may not be interoperability-enabled? Owner decision on 2026-09-08 moved this test to **after the 2026-09-27 application floor**, rather than before the listing. Until it runs, FR-68's plain-Community claim is untested and the risk of a late failure is accepted.
 17. **Closed by the architecture spine.** Tools run in-process under the user's IRIS session. No token is needed for a tool call because the process already runs as the user, which removes the access-token-versus-turn-length mismatch entirely and makes the iris-execute-mcp-v2 handler bodies available as tool bodies.

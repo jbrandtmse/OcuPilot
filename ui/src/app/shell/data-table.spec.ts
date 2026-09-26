@@ -6,15 +6,16 @@ import { ChangeBus } from '../core/change-bus';
 import type { ConnectivityService } from '../core/connectivity';
 import type { Fault } from '../core/fault';
 import { OverlayStack } from '../core/overlay-stack';
-import { PreferenceStore } from '../core/preferences';
 import { RefreshService, type RefreshReadResult } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../core/screen-store';
+import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
 import { tableDeclaration } from '../testing/table-declaration';
 import { DataTable, TABLE_STRING_LOOKUP } from './data-table';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The data table's rendered contract in jsdom: what the frame shows before the first read, after a
@@ -76,9 +77,13 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 
 const planted: HTMLElement[] = [];
 
-async function wire(declaration: ScreenDeclaration, first: () => RefreshReadResult): Promise<Wired> {
+async function wire(
+  declaration: ScreenDeclaration,
+  first: () => RefreshReadResult,
+  unregistered: readonly string[] = []
+): Promise<Wired> {
   TestBed.resetTestingModule();
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
@@ -94,6 +99,12 @@ async function wire(declaration: ScreenDeclaration, first: () => RefreshReadResu
   });
   const store = stores.for(declaration.descriptor, declaration.refreshRates);
   const actions = new ScreenActions();
+  // DW-389: the menu lists a declared row action only while a handler is registered for it, so a
+  // harness that declares one registers it too -- a menu drawn over an action nothing can run is
+  // the control this rule exists to remove. `unregistered` names the ones a case leaves without.
+  for (const action of declaration.rowActions) {
+    if (action.id !== '' && !unregistered.includes(action.id)) actions.register(declaration.descriptor, action.id, () => {});
+  }
   const overlays = new OverlayStack();
   TestBed.configureTestingModule({
     providers: [
@@ -101,6 +112,7 @@ async function wire(declaration: ScreenDeclaration, first: () => RefreshReadResu
       { provide: RefreshService, useValue: refresh },
       { provide: ScreenActions, useValue: actions },
       { provide: OverlayStack, useValue: overlays },
+      { provide: Session, useValue: { userName: () => 'Dana' } as unknown as Session },
       { provide: ScopeService, useValue: { namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
       { provide: TABLE_STRING_LOOKUP, useValue: (key: string) => (key === 'commandBoxNoMatch' ? EMPTY_TITLE : stringFor(key)) },
     ],
@@ -201,6 +213,148 @@ describe('the data table', () => {
     expect(link.getAttribute('href')).toContain('/agent/definitions/edit/');
   });
 
+  it("Story 6.10: a declared rowTarget links the name cell at the field it names, not the row's own id", async () => {
+    // `screenForRoute` resolves a declared `rowTarget.route` out of the generated mirror, so this
+    // needs a route with a real, built, id-keyed screen -- the Definitions editor, already proven
+    // above, serves as the target. `rowTarget.field` names `Count`, a field the row's own id
+    // (`Name`) is not, so a link keyed by the wrong field is easy to tell from the right one.
+    //
+    // Mutation (Rule 19): encode `rowKey(row, screen)` instead of `fieldOf(row, rowTarget.field)`
+    // in `data-table.ts` -> this goes red, encoding `/csp/app00` instead of `0`.
+    const wired = await wire(
+      tableDeclaration({ rowTarget: { route: 'agent/definitions/edit', field: 'Count' } }),
+      ok(rows(2))
+    );
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const link = wired.host().querySelector('[aria-rowindex="2"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('/agent/definitions/edit/0?ns=HSCUSTOM');
+  });
+
+  it('Story 6.3: the Wallet list links each name cell at its Secrets list, and the Secrets list links each at the wallet secret form', async () => {
+    // `childListFor` resolves the built, unlisted, id-keyed screen whose `parentScope` is the list's
+    // route out of the generated mirror, so the Wallet list's own route is what is needed here.
+    //
+    // Mutation (Rule 19): drop `childListFor(screen)` from the `linkTarget` chain in `data-table.ts`
+    // -> the first link assertion goes red, reading the Wallet list's own id route instead.
+    const wallet = await wire(tableDeclaration({ route: 'security/wallet' }), ok(rows(2)));
+    await wallet.refresh.readNow();
+    await settle(wallet.fixture);
+    const link = wallet.host().querySelector('[aria-rowindex="2"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('/security/wallet/secrets/%252Fcsp%252Fapp00?ns=HSCUSTOM');
+    for (const element of planted.splice(0)) element.remove();
+
+    // A parent-scoped list's own id route names its parent's id, so a row is never linked there;
+    // the Secrets list pairs the wallet secret form (Story 8.6), which is where its name cell goes.
+    const secrets = await wire(tableDeclaration({ route: 'security/wallet/secrets', parentScope: 'security/wallet' }), ok(rows(2)));
+    await secrets.refresh.readNow();
+    await settle(secrets.fixture);
+    const secretLink = secrets.host().querySelector('[aria-rowindex="2"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(secretLink).not.toBeNull();
+    expect(secretLink.getAttribute('href')).toBe('/security/wallet/secrets/edit/%252Fcsp%252Fapp00?ns=HSCUSTOM');
+  });
+
+  it('Story 9.8: a list that pairs both a detail screen and an editor links each name cell at the detail screen', async () => {
+    // Task schedule pairs Task details and, since Edit task reads the id, the task form's id route
+    // too; the name cell keeps opening the details, which is where Edit is reached from.
+    //
+    // Mutation (Rule 19): drop the detail-first term from the `linkTarget` chain in `data-table.ts`
+    // -> this goes red, reading the editor's route instead.
+    const wired = await wire(tableDeclaration({ route: 'tasks/schedule' }), ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const link = wired.host().querySelector('[aria-rowindex="2"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('/tasks/schedule/details/%252Fcsp%252Fapp00?ns=HSCUSTOM');
+  });
+
+  const CLASSIC_HREF = '/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen';
+  const rowLinked = () =>
+    tableDeclaration({
+      archetype: 'detail',
+      classicLinkExemption: {
+        exempt: true,
+        reason: 'r',
+        label: 'OAuth 2.0 Client Configuration',
+        href: CLASSIC_HREF,
+        rowLink: {
+          params: [
+            { name: 'PID', field: 'Name' },
+            { name: 'IssuerEndpointID', field: 'Note' },
+            { name: 'IssuerEndpoint', field: 'NameSpace' },
+          ],
+        },
+      },
+    });
+
+  it('Story 6.4 AC4: a declared row link draws the name cell as a new-tab anchor at the classic editor, ahead of the in-app link', async () => {
+    // Mutation (Rule 19): ignore `rowLink` in `data-table.ts` (drop `rowLinked` from the chain) -> the
+    // anchor reads the table's own id route and these assertions go red.
+    const wired = await wire(rowLinked(), ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const link = wired.host().querySelector('[aria-rowindex="3"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe(`${CLASSIC_HREF}?PID=%2Fcsp%2Fapp01&IssuerEndpointID=note%201&IssuerEndpoint=USER`);
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noreferrer');
+    expect(link.getAttribute('aria-description')).toBe('Opens OAuth 2.0 Client Configuration in the classic portal in a new tab.');
+
+    const opened: unknown[] = [];
+    const originalOpen = window.open;
+    window.open = ((...args: unknown[]) => {
+      opened.push(args);
+      return null;
+    }) as typeof window.open;
+    const clicks: boolean[] = [];
+    link.addEventListener('click', (event) => {
+      clicks.push(event.defaultPrevented);
+      event.preventDefault();
+    });
+    try {
+      link.click();
+      await settle(wired.fixture);
+      expect(clicks).toEqual([false]);
+      expect(opened).toEqual([]);
+      expect(TestBed.inject(Router).url).toBe('/web-applications/probe?ns=HSCUSTOM');
+      expect(wired.store.selection()).toEqual([]);
+
+      const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+      grid.focus();
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      await settle(wired.fixture);
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await settle(wired.fixture);
+      expect(clicks).toEqual([false, false]);
+      expect(opened).toEqual([]);
+      expect(TestBed.inject(Router).url).toBe('/web-applications/probe?ns=HSCUSTOM');
+    } finally {
+      window.open = originalOpen;
+    }
+  });
+
+  it('Story 6.4 blank-value guard: a row whose IssuerEndpointID reads empty draws its name as text, never a link', async () => {
+    // Mutation (Rule 19): build the row link in `classicRowHref` even when a param's field is empty ->
+    // the blank row's name cell becomes an anchor and this goes red.
+    const blank = rows(3).map((row, index) => (index === 2 ? { ...row, Note: '' } : row));
+    const wired = await wire(rowLinked(), ok(blank));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    for (const [rowIndex, name] of [
+      ['2', '/csp/app00'],
+      ['4', '/csp/app02'],
+    ]) {
+      const nameCell = wired.host().querySelector(`[aria-rowindex="${rowIndex}"] [role="gridcell"]`) as HTMLElement;
+      expect(nameCell.querySelector('a')).toBeNull();
+      expect(nameCell.textContent?.trim()).toBe(name);
+    }
+    expect(wired.host().querySelector('[aria-rowindex="3"] [role="gridcell"] a')).not.toBeNull();
+  });
+
   it('a screen with no id route draws the name as code text with no link, and Enter navigates nowhere; the grid is named by the screen label', async () => {
     // Mutation (Rule 19): build the row URL without `hasIdRoute` -> the link assertion goes red.
     const wired = await wire(tableDeclaration({ id: { kind: 'none', parts: [] } }), ok(rows(2)));
@@ -218,6 +372,20 @@ describe('the data table', () => {
     grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await settle(wired.fixture);
     expect(TestBed.inject(Router).url).toBe('/web-applications/probe?ns=HSCUSTOM');
+  });
+
+  // Story 15.9 (DW-1648): the pinned column's header cell is the one the stylesheet pins beside the
+  // body's trigger cells. Mutation (Rule 19): drop the class -> this goes red.
+  it('the trigger column\'s header cell carries the pinned class, and no data column\'s does', async () => {
+    const declaration = tableDeclaration({ rowActions: [{ id: 'disable', selfProtection: '' }] });
+    const wired = await wire(declaration, ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const headers = Array.from(wired.host().querySelectorAll('[role="columnheader"]')) as HTMLElement[];
+    const pinned = headers.filter((cell) => cell.classList.contains('ocu-data-table-header-cell-trigger'));
+    expect(pinned).toHaveLength(1);
+    expect(pinned[0]).toBe(headers[headers.length - 1]);
+    expect(pinned[0].hasAttribute('data-column')).toBe(false);
   });
 
   it('contextmenu on the header opens no row menu', async () => {
@@ -354,7 +522,12 @@ describe('the data table', () => {
     await settle(wired.fixture);
     const menu = wired.host().querySelector('[role="menu"]') as HTMLElement;
     expect(menu).not.toBeNull();
-    expect(Array.from(menu.querySelectorAll('[role="menuitem"]')).map((item) => item.textContent?.trim())).toEqual(['disable']);
+    // The published label, resolved through the one label map the command bar and the command box
+    // resolve theirs through (DW-370): a menu naming the bare id would name the same action
+    // differently on the three surfaces.
+    expect(Array.from(menu.querySelectorAll('[role="menuitem"]')).map((item) => item.textContent?.trim())).toEqual([
+      STRINGS.agentDefinitionDisable,
+    ]);
     expect(wired.overlays.top()).not.toBe('');
 
     expect(wired.overlays.closeTop()).toBe(true);
@@ -380,6 +553,117 @@ describe('the data table', () => {
     expect(wired.store.selection()).toEqual(['/csp/app00']);
   });
 
+  it('DW-389: a declared row action with no registered handler is not in the row menu, beside one that is', async () => {
+    // Per action, not all-or-nothing: the same screen declares two and registers one.
+    //
+    // Mutation (Rule 19): drop the `.filter((action) => this.actions.has(screen.descriptor,
+    // action.id))` line from `DataTable.menuItems` -> `enable` is listed beside `disable`, red.
+    const declaration = tableDeclaration({
+      rowActions: [
+        { id: 'enable', selfProtection: '' },
+        { id: 'disable', selfProtection: '' },
+      ],
+    });
+    const wired = await wire(declaration, ok(rows(2)), ['enable']);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    (wired.host().querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const items = Array.from(wired.host().querySelectorAll('[role="menu"] [role="menuitem"]')).map((item) =>
+      item.querySelector('.ocu-data-table-menu-label')?.textContent?.trim()
+    );
+    expect(items).toEqual([STRINGS.agentDefinitionDisable]);
+  });
+
+  it("AD-53: a self-protected row's menu entry stays listed, aria-disabled with the reason inline, and runs nothing", async () => {
+    // The row menu's half of the refusal the command bar and the command box also draw: a
+    // non-selectable entry a key manager still reaches, never the `disabled` attribute, with the
+    // published sentence after the label and in its accessible name. An ordinary row's entry is
+    // an ordinary one.
+    //
+    // Mutation (Rule 19): make `DataTable.menuItems` compute `const reason = ''` -> the protected
+    // row's entry is drawn selectable with no reason and its click runs the handler, red.
+    const declaration = tableDeclaration({ rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }] });
+    const listed = [
+      { Name: '/api/ocupilot', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n' },
+      { Name: '/csp/myapp', NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n' },
+    ];
+    const wired = await wire(declaration, ok(listed), ['delete']);
+    let runs = 0;
+    wired.actions.register(declaration.descriptor, 'delete', () => (runs += 1));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    (wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const refused = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(refused.querySelector('.ocu-data-table-menu-label')?.textContent?.trim()).toBe(STRINGS.actionDelete);
+    expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(
+      STRINGS.webAppServesOcuPilotRefusal
+    );
+    expect(refused.getAttribute('aria-label')).toBe(`${STRINGS.actionDelete} ${STRINGS.webAppServesOcuPilotRefusal}`);
+    expect(refused.getAttribute('aria-disabled')).toBe('true');
+    expect(refused.hasAttribute('disabled')).toBe(false);
+    expect(refused.getAttribute('tabindex')).toBe('-1');
+    refused.click();
+    await settle(wired.fixture);
+    expect(runs).toBe(0);
+
+    (wired.host().querySelector('[aria-rowindex="3"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const offered = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(offered.querySelector('.ocu-data-table-menu-reason')).toBeNull();
+    expect(offered.hasAttribute('aria-disabled')).toBe(false);
+    offered.click();
+    await settle(wired.fixture);
+    expect(runs).toBe(1);
+  });
+
+  it("Story 7.2: the signed-in account's protected-account entry carries its published sentence and runs nothing", async () => {
+    // Mutation (Rule 19): drop `this.signedIn()` from `menuItems`' call -> the entry is offered, red.
+    const declaration = tableDeclaration({ rowActions: [{ id: 'delete', selfProtection: 'protected-account' }] });
+    const wired = await wire(declaration, ok([{ Name: 'dana', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n' }]), ['delete']);
+    let runs = 0;
+    wired.actions.register(declaration.descriptor, 'delete', () => (runs += 1));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    (wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const entry = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(entry.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.userRefusalCurrentUser);
+    expect(entry.getAttribute('aria-disabled')).toBe('true');
+    entry.click();
+    await settle(wired.fixture);
+    expect(runs).toBe(0);
+  });
+
+  it("Story 9.3: a system-resource entry reads the selected row's own AllowDelete", async () => {
+    // Mutation (Rule 19): drop the row from `menuItems`' call -> the not-deletable entry is offered, red.
+    const base = tableDeclaration();
+    const declaration = tableDeclaration({
+      rowActions: [{ id: 'delete', selfProtection: 'system-resource' }],
+      read: base.read === null ? null : { ...base.read, fields: [...base.read.fields, 'AllowDelete'] },
+    });
+    const listed = [
+      { Name: 'alpha', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n', AllowDelete: false },
+      { Name: 'beta', NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n', AllowDelete: true },
+    ];
+    const wired = await wire(declaration, ok(listed), ['delete']);
+    wired.actions.register(declaration.descriptor, 'delete', () => undefined);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    (wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const refused = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.resourceRefusalSystem);
+    expect(refused.getAttribute('aria-disabled')).toBe('true');
+    (wired.host().querySelector('[aria-rowindex="3"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const offered = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(offered.hasAttribute('aria-disabled')).toBe(false);
+  });
+
   it('a click selects its row and clears its changed mark; a click on the name link navigates and selects nothing', async () => {
     // Mutation (Rule 19): make `onRowClick` a no-op -> the selection assertion goes red.
     const wired = await wire(tableDeclaration(), ok(rows(3)));
@@ -399,6 +683,139 @@ describe('the data table', () => {
     await settle(wired.fixture);
     expect(TestBed.inject(Router).url).toBe('/web-applications/probe/%252Fcsp%252Fapp02?ns=HSCUSTOM');
     expect(wired.store.selection()).toEqual(['/csp/app01']);
+  });
+
+  it('Story 5.7: a marked row is announced once, politely, naming the row and what happened', async () => {
+    // Mutation (Rule 19): announce on every `sync()` rather than once per newly marked key ->
+    // the "announced once" assertion goes red, because a silent tick would rewrite the slot and a
+    // screen reader would hear the same change again.
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    const slot = () => wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement;
+
+    await settle(wired.fixture);
+    expect(slot().getAttribute('role')).toBe('status');
+    expect(slot().textContent?.trim()).toBe('');
+
+    wired.store.markChanged('/csp/app01', 'updated');
+    await settle(wired.fixture);
+    expect(slot().textContent?.trim()).toBe('Updated: /csp/app01 updated');
+
+    // A tick that marks nothing leaves the slot exactly as it was, which is what "the refresh
+    // stamp and refresh ticks stay unannounced" means at this tier.
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    expect(slot().textContent?.trim()).toBe('Updated: /csp/app01 updated');
+
+    wired.store.markChanged('/csp/app02', 'deleted');
+    await settle(wired.fixture);
+    expect(slot().textContent?.trim()).toBe('Updated: /csp/app02 deleted');
+  });
+
+  it('Story 5.7: a second change to a row that is still marked is announced too', async () => {
+    // Mutation (Rule 19): key `announcedChanged` on the row alone again -> the last assertion goes
+    // red, and a screen-reader user would hear the first of two writes to one row and not the
+    // second.
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const slot = () =>
+      (wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement).textContent?.trim();
+
+    wired.store.markChanged('/csp/app01', 'updated');
+    await settle(wired.fixture);
+    expect(slot()).toBe('Updated: /csp/app01 updated');
+
+    // An identical re-mark says nothing again: the store swallows it and never notifies.
+    wired.store.markChanged('/csp/app02', 'updated');
+    await settle(wired.fixture);
+    expect(slot()).toBe('Updated: /csp/app02 updated');
+    wired.store.markChanged('/csp/app01', 'updated');
+    await settle(wired.fixture);
+    expect(slot()).toBe('Updated: /csp/app02 updated');
+
+    // A second write to app01, which the user never moved onto, so its mark is still standing.
+    wired.store.markChanged('/csp/app01', 'deleted');
+    await settle(wired.fixture);
+    expect(slot()).toBe('Updated: /csp/app01 deleted');
+    expect(wired.store.changed().has('/csp/app01')).toBe(true);
+  });
+
+  it('Story 5.7: the change names the canonical id, and the row the instance spells otherwise is marked', async () => {
+    // Mutation (Rule 19): compare the bus key against the row keys directly again
+    // (`changed.has(key)`, `lastKeys.includes(key)`) -> every assertion here goes red. A confirmed
+    // write to a web application whose stored name is not already folded would leave the screen
+    // reporting nothing at all: no highlight, no selection, no announcement.
+    const spelled = [
+      { Name: '/csp/App01', NameSpace: 'USER', Count: 0, Enabled: true, Note: null },
+      { Name: '/csp/other', NameSpace: 'USER', Count: 1, Enabled: false, Note: 'note' },
+    ];
+    const wired = await wire(tableDeclaration(), ok(spelled));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    // The spelling `EntityRef.Key` folds to and `TurnStore.decideProposal` publishes.
+    wired.store.markChanged('/csp/app01', 'created');
+    wired.store.setPendingSelection('/csp/app01');
+    await settle(wired.fixture);
+
+    const marked = wired.host().querySelectorAll('.ocu-data-table-row-changed');
+    expect(marked.length).toBe(1);
+    expect(marked[0].textContent).toContain('/csp/App01');
+    expect(wired.store.selection()).toEqual(['/csp/App01']);
+    expect(wired.store.active()).toBe('/csp/App01');
+    expect(
+      (wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement).textContent?.trim()
+    ).toBe('Updated: /csp/App01 created');
+  });
+
+  it('Story 5.7: a pending selection is taken up when the read brings the row, and keeps its mark', async () => {
+    // Mutation (Rule 19): route `applyPendingSelection` through `select()` -> the "keeps its
+    // mark" assertion goes red, because `select()` clears the highlight on the way.
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    wired.store.markChanged('/csp/app02', 'created');
+    wired.store.setPendingSelection('/csp/app02');
+    await settle(wired.fixture);
+
+    expect(wired.store.selection()).toEqual(['/csp/app02']);
+    expect(wired.store.active()).toBe('/csp/app02');
+    expect(wired.store.pendingSelection()).toBe('');
+    expect(wired.store.changed().has('/csp/app02')).toBe(true);
+
+    // A key no read has brought is left standing rather than selected: a create the instance has
+    // not finished is still a create.
+    wired.store.setPendingSelection('/csp/appZZ');
+    await settle(wired.fixture);
+    expect(wired.store.pendingSelection()).toBe('/csp/appZZ');
+    expect(wired.store.selection()).toEqual(['/csp/app02']);
+  });
+
+  it('Story 5.7: moving onto a row the instance spells otherwise clears the mark the change named', async () => {
+    // The mark lands under the canonical id and the row carries the instance's own spelling, so
+    // `clearChanged(rowKey)` clears nothing -- on exactly the rows `viewKeyFor` was written for.
+    //
+    // Mutation (Rule 19): clear with the row key again (`store.clearChanged(key)` in `select()`)
+    // -> both assertions below go red and the row reads "Changed" for the life of the store,
+    // while the canonical-key row above stays green.
+    const spelled = [
+      { Name: '/csp/App01', NameSpace: 'USER', Count: 0, Enabled: true, Note: null },
+      { Name: '/csp/other', NameSpace: 'USER', Count: 1, Enabled: false, Note: 'note' },
+    ];
+    const wired = await wire(tableDeclaration(), ok(spelled));
+    await wired.refresh.readNow();
+    wired.store.markChanged('/csp/app01', 'updated');
+    await settle(wired.fixture);
+    expect(wired.host().querySelector('.ocu-data-table-row-changed')).not.toBeNull();
+
+    const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+    grid.focus();
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await settle(wired.fixture);
+    expect(wired.store.changed().size).toBe(0);
+    expect(wired.host().querySelector('.ocu-data-table-row-changed')).toBeNull();
   });
 
   it('moving onto a changed row clears its mark', async () => {
@@ -525,6 +942,203 @@ describe('the data table', () => {
     await settle(wired.fixture);
     expect(document.activeElement).toBe(wired.host().querySelector('.ocu-data-table-empty'));
     expect(wired.store.selection()).toEqual([]);
+  });
+
+  // Story 15.8's keyboard resize. jsdom lays nothing out, so the width a resize starts from is the
+  // column's own: the width set, else the larger of its label and its kind's default.
+  //
+  // Mutation (Rule 19): drop the `announcement.set` from `resizeActiveColumn` -> the first case goes
+  // red on the status text.
+  it('Story 15.8: Alt/Option+Shift+Right and Left resize the active cell\'s column by 16px, write the store and announce the width', async () => {
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+    const slot = () => wired.host().querySelector('.ocu-data-table-announcement')?.textContent?.trim();
+    grid.focus();
+    for (const key of ['ArrowDown', 'ArrowRight', 'ArrowRight']) {
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      await settle(wired.fixture);
+    }
+    const cell = wired.host().querySelector('[aria-rowindex="2"] [role="gridcell"]:nth-child(2)') as HTMLElement;
+    expect(grid.getAttribute('aria-activedescendant')).toBe(cell.id);
+
+    for (const key of ['ArrowRight', 'ArrowRight', 'ArrowLeft']) {
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key, altKey: true, shiftKey: true, bubbles: true }));
+      await settle(wired.fixture);
+    }
+    expect(wired.store.columnWidths().get('NameSpace')).toBe(240 + 16);
+    expect(slot()).toBe(`${stringFor('headerNamespaceLabel')} column, 256 px wide`);
+    expect(grid.getAttribute('aria-activedescendant')).toBe(cell.id);
+    const header = wired.host().querySelector('.ocu-data-table-header-row') as HTMLElement;
+    expect(header.style.gridTemplateColumns).toContain('256px');
+  });
+
+  it('Story 15.8: with no active data cell the resize keys change nothing and announce nothing, and plain Right still steps', async () => {
+    const declaration = tableDeclaration({ rowActions: [{ id: 'disable', selfProtection: '' }] });
+    const wired = await wire(declaration, ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+    const slot = () => wired.host().querySelector('.ocu-data-table-announcement')?.textContent?.trim();
+    grid.focus();
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await settle(wired.fixture);
+    const row = wired.host().querySelector('[aria-rowindex="2"]') as HTMLElement;
+
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, shiftKey: true, bubbles: true }));
+    await settle(wired.fixture);
+    expect(grid.getAttribute('aria-activedescendant')).toBe(row.id);
+    expect(wired.store.columnWidths().size).toBe(0);
+    expect(slot()).toBe('');
+
+    for (let step = 0; step < 6; step += 1) {
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      await settle(wired.fixture);
+    }
+    const trigger = row.querySelector('.ocu-data-table-cell-trigger') as HTMLElement;
+    expect(grid.getAttribute('aria-activedescendant')).toBe(trigger.id);
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true, shiftKey: true, bubbles: true }));
+    await settle(wired.fixture);
+    expect(wired.store.columnWidths().size).toBe(0);
+    expect(slot()).toBe('');
+    expect(grid.getAttribute('aria-activedescendant')).toBe(trigger.id);
+
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    await settle(wired.fixture);
+    const note = row.querySelectorAll('[role="gridcell"]')[4] as HTMLElement;
+    expect(grid.getAttribute('aria-activedescendant')).toBe(note.id);
+  });
+
+  // DW-146: a bare `title` cannot be reached by keyboard, so the table carries none; a cut value is
+  // the tooltip's.
+  //
+  // Mutation (Rule 19): add `[title]="cell.view.text"` to the text span -> this goes red.
+  it('Story 15.8: no element under the table carries a title attribute', async () => {
+    const declaration = tableDeclaration({ rowActions: [{ id: 'disable', selfProtection: '' }] });
+    const wired = await wire(declaration, ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    expect(wired.host().querySelectorAll('.ocu-data-table-text').length).toBeGreaterThan(0);
+    expect(wired.host().querySelectorAll('[title]').length).toBe(0);
+  });
+
+  // jsdom lays nothing out, so every element is made to read as cut here: the pointer resting on a
+  // text cell then shows the tooltip, and a skeleton cell, which holds no text or link, still shows none.
+  //
+  // Mutation (Rule 19): show the tooltip after the delay without asking `cutText` -> the skeleton
+  // cell's assertion goes red.
+  it('Story 15.8: the pointer resting on a cut text cell shows the tooltip, and on a skeleton cell shows none', async () => {
+    const scrollWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth');
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { configurable: true, get: () => 100 });
+    try {
+      const wired = await wire(tableDeclaration(), ok(rows(3)));
+      wired.fixture.componentRef.setInput('pendingFields', ['Note']);
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      const cell = (column: number) =>
+        wired.host().querySelectorAll('[aria-rowindex="3"] [role="gridcell"]')[column] as HTMLElement;
+      const rest = async (target: Element) => {
+        target.dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await settle(wired.fixture);
+      };
+      const tooltip = () => wired.host().querySelector('.ocu-data-table-tooltip');
+
+      expect(cell(4).querySelector('.ocu-data-table-cell-skeleton')).not.toBeNull();
+      await rest(cell(4).querySelector('.ocu-data-table-cell-skeleton') as Element);
+      expect(tooltip()).toBeNull();
+
+      await rest(cell(1).querySelector('.ocu-data-table-text') as Element);
+      expect(tooltip()?.textContent?.trim()).toBe('USER');
+      expect(tooltip()?.getAttribute('aria-hidden')).toBe('true');
+    } finally {
+      if (scrollWidth !== undefined) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', scrollWidth);
+      else delete (HTMLElement.prototype as { scrollWidth?: number }).scrollWidth;
+    }
+  });
+
+  // The shell's Ctrl/Cmd+B and +I handlers listen on the document in the bubble phase, are registered
+  // before any table, and do nothing while the overlay stack is not empty.
+  //
+  // Mutation (Rule 19): register the table's chord listener in the bubble phase -> the shell-side
+  // listener reads the tooltip still on the stack, red.
+  it('Story 15.8: a Ctrl/Cmd chord takes a showing tooltip off the overlay stack before the shell\'s own document listener reads it', async () => {
+    const scrollWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth');
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { configurable: true, get: () => 100 });
+    const seen: string[] = [];
+    let overlays: OverlayStack | null = null;
+    const shell = () => seen.push(overlays?.top() ?? 'no stack');
+    document.addEventListener('keydown', shell);
+    try {
+      const wired = await wire(tableDeclaration(), ok(rows(3)));
+      overlays = wired.overlays;
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      const text = wired.host().querySelectorAll('[aria-rowindex="3"] [role="gridcell"]')[1].querySelector('.ocu-data-table-text') as Element;
+      text.dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      await settle(wired.fixture);
+      expect(wired.host().querySelector('.ocu-data-table-tooltip')).not.toBeNull();
+      expect(wired.overlays.top()).not.toBe('');
+
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true }));
+      expect(seen).toEqual(['']);
+    } finally {
+      document.removeEventListener('keydown', shell);
+      if (scrollWidth !== undefined) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', scrollWidth);
+      else delete (HTMLElement.prototype as { scrollWidth?: number }).scrollWidth;
+    }
+  });
+
+  // jsdom lays nothing out, so each header label is made to measure 300px: an unsized column's track
+  // then floors at the label, not at its kind's default.
+  //
+  // Mutation (Rule 19): build the layout over an empty label map instead of the measured one -> red.
+  it('Story 15.8: a header label wider than its kind\'s default floors its column', async () => {
+    const measure = Object.getOwnPropertyDescriptor(Range.prototype, 'getBoundingClientRect');
+    Object.defineProperty(Range.prototype, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ width: 300, height: 16, top: 0, left: 0, right: 300, bottom: 16, x: 0, y: 0 }),
+    });
+    try {
+      const wired = await wire(tableDeclaration(), ok(rows(3)));
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      const header = wired.host().querySelector('.ocu-data-table-header-row') as HTMLElement;
+      expect(header.style.gridTemplateColumns.startsWith('minmax(301px, 240fr) minmax(301px, 240fr) minmax(301px, 112fr)')).toBe(true);
+    } finally {
+      if (measure !== undefined) Object.defineProperty(Range.prototype, 'getBoundingClientRect', measure);
+      else delete (Range.prototype as { getBoundingClientRect?: unknown }).getBoundingClientRect;
+    }
+  });
+
+  it('Story 15.8: every data header carries an aria-hidden resize hit area that takes no focus, and the rows share one template and minimum width', async () => {
+    const declaration = tableDeclaration({ rowActions: [{ id: 'disable', selfProtection: '' }] });
+    const wired = await wire(declaration, ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const handles = Array.from(wired.host().querySelectorAll('.ocu-data-table-resize')) as HTMLElement[];
+    expect(handles.length).toBe(declaration.table!.columns.length);
+    expect(handles.every((handle) => handle.getAttribute('aria-hidden') === 'true' && !handle.hasAttribute('tabindex'))).toBe(true);
+    const rowsDrawn = Array.from(wired.host().querySelectorAll('.ocu-data-table-row')) as HTMLElement[];
+    const templates = new Set(rowsDrawn.map((element) => element.style.gridTemplateColumns));
+    const minimums = new Set(rowsDrawn.map((element) => element.style.minWidth));
+    expect(templates.size).toBe(1);
+    expect(minimums).toEqual(new Set([`${240 + 240 + 112 + 112 + 160 + 52}px`]));
+  });
+
+  // Mutation (Rule 19): count any pointermove as a drag -> the press alone stores a width, red.
+  it('Story 15.8: a press on a header edge that does not change the width stores nothing', async () => {
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const handle = wired.host().querySelector('.ocu-data-table-resize') as HTMLElement;
+    for (const type of ['pointerdown', 'pointermove', 'pointerup']) {
+      handle.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0, clientX: 40 }));
+    }
+    await settle(wired.fixture);
+    expect([...wired.store.columnWidths()]).toEqual([]);
   });
 
   it('DW-18 Filtered to zero: a focused grid with no row matching the filter asks for the filter field', async () => {

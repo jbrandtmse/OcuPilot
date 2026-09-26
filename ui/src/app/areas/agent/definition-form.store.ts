@@ -6,7 +6,7 @@ import {
   AGENT_DEFINITION_SCOPE,
 } from '../../core/agent-status';
 import { ApiService, type JsonResult } from '../../core/api';
-import { ChangeBus } from '../../core/change-bus';
+import { ChangeBus, type ChangeAction } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
 import { STRINGS } from '../../core/strings';
 import {
@@ -33,11 +33,17 @@ export interface ProviderRow {
   readonly defaultEndpoint: string;
   readonly endpointRequired: boolean;
   readonly canonicalMaxTokens: number;
-  readonly canonicalTemperature: number;
+  /** `null` when the row declares none, so a new definition leaves the provider's default in force. */
+  readonly canonicalTemperature: number | null;
   readonly defaultEnvVarName: string;
   readonly defaultCredentialName: string;
   readonly keyPrefix: string;
   readonly allowsLocal: boolean;
+  /**
+   * Whether this family's request may carry a temperature (Story 10.4). The form reads the column
+   * rather than a provider name; an answer that omits it keeps the field applicable.
+   */
+  readonly acceptsTemperature: boolean;
   /**
    * The sentence an inline key-shape check renders, written on the server beside the refusal it
    * mirrors and served as data (DW-339, AD-39). The client publishes no per-code copy.
@@ -55,6 +61,7 @@ export const WRITABLE_FIELDS = [
   'model',
   'endpointUrl',
   'markedLocal',
+  'httpAcknowledged',
   'credType',
   'envVarName',
   'credentialName',
@@ -70,7 +77,28 @@ export const WRITABLE_FIELDS = [
 export type WritableField = (typeof WRITABLE_FIELDS)[number];
 
 /** The fields whose value is a JSON boolean on the wire; anything else is refused by the server. */
-const BOOLEAN_FIELDS: readonly string[] = ['markedLocal', 'readOnly', 'enabled'];
+const BOOLEAN_FIELDS: readonly string[] = [
+  'markedLocal',
+  'httpAcknowledged',
+  'readOnly',
+  'enabled',
+];
+
+/** The `credType` a definition on a family that serves no local model carries. */
+export const CRED_TYPE_CREDS = 'creds';
+
+/**
+ * The `credType` that reads the key from an environment variable on the instance's host. It is the
+ * only rung a namespace without the credentials store can use, so the form holds a definition on
+ * it there (FR-26).
+ */
+export const CRED_TYPE_ENV = 'env';
+
+/**
+ * The `credType` that names no credential at all, accepted by the server only on a provider whose
+ * catalog row sets `allowsLocal` (`OcuPilot.Kernel.AgentRules.CREDTYPENONE`).
+ */
+export const CRED_TYPE_NONE = 'none';
 
 /**
  * The fields the provider cascade rewrites that the form renders **no control for**.
@@ -78,6 +106,9 @@ const BOOLEAN_FIELDS: readonly string[] = ['markedLocal', 'readOnly', 'enabled']
  * They are sent in every body and the server refuses on them by name (`AGENT.CREDNAME.*`,
  * `AGENT.ENVVAR.*`), so their violations reach the error summary -- but nothing can focus or blur
  * them, so `dropStaleViolation` can never run on either. `setProvider` clears them itself.
+ *
+ * `envVarName` is rendered in env mode (`envMode()`), and is then treated like any other rendered
+ * field.
  */
 const CASCADE_ONLY_FIELDS: readonly string[] = ['credentialName', 'envVarName'];
 
@@ -116,6 +147,19 @@ function numberAt(source: unknown, key: string): number {
   if (source === null || typeof source !== 'object') return 0;
   const value = (source as Record<string, unknown>)[key];
   return typeof value === 'number' ? value : 0;
+}
+
+/** True unless the member is an explicit `false`, so a column an older answer omits reads as set. */
+function notFalseAt(source: unknown, key: string): boolean {
+  if (source === null || typeof source !== 'object') return true;
+  return (source as Record<string, unknown>)[key] !== false;
+}
+
+/** A number, or `null` for anything else -- JSON `null` included, which is how "unset" arrives. */
+function optionalNumberAt(source: unknown, key: string): number | null {
+  if (source === null || typeof source !== 'object') return null;
+  const value = (source as Record<string, unknown>)[key];
+  return typeof value === 'number' ? value : null;
 }
 
 /**
@@ -162,6 +206,13 @@ export class DefinitionForm {
 
   private providerRows: readonly ProviderRow[] = [];
 
+  /**
+   * Whether this namespace can reach the credentials rung, as `GET /agent/providers` reports it.
+   * Only an explicit `false` turns it off, so an answer that omits the flag keeps the form as it
+   * was.
+   */
+  private credentialsRungValue = true;
+
   private violationList: readonly Violation[] = [];
 
   private envelopeReason = '';
@@ -177,8 +228,9 @@ export class DefinitionForm {
   private refusalPairValue = '';
 
   /**
-   * What each writable field held when that refusal arrived, so a blur can tell a field whose
-   * value has moved since from one the refusal still describes (DW-373).
+   * What each writable field held when the refused request was sent, so a blur can tell a field
+   * whose value has moved since from one the refusal still describes (DW-373). Taken at send rather
+   * than at arrival: an edit typed while the request was out is not what the refusal judged.
    */
   private refusedValues: Record<string, string> = {};
 
@@ -269,9 +321,34 @@ export class DefinitionForm {
     return this.providerRows;
   }
 
+  /**
+   * Whether the form is in env mode: the namespace cannot reach the credentials rung, so the
+   * definition reads its key from an environment variable, the key field is not offered, and
+   * `envVarName` is a field the form renders.
+   */
+  envMode(): boolean {
+    return !this.credentialsRungValue;
+  }
+
+  /**
+   * The rung `credType` may hold in this namespace: `creds` becomes `env` in env mode, and every
+   * other value is itself.
+   */
+  admissibleCredType(credType: string): string {
+    return this.envMode() && credType === CRED_TYPE_CREDS ? CRED_TYPE_ENV : credType;
+  }
+
   /** The catalog row for the provider now selected, or `null`. */
   provider(): ProviderRow | null {
     return this.providerRows.find((row) => row.key === this.value('provider')) ?? null;
+  }
+
+  /**
+   * Whether the selected provider's row takes a temperature (Story 10.4). No row selected yet
+   * reads as applicable, so the field is never shut before the catalog has answered.
+   */
+  temperatureApplies(): boolean {
+    return this.provider()?.acceptsTemperature ?? true;
   }
 
   violations(): readonly Violation[] {
@@ -373,6 +450,7 @@ export class DefinitionForm {
     this.testingValue = false;
     this.buffer = emptyBuffer();
     this.loadedRecord = null;
+    this.credentialsRungValue = true;
     this.violationList = [];
     this.envelopeReason = '';
     this.refusalCodeValue = '';
@@ -432,6 +510,7 @@ export class DefinitionForm {
       return;
     }
     this.absorb(result.body);
+    this.holdEnvRung();
     this.loadedValue = true;
     this.notify();
   }
@@ -469,7 +548,10 @@ export class DefinitionForm {
     // just made untrue would stand in the summary with no way to clear it but another Save. The
     // four rewritten fields that DO render a control keep their violations until the reader blurs
     // them, which is where they can see what replaced the value.
-    for (const field of CASCADE_ONLY_FIELDS) this.clearFieldViolation(field);
+    for (const field of CASCADE_ONLY_FIELDS) {
+      if (field === 'envVarName' && this.envMode()) continue;
+      this.clearFieldViolation(field);
+    }
     this.markDirty();
     this.notify();
   }
@@ -554,12 +636,13 @@ export class DefinitionForm {
     this.outcomeValue = '';
     this.notify();
 
+    const sent = this.snapshotValues();
     const result = creating
       ? await this.post(AGENT_DEFINITIONS_PATH, this.body({ omitEnabled: true }))
       : await this.put(`${AGENT_DEFINITIONS_PATH}/${encodeURIComponent(this.idValue)}`, this.body({}));
     if (generation !== this.generation) return false;
     this.savingValue = false;
-    if (!this.absorbAnswer(result)) {
+    if (!this.absorbAnswer(result, sent)) {
       this.notify();
       return false;
     }
@@ -569,7 +652,7 @@ export class DefinitionForm {
     // save that succeeds leaves it unstored, and clearing the dirty flag over it would let the
     // leave guard wave them off the page and drop it without a word (DW-340, AC2).
     this.formDirty.setDirty(this.keyValue !== '');
-    this.publishChange();
+    this.publishChange(creating ? 'created' : 'updated');
     this.notify();
     return true;
   }
@@ -606,9 +689,10 @@ export class DefinitionForm {
     };
 
     if (this.creating()) {
+      const sentToCreate = this.snapshotValues();
       const created = await this.post(AGENT_DEFINITIONS_PATH, this.body({ omitEnabled: true }));
       if (generation !== this.generation) return false;
-      if (!this.absorbAnswer(created)) return finish(false);
+      if (!this.absorbAnswer(created, sentToCreate)) return finish(false);
       this.formDirty.setDirty(false);
       this.outcomeValue = 'pending-test';
       // The gate's own path stores the first definition here rather than through Save, so the
@@ -616,27 +700,30 @@ export class DefinitionForm {
       // EXPERIENCE.md's sticky-bar row). Save on the editor this replaces the route with runs
       // with `creating` false and no longer clears it.
       this.firstSaveValue = this.instanceWasEmpty;
-      this.publishChange();
+      this.publishChange('created');
     }
 
-    if (this.keyValue !== '') {
+    // Env mode stores no key: the operator sets the variable on the host (FR-26).
+    if (this.keyValue !== '' && !this.envMode()) {
+      const sentToStore = this.snapshotValues();
       const stored = await this.post(
         `${AGENT_DEFINITIONS_PATH}/${encodeURIComponent(this.idValue)}/credential`,
         { apiKey: this.keyValue }
       );
       if (generation !== this.generation) return false;
       if (stored.kind !== 'ok') {
-        this.absorbRefusal(stored);
+        this.absorbRefusal(stored, sentToStore);
         return finish(false);
       }
       // Write-only: the field is cleared the moment the instance has it (DW-340).
       this.keyValue = '';
     }
 
+    const sentToTest = this.snapshotValues();
     const tested = await this.post(`${AGENT_DEFINITIONS_PATH}/${encodeURIComponent(this.idValue)}/test`, {});
     if (generation !== this.generation) return false;
     if (tested.kind !== 'ok') {
-      this.absorbTestRefusal(tested);
+      this.absorbTestRefusal(tested, sentToTest);
       return finish(false);
     }
     this.testReply = textAt(tested.body, 'reply');
@@ -677,13 +764,21 @@ export class DefinitionForm {
     this.violationList = this.violationList.filter((entry) => entry.field !== field);
   }
 
-  private publishChange(): void {
+  /**
+   * Publish this form's own Save on the change bus (AD-14), naming what it did.
+   *
+   * `action` is the caller's because this one publisher serves both routes: a create POSTs, an
+   * edit PUTs, and AD-14's vocabulary is what the subscribers act on -- `created` is the only
+   * action that puts the caret on the new row, and it is the word the off-screen toast reads.
+   */
+  private publishChange(action: ChangeAction): void {
     if (this.idValue === '') return;
     this.injector.get(ChangeBus).publish({
       kind: 'changed',
       type: AGENT_DEFINITION_ENTITY,
       scope: AGENT_DEFINITION_SCOPE,
       id: this.idValue,
+      action,
     });
   }
 
@@ -724,7 +819,9 @@ export class DefinitionForm {
     if (generation !== this.generation) return;
     if (result.kind !== 'ok') return;
     const raw = result.body;
-    const rows = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>)['providers'] : null;
+    const record = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
+    this.credentialsRungValue = record?.['credentialsRungAvailable'] !== false;
+    const rows = record === null ? null : record['providers'];
     if (!Array.isArray(rows)) return;
     this.providerRows = rows.map((row) => ({
       key: textAt(row, 'key'),
@@ -734,11 +831,12 @@ export class DefinitionForm {
       defaultEndpoint: textAt(row, 'defaultEndpoint'),
       endpointRequired: flagAt(row, 'endpointRequired'),
       canonicalMaxTokens: numberAt(row, 'canonicalMaxTokens'),
-      canonicalTemperature: numberAt(row, 'canonicalTemperature'),
+      canonicalTemperature: optionalNumberAt(row, 'canonicalTemperature'),
       defaultEnvVarName: textAt(row, 'defaultEnvVarName'),
       defaultCredentialName: textAt(row, 'defaultCredentialName'),
       keyPrefix: textAt(row, 'keyPrefix'),
       allowsLocal: flagAt(row, 'allowsLocal'),
+      acceptsTemperature: notFalseAt(row, 'acceptsTemperature'),
       keyShapeReason: textAt(row, 'keyShapeReason'),
     }));
   }
@@ -751,11 +849,35 @@ export class DefinitionForm {
       next['model'] = row.defaultModel;
       next['endpointUrl'] = row.defaultEndpoint;
       next['maxTokens'] = String(row.canonicalMaxTokens);
-      next['temperature'] = String(row.canonicalTemperature);
+      // A row that declares no canonical temperature leaves the field empty, which saves unset.
+      next['temperature'] = row.canonicalTemperature === null ? '' : String(row.canonicalTemperature);
       next['credentialName'] = row.defaultCredentialName;
       next['envVarName'] = row.defaultEnvVarName;
+      // The three local-model fields are licensed by the row's own `allowsLocal`, and the form
+      // renders their controls only for a row that sets it -- so a cascade onto a row that does
+      // not has to clear them here. Left standing, a `credType` of `none` carried over from the
+      // compatible row would be refused by rule 5 with no control on screen to change it.
+      if (!row.allowsLocal) {
+        next['markedLocal'] = false;
+        next['httpAcknowledged'] = false;
+        if (next['credType'] === CRED_TYPE_NONE) next['credType'] = CRED_TYPE_CREDS;
+      }
     }
+    // Last, so every path above that lands on `creds` lands on `env` in env mode instead.
+    next['credType'] = this.admissibleCredType(typeof next['credType'] === 'string' ? next['credType'] : '');
     this.buffer = next;
+  }
+
+  /**
+   * In env mode, move a loaded `creds` definition onto the `env` rung: its own `envVarName`, or the
+   * catalog's default for its provider. The move is an unsaved change, so the leave guard applies
+   * and nothing is saved without the operator's Save.
+   */
+  private holdEnvRung(): void {
+    if (!this.envMode() || this.value('credType') !== CRED_TYPE_CREDS) return;
+    const envVarName = this.value('envVarName') !== '' ? this.value('envVarName') : (this.provider()?.defaultEnvVarName ?? '');
+    this.buffer = { ...this.buffer, credType: CRED_TYPE_ENV, envVarName };
+    this.markDirty();
   }
 
   /** The complete writable field set, typed as the wire expects (AD-4). */
@@ -779,33 +901,33 @@ export class DefinitionForm {
     return out;
   }
 
-  /** Absorb one write's answer, and report whether it succeeded. */
-  private absorbAnswer(result: JsonResult<unknown>): boolean {
+  /** Absorb one write's answer, and report whether it succeeded. `sent` is the fields as the request carried them. */
+  private absorbAnswer(result: JsonResult<unknown>, sent: Record<string, string>): boolean {
     if (result.kind !== 'ok') {
-      this.absorbRefusal(result);
+      this.absorbRefusal(result, sent);
       return false;
     }
     this.absorb(result.body);
     return true;
   }
 
-  private absorbRefusal(result: JsonResult<unknown>): void {
+  private absorbRefusal(result: JsonResult<unknown>, sent: Record<string, string>): void {
     this.violationList = violationsOf(result);
     this.envelopeReason =
       this.violationList.length === 0 && result.kind === 'error' ? (result.reason ?? '') : '';
-    this.rememberRefusal(result);
+    this.rememberRefusal(result, sent);
   }
 
   /**
-   * Keep the refusal's machine `code`, the pair it named and the values the fields held when it
-   * arrived (AD-39, DW-372, DW-373).
+   * Keep the refusal's machine `code`, the pair it named and the values the fields held when the
+   * refused request was sent (AD-39, DW-372, DW-373).
    *
    * The pair travels in the envelope's structured `detail`, which is an untyped record, so it is
    * narrowed rather than cast -- a `failedPair` that is not a string leaves the slot empty and the
    * page falls back to the envelope's own reason rather than rendering a sentence with a hole in
    * it.
    */
-  private rememberRefusal(result: JsonResult<unknown>): void {
+  private rememberRefusal(result: JsonResult<unknown>, sent: Record<string, string>): void {
     if (result.kind !== 'error') {
       this.clearRefusal();
       return;
@@ -813,25 +935,25 @@ export class DefinitionForm {
     this.refusalCodeValue = result.code ?? '';
     const pair = result.detail === null ? undefined : result.detail['failedPair'];
     this.refusalPairValue = typeof pair === 'string' ? pair : '';
-    this.refusedValues = this.snapshotValues();
+    this.refusedValues = sent;
   }
 
   /**
    * The same memory, minus the code and the pair, for a refused **Test connection**.
    *
-   * A blur still needs to know what each field held when the refusal arrived, so the values are
+   * A blur still needs to know what each field held when the refused request was sent, so the values are
    * kept. The code and the pair are not: the page composes them into the published denied-action
    * sentence with **this screen's save phrase** ("change this definition"), and a test that was
    * refused for privilege did not try to change anything. Rendering it would put a second banner
    * on the screen, describing an action nobody took, over a `Test connection` failure line that
    * already says what happened.
    */
-  private rememberRefusedValues(result: JsonResult<unknown>): void {
+  private rememberRefusedValues(result: JsonResult<unknown>, sent: Record<string, string>): void {
     if (result.kind !== 'error') {
       this.clearRefusal();
       return;
     }
-    this.refusedValues = this.snapshotValues();
+    this.refusedValues = sent;
   }
 
   private clearRefusal(): void {
@@ -853,14 +975,21 @@ export class DefinitionForm {
 
   /**
    * A refused Test connection. `PROVIDER.REFUSED` with the provider's own words is the one case
-   * the published failure sentence is written around; every other code renders the envelope's own
-   * `reason`, verbatim (DW-355).
+   * the published failure sentence is written around (DW-355); the two test-timeout codes render
+   * their published sentence with the detail's seconds and label resolved (Story 10.5); every
+   * other code renders the envelope's own `reason`, verbatim.
    */
-  private absorbTestRefusal(result: JsonResult<unknown>): void {
+  private absorbTestRefusal(result: JsonResult<unknown>, sent: Record<string, string>): void {
     this.violationList = violationsOf(result);
-    this.rememberRefusedValues(result);
+    this.rememberRefusedValues(result, sent);
     if (this.violationList.length > 0) return;
     if (result.kind !== 'error') return;
+    const timedOut = testTimeoutText(result.code, result.detail);
+    if (timedOut !== null) {
+      this.testFailure = timedOut;
+      this.failureFromProvider = false;
+      return;
+    }
     const text = result.detail === null ? undefined : result.detail['providerText'];
     if (result.code === 'PROVIDER.REFUSED' && typeof text === 'string' && text !== '') {
       this.testFailure = text;
@@ -910,13 +1039,38 @@ export class DefinitionForm {
  */
 export const KEY_SHAPE_CODE = 'AGENT.KEY.SHAPE';
 
+/** The code a Test connection earns when it waited its bound with no answer (Story 10.5). */
+export const TEST_TIMEOUT_CODE = 'PROVIDER.TESTTIMEOUT';
+
+/** Its twin for a definition marked local. */
+export const TEST_TIMEOUT_LOCAL_CODE = 'PROVIDER.TESTTIMEOUTLOCAL';
+
+/**
+ * The published failure sentence for a test-timeout `code`, with `<n>` resolved from
+ * `detail.waitedSeconds` and `<provider>` from `detail.providerLabel` -- or `null` when the code
+ * is another one, or the detail lacks a value the sentence needs, in which case the envelope's own
+ * `reason` is what renders.
+ */
+export function testTimeoutText(code: string | null, detail: Record<string, unknown> | null): string | null {
+  if (code !== TEST_TIMEOUT_CODE && code !== TEST_TIMEOUT_LOCAL_CODE) return null;
+  if (detail === null) return null;
+  const waited = detail['waitedSeconds'];
+  if (typeof waited !== 'number' || !Number.isFinite(waited)) return null;
+  if (code === TEST_TIMEOUT_LOCAL_CODE) {
+    return STRINGS.agentDefinitionTestTimeoutLocal.split('<n>').join(String(waited));
+  }
+  const label = detail['providerLabel'];
+  if (typeof label !== 'string' || label === '') return null;
+  return STRINGS.agentDefinitionTestTimeout.split('<provider>').join(label).split('<n>').join(String(waited));
+}
+
 function emptyBuffer(): EditBuffer {
   const out: EditBuffer = {};
   for (const field of WRITABLE_FIELDS) out[field] = BOOLEAN_FIELDS.includes(field) ? false : '';
   // The class's own defaults, so a create starts on values the rules accept rather than on
   // empties the first Save would refuse.
-  out['credType'] = 'creds';
-  out['readOnly'] = true;
+  out['credType'] = CRED_TYPE_CREDS;
+  out['readOnly'] = false;
   out['retentionDays'] = '30';
   out['maxIterationsPerTurn'] = '10';
   return out;

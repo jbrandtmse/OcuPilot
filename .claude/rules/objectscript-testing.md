@@ -174,6 +174,40 @@ did not redden as unproven until you have confirmed which copy ran.
 - Round-trip anything with a format or encoding (timestamps, Base64, JSON) rather than
   asserting only on the encode direction.
 
+## A completeness test can carry an assertion written to be deleted later
+
+`OcuPilot.Test.SurfaceCoverage` and `OcuPilot.Test.EndpointCoverage` hold a declared roster equal to
+what the instance derives — coverage rows against registered tools, probe rows against compiled
+routes. A roster like that is only as strong as its floor, so where the derived side is *empty* the
+test asserts the emptiness rather than looping zero times and passing:
+
+```objectscript
+Do $$$AssertTrue(tDerived > 0, "the write half is not empty -- ...")
+; was, until the first write tool shipped:
+; Do $$$AssertEquals(tDerived, 0, "no tool classifies write on this branch, which is asserted rather than assumed")
+```
+
+The explicit zero is a **tripwire aimed at a later epic**: it is true only until some story lands the
+first member, and then it fails on purpose, in that story's sweep, naming what to do. Epic 13 wrote
+the `write`-half zero and Story 5.5 tripped it by shipping `webapp.list.update`.
+
+Two obligations follow, one for each side.
+
+- **Writing one:** say in the doc comment that the assertion is temporary, what lands it, and that it
+  is deleted in the same pass that adds the first member and its row. A bare `AssertEquals(x, 0)`
+  with no such note reads as a defect to whoever trips it, and the likely reaction is to delete the
+  assertion rather than add the row.
+- **Tripping one:** the failure is not a flake and not the other epic's problem. Add the row — with
+  the member's canonical name **read from the instance, never recalled** — replace the zero with a
+  non-empty assertion, and prove the row load-bearing by removing it and watching that test redden
+  alone. A roster row that no mutation has tested is a row that might name nothing.
+
+The same applies to any cross-file roster this project pins rather than trusting to stay equal:
+`ui/tools/ci.test.mjs` holds `scripts/ci-throwaway.sh`'s arming rosters against the classes that
+declare each variable, and `compose.test.mjs` and `angular-json.test.mjs` do it for ports and the
+bundle path. When one of them reddens on a file your story did not touch, the roster is the thing
+that changed, and it is yours to update.
+
 ## A browser spec runs against the deployed bundle, not the working tree
 
 `npm run test:browser` drives a real browser against the throwaway instance, which serves the
@@ -186,7 +220,7 @@ Rebuild and redeploy before reading any browser result you intend to report:
 
 ```bash
 cd ui && npm run build                       # the bundle the spec will actually load
-docker cp dist/ocupilot/browser/. \
+docker cp dist/ocupilot-ui/browser/. \
   <throwaway-container>:/durable/iris/csp/ocupilot/     # then re-run npm run test:browser
 ```
 

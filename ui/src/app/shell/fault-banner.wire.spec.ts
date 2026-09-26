@@ -1,14 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiService } from '../core/api';
 import { ConnectivityService } from '../core/connectivity';
 import { NavigationService } from '../core/navigation';
 import { Session } from '../core/session';
+import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { TokenStore } from '../core/token-store';
-import { FaultBanner } from './fault-banner';
+import { FAULT_CLEAR_HOLD_MS, FaultBanner } from './fault-banner';
 
 /**
  * DW-159's named sibling, closed for the connectivity half: an executed crossing from a thrown
@@ -94,8 +95,6 @@ function buildHarness() {
   };
 }
 
-const SETTLE = () => new Promise((resolve) => setTimeout(resolve, 0));
-
 describe('the connectivity banner, wired to the real ApiService and ConnectivityService (DW-159 sibling)', () => {
   let fixture: ComponentFixture<FaultBanner>;
   let harness: ReturnType<typeof buildHarness>;
@@ -115,10 +114,17 @@ describe('the connectivity banner, wired to the real ApiService and Connectivity
         provideRouter([{ path: '', children: [] }]),
         { provide: ConnectivityService, useValue: harness.connectivity },
         { provide: NavigationService, useValue: navigation },
+        // The banner shows the Logs area before it navigates (Story 6.14, DW-148). Nothing here
+        // presses that control, so a recorder is enough; where it goes is `fault-banner.spec.ts`'s.
+        { provide: ShellState, useValue: { showArea: () => {} } as unknown as ShellState },
       ],
     });
     fixture = TestBed.createComponent(FaultBanner);
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('draws nothing while the harness has made no call yet', () => {
@@ -152,11 +158,16 @@ describe('the connectivity banner, wired to the real ApiService and Connectivity
     const callsBeforeRetry = harness.httpCalls.length;
 
     harness.setMode('ok');
+    vi.useFakeTimers();
     button(STRINGS.actionRetry)?.click();
-    await SETTLE();
+    await vi.advanceTimersByTimeAsync(0);
     fixture.detectChanges();
 
     expect(harness.httpCalls.length).toBeGreaterThan(callsBeforeRetry);
+    // The clear is held (DW-1155), then the strip goes.
+    expect(strip()).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(FAULT_CLEAR_HOLD_MS);
+    fixture.detectChanges();
     expect(strip()).toBeNull();
   });
 

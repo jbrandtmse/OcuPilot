@@ -501,7 +501,7 @@ Method TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure()
             If tArea.key = "web-applications" Set tScreens = tArea.screens.%ToJSON()
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the area lists its one built screen, denied on the pair it declares")
+    Do $$$AssertEquals(tScreens, "[{""route"":""web-applications/rest-apis/document"",""labelKey"":""openApiViewerLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/list/edit"",""labelKey"":""proposalEntityWebApplication"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/rest-apis"",""labelKey"":""restApiListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the area lists its four built screens -- the document viewer, the create form, the list and the REST API explorer -- each denied on the pair it declares first")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/webapp.list/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC, "the read request completes")
@@ -515,9 +515,10 @@ Method TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure()
 
 /// <p>Story 2.6 -- for the same principal, the navigation map lists the users list denied on
 /// <code>%Admin_Secure:USE</code>, the first pair it declares, and its read route refuses it with
-/// <code>AUTH.NOPRIVILEGE</code>. The entry is compared whole, as the captured payloads in
+/// <code>AUTH.NOPRIVILEGE</code>. The roles, resources and services lists follow it, each denied on
+/// the same first pair. The area's entries are compared whole, as the captured payloads in
 /// <file>ui/tools/navigation-wire.test.mjs</file> and <file>ui/src/app/shell/rail-wire.spec.ts</file>
-/// carry it.</p>
+/// carry them.</p>
 Method TestTheUsersListIsDeniedToAPrincipalWithoutAdminSecure()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
@@ -533,7 +534,7 @@ Method TestTheUsersListIsDeniedToAPrincipalWithoutAdminSecure()
             If tArea.key = "permissions" Set tScreens = tArea.screens.%ToJSON()
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the permissions area lists its one built screen, denied on its first pair")
+    Do $$$AssertEquals(tScreens, "[{""route"":""permissions/roles/edit"",""labelKey"":""userRoleField"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/services/edit"",""labelKey"":""serviceFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/users/edit"",""labelKey"":""processColumnUser"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/roles"",""labelKey"":""userColumnRoles"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/resources"",""labelKey"":""resourceListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/services"",""labelKey"":""serviceListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the permissions area lists its seven built screens -- the three unlisted forms, then the four lists in side-bar order -- each denied on its first pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/permissions.users/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC, "the read request completes")
@@ -549,6 +550,12 @@ Method TestTheUsersListIsDeniedToAPrincipalWithoutAdminSecure()
 /// it with <code>AUTH.NOPRIVILEGE</code>. The entry is compared whole, as the captured payloads in
 /// <file>ui/tools/navigation-wire.test.mjs</file> and <file>ui/src/app/shell/rail-wire.spec.ts</file>
 /// carry it.</p>
+/// <p>Story 6.3 and 6.4 -- the Security and secrets area lists sixteen built screens: the unlisted
+/// audit event lists, OAuth 2.0 tabs, SSL/TLS configuration form (Story 9.5), wallet secret form
+/// (Story 8.6), Secrets list and X.509 credential form (Story 8.5) first, at position 0, then
+/// SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0 and Auditing. Each is denied on the first pair
+/// it declares: the wallet pair for the three wallet screens, an OAuth resource for four OAuth tabs, and <code>%Admin_Secure:USE</code> for the rest,
+/// which is also the first pair the area declares.</p>
 Method TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
@@ -568,7 +575,7 @@ Method TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure()
             }
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the security area lists its one built screen, denied on its first pair")
+    Do $$$AssertEquals(tScreens, "[{""route"":""security/auditing/system-events"",""labelKey"":""auditSystemEventListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/auditing/user-events"",""labelKey"":""auditUserEventListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/ldap/edit"",""labelKey"":""ldapFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/oauth/clients/edit"",""labelKey"":""oauthClientFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Client:USE""},{""route"":""security/oauth/clients"",""labelKey"":""oauthTabClients"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Client:USE""},{""route"":""security/oauth/resource-servers/edit"",""labelKey"":""oauthClientTypeResource"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/oauth/resource-servers"",""labelKey"":""oauthTabResourceServers"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/oauth/server-clients/edit"",""labelKey"":""oauthRegisteredClientTitle"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Registration:USE""},{""route"":""security/oauth/server-clients"",""labelKey"":""oauthTabServerClients"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Registration:USE""},{""route"":""security/oauth/edit"",""labelKey"":""oauthServerFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Client:USE""},{""route"":""security/oauth/server/edit"",""labelKey"":""oauthTabServer"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Server:USE""},{""route"":""security/oauth/server"",""labelKey"":""oauthTabServer"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Server:USE""},{""route"":""security/ssl/edit"",""labelKey"":""sslFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/wallet/secrets/edit"",""labelKey"":""walletSecretFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""},{""route"":""security/wallet/secrets"",""labelKey"":""walletSecretListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""},{""route"":""security/x509/edit"",""labelKey"":""x509FormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/x509"",""labelKey"":""x509ListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/ldap"",""labelKey"":""ldapListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/wallet"",""labelKey"":""walletListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""},{""route"":""security/oauth"",""labelKey"":""oauthLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%Admin_OAuth2_Client:USE""},{""route"":""security/auditing"",""labelKey"":""auditingConfigurationLink"",""sideBarPosition"":6,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the security area lists its twenty-two built screens in side-bar order, each denied on its first pair")
     Do $$$AssertEquals(tArea, "false:%Admin_Secure:USE", "and the area itself is denied on the same pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/security.ssl/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
@@ -586,6 +593,11 @@ Method TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure()
 /// <file>ui/tools/navigation-wire.test.mjs</file> and <file>ui/src/app/shell/rail-wire.spec.ts</file>
 /// carry it -- which is what makes those two hand-added fixtures a record of a live response rather
 /// than a hand-written string.</p>
+/// <p>Story 6.5 -- On-demand tasks and Upcoming tasks follow at positions 2 and 3, each denied on the
+/// same first pair.</p>
+/// <p>Story 6.6 -- Task history (all tasks) follows at position 4, denied the same way; the
+/// per-task history joins the roster too, unlisted at position 0 and therefore sorted first,
+/// carrying the same pair and the same denial.</p>
 /// <p>This principal holds neither of the screen's pairs, so it is the one that reads the
 /// <b>descriptor's</b> pair order; <class>OcuPilot.Test.WireSecurityRead</class>'s task principals
 /// each hold <code>%Admin_Task</code>, for which <code>%DB_IRISSYS:READ</code> is the first unheld
@@ -612,7 +624,7 @@ Method TestTheTaskScheduleIsDeniedToAPrincipalWithoutAdminTask()
             }
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Task:USE""}]", "the tasks area lists its one built screen, denied on its first pair")
+    Do $$$AssertEquals(tScreens, "[{""route"":""tasks/schedule/details"",""labelKey"":""taskDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/schedule/edit"",""labelKey"":""proposalEntityTask"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/schedule/history"",""labelKey"":""taskRunsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/history"",""labelKey"":""taskHistoryLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Task:USE""}]", "the tasks area lists its seven built screens in side-bar order (the unlisted task details, the New Task wizard and per-task history first, at position 0, task details sorting first by class name), each denied on its first pair")
     Do $$$AssertEquals(tArea, "false:%Admin_Task:USE", "and the area itself is denied on the same pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/tasks.schedule/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
@@ -661,7 +673,12 @@ Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
             }
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]", "the os-management area lists its one built screen, denied on the first pair this principal lacks")
+    ; Story 6.11 took the roster from four screens to eight, and Story 6.12 took it from eight to
+    ; nine, in ScreensForArea's own (sideBarPosition, class name) collation: the four unlisted
+    ; sideBarPosition-0 screens sort first, alphabetically by descriptor class name (Database
+    ; details, Database free-space, Database volumes, then Process details), ahead of the listed
+    ; ones in position order (Processes, Locks, System usage, Databases, Devices last).
+    Do $$$AssertEquals(tScreens, "[{""route"":""os-management/databases/details"",""labelKey"":""databaseDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/database-free-space"",""labelKey"":""databaseFreeSpaceLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/databases/volumes"",""labelKey"":""databaseVolumeListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/devices/edit"",""labelKey"":""deviceFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/locks"",""labelKey"":""lockListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/system-usage"",""labelKey"":""systemUsageLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/databases"",""labelKey"":""databaseListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/devices"",""labelKey"":""deviceListLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]", "the os-management area lists its ten built screens, each denied on the first pair this principal lacks: Database details, Locks and System usage's own two-pair sets name %DB_IRISSYS:READ, since this principal already holds %Admin_Operate:USE, while the Free-space view, Database volumes, the device editor, Process details, the processes list, the General view and Devices all name %Admin_Manage:USE")
     Do $$$AssertEquals(tArea, "false:%Admin_Manage:USE", "and the area itself is denied on the same pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/osmgmt.processes/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)

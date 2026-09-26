@@ -14,7 +14,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
@@ -25,6 +25,7 @@ import {
   contrastRatio,
   round2,
   resolveHex,
+  darkScopeRepoints,
   LOAD_BEARING,
   MARGINAL_GUARDED,
   REJECTED,
@@ -147,6 +148,22 @@ test('the logo gradient stop is present, is #2090a0, has no dark side, and is no
   assert.ok(!COLOR_ROLES.includes('logo-gradient-stop'), 'logo-gradient-stop must be excluded from COLOR_ROLES');
 });
 
+test("the logo tile is #ffffff, has no dark side, is not a role, and is DESIGN.md's logo-lockup plate", () => {
+  // Fixed rather than reversed between modes: the dark scope never re-points it, so the header's
+  // tile is the same white in both themes. The frontmatter is the source the hex is transcribed from.
+  assert.equal(tokens.light['logo-tile'].toLowerCase(), '#ffffff');
+  assert.equal(tokens.dark['logo-tile'], undefined, 'logo-tile must not have a -dark side');
+  assert.ok(!COLOR_ROLES.includes('logo-tile'), 'logo-tile must be excluded from COLOR_ROLES');
+  assert.deepEqual(NON_ROLE_TOKENS['logo-tile'], { hasDark: false });
+
+  const block = /\n  logo-lockup:\n((?:    .*\n)+)/.exec(designMdRaw);
+  assert.ok(block, "expected DESIGN.md's logo-lockup frontmatter block");
+  const plate = /^    plate: '(#[0-9A-Fa-f]{6}) /m.exec(block[1]);
+  assert.ok(plate, 'the logo-lockup plate names a hex');
+  assert.equal(plate[1].toLowerCase(), tokens.light['logo-tile'].toLowerCase(), 'the tile token is the plate DESIGN.md publishes');
+  assert.match(block[1], /^    asset: imports\/OcuPilot-Lockup-horizontal\.png$/m, 'the header asset is the navy-wordmark file');
+});
+
 test('the three elevation shadow levels are present in both modes and are not counted as roles', () => {
   for (const level of [1, 2, 3]) {
     const name = `elevation-${level}`;
@@ -156,6 +173,58 @@ test('the three elevation shadow levels are present in both modes and are not co
     assert.match(tokens.dark[name], /rgba\(/, `${name} (dark) should carry an rgba() shadow value`);
     assert.ok(!COLOR_ROLES.includes(name), `${name} must be excluded from COLOR_ROLES`);
   }
+});
+
+// --- Story 15.6: the non-role pairs and the complete dark scope -------------------------
+//
+// Mutations (Rule 19): delete one role's re-point from `:root.ocu-theme-dark` in _theme.scss
+// -> the scope-completeness test goes red naming that role. Re-add a component rule that
+// selects `:root.ocu-theme-dark` in _components.scss -> the single-home test goes red naming
+// the file. Set `--ocu-toast-link-dark` to `secondary-dark`'s hex -> the toast-link pin goes red.
+
+test('the toast link pair is the hexes of secondary-dark and secondary, and is the pair the toast-link guard measures', () => {
+  assert.equal(tokens.light['toast-link'].toLowerCase(), tokens.dark.secondary.toLowerCase(), 'light: DESIGN.md toast.link-color is secondary-dark');
+  assert.equal(tokens.dark['toast-link'].toLowerCase(), tokens.light.secondary.toLowerCase(), 'dark: DESIGN.md toast.link-color-dark is plain secondary');
+  const guard = MARGINAL_GUARDED.find((entry) => entry.token === 'toast-link');
+  assert.equal(guard, MARGINAL_GUARDED[2], 'the third marginal guard is the toast link');
+  assert.equal(resolveHex(tokens, guard.light.fg).toLowerCase(), tokens.light['toast-link'].toLowerCase(), "the guard's light foreground is the token's light side");
+  assert.equal(resolveHex(tokens, guard.dark.fg).toLowerCase(), tokens.dark['toast-link'].toLowerCase(), "and its dark foreground the token's dark side");
+});
+
+test('the server-flag edge is transparent in light and on-shell at 20% in dark', () => {
+  assert.equal(tokens.light['server-flag-edge'], 'transparent');
+  assert.equal(tokens.dark['server-flag-edge'], 'color-mix(in srgb, var(--ocu-on-shell) 20%, transparent)', 'DESIGN.md server-flag-badge.edge-dark');
+});
+
+test('the dark scope re-points every role and every non-role token with a dark side at its -dark twin, once each', () => {
+  const themeRaw = readFileSync(join(here, '..', 'src', 'styles', '_theme.scss'), 'utf8');
+  const repoints = darkScopeRepoints(themeRaw);
+  assert.ok(repoints !== null, 'expected a :root.ocu-theme-dark block in _theme.scss');
+  const expected = [
+    ...COLOR_ROLES,
+    ...Object.entries(NON_ROLE_TOKENS).filter(([, meta]) => meta.hasDark).map(([name]) => name),
+  ];
+  for (const name of expected) {
+    const found = repoints.filter((entry) => entry.name === name);
+    assert.equal(found.length, 1, `--ocu-${name} is re-pointed exactly once in the dark scope (found ${found.length})`);
+    assert.equal(found[0].target, `${name}-dark`, `--ocu-${name} reads var(--ocu-${name}-dark) in the dark scope`);
+  }
+  const extras = repoints.filter((entry) => !expected.includes(entry.name)).map((entry) => entry.name);
+  assert.deepEqual(extras, [], 'the dark scope re-points nothing that is not a role or a non-role token with a dark side');
+});
+
+test('ocu-theme-dark is named under ui/src only by _theme.scss and core/theme.ts', () => {
+  const srcRoot = join(here, '..', 'src');
+  const naming = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (readFileSync(path, 'utf8').includes('ocu-theme-dark')) naming.push(path.slice(srcRoot.length + 1).split('\\').join('/'));
+    }
+  };
+  walk(srcRoot);
+  assert.deepEqual(naming.sort(), ['app/core/theme.ts', 'styles/_theme.scss'], 'the class has one scope and one setter; no component rule selects on the theme');
 });
 
 // --- Contrast: load-bearing set --------------------------------------------------
@@ -336,6 +405,44 @@ test('the frame gives the rail a height to push its bottom slot against (DW-138)
   assert.match(componentsRaw, /app-rail,\napp-side-bar\s*\{[^}]*display:\s*flex/);
 });
 
+// --- Story 8.1: UX-DR80's form widths, confirmed ------------------------------------------
+//
+// DESIGN.md carried `[ASSUMPTION]` on the `form-page` column and field widths until a form with a
+// real field set was drawn at its longest label and its longest value. Story 8.1 drew one and
+// measured it in the browser (`ui/browser/web-applications-create.browser-spec.mjs`), which is
+// where the geometry claim is falsifiable; this is the half that makes the measured figures BIND
+// -- every later form in Epics 8 and 9 inherits them because the tokens are pinned here, not
+// because somebody measured once.
+//
+// Mutation (Rule 19): change `--ocu-form-max-width` to 640px in `_metrics.scss` -> this goes red
+// naming the token and the figure DESIGN.md publishes.
+test("UX-DR80: the form-page column is 720px, its fields 480px, and both tokens are read by the component layer", () => {
+  const metrics = parseTokens(metricsRaw.split(/@media\s*\(\s*prefers-reduced-motion/)[0]).light;
+  assert.equal(metrics['form-max-width'], '720px', "DESIGN.md's Content column row, confirmed by Story 8.1");
+  assert.equal(metrics['field-max-width'], '480px', "DESIGN.md's `form-page` field width, confirmed by Story 8.1");
+  assert.equal(metrics['form-bar-height'], '56px', 'and the sticky action bar, which was decided rather than assumed');
+
+  // Declared and unread is a value nobody can be wrong about, which is the state UX-DR80's two
+  // assumptions were in: the browser spec measures the rendered column against the token, so the
+  // token has to be what the column is drawn from.
+  const unread = ['form-max-width', 'field-max-width', 'form-bar-height'].filter(
+    (name) => !componentsRaw.includes(`var(--ocu-${name})`)
+  );
+  assert.deepEqual(unread, [], `declared in _metrics.scss and read by nothing: ${JSON.stringify(unread)}`);
+
+  // And DESIGN.md no longer marks either figure as an assumption, so the document and the
+  // stylesheet say the same thing.
+  const contentColumn = designMdRaw
+    .split('\n')
+    .find((line) => line.startsWith('**Content column.**'));
+  assert.ok(contentColumn, "DESIGN.md must carry its Content column paragraph");
+  assert.ok(contentColumn.includes('720px'), 'which names the column width');
+  assert.ok(
+    !contentColumn.includes('[ASSUMPTION]'),
+    'and no longer marks it an assumption, because Story 8.1 measured it'
+  );
+});
+
 test('the rail tooltip delay is a token, is consumed, and is zeroed under reduced motion', () => {
   const metrics = parseTokens(metricsRaw.split(/@media\s*\(\s*prefers-reduced-motion/)[0]).light;
   assert.equal(metrics['motion-tooltip-delay'], '300ms', "DESIGN.md's rail-item Hover row");
@@ -415,14 +522,26 @@ test('the header band is the documented gradient, and nothing in it is drawn bel
   assert.match(placeholder[1], /opacity:\s*1/, "and the browser's own default fade removed");
 });
 
-test('the lockup on the chrome is the reversed file, never the navy-wordmark one', () => {
-  // The navy wordmark is 1.02:1 on the shell. `_components.scss` already says the sign-in card
-  // must never use the reversed file; this is the converse, and the two rules are what keep
-  // each lockup on the ground it was cut for.
+test('the header lockup is the navy-wordmark file on the white tile', () => {
+  // The navy wordmark is 1.02:1 on the shell, so the tile is its ground; the tile is the anchor
+  // itself, so the focus ring surrounds it. The reversed file is not drawn and not vendored.
   const lockup = /\.ocu-header-lockup\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
   assert.ok(lockup, 'expected an .ocu-header-lockup rule');
-  assert.match(lockup[1], /OcuPilot-Lockup-horizontal-reversed\.png/);
-  assert.match(lockup[1], /height:\s*32px/, "DESIGN.md's own 32px");
+  assert.match(lockup[1], /url\('\.\.\/assets\/lockup\/OcuPilot-Lockup-horizontal\.png'\)/);
+  assert.ok(!/reversed/.test(lockup[1]), 'the header never draws the reversed file');
+  assert.match(lockup[1], /background-color:\s*var\(--ocu-logo-tile\)/, 'the tile is the fixed non-role white');
+  assert.match(lockup[1], /border-radius:\s*var\(--ocu-radius-/, 'the tile has rounded corners');
+  assert.equal(
+    [...lockup[1].matchAll(/^\s*padding:\s*(.*);$/gm)].map((match) => match[1]).join(' | '),
+    'var(--ocu-space-1)',
+    'one even padding on every side'
+  );
+  assert.match(lockup[1], /background-origin:\s*content-box/, 'the padding is the margin around the image');
+  assert.deepEqual(
+    readdirSync(join(here, '..', 'src', 'assets', 'lockup')).filter((name) => /reversed/.test(name)),
+    [],
+    'the reversed file is no longer vendored'
+  );
 
   const card = /\.ocu-signin-lockup\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
   assert.ok(card, 'expected an .ocu-signin-lockup rule');
@@ -551,6 +670,27 @@ test("the locator's gated reason reveals on hover AND focus, like the tile's and
   assert.match(reveal[1], /clip-path:\s*none/, 'and actually un-clipped, not merely re-padded');
 });
 
+test("a suggested-view line's gated Open reads as refused, and states its reason on hover AND focus", () => {
+  // EXPERIENCE.md's Privilege Gating mechanism: where a gated control takes DOM focus -- and an
+  // anchor does -- the reason is a tooltip shown on hover and on focus, not a screen-reader-only
+  // sentence. `panel.spec.ts` pins the `aria-disabled` and `aria-describedby` wiring, which is the
+  // half jsdom can see; the appearance and the reveal are only readable here.
+  //
+  // Mutation: delete the `[aria-disabled='true']` colour rule, or the `:focus-visible +` half of
+  // the reveal -> this goes red.
+  const refused = /\.ocu-suggested-open\[aria-disabled='true'\]\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(refused, "expected a rule for a refused suggested-view Open");
+  assert.match(refused[1], /color:\s*var\(--ocu-restrained\)/, "DESIGN.md's restrained text, not full secondary");
+  assert.match(refused[1], /cursor:\s*default/, 'and no pointer, because there is nothing to press');
+
+  const reveal = new RegExp(
+    '\\.ocu-suggested-open-slot:hover \\.ocu-suggested-reason,\\n' +
+      '\\.ocu-suggested-open:focus-visible \\+ \\.ocu-suggested-reason\\s*\\{([\\s\\S]*?)\\n\\}'
+  ).exec(componentsRaw);
+  assert.ok(reveal, 'expected the reason to be revealed on both hover and keyboard focus');
+  assert.match(reveal[1], /clip-path:\s*none/, 'and actually un-clipped, not merely re-padded');
+});
+
 test('a row action\'s reason is revealed on hover AND on focus, not on hover alone', () => {
   // `command-bar.spec.ts` pins the reason's existence and its `aria-describedby` wiring, which
   // is the half jsdom can see. The reveal itself is the clipped-to-visible shape the rail
@@ -676,7 +816,13 @@ test('the secondary and text buttons carry the secondary state layer: 8% on hove
   assert.match(pressed[1], /background:\s*color-mix\(in srgb, var\(--ocu-secondary\) 12%, transparent\)/);
 
   // A refused control takes neither layer (DESIGN.md `:855`).
-  for (const refused of ['.ocu-command-bar-action[aria-disabled=\'true\']', ".ocu-fault-banner [aria-disabled='true']"]) {
+  for (const refused of [
+    '.ocu-command-bar-action[aria-disabled=\'true\']',
+    ".ocu-fault-banner [aria-disabled='true']",
+    // Home's suggested view (Story 4.10): its `Open` is a `button-text`, so a refused one takes
+    // the same treatment as the three gated controls above it rather than `button-text`'s own.
+    ".ocu-suggested-open[aria-disabled='true']",
+  ]) {
     const escaped = refused.replace(/[.[\]]/g, '\\$&');
     const rule = new RegExp(`${escaped}:hover,\\n${escaped}:active\\s*\\{([\\s\\S]*?)\\n\\}`).exec(componentsRaw);
     assert.ok(rule, `expected one rule clearing both layers on ${refused}`);
@@ -743,4 +889,56 @@ test("AC8: a required field's asterisk is a rendered glyph, not only a class on 
   const marker = /\n\.ocu-field-label-required::after\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
   assert.ok(marker, 'expected a .ocu-field-label-required::after rule');
   assert.match(marker[1], /\n\s*content:\s*'\*';/);
+});
+
+test('DW-1161: the four gated-reason surfaces share one selector list and one body', () => {
+  // The four `*-reason` bases were four byte-identical fourteen-declaration blocks in four
+  // sections. Nothing pinned them, which is how four copies could drift a padding or a colour
+  // apart, so the consolidation needs this to be falsifiable: one selector list naming all four
+  // classes, carrying the shared body, and each class named exactly once as a base.
+  //
+  // Their four *reveal* rules are deliberately still four rules, each pinned above -- each names a
+  // different hover ancestor and a different focusable sibling, so they are not copies.
+  //
+  // Mutation (Rule 19): remove one class name from the consolidated list -> this goes red, while
+  // the four reveal tests stay green.
+  const names = [
+    'ocu-locator-reason',
+    'ocu-command-bar-reason',
+    'ocu-area-tile-reason',
+    'ocu-suggested-reason',
+  ];
+  const list = new RegExp(
+    '\\n' + names.map((name) => '\\.' + name).join(',\\n') + '\\s*\\{([\\s\\S]*?)\\n\\}'
+  ).exec(componentsRaw);
+  assert.ok(list, `expected one selector list naming ${names.join(', ')} in that order`);
+
+  // The body every one of the four resolves to, declaration by declaration.
+  const body = list[1];
+  assert.match(body, /@include typo\.ocu-type\('caption'\);/, "the caption ramp, not a size of its own");
+  for (const declaration of [
+    /\n\s*position:\s*absolute;/,
+    /\n\s*top:\s*100%;/,
+    /\n\s*left:\s*0;/,
+    /\n\s*z-index:\s*2;/,
+    /\n\s*width:\s*1px;/,
+    /\n\s*height:\s*1px;/,
+    /\n\s*padding:\s*0;/,
+    /\n\s*overflow:\s*hidden;/,
+    /\n\s*border-radius:\s*var\(--ocu-radius-sm\);/,
+    /\n\s*background:\s*var\(--ocu-inverse-surface\);/,
+    /\n\s*color:\s*var\(--ocu-inverse-on-surface\);/,
+    /\n\s*white-space:\s*nowrap;/,
+    /\n\s*clip-path:\s*inset\(50%\);/,
+  ]) {
+    assert.match(body, declaration, `the shared body carries ${declaration}`);
+  }
+
+  // One base each: a class that grew a second base block would be a copy again, and a reader
+  // could not tell which of the two applies.
+  for (const name of names) {
+    const bases = componentsRaw.match(new RegExp('\\n\\.' + name + '[,\\s]*\\{', 'g')) ?? [];
+    const inList = componentsRaw.match(new RegExp('\\n\\.' + name + ',\\n', 'g')) ?? [];
+    assert.equal(bases.length + inList.length, 1, `.${name} is a base in exactly one rule`);
+  }
 });

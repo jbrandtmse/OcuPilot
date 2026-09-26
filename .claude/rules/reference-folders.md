@@ -19,7 +19,7 @@ this project's source.
   `iris_doc_put`, `iris_doc_compile`, `iris_doc_xml_export` (import), `iris_env_promote`, or the
   VS Code ObjectScript extension's import/sync at these paths. They are InterSystems-owned system
   classes; writing any of them back would overwrite the instance's own code. (This is also why
-  `objectscript.conn.active` is kept `false` — see the README's `externalServer` section.)
+  `objectscript.conn.active` is kept `false` — see the `externalServer` section of `docs/DEVELOPMENT.md`.)
 - **They are not "the codebase".** When looking for this project's own code, search only the
   project folders or exclude these four (`grep --exclude-dir=irislib --exclude-dir=irissys
   --exclude-dir=irisui --exclude-dir=irisdocs …`). Do not "fix" anything found inside them.

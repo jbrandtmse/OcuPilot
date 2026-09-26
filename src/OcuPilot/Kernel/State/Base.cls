@@ -1,3 +1,5 @@
+Include %occErrors
+
 /// <p>The tree's <b>only</b> escalation point (AD-9). Abstract persistent base providing
 /// guarded save / open / exists and guarded global access, each performing
 /// <code>New $ROLES</code> and <code>$SYSTEM.Security.AddRoles(&lt;application&gt;)</code>
@@ -46,6 +48,23 @@ Class OcuPilot.Kernel.State.Base Extends %Persistent [ Abstract ]
 /// <class>OcuPilot.Install.Installer</class>, names it without inventing a second copy
 /// of the string.</p>
 Parameter APPLICATION As %String = "OcuPilotState";
+
+/// <p>Name of the <b>second</b> privileged routine application, the one AD-9's identity read
+/// escalates through (DW-444). It grants the resources
+/// <method>Security.Users.Get</method> requires and nothing else, and reaches none of
+/// OcuPilot's own data -- so no guarded storage call gains any privilege from its existing. Its
+/// <code>Routines</code> entry admits this file, which is the same whole-class granularity
+/// <parameter>APPLICATION</parameter> has: the containment is the file, not the method.
+/// Kernel-visible for the reason <parameter>APPLICATION</parameter> is: the installer creates
+/// it and the uninstall confirmation lists it.</p>
+Parameter IDENTITYAPPLICATION As %String = "OcuPilotIdentity";
+
+/// <p>The resource set <parameter>IDENTITYAPPLICATION</parameter>'s role grants, comma-separated
+/// as <code>resource:permission</code>. Measured on a throwaway as a least-privileged principal,
+/// not inherited: <code>Security.Users.Get</code> answers <code>ERROR #822: Access Denied</code>
+/// without <code>%Admin_Secure</code>, and database READ <i>is</i> routine-execution permission,
+/// so the class cannot be executed in <code>%SYS</code> without <code>%DB_IRISSYS</code>.</p>
+Parameter IDENTITYRESOURCES As %String = "%Admin_Secure:U,%DB_IRISSYS:R";
 
 /// <p>Name of OcuPilot's protected-state database (AD-9).</p>
 Parameter DATABASENAME As %String = "OCUPILOT";
@@ -100,6 +119,40 @@ Property RowVersion As %Integer [ InitialExpression = 0 ];
 /// established.</p>
 Parameter STALESAVEREASON = "the row changed on this instance after it was read, so the save was refused";
 
+/// <p>Seconds <method>GuardedSaveWithinCap</method> waits for a bounded list's lock before
+/// refusing. Short, because the critical section it guards is a count and a save.</p>
+Parameter CAPLOCKTIMEOUT As %Integer = 5;
+
+/// <p>The sentence a cap-bounded save is refused with when its critical section could not be
+/// entered. A parameter rather than a literal, for <parameter>STALESAVEREASON</parameter>'s
+/// reason: the refusal and <method>IsCapBusy</method> name one text rather than two copies.</p>
+Parameter CAPBUSYREASON = "another write to this account's bounded list held it, so the save was refused";
+
+/// <p>The declared length of the two route columns cut against it: the ledger's
+/// <property>OcuPilot.Kernel.State.Ledger.Route</property> and the turn's
+/// <property>OcuPilot.Kernel.State.Turn.ContextRoute</property>. Declared once here so the cap a
+/// writer cuts at is not a literal repeated beside each column; the invariant that this equals
+/// both <code>MAXLEN</code>s is asserted by <class>OcuPilot.Test.Ledger</class>, because a
+/// property's <code>MAXLEN</code> cannot itself read a parameter.</p>
+/// <p>Not every route column on this base: <property>OcuPilot.Kernel.State.Nav.Route</property> is
+/// declared <code>MAXLEN = ""</code> and is cut nowhere, its value being a registry route the
+/// directive echoes back rather than caller text.</p>
+Parameter ROUTEMAXLENGTH As %Integer = 512;
+
+/// <p>The window <method>BoundedWhere</method> applies when its caller asks for 0 hours.</p>
+Parameter BOUNDEDDEFAULTHOURS As %Integer = 24;
+
+/// <p>The widest window <method>BoundedWhere</method> admits, in hours: thirty days.</p>
+Parameter BOUNDEDMAXHOURS As %Integer = 720;
+
+/// <p>The window value that selects keyed mode: no time predicate, the caller's own keyed predicate
+/// being the bound.</p>
+Parameter BOUNDEDKEYED As %Integer = -1;
+
+/// <p>The shape a time column name passed to <method>BoundedWhere</method> must take: a column, or
+/// an alias and a column.</p>
+Parameter BOUNDEDCOLUMNPATTERN = "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)?$";
+
 /// <p>Save <var>pObject</var> -- any persistent instance of this class or a subclass --
 /// through the escalated frame.</p>
 ClassMethod GuardedSave(pObject As %Persistent) As %Status
@@ -141,12 +194,14 @@ ClassMethod GuardedSaveIfCurrent(pObject As Base, pExpected As %Integer = 0) As 
 {
     Set tSC = $$$OK
     Set tInTx = 0
+    Set tPriorVersion = ""
     New $ROLES
     Try {
         Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
         If $$$ISERR(tSC) Quit
         Set tNext = +pExpected + 1
         If pObject.%Id() = "" {
+            Set tPriorVersion = pObject.RowVersion
             Set pObject.RowVersion = 1
             Set tSC = pObject.%Save()
             Quit
@@ -167,16 +222,24 @@ ClassMethod GuardedSaveIfCurrent(pObject As Base, pExpected As %Integer = 0) As 
             Set tSC = $$$ERROR($$$GeneralError, ..#STALESAVEREASON)
             Quit
         }
+        Set tPriorVersion = pObject.RowVersion
         Set pObject.RowVersion = tNext
         Set tSC = pObject.%Save()
         If $$$ISERR(tSC) Quit
         TCOMMIT
         Set tInTx = 0
+        Set tPriorVersion = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     If tInTx {
         TROLLBACK 1
+    }
+    ; The rolled-back row still reads the version it was read at, so the in-memory copy must
+    ; too: a caller that fixes the cause and retries the same object would otherwise send a
+    ; version the row never carried and be refused for ever.
+    If $$$ISERR(tSC) && (tPriorVersion '= "") {
+        Set pObject.RowVersion = tPriorVersion
     }
     Quit tSC
 }
@@ -189,6 +252,71 @@ ClassMethod IsStaleSave(pStatus As %Status) As %Boolean
 {
     If $$$ISOK(pStatus) Quit 0
     Quit $System.Status.GetErrorText(pStatus) [ ..#STALESAVEREASON
+}
+
+/// <p>Whether <var>pStatus</var> is a unique-index violation -- a create whose key another
+/// writer inserted between this caller's look-up and its save (DW-1327).</p>
+/// <p>One check, so a store re-reading the row a race created does not spell the test twice.
+/// Asked of the error code rather than of its text, which is localized.</p>
+ClassMethod IsDuplicateKey(pStatus As %Status) As %Boolean
+{
+    If $$$ISOK(pStatus) Quit 0
+    Quit $System.Status.Equals(pStatus, $$$KeyNotUnique)
+}
+
+/// <p>Whether <var>pStatus</var> is <method>GuardedSaveWithinCap</method>'s busy refusal rather
+/// than a write failure.</p>
+ClassMethod IsCapBusy(pStatus As %Status) As %Boolean
+{
+    If $$$ISOK(pStatus) Quit 0
+    Quit $System.Status.GetErrorText(pStatus) [ ..#CAPBUSYREASON
+}
+
+/// <p>Save <var>pObject</var> only while <var>pCountSql</var> -- a whole SQL literal taking the
+/// two key values as its parameters -- answers fewer than <var>pMax</var> rows.
+/// <var>pAtLimit</var> is 1, and nothing is written, when it does not.</p>
+/// <p><b>The count and the save are one critical section</b> (DW-1327). Both run inside this
+/// frame's escalation while <code>^OcuPilotStateCap(pKey1, pKey2)</code> is held, so two adds of
+/// different names cannot both read the bound as not-yet-reached and both write. A read-then-write
+/// cap outside a lock stores <var>pMax</var> + 1; a transaction alone does not close it, because
+/// a count takes no row lock. A caller that cannot enter the section is refused with
+/// <parameter>CAPBUSYREASON</parameter> rather than writing past the bound.</p>
+/// <p>The lock is released in this same frame, on every path.</p>
+ClassMethod GuardedSaveWithinCap(pObject As Base, pKey1 As %String, pKey2 As %String, pCountSql As %String, pMax As %Integer, Output pAtLimit As %Boolean) As %Status [ Private ]
+{
+    Set pAtLimit = 0
+    Set tSC = $$$OK
+    Set tHeld = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock +^OcuPilotStateCap(pKey1, pKey2):..#CAPLOCKTIMEOUT
+        Set tHeld = $Test
+        If 'tHeld {
+            Set tSC = $$$ERROR($$$GeneralError, ..#CAPBUSYREASON)
+            Quit
+        }
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pCountSql, pKey1, pKey2)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedSaveWithinCap failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        Set tCount = 0
+        If tRS.%Next() Set tCount = +tRS.%GetData(1)
+        Set tRS = ""
+        If tCount >= +pMax {
+            Set pAtLimit = 1
+            Quit
+        }
+        Set tSC = pObject.%Save()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If tHeld {
+        Lock -^OcuPilotStateCap(pKey1, pKey2)
+    }
+    Quit tSC
 }
 
 /// <p>The SQL table <var>pClassName</var> projects to, qualified and quoted as the dictionary
@@ -227,6 +355,33 @@ ClassMethod GuardedOpenId(pId As %String, Output pObject As Base) As %Status
         If '$IsObject(pObject) {
             Set tSC = $$$ERROR($$$GeneralError, "Object not found: " _ pId)
         }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The text of stream property <var>pProperty</var> on already-open guarded object
+/// <var>pObject</var>, escalated in this frame (AD-9). A stream is read lazily: the object's
+/// scalar properties are already in memory once <method>GuardedOpenId</method> returns, but a
+/// stream property's bytes are fetched from protected storage only when read, which is why this
+/// exists as its own escalated call rather than being folded into the caller's own frame --
+/// <code>AddRoles</code> authorizes by the calling routine's identity (AC6,
+/// <file>scripts/check-objectscript.py</file>), never by who is holding the reference, so the
+/// read has to happen inside a method compiled into this class's own routine. Answers
+/// <code>""</code> for a null object, an unknown or non-stream property, or an empty stream.</p>
+ClassMethod GuardedStreamText(pObject As Base, pProperty As %String, Output pText As %String) As %Status [ Private ]
+{
+    Set pText = ""
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(pObject) Quit
+        Set tStream = $Property(pObject, pProperty)
+        If '$IsObject(tStream) Quit
+        If tStream.Size > 0 Set pText = tStream.Read(tStream.Size)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -282,6 +437,226 @@ ClassMethod GuardedProbeGet(pKey As %String, Output pValue As %String) As %Statu
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Take the turn slot lock <code>^OcuPilotTurnSlot(</code><var>pUser</var><code>)</code>,
+/// waiting at most <var>pTimeout</var> seconds. <var>pHeld</var> is 1 when this process now holds
+/// it. The lock outlives this frame and is released by <method>GuardedTurnSlotUnlock</method> or
+/// by the process ending. Reach it through <code>..</code> dispatch from
+/// <class>OcuPilot.Kernel.State.Turn</class>.</p>
+ClassMethod GuardedTurnSlotLock(pUser As %String, pTimeout As %Integer, Output pHeld As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pHeld = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock +^OcuPilotTurnSlot(pUser):+pTimeout
+        Set pHeld = $Test
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Release one hold of the turn slot lock for <var>pUser</var>. Releasing a lock this process
+/// does not hold changes nothing.</p>
+ClassMethod GuardedTurnSlotUnlock(pUser As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock -^OcuPilotTurnSlot(pUser)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Take the proposal target lock
+/// <code>^OcuPilotProposalTarget(</code><var>pKey</var><code>)</code>, waiting at most
+/// <var>pTimeout</var> seconds. <var>pHeld</var> is 1 when this process now holds it.</p>
+/// <p>The lock outlives this frame and is released by <method>GuardedTargetUnlock</method> or by
+/// the process ending. Reach it through <code>..</code> dispatch from
+/// <class>OcuPilot.Kernel.State.Propose</class>, whose claim is the only caller.</p>
+ClassMethod GuardedTargetLock(pKey As %String, pTimeout As %Integer, Output pHeld As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pHeld = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock +^OcuPilotProposalTarget(pKey):+pTimeout
+        Set pHeld = $Test
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Release one hold of the proposal target lock <var>pKey</var>. Releasing a lock this process
+/// does not hold changes nothing.</p>
+ClassMethod GuardedTargetUnlock(pKey As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock -^OcuPilotProposalTarget(pKey)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Set the scalar signal node <code>^OcuPilotTurnSignal(</code><var>pKey</var><code>,
+/// </code><var>pName</var><code>)</code> to <var>pValue</var>.</p>
+ClassMethod GuardedTurnSignalSet(pKey As %String, pName As %String, pValue As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set ^OcuPilotTurnSignal(pKey, pName) = pValue
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Read the signal node <var>pKey</var>, <var>pName</var>; <code>""</code> when unset.</p>
+ClassMethod GuardedTurnSignalGet(pKey As %String, pName As %String, Output pValue As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pValue = ""
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set pValue = $Get(^OcuPilotTurnSignal(pKey, pName))
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove every signal node of turn <var>pKey</var>.</p>
+ClassMethod GuardedTurnSignalKill(pKey As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Kill ^OcuPilotTurnSignal(pKey)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether the IRIS account <var>pUserName</var> is enabled, read through the identity
+/// escalation (AD-8 as amended 2026-09-19, AD-9, DW-444). <var>pKnown</var> is 1 only when the
+/// flag was actually read; a caller that treats <code>pKnown</code> 0 as "enabled" has invented a
+/// permission, and <class>OcuPilot.Kernel.Identity</class> is the one caller and does not.</p>
+/// <p><b>The narrowest escalation in the tree.</b> One argument, one field, one boolean answer,
+/// through <parameter>IDENTITYAPPLICATION</parameter> rather than
+/// <parameter>APPLICATION</parameter>, so a frame that can read this flag can read none of
+/// OcuPilot's own data and a guarded storage frame gains nothing. The role is obtained in this
+/// method's own frame and is gone when the frame unwinds, on the exception path as well.</p>
+/// <p>It calls no tool, no port and no provider, and starts no process, so AD-9's two ordering
+/// rules hold unchanged. The <code>%SYS</code> window is the explicit save-and-restore pair
+/// (AD-16), restored as the first line of the <code>Catch</code>.</p>
+/// <p><var>pUnavailable</var> is 1 when the escalation itself could not be entered -- the
+/// application or its role is absent, disabled or no longer grants
+/// <parameter>IDENTITYRESOURCES</parameter> -- and 0 whenever the escalation was in effect,
+/// whatever the read then found. <b>The two are different facts and a caller must not merge
+/// them:</b> <code>pKnown</code> 0 with <code>pUnavailable</code> 0 is a statement about the
+/// account, while <code>pUnavailable</code> 1 is a statement about OcuPilot's own install, and
+/// reporting the second as the first tells every user their account is disabled (AD-38's
+/// <code>unreadable</code> distinction, applied to this read).</p>
+ClassMethod GuardedUserEnabled(pUserName As %String, Output pKnown As %Boolean, Output pUnavailable As %Boolean) As %Boolean
+{
+    Set pKnown = 0
+    Set pUnavailable = 0
+    Set tEnabled = 0
+    If pUserName = "" Quit 0
+    Set tEscalated = 0
+    New $ROLES
+    Set tOriginalNs = $NAMESPACE
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#IDENTITYAPPLICATION)
+        If $$$ISERR(tSC) Quit
+        ; The positive check that the escalation took. AddRoles reports success for an
+        ; application whose role has since lost a resource, so the status alone does not say
+        ; the read can be done; this asks the process directly.
+        If '..IdentityGrantsInEffect() Quit
+        Set tEscalated = 1
+        ; Entered through the harvested pair while an OcuPilot class still resolves; LEFT by a
+        ; plain assignment, because inside %SYS a dispatch to OcuPilot.Kernel.Utils raises
+        ; <CLASS DOES NOT EXIST> and the restore would never run (AD-16, the installer's idiom).
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOriginalNs)
+        If $$$ISERR(tSC) Quit
+        Kill tProperties
+        Set tSC = ##class(Security.Users).Get(pUserName, .tProperties)
+        If $$$ISERR(tSC) Quit
+        If '$Data(tProperties("Enabled")) Quit
+        Set tEnabled = ''+$Get(tProperties("Enabled"))
+        Set pKnown = 1
+        ; Security.Users.Get fills the array with every property of the account, the password
+        ; hash and salt among them, to answer one boolean. Drop it here rather than let it live
+        ; to the frame's end (AD-35).
+        Kill tProperties
+    } Catch ex {
+        Set $NAMESPACE = tOriginalNs
+        Set pKnown = 0
+        Set tEnabled = 0
+        Kill tProperties
+        ; A raise past the grant check is a <PROTECT> on Security.Users in %SYS, which is the
+        ; same install fault by another route -- not a fact about the account.
+        Set tEscalated = 0
+    }
+    Set $NAMESPACE = tOriginalNs
+    Set pUnavailable = 'tEscalated
+    Quit tEnabled
+}
+
+/// <p>Whether this process actually holds every pair
+/// <parameter>IDENTITYRESOURCES</parameter> declares. Called inside
+/// <method>GuardedUserEnabled</method>'s escalated frame as the oracle for "the escalation is in
+/// effect": it asks the same question <method>Security.Users.Get</method> will ask, before the
+/// answer can be confused with one about the account.</p>
+/// <p>It escalates nothing of its own and is meaningless outside an escalated frame.</p>
+ClassMethod IdentityGrantsInEffect() As %Boolean [ Private ]
+{
+    Set tHeld = 1
+    Try {
+        For tI = 1:1:$Length(..#IDENTITYRESOURCES, ",") {
+            Set tPair = $Piece(..#IDENTITYRESOURCES, ",", tI)
+            Set tResource = $Piece(tPair, ":", 1)
+            Set tPermission = $Piece(tPair, ":", 2)
+            If tPermission = "U" Set tPermission = "USE"
+            If tPermission = "R" Set tPermission = "READ"
+            If tPermission = "W" Set tPermission = "WRITE"
+            If (tResource = "") || (tPermission = "") {
+                Set tHeld = 0
+                Quit
+            }
+            If '$System.Security.Check(tResource, tPermission) {
+                Set tHeld = 0
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tHeld = 0
+    }
+    Quit tHeld
 }
 
 /// <p>Test-only introspection: returns the process's <code>$ROLES</code> as observed
@@ -488,6 +863,58 @@ ClassMethod GuardedOpenOneWhereThreeParam(pSql As %String, pParam1 As %String, p
     Quit tSC
 }
 
+/// <p>A bounded <code>WHERE</code> fragment, without the keyword, for a read over a time-indexed
+/// table, so no search runs unbounded. It runs no SQL and does not escalate.</p>
+/// <p><var>pWindowHours</var> selects the mode: <code>0</code> is the last
+/// <parameter>BOUNDEDDEFAULTHOURS</parameter> hours; <code>1</code> to
+/// <parameter>BOUNDEDMAXHOURS</parameter> is that many hours; <parameter>BOUNDEDKEYED</parameter>
+/// is keyed mode, which emits no time predicate and requires at least one of
+/// <var>pPredicates</var>. A windowed fragment leads with <code>&lt;pTimeColumn&gt; &gt; ?</code>
+/// and pushes the cutoff -- UTC, <code>YYYY-MM-DDTHH:MM:SSZ</code>, the form OcuPilot's own time
+/// columns store -- onto <var>pParams</var>, a <class>%DynamicArray</class> created when absent; the
+/// cutoff is never in the text. Each non-empty entry of <var>pPredicates</var> follows in
+/// parentheses, joined by <code>AND</code>, so an <code>OR</code> inside one cannot escape the
+/// window.</p>
+/// <p>Any other window, a <var>pTimeColumn</var> outside <parameter>BOUNDEDCOLUMNPATTERN</parameter>
+/// in a windowed mode, or keyed mode with no predicate answers <code>""</code> with
+/// <var>pProblem</var> naming the bound, and pushes nothing.</p>
+/// <p><b>Caller contract:</b> <var>pTimeColumn</var> and every predicate are literals the caller
+/// wrote, with <code>?</code> for each value, whose values the caller pushes onto
+/// <var>pParams</var> after this returns (AD-21).</p>
+ClassMethod BoundedWhere(pWindowHours As %String = 0, pTimeColumn As %String, ByRef pParams As %DynamicArray, Output pProblem As %String, pPredicates...) As %String
+{
+    Set pProblem = ""
+    If '$IsObject($Get(pParams)) Set pParams = []
+    Set tKeyed = (pWindowHours = ..#BOUNDEDKEYED) && $Match(pWindowHours, "^-1$")
+    If 'tKeyed && '($Match(pWindowHours, "^(0|[1-9][0-9]*)$") && (pWindowHours <= ..#BOUNDEDMAXHOURS)) {
+        Set pProblem = "the window must be " _ ..#BOUNDEDKEYED _ " for a keyed read, 0 for the last " _ ..#BOUNDEDDEFAULTHOURS _ " hours, or a whole number of hours from 1 to " _ ..#BOUNDEDMAXHOURS
+        Quit ""
+    }
+    Set tPredicates = ""
+    For tI = 1:1:$Get(pPredicates) {
+        Set tPredicate = $Get(pPredicates(tI))
+        If tPredicate = "" Continue
+        Set tPredicates = tPredicates _ $ListBuild("(" _ tPredicate _ ")")
+    }
+    If tKeyed {
+        If tPredicates = "" {
+            Set pProblem = "a keyed read (window " _ ..#BOUNDEDKEYED _ ") needs a keyed predicate to bound it"
+            Quit ""
+        }
+        Quit $ListToString(tPredicates, " AND ")
+    }
+    If '$Match(pTimeColumn, ..#BOUNDEDCOLUMNPATTERN) {
+        Set pProblem = "the time column must be a column name, optionally qualified by one alias"
+        Quit ""
+    }
+    Set tHours = $Select(+pWindowHours = 0: ..#BOUNDEDDEFAULTHOURS, 1: +pWindowHours)
+    Set tNow = $ZTimeStamp
+    Set tSeconds = ((+$Piece(tNow, ",", 1)) * 86400) + ($Piece(tNow, ",", 2) \ 1) - (tHours * 3600)
+    Set tCutoff = $Translate($ZDateTime((tSeconds \ 86400) _ "," _ (tSeconds # 86400), 3, 1), " ", "T") _ "Z"
+    Do pParams.%Push(tCutoff, "string")
+    Quit $ListToString($ListBuild(pTimeColumn _ " > ?") _ tPredicates, " AND ")
+}
+
 /// <p>Escalated: run <var>pSql</var> (a caller literal returning exactly one ID column,
 /// binding one parameter) and collect every matching id into <var>pIds</var>
 /// (<code>pIds(1)</code>, <code>pIds(2)</code>, ...), rather than opening only the
@@ -508,6 +935,63 @@ ClassMethod GuardedIdsWhere(pSql As %String, pParam As %String, Output pIds) As 
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pParam)
         If tRS.%SQLCODE < 0 {
             Set tSC = $$$ERROR($$$GeneralError, "GuardedIdsWhere failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        While tRS.%Next() {
+            Set pIds($Increment(pIds)) = tRS.%GetData(1)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Two-<b>column</b> sibling of <method>GuardedIdsWhere</method>, for a query returning
+/// exactly two columns and binding one parameter: each row lands as a pair,
+/// <var>pPairs(n)</var> the first column and <var>pPairs(n, 2)</var> the second.</p>
+/// <p>It exists so a caller needing two columns runs <b>one</b> statement. Two separately executed
+/// single-column reads paired by ordinal are aligned only while nothing deletes a row between
+/// them, which no caller can guarantee and no caller can detect; they also escalate twice for one
+/// answer. Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedIdsWhere</method>.</p>
+ClassMethod GuardedPairsWhere(pSql As %String, pParam As %String, Output pPairs) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pPairs
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pParam)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedPairsWhere failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        While tRS.%Next() {
+            Set tIndex = $Increment(pPairs)
+            Set pPairs(tIndex) = tRS.%GetData(1)
+            Set pPairs(tIndex, 2) = tRS.%GetData(2)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Two-parameter sibling of <method>GuardedIdsWhere</method>, for a query whose
+/// <code>WHERE</code> clause binds two values (<class>OcuPilot.Kernel.State.Turn</class>'s owner
+/// lookup by turn key and user name). Same call-site-literal and <code>Private</code> rules.</p>
+ClassMethod GuardedIdsWhereTwoParam(pSql As %String, pParam1 As %String, pParam2 As %String, Output pIds) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pIds
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pParam1, pParam2)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedIdsWhereTwoParam failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
             Quit
         }
         While tRS.%Next() {
@@ -540,6 +1024,171 @@ ClassMethod GuardedIdsWhereNoParam(pSql As %String, Output pIds) As %Status [ Pr
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Escalated: run a bounded read assembled from three call-site literals and collect every
+/// matching id into <var>pIds</var>, the way <method>GuardedIdsWhere</method> does. The statement is
+/// joined <b>here</b> -- <code>pSelectPrefix _ " WHERE " _ pFragment _ " " _ pSuffix</code> -- so no
+/// subclass concatenates SQL text of its own (AD-21), and <var>pFragment</var> is
+/// <method>BoundedWhere</method>'s answer, which carries a <code>?</code> for every value and no
+/// value at all.</p>
+/// <p><b>Binding order is fixed:</b> <var>pMaxRows</var> first, then <var>pParams</var>'s members in
+/// array order. So <var>pSelectPrefix</var> spells <code>SELECT TOP ?</code> ahead of the fragment's
+/// own placeholders. A caller whose prefix names no placeholder passes <code>0</code> and binds
+/// nothing; a prefix that <b>does</b> name one and a <var>pMaxRows</var> that is not positive are
+/// refused rather than run, because dropping the first argument slides every predicate value up one
+/// placeholder instead of dropping the cap.</p>
+/// <p><b><method>BoundedWhere</method> pushes its cutoff last, while the fragment names it first</b>
+/// -- so a caller passes an <b>empty</b> <var>pParams</var>, lets that method push the cutoff onto
+/// index 1, and pushes its own predicate values only after it returns. Passing a pre-filled array
+/// puts the cutoff behind values the fragment names after it.</p>
+/// <p>A statement with no bound value at all takes the no-argument <code>%ExecDirect</code> branch:
+/// passing an unused parameter raises <code>SQLCODE -400</code> (see
+/// <method>GuardedOpenOneWhereNoParam</method>).</p>
+/// <p>Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedExecuteOneParam</method>: reach it through inherited (<code>..</code>) dispatch
+/// from a subclass in this package.</p>
+ClassMethod GuardedIdsBounded(pSelectPrefix As %String, pFragment As %String, pSuffix As %String, pMaxRows As %Integer, ByRef pParams As %DynamicArray, Output pIds) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pIds
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tSql = pSelectPrefix _ " WHERE " _ pFragment _ " " _ pSuffix
+        Kill tArgs
+        Set tArgs = 0
+        ; A prefix that binds its own row cap must be given one: omitting the first argument would
+        ; slide every predicate value up one placeholder instead of dropping the cap.
+        If (+pMaxRows <= 0) && (pSelectPrefix [ "?") {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedIdsBounded needs a row cap above zero for a prefix that binds one: " _ pSelectPrefix)
+            Quit
+        }
+        If +pMaxRows > 0 Set tArgs($Increment(tArgs)) = +pMaxRows
+        If $IsObject($Get(pParams)) {
+            For tI = 0:1:pParams.%Size() - 1 {
+                Set tArgs($Increment(tArgs)) = pParams.%Get(tI)
+            }
+        }
+        If tArgs = 0 {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, tSql)
+        } Else {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, tSql, tArgs...)
+        }
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedIdsBounded failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        While tRS.%Next() {
+            Set pIds($Increment(pIds)) = tRS.%GetData(1)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Run the update <var>pSql</var> through the escalated frame with <var>pParams</var> bound in
+/// order, and answer in <var>pRowCount</var> how many rows it changed.</p>
+/// <p><b>The row count is the answer, not a diagnostic.</b> A conditional update whose
+/// <code>WHERE</code> clause carries the state it is claiming changes one row for the caller that
+/// wins and none for every other, so the count is what a single-winner claim reads. Callers that
+/// need several such statements to commit together open the transaction themselves; this method
+/// joins whatever transaction is already open and starts none of its own.</p>
+/// <p>Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedExecuteOneParam</method>: reach it through inherited (<code>..</code>) dispatch
+/// from a subclass in this package, with the statement spelled as a literal and every value
+/// bound.</p>
+ClassMethod GuardedExecuteRows(pSql As %String, ByRef pParams As %DynamicArray, Output pRowCount As %Integer) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pRowCount = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Kill tArgs
+        Set tArgs = 0
+        If $IsObject($Get(pParams)) {
+            For tI = 0:1:pParams.%Size() - 1 {
+                Set tArgs($Increment(tArgs)) = pParams.%Get(tI)
+            }
+        }
+        If tArgs = 0 {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql)
+        } Else {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, tArgs...)
+        }
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedExecuteRows failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        Set pRowCount = +tRS.%ROWCOUNT
+    } Catch ex {
+        Set pRowCount = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pStatus</var> carries IRIS's own lock-timeout error (5803,
+/// <code>$$$LockFailedToAcquireExclusive</code>) rather than any other failure. Public so
+/// <class>OcuPilot.Test.Convo</class> can pin the classification directly against a status this
+/// class's own error macro built, without needing genuine lock contention from a second process
+/// (Test/Convo.cls is spawn-free) -- <method>GuardedOpenIdExclusive</method> uses this same
+/// method rather than a second copy of the test.</p>
+ClassMethod IsLockConflict(pStatus As %Status) As %Boolean
+{
+    If $$$ISOK(pStatus) Quit 0
+    Quit $System.Status.Equals(pStatus, $$$ERRORCODE($$$LockFailedToAcquireExclusive))
+}
+
+/// <p>Open the row whose <code>%Id()</code> is <var>pId</var>, for the calling subclass, at
+/// concurrency 4 (exclusive, retained), waiting up to <var>pTimeout</var> seconds for the row's
+/// lock -- the primitive behind the harvested <code>Chat.History.LoadOrCreate</code>
+/// per-conversation lock protocol (Story 4.5, <class>OcuPilot.Kernel.State.Convo</class>).</p>
+/// <p><var>pObject</var> is <code>$$$NULLOREF</code> on any failure. <var>pLockConflict</var>
+/// distinguishes IRIS's own lock-timeout status -- error 5803,
+/// <code>$$$LockFailedToAcquireExclusive</code>, raised from inside <code>%OpenId</code>'s own
+/// concurrency escalation (verified against <code>irislib/%occErrors.inc</code>) -- from every
+/// other open failure, so a caller can tell a busy row from a persistence problem.</p>
+/// <p><code>%OpenId</code> takes no timeout argument on this build (<code>%Library.Persistent</code>'s
+/// signature is <code>%OpenId(id, concurrency, ByRef sc)</code>); the wait is bounded instead by
+/// temporarily lowering the process's default object and SQL lock timeout -- <code>$ZUtil(115,4)</code>,
+/// which <code>%OpenId</code>'s internal concurrency lock uses -- around the call, restoring it whatever the outcome. The same
+/// save/set/restore idiom is already in the exported system source at
+/// <code>irislib/Ens/DTL/Utils.cls</code>.</p>
+ClassMethod GuardedOpenIdExclusive(pId As %String, pTimeout As %Integer, Output pObject, Output pLockConflict As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pObject = $$$NULLOREF
+    Set pLockConflict = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tSaved = $ZUtil(115, 4)
+        Do $ZUtil(115, 4, +pTimeout)
+        Try {
+            Set pObject = ..%OpenId(pId, 4, .tSC)
+        } Catch inner {
+            Set tSC = inner.AsStatus()
+        }
+        Do $ZUtil(115, 4, tSaved)
+        If $$$ISERR(tSC) || '$IsObject(pObject) {
+            Set pObject = $$$NULLOREF
+            If $$$ISERR(tSC) {
+                Set pLockConflict = ..IsLockConflict(tSC)
+            } Else {
+                Set tSC = $$$ERROR($$$GeneralError, "the row could not be opened")
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+        Set pObject = $$$NULLOREF
     }
     Quit tSC
 }

@@ -9,8 +9,9 @@
  * reachable from `src/main.ts` imports this directory, and `ui/tools/client-lint.mjs` refuses a
  * shipped file that would.
  *
- * `window.ocuHarness` lets the spec re-read with a row set of its own, mark a key changed, and pause
- * the screen's refresh with a live proposal.
+ * `window.ocuHarness` lets the spec re-read with a row set of its own, mark a key changed, pause
+ * the screen's refresh with a live proposal, sort by a field, and read the column widths the store
+ * holds and the last view value it sent.
  */
 
 import {
@@ -26,13 +27,13 @@ import type { ApiService, JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import type { ConnectivityService } from '../../core/connectivity';
 import { OverlayStack } from '../../core/overlay-stack';
-import { PreferenceStore } from '../../core/preferences';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { ScreenActions } from '../../core/screen-actions';
 import { createScreenRead } from '../../core/screen-read';
 import { ScreenStores } from '../../core/screen-store';
 import { DataTable } from '../../shell/data-table';
+import { lastRemembered, stubAccountPreferences } from '../account-preferences';
 import { tableDeclaration } from '../table-declaration';
 
 /** What `reread` answers the next reads with, instead of the origin. */
@@ -49,6 +50,12 @@ export interface TableHarnessHooks {
   paused(): boolean;
   active(): string;
   selection(): readonly string[];
+  /** The column widths the store holds, by field (Story 15.8). */
+  widths(): Readonly<Record<string, number>>;
+  /** The last `view` value the table sent to the account store, or `''` before any. */
+  rememberedView(): string;
+  /** Sort the table by `field`, as the screen's sort control does. */
+  sort(field: string): void;
 }
 
 declare global {
@@ -85,7 +92,8 @@ const api: Pick<ApiService, 'requestJson'> = {
 };
 
 const bus = new ChangeBus();
-const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: null }) });
+const account = stubAccountPreferences();
+const stores = new ScreenStores({ account });
 const refresh = new RefreshService({
   stores,
   connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
@@ -93,8 +101,16 @@ const refresh = new RefreshService({
   namespace: () => NAMESPACE,
   schedule: () => {},
 });
-const store = stores.for(declaration.descriptor, declaration.refreshRates);
+const store = stores.for(declaration.descriptor, declaration.refreshRates, declaration.route);
 const overlays = new OverlayStack();
+
+// The table draws a row action only while a handler is registered for it (DW-389), so every row
+// action the harness declares is registered here. Running one does nothing: the specs over this
+// harness pin the menu's geometry and keyboard, never an action's effect.
+const actions = new ScreenActions();
+for (const action of declaration.rowActions) {
+  actions.register(declaration.descriptor, action.id, () => {});
+}
 
 refresh.bind(declaration, createScreenRead(api, declaration));
 
@@ -113,6 +129,9 @@ window.ocuHarness = {
   paused: () => refresh.paused(),
   active: () => store.active(),
   selection: () => store.selection(),
+  widths: () => Object.fromEntries(store.columnWidths()),
+  rememberedView: () => lastRemembered(account.calls, declaration.route) ?? '',
+  sort: (field) => store.setSort(field),
 };
 
 /** The page: the table filling the viewport, and the shell's one Escape handler. */
@@ -142,7 +161,7 @@ bootstrapApplication(TableHarness, {
     { provide: ScreenStores, useValue: stores },
     { provide: ChangeBus, useValue: bus },
     { provide: OverlayStack, useValue: overlays },
-    { provide: ScreenActions, useValue: new ScreenActions() },
+    { provide: ScreenActions, useValue: actions },
     { provide: ScopeService, useValue: { namespace: () => NAMESPACE, subscribe: () => () => {} } as unknown as ScopeService },
   ],
 })

@@ -40,6 +40,7 @@ XData Declaration
   "rowActions": [],
   "emptyStateKey": "",
   "commandAliases": [],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "OcuPilotTestClassicPageBad",
   "classicLinkExemption": {"exempt": true, "reason": "a list screen claiming the exemption only a detail view may hold", "label": "OcuPilot test classic page (Bad)", "href": "/csp/sys/OcuPilotTestClassicPageBad.csp"},
   "toolIdentifier": "test.badclassiclink"

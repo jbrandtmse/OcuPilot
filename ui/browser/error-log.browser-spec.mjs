@@ -60,6 +60,7 @@ import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '..
 import { parseMarkers } from './iris-session.mjs';
 import { ROW_SELECTOR, clickRowCentre, viewCount } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -104,6 +105,15 @@ const mark = (name, expression) => `Write "OCU"_"-${name}-START:"_(${expression}
  */
 function seedErrors(count) {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this leg seeds an application error through OcuPilot.Test.ErrorLogSeed and never runs against the live instance');
+  // And never inside an owner-managed slot instance either, which `notEqual(LIVE_CONTAINER)` does
+  // not exclude: an application error cannot be un-logged, and Story 5.13's delete is the only
+  // thing that could remove one. Throwaways are the only containers whose names end `-ci`
+  // (`scripts/ci-throwaway.sh`).
+  assert.match(
+    config.container,
+    /-ci$/,
+    `this leg seeds an application error on the instance, so it runs only in a throwaway; ${config.container} is not one`
+  );
   const lines = [];
   for (let i = 0; i < count; i += 1) {
     lines.push(`Set tSC${i} = ##class(OcuPilot.Test.ErrorLogSeed).SeedInto("${SEED_NAMESPACE}", .tDay, .tNumber)`);
@@ -208,6 +218,10 @@ after(async () => {
  * throwaway principal's instead, so the same sign-in flow drives both.
  */
 async function signedInAtScreen(username = config.username, password = config.password) {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
@@ -242,6 +256,7 @@ async function signedInAtScreen(username = config.username, password = config.pa
  * the live server computes for the rewritten query.
  */
 async function signedInAtScreenIntercepting() {
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
@@ -343,7 +358,12 @@ test('AC3: the drill walks namespaces to dates to errors, each level a table wit
   const { context, page, reads } = await signedInAtScreen();
   try {
     assert.equal(await levelOf(page), 'namespaces', 'the screen opens on the namespaces level');
-    assert.deepEqual(await headersOf(page), [STRINGS.headerNamespaceLabel], 'whose one column is the namespace');
+    // Story 7.10: each table level ends in the row menu's column, whose header is visually hidden.
+    assert.deepEqual(
+      await headersOf(page),
+      [STRINGS.headerNamespaceLabel, STRINGS.commandBoxGroupActions],
+      'whose one data column is the namespace'
+    );
     const namespaces = await firstCells(page);
     assert.ok(namespaces.length > 0, `the instance records errors for at least one namespace: ${JSON.stringify(namespaces)}`);
     assert.ok(
@@ -356,7 +376,7 @@ test('AC3: the drill walks namespaces to dates to errors, each level a table wit
     await drillInto(page, namespaces[0], 'dates');
     assert.deepEqual(
       await headersOf(page),
-      [STRINGS.errorLogColumnDate, STRINGS.errorLogColumnCount],
+      [STRINGS.errorLogColumnDate, STRINGS.errorLogColumnCount, STRINGS.commandBoxGroupActions],
       'the dates level renders the date and its count'
     );
     assert.equal(
@@ -378,6 +398,7 @@ test('AC3: the drill walks namespaces to dates to errors, each level a table wit
         STRINGS.errorLogColumnLine,
         STRINGS.processColumnUser,
         STRINGS.processColumnPid,
+        STRINGS.commandBoxGroupActions,
       ],
       'the errors level renders the summary projection'
     );

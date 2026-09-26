@@ -1,9 +1,28 @@
 import { Injectable, Injector, inject } from '@angular/core';
 
 import { ApiService } from '../../core/api';
-import type { RefreshRead } from '../../core/refresh';
+import { RefreshService, type RefreshRead } from '../../core/refresh';
 import { createScreenRead, criteriaParams, type ScreenReadCriteria } from '../../core/screen-read';
 import type { ScreenDeclaration } from '../../core/screens.generated';
+
+/**
+ * The name the screen mirror gives this screen's one flag criterion, which is the name an agent
+ * navigation may carry (`OcuPilot.Screen.Descriptor.Base.FlagCriteria`, Story 5.8). It is the
+ * mirror's own key for `ReadCriteriaMarker`, and the only flag `ReadCriteria` can structurally
+ * hold -- a second one would be a type change here as well as a descriptor change.
+ */
+export const MARKER_CRITERION = 'marker';
+
+/**
+ * The descriptor this store holds the state of. `openWith` checks the declaration it is handed
+ * against it, because the shell reaches an area store by injecting it concretely
+ * (`shell/agent-navigator.ts`) and so hands this store whichever screen the navigation arrived at.
+ * Today `AuditList` is the only descriptor declaring a flag criterion, so no other declaration can
+ * get this far -- but `marker` is a field on the shared generated `ReadCriteria`, so a second
+ * screen declaring one would otherwise have this store set its own filter and bind that other
+ * screen's declaration into the refresh framework through `readFor`.
+ */
+export const AUDIT_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.AuditList';
 
 /**
  * The audit database viewer's own state: what the criteria form holds, whether the agent-marker
@@ -172,6 +191,48 @@ export class AuditSearch {
     );
     this.reads.set(declaration.descriptor, read);
     return read;
+  }
+
+  /**
+   * Arrive on this screen with `criterion` applied, and run the screen's declared read (Story 5.8,
+   * AD-21): the non-interactive path beside the checkbox's and Search's, so "is the marker on" and
+   * "has this screen searched" have one answer and not two.
+   *
+   * **It names a criterion; it is never given a value.** `criterion` is the name the arriving
+   * descriptor declares -- the instance refused anything else before the navigation was announced
+   * (`NAV.CRITERIONUNKNOWN`) -- and the value that reaches the read is `criteria()`'s reading of
+   * the declaration. A name the declaration does not carry applies nothing and searches nothing,
+   * because there is no filter to arrive with.
+   *
+   * **The form is cleared, so the arrival runs the screen's declared read and not the user's last
+   * one.** This store is root-provided and outlives every visit to the screen, so whatever the
+   * user last typed into the criteria form is still held here -- and `criteria()` sends every
+   * declared criterion the form holds a value for. An arrival that kept them would run the
+   * marker filter narrowed by a username or a pid the user typed some visits ago, which is how a
+   * hand-off that found the right row for the agent finds none for the user.
+   *
+   * **It binds and reads rather than leaving that to the page.** The archetype renders nothing
+   * until Search has run, and the page instance the router is about to create binds only when
+   * Search is pressed -- so a navigation that set the flag and stopped there would land on an
+   * unsearched form with a ticked checkbox. Binding is idempotent: `readFor` hands back the same
+   * closure every time, which is what makes the page's own re-bind a no-op.
+   *
+   * **It applies nothing to a screen that is not this one.** `declaration` is whatever screen the
+   * navigation arrived at, so the descriptor is checked as well as the criterion name: this store
+   * owns one screen's filter and one screen's bound read, and setting either from another screen's
+   * declaration would filter a screen nobody asked about (see `AUDIT_DESCRIPTOR`).
+   */
+  openWith(declaration: ScreenDeclaration, criterion: string): void {
+    if (declaration.descriptor !== AUDIT_DESCRIPTOR) return;
+    const marker = declaration.read?.criteria?.marker ?? null;
+    if (marker === null || criterion !== MARKER_CRITERION) return;
+    this.values = {};
+    this.markerOn = true;
+    this.searchedOnce = true;
+    this.notify();
+    const refresh = this.injector.get(RefreshService);
+    refresh.bind(declaration, this.readFor(declaration));
+    void refresh.readNow();
   }
 
   private notify(): void {

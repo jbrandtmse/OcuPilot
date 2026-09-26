@@ -39,7 +39,7 @@
 /// <method>OcuPilot.Kernel.State.Agent.GuardedClearVerification</method>, which escalates in its own
 /// frame (AD-9). That is a write to OcuPilot's own protected state, not a mutation of the instance
 /// the agent acts on (AD-7). See <method>FlagUnresolvedCredential</method>.</p>
-Class OcuPilot.Port.ProviderPort Extends %RegisteredObject
+Class OcuPilot.Port.ProviderPort Extends %RegisteredObject [ DependsOn = OcuPilot.Screen.Gate ]
 {
 
 /// <p>The class the pair set is evaluated through.</p>
@@ -53,8 +53,18 @@ Parameter CATALOGCLASS = "OcuPilot.Kernel.Provider.Catalog";
 
 /// <p>The pair set <method>InvokeDraft</method> requires, comma-separated as
 /// <code>resource:permission</code>: OcuPilot's own administrative resource, which is what the
-/// write gate on the endpoint field requires too.</p>
+/// write gate on the endpoint field requires too. Every pair is required.</p>
 Parameter DRAFTPAIRS = "OcuPilotAdmin:USE";
+
+/// <p>The pair set <method>Invoke</method> requires, comma-separated as
+/// <code>resource:permission</code>: the instance-level administrative floor, of which <b>any
+/// one</b> pair admits the call (AD-29). A caller who could not reach any OcuPilot API route
+/// cannot make the instance call a provider on their behalf either.</p>
+/// <p><b>Derived, not held</b>: the list's one home is
+/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>, spelled into pair form by
+/// <method>OcuPilot.Screen.Gate.AdminPairSpec</method> at compile time, so this port cannot come
+/// to admit a caller <class>OcuPilot.Api.Router</class> would refuse.</p>
+Parameter INVOKEPAIRS As %String = {##class(OcuPilot.Screen.Gate).AdminPairSpec()};
 
 /// <p>The subsystem this port's log lines are written under.</p>
 Parameter LOGSUBSYSTEM = "providerport";
@@ -72,13 +82,31 @@ Parameter SSLABSENTCODE = 979;
 /// <method>OcuPilot.Kernel.Provider.Base.Invoke</method> documents. Epic 4's turn is the caller.</p>
 /// <p>Refuses <code>PROVIDER.UNCONFIGURED</code> for an id no definition holds: a caller that
 /// named a definition that has been deleted gets a named refusal rather than a 500.</p>
+/// <p><var>pUser</var> is the <b>turn owner</b> -- the account the turn was started by, which the
+/// caller passes in (DW-1309, AD-31). The gate below is evaluated against that user's <b>live</b>
+/// grants, not against the calling process: a turn job froze <code>$ROLES</code> at the spawn and
+/// keeps that copy for its whole life, so a grant revoked while the turn ran would still admit the
+/// call if the process were asked. <code>""</code> falls back to the calling process's own
+/// identity, which is what a caller with no turn behind it is.</p>
+/// <p><var>pStream</var>, when supplied, is the <class>OcuPilot.Kernel.Provider.StreamSink</class>
+/// the call's text so far is published to; a family that streams then streams (AD-42). A turn is
+/// the only caller that passes one.</p>
 /// <p><b>Caller contract:</b> must not be called from an escalated frame (AD-9); the caller's
 /// namespace is unchanged on return.</p>
-ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pUser As %String = "", pStream As OcuPilot.Kernel.Provider.StreamSink = "") As %Status
 {
     Do ..Blank(.pResponse, .pHttpStatus, .pFault)
     Try {
         If '..Authenticated(.pHttpStatus, .pFault) Quit
+        ; The named gate this port's primary entry evaluates before its outbound call (AD-29).
+        ; An OR-set: any one administrative pair admits, an empty or unreadable set admits
+        ; nobody, and nothing leaves the instance before it has answered. Asked of the turn
+        ; owner's live grants rather than of the job's frozen roles (AD-31, DW-1309).
+        Set tFailedPair = ""
+        If '..GateAnyOfForUser($Select(pUser '= "": pUser, 1: ..ResolvedUsername()), ..InvokePairs(), .tFailedPair) {
+            Do ..RefusePair(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
         Set tSC = ..ValuesFor(pDefinitionId, .tValues, .tFound)
         If $$$ISERR(tSC) {
             Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
@@ -97,7 +125,7 @@ ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools,
             Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
             Quit
         }
-        Do ..Dispatch(.tValues, .pMessages, .pTools, pSystemPrompt, .pResponse, .pHttpStatus, .pFault)
+        Do ..Dispatch(.tValues, .pMessages, .pTools, ..SystemPromptFor(.tValues, pSystemPrompt), .pResponse, .pHttpStatus, .pFault, pStream)
         Do ..FlagUnresolvedCredential(pDefinitionId, .tValues, .pFault)
     } Catch ex {
         Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, .pHttpStatus, .pFault)
@@ -106,19 +134,29 @@ ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools,
     Quit $$$OK
 }
 
+/// <p>The system prompt a call against the stored definition <var>pValues</var> sends (AD-11 rule
+/// 1, DW-333): the definition's override, whole, when it has one, and <var>pSystemPrompt</var>
+/// otherwise. Never both. The override is read with the definition at every call, so an edit
+/// takes effect at the next one.</p>
+ClassMethod SystemPromptFor(ByRef pValues, pSystemPrompt As %String) As %String [ Private ]
+{
+    Set tOverride = $Get(pValues("systemPromptOverride"))
+    If tOverride = $Char(0) Set tOverride = ""
+    If tOverride '= "" Quit tOverride
+    Quit pSystemPrompt
+}
+
 /// <p><b>DW-22.</b> A stored definition whose credential reference no longer resolves is disabled
 /// and its verification cleared, so an operator sees the broken definition instead of a turn that
 /// fails silently for as long as nobody looks.</p>
 /// <p><b>Only <code>PROVIDER.CREDENTIAL</code>, and deliberately not
 /// <code>PROVIDER.KEYSHAPE</code></b>: that one is a key of the wrong shape, which is a different
 /// fault from a reference that resolves to nothing, and the entry names the missing one.</p>
-/// <p><b>And only when the resolution was an absence</b> (DW-343). The ladder reports through
-/// <code>pValues("credentialTransient")</code> whether its <code>""</code> came from a store that
-/// would not answer -- a locked row, a raise -- rather than from a reference nothing holds.
-/// Disabling on the first kind takes a definition that is correctly configured out of service
-/// because the store was busy for a moment, and nothing puts it back but an operator noticing. The
-/// call still fails, with the same refusal; what changes is that the row is left alone and the
-/// reason goes to the log.</p>
+/// <p><b>And never <code>PROVIDER.CREDENTIALSTORE</code></b> (DW-343, DW-410). That code is a
+/// store that could not be read -- a rung this namespace cannot reach, a locked row, a raise --
+/// which says nothing about the reference. Disabling on it takes a definition that is correctly
+/// configured out of service, and nothing puts it back but an operator noticing. The call still
+/// fails; the row is left alone and the reason goes to the log.</p>
 /// <p><b>Only <method>Invoke</method> calls this.</b> <method>InvokeDraft</method> runs against
 /// values a caller supplied, so there is no row to flag -- and testing a disabled definition is how
 /// an operator re-enables one.</p>
@@ -128,12 +166,12 @@ ClassMethod FlagUnresolvedCredential(pId As %String, ByRef pValues, ByRef pFault
 {
     Try {
         If '$IsObject(pFault) Quit
-        If pFault.code '= ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL Quit
-        If +$Get(pValues("credentialTransient")) {
+        If pFault.code = ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE {
             ; The reference, never a value -- there is none to name either way.
-            Do ..LogRaw("a definition was left enabled because its credential store could not be read; the reference was not judged absent", $$$ERROR($$$GeneralError, "definition " _ pId), ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
+            Do ..LogRaw("a definition was left enabled because its credential store could not be read; the reference was not judged absent", $$$ERROR($$$GeneralError, "definition " _ pId _ ", " _ $Get(pValues("credType")) _ " " _ $Get(pValues("credentialName"))), ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE)
             Quit
         }
+        If pFault.code '= ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL Quit
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(pId)
         If $$$ISERR(tSC) {
             Do ..LogRaw("a definition whose credential reference no longer resolves could not be disabled", tSC, ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
@@ -151,19 +189,27 @@ ClassMethod FlagUnresolvedCredential(pId As %String, ByRef pValues, ByRef pFault
 /// <p>Make one provider call against <var>pValues</var> -- a definition as a caller supplied it,
 /// subscripted by wire field name -- rather than against a stored row. <b>Always returns
 /// <code>$$$OK</code></b>.</p>
+/// <p><b>Its gate stays the calling process's</b> (DW-1309). Test connection is a foreground
+/// request whose caller <b>is</b> the user, so there is no frozen role set to go stale and no turn
+/// owner to name; <method>Invoke</method>'s question is about a background job, and asking it here
+/// would be asking the same account twice.</p>
 /// <p><b>Additionally requires <parameter>DRAFTPAIRS</parameter></b>, because these values have
 /// not passed the write gate AD-42 puts on the endpoint field. The address rules are applied here
 /// regardless, so the privilege buys the ability to try an unsaved definition, never the ability
 /// to name an address the rules refuse. The definition's <code>Enabled</code> flag is not
 /// consulted: testing a definition the write path disabled is how an operator re-enables it.</p>
 /// <p><b><var>pValues</var> is normalized and added to in place.</b> The caller's array comes back
-/// carrying the catalog row's <code>keyPrefix</code> and <code>authVersion</code>, and its
+/// carrying the catalog row's <code>keyPrefix</code>, <code>authVersion</code> and
+/// <code>reasoningEffort</code>, and its
 /// <code>endpointUrl</code> filled in from the row when it was empty. A caller that keeps the
 /// array -- an operator's edited form, say -- sees those keys afterwards.</p>
 /// <p><b><code>maxAttempts</code> is the one key a caller may set to change how the call is
-/// made</b>, and it can only <i>lower</i> the instance's stored bound: a positive whole number
+/// retried</b>, and it can only <i>lower</i> the instance's stored bound: a positive whole number
 /// below the resolved value is taken, anything else is ignored. Test connection sets it to 1.
-/// <method>ValuesFor</method> never sets it, so a turn keeps the stored ladder.</p>
+/// <method>ValuesFor</method> never sets it, so a turn keeps the stored ladder. The key the call
+/// carries is the caller's to choose too, through <code>keySource</code>
+/// (<method>OcuPilot.Kernel.Provider.Base.Invoke</method>); absent, the stored reference is
+/// resolved.</p>
 ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Do ..Blank(.pResponse, .pHttpStatus, .pFault)
@@ -171,14 +217,7 @@ ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPro
         If '..Authenticated(.pHttpStatus, .pFault) Quit
         Set tFailedPair = ""
         If '..Gate(..DraftPairs(), .tFailedPair) {
-            Set tDetail = ""
-            If tFailedPair '= "" {
-                Set tDetail = {}
-                Do tDetail.%Set("failedPair", tFailedPair)
-            }
-            Set pHttpStatus = 403
-            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "This account may not test an unsaved agent definition")
-            If $IsObject(tDetail) Do pFault.%Set("detail", tDetail)
+            Do ..RefusePair(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
         Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.pValues)
@@ -191,12 +230,28 @@ ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPro
 }
 
 /// <p>Everything both entries do once the gate has answered: resolve the provider's catalog row,
-/// judge the endpoint's resolved address, resolve the instance's outbound settings, confirm the
-/// TLS configuration, and hand the call to the adapter the row names.</p>
+/// judge the endpoint's resolved address, resolve the instance's outbound settings, judge the
+/// configured proxy's resolved address, confirm the TLS configuration, and hand the call to the
+/// adapter the row names.</p>
+/// <p><b>A configured proxy is a destination too</b> (AD-32, AD-42). Its host is judged by the same
+/// policy as the endpoint, with the definition's own marked-local flag and its row's local escape,
+/// and a refusal is <code>PROVIDER.EGRESS</code> naming the proxy with no socket opened. An on-host
+/// forward proxy is not special-cased. Where the endpoint is https the request always
+/// CONNECT-tunnels through the proxy and negotiates TLS inside the tunnel, whatever the stored
+/// <code>proxyTunnel</code> and <code>proxyHttps</code> say, so the proxy never terminates the
+/// session that carries the key.</p>
+/// <p><b>A marked-local endpoint bypasses the proxy entirely</b> (DW-441, AD-42): a model on the
+/// operator's own network is not reached through the instance's outbound proxy, and
+/// <method>OcuPilot.Kernel.Egress.LeavesInstance</method> reads the same flag first, so the chip's
+/// statement and the request that is issued cannot disagree. The proxy is still <i>judged</i>
+/// before it is dropped: a configured proxy the address policy refuses ends the call, which is the
+/// fail-safe direction on a value an operator has misconfigured.</p>
 /// <p><b>The adapter comes from the row's <code>adapterClass</code> column and from nowhere
 /// else.</b> No branch here reads a provider key, so a second family is one row plus one class
 /// (AC1).</p>
-ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String, ByRef pResponse As OcuPilot.Kernel.Provider.Response, ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject) [ Private ]
+/// <p><var>pStream</var> reaches the adapter as <code>tSettings("stream")</code>; a draft call
+/// passes none.</p>
+ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String, ByRef pResponse As OcuPilot.Kernel.Provider.Response, ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject, pStream As OcuPilot.Kernel.Provider.StreamSink = "") [ Private ]
 {
     If '$ClassMethod(..CatalogClass(), "Row", $Get(pValues("provider")), .tRow) {
         Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
@@ -209,11 +264,12 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
     }
     Set pValues("keyPrefix") = tRow.keyPrefix
     Set pValues("authVersion") = tRow.authVersion
+    Set pValues("reasoningEffort") = tRow.reasoningEffort
     Set tAllowsLocal = ''+tRow.allowsLocal
     Set tMarkedLocal = ''+$Get(pValues("markedLocal"))
 
     ; The endpoint a create left empty is the row's canonical one, exactly as a create resolves it.
-    If $Get(pValues("endpointUrl")) = "" Set pValues("endpointUrl") = tRow.defaultEndpoint
+    Set pValues("endpointUrl") = ..EndpointOf($Get(pValues("endpointUrl")), tRow)
     Set tEndpoint = $Get(pValues("endpointUrl"))
     If tEndpoint = "" {
         Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
@@ -241,6 +297,25 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         ; it could not read the stored row goes to the log.
         Do ..LogRaw("the instance's outbound settings could not be read; the shipped defaults are in force for this call", tSettingsSC, "")
     }
+    Set tProxyHost = ..ProxyHostOf(.tSettings)
+    If tProxyHost '= "" {
+        If '##class(OcuPilot.Kernel.Egress).IsPermitted(tProxyHost, tMarkedLocal, tAllowsLocal, .tProxyKind) {
+            Do ##class(OcuPilot.Kernel.Provider.Base).Fault(##class(OcuPilot.Api.Error).#PROVIDEREGRESS, ##class(OcuPilot.Kernel.Provider.Base).#REASONPROXYEGRESS, "", .pFault, .pHttpStatus)
+            Do ..LogRaw("the proxy this call would go through was refused by the address policy", $$$ERROR($$$GeneralError, "resolved address kind: " _ tProxyKind), ##class(OcuPilot.Api.Error).#PROVIDEREGRESS)
+            Quit
+        }
+        ; The vendor negotiates TLS inside a CONNECT tunnel only when ProxyHTTPS is set, so both
+        ; flags are forced: a tunnel alone would carry the key in cleartext.
+        ; Since DW-441 the condition no longer discriminates on any permitted configuration: plain
+        ; HTTP is licensed only for a marked-local definition, and the block below blanks every
+        ; proxy setting for one, so a call that carries a proxy is always https here. Kept rather
+        ; than deleted because it is what states the rule, and a later change to either licence
+        ; would make it discriminate again.
+        If ..IsHttps(tEndpoint) {
+            Set tSettings("proxyTunnel") = 1
+            Set tSettings("proxyHttps") = 1
+        }
+    }
     ; A caller may lower this call's attempt bound below the instance's, never raise it: Test
     ; connection makes one attempt, so an operator holding focus on a button is not held through a
     ; retry ladder whose honoured Retry-After waits are unbounded from their side. ValuesFor never
@@ -259,6 +334,14 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         ; cleared rather than set on a request that will never negotiate.
         Set tSettings("sslConfiguration") = ""
     }
+    If tMarkedLocal {
+        ; DW-441: dropped after the judgement above, so a refused proxy still ends the call, and
+        ; before NewRequest, so the request this call issues carries none of it.
+        Set tSettings("proxyServer") = ""
+        Set tSettings("proxyPort") = ""
+        Set tSettings("proxyHttps") = ""
+        Set tSettings("proxyTunnel") = ""
+    }
 
     Set tAdapter = $ClassMethod(tAdapterClass, "%New")
     If '$IsObject(tAdapter) || 'tAdapter.%IsA("OcuPilot.Kernel.Provider.Base") {
@@ -267,15 +350,79 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         Quit
     }
     Set tAdapter.SecretClassName = ..SecretClass()
+    If $IsObject(pStream) Set tSettings("stream") = pStream
     Do tAdapter.Invoke(.pValues, .pMessages, .pTools, pSystemPrompt, .tSettings, .pResponse, .pFault, .pHttpStatus)
     ; Dropped as soon as the call returns: the adapter clears its own key, and releasing the last
     ; reference to it is what ends the object's life rather than leaving it in this frame.
     Set tAdapter = ""
 }
 
+/// <p>The provider, endpoint host and proxy host of the enabled stored definition
+/// <var>pDefinitionId</var>, resolved by the same <method>EndpointOf</method> and
+/// <method>ProxyHostOf</method> <method>Dispatch</method> uses (Story 4.4's context status read,
+/// AD-42): <var>pProvider</var> the catalog key, <var>pHost</var> the endpoint's authority
+/// (<method>OcuPilot.Kernel.Egress.HostOf</method>), <var>pMarkedLocal</var> the definition's own
+/// flag and <var>pProxyHost</var> the configured proxy, or <code>""</code> where none is configured
+/// <b>or the definition is marked local</b> -- such a call bypasses the proxy, so reporting one
+/// would describe a hop it does not make (DW-441). Answers 0, with every
+/// output <code>""</code>/0, for an id no row holds, a disabled definition, or a provider whose
+/// catalog row cannot be read.</p>
+ClassMethod ResolveEndpoint(pDefinitionId As %String, Output pProvider As %String, Output pHost As %String, Output pMarkedLocal As %Boolean, Output pProxyHost As %String) As %Boolean
+{
+    Set pProvider = ""
+    Set pHost = ""
+    Set pMarkedLocal = 0
+    Set pProxyHost = ""
+    Set tOk = 0
+    Try {
+        If pDefinitionId = "" Quit
+        Set tSC = ..ValuesFor(pDefinitionId, .tValues, .tFound)
+        If $$$ISERR(tSC) || 'tFound || '+$Get(tValues("enabled")) Quit
+        If '$ClassMethod(..CatalogClass(), "Row", $Get(tValues("provider")), .tRow) Quit
+        Set tEndpoint = ..EndpointOf($Get(tValues("endpointUrl")), tRow)
+        If tEndpoint = "" Quit
+        Do ##class(OcuPilot.Kernel.State.Egress).Resolve(.tSettings)
+        Set pProvider = $Get(tValues("provider"))
+        Set pMarkedLocal = ''$Get(tValues("markedLocal"))
+        Set pHost = ##class(OcuPilot.Kernel.Egress).HostOf(tEndpoint)
+        Set pProxyHost = $Select(pMarkedLocal: "", 1: ..ProxyHostOf(.tSettings))
+        Set tOk = 1
+    } Catch ex {
+        Set pProvider = ""
+        Set pHost = ""
+        Set pMarkedLocal = 0
+        Set pProxyHost = ""
+        Set tOk = 0
+    }
+    Quit tOk
+}
+
+/// <p>The endpoint a call goes to: the stored <var>pEndpointUrl</var>, else the catalog row
+/// <var>pRow</var>'s <code>defaultEndpoint</code>.</p>
+ClassMethod EndpointOf(pEndpointUrl As %String, pRow) As %String [ Private ]
+{
+    If pEndpointUrl '= "" Quit pEndpointUrl
+    Quit pRow.defaultEndpoint
+}
+
+/// <p>The configured proxy from <class>OcuPilot.Kernel.State.Egress</class>'s resolved
+/// <var>pSettings</var>, ready for <method>OcuPilot.Kernel.Egress.IsPermitted</method>, or
+/// <code>""</code> when none is set. The stored proxy is a bare host, and
+/// <method>OcuPilot.Kernel.Egress.HostOf</method> cuts a bare host at its first colon, so a bare
+/// IPv6 literal is bracketed.</p>
+ClassMethod ProxyHostOf(ByRef pSettings) As %String [ Private ]
+{
+    Set tProxyHost = $Get(pSettings("proxyServer"))
+    If tProxyHost = "" Quit ""
+    If ($Length(tProxyHost, ":") > 2) && ($Extract(tProxyHost) '= "[") Set tProxyHost = "[" _ tProxyHost _ "]"
+    Quit tProxyHost
+}
+
 /// <p>The stored definition <var>pId</var> as the ByRef value array the adapter reads.
 /// <var>pFound</var> is 0 for an id no row holds -- an ordinary answer, never an error, so a
 /// deleted definition and a failed read stay distinguishable.</p>
+/// <p><code>keySource</code> is set only for a <code>credType</code> of <code>none</code>; see the
+/// comment at that line.</p>
 ClassMethod ValuesFor(pId As %String, Output pValues, Output pFound As %Boolean) As %Status [ Private ]
 {
     Kill pValues
@@ -294,8 +441,17 @@ ClassMethod ValuesFor(pId As %String, Output pValues, Output pFound As %Boolean)
     Set pValues("credType") = tRow.CredType
     Set pValues("envVarName") = tRow.EnvVarName
     Set pValues("credentialName") = tRow.CredentialName
+    ; The one key source this method names. Every other definition leaves it unset, and the adapter
+    ; reads an unset source as the stored credential; a definition that carries none has to say so
+    ; here, or the adapter resolves nothing and faults PROVIDER.CREDENTIAL before building a
+    ; request.
+    If tRow.CredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE {
+        Set pValues("keySource") = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE
+    }
     Set pValues("maxTokens") = +tRow.MaxTokens
-    Set pValues("temperature") = +tRow.Temperature
+    ; Unset stays unset, so the adapter sends none and the provider's default applies; a stored
+    ; number is passed as that number.
+    Set pValues("temperature") = $Select(tRow.Temperature = "": "", 1: +tRow.Temperature)
     Set pValues("systemPromptOverride") = tRow.SystemPromptOverride
     Set tRow = ""
     Set pFound = 1
@@ -316,23 +472,92 @@ ClassMethod Authenticated(ByRef pHttpStatus As %Integer, ByRef pFault As %Dynami
 
 /// <p>Whether the calling process holds every pair in <var>pPairs</var>, asked of
 /// <method>GateClass</method>'s evaluator so the check and the spelling of a failure are the
-/// gate's and not a second copy.</p>
+/// gate's and not a second copy. A requirement that names no pair is never held (DW-1120).</p>
 ClassMethod Gate(pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
 {
-    Quit $ClassMethod(..GateClass(), "EvaluatePairs", pPairs, .pFailedPair)
+    Quit $ClassMethod(..GateClass(), "EvaluateRequired", pPairs, .pFailedPair)
+}
+
+/// <p>Whether the calling process holds <b>any one</b> pair in <var>pPairs</var>, asked of the
+/// same evaluator for the same reason. An empty set admits nobody.</p>
+ClassMethod GateAnyOf(pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
+{
+    Quit $ClassMethod(..GateClass(), "EvaluateAnyOf", pPairs, .pFailedPair)
+}
+
+/// <p>Whether <var>pUser</var>'s <b>live</b> grants hold any one pair in <var>pPairs</var>
+/// (AD-31, DW-1309). The OR-set semantics are <method>OcuPilot.Screen.Gate.EvaluateAnyOf</method>'s
+/// -- an empty or unreadable set admits nobody, and <var>pFailedPair</var> names the <b>first</b>
+/// pair, which is the one the caller would have to be granted -- but the question asked of each
+/// pair is about a named account rather than about this process.</p>
+ClassMethod GateAnyOfForUser(pUser As %String, pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
+{
+    Set pFailedPair = ""
+    If '$ListValid(pPairs) || ($ListLength(pPairs) = 0) Quit 0
+    Set tAllowed = 0
+    Try {
+        For tI = 1:1:$ListLength(pPairs) {
+            Set tPair = $List(pPairs, tI)
+            If '$ListValid(tPair) || ($ListLength(tPair) '= 2) Continue
+            If ..HoldsPairForUser(pUser, $List(tPair, 1), $List(tPair, 2)) {
+                Set tAllowed = 1
+                Quit
+            }
+        }
+        If 'tAllowed {
+            Set tFirst = $List(pPairs, 1)
+            If $ListValid(tFirst) && ($ListLength(tFirst) = 2) Set pFailedPair = $List(tFirst, 1) _ ":" _ $List(tFirst, 2)
+        }
+    } Catch ex {
+        Set tAllowed = 0
+        Set pFailedPair = ""
+    }
+    Quit tAllowed
+}
+
+/// <p>Whether <var>pUser</var>'s current grants hold <var>pPermission</var> on
+/// <var>pResource</var> -- <code>$SYSTEM.Security.CheckUserPermission</code>, the idiom AD-31 names
+/// and <method>OcuPilot.Kernel.Agent.Dispatch.HoldsPair</method> already uses. A user the instance
+/// no longer holds holds nothing.</p>
+/// <p><b>Deliberately not asked through <method>GateClass</method></b>: that evaluator answers
+/// about the calling process, and the whole point of this question is that the process is not the
+/// authority. <b>Overridable</b> so a test can drive a revoked grant without changing a single
+/// grant on the instance -- <code>%UnitTest</code> runs as an account holding <code>%All</code>.
+/// Production never overrides it.</p>
+ClassMethod HoldsPairForUser(pUser As %String, pResource As %String, pPermission As %String) As %Boolean
+{
+    Set tHolds = 0
+    Try {
+        Set tHolds = ($SYSTEM.Security.CheckUserPermission(pUser, pResource, pPermission) = 1)
+    } Catch {
+        Set tHolds = 0
+    }
+    Quit tHolds
+}
+
+/// <p>Set the 403 a refused pair set answers with, naming <var>pFailedPair</var> when there is
+/// one to name. Code, sentence and detail are <class>OcuPilot.Kernel.Denial</class>'s, so this
+/// port's refusal is the one refusal a screen read and a tool call also produce (AD-39).</p>
+ClassMethod RefusePair(pFailedPair As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) [ Private ]
+{
+    Set pHttpStatus = ##class(OcuPilot.Kernel.Denial).#STATUS
+    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Kernel.Denial).Slug(), ##class(OcuPilot.Kernel.Denial).Code(), ##class(OcuPilot.Kernel.Denial).Reason())
+    Set tDetail = ##class(OcuPilot.Kernel.Denial).Detail(pFailedPair)
+    If $IsObject(tDetail) Do pFault.%Set("detail", tDetail)
 }
 
 /// <p><parameter>DRAFTPAIRS</parameter> as the <code>(resource, permission)</code> list the gate
 /// takes.</p>
 ClassMethod DraftPairs() As %List
 {
-    Set tPairs = ""
-    For tI = 1:1:$Length(..#DRAFTPAIRS, ",") {
-        Set tPair = $Piece(..#DRAFTPAIRS, ",", tI)
-        If tPair = "" Continue
-        Set tPairs = tPairs _ $ListBuild($ListBuild($Piece(tPair, ":", 1), $Piece(tPair, ":", 2)))
-    }
-    Quit tPairs
+    Quit $ClassMethod(..GateClass(), "ParsePairSpec", ..#DRAFTPAIRS)
+}
+
+/// <p><parameter>INVOKEPAIRS</parameter> as the <code>(resource, permission)</code> list the gate
+/// takes.</p>
+ClassMethod InvokePairs() As %List
+{
+    Quit $ClassMethod(..GateClass(), "ParsePairSpec", ..#INVOKEPAIRS)
 }
 
 /// <p>The class <method>Gate</method> and <method>Authenticated</method> ask. Overridable so a

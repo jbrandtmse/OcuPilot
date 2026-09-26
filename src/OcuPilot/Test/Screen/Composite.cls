@@ -25,9 +25,10 @@ XData Declaration
   "id": {"kind": "composite", "parts": ["namespace", "name"]},
   "context": {"fields": ["name", "namespace", "enabled"], "secretFields": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [{"id": "disable", "selfProtection": "never the application that serves OcuPilot"}],
+  "rowActions": [{"id": "disable", "selfProtection": "serves-ocupilot"}],
   "emptyStateKey": "",
   "commandAliases": ["web apps", "applications"],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "OcuPilotTestClassicPageComposite",
   "classicLinkExemption": {"exempt": false, "reason": ""},
   "toolIdentifier": "webapp.list"

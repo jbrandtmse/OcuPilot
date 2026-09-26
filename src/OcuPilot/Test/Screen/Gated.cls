@@ -25,9 +25,10 @@ XData Declaration
   "id": {"kind": "single", "parts": []},
   "context": {"fields": ["name", "enabled"], "secretFields": ["password"]},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [{"id": "delete", "selfProtection": "never the current user"}],
+  "rowActions": [{"id": "delete", "selfProtection": ""}],
   "emptyStateKey": "",
   "commandAliases": ["users"],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "OcuPilotTestClassicPageGated",
   "classicLinkExemption": {"exempt": false, "reason": ""},
   "toolIdentifier": "permissions.users"

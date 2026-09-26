@@ -6,16 +6,23 @@
 # and run by a human at most once; `/epic-cycle` recorded `ci=none` for all sixteen stories
 # before this one.
 #
-# Three jobs, and the split is by what each needs rather than by taste:
+# Five jobs, and the split is by what each needs rather than by taste:
 #
 #   gates     nothing but a checkout, Node and uv. Every mechanical checker, and the build and
 #             the client suite they gate -- once per Node band `ui/package.json` declares, at
 #             each band's floor, because a suite that runs on one Node only proves one Node.
-#   instance  a throwaway container. The ObjectScript suite, the smoke script and the one
-#             real-browser spec, none of which means anything without an installed instance.
-#   images    both stock Community editions at the pinned version: src/OcuPilot/ compiles, and
-#             the admin API reports v2 through the port's own version read, so no
-#             HealthShare-only dependency can go unnoticed (NFR-13).
+#   instance  a throwaway container. The admin API drift check, the ObjectScript suite and the
+#             smoke script, none of which means anything without an installed instance.
+#   browser   a second throwaway container, and the real-browser suite against it, beside
+#             `instance` rather than after it.
+#   images    both stock Community editions at the pinned version: src/OcuPilot/ compiles and the
+#             admin API reports v2 through the port's own version read, then a throwaway on that
+#             edition installs, drift-checks /api/admin, smokes with no --namespace (HSCUSTOM, else
+#             USER) and reads the credentials rung as offered, so no HealthShare-only dependency
+#             can go unnoticed (NFR-13).
+#   package   two throwaway containers with NO NETWORK AT ALL: the distributable IPM archive is
+#             built on the first and loaded on the second, which smoke then reports on. It waits
+#             on nothing, so it runs beside `instance` rather than after it.
 #
 # NOTHING HERE PUBLISHES, LISTS, RELEASES OR PUSHES TO ANY REGISTRY. No Open Exchange step, no
 # `npm publish`, no container push, no GitHub release, no `secrets.` reference of any kind
@@ -77,6 +84,15 @@ jobs:
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           version: "0.12.9"
+          # Off deliberately, not by oversight. Every Python script this workflow runs imports
+          # the standard library only -- check-objectscript.py and its harness, resolve_config.py
+          # -- and the repository carries no pyproject.toml, uv.lock or requirements file, so the
+          # cache holds nothing and setup-uv warned on every run that it "will never get
+          # invalidated". That warning is harmless today and a trap tomorrow: the first dependency
+          # anyone adds would not change the key, so CI could serve a stale environment while
+          # every local run was correct. Whoever adds one turns this on and sets
+          # cache-dependency-glob to whatever declares it.
+          enable-cache: false
       - name: install client dependencies
         working-directory: ui
         run: npm ci
@@ -96,7 +112,9 @@ jobs:
   instance:
     name: instance
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # The instance job ran out its 45 minutes on 2026-09-25 (run 36188837788, 283 of 286 classes in
+    # 43 minutes of suite), so the limit is 60.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       # First, before anything else can mask it: the Linux ownership reproduction for the durable
@@ -115,40 +133,107 @@ jobs:
       - name: build the client bundle the container installs
         working-directory: ui
         run: npm run build
-      - name: install the pinned headless browser
-        working-directory: ui
-        run: npx puppeteer browsers install chrome
+      - name: the runner's ephemeral port range
+        run: cat /proc/sys/net/ipv4/ip_local_port_range
+      # DW-439's actual fix, not its third retry. 52776, 52780 and 52781 sit inside the range a Linux
+      # runner allocates outbound source ports from, so a transient occupant can hold one when
+      # compose asks for it -- which exhausted `ci-throwaway.sh`'s three bounded retries on
+      # 2026-09-21 and reddened a job that had run no test. Reserving them tells the kernel never
+      # to hand them out ephemerally, which keeps the ports CONSTANT -- the reason the script's
+      # own comment rejected moving them, since they are written into CLAUDE.md, parallel.yaml
+      # and every runner's spawn prompt -- while removing the race rather than retrying through it.
+      - name: reserve the throwaway host ports
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781
       - name: bring up a throwaway container
         run: sh scripts/ci-throwaway.sh up
       - name: wait for readiness to report installed
         run: sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/
+      # Before the long suite, so a vendor drift fails in seconds rather than fourteen minutes in:
+      # the instance's own generated admin API spec against the derived path-and-method table
+      # vendored at a named upstream commit (AD-27).
+      - name: admin API drift against the vendored table
+        working-directory: ui
+        run: node tools/admin-spec.mjs --origin http://localhost:52776
       - name: objectscript suite, one class at a time
         working-directory: ui
         run: node tools/ci-runner.mjs --container ocupilot-ci
       - name: smoke
         run: sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS
-      - name: browser spec
-        working-directory: ui
-        env:
-          OCUPILOT_BROWSER_ORIGIN: http://localhost:52776
-        run: npm run test:browser
-      # Before the teardown, and only when something above it went wrong: the teardown removes the
-      # container, so whatever it was doing is unrecoverable a step later. In run 34773637146 the
-      # failing step printed `container ocupilot-ci is unhealthy` and nothing else; the cause
-      # reached the job only inside the teardown's own 80-line tail, under a step named for
-      # removing things.
-      #
-      # `failure() || cancelled()`, not `failure()`: a job that hits `timeout-minutes` is
-      # CANCELLED, not failed, and so is one this workflow's own `cancel-in-progress` supersedes.
-      # A container hung long enough to reach the 45-minute timeout is the case where the capture
-      # is worth the most, and `failure()` alone is false for exactly that case while the
-      # `always()` teardown still removes the evidence.
       - name: capture the throwaway on failure
         if: ${{ failure() || cancelled() }}
         run: sh scripts/ci-throwaway.sh logs
       - name: tear the throwaway down
         if: always()
         run: sh scripts/ci-throwaway.sh down
+
+  # Split out of `instance` on 2026-09-22, measured rather than guessed. In runs 35713724680,
+  # 35724351761 and 35779249963 the instance job took 31-34 minutes and was the whole of CI's wall
+  # clock: `gates` x3, `images` x2 and `package` all finished in 0-4 minutes beside it. Inside it,
+  # the ObjectScript suite took 13.8m and the browser suite 15.9m -- 30 of the 31 -- and both are
+  # SERIALIZED for reasons that are not going away: `.claude/rules/objectscript-testing.md` forbids
+  # two test classes at once after the 2026-09-11 race left a probe database mounted with no
+  # directory, and `browser.config.mjs` runs one spec file at a time because
+  # `unreadable.browser-spec.mjs` revokes and restores a grant the others depend on.
+  #
+  # Neither suite can be made faster without taking a risk those two rules exist to refuse. But
+  # they need nothing from each other: one drives Chrome against its container, the other runs
+  # %UnitTest inside its own. So they run as two jobs against two throwaways, which halves the
+  # wall clock and costs only runner-minutes -- free on a public repository.
+  #
+  # The second throwaway is a full parameterisation of the same script, not a copy: `up` already
+  # takes --dir/--project/--web/--super because the parallel slots needed exactly that, and
+  # `container_name` follows `--project`, which is what OCUPILOT_BROWSER_CONTAINER names.
+  browser:
+    name: browser
+    runs-on: ubuntu-24.04
+    # The whole browser suite ran 29.5 minutes on 2026-09-24 and passed 30 once Story 11.10 joined
+    # Epic 9's editors (run 36041043146: 333 tests green, then the job limit), so the limit has room.
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22.22.3
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: install client dependencies
+        working-directory: ui
+        run: npm ci
+      - name: build the client bundle the container installs
+        working-directory: ui
+        run: npm run build
+      - name: install the pinned headless browser
+        working-directory: ui
+        run: npx puppeteer browsers install chrome
+      - name: the runner's ephemeral port range
+        run: cat /proc/sys/net/ipv4/ip_local_port_range
+      # DW-439's actual fix, not its third retry. 52776, 52780 and 52781 sit inside the range a Linux
+      # runner allocates outbound source ports from, so a transient occupant can hold one when
+      # compose asks for it -- which exhausted `ci-throwaway.sh`'s three bounded retries on
+      # 2026-09-21 and reddened a job that had run no test. Reserving them tells the kernel never
+      # to hand them out ephemerally, which keeps the ports CONSTANT -- the reason the script's
+      # own comment rejected moving them, since they are written into CLAUDE.md, parallel.yaml
+      # and every runner's spawn prompt -- while removing the race rather than retrying through it.
+      - name: reserve the throwaway host ports
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781
+      - name: bring up a throwaway container
+        run: sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci --web 52780 --super 1979
+      - name: wait for readiness to report installed
+        run: sh scripts/wait-readiness.sh --url http://localhost:52780/api/ocupilot/readiness/
+      # Both variables, never one: browser.config.mjs carries its own container default, so a run
+      # that sets only the origin execs into the OTHER throwaway's container (2026-09-16).
+      - name: browser spec
+        working-directory: ui
+        env:
+          OCUPILOT_BROWSER_ORIGIN: http://localhost:52780
+          OCUPILOT_BROWSER_CONTAINER: ocupilot-browser-ci
+        run: npm run test:browser
+      - name: capture the throwaway on failure
+        if: ${{ failure() || cancelled() }}
+        run: sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-browser-ci
+      - name: tear the throwaway down
+        if: always()
+        run: sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci
 
   images:
     name: images
@@ -164,3 +249,66 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: compile and read the admin API version on this edition
         run: sh scripts/ci-image-compile.sh --image ${{ matrix.image }}
+      # From here on the edition is INSTALLED, not only compiled (Story 8.9): the container start
+      # path runs on this image's stock namespaces, which on plain IRIS Community means USER.
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22.22.3
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: install client dependencies
+        working-directory: ui
+        run: npm ci
+      - name: build the client bundle the container installs
+        working-directory: ui
+        run: npm run build
+      - name: reserve the throwaway host ports
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781
+      - name: bring up a throwaway container on this edition
+        run: sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --web 52781 --super 1980 --image ${{ matrix.image }}
+      - name: wait for readiness to report installed
+        run: sh scripts/wait-readiness.sh --url http://localhost:52781/api/ocupilot/readiness/
+      - name: admin API drift against the vendored table
+        working-directory: ui
+        run: node tools/admin-spec.mjs --origin http://localhost:52781
+      # No --namespace, deliberately: smoke's own fallback (HSCUSTOM, else USER -- the choice the
+      # install makes) is what is under test on an edition that has no HSCUSTOM.
+      - name: smoke
+        run: sh scripts/smoke.sh --container ocupilot-images-ci --user _SYSTEM --password SYS
+      # The install namespace is interoperability-enabled on both stock editions, so the Definition
+      # form must offer the API key there and not the environment-variable rung (Story 8.9 AC2).
+      - name: the credentials rung is offered in the install namespace
+        run: curl -fsS -u _SYSTEM:SYS http://localhost:52781/api/ocupilot/agent/providers | grep -q '"credentialsRungAvailable":true'
+      - name: capture the throwaway on failure
+        if: ${{ failure() || cancelled() }}
+        run: sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-images-ci
+      # --image as well, so the teardown's own clean-up container runs from the image this leg
+      # already pulled rather than pulling the default edition.
+      - name: tear the throwaway down
+        if: always()
+        run: sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --image ${{ matrix.image }}
+
+  package:
+    name: package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22.22.3
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: install client dependencies
+        working-directory: ui
+        run: npm ci
+      # The manifest copies this bundle into the package, and the script refuses before it starts a
+      # container when it is absent -- so the archive cannot be built from a checkout alone.
+      - name: build the client bundle the package carries
+        working-directory: ui
+        run: npm run build
+      # Both containers run with `--network none`, and the script asserts that the IPM repository
+      # table is empty on each, so "nothing resolved anything from a package registry" is what the
+      # runtime allowed rather than what a comment claims. NOTHING HERE UPLOADS ANYTHING.
+      - name: build the IPM archive and load it on a second fresh instance
+        run: sh scripts/ci-ipm-archive.sh --image intersystems/irishealth-community:2026.2

@@ -17,6 +17,7 @@ import {
   generateFrom,
   isCredential,
   lastSegment,
+  MEMBER_KINDS,
   readSources,
 } from './field-lists.mjs';
 import { extractXData } from './screen-mirror.mjs';
@@ -29,7 +30,7 @@ import { extractXData } from './screen-mirror.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(here, '..', '..');
-const { lists } = readSources();
+const { lists, entries: committedEntries } = readSources();
 
 /** The emitted field at `path` for `tool`, or undefined. */
 function fieldOf(result, tool, path) {
@@ -144,7 +145,7 @@ function runInTree({ entries, toolFields }, check) {
     const toolDir = join(root, 'src', 'OcuPilot', 'Screen', 'Tool');
     mkdirSync(tools, { recursive: true });
     mkdirSync(toolDir, { recursive: true });
-    for (const name of ['field-lists.mjs', 'screen-mirror.mjs']) copyFileSync(join(here, name), join(tools, name));
+    for (const name of ['field-lists.mjs', 'screen-mirror.mjs', 'credential-pattern.mjs']) copyFileSync(join(here, name), join(tools, name));
     copyFileSync(FIELD_LISTS_SOURCE, join(toolDir, 'FieldLists.cls'));
     const classification = readFileSync(CLASSIFICATION_SOURCE, 'utf8').replace(
       /XData Entries\n\{\n[\s\S]*?\n\}\n\n\}/,
@@ -171,13 +172,22 @@ test('run as a process, --check exits 1 on a credential refusal, naming the tool
 });
 
 test('run as a process, --check exits 1 when the committed ToolFields.cls has drifted', () => {
-  runInTree({ entries: {}, toolFields: 'Class OcuPilot.Screen.Tool.ToolFields Extends %RegisteredObject\n{\n}\n' }, (run) => {
-    assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
-    assert.match(run.stderr, /ToolFields\.cls is stale/);
-  });
-  runInTree({ entries: {} }, (run) => {
+  // The committed entries, not an empty set: the drift the check exists to catch is between the
+  // two committed inputs and the committed output, so the tree this runs over has to be the
+  // committed one with only the output replaced.
+  runInTree(
+    {
+      entries: committedEntries,
+      toolFields: 'Class OcuPilot.Screen.Tool.ToolFields Extends %RegisteredObject\n{\n}\n',
+    },
+    (run) => {
+      assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+      assert.match(run.stderr, /ToolFields\.cls is stale/);
+    }
+  );
+  runInTree({ entries: committedEntries }, (run) => {
     assert.equal(run.status, 0, `an undrifted tree passes: ${run.stdout}${run.stderr}`);
-    assert.match(run.stdout, /^field-lists: up to date; classified \d+ list\(s\), \d+ row\(s\), 0 classification entry\(ies\)\.$/m);
+    assert.match(run.stdout, /^field-lists: up to date; classified \d+ list\(s\), \d+ row\(s\), \d+ classification entry\(ies\)\.$/m);
   });
 });
 
@@ -215,6 +225,26 @@ test('a malformed list is refused', () => {
   assert.notDeepEqual(checkLists({}), [], 'an empty block is refused, not read as nothing to classify');
 });
 
+// Story 12.5: a class-derived member may carry its kind and its allowed values, and nothing else may.
+// Mutation (Rule 19): drop the `list.source === 'class'` condition from checkLists -> the template
+// leg goes red; accept any kind -> the unknown-kind leg goes red.
+test('a kind and allowed values are accepted on a class-derived member only, and only in the vocabulary', () => {
+  const key = 'Security.OAuth2.Client.ClientConfiguration:OAuth2.Client.Metadata';
+  const committed = lists[key];
+  assert.equal(committed?.source, 'class', 'the client metadata list is class-derived');
+  assert.equal(committed.rows.find((row) => row.path === 'grant_types')?.kind, 'list', 'grant_types is a list member');
+  assert.ok(committed.rows.every((row) => MEMBER_KINDS.includes(row.kind)), 'every committed member carries a kind in the vocabulary');
+  const listWith = (source, row) => ({
+    [key]: { ...committed, source, method: source === 'class' ? '' : 'RequestBodySchema', class: source === 'class' ? committed.class : '', rows: [row] },
+  });
+  const member = { path: 'token_endpoint_auth_method', shape: 'literal', templateType: 'string', itemType: '', kind: 'text', values: ['none', 'client_secret_basic'] };
+  assert.deepEqual(checkLists(listWith('class', member)), [], 'a class-derived member with a kind and values is accepted');
+  const refused = /carries a kind or values a class-derived member cannot/;
+  assert.match(checkLists(listWith('template', member)).join('\n'), refused, 'a template row with a kind is refused');
+  assert.match(checkLists(listWith('class', { ...member, kind: 'colour' })).join('\n'), refused, 'an unknown kind is refused');
+  assert.match(checkLists(listWith('class', { ...member, values: [] })).join('\n'), refused, 'an empty value list is refused');
+});
+
 test('a path is classifiable only when no row extends it, and a credential is a string literal by last segment', () => {
   const rows = lists['Security.Role'].rows;
   assert.deepEqual(
@@ -231,10 +261,10 @@ test('a path is classifiable only when no row extends it, and a credential is a 
 // Mutation (Rule 19): drop `secret64` or `^key$` from CREDENTIAL_RE -> this goes red.
 test('every ending of the credential pattern matches a string literal, and a name merely holding "key" does not', () => {
   const literal = (path) => ({ path, shape: 'literal', templateType: 'string', itemType: '' });
-  for (const path of ['AdminPassword', 'UserPasswd', 'DbPwd', 'ClientSecret', 'Secret64', 'Settings.ApiKey', 'PrivateKey', 'ReturnRefreshToken', 'Key', 'key']) {
+  for (const path of ['AdminPassword', 'UserPasswd', 'DbPwd', 'ClientSecret', 'Secret64', 'Settings.ApiKey', 'PrivateKey', 'RefreshToken', 'Key', 'key']) {
     assert.equal(isCredential(literal(path)), true, `${path} is a credential by name`);
   }
-  for (const path of ['PrimaryKeyField', 'KeyType', 'KeyDirectory', 'PrivateKeyType', 'Keys', 'Secret64Hint']) {
+  for (const path of ['PrimaryKeyField', 'KeyType', 'KeyDirectory', 'PrivateKeyType', 'Keys', 'Secret64Hint', 'ReturnRefreshToken']) {
     assert.equal(isCredential(literal(path)), false, `${path} is not`);
   }
   for (const [tool, fieldList, path] of [
@@ -266,4 +296,117 @@ test('the check is named in prebuild, in prestart and in the pre-commit hook, an
   const block = trigger.slice(0, trigger.indexOf('\nfi\n'));
   assert.match(block, /node tools\/field-lists\.mjs --check\)?\s*\|\|\s*STATUS=1/, 'the hook dispatches it inside OS_TRIGGER and feeds STATUS');
   assert.match(hook, /Field lists:/, 'and explains its failure');
+});
+
+// --- Story 8.1: the create form's own control roster, held to the tool that admits its fields ---
+//
+// AD-3 forbids a hand-transcribed field list. The create form necessarily holds one -- a form
+// draws named controls -- so what stops it drifting is this: the wire names the store writes are
+// exactly the fields `OcuPilot.Screen.Tool.WebAppCreate` admits, plus `Name`, which is the
+// vendor's query parameter and a 400 in the body. A field added to one side and not the other
+// means the form either offers a control the server refuses or hides one it accepts.
+//
+// Mutation (Rule 19): drop a name from the store's `WRITABLE_FIELDS`, or add one to the tool's
+// `PERMITTEDFIELDS` -> this goes red naming the side that has it.
+test('Story 8.1: the create form writes exactly the fields its tool admits, plus the name (AD-3)', () => {
+  const storeSource = readFileSync(
+    join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'web-applications', 'create-form.store.ts'),
+    'utf8'
+  );
+  const declared = /export const WRITABLE_FIELDS = \[([\s\S]*?)\] as const;/.exec(storeSource);
+  assert.ok(declared, 'the store declares WRITABLE_FIELDS');
+  const clientFields = [...declared[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  assert.ok(clientFields.length > 1, `the roster is not empty: ${JSON.stringify(clientFields)}`);
+
+  const toolSource = readFileSync(
+    join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'WebAppCreate.cls'),
+    'utf8'
+  );
+  const permitted = /Parameter PERMITTEDFIELDS = "([^"]+)";/.exec(toolSource);
+  assert.ok(permitted, 'the tool declares PERMITTEDFIELDS');
+  const serverFields = permitted[1].split(',');
+
+  assert.deepEqual(
+    [...clientFields].sort(),
+    ['Name', ...serverFields].sort(),
+    'the form writes exactly the tool\'s admitted fields plus the identifying name'
+  );
+});
+
+// Story 8.2, AD-3: an entry may author a wrapper field the endpoint's template does not carry, as
+// `secret` and nothing else, and it is emitted as its own secret literal row marked `authored`.
+//
+// Mutation (Rule 19): drop the `fields.push(...)` of an authored row in classify() -> the emitted
+// row assertions go red; accept any class for an authored name -> the 'ordinary' refusal goes red.
+test('an authored wrapper field is emitted secret and marked, and every other shape is refused', () => {
+  const entry = (authored) => ({
+    'permissions.users.create': { fieldList: 'Security.User', classification: { Roles: 'opaque', EscalationRoles: 'opaque' }, authored },
+  });
+  const accepted = classify(lists, entry({ Password: 'secret' }));
+  assert.deepEqual(accepted.problems, [], 'an authored secret is accepted');
+  assert.deepEqual(
+    fieldOf(accepted, 'permissions.users.create', 'Password'),
+    { path: 'Password', shape: 'literal', templateType: 'string', class: 'secret', authored: true },
+    'and emitted as a secret literal row marked authored'
+  );
+  const text = generateFrom({ lists, entries: entry({ Password: 'secret' }) }).text;
+  assert.match(text, /\{"path":"Password","shape":"literal","templateType":"string","class":"secret","authored":true\}/, 'ToolFields carries it');
+
+  const refusals = [
+    [{ Password: 'ordinary' }, /authored name Password is classified "ordinary"/],
+    [{ Password: 'opaque' }, /authored name Password is classified "opaque"/],
+    [{ FullName: 'secret' }, /authored name FullName collides with a derived path/],
+    [{ Roles: 'secret' }, /authored name Roles collides with a derived path/],
+    [{ 'User.Password': 'secret' }, /authored name "User.Password" is not one top-level field name/],
+    [{ 'Pass[]': 'secret' }, /authored name "Pass\[\]" is not one top-level field name/],
+  ];
+  for (const [authored, pattern] of refusals) {
+    const refused = generateFrom({ lists, entries: entry(authored) });
+    assert.equal(refused.text, null, `${JSON.stringify(authored)} emits nothing`);
+    assert.ok(refused.problems.some((problem) => pattern.test(problem)), `${JSON.stringify(authored)} is refused: ${refused.problems.join('; ')}`);
+  }
+  const notAnObject = generateFrom({ lists, entries: entry(['Password']) });
+  assert.ok(notAnObject.problems.some((problem) => /authored is not a JSON object/.test(problem)), 'an authored list that is not an object is refused');
+
+  // The committed entry is the one the Users list's create tool carries.
+  assert.deepEqual(committedEntries['permissions.users.create']?.authored, { Password: 'secret' }, 'the committed create entry authors Password');
+});
+
+// Story 8.2, AD-3: an entry may author a wrapper field the endpoint's template does not carry, as
+// `secret` and nothing else, and it is emitted as its own secret literal row marked `authored`.
+//
+// Mutation (Rule 19): drop the `fields.push(...)` of an authored row in classify() -> the emitted
+// row assertions go red; accept any class for an authored name -> the 'ordinary' refusal goes red.
+test('an authored wrapper field is emitted secret and marked, and every other shape is refused', () => {
+  const entry = (authored) => ({
+    'permissions.users.create': { fieldList: 'Security.User', classification: { Roles: 'opaque', EscalationRoles: 'opaque' }, authored },
+  });
+  const accepted = classify(lists, entry({ Password: 'secret' }));
+  assert.deepEqual(accepted.problems, [], 'an authored secret is accepted');
+  assert.deepEqual(
+    fieldOf(accepted, 'permissions.users.create', 'Password'),
+    { path: 'Password', shape: 'literal', templateType: 'string', class: 'secret', authored: true },
+    'and emitted as a secret literal row marked authored'
+  );
+  const text = generateFrom({ lists, entries: entry({ Password: 'secret' }) }).text;
+  assert.match(text, /\{"path":"Password","shape":"literal","templateType":"string","class":"secret","authored":true\}/, 'ToolFields carries it');
+
+  const refusals = [
+    [{ Password: 'ordinary' }, /authored name Password is classified "ordinary"/],
+    [{ Password: 'opaque' }, /authored name Password is classified "opaque"/],
+    [{ FullName: 'secret' }, /authored name FullName collides with a derived path/],
+    [{ Roles: 'secret' }, /authored name Roles collides with a derived path/],
+    [{ 'User.Password': 'secret' }, /authored name "User.Password" is not one top-level field name/],
+    [{ 'Pass[]': 'secret' }, /authored name "Pass\[\]" is not one top-level field name/],
+  ];
+  for (const [authored, pattern] of refusals) {
+    const refused = generateFrom({ lists, entries: entry(authored) });
+    assert.equal(refused.text, null, `${JSON.stringify(authored)} emits nothing`);
+    assert.ok(refused.problems.some((problem) => pattern.test(problem)), `${JSON.stringify(authored)} is refused: ${refused.problems.join('; ')}`);
+  }
+  const notAnObject = generateFrom({ lists, entries: entry(['Password']) });
+  assert.ok(notAnObject.problems.some((problem) => /authored is not a JSON object/.test(problem)), 'an authored list that is not an object is refused');
+
+  // The committed entry is the one the Users list's create tool carries.
+  assert.deepEqual(committedEntries['permissions.users.create']?.authored, { Password: 'secret' }, 'the committed create entry authors Password');
 });

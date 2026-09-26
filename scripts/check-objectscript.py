@@ -94,10 +94,11 @@ prose into one checker.
     assertion. A literal route is keyed by its own URL, and a `:param` segment is part of that
     literal (DW-364), so `/agent/definitions/:id` keys on itself rather than falling back; a
     pattern route (`/(.*)`), which no literal can identify, is keyed by its dispatch class's
-    name. The key does not carry the HTTP method, so two methods on one path are one
-    obligation (DW-400). Line-oriented, so it cannot
-    tell which method inside a class made which assertion — what it catches, which is the
-    defect it exists for, is a route no wire test names at all.
+    name. A literal route is covered only by a class that names its whole URL, bounded so a
+    longer path does not count (`/turn` is not named by `/turn/abandon`), **and** names its
+    method as a literal (`"POST"`), so two methods on one path are two obligations (DW-400).
+    Line-oriented, so it cannot tell which method inside a class made which assertion — what it
+    catches, which is the defect it exists for, is a route no wire test names at all.
 
 13. **No literal non-ASCII byte in a string literal (Story 1.17, DW-43, Rule 14).** Under
     `src/OcuPilot/`, non-ASCII in a string literal is written `$Char(<code point>)`, so the
@@ -136,16 +137,40 @@ prose into one checker.
     outside it.
 
 18. **Restraint-code containment (AD-30, AD-40, Story 3.7).** A restraint code -- the
-    `AGENT.READONLY.*` and `AGENT.KILLSWITCH.*` vocabulary, its `Api.Error` parameters, and the
-    two class methods that resolve it -- may be named only by `Kernel/Restraint.cls`, which
-    selects one, `Api/Error.cls`, which declares them, and a test class, which asserts them.
+    `AGENT.READONLY.*` and `AGENT.KILLSWITCH.*` vocabulary, any of its tails
+    (`KILLSWITCH.GLOBAL`, `READONLY.ENFORCED`, ...), its `Api.Error` parameters with or without
+    `#`, and the two class methods that resolve it -- may be named only by `Kernel/Restraint.cls`,
+    which selects one, `Api/Error.cls`, which declares them, and a test class, which asserts them.
     Every other caller consumes the verdict `Kernel.Restraint.Verdict` answers. **It bans a second
     producer of a restraint code, which is narrower than "one enforcement point"**: a caller that
     read the two state classes and decided for itself would name no code and pass. Reading
     `Kernel/State/Switch.cls` or `Hold.cls` is not restricted -- `Api/Switches.cls` does it
     legitimately -- so the rule cannot be tightened to those class names either. It reads
-    ObjectScript source only, and skips comments and XData bodies within it, so a client naming a
-    code is outside it.
+    ObjectScript source, skipping comments and XData bodies, and the client's `.ts` and `.html`
+    under `ui/src` whole, `.spec.ts` and `ui/src/app/testing/` excepted (DW-393, DW-394).
+
+19. **The turn job's reach (AD-7, AD-9, Story 4.1).** A file under `OcuPilot/Kernel/Agent/` names
+    no `OcuPilot.Port.*` class but `OcuPilot.Port.ProviderPort`, no `OcuPilot.Area.*` class, no
+    `OcuPilot.Screen.*` class but `OcuPilot.Screen.Tool.Registry`, and no `OcuPilot.Api.*` class
+    but the vocabulary class `OcuPilot.Api.Error`; and a `JOB` command -- outside a string literal
+    -- appears in shipped code only in `OcuPilot/Kernel/Agent/Job.cls` and in
+    `OcuPilot/Kernel/Provider/TestCall.cls`, Test connection's child job (AD-42, Story 10.5). Test
+    classes under `Test/` may spawn their own helpers.
+
+20. **Tool dispatch (AD-1, AD-22, Story 4.2).** Outside `Test/`, `InvokeTool` is named only in
+    `Screen/Tool/Registry.cls`, which defines it, and `Kernel/Agent/Dispatch.cls`, its one caller;
+    `%Net.HttpRequest` and an `/api/` literal appear nowhere under `Screen/Tool/`, under
+    `Kernel/Shell/` (the shell reads and their tools), under `Kernel/Governance/` or in
+    `Kernel/Agent/Dispatch.cls`; a file under `Kernel/Shell/` or `Screen/Tool/` names no
+    `OcuPilot.Api.*` class but the vocabulary class `OcuPilot.Api.Error`, because the handlers
+    depend on the shell reads and the tools and never the reverse; and `BeginCapture` or
+    `%SYS.Capture` appears only in `Port/AdminPort.cls` and `Port/MgmntPort.cls`, because a
+    port's own capture refuses to open inside one that already holds output.
+
+21. **Literal state SQL (AD-21, Story 4.2).** Under `Kernel/State/`, outside `Base.cls`, which
+    defines the helpers, the SQL argument of every `Guarded*Where*` or `GuardedExecute*` call is a
+    string literal. It reads direct method calls (`..`, `).` or `tStore.`), not a name passed to
+    `$ClassMethod`.
 
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
@@ -606,12 +631,13 @@ ESCALATION_RE = re.compile(
 # roster's package set if that ever grows.
 STATE_PACKAGE_PREFIX = "src/OcuPilot/Kernel/State/"
 
-# A bare JOB command — same not-a-dotted-call shape as WRITE_RE.
-JOB_RE = re.compile(r"(?<![.\w])job\b", re.IGNORECASE)
+# A bare JOB command — same not-a-dotted-call shape as WRITE_RE, and not the `$JOB` special
+# variable.
+JOB_RE = re.compile(r"(?<![.\w$])job\b", re.IGNORECASE)
 
 # AD-9's second ordering rule: nothing under Kernel/State/ may reference a package that
 # could re-enter a tool, the AdminPort, the ProviderPort, or any code that could.
-REENTRY_TOKENS = ("OcuPilot.Api", "OcuPilot.Port", "OcuPilot.Screen", "OcuPilot.Area")
+REENTRY_TOKENS = ("OcuPilot.Api", "OcuPilot.Port", "OcuPilot.Screen", "OcuPilot.Area", "OcuPilot.Kernel.Agent")
 
 
 # --- Admin API containment (AD-27, Story 1.8) ----------------------------------------
@@ -734,12 +760,24 @@ def check_escalation_containment(problems: list[str]) -> None:
 # What this rule enforces is ONE PRODUCER OF A RESTRAINT CODE, which is narrower than "one
 # enforcement point": a caller that read Kernel/State/Switch.cls and Hold.cls and decided for
 # itself would name no code and pass. Those stores cannot be restricted by class name either --
-# Api/Switches.cls reads both of them legitimately. It also sees ObjectScript source only, and
-# skips comments and XData bodies within it, so a client naming a code is outside it. The wider
+# Api/Switches.cls reads both of them legitimately. A code's tail is matched on its own, so a code
+# assembled by joining its tail to the `AGENT.` prefix is still seen (DW-393); a split inside the tail
+# is not, and is held by review. The client's TypeScript and
+# templates are read whole (DW-394). ObjectScript comments and XData bodies are skipped. The wider
 # property is held by review.
 RESTRAINT_CODE_RE = re.compile(
-    r"AGENT\.(READONLY|KILLSWITCH)\.|#AGENTREADONLY|#AGENTKILLSWITCH|ReasonForRestraint|RestraintCodes",
+    r"AGENT\.(READONLY|KILLSWITCH)\b"
+    r"|KILLSWITCH\.(GLOBAL|USER)\b|READONLY\.(ENFORCED|DEFINITION)\b"
+    r"|AGENT(READONLY|KILLSWITCH)"
+    r"|ReasonForRestraint|RestraintCodes",
 )
+
+# The client tree the rule also reads, and the suffixes it reads there.
+RESTRAINT_CLIENT_ROOT = "ui/src/"
+RESTRAINT_CLIENT_SUFFIXES = (".ts", ".html")
+RESTRAINT_CLIENT_EXCLUDED_SUFFIX = ".spec.ts"
+# The specs' builders and harness; client-lint.mjs refuses a shipped file importing from here.
+RESTRAINT_CLIENT_EXCLUDED_ROOT = "ui/src/app/testing/"
 
 RESTRAINT_ALLOWED = frozenset(
     {
@@ -753,21 +791,36 @@ RESTRAINT_TEST_PREFIX = "src/OcuPilot/Test/"
 
 
 def check_restraint_containment(problems: list[str]) -> None:
-    for p in iter_objectscript_files():
+    def refuse(rel: str, i: int) -> None:
+        problems.append(
+            f"{rel}:{i}: a restraint code is produced outside "
+            f"{' or '.join(sorted(RESTRAINT_ALLOWED))} (AD-30, AD-40) -- ask "
+            f"OcuPilot.Kernel.Restraint.Verdict and render the verdict it answers, "
+            f"never a second derivation of one"
+        )
+
+    for p in iter_source_files():
         rel = p.relative_to(ROOT).as_posix()
         if rel in RESTRAINT_ALLOWED or rel.startswith(RESTRAINT_TEST_PREFIX):
+            continue
+        if p.suffix in (".cls", ".mac", ".inc"):
+            is_client = False
+        elif (
+            rel.startswith(RESTRAINT_CLIENT_ROOT)
+            and rel.endswith(RESTRAINT_CLIENT_SUFFIXES)
+            and not rel.endswith(RESTRAINT_CLIENT_EXCLUDED_SUFFIX)
+            and not rel.startswith(RESTRAINT_CLIENT_EXCLUDED_ROOT)
+        ):
+            is_client = True
+        else:
             continue
         text = read_text(p)
         if text is None:
             continue
-        for i, raw in iter_code_lines(text):
+        rows = enumerate(text.splitlines(), start=1) if is_client else iter_code_lines(text)
+        for i, raw in rows:
             if RESTRAINT_CODE_RE.search(raw):
-                problems.append(
-                    f"{rel}:{i}: a restraint code is produced outside "
-                    f"{' or '.join(sorted(RESTRAINT_ALLOWED))} (AD-30, AD-40) -- ask "
-                    f"OcuPilot.Kernel.Restraint.Verdict and render the verdict it answers, "
-                    f"never a second derivation of one"
-                )
+                refuse(rel, i)
 
 
 def check_state_package_isolation(problems: list[str]) -> None:
@@ -789,6 +842,144 @@ def check_state_package_isolation(problems: list[str]) -> None:
                     problems.append(
                         f"{rel}:{i}: reference to {token!r} under Kernel/State/ -- a storage "
                         f"method must never re-enter a tool, a port, a screen or an area (AD-9)"
+                    )
+
+
+# --- The turn job's reach (AD-7, AD-9, Story 4.1) --------------------------------------
+#
+# A turn job runs for minutes as the user, outside any request. What it may reach is the provider
+# port and OcuPilot's own state, and nothing that acts on the instance: no other port, no slice, no
+# screen, and no handler -- `OcuPilot.Api.Error` is the vocabulary, not a handler. And the two
+# spawns in shipped code are the job's own and Test connection's child (`Kernel.Provider.TestCall`,
+# AD-42), so a third `JOB` cannot quietly start a process from a frame nobody checked for
+# escalation. Test classes spawn their own helpers and are outside it.
+
+AGENT_PACKAGE_PREFIX = "src/OcuPilot/Kernel/Agent/"
+JOB_ALLOWED = frozenset({"src/OcuPilot/Kernel/Agent/Job.cls", "src/OcuPilot/Kernel/Provider/TestCall.cls"})
+AGENT_REACH_RE = re.compile(
+    r"OcuPilot\.Port\.(?!ProviderPort\b)\w+(?:\.\w+)*"
+    r"|OcuPilot\.Area\.\w+(?:\.\w+)*"
+    r"|OcuPilot\.Screen\.(?!Tool\.Registry(?![\w.]))\w+(?:\.\w+)*"
+    r"|OcuPilot\.Api\.(?!Error\b)\w+(?:\.\w+)*"
+)
+
+
+def check_agent_job_reach(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        rel = p.relative_to(ROOT).as_posix()
+        if not rel.startswith("src/OcuPilot/") or rel.startswith(TEST_PACKAGE_PREFIX):
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        for i, raw in iter_code_lines(text):
+            if rel.startswith(AGENT_PACKAGE_PREFIX):
+                found = AGENT_REACH_RE.search(raw)
+                if found is not None:
+                    problems.append(
+                        f"{rel}:{i}: {found.group(0)!r} is named under Kernel/Agent/ -- the turn "
+                        f"job reaches the provider through OcuPilot.Port.ProviderPort, its tools "
+                        f"through OcuPilot.Screen.Tool.Registry, and nothing else outside the "
+                        f"kernel (AD-7, AD-9)"
+                    )
+            if rel not in JOB_ALLOWED and JOB_RE.search(STRING_LITERAL_RE.sub('""', raw)):
+                problems.append(
+                    f"{rel}:{i}: 'JOB' command outside {', '.join(sorted(JOB_ALLOWED))} -- the turn "
+                    f"job and Test connection's child are the only spawns in shipped code (AD-9, AD-42)"
+                )
+
+
+# --- Tool dispatch (AD-1, AD-22, Story 4.2) ----------------------------------------------
+#
+# A tool runs in the job's process and calls the management surface directly, so nothing on the
+# dispatch path issues an HTTP request; the one call into a tool has one caller, which is what
+# makes the gate point a single point; and an output capture opened around a tool call would make
+# the port's own capture refuse, so captures stay inside the port.
+
+INVOKE_TOOL_RE = re.compile(r"\bInvokeTool\b")
+INVOKE_TOOL_ALLOWED = frozenset(
+    {
+        "src/OcuPilot/Screen/Tool/Registry.cls",
+        "src/OcuPilot/Kernel/Agent/Dispatch.cls",
+    }
+)
+TOOL_HTTP_RE = re.compile(r"%Net\.HttpRequest|/api/", re.IGNORECASE)
+TOOL_HTTP_PREFIXES = ("src/OcuPilot/Screen/Tool/", "src/OcuPilot/Kernel/Shell/", "src/OcuPilot/Kernel/Governance/")
+TOOL_HTTP_FILES = frozenset({"src/OcuPilot/Kernel/Agent/Dispatch.cls"})
+API_REACH_PREFIXES = ("src/OcuPilot/Kernel/Shell/", "src/OcuPilot/Screen/Tool/")
+SHELL_API_REACH_RE = re.compile(r"OcuPilot\.Api\.(?!Error\b)\w+(?:\.\w+)*")
+CAPTURE_RE = re.compile(r"BeginCapture|%SYS\.Capture", re.IGNORECASE)
+# The port classes that may open an output capture. Story 4.2 wrote this rule when AdminPort was
+# the only port that captured; Epic 6's MgmntPort captures the same way, and the merge of the two
+# epics is where the second name arrives. The rule still refuses a capture anywhere else, which is
+# what keeps one from opening inside another (DW-1173 asks whether these two can nest).
+CAPTURE_ALLOWED = frozenset({"src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Port/MgmntPort.cls"})
+
+
+def check_tool_dispatch(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        rel = p.relative_to(ROOT).as_posix()
+        if not rel.startswith("src/OcuPilot/") or rel.startswith(TEST_PACKAGE_PREFIX):
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        http_scope = rel in TOOL_HTTP_FILES or rel.startswith(TOOL_HTTP_PREFIXES)
+        for i, raw in iter_code_lines(text):
+            if rel not in INVOKE_TOOL_ALLOWED and INVOKE_TOOL_RE.search(raw):
+                problems.append(
+                    f"{rel}:{i}: 'InvokeTool' is named outside "
+                    f"{' and '.join(sorted(INVOKE_TOOL_ALLOWED))} -- a tool is called only through "
+                    f"OcuPilot.Kernel.Agent.Dispatch, after its gate point (AD-22)"
+                )
+            if http_scope and TOOL_HTTP_RE.search(raw):
+                problems.append(
+                    f"{rel}:{i}: an HTTP request or an '/api/' path on the tool dispatch path -- a "
+                    f"tool runs in process and calls the management surface directly (AD-1)"
+                )
+            if rel.startswith(API_REACH_PREFIXES):
+                found = SHELL_API_REACH_RE.search(raw)
+                if found is not None:
+                    problems.append(
+                        f"{rel}:{i}: {found.group(0)!r} is named under Kernel/Shell/ or Screen/Tool/ "
+                        f"-- a handler calls the shell reads and the tools, never the reverse, and "
+                        f"OcuPilot.Api.Error is the only API class either names (dependency direction)"
+                    )
+            if rel not in CAPTURE_ALLOWED and CAPTURE_RE.search(raw):
+                problems.append(
+                    f"{rel}:{i}: an output capture outside {', '.join(sorted(CAPTURE_ALLOWED))} -- "
+                    f"the port's own capture refuses to open inside one that holds output"
+                )
+
+
+# --- Literal state SQL (AD-21, Story 4.2) -------------------------------------------------
+#
+# Every statement a kernel store runs is text the store wrote, with a `?` for every value. The
+# guarded helpers in Base.cls take the text as an argument, so a call site passing a variable is
+# the one place a caller value could reach the text; the rule holds every call site to a literal.
+
+STATE_SQL_CALL_RE = re.compile(r"\.(Guarded\w*Where\w*|GuardedExecute\w*)\(")
+# The SQL argument is one whole string literal (a doubled quote is an escaped quote) followed by the
+# next argument or the call's close -- so a literal joined to a caller value is refused too.
+STATE_SQL_LITERAL_ARG_RE = re.compile(r'\s*"(?:[^"]|"")*"\s*[,)]')
+STATE_SQL_BASE = "src/OcuPilot/Kernel/State/Base.cls"
+
+
+def check_state_sql_literal(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        rel = p.relative_to(ROOT).as_posix()
+        if not rel.startswith(STATE_PACKAGE_PREFIX) or rel == STATE_SQL_BASE:
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        for i, raw in iter_code_lines(text):
+            for m in STATE_SQL_CALL_RE.finditer(raw):
+                if not STATE_SQL_LITERAL_ARG_RE.match(raw, m.end()):
+                    problems.append(
+                        f"{rel}:{i}: {m.group(1)} is called with SQL text that is not a string "
+                        f"literal -- a store's statement is its own literal, with every value bound "
+                        f"as a parameter (AD-21)"
                     )
 
 
@@ -1086,8 +1277,23 @@ def check_test_class_properties(problems: list[str]) -> None:
 #
 # **Six edits fix six classes; this rule fixes the population.** It reads the APIs the tree
 # actually calls, not a list of everything IRIS could do: creating or deleting a user or a role,
-# registering, modifying or deleting an audit event, moving the console log, and running the
-# production install.
+# registering, modifying or deleting an audit event, moving the console log, modifying the
+# instance-wide system security settings, and running the production install.
+#
+# `Security.System.Modify` joined the list with Story 5.10, whose test class turns the instance's
+# own auditing off: that is the widest effect any class here has, because while it is off nothing on
+# the instance is audited at all -- not only OcuPilot's own events.
+#
+# **A stated limit, not an oversight.** The same story made auditing reachable without naming that
+# API, through the shipped confirm path: `security.auditing.update` is an ordinary write tool, so a
+# class that mints and confirms one of its proposals turns auditing off having named no watched
+# call. This rule reads one file at a time and cannot see through a confirm, and the tool's class
+# name is no proxy for it -- several classes read that class's parameters without ever issuing a
+# write. So the confirm route is outside the population, and a class that takes it carries its own
+# `OnBeforeAllTests` refusal by its author's decision rather than by this gate
+# (`OcuPilot.Test.ProhibitedRoute` is the first). A class holding only the restore helper is not
+# exempt: `RestoreAuditing` reaches `Security.System.Modify` like any other caller, so the rule
+# reads it as in the population and asks for a guard it does not need.
 #
 # Deleting a role was outside the rule until DW-396, on the ground that it is the tail of an
 # install probe rather than a principal this suite brought into being. It is inside it now: the
@@ -1119,6 +1325,12 @@ def check_test_class_properties(problems: list[str]) -> None:
 # matched too -- `pProfile` defaults to `""`, so the bare call is the production install under
 # another spelling, and anchoring only on the literal `""` read it as a probe install.
 #
+# **An SSL/TLS configuration is a security object too** (DW-332). `Security.SSLConfigs` Create,
+# Delete and Modify write the instance's own security database, and the demo fixture
+# (`OcuPilot.Install.Fixture` Create and Remove, `OcuPilot.Test.FixtureFault`'s seeding and removal)
+# creates and removes a TLS configuration, an X.509 credential and a wallet collection while naming
+# no security class in the test that calls it.
+#
 # A probe database, a namespace mapping and a web application created under the probe profile stay
 # outside the rule: they are the test's own objects, and the guard exists for effects on the
 # instance an operator cares about.
@@ -1128,11 +1340,18 @@ DESTRUCTIVE_TEST_RE = re.compile(
     r"|##class\(\s*Security\.Roles\s*\)\s*\.\s*(?:Create|Delete)\b"
     r"|##class\(\s*Security\.Events\s*\)\s*\.\s*(?:Create|Delete|Modify)\b"
     r"|##class\(\s*Config\.Startup\s*\)\s*\.\s*MoveConsoleLog\b"
+    r"|##class\(\s*Security\.System\s*\)\s*\.\s*Modify\b"
     r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
     r"\s*\.\s*Install\(\s*(?:\"\"\s*)?[,)]"
     r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
     r"\s*\.\s*StartPath\b"
     r"|##class\(\s*OcuPilot\.Test\.Version\s*\)\s*\.\s*(?:CreateThrowawayExpiredAccount|DeleteThrowawayAccount)\b"
+    r"|##class\(\s*OcuPilot\.Test\.TurnWireFixture\s*\)\s*\.\s*"
+    r"(?:EnsurePrincipal|DeletePrincipal|RemovePrincipals|SetRoleResources|RemoveSecondRole)\b"
+    r"|##class\(\s*Security\.SSLConfigs\s*\)\s*\.\s*(?:Create|Delete|Modify)\b"
+    r"|##class\(\s*OcuPilot\.Install\.Fixture\s*\)\s*\.\s*(?:Create|Remove)\b"
+    r"|##class\(\s*OcuPilot\.Test\.FixtureFault\s*\)\s*\.\s*"
+    r"(?:SeedRemovableObjects|RemoveSeededObjects|Remove)\b"
 )
 
 ARMING_GUARD_RE = re.compile(r"\$System\.Util\.GetEnviron\(\s*\.\.#ARMINGVARIABLE\s*\)\s*'=\s*1")
@@ -1311,6 +1530,34 @@ def wire_test_sources() -> dict[str, str]:
     return sources
 
 
+ROUTE_METHOD_RE = re.compile(r"\bMethod\s*=\s*\"([^\"]*)\"", re.IGNORECASE)
+
+
+def route_methods(element: str) -> list[str]:
+    """The verbs a `<Route>` element's `Method` attribute lists, upper-cased; empty when it has
+    none."""
+    found = ROUTE_METHOD_RE.search(element)
+    if found is None:
+        return []
+    return [verb.strip().upper() for verb in found.group(1).split(",") if verb.strip()]
+
+
+def route_name_matcher(url: str, methods: list[str]):
+    """A predicate over a test class's code: whether it names the literal route `url` -- the whole
+    URL, bounded at both ends so a longer route does not name a shorter one, whether it extends the
+    shorter one's tail (`/turn/abandon`) or its head (`/logs/errors/namespaces`); the API base
+    `/api/ocupilot` may precede it -- and every verb in `methods` as a string literal (DW-400)."""
+    url_re = re.compile(
+        r"(?:(?<=/api/ocupilot)|(?<![A-Za-z0-9._/:-]))" + re.escape(url) + r"(?![A-Za-z0-9._/:-])"
+    )
+    verb_res = [re.compile(r'"' + re.escape(verb) + r'"', re.IGNORECASE) for verb in methods]
+
+    def names(source: str) -> bool:
+        return url_re.search(source) is not None and all(v.search(source) for v in verb_res)
+
+    return names
+
+
 def check_handler_wire_tests(problems: list[str]) -> None:
     sources = wire_test_sources()
     for p in iter_objectscript_files():
@@ -1329,15 +1576,20 @@ def check_handler_wire_tests(problems: list[str]) -> None:
         for line, body in iter_named_xdata_blocks(text, URLMAP_XDATA_NAME):
             for m in ROUTE_RE.finditer(body):
                 url, call = m.group(1), m.group(2)
-                key = url if LITERAL_ROUTE_RE.match(url) else dispatch_class
+                literal = LITERAL_ROUTE_RE.match(url) is not None
+                key = url if literal else dispatch_class
+                if literal:
+                    names_key = route_name_matcher(url, route_methods(m.group(0)))
+                else:
+                    names_key = lambda source, key=key: key in source
                 covered = [
                     name
                     for name, source in sources.items()
-                    if key in source and all(pattern.search(source) for _, pattern in WIRE_MARKERS)
+                    if names_key(source) and all(pattern.search(source) for _, pattern in WIRE_MARKERS)
                 ]
                 if covered:
                     continue
-                named = [name for name, source in sources.items() if key in source]
+                named = [name for name, source in sources.items() if names_key(source)]
                 if named:
                     missing = [
                         label
@@ -1603,6 +1855,9 @@ CHECKS = (
     check_non_ascii_literals,
     check_tool_kind,
     check_route_ordering,
+    check_agent_job_reach,
+    check_tool_dispatch,
+    check_state_sql_literal,
 )
 
 

@@ -63,7 +63,20 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   create: STRINGS.actionCreate,
   enable: STRINGS.agentDefinitionEnable,
   disable: STRINGS.agentDefinitionDisable,
+  // The published verb a delete carries wherever one is offered -- the row menu, the command bar,
+  // the command box and the typed-name dialog's own title and button. A screen whose delete means
+  // something narrower publishes its own words below (Switches' removes a hold, not an entity).
+  delete: STRINGS.actionDelete,
   'set-default': STRINGS.agentDefinitionSetDefault,
+  // Story 7.5: a task's Run, on On-demand tasks and the Task schedule.
+  run: STRINGS.actionRun,
+  // Story 7.6: a task's Suspend and Resume, on the Task schedule.
+  suspend: STRINGS.actionSuspend,
+  resume: STRINGS.actionResume,
+  // Story 7.8: a process's Terminate, on Processes and Process details.
+  terminate: STRINGS.actionTerminate,
+  // Story 7.11: an audit event's Reset counters, on System events and User events.
+  reset: STRINGS.actionResetCounters,
 };
 
 /**
@@ -75,10 +88,35 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
  * elsewhere, which is the whole reason this map is keyed by descriptor.
  */
 const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  // Story 8.5: the X.509 list's Create imports a credential rather than typing one in.
+  'OcuPilot.Screen.Descriptor.X509CredentialList': { create: STRINGS.actionImport },
   'OcuPilot.Screen.Descriptor.AgentSwitches': {
     create: STRINGS.agentSwitchesHoldAdd,
     delete: STRINGS.agentSwitchesHoldRemove,
   },
+  // Story 7.2: the Users list's three value-carrying row actions; Story 12.2: its token revoke.
+  'OcuPilot.Screen.Descriptor.UserList': {
+    'set-password': STRINGS.userActionSetPassword,
+    'add-role': STRINGS.userActionAddRole,
+    'remove-role': STRINGS.userActionRemoveRole,
+    'revoke-tokens': STRINGS.userActionRevokeTokens,
+  },
+  // Story 7.4: the Auditing configuration form's two actions, and the warning dialog's title;
+  // Story 12.3: its audit database copy and purge.
+  'OcuPilot.Screen.Descriptor.AuditingConfig': {
+    enable: STRINGS.auditingTurnOnAction,
+    disable: STRINGS.auditingTurnOffAction,
+    copy: STRINGS.auditDatabaseCopyAction,
+    purge: STRINGS.auditDatabasePurgeAction,
+  },
+  // Story 12.4: the OAuth 2.0 Server descriptions tab's key-set refresh.
+  'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab': { updatejwks: STRINGS.oauthServerUpdateJwks },
+  // Story 12.5: the OAuth 2.0 Client configurations tab's key rotation and dynamic registration.
+  'OcuPilot.Screen.Descriptor.OAuthClientTab': { rotatekeys: STRINGS.oauthClientRotateKeys, register: STRINGS.oauthClientRegister },
+  // Story 12.7: the OAuth 2.0 Authorization server tab's key rotation.
+  'OcuPilot.Screen.Descriptor.OAuthServerTab': { rotatekeys: STRINGS.oauthClientRotateKeys },
+  // Story 12.8: the OAuth 2.0 Server client descriptions tab's key-set refresh.
+  'OcuPilot.Screen.Descriptor.OAuthServerClientTab': { updatejwks: STRINGS.oauthServerUpdateJwks },
 };
 
 export class ScreenActions {

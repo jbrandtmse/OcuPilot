@@ -5,11 +5,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AgentStatus } from '../core/agent-status';
 import type { ApiService } from '../core/api';
 import { NavigationService } from '../core/navigation';
-import { PreferenceStore } from '../core/preferences';
+import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { stubAgentStatus } from '../testing/agent-status';
 import { Rail } from './rail';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * DW-132 -- the map-to-rail join, exercised as one path rather than through a hand-written
@@ -55,6 +56,19 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Secure:USE',
       screens: [
         {
+          route: 'logs/alerts',
+          labelKey: 'alertLogListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'logs/messages',
+          labelKey: 'messagesLogListLabel',
+          sideBarPosition: 2,
+          allowed: true,
+        },
+        {
           route: 'logs/errors',
           labelKey: 'errorLogListLabel',
           sideBarPosition: 3,
@@ -78,11 +92,71 @@ const LIVE_PAYLOAD = {
       pinBottom: false,
       allowed: false,
       failedPair: '%Admin_Manage:USE',
+      // Story 6.11 took this roster from four screens to eight, and Story 6.12 took it from eight
+      // to nine, in ScreensForArea's own (sideBarPosition, class name) collation: the four unlisted
+      // sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead of the
+      // listed ones in position order.
       screens: [
+        {
+          route: 'os-management/databases/details',
+          labelKey: 'databaseDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/database-free-space',
+          labelKey: 'databaseFreeSpaceLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/databases/volumes',
+          labelKey: 'databaseVolumeListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/processes/details',
+          labelKey: 'processDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
         {
           route: 'os-management/processes',
           labelKey: 'processListLabel',
           sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/locks',
+          labelKey: 'lockListLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/system-usage',
+          labelKey: 'systemUsageLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/databases',
+          labelKey: 'databaseListLabel',
+          sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/devices',
+          labelKey: 'deviceListLabel',
+          sideBarPosition: 5,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -98,9 +172,44 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Task:USE',
       screens: [
         {
+          route: 'tasks/schedule/details',
+          labelKey: 'taskDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
+          route: 'tasks/schedule/history',
+          labelKey: 'taskRunsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
           route: 'tasks/schedule',
           labelKey: 'taskListLabel',
           sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
+          route: 'tasks/on-demand',
+          labelKey: 'taskOnDemandLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
+          route: 'tasks/upcoming',
+          labelKey: 'taskUpcomingLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
+          route: 'tasks/history',
+          labelKey: 'taskHistoryLabel',
+          sideBarPosition: 4,
           allowed: false,
           failedPair: '%Admin_Task:USE',
         },
@@ -119,6 +228,27 @@ const LIVE_PAYLOAD = {
           route: 'permissions/users',
           labelKey: 'userListLabel',
           sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'permissions/roles',
+          labelKey: 'userColumnRoles',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'permissions/resources',
+          labelKey: 'resourceListLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'permissions/services',
+          labelKey: 'serviceListLabel',
+          sideBarPosition: 4,
           allowed: false,
           failedPair: '%Admin_Secure:USE',
         },
@@ -152,11 +282,74 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Secure:USE',
       screens: [
         {
+          route: 'security/oauth/clients',
+          labelKey: 'oauthTabClients',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Client:USE',
+        },
+        {
+          route: 'security/oauth/resource-servers',
+          labelKey: 'oauthTabResourceServers',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/oauth/server-clients',
+          labelKey: 'oauthTabServerClients',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Registration:USE',
+        },
+        {
+          route: 'security/oauth/server',
+          labelKey: 'oauthTabServer',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Server:USE',
+        },
+        {
+          route: 'security/wallet/secrets',
+          labelKey: 'walletSecretListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Wallet:USE',
+        },
+        {
           route: 'security/ssl',
           labelKey: 'sslListLabel',
           sideBarPosition: 1,
           allowed: false,
           failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/x509',
+          labelKey: 'x509ListLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/ldap',
+          labelKey: 'ldapListLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/wallet',
+          labelKey: 'walletListLabel',
+          sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Wallet:USE',
+        },
+        {
+          route: 'security/oauth',
+          labelKey: 'oauthLabel',
+          sideBarPosition: 5,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Client:USE',
         },
       ],
     },
@@ -190,7 +383,7 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     };
     const navigation = new NavigationService({ api: api as unknown as ApiService });
     await navigation.load();
-    const shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    const shell = new ShellState({ account: stubAccountPreferences() });
 
     TestBed.configureTestingModule({
       providers: [
@@ -198,6 +391,7 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
         { provide: NavigationService, useValue: navigation },
         { provide: AgentStatus, useValue: stubAgentStatus() },
         { provide: ShellState, useValue: shell },
+        { provide: PanelState, useValue: new PanelState({ account: stubAccountPreferences(), shell }) },
       ],
     });
     fixture = TestBed.createComponent(Rail);
@@ -235,6 +429,55 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
       expect(item.hasAttribute('disabled')).toBe(false);
       const tip = fixture.nativeElement.querySelector(`#${item.getAttribute('aria-describedby')}`);
       expect(tip.textContent.trim()).toBe(`Requires ${pair}`);
+    }
+  });
+
+  it('Story 6.5/6.6/6.7: reads each Tasks screen verdict the live payload carries', () => {
+    // The same six entries OcuPilot.Test.Wire compares the live map to, each denied on the
+    // `%Admin_Task:USE` pair it declares first -- Task history (all) and the unlisted per-task
+    // history joined the roster with Story 6.6, and the unlisted Task details with Story 6.7.
+    const navigation = TestBed.inject(NavigationService);
+    for (const route of ['tasks/schedule', 'tasks/on-demand', 'tasks/upcoming', 'tasks/history', 'tasks/schedule/history', 'tasks/schedule/details']) {
+      expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Task:USE' });
+    }
+  });
+
+  it('Story 2.12/6.13: reads both Logs file-screen verdicts the live payload carries', () => {
+    // Both are denied on `%DB_IRISSYS:READ` in this payload, which this principal does not hold.
+    // Without this the alerts.log entry added to LIVE_PAYLOAD is read by nothing here and can
+    // drift from what the server answers.
+    const navigation = TestBed.inject(NavigationService);
+    for (const route of ['logs/alerts', 'logs/errors']) {
+      expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%DB_IRISSYS:READ' });
+    }
+  });
+
+  it('Story 6.14: reads the messages.log verdict the live payload carries', () => {
+    // It declares `%Admin_Operate:USE` and nothing else, so this principal -- who holds it -- is
+    // allowed where its three Logs siblings are not. Its own assertion, because the payload entry
+    // added above reddens nothing on its own (6.13 finding #9).
+    const navigation = TestBed.inject(NavigationService);
+    expect(navigation.screenVerdict('logs/messages')).toEqual({ allowed: true, failedPair: '' });
+  });
+
+  it('Story 6.3: reads each Security and secrets screen verdict the live payload carries', () => {
+    // The same five entries OcuPilot.Test.Wire compares the live map to: the two wallet screens are
+    // denied on the wallet pair they declare first, the other three on `%Admin_Secure:USE`.
+    const navigation = TestBed.inject(NavigationService);
+    const expected: ReadonlyArray<readonly [string, string]> = [
+      ['security/wallet/secrets', '%Admin_Wallet:USE'],
+      ['security/ssl', '%Admin_Secure:USE'],
+      ['security/x509', '%Admin_Secure:USE'],
+      ['security/ldap', '%Admin_Secure:USE'],
+      ['security/wallet', '%Admin_Wallet:USE'],
+      ['security/oauth/clients', '%Admin_OAuth2_Client:USE'],
+      ['security/oauth/resource-servers', '%Admin_Secure:USE'],
+      ['security/oauth/server-clients', '%Admin_OAuth2_Registration:USE'],
+      ['security/oauth/server', '%Admin_OAuth2_Server:USE'],
+      ['security/oauth', '%Admin_OAuth2_Client:USE'],
+    ];
+    for (const [route, pair] of expected) {
+      expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: pair });
     }
   });
 });

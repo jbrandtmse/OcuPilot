@@ -1,12 +1,55 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 
 import { Router } from '@angular/router';
 
+import { ChangeBus } from '../../core/change-bus';
+import { ExplainEntry } from '../../core/explain-entry';
 import { isBannerFault } from '../../core/fault';
 import { formatDeniedAction, NavigationService } from '../../core/navigation';
-import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { OverlayStack } from '../../core/overlay-stack';
+import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../../core/screen-actions';
+import { ScreenStores, type ScreenStore } from '../../core/screen-store';
+import { SCREENS } from '../../core/screens.generated';
+import { selfProtectionReason } from '../../core/self-protection';
 import { STRINGS } from '../../core/strings';
-import { ErrorLogDrill, type ErrorLogLevel } from './error-log.store';
+import { ScreenActionHandler } from '../../shell/screen-action-handler';
+import { TypedNameDialog } from '../../shell/typed-name-dialog';
+import { ERROR_LOG_ENTITY_TYPE, ErrorLogDrill, type ErrorLogLevel } from './error-log.store';
+
+/** What every level but `list` publishes into the store: no rows, one array so a re-publish is skipped. */
+const NO_CONTEXT_ROWS: readonly unknown[] = [];
+
+/** The descriptor this page renders, whose store the command bar and the row-action handler read. */
+export const LOG_ERROR_LIST = 'OcuPilot.Screen.Descriptor.LogErrorList';
+
+/** The track the row menu's trigger cell takes, as `DataTable` sizes it. */
+const TRIGGER_TRACK = 'calc(28px + 2 * var(--ocu-space-3))';
+
+/** The overlay id the row menu registers, so Escape closes it before anything beneath it. */
+const MENU_OVERLAY_ID = 'ocu-error-log-menu';
+
+/** The row menu's "Explain this entry" item's id, which no declared action id takes (Story 11.2). */
+const EXPLAIN_ENTRY_ITEM = 'explain-entry';
+
+/** One row-menu entry: a declared row action with a registered handler, or "Explain this entry". */
+interface MenuItem {
+  readonly id: string;
+  readonly label: string;
+  readonly reason: string;
+  readonly name: string;
+  readonly ariaDisabled: 'true' | null;
+  readonly describedBy: string | null;
+}
 
 /** One rendered table: its column headers and its rows of already-resolved cell text. */
 interface GridView {
@@ -16,11 +59,17 @@ interface GridView {
   readonly rows: readonly GridRow[];
 }
 
-/** One rendered row. `open` is the text the first cell links with, `''` for a row that opens nothing. */
+/**
+ * One rendered row. `open` is the text the first cell links with, `''` for a row that opens nothing.
+ * `select` is the composite id the row is selected and deleted by (`ErrorLogDrill.selectionKey`),
+ * `''` for a row that takes no selection.
+ */
 interface GridRow {
   readonly key: string;
   readonly open: string;
   readonly cells: readonly string[];
+  readonly select: string;
+  readonly selected: boolean;
 }
 
 /**
@@ -44,13 +93,28 @@ interface GridRow {
  * **Nothing here reads `?ns=`.** The store's calls all carry `scope: null`, and the namespace they
  * send is the one the user drilled to (AD-48).
  *
+ * **It hosts its own row actions** (Story 7.10, AD-53), as Process details does. Each level's rows
+ * carry the row menu `DataTable` draws, and opening it or clicking a row outside its link selects
+ * the row; the detail level selects its own error after each load. The selection is the row's
+ * composite id -- the level is the delete's scope -- and it is written into this screen's
+ * `ScreenStore`, which is what the command bar and the shell's `ScreenActionHandler` read. The
+ * typed-name dialog renders here while the pending action is this screen's, and a refused action's
+ * sentence renders as `role="alert"`.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
 @Component({
   selector: 'app-error-log-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [TypedNameDialog],
   template: `<section class="ocu-list-page">
+    @if (actionRefusal) {
+      <p class="ocu-banner ocu-list-page-banner ocu-banner-warning" role="alert" data-ocu-drill="action-refusal">
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ actionRefusal }}</span>
+      </p>
+    }
     <div class="ocu-drill-trail">
       @if (canGoBack) {
         <button type="button" class="ocu-button-text" data-ocu-drill="back" (click)="onBack()">
@@ -88,12 +152,13 @@ interface GridRow {
         }
         @if (showGrid) {
           <div
+            #grid
             class="ocu-data-table-grid"
             role="grid"
             tabindex="0"
             [attr.aria-label]="view.label"
             [attr.aria-rowcount]="view.rows.length + 1"
-            [attr.aria-colcount]="view.headers.length"
+            [attr.aria-colcount]="view.headers.length + (hasRowActions ? 1 : 0)"
           >
             <div class="ocu-data-table-head" role="rowgroup">
               <div
@@ -107,6 +172,13 @@ interface GridRow {
                     <span class="ocu-data-table-header-label">{{ header }}</span>
                   </div>
                 }
+                @if (hasRowActions) {
+                  <div class="ocu-data-table-header-cell" role="columnheader">
+                    <span class="ocu-data-table-header-label ocu-data-table-hidden-label">{{
+                      STRINGS.commandBoxGroupActions
+                    }}</span>
+                  </div>
+                }
               </div>
             </div>
             <div class="ocu-data-table-viewport ocu-drill-viewport">
@@ -115,9 +187,12 @@ interface GridRow {
                   <div
                     class="ocu-data-table-row"
                     role="row"
+                    [class.ocu-data-table-row-selected]="row.selected"
+                    [attr.aria-selected]="row.select === '' ? null : row.selected"
                     [attr.data-ocu-row]="row.key"
                     [attr.aria-rowindex]="index + 2"
                     [style.grid-template-columns]="view.template"
+                    (click)="onRowClick($event, row)"
                   >
                     @for (cell of row.cells; track $index; let column = $index) {
                       <div class="ocu-data-table-cell" role="gridcell">
@@ -134,10 +209,57 @@ interface GridRow {
                         }
                       </div>
                     }
+                    @if (hasRowActions) {
+                      <div class="ocu-data-table-cell ocu-data-table-cell-trigger" role="gridcell">
+                        <button
+                          type="button"
+                          class="ocu-data-table-trigger"
+                          aria-haspopup="menu"
+                          data-ocu-drill="trigger"
+                          [attr.aria-expanded]="menuKey === row.select"
+                          [attr.aria-controls]="menuKey === row.select ? menuId : null"
+                          [attr.aria-label]="STRINGS.commandBoxGroupActions"
+                          (click)="onTriggerClick($event, row)"
+                        >
+                          <span aria-hidden="true">{{ menuGlyph }}</span>
+                        </button>
+                      </div>
+                    }
                   </div>
                 }
               </div>
             </div>
+          </div>
+        }
+        @if (menuOpen) {
+          <div
+            #menu
+            class="ocu-data-table-menu"
+            role="menu"
+            [id]="menuId"
+            [attr.aria-label]="STRINGS.commandBoxGroupActions"
+            [style.top.px]="menuTopPx"
+            (keydown)="onMenuKeydown($event)"
+            (mousedown)="onMenuMouseDown($event)"
+            (focusout)="onMenuFocusOut($event)"
+          >
+            @for (item of menuItems; track item.id) {
+              <button
+                type="button"
+                class="ocu-data-table-menu-item"
+                role="menuitem"
+                tabindex="-1"
+                [attr.aria-disabled]="item.ariaDisabled"
+                [attr.aria-describedby]="item.describedBy"
+                [attr.aria-label]="item.name"
+                (click)="onMenuItem(item)"
+              >
+                <span class="ocu-data-table-menu-label">{{ item.label }}</span>
+                @if (item.reason) {
+                  <span class="ocu-data-table-menu-reason">{{ item.reason }}</span>
+                }
+              </button>
+            }
           </div>
         }
       </div>
@@ -200,6 +322,17 @@ interface GridRow {
         }
       </div>
     }
+    @if (pendingTypedName; as pending) {
+      <app-typed-name-dialog
+        [verb]="pending.verb"
+        [target]="pending.name"
+        [consequence]="pending.consequence"
+        [advisory]="pending.advisory"
+        [flagLabel]="pending.flagLabel"
+        (confirmed)="onConfirmDestructive($event)"
+        (cancelled)="onCancelDestructive()"
+      />
+    }
   </section>`,
 })
 export class ErrorLogPage {
@@ -211,10 +344,48 @@ export class ErrorLogPage {
 
   private readonly actions = inject(ScreenActions);
 
+  private readonly overlays = inject(OverlayStack);
+
+  private readonly injector = inject(Injector);
+
+  /** The "Explain this entry" hand-off (Story 11.2). Optional, so a spec that needs none provides none. */
+  private readonly explainEntry = inject(ExplainEntry, { optional: true });
+
+  /** Constructed for its own sake, as `ListPage` constructs it: its constructor registers the row actions. */
+  private readonly screenActions = inject(ScreenActionHandler);
+
+  /** This screen's store: the selection the command bar and the handler act on, and the refusal. */
+  private readonly store: ScreenStore = inject(ScreenStores).for(
+    LOG_ERROR_LIST,
+    SCREENS.find((screen) => screen.descriptor === LOG_ERROR_LIST)?.refreshRates ?? []
+  );
+
   protected readonly STRINGS = STRINGS;
 
   /** The middle dot between the scope line's parts, as an escape (Rule 14). */
   private readonly separator = '\u00b7';
+
+  /** The vertical ellipsis the row menu's trigger draws, as an escape (Rule 14). */
+  protected readonly menuGlyph = '\u22ee';
+
+  /** The banner's warning triangle, as its escape (Rule 14). */
+  protected readonly bannerGlyph = '\u26A0';
+
+  protected readonly menuId = MENU_OVERLAY_ID;
+
+  private readonly gridElement = viewChild<ElementRef<HTMLElement>>('grid');
+
+  private readonly menuElement = viewChild<ElementRef<HTMLElement>>('menu');
+
+  /** The composite id whose row menu is open, `''` when none is. */
+  private readonly menuKeyValue = signal('');
+
+  private readonly menuTop = signal(0);
+
+  /** The level and the rows `publishRows` last wrote into the store. */
+  private publishedLevel: ErrorLogLevel | null = null;
+
+  private publishedRows: readonly unknown[] | null = null;
 
   /** Bumped by the store, so the tables re-render under `OnPush`. */
   private readonly generation = signal(0);
@@ -223,7 +394,24 @@ export class ErrorLogPage {
   protected readonly skeletonRows = [0, 1, 2, 3, 4, 5];
 
   constructor() {
-    const stop = this.drill.subscribe(() => this.generation.update((value) => value + 1));
+    // A refused delete is about the level it was pressed on: moving the drill, or opening the page
+    // again, drops it, as a list page drops its answers when it opens.
+    let place = this.drillPlace();
+    this.store.setRefusal('');
+    const stop = this.drill.subscribe(() => {
+      const next = this.drillPlace();
+      if (next !== place) {
+        place = next;
+        this.store.setRefusal('');
+      }
+      this.syncSelection();
+      this.publishRows();
+      this.generation.update((value) => value + 1);
+    });
+    const stopStore = this.store.subscribe(() => this.generation.update((value) => value + 1));
+    const stopExplain = this.explainEntry?.subscribe(() => this.generation.update((value) => value + 1)) ?? null;
+    this.syncSelection();
+    this.publishRows();
     // Manual Refresh (DW-260). This screen binds no `RefreshService` -- three levels with three
     // column sets cannot be one declared read -- so Refresh re-issues the level the user is on
     // through `reopen()`, which sends the read directly and NOT through `open*`: those drop the
@@ -236,9 +424,33 @@ export class ErrorLogPage {
         : this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
             void this.drill.reopen();
           });
+    // AD-14. A confirmed delete against this log publishes one `changed` event, and a screen
+    // showing that entity type re-fetches in place rather than patching its own rows. This screen
+    // binds no `RefreshService` -- three levels are three column sets -- so it holds its own
+    // subscription rather than a refresh binding, which is the same reason `reopen()` exists.
+    //
+    // Optional, because the bus is provided at the application root and this page is mounted
+    // without it in its own component spec; a page with no bus behaves exactly as it did before
+    // the delete tool shipped.
+    const bus = inject(ChangeBus, { optional: true });
+    const stopBus =
+      bus === null
+        ? null
+        : bus.subscribe((event) => {
+            if (event.kind !== 'changed') return;
+            if (event.type !== ERROR_LOG_ENTITY_TYPE) return;
+            if (event.action !== 'deleted') return;
+            void this.drill.applyDeleted(event.id);
+          });
     inject(DestroyRef).onDestroy(() => {
       stop();
+      stopStore();
+      stopExplain?.();
+      stopBus?.();
       stopRefreshAction?.();
+      this.overlays.remove(MENU_OVERLAY_ID);
+      // The handler is the app's, so a dialog left open would outlive the page it was opened on.
+      if (this.screenActions.pending()?.descriptor === LOG_ERROR_LIST) this.screenActions.cancelPending();
     });
     if (!this.drill.loaded() && !this.drill.loading()) void this.drill.openNamespaces();
   }
@@ -373,24 +585,16 @@ export class ErrorLogPage {
       return {
         label: STRINGS.errorLogListLabel,
         headers: [STRINGS.headerNamespaceLabel],
-        template: 'minmax(0, 1fr)',
-        rows: this.drill.namespaces().map((row) => ({
-          key: row.namespace,
-          open: 'namespace:' + row.namespace,
-          cells: [row.namespace],
-        })),
+        template: this.withTrigger('minmax(0, 1fr)'),
+        rows: this.drill.namespaces().map((row) => this.gridRow(row.namespace, 'namespace:' + row.namespace, [row.namespace])),
       };
     }
     if (level === 'dates') {
       return {
         label: STRINGS.errorLogListLabel,
         headers: [STRINGS.errorLogColumnDate, STRINGS.errorLogColumnCount],
-        template: 'minmax(0, 1fr) minmax(0, 1fr)',
-        rows: this.drill.dates().map((row) => ({
-          key: row.date,
-          open: 'date:' + row.date,
-          cells: [row.date, String(row.count)],
-        })),
+        template: this.withTrigger('minmax(0, 1fr) minmax(0, 1fr)'),
+        rows: this.drill.dates().map((row) => this.gridRow(row.date, 'date:' + row.date, [row.date, String(row.count)])),
       };
     }
     if (level === 'list') {
@@ -405,12 +609,11 @@ export class ErrorLogPage {
           STRINGS.processColumnUser,
           STRINGS.processColumnPid,
         ],
-        template:
-          'minmax(0, 0.6fr) minmax(0, 0.6fr) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 2fr) minmax(0, 0.8fr) minmax(0, 0.8fr)',
-        rows: this.drill.errors().map((row) => ({
-          key: String(row.errorNumber),
-          open: 'error:' + row.errorNumber,
-          cells: [
+        template: this.withTrigger(
+          'minmax(0, 0.6fr) minmax(0, 0.6fr) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 2fr) minmax(0, 0.8fr) minmax(0, 0.8fr)'
+        ),
+        rows: this.drill.errors().map((row) =>
+          this.gridRow(String(row.errorNumber), 'error:' + row.errorNumber, [
             String(row.errorNumber),
             row.time,
             row.errorText,
@@ -418,8 +621,8 @@ export class ErrorLogPage {
             row.line,
             row.username,
             row.process,
-          ],
-        })),
+          ])
+        ),
       };
     }
     return null;
@@ -440,6 +643,8 @@ export class ErrorLogPage {
           key: String(index),
           open: '',
           cells: [row.expression, row.value],
+          select: '',
+          selected: false,
         })),
       },
       {
@@ -450,6 +655,8 @@ export class ErrorLogPage {
           key: String(index),
           open: '',
           cells: [row.level, row.detail],
+          select: '',
+          selected: false,
         })),
       },
       {
@@ -460,6 +667,8 @@ export class ErrorLogPage {
           key: String(index),
           open: '',
           cells: [row.level, row.name, row.value],
+          select: '',
+          selected: false,
         })),
       },
     ];
@@ -475,6 +684,240 @@ export class ErrorLogPage {
   }
 
   protected onBack(): void {
+    this.closeMenu(false);
     void this.drill.back();
+  }
+
+  // --- Row actions (Story 7.10) ---------------------------------------------------------------------
+
+  /**
+   * The row menu's entries, as `DataTable` resolves its own: every declared row action with a
+   * registered handler, each with its label and, where the selected row refuses it, the reason.
+   * At the `list` level "Explain this entry" follows them while the agent can take it (Story 11.2),
+   * refused under the kill switch, a running turn or sharing off and described by that reason.
+   */
+  protected get menuItems(): readonly MenuItem[] {
+    this.generation();
+    const screen = SCREENS.find((entry) => entry.descriptor === LOG_ERROR_LIST);
+    if (screen === undefined) return [];
+    const selected = this.drill.selected();
+    const items: MenuItem[] = screen.rowActions
+      .filter((action) => action.id !== '')
+      .filter((action) => this.actions.has(LOG_ERROR_LIST, action.id))
+      .map((action) => {
+        const reason = selfProtectionReason(action.selfProtection, selected, '');
+        const label = actionLabel(LOG_ERROR_LIST, action.id);
+        return {
+          id: action.id,
+          label,
+          reason,
+          name: reason === '' ? label : `${label} ${reason}`,
+          ariaDisabled: reason === '' ? null : 'true',
+          describedBy: null,
+        };
+      });
+    const explain = this.explainEntry;
+    if (this.drill.level() === 'list' && explain !== null && explain.shown()) {
+      items.push({
+        id: EXPLAIN_ENTRY_ITEM,
+        label: STRINGS.agentExplainEntryAction,
+        reason: '',
+        name: STRINGS.agentExplainEntryAction,
+        ariaDisabled: explain.reason() === null ? null : 'true',
+        describedBy: explain.describedBy(),
+      });
+    }
+    return items;
+  }
+
+  /** Whether the table levels draw the row menu: only when an action can run from it. */
+  protected get hasRowActions(): boolean {
+    return this.menuItems.length > 0;
+  }
+
+  protected get menuOpen(): boolean {
+    return this.menuKeyValue() !== '';
+  }
+
+  protected get menuKey(): string {
+    return this.menuKeyValue();
+  }
+
+  protected get menuTopPx(): number {
+    return this.menuTop();
+  }
+
+  /** The typed-name dialog, while the pending action is this screen's, or `null`. */
+  protected get pendingTypedName(): ReturnType<ScreenActionHandler['pending']> {
+    this.generation();
+    const pending = this.screenActions.pending();
+    return pending !== null && pending.kind === 'typed-name' && pending.descriptor === LOG_ERROR_LIST ? pending : null;
+  }
+
+  /** The sentence the last refused action answered with, or `''` (AD-39). */
+  protected get actionRefusal(): string {
+    this.generation();
+    return this.store.refusal();
+  }
+
+  /** A click on a row outside its link selects it; the link opens the next level instead. */
+  protected onRowClick(event: MouseEvent, row: GridRow): void {
+    if (row.select === '') return;
+    const target = event.target;
+    if (target instanceof Element && target.closest('a, button') !== null) return;
+    this.drill.select(row.select);
+  }
+
+  protected onTriggerClick(event: MouseEvent, row: GridRow): void {
+    event.stopPropagation();
+    this.drill.select(row.select);
+    this.menuKeyValue.set(row.select);
+    this.overlays.push(MENU_OVERLAY_ID, () => this.closeMenu(true));
+    afterNextRender(
+      () => {
+        this.placeMenu(row.key);
+        this.menuButtons()[0]?.focus();
+      },
+      { injector: this.injector }
+    );
+  }
+
+  protected onMenuKeydown(event: KeyboardEvent): void {
+    const items = this.menuButtons();
+    if (items.length === 0) return;
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    let next = -1;
+    if (event.key === 'ArrowDown') next = (at + 1) % items.length;
+    else if (event.key === 'ArrowUp') next = (at - 1 + items.length) % items.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = items.length - 1;
+    if (next < 0) return;
+    event.preventDefault();
+    items[next].focus();
+  }
+
+  /** Keep focus in the menu while an item is pressed, as `DataTable` does. */
+  protected onMenuMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+  }
+
+  protected onMenuFocusOut(event: FocusEvent): void {
+    const menu = this.menuElement()?.nativeElement;
+    const next = event.relatedTarget;
+    if (menu === undefined || (next instanceof Node && menu.contains(next))) return;
+    this.closeMenu(false);
+  }
+
+  /** Run one menu entry; a refused one is `aria-disabled`, so the click arrives and is refused here. */
+  protected onMenuItem(item: MenuItem): void {
+    const key = this.menuKeyValue();
+    this.closeMenu(true);
+    if (item.id === EXPLAIN_ENTRY_ITEM) {
+      this.explainRow(key);
+      return;
+    }
+    if (item.reason !== '') return;
+    this.actions.run(LOG_ERROR_LIST, item.id);
+  }
+
+  /** Hand the list row selected by `key` to the panel, with its drilled scope; a refused item sends nothing. */
+  private explainRow(key: string): void {
+    const screen = SCREENS.find((entry) => entry.descriptor === LOG_ERROR_LIST);
+    if (this.explainEntry === null || screen === undefined) return;
+    const row = this.drill.scopedErrors().find((candidate) => this.drill.selectionKey(String(candidate.errorNumber)) === key);
+    if (row === undefined) return;
+    this.explainEntry.request(screen, row);
+  }
+
+  /** The typed name matched: the handler sends the delete it was standing in front of. */
+  protected onConfirmDestructive(flag = false): void {
+    this.gridElement()?.nativeElement.focus();
+    this.screenActions.confirmPending(flag);
+  }
+
+  /** Escape, Cancel or the scrim: nothing was sent. */
+  protected onCancelDestructive(): void {
+    this.gridElement()?.nativeElement.focus();
+    this.screenActions.cancelPending();
+  }
+
+  /** One table row: its cells, its link, and the composite id it is selected by. */
+  private gridRow(key: string, open: string, cells: readonly string[]): GridRow {
+    const select = this.drill.selectionKey(key);
+    return { key, open, cells, select, selected: select === this.drill.selected() };
+  }
+
+  private withTrigger(template: string): string {
+    return this.hasRowActions ? `${template} ${TRIGGER_TRACK}` : template;
+  }
+
+  /**
+   * Write the drill's selection into this screen's store, which is what the command bar and the
+   * handler read. On the detail level the selection is the error on screen, once it has loaded.
+   */
+  private syncSelection(): void {
+    if (this.drill.level() === 'detail' && this.drill.detail() !== null) {
+      this.drill.select(this.drill.selectionKey(''));
+    }
+    const key = this.drill.selected();
+    const held = this.store.selection();
+    if (key === '') {
+      if (held.length > 0) this.store.setSelection([]);
+      if (this.menuOpen) this.closeMenu(false);
+      return;
+    }
+    if (held.length === 1 && held[0] === key) return;
+    this.store.setSelection([key]);
+  }
+
+  /**
+   * Publish the rows on screen into this screen's store, which is what a turn's screen context and
+   * the context chip read (AD-24): the errors at the `list` level, each with the namespace and date
+   * the user drilled to (AD-48), and none at any other level --
+   * a namespace, a date and a captured detail are never context. It publishes only when the level
+   * or its rows changed, and `applyTick` leaves the selection as it is.
+   */
+  private publishRows(): void {
+    const level = this.drill.level();
+    const rows = level === 'list' ? this.drill.scopedErrors() : NO_CONTEXT_ROWS;
+    if (level === this.publishedLevel && rows === this.publishedRows) return;
+    this.publishedLevel = level;
+    this.publishedRows = rows;
+    this.store.applyTick(rows, this.drill.truncated(), this.store.banner(), new Date());
+  }
+
+  /** Where the drill stands: its level and the scope that level is of. */
+  private drillPlace(): string {
+    return [this.drill.level(), this.drill.namespace(), this.drill.date(), this.drill.errorNumber()].join('\u0001');
+  }
+
+  /** Put the menu under its row, or above it where the frame has no room below, as `DataTable` does. */
+  private placeMenu(rowKey: string): void {
+    const menu = this.menuElement()?.nativeElement;
+    const grid = this.gridElement()?.nativeElement;
+    const frame = grid?.closest('.ocu-data-table-frame');
+    if (menu === undefined || grid === undefined || !(frame instanceof HTMLElement)) return;
+    const row = Array.from(grid.querySelectorAll<HTMLElement>('[data-ocu-row]')).find(
+      (element) => element.getAttribute('data-ocu-row') === rowKey
+    );
+    if (row === undefined) return;
+    const frameTop = frame.getBoundingClientRect().top;
+    const rowRect = row.getBoundingClientRect();
+    const rowTop = rowRect.top - frameTop;
+    const below = rowRect.bottom - frameTop;
+    const height = menu.getBoundingClientRect().height;
+    this.menuTop.set(below + height <= frame.clientHeight ? below : Math.max(0, rowTop - height));
+  }
+
+  private closeMenu(returnFocus: boolean): void {
+    if (this.menuKeyValue() === '') return;
+    this.menuKeyValue.set('');
+    this.overlays.remove(MENU_OVERLAY_ID);
+    if (returnFocus) this.gridElement()?.nativeElement.focus();
+  }
+
+  private menuButtons(): HTMLElement[] {
+    const menu = this.menuElement()?.nativeElement;
+    return menu === undefined ? [] : Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'));
   }
 }

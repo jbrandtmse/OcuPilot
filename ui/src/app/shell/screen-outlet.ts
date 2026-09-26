@@ -13,15 +13,46 @@ import { ActivatedRoute } from '@angular/router';
 
 import { DefinitionFormPage } from '../areas/agent/definition-form.page';
 import { SwitchesPage } from '../areas/agent/switches.page';
+import { DatabaseDetailsPage } from '../areas/os-management/database-details.page';
+import { DatabasesPage } from '../areas/os-management/databases.page';
+import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
+import { SystemUsagePage } from '../areas/os-management/system-usage.page';
+import { AuditingConfigPage } from '../areas/security/auditing-config.page';
+import { OAuthServerDescriptionFormPage } from '../areas/security/oauth-server-description-form.page';
+import { OAuthClientFormPage } from '../areas/security/oauth-client-form.page';
+import { OAuthResourceServerFormPage } from '../areas/security/oauth-resource-server-form.page';
+import { OAuthServerFormPage } from '../areas/security/oauth-server-form.page';
+import { OAuthRegisteredClientFormPage } from '../areas/security/oauth-registered-client-form.page';
+import { TaskDetailsPage } from '../areas/tasks/details.page';
+import { HistoryPage } from '../areas/tasks/history.page';
+import { UpcomingPage } from '../areas/tasks/upcoming.page';
 import { HomePage } from '../areas/home/home.page';
 import { AuditPage } from '../areas/logs/audit.page';
 import { ErrorLogPage } from '../areas/logs/error-log.page';
+import { LogViewerPage } from '../areas/logs/log-viewer.page';
+import { UserCreateFormPage } from '../areas/permissions/user-create-form.page';
+import { RoleEditorPage } from '../areas/permissions/role-editor.page';
+import { UserEditorPage } from '../areas/permissions/user-editor.page';
+import { RoleCreateFormPage } from '../areas/permissions/role-create-form.page';
+import { ResourceListPage } from '../areas/permissions/resource-list.page';
+import { AuditUserEventListPage } from '../areas/security/audit-user-event-list.page';
+import { WalletSecretFormPage } from '../areas/security/wallet-secret-form.page';
+import { X509FormPage } from '../areas/security/x509-form.page';
+import { SslFormPage } from '../areas/security/ssl-form.page';
+import { TaskEditorPage } from '../areas/tasks/task-editor.page';
+import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
+import { DeviceFormPage } from '../areas/os-management/device-form.page';
+import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
+import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
+import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
+import { DetailPage } from './detail-page';
 import { ListPage } from './list-page';
+import { ReducedFormPage } from './reduced-form.page';
 import { ScreenDenied } from './screen-denied';
 
 /**
@@ -48,9 +79,14 @@ type ArchetypePages = { readonly [K in BuiltArchetypeKey]: Type<unknown> } & {
 export const ARCHETYPE_PAGES: ArchetypePages = {
   home: HomePage,
   list: ListPage,
+  'list (two views)': DatabasesPage,
   'list (server criteria)': AuditPage,
   'drill-down': ErrorLogPage,
+  'log-viewer': LogViewerPage,
   'form-page': DefinitionFormPage,
+  'viewer (OpenAPI)': OpenApiViewerPage,
+  detail: DetailPage,
+  meters: SystemUsagePage,
 };
 
 /**
@@ -58,9 +94,10 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
  * (DW-369).
  *
  * An archetype one screen serves is a map entry; an archetype several screens serve each in their
- * own way is not. `form-page` is the first of those: the Definition form and Switches are both
- * `form-page` screens with nothing in common but their shell, and a map keyed by archetype alone
- * can only ever hand both the same component. Registering the exception here, rather than widening
+ * own way is not. `form-page` is the first of those: the Definition form, Switches, Auditing
+ * configuration and the create and edit forms are all `form-page` screens with nothing in common
+ * but their shell, and a map keyed by archetype alone can only ever hand them all the same
+ * component. Registering the exception here, rather than widening
  * the archetype vocabulary, keeps `ARCHETYPE_PAGES`' exhaustiveness guarantee -- every
  * `BuiltArchetypeKey` still needs an entry there, so a new built archetype with no page still
  * fails `ng build`.
@@ -70,6 +107,51 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
  */
 export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AgentSwitches': SwitchesPage,
+  'OcuPilot.Screen.Descriptor.AuditingConfig': AuditingConfigPage,
+  'OcuPilot.Screen.Descriptor.TaskUpcomingList': UpcomingPage,
+  'OcuPilot.Screen.Descriptor.TaskHistoryList': HistoryPage,
+  'OcuPilot.Screen.Descriptor.TaskDetails': TaskDetailsPage,
+  'OcuPilot.Screen.Descriptor.ProcessDetails': ProcessDetailsPage,
+  'OcuPilot.Screen.Descriptor.DatabaseFreeSpace': DatabasesPage,
+  'OcuPilot.Screen.Descriptor.DatabaseDetails': DatabaseDetailsPage,
+  'OcuPilot.Screen.Descriptor.WebAppForm': WebAppCreateFormPage,
+  'OcuPilot.Screen.Descriptor.UserForm': UserCreateFormPage,
+  'OcuPilot.Screen.Descriptor.RoleForm': RoleCreateFormPage,
+  'OcuPilot.Screen.Descriptor.ResourceList': ResourceListPage,
+  'OcuPilot.Screen.Descriptor.X509Form': X509FormPage,
+  'OcuPilot.Screen.Descriptor.OAuthServerDescriptionForm': OAuthServerDescriptionFormPage,
+  'OcuPilot.Screen.Descriptor.OAuthClientForm': OAuthClientFormPage,
+  'OcuPilot.Screen.Descriptor.OAuthResourceServerForm': OAuthResourceServerFormPage,
+  'OcuPilot.Screen.Descriptor.OAuthServerForm': OAuthServerFormPage,
+  'OcuPilot.Screen.Descriptor.OAuthServerClientForm': OAuthRegisteredClientFormPage,
+  'OcuPilot.Screen.Descriptor.WalletSecretForm': WalletSecretFormPage,
+  'OcuPilot.Screen.Descriptor.DeviceForm': DeviceFormPage,
+  'OcuPilot.Screen.Descriptor.SslForm': SslFormPage,
+  'OcuPilot.Screen.Descriptor.TaskForm': TaskWizardPage,
+  'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
+  'OcuPilot.Screen.Descriptor.LdapConfigForm': ReducedFormPage,
+  'OcuPilot.Screen.Descriptor.AuditUserEventList': AuditUserEventListPage,
+};
+
+/**
+ * Pages keyed by the descriptor that declares them, for that descriptor's **id route** alone, and
+ * resolved before `DESCRIPTOR_PAGES` there (Story 9.1).
+ *
+ * A paired form's `<route>` creates and its `<route>/<id>` edits. Where the two are one page (the
+ * device editor) `DESCRIPTOR_PAGES` serves both; where the edit is a page of its own -- the user
+ * editor beside the create form Story 8.2 shipped, the web application editor beside Story 8.1's,
+ * the role editor beside Story 8.3's, and Edit task beside the New Task wizard (Story 9.8) -- it is
+ * registered here, and the bare route keeps the create page.
+ */
+export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, Type<unknown>>> = {
+  'OcuPilot.Screen.Descriptor.UserForm': UserEditorPage,
+  'OcuPilot.Screen.Descriptor.WebAppForm': WebAppEditorPage,
+  'OcuPilot.Screen.Descriptor.RoleForm': RoleEditorPage,
+  'OcuPilot.Screen.Descriptor.TaskForm': TaskEditorPage,
+  // Story 9.9: the two reduced forms serve their bare route (one sentence back to the list) and
+  // their id route from the one page.
+  'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
+  'OcuPilot.Screen.Descriptor.LdapConfigForm': ReducedFormPage,
 };
 
 /**
@@ -262,6 +344,10 @@ export class ScreenOutlet {
     const screen = this.screen();
     if (screen === null || this.shell.screenHeld()) return null;
     if (!this.navigation.answered() || !this.allowed()) return null;
+    if (this.entityId() !== '') {
+      const editor = resolveArchetypePage(DESCRIPTOR_EDIT_PAGES, screen.descriptor);
+      if (editor !== null) return editor;
+    }
     return resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, screen.descriptor, screen.archetype);
   }
 }

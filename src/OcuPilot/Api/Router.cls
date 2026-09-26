@@ -1,12 +1,22 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
 /// <p>The <code>UrlMap</code> below holds the five agent-switch routes under
+/// <code>/agent/switches</code> and <code>/agent/restraint</code>, the agent ledger read
+/// <code>GET /agent/ledger</code>, the eight agent-definition
+/// routes under <code>/agent/definitions</code>, the provider catalog the Definition form cascades
+/// from, the generic screen read, <code>GET /screens/:screen/read</code>, the four
+/// application-error-log levels <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the
+/// console-log page <code>GET /logs/messages</code>, the three turn routes under
+/// <code>/turn</code>, and the three shell routes, <code>GET /instance</code>,
 /// <code>/agent/switches</code> and <code>/agent/restraint</code>, the eight agent-definition
-/// routes under <code>/agent/definitions</code> -- together the map's only write verbs -- the
+/// routes under <code>/agent/definitions</code>, the two proposal decisions
+/// <code>POST /proposal/:id/{confirm,cancel}</code> -- together the map's only write verbs -- the
 /// provider catalog the Definition form cascades from, the generic screen read,
-/// <code>GET /screens/:screen/read</code>, the four application-error-log levels
+/// <code>GET /screens/:screen/read</code>, the screen's own row-action write
+/// <code>POST /screens/:screen/action</code>, the four application-error-log levels
 /// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
-/// <code>GET /logs/messages</code>, and the three shell routes, <code>GET /instance</code>,
+/// <code>GET /logs/messages</code>, the alert-log page <code>GET /logs/alerts</code>, and the three
+/// shell routes, <code>GET /instance</code>,
 /// <code>GET /namespaces</code> and <code>GET /navigation</code>; every other request that clears
 /// <method>OnPreDispatch</method> is answered by the framework 404 override. The three
 /// ordering invariants below are load-bearing from the first route on; the first two are each
@@ -14,7 +24,7 @@
 /// <class>OcuPilot.Test.RouterFixture</class>, which inherits this class's real
 /// <method>OnPreDispatch</method>, <method>ReportHttpStatusCode</method> and
 /// <method>Http405</method> unchanged.</p>
-Class OcuPilot.Api.Router Extends %CSP.REST
+Class OcuPilot.Api.Router Extends %CSP.REST [ DependsOn = OcuPilot.Screen.Gate ]
 {
 
 /// <p>Stateless REST: no CSP session per request.</p>
@@ -37,11 +47,12 @@ Parameter HandleCorsRequest = 0;
 /// tests, comma-separated. Holding <b>any one</b> of them at <code>USE</code> is what the
 /// FR-65 gate requires of a caller; holding none of them is a 403, whatever else the caller
 /// holds.</p>
-/// <p>Read from the instance on 2026-09-11 (<code>Security.Resources:List</code> over
-/// <code>%Admin*</code>) -- all thirteen it defines. A closed list, not a wildcard scan:
-/// what OcuPilot admits must not silently widen because a later IRIS release adds a
-/// resource, and a list is what a reviewer can check.</p>
-Parameter ADMINRESOURCES = "%Admin_ExternalLanguageServerEdit,%Admin_FileSystemAccess,%Admin_Journal,%Admin_Manage,%Admin_OAuth2_Client,%Admin_OAuth2_Registration,%Admin_OAuth2_Server,%Admin_Operate,%Admin_RoleEdit,%Admin_Secure,%Admin_Task,%Admin_UserEdit,%Admin_Wallet";
+/// <p><b>Derived, not held.</b> The list's one home is
+/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>, which
+/// <class>OcuPilot.Port.ProviderPort</class> reads too; this parameter is that value at
+/// compile time, so no second copy exists to drift. <class>OcuPilot.Test.PortGate</class>
+/// asserts the two equal at run time, which is what catches a stale compilation.</p>
+Parameter ADMINRESOURCES As %String = {##class(OcuPilot.Screen.Gate).#ADMINRESOURCES};
 
 /// <p><code>%CSP.REST</code> tries routes in file order and dispatches to the first one
 /// whose URL pattern and HTTP method both match. A <code>:param</code> segment becomes the capture
@@ -69,6 +80,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/switches" Method="GET" Call="AgentSwitchesRead"/>
   <Route Url="/agent/switches" Method="PUT" Call="AgentSwitchesUpdate"/>
   <Route Url="/agent/restraint" Method="GET" Call="AgentRestraint"/>
+  <Route Url="/agent/ledger" Method="GET" Call="AgentLedger"/>
+  <Route Url="/agent/context" Method="GET" Call="AgentContextRead"/>
+  <Route Url="/agent/context" Method="PUT" Call="AgentContextUpdate"/>
   <Route Url="/agent/definitions/:id/default" Method="POST" Call="AgentDefinitionSetDefault"/>
   <Route Url="/agent/definitions/:id/credential" Method="POST" Call="AgentDefinitionStoreCredential"/>
   <Route Url="/agent/definitions/:id/test" Method="POST" Call="AgentDefinitionTest"/>
@@ -78,15 +92,92 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/definitions" Method="GET" Call="AgentDefinitionList"/>
   <Route Url="/agent/definitions" Method="POST" Call="AgentDefinitionCreate"/>
   <Route Url="/agent/providers" Method="GET" Call="AgentProviders"/>
+  <Route Url="/web-applications/form" Method="GET" Call="WebAppFormRules"/>
+  <Route Url="/web-applications/name" Method="GET" Call="WebAppNameCheck"/>
+  <Route Url="/web-applications/:id" Method="PUT" Call="WebAppUpdate"/>
+  <Route Url="/web-applications" Method="POST" Call="WebAppCreate"/>
+  <Route Url="/users/form" Method="GET" Call="UserFormRules"/>
+  <Route Url="/users/name" Method="GET" Call="UserNameCheck"/>
+  <Route Url="/users/:id" Method="PUT" Call="UserUpdate"/>
+  <Route Url="/users" Method="POST" Call="UserCreate"/>
+  <Route Url="/roles/form" Method="GET" Call="RoleFormRules"/>
+  <Route Url="/roles/name" Method="GET" Call="RoleNameCheck"/>
+  <Route Url="/roles/:id" Method="PUT" Call="RoleUpdate"/>
+  <Route Url="/roles" Method="POST" Call="RoleCreate"/>
+  <Route Url="/resources/form" Method="GET" Call="ResourceFormRules"/>
+  <Route Url="/resources/name" Method="GET" Call="ResourceNameCheck"/>
+  <Route Url="/resources/:id" Method="PUT" Call="ResourceUpdate"/>
+  <Route Url="/resources" Method="POST" Call="ResourceCreate"/>
+  <Route Url="/wallet/secret/form" Method="GET" Call="WalletSecretFormRead"/>
+  <Route Url="/wallet/secret/name" Method="GET" Call="WalletSecretNameCheck"/>
+  <Route Url="/wallet/secret/:id" Method="PUT" Call="WalletSecretUpdate"/>
+  <Route Url="/wallet/secret" Method="POST" Call="WalletSecretCreate"/>
+  <Route Url="/x509/form" Method="GET" Call="X509FormRead"/>
+  <Route Url="/x509/name" Method="GET" Call="X509NameCheck"/>
+  <Route Url="/x509/:id" Method="PUT" Call="X509Update"/>
+  <Route Url="/x509" Method="POST" Call="X509Import"/>
+  <Route Url="/device/form" Method="GET" Call="DeviceFormRead"/>
+  <Route Url="/device/name" Method="GET" Call="DeviceNameCheck"/>
+  <Route Url="/device/:id" Method="PUT" Call="DeviceUpdate"/>
+  <Route Url="/device" Method="POST" Call="DeviceCreate"/>
+  <Route Url="/screens/:screen/action" Method="POST" Call="ScreenAction"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
   <Route Url="/logs/errors/list" Method="GET" Call="LogErrorList"/>
   <Route Url="/logs/errors/detail" Method="GET" Call="LogErrorDetail"/>
+  <Route Url="/logs/alerts" Method="GET" Call="LogAlerts"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
+  <Route Url="/turn/:id/progress" Method="GET" Call="TurnProgress"/>
+  <Route Url="/turn/:id/stop" Method="POST" Call="TurnStop"/>
+  <Route Url="/turn/:id/navigation" Method="POST" Call="TurnNavigation"/>
+  <Route Url="/turn/abandon" Method="POST" Call="TurnAbandon"/>
+  <Route Url="/turn" Method="POST" Call="TurnStart"/>
+  <Route Url="/proposal/:id/confirm" Method="POST" Call="ProposalConfirm"/>
+  <Route Url="/proposal/:id/cancel" Method="POST" Call="ProposalCancel"/>
+  <Route Url="/conversation/:id" Method="GET" Call="ConversationRead"/>
+  <Route Url="/conversation" Method="POST" Call="ConversationCreate"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
+  <Route Url="/account/password" Method="POST" Call="AccountPasswordChange"/>
+  <Route Url="/account/preferences" Method="GET" Call="AccountPreferencesRead"/>
+  <Route Url="/account/preferences" Method="POST" Call="AccountPreferencesUpdate"/>
+  <Route Url="/ui/about" Method="GET" Call="UiAbout"/>
+  <Route Url="/ui/help" Method="GET" Call="UiHelp"/>
+  <Route Url="/ui/system" Method="GET" Call="UiSystem"/>
+  <Route Url="/ssl/form" Method="GET" Call="SslFormRead"/>
+  <Route Url="/ssl/name" Method="GET" Call="SslNameCheck"/>
+  <Route Url="/ssl/:id/test" Method="POST" Call="SslTest"/>
+  <Route Url="/ssl/:id" Method="PUT" Call="SslUpdate"/>
+  <Route Url="/ssl" Method="POST" Call="SslCreate"/>
+  <Route Url="/tasks/form" Method="GET" Call="TaskFormRead"/>
+  <Route Url="/tasks/check" Method="POST" Call="TaskCheck"/>
+  <Route Url="/tasks/:id" Method="PUT" Call="TaskUpdate"/>
+  <Route Url="/tasks" Method="POST" Call="TaskCreate"/>
+  <Route Url="/services/form" Method="GET" Call="ServiceFormRead"/>
+  <Route Url="/services/:id" Method="PUT" Call="ServiceUpdate"/>
+  <Route Url="/ldap/form" Method="GET" Call="LdapFormRead"/>
+  <Route Url="/ldap/:id" Method="PUT" Call="LdapUpdate"/>
+  <Route Url="/audit-events/form" Method="GET" Call="AuditEventFormRead"/>
+  <Route Url="/audit-events/:id" Method="PUT" Call="AuditEventUpdate"/>
+  <Route Url="/audit-events" Method="POST" Call="AuditEventCreate"/>
+  <Route Url="/oauth/server-description/form" Method="GET" Call="OAuthServerFormRead"/>
+  <Route Url="/oauth/server-description/discover" Method="POST" Call="OAuthServerDiscover"/>
+  <Route Url="/oauth/server-description/:id" Method="PUT" Call="OAuthServerUpdate"/>
+  <Route Url="/oauth/server-description" Method="POST" Call="OAuthServerCreate"/>
+  <Route Url="/oauth/client-configuration/form" Method="GET" Call="OAuthClientFormRead"/>
+  <Route Url="/oauth/client-configuration/:id" Method="PUT" Call="OAuthClientUpdate"/>
+  <Route Url="/oauth/client-configuration" Method="POST" Call="OAuthClientCreate"/>
+  <Route Url="/oauth/resource-server/form" Method="GET" Call="OAuthResourceServerFormRead"/>
+  <Route Url="/oauth/resource-server/:id" Method="PUT" Call="OAuthResourceServerUpdate"/>
+  <Route Url="/oauth/resource-server" Method="POST" Call="OAuthResourceServerCreate"/>
+  <Route Url="/oauth/authorization-server/form" Method="GET" Call="OAuthAuthorizationServerFormRead"/>
+  <Route Url="/oauth/authorization-server" Method="PUT" Call="OAuthAuthorizationServerUpdate"/>
+  <Route Url="/oauth/authorization-server" Method="POST" Call="OAuthAuthorizationServerCreate"/>
+  <Route Url="/oauth/server-client/form" Method="GET" Call="OAuthServerClientFormRead"/>
+  <Route Url="/oauth/server-client/:id" Method="PUT" Call="OAuthServerClientUpdate"/>
+  <Route Url="/oauth/server-client" Method="POST" Call="OAuthServerClientCreate"/>
 </Routes>
 }
 
@@ -129,6 +220,28 @@ ClassMethod AgentSwitchesUpdate() As %Status
 ClassMethod AgentRestraint() As %Status
 {
     Quit ##class(OcuPilot.Api.Switches).HandleRestraint()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/ledger</code> (Story 4.9): delegates to
+/// <class>OcuPilot.Api.Ledger</class> and carries no logic of its own. A two-segment literal beside
+/// <code>GET /agent/restraint</code>, so it conflicts with no <code>:param</code> route.</p>
+ClassMethod AgentLedger() As %Status
+{
+    Quit ##class(OcuPilot.Api.Ledger).Handle()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/context</code>: delegates to
+/// <class>OcuPilot.Api.Context</class> and carries no logic of its own.</p>
+ClassMethod AgentContextRead() As %Status
+{
+    Quit ##class(OcuPilot.Api.Context).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /agent/context</code> -- see
+/// <method>AgentContextRead</method>.</p>
+ClassMethod AgentContextUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Context).HandleUpdate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /agent/definitions/:id/default</code>:
@@ -197,6 +310,349 @@ ClassMethod AgentProviders() As %Status
     Quit ##class(OcuPilot.Api.Definitions).HandleProviders()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>GET /web-applications/form</code> (Story 8.1):
+/// delegates to <class>OcuPilot.Area.WebApp.FormRules</class> and carries no logic of its own.</p>
+/// <p>The three web-application routes are declared sub-resource first, per the second ordering
+/// invariant: <code>/web-applications/form</code> and <code>/web-applications/name</code> are both
+/// two-segment literals under the one-segment <code>/web-applications</code>, so a shorter route
+/// declared first would swallow neither -- but the invariant is structural and the checker holds
+/// the whole map to it, so they lead.</p>
+ClassMethod WebAppFormRules() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.FormRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /web-applications/name</code> -- see
+/// <method>WebAppFormRules</method>. The create form's blur check: whether a name is already
+/// taken, which is a read of the instance rather than a validation of the value.</p>
+ClassMethod WebAppNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.FormRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /web-applications</code> -- see
+/// <method>WebAppFormRules</method>. The screen's own Save, which resolves the write through the
+/// same tool class the agent's confirm does (AD-55).</p>
+ClassMethod WebAppCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.Create).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /web-applications/:id</code> (Story 9.2): the web
+/// application editor's Save, resolved through the one tool the agent's confirm uses (AD-55). The
+/// two sub-resources are <code>GET</code> routes, so a <code>PUT</code> to either path is this
+/// route's, for the application of that name.</p>
+ClassMethod WebAppUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.WebAppSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /users/form</code> (Story 8.2): delegates to
+/// <class>OcuPilot.Area.Permissions.UserCreateRules</class> and carries no logic of its own. The
+/// two sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
+ClassMethod UserFormRules() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /users/name</code>: the User form's blur check
+/// of whether a name is already taken.</p>
+ClassMethod UserNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /users/:id</code> (Story 9.1): the user editor's
+/// Save, resolved through the one tool the agent's confirm uses (AD-55). The two sub-resources are
+/// <code>GET</code> routes, so a <code>PUT</code> to either path is this route's, for the account
+/// of that name.</p>
+ClassMethod UserUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /users</code>: the User form's Save, which
+/// resolves the write through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod UserCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCreate).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /roles/form</code> (Story 8.3): delegates to
+/// <class>OcuPilot.Area.Permissions.RoleCreateRules</class> and carries no logic of its own. The two
+/// sub-resources precede <code>/roles/:id</code>.</p>
+ClassMethod RoleFormRules() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.RoleCreateRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /roles/name</code>: the Role form's blur check
+/// of whether a name is already taken.</p>
+ClassMethod RoleNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.RoleCreateRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /roles/:id</code> (Story 9.3): the role editor's
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RoleUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.RoleSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /roles</code>: the Role form's Save, which
+/// resolves the write through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RoleCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.RoleCreate).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /resources/form</code> (Story 8.4): the resource
+/// editor's form read, delegating to <class>OcuPilot.Area.Permissions.ResourceRules</class>. The two
+/// sub-resources precede <code>/resources/:id</code>.</p>
+ClassMethod ResourceFormRules() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ResourceRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /resources/name</code>: the resource editor's
+/// blur check of whether a name is taken.</p>
+ClassMethod ResourceNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ResourceRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /resources</code>: the resource editor's create
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod ResourceCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ResourceSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /resources/:id</code>: the resource editor's edit
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod ResourceUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ResourceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /wallet/secret/form</code> (Story 8.6): the wallet
+/// secret form's read, delegating to <class>OcuPilot.Area.Security.WalletRules</class>. The two
+/// sub-resources precede <code>/wallet/secret/:id</code>.</p>
+ClassMethod WalletSecretFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.WalletRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /wallet/secret/name</code>: the wallet secret
+/// form's blur check of whether a name is taken.</p>
+ClassMethod WalletSecretNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.WalletRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /wallet/secret</code>: the wallet secret form's
+/// create Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod WalletSecretCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.WalletSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /wallet/secret/:id</code>: the wallet secret
+/// form's edit Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod WalletSecretUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.WalletSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /x509/form</code> (Story 8.5): the X.509 form's
+/// read, delegating to <class>OcuPilot.Area.Security.X509Rules</class>. The two sub-resources
+/// precede <code>/x509/:id</code>.</p>
+ClassMethod X509FormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.X509Rules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /x509/name</code>: the X.509 form's blur check
+/// of whether an alias is taken.</p>
+ClassMethod X509NameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.X509Rules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /x509</code>: the X.509 form's import Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod X509Import() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.X509Save).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /x509/:id</code>: the X.509 form's edit Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod X509Update(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.X509Save).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /device/form</code> (Story 8.8): the device
+/// editor's read, delegating to <class>OcuPilot.Area.OsMgmt.DeviceRules</class>. The two
+/// sub-resources precede <code>/device/:id</code>.</p>
+ClassMethod DeviceFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DeviceRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /device/name</code>: the device editor's blur
+/// check of whether a name is taken.</p>
+ClassMethod DeviceNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DeviceRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /device</code>: the device editor's create Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DeviceCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DeviceSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /device/:id</code>: the device editor's edit Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DeviceUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DeviceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/server-description/form</code> (Story
+/// 12.4): the server description editor's read, delegating to
+/// <class>OcuPilot.Area.Security.OAuthServerRules</class>. The two sub-resources precede
+/// <code>/oauth/server-description/:id</code>.</p>
+ClassMethod OAuthServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthServerRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/server-description/discover</code>: the
+/// editor's Discover, which fetches an issuer's published metadata and saves nothing (AD-27).</p>
+ClassMethod OAuthServerDiscover() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthServerSave).HandleDiscover()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/server-description/:id</code>: the editor's
+/// edit Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthServerUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthServerSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/server-description</code>: the editor's
+/// create Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/client-configuration/form</code> (Story
+/// 12.5): the client configuration editor's rules, members and readable names, and with an
+/// <code>applicationName</code> query the configuration it edits. It sits before
+/// <code>/oauth/client-configuration/:id</code>.</p>
+ClassMethod OAuthClientFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthClientRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/client-configuration/:id</code>: the
+/// editor's edit Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthClientUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthClientSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/client-configuration</code>: the editor's
+/// create Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthClientCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthClientSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/resource-server/form</code> (Story 12.6): the
+/// resource server editor's rules and readable names, and with a <code>name</code> query the server it
+/// edits. It sits before <code>/oauth/resource-server/:id</code>.</p>
+ClassMethod OAuthResourceServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthResourceServerRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/resource-server/:id</code>: the editor's edit
+/// Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthResourceServerUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthResourceServerSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/resource-server</code>: the editor's create
+/// Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthResourceServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthResourceServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/authorization-server/form</code> (Story
+/// 12.7): the authorization server editor's rules and readable names, and the configuration when the
+/// instance has one. It sits before <code>/oauth/authorization-server</code>.</p>
+ClassMethod OAuthAuthorizationServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthAuthorizationServerRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/authorization-server</code>: the editor's
+/// edit Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthAuthorizationServerUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthAuthorizationServerSave).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/authorization-server</code>: the editor's
+/// create Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthAuthorizationServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthAuthorizationServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/server-client/form</code> (Story 12.8): the
+/// server client description editor's rules and readable credentials, and the client its
+/// <code>clientId</code> names. It sits before <code>/oauth/server-client/:id</code>.</p>
+ClassMethod OAuthServerClientFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthRegisteredClientRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/server-client/:id</code>: the editor's edit
+/// Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthServerClientUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthRegisteredClientSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/server-client</code>: the editor's create
+/// Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthServerClientCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthRegisteredClientSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /screens/:screen/action</code>: delegates to
+/// <class>OcuPilot.Api.ScreenAction</class> and carries no logic of its own.</p>
+/// <p>It sits beside <code>GET /screens/:screen/read</code> and above it, which decides nothing
+/// that <code>%CSP.REST</code> would notice -- the two differ in their last segment and in their
+/// verb, and neither matches the other's leading segments. A method other than <code>POST</code>
+/// on this path is the framework's own 405.</p>
+ClassMethod ScreenAction(pScreen As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.ScreenAction).Handle(pScreen)
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/read</code>: delegates to
 /// <class>OcuPilot.Api.ScreenRead</class> and carries no logic of its own.</p>
 ClassMethod ScreenRead(pScreen As %String) As %Status
@@ -246,6 +702,80 @@ ClassMethod LogMessages() As %Status
     Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
 }
 
+/// <p>Thin <code>Call=</code> target for <code>GET /turn/:id/progress</code>: delegates to
+/// <class>OcuPilot.Api.Turn</class> and carries no logic of its own. The three turn routes are
+/// declared longest first, for the third ordering invariant.</p>
+ClassMethod TurnProgress(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleProgress(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /turn/:id/stop</code> -- see
+/// <method>TurnProgress</method>.</p>
+ClassMethod TurnStop(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleStop(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /turn/:id/navigation</code> (Story 4.7) -- see
+/// <method>TurnProgress</method>.</p>
+ClassMethod TurnNavigation(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleNavigation(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /turn/abandon</code> -- see
+/// <method>TurnProgress</method>.</p>
+ClassMethod TurnAbandon() As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleAbandon()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /turn</code> -- see
+/// <method>TurnProgress</method>.</p>
+ClassMethod TurnStart() As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleStart()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /proposal/:id/confirm</code>: delegates to
+/// <class>OcuPilot.Api.Confirm</class> and carries no logic of its own. A method other than
+/// <code>POST</code> on this path is the framework's own 405 through
+/// <method>Http405</method>, which is why no guard route is declared for it.</p>
+ClassMethod ProposalConfirm(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Confirm).HandleConfirm(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /proposal/:id/cancel</code> -- see
+/// <method>ProposalConfirm</method>.</p>
+ClassMethod ProposalCancel(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Confirm).HandleCancel(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /conversation/:id</code>: delegates to
+/// <class>OcuPilot.Api.Conversation</class> and carries no logic of its own. Declared before
+/// <code>POST /conversation</code>, for the third ordering invariant.</p>
+ClassMethod ConversationRead(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Conversation).HandleRead(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /conversation</code> -- see
+/// <method>ConversationRead</method>.</p>
+ClassMethod ConversationCreate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Conversation).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/alerts</code> -- see
+/// <method>LogMessages</method>. The second file source, and the alerts.log viewer's own page.</p>
+ClassMethod LogAlerts() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#ALERTSKEY)
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /instance</code>: delegates to
 /// <class>OcuPilot.Api.Instance</class> and carries no logic of its own.</p>
 ClassMethod Instance() As %Status
@@ -265,6 +795,61 @@ ClassMethod Navigation() As %Status
 ClassMethod Namespaces() As %Status
 {
     Quit ##class(OcuPilot.Api.Namespaces).Handle()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /account/password</code> (Story 15.1):
+/// delegates to <class>OcuPilot.Api.Account</class> and carries no logic of its own.</p>
+/// <p>Declared last in the map above, after every one-segment route. The third ordering invariant
+/// binds only a shorter route that matches a longer one's leading segments, and no route shares
+/// the <code>/account</code> prefix.</p>
+ClassMethod AccountPasswordChange() As %Status
+{
+    Quit ##class(OcuPilot.Api.Account).HandlePasswordChange()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /account/preferences</code> (Story 15.2):
+/// delegates to <class>OcuPilot.Api.Preferences</class> and carries no logic of its own.</p>
+/// <p>Declared at the tail of the map above, after <code>/account/password</code>. The third
+/// ordering invariant binds a prefix family -- a shorter route whose Url matches a longer one's
+/// leading segments -- and this route shares none: <code>/account/password</code> is the same
+/// length and matches nothing here.</p>
+ClassMethod AccountPreferencesRead() As %Status
+{
+    Quit ##class(OcuPilot.Api.Preferences).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /account/preferences</code> (Story 15.2):
+/// delegates to <class>OcuPilot.Api.Preferences</class> and carries no logic of its own.</p>
+ClassMethod AccountPreferencesUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Preferences).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ui/about</code> (Story 15.3): delegates to
+/// <class>OcuPilot.Api.UiAbout</class> and carries no logic of its own.</p>
+/// <p>Declared at the tail of the map above. The third ordering invariant binds a prefix family --
+/// a shorter route whose Url matches a longer one's leading segments -- and <code>/ui</code>
+/// is shared with nothing else in the map, so both <code>/ui/*</code> routes are unconstrained in
+/// position and neither is a prefix of the other.</p>
+ClassMethod UiAbout() As %Status
+{
+    Quit ##class(OcuPilot.Api.UiAbout).HandleAbout()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ui/help</code> (Story 15.3) -- see
+/// <method>UiAbout</method>.</p>
+ClassMethod UiHelp() As %Status
+{
+    Quit ##class(OcuPilot.Api.UiAbout).HandleHelp()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ui/system</code> (Story 15.4): delegates to
+/// <class>OcuPilot.Api.UiSystem</class> and carries no logic of its own. Declared at the tail of
+/// the map above, beside the other two <code>/ui/*</code> reads -- see <method>UiAbout</method>
+/// for why none of the three constrains the others' position.</p>
+ClassMethod UiSystem() As %Status
+{
+    Quit ##class(OcuPilot.Api.UiSystem).HandleSystem()
 }
 
 /// <p>Resolves the authenticated caller for this request. Returns <code>$Username</code> —
@@ -289,6 +874,19 @@ ClassMethod ResolvedUsername() As %String
 ClassMethod GateStatus() As %String
 {
     Quit ##class(OcuPilot.Install.Installer).GateStatus()
+}
+
+/// <p>Whether the IRIS account <var>pUser</var> is enabled on this instance (DW-444).
+/// Delegates to <class>OcuPilot.Kernel.Identity</class>, which owns the one identity read and
+/// its fail-closed discipline.</p>
+/// <p>Overridable so <class>OcuPilot.Test.RouterFixture</class> can drive the refusal without
+/// disabling a real account on a shared instance; the refusal is also exercised end to end
+/// against a real disabled principal by <class>OcuPilot.Test.Disabled</class>. Production code
+/// never overrides this.</p>
+ClassMethod IsEnabled(pUser As %String, Output pUnavailable As %Boolean) As %Boolean
+{
+    Set pUnavailable = 0
+    Quit ##class(OcuPilot.Kernel.Identity).IsEnabled(pUser, .pUnavailable)
 }
 
 /// <p>Whether the calling process holds at least one of
@@ -351,7 +949,7 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 }
 
 /// <p>Runs once per request, before any route is dispatched (AD-16's single resolution
-/// point). Four concerns, each resolved exactly once, the install gate <b>first</b> and
+/// point). Five concerns, each resolved exactly once, the install gate <b>first</b> and
 /// <b>before authentication</b> (AD-38 — a request must not learn anything about the
 /// instance, not even whether the caller is who they say, while install has not
 /// finished):</p>
@@ -364,15 +962,33 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 /// <code>UnknownUser</code> and <code>_PUBLIC</code> explicitly (AD-21) — anonymous does
 /// not mean unprivileged, so this never infers authorization from <code>$Roles</code>
 /// alone.</li>
+/// <li><b>Account enabled (DW-444).</b> A disabled IRIS account keeps a usable token pair
+/// until it lapses, and the four token paths never reach this class, so the refusal lives
+/// here, at use: <method>IsEnabled</method> answers through
+/// <class>OcuPilot.Kernel.Identity</class> and a disabled -- or unreadable -- account is
+/// refused 401 <code>AUTH.DISABLED</code>. An escalation that could not be entered at all
+/// refuses <b>every</b> account, so it is answered as AD-38's 503
+/// <code>INSTALL.UNREADABLE</code> instead, which names the repair; the two are told apart by
+/// <var>pUnavailable</var> and never merged. This is the one concern that reaches
+/// <code>%SYS</code>, and it does so inside
+/// <method>OcuPilot.Kernel.State.Base.GuardedUserEnabled</method>, which owns the switch and
+/// the restore; nothing is switched in this method's own frame.</li>
 /// <li><b>Administrative privilege (FR-65).</b> The caller must hold at least one
 /// <code>%Admin_*</code> resource at <code>USE</code>
 /// (<method>HoldsAdminResource</method>, against the closed
 /// <parameter>ADMINRESOURCES</parameter> list); otherwise 403 with the machine code
 /// <code>AUTH.NOADMIN</code>. <b>A caller who lacks read on the install namespace's
-/// database never reaches this method at all</b> — IRIS cannot load this class for that
-/// request, and the framework answers a bare 403 with no envelope, which is why README.md
-/// states the read requirement rather than leaving it to be discovered from a
-/// response.</li>
+/// database never reaches this method at all</b>: the framework's own
+/// <method>%CSP.REST.AccessCheck</method> requires that read and, when it fails, sets 403
+/// <i>inline</i> in <code>%CSP.REST.Page()</code> rather than through
+/// <method>ReportHttpStatusCode</method>, so the caller is answered 403 with an empty body
+/// and no OcuPilot-resident method has run. Overriding <code>AccessCheck</code> to render
+/// the envelope there does not help and makes it worse: the override itself is compiled
+/// into the install namespace's database, so dispatching to it raises
+/// <code>&lt;PROTECT&gt;</code> and the caller is answered a vendor 500 error page instead
+/// (measured on a throwaway container, 2026-09-21). Database READ is routine-execution
+/// permission (AD-9, AD-21), so this is a prerequisite rather than a gate OcuPilot can
+/// answer for, and README.md's roles section states it.</li>
 /// <li><b>Namespace.</b> The <code>?ns=</code> query parameter, defaulting to the
 /// namespace already in effect when the request begins (the web application's configured,
 /// installed namespace) and validated with <code>##class(%SYS.Namespace).Exists()</code> —
@@ -381,22 +997,22 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 /// (<method>MayEnterNamespace</method>, AD-21, AD-48); the check is skipped when the
 /// request's namespace is the one already in effect, because refusing entry to the namespace
 /// the web application is configured in would leave no request this class could answer, and
-/// IRIS's own protection on that namespace's globals applies to the request either way. (The
-/// privilege note above is about the <i>code</i> database IRIS loads this class from; the
-/// entry check tests the <i>global</i> database's resource, which is a different grant.) The
+/// IRIS's own protection on that namespace's globals applies to the request either way. (This
+/// check is per <i>requested</i> namespace; the framework's own check above tests only the
+/// namespace the web application is configured in, so neither stands in for the other.) The
 /// name is canonicalised first (<method>CanonicalNamespace</method>), so one namespace is one
 /// scope. <b>The survivor is stashed in <class>OcuPilot.Kernel.Scope</class></b>, which is
 /// what makes the route's scope a value the request carries rather than something each
 /// handler re-derives (AD-44).</li>
 /// </ol>
-/// <p>None of the four reaches <code>%SYS</code> or any other namespace from here — the
-/// gate's own namespace switching lives entirely inside
-/// <class>OcuPilot.Install.Installer</class> — so this method never switches
-/// <code>$NAMESPACE</code> and there is nothing to restore on the error path. A future
-/// story whose resolution needs a <code>%SYS</code>-only call must bracket it with
-/// <class>OcuPilot.Kernel.Utils</class>'s <method>SwitchNamespace</method> /
-/// <method>RestoreNamespace</method> pair, restoring first in its <code>Catch</code>
-/// (AD-16) — the pair is harvested and ready for exactly that.</p>
+/// <p>This method switches <code>$NAMESPACE</code> itself for none of the five, so there is
+/// nothing to restore on its error path. Where a concern needs a <code>%SYS</code>-only call
+/// -- the enabled read above, and the install gate's own work inside
+/// <class>OcuPilot.Install.Installer</class> -- the switch and its restore belong to the
+/// method that makes the call, bracketed with <class>OcuPilot.Kernel.Utils</class>'s
+/// <method>SwitchNamespace</method> / <method>RestoreNamespace</method> pair and restoring
+/// first in its <code>Catch</code> (AD-16). A future concern needing one follows that shape
+/// rather than switching here.</p>
 /// <p>A denial never <code>Write</code>s directly: it sets <var>pContinue</var> to 0 and
 /// renders through <class>OcuPilot.Api.Error</class>, the tree's one error writer.</p>
 ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue As %Boolean) As %Status
@@ -434,6 +1050,26 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
         If '##class(OcuPilot.Screen.Gate).IsAuthenticatedPrincipal(tUser) {
             Set pContinue = 0
             Do ##class(OcuPilot.Api.Error).Render(401, ##class(OcuPilot.Api.Error).#UNAUTHORIZED, "Authentication required", ##class(OcuPilot.Api.Error).#AUTHANONYMOUS)
+            Quit
+        }
+
+        ; A disabled account is refused at the front of every dispatched route (DW-444). It runs
+        ; here, at use, because the four token paths never reach this class: the CSP server
+        ; handles /login, /refresh, /logout and /revoke before DispatchRequest, so a pair
+        ; /refresh mints for a disabled account cannot be refused at the mint -- only at every
+        ; route it can be presented to, which is this one.
+        Set tIdentityUnavailable = 0
+        If '..IsEnabled(tUser, .tIdentityUnavailable) {
+            Set pContinue = 0
+            If tIdentityUnavailable {
+                ; The escalation could not be entered, so this refuses every account on the
+                ; instance. Answering AUTH.DISABLED here would tell every user their account was
+                ; disabled and name no repair; AD-38 already fixes the answer for "OcuPilot
+                ; cannot read its own state and waiting will not help".
+                Do ##class(OcuPilot.Api.Error).Render(503, ##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Kernel.Identity).#REASONUNAVAILABLE, ##class(OcuPilot.Api.Error).#INSTALLUNREADABLE)
+                Quit
+            }
+            Do ##class(OcuPilot.Api.Error).Render(401, ##class(OcuPilot.Api.Error).#UNAUTHORIZED, ##class(OcuPilot.Kernel.Identity).#REASONDISABLED, ##class(OcuPilot.Kernel.Identity).#AUTHDISABLED)
             Quit
         }
 
@@ -504,6 +1140,122 @@ ClassMethod Http405(pSupportedVerbs As %String = "") As %Status
 {
     Do ##class(OcuPilot.Api.Error).Render405(pSupportedVerbs)
     Quit $$$OK
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ssl/form</code> (Story 9.5): the SSL/TLS form's
+/// read, delegating to <class>OcuPilot.Area.Security.SslRules</class>. The SSL block shares no prefix
+/// with any other route, so it sits at the tail; within it the sub-resources precede
+/// <code>/ssl/:id</code>, and <code>/ssl/:id/test</code> precedes it too.</p>
+ClassMethod SslFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ssl/name</code>: the SSL/TLS form's blur check
+/// of whether a name is taken.</p>
+ClassMethod SslNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /ssl/:id/test</code>: the SSL/TLS form's Test
+/// connection, screen-only (AD-39's named exception).</p>
+ClassMethod SslTest(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslRules).HandleTest(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /ssl/:id</code>: the SSL/TLS form's edit Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod SslUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /ssl</code>: the SSL/TLS form's create Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod SslCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /tasks/form</code>: the New Task wizard's form
+/// read, delegating to <class>OcuPilot.Area.Task.TaskRules</class>. The <code>/tasks</code> block
+/// shares no prefix with any other route, so it sits at the tail; within it the sub-resources precede
+/// <code>/tasks</code>.</p>
+ClassMethod TaskFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /tasks/check</code>: the wizard's Next, which
+/// validates the values so far through the one rule set (AD-39).</p>
+ClassMethod TaskCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).HandleCheck()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /tasks/:id</code>: Edit task's Save, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod TaskUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /tasks</code>: the wizard's Create task, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod TaskCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /services/form</code>: the service form's read
+/// (Story 9.9).</p>
+ClassMethod ServiceFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ServiceRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /services/:id</code>: the service form's Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod ServiceUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ServiceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ldap/form</code>: the LDAP configuration form's
+/// read (Story 9.9).</p>
+ClassMethod LdapFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.LdapRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /ldap/:id</code>: the LDAP configuration form's
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LdapUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.LdapSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /audit-events/form</code>: the user audit event
+/// editor's form read (Story 9.10). The sub-resource precedes <code>/audit-events/:id</code>.</p>
+ClassMethod AuditEventFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuditEventRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /audit-events/:id</code>: the user audit event
+/// editor's Description Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod AuditEventUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuditEventSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /audit-events</code>: the user audit event
+/// editor's create Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod AuditEventCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuditEventSave).HandleCreate()
 }
 
 }

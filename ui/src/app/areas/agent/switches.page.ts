@@ -141,6 +141,30 @@ interface FieldView {
             <span>{{ STRINGS.agentSwitchesShareContext }}</span>
           </label>
         </div>
+
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="contextRowCapField.id">{{
+            STRINGS.agentSwitchesContextRowCap
+          }}</label>
+          <div class="ocu-field-control">
+            <input
+              class="ocu-field-input"
+              type="number"
+              min="1"
+              max="1000"
+              [id]="contextRowCapField.id"
+              [value]="contextRowCapValue"
+              [attr.aria-invalid]="contextRowCapField.invalid"
+              [attr.aria-describedby]="contextRowCapField.describedBy"
+              (input)="onText('contextRowCap', $event)"
+            />
+          </div>
+          @if (contextRowCapField.invalid) {
+            <p class="ocu-form-error" [id]="contextRowCapField.id + '-reason'">
+              {{ contextRowCapField.reason }}
+            </p>
+          }
+        </div>
       </div>
 
       <section class="ocu-switches-holds">
@@ -375,6 +399,15 @@ export class SwitchesPage {
     return this.store.value('killSwitchReason');
   }
 
+  protected get contextRowCapValue(): string {
+    this.generation();
+    return this.store.value('contextRowCap');
+  }
+
+  protected get contextRowCapField(): FieldView {
+    return this.field('contextRowCap');
+  }
+
   protected get holdUserValue(): string {
     this.generation();
     return this.store.holdUser();
@@ -427,12 +460,12 @@ export class SwitchesPage {
   }
 
   /**
-   * The published absent-entity sentence resolved to the name the hold stored -- the one sentence
-   * the product publishes for a reference that no longer resolves (AD-37). The client composes
-   * nothing of its own for this row.
+   * The published absent-entity sentence for a page with no list to return to, resolved to the name
+   * the hold stored (AD-37, DW-391): Switches is not a list of users, so the list-returning sentence
+   * would send the reader nowhere. The client composes nothing of its own for this row.
    */
   protected absentSentence(hold: HoldRow): string {
-    return STRINGS.faultAbsentEntity.split(NAME_PLACEHOLDER).join(hold.userName);
+    return STRINGS.faultAbsentEntityNoList.split(NAME_PLACEHOLDER).join(hold.userName);
   }
 
   // --- intents ---------------------------------------------------------------------------------

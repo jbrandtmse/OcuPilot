@@ -8,21 +8,32 @@ import { routes } from '../app.routes';
 import { encodeEntityId } from '../core/entity-id';
 import { InstanceService } from '../core/instance';
 import { NavigationService, type Verdict } from '../core/navigation';
-import { PreferenceStore } from '../core/preferences';
 import { ScopeService } from '../core/scope';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, BuiltArchetypeKey, ScreenDeclaration } from '../core/screens.generated';
 import { HomePage } from '../areas/home/home.page';
+import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
+import { TaskEditorPage } from '../areas/tasks/task-editor.page';
+import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { ListPage } from './list-page';
+import { ReducedFormPage } from './reduced-form.page';
 import {
   ARCHETYPE_PAGES,
+  DESCRIPTOR_EDIT_PAGES,
   DESCRIPTOR_PAGES,
   ScreenOutlet,
   resolveArchetypePage,
   resolveScreenPage,
 } from './screen-outlet';
+import { AccountPreferences } from '../core/account-preferences';
+import { stubAccountPreferences } from '../testing/account-preferences';
+import { About } from '../core/about';
+import { SystemInfo } from '../core/system-info';
+import { HelpLinks } from '../core/help';
+import { stubAbout, stubHelpLinks } from '../testing/about';
+import { stubSystemInfo } from '../testing/system-info';
 
 /**
  * The deep-link path, rendered: a route the user's privileges do not allow shows the screen's
@@ -97,6 +108,11 @@ class StubReadout {
     return '';
   }
 
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
+  }
+
   instanceVersion(): string {
     return '';
   }
@@ -125,9 +141,13 @@ describe('the routed screen outlet', () => {
   beforeEach(() => {
     TestBed.resetTestingModule();
     navigation = new StubNavigation();
-    shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    shell = new ShellState({ account: stubAccountPreferences() });
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: stubAbout() },
+        { provide: SystemInfo, useValue: stubSystemInfo() },
+        { provide: HelpLinks, useValue: stubHelpLinks() },
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([
           { path: '', pathMatch: 'full', component: ScreenOutlet },
           { path: 'probe/:id', component: ScreenOutlet },
@@ -343,6 +363,12 @@ describe('the archetype map guard (Object.hasOwn, not a bare index)', () => {
   it('registers the list page for the list archetype, so a built list screen needs no router edit', () => {
     expect(resolveArchetypePage(ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>, 'list')).toBe(ListPage);
   });
+
+  it('registers the OpenAPI document viewer page for the viewer (OpenAPI) archetype', () => {
+    expect(resolveArchetypePage(ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>, 'viewer (OpenAPI)')).toBe(
+      OpenApiViewerPage
+    );
+  });
 });
 
 /**
@@ -362,6 +388,34 @@ describe('the descriptor map (DW-369)', () => {
     expect(resolveScreenPage(byDescriptor, byArchetype, 'OcuPilot.Screen.Descriptor.Other', 'list')).toBeNull();
     // The same `Object.hasOwn` guard on both maps: a descriptor name is caller-supplied data too.
     expect(resolveScreenPage(byDescriptor, byArchetype, 'constructor', 'toString')).toBeNull();
+  });
+
+  it('Story 9.7: the New Task wizard\'s descriptor resolves to its own stepped page, not the generic form page', () => {
+    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const archetypePages = ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const wizard = resolveScreenPage(descriptorPages, archetypePages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page');
+    expect(wizard).toBe(TaskWizardPage);
+    expect(wizard).not.toBe(ARCHETYPE_PAGES['form-page']);
+  });
+
+  it('Story 9.8: the task form\'s id route resolves to Edit task, while its bare route keeps the wizard', () => {
+    // Mutation (Rule 19): drop TaskForm from `DESCRIPTOR_EDIT_PAGES` -> the id route falls to the
+    // wizard and this goes red.
+    const editPages = DESCRIPTOR_EDIT_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const archetypePages = ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>;
+    expect(resolveScreenPage(editPages, descriptorPages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page')).toBe(TaskEditorPage);
+    expect(resolveScreenPage(descriptorPages, archetypePages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page')).toBe(TaskWizardPage);
+  });
+
+  it('Story 9.9: both reduced forms resolve to the one reduced form page at their id route and at their bare route', () => {
+    // Mutation (Rule 19): drop ServiceForm from `DESCRIPTOR_EDIT_PAGES` -> the id-route leg goes red.
+    const editPages = DESCRIPTOR_EDIT_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
+    for (const descriptor of ['OcuPilot.Screen.Descriptor.ServiceForm', 'OcuPilot.Screen.Descriptor.LdapConfigForm']) {
+      expect(resolveArchetypePage(editPages, descriptor)).toBe(ReducedFormPage);
+      expect(resolveArchetypePage(descriptorPages, descriptor)).toBe(ReducedFormPage);
+    }
   });
 
   it('the two form-page screens resolve to two different pages, which is what DW-369 asked for', () => {

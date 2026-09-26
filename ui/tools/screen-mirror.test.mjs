@@ -9,24 +9,43 @@ import { dirname, join } from 'node:path';
 import {
   BANNER_SEVERITIES,
   DECLARATION_KEYS,
+  entityLabelProblem,
   MIRROR_PATH,
   bannerProblem,
   declarationProblem,
   braceDelta,
   buildMirror,
+  confirmChannelProblem,
+  declaredNames,
+  parseDeclaredNameKinds,
+  IMPLEMENTED_DECLARED_NAME_KINDS,
   criteriaProblem,
   entityTypesIn,
+  ENTITY_REF_SOURCE,
   extractClassName,
   extractXData,
   generate,
   malformedPair,
+  parentScopeResolutionProblem,
+  IMPLEMENTED_ID_RULES,
   parseEntityTypes,
+  parseIdRuleNames,
+  parseIdRules,
+  parseRefSeparator,
   parseScopeWords,
   readCheckedInMirror,
   declaredStringKeys,
   readProblem,
   readSources,
+  ROW_TARGET_KEYS,
+  rowTargetProblem,
+  rowTargetResolutionProblem,
   sideBarPositionProblem,
+  tabGroupProblem,
+  suggestedPromptsProblem,
+  PROMPT_GROUP_KEYS,
+  SCREEN_REGISTRY_SOURCE,
+  tabProblem,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
@@ -39,6 +58,15 @@ function testCorpus(file, name) {
   assert.ok(body !== null, `${file.join('/')} carries an 'XData ${name}' block`);
   return JSON.parse(body);
 }
+
+/** Three sound prompts, spread into every built fixture: a built screen declares them (Story 11.3). */
+const FIXTURE_PROMPTS = {
+  suggestedPrompts: [
+    { groupKey: 'promptGroupTroubleshooting', textKey: 'homeStarterPromptExplainScreen' },
+    { groupKey: 'promptGroupTroubleshooting', textKey: 'homeStarterPromptExplainLog' },
+    { groupKey: 'promptGroupTroubleshooting', textKey: 'homeStarterPromptChangeOneThing' },
+  ],
+};
 
 // The drift check AD-3's "a checked-in artifact, never runtime reflection" needs: the mirror in
 // `ui/src/app/core/screens.generated.ts` must be exactly what the XData declarations in
@@ -112,18 +140,21 @@ test('every declared area and label key the mirror carries resolves against the 
 // Mutations (Rule 19): drop the column labels from `declaredStringKeys` -> the listing below goes
 // red; drop the banner's case keys from it -> the listing goes red on its last two members and the
 // unresolved-key assertion loses them. Reading only the first case reddens it too, which is what
-// keeps a second case's key (DW-270) from being a key nothing resolves.
+// keeps a second case's key (DW-270) from being a key nothing resolves. Drop a column's `emptyKey`
+// from it -> the listing goes red, missing `notAnEmptyCellKey`. Drop the tab's `labelKey` from it ->
+// the listing goes red, missing `notATabStringKey`.
 test('every string key a table or banner declaration names is one the key check reads', () => {
   const declaration = JSON.parse(
     '{"labelKey": "navAreaWebApplications", "emptyStateKey": "commandBoxNoMatch",' +
       ' "table": {"columns": [{"field": "Name", "labelKey": "fieldUserName", "kind": "name"},' +
-      ' {"field": "Enabled", "labelKey": "notAStringKey", "kind": "status"}],' +
+      ' {"field": "Enabled", "labelKey": "notAStringKey", "kind": "status", "emptyKey": "notAnEmptyCellKey"}],' +
       ' "emptyNextKey": "classicLinkCardCaption", "emptyAgentKey": ""},' +
       ' "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"},' +
       ' "field": "Status", "cases": [' +
       ' {"equals": "Suspended", "messageKey": "notABannerStringKey", "severity": "warning"},' +
       ' {"equals": "Not running", "messageKey": "notASecondBannerStringKey", "severity": "warning"}' +
-      ' ]}}'
+      ' ]},' +
+      ' "tab": {"group": "security/oauth", "position": 2, "labelKey": "notATabStringKey"}}'
   );
   const keys = declaredStringKeys(declaration);
   assert.deepEqual(keys, [
@@ -131,16 +162,147 @@ test('every string key a table or banner declaration names is one the key check 
     'commandBoxNoMatch',
     'fieldUserName',
     'notAStringKey',
+    'notAnEmptyCellKey',
     'classicLinkCardCaption',
     'notABannerStringKey',
     'notASecondBannerStringKey',
+    'notATabStringKey',
   ]);
   const strings = loadStrings();
   assert.deepEqual(
     keys.filter((key) => !(key in strings)),
-    ['notAStringKey', 'notABannerStringKey', 'notASecondBannerStringKey'],
+    ['notAStringKey', 'notAnEmptyCellKey', 'notABannerStringKey', 'notASecondBannerStringKey', 'notATabStringKey'],
     'and a key the string source lacks is found, both banner cases\' among them'
   );
+});
+
+// AD-13 as amended by DW-1359, and DW-1364 itself: the kernel declares its per-type id rules as
+// data and this generator mirrors them, so the client's key builder folds what the instance folds.
+// A declaration the client cannot honour must fail the BUILD -- mirroring it as a rule name
+// nothing implements is exactly the silent divergence the amendment exists to close.
+//
+// Mutation (Rule 19): return the pairs unchecked from `checkedIdRules` -> all four refusals below
+// go red, and a rule named in `IDRULES` would reach `screens.generated.ts` with no implementation.
+// Mutation (Rule 19): trim the halves in `parseIdRules` again -> the whitespace row goes red,
+// because a spaced pair would mirror cleanly while `IdRuleFor`'s `$Piece` matched no type.
+test('AD-13: the id-rule table is read from the kernel and is what the mirror emits', () => {
+  const text = readFileSync(ENTITY_REF_SOURCE, 'utf8');
+  const rules = parseIdRules(text);
+  assert.deepEqual(rules, [
+    ['web-application', 'foldcase-striptrailingslash'],
+    ['user', 'foldcase'],
+    ['auditing-configuration', 'singleton'],
+    ['task', 'integer'],
+    ['process', 'integer'],
+    ['application-error', 'foldcase'],
+    ['role', 'foldcase'],
+    ['resource', 'foldcase'],
+    ['audit-event', 'foldcase'],
+    ['audit-user-event', 'foldcase'],
+    ['service', 'foldcase'],
+    ['ldap-configuration', 'foldcase'],
+    ['oauth2-server', 'singleton'],
+  ]);
+  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
+  // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
+  // nothing are different facts, and only one of them is a source to build from.
+  assert.equal(parseIdRules('Class X { }'), null);
+  assert.equal(parseIdRuleNames('Class X { }'), null);
+  assert.match(generate(), /export const ENTITY_ID_RULES/, 'and the emission carries it');
+});
+
+test('DW-1403: the reference separator is read from the kernel and emitted, never copied', () => {
+  // `entity-ref.ts` held the joining character as a hand-copied escape beside
+  // `Parameter REFSEPARATOR = 2` with nothing comparing the two. It is now mirrored like the
+  // entity-type enum and the id-rule table, so there is one source (AD-5).
+  //
+  // Mutation (Rule 19): drop `refSeparator` from `readSources`' return -> `buildMirror` refuses
+  // it and this row goes red; emit a literal 2 instead of the parsed value -> the declared-code
+  // assertion below goes red once the kernel's own parameter moves.
+  const text = readFileSync(ENTITY_REF_SOURCE, 'utf8');
+  const declared = parseRefSeparator(text);
+  assert.equal(typeof declared, 'number');
+  assert.ok(declared > 0, 'a code point, not a flag');
+  assert.equal(parseRefSeparator('Class X { }'), null, 'reported, never read as a default');
+  assert.equal(parseRefSeparator('Parameter REFSEPARATOR = "two";'), null, 'and never read as text');
+  assert.match(
+    generate(),
+    new RegExp(`export const ENTITY_REF_SEPARATOR_CODE = ${declared};`),
+    'the emission carries the kernel\'s own value'
+  );
+  assert.throws(
+    () => buildMirror({ ...readSources(), refSeparator: 0 }),
+    /REFSEPARATOR must be a whole number above zero/,
+    'and a separator no key could be built from fails the build'
+  );
+});
+
+test('AD-13: IDRULES is read exactly as `IdRuleFor` reads it, so a stray space fails the build', () => {
+  // `OcuPilot.Kernel.EntityRef.IdRuleFor` splits with `$Piece` and compares verbatim, so the
+  // natural spelling of a second pair -- a space after the comma -- names a type the kernel
+  // matches nothing for. A trimming reader here would mirror the rule anyway and the client would
+  // fold an id the instance leaves alone: DW-1364 in mirror image, with the build green.
+  const spaced = 'Parameter IDRULES = "web-application:foldcase-striptrailingslash, task:foldcase-striptrailingslash";';
+  assert.deepEqual(parseIdRules(spaced), [
+    ['web-application', 'foldcase-striptrailingslash'],
+    [' task', 'foldcase-striptrailingslash'],
+  ]);
+  assert.throws(
+    () => buildMirror({ ...readSources(), idRules: parseIdRules(spaced), idRuleNames: ['foldcase-striptrailingslash'] }),
+    /entity type " task"/,
+    'and the build names the stray space rather than mirroring past it'
+  );
+
+  // The rule half stops at the second colon, as `$Piece(pair, ":", 2)` does.
+  assert.deepEqual(parseIdRules('Parameter IDRULES = "task:a:b";'), [['task', 'a']]);
+});
+
+test('AD-13: the generator refuses an id rule no reader can apply, naming the rule and the file', () => {
+  const sources = readSources();
+  const refusals = [
+    {
+      idRules: [['not-an-entity-type', 'foldcase-striptrailingslash']],
+      idRuleNames: ['foldcase-striptrailingslash'],
+      pattern: /not-an-entity-type/,
+      why: 'a rule for a type outside the kernel enum',
+    },
+    {
+      idRules: [['task', 'trim-whitespace']],
+      idRuleNames: ['foldcase-striptrailingslash'],
+      pattern: /IDRULENAMES does not declare/,
+      why: 'a rule the kernel itself does not declare',
+    },
+    {
+      idRules: [['task', 'trim-whitespace']],
+      idRuleNames: ['foldcase-striptrailingslash', 'trim-whitespace'],
+      pattern: /cannot implement on the client/,
+      why: 'a rule this generator has no client implementation for',
+    },
+    {
+      idRules: [
+        ['web-application', 'foldcase-striptrailingslash'],
+        ['web-application', 'foldcase-striptrailingslash'],
+      ],
+      idRuleNames: ['foldcase-striptrailingslash'],
+      pattern: /declares two rules for entity type/,
+      why: 'two pairs for one type, which the kernel resolves to the first and this to the last',
+    },
+  ];
+  for (const { idRules, idRuleNames, pattern, why } of refusals) {
+    assert.throws(
+      () => buildMirror({ ...sources, idRules, idRuleNames }),
+      (error) => {
+        assert.match(error.message, /EntityRef\.cls/, `${why}: the refusal names the file`);
+        assert.match(error.message, pattern, `${why}: and says what is wrong`);
+        return true;
+      },
+      why
+    );
+  }
+
+  // The roster the third refusal is judged against is the one `entity-ref.ts` is pinned equal to
+  // by `ui/tools/entity-ref.test.mjs`, so neither side can grow a rule alone.
+  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {
@@ -353,8 +515,8 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
     [(d) => d.read.fields.push('Name'), /names 'Name' twice/],
     [(d) => (d.read.sort.default = 'Enabled'), /read\.sort\.default 'Enabled'/],
     [(d) => (d.read.sort.direction = 'up'), /direction 'up'/],
-    [(d) => (d.read.source.port = 'monitor'), /port 'monitor'/],
-    [(d) => (d.read.source.type = 'GET'), /type 'GET'/],
+    [(d) => (d.read.source.port = 'metrics'), /port 'metrics'/],
+    [(d) => (d.read.source.type = 'POST'), /type 'POST' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'/],
     [(d) => (d.context.secretFields = ['Other']), /context\.secretFields names 'Other'/],
     [(d) => (d.read.secretFields = ['Secret']), /read declares the unknown key 'secretFields'/],
     [(d) => (d.read.source.maxRows = 5), /read\.source declares the unknown key 'maxRows'/],
@@ -368,6 +530,11 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
     ],
     [(d) => delete d.context.secretFields, /context\.secretFields is not an array/],
     [(d) => delete d.context, /context is not an object/],
+    [(d) => (d.context.maxLength = { Nope: 5 }), /context\.maxLength names 'Nope'/],
+    [(d) => (d.context.maxLength = { NameSpace: 5 }), /context\.maxLength names 'NameSpace'/],
+    [(d) => (d.context.maxLength = { Name: 1001 }), /context\.maxLength\.Name is not a whole number/],
+    [(d) => (d.context.maxLength = { Name: '5' }), /context\.maxLength\.Name is not a whole number/],
+    [(d) => (d.context.maxLength = 5), /context\.maxLength is not an object/],
   ];
   for (const [mutate, message] of refused) {
     const declaration = sound();
@@ -383,6 +550,15 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
       `expected ${message} to be refused`
     );
   }
+
+  // context.maxLength is optional: absent, or explicitly null (as a descriptor's own JSON
+  // round-trip can produce for an unset key), both pass; declared in range, it also passes.
+  const withNull = sound();
+  withNull.context.maxLength = null;
+  assert.equal(readProblem(withNull), null, 'an explicit null maxLength passes, the same as absent');
+  const withRange = sound();
+  withRange.context.maxLength = { Name: 500 };
+  assert.equal(readProblem(withRange), null, 'a maxLength in range passes');
 });
 
 // AD-36, Story 2.6 AC5: every case in `OcuPilot.Test.RowGetCorpus`, read off disk from the XData
@@ -408,6 +584,315 @@ test('readProblem returns every rowGet sentence OcuPilot.Test.RowGetCorpus decla
     fields: ['Roles', 'ExpirationDate'],
     derived: [{ field: 'Expired', rule: 'beforeToday', from: 'ExpirationDate' }],
   });
+
+  // Story 6.3: the X.509 list's detail call declares CERTINFO, and the mirror carries it.
+  const x509 = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.X509CredentialList');
+  assert.deepEqual(x509.read.source.rowGet, {
+    key: 'Alias',
+    param: 'alias',
+    type: 'CERTINFO',
+    fields: ['SubjectDN', 'IssuerDN', 'ValidityNotBefore', 'ValidityNotAfter'],
+    derived: [],
+  });
+});
+
+// Story 6.4, AD-36: every case in `OcuPilot.Test.ReadSourceCorpus`, read off disk from the XData block
+// `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence or `null` from
+// `readProblem`: a source's LIST, GET or UPCOMING type, its per-parent list and its fixed query
+// (Story 6.5).
+//
+// Mutation (Rule 19): drop the `forEach` rowGet refusal from `forEachProblem` -> the "a parent list
+// beside a detail call" case goes red.
+//
+// Story 6.9: a parts case may also override `fields`, `filter`, `sort`, `table` and `context`
+// together, because the shared OAuth declaration's own fields cannot start with a declared
+// `parts.as` -- see `OcuPilot.Test.ReadSourceCorpus.DeclarationFor`.
+test('readProblem returns every source-type, forEach, query and parts sentence OcuPilot.Test.ReadSourceCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'ReadSourceCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    if (testCase.parentScope !== undefined) declaration.parentScope = testCase.parentScope;
+    if (testCase.fields !== undefined) declaration.read.fields = structuredClone(testCase.fields);
+    if (testCase.filter !== undefined) declaration.read.filter = structuredClone(testCase.filter);
+    if (testCase.sort !== undefined) declaration.read.sort = structuredClone(testCase.sort);
+    if (testCase.table !== undefined) declaration.table = structuredClone(testCase.table);
+    if (testCase.context !== undefined) declaration.context = structuredClone(testCase.context);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+});
+
+// Story 11.3's contract (Story 9.1): every case in `OcuPilot.Test.PromptCorpus` gets its exact sentence
+// or `null` from `suggestedPromptsProblem`, the shipped descriptors pass, the refusal reaches the
+// generator, and each prompt's two keys are read by the string-key check.
+//
+// Mutation (Rule 19): lower `SUGGESTED_PROMPTS_MIN` to 2 -> the two-prompt case goes red. Drop the
+// `suggestedPromptsProblem` call from `buildMirror` -> the generator assertion goes red. Drop the
+// prompt keys from `declaredStringKeys` -> the key assertion goes red.
+test('suggestedPromptsProblem returns every sentence OcuPilot.Test.PromptCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'PromptCorpus.cls'], 'Cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    assert.equal(suggestedPromptsProblem(testCase.declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+
+  const sources = readSources();
+  for (const screen of sources.screens) {
+    assert.equal(suggestedPromptsProblem(screen.declaration), null, `${screen.className}'s prompts pass`);
+  }
+  const userForm = sources.screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.UserForm');
+  assert.ok(userForm !== undefined, 'the User form is declared');
+  assert.equal(userForm.declaration.suggestedPrompts.length, 3, 'with three prompts');
+  const keys = declaredStringKeys(userForm.declaration);
+  for (const prompt of userForm.declaration.suggestedPrompts) {
+    assert.ok(keys.includes(prompt.groupKey) && keys.includes(prompt.textKey), `${prompt.textKey} and its group are read by the key check`);
+  }
+  const hostile = structuredClone(userForm.declaration);
+  hostile.suggestedPrompts = hostile.suggestedPrompts.slice(0, 2);
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }] }),
+    /suggestedPrompts declares 2/
+  );
+  const promptless = structuredClone(userForm.declaration);
+  delete promptless.suggestedPrompts;
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [{ file: 'Promptless.cls', className: 'OcuPilot.Screen.Descriptor.Promptless', declaration: promptless }] }),
+    /a built screen declares at least 3 suggestedPrompts/
+  );
+});
+
+// Story 11.3: the group vocabulary is one list, held by `Registry.cls`'s `PROMPTGROUPKEYS` and by
+// `PROMPT_GROUP_KEYS`, in the same order.
+test('PROMPT_GROUP_KEYS equals OcuPilot.Screen.Registry\'s PROMPTGROUPKEYS', () => {
+  const match = /^Parameter\s+PROMPTGROUPKEYS\s*=\s*"([^"]*)"\s*;/m.exec(readFileSync(SCREEN_REGISTRY_SOURCE, 'utf8'));
+  assert.ok(match, 'Registry.cls declares PROMPTGROUPKEYS');
+  assert.deepEqual(match[1].split(','), PROMPT_GROUP_KEYS);
+  assert.equal(new Set(PROMPT_GROUP_KEYS).size, 10, 'ten distinct group keys');
+});
+
+// Story 11.3 (AC1, AC3): every shipped built screen declares at least three prompts, each group from
+// the vocabulary and each key resolving against the string source.
+test('every shipped built screen declares at least three suggested prompts that resolve', () => {
+  const strings = loadStrings();
+  const built = readSources().screens.filter((screen) => screen.declaration.built === true);
+  assert.ok(built.length >= 58, `the built roster is read (read ${built.length})`);
+  for (const screen of built) {
+    const prompts = screen.declaration.suggestedPrompts;
+    assert.ok(Array.isArray(prompts) && prompts.length >= 3, `${screen.className} declares at least three prompts`);
+    for (const prompt of prompts) {
+      assert.ok(PROMPT_GROUP_KEYS.includes(prompt.groupKey), `${screen.className}: '${prompt.groupKey}' is a declared group`);
+      assert.ok(prompt.groupKey in strings && strings[prompt.groupKey] !== '', `${screen.className}: '${prompt.groupKey}' resolves`);
+      assert.ok(prompt.textKey in strings && strings[prompt.textKey] !== '', `${screen.className}: '${prompt.textKey}' resolves`);
+    }
+  }
+});
+
+// Story 6.4, AD-5: every case in `OcuPilot.Test.TabCorpus` gets its exact sentence or `null` from
+// `tabProblem`, and every roster there from `tabGroupProblem`; and both refusals reach the generator.
+//
+// Mutation (Rule 19): drop the side-bar arm from `tabProblem` -> the two later-tab side-bar cases go
+// red. Drop the `tabGroupProblem` call from `buildMirror` -> the roster-refusal assertion goes red.
+test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'TabCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0 && corpus.rosters.length > 0, 'the corpus carries cases and rosters');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    assert.equal(tabProblem(testCase.declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  for (const roster of corpus.rosters) {
+    const screens = roster.screens.map((entry) => ({ className: entry.descriptor, declaration: entry.declaration }));
+    assert.equal(tabGroupProblem(screens), roster.expected, roster.name);
+    if (roster.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+
+  const sources = readSources();
+  for (const screen of sources.screens) {
+    assert.equal(tabProblem(screen.declaration), null, `${screen.className}'s tab passes`);
+  }
+  assert.equal(tabGroupProblem(sources.screens), null, 'and the shipped tab groups fit together');
+
+  const oauth = sources.screens.find((screen) => screen.declaration.route === 'security/oauth');
+  assert.ok(oauth !== undefined, 'the OAuth 2.0 screen is declared');
+  const hostile = structuredClone(oauth.declaration);
+  hostile.tab = { ...hostile.tab, position: 0 };
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }] }),
+    /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): tab\.position '0' is not a whole number of at least 1/
+  );
+  const gap = sources.screens.map((screen) =>
+    screen.declaration.route === 'security/oauth/server'
+      ? { ...screen, declaration: { ...screen.declaration, tab: { ...screen.declaration.tab, position: 6 } } }
+      : screen
+  );
+  assert.throws(() => buildMirror({ ...sources, screens: gap }), /tab\.group 'security\/oauth' declares positions 1,2,3,5,6/);
+
+  const emitted = JSON.parse(generate().split('export const SCREENS: readonly ScreenDeclaration[] = ')[1].replace(/;\s*$/, ''));
+  const members = emitted
+    .filter((screen) => screen.tab !== null)
+    .sort((a, b) => a.tab.position - b.tab.position)
+    .map((screen) => [screen.route, screen.tab.group, screen.tab.position, screen.sideBarPosition]);
+  assert.deepEqual(members, [
+    ['security/oauth', 'security/oauth', 1, 5],
+    ['security/oauth/clients', 'security/oauth', 2, 0],
+    ['security/oauth/resource-servers', 'security/oauth', 3, 0],
+    ['security/oauth/server', 'security/oauth', 4, 0],
+    ['security/oauth/server-clients', 'security/oauth', 5, 0],
+  ]);
+  assert.ok(emitted.every((screen) => 'tab' in screen), 'every screen emits tab, null when it is no tab');
+});
+
+/** The corpus declaration with `testCase`'s own `rowTarget`, `archetype` or `table`, mirroring `OcuPilot.Test.RowTargetCorpus.DeclarationFor`. */
+function rowTargetDeclarationFor(corpus, testCase) {
+  const declaration = structuredClone(corpus.declaration);
+  if ('rowTarget' in testCase) declaration.rowTarget = structuredClone(testCase.rowTarget);
+  if (testCase.archetype !== undefined) declaration.archetype = testCase.archetype;
+  if ('table' in testCase) declaration.table = testCase.table;
+  return declaration;
+}
+
+// AD-5, Story 6.10: every case in `OcuPilot.Test.RowTargetCorpus`'s `Cases` half gets its exact
+// sentence, or none, from `rowTargetProblem`, and every roster in its `Rosters` half from
+// `rowTargetResolutionProblem`; and both refusals reach the generator.
+//
+// Mutation (Rule 19): drop the "screen's own route" arm from `rowTargetProblem` -> the
+// self-route case goes red. Drop the `rowTargetResolutionProblem` call from `buildMirror` -> the
+// roster-refusal assertion goes red.
+test('rowTargetProblem and rowTargetResolutionProblem return every sentence OcuPilot.Test.RowTargetCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'RowTargetCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0, 'the corpus carries cases');
+  let caseRefusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = rowTargetDeclarationFor(corpus, testCase);
+    assert.equal(rowTargetProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) caseRefusals += 1;
+  }
+  assert.ok(caseRefusals > 0, 'the Cases half carries at least one refusing case');
+
+  // The corpus's own sound rowTarget carries exactly the declared nested vocabulary, so
+  // ROW_TARGET_KEYS cannot gain, lose or rename a key on one side of the two engines without a
+  // case going red -- the same tie this file holds for DECLARATION_KEYS.
+  assert.deepEqual(
+    Object.keys(corpus.declaration.rowTarget).sort(),
+    [...ROW_TARGET_KEYS].sort(),
+    "the corpus's sound rowTarget carries exactly the declared rowTarget vocabulary"
+  );
+
+  const rosters = testCorpus(['Test', 'RowTargetCorpus.cls'], 'Rosters');
+  assert.ok(rosters.rosters.length > 0, 'the corpus carries rosters');
+  let rosterRefusals = 0;
+  for (const roster of rosters.rosters) {
+    const screens = roster.screens.map((entry) => ({ className: entry.descriptor, declaration: entry.declaration }));
+    assert.equal(rowTargetResolutionProblem(screens), roster.expected, roster.name);
+    if (roster.expected !== null) rosterRefusals += 1;
+  }
+  assert.ok(rosterRefusals > 0, 'the Rosters half carries at least one refusing roster');
+
+  const sources = readSources();
+  for (const screen of sources.screens) {
+    assert.equal(rowTargetProblem(screen.declaration), null, `${screen.className}'s rowTarget passes`);
+  }
+  assert.equal(rowTargetResolutionProblem(sources.screens), null, 'and the shipped rowTargets resolve');
+
+  const locks = sources.screens.find((screen) => screen.declaration.route === 'os-management/locks');
+  assert.ok(locks !== undefined, 'the Locks list is declared');
+  const withLocks = (declaration) =>
+    sources.screens.map((screen) => (screen.className === locks.className ? { ...screen, declaration } : screen));
+  const hostile = structuredClone(locks.declaration);
+  hostile.rowTarget = { ...hostile.rowTarget, field: 'Bogus' };
+  assert.throws(
+    () => buildMirror({ ...sources, screens: withLocks(hostile) }),
+    /rowTarget\.field 'Bogus' is not one of read\.fields/
+  );
+
+  // And the roster-wide rule's own call site, which the shape refusal above reaches past: the
+  // I/O matrix's own scenario, a mistyped target route. `rowTargetProblem` calls this sound --
+  // the route is a non-empty string that is not this screen's own and the field is declared --
+  // so only `rowTargetResolutionProblem` can refuse it.
+  const unresolved = structuredClone(locks.declaration);
+  unresolved.rowTarget = { ...unresolved.rowTarget, route: 'os-management/process/details' };
+  assert.equal(rowTargetProblem(unresolved), null, 'a mistyped target route is a sound shape');
+  assert.throws(
+    () => buildMirror({ ...sources, screens: withLocks(unresolved) }),
+    /rowTarget\.route 'os-management\/process\/details' names no declared screen \(AD-5\)/
+  );
+
+  const emitted = JSON.parse(generate().split('export const SCREENS: readonly ScreenDeclaration[] = ')[1].replace(/;\s*$/, ''));
+  const emittedLocks = emitted.find((screen) => screen.route === 'os-management/locks');
+  assert.deepEqual(emittedLocks.rowTarget, { route: 'os-management/processes/details', field: 'Pid' });
+  assert.ok(emitted.every((screen) => 'rowTarget' in screen), 'every screen emits rowTarget, null when it declares none');
+});
+
+// Story 6.6 (DW-1020): `parentScopeResolutionProblem` refuses a built descriptor's `parentScope`
+// that names no built descriptor with that route and an id, over the four ways that can happen --
+// the route is not declared at all, it is declared but not built, it is declared and built but
+// carries `id.kind` `none`, and it names the checked descriptor's own route -- and passes a roster
+// of only sound declarations. The sentences are byte for byte
+// `OcuPilot.Screen.Registry.ParentScopeResolutionProblem`'s own, exercised there by
+// `OcuPilot.Test.ParentScopeNotFoundRegistry`, `ParentScopeNotBuiltRegistry`,
+// `ParentScopeNoIdRegistry` and `ParentScopeSelfRegistry` over the equivalent fixture routes and
+// parentScope values.
+//
+// Mutation (Rule 19): make `parentScopeResolutionProblem` return `null` unconditionally -> every
+// refusing case below goes red.
+test('parentScopeResolutionProblem refuses a parentScope that does not resolve, and passes a sound roster', () => {
+  const notFound = [{ className: 'OcuPilot.Test.ParentScope.NotFound.Child', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/not-found/child', parentScope: 'parent-scope/not-found/nonexistent', id: { kind: 'single' } } }];
+  assert.equal(
+    parentScopeResolutionProblem(notFound),
+    "OcuPilot.Test.ParentScope.NotFound.Child: parentScope 'parent-scope/not-found/nonexistent' names no built descriptor with that route and an id (DW-1020)",
+    'a parentScope naming a route nothing declares is refused'
+  );
+
+  const notBuilt = [
+    { className: 'OcuPilot.Test.ParentScope.NotBuilt.Parent', declaration: { built: false, route: 'parent-scope/not-built/parent', parentScope: '', id: { kind: 'single' } } },
+    { className: 'OcuPilot.Test.ParentScope.NotBuilt.Child', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/not-built/child', parentScope: 'parent-scope/not-built/parent', id: { kind: 'single' } } },
+  ];
+  assert.equal(
+    parentScopeResolutionProblem(notBuilt),
+    "OcuPilot.Test.ParentScope.NotBuilt.Child: parentScope 'parent-scope/not-built/parent' names no built descriptor with that route and an id (DW-1020)",
+    'a parentScope naming a route that is declared but not built is refused'
+  );
+
+  const noId = [
+    { className: 'OcuPilot.Test.ParentScope.NoId.Parent', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/no-id/parent', parentScope: '', id: { kind: 'none' } } },
+    { className: 'OcuPilot.Test.ParentScope.NoId.Child', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/no-id/child', parentScope: 'parent-scope/no-id/parent', id: { kind: 'single' } } },
+  ];
+  assert.equal(
+    parentScopeResolutionProblem(noId),
+    "OcuPilot.Test.ParentScope.NoId.Child: parentScope 'parent-scope/no-id/parent' names no built descriptor with that route and an id (DW-1020)",
+    'a parentScope naming a built route with id.kind none is refused'
+  );
+  const emptyKind = [{ ...noId[0], declaration: { ...noId[0].declaration, id: { kind: '' } } }, noId[1]];
+  assert.equal(
+    parentScopeResolutionProblem(emptyKind),
+    "OcuPilot.Test.ParentScope.NoId.Child: parentScope 'parent-scope/no-id/parent' names no built descriptor with that route and an id (DW-1020)",
+    "and so is one whose id.kind is empty, as the server's twin reads an empty kind"
+  );
+
+  const self = [{ className: 'OcuPilot.Test.ParentScope.Self.Child', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/self/child', parentScope: 'parent-scope/self/child', id: { kind: 'single' } } }];
+  assert.equal(
+    parentScopeResolutionProblem(self),
+    "OcuPilot.Test.ParentScope.Self.Child: parentScope 'parent-scope/self/child' names no built descriptor with that route and an id (DW-1020)",
+    'a parentScope naming its own route cannot resolve against itself'
+  );
+
+  const sound = [
+    { className: 'OcuPilot.Test.ParentScope.Sound.Parent', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/sound/parent', parentScope: '', id: { kind: 'single' } } },
+    { className: 'OcuPilot.Test.ParentScope.Sound.Child', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/sound/child', parentScope: 'parent-scope/sound/parent', id: { kind: 'single' } } },
+    { className: 'OcuPilot.Test.ParentScope.Sound.NoParent', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/sound/no-parent', parentScope: '', id: { kind: 'single' } } },
+  ];
+  assert.equal(parentScopeResolutionProblem(sound), null, 'a roster of resolving and empty parentScope declarations passes');
+
+  const sources = readSources();
+  assert.equal(parentScopeResolutionProblem(sources.screens), null, 'and the shipped roster resolves too');
 });
 
 // DW-264, Story 2.7 AC5: every case in `OcuPilot.Test.AdminPairCorpus`, read off disk from the
@@ -423,6 +908,8 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   for (const testCase of corpus.cases) {
     const declaration = structuredClone(corpus.declaration);
     declaration.privileges = structuredClone(testCase.privileges);
+    if (typeof testCase.port === 'string') declaration.read.source.port = testCase.port;
+    if (testCase.rowGet !== null && typeof testCase.rowGet === 'object') declaration.read.source.rowGet = structuredClone(testCase.rowGet);
     if (testCase.readless) {
       declaration.read = null;
       declaration.table = null;
@@ -438,11 +925,58 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(declarationProblem(''), 'the declaration is not an object', 'and neither is a string');
 
   const { screens } = readSources();
-  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList']) {
+  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer', 'RoleList', 'ResourceList', 'ServiceList', 'X509CredentialList', 'LdapConfigList', 'WalletCollectionList', 'WalletSecretList', 'OAuthServerDescriptionTab', 'OAuthClientTab', 'OAuthResourceServerTab', 'OAuthServerTab', 'OAuthServerClientTab', 'TaskOnDemandList', 'TaskUpcomingList']) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.ok(screen !== undefined, `${name} is declared`);
     assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
   }
+  // Story 6.5: the two source shapes the mirror carries -- the vendor's fixed onDemand and the
+  // UPCOMING request type.
+  const onDemand = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskOnDemandList');
+  assert.deepEqual(onDemand.declaration.read.source, { port: 'admin', endpoint: 'Task.CRUD', type: 'LIST', query: { onDemand: '1' } });
+  // Story 7.5: Run makes the list write-capable -- its rows are keyed by the vendor's numeric Id,
+  // it declares the one row action, it shows the next run, and its empty state invites the agent.
+  assert.deepEqual(onDemand.declaration.id, { kind: 'composite', parts: ['Id'] });
+  assert.deepEqual(onDemand.declaration.rowActions, [{ id: 'run', selfProtection: '' }]);
+  assert.ok(onDemand.declaration.read.fields.includes('NextScheduled'), 'the read carries the next run');
+  assert.equal(onDemand.declaration.table.columns.at(-1).field, 'NextScheduled', 'shown after Last run');
+  assert.equal(onDemand.declaration.table.emptyAgentKey, 'taskOnDemandEmptyAgent', 'the empty state invites the agent');
+  assert.equal(onDemand.declaration.table.emptyNextKey, '', 'and names no read-only next step');
+  assert.equal(onDemand.declaration.entityLabelKey, 'proposalEntityTask');
+  const upcoming = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskUpcomingList');
+  assert.equal(upcoming.declaration.read.source.type, 'UPCOMING');
+  // Story 7.6: the Task schedule declares Run, Suspend, Resume and Delete, shows the Suspended
+  // field its INFO rowGet answers, and its empty state invites the agent.
+  const schedule = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskScheduleList');
+  assert.deepEqual(
+    schedule.declaration.rowActions.map((action) => action.id),
+    ['run', 'suspend', 'resume', 'delete']
+  );
+  assert.ok(schedule.declaration.rowActions.every((action) => action.selfProtection === ''), 'no action carries a self-protection rule');
+  assert.deepEqual(
+    schedule.declaration.table.columns.find((column) => column.field === 'Suspended'),
+    { field: 'Suspended', labelKey: 'taskColumnSuspended', kind: 'status' }
+  );
+  assert.deepEqual(schedule.declaration.read.source.rowGet.fields, ['Suspended'], 'fed by the INFO rowGet');
+  assert.equal(schedule.declaration.table.emptyAgentKey, 'taskScheduleEmptyAgent', 'the empty state invites the agent');
+  assert.equal(schedule.declaration.table.emptyNextKey, '', 'and names no read-only next step');
+  assert.equal(schedule.declaration.entityLabelKey, 'proposalEntityTask');
+  // Story 7.8: Processes and Process details declare Suspend, Resume, Terminate and the Terminate
+  // dialog's flag, none self-protected, and invite the agent from their empty states.
+  for (const name of ['ProcessList', 'ProcessDetails']) {
+    const process = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
+    assert.deepEqual(
+      process.declaration.rowActions,
+      ['suspend', 'resume', 'terminate', 'terminate-with-error'].map((id) => ({ id, selfProtection: '' })),
+      `${name} declares the four process actions`
+    );
+    assert.equal(process.declaration.table.emptyAgentKey, 'processListEmptyAgent', `${name}'s empty state invites the agent`);
+    assert.equal(process.declaration.table.emptyNextKey, '', `and names no read-only next step`);
+  }
+  assert.equal(
+    screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.ProcessList').declaration.entityLabelKey,
+    'proposalEntityProcess'
+  );
   // Story 2.12: a descriptor that declares NO read is a supported shape, and the generator has to
   // emit it rather than refuse it -- the declared-read pipeline is admin-port-only by two
   // independent hard-codings, so the application error log could not use it whatever port it
@@ -455,6 +989,59 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(readless.declaration.read, undefined, 'and declares no read at all');
   assert.equal(readless.declaration.table, undefined, 'and no table either');
   assert.equal(readProblem(readless.declaration), null, 'which the read grammar admits');
+  // Story 7.10: one delete on every drill level, whose scope is the level's own id prefix.
+  assert.deepEqual(
+    readless.declaration.rowActions,
+    [{ id: 'delete', selfProtection: '' }],
+    'one delete row action, with no self-protection rule'
+  );
+  assert.equal(readless.declaration.entityLabelKey, 'errorLogListLabel', "and the card's noun is the screen's own label");
+});
+
+// Story 6.2: every case in `OcuPilot.Test.ColumnCorpus`, read off disk from the XData block
+// `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence or `null` from
+// `readProblem`; the Services list's declared `emptyKey` passes and reaches the mirror; and a refused
+// one reaches the generator naming the file and the class.
+//
+// Mutation (Rule 19): drop the `emptyKey` arm from `tableProblem` -> the corpus run goes red on its
+// first refusing value case, "an empty emptyKey is refused".
+test('readProblem returns every column emptyKey sentence OcuPilot.Test.ColumnCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'ColumnCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.table.columns[1] = structuredClone(testCase.column);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+
+  const sources = readSources();
+  const services = sources.screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ServiceList');
+  assert.ok(services !== undefined, 'ServiceList is declared');
+  const allowed = services.declaration.table.columns.find((column) => column.field === 'AllowedConnections');
+  assert.equal(allowed.emptyKey, 'serviceAllowedUnrestricted', 'its Allowed IP addresses column declares the Unrestricted key');
+  const emitted = JSON.parse(
+    readCheckedInMirror().match(/export const SCREENS: readonly ScreenDeclaration\[\] = (\[[\s\S]*?\n\]);/)[1]
+  ).find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ServiceList');
+  assert.equal(
+    emitted.table.columns.find((column) => column.field === 'AllowedConnections').emptyKey,
+    'serviceAllowedUnrestricted',
+    'and the checked-in mirror carries it'
+  );
+
+  const hostile = structuredClone(services.declaration);
+  hostile.table.columns.find((column) => column.field === 'AllowedConnections').emptyKey = '';
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }] }),
+    (error) => {
+      assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+      assert.match(error.message, /OcuPilot\.Screen\.Descriptor\.Hostile/, 'and the class');
+      assert.match(error.message, /entry #4 emptyKey is not a non-empty string key/);
+      return true;
+    }
+  );
 });
 
 // AD-21, Story 2.10: every case in `OcuPilot.Test.CriteriaCorpus`, read off disk from the XData
@@ -475,6 +1062,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
     declaration.read.criteria = structuredClone(testCase.criteria);
     if (typeof testCase.refreshes === 'boolean') declaration.refreshes = testCase.refreshes;
     if (typeof testCase.port === 'string') declaration.read.source.port = testCase.port;
+    if (typeof testCase.parentScope === 'string') declaration.parentScope = testCase.parentScope;
     assert.equal(criteriaProblem(declaration), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
   }
@@ -516,13 +1104,32 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
     audit.read.criteria.fields.some((field) => field.param === audit.read.criteria.marker.param),
     'and it overrides one of them'
   );
-  // Every other shipped screen declares none: the criteria block is this one screen's, because it
-  // is the one Release 1 list whose API searches on the server.
+  // Every other shipped screen declares none but the OpenAPI document viewer, whose one criterion
+  // names the application its document is read for; Process details, whose one criterion is
+  // Story 6.8's route-id pid; Task details, Task history (all) and Task history (one task), whose
+  // criteria are Story 6.7's and 6.6's; Upcoming tasks, whose two criteria are the horizon; the
+  // Secrets list, whose one criterion is its parent collection, filled from the route id
+  // (Story 6.3); and Story 6.11's two -- Database details and Database volumes, whose one
+  // criterion each is the parent Databases route's directory.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
-    ['OcuPilot.Screen.Descriptor.AuditList']
+    [
+      'OcuPilot.Screen.Descriptor.AuditList',
+      'OcuPilot.Screen.Descriptor.DatabaseDetails',
+      'OcuPilot.Screen.Descriptor.DatabaseVolumeList',
+      'OcuPilot.Screen.Descriptor.OpenApiViewer',
+      'OcuPilot.Screen.Descriptor.ProcessDetails',
+      'OcuPilot.Screen.Descriptor.TaskDetails',
+      'OcuPilot.Screen.Descriptor.TaskHistoryList',
+      'OcuPilot.Screen.Descriptor.TaskRunList',
+      'OcuPilot.Screen.Descriptor.TaskUpcomingList',
+      'OcuPilot.Screen.Descriptor.WalletSecretList',
+    ]
   );
+  const secrets = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.WalletSecretList');
+  assert.equal(secrets.parentScope, 'security/wallet', 'the Secrets list declares its parent');
+  assert.deepEqual(secrets.read.criteria.fields.map((field) => field.param), ['collection'], 'and exactly one criterion');
 
   // The refusal reaches the generator, naming the file and the class, as every other one does.
   // `descriptor` is dropped first: it is a key the emission adds, not one a declaration carries,
@@ -713,6 +1320,28 @@ test('AD-5: the generator refuses a table outside the declared grammar, naming t
   const composite = sound();
   composite.id = { kind: 'composite', parts: ['NameSpace', 'Name'] };
   assert.equal(readProblem(composite), null, 'and a composite id over declared fields');
+  // Story 7.4: a form renders its read's one object, never a grid, so a form-page declares no
+  // table and no empty-state sentence -- while a form that does declare a table is still held to it.
+  // Mutation (Rule 19): make `rendersNoTable` answer false -> the first assertion goes red.
+  const form = sound();
+  form.archetype = 'form-page';
+  form.read.source.type = 'GET';
+  delete form.table;
+  form.emptyStateKey = '';
+  assert.equal(readProblem(form), null, 'a form-page single-object read with no table and no empty-state key passes');
+  assert.match(readProblem({ ...form, archetype: 'list' }), /table is not an object/, 'which a list with the same read is refused');
+  const formOverList = structuredClone(form);
+  formOverList.read.source.type = 'LIST';
+  assert.match(readProblem(formOverList), /table is not an object/, 'as is a form-page over a list-shaped read');
+  assert.match(
+    readProblem({ ...form, id: { kind: 'composite', parts: ['NameSpace', 'Name'] } }),
+    /table is not an object/,
+    'and a form-page with a composite id'
+  );
+  const formWithTable = sound();
+  formWithTable.archetype = 'form-page';
+  formWithTable.table.columns = [];
+  assert.match(readProblem(formWithTable), /table\.columns is empty/, 'and a form-page that declares a table is still held to it');
 
   const refused = [
     [(d) => delete d.table, /table is not an object/],
@@ -757,7 +1386,7 @@ test('the mirror emits table as null for a screen that declares none', () => {
   const readless = shipped.filter((screen) => screen.read === null);
   assert.ok(readless.length > 0, 'the shipped mirror carries a screen that declares no read');
   for (const screen of readless) assert.equal(screen.table, null, `${screen.descriptor} declares no table`);
-  for (const screen of shipped.filter((candidate) => candidate.read !== null)) {
+  for (const screen of shipped.filter((candidate) => candidate.read !== null && candidate.archetype !== 'form-page')) {
     assert.notEqual(screen.table, null, `${screen.descriptor} declares a read, so it declares its table`);
   }
   assert.match(readCheckedInMirror(), /readonly table: TableDeclaration \| null;/, 'and the interface declares it');
@@ -1016,7 +1645,7 @@ test('BuiltArchetypeKey holds the archetypes of built screens only, and is never
       // built screen: 0 is the sentinel for routable-but-unlisted, and an absent key already read
       // as 0 through `Base.SideBarPosition`'s own `+`, so a forgotten key would have unlisted a
       // screen silently. The unbuilt fixture is exempt, which is the rule's other half.
-      { file: 'Built.cls', className: 'OcuPilot.Screen.Descriptor.Built', declaration: { archetype: 'detail', built: true, sideBarPosition: 1 } },
+      { file: 'Built.cls', className: 'OcuPilot.Screen.Descriptor.Built', declaration: { ...FIXTURE_PROMPTS, archetype: 'detail', built: true, sideBarPosition: 1 } },
       { file: 'Unbuilt.cls', className: 'OcuPilot.Screen.Descriptor.Unbuilt', declaration: { archetype: 'list', built: false } },
     ],
   });
@@ -1058,7 +1687,7 @@ test('a built screen must declare sideBarPosition as a whole number of at least 
       buildMirror({
         ...sources,
         screens: [
-          { file: 'Built.cls', className: 'OcuPilot.Screen.Descriptor.Built', declaration: { archetype: 'detail', built: true } },
+          { file: 'Built.cls', className: 'OcuPilot.Screen.Descriptor.Built', declaration: { ...FIXTURE_PROMPTS, archetype: 'detail', built: true } },
         ],
       }),
     /sideBarPosition/,
@@ -1091,7 +1720,9 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
   assert.equal(malformedPair([{ resource: '%Admin_Secure', permission: '' }]), '#1', 'an empty permission');
   assert.equal(malformedPair([{ resource: 'a', permission: 'USE' }, 'not-an-object']), '#2', 'and the position is named');
 
-  const sound = { entityTypes: ['user'], areas: [], screens: [] };
+  // `refSeparator` is what a real source set carries; a synthetic one declares it too, or the
+  // generator refuses it before it reaches the refusal under test.
+  const sound = { entityTypes: ['user'], refSeparator: 2, singletonId: 'SYSTEM', areas: [], screens: [] };
 
   assert.throws(
     () =>
@@ -1120,9 +1751,75 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
   );
 
   const { areas, screens } = readSources();
-  assert.doesNotThrow(() => buildMirror({ entityTypes: parseEntityTypes('Parameter TYPES = "user";'), areas, screens: [] }));
+  assert.doesNotThrow(() =>
+    buildMirror({ entityTypes: parseEntityTypes('Parameter TYPES = "user";'), refSeparator: 2, singletonId: 'SYSTEM', areas, screens: [] })
+  );
   for (const screen of screens) assert.equal(malformedPair(screen.declaration.privileges), null, screen.file);
   for (const area of areas) assert.equal(malformedPair(area.privileges), null, area.key);
+});
+
+test('AD-53: the generator refuses a self-protection rule outside the closed vocabulary, naming both', () => {
+  // The rule is mirrored to the client, which draws a refused row action from it, so a value only
+  // one side understands would render as a word in a row menu. `OcuPilot.Screen.Registry`'s own
+  // `SELFPROTECTIONRULES` is the vocabulary and `ActionProblem` applies the same rules there.
+  //
+  // Mutation (Rule 19): drop the `actionProblem` call from `buildMirror` -> this goes green where
+  // it must be red, and a descriptor naming a rule nothing can evaluate reaches the mirror.
+  const sources = readSources();
+  assert.ok(sources.selfProtectionRules.length > 0, 'the vocabulary reached readSources');
+
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sources,
+        screens: [
+          {
+            file: 'Hostile.cls',
+            className: 'OcuPilot.Screen.Descriptor.Hostile',
+            declaration: { rowActions: [{ id: 'delete', selfProtection: 'never the current user' }] },
+          },
+        ],
+      }),
+    (error) => {
+      assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+      assert.match(error.message, /never the current user/, 'and the value');
+      assert.match(error.message, /AD-53/, 'and the decision it comes from');
+      return true;
+    }
+  );
+
+  // The declared rule passes, an empty one passes, and a declaration that names no actions at all
+  // is left alone -- this generator's convention for a partially declared fixture.
+  for (const rowActions of [[{ id: 'delete', selfProtection: sources.selfProtectionRules[0] }], [{ id: 'delete', selfProtection: '' }]]) {
+    assert.doesNotThrow(() =>
+      buildMirror({
+        ...sources,
+        screens: [{ file: 'Fine.cls', className: 'OcuPilot.Screen.Descriptor.Fine', declaration: { rowActions } }],
+      })
+    );
+  }
+  assert.doesNotThrow(() =>
+    buildMirror({
+      ...sources,
+      screens: [{ file: 'Bare.cls', className: 'OcuPilot.Screen.Descriptor.Bare', declaration: {} }],
+    })
+  );
+
+  // And a row action with no id is refused: a control nothing can name is a control nothing runs.
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sources,
+        screens: [
+          {
+            file: 'Nameless.cls',
+            className: 'OcuPilot.Screen.Descriptor.Nameless',
+            declaration: { rowActions: [{ id: '', selfProtection: '' }] },
+          },
+        ],
+      }),
+    /declares an empty id/
+  );
 });
 
 // AD-44, Story 1.15: `archetype` was free text every reader ignored, so "only a detail view may
@@ -1334,7 +2031,7 @@ test('declarationProblem returns every sentence OcuPilot.Test.DeclarationCorpus 
   }
   assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
 
-  // The corpus's own sound declaration exercises all twenty-five keys, so the vocabulary cannot
+  // The corpus's own sound declaration exercises all twenty-seven keys, so the vocabulary cannot
   // drift by one without a case going red.
   assert.deepEqual(
     Object.keys(corpus.declaration).sort(),
@@ -1359,5 +2056,289 @@ test('declarationProblem returns every sentence OcuPilot.Test.DeclarationCorpus 
         screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }],
       }),
     /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): the declaration declares the unknown key 'banners'/
+  );
+});
+
+// DW-1121, AD-3, AD-6: the confirm channel is the descriptor's declaration, and this engine
+// returns the same sentences `OcuPilot.Screen.Registry.ConfirmChannelProblem` returns -- the pair
+// `OcuPilot.Test.Descriptor` holds on the instance side.
+//
+// Mutation (Rule 19): delete the `confirmChannelProblem` call from `buildMirror` -> the hostile
+// declaration below is mirrored verbatim and the last assertion goes red.
+test('confirmChannelProblem returns the instance-side sentences, and every shipped descriptor passes', () => {
+  const { screens, toolFields } = readSources();
+  for (const screen of screens) {
+    assert.equal(
+      confirmChannelProblem(screen.declaration, toolFields),
+      null,
+      `${screen.className}'s confirm channel passes`
+    );
+  }
+
+  const webApp = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.WebAppList');
+  assert.ok(webApp !== undefined, 'the web applications list is among them');
+  const of = (overrides) => ({ ...webApp.declaration, ...overrides });
+
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: 'not an array' }), toolFields),
+    'secretArguments is not an array of strings'
+  );
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: ['a', 'a'] }), toolFields),
+    "secretArguments names 'a' twice"
+  );
+  assert.equal(
+    confirmChannelProblem(of({ fingerprintExcludes: ['NoSuchField'] }), toolFields),
+    "fingerprintExcludes names 'NoSuchField', which is neither a field of this screen's write tool nor one its read declares (AD-6)"
+  );
+  assert.equal(
+    confirmChannelProblem(of({ fingerprintExcludes: ['Timeout'] }), toolFields),
+    null,
+    'an exclusion naming a field of that tool is sound'
+  );
+  assert.equal(
+    confirmChannelProblem(of({ fingerprintExcludes: [webApp.declaration.read.fields[0]] }), toolFields),
+    null,
+    'and so is one naming a field the screen\'s own read declares'
+  );
+
+  // DW-1206's refusing direction: both keys are checked against one set, so an entry naming
+  // nothing is refused rather than left to be read as a whitelist by two consumers.
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: ['Pasword'] }), toolFields),
+    "secretArguments names 'Pasword', which is neither a settable field of this screen's write " +
+      'tool nor one its read declares (AD-6)'
+  );
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: ['Timeout'] }), toolFields),
+    null,
+    'while one naming a settable field of that tool is sound'
+  );
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: [webApp.declaration.read.fields[0]] }), toolFields),
+    null,
+    "and so is one naming a field the screen's own read declares"
+  );
+  // 'Timeout' above is a string field, so it cannot tell the membership check's 'settable' set
+  // apart from the credential heuristic's string-only one; 'AutoCompile' is a boolean field of
+  // the same tool and is sound here too.
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: ['AutoCompile'] }), toolFields),
+    null,
+    'and so is a non-string settable field'
+  );
+  // The two spellings the one set carries: the schema drops a declared secret by the []-stripped
+  // name, while an exclusion of an array reaches the fingerprint as <path>[].
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: ['CorsAllowlist'] }), toolFields),
+    null,
+    'a secret named in the spelling the schema honours is sound'
+  );
+  assert.equal(
+    confirmChannelProblem(of({ fingerprintExcludes: ['CorsAllowlist[]'] }), toolFields),
+    null,
+    'and an exclusion named in the spelling the fingerprint honours is sound'
+  );
+  // The tightening direction: any row of the entry was accepted before, a secret-classified
+  // subtree included.
+  assert.equal(
+    confirmChannelProblem(of({ fingerprintExcludes: ['MatchRoles[].MatchRole'] }), toolFields),
+    "fingerprintExcludes names 'MatchRoles[].MatchRole', which is neither a field of this " +
+      "screen's write tool nor one its read declares (AD-6)"
+  );
+
+  const withCriterion = of({
+    read: {
+      ...webApp.declaration.read,
+      criteria: {
+        fields: [{ param: 'apiKey', labelKey: 'tableColumnName', kind: 'text', maxLength: 64 }],
+      },
+    },
+  });
+  // The loosening direction, and the flag half the builder missed: a criterion is one of the names
+  // the read declares, so its parameter is a nameable exclusion.
+  assert.equal(
+    confirmChannelProblem({ ...withCriterion, secretArguments: ['apiKey'], fingerprintExcludes: ['apiKey'] }, toolFields),
+    null,
+    "a typed criterion's parameter is a nameable exclusion"
+  );
+  const withFlag = of({
+    read: {
+      ...webApp.declaration.read,
+      criteria: { fields: [], marker: { param: 'eventSources', value: 'OcuPilot', labelKey: 'auditMarkerFilterLabel' } },
+    },
+    fingerprintExcludes: ['eventSources'],
+  });
+  assert.equal(
+    confirmChannelProblem(withFlag, toolFields),
+    null,
+    "and so is a flag criterion's, which DeclaredCriterionParams missed before DW-1206"
+  );
+  assert.equal(
+    confirmChannelProblem(withCriterion, toolFields),
+    "read.criteria names 'apiKey', whose name matches the credential pattern and which " +
+      'secretArguments does not declare (AD-3)'
+  );
+  assert.equal(
+    confirmChannelProblem({ ...withCriterion, secretArguments: ['apiKey'] }, toolFields),
+    null,
+    'declaring it is what admits it'
+  );
+
+  // The generator refuses to emit it at all, which is the assertion that makes this rule part of
+  // the build rather than a function nothing calls.
+  assert.throws(
+    () =>
+      buildMirror({
+        ...readSources(),
+        screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: withCriterion }],
+      }),
+    /read\.criteria names 'apiKey'/
+  );
+});
+
+// DW-1206's own cause was two sibling declarations validated against different sets, so the roster
+// of projections this generator builds is held against the kernel's own `DECLAREDNAMEKINDS` -- the
+// shape `checkedIdRules` uses for id rules, and for the same reason: a mirror validating a
+// confirm-channel key against a set the instance does not build would refuse a sound declaration at
+// `prebuild`, or admit one the instance refuses at install.
+//
+// Mutation (Rule 19): drop a name from `IMPLEMENTED_DECLARED_NAME_KINDS`, or from the kernel's
+// `Parameter DECLAREDNAMEKINDS` -> the throw below fires on the real sources and the first
+// assertion goes red.
+test('DW-1206: the projection roster is the kernel\'s, and a mismatch fails the build', () => {
+  const sources = readSources();
+  assert.deepEqual(
+    [...sources.declaredNameKinds].sort(),
+    [...IMPLEMENTED_DECLARED_NAME_KINDS].sort(),
+    'the kernel declares exactly the projections this generator builds'
+  );
+  assert.equal(parseDeclaredNameKinds('Class X { }'), null, 'reported, never read as an empty set');
+  assert.throws(
+    () => buildMirror({ ...sources, declaredNameKinds: ['settable', 'read'] }),
+    (error) => {
+      assert.match(error.message, /Screen\/Registry\.cls/, 'the refusal names the source class');
+      assert.match(error.message, /DECLAREDNAMEKINDS/, 'and the parameter');
+      return true;
+    },
+    'a roster the two sides do not share fails the build'
+  );
+});
+
+// The one builder, asserted as one: both confirm-channel keys read `declaredNames`' projections, so
+// the set cannot be built twice and drift.
+test('DW-1206: declaredNames answers one union in the two spellings its consumers honour', () => {
+  const { screens, toolFields } = readSources();
+  const webApp = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.WebAppList');
+  const names = declaredNames(webApp.declaration, toolFields);
+  assert.ok(names.settable.includes('CorsAllowlist'), 'the []-stripped spelling the schema honours');
+  assert.ok(names.path.includes('CorsAllowlist[]'), 'and the written spelling the fingerprint honours');
+  assert.ok(!names.settable.includes('CorsAllowlist[]'), 'never the other way round');
+  assert.ok(!names.path.includes('MatchRoles[].MatchRole'), 'a row the tool cannot set is in neither');
+  assert.ok(names.read.includes('Name'), "the read's own declared fields are in the union");
+  assert.deepEqual(names.criteria, [], 'the web applications list declares no criterion');
+  assert.ok(names.credential.includes('Timeout'), 'and the credential half is the string-placeholder rows');
+});
+
+// The entity-label rule's two engines (AD-5, AD-14). `OcuPilot.Test.Descriptor` holds the same
+// four shapes to the same four sentences on the instance side; a sentence reworded on one side
+// only goes red there.
+//
+// Mutation (Rule 19): delete the `entityLabelProblem` call from `buildMirror` -> the last
+// assertion goes red, and a noun declared for no entity type would mirror verbatim.
+test('entityLabelProblem returns the instance-side sentences, and every shipped descriptor passes', () => {
+  const { screens, entityTypes, scopeWords, archetypes, areas, toolFields } = readSources();
+  for (const screen of screens) {
+    assert.equal(
+      entityLabelProblem(screen.declaration),
+      null,
+      `${screen.className}'s entity label passes`
+    );
+  }
+
+  const webApp = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.WebAppList');
+  assert.ok(webApp !== undefined, 'the web applications list is among them');
+  assert.equal(webApp.declaration.entityLabelKey, 'proposalEntityWebApplication', 'and declares one');
+  const of = (overrides) => ({ ...webApp.declaration, ...overrides });
+
+  const absent = { ...webApp.declaration };
+  delete absent.entityLabelKey;
+  assert.equal(entityLabelProblem(absent), null, 'an absent key is sound: the screen publishes no noun');
+  assert.equal(entityLabelProblem(of({ entityLabelKey: '' })), null, 'and so is an empty one');
+  assert.equal(entityLabelProblem(of({ entityLabelKey: 7 })), 'entityLabelKey is not a string key');
+  assert.equal(
+    entityLabelProblem(of({ entityType: '' })),
+    "entityLabelKey names the singular noun for this screen's entity type, and none is declared"
+  );
+
+  // The refusal reaches the generator, naming the file and the class.
+  const hostile = of({ entityType: '' });
+  assert.throws(
+    () =>
+      buildMirror({
+        entityTypes,
+        refSeparator: 2,
+        singletonId: 'SYSTEM',
+        scopeWords,
+        archetypes,
+        areas,
+        toolFields,
+        screens: [{ ...webApp, declaration: hostile }],
+      }),
+    /entityLabelKey names the singular noun/
+  );
+});
+
+// AD-3, AD-6: a `secretArguments` name also qualifies when it is a top-level `secret` literal row
+// of the screen's write tools -- a derived credential, or an authored wrapper field such as
+// `Security.User`'s POST `Password` (Story 8.2). The widening is additive, so both directions are
+// pinned: a top-level secret row passes, and every name that qualified before still qualifies
+// while an unknown name, a nested secret path and an array element are still refused.
+//
+// Mutation (Rule 19): drop the `secretRows` clause from `confirmChannelProblem` -> the Users list
+// and the synthetic secret row below are refused; make `secretRowNames` admit nested paths -> the
+// `MatchRoles[].MatchRole` assertion goes red.
+test('a secretArguments entry may name a top-level secret row, and nothing that qualified stops qualifying', async () => {
+  const { secretRowNames } = await import('./screen-mirror.mjs');
+  const { screens, toolFields } = readSources();
+  const users = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.UserList');
+  assert.ok(users !== undefined, 'the users list is among the descriptors');
+  assert.deepEqual(users.declaration.secretArguments, ['Password'], 'it declares the authored Password');
+  assert.ok(secretRowNames('permissions.users', toolFields).includes('Password'), "the create tool's authored row is a top-level secret");
+  assert.equal(confirmChannelProblem(users.declaration, toolFields), null, 'the declaration passes');
+  assert.equal(
+    confirmChannelProblem({ ...users.declaration, secretArguments: ['Pasword'] }, toolFields),
+    "secretArguments names 'Pasword', which is neither a settable field of this screen's write " +
+      'tool nor one its read declares (AD-6)',
+    'a name no source carries is still refused'
+  );
+
+  const webApp = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.WebAppList');
+  const synthetic = {
+    'webapp.list.probe': {
+      fieldList: 'WebApp.App',
+      fields: [
+        { path: 'ProbeSecret', shape: 'literal', templateType: 'string', class: 'secret', authored: true },
+        { path: 'ProbeNested.Key', shape: 'literal', templateType: 'string', itemType: '', class: 'secret' },
+        { path: 'ProbeList[]', shape: 'literal', templateType: 'string', itemType: '', class: 'secret' },
+        { path: 'ProbeOpaque', shape: 'literal', templateType: 'string', itemType: '', class: 'opaque' },
+      ],
+    },
+  };
+  const widened = { ...toolFields, ...synthetic };
+  const of = (secretArguments) => ({ ...webApp.declaration, secretArguments });
+  assert.equal(confirmChannelProblem(of(['ProbeSecret']), widened), null, 'a top-level secret row qualifies');
+  assert.equal(confirmChannelProblem(of(['ProbeSecret']), toolFields), confirmChannelProblem(of(['ProbeSecret']), {}), 'and only while the row exists');
+  assert.notEqual(confirmChannelProblem(of(['ProbeSecret']), toolFields), null, 'absent the row it is refused');
+  for (const name of ['ProbeNested.Key', 'ProbeNested', 'ProbeList', 'ProbeList[]', 'ProbeOpaque']) {
+    assert.notEqual(confirmChannelProblem(of([name]), widened), null, `${name} does not qualify`);
+  }
+  for (const name of ['Timeout', 'AutoCompile', 'CorsAllowlist', webApp.declaration.read.fields[0]]) {
+    assert.equal(confirmChannelProblem(of([name]), widened), null, `${name} still qualifies`);
+  }
+  assert.notEqual(
+    confirmChannelProblem(of(['MatchRoles[].MatchRole']), widened),
+    null,
+    'a nested secret path of the shipped list is not admitted'
   );
 });

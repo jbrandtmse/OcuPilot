@@ -30,6 +30,7 @@
 import type { ApiService } from './api';
 import type { ChangeBus, ChangeEvent } from './change-bus';
 import type { ConnectivityService } from './connectivity';
+import { STRINGS, stringFor } from './strings.ts';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
 export const AGENT_DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
@@ -48,6 +49,43 @@ export const AGENT_DEFINITION_ENTITY = 'agent-definition';
 
 /** The entity type the switches and the per-user holds travel under (AD-13, AD-14). */
 export const AGENT_SWITCH_ENTITY = 'agent-switch';
+
+/**
+ * The entity type the instance's auditing configuration travels under (AD-13, AD-14).
+ *
+ * It is here because `writesMarked` is computed from it: turning auditing off is what makes the
+ * panel's "agent writes are not being marked" banner true, and the confirm that does it publishes
+ * a change event on this type. Without it the writing user's own tab would carry the stale answer
+ * until its next signed-in pass.
+ */
+export const AUDITING_CONFIG_ENTITY = 'auditing-configuration';
+
+/** The entity types a system and a user audit event travel under (AD-13, AD-14, Story 7.11). */
+export const AUDIT_EVENT_ENTITY = 'audit-event';
+export const AUDIT_USER_EVENT_ENTITY = 'audit-user-event';
+
+/**
+ * OcuPilot's own marker event, `Source/Type/Name` as the User events list reports it: disabling or
+ * deleting it stops agent writes being marked (AD-15), which is what `writesMarked` reports. Held
+ * equal to `Kernel/State/Base.cls` and `Kernel/Audit/Event.cls` by `ui/tools/audit-marker.test.mjs`.
+ */
+export const AGENT_WRITE_EVENT = 'OcuPilot/Security/AgentWrite';
+
+/**
+ * The entity types a change to which can move this payload's own answer, so a `changed` event on
+ * one costs a re-read and an event on anything else costs nothing.
+ *
+ * It is a roster rather than a chain of comparisons because the next entity that feeds a restraint
+ * fact is added by naming it here, and because `ui/tools/agent-status.test.mjs` can then hold the
+ * roster rather than re-deriving which types matter.
+ */
+export const RESTRAINT_ENTITIES: readonly string[] = [
+  AGENT_DEFINITION_ENTITY,
+  AGENT_SWITCH_ENTITY,
+  AUDITING_CONFIG_ENTITY,
+  AUDIT_EVENT_ENTITY,
+  AUDIT_USER_EVENT_ENTITY,
+];
 
 /**
  * OcuPilot's own agent configuration -- definitions and the instance switches alike -- is instance
@@ -74,6 +112,15 @@ export interface Restraint {
   readonly killSwitchAudience: string;
   readonly killSwitchReason: string;
   readonly enforcedReadOnly: boolean;
+  /**
+   * Whether the instance was marking agent writes when that was last observed (AD-15).
+   *
+   * **Not part of the verdict**: marking is not a restraint (AD-30), so it blocks nothing and the
+   * agent is not switched off by it. Only its `false` arm is rendered -- the panel's `not-marked`
+   * banner -- and nothing anywhere says marking is working, which is what makes the fact being a
+   * recorded observation rather than a live read acceptable.
+   */
+  readonly writesMarked: boolean;
 }
 
 /**
@@ -100,6 +147,9 @@ export const UNRESTRAINED: Restraint = {
   killSwitchAudience: '',
   killSwitchReason: '',
   enforcedReadOnly: false,
+  // `true`, deliberately: an unanswered read must never show the not-marked banner over a healthy
+  // instance, and the banner's absence is never a claim that marking works.
+  writesMarked: true,
 };
 
 /** The audience word the published kill-switch banner's `<everyone / you>` slot resolves to. */
@@ -136,6 +186,48 @@ export function formatKillSwitch(template: string, audience: string, reason: str
     .join(word)
     .split(KILL_SWITCH_REASON_PLACEHOLDER)
     .join(reason);
+}
+
+/**
+ * The sentence a restraint state reads as: the published kill-switch banner with both slots
+ * resolved when the switch is on, and otherwise the read-only line the verdict's own `footerKey`
+ * names.
+ *
+ * **This precedence has one home.** Home's agent-status line and the panel's kill-switch banner
+ * both render what this returns, so neither re-derives which of the two sentences applies and the
+ * client composes none of it (AD-39). Zero new strings: both arms resolve a published one.
+ */
+export function restraintSentence(restraint: Restraint): string {
+  return restraint.killSwitch
+    ? formatKillSwitch(
+        STRINGS.agentKillSwitchBanner,
+        restraint.killSwitchAudience,
+        restraint.killSwitchReason
+      )
+    : readOnlyFooterLine(restraint);
+}
+
+/**
+ * `restraintSentence`'s read-only arm on its own -- the line the panel's footer renders
+ * unconditionally, beside its own kill-switch banner rather than instead of it.
+ *
+ * The footer cannot render the ladder: with the kill switch on and read-only by definition, the
+ * panel shows the kill-switch banner *and* the by-definition footer line, which `panel.spec.ts`
+ * pins. So the arm is exported rather than re-derived at the call site.
+ */
+export function readOnlyFooterLine(restraint: Restraint): string {
+  return stringFor(restraint.footerKey);
+}
+
+/**
+ * Whether a read-only state applies, which is what turns the panel's footer line restrained.
+ *
+ * Reads `FOOTER_KEYS[0]` rather than spelling `'statusReadOnlyOff'` again: the panel repeated the
+ * off key as a bare literal beside the one `FOOTER_KEYS` declares, and a rename that missed the
+ * literal would leave a footer permanently restrained with no test saying so.
+ */
+export function readOnlyApplies(restraint: Restraint): boolean {
+  return restraint.footerKey !== FOOTER_KEYS[0];
 }
 
 /**
@@ -209,6 +301,10 @@ function restraintOf(body: unknown): Restraint {
     killSwitchAudience: textAt(row, 'killSwitchAudience'),
     killSwitchReason: textAt(row, 'killSwitchReason'),
     enforcedReadOnly: flagAt(row, 'enforcedReadOnly'),
+    // Absent reads as the UNRESTRAINED default, never as `false`: `flagAt` answers `false` for a
+    // key that is not there, and a body without this one would otherwise draw the not-marked
+    // banner over a healthy instance -- a positive claim in the one direction this story forbids.
+    writesMarked: 'writesMarked' in row ? flagAt(row, 'writesMarked') : UNRESTRAINED.writesMarked,
   };
 }
 
@@ -222,7 +318,8 @@ function sameRestraint(a: Restraint, b: Restraint): boolean {
     a.killSwitch === b.killSwitch &&
     a.killSwitchAudience === b.killSwitchAudience &&
     a.killSwitchReason === b.killSwitchReason &&
-    a.enforcedReadOnly === b.enforcedReadOnly
+    a.enforcedReadOnly === b.enforcedReadOnly &&
+    a.writesMarked === b.writesMarked
   );
 }
 
@@ -381,7 +478,8 @@ export class AgentStatus {
   }
 
   /**
-   * A definition or a switch changed: re-read (AD-14 -- consumers re-fetch, they never patch).
+   * An entity this restraint payload is computed from changed: re-read (AD-14 -- consumers
+   * re-fetch, they never patch).
    *
    * `changed` only. The bus also carries `proposal-open` and `proposal-closed`, which say a
    * proposal against that entity is live rather than that the instance moved, so neither can
@@ -389,7 +487,7 @@ export class AgentStatus {
    */
   private onChange(event: ChangeEvent): void {
     if (event.kind !== 'changed') return;
-    if (event.type !== AGENT_DEFINITION_ENTITY && event.type !== AGENT_SWITCH_ENTITY) return;
+    if (!RESTRAINT_ENTITIES.includes(event.type)) return;
     void this.load();
   }
 
