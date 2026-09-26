@@ -18,3 +18,6 @@
 2026-09-26T10:21:56Z	Story 23.1	qa_complete	batch=B1 result=skipped reason=no_behavior_doc_comment_only tests_added=0 mutations_demonstrated=0
 2026-09-26T10:21:56Z	Story 23.1	pushed	batch=B1 head=3606e40f ci=pending run=36235534094
 2026-09-26T10:21:57Z	Story 23.1	stage_spawned	stage=code-review batch=B1 spawn_at=2026-09-26T10:21:57Z model=opus agent_name=23-1-the-range-end-cleanup-code-review-b1 cycle_iteration=1
+2026-09-26T10:39:33Z	Story 23.1	cr_complete	batch=B1 spawn_at=2026-09-26T10:21:57Z model=opus resolved=10 routed=1 wontfix_accepted=1 dismissed=8 high=0 med=6 low=6 rows=39 unresolved_high_med=0 filed=DW-1691,DW-1692 sprint=review closing_sections_present=true subagent_tokens=250445
+2026-09-26T10:39:33Z	Story 23.1	ledger_adjudicated	batch=B1+L owned=23 resolved=21 reowned=0 escalated_residual=2(DW-1338,DW-1413) terminal=21 slice_range_end_cleanup_after=57
+2026-09-26T10:39:33Z	Story 23.1	smoke_complete	batch=B1 method=other result=pass iterations=1 defects_caught=0 evidence=text_only_batch;src_loaded_ocupilot-b-ci_0_errors;test_tools_1468;check_objectscript_0 model=claude-opus-5-5
