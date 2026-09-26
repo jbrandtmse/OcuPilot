@@ -15,9 +15,9 @@
 /// (<class>OcuPilot.Test.ErrorLogSeed</class>'s own guard, checked here as well so this class
 /// refuses before either test method runs rather than only inside the helper it calls), and
 /// <parameter>PRINCIPALVARIABLE</parameter> for the probe web application
-/// <class>OcuPilot.Test.ProposalFixture</class> creates and removes. It seeds one real application
-/// error and deletes exactly that one, and it creates and removes one web application, restoring
-/// the field it changed before removal.</p>
+/// <class>OcuPilot.Test.ProposalFixture</class> creates and removes. It seeds two real application
+/// errors, deletes the one the draft names through the rendered script and the other in cleanup,
+/// and it creates and removes one web application, restoring the field it changed before removal.</p>
 Class OcuPilot.Test.DraftExecute Extends %UnitTest.TestCase
 {
 
@@ -105,19 +105,6 @@ ClassMethod ParseRestStep(pText As %String, Output pVerb As %String, Output pUrl
     Set pVerb = $Piece($Piece(pText, "'", 3), " ", 3)
     Set pUrl = $Piece(pText, "'", 4)
     Set pBody = $Select($Length(pText, "'") >= 8: $Piece(pText, "'", 8), 1: "")
-}
-
-/// <p>Whether <var>pResult</var>'s <code>rows</code> (an <method>OcuPilot.Port.LogSourcePort.Errors</method>
-/// <code>list</code> answer) names error number <var>pNumber</var>.</p>
-ClassMethod HasErrorNumber(pResult As %DynamicObject, pNumber As %String) As %Boolean [ Private ]
-{
-    If '$IsObject(pResult) Quit 0
-    Set tFound = 0
-    Set tIterator = pResult.%Get("rows").%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tRow) {
-        If tRow.%Get("errorNumber") = pNumber Set tFound = 1
-    }
-    Quit tFound
 }
 
 /// <p>AC1, run for real: every step the draft renders for a live <code>webapp.list.update</code>
@@ -261,58 +248,90 @@ ClassMethod RunObjectScriptStep(pText As %String, Output pRunSC As %Status) [ Pr
     Set $NAMESPACE = tOrigNS
 }
 
-/// <p>The matrix's <code>%SYS</code> completion (AD-48), run for real: this test seeds one genuine
-/// application error, drafts its delete, and literally <code>XECUTE</code>s the drafted
-/// <code>objectscript</code> step's own text -- never <class>OcuPilot.Port.LogSourcePort.RemoveErrorIds</class>
-/// and no reconstruction. The entry is gone afterward, read back the same way
-/// <class>OcuPilot.Test.ErrorLogSeed</class> proves it was there: the state a confirm of an
-/// identical proposal would have left.</p>
-/// <p>Mutation (Rule 19): have <method>OcuPilot.Port.LogSourcePort.Snippet</method> quote the error
-/// number list unterminated (drop the closing quote) -- the <code>XECUTE</code> below raises a
-/// <code>&lt;SYNTAX&gt;</code> error and this test goes red, where a text-only assertion would not
-/// notice the line does not parse.</p>
+/// <p>The matrix's <code>%SYS</code> completion (AD-48), run for real: this test seeds two genuine
+/// application errors in one namespace, drafts the delete of the second, and literally
+/// <code>XECUTE</code>s the drafted <code>objectscript</code> step's own text -- never
+/// <class>OcuPilot.Port.LogSourcePort.RemoveErrorIds</class> and no reconstruction. Each entry is
+/// read by its own id (namespace, date and number) at the port's <code>detail</code> level: the
+/// named entry reads 200 before and 404 <code>LOG.ENTRY</code> after, and the other still reads 200
+/// after -- exactly the one entry removed, whatever else the namespace holds. The other entry is
+/// deleted in cleanup.</p>
+/// <p>Mutation (Rule 19): have <method>OcuPilot.Port.LogSourcePort.Snippet</method> render
+/// <code>DeleteByNamespace</code> for the namespace instead of <code>DeleteByError</code> -- the
+/// other entry's read answers 404 and the named one's <code>LOG.NAMESPACE</code>, and this test goes
+/// red.</p>
 Method TestARenderedObjectScriptScriptDeletesTheErrorItNames()
 {
-    Set tSC = ##class(OcuPilot.Test.ErrorLogSeed).SeedInto(..#ERRORNAMESPACE, .tDay, .tNumber)
-    Do $$$AssertStatusOK(tSC, "one real application error is seeded: " _ $System.Status.GetErrorText(tSC))
+    Set tSC = ##class(OcuPilot.Test.ErrorLogSeed).SeedInto(..#ERRORNAMESPACE, .tOtherDay, .tOtherNumber)
+    Do $$$AssertStatusOK(tSC, "a second real application error is seeded, to survive the delete: " _ $System.Status.GetErrorText(tSC))
     If $$$ISERR(tSC) Quit
-    Set tDate = $ZDate(tDay, 1)
+    Set tOtherDate = $ZDate(tOtherDay, 1)
+    Do {
+        Set tSC = ##class(OcuPilot.Test.ErrorLogSeed).SeedInto(..#ERRORNAMESPACE, .tDay, .tNumber)
+        Do $$$AssertStatusOK(tSC, "the real application error the draft names is seeded: " _ $System.Status.GetErrorText(tSC))
+        If $$$ISERR(tSC) Quit
+        Set tDate = $ZDate(tDay, 1)
 
-    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Errors("list", ..#ERRORNAMESPACE, tDate, "", "", .tBefore, .tBeforeHttp, .tBeforeFault)
-    Do $$$AssertStatusOK(tSC, "the seeded entry's namespace and date read before the delete")
-    Do $$$AssertEquals(tBeforeHttp, 200, "at 200")
-    Do $$$AssertTrue(..HasErrorNumber(tBefore, tNumber), "and the seeded entry is present: #" _ tNumber)
+        Set tSC = ##class(OcuPilot.Port.LogSourcePort).Errors("detail", ..#ERRORNAMESPACE, tDate, tNumber, "", .tBefore, .tBeforeHttp, .tBeforeFault)
+        Do $$$AssertStatusOK(tSC, "the named entry reads by its own id before the delete: #" _ tNumber)
+        Do $$$AssertEquals(tBeforeHttp, 200, "at 200")
+        If $$$ISERR(tSC) Quit
 
-    Set tPayload = {"namespace": (..#ERRORNAMESPACE), "entries": [{"date": (tDate), "errorNumber": (tNumber)}]}
-    Set tKey = ..Seed("logs.applicationerrors.delete", "application-error", ..#ERRORNAMESPACE, tPayload.%ToJSON())
-    If tKey = "" Quit
+        Set tPayload = {"namespace": (..#ERRORNAMESPACE), "entries": [{"date": (tDate), "errorNumber": (tNumber)}]}
+        Set tKey = ..Seed("logs.applicationerrors.delete", "application-error", ..#ERRORNAMESPACE, tPayload.%ToJSON())
+        If tKey = "" Quit
 
-    Set tSC = $ClassMethod(..#DRAFT, "Take", tKey, ##class(OcuPilot.Test.Http).GetTestUsername(), "http://localhost", .tAnswer, .tDraftHttp, .tCode)
-    Do $$$AssertStatusOK(tSC, "the draft is taken: " _ tCode)
-    If $$$ISERR(tSC) Quit
-    Set tSteps = tAnswer.%Get("draft").%Get("steps")
-    Do $$$AssertEquals(tSteps.%Size(), 1, "one script step for a single-entry delete")
-    If tSteps.%Size() '= 1 Quit
-    Set tIterator = tSteps.%GetIterator()
-    Do tIterator.%GetNext(.tIndex, .tStep)
-    Do $$$AssertEquals(tStep.%Get("kind"), "objectscript", "the step is ObjectScript")
-    Set tText = tStep.%Get("text")
-    Do $$$AssertTrue(tText [ ("##class(SYS.ApplicationError).DeleteByError(""" _ $ZConvert(..#ERRORNAMESPACE, "U") _ """, """ _ tDate _ """, """ _ tNumber _ """)"), "naming the vendor call for exactly the seeded entry: " _ tText)
+        Set tSC = $ClassMethod(..#DRAFT, "Take", tKey, ##class(OcuPilot.Test.Http).GetTestUsername(), "http://localhost", .tAnswer, .tDraftHttp, .tCode)
+        Do $$$AssertStatusOK(tSC, "the draft is taken: " _ tCode)
+        If $$$ISERR(tSC) Quit
+        Set tSteps = tAnswer.%Get("draft").%Get("steps")
+        Do $$$AssertEquals(tSteps.%Size(), 1, "one script step for a single-entry delete")
+        If tSteps.%Size() '= 1 Quit
+        Set tIterator = tSteps.%GetIterator()
+        Do tIterator.%GetNext(.tIndex, .tStep)
+        Do $$$AssertEquals(tStep.%Get("kind"), "objectscript", "the step is ObjectScript")
+        Set tText = tStep.%Get("text")
+        Do $$$AssertTrue(tText [ ("##class(SYS.ApplicationError).DeleteByError(""" _ $ZConvert(..#ERRORNAMESPACE, "U") _ """, """ _ tDate _ """, """ _ tNumber _ """)"), "naming the vendor call for exactly the named entry: " _ tText)
 
-    ; The real proof: these lines are XECUTEd exactly as rendered, never through
-    ; OcuPilot.Port.LogSourcePort.RemoveErrorIds. The functional check below -- the entry is
-    ; actually gone -- is what proves it, per RunObjectScriptStep's own doc comment.
-    Do ..RunObjectScriptStep(tText, .tRunSC)
-    Do $$$AssertStatusOK(tRunSC, "the rendered script executes without raising: " _ $Select($$$ISOK(tRunSC): "", 1: $System.Status.GetErrorText(tRunSC)))
-    If $$$ISERR(tRunSC) Quit
+        ; The real proof: these lines are XECUTEd exactly as rendered, never through
+        ; OcuPilot.Port.LogSourcePort.RemoveErrorIds. The functional checks below -- the named entry
+        ; is gone and the other is not -- are what prove it, per RunObjectScriptStep's own doc comment.
+        Do ..RunObjectScriptStep(tText, .tRunSC)
+        Do $$$AssertStatusOK(tRunSC, "the rendered script executes without raising: " _ $Select($$$ISOK(tRunSC): "", 1: $System.Status.GetErrorText(tRunSC)))
+        If $$$ISERR(tRunSC) Quit
 
-    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Errors("list", ..#ERRORNAMESPACE, tDate, "", "", .tAfter, .tAfterHttp, .tAfterFault)
-    Do $$$AssertStatusOK(tSC, "the namespace and date still read after the delete")
-    Do $$$AssertEquals(tAfterHttp, 200, "at 200")
-    Do $$$AssertTrue('..HasErrorNumber(tAfter, tNumber), "and the deleted entry is gone -- exactly the state a confirm of an identical proposal would leave")
+        Set tSC = ##class(OcuPilot.Port.LogSourcePort).Errors("detail", ..#ERRORNAMESPACE, tDate, tNumber, "", .tAfter, .tAfterHttp, .tAfterFault)
+        Set tAfterCode = $Select($IsObject(tAfterFault): tAfterFault.%Get("code"), 1: "")
+        Set tGoneCode = $Select(tOtherDate = tDate: ##class(OcuPilot.Api.Error).#LOGENTRY, 1: ##class(OcuPilot.Api.Error).#LOGDATE)
+        Do $$$AssertEquals(tAfterHttp, 404, "the named entry's id read answers 404 after the delete: " _ $System.Status.GetErrorText(tSC))
+        Do $$$AssertEquals(tAfterCode, tGoneCode, "on the code for that one entry, so it alone is gone")
 
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "canceled", "the proposal closes")
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "ClosedReason"), "draft", "with the draft reason")
+        Set tSC = ##class(OcuPilot.Port.LogSourcePort).Errors("detail", ..#ERRORNAMESPACE, tOtherDate, tOtherNumber, "", .tOther, .tOtherHttp, .tOtherFault)
+        Do $$$AssertStatusOK(tSC, "the other entry still reads by its own id after the delete: #" _ tOtherNumber)
+        Do $$$AssertEquals(tOtherHttp, 200, "at 200 -- exactly the state a confirm of an identical proposal would leave")
+
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "canceled", "the proposal closes")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "ClosedReason"), "draft", "with the draft reason")
+    } While 0
+    Do $$$AssertStatusOK(..DeleteError(tOtherDate, tOtherNumber), "the other seeded entry is removed in cleanup")
+}
+
+/// <p>Delete one application error in <parameter>ERRORNAMESPACE</parameter> by its date and number
+/// through the vendor's <code>SYS.ApplicationError.DeleteByError</code>, in <code>%SYS</code>.</p>
+ClassMethod DeleteError(pDate As %String, pNumber As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(SYS.ApplicationError).DeleteByError($ZConvert(..#ERRORNAMESPACE, "U"), pDate, pNumber)
+        Set $NAMESPACE = tOrigNS
+    }
+    Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 }

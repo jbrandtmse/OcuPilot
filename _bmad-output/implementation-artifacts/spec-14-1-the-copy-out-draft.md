@@ -2,11 +2,11 @@
 title: 'Story 14.1: The copy-out draft'
 type: 'feature'
 created: '2026-09-26'
-status: 'in-progress'
-baseline_revision: '615a1f627cccf3c5f89593d82736a1382f75b96f'
+status: 'done'
+baseline_revision: '9e0830f89b979d82b14597eda613eaf1740ce2bb'
 baseline_commit: '615a1f627cccf3c5f89593d82736a1382f75b96f'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md'
 warnings: ['oversized']
@@ -164,7 +164,7 @@ deferred: []
     - the application is unchanged;
     - a reply code block's copy control copies its text.
 
-- [ ] [CI] instance: `OcuPilot.Test.DraftExecute.TestARenderedObjectScriptScriptDeletesTheErrorItNames` fails on CI's fresh instance (run 36272570883, job `instance`, class run 64): after the one seeded application error is deleted the namespace holds no errors, so the post-delete read answers `LOG.NAMESPACE` ("This instance records no application errors for a namespace by that name") and the test asserts OK on it -- it passed locally only because the reused throwaway held other errors in that namespace. `src/OcuPilot/Test/DraftExecute.cls` (the post-delete assertion, ~line 35) -- the test must prove the named error is gone without depending on any other error existing in the namespace (e.g. read the entry by its id through `SYS.ApplicationError` / the port and assert it is absent, or treat an empty namespace as gone), and must pass on a fresh instance: verify on `ocupilot-b-ci` after deleting every other application error in the seeded namespace first, and keep its Rule 19 mutation line current.
+- [x] [CI] instance: `OcuPilot.Test.DraftExecute.TestARenderedObjectScriptScriptDeletesTheErrorItNames` fails on CI's fresh instance (run 36272570883, job `instance`, class run 64): after the one seeded application error is deleted the namespace holds no errors, so the post-delete read answers `LOG.NAMESPACE` ("This instance records no application errors for a namespace by that name") and the test asserts OK on it -- it passed locally only because the reused throwaway held other errors in that namespace. `src/OcuPilot/Test/DraftExecute.cls` (the post-delete assertion, ~line 35) -- the test must prove the named error is gone without depending on any other error existing in the namespace (e.g. read the entry by its id through `SYS.ApplicationError` / the port and assert it is absent, or treat an empty namespace as gone), and must pass on a fresh instance: verify on `ocupilot-b-ci` after deleting every other application error in the seeded namespace first, and keep its Rule 19 mutation line current.
 
 **Acceptance Criteria:**
 
@@ -300,7 +300,7 @@ This runs on slot B. Copy each changed `.cls` to `/tmp/ocupilot-b-ci/src` and lo
 **(QA) `OcuPilot.Test.DraftExecute` (new).** Closes the follow-up review's own residual risk ("no rendered script has been run against the vendor"): takes a live `webapp.list.update` draft and a `logs.applicationerrors.delete` draft on `ocupilot-b-ci`, then actually runs what each renders -- the `rest` step parsed and sent as a real `%Net.HttpRequest` to the instance's own admin API, the `objectscript` steps `XECUTE`d in `%SYS` against one genuine seeded application error -- never through `AdminPort.Invoke` or `LogSourcePort.RemoveErrorIds`. A plain `WebApp.App` merge write answers three steps, not one (AD-27's kept-type completion); the test runs all three, filling the third step's non-secret `<Type>` placeholder from the same read a human would use, and asserts the application ends holding the drafted description and its original type. The `objectscript` leg asserts the seeded error is gone afterward. `OcuPilot.Test.DraftRegistry`'s parity test already proves draft-vs-confirm equality in process through the fixture port; this class is the one that proves the vendor itself accepts the wire shape.
 
 - mutation: `AdminPort.RestStep` drops the query string from the rendered URL → `OcuPilot.Test.DraftExecute` `TestARenderedRestScriptIsAcceptedByTheAdminApi` went red on the admin API's own 400 (`MissingQueryParam`), not on a text assertion (run 333; reverted, `git diff --stat` clean, run 334 green).
-- mutation: `LogSourcePort.Snippet` renders the error-number list with an unterminated string literal → `OcuPilot.Test.DraftExecute` `TestARenderedObjectScriptScriptDeletesTheErrorItNames` went red on a real `<SYNTAX>` error from the `XECUTE`, not on a text assertion (run 331; reverted, `git diff --stat` clean, run 332 green).
+- mutation: `LogSourcePort.Snippet` renders the error-number list with an unterminated string literal → `OcuPilot.Test.DraftExecute` `TestARenderedObjectScriptScriptDeletesTheErrorItNames` went red on a real `<SYNTAX>` error from the `XECUTE` (run 331); and appends a `DeleteByNamespace` of the namespace after its `DeleteByError` → the same test went red on the named entry's code (`LOG.NAMESPACE`, not `LOG.ENTRY`) and on the other seeded entry's id read (run 351; reverted, `LogSourcePort` recompiled with its subclasses, `git diff --stat` clean, run 352 green with no other application error in `USER`).
 - (CR) mutation: `Draft.Render` without the diff-named secret clause (the pre-review code) → `OcuPilot.Test.DraftRegistry` `TestTheDraftOfAComposedSecretCreateIsTheBodyConfirmSends` and `TestNoSecretReachesAnyRenderedScript` (naming five tools) went red; green after, 9/9 (AC1, AC2).
 - (CR) mutation: `AdminPort.ImportStep`, `Literal` and `UserPassword.SnippetAfter` as before the review → `OcuPilot.Test.DraftPorts` `TestAdminPort` and `TestUserPasswordAfterStep` went red; green after, 11/11.
 - (CR) mutation: `Draft.Mask` masking strings only → `DraftRegistry` `TestTheCredentialPatternMasksAnUndeclaredName` went red on the numeric `PinSecret`.
@@ -337,15 +337,26 @@ This runs on slot B. Copy each changed `.cls` to `/tmp/ocupilot-b-ci/src` and lo
   - `[low]` `[patch]` (intent-alignment) `Operation.cls` still calls itself AD-10's single call site — the comment names `Draft.Take` as the only other.
 - stage-found while patching: a wholly-placeholder query value rendered URL-encoded (`%3CID%3E`) — `AdminPort.RestStep` keeps it readable; pinned in `DraftPorts.TestOAuthServerPort`.
 
+### 2026-09-26 — Review pass (rework iteration 1, CI)
+
+- verdicts: 7 findings — high 0, medium 1, low 2, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) accepting `LOG.DATE`/`LOG.NAMESPACE` after the delete cannot tell "removed the named entry" from "emptied the date or namespace"; an over-deleting script passes -- the test now seeds a second error that must still read 200, and the named entry must answer exactly `LOG.ENTRY`; mutation run 351.
+  - `[low]` `[patch]` (verification-gap) the method's Rule 19 paragraph names only the `<SYNTAX>` mutation -- it now names the over-delete mutation that pins the read-back.
+  - `[low]` `[reject]` (intent-alignment) absence is judged through the port's read path, not a direct vendor read -- the same path reads the named entry 200 before and the other entry 200 after, so a blanket wrong 404 fails; a second read path adds complexity for a theoretical defect.
+  - `[false]` `[reject]` (intent-alignment) the test does not create the fresh-instance state -- with the second seeded entry the result no longer depends on it; run 352 ran with `USER` empty.
+  - `[false]` `[reject]` (intent-alignment) the doc comment's mutation paragraph is stale -- same root cause as the second row, patched there.
+  - `[false]` `[reject]` (intent-alignment) spec `status` and `baseline_revision` moved -- the workflow's own bookkeeping.
+  - `[false]` `[reject]` (intent-alignment) the rest of the intent contract is untouched -- descriptive, no divergence.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-- **Change:** `POST /proposal/:id/draft` (`Kernel/Proposal/Draft.cls`, `Api/Confirm.cls` `HandleDraft`, `Api/Router.cls`) renders a live proposal's script on the instance through its port's new `Snippet`/`SnippetForm` (every port defining `Invoke`, `ProviderPort` and `MgmntPort` answering no form), with `Port/AdminRoutes.cls` the checked-in non-`GET` route table (157 routes) and `UserPassword.SnippetAfter` the after-write step; secrets read as `<Name>`; the row closes `canceled`/`draft`. Client: `canceled-by-draft` phase, the card action, `app-code-block`, and the one copy control (`copy-control.ts`) also on reply code blocks (DW-1081).
-- **Files:** server — `Kernel/Proposal/{Draft,Write,Operation}.cls`, `Kernel/State/Propose.cls` (`REASONDRAFT`), `Api/{Confirm,Router}.cls`, `Port/*` (14 ports + `AdminRoutes`), `Screen/Tool/UserPassword.cls`; tests — `Test/{DraftRegistry,DraftRoute,DraftPorts,DraftNoForm,DraftLoser}.cls`, `Test/EndpointCoverage.cls` (probe row), `Test/PortGate.cls` (`<table>` roster value); client — `core/{draft,proposal-view,strings,turn}.ts`, `shell/{copy-control,code-block,panel,proposal-card,reply}.ts`, `_components.scss`, specs `proposal-card-draft`, `code-block`, `panel`, `reply`, `tools/{draft,proposal-view}.test.mjs`, `browser/copy-out-draft.browser-spec.mjs`; EXPERIENCE.md edited in place (981 lines before and after; the caption sits on :273, the footer-captions row).
-- **Review:** 21 findings; 12 entries patched (medium 5: port content tests, lost race, credential backstop, `ImportStep` PEM decode, `ProviderPort` snippet; low 7), 0 deferred, rejected: 3 false and 2 low (the 404-without-detail shape, shared with Cancel). Details in the triage log.
-- **Follow-up review recommended: true** — five medium entries patched. The unverified risk: no rendered script has been run against the vendor; `DraftPorts` pins the text each port emits, not that the admin API or the `%SYS` class accepts it (notably `OAuthServerPort`'s `<ID>` fallback, `TaskPort`'s trimmed body and the ObjectScript steps).
-- **Verification:** on `ocupilot-b-ci`, one class per call — DraftRegistry 8/8, DraftRoute 10/10, DraftPorts 11/11, EndpointCoverage 2/2, ProposalClose 7/7, ProposalWire 15/15, ConfirmRoute 6/6, PortGate 4/4 (`%UnitTest_Result` runs 313-322). Full ObjectScript sweep once, by the handoff: 2478/2478 after its PortGate roster fix; smoke 49/49. `npm run test:tools` 1493 pass, `npm run test:components` 1482 pass; build 1.85 MB with no budget warning; browser `copy-out-draft`, `reply`, `proposal-card` 10/10, then `copy-out-draft` 2/2 after the origin pin, each on a rebuilt and redeployed bundle; `check-objectscript` and `lint-docs` clean. Full browser suite left to CI (Rule 29).
-- **Contended files:** `src/OcuPilot/Kernel/State/Propose.cls`, `ui/src/app/core/strings.ts`, `ui/src/app/core/turn.ts`, `ui/src/app/shell/panel.ts`, `ui/src/app/shell/panel.spec.ts`, `ui/src/app/shell/proposal-card.ts`, `ui/src/styles/_components.scss`, EXPERIENCE.md — add-only; a trial `git merge-tree` against `origin/OCU-1-epic16` merges all of them cleanly.
-- **Residual risks:** the password flag step renders under a written condition, because a password proposal stores no `ChangePassword`; a server description addressed by issuer shows `<ID>` when its stored read lacks the id; an application edit's restore step carries `<Type>` from the first step's output.
+- **Change (rework iteration 1, CI):** `OcuPilot.Test.DraftExecute.TestARenderedObjectScriptScriptDeletesTheErrorItNames` seeds two application errors in `USER`, drafts the delete of one, runs the rendered step, then reads each entry by its own id through `LogSourcePort.Errors("detail", …)`: the named entry 200 before and 404 `LOG.ENTRY` after, the other 200 after; the other is removed in cleanup (`DeleteError`, `SYS.ApplicationError.DeleteByError` in `%SYS`). The result no longer depends on what else the namespace holds. The `HasErrorNumber` helper is gone.
+- **Files:** `src/OcuPilot/Test/DraftExecute.cls`; this spec (the `[CI]` item ticked, the test's `mutation:` line).
+- **Review:** 7 findings; 2 patched (medium 1, low 1), 0 deferred; rejected 1 low (a second read path for a theoretical wrong 404) and 4 false. Details in the triage log.
+- **Follow-up review recommended: false** — follow-up pass; no high patched (1 medium, 1 low).
+- **Verification (`ocupilot-b-ci`, one run at a time, from `^UnitTest.Result`):** before the fix, with every other `USER` error removed, run 344 red with CI's `LOG.NAMESPACE` failure; after, run 352 2/2 with `USER` empty before and after. Mutation run 351 red (above). `check-objectscript` 0 problems. Removed as throwaway residue, `USER`, 09/26/2026, by exact number: #1, #2, #8 before run 344, and #1, #2 left by mutation runs 346-347.
+- **Residual risks:** none new. Previous pass: commit `25ba4560`.
