@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-09-25'
+updated: '2026-09-26'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -209,6 +209,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   A self-protection rule that a screen enforces only in its UI is not a prohibition. Every item here is refused on the instance, on the write path, whatever the caller.
 
+  **The try-it console is not OcuPilot's write path** (AD-57): its refusals for OcuPilot's own applications and `/api/admin` writes, and the gap they leave, are AD-57's [ADDED 2026-09-26, Story 16.1 spec gate, Rule 20].
+
   **The account items are refused by effect, not by the verb that reaches them** [AMENDED 2026-09-23, Story 7.2 spec gate, orchestrator-approved, Rule 20, DW-1486]. Each account predicate -- the current user, `_SYSTEM`, the account the instance's own services run as, and the last `%All` holder -- is evaluated for every write whose effect removes that account or its administration: a delete, a disable, a `Roles` delta that strips `%All`, and a role delete or change that strips `%All` from the account through that role [AMENDED 2026-09-24, Story 9.3 spec gate]. Stripping `%All` from the service account is the same harm as disabling it, and a delete sends no body, so a predicate gated inside the disable arm, or read off the diff, lets both through. Story 7.2's plan measured exactly that: the four protections fired on a disable only, and a bodyless delete of `_SYSTEM`, the signed-in account, the service account or the last `%All` holder passed every one. Each arm carries a test that fails when its predicate is removed.
 
   **The service-account arm also covers a write that changes how that account signs in** [AMENDED 2026-09-23, Story 9.1 spec gate, Rule 20, DW-1520]: a new password, or turning change-password-on-login on, for an account the instance's own services run as is refused `PROHIBITED.SERVICEACCOUNTSIGNIN`, on both callers, because either stops those services signing in (OcuPilot's gateway sign-in among them) exactly as a disable would. `_SYSTEM` and the signed-in account stay permitted for both - administering them is the operator's intent - and turning the flag off is permitted for every account.
@@ -391,6 +393,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Only `Authorization: Bearer <access>` authorizes a request.** A cookie never does. The token pair lives in **per-tab** storage, travels only as a header, and is never written to a cookie and never posted into an embedded frame. Refresh is `POST /api/ocupilot/refresh` with the refresh token **in the JSON body** — sent as a Bearer it is refused. The client refreshes on a timer derived from the token's own lifetime and retries once on a 401; because a turn can outlive an access token (AD-7 polls for the length of the turn), refresh is a background concern of the API service, never something a screen or the panel handles. Sign-out is `POST /api/ocupilot/logout` carrying both the Bearer and the cookie. Observed on the pinned image (Story 1.7): it deletes the group's own session node `^%cspSession(-3,"%iscmgtportal:<browserId>")`, after which that cookie minted nothing at `/api/ocupilot` or at the one sibling JWT application probed. Because the node deleted is the group's, not an application's, this ends the browser-level login for every `%ISCMgtPortal` application **(inference** — the mechanism implies it; two of the group's nine JWT-enabled applications were measured**)**. **Bearer alone is not a safe "end only my tab" request.** It leaves the browser-level login intact only when that session has already been superseded — the cookie resolves to the most recently minted session in the group, so a Bearer-only logout of the current one ends the browser-level login too (measured on the pinned image, Story 1.7). Sign-out therefore always sends both and always means "sign out of the instance"; a tab-only sign-out is not a thing this design offers.
 
+  **The try-it console sends the tab's access token to other JWT-enabled applications on the origin** (AD-57), which names that reach and bounds it [ADDED 2026-09-26, Story 16.1 spec gate, Rule 20].
+
   **Development runs through the IRIS origin.** The browser-id cookie is `SameSite=Strict`, so a dev server on another port never receives it and silent login silently fails. The dev loop proxies through the instance's origin rather than serving from a second origin.
 
 ### AD-29 — Every port carries its own authorization gate
@@ -470,6 +474,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Vendor error text is normalized before it reaches either.** A `%Status` from an `%Api.Admin.*` class is written for a portal developer: it names internal classes, ids and occasionally paths. It is mapped to OcuPilot's slug and a written reason at the port boundary, with the raw text kept for the log and the ledger only. Untrusted or vendor-authored text that does reach the model arrives as delimited tool-result content (AD-11), never as an instruction and never as OcuPilot's own voice.
 
   **One named exception: an SSL/TLS configuration's Test connection answers the instance's own result lines** - the vendor's `Info` on success, each `%Status` error text on failure - because that text is the result the operator asked for (Story 9.5, AC4). It reaches the screen only, as text, and never the model, a tool result, a ledger row, an audit payload or a log line [AMENDED 2026-09-24, Story 9.5 spec gate, orchestrator ruling, Rule 20].
+
+  **A second named exception: the try-it console's raw response body** (AD-57) [ADDED 2026-09-26, Story 16.1 spec gate, Rule 20].
 
 ### AD-40 — Confirm is reachable only from the browser, and the write gate is on the write
 
@@ -693,6 +699,17 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **(ii) A screen action accepts only declared values.** AD-53's route admits a value only under a name the action's tool declares for that action; any other key is refused, not ignored, as AD-6 refuses an undeclared key at confirm. A list-valued field is changed by a **server-side delta over a fresh read** -- add this role, remove that one -- never replaced by a list the client computed, so a concurrent change to another member is never erased (AD-4's concern, reached through a smaller door).
 
   **This adds no second way for the screen to supply a secret.** A secret travels under the descriptor's existing `secretArguments` declaration -- the one AD-6's confirm channel already closes over, and the one AD-55 routes a screen Save's secrets through (Epic 8, Story 8.2 widens it to accept a top-level secret field of the screen's tools). A screen action's secret is that declaration read by one more caller, never a parallel list.
+
+### AD-57 -- The try-it console is a browser request under the tab's own token, never OcuPilot's write path
+
+- **Binds:** Story 16.1 (the try-it request console on the OpenAPI document viewer); AD-1, AD-10, AD-11, AD-20, AD-28, AD-39, AD-47
+- **Prevents:** the console becoming an OcuPilot-hosted route around AD-10's self-protection, and a raw response body reaching the model, the ledger or a log
+- **Rule:** [ADDED 2026-09-26, Story 16.1 spec gate, orchestrator ruling (A), Rule 20.] Measured on `ocupilot-ci`: the tab's OcuPilot access token, sent as `Authorization: Bearer`, authenticates every JWT-enabled application on the instance (`/api/admin` answered 200), while password applications without JWT (`/api/mgmnt`, `/api/atelier`) answer 401 and the `CSPBrowserId` cookie alone authenticates no data route. So "with the current session" means the tab's token, and:
+
+  1. **What it is.** A request the browser sends, same origin, carrying the tab's access token as a Bearer header, no cookie, never the refresh token, composed only from an operation of a listed application's OpenAPI document. It is neither a tool nor OcuPilot's write path: it mints no proposal, adds no agent tool and no governance key (AD-1, AD-22). Named consequence: the token reaches the target application's own code; its 60 s lifetime bounds that reach.
+  2. **Refused without sending.** Any request whose target resolves under one of OcuPilot's own applications (`/ocupilot`, `/api/ocupilot`, `/api/ocupilot/readiness`), and any `POST`, `PUT`, `PATCH` or `DELETE` to `/api/admin`, whose writes OcuPilot's screens and tools already carry through the AD-10-guarded path. The target is **resolved the way the browser will resolve it** - dot segments removed, percent-encoding decoded, case folded where IRIS matches applications case-insensitively - before it is compared, so no spelling sidesteps the refusal; each refusal is pinned by a test that reddens when it is removed. **Named gap:** those writes stay reachable outside OcuPilot, as they are from the classic portal; the refusal keeps OcuPilot from offering them, it does not make them unreachable.
+  3. **Confirmation.** Every other `POST`, `PUT`, `PATCH` or `DELETE` is sent only after a confirmation dialog naming the method and target.
+  4. **The response is data.** The raw status and body reach the screen only, rendered as text on the code surface and never evaluated (AD-11 rule 4, AD-47). They never reach the model, a tool result, screen context, the ledger or a log line - a named exception to AD-39's normalization. The record of a request masks every secret it carried (the Authorization header, and any header, query parameter or body member whose name the Conventions › Secrets pattern matches).
 
 ## Consistency Conventions
 

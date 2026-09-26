@@ -2,7 +2,7 @@
 title: 'Story 16.1: The try-it request console'
 type: 'feature'
 created: '2026-09-26'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -24,9 +24,9 @@ deferred: []
 **Always:**
 
 - The request is composed only from the document: the listed web application's path, the operation's path and verb, and its declared parameters. A path parameter fills exactly one segment (`encodeURIComponent`); a value of `.` or `..` is refused. The URL is absolute on `location.origin`, and one whose resolved origin differs is never sent.
-- "The current session" is the tab's own access token as `Authorization: Bearer`, with `credentials: 'omit'` (no cookie, so no silent `/login` mint and no `/logout` side effect) and `redirect: 'manual'`. The refresh token is never sent. (Pending the lead's ruling below.)
+- "The current session" is the tab's own access token as `Authorization: Bearer`, with `credentials: 'omit'` (no cookie, so no silent `/login` mint and no `/logout` side effect) and `redirect: 'manual'`. The refresh token is never sent (AD-57 (1)).
 - A verb other than GET, HEAD or OPTIONS is sent only after a confirmation dialog restating the verb and the full URL.
-- The console refuses, without sending, any request whose resolved path is under one of OcuPilot's own applications (`/ocupilot`, `/api/ocupilot`, `/api/ocupilot/readiness`), matched case-insensitively with the trailing slash normalized (AD-13's web-application rule). (Pending the lead's ruling below on `/api/admin`.)
+- The console refuses, without sending, (i) any request whose target resolves under one of OcuPilot's own applications (`/ocupilot`, `/api/ocupilot`, `/api/ocupilot/readiness`), whatever the verb, and (ii) any `POST`, `PUT`, `PATCH` or `DELETE` whose target resolves under `/api/admin` (AD-57 (2)). The target is resolved **the way the browser will resolve it** before it is compared: the final URL is built through `new URL(...)` on `location.origin` (dot segments removed), then percent-decoded (so `%2e`, `%6F` and the like cannot hide a segment), repeated slashes collapsed, a trailing slash normalized, and case folded (IRIS matches applications case-insensitively, AD-13's web-application rule); the prefix match is on whole segments (`/api/ocupilotx` is not under `/api/ocupilot`). One function does the resolution and both refusals, and every refusal is pinned by a test that reddens when it is removed.
 - The response renders as text on `--ocu-code-surface` in a `pre`: JSON is pretty-printed through `JSON.parse`/`JSON.stringify` only, anything else is shown as decoded text up to a 256 KB cap with the cut marked, and a non-text content type shows its byte count, never an `img`, frame or link (AD-11 rule 4). Nothing is bound as markup.
 - The record (the request line, headers and body shown beside the response) holds only masked values once sent: the `Authorization` value reads masked, and any query, header or top-level JSON body member whose name matches the Conventions › Secrets credential pattern reads masked. The unmasked value lives only in the form field until send.
 - The console state never enters screen context, a tool result, the ledger or a log line; the viewer's context fields are unchanged (AD-24, AD-36).
@@ -45,6 +45,9 @@ deferred: []
 | Non-JWT password app | `/api/mgmnt`, `GET /v2/` | Sent; status 401 and its body shown as the round trip's honest answer (measured) | none |
 | Mutating verb | any `DELETE`/`POST`/`PUT`/`PATCH` | Confirmation dialog first; Cancel sends nothing | Confirm sends once |
 | OcuPilot's own app | `/api/ocupilot` document, or a composed URL resolving under it | Not sent; refusal line in place of Send | none |
+| Own app by another spelling | `/API/OcuPilot/x`, `/api/%6Fcupilot/x`, `/api/admin/../ocupilot/x`, `//api//ocupilot/x`, `/ocupilot` | Not sent; same refusal (resolved as the browser resolves it) | none |
+| Admin API write | any `POST`/`PUT`/`PATCH`/`DELETE` resolving under `/api/admin` (any spelling above) | Not sent; the admin-write refusal names where the change is made instead | none |
+| Admin API read | `GET` under `/api/admin` | Sent (row 1) | none |
 | Traversal | path parameter `..` | Not sent; field-level refusal | none |
 | Secret in request | query `apiKey=x`, header `X-Token`, body `{"Password":"p"}` | Record shows each value masked; Authorization masked | none |
 | Network failure | fetch rejects | Console states the request did not complete; no status invented | none |
@@ -70,22 +73,25 @@ deferred: []
 **Execution:**
 
 - `ui/src/app/core/secret-names.ts` -- new: the credential pattern as a runtime `isSecretName(name)`, and the existing `ui/tools/credential-lists.test.mjs` pins it equal to `credential-pattern.mjs` -- masking needs the one list at runtime.
-- `ui/src/app/areas/web-applications/try-it.ts` -- new framework-free module: `composeRequest(basePath, operation, values)` (segment encoding, `.`/`..` refusal, origin check, OcuPilot-own refusal), `isSafeVerb`, `maskedRecord(request)`, `renderBody(contentType, bytes)` -- the rules above in one testable place.
+- `ui/src/app/areas/web-applications/try-it.ts` -- new framework-free module: `composeRequest(basePath, operation, values)` (segment encoding, `.`/`..` refusal, origin check), `resolveTarget(url)` (browser-equivalent resolution: `new URL`, percent-decode, slash collapse, trailing slash, case fold) and `refusal(verb, target)` (OcuPilot's own applications for any verb; `/api/admin` for `POST`/`PUT`/`PATCH`/`DELETE`, AD-57 (2)), `isSafeVerb`, `maskedRecord(request)`, `renderBody(contentType, bytes)` -- the rules above in one testable place.
 - `ui/src/app/areas/web-applications/try-it.store.ts` -- new store (AD-19), provided by the page: per-operation field values, in-flight flag, the masked record and the rendered response; sends through an injected `fetch` with the Bearer from `TokenStore`.
 - `ui/src/app/areas/web-applications/openapi-viewer.page.ts` -- a "Try it" disclosure per operation: one labeled input per declared parameter, a body `textarea` when the verb takes one, Send (confirmation for a non-safe verb), then the record and response on the code surface.
-- `ui/src/app/core/strings.ts` + EXPERIENCE.md -- new copy appended at the end of the Fixed strings table (line count otherwise unchanged): "Try it", "Send", "Request", "Response", "Body", "Send <VERB> <URL>?", the own-application refusal, the traversal refusal, the package-only reason, "The request did not complete.", the cut notice.
+- `ui/src/app/core/strings.ts` + EXPERIENCE.md -- new copy appended at the end of the Fixed strings table (line count otherwise unchanged): "Try it", "Send", "Request", "Response", "Body", "Send <VERB> <URL>?", the own-application refusal, the admin-write refusal (naming that OcuPilot's own screens make those changes), the traversal refusal, the package-only reason, "The request did not complete.", the cut notice.
 - `ui/src/styles/_components.scss` -- append console rules (tokens only; no control under its declared minimum; no page-level horizontal scroll -- the response `pre` scrolls inside itself).
-- `ui/tools/try-it.test.mjs` -- node test over `try-it.ts`: every matrix row's composition, refusal and masking.
+- `ui/tools/try-it.test.mjs` -- node test over `try-it.ts`: every matrix row's composition, refusal and masking, including every spelling in the "another spelling" row against each of the three own applications and `/api/admin`; each refusal arm (own applications; admin write) has a case that reddens alone when that arm is removed.
 - `ui/src/app/areas/web-applications/openapi-try-it.page.spec.ts` -- new component spec (leave `openapi-viewer.page.spec.ts`, contended with Epic 23, untouched).
-- `ui/browser/openapi-try-it.browser-spec.mjs` -- new: against `ocupilot-ci`, open `/api/admin`'s document, send `GET /v2/web-apps`, assert status 200 and body text; `/api/mgmnt` `GET` answers 401; a `DELETE` shows the dialog and Cancel sends nothing; the `/api/ocupilot` document offers no Send; both themes pass the DW-1337 structural gate with no new allowance.
+- `ui/browser/openapi-try-it.browser-spec.mjs` -- new: against `ocupilot-ci`, open `/api/admin`'s document, send `GET /v2/web-apps`, assert status 200 and body text; `/api/mgmnt` `GET` answers 401; a `DELETE` on a non-admin application shows the dialog and Cancel sends nothing; a `DELETE` in `/api/admin`'s document offers no Send and shows the admin-write refusal; the `/api/ocupilot` document offers no Send; both themes pass the DW-1337 structural gate with no new allowance.
 
 **Acceptance Criteria:**
 
 - Given an operation in the OpenAPI document viewer of a JWT-enabled application, when the person sends it, then the request carries the tab's access token and the console shows the answer's status and body.
 - Given any response, when it renders, then it is text on the code surface; a body containing `<img src=x onerror=...>` renders as those characters and issues no request.
+- Given a request whose target resolves, by any spelling, under OcuPilot's own applications, or a `POST`/`PUT`/`PATCH`/`DELETE` resolving under `/api/admin`, when the person tries to send it, then nothing is sent and the console shows the refusal (AD-57 (2)).
 - Given a request carrying a secret-named query, header or body member, when it has been sent, then the record shows the value masked and the page's DOM holds the unmasked value nowhere but the input it was typed into.
 
 ## Spec Change Log
+
+- 2026-09-26, lead, spec gate: orchestrator ruling (A) on the AD-10 intent gap, written into the spine as AD-57 (pointers from AD-10, AD-28, AD-39). Added the `/api/admin` write refusal, browser-equivalent target resolution before comparison, the spelling and admin-write matrix rows, the refusal AC, and per-arm reddening tests. Status reset to ready-for-dev.
 
 ## Review Triage Log
 
@@ -104,9 +110,9 @@ So (c): the only credential that makes "with the current session" true for an au
 
 (b) Requests resolving under OcuPilot's own applications are refused without sending: `/login` would mint and display a live token pair, `/logout` would end the instance-wide login (AD-28), and every other route refuses a request the console makes no differently from the shell's own.
 
-**Why this halts: it touches AD-10, AD-28 and AD-39.** With the access token, a try-it `DELETE` or `PUT` on `/api/admin/v2/web-app?name=/api/ocupilot` would delete or weaken OcuPilot's own web application through the vendor admin API, outside OcuPilot's write path where AD-10's prohibited set is evaluated (inference: the GET was measured authenticated and the route is declared; the delete was not executed). A console-side refusal is "a self-protection rule a screen enforces only in its UI", which AD-10 says is not a prohibition. The token also reaches the target application's own code (bounded by the access token's 60 s lifetime), which AD-28 does not say; and the raw response body reaching the screen is a new AD-39 exception.
+**Ruled (orchestrator, 2026-09-26, option A; AD-57).** The halt below was answered by AD-57: the console is a browser request under the tab's token, neither a tool nor the write path; it refuses OcuPilot's own applications and `/api/admin` writes after browser-equivalent resolution, confirms every other write, and keeps the raw response screen-only (a named AD-39 exception). Named gap: those writes stay reachable outside OcuPilot, as from the classic portal. The halt as raised: With the access token, a try-it `DELETE` or `PUT` on `/api/admin/v2/web-app?name=/api/ocupilot` would delete or weaken OcuPilot's own web application through the vendor admin API, outside OcuPilot's write path where AD-10's prohibited set is evaluated (inference: the GET was measured authenticated and the route is declared; the delete was not executed). A console-side refusal is "a self-protection rule a screen enforces only in its UI", which AD-10 says is not a prohibition. The token also reaches the target application's own code (bounded by the access token's 60 s lifetime), which AD-28 does not say; and the raw response body reaching the screen is a new AD-39 exception.
 
-**Governing ADs:** AD-1, AD-5, AD-8, AD-10, AD-11, AD-13, AD-19, AD-20, AD-24, AD-28, AD-29, AD-36, AD-39, AD-47.
+**Governing ADs:** AD-57, AD-1, AD-5, AD-8, AD-10, AD-11, AD-13, AD-19, AD-20, AD-24, AD-28, AD-29, AD-36, AD-39, AD-47.
 
 **Integration ACs:** no service is introduced; the console is screen-only and has no consumers. **Consumes:** Story 6.1's viewer, its read and `MgmntPort` `Document`, and `TokenStore`.
 
@@ -120,7 +126,7 @@ So (c): the only credential that makes "with the current session" true for an au
 
 **Commands:**
 
-- `cd ui && node --test tools/try-it.test.mjs tools/credential-lists.test.mjs` (loop) -- expected: green; mutation: drop the `..` refusal in `composeRequest` -> the traversal case reds.
+- `cd ui && node --test tools/try-it.test.mjs tools/credential-lists.test.mjs` (loop) -- expected: green; mutation: drop the `..` refusal in `composeRequest` -> the traversal case reds; mutation: remove the own-application arm of `refusal` -> the own-app cases red; mutation: remove the `/api/admin` write arm -> the admin-write cases red; mutation: skip the percent-decode in `resolveTarget` -> the `%6F` spelling case reds.
 - `cd ui && npx ng test --include src/app/areas/web-applications/openapi-try-it.page.spec.ts` (loop) -- expected: green; mutation: bind the body with `[innerHTML]` -> the markup-as-text case reds.
 - `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/ && OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/openapi-try-it.browser-spec.mjs` (loop) -- expected: green on `ocupilot-ci` only (a mutating verb is only ever sent there); mutation: omit the Bearer -> the `/api/admin` 200 case reads 401.
 - `cd ui && npm test` (once, before dev_complete) -- expected: green, bundle under `maximumWarning` 1854 kB.
@@ -128,5 +134,5 @@ So (c): the only credential that makes "with the current session" true for an au
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- AD-10 (with AD-28 and AD-39). Measured on ocupilot-ci: the only credential that makes a try-it round-trip "with the current session" at an authenticated REST application is the tab's OcuPilot access token (the CSPBrowserId cookie authenticated no data route; the Bearer authenticated every JWT-enabled application, /api/admin among them, and got 401 from non-JWT password apps). The explorer lists /api/admin, whose document declares PUT and DELETE on /v2/web-app, so a try-it could delete or weaken OcuPilot's own web applications outside the write path where AD-10 is evaluated, guarded only in the UI. Recommended ruling, for the lead to write into the spine: add an AD (or amend AD-10, AD-28 and AD-39) stating (1) the try-it console is a browser request under the tab's own access token, same-origin, no cookie, never the refresh token, composed only from a listed application's document; it is neither a tool nor OcuPilot's write path, so AD-10's instance-side prohibitions do not govern it, and the token reaching the target application's code, bounded by its 60 s lifetime, is a named consequence; (2) the console refuses without sending any request resolving under OcuPilot's own applications and any non-safe verb to /api/admin, whose writes OcuPilot's screens and tools already carry through the AD-10-guarded path, and names as a gap that a person can still reach those writes through other JWT-enabled applications or outside OcuPilot, as with the classic portal; (3) every other non-safe verb is sent after a confirmation dialog; (4) AD-39 named exception: the response body reaches the screen only, as text, never the model, a tool result, the ledger or a log. Alternative: drop the /api/admin carve-out and keep only the own-application refusal plus the named gap. The rest of this spec is planned against the recommended ruling; on the ruling, set status ready-for-dev after adjusting the two "(Pending ...)" bullets.
+Status: ready-for-dev
+Blocking condition: none (the AD-10 intent gap was answered by orchestrator ruling (A), recorded as AD-57 at the spec gate on 2026-09-26)
