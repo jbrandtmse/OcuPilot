@@ -7098,3 +7098,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-9-removing-the-classic-link-outs.md (code review) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: target=_blank at locator-bar.ts:175 (Help), home.page.ts:339, sign-in.ts:172, instance-notice.ts:67; the banned-everywhere clause names none of them. Pre-existing; 12.9 removed only the OAuth wording.
 - 2026-09-26T00:00:58Z status=by-design owner=12-9-removing-the-classic-link-outs by=cr note=spec gate Q3 left the Help/new-tab claim to its owner; reopens only via a UX amendment naming the outbound doc links
+
+### DW-1681: The demo fixture seeds a new <DIVIDE> application error on every container start, so each restart adds a duplicate
+- source: owner triage 2026-09-25 (7d51837b request) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: OcuPilot.Install.Fixture SeedApplicationError runs on every start from the container's start hook; seed only when no such error exists (owner)
+- 2026-09-26T03:10:29Z status=routed owner=range-end-cleanup by=orchestrator note=owner triage: seed only when none exists
