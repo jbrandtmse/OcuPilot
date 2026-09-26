@@ -231,6 +231,8 @@ OcuPilot runs one IRIS dev instance per parallel slot and one throwaway per slot
 
 Before a runner emits its completion contract it merges `origin/<feature>` into its epic branch inside its worktree, resolves any conflict there, re-runs the full suite and the per-story smoke against the merged tree, pushes, and only then completes — so the orchestrator's SC-4-P merge is conflict-free and the tests that prove the merge ran where the code lives. The orchestrator dispatches no epic until the feature branch's CI is green after the previous merge (`ci_green_verified` on the feature head, not only on the epic head).
 
+**When the merge brings ObjectScript** (owner-approved 2026-09-26, DW-1435), load the merged `src/` into a fresh or re-loaded throwaway before the suite. The merged tree's browser tier is CI's browser job.
+
 ## Rule 23 — Pre-approved gates (orchestrator, under `/epic-cycle`; owner instruction 2026-09-15)
 
 The owner has pre-answered two of the three merge-gate questions: **merge** — yes, whenever CI is green on the runner's head and the merge is conflict-free; **retrospective** — no. The **decision sheet** is not pre-answered: `escalated` and `decision-pending` entries are presented as the base kit requires, one sitting, with a recommended disposition each, and the orchestrator waits for the owner. A conflicted merge or a red head still stops and asks.
@@ -258,6 +260,8 @@ For the rest of the 4–12 range and the epics added to it, an epic's X.0 cleanu
 ## Rule 28 — CI resolves before the next implement spawn, not before the next plan spawn (lead/runner, under `/epic-cycle`; owner instruction 2026-09-20)
 
 The base kit's CI resolution point (1) is "before the next story's plan spawn", and a run still in progress there is awaited — which cost this project about thirty minutes of idle time per story (measured on Epic 5, 2026-09-20). On OcuPilot, point (1) is **the next story's implement spawn**: after `committed … ci=pending`, the lead proceeds at once to the next story's plan spawn, spec validation and spec gate, and resolves the previous story's run (waiting there if it is still in progress) immediately before writing the next `stage_spawned stage=implement` entry. On `failure` the base kit's red path applies to the **previous** story first — re-open, rework, re-review, re-smoke, re-commit — while the new story's spec stays `ready-for-dev` untouched; its implement spawn follows the green. Points (2), (3) and (4) are unchanged. A plan stage writes a spec and no code, which is what makes the reordering safe.
+
+**Push the implement or merge commit on its own** (owner-approved 2026-09-26, DW-1434), and confirm its run registered by `headSha` in `gh run list`, before stacking any `[skip ci]` commit, because GitHub evaluates only the pushed head.
 
 ## Rule 29 — Targeted verification inside the implement stage; the full suites once before `dev_complete` (plan and implement stages, under `/epic-cycle`; owner instruction 2026-09-20)
 

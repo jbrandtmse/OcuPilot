@@ -121,7 +121,8 @@ The MCP-server rule above and the container detail below this block are the oper
 - Check authored Markdown with `bash scripts/lint-docs.sh` (`--fix` repairs structure). A bare
   `npx markdownlint-cli2` lints nothing: the config carries rules only, and the document set lives
   in `scripts/check-prose.py`. The `.githooks/pre-commit` hook runs both on staged files once you
-  have run `git config core.hooksPath .githooks` in the clone.
+  have run `git config core.hooksPath .githooks` in the clone. A planning document other suites cite
+  by line (EXPERIENCE.md, epics.md) also needs `cd ui && npm run test:tools`.
 - Build and test the client from `ui/`: `npm run build` (its `prebuild` chains seven checkers —
   version guard, `client-lint.mjs`, `screen-mirror.mjs --check`, `classic-links.mjs`,
   `ipm-manifest.mjs --check`, `field-lists.mjs --check`, `browser-reset.mjs`) and `npm test`
