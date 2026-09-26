@@ -83,12 +83,12 @@ If you rename this directory, or rename the profile, check the two still differ.
 <!-- bmad:context -->
 <!-- Verified 2026-09-09 against 17f662e. Managed by bmad-project-context; edits inside this block are replaced on refresh. Keep anything you want preserved outside the markers. -->
 
-An agent co-pilot for the InterSystems IRIS System Management Portal — an Angular 22 shell over an
-ObjectScript REST API, installed into an IRIS for Health 2026.2 instance. Greenfield:
-[src/OcuPilot/](src/OcuPilot/) is empty and `ui/` does not exist yet, so the work in flight is
-planning documents, not code. Planning artifacts live in `_bmad-output/planning-artifacts/`;
-[README.md](README.md) is the long-form container and VS Code setup reference. The MCP-server rule
-above and the container detail below this block are the operational essentials.
+An agent co-pilot for the InterSystems IRIS System Management Portal — an Angular 22 shell
+([ui/](ui/)) over an ObjectScript REST API ([src/OcuPilot/](src/OcuPilot/)), installed into an IRIS
+for Health 2026.2 instance. Planning artifacts live in `_bmad-output/planning-artifacts/`;
+[README.md](README.md) is the user-facing overview and install guide, and
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) is the long-form container and VS Code setup reference.
+The MCP-server rule above and the container detail below this block are the operational essentials.
 
 ## Policy
 
@@ -303,9 +303,9 @@ classes into IRIS with the MCP tools, load from that folder. The `irislib/`, `ir
 
 ## Docs
 
-[README.md](README.md) is the long-form reference, including the VS Code / ObjectScript
-setup rationale — in particular the full write-up of the `externalServer` name-collision
-trap described above.
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) is the long-form reference, including the VS Code /
+ObjectScript setup rationale — in particular the full write-up of the `externalServer`
+name-collision trap described above. [README.md](README.md) is the user-facing overview.
 
 `irislib/`, `irissys/`, `irisui/` and `irisdocs/` are **read-only reference material** (container
 exports and a mirror of the official `%Api` docs), not project source — never edit them or load

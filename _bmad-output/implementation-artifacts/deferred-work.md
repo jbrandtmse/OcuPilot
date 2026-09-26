@@ -7173,3 +7173,17 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-4-citation-chips-with-click-through.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: reply.ts builds the button with textContent only; EXPERIENCE.md defines no accessible description, and adding one needs a Fixed-strings row and a strings.ts entry.
 - 2026-09-26T04:44:16Z status=wontfix-accepted owner=11-4-citation-chips-with-click-through by=cr note=reopen_if=an accessibility review or NFR-12 audit flags the chip's purpose as unannounced
+### DW-1681: The demo fixture seeds a new <DIVIDE> application error on every container start, so each restart adds a duplicate
+- source: owner triage 2026-09-25 (7d51837b request) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: OcuPilot.Install.Fixture SeedApplicationError runs on every start from the container's start hook; seed only when no such error exists (owner)
+- 2026-09-26T03:10:29Z status=routed owner=range-end-cleanup by=orchestrator note=owner triage: seed only when none exists
+
+### DW-1682: Four code comments still name README sections that moved to docs/DEVELOPMENT.md in the README split
+- source: owner decision 2026-09-25 (4b0749a0) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: scripts/ci-throwaway.sh:3, scripts/container-start.sh:51, src/OcuPilot/Test/ProhibitedRoute.cls:1354, src/OcuPilot/Test/Wire.cls:905 cite README.md sections now in docs/DEVELOPMENT.md; repoint each to the matching docs/DEVELOPMENT.md section
+- 2026-09-26T04:29:46Z status=routed owner=range-end-cleanup by=orchestrator note=owner: repoint to docs/DEVELOPMENT.md
+
+### DW-1688: proposal-card.ts's doc comment on destructive names Story 14.7, which the owner scratched
+- source: owner decision 2026-09-25 (2ce5a785 scratched 14.7) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ui/src/app/shell/proposal-card.ts:645-647 says the typed-name field is Story 14.7's and that 14.7 reads the wire declaration; 14.7 is scratched (a destructive agent proposal keeps its destructive bar and Confirm without a typed name); restate the comment
+- 2026-09-26T04:52:40Z status=routed owner=range-end-cleanup by=orchestrator note=owner: route to range-end-cleanup

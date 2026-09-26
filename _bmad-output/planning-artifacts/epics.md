@@ -748,7 +748,11 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner triage, 2026-09-24 (reliability), high priority.** Live turns on Claude Opus 5 failed intermittently - three of about ten in an hour - with "The turn stopped at provider": the connection broke within a second of the call, before any reply (`<READ>` in `%Net.HttpRequest`), and a transport failure is never retried. Separately, the panel reported a confirmed create as "was updated". Story 10.6 fixes both; it runs alone on slot B at Epic 12's next story boundary.
 
-**Owner plan, 2026-09-25 (voting week).** Epics 14 and 16 run in the voting week, where improvements are allowed, starting once the submission build is cut. Order: Story 16.1 (the try-it console), then Stories 16.8 and 16.9 (the secondary log viewers and the hub); then Story 14.1 (the copy-out draft), Stories 14.3 and 14.8 (defanging and the seeded-injection test), Story 16.3 (effective privileges) and Story 16.16 (the agent audit viewer); then the rest of Epic 16; then Story 14.5, with Stories 14.2, 14.4 and 14.6 last. The first two groups close the gaps a judge sees when comparing entries and show what only the agent does. `main` moves only at planned releases - after each of the first two groups and at the end of the week - each a pull request with green CI, a clean-clone check and a new package version, so a judge never installs a half-finished build. Story 14.7 is scratched: a user acting on a screen still types the target's name, while a destructive agent proposal takes the destructive bar, a destructive Confirm and the user's own press, without a typed name. FR-17 and Stories 5.10 and 7.2 are amended to match. Epics 18 to 22 stay after the contest.
+**Owner plan, 2026-09-25 (voting week).** Epics 14 and 16 run in the voting week, where improvements are allowed, starting once the submission build is cut. Order: Story 16.1 (the try-it console), then Stories 16.17 to 16.19 (the read-back line, Home's performance row and impact lines on removals, added from the contest survey the same evening) and Story 16.20 (older messages.log files, Community Idea DPI-I-966), then Stories 16.8 and 16.9 (the secondary log viewers and the hub); then Story 14.1 (the copy-out draft), Stories 14.3 and 14.8 (defanging and the seeded-injection test), Story 16.3 (effective privileges) and Story 16.16 (the agent audit viewer); then the rest of Epic 16; then Story 14.5, with Stories 14.2, 14.4 and 14.6 last. The first two groups close the gaps a judge sees when comparing entries and show what only the agent does. `main` moves only at planned releases - after each of the first two groups and at the end of the week - each a pull request with green CI, a clean-clone check and a new package version, so a judge never installs a half-finished build. Story 14.7 is scratched: a user acting on a screen still types the target's name, while a destructive agent proposal takes the destructive bar, a destructive Confirm and the user's own press, without a typed name. FR-17 and Stories 5.10 and 7.2 are amended to match. Epics 18 to 22 stay after the contest.
+
+**Owner triage, 2026-09-25 (logo), high priority.** The header draws the reversed lockup, a white wordmark on a transparent cut-out whose anti-aliased edges fringe against the navy chrome. Story 15.10 draws the navy-wordmark lockup on a white rounded tile instead, as the demo landing page does, and amends DESIGN.md at origin. It runs alone on slot B, free since Epic 12 merged, and the submission cut waits for it.
+
+**Owner triage, 2026-09-25 (model), high priority.** Anthropic has released Claude Opus 5.5, and the public demo already runs on it, verified by a connection test and a tool-calling turn. Story 10.7 makes `claude-opus-5-5` the default model of a new Anthropic definition, so a judge's fresh install starts on it. It runs on the first slot to free, and the submission cut waits for it.
 
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
@@ -838,7 +842,7 @@ A user opens the editors that carry the classic portal's whole field set - user,
 
 ### Epic 10: Run on any model, and harden the write path
 
-An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), a connection test that answers before the Web Gateway's timeout (10.5), and turns that survive a dropped connection (10.6). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
+An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), a connection test that answers before the Web Gateway's timeout (10.5), turns that survive a dropped connection (10.6), and Claude Opus 5.5 as the Anthropic default (10.7). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
 
 **FRs covered:** FR-25 (the three remaining families)
 
@@ -878,7 +882,7 @@ An OcuPilot administrator can disable any write tool by tool and action, a user 
 
 ### Epic 15: Shell conveniences and the theme
 
-A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, a dark theme the community has been asking for, the rail's icons, columns wide enough to read, and sign-out where people look for it. Polish week.
+A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, a dark theme the community has been asking for, the rail's icons, columns wide enough to read, sign-out where people look for it, and a header logo that looks finished. Polish week.
 
 **FRs covered:** FR-73
 
@@ -886,7 +890,7 @@ A user makes the portal their own - own password, favorites, recents, menu searc
 
 ### Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20).
 
 **FRs covered:** FR-74, FR-76, FR-77, FR-78
 
@@ -4891,7 +4895,7 @@ So that I can define the events my own code emits without going back to the clas
 
 ## Epic 10: Run on any model, and harden the write path
 
-An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), a connection test that answers before the Web Gateway's timeout (10.5), and turns that survive a dropped connection (10.6). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
+An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), a connection test that answers before the Web Gateway's timeout (10.5), turns that survive a dropped connection (10.6), and Claude Opus 5.5 as the Anthropic default (10.7). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
 
 ### Story 10.1: The message and tool-definition adapters
 
@@ -5063,6 +5067,29 @@ So that the agent reads as reliable on the first try.
 - **Given** a confirmed proposal from a tool that declares `created` - every create tool already does (inference: the fault is on the path from the confirm to the panel)
 - **When** the panel and the toast report the outcome
 - **Then** they read "<entity> was created", and a browser spec pins it end to end for a web-application create.
+
+### Story 10.7: Claude Opus 5.5 as the Anthropic default
+
+**Owner triage, 2026-09-25, high priority.** Runs on the first slot to free and merges before the submission cut.
+
+As an operator creating an Anthropic definition,
+I want it to start on Anthropic's current flagship model,
+So that a first install gets the strongest agent without editing the model name.
+
+**Acceptance Criteria:**
+
+- **Given** the provider catalog's Anthropic row
+- **When** a new Anthropic definition is created without a model
+- **Then** its model is `claude-opus-5-5`, and the row's model suggestions list `claude-opus-5-5` first while keeping `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5` and `claude-fable-5-1`
+- **And** a definition that already stores a model keeps it: nothing migrates stored rows.
+
+- **Given** Story 10.4's rule that no sampling parameter is sent to Anthropic
+- **When** a definition on `claude-opus-5-5` calls the model
+- **Then** it sends none, as it does for `claude-opus-5`; the owner verified a connection test and a tool-calling turn on `claude-opus-5-5` on the public demo on 2026-09-25, and this story needs no live key.
+
+- **Given** the tests and fixtures that pin the Anthropic row or its canonical default
+- **When** this story completes
+- **Then** they name `claude-opus-5-5`, test data that merely needs some model name may keep `claude-opus-5`, and the README's provider table states the new default.
 
 ---
 
@@ -5786,7 +5813,7 @@ So that "the model is assumed compromised" is a tested claim rather than a postu
 
 ## Epic 15: Shell conveniences and the theme
 
-A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, a dark theme the community has been asking for, the rail's icons, columns wide enough to read, and sign-out where people look for it. Polish week.
+A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, a dark theme the community has been asking for, the rail's icons, columns wide enough to read, sign-out where people look for it, and a header logo that looks finished. Polish week.
 
 ### Story 15.1: Change your own password
 
@@ -6034,11 +6061,38 @@ So that the shell reads as finished.
 - DW-1649: The shared browser helper `clickRowCentre` never checks where its click lands, so a re-render between measuring and clicking misclicks and the caller times out on the row trigger instead of the helper naming the miss (ledger; routed by cr 2026-09-25)
 - DW-1648: Pin the row-action column to the table frame's right edge so the row menu is always visible without horizontal scroll; column widths stay as Story 15.8 set them, and the "Trigger reach" spec's two "starts past the frame" assertions change with it (ledger; routed by merge_gate 2026-09-25)
 
+### Story 15.10: The header logo on a white tile
+
+**Owner triage, 2026-09-25, high priority.** Runs alone on slot B and merges before the submission cut.
+
+As a judge opening OcuPilot for the first time,
+I want the logo in the header to look clean,
+So that the first thing I see looks finished.
+
+**Acceptance Criteria:**
+
+- **Given** the header
+- **When** it renders
+- **Then** the lockup is the navy-wordmark file `OcuPilot-Lockup-horizontal.png`, the one the sign-in card uses, on a white tile with rounded corners and even padding, sized to sit inside the header band
+- **And** the reversed file, whose transparent cut-out fringes against the chrome, is no longer drawn in the header.
+
+- **Given** the light and the dark theme
+- **When** the header renders in each
+- **Then** the tile looks the same in both, because the chrome does not change with the theme.
+
+- **Given** keyboard focus on the logo link
+- **When** it is focused
+- **Then** the focus ring surrounds the tile, and the link still goes Home under the same accessible name.
+
+- **Given** DESIGN.md's header lockup section and EXPERIENCE.md's logo-lockup row, both of which name the reversed file with no plate
+- **When** this story completes
+- **Then** both state the tile at origin, `header.ts`'s doc comment says the same, and a browser spec pins that the header draws the navy lockup on a white tile.
+
 ---
 
 ## Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20).
 
 **Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
 
@@ -6381,6 +6435,102 @@ So that the ledger is readable without SQL.
 - **Given** any row
 - **When** it renders
 - **Then** secrets are absent, because they were excluded at write time by schema rather than redacted afterwards.
+
+### Story 16.17: The read-back line
+
+As a developer-administrator who just confirmed a change,
+I want the screen to say the instance now holds what was written,
+So that I can trust the change without re-opening the record.
+
+**Owner survey, 2026-09-25.** Meridian, Ops Studio and OpsDeck sell "verified" writes; OcuPilot already re-reads the target when the screen refreshes, and this story shows the comparison.
+
+**Acceptance Criteria:**
+
+- **Given** a confirmed write, from the agent's proposal or from a screen's own form or action
+- **When** the affected screen refreshes and marks the changed row
+- **Then** the row carries "Read back: matches" when every field the write sent reads back with the value sent, compared on the instance rather than in the browser.
+
+- **Given** a field that reads back with a different value, or a target that no longer reads at all
+- **When** the comparison runs
+- **Then** the row says "Read back: differs" and names the fields, or "Read back: not found", and the proposal card's closing line says the same, **never** a silent success.
+
+- **Given** a field the instance normalizes on save, such as a path's trailing slash or a list's order
+- **When** it is compared
+- **Then** the descriptor's field list declares how that field is compared, so a normalized value is not reported as a difference, and a secret field is reported as written without its value being read back.
+
+### Story 16.18: Home's performance row
+
+As a developer-administrator opening OcuPilot,
+I want the instance's pulse on the first screen,
+So that I can tell at a glance whether it is busy or struggling.
+
+**Owner survey, 2026-09-25.** IRIS-Operations-Center and LuminIRIS lead with live metrics; Home shows system information and no motion.
+
+**Acceptance Criteria:**
+
+- **Given** Home
+- **When** it renders
+- **Then** it shows a performance row - cache efficiency, global references per second, global updates per second and disk reads and writes per second - read from the instance's own dashboard metrics, each with its unit.
+
+- **Given** the auto-refresh framework
+- **When** Home stays open
+- **Then** the row refreshes on the framework's interval, and global references per second draws a small line of the last ten minutes that grows while the screen is open, starting empty rather than inventing history.
+
+- **Given** a caller who may not read the metrics
+- **When** Home renders
+- **Then** the row is absent rather than showing zeros, and the agent's Home context carries the same values when it is present.
+
+### Story 16.19: Impact lines on removals
+
+As a developer-administrator about to remove something,
+I want to be told what else depends on it,
+So that I do not break access I did not know about.
+
+**Owner survey, 2026-09-25.** FlightDeck's dry run and Meridian's home page both lead with impact; Story 11.8's privilege line is the sibling this extends.
+
+**Acceptance Criteria:**
+
+- **Given** a proposal or a screen dialog that deletes a role
+- **When** it renders
+- **Then** it carries an impact line naming how many users hold the role and how many web applications grant it, with the first few names.
+
+- **Given** removing a role from a user
+- **When** it renders
+- **Then** the impact line names the resources and permissions the user loses, net of what their other roles still grant.
+
+- **Given** deleting a resource
+- **When** it renders
+- **Then** the impact line names the roles that grant it and the web applications and databases it guards.
+
+- **Given** an impact that cannot be computed because the caller may not read a source
+- **When** the line renders
+- **Then** it says which part could not be checked rather than reporting no impact, and the counts are read fresh when the proposal is minted or the dialog opens.
+
+### Story 16.20: Older messages.log files
+
+As a developer-administrator finding out what happened before messages.log rolled over,
+I want to open the older messages files from the portal,
+So that I do not need a shell on the server to read them.
+
+**Community Idea DPI-I-966, owner decision 2026-09-25.** "Option to show older message.log in IRIS SMP" has Community Opportunity status; the classic portal shows only the current file.
+
+**Acceptance Criteria:**
+
+- **Given** the messages.log viewer
+- **When** it opens
+- **Then** it offers a file choice listing `messages.log` and every rotated messages file in the instance's manager directory, such as `messages.old_20260412_1`, newest first, each with its size and last-modified time.
+
+- **Given** an older file is chosen
+- **When** it loads
+- **Then** it pages, searches and filters exactly as `messages.log` does, its address names the file so it can be shared, and the agent's screen context and "explain this entry" work on its lines.
+
+- **Given** the file choice reaches the server
+- **When** it is resolved
+- **Then** only a name matching the rotated messages-file pattern inside the manager directory is accepted - never a caller-supplied path - and reading it requires exactly the privilege `messages.log` requires.
+
+- **Given** the README and the Open Exchange listing
+- **When** this story completes
+- **Then** both name DPI-I-966 among the Community Ideas OcuPilot implements.
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
