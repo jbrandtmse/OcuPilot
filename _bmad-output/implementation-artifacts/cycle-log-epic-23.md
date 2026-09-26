@@ -37,3 +37,8 @@
 2026-09-26T12:55:18Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@d4a2ff1d merge=0d4934ad conflicts=sprint-status.yaml(resolved:theirs+regenerate+set_23-1=review,epic-23=in-progress) code_changes=none(docs,planning) verify=rides_next_batch_push
 2026-09-26T13:25:54Z	Story 23.1	ci_resolved	batch=B2+B3 run=36242870954 head=b81ec899 result=success resolved_at=next_implement
 2026-09-26T13:25:54Z	Story 23.1	stage_spawned	stage=implement batch=B4+B8 spawn_at=2026-09-26T13:25:54Z model=opus agent_name=23-1-the-range-end-cleanup-implement-b4b8 cycle_iteration=3
+2026-09-26T14:34:50Z	Story 23.1	dev_complete	batch=B4+B8 spawn_at=2026-09-26T13:25:54Z model=opus build_sha=e026c64c baseline_revision=264c8731 review_loop_iteration=0 followup_review_recommended=true deferred=1 harvested=DW-1699(open,B6) files=24 bundle_initial=1.84MB cycle_iteration=3 subagent_tokens=283722
+2026-09-26T14:34:50Z	Story 23.1	adr_verifications_complete	batch=B4+B8 result=none_required reason=no_AD_tooled_AC mutations=in_spec_verification model=claude-opus-5-5
+2026-09-26T14:34:50Z	Story 23.1	qa_complete	batch=B4+B8 result=skipped reason=pinning_tests_and_mutations_written_by_implement(Rule19);browser_legs_definitions_9/9_process-control_3/3
+2026-09-26T14:34:50Z	Story 23.1	pushed	batch=B4+B8 head=e026c64c ci=pending run=36248950796
+2026-09-26T14:34:51Z	Story 23.1	stage_spawned	stage=code-review batch=B4+B8 spawn_at=2026-09-26T14:34:51Z model=opus agent_name=23-1-the-range-end-cleanup-code-review-b4b8 cycle_iteration=3
