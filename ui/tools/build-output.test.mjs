@@ -276,6 +276,11 @@ test('the sign-in lockup reaches the bundle as a hashed asset the emitted CSS re
     lockup,
     `expected a hashed OcuPilot-Lockup-horizontal-<HASH>.png in ${distMediaDir}, got: ${JSON.stringify(mediaFiles)}`
   );
+  assert.deepEqual(
+    mediaFiles.filter((f) => /reversed/.test(f)),
+    [],
+    'nothing draws the reversed lockup (Story 15.10), so the bundle carries no copy of it'
+  );
 
   const cssText = readFileSync(cssBundlePath(), 'utf8');
   assert.ok(

@@ -15,7 +15,7 @@
 // "OcuPilot roles" table). ui/tools/design-tokens.mjs's COLOR_ROLES is the
 // machine-checked roster this file must equal exactly.
 //
-// Four more families live here because they are colors, not because they are
+// Five more families live here because they are colors, not because they are
 // roles -- DESIGN.md rule 2 and 8 (Design Notes #8) are explicit that none is a
 // color role:
 //   - `--ocu-logo-gradient-stop`: the logo's vivid teal #2090A0, the header
@@ -31,7 +31,8 @@
 //     plain `secondary` in dark -- so the dark scope's re-point flips it like a role.
 //   - `--ocu-server-flag-edge` (and `-dark`): DESIGN.md's `server-flag-badge.edge-dark`,
 //     a 1px `on-shell` at 20% edge drawn in dark mode only.
-// ui/tools/design-tokens.mjs's NON_ROLE_TOKENS names all four and excludes them from
+//   - `--ocu-logo-tile`: the header lockup's tile, a fixed white the dark scope never re-points.
+// ui/tools/design-tokens.mjs's NON_ROLE_TOKENS names all five and excludes them from
 // the 64-role count. The dark scope in _theme.scss re-points every one with a dark side.
 
 :root {
@@ -190,6 +191,8 @@
   // --- Non-role literals (not color roles -- see header) ------------------------
   // The logo's vivid teal. Never under text, never filling an area (DESIGN.md rule 2).
   --ocu-logo-gradient-stop: #2090a0;
+  // The header lockup's tile: DESIGN.md `logo-lockup.plate`, the same white in both modes.
+  --ocu-logo-tile: #ffffff;
 
   // Elevation & Depth shadow values (DESIGN.md, "Elevation & Depth"). Tinted with
   // the shell navy in light mode so shadows read as the chrome's, not gray smoke;

@@ -1061,7 +1061,7 @@ export const STRINGS = {
   // into the select the same name labels.
   headerNamespaceLabel: 'Namespace',
 
-  // The header lockup's accessible name (EXPERIENCE.md "`imports/OcuPilot-Lockup-horizontal-reversed.png` — the mark"). The separator is an em dash,
+  // The header lockup's accessible name (EXPERIENCE.md "the navy wordmark at 28 px on a white rounded tile with even padding"). The separator is an em dash,
   // authored as its escape (Rule 14); `epics.md:1350` renders the same name with a hyphen,
   // and EXPERIENCE.md is the authority for every word here. DESIGN.md:287 spells the alt
   // text "OcuPilot" instead -- filed, not reconciled in a component.

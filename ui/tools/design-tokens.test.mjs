@@ -148,6 +148,22 @@ test('the logo gradient stop is present, is #2090a0, has no dark side, and is no
   assert.ok(!COLOR_ROLES.includes('logo-gradient-stop'), 'logo-gradient-stop must be excluded from COLOR_ROLES');
 });
 
+test("the logo tile is #ffffff, has no dark side, is not a role, and is DESIGN.md's logo-lockup plate", () => {
+  // Fixed rather than reversed between modes: the dark scope never re-points it, so the header's
+  // tile is the same white in both themes. The frontmatter is the source the hex is transcribed from.
+  assert.equal(tokens.light['logo-tile'].toLowerCase(), '#ffffff');
+  assert.equal(tokens.dark['logo-tile'], undefined, 'logo-tile must not have a -dark side');
+  assert.ok(!COLOR_ROLES.includes('logo-tile'), 'logo-tile must be excluded from COLOR_ROLES');
+  assert.deepEqual(NON_ROLE_TOKENS['logo-tile'], { hasDark: false });
+
+  const block = /\n  logo-lockup:\n((?:    .*\n)+)/.exec(designMdRaw);
+  assert.ok(block, "expected DESIGN.md's logo-lockup frontmatter block");
+  const plate = /^    plate: '(#[0-9A-Fa-f]{6}) /m.exec(block[1]);
+  assert.ok(plate, 'the logo-lockup plate names a hex');
+  assert.equal(plate[1].toLowerCase(), tokens.light['logo-tile'].toLowerCase(), 'the tile token is the plate DESIGN.md publishes');
+  assert.match(block[1], /^    asset: imports\/OcuPilot-Lockup-horizontal\.png$/m, 'the header asset is the navy-wordmark file');
+});
+
 test('the three elevation shadow levels are present in both modes and are not counted as roles', () => {
   for (const level of [1, 2, 3]) {
     const name = `elevation-${level}`;
@@ -506,14 +522,26 @@ test('the header band is the documented gradient, and nothing in it is drawn bel
   assert.match(placeholder[1], /opacity:\s*1/, "and the browser's own default fade removed");
 });
 
-test('the lockup on the chrome is the reversed file, never the navy-wordmark one', () => {
-  // The navy wordmark is 1.02:1 on the shell. `_components.scss` already says the sign-in card
-  // must never use the reversed file; this is the converse, and the two rules are what keep
-  // each lockup on the ground it was cut for.
+test('the header lockup is the navy-wordmark file on the white tile', () => {
+  // The navy wordmark is 1.02:1 on the shell, so the tile is its ground; the tile is the anchor
+  // itself, so the focus ring surrounds it. The reversed file is not drawn and not vendored.
   const lockup = /\.ocu-header-lockup\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
   assert.ok(lockup, 'expected an .ocu-header-lockup rule');
-  assert.match(lockup[1], /OcuPilot-Lockup-horizontal-reversed\.png/);
-  assert.match(lockup[1], /height:\s*32px/, "DESIGN.md's own 32px");
+  assert.match(lockup[1], /url\('\.\.\/assets\/lockup\/OcuPilot-Lockup-horizontal\.png'\)/);
+  assert.ok(!/reversed/.test(lockup[1]), 'the header never draws the reversed file');
+  assert.match(lockup[1], /background-color:\s*var\(--ocu-logo-tile\)/, 'the tile is the fixed non-role white');
+  assert.match(lockup[1], /border-radius:\s*var\(--ocu-radius-/, 'the tile has rounded corners');
+  assert.equal(
+    [...lockup[1].matchAll(/^\s*padding:\s*(.*);$/gm)].map((match) => match[1]).join(' | '),
+    'var(--ocu-space-1)',
+    'one even padding on every side'
+  );
+  assert.match(lockup[1], /background-origin:\s*content-box/, 'the padding is the margin around the image');
+  assert.deepEqual(
+    readdirSync(join(here, '..', 'src', 'assets', 'lockup')).filter((name) => /reversed/.test(name)),
+    [],
+    'the reversed file is no longer vendored'
+  );
 
   const card = /\.ocu-signin-lockup\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
   assert.ok(card, 'expected an .ocu-signin-lockup rule');

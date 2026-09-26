@@ -2,14 +2,22 @@
 title: 'Story 15.10: The header logo on a white tile'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '04fbb667e8103126549047457cdedf1c0fcc1431'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-15-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The DW-1337 structural gate reports a varying set of stale 720px status-bar stamp entries run to run.
+    evidence: |-
+      Three runs on ocupilot-b-ci with an unchanged bundle: 223/223 0 stale, then 219 found 4 stale, then 222 found 1 stale; every stale key is overflow|720|...ocu-status-bar-stamp on a different screen. The stamp's presence is timing-dependent (inference); the status bar is outside this story. 0 fresh in every run.
+    location: >-
+      ui/browser/structural-baseline.json (ocu-status-bar-stamp rows)
+    severity: low
 ---
 
 <intent-contract>
@@ -136,6 +144,27 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-26 — Review pass
+
+- verdicts: 16 findings — high 0, medium 3, low 7, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` verification-gap: `background-size`/`-position`/`-origin` unasserted, so a cropped or offset lockup stays green — `tileFigures` now reads them and AC1 asserts `contain`, `50% 50%`, `content-box`, `no-repeat`; mutation recorded.
+  - `[medium]` `[patch]` verification-gap: AC2's pixel equality never seen red and true for two blank tiles — AC2 now asserts the light tile differs from the same tile with its image switched off (CSSOM override; the CSP refuses a `<style>` tag); dark-only `filter` mutation reddens the pixel assertion alone.
+  - `[low]` `[patch]` verification-gap: the 720 leg has no mutation line — `width: 200px` mutation demonstrated and recorded.
+  - `[low]` `[patch]` verification-gap: "no longer in the bundle" checked only in the source folder — `build-output.test.mjs` now asserts no `reversed` file in `media/`; mutation recorded.
+  - `[low]` `[patch]` verification-gap (other): `header.spec.ts:234` comment still says "No plate, no ground" — rewritten to name the tile.
+  - `[false]` `[reject]` verification-gap (other): the new browser spec is untracked — finalize stages it by path; not a defect in the change.
+  - `[medium]` `[patch]` intent-alignment: no test shows the navy lockup is actually painted — same root as the AC2 ink row; the ink assertion closes it.
+  - `[low]` `[patch]` intent-alignment: "8px from the left edge" and the drawn size unmeasured — AC1 now asserts the 8px offset; the drawn size is pinned by `contain` in the content box (the width-limited 27.94px against the stated 28px is sub-pixel).
+  - `[false]` `[reject]` intent-alignment: the 154px column is not measured — the intent's claim is that the tile fits, which the 720 leg measures (containment and no intersection).
+  - `[low]` `[reject]` intent-alignment: the halo and exact 2px offset are not pinned — the focus rule is unchanged by this story and the matrix asks for offset ≥ 0; adding assertions on untouched CSS is not worth it.
+  - `[false]` `[reject]` intent-alignment: the name is read from `aria-label`, not the computed name — on an anchor with no content and no `aria-labelledby` the attribute is the computed name.
+  - `[low]` `[reject]` intent-alignment: `PIXEL_INSET` 6 is hard-coded rather than read from `--ocu-radius-md` — a radius change only widens what is compared; not worth a token read in the spec.
+  - `[false]` `[reject]` intent-alignment: DESIGN.md adds rules (mark-only variant on the tile, new Do/Don't cells) — the spec's Tasks prescribe exactly these wordings.
+  - `[false]` `[reject]` intent-alignment: `asset-light-ground` reused as `asset-reversed` — the spec's Tasks prescribe the rename.
+  - `[false]` `[reject]` intent-alignment: DESIGN.md frontmatter asset list still lists the reversed files — they remain design assets in `imports/`, so the list is accurate.
+  - `[low]` `[patch]` intent-alignment: EXPERIENCE.md row 534 lost its closing full stop — restored (line count unchanged); the mid-row marker follows Story 15.9's rows.
+
 ## Design Notes
 
 **Governing ADs and conventions (Rule 6):**
@@ -205,9 +234,46 @@ Before any browser read:
   - DESIGN.md `asset:` back to the reversed file, or the `plate:` hex changed → `design-tokens.test` red;
   - one word of the cited row-534 phrase changed → `citations.test` red.
 
+Recorded (each reverted; `git status --short` and `git diff --stat` unchanged after each):
+
+- mutation: reversed PNG restored and the header `url()` pointed at it (rebuilt, redeployed) → `header-lockup` "AC1: at 1280 px" red ("the header and the sign-in card draw the same file") and `design-tokens.test` "the header lockup is the navy-wordmark file on the white tile" red.
+- mutation: tile `background-color: var(--ocu-surface-container-lowest)` (rebuilt, redeployed) → `header-lockup` "AC2" red ("the tile does not follow the theme"); light AC1 stays green because that role is white in light.
+- mutation: `outline-offset: -8px` on `.ocu-header-lockup:focus-visible` (rebuilt, redeployed) → `header-lockup` "AC3: keyboard focus" red ("offset -8px").
+- mutation: `aria-label` bound to `STRINGS.headerNamespaceLabel` in `header.ts` (rebuilt, redeployed) → `header-lockup` "AC3: clicking the tile" red.
+- mutation: DESIGN.md `asset:` back to the reversed file → `design-tokens.test` "the logo tile is #ffffff … logo-lockup plate" red; `plate:` hex `#FFFFFE` → the same test red.
+- mutation: "tile" → "plate" in the row-534 phrase `strings.ts:1064` cites → `citations.test` "every anchored EXPERIENCE.md citation quotes a phrase …" red.
+- mutation: `background-size: contain` removed from `.ocu-header-lockup` (rebuilt, redeployed) → `header-lockup` "AC1: at 1280 px" red (drawn size `auto`, expected `contain`).
+- mutation: `:root.ocu-theme-dark .ocu-header-lockup { filter: invert(1); }` appended to `_theme.scss` (rebuilt, redeployed) → `header-lockup` "AC2" red on the pixel comparison alone; every computed value still matched.
+- mutation: tile `width: 200px` (rebuilt, redeployed) → `header-lockup` "AC1: at 720 px" red (the tile intersects the command box), and "AC1: at 1280 px" red (200, expected 144).
+- mutation: reversed PNG restored and the header `url()` pointed at it, rebuilt → `build-output.test` "the sign-in lockup reaches the bundle as a hashed asset …" red (`OcuPilot-Lockup-horizontal-reversed-<HASH>.png` in `media/`).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned by `bmad-build-auto` (plan stage, halt after planning) on `OCU-1-epic15` at `9b0e6b24bb85a96fed017d920a28597ef96d8c15`. The spec passed the READY FOR DEVELOPMENT check. Ledger inbox: none. No intent gap and no AD conflict.
+**Change.** The header lockup is now the navy-wordmark file the sign-in card draws, on a 144×36 white rounded tile with 4px padding: the anchor itself, the same in light and dark through the fixed non-role token `--ocu-logo-tile`. The reversed PNG is deleted from the client. DESIGN.md (11 lines), EXPERIENCE.md row 534, `header.ts` and the `strings.ts:1064` citation are corrected in place; both documents keep their line counts.
+
+**Files.**
+
+- `ui/src/styles/_components.scss`: the `.ocu-header-lockup` rule and its comment (footprint extension, in place).
+- `ui/src/styles/_tokens.scss`, `ui/tools/design-tokens.mjs`: `--ocu-logo-tile` registered `hasDark: false`.
+- `ui/src/assets/lockup/OcuPilot-Lockup-horizontal-reversed.png`: deleted.
+- `ui/src/app/shell/header.ts`, `header.spec.ts`: doc comments only.
+- `ui/src/app/core/strings.ts:1064`: citation re-pointed (footprint extension).
+- `ui/tools/design-tokens.test.mjs`: the header-lockup test inverted, a tile-token test added.
+- `ui/tools/build-output.test.mjs`: asserts no reversed file in the built `media/`.
+- `ui/browser/header-lockup.browser-spec.mjs` (new): all five Matrix rows.
+- DESIGN.md, EXPERIENCE.md `:534`, UX `.memlog.md` (decision appended): the tier-1 amendments for the lead.
+
+**Review.** Two layers (verification-gap, intent-alignment), 16 findings: 6 patched (2 medium, 4 low), 1 deferred (the gate's stale-stamp variance, pre-existing), 9 rejected with reasons in the Triage Log. Follow-up review: `false` — two mediums were patched, but each patch's assertion was seen red under a recorded mutation, so no unverified risk can be named.
+
+**Verification** (slot B, `ocupilot-b-ci`, bundle rebuilt and redeployed before every browser read).
+
+- `npm run build`: seven checkers pass; initial total 1.80 MB (under 1854kB); one `Lockup` file in `media/`.
+- `header-lockup.browser-spec.mjs` 5/5; `a11y-structural-invariants` 10/10. DW-1337: 0 fresh in every run. Stale counts varied with an unchanged bundle: 0, then 4, then 1, all 720px status-bar stamp rows (deferred).
+- `test:tools` 1426/1426; `test:components` 1377/1377 (106 files); `lint-docs` 0 issues; `--numstat` 11/11 and 1/1; the `Lockup-horizontal-reversed` grep is empty.
+- Once: `theme` + `account-and-filter` browser specs 9/9; `smoke.sh --container ocupilot-b-ci` 49/49; ObjectScript sweep 286 classes, 2394 tests, 0 failed.
+- Ten mutations recorded under Verification, each reverted with the tree byte-identical.
+
+**Residual risk.** The handoff's two ad-hoc screenshot runs lacked the origin variables and signed `_SYSTEM` in on `ocupilot-ci` (slot A's throwaway), resetting that account's remembered state there once each; no container was touched.

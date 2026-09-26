@@ -1103,19 +1103,26 @@ app-database-details-page {
   color: var(--ocu-on-shell);
 }
 
-// The reversed lockup at 32px, directly on the shell: no plate, no ground, no hover state
-// (DESIGN.md `:1011`). A CSS background rather than an `<img>` for the reason the fonts are:
-// a `url()` reference is what makes the application builder treat the file as a build input,
-// hash it and copy it into the bundle, so `angular.json`'s `assets` array stays empty. The
-// source is 623x128, so 32px tall is 156px wide.
+// The navy-wordmark lockup on a white rounded tile, the same in both modes (DESIGN.md
+// `logo-lockup`). The navy wordmark is 1.02:1 on the shell, so the tile is its ground, and
+// `--ocu-logo-tile` is a fixed white the dark scope never re-points. The anchor is the tile,
+// so the focus ring below surrounds it. A CSS background rather than an `<img>` for the reason
+// the fonts are: a `url()` reference is what makes the application builder treat the file as
+// a build input, hash it and copy it into the bundle, so `angular.json`'s `assets` array stays
+// empty. The 144x36 tile less 4px padding leaves 136x28, so the 623x128 source is drawn 28px tall.
 .ocu-header-lockup {
   display: block;
   justify-self: start;
-  width: 156px;
-  height: 32px;
-  background-image: url('../assets/lockup/OcuPilot-Lockup-horizontal-reversed.png');
+  box-sizing: border-box;
+  width: 144px;
+  height: 36px;
+  padding: var(--ocu-space-1);
+  border-radius: var(--ocu-radius-md);
+  background-color: var(--ocu-logo-tile);
+  background-image: url('../assets/lockup/OcuPilot-Lockup-horizontal.png');
+  background-origin: content-box;
   background-repeat: no-repeat;
-  background-position: left center;
+  background-position: center;
   background-size: contain;
 }
 
