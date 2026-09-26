@@ -4,6 +4,7 @@ type: 'chore'
 created: '2026-09-26'
 status: 'done'
 baseline_revision: 'f30207594e8641fc86ccaa1db9ebcceee2ba9484'
+baseline_commit: 'f30207594e8641fc86ccaa1db9ebcceee2ba9484'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -129,6 +130,7 @@ deferred:
 - [ ] DW-1468: `AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.history", "&search=OcuPilotDemo%20nightly")`. File: `Test/WireSecurityRead.cls:459`.
 - [ ] DW-1433: `new` strips one leading `note=` from its note argument. Files: `_bmad/scripts/ledger.sh:186`, plus a case in `ui/tools/shell-scripts.test.mjs` run against a temporary ledger.
 - [ ] DW-1332: the case arm becomes `*:latest|*:latest-*)`. Files: `scripts/ci-image-compile.sh:46`. In `ui/tools/ci.test.mjs:1339`, a behavioral test replaces the source match: with a stub `docker` on PATH, `:latest-cd`, `:latest-em`, `:latest` and a tagless reference each exit 2, name AD-27, and call no docker.
+- [ ] DW-1689 (harvested from B1): the assertion message at `scripts/test_check_objectscript.py:1659` uses DW-1298's replacement wording ("a longer route before a shorter one whose Url matches its leading segments"). Text only.
 - [ ] DW-1344: derive the floor from the repository's `module.xml` as 3 + the `<(Resource|FileCopy|Invoke|WebApplication|Dependency)[ />]` count + 1, and fail naming both numbers. Files: `scripts/ci-ipm-archive.sh:376-379`, `ui/tools/ipm-archive.test.mjs` (a fixture manifest with an extra `<Dependency>` must fail).
 
 ### Batch B4 — the structural gate (5)

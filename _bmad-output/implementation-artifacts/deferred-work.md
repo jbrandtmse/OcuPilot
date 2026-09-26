@@ -7294,3 +7294,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-10-the-header-logo-on-a-white-tile.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Story 15.10 moved the header to the navy lockup on a white tile and amended DESIGN.md/EXPERIENCE.md at origin; epics.md is contended (Epic 11 edits it) and outside the story's footprint, so the two requirement lines were left as written.
 - 2026-09-26T04:37:06Z status=wontfix-accepted owner=15-10-the-header-logo-on-a-white-tile by=cr note=reopen_if=a plan stage or spec cites UX-DR14's reversed-lockup wording; fix is a Rule 5 tier-1 in-place amendment by the lead
+
+### DW-1689: test_check_objectscript.py:1659 still says 'expected the N-segment route named', the wording DW-1298 retired
+- source: _bmad-output/implementation-artifacts/spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: scripts/test_check_objectscript.py:1659 keeps the retired N-segment phrase after B1 replaced it in five places
+- 2026-09-26T10:21:46Z status=open owner=23-1-the-range-end-cleanup by=harvest note=fix in Batch B3, which owns the file
+
+### DW-1690: DESIGN.md:1181 specifies a 3px destructive bar under the card header that the card never draws, and a mockup still draws a typed-name field
+- source: _bmad-output/implementation-artifacts/spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: _components.scss .ocu-proposal-card-destructive recolors only the left edge; mockups/key-proposal-states.html shows a typed-name field (14.7 scratched)
+- 2026-09-26T10:21:46Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=harvest note=reopen_if=a review or judge compares the destructive card with DESIGN.md:1181 or the mockup and files it
