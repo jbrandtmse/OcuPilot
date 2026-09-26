@@ -7465,3 +7465,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-14-1-the-copy-out-draft.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Draft.Render reads only the stored row and never re-reads the target (no fingerprint check); Confirm refuses TARGETCHANGED, the draft cannot.
 - 2026-09-26T21:17:13Z status=by-design owner=14-1-the-copy-out-draft by=cr note=AD-59: the script runs outside OcuPilot's fingerprint (AD-6); reopen only via an AD-59 amendment
+
+### DW-1720: DraftExecute application-error delete test accepts LOG.DATE when its two seeds straddle midnight
+- source: spec-14-1-the-copy-out-draft.md (cr rework 1) | severity: low | fix-risk: low | footprint: in-story
+- evidence: tGoneCode switches to LOG.DATE when tOtherDate differs from tDate; then a date-wide over-delete passes, and residue on the new date gives a false red. Needs two SeedInto calls microseconds apart to cross midnight.
+- 2026-09-26T22:29:00Z status=wontfix-theoretical owner=14-1-the-copy-out-draft by=cr note=real only if a CI run seeds across midnight; reopen_if=a DraftExecute red or false green whose two seeded dates differ

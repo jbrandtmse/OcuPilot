@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-26'
 status: 'done'
 baseline_revision: '9e0830f89b979d82b14597eda613eaf1740ce2bb'
-baseline_commit: '615a1f627cccf3c5f89593d82736a1382f75b96f'
+baseline_commit: '9e0830f89b979d82b14597eda613eaf1740ce2bb'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -208,6 +208,21 @@ Rejected (30):
 - low (x3): `NODRAFT`'s reason for a data problem; the lost-race test does not assert the row state; `Answer`'s read-back after a close could fail (theoretical).
 - low (x3): an empty `IdParam`/id (every registered tool is rendered by `DraftRegistry`); a caller body on a constant pair (the draft never composes one); a JWKS refresh script with no URI.
 - low: the code-surface focus ring is drawn inset (documented, to avoid clipping) and the hover mix is 12%.
+
+### Review Findings (rework 1)
+
+Code review 2026-09-26 of the rework (`9e0830f8..HEAD`, four layers, full-opus): the `[CI]` item is confirmed fixed -- `DraftExecute` 2/2 on `ocupilot-b-ci` with no application error in `USER` before or after (run 355). 4 entries (all low, patched), 0 deferred, 7 rejected.
+
+- [x] [Review][Patch] low: the named entry leaked into `USER` whenever a step before the delete failed; cleanup removed only the other entry [src/OcuPilot/Test/DraftExecute.cls:321] -- cleanup also deletes the named entry when it still reads 200. A mutation skipping the `XECUTE` went red (run 354) and left `USER` empty.
+- [x] [Review][Patch] low: the doc comment named a substituted `DeleteByNamespace` mutation, not the appended one run 351 demonstrated (the substituted form reddens the text assertion first) [src/OcuPilot/Test/DraftExecute.cls:261] -- it now names the appended form.
+- [x] [Review][Patch] low: the doc comment said "exactly the one entry removed" and `LOG.ENTRY` only, while the test proves the named entry gone and one sibling kept, and accepts `LOG.DATE` across midnight [src/OcuPilot/Test/DraftExecute.cls:257] -- reworded.
+- [x] [Review][Patch] low: the first seed's assertion message called it "a second" error while the doc comment calls the named entry the second [src/OcuPilot/Test/DraftExecute.cls:268] -- "the other".
+
+Rejected (7):
+
+- low: across midnight the test expects `LOG.DATE`, so a date-wide over-delete passes and residue on the new date reds -- needs two seeds microseconds apart to straddle midnight; closed `wontfix-theoretical`, DW-1720.
+- low: the cleanup assertion adds a second red under an over-delete mutation -- the test is already red there.
+- spec edits, outside this review: the `(QA) DraftExecute` paragraph still says one seeded error; the `mutation:` bullet carries two mutations (run 351 is the current one); a patched triage row is labeled `[false]`; runs 346-347 are named without their mutation.
 
 ## Design Notes
 

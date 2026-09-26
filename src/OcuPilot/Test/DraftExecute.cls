@@ -16,8 +16,9 @@
 /// refuses before either test method runs rather than only inside the helper it calls), and
 /// <parameter>PRINCIPALVARIABLE</parameter> for the probe web application
 /// <class>OcuPilot.Test.ProposalFixture</class> creates and removes. It seeds two real application
-/// errors, deletes the one the draft names through the rendered script and the other in cleanup,
-/// and it creates and removes one web application, restoring the field it changed before removal.</p>
+/// errors, deletes the one the draft names through the rendered script and the other (and the named
+/// one, if a failed step left it) in cleanup, and it creates and removes one web application,
+/// restoring the field it changed before removal.</p>
 Class OcuPilot.Test.DraftExecute Extends %UnitTest.TestCase
 {
 
@@ -253,17 +254,18 @@ ClassMethod RunObjectScriptStep(pText As %String, Output pRunSC As %Status) [ Pr
 /// <code>XECUTE</code>s the drafted <code>objectscript</code> step's own text -- never
 /// <class>OcuPilot.Port.LogSourcePort.RemoveErrorIds</class> and no reconstruction. Each entry is
 /// read by its own id (namespace, date and number) at the port's <code>detail</code> level: the
-/// named entry reads 200 before and 404 <code>LOG.ENTRY</code> after, and the other still reads 200
-/// after -- exactly the one entry removed, whatever else the namespace holds. The other entry is
-/// deleted in cleanup.</p>
-/// <p>Mutation (Rule 19): have <method>OcuPilot.Port.LogSourcePort.Snippet</method> render
-/// <code>DeleteByNamespace</code> for the namespace instead of <code>DeleteByError</code> -- the
-/// other entry's read answers 404 and the named one's <code>LOG.NAMESPACE</code>, and this test goes
-/// red.</p>
+/// named entry reads 200 before and 404 <code>LOG.ENTRY</code> after (<code>LOG.DATE</code> if the
+/// two seeds straddle midnight), and the other still reads 200 after -- the named entry is gone and
+/// its sibling is not, whatever else the namespace holds. Cleanup removes the other entry, and the
+/// named one too when a failed step left it in place.</p>
+/// <p>Mutation (Rule 19): have <method>OcuPilot.Port.LogSourcePort.Snippet</method> append a
+/// <code>DeleteByNamespace</code> of the namespace after its <code>DeleteByError</code> -- the named
+/// entry answers <code>LOG.NAMESPACE</code> rather than <code>LOG.ENTRY</code> and the other entry's
+/// read answers 404, and this test goes red.</p>
 Method TestARenderedObjectScriptScriptDeletesTheErrorItNames()
 {
     Set tSC = ##class(OcuPilot.Test.ErrorLogSeed).SeedInto(..#ERRORNAMESPACE, .tOtherDay, .tOtherNumber)
-    Do $$$AssertStatusOK(tSC, "a second real application error is seeded, to survive the delete: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertStatusOK(tSC, "the other real application error is seeded, to survive the delete: " _ $System.Status.GetErrorText(tSC))
     If $$$ISERR(tSC) Quit
     Set tOtherDate = $ZDate(tOtherDay, 1)
     Do {
@@ -313,6 +315,11 @@ Method TestARenderedObjectScriptScriptDeletesTheErrorItNames()
         Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "canceled", "the proposal closes")
         Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "ClosedReason"), "draft", "with the draft reason")
     } While 0
+    If $Get(tNumber) '= "" {
+        Set tLeftHttp = ""
+        Do ##class(OcuPilot.Port.LogSourcePort).Errors("detail", ..#ERRORNAMESPACE, tDate, tNumber, "", .tLeft, .tLeftHttp, .tLeftFault)
+        If tLeftHttp = 200 Do $$$AssertStatusOK(..DeleteError(tDate, tNumber), "the named entry a failed step left in place is removed in cleanup")
+    }
     Do $$$AssertStatusOK(..DeleteError(tOtherDate, tOtherNumber), "the other seeded entry is removed in cleanup")
 }
 
