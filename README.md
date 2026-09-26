@@ -201,6 +201,9 @@ namespace):
 zpm "install ocupilot"
 ```
 
+If IPM answers that no repositories are configured, run `zpm "enable -community"` once, then
+install again.
+
 Then open `/ocupilot/` on that instance's web server. Two things differ from the container path:
 IPM never clears an expired `_SYSTEM` password, and it creates no demonstration objects. The
 installer grants the `OcuPilotAdmin` role to the account that runs the install when that is a named
