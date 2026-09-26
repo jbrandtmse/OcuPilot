@@ -748,7 +748,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner triage, 2026-09-24 (reliability), high priority.** Live turns on Claude Opus 5 failed intermittently - three of about ten in an hour - with "The turn stopped at provider": the connection broke within a second of the call, before any reply (`<READ>` in `%Net.HttpRequest`), and a transport failure is never retried. Separately, the panel reported a confirmed create as "was updated". Story 10.6 fixes both; it runs alone on slot B at Epic 12's next story boundary.
 
-**Owner plan, 2026-09-25 (voting week).** Epics 14 and 16 run in the voting week, where improvements are allowed, starting once the submission build is cut. Order: Story 16.1 (the try-it console), then Stories 16.17 to 16.19 (the read-back line, Home's performance row and impact lines on removals, added from the contest survey the same evening) and Story 16.20 (older messages.log files, Community Idea DPI-I-966), then Stories 16.8 and 16.9 (the secondary log viewers and the hub); then Story 14.1 (the copy-out draft), Stories 14.3 and 14.8 (defanging and the seeded-injection test), Story 16.3 (effective privileges) and Story 16.16 (the agent audit viewer); then the rest of Epic 16; then Story 14.5, with Stories 14.2, 14.4 and 14.6 last. The first two groups close the gaps a judge sees when comparing entries and show what only the agent does. `main` moves only at planned releases - after each of the first two groups and at the end of the week - each a pull request with green CI, a clean-clone check and a new package version, so a judge never installs a half-finished build. Story 14.7 is scratched: a user acting on a screen still types the target's name, while a destructive agent proposal takes the destructive bar, a destructive Confirm and the user's own press, without a typed name. FR-17 and Stories 5.10 and 7.2 are amended to match. Epics 18 to 22 stay after the contest.
+**Owner plan, 2026-09-25 (voting week).** Epics 14 and 16 run in the voting week, where improvements are allowed, starting once the submission build is cut. Order: Story 16.1 (the try-it console), then Stories 16.17 to 16.19 (the read-back line, Home's performance row and impact lines on removals, added from the contest survey the same evening) and Story 16.20 (older messages.log files, Community Idea DPI-I-966), then Stories 16.21 and 16.22 (a security findings panel with Fix it, and a Guardrails page, added from the survey of 2026-09-26), then Stories 16.8 and 16.9 (the secondary log viewers and the hub); then Story 14.1 (the copy-out draft), Stories 14.3 and 14.8 (defanging and the seeded-injection test), Story 16.3 (effective privileges) and Story 16.16 (the agent audit viewer); then the rest of Epic 16; then Story 14.5, with Stories 14.2, 14.4 and 14.6 last. The first two groups close the gaps a judge sees when comparing entries and show what only the agent does. `main` moves only at planned releases - after each of the first two groups and at the end of the week - each a pull request with green CI, a clean-clone check and a new package version, so a judge never installs a half-finished build. Story 14.7 is scratched: a user acting on a screen still types the target's name, while a destructive agent proposal takes the destructive bar, a destructive Confirm and the user's own press, without a typed name. FR-17 and Stories 5.10 and 7.2 are amended to match. Epics 18 to 22 stay after the contest.
 
 **Owner triage, 2026-09-25 (logo), high priority.** The header draws the reversed lockup, a white wordmark on a transparent cut-out whose anti-aliased edges fringe against the navy chrome. Story 15.10 draws the navy-wordmark lockup on a white rounded tile instead, as the demo landing page does, and amends DESIGN.md at origin. It runs alone on slot B, free since Epic 12 merged, and the submission cut waits for it.
 
@@ -892,7 +892,7 @@ A user makes the portal their own - own password, favorites, recents, menu searc
 
 ### Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22).
 
 **FRs covered:** FR-74, FR-76, FR-77, FR-78
 
@@ -6116,7 +6116,7 @@ So that the first thing I see looks finished.
 
 ## Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22).
 
 **Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
 
@@ -6555,6 +6555,50 @@ So that I do not need a shell on the server to read them.
 - **Given** the README and the Open Exchange listing
 - **When** this story completes
 - **Then** both name DPI-I-966 among the Community Ideas OcuPilot implements.
+
+### Story 16.21: Security findings, with a fix you confirm
+
+As a developer-administrator opening OcuPilot,
+I want to be told which of my instance's settings put it at risk,
+So that I can fix them before they matter, with the same review and confirmation as any other change.
+
+**Owner survey, 2026-09-26.** iris-docket leads with findings; OcuPilot can go further, because every fix becomes a proposal with an instance-computed comparison.
+
+**Acceptance Criteria:**
+
+- **Given** Home
+- **When** it renders
+- **Then** it shows a Security findings panel that checks, at least: web applications reachable without signing in that hold database or administrative roles; the monitoring API open without authentication; accounts holding `%All`; X.509 certificates expiring within 30 days or expired; and auditing switched off - each finding naming the object and why it matters, and the panel saying plainly when there is nothing to report.
+
+- **Given** a finding with a fix a write tool can make
+- **When** the person chooses **Fix it**
+- **Then** the agent opens the affected screen and proposes the change as an ordinary proposal - comparison, privilege line, Confirm - and nothing changes until it is confirmed; a finding with no automatic fix, such as an expiring certificate, links to the screen that handles it instead.
+
+- **Given** a finding whose fix OcuPilot refuses - taking `%All` from the last account that holds it, say
+- **When** it renders
+- **Then** it offers no Fix it and says why, in the prohibited set's own words, and a finding the caller may not read is left out rather than reported as clean.
+
+### Story 16.22: The Guardrails page
+
+As a judge or an administrator deciding whether to trust the agent,
+I want one page that shows what it may never do and what it needs my confirmation for,
+So that the safety is something I can read, not something I have to take on faith.
+
+**Owner survey, 2026-09-26.** iris-docket shows its policy as a page; OcuPilot's guardrails are enforced on the server but are visible only when one of them refuses something.
+
+**Acceptance Criteria:**
+
+- **Given** the Agent co-pilot area
+- **When** a signed-in user opens Guardrails
+- **Then** a read-only page lists every action the agent refuses outright, each with the reason the refusal gives, generated from the same prohibited set the server enforces rather than written separately.
+
+- **Given** the agent's switches and tools
+- **When** the page renders
+- **Then** it shows the kill switch and enforced read-only state, which tools can change the instance and therefore always need a Confirm, what the agent never sees (stored secrets, the variables captured with application errors), and the screen-context row limit.
+
+- **Given** the page is generated from the enforced rules
+- **When** a rule is added or changed
+- **Then** the page follows without a second edit, and a test fails if a prohibited action has no reason text to show.
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
