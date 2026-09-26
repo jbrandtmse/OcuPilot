@@ -163,6 +163,18 @@ export const STRINGS = {
   proposalStatusExpired: 'Expired',
   /** EXPERIENCE.md:275 */
   proposalStatusAgentSwitchedOff: 'The agent is switched off',
+  /** EXPERIENCE.md:275 */
+  proposalStatusCanceledByDraft: 'Canceled \u2014 you took the script instead',
+  /** EXPERIENCE.md:269 */
+  actionTakeScript: 'Give me the script instead',
+  /** EXPERIENCE.md:269 */
+  actionCopyToClipboard: 'Copy to clipboard',
+  /** EXPERIENCE.md:269 */
+  copyAnnouncementCopied: 'Copied',
+  /** EXPERIENCE.md:269 */
+  copyAnnouncementUnavailable: 'The clipboard is not available here. Select the text and copy it yourself.',
+  /** EXPERIENCE.md:273 */
+  proposalDraftCaption: 'Nothing was changed. Fill in each value in angle brackets before you run this.',
   /** EXPERIENCE.md:276 */
   proposalUnchangedFieldsDisclosure: 'N unchanged fields',
   /** EXPERIENCE.md:277 */

@@ -419,7 +419,7 @@ test('the countdown caption substitutes the published m:ss rather than replacing
 
 // --- The phases ---------------------------------------------------------------------------------
 
-test('the seven terminal phases each read their published status line, and live reads none', () => {
+test('the eight terminal phases each read their published status line, and live reads none', () => {
   assert.equal(statusLineFor('live', '_SYSTEM', '10:00:00'), '');
   assert.equal(statusLineFor('confirming', '_SYSTEM', '10:00:00'), '');
   assert.equal(
@@ -432,6 +432,8 @@ test('the seven terminal phases each read their published status line, and live 
   assert.equal(statusLineFor('canceled-by-you', '', ''), STRINGS.proposalStatusCanceledByYou);
   assert.equal(statusLineFor('canceled-by-message', '', ''), STRINGS.proposalStatusCanceledByMessage);
   assert.equal(statusLineFor('canceled-sibling', '', ''), STRINGS.proposalStatusCanceledSibling);
+  assert.equal(statusLineFor('canceled-by-draft', '', ''), STRINGS.proposalStatusCanceledByDraft);
+  assert.equal(STRINGS.proposalStatusCanceledByDraft, 'Canceled \u2014 you took the script instead');
   assert.equal(statusLineFor('expired', '', ''), STRINGS.proposalStatusExpired);
   assert.equal(statusLineFor('switched-off', '', ''), STRINGS.proposalStatusAgentSwitchedOff);
   // EXPERIENCE.md publishes one fixed string for the fingerprint refusal and DESIGN.md says the
@@ -447,6 +449,7 @@ test('every phase but live and confirming is terminal, and two of them offer Re-
     'canceled-by-you',
     'canceled-by-message',
     'canceled-sibling',
+    'canceled-by-draft',
     'target-changed',
     'expired',
     'switched-off',
@@ -458,6 +461,8 @@ test('every phase but live and confirming is terminal, and two of them offer Re-
   assert.equal(offersRepropose('expired'), true);
   assert.equal(offersRepropose('target-changed'), true);
   assert.equal(offersRepropose('canceled-by-you'), false);
+  // A taken script is the user's own decision, like Cancel: nothing was lost to a limit.
+  assert.equal(offersRepropose('canceled-by-draft'), false);
   assert.equal(offersRepropose('confirmed'), false);
   assert.equal(offersRepropose('live'), false);
 });
@@ -475,6 +480,10 @@ test('a canceled row reads its phase from the reason the instance recorded with 
   assert.equal(phaseForState(canceled, reasonOf('REASONMESSAGE')), 'canceled-by-message');
   assert.equal(phaseForState(canceled, reasonOf('REASONSIBLING')), 'canceled-sibling');
   assert.equal(phaseForState(canceled, reasonOf('REASONTARGETCHANGED')), 'target-changed');
+  // Story 14.1 (AD-59): the row a copy-out draft closed reads as its own phase, not as Cancel's,
+  // so its status line says the script was taken. Mutation (Rule 19): map 'draft' to
+  // 'canceled-by-you' in `phaseForState` -> this goes red.
+  assert.equal(phaseForState(canceled, reasonOf('REASONDRAFT')), 'canceled-by-draft');
   // A reason this client has never heard of claims least about why, rather than inventing one.
   assert.equal(phaseForState(canceled, 'something new'), 'canceled-by-you');
   assert.equal(phaseForState(canceled), 'canceled-by-you');

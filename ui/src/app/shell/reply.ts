@@ -3,6 +3,7 @@ import DOMPurify from 'dompurify';
 
 import type { Citation } from '../core/citations';
 import { REPLY_TAGS, parseReply, type ReplyNode } from '../core/reply';
+import { CODE_FRAME_CLASS, createCopyButton } from './copy-control';
 
 /**
  * Exactly what the builder ever writes (Boundaries & Constraints). `rel` is here alongside the
@@ -91,6 +92,29 @@ export function sanitizeReplyRoot(root: Element): void {
   });
 }
 
+/** The class every fenced code block's `pre` carries (`core/reply.ts`). */
+export const REPLY_PRE_CLASS = 'ocu-reply-pre';
+
+/**
+ * Gives each fenced code block under `root` its copy control (DW-1081): the `pre` is moved into a
+ * code frame beside one control that copies exactly that `pre`'s `textContent`.
+ *
+ * Runs **after** `sanitizeReplyRoot`, so the sanitizer never sees the control, and builds with
+ * `createElement` only (AD-11). The `pre` and everything inside it are left as they were.
+ */
+export function attachCopyControls(root: Element): void {
+  const doc = root.ownerDocument;
+  for (const pre of Array.from(root.querySelectorAll(`pre.${REPLY_PRE_CLASS}`))) {
+    const parent = pre.parentNode;
+    if (parent === null) continue;
+    const frame = doc.createElement('div');
+    frame.className = CODE_FRAME_CLASS;
+    parent.insertBefore(frame, pre);
+    frame.appendChild(pre);
+    frame.appendChild(createCopyButton(() => pre.textContent ?? '', doc));
+  }
+}
+
 /**
  * Renders one agent reply as sanitized, highlighted, offline Markdown (Story 4.6,
  * EXPERIENCE.md/DESIGN.md `message-agent`).
@@ -108,6 +132,9 @@ export function sanitizeReplyRoot(root: Element): void {
  * **One mutation, one announcement.** The whole subtree is built off-DOM into a
  * `DocumentFragment` and appended to the render root in a single `appendChild`, so the panel's
  * `role="log"` transcript announces the reply once, not once per top-level block.
+ *
+ * **Copy controls** (DW-1081). Each fenced code block gains the one copy control once the
+ * sanitizer has run (`attachCopyControls`).
  *
  * **Citation chips** (Story 11.4). A code span naming one of `citations` renders as a chip; one
  * click handler on the root emits `cite` with the chip's citation, and the host decides what a
@@ -147,6 +174,7 @@ export class Reply {
       if (nodes.length === 0) return;
       root.appendChild(buildReplyFragment(root.ownerDocument, nodes, this.chips));
       sanitizeReplyRoot(root);
+      attachCopyControls(root);
     });
   }
 

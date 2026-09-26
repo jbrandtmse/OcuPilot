@@ -115,6 +115,7 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/turn" path="/api/ocupilot/turn" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/proposal/:id/confirm" path="/api/ocupilot/proposal/ocupilot-coverage-probe/confirm" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/proposal/:id/cancel" path="/api/ocupilot/proposal/ocupilot-coverage-probe/cancel" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/proposal/:id/draft" path="/api/ocupilot/proposal/ocupilot-coverage-probe/draft" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/conversation/:id" path="/api/ocupilot/conversation/ocupilot-coverage-probe" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/conversation" path="/api/ocupilot/conversation" disposition="envelope" why="it reads no body and always creates, so no body refuses it" cleanup="conversation"/>
 <probe class="Api.Router" method="GET" url="/instance" path="/api/ocupilot/instance" disposition="envelope"/>

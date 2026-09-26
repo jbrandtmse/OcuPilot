@@ -405,4 +405,45 @@ ClassMethod Unslashed(pUrl As %String) As %String [ Private ]
     Quit pUrl
 }
 
+/// <p>The admin port's answer: every write of this port is the vendor's own route.</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    Quit ##super(pEndpoint, pType)
+}
+
+/// <p><method>Invoke</method>'s write branches as a script (AD-59): <code>PUT</code> sends the body
+/// with the secret <code>Metadata</code> members <parameter>SECRETMEMBERS</parameter> removed -- the
+/// managed members are the stored read's, as the port takes them from the fresh one -- and
+/// <parameter>SECRETSTYPE</parameter> sends each non-empty declared secret, the registration access
+/// token under <code>Metadata</code>. Every other call is the admin port's script.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    If pEndpoint '= ..#CLIENTENDPOINT Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+    If (pType = "PUT") && $IsObject(pBody) && pBody.%IsA("%Library.DynamicObject") {
+        Set tBody = ##class(%DynamicAbstractObject).%FromJSON(pBody.%ToJSON())
+        If tBody.%GetTypeOf("Metadata") = "object" {
+            For tI = 1:1:$Length(..#SECRETMEMBERS, ",") Do tBody.%Get("Metadata").%Remove($Piece(..#SECRETMEMBERS, ",", tI))
+        }
+        Quit ##super(pEndpoint, pType, .pQuery, tBody, pContext)
+    }
+    If pType = ..#SECRETSTYPE {
+        Set tVendor = {}
+        If $IsObject(pBody) && pBody.%IsA("%Library.DynamicObject") {
+            Set tIterator = pBody.%GetIterator()
+            While tIterator.%GetNext(.tKey, .tValue) {
+                If '$ListFind($ListFromString(..#SECRETNAMES), tKey) || $IsObject(tValue) || (tValue = "") Continue
+                If tKey = ..#TOKENNAME {
+                    Set tNested = {}
+                    Do tNested.%Set(..#TOKENMEMBER, tValue, "string")
+                    Do tVendor.%Set("Metadata", tNested)
+                } Else {
+                    Do tVendor.%Set(tKey, tValue, "string")
+                }
+            }
+        }
+        Quit ##super(pEndpoint, pType, .pQuery, tVendor, pContext)
+    }
+    Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+}
+
 }

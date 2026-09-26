@@ -97,4 +97,25 @@ ClassMethod Holder(pId As %String, pRows) As %DynamicObject
     Quit tHolder
 }
 
+/// <p>The admin port's answer: this port's revoke is the vendor's own route.</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    Quit ##super(pEndpoint, pType)
+}
+
+/// <p><method>Invoke</method>'s branches as a script (AD-59): <parameter>REVOKETYPE</parameter> is
+/// the vendor's revoke under the account's stored <code>Name</code>, which the proposal's stored
+/// read carries as <code>pContext.payload.Name</code>, and the id the query carries where it holds
+/// none; every other call is the admin port's script.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    If (pEndpoint '= ..#TOKENENDPOINT) || (pType '= ..#REVOKETYPE) Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+    Kill tQuery
+    Merge tQuery = pQuery
+    Set tName = ""
+    If $IsObject(pContext) Set tName = ..Scalar(pContext.%Get("payload"), "Name")
+    If tName '= "" Set tQuery(..#USERQUERY) = tName
+    Quit ##super(pEndpoint, pType, .tQuery, pBody, pContext)
+}
+
 }

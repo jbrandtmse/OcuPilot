@@ -126,6 +126,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/turn" Method="POST" Call="TurnStart"/>
   <Route Url="/proposal/:id/confirm" Method="POST" Call="ProposalConfirm"/>
   <Route Url="/proposal/:id/cancel" Method="POST" Call="ProposalCancel"/>
+  <Route Url="/proposal/:id/draft" Method="POST" Call="ProposalDraft"/>
   <Route Url="/conversation/:id" Method="GET" Call="ConversationRead"/>
   <Route Url="/conversation" Method="POST" Call="ConversationCreate"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
@@ -744,6 +745,13 @@ ClassMethod ProposalConfirm(pId As %String) As %Status
 ClassMethod ProposalCancel(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Api.Confirm).HandleCancel(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /proposal/:id/draft</code> -- see
+/// <method>ProposalConfirm</method>.</p>
+ClassMethod ProposalDraft(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Confirm).HandleDraft(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /conversation/:id</code>: delegates to

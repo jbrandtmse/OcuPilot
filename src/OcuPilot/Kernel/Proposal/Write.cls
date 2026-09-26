@@ -62,6 +62,10 @@ Parameter DEFINITION = "PROPOSAL.DEFINITION";
 /// accommodation.</p>
 Parameter TARGETCHANGED = "PROPOSAL.TARGETCHANGED";
 
+/// <p>The proposal's tool reaches its target through a port or request type that has no script
+/// form, so no copy-out draft can be rendered (AD-59). The row stays live.</p>
+Parameter NODRAFT = "PROPOSAL.NODRAFT";
+
 /// <p>The prefix <method>ReasonFor</method> hands to <method>ProhibitedClass</method> rather than
 /// answering itself (AD-10).</p>
 Parameter PROHIBITEDPREFIX = "PROHIBITED.";
@@ -69,7 +73,7 @@ Parameter PROHIBITEDPREFIX = "PROHIBITED.";
 /// <p>Every <code>PROPOSAL.*</code> code this class declares, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NOTOKEN, ..#UNKNOWN, ..#NOTYOURS, ..#EXPIRED, ..#BURNED, ..#TURNENDED, ..#FROMTURN, ..#CLOSEDCHANNEL, ..#CONVERSATION, ..#DEFINITION, ..#TARGETCHANGED)
+    Quit $ListBuild(..#NOTOKEN, ..#UNKNOWN, ..#NOTYOURS, ..#EXPIRED, ..#BURNED, ..#TURNENDED, ..#FROMTURN, ..#CLOSEDCHANNEL, ..#CONVERSATION, ..#DEFINITION, ..#TARGETCHANGED, ..#NODRAFT)
 }
 
 /// <p>The written sentence a <code>PROPOSAL.*</code> code carries, or <code>""</code> for any other
@@ -90,6 +94,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#CONVERSATION Quit "This conversation has moved on since that proposal was made. Ask the agent to propose it again."
     If pCode = ..#DEFINITION Quit "The agent definition in force has changed since that proposal was made."
     If pCode = ..#TARGETCHANGED Quit "The target changed after this proposal was made, so the change was not applied. Ask the agent to propose it again."
+    If pCode = ..#NODRAFT Quit "This change has no script form, so it can only be confirmed or canceled here."
     If $Extract(pCode, 1, $Length(..#PROHIBITEDPREFIX)) = ..#PROHIBITEDPREFIX {
         Set tProhibited = ..ProhibitedClass()
         If tProhibited '= "" Quit $ClassMethod(tProhibited, "ReasonFor", pCode)

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
 import { AGENT_CONTEXT_PATH, AgentContext, NO_CONTEXT_INFO, type AgentContextInfo } from '../core/agent-context';
 import { AgentStatus, type Restraint, formatKillSwitch } from '../core/agent-status';
+import { proposalDraftPath } from '../core/draft';
 import { BUSY_REASON_ID, ExplainEntry, KILL_SWITCH_ID } from '../core/explain-entry';
 import { NavigationService, UNGATED, type Verdict } from '../core/navigation';
 import { PanelState } from '../core/panel-layout';
@@ -2784,8 +2785,10 @@ describe('Story 5.2: the proposal cards in the transcript', () => {
       STRINGS.agentPanelFullScreen,
       STRINGS.actionConfirm,
       STRINGS.actionCancel,
+      STRINGS.actionTakeScript,
       STRINGS.actionConfirm,
       STRINGS.actionCancel,
+      STRINGS.actionTakeScript,
       STRINGS.actionSend,
     ]);
   });
@@ -4790,5 +4793,127 @@ describe('Story 11.4: citation chips', () => {
     lines = [...host.querySelectorAll('.ocu-panel-turn .ocu-citation-absent')].map((p) => p.textContent);
     expect(lines, 'both rows keep their own line, in citation order').toEqual([lineFor('OcuPilotCiteGoneA'), lineFor('OcuPilotCiteGoneB')]);
     expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
+});
+
+// --- Story 14.1: the copy-out draft ------------------------------------------------------------
+
+describe('Story 14.1: taking the script instead', () => {
+  async function mountDrafting(answers: Record<string, unknown[]>) {
+    const { schedule, scheduled } = fakeTurnSchedule();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+      [turnProgressPath('turn-1')]: [progressWith([wireProposal()], 'completed', 'I have prepared the change.')],
+      ...answers,
+    });
+    const turn = stubTurnStore({ api: api as never, schedule });
+    const mounted = await mount({ rows: [{ enabled: true }], turn });
+    await typeDraft(mounted.host, mounted.fixture, 'enable the demo application');
+    (mounted.host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    scheduled.shift()?.run();
+    await turnSettle();
+    mounted.fixture.detectChanges();
+    return { ...mounted, api };
+  }
+
+  const SCRIPT = "curl -u '_SYSTEM' -X PUT '<origin>/api/admin/v2/webapp?Name=%2Fcsp%2Fmyapp' -d '{}'";
+
+  it('a taken draft projects the script under its caption, closes the card with its own line, and frees Send', async () => {
+    // Mutation (Rule 19): drop the `draftsById.set` in `Panel.onCardDraft` -> the script
+    // assertions go red.
+    const { host, fixture, api } = await mountDrafting({
+      [proposalDraftPath('p1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            proposalId: 'p1',
+            state: 'canceled',
+            closedReason: 'draft',
+            confirmedAt: '',
+            draft: { steps: [{ kind: 'rest', text: SCRIPT }], placeholders: [] },
+          },
+        },
+      ],
+    });
+    const action = host.querySelector('.ocu-proposal-card-draft-action') as HTMLButtonElement;
+    action.focus();
+    action.click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const posted = api.calls.map((call) => call.path);
+    expect(posted).toContain(proposalDraftPath('p1'));
+    const card = host.querySelector('app-proposal-card') as HTMLElement;
+    const projected = card.querySelector('.ocu-proposal-card-draft') as HTMLElement;
+    expect(projected).not.toBeNull();
+    expect(projected.querySelector('.ocu-proposal-card-draft-caption')?.textContent).toBe(STRINGS.proposalDraftCaption);
+    expect(projected.querySelector('pre.ocu-code-block-pre')?.textContent).toBe(SCRIPT);
+    expect(projected.querySelector('button.ocu-copy-button')?.getAttribute('aria-label')).toBe(
+      STRINGS.actionCopyToClipboard
+    );
+    const status = card.querySelector('.ocu-proposal-card-status') as HTMLElement;
+    expect(status.textContent?.trim()).toBe(STRINGS.proposalStatusCanceledByDraft);
+    expect(card.querySelector('.ocu-proposal-card')?.classList.contains('ocu-proposal-card-restrained')).toBe(true);
+    expect(document.activeElement).toBe(status);
+    // No card is live, so Send is a primary again.
+    expect((host.querySelector('.ocu-panel-send') as HTMLElement).classList.contains('ocu-button-primary')).toBe(true);
+  });
+
+  it("a refusal that left the row live shows the instance's reason in the refusal slot, and keeps the buttons", async () => {
+    // Mutation (Rule 19): record nothing on a refusal in `TurnStore.draftProposal` -> the refusal
+    // slot assertions go red.
+    const { host, fixture } = await mountDrafting({
+      [proposalDraftPath('p1')]: [
+        {
+          kind: 'error',
+          status: 403,
+          code: 'PROHIBITED.OCUPILOTAPP',
+          reason: 'OcuPilot does not change its own application.',
+          detail: null,
+        },
+      ],
+    });
+    (host.querySelector('.ocu-proposal-card-draft-action') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    const refusal = host.querySelector('[data-slot="refusal"]') as HTMLElement;
+    expect(refusal).not.toBeNull();
+    expect(refusal.textContent).toContain('OcuPilot does not change its own application.');
+    expect(host.querySelector('.ocu-proposal-card-status')).toBeNull();
+    expect(host.querySelector('.ocu-proposal-card-draft')).toBeNull();
+    expect(host.querySelector('.ocu-proposal-card-confirm')).not.toBeNull();
+    expect(host.querySelector('.ocu-proposal-card-draft-action')).not.toBeNull();
+    // Nothing was attempted as a write, so the transcript records no write card.
+    expect(host.querySelectorAll('app-tool-call-card')).toHaveLength(0);
+  });
+
+  it('a second press while the first draft request is out sends nothing', async () => {
+    // Mutation (Rule 19): drop the `drafting` check in `Panel.onCardDraft` -> two draft requests
+    // are posted and this goes red.
+    const { host, fixture, api } = await mountDrafting({
+      [proposalDraftPath('p1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            proposalId: 'p1',
+            state: 'canceled',
+            closedReason: 'draft',
+            confirmedAt: '',
+            draft: { steps: [{ kind: 'rest', text: SCRIPT }], placeholders: [] },
+          },
+        },
+      ],
+    });
+    const action = host.querySelector('.ocu-proposal-card-draft-action') as HTMLButtonElement;
+    action.click();
+    action.click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(api.calls.filter((call) => call.path === proposalDraftPath('p1'))).toHaveLength(1);
+    expect(host.querySelector('.ocu-proposal-card-status')?.textContent?.trim()).toBe(STRINGS.proposalStatusCanceledByDraft);
   });
 });

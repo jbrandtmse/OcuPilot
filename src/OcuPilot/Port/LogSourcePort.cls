@@ -1912,4 +1912,36 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
+/// <p>The kind of script step <method>Snippet</method> renders: <code>objectscript</code> for
+/// <parameter>ENDPOINTERRORS</parameter> <parameter>TYPEDELETE</parameter>, the one write this port
+/// carries out, and <code>""</code> for everything else.</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    If (pEndpoint = ..#ENDPOINTERRORS) && (pType = ..#TYPEDELETE) Quit "objectscript"
+    Quit ""
+}
+
+/// <p><method>Invoke</method>'s delete as a script (AD-48, AD-59): one
+/// <parameter>DELETEBYERRORMETHOD</parameter> call on <parameter>ERRORSQUERYCLASS</parameter> in
+/// <parameter>ERRORSNAMESPACE</parameter>, naming the namespace in upper case as the instance spells
+/// it, per date of the enumerated entries in the
+/// <parameter>ENTRIESPARAM</parameter> query, each naming that date's error numbers, in the order
+/// <method>RemoveErrorIds</method> deletes them. A scope or an entry list it cannot read answers no
+/// step; every other endpoint and type answers none.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    Set tSteps = []
+    If (pEndpoint '= ..#ENDPOINTERRORS) || (pType '= ..#TYPEDELETE) Quit tSteps
+    If '..ScopeParts($Get(pQuery(..#NAMESPACEPARAM)), .tNamespace, .tDate, .tNumber) Quit tSteps
+    Set tSC = ..RequestedIds($Get(pQuery(..#ENTRIESPARAM)), .tByDate, .tOrder, .tRequested)
+    If $$$ISERR(tSC) || (tOrder = "") Quit tSteps
+    Set tLines = ""
+    For tI = 1:1:$ListLength(tOrder) {
+        Set tDay = $List(tOrder, tI)
+        Set tLines = tLines _ $ListBuild("Set tSC = ##class(" _ ..#ERRORSQUERYCLASS _ ")." _ ..#DELETEBYERRORMETHOD _ "(" _ ##class(OcuPilot.Port.AdminPort).Literal($ZConvert(tNamespace, "U")) _ ", " _ ##class(OcuPilot.Port.AdminPort).Literal(tDay) _ ", " _ ##class(OcuPilot.Port.AdminPort).Literal(tByDate(tDay)) _ ")", "Do $System.Status.DisplayError(tSC)")
+    }
+    Do tSteps.%Push(##class(OcuPilot.Port.AdminPort).ObjectScriptStep(tLines))
+    Quit tSteps
+}
+
 }

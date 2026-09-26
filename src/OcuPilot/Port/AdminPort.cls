@@ -2340,4 +2340,300 @@ ClassMethod PropertyViolations(pEndpoint As %String, pVendorSC As %Status, pRows
     }
 }
 
+/// <p>The route prefix a <code>rest</code> script step addresses, after the origin.</p>
+Parameter SNIPPETPREFIX = "/api/admin/v2";
+
+/// <p>Every non-<code>GET</code> route of the vendor's version-<parameter>APIVERSION</parameter>
+/// dispatch map, as <code>[{endpoint, type, verb, url}]</code> in <var>pRoutes</var>, ordered by
+/// endpoint, then type, then url (AD-27, AD-59). <code>endpoint</code> is package-relative, as
+/// <method>Invoke</method> names it; <code>type</code> is the request-type suffix the route's
+/// <code>Call</code> constructs its endpoint with, read from a <code>#TYPE&lt;suffix&gt;</code>
+/// parameter reference or through the dispatch class's own <code>Type&lt;verb&gt;()</code>
+/// method; <code>verb</code> is the route's method in upper case.</p>
+/// <p><b>Caller contract:</b> a build-time derivation. <class>OcuPilot.Port.AdminRoutes</class>
+/// holds its checked-in output, which <class>OcuPilot.Test.DraftRegistry</class> holds equal to a
+/// fresh call; nothing on a request path calls it. A route whose <code>Call</code> names no
+/// endpoint or no type is an error naming the route, never a shorter table.</p>
+ClassMethod DeriveRoutes(Output pRoutes As %DynamicArray) As %Status
+{
+    Set tSC = $$$OK
+    Set pRoutes = []
+    Try {
+        Set tDispatch = ..AdminApiClass() _ ".Dispatch.v" _ ..#APIVERSION
+        Set tXData = ##class(%Dictionary.CompiledXData).%OpenId(tDispatch _ "||UrlMap")
+        If '$IsObject(tXData) {
+            Set tSC = $$$ERROR($$$GeneralError, "the dispatch map of " _ tDispatch _ " is not readable")
+            Quit
+        }
+        Set tMap = ""
+        Do tXData.Data.Rewind()
+        While 'tXData.Data.AtEnd {
+            Set tMap = tMap _ tXData.Data.Read(32000)
+        }
+        Set tXData = ""
+        Set tPackage = ..EndpointPackage()
+        Kill tSorted
+        Set tStart = 1
+        For {
+            Set tAt = $Locate(tMap, "<Route\s+Url=""[^""]*""\s+Method=""[^""]*""\s+Call=""[^""]*""", tStart, tEnd, tRoute)
+            If 'tAt Quit
+            Set tStart = tEnd
+            Set tUrl = $Piece($Piece(tRoute, "Url=""", 2), """", 1)
+            Set tVerb = $ZConvert($Piece($Piece(tRoute, "Method=""", 2), """", 1), "U")
+            Set tCall = $Piece($Piece(tRoute, "Call=""", 2), """", 1)
+            If tVerb = "GET" Continue
+            Set tBody = ..MethodText(tDispatch, tCall)
+            Set tEndpoint = $Piece($Piece(tBody, "##class(" _ tPackage, 2), ")", 1)
+            Set tType = ""
+            If $Locate(tBody, "#TYPE[A-Z0-9]+", 1, , tFound) {
+                Set tType = $Extract(tFound, 6, *)
+            } ElseIf $Locate(tBody, "\.\.Type[A-Za-z0-9]+\(\)", 1, , tFound) {
+                Set tHelper = $Extract($Piece(tFound, "(", 1), 3, *)
+                If $Locate(..MethodText(tDispatch, tHelper), "#TYPE[A-Z0-9]+", 1, , tFound) Set tType = $Extract(tFound, 6, *)
+            }
+            If (tEndpoint = "") || (tType = "") {
+                Set tSC = $$$ERROR($$$GeneralError, "the route " _ tVerb _ " " _ tUrl _ " (" _ tCall _ ") names no endpoint or no request type")
+                Quit
+            }
+            Set tSorted(tEndpoint, tType, tUrl) = tVerb
+        }
+        If $$$ISERR(tSC) Quit
+        Set tEndpoint = ""
+        For {
+            Set tEndpoint = $Order(tSorted(tEndpoint))
+            If tEndpoint = "" Quit
+            Set tType = ""
+            For {
+                Set tType = $Order(tSorted(tEndpoint, tType))
+                If tType = "" Quit
+                Set tUrl = ""
+                For {
+                    Set tUrl = $Order(tSorted(tEndpoint, tType, tUrl), 1, tVerb)
+                    If tUrl = "" Quit
+                    Set tRow = {}
+                    Do tRow.%Set("endpoint", tEndpoint, "string")
+                    Do tRow.%Set("type", tType, "string")
+                    Do tRow.%Set("verb", tVerb, "string")
+                    Do tRow.%Set("url", tUrl, "string")
+                    Do pRoutes.%Push(tRow)
+                }
+            }
+        }
+    } Catch ex {
+        Set pRoutes = []
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pRoutes = []
+    Quit tSC
+}
+
+/// <p>The compiled implementation of <var>pClass</var>'s method <var>pMethod</var> as text, or
+/// <code>""</code> when it has none.</p>
+ClassMethod MethodText(pClass As %String, pMethod As %String) As %String [ Private ]
+{
+    Set tText = ""
+    Try {
+        Set tMethod = ##class(%Dictionary.CompiledMethod).%OpenId(pClass _ "||" _ pMethod)
+        If '$IsObject(tMethod) Quit
+        Do tMethod.Implementation.Rewind()
+        While 'tMethod.Implementation.AtEnd {
+            Set tText = tText _ tMethod.Implementation.Read(32000)
+        }
+    } Catch {
+        Set tText = ""
+    }
+    Quit tText
+}
+
+/// <p>The kind of script step this port renders for <var>pEndpoint</var>'s request type
+/// <var>pType</var> (AD-59): <code>objectscript</code> for the AD-27 import this port completes
+/// from content, <code>rest</code> where <class>OcuPilot.Port.AdminRoutes</class> resolves the
+/// pair, and <code>""</code> otherwise. A subclass that carries a type out itself answers that type
+/// and asks this for the rest.</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    If ..IsContentCompleted(pEndpoint, pType) Quit "objectscript"
+    If ##class(OcuPilot.Port.AdminRoutes).Route(pEndpoint, pType, .tVerb, .tUrl) Quit "rest"
+    Quit ""
+}
+
+/// <p>The script <method>Invoke</method> would carry out for the same arguments, as an array of
+/// <code>{kind, text}</code> steps, without calling anything (AD-59). Every branch of
+/// <method>Invoke</method> and of the sequence it runs is mirrored: the composite query split
+/// (<parameter>SPLITQUERIES</parameter>), the constant body (<parameter>CONSTANTBODIES</parameter>),
+/// the vendor's key names (<parameter>RENAMEDTYPES</parameter>) and wrapper
+/// (<parameter>WRAPPEDTYPES</parameter>), and AD-27's named completions -- a resource with no
+/// public permission and a credential imported from content as <code>objectscript</code> steps in
+/// <code>%SYS</code>, and the application type an edit keeps as an <code>objectscript</code> step
+/// on either side of the call. Every other call is one <code>rest</code> step against the route
+/// <class>OcuPilot.Port.AdminRoutes</class> names.</p>
+/// <p><b>Caller contract:</b> <var>pQuery</var> and <var>pBody</var> are what the write would be
+/// handed, with every secret already a placeholder; <var>pContext</var> is
+/// <code>{origin, user, creates, payload, diff}</code>. A pair with no route, and a malformed
+/// composite key, answer no step. Nothing here reads the instance or writes anything.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    Set tSteps = []
+    If '..SplitQuery(pEndpoint, .pQuery, .tQuery) Quit tSteps
+    Set tConstant = ..ConstantBody(pEndpoint, pType)
+    If $IsObject(tConstant) Set pBody = tConstant
+    If $IsObject(pBody) Set pBody = ..Renamed(pEndpoint, pType, pBody)
+    Set tBody = pBody
+    If $IsObject(pBody) Set tBody = ..Wrapped(pEndpoint, pType, pBody)
+    If ..ClassCompletedField(pEndpoint, pType, tBody) '= "" {
+        Do tSteps.%Push(..ResourceStep($Get(tQuery("name")), tBody))
+        Quit tSteps
+    }
+    If ..IsContentCompleted(pEndpoint, pType) {
+        Do tSteps.%Push(..ImportStep($Get(tQuery("alias")), tBody))
+        Quit tSteps
+    }
+    Set tKept = ..IsTypeKept(pEndpoint, pType)
+    If $IsObject(pContext) && pContext.%Get("creates") Set tKept = 0
+    If tKept Do tSteps.%Push(..KeptTypeStep($Get(tQuery("name"))))
+    Set tRest = ..RestStep(pEndpoint, pType, .tQuery, tBody, pContext)
+    If '$IsObject(tRest) Quit []
+    Do tSteps.%Push(tRest)
+    If tKept Do tSteps.%Push(..RestoreTypeStep($Get(tQuery("name"))))
+    Quit tSteps
+}
+
+/// <p>One <code>rest</code> step: a <code>curl</code> command naming the caller, the route's verb
+/// and its URL on <code>pContext.origin</code>, with <var>pQuery</var> as its query and
+/// <var>pBody</var> as its JSON body when it is an object. <code>""</code> for a pair
+/// <class>OcuPilot.Port.AdminRoutes</class> does not resolve.</p>
+ClassMethod RestStep(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicObject
+{
+    If '##class(OcuPilot.Port.AdminRoutes).Route(pEndpoint, pType, .tVerb, .tUrl) Quit ""
+    Set tOrigin = ""
+    Set tUser = ""
+    If $IsObject(pContext) {
+        Set tOrigin = pContext.%Get("origin")
+        Set tUser = pContext.%Get("user")
+    }
+    Set tQueryText = ""
+    Set tName = ""
+    For {
+        Set tName = $Order(pQuery(tName), 1, tValue)
+        If tName = "" Quit
+        ; A value that is wholly a placeholder stays readable as one, so the caption's "each value in
+        ; angle brackets" finds it; every other value is URL-encoded.
+        Set tQueryText = tQueryText _ $Select(tQueryText = "": "?", 1: "&") _ $ZConvert(tName, "O", "URL") _ "=" _ $Select($Match(tValue, "^<[A-Za-z0-9_.]+>$"): tValue, 1: $ZConvert(tValue, "O", "URL"))
+    }
+    Set tBreak = " \" _ $Char(10) _ "  "
+    Set tText = "curl -u " _ ..ShellQuoted(tUser) _ " -X " _ tVerb _ " " _ ..ShellQuoted(tOrigin _ ..#SNIPPETPREFIX _ tUrl _ tQueryText)
+    If $IsObject(pBody) {
+        Set tText = tText _ tBreak _ "-H " _ ..ShellQuoted("Content-Type: application/json") _ tBreak _ "-d " _ ..ShellQuoted(pBody.%ToJSON())
+    }
+    Quit ..Step("rest", tText)
+}
+
+/// <p>One step of kind <var>pKind</var> carrying <var>pText</var>.</p>
+ClassMethod Step(pKind As %String, pText As %String) As %DynamicObject
+{
+    Set tStep = {}
+    Do tStep.%Set("kind", pKind, "string")
+    Do tStep.%Set("text", pText, "string")
+    Quit tStep
+}
+
+/// <p>One <code>objectscript</code> step from the lines of <var>pLines</var>, each indented one
+/// space, starting in <code>%SYS</code>.</p>
+ClassMethod ObjectScriptStep(pLines As %List) As %DynamicObject
+{
+    Set tText = " Set $NAMESPACE = ""%SYS"""
+    For tI = 1:1:$ListLength(pLines) {
+        Set tText = tText _ $Char(10) _ " " _ $List(pLines, tI)
+    }
+    Quit ..Step("objectscript", tText)
+}
+
+/// <p><var>pValue</var> as a POSIX shell single-quoted word.</p>
+ClassMethod ShellQuoted(pValue As %String) As %String
+{
+    Quit "'" _ $Replace(pValue, "'", "'\''") _ "'"
+}
+
+/// <p><var>pValue</var> as an ObjectScript string literal.</p>
+ClassMethod Literal(pValue As %String) As %String
+{
+    Quit """" _ $Replace(pValue, """", """""") _ """"
+}
+
+/// <p>AD-27's first case as a script: <method>CompleteThroughClass</method>'s create or modify of
+/// resource <var>pName</var> through <class>Security.Resources</class> with an empty public
+/// permission.</p>
+ClassMethod ResourceStep(pName As %String, pBody As %DynamicObject) As %DynamicObject
+{
+    Set tDescription = ""
+    If $IsObject(pBody) && pBody.%IsDefined("Description") Set tDescription = pBody.%Get("Description")
+    Set tLines = $ListBuild("Kill tProps")
+    If $IsObject(pBody) && pBody.%IsDefined("Description") Set tLines = tLines _ $ListBuild("Set tProps(""Description"") = " _ ..Literal(tDescription))
+    Set tLines = tLines _ $ListBuild("Set tProps(""PublicPermission"") = """"")
+    Set tLines = tLines _ $ListBuild("If ##class(Security.Resources).Exists(" _ ..Literal(pName) _ ") { Set tSC = ##class(Security.Resources).Modify(" _ ..Literal(pName) _ ", .tProps) } Else { Set tSC = ##class(Security.Resources).Create(" _ ..Literal(pName) _ ", " _ ..Literal(tDescription) _ ", """") }")
+    Set tLines = tLines _ $ListBuild("Do $System.Status.DisplayError(tSC)")
+    Quit ..ObjectScriptStep(tLines)
+}
+
+/// <p>AD-27's second case as a script: <method>ImportThroughClass</method>'s import of credential
+/// <var>pAlias</var> from content through <class>%SYS.X509Credentials</class>, refused as the port
+/// refuses it when the alias is already present. The certificate is decoded from the base64 body of
+/// its PEM block (<method>PemBlock</method>), which is what the port decodes; a certificate that is
+/// not one PEM block is rendered as given.</p>
+ClassMethod ImportStep(pAlias As %String, pBody As %DynamicObject) As %DynamicObject
+{
+    Set tLines = $ListBuild("Set tCredential = ##class(%SYS.X509Credentials).%New()", "Set tCredential.Alias = " _ ..Literal(pAlias))
+    If $IsObject(pBody) {
+        Set tCertificate = ..Scalar(pBody, "Certificate")
+        If ..PemBlock(tCertificate, "cert", .tCanonical) {
+            Set tCertificate = ""
+            For tI = 2:1:$Length(tCanonical, $Char(10)) - 1 {
+                Set tLine = $Piece(tCanonical, $Char(10), tI)
+                If (tLine = "") || (tLine [ ":") Continue
+                Set tCertificate = tCertificate _ tLine
+            }
+        }
+        Set tLines = tLines _ $ListBuild("Set tCredential.Certificate = $System.Encryption.Base64Decode(" _ ..Literal(tCertificate) _ ")")
+        If pBody.%IsDefined("PrivateKey") && (..Scalar(pBody, "PrivateKey") '= "") {
+            Set tLines = tLines _ $ListBuild("Set tCredential.PrivateKey = " _ ..Literal(..Scalar(pBody, "PrivateKey")))
+            Set tLines = tLines _ $ListBuild("Set tCredential.PrivateKeyPassword = " _ ..Literal(..Scalar(pBody, "PrivateKeyPassword")))
+        }
+        For tField = "OwnerList", "PeerNames" {
+            If pBody.%GetTypeOf(tField) '= "array" Continue
+            Set tJoined = ""
+            Set tIterator = pBody.%Get(tField).%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tItem) {
+                If $IsObject(tItem) || (tItem = "") Continue
+                Set tJoined = tJoined _ $Select(tJoined = "": "", 1: ",") _ tItem
+            }
+            Set tLines = tLines _ $ListBuild("Set tCredential." _ tField _ " = " _ ..Literal(tJoined))
+        }
+    }
+    Set tLines = tLines _ $ListBuild("Set tSC = $Select(##class(%SYS.X509Credentials).Exists(" _ ..Literal(pAlias) _ "): $System.Status.Error(5001, ""an X.509 credential already carries that alias""), 1: tCredential.Save())", "Do $System.Status.DisplayError(tSC)")
+    Quit ..ObjectScriptStep(tLines)
+}
+
+/// <p>The first half of AD-27's fifth case as a script: the type web application <var>pName</var>
+/// holds before the edit, read from <class>Security.Applications</class>.</p>
+ClassMethod KeptTypeStep(pName As %String) As %DynamicObject
+{
+    Quit ..ObjectScriptStep($ListBuild("Kill tProps", "Set tSC = ##class(Security.Applications).Get(" _ ..Literal(pName) _ ", .tProps)", "ZWrite tProps(""Type"")"))
+}
+
+/// <p>The second half of AD-27's fifth case as a script: the type the first step wrote, re-applied
+/// to web application <var>pName</var>. <code>&lt;Type&gt;</code> is that value.</p>
+ClassMethod RestoreTypeStep(pName As %String) As %DynamicObject
+{
+    Quit ..ObjectScriptStep($ListBuild("Kill tProps", "Set tProps(""Type"") = <Type>", "Set tSC = ##class(Security.Applications).Modify(" _ ..Literal(pName) _ ", .tProps)", "Do $System.Status.DisplayError(tSC)"))
+}
+
+/// <p>The scalar <var>pObject</var> carries at <var>pKey</var>, or <code>""</code>.</p>
+ClassMethod Scalar(pObject, pKey As %String) As %String
+{
+    If '$IsObject(pObject) Quit ""
+    Set tType = pObject.%GetTypeOf(pKey)
+    If (tType = "unassigned") || (tType = "object") || (tType = "array") || (tType = "null") Quit ""
+    Quit pObject.%Get(pKey)
+}
+
 }

@@ -2,9 +2,10 @@
 title: 'Story 14.1: The copy-out draft'
 type: 'feature'
 created: '2026-09-26'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '615a1f627cccf3c5f89593d82736a1382f75b96f'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md'
 warnings: ['oversized']
@@ -239,7 +240,63 @@ This runs on slot B. Copy each changed `.cls` to `/tmp/ocupilot-b-ci/src` and lo
 - AC4: delete `ProcessPort.Snippet` → `DraftRegistry` goes red, naming `osmgmt.processes.terminatewitherror`.
 - DW-1081: skip attaching the control in `reply.ts` → `reply.spec.ts` and the reply leg of the browser spec go red.
 
+- mutation: `Draft.Take` calls `Operation.Apply` on the stored payload before its close → `OcuPilot.Test.DraftRoute` `TestAMergeWriteAnswersItsScriptAndChangesNothing` went red on "the application reads back unchanged".
+- mutation: `Draft.Mask` quits on entry (no placeholder substitution) → `OcuPilot.Test.DraftRegistry` `TestNoSecretReachesAnyRenderedScript` went red on "every script renders with its secrets as placeholders".
+- mutation: `ProcessPort.Snippet` deleted → `OcuPilot.Test.DraftRegistry` `TestEveryWriteToolHasAScriptForm` went red, naming `osmgmt.processes.terminatewitherror`.
+- mutation: the `WithSecrets` line dropped from `Draft.Render`'s composition → `OcuPilot.Test.DraftRegistry` `TestTheDraftOfAMergeWriteIsTheBodyConfirmSends` and `TestTheDraftOfACreateIsTheBodyConfirmSends` went red ([Spec gate] Draft/Confirm parity).
+- mutation: the `SecretBody` line in `Draft.Render` replaced by an empty body → `OcuPilot.Test.DraftRegistry` `TestTheDraftOfASecretOnlyBodyIsTheBodyConfirmSends` went red.
+- mutation: one `url` in `AdminRoutes`' XData changed → `OcuPilot.Test.DraftRegistry` `TestTheRouteTableEqualsAFreshDerivation` went red.
+- mutation: `phaseForState` maps `'draft'` to `'canceled-by-you'` → `ui/tools/proposal-view.test.mjs` "a canceled row reads its phase from the reason the instance recorded with it" and, rebuilt and redeployed, the AC1-AC3 leg of `copy-out-draft.browser-spec.mjs` went red.
+- mutation: `attachCopyControls(root)` skipped in `reply.ts` → both "a reply code block" tests in `reply.spec.ts` and, rebuilt and redeployed, the DW-1081 leg of `copy-out-draft.browser-spec.mjs` went red.
+- mutation: the `armed` guard dropped in `code-block.ts` → `code-block.spec.ts` "gives each step exactly one copy control" went red.
+- mutation: the "Give me the script instead" button removed from the card template → four tests in `proposal-card-draft.spec.ts` went red.
+- mutation: the `OcuPilot.Port.AdminRoutes=<table>` row absent from `PortGate`'s roster → `OcuPilot.Test.PortGate` `TestEveryPortDeclaresANamedGate` went red naming `OcuPilot.Port.AdminRoutes` (observed in the full sweep, run 168).
+- mutation: `Panel.onCardDraft`'s `draftsById.set` dropped → `panel.spec.ts` "a taken draft projects the script under its caption…" went red (AC2, the card's half).
+- mutation: the `drafting` check dropped from `Panel.onCardDraft` → `panel.spec.ts` "a second press while the first draft request is out sends nothing" went red.
+- mutation: the `If 'tClosed` refusal deleted from `Draft.Take` → `OcuPilot.Test.DraftRoute` `TestADraftThatLosesTheCloseIsRefused` went red (run 323; the matrix's race).
+- mutation: the `IsCredentialName` clause dropped from `Draft.Mask` → `OcuPilot.Test.DraftRegistry` `TestTheCredentialPatternMasksAnUndeclaredName` went red alone (run 324).
+- mutation: `ProviderPort.Snippet` deleted → `OcuPilot.Test.DraftRegistry` `TestEveryPortThatDefinesInvokeDefinesASnippet` went red naming `OcuPilot.Port.ProviderPort` (run 325).
+- mutation: `AdminPort.ImportStep` decodes the certificate as given → `OcuPilot.Test.DraftPorts` `TestAdminPort` went red (run 326, `OcuPilot.Port` recompiled).
+- mutation: `ProcessPort.Snippet` keeps `sendError`, and `OAuthResourceServerPort.Snippet` routes `ADDMAPPING` to the resource-server endpoint → `OcuPilot.Test.DraftPorts` `TestProcessPort` and `TestOAuthResourceServerPort` went red (run 328).
+
+## Review Triage Log
+
+### 2026-09-26 — Review pass
+
+- verdicts: 21 findings — high 0, medium 9, low 9, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) the eight port `Snippet` overrides and five `AdminPort` branches have no content assertion; `terminatewitherror` has no text check — added `OcuPilot.Test.DraftPorts`, one method per overriding port asserting verb, route, query and body keys or the `%SYS` call.
+  - `[medium]` `[patch]` (verification-gap) the lost-race branch after `GuardedClose` never runs — added `OcuPilot.Test.DraftLoser` (store seam whose close loses) and `DraftRoute.TestADraftThatLosesTheCloseIsRefused`.
+  - `[medium]` `[patch]` (verification-gap) the credential-pattern backstop in `Mask`/`IsSecretName` is unpinned — added `DraftRegistry.TestTheCredentialPatternMasksAnUndeclaredName`.
+  - `[low]` `[patch]` (verification-gap) nothing pins the origin in a `rest` step — `DraftRoute` asserts `'http://<test server>:<port>/api/admin/v2…`; the browser spec asserts `config.origin`.
+  - `[low]` `[patch]` (verification-gap) the panel's double-press guard and conversation reset are untested — double-press test added; the reset test declined, since a stale script needs a reused proposal id and ids are 32-hex server-minted.
+  - `[low]` `[patch]` (verification-gap) missing `mutation:` lines — AC2's card half and the new tests recorded above; matrix rows beyond the per-AC pin are outside Rule 19's scope.
+  - `[low]` `[patch]` (verification-gap) `DraftRoute.Counts` returning -1 on both sides would pass — asserts both counts are ≥ 0 first.
+  - `[low]` `[patch]` (verification-gap) `AssertParity` compares only the first N drafted steps — asserts equal step counts for a tool with no `SnippetAfter`.
+  - `[medium]` `[patch]` (verification-gap) `AdminPort.ImportStep` hands `Base64Decode` the whole PEM block (`<ILLEGAL VALUE>` when run) and omits the alias check — decodes the PEM body `PemBlock` canonicalizes and refuses an existing alias as the port does.
+  - `[low]` `[reject]` (verification-gap) a 404 draft refusal carries no `detail`, so the card keeps its buttons until the poll — identical to Cancel's shipped shape, which the matrix delegates to the poll; changing it means a detail branch in both handlers.
+  - `[false]` `[reject]` (intent-alignment) a merge write answers three steps, not one `rest` step — the Always clause and AC1 require mirroring `Invoke`'s AD-27 kept-type completion; one `rest` step would reset the application's type.
+  - `[false]` `[reject]` (intent-alignment) `DeleteByError` is one call per date, not per entry — `LogSourcePort.RemoveErrorIds` makes exactly those per-date calls.
+  - `[medium]` `[patch]` (intent-alignment) process terminate's script text is asserted nowhere — grouped with the first row (`DraftPorts.TestProcessPort`).
+  - `[low]` `[patch]` (intent-alignment) `SnippetAfter` renders `Security.Users.Modify` rather than the admin-API re-read and `PUT`, and its set/clear branches are untested — branches pinned in `DraftPorts.TestUserPasswordAfterStep`; the kind is kept because the route table holds non-`GET` routes only, so the re-read cannot be rendered from it.
+  - `[medium]` `[patch]` (intent-alignment) `ProviderPort` defines `Invoke` with no `Snippet` (AD-59) — empty `SnippetForm`/`Snippet` added, and `DraftRegistry.TestEveryPortThatDefinesInvokeDefinesASnippet` pins the whole port package.
+  - `[medium]` `[patch]` (intent-alignment) nothing checks a script against what the write does — grouped with the first row.
+  - `[medium]` `[patch]` (intent-alignment) the credential backstop has no test — grouped with the third row.
+  - `[medium]` `[patch]` (intent-alignment) the race is tested only in sequence — grouped with the second row.
+  - `[low]` `[reject]` (intent-alignment) not-takeable rows keep the card live on the client — grouped with the tenth row.
+  - `[false]` `[reject]` (intent-alignment) the `PROPOSAL.NODRAFT` reason and the `SnippetAfter` comment are not EXPERIENCE.md strings — no `PROPOSAL.*` reason is an EXPERIENCE.md Fixed string, and script text is not UI copy.
+  - `[low]` `[patch]` (intent-alignment) `Operation.cls` still calls itself AD-10's single call site — the comment names `Draft.Take` as the only other.
+- stage-found while patching: a wholly-placeholder query value rendered URL-encoded (`%3CID%3E`) — `AdminPort.RestStep` keeps it readable; pinned in `DraftPorts.TestOAuthServerPort`.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- **Change:** `POST /proposal/:id/draft` (`Kernel/Proposal/Draft.cls`, `Api/Confirm.cls` `HandleDraft`, `Api/Router.cls`) renders a live proposal's script on the instance through its port's new `Snippet`/`SnippetForm` (every port defining `Invoke`, `ProviderPort` and `MgmntPort` answering no form), with `Port/AdminRoutes.cls` the checked-in non-`GET` route table (157 routes) and `UserPassword.SnippetAfter` the after-write step; secrets read as `<Name>`; the row closes `canceled`/`draft`. Client: `canceled-by-draft` phase, the card action, `app-code-block`, and the one copy control (`copy-control.ts`) also on reply code blocks (DW-1081).
+- **Files:** server — `Kernel/Proposal/{Draft,Write,Operation}.cls`, `Kernel/State/Propose.cls` (`REASONDRAFT`), `Api/{Confirm,Router}.cls`, `Port/*` (14 ports + `AdminRoutes`), `Screen/Tool/UserPassword.cls`; tests — `Test/{DraftRegistry,DraftRoute,DraftPorts,DraftNoForm,DraftLoser}.cls`, `Test/EndpointCoverage.cls` (probe row), `Test/PortGate.cls` (`<table>` roster value); client — `core/{draft,proposal-view,strings,turn}.ts`, `shell/{copy-control,code-block,panel,proposal-card,reply}.ts`, `_components.scss`, specs `proposal-card-draft`, `code-block`, `panel`, `reply`, `tools/{draft,proposal-view}.test.mjs`, `browser/copy-out-draft.browser-spec.mjs`; EXPERIENCE.md edited in place (981 lines before and after; the caption sits on :273, the footer-captions row).
+- **Review:** 21 findings; 12 entries patched (medium 5: port content tests, lost race, credential backstop, `ImportStep` PEM decode, `ProviderPort` snippet; low 7), 0 deferred, rejected: 3 false and 2 low (the 404-without-detail shape, shared with Cancel). Details in the triage log.
+- **Follow-up review recommended: true** — five medium entries patched. The unverified risk: no rendered script has been run against the vendor; `DraftPorts` pins the text each port emits, not that the admin API or the `%SYS` class accepts it (notably `OAuthServerPort`'s `<ID>` fallback, `TaskPort`'s trimmed body and the ObjectScript steps).
+- **Verification:** on `ocupilot-b-ci`, one class per call — DraftRegistry 8/8, DraftRoute 10/10, DraftPorts 11/11, EndpointCoverage 2/2, ProposalClose 7/7, ProposalWire 15/15, ConfirmRoute 6/6, PortGate 4/4 (`%UnitTest_Result` runs 313-322). Full ObjectScript sweep once, by the handoff: 2478/2478 after its PortGate roster fix; smoke 49/49. `npm run test:tools` 1493 pass, `npm run test:components` 1482 pass; build 1.85 MB with no budget warning; browser `copy-out-draft`, `reply`, `proposal-card` 10/10, then `copy-out-draft` 2/2 after the origin pin, each on a rebuilt and redeployed bundle; `check-objectscript` and `lint-docs` clean. Full browser suite left to CI (Rule 29).
+- **Contended files:** `src/OcuPilot/Kernel/State/Propose.cls`, `ui/src/app/core/strings.ts`, `ui/src/app/core/turn.ts`, `ui/src/app/shell/panel.ts`, `ui/src/app/shell/panel.spec.ts`, `ui/src/app/shell/proposal-card.ts`, `ui/src/styles/_components.scss`, EXPERIENCE.md — add-only; a trial `git merge-tree` against `origin/OCU-1-epic16` merges all of them cleanly.
+- **Residual risks:** the password flag step renders under a written condition, because a password proposal stores no `ChangePassword`; a server description addressed by issuer shows `<ID>` when its stored read lacks the id; an application edit's restore step carries `<Type>` from the first step's output.

@@ -320,8 +320,9 @@ ClassMethod Gate(pTool As %DynamicObject, pTargetRef As %String, pPayloadJson As
             Quit
         }
 
-        ; AD-10's single call site. The set is handed the write's own tool, target, payload and
-        ; diff, and nothing of the request's.
+        ; AD-10's call site for every write; the copy-out draft (Kernel.Proposal.Draft.Take) is the
+        ; only other. The set is handed the write's own tool, target, payload and diff, and nothing
+        ; of the request's.
         If pProhibitedClass = "" Quit
         Set tProhibitSC = $ClassMethod(pProhibitedClass, "Prohibits", tToolName, pTargetRef, pPayloadJson, pDiffJson, .tProhibits, .tProhibitCode)
         If $$$ISERR(tProhibitSC) {

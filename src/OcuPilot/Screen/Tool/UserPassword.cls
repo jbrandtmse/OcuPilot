@@ -118,6 +118,24 @@ ClassMethod AfterWrite(pPort As %String, pEndpoint As %String, pIdParam As %Stri
     Quit $ClassMethod(pPort, "Invoke", pEndpoint, ..#FLAGWRITETYPE, .tQuery, tNow, .tWritten, .pHttpStatus, .pFault)
 }
 
+/// <p><method>AfterWrite</method> as a copy-out script step (AD-59): the change-on-login flag the
+/// vendor's password change clears, set again on account <var>pIdValue</var> through
+/// <class>Security.Users</class> in <code>%SYS</code>, which changes that one property. A stored
+/// read <var>pStoredPayload</var> that carries the flag decides: set, one step; clear, none. A read
+/// that does not carry it -- the proposal stores only its fingerprint subject -- answers the step
+/// with the condition <method>AfterWrite</method> tests written above it.</p>
+ClassMethod SnippetAfter(pEndpoint As %String, pIdParam As %String, pIdValue As %String, pStoredPayload As %DynamicObject, pContext As %DynamicObject = "") As %DynamicArray
+{
+    Set tSteps = []
+    Set tKnown = $IsObject(pStoredPayload) && (pStoredPayload.%GetTypeOf(..#CHANGEPASSWORDFIELD) = "boolean")
+    If tKnown && 'pStoredPayload.%Get(..#CHANGEPASSWORDFIELD) Quit tSteps
+    Set tLines = ""
+    If 'tKnown Set tLines = $ListBuild("; Only when the account was set to change its password at next login before the password was set.")
+    Set tLines = tLines _ $ListBuild("Kill tProps", "Set tProps(" _ ##class(OcuPilot.Port.AdminPort).Literal(..#CHANGEPASSWORDFIELD) _ ") = 1", "Set tSC = ##class(Security.Users).Modify(" _ ##class(OcuPilot.Port.AdminPort).Literal(pIdValue) _ ", .tProps)", "Do $System.Status.DisplayError(tSC)")
+    Do tSteps.%Push(##class(OcuPilot.Port.AdminPort).ObjectScriptStep(tLines))
+    Quit tSteps
+}
+
 /// <p>The card's one row, from the fresh read <var>pFresh</var>: <code>{field: "Password",
 /// before: "", after: ""}</code>. It names the declared secret, so the card masks it and asks for
 /// it; neither side carries a value, because no read returns one and the new one is supplied at

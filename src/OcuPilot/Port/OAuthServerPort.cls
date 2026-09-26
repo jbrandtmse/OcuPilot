@@ -442,4 +442,51 @@ ClassMethod DiscoveryCause(pVendorSC As %Status, Output pValue As %String) As %S
     Quit tCause
 }
 
+/// <p>The kind of script step <method>Snippet</method> renders: <code>objectscript</code> for
+/// <parameter>REFRESHTYPE</parameter>, which this port carries out through
+/// <parameter>DEFINITIONCLASS</parameter>, and the admin port's answer otherwise.</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    If (pEndpoint = ..#SERVERENDPOINT) && (pType = ..#REFRESHTYPE) Quit "objectscript"
+    Quit ##super(pEndpoint, pType)
+}
+
+/// <p><method>Invoke</method>'s write branches as a script (AD-59). <code>POST</code> is the vendor
+/// call with <method>VendorBody</method>'s body carrying the issuer and an empty query. Every other
+/// type addresses the description by the vendor's own id in <parameter>VENDORQUERY</parameter> in
+/// place of <parameter>ISSUERQUERY</parameter>: the id the proposal's stored read carries as
+/// <code>pContext.payload.ID</code>, or the placeholder <code>&lt;ID&gt;</code> where that read
+/// holds none, since resolving it is a read this method never makes. <code>PUT</code> sends
+/// <method>VendorBody</method>'s body, and <parameter>REFRESHTYPE</parameter> is the
+/// <code>RefreshJWKS</code> call <method>RefreshKeySet</method> makes.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    If pEndpoint '= ..#SERVERENDPOINT Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+    Set tIssuer = $Get(pQuery(..#ISSUERQUERY))
+    If pType = "POST" {
+        Set tBody = pBody
+        If $IsObject(pBody) && pBody.%IsA("%Library.DynamicObject") {
+            Set tBody = ..VendorBody(pBody)
+            If tIssuer '= "" Do tBody.%Set("IssuerEndpoint", tIssuer, "string")
+        }
+        Kill tNone
+        Quit ##super(pEndpoint, "POST", .tNone, tBody, pContext)
+    }
+    Set tId = ""
+    If $IsObject(pContext) Set tId = ..Scalar(pContext.%Get("payload"), "ID")
+    If tId = "" Set tId = "<ID>"
+    Kill tQuery
+    Merge tQuery = pQuery
+    Kill tQuery(..#ISSUERQUERY)
+    Set tQuery(..#VENDORQUERY) = tId
+    If pType = ..#REFRESHTYPE {
+        Set tSteps = []
+        Do tSteps.%Push(..ObjectScriptStep($ListBuild("Set tDefinition = ##class(" _ ..#DEFINITIONCLASS _ ").Open(" _ ..Literal(tId) _ ", .tSC)", "If $IsObject(tDefinition) Do tDefinition.RefreshJWKS(1, 1, .tSC)", "Do $System.Status.DisplayError(tSC)")))
+        Quit tSteps
+    }
+    Set tBody = pBody
+    If (pType = "PUT") && $IsObject(pBody) && pBody.%IsA("%Library.DynamicObject") Set tBody = ..VendorBody(pBody)
+    Quit ##super(pEndpoint, pType, .tQuery, tBody, pContext)
+}
+
 }

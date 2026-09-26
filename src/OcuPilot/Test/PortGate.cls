@@ -25,12 +25,17 @@ Parameter PORTPACKAGE = "OcuPilot.Port.";
 /// vendor's own resource check declares <parameter>VENDORGATE</parameter> instead.</p>
 /// <p><b>A class in the package and not on this roster fails.</b> That is the point: the roster is
 /// what a new port has to be added to, and adding it is what forces a gate to be named.</p>
-Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>";
+Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>";
 
 /// <p>The roster value for a port whose gate is the vendor's own <code>ResourcesOR()</code> check,
 /// which AD-29 fixes as a lower bound with the remedy at the screen descriptor's declared pair
 /// set.</p>
 Parameter VENDORGATE = "<vendor>";
+
+/// <p>The roster value for a class in the package that is a checked-in table a port reads rather
+/// than a port: it has no outbound entry, so it has no gate to name, and the test asserts it defines
+/// no <code>Invoke</code>.</p>
+Parameter TABLEROW = "<table>";
 
 /// <p>The gate whose held set a test declares, in place of the instance's own answer.</p>
 Parameter GATE = "OcuPilot.Test.ScreenGate";
@@ -100,6 +105,10 @@ Method TestEveryPortDeclaresANamedGate()
         Set tRow = ..RosterFor(tClass)
         Do $$$AssertNotEquals(tRow, "", tClass _ ": is on OcuPilot.Test.PortGate's roster -- a port declares and evaluates a named pair set (AD-29)")
         If tRow = "" Continue
+        If tRow = ..#TABLEROW {
+            Do $$$AssertTrue('##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||Invoke"), tClass _ ": is a table with no outbound entry")
+            Continue
+        }
         If tRow = ..#VENDORGATE {
             ; AdminPort's declared gate is the vendor's own ResourcesOR(), which AD-29 fixes as a
             ; lower bound. What is asserted is that the seam evaluating it still exists.

@@ -651,4 +651,17 @@ ClassMethod LogRaw(pMessage As %String, pStatus As %Status, pCode As %String = "
     Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, pMessage, pStatus, pCode)
 }
 
+/// <p><code>""</code>: <method>Invoke</method> is the provider call, which is no write, so no
+/// request type has a script form (AD-59).</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    Quit ""
+}
+
+/// <p>No step: no branch of <method>Invoke</method> writes to the instance (AD-59).</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    Quit []
+}
+
 }

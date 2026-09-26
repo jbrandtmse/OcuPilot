@@ -583,4 +583,17 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
+/// <p><code>""</code>: no write reaches the management API through this port, so no request type
+/// has a script form (AD-59).</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    Quit ""
+}
+
+/// <p>No step: every branch of <method>Invoke</method> is a read (AD-59).</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    Quit []
+}
+
 }

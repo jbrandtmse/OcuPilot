@@ -207,7 +207,7 @@ export function consequenceSentence(code: string | undefined): string {
 }
 
 /**
- * Where one card is in the proposal lifecycle: live, the in-flight Confirm, and the seven terminal
+ * Where one card is in the proposal lifecycle: live, the in-flight Confirm, and the eight terminal
  * states EXPERIENCE.md's status-line row publishes a sentence for.
  */
 export type ProposalPhase =
@@ -217,6 +217,7 @@ export type ProposalPhase =
   | 'canceled-by-you'
   | 'canceled-by-message'
   | 'canceled-sibling'
+  | 'canceled-by-draft'
   | 'target-changed'
   | 'expired'
   | 'switched-off';
@@ -227,6 +228,7 @@ const TERMINAL_PHASES: ReadonlySet<ProposalPhase> = new Set<ProposalPhase>([
   'canceled-by-you',
   'canceled-by-message',
   'canceled-sibling',
+  'canceled-by-draft',
   'target-changed',
   'expired',
   'switched-off',
@@ -253,9 +255,10 @@ export function offersRepropose(phase: ProposalPhase): boolean {
 /**
  * The phase a wire `state` and its `closedReason` read as.
  *
- * `canceled` is four phases, told apart by the reason the instance recorded with it -- and a
- * `canceled` row whose reason this client does not recognise reads as the user's own decision,
- * which is the one of the four that claims least about why. Anything this client does not
+ * `canceled` is five phases, told apart by the reason the instance recorded with it -- `draft` is
+ * the user taking the script instead (AD-59) -- and a `canceled` row whose reason this client does
+ * not recognise reads as the user's own decision, which is the one of the five that claims least
+ * about why. Anything this client does not
  * recognise at all reads as `expired`: a card drawn restrained with no Confirm is the restrained
  * direction, and the alternative -- treating an unknown state as live -- would offer a decision on
  * a proposal whose fate the instance has already settled.
@@ -266,6 +269,7 @@ export function phaseForState(state: string, closedReason = ''): ProposalPhase {
   if (state === 'canceled') {
     if (closedReason === 'message') return 'canceled-by-message';
     if (closedReason === 'sibling') return 'canceled-sibling';
+    if (closedReason === 'draft') return 'canceled-by-draft';
     if (closedReason === 'target-changed') return 'target-changed';
     return 'canceled-by-you';
   }
@@ -365,6 +369,7 @@ export function statusLineFor(phase: ProposalPhase, userName: string, at: string
   if (phase === 'canceled-by-you') return STRINGS.proposalStatusCanceledByYou;
   if (phase === 'canceled-by-message') return STRINGS.proposalStatusCanceledByMessage;
   if (phase === 'canceled-sibling') return STRINGS.proposalStatusCanceledSibling;
+  if (phase === 'canceled-by-draft') return STRINGS.proposalStatusCanceledByDraft;
   // EXPERIENCE.md publishes one fixed string for this transition, and DESIGN.md says the warning
   // banner's fixed string is EXPERIENCE.md's -- so the status line IS the banner's text, rendered
   // inside it, rather than a second piece of copy invented here.

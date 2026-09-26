@@ -334,6 +334,14 @@ export interface ProposalConfirmRequest {
           >
             {{ STRINGS.actionCancel }}
           </button>
+          <button
+            type="button"
+            class="ocu-button-text ocu-proposal-card-draft-action"
+            [attr.aria-disabled]="cancelAriaDisabled"
+            (click)="onDraft()"
+          >
+            {{ STRINGS.actionTakeScript }}
+          </button>
         }
         @if (guardVisible) {
           <p class="ocu-proposal-card-guard">{{ STRINGS.proposalFooterConfirmHint }}</p>
@@ -387,6 +395,12 @@ export class ProposalCard {
 
   /** Re-propose was pressed: the accommodation for the expiry limit (WCAG 2.2.1). */
   readonly repropose = output<string>();
+
+  /**
+   * "Give me the script instead" was pressed (Story 14.1, AD-59). Offered wherever Cancel is and
+   * refused whenever Cancel is; the panel makes the request, and the instance closes the row.
+   */
+  readonly draft = output<string>();
 
   protected readonly STRINGS = STRINGS;
 
@@ -857,5 +871,10 @@ export class ProposalCard {
   protected onRepropose(): void {
     if (this.reproposeAriaDisabled !== null) return;
     this.repropose.emit(this.view().proposalId ?? '');
+  }
+
+  protected onDraft(): void {
+    if (this.cancelAriaDisabled !== null) return;
+    this.draft.emit(this.view().proposalId ?? '');
   }
 }
