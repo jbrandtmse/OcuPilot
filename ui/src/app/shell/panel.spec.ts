@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
 import { AGENT_CONTEXT_PATH, AgentContext, NO_CONTEXT_INFO, type AgentContextInfo } from '../core/agent-context';
@@ -4462,7 +4462,10 @@ describe('Story 11.3: suggested prompts per screen', () => {
     expect(prompt.getAttribute('aria-describedby')).toBe(BUSY_REASON_ID);
     prompt.click();
     await turnSettle();
+    fixture.detectChanges();
     expect(turnPosts(api)).toHaveLength(1);
+    // The store refuses a second send on its own; only the panel's guard keeps the lock banner away.
+    expect(host.querySelector('#ocu-panel-lock')).toBeNull();
   });
 
   it('Sharing off: a prompt still sends, with no context, as Send does', async () => {
@@ -4536,6 +4539,27 @@ describe('Story 11.3: suggested prompts per screen', () => {
     fixture.detectChanges();
     expect(host.querySelectorAll('.ocu-suggested .ocu-prompt-group')).toHaveLength(1);
     expect(host.querySelectorAll('[role="log"] .ocu-prompt-group')).toHaveLength(0);
+  });
+
+  // A read that never settles is the same state as "in flight" held open indefinitely: there is no
+  // timeout in this contract (AC4, AC5), so the chosen behavior is that neither set ever paints.
+  //
+  // Mutation (Rule 19): drop the `onHome` read gate from `greetingPrompts` -> this goes red, because
+  // the greeting would paint Home's set even though the read has not answered. A timed fallback that
+  // lets the greeting paint after a wait also turns it red: fake time runs ten minutes past mount.
+  it('Home never answers: the greeting and the block both stay promptless, with no fallback', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const dates = { requestJson: () => new Promise<unknown>(() => {}) };
+      const { host, fixture } = await mountPrompts({ url: '/', area: 'home', dates, settleSuggested: false });
+      await vi.advanceTimersByTimeAsync(10 * 60_000);
+      fixture.detectChanges();
+      expect(host.querySelector('[role="log"] .ocu-panel-greeting')).not.toBeNull();
+      expect(host.querySelectorAll('.ocu-prompt-group')).toHaveLength(0);
+      expect(host.querySelector('.ocu-suggested .ocu-suggested-eyebrow')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('Home attention: the block shows lines only, and the greeting offers Home\'s three prompts', async () => {

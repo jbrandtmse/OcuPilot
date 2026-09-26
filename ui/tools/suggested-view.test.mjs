@@ -167,7 +167,7 @@ test('a refused application-errors read renders the unread line, and is never re
   await view.load();
 
   assert.equal(view.answered(), true, 'a refusal settles the source rather than leaving it pending');
-  assert.deepEqual(view.lines().map((line) => line.key), ['agent-status', 'application-errors'], 'no zero, no skeleton row');
+  assert.deepEqual(view.lines().map((line) => line.key), ['agent-status', 'application-errors'], 'the unread line joins the agent-status line, never a zero or skeleton row');
   assertUnreadLine(view, 'HSCUSTOM', '403');
   assert.deepEqual(connectivity.parked, [], 'a 403 is reported and never retried');
 });

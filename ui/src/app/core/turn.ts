@@ -8,7 +8,7 @@
  * **One conversation per tab.** The id lives in `sessionStorage` (`ocupilot.conversation`) and
  * is adopted only on reload or Back/Forward -- `token-store.ts`'s navigation-kind rule, reused
  * here rather than duplicated, so a new or duplicated tab always starts fresh. `restore()` is
- * called once, at bootstrap: with no adopted id it resolves at once: with one, it reads the
+ * called at bootstrap and after sign-out: with no adopted id it resolves at once: with one, it reads the
  * conversation back and drops the id on a 404 (the owner deleted it, or it never existed).
  *
  * **Ensure, then send.** `send()` mints a conversation with `POST /conversation` when this tab
@@ -877,7 +877,7 @@ export class TurnStore {
     return this.conversationIdValue;
   }
 
-  /** Whether `restore()` has settled -- once, at bootstrap. */
+  /** Whether `restore()` has settled -- at bootstrap, and again after sign-out. */
   restored(): boolean {
     return this.restoredValue;
   }

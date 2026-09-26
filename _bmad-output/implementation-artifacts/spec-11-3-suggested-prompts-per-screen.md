@@ -233,6 +233,37 @@ deferred: []
 - **AC5.** Given a refused or faulted counted read, when Home renders, then the line says it could not be read and no block prompts show (DW-1147). A readable zero counted line never renders (DW-1160).
 - **AC6.** Given 11.1's explain legs, 11.2's entry legs and 4.10's line gesture, when they run, then they stay green. The only edits are the 4.10 starter tests named above.
 
+### Review Findings
+
+Code review 2026-09-25, `review_tier: full-opus`, four layers (blind, edge case, verification gap, acceptance). 0 decision-needed, 6 patch (all applied), 3 ledgered, 14 rejected.
+
+- [x] [Review][Patch] (medium) The block's Busy leg could not fail with the busy half of the prompt guard removed, because the store refuses the second send itself [ui/src/app/shell/panel.spec.ts:4453] -- asserts the lock banner stays away, as 11.1's leg does.
+- [x] [Review][Patch] (medium) "Home never answers" could not observe the "no fallback" it names in three microtask ticks [ui/src/app/shell/panel.spec.ts:4546] -- fake timers now run ten minutes past mount.
+- [x] [Review][Patch] (low) Row `:718` said an unread line "stops the prompts"; the greeting still offers them, so it now says the block's [EXPERIENCE.md:718]
+- [x] [Review][Patch] (low) Row `:716` was amended with no marker [EXPERIENCE.md:716]
+- [x] [Review][Patch] (low) `TurnStore.restored()` and the file header said `restore()` runs once, at bootstrap; `app.ts` now also runs it after sign-out [ui/src/app/core/turn.ts:11, :880]
+- [x] [Review][Patch] (low) The refused-read assertion message still read "no zero, no skeleton row" [ui/tools/suggested-view.test.mjs:170]
+- [x] [Review][Defer] (low) Home's greeting is promptless while the view never answers [ui/src/app/shell/panel.ts:1402] -- DW-1678 wontfix-accepted.
+- [x] [Review][Defer] (low) A send during the bootstrap restore abandons it [ui/src/app/core/turn.ts:934] -- DW-1679 wontfix-accepted.
+- [x] [Review][Defer] (low) Fixed-strings row `:331` still says Home's prompts show only when nothing needs attention [EXPERIENCE.md:331] -- DW-1680, open for the lead (a row this story did not add).
+
+Rejected:
+
+- `false`: `declaredGroups` in `panel.spec.ts` re-implements `promptGroups` and would share its bugs. It never calls the production function, so a grouping bug in `promptGroups` fails the registry leg.
+- `low`: interleaved groups render prompt 1, 3, then 2, unlike the row order. This is the spec's Grouping rule, and a row lists strings, not layout.
+- `low`: DESIGN.md does not describe the group label or the disabled prompt. The spec does not task it, and the label reuses the eyebrow type role as the Tasks direct.
+- `low`: the unread line keeps the composer gesture. By design: "Lines keep the composer gesture".
+- `low`: a repeated `textKey` is not refused, and `track prompt` would see duplicates. No descriptor repeats a key, and `STRINGS` values are unique.
+- `low`: the corpus lost its case with no `built` key. Both engines compare against true, and the production roster pins the sound built path on both sides.
+- `low`: the vocabulary keys carry Epic 9's screen names. By design (the spec keeps Epic 9's six keys); their labels have rows from Epic 9.
+- `low`: nothing tells a screen-reader user that a prompt sends. The turn's live transcript announces the send, and a fix needs a new string row.
+- `low`: moving the sign-out restore into `endSession()` would change behavior in contended `turn.ts`. The `app.ts` line is correct and minimal, `app.spec.ts` pins it, and it merges cleanly with Epic 12.
+- `low`: `Registry.Validate`'s call to the rule has no Validate-level refusal test. The wiring predates this story, and the test follows the `SideBarPositionProblem` precedent.
+- `low`: AC6's list of edited 4.10 tests omits the refused-read leg AC5 required. The fix would edit the spec.
+- `low`: `built: 1` is refused by one engine and not the other. This is the existing `sideBarPosition` precedent, and every descriptor declares JSON `true`.
+- `low`: Home shows no set with a non-empty transcript and an attention line. That state is not idle, and 4.10 designed it that way.
+- `low`: AC4's "exactly one" is really "at most one". The fix would edit the spec, and DW-1678 covers the never-answers state.
+
 ## Spec Change Log
 
 - 2026-09-25, lead spec gate: the proposed AD-5 amendment is written into the spine (Rule 20). The EXPERIENCE.md rewordings (`:671`, `:673`, `:356`) are accepted as Rule 5 tier-1 apply-and-report edits; the implement stage makes them.
@@ -415,6 +446,24 @@ The table:
 - mutation: `void this.turn.restore()` dropped after `turn.endSession()` in `app.ts` -> `app.spec.ts` sign-out leg red.
 - mutation: `greetingPrompts` drops its Home read gate (answers `true` once the block shows none) -> panel "Home in flight" red.
 - mutation (AC6): `onSuggestion` no longer sets the draft -> 4.10's "AC3: a line has two distinct controls" leg red.
+
+**QA gap coverage (this pass).** The implement stage's coverage was reviewed against browser (b)'s
+faked dates answer and the matrix; the only gap was a read that never settles at all (distinct from
+"in flight", which does settle). A component-tier pin was added to `ui/src/app/shell/panel.spec.ts`
+`(QA)`: "Home never answers: the greeting and the block both stay promptless, with no fallback" —
+`requestJson` returns a promise that never resolves, and after several ticks neither the greeting
+nor the block paints a prompt group. "The one set" rule (component tier: "Home all-zero", "Home
+attention") and DW-1147's refused/faulted line (component tier: "Refused read", "Faulted read";
+unit tier: `suggested-view.test.mjs`'s DW-1147 test) already had real-runtime pins independent of
+browser (b)'s stub and needed no new test. AC2 on a non-Home screen at the browser tier and every
+I/O matrix row were already pinned (browser (a); the `panel.spec.ts` Story 11.3 suite).
+
+- mutation (QA): `greetingPrompts` drops its `onHome` read gate (answers `true` unconditionally once
+  the block shows none) -> panel "Home never answers" red (confirmed; reverted byte-identical).
+- mutation (code review): `greetingPrompts` also answers `true` once a 30-second timer fires -> panel
+  "Home never answers" red alone ("Home in flight" stays green); reverted byte-identical.
+- mutation (code review): `onSuggestedPrompt` guards on `composerUnavailable` only -> panel block
+  "Busy" leg red alone (the lock banner shows); reverted byte-identical.
 
 **Manual check (extra evidence, never the proof).** Use the owner's live-key rules. On `tasks/schedule`, with a live Anthropic definition, choose "Which tasks are suspended, and why?". The reply answers from the screen or the read tool and proposes nothing.
 

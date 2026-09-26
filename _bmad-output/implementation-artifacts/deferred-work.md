@@ -3574,6 +3574,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Task 4 of the 4.10 spec specifies the fallback on every zero, and the I/O matrix settles neither the refused row nor the faulted row against it. A caller without the error log's privilege sees the three starter prompts and no indication that a line could not be read. Probe: sign in as a least-privileged principal on Home and read the block
 - 2026-09-18T18:01:00Z status=decision-pending owner=burndown by=harvest note=product call for the owner sheet: whether a line that could not be read reads as zero, as absent, or as a stated refusal
 - 2026-09-19T02:12:26Z status=routed owner=11-3-suggested-prompts-per-screen by=merge_gate note=distinguish refused from zero; a caller who may not read a source must be told so, not told all is well
+- 2026-09-26T01:12:25Z status=resolved-by:11-3-suggested-prompts-per-screen by=adjudication note=a refused or faulted errors read answers an unread line and showPrompts() goes false (90e68c6f); pinned by suggested-view.test.mjs refused/faulted and panel.spec Refused/Faulted read legs
 
 ### DW-1148: DESIGN.md's Home 1,920 row gives the side bar 240 and content 672, which the ordinary Home arrival cannot reach
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3637,6 +3638,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T19:50:14Z status=decision-pending owner=burndown by=cr note=owner picks: amend EXPERIENCE.md 514/716 to publish the greeting as the yielder, or invert so the block keeps them and the greeting drops its prompt rows
 - 2026-09-18T19:55:04Z status=decision-pending owner=burndown by=adjudication note=lead agrees this is the owner's: EXPERIENCE.md's Home suggested-view row and UJ-2 both say the block offers the three starter prompts on a fresh container, while the shipped panel yields the block's set to the greeting's. The de-duplication itself is right; which set survives is the product call. The row now records the shipped behaviour, so a reversal is one row and one branch
 - 2026-09-19T02:12:26Z status=routed owner=11-3-suggested-prompts-per-screen by=merge_gate note=decided: EXPERIENCE.md is canonical, so Home shows its starter prompts; the greeting does not displace them
+- 2026-09-26T01:12:25Z status=resolved-by:11-3-suggested-prompts-per-screen by=adjudication note=Home's block keeps its prompts and the greeting yields (90e68c6f); pinned by panel.spec Home all-zero/attention legs and browser suggested-prompts (b)
 
 ### DW-1159: EXPERIENCE.md's Home suggested-view row still publishes the declined tasks-suspended line and 'application errors today per namespace', both superseded by Story 4.10's AC1 amendment
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: in-story
@@ -3650,6 +3652,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T19:50:26Z status=escalated owner=burndown by=cr note=fix shape depends on DW-1147: answering null on a zero collides with that decision, and a date-free sentence needs a Fixed-strings row
 - 2026-09-18T19:55:13Z status=escalated owner=burndown by=adjudication note=lead confirms the escalation: the fix shape depends on the owner's DW-1147, and the defect is hidden until Story 6.13 appends a second counted source
 - 2026-09-19T02:12:26Z status=routed owner=11-3-suggested-prompts-per-screen by=merge_gate note=a counted line answering zero must not render a dateless sentence
+- 2026-09-26T01:12:25Z status=resolved-by:11-3-suggested-prompts-per-screen by=adjudication note=suggestedRows drops a readable zero counted line (90e68c6f); pinned by panel.spec Zero line leg
 
 ### DW-1161: Four byte-identical privilege-reason rule blocks cost the eager bundle 1.3 kB, which is more than the headroom DW-1153 reports
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: in-epic
@@ -6974,3 +6977,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-2-explain-a-log-or-audit-entry.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: screen-context.ts assembleEntryContext and panel Send set namespace from scope.namespace() (ContextViolation requires it); error-log.store.ts scopedErrors adds the drill's namespace/date per row. Whether a model prefers the row's scope for logs.applicationerrors.read/delete is unverified (inference).
 - 2026-09-25T22:53:59Z status=wontfix-accepted owner=11-2-explain-a-log-or-audit-entry by=cr note=reopen_if=a recorded or live turn calls logs.applicationerrors.read or delete with the top-level namespace instead of the row's
+
+### DW-1678: Home's idle greeting offers no prompt set while the suggested view never answers (namespace unresolved or a hung dates read)
+- source: spec-11-3-suggested-prompts-per-screen.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: panel.ts greetingPrompts waits on suggested.answered() on Home; readApplicationErrors leaves the source pending while scope.namespace() is '' (a failed namespaces read), and requestJson has no timeout. Pinned as intended by panel.spec 'Home never answers'.
+- 2026-09-26T01:10:14Z status=wontfix-accepted owner=11-3-suggested-prompts-per-screen by=cr note=only while the instance answers no read; reopen_if=Home idle+empty shows no prompt set for >5s on a reachable instance
+
+### DW-1679: A Send or one-click suggested prompt during the bootstrap conversation restore abandons it: restored() stays false and the adopted conversation's earlier turns never load
+- source: spec-11-3-suggested-prompts-per-screen.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: TurnStore.send() bumps pollGeneration and restore() drops its result when the generation moved (turn.ts restore/endSession). Home's block prompts render without a restored() check, so one click at reload reaches it; Send and Explain share the race.
+- 2026-09-26T01:10:14Z status=wontfix-accepted owner=11-3-suggested-prompts-per-screen by=cr note=window is the restore read on a reload; reopen_if=a reload-then-send smoke shows the transcript missing earlier turns
+
+### DW-1680: EXPERIENCE.md Fixed-strings row 331 still says Home's starter prompts show only when nothing needs attention; since 11.3 they also show in the greeting, under the Getting started group
+- source: spec-11-3-suggested-prompts-per-screen.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Row 331's Where cell vs panel.ts greetingPrompts and panel.spec 'Home attention'. The reviewer may not rewrite a Fixed-strings row the story did not add (shared-append rule); a Rule 5 tier-1 in-place amendment by the lead.
+- 2026-09-26T01:10:14Z status=open owner=11-3-suggested-prompts-per-screen by=cr note=lead: amend row 331 Where cell in place at this story's gate, as :356 was
+- 2026-09-26T01:12:26Z status=resolved-by:11-3-suggested-prompts-per-screen by=adjudication note=lead amended EXPERIENCE.md row 331 in place (Rule 5 tier-1, AMENDED marker); strings.test 25/25
