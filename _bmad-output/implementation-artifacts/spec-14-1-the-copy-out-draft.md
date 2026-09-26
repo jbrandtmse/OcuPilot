@@ -2,7 +2,7 @@
 title: 'Story 14.1: The copy-out draft'
 type: 'feature'
 created: '2026-09-26'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '615a1f627cccf3c5f89593d82736a1382f75b96f'
 baseline_commit: '615a1f627cccf3c5f89593d82736a1382f75b96f'
 review_loop_iteration: 0
@@ -164,6 +164,8 @@ deferred: []
     - the application is unchanged;
     - a reply code block's copy control copies its text.
 
+- [ ] [CI] instance: `OcuPilot.Test.DraftExecute.TestARenderedObjectScriptScriptDeletesTheErrorItNames` fails on CI's fresh instance (run 36272570883, job `instance`, class run 64): after the one seeded application error is deleted the namespace holds no errors, so the post-delete read answers `LOG.NAMESPACE` ("This instance records no application errors for a namespace by that name") and the test asserts OK on it -- it passed locally only because the reused throwaway held other errors in that namespace. `src/OcuPilot/Test/DraftExecute.cls` (the post-delete assertion, ~line 35) -- the test must prove the named error is gone without depending on any other error existing in the namespace (e.g. read the entry by its id through `SYS.ApplicationError` / the port and assert it is absent, or treat an empty namespace as gone), and must pass on a fresh instance: verify on `ocupilot-b-ci` after deleting every other application error in the seeded namespace first, and keep its Rule 19 mutation line current.
+
 **Acceptance Criteria:**
 
 - Given any live proposal, when the user chooses "Give me the script instead", then the card shows a REST or ObjectScript script that would make the same change, and the target, the ledger and the audit trail are unchanged.
@@ -304,6 +306,9 @@ This runs on slot B. Copy each changed `.cls` to `/tmp/ocupilot-b-ci/src` and lo
 - (CR) mutation: `Draft.Mask` masking strings only → `DraftRegistry` `TestTheCredentialPatternMasksAnUndeclaredName` went red on the numeric `PinSecret`.
 
 ## Review Triage Log
+
+- 2026-09-26, rework iteration 1 (trigger=ci): re-opened by the runner for the `[CI]` item above; scope is that item only.
+
 
 ### 2026-09-26 — Review pass
 
