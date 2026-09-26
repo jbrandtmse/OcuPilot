@@ -33,3 +33,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-26T21:19:26Z	Story 14.1	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=/tmp/epic-14-runner/smoke-14-1-browser.log(copy-out-draft.browser-spec_2/2_on_rebuilt_redeployed_bundle_1.85MB),smoke.sh_ocupilot-b-ci_49/49 model=claude-opus-5-5[1m]
 2026-09-26T21:21:01Z	Story 14.1	committed	sha=25ba4560 submodules= ci=pending run=36272570883 amendments=EXPERIENCE.md:269,272,273,275(in-place_line_count_981_unchanged) head_confirmed_by=headSha
 2026-09-26T21:21:01Z	Epic 14	integrate_forward_deferred	reason=a_code-bearing_merge_push_now_would_cancel_run_36272570883(cancel-in-progress);order=boundary_then_integrate_forward_before_the_14.8_implement_spawn;14.8_plan_spawn_does_not_wait(Rule28)
+2026-09-26T21:21:28Z	Story 14.8	stage_spawned	stage=plan spawn_at=2026-09-26T21:21:28Z model=opus agent_name=14-8-the-seeded-injection-test-plan-1 cycle_iteration=1
