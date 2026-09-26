@@ -218,6 +218,19 @@ Method TestAdminPort()
     Do $$$AssertEquals($System.Encryption.Base64Decode(tLiteral), "MIICAA", "the decoded certificate is the one the port imports")
 
     Kill tQuery
+    Set tQuery("alias") = "a1"
+    Set tText = ..Text(##class(OcuPilot.Port.AdminPort).Snippet("Security.X509Credential", "POST", .tQuery, {"Certificate": "<Certificate>", "PrivateKey": "<PrivateKey>", "PrivateKeyPassword": "<PrivateKeyPassword>"}, ..Context()))
+    Do $$$AssertTrue(tText [ "tCredential.LoadCertificate(""<Certificate>"")", "a draft's certificate is read from the PEM file its placeholder names: " _ tText)
+    Do $$$AssertTrue(tText [ "tCredential.LoadPrivateKey(""<PrivateKey>"")", "and so is its private key")
+    Do $$$AssertTrue(tText '[ "Base64Decode(""<", "never a placeholder decoded as base64")
+    Do $$$AssertTrue(tText [ "Set tCredential.PrivateKeyPassword = ""<PrivateKeyPassword>""", "the key's password is a literal to fill in")
+
+    Set tValue = "line one" _ $Char(10) _ "a ""quoted"" line" _ $Char(13, 9)
+    Set tLiteral = ##class(OcuPilot.Port.AdminPort).Literal(tValue)
+    Do $$$AssertTrue(tLiteral '[ $Char(10), "a literal stays on one line: " _ tLiteral)
+    Do $$$AssertEquals($Xecute("Quit " _ tLiteral), tValue, "and evaluates back to the value it was made from")
+
+    Kill tQuery
     Set tText = ..Text(##class(OcuPilot.Port.AdminPort).Snippet("Security.User", "POST", .tQuery, {"Name": "u1", "Password": "<Password>"}, ..Context({})))
     Do $$$AssertTrue(tText [ """User"":{""Name"":""u1""}", "a user create is wrapped as the vendor reads it: " _ tText)
     Do $$$AssertTrue(tText [ """Password"":""<Password>""", "with the password outside the wrapper")
@@ -243,10 +256,10 @@ Method TestUserPasswordAfterStep()
     Set tTool = "OcuPilot.Screen.Tool.UserPassword"
     Set tText = ..Text($ClassMethod(tTool, "SnippetAfter", "Security.User", "name", "u1", {"ChangePassword": true}, ..Context()))
     Do $$$AssertTrue(tText [ "##class(Security.Users).Modify(""u1"", .tProps)", "a set flag is set again: " _ tText)
-    Do $$$AssertTrue(tText '[ "; Only when", "unconditionally")
+    Do $$$AssertTrue(tText '[ "<ChangeAtNextLogin>", "unconditionally")
     Do $$$AssertEquals($ClassMethod(tTool, "SnippetAfter", "Security.User", "name", "u1", {"ChangePassword": false}, ..Context()).%Size(), 0, "a clear flag adds no step")
     Set tText = ..Text($ClassMethod(tTool, "SnippetAfter", "Security.User", "name", "u1", {"Enabled": true}, ..Context()))
-    Do $$$AssertTrue((tText [ "; Only when") && (tText [ "Security.Users).Modify("), "an unknown flag is the step under its condition: " _ tText)
+    Do $$$AssertTrue(tText [ "If <ChangeAtNextLogin> { Kill tProps  Set tProps(""ChangePassword"") = 1  Set tSC = ##class(Security.Users).Modify(""u1"", .tProps)", "an unknown flag is the step under its condition, on one line: " _ tText)
 }
 
 }

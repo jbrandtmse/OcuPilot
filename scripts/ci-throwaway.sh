@@ -205,6 +205,7 @@ services:
       # classes: OAuthAuthorizationServerClients, OAuthAuthorizationServerCreate, OAuthAuthorizationServerKeys, OAuthAuthorizationServerSecret, OAuthAuthorizationServerUpdate, OAuthAuthorizationServerWire
       # classes: OAuthRegisteredClientCreate, OAuthRegisteredClientJwks, OAuthRegisteredClientSecret, OAuthRegisteredClientUpdate, OAuthRegisteredClientWire
       # classes: AuditCopy, AuditStarted
+      # classes: DraftExecute
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
@@ -222,7 +223,7 @@ services:
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
       # would leave it there.
-      # classes: ErrorDelete, ErrorLogSeed, ProviderSecret, ProviderStub, ProviderStubTransport
+      # classes: DraftExecute, ErrorDelete, ErrorLogSeed, ProviderSecret, ProviderStub, ProviderStubTransport
       # classes: DemoErrorSeed
       # classes: SecretLeak, SecretStoreProbe
       OCUPILOT_ALLOW_ERROR_SEED: "1"
@@ -293,7 +294,7 @@ services:
       # OCUPILOT_ALLOW_ERROR_SEED as well, because it seeds through that class's own guarded helper.
       # DemoErrorSeed deletes the demo fixture's own entries from the install namespace and leaves
       # one present when it finishes.
-      # classes: ErrorDelete
+      # classes: DraftExecute, ErrorDelete
       # classes: DemoErrorSeed
       OCUPILOT_ALLOW_ERROR_DELETE: "1"
       # Writes a service and LDAP configurations in this instance's own security database through

@@ -4044,7 +4044,7 @@ app-data-table {
 // The glyph is drawn here rather than as a text node, so the control adds nothing to a block's
 // `textContent`; its name is the button's own `aria-label`.
 .ocu-copy-button::before {
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1;
   content: '\29C9';
 }

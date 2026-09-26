@@ -128,7 +128,8 @@ ClassMethod Take(pProposalId As %String, pUser As %String, pOrigin As %String, O
 /// with every secret a placeholder.</p>
 /// <p>The body is composed as <class>OcuPilot.Kernel.Proposal.Confirm</class> composes the one it
 /// sends, with a placeholder standing for each declared secret the card asks for -- the tool's
-/// secret-only body, and each declared secret the stored payload carries. It reads nothing but
+/// secret-only body, each declared secret the stored diff names (a composed secret among them), and
+/// each declared secret the stored payload carries. It reads nothing but
 /// <var>pRow</var> and the tool's own declarations, and writes nothing.</p>
 ClassMethod Render(pTool As %DynamicObject, ByRef pRow, pOrigin As %String, pUser As %String, Output pDraft As %DynamicObject, Output pBody As %DynamicAbstractObject, Output pQuery) As %Status
 {
@@ -162,9 +163,16 @@ ClassMethod Render(pTool As %DynamicObject, ByRef pRow, pOrigin As %String, pUse
         } Catch {
             Set tBodyNames = ""
         }
+        ; The card asks for a declared secret its diff names, which is how a composed secret the
+        ; payload never stores (Mint.AppendComposedSecrets) reaches the confirm's merge.
+        Set tAsked = ""
+        Set tIterator = ..ParsedArray($Get(pRow("diff"))).%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tDiffRow) {
+            If $IsObject(tDiffRow) && (tDiffRow.%Get("field") '= "") Set tAsked = tAsked _ $ListBuild(tDiffRow.%Get("field"))
+        }
         For tI = 1:1:$ListLength(tSecretNames) {
             Set tName = $List(tSecretNames, tI)
-            If '$ListFind(tBodyNames, tName) && (tPayload.%GetTypeOf(tName) = "unassigned") Continue
+            If '$ListFind(tBodyNames, tName) && '$ListFind(tAsked, tName) && (tPayload.%GetTypeOf(tName) = "unassigned") Continue
             Do tSupplied.%Set(tName, ..Placeholder(tName), "string")
         }
 
@@ -277,9 +285,9 @@ ClassMethod IsSecretName(pName As %String, pSecrets As %List) As %Boolean
 }
 
 /// <p>Replace, throughout <var>pValue</var>, the value of every key <var>pSecrets</var> names, and
-/// the string value of every key the credential pattern matches, with its placeholder when that
-/// value is not empty, and note each such key in <var>pPlaceholders</var>. A flag or a number under
-/// a matching name is not a credential (Conventions &gt; Secrets) and is left as it is.</p>
+/// the string or number value of every key the credential pattern matches, with its placeholder
+/// when that value is not empty, and note each such key in <var>pPlaceholders</var>. A flag under a
+/// matching name is not a credential (AD-3) and is left as it is.</p>
 ClassMethod Mask(pValue As %DynamicAbstractObject, pSecrets As %List, pPlaceholders As %DynamicArray, ByRef pSeen)
 {
     If '$IsObject(pValue) Quit
@@ -298,7 +306,7 @@ ClassMethod Mask(pValue As %DynamicAbstractObject, pSecrets As %List, pPlacehold
     For tI = 1:1:$ListLength(tKeys) {
         Set tKey = $List(tKeys, tI)
         Set tType = pValue.%GetTypeOf(tKey)
-        If $ListFind(pSecrets, tKey) || ((tType = "string") && ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tKey)) {
+        If $ListFind(pSecrets, tKey) || (((tType = "string") || (tType = "number")) && ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tKey)) {
             If (tType = "null") || (tType = "unassigned") Continue
             If (tType '= "object") && (tType '= "array") && (pValue.%Get(tKey) = "") Continue
             Do pValue.%Set(tKey, ..Placeholder(tKey), "string")

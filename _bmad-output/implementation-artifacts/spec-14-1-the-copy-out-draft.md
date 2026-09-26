@@ -172,6 +172,41 @@ deferred: []
 - Given a write tool whose port or request type has no script form, including one Epic 16 adds, when `OcuPilot.Test.DraftRegistry` runs, then it fails and names the tool.
 - DW-1081: given a reply containing a fenced code block, when it renders, then the block carries the same copy control, and pressing it copies exactly the block's text.
 
+### Review Findings
+
+Code review 2026-09-26 (four layers, full-opus): 53 raw findings, 11 entries (high 2, medium 2, low 7), all resolved or closed; 30 rejected.
+
+- [x] [Review][Patch] **high** CI red at compile: `DraftLoser`'s `STATELIVE`/`REASONDRAFT` are compile-time expressions over `Propose`, which a fresh compile had not built yet [src/OcuPilot/Test/DraftLoser.cls:9] -- `DependsOn = OcuPilot.Kernel.State.Propose`. Reproduced red with `scripts/ci-image-compile.sh` on the pre-fix tree (`<CLASS DOES NOT EXIST>` at `pREASONDRAFT`), green on both `iris-community:2026.2` and `irishealth-community:2026.2` after (969 classes, fresh containers).
+- [x] [Review][Patch] **high** A composed secret (`ComposedSecrets()`: user create, wallet secret create/update, SSL update, X.509 import) is never stored, so the draft omitted it and rendered a different change (a user created with no password, an empty certificate) [src/OcuPilot/Kernel/Proposal/Draft.cls:163] -- `Render` also placeholders each declared secret the stored diff names. `DraftRegistry.SecretProblem` now builds realistic rows (composed secrets in the diff, not the payload); `TestTheDraftOfAComposedSecretCreateIsTheBodyConfirmSends` added.
+- [x] [Review][Patch] **medium** X.509 import step could not take a filled-in certificate or key (`Base64Decode("<Certificate>")`; a PEM cannot sit in one literal) [src/OcuPilot/Port/AdminPort.cls:2597] -- a placeholder certificate or key renders the vendor's `LoadCertificate`/`LoadPrivateKey` over the PEM file path it names.
+- [x] [Review][Defer] **medium** A merge write's script PUTs the stored payload, so running it after the target changed reverts that change [src/OcuPilot/Kernel/Proposal/Draft.cls:133] -- by-design (AD-59: the script runs outside the fingerprint); DW-1718.
+- [x] [Review][Patch] low: the password after-step for an unknown flag set change-at-next-login unconditionally under a comment [src/OcuPilot/Screen/Tool/UserPassword.cls:127] -- one guarded line `If <ChangeAtNextLogin> { ... }`.
+- [x] [Review][Patch] low: `DeriveRoutes` skipped an unreadable `<Route>` and collapsed colliding keys, contrary to its "never a shorter table" contract [src/OcuPilot/Port/AdminPort.cls:2357] -- both are errors now.
+- [x] [Review][Patch] low: `AdminPort.Literal` emitted raw line breaks, splitting an ObjectScript step [src/OcuPilot/Port/AdminPort.cls:2572] -- control characters render as `$Char` terms.
+- [x] [Review][Patch] low: the credential backstop masked strings only and cited Conventions for a rule AD-3 states [src/OcuPilot/Kernel/Proposal/Draft.cls:292] -- numbers are masked too; booleans stay.
+- [x] [Review][Patch] low: `DraftExecute` comments narrated history and cited the wrong rule file [src/OcuPilot/Test/DraftExecute.cls:1] -- trimmed.
+- [x] [Review][Patch] low: the copy control cleared and set its status in one task, so a repeat press may not re-announce [ui/src/app/shell/copy-control.ts:101] -- cleared before the copy is awaited.
+- [x] [Review][Patch] low: the copy glyph was 18px against DESIGN.md's 20px icon-button glyphs [ui/src/styles/_components.scss] -- 20px.
+
+Rejected (30):
+
+- false: the `UserPassword` after-step "violates AD-59" by rendering `Security.Users.Modify` -- AD-59 binds the port `Snippet` branches to routes; the after-step sentence prescribes no form, and the net change is the same flag.
+- false: tracking status disagreement (spec `done`, sprint `review`) -- build-auto's machine state by design.
+- low, spec-bound: the I/O matrix's merge-write row shows one step (the code renders AD-27's three) and the caption's EXPERIENCE row number -- spec edits, outside this review.
+- low, spec-bound: `Copied` and the failure sentence sit on the action-names row, as the task placed them.
+- low: `placeholders` omits non-secret `<Type>`/`<ID>` and the client does not read it; the caption shows on scripts with no placeholder.
+- low: the code-block step kind is shown only as `data-kind`; the focusable `pre` has no accessible name.
+- low (x3): a 200 whose draft does not parse, a status-0 failure, or a lost response leaves no script; Confirm/Cancel stay enabled while a draft is out; a losing draft's refusal could draw over a card another decision closed -- the instance resolves the race (AD-34) and the poll corrects the card.
+- low: the origin comes from `HTTP_HOST` and `%request.Secure`, so a TLS-terminating gateway yields `http://`.
+- low: `HEAD` routes sit in the non-`GET` table; no write tool uses one.
+- low: ObjectScript steps display an error and carry on; `KeptTypeStep` does not stop on a failed read; each step leaves the terminal in `%SYS`.
+- low (x2): `DraftExecute` cannot tell a failed restore step when the PUT keeps `Type`; its XECUTE check passes on a displayed error -- its read-backs are the assertions.
+- low (x2): `reply.ts` attaches controls after the append (inference: a re-announcement); a streamed re-render drops a focused control.
+- low: `AssertParity` passes no `payload`/`diff` context; the PEM fixture is one line; `SnippetForm`'s kind is used only as empty or not.
+- low (x3): `NODRAFT`'s reason for a data problem; the lost-race test does not assert the row state; `Answer`'s read-back after a close could fail (theoretical).
+- low (x3): an empty `IdParam`/id (every registered tool is rendered by `DraftRegistry`); a caller body on a constant pair (the draft never composes one); a JWKS refresh script with no URI.
+- low: the code-surface focus ring is drawn inset (documented, to avoid clipping) and the hover mix is 12%.
+
 ## Design Notes
 
 **Where the script is built: on the instance.** The stored `Arguments` and `Payload` never reach the wire (`WireRow`). The route, body shape and port branches are all known only on the instance: AD-3, AD-27, AD-52. Building the script there keeps one source of truth with the registry, and no model is involved. "The agent returns" is read to mean the panel returns the script: a model-written script could drift from the write, and would arrive as untrusted text (AD-11).
@@ -259,6 +294,14 @@ This runs on slot B. Copy each changed `.cls` to `/tmp/ocupilot-b-ci/src` and lo
 - mutation: `ProviderPort.Snippet` deleted → `OcuPilot.Test.DraftRegistry` `TestEveryPortThatDefinesInvokeDefinesASnippet` went red naming `OcuPilot.Port.ProviderPort` (run 325).
 - mutation: `AdminPort.ImportStep` decodes the certificate as given → `OcuPilot.Test.DraftPorts` `TestAdminPort` went red (run 326, `OcuPilot.Port` recompiled).
 - mutation: `ProcessPort.Snippet` keeps `sendError`, and `OAuthResourceServerPort.Snippet` routes `ADDMAPPING` to the resource-server endpoint → `OcuPilot.Test.DraftPorts` `TestProcessPort` and `TestOAuthResourceServerPort` went red (run 328).
+
+**(QA) `OcuPilot.Test.DraftExecute` (new).** Closes the follow-up review's own residual risk ("no rendered script has been run against the vendor"): takes a live `webapp.list.update` draft and a `logs.applicationerrors.delete` draft on `ocupilot-b-ci`, then actually runs what each renders -- the `rest` step parsed and sent as a real `%Net.HttpRequest` to the instance's own admin API, the `objectscript` steps `XECUTE`d in `%SYS` against one genuine seeded application error -- never through `AdminPort.Invoke` or `LogSourcePort.RemoveErrorIds`. A plain `WebApp.App` merge write answers three steps, not one (AD-27's kept-type completion); the test runs all three, filling the third step's non-secret `<Type>` placeholder from the same read a human would use, and asserts the application ends holding the drafted description and its original type. The `objectscript` leg asserts the seeded error is gone afterward. `OcuPilot.Test.DraftRegistry`'s parity test already proves draft-vs-confirm equality in process through the fixture port; this class is the one that proves the vendor itself accepts the wire shape.
+
+- mutation: `AdminPort.RestStep` drops the query string from the rendered URL → `OcuPilot.Test.DraftExecute` `TestARenderedRestScriptIsAcceptedByTheAdminApi` went red on the admin API's own 400 (`MissingQueryParam`), not on a text assertion (run 333; reverted, `git diff --stat` clean, run 334 green).
+- mutation: `LogSourcePort.Snippet` renders the error-number list with an unterminated string literal → `OcuPilot.Test.DraftExecute` `TestARenderedObjectScriptScriptDeletesTheErrorItNames` went red on a real `<SYNTAX>` error from the `XECUTE`, not on a text assertion (run 331; reverted, `git diff --stat` clean, run 332 green).
+- (CR) mutation: `Draft.Render` without the diff-named secret clause (the pre-review code) → `OcuPilot.Test.DraftRegistry` `TestTheDraftOfAComposedSecretCreateIsTheBodyConfirmSends` and `TestNoSecretReachesAnyRenderedScript` (naming five tools) went red; green after, 9/9 (AC1, AC2).
+- (CR) mutation: `AdminPort.ImportStep`, `Literal` and `UserPassword.SnippetAfter` as before the review → `OcuPilot.Test.DraftPorts` `TestAdminPort` and `TestUserPasswordAfterStep` went red; green after, 11/11.
+- (CR) mutation: `Draft.Mask` masking strings only → `DraftRegistry` `TestTheCredentialPatternMasksAnUndeclaredName` went red on the numeric `PinSecret`.
 
 ## Review Triage Log
 

@@ -2353,7 +2353,8 @@ Parameter SNIPPETPREFIX = "/api/admin/v2";
 /// <p><b>Caller contract:</b> a build-time derivation. <class>OcuPilot.Port.AdminRoutes</class>
 /// holds its checked-in output, which <class>OcuPilot.Test.DraftRegistry</class> holds equal to a
 /// fresh call; nothing on a request path calls it. A route whose <code>Call</code> names no
-/// endpoint or no type is an error naming the route, never a shorter table.</p>
+/// endpoint or no type, a route element it cannot read, and two routes on one endpoint, type and
+/// url are each an error, never a shorter table.</p>
 ClassMethod DeriveRoutes(Output pRoutes As %DynamicArray) As %Status
 {
     Set tSC = $$$OK
@@ -2374,10 +2375,12 @@ ClassMethod DeriveRoutes(Output pRoutes As %DynamicArray) As %Status
         Set tPackage = ..EndpointPackage()
         Kill tSorted
         Set tStart = 1
+        Set tRead = 0
         For {
             Set tAt = $Locate(tMap, "<Route\s+Url=""[^""]*""\s+Method=""[^""]*""\s+Call=""[^""]*""", tStart, tEnd, tRoute)
             If 'tAt Quit
             Set tStart = tEnd
+            Set tRead = tRead + 1
             Set tUrl = $Piece($Piece(tRoute, "Url=""", 2), """", 1)
             Set tVerb = $ZConvert($Piece($Piece(tRoute, "Method=""", 2), """", 1), "U")
             Set tCall = $Piece($Piece(tRoute, "Call=""", 2), """", 1)
@@ -2395,9 +2398,22 @@ ClassMethod DeriveRoutes(Output pRoutes As %DynamicArray) As %Status
                 Set tSC = $$$ERROR($$$GeneralError, "the route " _ tVerb _ " " _ tUrl _ " (" _ tCall _ ") names no endpoint or no request type")
                 Quit
             }
+            If $Data(tSorted(tEndpoint, tType, tUrl), tOther) {
+                Set tSC = $$$ERROR($$$GeneralError, "the routes " _ tOther _ " and " _ tVerb _ " " _ tUrl _ " name the same endpoint and request type")
+                Quit
+            }
             Set tSorted(tEndpoint, tType, tUrl) = tVerb
         }
         If $$$ISERR(tSC) Quit
+        Set tHeld = 0
+        Set tStart = 1
+        While $Locate(tMap, "<Route\s", tStart, tStart) {
+            Set tHeld = tHeld + 1
+        }
+        If tRead '= tHeld {
+            Set tSC = $$$ERROR($$$GeneralError, "the dispatch map holds " _ tHeld _ " routes and " _ tRead _ " of them were read")
+            Quit
+        }
         Set tEndpoint = ""
         For {
             Set tEndpoint = $Order(tSorted(tEndpoint))
@@ -2554,10 +2570,21 @@ ClassMethod ShellQuoted(pValue As %String) As %String
     Quit "'" _ $Replace(pValue, "'", "'\''") _ "'"
 }
 
-/// <p><var>pValue</var> as an ObjectScript string literal.</p>
+/// <p><var>pValue</var> as an ObjectScript string literal, a control character written as a
+/// <code>$Char</code> term so the literal stays on one line.</p>
 ClassMethod Literal(pValue As %String) As %String
 {
-    Quit """" _ $Replace(pValue, """", """""") _ """"
+    Set tText = """" _ $Replace(pValue, """", """""") _ """"
+    For tCode = 0:1:31 {
+        If tText [ $Char(tCode) Set tText = $Replace(tText, $Char(tCode), """_$Char(" _ tCode _ ")_""")
+    }
+    Quit tText
+}
+
+/// <p>Whether <var>pValue</var> is wholly one <code>&lt;Name&gt;</code> placeholder.</p>
+ClassMethod IsPlaceholder(pValue As %String) As %Boolean
+{
+    Quit ''$Match(pValue, "^<[A-Za-z0-9_.]+>$")
 }
 
 /// <p>AD-27's first case as a script: <method>CompleteThroughClass</method>'s create or modify of
@@ -2579,23 +2606,39 @@ ClassMethod ResourceStep(pName As %String, pBody As %DynamicObject) As %DynamicO
 /// <var>pAlias</var> from content through <class>%SYS.X509Credentials</class>, refused as the port
 /// refuses it when the alias is already present. The certificate is decoded from the base64 body of
 /// its PEM block (<method>PemBlock</method>), which is what the port decodes; a certificate that is
-/// not one PEM block is rendered as given.</p>
+/// not one PEM block is rendered as given. A certificate or private key that is a placeholder -- a
+/// draft's always is, since both are secrets -- is read from the PEM file the placeholder names,
+/// through the class's own <code>LoadCertificate</code> and <code>LoadPrivateKey</code>, because a
+/// PEM block's line breaks cannot sit inside one ObjectScript string literal.</p>
 ClassMethod ImportStep(pAlias As %String, pBody As %DynamicObject) As %DynamicObject
 {
     Set tLines = $ListBuild("Set tCredential = ##class(%SYS.X509Credentials).%New()", "Set tCredential.Alias = " _ ..Literal(pAlias))
     If $IsObject(pBody) {
         Set tCertificate = ..Scalar(pBody, "Certificate")
-        If ..PemBlock(tCertificate, "cert", .tCanonical) {
-            Set tCertificate = ""
-            For tI = 2:1:$Length(tCanonical, $Char(10)) - 1 {
-                Set tLine = $Piece(tCanonical, $Char(10), tI)
-                If (tLine = "") || (tLine [ ":") Continue
-                Set tCertificate = tCertificate _ tLine
+        Set tKey = ..Scalar(pBody, "PrivateKey")
+        Set tPaths = ""
+        If ..IsPlaceholder(tCertificate) Set tPaths = tCertificate
+        If ..IsPlaceholder(tKey) Set tPaths = tPaths _ $Select(tPaths = "": "", 1: ", ") _ tKey
+        If tPaths '= "" Set tLines = $ListBuild("; " _ tPaths _ ": the path of a PEM file this instance can read") _ tLines
+        If ..IsPlaceholder(tCertificate) {
+            Set tLines = tLines _ $ListBuild("Set tSC = tCredential.LoadCertificate(" _ ..Literal(tCertificate) _ ")", "Do $System.Status.DisplayError(tSC)")
+        } Else {
+            If ..PemBlock(tCertificate, "cert", .tCanonical) {
+                Set tCertificate = ""
+                For tI = 2:1:$Length(tCanonical, $Char(10)) - 1 {
+                    Set tLine = $Piece(tCanonical, $Char(10), tI)
+                    If (tLine = "") || (tLine [ ":") Continue
+                    Set tCertificate = tCertificate _ tLine
+                }
             }
+            Set tLines = tLines _ $ListBuild("Set tCredential.Certificate = $System.Encryption.Base64Decode(" _ ..Literal(tCertificate) _ ")")
         }
-        Set tLines = tLines _ $ListBuild("Set tCredential.Certificate = $System.Encryption.Base64Decode(" _ ..Literal(tCertificate) _ ")")
-        If pBody.%IsDefined("PrivateKey") && (..Scalar(pBody, "PrivateKey") '= "") {
-            Set tLines = tLines _ $ListBuild("Set tCredential.PrivateKey = " _ ..Literal(..Scalar(pBody, "PrivateKey")))
+        If tKey '= "" {
+            If ..IsPlaceholder(tKey) {
+                Set tLines = tLines _ $ListBuild("Set tSC = tCredential.LoadPrivateKey(" _ ..Literal(tKey) _ ")", "Do $System.Status.DisplayError(tSC)")
+            } Else {
+                Set tLines = tLines _ $ListBuild("Set tCredential.PrivateKey = " _ ..Literal(tKey))
+            }
             Set tLines = tLines _ $ListBuild("Set tCredential.PrivateKeyPassword = " _ ..Literal(..Scalar(pBody, "PrivateKeyPassword")))
         }
         For tField = "OwnerList", "PeerNames" {

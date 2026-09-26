@@ -99,6 +99,9 @@ export function createCopyButton(getText: () => string, doc: Document = document
   status.setAttribute('role', 'status');
 
   button.addEventListener('click', () => {
+    // Emptied before the copy is awaited, so the region changes twice and a second press that
+    // copies again is announced again.
+    status.textContent = '';
     void (async () => {
       let copied = false;
       try {
@@ -106,8 +109,6 @@ export function createCopyButton(getText: () => string, doc: Document = document
       } catch {
         copied = false;
       }
-      // Emptied first, so a second press that copies again is announced again.
-      status.textContent = '';
       status.textContent = copied ? STRINGS.copyAnnouncementCopied : STRINGS.copyAnnouncementUnavailable;
     })();
   });

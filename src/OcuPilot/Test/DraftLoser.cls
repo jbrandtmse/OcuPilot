@@ -3,7 +3,10 @@
 /// <method>GuardedClose</method> reports the row as closed by another request first, so a draft
 /// reaches the lost-race refusal with the row left as it was.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
-Class OcuPilot.Test.DraftLoser Extends OcuPilot.Kernel.Proposal.Draft
+/// <p><code>DependsOn</code> is required: <parameter>STATELIVE</parameter> and
+/// <parameter>REASONDRAFT</parameter> are compile-time expressions over
+/// <class>OcuPilot.Kernel.State.Propose</class>, so that class must be compiled first.</p>
+Class OcuPilot.Test.DraftLoser Extends OcuPilot.Kernel.Proposal.Draft [ DependsOn = OcuPilot.Kernel.State.Propose ]
 {
 
 Parameter STATELIVE = {##class(OcuPilot.Kernel.State.Propose).#STATELIVE};

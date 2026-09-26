@@ -3318,6 +3318,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T03:19:56Z status=routed owner=11-4-citation-chips-with-click-through by=x0 note=a new reply-surface affordance; 11.4 is the named story that adds reply-surface affordances
 - 2026-09-19T18:35:53Z status=routed owner=range-end-cleanup by=burndown note=Rule 27 non-blocking: a DESIGN.md affordance Epic 4 did not build; nothing breaks without a copy button
 - 2026-09-26T09:53:47Z status=routed owner=14-1-the-copy-out-draft by=spec_gate note=14.1 AC2 builds a copy control on the code surface; build it once for reply code blocks too
+- 2026-09-26T21:18:38Z status=resolved-by:14-1-the-copy-out-draft by=adjudication note=ui/src/app/shell/reply.ts attaches createCopyButton (shell/copy-control.ts) to each pre.ocu-reply-pre after DOMPurify; pinned by reply.spec.ts and the reply leg of copy-out-draft.browser-spec.mjs (mutation recorded in the spec)
 
 ### DW-1082: GFM tables in an agent reply render as their literal Markdown source, not as a table
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-epic
@@ -7459,3 +7460,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-11-the-screen-shows-what-the-agent-is-talking-about.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Screen/Registry.cls CriteriaDefaultProblem and screen-mirror.mjs criteriaDefaultProblem check kind, field membership and vendorParam only
 - 2026-09-26T14:09:15Z status=wontfix-theoretical owner=11-11-the-screen-shows-what-the-agent-is-talking-about by=cr note=real once a descriptor declares atOrAfterField over a read not answered newest first (only TaskHistoryList's HISTORY today)
+
+### DW-1718: A copy-out draft of a merge write renders the stored payload as a full PUT, so running it after the target changed reverts the change
+- source: spec-14-1-the-copy-out-draft.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Draft.Render reads only the stored row and never re-reads the target (no fingerprint check); Confirm refuses TARGETCHANGED, the draft cannot.
+- 2026-09-26T21:17:13Z status=by-design owner=14-1-the-copy-out-draft by=cr note=AD-59: the script runs outside OcuPilot's fingerprint (AD-6); reopen only via an AD-59 amendment

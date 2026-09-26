@@ -168,7 +168,7 @@ Method TestNoSecretReachesAnyRenderedScript()
 Method TestTheCredentialPatternMasksAnUndeclaredName()
 {
     Set tProbe = ..#SECRETPROBE
-    Set tBody = {"SmtpPassword": (tProbe _ "1"), "Nested": {"ApiToken": (tProbe _ "2")}, "Items": [{"ClientSecret": (tProbe _ "3")}], "Description": "kept", "UseToken": true}
+    Set tBody = {"SmtpPassword": (tProbe _ "1"), "Nested": {"ApiToken": (tProbe _ "2")}, "Items": [{"ClientSecret": (tProbe _ "3")}], "Description": "kept", "UseToken": true, "PinSecret": 4711}
     Set tPlaceholders = []
     Kill tSeen
     Do ##class(OcuPilot.Kernel.Proposal.Draft).Mask(tBody, "", tPlaceholders, .tSeen)
@@ -179,7 +179,8 @@ Method TestTheCredentialPatternMasksAnUndeclaredName()
     Do $$$AssertEquals(tBody.%Get("Items").%Get(0).%Get("ClientSecret"), "<ClientSecret>", "and one inside an array")
     Do $$$AssertEquals(tBody.%Get("Description"), "kept", "an ordinary name is left as it is")
     Do $$$AssertEquals(tBody.%GetTypeOf("UseToken"), "boolean", "and so is a flag under a credential name")
-    Do $$$AssertEquals(tPlaceholders.%ToJSON(), "[""SmtpPassword"",""ApiToken"",""ClientSecret""]", "each masked name is listed once")
+    Do $$$AssertEquals(tBody.%Get("PinSecret"), "<PinSecret>", "a number under a credential name reads as its placeholder")
+    Do $$$AssertEquals(tPlaceholders.%ToJSON(), "[""SmtpPassword"",""ApiToken"",""ClientSecret"",""PinSecret""]", "each masked name is listed once")
     Do $$$AssertTrue(##class(OcuPilot.Kernel.Proposal.Draft).IsSecretName("ClientSecret", ""), "a query parameter the pattern matches is a secret")
     Do $$$AssertTrue('##class(OcuPilot.Kernel.Proposal.Draft).IsSecretName("name", ""), "and an ordinary one is not")
 }
@@ -223,7 +224,21 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     For tI = 1:1:$ListLength(tSubject) {
         If tPayload.%GetTypeOf($List(tSubject, tI)) = "unassigned" Do ..SetProbe(tPayload, $List(tSubject, tI), "string", 0, .tN)
     }
+    ; A composed secret is never stored: the mint names it in the diff with both sides empty, and
+    ; the confirm is supplied it (Mint.AppendComposedSecrets).
+    Set tComposed = ""
+    Try {
+        Set tComposed = $ClassMethod(tClass, "ComposedSecrets")
+    } Catch {
+        Set tComposed = ""
+    }
+    If '$ListValid(tComposed) Set tComposed = ""
+    Set tDiff = []
     For tI = 1:1:$ListLength(tSecrets) {
+        If $ListFind(tComposed, $List(tSecrets, tI)) {
+            Do tDiff.%Push({"field": ($List(tSecrets, tI)), "before": "", "after": ""})
+            Continue
+        }
         Set tN = tN + 1
         Do tPayload.%Set($List(tSecrets, tI), ..#SECRETPROBE _ tN, "string")
     }
@@ -234,7 +249,7 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     Set tRow("targetRef") = tRef
     Set tRow("payload") = tPayload.%ToJSON()
     Set tRow("arguments") = tPayload.%ToJSON()
-    Set tRow("diff") = "[]"
+    Set tRow("diff") = tDiff.%ToJSON()
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Draft).Render(pTool, .tRow, ..#ORIGIN, "OcuPilotDraftProbeUser", .tDraft, .tBody, .tQuery)
     If $$$ISERR(tSC) Quit "the draft does not render: " _ $System.Status.GetErrorText(tSC)
     If '$IsObject(tDraft) Quit "no script form"
@@ -242,6 +257,9 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     If tDraft.%Get("steps").%Size() = 0 Quit "no step rendered"
     If tText [ ..#SECRETPROBE Quit "a secret probe reached the script"
     Set tMissing = ""
+    For tI = 1:1:$ListLength(tComposed) {
+        If tText '[ ("<" _ $List(tComposed, tI) _ ">") Set tMissing = tMissing _ " " _ $List(tComposed, tI)
+    }
     Set tDeclaredNames = ##class(OcuPilot.Screen.Tool.Registry).SecretArguments(pTool, .tDeclared) _ tBodyNames
     If $IsObject(tBody) && tBody.%IsA("%Library.DynamicObject") {
         For tI = 1:1:$ListLength(tDeclaredNames) {
@@ -327,6 +345,19 @@ Method TestTheDraftOfASecretOnlyBodyIsTheBodyConfirmSends()
 {
     Set tArgs = {"Name": "ocupilotprobedraftuser"}
     Do ..AssertParity("OcuPilot.Screen.Tool.UserPassword", "ocupilotprobedraftuser", tArgs, "{""Name"":""ocupilotprobedraftuser"",""Enabled"":true,""FullName"":""probe""}", "", "{""Password"":""" _ ..#SECRETPROBE _ "1""}")
+}
+
+/// <p>Parity for a create whose secret is composed (AD-6, AD-35): the payload never stores the
+/// password the card asks for, and the draft names it as <code>&lt;Password&gt;</code> where the
+/// confirm sends it.</p>
+/// <p>Mutation (Rule 19): drop the diff-named clause from
+/// <method>OcuPilot.Kernel.Proposal.Draft.Render</method>'s secret loop -- the draft's body carries
+/// no password and this goes red.</p>
+Method TestTheDraftOfAComposedSecretCreateIsTheBodyConfirmSends()
+{
+    Set tArgs = ##class(OcuPilot.Test.UserCreate).Args()
+    Do tArgs.%Set("Name", "ocupilotprobedraftcreateuser", "string")
+    Do ..AssertParity("OcuPilot.Screen.Tool.UserCreate", "ocupilotprobedraftcreateuser", tArgs, "", "{}", "{""Password"":""" _ ..#SECRETPROBE _ "2""}")
 }
 
 /// <p>Mint <var>pToolClass</var>'s proposal of <var>pArgs</var> against <var>pId</var> over the
