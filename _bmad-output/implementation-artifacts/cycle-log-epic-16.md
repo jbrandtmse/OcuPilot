@@ -57,3 +57,4 @@
 2026-09-26T20:22:45Z	Story 16.1	story_boundary	story=16.1 head=452f33df ci_run=36254884740 ci=success
 2026-09-26T20:22:45Z	Story 16.17	story_boundary	story=16.17 head=89e690d1 ci_run=36266348582 ci=success note=includes_16.1_and_integrate_forward_8860b69c
 2026-09-26T20:22:45Z	Story 16.18	stage_spawned	stage=implement spawn_at=2026-09-26T20:22:45Z model=opus agent_name=16-18-home-s-performance-row-implement-1 cycle_iteration=1
+2026-09-26T21:43:14Z	Story 16.18	dev_complete	spawn_at=2026-09-26T20:22:45Z model=opus build_sha=d6335cee baseline_revision=585d73b0 review_loop_iteration=0 followup_review_recommended=false deferred=0 diff="_50_files_changed,_2860_insertions(+),_88_deletions(-)" nfr_tripwires=0 adr_violations_surfaced=0 cycle_iteration=1 bundle=1.88MB sweep=298classes,282ran,16refused_arming,1known_residue ci=pending run=36273880785 note=RefreshService_re-arm_change_affects_all_roster_screens
