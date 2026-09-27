@@ -239,6 +239,17 @@ ClassMethod GuardedForgetStarts(pUser As %String) As %Status
     Quit ..GuardedTurnStartsKill(pUser)
 }
 
+/// <p>Remove every user's start records that have left the turns-an-hour window of
+/// <var>pLimitsClass</var>: the retention task's pass (AD-37), so the records of a user who stops
+/// sending, or whose account is deleted, do not outlive the window by more than a day. A limits
+/// class with no positive window removes nothing and answers an error.</p>
+ClassMethod GuardedSweepStarts(pLimitsClass As %String) As %Status
+{
+    Set tWindow = +$Parameter(pLimitsClass, "TURNLIMITWINDOWSECONDS")
+    If tWindow <= 0 Quit $$$ERROR($$$GeneralError, "the limits class names no turns-an-hour window")
+    Quit ..GuardedTurnStartsSweep(..NowSeconds() - tWindow)
+}
+
 /// <p>Finish every turn of <var>pUser</var> whose job is gone, when the slot is free this instant:
 /// what a poll does before it reads. A slot another process holds means a live job or a reserve in
 /// progress, and nothing is written.</p>

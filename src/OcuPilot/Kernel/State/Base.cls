@@ -630,6 +630,33 @@ ClassMethod GuardedTurnStartsKill(pUser As %String) As %Status [ Private ]
     Quit tSC
 }
 
+/// <p>Remove every user's start records whose seconds are at or before <var>pCutoff</var>; a user
+/// left with none has no node.</p>
+/// <p>Takes no slot lock: it removes only records outside the window, which no reserve counts, so
+/// a reserve running meanwhile decides the same way. Reach it through <code>..</code> dispatch from
+/// <class>OcuPilot.Kernel.State.Turn</class>.</p>
+ClassMethod GuardedTurnStartsSweep(pCutoff As %Integer) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tUser = $Order(^OcuPilotTurnStarts(""))
+        While tUser '= "" {
+            Set tSeconds = $Order(^OcuPilotTurnStarts(tUser, ""))
+            While (tSeconds '= "") && (tSeconds <= pCutoff) {
+                Kill ^OcuPilotTurnStarts(tUser, tSeconds)
+                Set tSeconds = $Order(^OcuPilotTurnStarts(tUser, tSeconds))
+            }
+            Set tUser = $Order(^OcuPilotTurnStarts(tUser))
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Whether the IRIS account <var>pUserName</var> is enabled, read through the identity
 /// escalation (AD-8 as amended 2026-09-19, AD-9, DW-444). <var>pKnown</var> is 1 only when the
 /// flag was actually read; a caller that treats <code>pKnown</code> 0 as "enabled" has invented a

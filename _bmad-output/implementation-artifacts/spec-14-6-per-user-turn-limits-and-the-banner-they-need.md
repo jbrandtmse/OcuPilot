@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-27'
 status: 'done'
 baseline_revision: 'b125676477d2eeb8dc16afa4c4e98c8ea1d15506'
+baseline_commit: 'b125676477d2eeb8dc16afa4c4e98c8ea1d15506'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -177,6 +178,34 @@ deferred:
 - **AC4.** Given this change, when `npm run test:tools` runs, then `strings.test.mjs` passes with the new strings on EXPERIENCE `:281`/`:349`, and EXPERIENCE.md still has 981 lines with the note and the index row resolved.
 - **Integration (Rule 1).** Given a stored limit, when `POST /turn` is sent over HTTP (the `TurnWire` leg) and when the panel sends in a real browser (`turn-limit.browser-spec.mjs`), then each consumer observes the refusal from the instance.
 
+### Review Findings
+
+Code review 2026-09-27 (tier `full-opus`; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 0 decision-needed, 3 patch (applied), 0 defer, 17 rejected.
+
+- [x] [Review][Patch] **high, AD-37:** `^OcuPilotTurnStarts` was pruned only at the same user's next reserve, so the retention task never swept the records of a deleted account (or of any user who stopped sending). Added `Base.GuardedTurnStartsSweep`, `Turn.GuardedSweepStarts(limits)` and a step in `Retention.Sweep` that removes every user's records past the window; legs in `TurnHourLimit` and `Retention`. [src/OcuPilot/Kernel/Retention.cls:47]
+- [x] [Review][Patch] low: `SwitchRules` compared `concurrentTurns` with a literal 1 instead of `Limits.CONCURRENTTURNS`, which `GET` projects. [src/OcuPilot/Kernel/SwitchRules.cls:63]
+- [x] [Review][Patch] low: the browser spec's `after` ran reset, forget and disarm in sequence, so a failed reset left `turnprobe` armed; now nested `try/finally` after `requireFreeSlot`. [ui/browser/turn-limit.browser-spec.mjs:72]
+
+Rejected:
+
+- by-design: a reserve whose job then fails (503) or whose proposal close fails (500) still counts, per "What counts".
+- by-design: `Turn.GuardedForgetStarts` is public on the production class, as the Tasks ask.
+- by-design: "limit of 1 agent turns" and "your 1 turns" at n = 1; AC3 and EXPERIENCE.md:281 publish the `<n>` template. Changing it needs a spec amendment.
+- by-design: the banner stays after `retryAt` passes; it clears at the next Send, New conversation and sign-out as the Tasks say, and the sentence stays true.
+- by-design: the refusal is 403, so `api.ts` fires `onForbidden`, as the kill-switch 403 on the same route already does; the spec chose 403 `forbidden`.
+- by-design: `TurnHourLimit` seeds `^OcuPilotTurnStarts` directly; the spec asks for seeded nodes.
+- by-design: EXPERIENCE.md :756 and :909 resolve as the Tasks word them; a State Patterns row would change the 981-line count.
+- wontfix-accepted (DW-1757): `Install/Smoke` reserves record starts against the operator's account.
+- wontfix-theoretical (DW-1758): a failed start-record write after the row insert leaves a queued row until the reconcile.
+- wontfix-theoretical: a backward wall-clock step counts future-stamped starts for longer; real only with a large manual clock change.
+- low: New conversation's mint failure can show the turn-limit and send-error banners together; both are true.
+- low: 10,000 appears as a literal in `Resolve` and `SwitchRules`, following the row cap's 1,000.
+- low: `switches.browser-spec.mjs`'s `restoreSwitches` omits `turnsPerHour`; `resetRememberedState` resets it.
+- false: the `turn.ts` edits in `newConversation`/`endSession` sit inside the fenced range, but Epic 16's hunks end at ~:1250 and `git merge-file` reports no conflict.
+- false: the Integration AC lacks a mutation; `TurnWire` carries two.
+- reject (spec edit): the Auto Run Result's counts disagree with its triage log, and the QA paragraph re-argues a closed item.
+- reject (spec edit): the `oversized` spec gained prose after the flag.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -257,6 +286,26 @@ ObjectScript mutations were applied to the throwaway's copies only, recompiled w
 - mutation: the `TURN.LIMITHOUR` arm in `TurnStore.send` made `null` → `turn-limit.test.mjs` red (the store refusal and fallback cases)
 - mutation: `REASONTURNLIMITHOUR` reworded in `Error.cls` → `turn-limit.test.mjs` red (the byte-for-byte pin)
 - mutation: `resetTurnLimit` call dropped from `resetRememberedState` → `preferences-reset.test.mjs` red (the Story 14.6 reset case); its early return dropped → red (the leave-alone case)
+- mutation (review): the `Kill` in `Base.GuardedTurnStartsSweep` replaced by a no-op → `TurnHourLimit` red (`TestTheRetentionPassRemovesOnlyStartsPastTheWindow` alone); the start-record step in `Retention.Sweep` replaced by `$$$OK` → `Retention` red (`TestADeletedAccountsStartRecordsAgeOut`). Both reverted byte-identical, recompiled `cbk`: `TurnHourLimit` 9/9, `Retention` 9/9, `SwitchesWire` 24/24, `RetentionTask` 4/4; `turn-limit.browser-spec.mjs` 2/2 after rebuild and redeploy.
+
+**QA (2026-09-27).** The Review Triage Log's "applied to each user separately" claim was tested only by
+inference (every read/write is subscripted by the user); no leg carried it over the real HTTP route. Added
+`OcuPilot.Test.TurnWire.TestALimitedUserDoesNotRefuseAnotherUser` (QA): with a stored limit of one, USERA's
+refused-403 leg is unchanged, and USERB's own start still answers 202 and completes on the same instance and
+the same stored limit. Run on `ocupilot-b-ci`, one class per call: `TurnWire` 15/15 (was 14/14).
+
+- mutation (QA): in `Turn.GuardedReserve`, passed a fixed literal instead of `pUser` to both the prune and
+  the record call → `TurnWire` red (`TestALimitedUserDoesNotRefuseAnotherUser`, and
+  `TestAStartPastTheHourLimitIsRefusedWithItsRetryTime` as residue of the shared key within the same run);
+  reverted byte-identical (`diff -rq src /tmp/ocupilot-b-ci/src` empty), recompiled `cbk`, re-run green 15/15.
+
+A second candidate leg (a busy user at the stored limit refused 409, not 403, over HTTP) was drafted and
+dropped: `Api.Turn.HandleStart` checks `tBusy` before `tLimited` unconditionally, and `Turn.GuardedReserve`
+never sets `pLimited` on the busy path (it quits at the `tLive` check first), so busy and limited cannot
+co-occur by construction and no single-point mutation reddens that leg without also breaking that
+invariant. The property is already pinned at the reserve level by `TurnHourLimit.TestABusyUserAtTheLimitIsRefusedBusy`
+and over HTTP without a stored limit by `TurnWire.TestABusyCallerIsRefusedAndAConcurrentPairStartsOne`; the
+Review Triage Log's rejection of an HTTP leg for this clause stands.
 
 ## Auto Run Result
 

@@ -7620,3 +7620,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The Confirm and dispatch legs drive a failing gate through seams; nothing makes State.Policy.GuardedAll fail, so a Resolve that fell through to the baseline on a read error would stay green (src/OcuPilot/Kernel/Governance/Policy.cls Resolve)
 - 2026-09-27T15:42:06Z status=open owner=14-2-the-tool-governance-policy by=harvest note=implement-stage deferral; for QA or the code review to pin in-story
 - 2026-09-27T16:06:25Z status=resolved-by:14-2-the-tool-governance-policy by=cr note=Policy.StoreClass seam + Test.GovernanceStoreProbe; Governance.TestAnUnreadableStoreResolvesTheKeyDisabled red run 2154
+
+### DW-1756: Epic 16's Guardrails page lists the instance's limits without Story 14.6's turns-per-hour setting once the branches merge
+- source: spec-14-6-per-user-turn-limits-and-the-banner-they-need.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: origin/OCU-1-epic16 src/OcuPilot/Kernel/Shell/Guardrails.cls:103-110 lists contextRowCap and two character caps; turnsPerHour (Kernel.State.Switch, Story 14.6) is absent (inference until merged)
+- 2026-09-27T18:41:50Z status=routed owner=16-22-the-guardrails-page by=harvest note=the Guardrails page belongs to Story 16.22; add turnsPerHour at or after the 1.0.2 staging merge
+
+### DW-1757: Smoke's two turn reserves record start records against the operator, counting toward that account's turns an hour
+- source: spec-14-6 code review | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Install/Smoke.cls:1394 and :1534 call Turn.GuardedReserve($Username, ...) with no limit; every reserve records a start and Smoke never forgets it, so smoke.sh as an administrator uses two of that account's hourly turns (inference).
+- 2026-09-27T19:14:16Z status=wontfix-accepted owner=14-6-per-user-turn-limits-and-the-banner-they-need by=cr note=reopen_if=an operator reports TURN.LIMITHOUR right after smoke.sh, or smoke runs on a schedule under a panel user's account
+
+### DW-1758: A failed start-record write after the row insert in Turn.GuardedReserve leaves a queued row until the lost-job reconcile finishes it
+- source: spec-14-6 code review | severity: low | fix-risk: med | footprint: in-story
+- evidence: Kernel/State/Turn.cls GuardedReserve inserts the row, sets the lease signal, then records the start; a failed global Set under AddRoles answers 500 with the row queued. Same shape as the existing signal write.
+- 2026-09-27T19:14:16Z status=wontfix-theoretical owner=14-6-per-user-turn-limits-and-the-banner-they-need by=cr note=real only if a Set on the protected database fails (database full or read-only); the reconcile then abandons the row

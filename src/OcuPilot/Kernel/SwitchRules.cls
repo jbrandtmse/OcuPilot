@@ -38,7 +38,8 @@ Parameter MAXUSERNAMELENGTH As %Integer = 160;
 /// <method>OcuPilot.Api.Switches.MergeBody</method> turns a value that is not a JSON number into
 /// <code>""</code>, which this rule refuses on the field.</p>
 /// <p><b>Turns an hour must be a whole number from 0 to 10,000</b> (Story 14.6, AD-41), where 0 is
-/// no limit, and <b>turns running at once must be 1</b>: <code>concurrentTurns</code> is carried
+/// no limit, and <b>turns running at once must be <class>OcuPilot.Kernel.Agent.Limits</class>'s
+/// <code>CONCURRENTTURNS</code></b>, 1: <code>concurrentTurns</code> is carried
 /// only for this rule and is never stored. Each applies only when its value is present.</p>
 ClassMethod ValidateSwitches(ByRef pValues, Output pViolations) As %Integer
 {
@@ -59,7 +60,7 @@ ClassMethod ValidateSwitches(ByRef pValues, Output pViolations) As %Integer
     }
     If $Data(pValues("concurrentTurns")) {
         Set tConcurrent = pValues("concurrentTurns")
-        If (tConcurrent = "") || (+tConcurrent '= 1) {
+        If (tConcurrent = "") || (+tConcurrent '= ##class(OcuPilot.Kernel.Agent.Limits).#CONCURRENTTURNS) {
             Do ..Add(.pViolations, "concurrentTurns", ##class(OcuPilot.Api.Error).#AGENTSWITCHCONCURRENTTURNS)
         }
     }

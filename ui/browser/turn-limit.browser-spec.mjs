@@ -73,9 +73,16 @@ before(async () => {
 after(async () => {
   if (browser !== null) await browser.close();
   if (config.container === LIVE_CONTAINER) return;
-  await resetTurnLimit();
-  forgetStarts();
-  disarmProbeDefinition(probe, priorDefault);
+  await requireFreeSlot(config).catch(() => {});
+  try {
+    await resetTurnLimit();
+  } finally {
+    try {
+      forgetStarts();
+    } finally {
+      disarmProbeDefinition(probe, priorDefault);
+    }
+  }
 });
 
 /** Forget every start the signing-in account has on record, so an earlier spec's turns do not count. */

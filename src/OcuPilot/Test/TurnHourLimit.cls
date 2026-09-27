@@ -2,7 +2,7 @@
 /// <method>OcuPilot.Kernel.State.Turn.GuardedReserve</method> for a probe user name the instance
 /// does not hold, and the switch that stores the limit: the default, under and at the limit, a
 /// lowered limit, a start older than the window, a busy user at the limit, the rounded retry time,
-/// the stored value's range and the write-time rules.</p>
+/// the retention pass over start records, the stored value's range and the write-time rules.</p>
 /// <p>It creates no principal and spawns no job. Start records are seeded straight into
 /// <code>^OcuPilotTurnStarts</code>, which the suite's own account can write. After every method the
 /// probe user's turns and start records are removed by exact key and the switch row is reset.</p>
@@ -195,6 +195,24 @@ Method TestABusyUserAtTheLimitIsRefusedBusy()
     Do $$$AssertEquals(tBusy _ "|" _ tLimited, "1|0", "and is refused as busy first")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).TurnCount(..#PROBEUSER), 1, "one turn stands")
     Do $$$AssertEquals(..NodeCount(), 1, "with its one start")
+}
+
+/// <p>The retention pass over start records (AD-37): a record at or past the window's start goes,
+/// whoever it names, and one inside the window stays. The probe user holds no account, as a deleted
+/// one would. A limits class with no window removes nothing.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.State.Base.GuardedTurnStartsSweep</method>
+/// kill nothing -- the old records stay and this goes red.</p>
+Method TestTheRetentionPassRemovesOnlyStartsPastTheWindow()
+{
+    Set tNow = ##class(OcuPilot.Kernel.State.Turn).NowSeconds()
+    Do ..Seed(tNow - 4000, "old")
+    Do ..Seed(tNow - 3600, "edge")
+    Do ..Seed(tNow - 10, "fresh")
+    Do $$$AssertStatusNotOK(##class(OcuPilot.Kernel.State.Turn).GuardedSweepStarts("OcuPilot.Test.TurnHourLimit"), "a limits class with no window is refused")
+    Do $$$AssertEquals(..NodeCount(), 3, "and removes nothing")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedSweepStarts(..#LIMITS), "the pass runs")
+    Do $$$AssertEquals(..NodeCount(), 1, "only the record inside the window is left")
+    Do $$$AssertTrue(..Recorded("fresh"), "and it is the fresh one")
 }
 
 /// <p><method>OcuPilot.Kernel.State.Switch.Resolve</method> answers a stored limit in range, and
