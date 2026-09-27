@@ -306,6 +306,13 @@ Against your own install, use `http://localhost:52774/api/ocupilot` and your own
 - **The instance is the source of truth.** Screens read live data through IRIS's own management
   APIs, and the agent's tools are derived from the same screen descriptors, so the agent and the
   screen see the same thing.
+- **The admin API, in process.** Screens and the agent's tools call the `/api/admin` v2 operations
+  described in the [published specification](https://github.com/intersystems-community/sysadmin-api-specification).
+  OcuPilot runs the same endpoint classes, validation and permission checks the REST service
+  dispatches to, in process and as the signed-in user, so there is no second sign-in, token or CORS
+  setup. What the admin API does not serve is read directly: `messages.log` and `alerts.log` from
+  the instance's manager directory, and the REST API explorer's applications and OpenAPI documents
+  from the logic behind `/api/mgmnt`.
 - **The model never writes.** An agent turn runs in a background job that can only read and
   propose. Writes happen in a separate request that only your Confirm makes.
 
@@ -363,6 +370,12 @@ that carry Community Opportunity status:
   local model. A turn that makes a change can take up to a minute, and a small local model may
   propose changes that need correcting.
 - **IRIS 2026.2 or later.** OcuPilot relies on the admin API that version introduced.
+- **Two admin API defects, reported upstream.** On 2026.2 the task list reports every task as not
+  suspended ([issue #1](https://github.com/intersystems-community/sysadmin-api-specification/issues/1)),
+  so OcuPilot reads each task's own information and the Task schedule shows the true state; the
+  specification and the instance also disagree on two OAuth 2.0 names
+  ([issue #2](https://github.com/intersystems-community/sysadmin-api-specification/issues/2)), and
+  OcuPilot follows the instance.
 - **Auditing must be on for the audit record.** If it is switched off, the agent's changes still
   need your Confirm, and the panel says plainly that they are not being marked.
 - **English only.**
