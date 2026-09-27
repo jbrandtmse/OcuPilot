@@ -173,3 +173,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-27T20:14:08Z	Story 14.6	committed	sha=0a41df17 submodules= ci=success run=36343835974 amendments=ARCHITECTURE-SPINE.md:AD-41,Deferred_row EXPERIENCE.md(in-place;981_lines)
 2026-09-27T20:14:08Z	Story 14.6	ci_resolved	story=14.6 run=36343835974 result=success resolved_at=boundary
 2026-09-27T20:14:08Z	Story 14.6	story_boundary	story=14.6 head=0a41df17 ci_run=36343835974 ci=success
+2026-09-27T20:14:44Z	Epic 14	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp feature_head=4fd14ac8 conflicts=none brings=README.md,cycle-log-parallel,deferred-work(union) skip_ci=true brings_code=false
+2026-09-27T20:14:44Z	Epic 14	ledger_burndown_complete	open_before=4 resolved=8 terminal=25 chartered=0 chartered_size=0 overflow=1(DW-1756_routed_16-22-the-guardrails-page) reowned=0 to_decision_sheet=2(DW-1724_escalated,DW-1725_decision-pending) open_after=0 cap=8 story_max=12 filed_this_epic=32 closed_this_epic=33 drain_ratio=1.03 note=every_epic-14_key_slice_empty;other_burndown-owned_entries_predate_Epic_14
+2026-09-27T20:14:44Z	Epic 14	throwaway_down	container=ocupilot-b-ci project=ocupilot-b-ci dir=/tmp/ocupilot-b-ci started_by=epic-14-runner(this_transcript) result=removed
+2026-09-27T20:14:44Z	Epic 14	epic_runner_complete	stories=14.1,14.8,14.3,14.5,14.4,14.2,14.6 ready_for_merge=true last_code_head=0a41df17 ci_run=36343835974 note=freeze:no_further_story_started
