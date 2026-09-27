@@ -1,8 +1,9 @@
 # Human in the loop, twice: building an AI co-pilot for IRIS with the BMAD Method
 
 <!-- Draft of the second contest article. The Tsvetkov quote was checked word for word against Banksia
-Global's LinkedIn post on 2026-09-26. Before publishing: restore his British spelling of the bracketed
-word (spelled with an s in the post); re-count stories on the day; add the two visuals marked below. -->
+Global's LinkedIn post on 2026-09-26; the numbers were re-counted on 2026-09-27 from the sprint status and the
+cycle logs. When posting: restore his British spelling of the bracketed word (with an s, as in the post), and
+upload the two charts from images/ where they appear. -->
 
 *How I used the BMAD Method and AI agents to build OcuPilot in nineteen days - and why a person
 stayed in the loop the whole way.*
@@ -82,8 +83,7 @@ And the agent's changes are marked in the IRIS audit database, where administrat
 
 None of that was bolted on later. Every story was checked against it.
 
-<!-- VISUAL: the planning documents as a chain - idea, research, brief and requirements, UX,
-architecture, plan - with the day each was finished. -->
+![From idea to first code: the idea on Monday night, BMAD installed Tuesday 05:56, then research, the product brief, requirements, UX design and architecture on Tuesday, epics and stories early Wednesday, and the first code at 10:16 on Wednesday - about 28 hours of clock time.](images/bmad-planning-timeline.png)
 
 ## Building, one story at a time
 
@@ -102,12 +102,12 @@ streams of work side by side, each with its own IRIS instance, so their tests ne
 The results:
 
 - A typical story took **about three hours**.
-- About **6 stories a day** with one stream of work, about **11 a day** with two, and **16 a day**
+- About **6 stories a day** with one stream of work, about **10 a day** with two, and **16 a day**
   by the end.
 - By the submission, more than 140 of the plan's 229 stories were done - and because of the way the
   plan was ordered, everything that shipped is complete.
 
-<!-- VISUAL: stories finished per day, 9 to 25 September. -->
+![Stories finished per day from 9 to 25 September: about 6 a day with one stream of work, about 10 a day with two streams in parallel, and 16 a day over the last three days.](images/bmad-stories-per-day.png)
 
 BMAD now has its own build loop. Mine adds the two parallel streams and the review list below. If
 you are starting out, try BMAD's first.
@@ -176,6 +176,7 @@ It is the same pattern as the product: the agents propose, and a person confirms
 ## Try it, and read the record
 
 - The live demo: [ocupilot.org](https://ocupilot.org), sign in as `demo` / `ocupilot-demo`.
+- A three-minute video of the agent at work: [OcuPilot: ask, review, confirm, audit](https://youtu.be/tbFVXdDR5iI).
 - The code and every planning document:
   [github.com/jbrandtmse/OcuPilot](https://github.com/jbrandtmse/OcuPilot).
 - The first article, on what OcuPilot does:

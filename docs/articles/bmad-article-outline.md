@@ -95,7 +95,7 @@ architecture before any code existed to get it wrong.
   more conservative graph"*).
 - **The numbers** (cycle logs and git):
   - 144 stories done by the submission build; median **3.0 hours** from plan to commit.
-  - About 6 stories a day sequentially, about 10.7 a day with two runners, 16 a day over the last
+  - About 6 stories a day sequentially, about 10 a day with two runners (103 stories committed 16-25 September, recounted 2026-09-27), 16 a day over the last
     three days.
   - 1,956 commits, 68% of them bookkeeping - the process recording itself.
 - **Real IRIS in the loop.** Every story compiled and tested against a live instance through the

@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://ocupilot.org"><b>Live demo</b></a> ·
+  <a href="https://youtu.be/tbFVXdDR5iI"><b>Video</b></a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#get-a-model-key-in-two-minutes">Get a key</a> ·
   <a href="#a-change-from-question-to-audit-record">Walkthrough</a> ·
@@ -34,7 +35,8 @@ marks the row that changed.
 ## Try it without installing
 
 **[ocupilot.org](https://ocupilot.org)** runs the current release on a real IRIS for Health
-instance. Sign in as `demo` with the password `ocupilot-demo`.
+instance. Sign in as `demo` with the password `ocupilot-demo`. Or watch it first:
+[OcuPilot in three minutes: ask, review, confirm, audit](https://youtu.be/tbFVXdDR5iI).
 
 - The agent runs on Claude Opus 5.5, so you do not need a model key.
 - Everyone shares the one instance, and it resets to a clean state every hour, on the hour.
