@@ -1028,6 +1028,38 @@ ClassMethod GuardedIdsWhereNoParam(pSql As %String, Output pIds) As %Status [ Pr
     Quit tSC
 }
 
+/// <p>Escalated: run <var>pSql</var>, a caller literal binding no parameter, and collect every
+/// column of every row: <var>pRows(n, i)</var> is column <var>i</var> of row <var>n</var>, and
+/// <var>pRows</var> the row count. For a whole-table read whose rows need more than two columns (the
+/// retention sweep's walk over the entries). Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedIdsWhere</method>.</p>
+ClassMethod GuardedRowsNoParam(pSql As %String, Output pRows) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pRows
+    Set pRows = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedRowsNoParam failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        Set tColumns = tRS.%GetMetadata().columns.Count()
+        While tRS.%Next() {
+            Set tIndex = $Increment(pRows)
+            For tI = 1:1:tColumns {
+                Set pRows(tIndex, tI) = tRS.%GetData(tI)
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Escalated: run a bounded read assembled from three call-site literals and collect every
 /// matching id into <var>pIds</var>, the way <method>GuardedIdsWhere</method> does. The statement is
 /// joined <b>here</b> -- <code>pSelectPrefix _ " WHERE " _ pFragment _ " " _ pSuffix</code> -- so no

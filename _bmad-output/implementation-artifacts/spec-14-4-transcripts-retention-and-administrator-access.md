@@ -2,13 +2,28 @@
 title: 'Story 14.4: Transcripts, retention and administrator access'
 type: 'feature'
 created: '2026-09-27'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'a95032ab212a514db252cff52c74c473d6a33a7f'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The production Uninstall's call to Installer.RemoveRetentionTask is covered by no test.
+    evidence: |-
+      Deleting the call at Install/Installer.cls in Uninstall leaves every suite green; no test runs the production uninstall, and a probe uninstall names no task class.
+    location: >-
+      src/OcuPilot/Install/Installer.cls Uninstall
+    severity: medium
+  - summary: >-
+      GET /transcripts/:id maps a non-AUTH.NOPRIVILEGE gate fault (LEDGER.UNAVAILABLE) to 503, and no test drives it.
+    evidence: |-
+      Mapping every fault to NotFound leaves every suite green; driving it needs a failing ledger store reachable over HTTP, which no probe seam provides.
+    location: >-
+      src/OcuPilot/Api/Transcripts.cls HandleRead
+    severity: medium
 ---
 
 <intent-contract>
@@ -200,6 +215,41 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-27 — Review pass
+
+- verdicts: 30 findings — high 0, medium 9, low 11, false 10, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Ledger and empty-conversation purges not pinned to the longest retention — rows a day younger than the longest now asserted kept (run 1739 mutation).
+  - `[medium]` `[patch]` Purge fallbacks for older entries untested — added `TestAnOlderEntryAgesByItsConversationAndTheDefault`.
+  - `[medium]` `[patch]` `Job` passing the definition id unpinned — `transcripts.browser-spec` asserts the stored `DefinitionId` of a real turn.
+  - `[medium]` `[patch]` `lastActivity` pinned only by an assertion that cannot fail — dated entries, exact `started` and `lastActivity`.
+  - `[medium]` `[patch]` The `RunNow` leg cannot tell a sweep from a no-op — it now seeds an expired entry and asserts it gone.
+  - `[medium]` `[patch]` Principal-gone sources never tested separately — added `TestEachStoreNamesAGoneAccountToThePass`; the unavailable leg is a later row.
+  - `[medium]` `[defer]` Production `Uninstall`'s `RemoveRetentionTask` call untested — no test runs the production uninstall by design.
+  - `[medium]` `[patch]` A probe profile scheduling no task is unpinned — added `TestAProbeProfileSchedulesNoTaskAndLeavesTheProductionOne`.
+  - `[medium]` `[defer]` The route's 503 fault mapping has no test — needs a failing-store seam reachable over HTTP.
+  - `[low]` `[patch]` `TranscriptGate` never asserts an own read writes nothing — counts access rows for the conversation under any name.
+  - `[low]` `[patch]` AC1 route half has no `mutation:` line — recorded (run 1746).
+  - `[low]` `[patch]` AC2 editable field has no `mutation:` line — recorded.
+  - `[low]` `[patch]` AC2 `RunNow` leg has no `mutation:` line — recorded with the strengthened leg (run 1743).
+  - `[false]` `[reject]` AC5's token refusal has no `mutation:` line — AC5 is pinned by run 1417's mutation; the 401 is the existing Identity behavior this story measures.
+  - `[false]` `[reject]` AC4's mutation lacks a run id — a browser run has no result index; the line names the spec that went red.
+  - `[low]` `[reject]` A transcript withheld for a row's shape shows no sentence — every resolvable route records a pair, so it needs a legacy or overflowed turn, and the fix is a new published string; reopen_if an admin reports a stripped transcript with no reason shown.
+  - `[low]` `[reject]` The list's own-row title compares names case-sensitively — `Convo.UserName` is written from `$USERNAME`, so a mismatch needs a hand-edited row.
+  - `[false]` `[reject]` Reload is tested in process, not over `GET /conversation/:id` — the route reads proposals through the same `Propose.GuardedRowsForConvo` (`Api/Conversation.cls:116`).
+  - `[false]` `[reject]` Deletion abandons only a queued turn in the test — `GuardedAbandonForUser` selects queued and running (`Turn.cls:384`), through the `ApplyAt` path both callers share.
+  - `[false]` `[reject]` An admin reads a deleted user's transcript in process only — the route resolves the owner by a weak read and calls the same `GateTurns`.
+  - `[low]` `[patch]` An unreadable identity removing nothing is untested — `Retention.IdentityClass` seam plus `TestAnUnreadableIdentityRemovesNothing` (run 1753 mutation).
+  - `[false]` `[reject]` Fail-closed is tested only at `GateTurns` — the route adds no decision (AD-46).
+  - `[false]` `[reject]` No test releases over real turns' `llm` rows — `ReleasesRow` is `ViewForUser`'s decision, whose suites cover the route and none senses; `TranscriptGate` pins it unchanged.
+  - `[low]` `[reject]` A failing step is driven only by a throw — `Sweep` sends a returned error and a caught throw through the same `Step` call.
+  - `[low]` `[reject]` The ledger cutoff trails the longest retention by one hour — at a daily cadence the row goes at the next sweep, and it keeps the gate's rows past every entry.
+  - `[false]` `[reject]` "No definition at all" read as none marked default — `GuardedRetentions` answers 30 whenever no default is marked, including an empty table.
+  - `[low]` `[reject]` Title case-sensitivity across list and route — same root as the case-sensitivity row above.
+  - `[false]` `[reject]` Stored context not tested for secret stripping — the entry stores the payload `Job.Run` already holds, as the Storage row says.
+  - `[false]` `[reject]` The proposal cascade also runs from `GuardedReserve`'s sweep — same `RETENTIONSECONDS`, which `ProposalWrite` pins at or above the proposal window.
+  - `[low]` `[reject]` Legacy transcripts show no sentence to an admin — same root as the withheld-sentence row above.
+
 ## Design Notes
 
 **Governing ADs:** AD-37, AD-46, AD-41, AD-9, AD-8, AD-24, AD-36, AD-5, AD-33, AD-31, AD-35, AD-48, AD-60, AD-17, AD-16, AD-21, AD-53 and AD-55 (`AfterWrite` for both callers), AD-19, AD-20 and AD-44 (no classic page). Also Conventions › Dates and › When `SCHEMAVERSION` moves.
@@ -269,7 +319,46 @@ Slot B. Copy each changed `.cls` into `/tmp/ocupilot-b-ci/src` and load it on `o
 - **AC5:** add `Convo.GuardedDelete` to the principal-gone pass → the deleted-user leg of `Retention` goes red.
 - **DW-1240:** drop the proposal cascade → the reload leg goes red.
 
+**Recorded (implement, `ocupilot-b-ci`):**
+
+- mutation: drop the `ContextJson` write from `Entry.GuardedAppend` → `TranscriptStore.TestAnEntryKeepsItsContextDefinitionAndTime` red (run 1409)
+- mutation: drop the owner filter in `Convo.GuardedScreenRows` → `TranscriptsWire.TestTheListShowsANonAdministratorTheirOwnOnly` red (run 1410)
+- mutation: give every definition the longest retention's cutoff in `Retention.Sweep` → `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` red (run 1411)
+- mutation: make `Installer.EnsureRetentionTask` a no-op → `RetentionTask.TestInstallSchedulesExactlyOneTaskAndRepairsDrift` red (run 1412)
+- mutation: make `GateTurns` skip `ReleasesRow` → `TranscriptGate` (withheld, fail-closed) and `TranscriptsWire.TestAnAdministratorMissingOnePairSeesMessagesAndRepliesOnly` red (runs 1413, 1414)
+- mutation: drop the `RecordTranscriptAccess` call → `TranscriptGate.TestTheAccessRowAppearsInTheReadersOwnLedgerView` and `TranscriptsWire.TestTheAccessRowAppearsInTheAdministratorsOwnLedgerView` red (runs 1415, 1416)
+- mutation: register `TranscriptPage` under another descriptor name (rebuilt, redeployed) → `transcripts.browser-spec` red
+- mutation: delete the user's conversations in `Retention.SweepGonePrincipals` → `Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay` red (run 1417)
+- mutation: drop the `Propose.GuardedDeleteForTurn` cascade from `Turn.GuardedDelete` → `Retention.TestATurnPastRetentionTakesItsProposalsAndLeavesItsEntry` red (run 1418)
+- mutation: rename `UserDelete.AfterWrite` → `ToolWrite.TestADeletedAccountsTurnsAreAbandonedByTheDelete` red (run 1419)
+- mutation: remove the `Try` around `Retention.Sweep`'s first step → `Retention.TestAFailingStepIsLoggedAndTheLaterStepsStillRun` red (run 1733)
+- mutation: purge the ledger at a one-day cutoff in `Retention.Sweep` → `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` red (run 1739)
+- mutation: drop the `CreatedAt` fallback in `Entry.GuardedPurge` → `Retention.TestAnOlderEntryAgesByItsConversationAndTheDefault` red (run 1740)
+- mutation: drop `Turn:GuardedLiveUsers` from `SweepGonePrincipals` → `Retention.TestEachStoreNamesAGoneAccountToThePass` red (run 1741)
+- mutation: make `IsGone` ignore `pUnavailable` → `Retention.TestAnUnreadableIdentityRemovesNothing` red (run 1753)
+- mutation: answer `started` as `lastActivity` in `Convo.GuardedScreenRows` → `TranscriptStore.TestTheListNamesConversationsWithEntriesAndTitlesOnlyTheCallersOwn` red (run 1742)
+- mutation: `RetentionTask.OnTask` answers OK without sweeping → `RetentionTask.TestAForcedRunRemovesAnExpiredEntryAndRecordsSuccess` red (run 1743)
+- mutation: drop the probe branch of `retentionTaskClass` in `Installer.Names` → `RetentionTask.TestAProbeProfileSchedulesNoTaskAndLeavesTheProductionOne` red (run 1744)
+- mutation: record an access row on an own read in `GateTurns` → `TranscriptGate.TestNoAdministrativePairIsRefusedAndAnOwnReadRecordsNothing` red (run 1745)
+- mutation: stop mapping `AUTH.NOPRIVILEGE` to the shared 404 in `Transcripts.HandleRead` → `TranscriptsWire.TestANonAdministratorGetsTheSameNotFoundAsAnUnknownId` red (run 1746)
+- mutation: drop the retention input's `(input)` binding → `definition-form.page.spec.ts` "Story 14.4 AC2" red
+- mutation: pass `""` for the definition in `Job.AppendConvoEntry` (throwaway) → `transcripts.browser-spec` red
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** Entries keep screen context, definition and time; a daily `%SYS.Task` (installer step `EnsureRetentionTask`, 03:15, vendor-default run user, which measured as the saving account) runs `Kernel.Retention.Sweep`; `Ledger.ReleasesRow`/`GateTurns`/`RecordTranscriptAccess`; `GET /transcripts/:id`; Transcripts list and transcript page; editable retention field; `UserDelete.AfterWrite`; `Turn.GuardedDelete` cascades proposals (DW-1240); ledger purge (DW-1122).
+
+**Files.** Stores (`Kernel/State/` Entry, Convo, Ledger, Agent, Turn, Pref, Sharing, Base), `Kernel/Agent/Job.cls`, `Kernel/Audit/Ledger.cls`, new `Kernel/Retention.cls` and `RetentionTask.cls`, `Install/Installer.cls`, `Screen/Tool/UserDelete.cls`, new `Api/Transcripts.cls` and `Router.cls` route, two new descriptors, client page/store/strings/form, EXPERIENCE.md :336/:646/:736 (981 lines), tests (5 new classes, `AcceptPort` and `RetentionIdentityDown` fixtures, `ToolWrite`, `ProposalWrite`, rosters, three client suites, `transcripts.browser-spec`), `ci-throwaway.sh` arming lists.
+
+Contended files: EXPERIENCE.md, `scripts/ci-throwaway.sh`, `Api/Router.cls`, `Kernel/State/Pref.cls`, `Test/Descriptor.cls`, `Test/EndpointCoverage.cls`, `Test/SurfaceCoverage.cls`, `screens.generated.ts`, `strings.ts`, `turn.ts` — add-only, off Epic 16's hunks.
+
+**Measured on `ocupilot-b-ci`.** Registry admits the readless detail and the empty-`entityType` list; a deleted account reads `pKnown` 0 / `pUnavailable` 0 and its token answers 401 `AUTH.DISABLED`; a forced task run records Status 1.
+
+**Review.** 30 findings: 12 patched (7 medium, 5 low), 2 deferred (medium), 16 rejected with reasons in the triage log. Verification fixes before review: `Retention.Sweep` wraps each step in `Try`; `ProposalWrite.TestAProposalWhoseTurnRecordIsGoneIsRefused` removes only the turn row (the cascade now takes proposals). Follow-up review recommended: 7 medium test patches landed after the review layers read the diff, including a probe install/uninstall leg in `RetentionTask` that shares the probe profile with the Installer suites on CI.
+
+**Verification.** Full ObjectScript sweep on `ocupilot-b-ci`: 311 classes, 2564 tests, 1 failure (`ProposalWrite`, fixed and re-run green, run 1731); every class touched after the sweep re-run green (runs 1747-1755). `npm test` 1505 + 1496 pass; `npm run build` 1.87 MB initial; browser `transcripts`, `definitions`, `panel` 23/23 after redeploy; smoke 49/49; check-objectscript 0; lint-docs clean. Every mutation above reverted byte-identical.
+
+**Residual risk.** A transcript withheld for a row's shape shows no reason; the two deferred coverage gaps.

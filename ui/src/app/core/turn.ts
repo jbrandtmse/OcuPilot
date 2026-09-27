@@ -429,7 +429,8 @@ function parseStepResult(value: unknown): TurnStepResult | null {
   };
 }
 
-function parseStep(value: unknown): TurnStep | null {
+/** One stored or polled progress step, or `null` when `value` is not a step object. */
+export function parseStep(value: unknown): TurnStep | null {
   const row = asRecord(value);
   if (row === null) return null;
   const kindRaw = textAt(row, 'kind');

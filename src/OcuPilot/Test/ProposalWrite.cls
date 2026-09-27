@@ -138,7 +138,8 @@ Method TestATurnThatEndedAbnormallyLeavesItsProposalsUnconfirmable()
 Method TestAProposalWhoseTurnRecordIsGoneIsRefused()
 {
     Do $$$AssertStatusOK(..Seed("completed", ..#PROBEUSER, .tKey, .tToken), "a proposal is minted")
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedDelete(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "TurnKey")), "and its turn record is removed")
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", ##class(OcuPilot.Test.ProposalFixture).Field(tKey, "TurnKey"))
+    Do $$$AssertEquals(tRS.%SQLCODE, 0, "and its turn record alone is removed, since the turn's own delete takes its proposals with it")
     Do $$$AssertEquals(..ClaimCode(tKey, tToken, ..#PROBEUSER), ##class(OcuPilot.Kernel.Proposal.Write).#TURNENDED, "the claim is refused")
 }
 

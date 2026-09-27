@@ -1360,4 +1360,29 @@ Method Dispatch(pArgs As %DynamicObject, Output pIsError As %Boolean, Output pCo
     Quit $$$OK
 }
 
+/// <p>Story 14.4 (AD-37, AD-53): once a delete of an account reads OK, the operation both callers
+/// share asks every turn that account has queued or running to abandon, through
+/// <method>OcuPilot.Screen.Tool.UserDelete.AfterWrite</method>. The write goes to
+/// <class>OcuPilot.Test.AcceptPort</class>, which accepts it and changes nothing, so no account is
+/// deleted; the probe user names no account.</p>
+/// <p>Mutation (Rule 19): remove <code>AfterWrite</code> from
+/// <class>OcuPilot.Screen.Tool.UserDelete</class> -- the turn is not asked to abandon and this goes
+/// red.</p>
+Method TestADeletedAccountsTurnsAreAbandonedByTheDelete()
+{
+    Set tUser = "OcuPilotProbeToolWriteDeleted"
+    Set tTool = "OcuPilot.Screen.Tool.UserDelete"
+    Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "", "TURN.UNAVAILABLE", ..#LIMITS, .tTurn, .tBusy, .tSweep)
+    Do $$$AssertStatusOK(tSC, "the probe user has a queued turn")
+    Do ##class(OcuPilot.Test.AcceptPort).Clear()
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tTool, "OcuPilot.Test.AcceptPort", $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tUser, "", "", .tWritten, .tHttp, .tFault, {"Enabled": true}, .tApplied)
+    Do $$$AssertStatusOK(tSC, "the delete applies")
+    Do $$$AssertEquals(tApplied, 1, "and reads as applied")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AcceptPort).CallTypes(), "DELETE", "through one DELETE and nothing else")
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedSignals(tTurn, .tStop, .tAbandon, .tRenewed)
+    Do $$$AssertEquals(tAbandon, 1, "and the account's queued turn is asked to abandon")
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tTurn)
+    Do ##class(OcuPilot.Test.AcceptPort).Clear()
+}
+
 }

@@ -470,4 +470,25 @@ ClassMethod Text(pValue As %String) As %String [ Private ]
     Quit pValue
 }
 
+/// <p>Every user this store holds a row for, as stored: <var>pUsers(name)</var>. The retention
+/// sweep asks, for each, whether the account still exists (AD-37).</p>
+ClassMethod GuardedUsers(Output pUsers) As %Status
+{
+    Kill pUsers
+    Set tSC = ..GuardedIdsWhereNoParam("SELECT DISTINCT %EXACT(UserName) FROM OcuPilot_Kernel_State.Pref", .tRows)
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 1:1:+$Get(tRows) {
+        Set tName = $Get(tRows(tI))
+        If (tName '= "") && (tName '= $Char(0)) Set pUsers(tName) = ""
+    }
+    Quit $$$OK
+}
+
+/// <p>Delete every row of <var>pUserName</var>, matched exactly as <method>GuardedUsers</method>
+/// answered it: the retention sweep's, for an account the instance no longer holds (AD-37).</p>
+ClassMethod GuardedDeleteForUser(pUserName As %String) As %Status
+{
+    Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Pref WHERE %EXACT(UserName) = ?", pUserName)
+}
+
 }

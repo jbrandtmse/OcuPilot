@@ -29,6 +29,13 @@ Index ConvKeyIdx On ConvKey [ Unique ];
 
 Index ConvUserIdx On UserName;
 
+/// <p>How many characters of a conversation's first message the Transcripts list shows as its
+/// title.</p>
+Parameter TITLEMAXLENGTH As %Integer = 120;
+
+/// <p>The <code>TOP</code> a screen read with no cap binds, so the statement keeps one form.</p>
+Parameter SCREENROWSALL As %Integer = 2147483647;
+
 /// <p>Load conversation <var>pId</var>, or create a new one when <var>pId</var> is <code>""</code>,
 /// and answer the OREF at concurrency 4 through
 /// <method>OcuPilot.Kernel.State.Base.GuardedOpenIdExclusive</method>. The load branch resolves
@@ -99,10 +106,13 @@ ClassMethod GuardedOwner(pKey As %String, pUser As %String, Output pFound As %Bo
 /// <p>Append the entry for one finished turn onto <var>pConvo</var>, an OREF <method>LoadOrCreate</method>
 /// answered. <var>pTurnKey</var> is that turn's own key, which is what lets a restored
 /// conversation carry the turn's proposals; a caller that has none may omit it.
-/// <var>pCitations</var> is the reply's citations as JSON text, or <code>""</code> for none. Defensively re-caps <var>pStepsJson</var> to <var>pLimitsClass</var>'s own
+/// <var>pCitations</var> is the reply's citations as JSON text, or <code>""</code> for none.
+/// <var>pContextJson</var> is the turn's bounded screen-context payload as JSON text, or
+/// <code>""</code>, and <var>pDefinitionId</var> the definition it ran under
+/// (<method>OcuPilot.Kernel.State.Entry.GuardedAppend</method>). Defensively re-caps <var>pStepsJson</var> to <var>pLimitsClass</var>'s own
 /// <code>MAXSTEPS</code>, even though the caller's own projection
 /// (<method>OcuPilot.Kernel.State.Step.GuardedRows</method>) is already within it.</p>
-ClassMethod AppendEntry(pConvo As Convo, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %DynamicArray, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "", pCitations As %String = "") As %Status
+ClassMethod AppendEntry(pConvo As Convo, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %DynamicArray, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "", pCitations As %String = "", pContextJson As %String = "", pDefinitionId As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -119,11 +129,94 @@ ClassMethod AppendEntry(pConvo As Convo, pMessage As %String, pState As %String,
             For tI = 0:1:tMax - 1 Do tKept.%Push(tSteps.%Get(tI))
             Set tSteps = tKept
         }
-        Set tSC = ##class(OcuPilot.Kernel.State.Entry).GuardedAppend(pConvo.ConvKey, pMessage, pState, pReply, pErrorCode, pErrorSeq, tSteps.%ToJSON(), pStepsDropped, pLimitsClass, pTurnKey, pCitations)
+        Set tSC = ##class(OcuPilot.Kernel.State.Entry).GuardedAppend(pConvo.ConvKey, pMessage, pState, pReply, pErrorCode, pErrorSeq, tSteps.%ToJSON(), pStepsDropped, pLimitsClass, pTurnKey, pCitations, pContextJson, pDefinitionId)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The user who created conversation <var>pKey</var>, matched exactly, as stored; <var>pUser</var>
+/// is <code>""</code> when no conversation holds that key. A plain read, like
+/// <method>GuardedOwner</method>; the user is a weak reference (AD-37), so a name the instance no
+/// longer holds still reads back.</p>
+ClassMethod GuardedOwnerOf(pKey As %String, Output pUser As %String) As %Status
+{
+    Set pUser = ""
+    Set tSC = ..GuardedIdsWhere("SELECT UserName FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ?", pKey, .tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Set pUser = $Get(tRows(1))
+    If pUser = $Char(0) Set pUser = ""
+    Quit $$$OK
+}
+
+/// <p>The Transcripts list's rows (AD-36's <code>state</code> source, as amended for a store scoped
+/// to its caller): <code>{id, user, started, lastActivity, turns, title}</code> for every
+/// conversation holding at least one entry, newest first, at most <var>pMaxRows</var> of them
+/// (<code>SELECT TOP ?</code>; <code>""</code> reads every one).</p>
+/// <p><b>Scoped to the calling process, decided before any escalated frame</b> (AD-8, AD-9): a
+/// process holding <code>OcuPilotAdmin:USE</code> reads every user's conversations, and any other
+/// reads only those whose <property>UserName</property> is its own <code>$USERNAME</code>.
+/// <code>title</code> is the first message cut to <parameter>TITLEMAXLENGTH</parameter> characters,
+/// and only on the caller's own rows -- another user's text never reaches this caller's screen or
+/// its agent. <code>started</code> is <property>CreatedAt</property>; <code>lastActivity</code> is
+/// the newest entry's time, or <code>started</code> where no entry records one.</p>
+ClassMethod GuardedScreenRows(Output pRows As %DynamicArray, pMaxRows As %String = "") As %Status
+{
+    Set pRows = ""
+    Set tCaller = $Username
+    Set tAll = ''$System.Security.Check(..#ADMINRESOURCE, "USE")
+    If (pMaxRows '= "") && '$Match(pMaxRows, "^[1-9][0-9]*$") Quit $$$ERROR($$$GeneralError, "maxRows must be empty or a whole number above zero")
+    Set tTop = $Select(pMaxRows = "": ..#SCREENROWSALL, 1: +pMaxRows)
+    If tAll {
+        Set tSC = ..GuardedIdsWhere("SELECT TOP ? c.ID FROM OcuPilot_Kernel_State.Convo c WHERE EXISTS (SELECT e.ID FROM OcuPilot_Kernel_State.Entry e WHERE e.ConvoKey = c.ConvKey) ORDER BY c.ID DESC", tTop, .tIds)
+    } Else {
+        Set tSC = ..GuardedIdsWhereTwoParam("SELECT TOP ? c.ID FROM OcuPilot_Kernel_State.Convo c WHERE %EXACT(c.UserName) = ? AND EXISTS (SELECT e.ID FROM OcuPilot_Kernel_State.Entry e WHERE e.ConvoKey = c.ConvKey) ORDER BY c.ID DESC", tTop, tCaller, .tIds)
+    }
+    If $$$ISERR(tSC) Quit tSC
+    Set pRows = []
+    For tI = 1:1:+$Get(tIds) {
+        Set tOpenSC = ..GuardedOpenId(tIds(tI), .tRow)
+        If $$$ISERR(tOpenSC) || '$IsObject(tRow) Continue
+        Set tKey = tRow.ConvKey
+        Set tUser = ..Text(tRow.UserName)
+        Set tStarted = ..Text(tRow.CreatedAt)
+        Set tRow = ""
+        Set tSC = ..GuardedPairsWhere("SELECT COUNT(*), MAX(%EXACT(AppendedAt)) FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ?", tKey, .tStats)
+        If $$$ISERR(tSC) Quit
+        Set tTurns = +$Get(tStats(1))
+        If tTurns = 0 Continue
+        Set tLast = ..Text($Get(tStats(1, 2)))
+        If tLast = "" Set tLast = tStarted
+        Set tTitle = ""
+        If tUser = tCaller {
+            Set tSC = ..GuardedIdsWhere("SELECT TOP 1 Message FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ? ORDER BY Seq", tKey, .tFirst)
+            If $$$ISERR(tSC) Quit
+            Set tTitle = ##class(OcuPilot.Kernel.State.Turn).Cap(..Text($Get(tFirst(1))), ..#TITLEMAXLENGTH, .tCut)
+        }
+        Set tOut = {}
+        Do tOut.%Set("id", tKey, "string")
+        Do tOut.%Set("user", tUser, "string")
+        Do tOut.%Set("started", tStarted, "string")
+        Do tOut.%Set("lastActivity", tLast, "string")
+        Do tOut.%Set("turns", tTurns, "number")
+        Do tOut.%Set("title", tTitle, "string")
+        Do pRows.%Push(tOut)
+    }
+    If $$$ISERR(tSC) Set pRows = ""
+    Quit tSC
+}
+
+/// <p>Delete every conversation that holds no entry and whose <property>CreatedAt</property> is
+/// before <var>pCutoff</var> (ISO-8601 UTC). <var>pRemoved</var> is how many went. The retention
+/// sweep passes the longest retention's cutoff, so a conversation outlives every entry it could
+/// have held.</p>
+ClassMethod GuardedPurgeEmpty(pCutoff As %String, Output pRemoved As %Integer) As %Status
+{
+    Set pRemoved = 0
+    Set tParams = []
+    Do tParams.%Push(pCutoff, "string")
+    Quit ..GuardedExecuteRows("DELETE FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(CreatedAt) < ? AND NOT EXISTS (SELECT e.ID FROM OcuPilot_Kernel_State.Entry e WHERE e.ConvoKey = OcuPilot_Kernel_State.Convo.ConvKey)", .tParams, .pRemoved)
 }
 
 /// <p>The GET shape of conversation <var>pKey</var> when <var>pUser</var> owns it:
@@ -202,12 +295,20 @@ ClassMethod NewKey() As %String [ Private ]
 }
 
 /// <p>Delete conversation <var>pKey</var> and its entries. For test teardown only; production
-/// never deletes a conversation (Story 14.4 owns retention).</p>
+/// removes a conversation only through retention (<method>GuardedPurgeEmpty</method>).</p>
 ClassMethod GuardedDelete(pKey As %String) As %Status
 {
     Set tSC = ##class(OcuPilot.Kernel.State.Entry).GuardedDeleteForConvo(pKey)
     If $$$ISERR(tSC) Quit tSC
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ?", pKey)
+}
+
+/// <p><var>pValue</var> with the <code>$Char(0)</code> a SQL <code>UPDATE</code> leaves normalized
+/// to <code>""</code>.</p>
+ClassMethod Text(pValue As %String) As %String [ Private ]
+{
+    If pValue = $Char(0) Quit ""
+    Quit pValue
 }
 
 }

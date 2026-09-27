@@ -123,4 +123,31 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Quit tSC
 }
 
+/// <p>Once the account is gone, ask every turn it has queued or running to abandon at its next
+/// step boundary (AD-37, AD-31), for both callers of the operation (AD-53, AD-55): a deleted
+/// account's job keeps the roles it was spawned with, and nothing else would stop it before the
+/// retention sweep. Its transcripts and ledger rows are kept. A failure is logged and never fails
+/// the delete, which has already happened.</p>
+ClassMethod AfterWrite(pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pFresh As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedAbandonForUser(pIdValue, .tCount)
+        If $$$ISERR(tSC) Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "a deleted account's turns could not be abandoned", tSC)
+    } Catch ex {
+        Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "abandoning a deleted account's turns failed", ex.AsStatus())
+    }
+    Quit $$$OK
+}
+
+/// <p><method>AfterWrite</method> as a copy-out script step (AD-59): none. The step changes only
+/// OcuPilot's own state, and the daily retention sweep abandons a deleted account's turns
+/// (<class>OcuPilot.Kernel.Retention</class>), so a script that deletes the account needs nothing
+/// more.</p>
+ClassMethod SnippetAfter(pEndpoint As %String, pIdParam As %String, pIdValue As %String, pStoredPayload As %DynamicObject, pContext As %DynamicObject = "") As %DynamicArray
+{
+    Quit []
+}
+
 }

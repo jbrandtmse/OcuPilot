@@ -130,6 +130,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/proposal/:id/draft" Method="POST" Call="ProposalDraft"/>
   <Route Url="/conversation/:id" Method="GET" Call="ConversationRead"/>
   <Route Url="/conversation" Method="POST" Call="ConversationCreate"/>
+  <Route Url="/transcripts/:id" Method="GET" Call="TranscriptRead"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
@@ -776,6 +777,13 @@ ClassMethod ConversationRead(pId As %String) As %Status
 ClassMethod ConversationCreate() As %Status
 {
     Quit ##class(OcuPilot.Api.Conversation).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /transcripts/:id</code> (Story 14.4): delegates
+/// to <class>OcuPilot.Api.Transcripts</class> and carries no logic of its own.</p>
+ClassMethod TranscriptRead(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Transcripts).HandleRead(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/alerts</code> -- see

@@ -68,6 +68,7 @@ XData ReadShapes
 {
 <shapes>
 <screen name="AgentDefinitionList" filter="name,provider,model" sort="name,provider,model" kinds="name:name,provider:text,model:text,enabled:status,default:status"/>
+<screen name="AgentTranscripts" filter="user,started,lastActivity,title" sort="user,started,lastActivity,turns,title" kinds="started:name,user:text,turns:number,lastActivity:text,title:text"/>
 <screen name="AuditList" filter="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" sort="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" kinds="TimeStamp:text,EventSource:text,EventType:text,Event:name,Username:text,Pid:identifier,Namespace:text,Description:text"/>
 <screen name="AuditSystemEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
 <screen name="AuditUserEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>

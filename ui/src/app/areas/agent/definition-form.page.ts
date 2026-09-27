@@ -70,9 +70,8 @@ interface FieldView {
  * **Field order is the acceptance criterion.** Name, provider, model, endpoint, the key field and
  * Test connection are in the document before the Advanced disclosure; maximum tokens, temperature,
  * maximum iterations, the system-prompt override and retention are inside it, and it is closed on
- * first render. Retention is `aria-disabled` under its published caption, because nothing enforces
- * it until Story 14.4 -- listed and focusable and named, never removed (EXPERIENCE.md's Privilege
- * Gating mechanism applied to a control that cannot yet act).
+ * first render. Retention is an ordinary field under its published caption: the daily retention
+ * task removes each conversation entry older than its own definition's value (Story 14.4).
  *
  * **Two buttons, not four chores** (DW-354). Test connection on a create route performs create,
  * store the key and test, under one progress indicator, and reports one outcome; Save sends the
@@ -465,14 +464,18 @@ interface FieldView {
                   class="ocu-field-input"
                   type="text"
                   inputmode="numeric"
-                  aria-disabled="true"
-                  readonly
                   [id]="retentionField.id"
                   [value]="retentionValue"
-                  [attr.aria-describedby]="retentionField.id + '-caption'"
+                  [attr.aria-invalid]="retentionField.invalid"
+                  [attr.aria-describedby]="retentionField.describedBy"
+                  (input)="onText('retentionDays', $event)"
+                  (blur)="onFieldBlur('retentionDays')"
                 />
               </div>
               <p class="ocu-field-caption" [id]="retentionField.id + '-caption'">{{ retentionCaption }}</p>
+              @if (retentionField.invalid) {
+                <p class="ocu-form-error" [id]="retentionField.id + '-reason'">{{ retentionField.reason }}</p>
+              }
             </div>
           </div>
         }
@@ -827,8 +830,7 @@ export class DefinitionFormPage {
 
   /**
    * Whether the chosen provider's catalog row takes a temperature (Story 10.4). Where it does not,
-   * the field is readonly and `aria-disabled` under its caption -- the retention field's precedent
-   * -- and a value loaded with the definition is shown as held. Only a provider switch replaces it,
+   * the field is readonly and `aria-disabled` under its caption, and a value loaded with the definition is shown as held. Only a provider switch replaces it,
    * with the new row's canonical value, as it replaces the model and endpoint.
    */
   protected get temperatureApplies(): boolean {
@@ -1186,6 +1188,7 @@ export class DefinitionFormPage {
     if (field === 'apiKey' && this.showStoredCaption) described.push(`${id}-caption`);
     if (field === 'envVarName') described.push(`${id}-caption`);
     if (field === 'temperature' && !this.store.temperatureApplies()) described.push(`${id}-caption`);
+    if (field === 'retentionDays') described.push(`${id}-caption`);
     if (invalid) described.push(`${id}-reason`);
     return {
       id,

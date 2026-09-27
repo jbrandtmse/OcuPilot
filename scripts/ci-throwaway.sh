@@ -198,6 +198,7 @@ services:
       # classes: InjectionChannels, InjectionCompromised, InjectionSeed
       # classes: TurnSanitize
       # classes: SanitizeAuditMask
+      # classes: Retention, TranscriptsWire
       # classes: AccountPasswordWire, AgentConnectionRoles, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
       # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
       # classes: OAuthTabs
@@ -253,6 +254,7 @@ services:
       # classes: IdentityInstall, InstallNamespaceSource, Installer, Manifest, Provenance, Static
       # classes: UninstallGuard, UninstallResidue, UninstallSurvival, WebApp
       # classes: AuditEvent, AuditMarker, ConfigGate, State, Token, UnexpireScope, Version, Wire
+      # classes: RetentionTask
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same

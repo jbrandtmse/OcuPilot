@@ -574,6 +574,32 @@ export const STRINGS = {
   agentDefinitionHideKey: 'Hide key',
   /** EXPERIENCE.md:336 */
   agentDefinitionRetentionCaption: 'Transcripts are kept for <n> days.',
+  // Story 14.4: the Transcripts list, its columns, empty state and prompts, and the transcript
+  // page's screen-context disclosure and its withheld sentence's action slot.
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsLabel: 'Transcripts',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptLabel: 'Transcript',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsColumnTurns: 'Turns',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsColumnLastActivity: 'Last activity',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsColumnTitle: 'First message',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsEmpty: 'No conversations are kept for you yet.',
+  /** EXPERIENCE.md:336 */
+  transcriptScreenContext: 'Screen context',
+  /** EXPERIENCE.md:336 */
+  transcriptNoContext: 'No screen context was sent with this turn.',
+  /** EXPERIENCE.md:336 */
+  transcriptRefusedAction: 'see this transcript\'s tool results and screen context',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsPrompt1: 'Which conversations did I have today?',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsPrompt2: 'Which of my conversations ran the most turns?',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsPrompt3: 'When did I last talk to the agent?',
   /** EXPERIENCE.md:337 */
   proposalCardTitle: 'Proposal \u00b7 <entity type> <name>',
   /** EXPERIENCE.md:338 */

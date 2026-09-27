@@ -920,6 +920,204 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentTranscript",
+    "route": "agent/transcripts/details",
+    "area": "agent",
+    "labelKey": "agentTranscriptLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "agent/transcripts",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "id"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentTranscriptsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentTranscriptsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentTranscriptsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "agent.transcript",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentTranscripts",
+    "route": "agent/transcripts",
+    "area": "agent",
+    "labelKey": "agentTranscriptsLabel",
+    "sideBarPosition": 4,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "id"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "id",
+        "user",
+        "started",
+        "lastActivity",
+        "turns",
+        "title"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "agentTranscriptsEmpty",
+    "commandAliases": [
+      "transcripts",
+      "conversation history"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentTranscriptsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentTranscriptsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentTranscriptsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "state",
+        "endpoint": "Convo",
+        "type": "LIST"
+      },
+      "fields": [
+        "id",
+        "user",
+        "started",
+        "lastActivity",
+        "turns",
+        "title"
+      ],
+      "filter": [
+        "user",
+        "started",
+        "lastActivity",
+        "title"
+      ],
+      "sort": {
+        "fields": [
+          "user",
+          "started",
+          "lastActivity",
+          "turns",
+          "title"
+        ],
+        "default": "lastActivity",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "started",
+          "labelKey": "taskHistoryColumnStarted",
+          "kind": "name"
+        },
+        {
+          "field": "user",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "turns",
+          "labelKey": "agentTranscriptsColumnTurns",
+          "kind": "number"
+        },
+        {
+          "field": "lastActivity",
+          "labelKey": "agentTranscriptsColumnLastActivity",
+          "kind": "text"
+        },
+        {
+          "field": "title",
+          "labelKey": "agentTranscriptsColumnTitle",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "agent.transcripts",
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.AuditList",
     "route": "logs/audit",
     "area": "logs",

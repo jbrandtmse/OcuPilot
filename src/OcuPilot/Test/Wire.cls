@@ -460,7 +460,7 @@ Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
     Do $$$AssertEquals(''tAgent.allowed, 1, "the rail item never gates, whatever the caller holds")
     Do $$$AssertEquals(''tAgent.%IsDefined("failedPair"), 0, "so it carries no failed pair")
 
-    Do $$$AssertEquals(tAgent.screens.%Size(), 3, "and lists all three built screens, the form included: " _ tAgent.screens.%ToJSON())
+    Do $$$AssertEquals(tAgent.screens.%Size(), 5, "and lists all five built screens, the form and the transcript page included: " _ tAgent.screens.%ToJSON())
     Kill tPosition, tAllowed, tFailed
     Set tScreenIterator = tAgent.screens.%GetIterator()
     While tScreenIterator.%GetNext(.tScreenIndex, .tScreen) {
@@ -477,6 +477,10 @@ Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
     Do $$$AssertEquals($Get(tFailed("agent/definitions/edit")), "OcuPilotAdmin:USE", "on the same pair")
     Do $$$AssertEquals($Get(tAllowed("agent/switches")), 0, "and so is Switches, which gates on the same resource (FR-29)")
     Do $$$AssertEquals($Get(tFailed("agent/switches")), "OcuPilotAdmin:USE", "on the same pair")
+    Do $$$AssertEquals($Get(tPosition("agent/transcripts")), 4, "Transcripts takes the fourth position (Story 14.4)")
+    Do $$$AssertEquals($Get(tAllowed("agent/transcripts")), 1, "and is open to a principal holding nothing of OcuPilot's, whose own history it lists")
+    Do $$$AssertEquals($Get(tPosition("agent/transcripts/details")), 0, "and the transcript page is routable but not listed")
+    Do $$$AssertEquals($Get(tAllowed("agent/transcripts/details")), 1, "and open the same way, its route answering through the ledger's gate")
 }
 
 /// <p>Story 2.5 AC4, against the <b>real</b> <code>$System.Security.Check</code> -- for a principal
