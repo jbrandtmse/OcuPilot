@@ -199,3 +199,5 @@
 2026-09-27T15:42:10Z	Story 16.8	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp merge=b2006e56 conflicts=none content=docs+scripts/check-prose.py(feature_skip-ci_commit) ci=rides_on_next_code_push(DW-1435) note=orchestrator_merge_note_14.2_vs_Guardrails_pin_is_orchestrator-side
 2026-09-27T15:42:10Z	Story 16.8	stage_spawned	stage=plan spawn_at=2026-09-27T15:42:10Z model=opus agent_name=16-8-the-six-secondary-log-viewers-plan-1 cycle_iteration=1 note=started_before_19:00Z_cutoff;may_miss_the_21:00Z_cut
 2026-09-27T16:04:32Z	Story 16.8	plan_clarification_requested	spawn_at=2026-09-27T15:42:10Z model=opus build_status=blocked condition=intent_gap_contended_hunk(Test/ReadTool.cls:93-94,112_vs_epic14_story_14.4) routed_to=orchestrator pending_spine=AD-21_fifth_named_case(DeepSeeTasks_<NS>.log)
+2026-09-27T16:34:49Z	Story 16.23	ci_resolved	story=16.23 run=36330463424 result=success resolved_at=story_boundary head=b7179aef
+2026-09-27T16:34:49Z	Story 16.23	story_boundary	story=16.23 head=b7179aef ci_run=36330463424 ci=success note=includes_16.1,16.17-16.23;above_it_only_bookkeeping,a_docs/prose-check_merge_b2006e56,and_16.8s_blocked_spec
