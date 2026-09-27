@@ -10,8 +10,8 @@ import { STRINGS } from '../core/strings';
  * **It stores a choice and decides nothing.** A press sends `PUT /agent/restraint` through
  * `AgentStatus.setReadOnlyForYou`, and the switch, the footer line and every write the agent
  * attempts all follow the verdict the instance answers (AD-30). The component holds no state of
- * its own: `AgentStatus` is mirrored into a signal (AD-19), so what is drawn is what the instance
- * last said.
+ * its own: `AgentStatus` is mirrored into a signal (AD-19). The native box shows a press while its
+ * write is in flight, and then what the instance answered.
  *
  * **Checked while read-only is on for you or enforced.** Under enforced read-only the switch reads
  * on, is `aria-disabled`, and a press changes nothing and sends nothing; the footer line it points

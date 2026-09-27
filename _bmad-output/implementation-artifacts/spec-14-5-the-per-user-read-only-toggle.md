@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-27'
 status: 'done'
 baseline_revision: 'c099443ce3ab7f8be8bef6adbfc20a2f0ce3e864'
+baseline_commit: 'c099443ce3ab7f8be8bef6adbfc20a2f0ce3e864'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -142,6 +143,19 @@ deferred: []
 - **DW-1621.** Given the Definition form's Advanced section, when "Read-only" is checked and saved, then a reload shows it checked and `GET /agent/definitions/:id` reads `readOnly` true.
 - **Integration (Rule 1).** Given read-only for you on, when a write tool is dispatched and when a turn is sent with screen context, then the consumers `Dispatch` (the `ToolWrite` leg) and `Turn`'s screen context (the `TurnGrounding` leg) each observe the blocked verdict against a real instance.
 
+### Review Findings
+
+Code review 2026-09-27 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). AC1-AC4, DW-1621 and the Integration AC hold; AC4's single check, AD-53/AD-55 and the no-browser-storage rule verified; Rule 3 met by `read-only-for-you.browser-spec.mjs` and the `ReadOnlyForYou` HTTP legs.
+
+- [x] [Review][Patch] high (Rule 6, Conventions › Concurrent writes): a lost conditional save on `PUT /agent/restraint` answered 500, not 409 `STATE.CONFLICT` — now `IsStaleSave` → `RenderConflict`, as `HandleUpdate` does [src/OcuPilot/Api/Switches.cls:362]. No pinning test: the window lies inside `Pref.GuardedSetValue`, unreachable from a request without a production seam (as for `Api.Preferences`).
+- [x] [Review][Patch] medium: the switch's redraw on an `AgentStatus` notification (first answer after creation; enforced turning on while open) was untested — two component cases added [ui/src/app/shell/read-only-toggle.spec.ts:85]
+- [x] [Review][Patch] medium (Conventions › Tests): the new PUT's HTTP legs asserted no content type — asserted on the 200 and every 422 [src/OcuPilot/Test/ReadOnlyForYou.cls:210]
+- [x] [Review][Patch] low (Rule 19): no `mutation:` line for AC1's client press or AC3's client read — both run, recorded under Verification
+- [x] [Review][Patch] low: doc comments claimed the switch never shows a press before the answer, called the definition's flag the "fourth source", and credited `KINDRESTRAINT` to Story 15.5 — corrected [ui/src/app/core/agent-status.ts:477, ui/src/app/shell/read-only-toggle.ts:13, ui/src/app/areas/agent/definition-form.page.ts:976, src/OcuPilot/Kernel/State/Pref.cls:22]
+- [x] [Review][Patch] low: `ToolWrite` cleared the account's read-only row only after a test, so a row an interrupted browser run left refused every mint — also cleared before [src/OcuPilot/Test/ToolWrite.cls:95]
+- Ledgered terminal (by=cr): DW-1738, DW-1739, DW-1746 wontfix-accepted; DW-1740 to DW-1742, DW-1747 wontfix-theoretical; DW-1743 to DW-1745, DW-1748, DW-1749 by-design.
+- Rejected: the Review summary's "four `mutation:` lines" count (fix edits this spec); the five-spec browser run (Rule 29: CI runs the full suite); AD-30 read as requiring a step-boundary abandon for the toggle (AD-30 names enforced read-only and the kill switch).
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -212,6 +226,10 @@ Slot B. Copy each changed `.cls` into `/tmp/ocupilot-b-ci/src` and load it on `o
 - mutation: `Restraint.ReadOnlyForYou` reads any value but `"0"` as on (throwaway, recompiled) → `ReadOnlyForYou` red (`TestNoRowIsOff` and 3 more), AC3's no-row leg
 - mutation: dropped `'statusReadOnlyForYou'` from `FOOTER_KEYS` → `agent-status.test.mjs` red (the footer-key roster and the adopted-verdict case), AC1's client footer
 - mutation: dropped `this.newest = run.then(...)` in `setReadOnlyForYou` → `agent-status.test.mjs` red (the overtaken read hangs); dropped the `request !== this.request` guard in `writeReadOnlyForYou` → red (the older write replaces the newer read)
+- mutation (QA): dropped the extra-member check (`tExtra ||`) in `Switches.HandleRestraintUpdate` (throwaway copy, recompiled) → `ReadOnlyForYou` red (`TestABadBodyIsRefusedAndNothingIsWritten`: the `{"readOnly":true,"extra":1}` body was accepted and the choice was written); reverted byte-identical, recompiled, green again. The Bad-body matrix row's own doc-comment named this mutation but it had not been demonstrated; it is now.
+- mutation (CR): removed the switch's `(change)` binding in `read-only-toggle.ts` → `read-only-toggle.spec.ts` red (the AC1 press case and the refused-write case), AC1's client half
+- mutation (CR): `restraintOf` answers `readOnlyForYou: false` → `read-only-toggle.spec.ts` red ("reads on while read-only is on for the caller", AC1) and `agent-status.test.mjs` red (3 cases), AC3's client read
+- mutation (CR): dropped the `AgentStatus` subscription in `ReadOnlyToggle`'s constructor → `read-only-toggle.spec.ts` red (the two redraw cases)
 
 ## Auto Run Result
 

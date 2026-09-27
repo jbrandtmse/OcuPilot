@@ -325,7 +325,9 @@ ClassMethod HandleRestraint() As %Status
 /// <p>A body carrying anything else -- missing, badly typed, an extra member, or not JSON -- is
 /// refused 422 <parameter>OcuPilot.Api.Error.AGENTRESTRAINTBODY</parameter> before anything is
 /// written. A body the server could not read or decode answers 500 through
-/// <method>RenderBadBody</method>.</p>
+/// <method>RenderBadBody</method>. A write that lost its conditional save to a concurrent one is
+/// refused 409 <parameter>OcuPilot.Api.Error.STATECONFLICT</parameter> (Conventions: concurrent
+/// writes).</p>
 /// <p>The choice is stored whatever else restrains the caller, so turning it on while enforced
 /// read-only is on is kept, and the answered verdict still names the source that wins.</p>
 ClassMethod HandleRestraintUpdate() As %Status
@@ -357,6 +359,10 @@ ClassMethod HandleRestraintUpdate() As %Status
         Set tOn = ''tRequestBody.%Get("readOnly")
         Set tUser = ..CallerUsername()
         Set tSetSC = ##class(OcuPilot.Kernel.State.Pref).GuardedSetValue(tUser, ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY, $Select(tOn: "1", 1: "0"))
+        If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(tSetSC) {
+            Set tSC = ..RenderConflict()
+            Quit
+        }
         If $$$ISERR(tSetSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tSetSC))
             Quit

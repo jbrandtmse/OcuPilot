@@ -69,9 +69,9 @@ ClassMethod Stored(pUser As %String) As %String
 }
 
 /// <p>One request to the API as the suite's own account.</p>
-ClassMethod Call(pMethod As %String, pSuffix As %String, pBody As %String, Output pStatus As %Integer, Output pText As %String) As %Status
+ClassMethod Call(pMethod As %String, pSuffix As %String, pBody As %String, Output pStatus As %Integer, Output pText As %String, Output pHeaders) As %Status
 {
-    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest(pMethod, ..#APIBASE _ pSuffix, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .pText, .tHeaders, pBody, "application/json")
+    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest(pMethod, ..#APIBASE _ pSuffix, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .pText, .pHeaders, pBody, "application/json")
 }
 
 /// <p>A probe definition made read-only, its id in <var>pId</var>.</p>
@@ -204,9 +204,10 @@ Method TestPutStoresAndGetReadsItBack()
     Set tBefore = ##class(%DynamicObject).%FromJSON(tText)
     Do $$$AssertEquals(tBefore.%GetTypeOf("readOnlyForYou") _ "|" _ tBefore.readOnlyForYou, "boolean|0", "a user with no row reads off")
 
-    Do ..Call("PUT", "/agent/restraint", "{""readOnly"":true}", .tStatus, .tText)
+    Do ..Call("PUT", "/agent/restraint", "{""readOnly"":true}", .tStatus, .tText, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "the write answers 200: " _ tText)
     If tStatus '= 200 Quit
+    Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "with a JSON content type: " _ $Get(tHeaders("CONTENT-TYPE")))
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tText)
     Set tKeys = ""
     Set tIterator = tAnswer.%GetIterator()
@@ -239,9 +240,11 @@ Method TestABadBodyIsRefusedAndNothingIsWritten()
 {
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
     For tBody = "{}", "{""readOnly"":""yes""}", "{""readOnly"":true,""extra"":1}", "not json" {
-        Do ..Call("PUT", "/agent/restraint", tBody, .tStatus, .tText)
+        Kill tHeaders
+        Do ..Call("PUT", "/agent/restraint", tBody, .tStatus, .tText, .tHeaders)
         Do $$$AssertEquals(tStatus, 422, tBody _ ": is refused: " _ tText)
         If tStatus '= 422 Continue
+        Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, tBody _ ": with a JSON content type")
         Set tAnswer = ##class(%DynamicObject).%FromJSON(tText)
         Do $$$AssertEquals(tAnswer.error, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, tBody _ ": under the validation slug")
         Do $$$AssertEquals(tAnswer.code, ##class(OcuPilot.Api.Error).#AGENTRESTRAINTBODY, tBody _ ": with the body code")

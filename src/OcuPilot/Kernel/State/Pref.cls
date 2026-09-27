@@ -18,7 +18,8 @@
 /// or does not, and ignores <property>Value</property>. A value kind --
 /// <parameter>KINDSCREENVIEW</parameter>, <parameter>KINDREFRESH</parameter>,
 /// <parameter>KINDSHELL</parameter>, <parameter>KINDRESTRAINT</parameter> -- keeps exactly one row
-/// per key and carries what the user chose in <property>Value</property> (Story 15.5).</p>
+/// per key and carries what the user chose in <property>Value</property> (Story 15.5;
+/// <parameter>KINDRESTRAINT</parameter>, Story 14.5).</p>
 /// <p><b>The value kinds are never trimmed.</b> Each holds one row per key rather than a
 /// bounded list, so <method>GuardedTrim</method>'s ordering warning does not reach them and
 /// nothing calls it for them.</p>

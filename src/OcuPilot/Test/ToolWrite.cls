@@ -92,6 +92,8 @@ Method OnBeforeOneTest() As %Status
 {
     Do $ClassMethod(..#PROBE, "Reset")
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    ; A read-only choice an interrupted browser run left on for this account would refuse every mint.
+    Do ##class(OcuPilot.Kernel.State.Pref).GuardedRemove($Username, ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY)
     Quit $$$OK
 }
 

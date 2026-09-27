@@ -973,7 +973,7 @@ export class DefinitionFormPage {
     return this.fieldView('readOnly');
   }
 
-  /** The definition's own read-only flag (DW-1621), which the verdict reads as its fourth source. */
+  /** The definition's own read-only flag (DW-1621), one of the sources the verdict reads. */
   protected get readOnlyFlag(): boolean {
     this.generation();
     return this.store.flag('readOnly');

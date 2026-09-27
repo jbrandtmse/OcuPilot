@@ -474,8 +474,8 @@ export class AgentStatus {
 
   /**
    * Store this caller's own read-only choice (`PUT /agent/restraint {readOnly}`, Story 14.5) and
-   * adopt the verdict the instance answers with, notifying when it lands. Nothing is mirrored
-   * before the answer: the switch shows what the instance holds, never what was asked for.
+   * adopt the verdict the instance answers with, notifying when it lands. No verdict is assumed
+   * before the answer: `restraint()` changes only to what the instance answered.
    *
    * A refusal, an unreachable instance or a malformed body leaves the previous verdict standing
    * and answers `false`; so does an answer that arrives after `reset()`.

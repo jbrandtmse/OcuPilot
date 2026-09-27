@@ -7025,6 +7025,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: FR-24 and EXPERIENCE.md's Definition form row list a read-only flag; definition-form.page.ts renders none (only the store carries readOnly). Pre-existing; 11.10's flip to read/write makes the API the only way to a read-only definition.
 - 2026-09-24T17:07:50Z status=decision-pending owner=burndown by=cr note=product call: add the control (new string, row, tests) or accept Switches' enforced read-only as the UI path
 - 2026-09-26T18:31:50Z status=routed owner=14-5-the-per-user-read-only-toggle by=merge_gate note=orchestrator (recommended disposition, owner may veto): the Definition form's read-only control belongs with 14.5's read-only work
+- 2026-09-27T09:33:55Z status=resolved-by:14-5-the-per-user-read-only-toggle by=adjudication note=definition-form.page.ts draws a Read-only checkbox in Advanced before Retention bound to the definition's readOnly; pinned by definition-form.page.spec.ts and the DW-1621 leg of definitions.browser-spec.mjs (unbinding (change) turns both red, spec Verification)
 
 ### DW-1622: A create whose body sends readOnly as a quoted string stores the read/write default without telling the caller
 - source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: low | fix-risk: med | footprint: in-epic
@@ -7539,3 +7540,63 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
 - evidence: Loop.AnswerTools subtracts content length before Results frames it.
 - 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=spec Design Notes: the 33-character frame sits outside the payload's bound
+
+### DW-1738: ReadOnlyForYou and ToolWrite remove the suite account's read-only row without restoring it, so a run on a dev instance clears the operator's own choice
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test/ReadOnlyForYou.cls OnBefore/OnAfterOneTest and ToolWrite remove the Http/$Username row by key; SwitchFixture.Reset already resets instance switches the same way
+- 2026-09-27T09:32:37Z status=wontfix-accepted owner=14-5-the-per-user-read-only-toggle by=cr note=reopen_if=an owner reports a read-only-for-me choice lost after a suite run on a dev or slot instance
+
+### DW-1739: An AgentStatus read overtaken by setReadOnlyForYou drops its configured() answer, and a failed write that overtook a read leaves neither answer adopted
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: agent-status.ts read(): request !== this.request awaits newest and returns; writeReadOnlyForYou bumps request and adopts only restraint, and adopts nothing on failure
+- 2026-09-27T09:32:37Z status=wontfix-accepted owner=14-5-the-per-user-read-only-toggle by=cr note=reopen_if=the rail dot, banner or switch reads stale after pressing the switch while a status read (Enable, sign-in pass) is in flight
+
+### DW-1740: Two PUT /agent/restraint from one tab (a double press) could commit out of order and leave the switch showing the other value
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: read-only-toggle.ts onChange has no pending guard; the client adopts only the newest request's answer
+- 2026-09-27T09:32:37Z status=wontfix-theoretical owner=14-5-the-per-user-read-only-toggle by=cr note=real only if two requests from one tab ~100 ms apart are processed out of order server-side
+
+### DW-1741: setReadOnlyForYou adopts restraintOf defaults (all off) from a 200 body that is an array or lacks the verdict keys
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: writeReadOnlyForYou checks only typeof object; restraintOf falls back per key, the same as load()
+- 2026-09-27T09:32:37Z status=wontfix-theoretical owner=14-5-the-per-user-read-only-toggle by=cr note=real only if /agent/restraint answers 200 with a non-verdict body; RestraintBody always writes all ten keys
+
+### DW-1742: PUT /agent/restraint answers 500 when the choice was stored but the verdict read after it fails
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: HandleRestraintUpdate renders RenderInternal when RestraintBody errs after GuardedSetValue succeeded, so the client keeps the old state
+- 2026-09-27T09:32:37Z status=wontfix-theoretical owner=14-5-the-per-user-read-only-toggle by=cr note=real if Restraint.Resolved faults in the same request right after a successful Pref write (state DB unreadable mid-request)
+
+### DW-1743: The Definition form's read-only checkbox id ocu-definition-read-only breaks the ocu-definition-<wireName> pattern its siblings follow
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: definition-form.page.ts special-cases readOnly in controlId with a new constant
+- 2026-09-27T09:32:37Z status=by-design owner=14-5-the-per-user-read-only-toggle by=cr note=spec Tasks names the id ocu-definition-read-only; reopen via spec amendment
+
+### DW-1744: Precedence enforced > for you > definition, and the absent step-boundary abandon for the per-user toggle, rest on the spec's inference, not on AD-30 text
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Restraint.cls FOOTERKEYFORYOU marks the order (inference); AD-30 names enforced read-only and the kill switch for the step-boundary re-read
+- 2026-09-27T09:32:37Z status=by-design owner=14-5-the-per-user-read-only-toggle by=cr note=spec Design Notes: Precedence (inference) and No step-boundary abandon; AD-30 says the toggle sits over one gate; reopen via spec/AD
+
+### DW-1745: The read-only choice is stored per account, so a shared account's toggle restrains everyone signed in as it
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Pref row keyed by UserName; the epics' user story says 'for my own session'
+- 2026-09-27T09:32:37Z status=by-design owner=14-5-the-per-user-read-only-toggle by=cr note=AD-50 per-user store and spec Always > Store define the per-user row; reopen via spec amendment
+
+### DW-1746: HandleRestraintUpdate copies Context.HandleUpdate's one-boolean-member body validation instead of sharing it
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: Api/Switches.cls HandleRestraintUpdate read/parse/extra-member/boolean checks mirror Api/Context.cls HandleUpdate
+- 2026-09-27T09:32:37Z status=wontfix-accepted owner=14-5-the-per-user-read-only-toggle by=cr note=reopen_if=a third route copies the exactly-one-boolean check, or the two copies are found to differ
+
+### DW-1747: The switch's AC2 legs press only with a pointer, and the browser leg waits a fixed 1 s to show nothing was sent
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: read-only-toggle.spec.ts and read-only-for-you.browser-spec.mjs click only; Space on a checkbox fires the same click activation
+- 2026-09-27T09:32:37Z status=wontfix-theoretical owner=14-5-the-per-user-read-only-toggle by=cr note=real if a keyboard press on the aria-disabled switch sends a PUT, or a PUT from a click lands after 1 s
+
+### DW-1748: The Read-only for me switch has an accessible name only, no visible label, and reads on under enforced whatever the stored choice
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: read-only-toggle.ts: visually hidden span plus aria-label; checked = readOnlyForYou || enforcedReadOnly
+- 2026-09-27T09:32:37Z status=by-design owner=14-5-the-per-user-read-only-toggle by=cr note=EXPERIENCE.md:289 publishes the string as the switch's accessible name and 'checked while ... enforced'; reopen via UX amendment
+
+### DW-1749: ui/angular.json and angular-json.test.mjs set maximumWarning 1900kB while origin/OCU-1-epic16 now holds 2004kB, so the two epics conflict there at merge
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: dry-run merge against the Epic 16 tip conflicts only in these two files among 14.5's; this branch measures 1,857,424 bytes
+- 2026-09-27T09:32:38Z status=by-design owner=14-5-the-per-user-read-only-toggle by=cr note=standing ruling: resolved at merge by taking Epic 16's side (DW-1166 re-base); not edited here

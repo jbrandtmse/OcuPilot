@@ -21,6 +21,8 @@ interface Harness {
   readonly host: HTMLElement;
   readonly puts: string[];
   readonly status: AgentStatus;
+  /** Change what the stubbed instance answers from here on. */
+  readonly answer: (verdict: Partial<Restraint>) => void;
 }
 
 async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
@@ -60,7 +62,10 @@ async function mount(verdict: Partial<Restraint>, options: { load?: boolean; ref
   fixture.componentRef.setInput('describedBy', 'ocu-panel-read-only-line');
   document.body.appendChild(fixture.nativeElement);
   await settle(fixture);
-  return { fixture, host: fixture.nativeElement as HTMLElement, puts, status };
+  const answer = (verdict: Partial<Restraint>): void => {
+    current = { ...UNRESTRAINED, ...verdict };
+  };
+  return { fixture, host: fixture.nativeElement as HTMLElement, puts, status, answer };
 }
 
 function switchOf(host: HTMLElement): HTMLInputElement | null {
@@ -75,6 +80,27 @@ describe('the Read-only for me switch', () => {
   it('is drawn only once the status read has answered', async () => {
     const { host } = await mount({}, { load: false });
     expect(switchOf(host)).toBeNull();
+  });
+
+  it('appears when the status read answers after it was created', async () => {
+    // Mutation (Rule 19): drop the `AgentStatus` subscription in the constructor -> the view is
+    // never redrawn under OnPush, the switch never appears, and this goes red.
+    const { fixture, host, status } = await mount({}, { load: false });
+    expect(switchOf(host)).toBeNull();
+    await status.load();
+    await settle(fixture);
+    expect(switchOf(host)).not.toBeNull();
+    expect(switchOf(host)!.checked).toBe(false);
+  });
+
+  it('follows a verdict that moves while it is open: enforced read-only turning on', async () => {
+    const { fixture, host, status, answer } = await mount({});
+    expect(switchOf(host)!.checked).toBe(false);
+    answer({ enforcedReadOnly: true, blocked: true, footerKey: 'statusReadOnlyEnforced' });
+    await status.load();
+    await settle(fixture);
+    expect(switchOf(host)!.checked).toBe(true);
+    expect(switchOf(host)!.getAttribute('aria-disabled')).toBe('true');
   });
 
   it('is a named switch described by the footer line, off while nothing restrains the caller', async () => {
