@@ -124,3 +124,6 @@
 2026-09-27T05:50:54Z	Story 16.20	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=cr_entries_born_terminal;slice_empty model=claude-opus-5-5
 2026-09-27T05:50:54Z	Story 16.20	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci_bundle_redeployed_by_cr;messages-log-files.browser-spec_5/5 model=claude-opus-5-5
 2026-09-27T05:51:44Z	Story 16.20	committed	sha=6f07f568 submodules= ci=pending run=36298408391 amendments=ARCHITECTURE-SPINE.md:AD-21_fourth_named_case,EXPERIENCE.md:578_row+2_in_place,README.md:DPI-I-966 supersedes=36297327031
+2026-09-27T05:51:57Z	Story 16.21	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp merge=db761756 conflicts=sprint-status.yaml(regenerated,statuses_reapplied) content=docs_only(16.23_block,16.21_Operations_amendment,README) ci=rides_on_next_code_push(DW-1435)
+2026-09-27T05:53:10Z	Epic 16	epic_context_compiled	reason=planning_artifact_newer(16.23_added,16.21_amended,AD-21) model=claude-opus-5-5 agent=a5d36b8484cd569c3
+2026-09-27T05:53:10Z	Story 16.21	stage_spawned	stage=plan spawn_at=2026-09-27T05:53:10Z model=opus agent_name=16-21-security-findings-with-a-fix-you-confirm-plan-1 cycle_iteration=1
