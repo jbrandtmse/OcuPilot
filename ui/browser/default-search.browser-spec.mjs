@@ -43,6 +43,7 @@ import {
   markerValue,
   nextTag as sharedNextTag,
   requireFreeSlot,
+  resultPayload,
   runIris as sharedRunIris,
   scriptReply as sharedScriptReply,
   setTag as sharedSetTag,
@@ -268,7 +269,7 @@ function toolResult(messages, toolUseId) {
   for (const entry of messages) {
     if (entry.role !== 'user' || !Array.isArray(entry.content)) continue;
     const block = entry.content.find((candidate) => candidate.type === 'tool_result' && candidate.tool_use_id === toolUseId);
-    if (block !== undefined) return JSON.parse(block.content);
+    if (block !== undefined) return resultPayload(block);
   }
   return null;
 }

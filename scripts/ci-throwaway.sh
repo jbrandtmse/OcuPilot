@@ -196,6 +196,7 @@ services:
       # audit globals, and AuditCopy's least-privilege leg sends a purge the route must refuse.
       # classes: TurnGrounding
       # classes: InjectionChannels, InjectionCompromised, InjectionSeed
+      # classes: TurnSanitize
       # classes: AccountPasswordWire, AgentConnectionRoles, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
       # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
       # classes: OAuthTabs
@@ -320,6 +321,7 @@ services:
       # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnStore
       # classes: TurnWire, TurnWireFixture
       # classes: InjectionChannels, InjectionCompromised
+      # classes: TurnSanitize
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

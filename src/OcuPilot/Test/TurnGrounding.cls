@@ -106,8 +106,8 @@ Method Call(pMethod As %String, pPath As %String, pBody As %String, Output pStat
 }
 
 /// <p>Start a turn carrying <var>pContext</var> that answers one text reply, wait for its one
-/// provider call, and answer the <code>screen_context</code> payload that call recorded, or
-/// <code>""</code> when none was.</p>
+/// provider call, and answer the <code>screen_context</code> payload that call recorded, unwrapped
+/// from the sanitizer's frame, or <code>""</code> when none was.</p>
 Method RecordedContext(pMessage As %String, pContext As %DynamicObject) As %DynamicObject
 {
     Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("ok"))
@@ -123,7 +123,9 @@ Method RecordedContext(pMessage As %String, pContext As %DynamicObject) As %Dyna
     If tMessages.%Size() '= 3 Quit ""
     Set tResultBlock = tMessages.%Get(2).content.%Get(0)
     Do $$$AssertEquals(tResultBlock.type _ "|" _ tResultBlock."tool_use_id", "tool_result|ocupilot_screen_context", "the synthetic tool_result")
-    Quit ##class(%DynamicAbstractObject).%FromJSON(tResultBlock.content)
+    Set tBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tResultBlock.content, .tWrapped)
+    Do $$$AssertTrue(tWrapped, "framed as data: " _ $Extract(tResultBlock.content, 1, 80))
+    Quit ##class(%DynamicAbstractObject).%FromJSON(tBody)
 }
 
 /// <p>A process-list context of two rows.</p>

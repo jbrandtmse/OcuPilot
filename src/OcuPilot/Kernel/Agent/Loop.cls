@@ -179,6 +179,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             Do tTextBlock.%Set("type", "text", "string")
             Do tTextBlock.%Set("text", pMessage, "string")
             Do tUserBlocks.%Push(tTextBlock)
+            Do ##class(OcuPilot.Kernel.Agent.Sanitize).Results(tUserBlocks)
             Set tMessages(tHistoryCount + 3, "role") = "user"
             Set tMessages(tHistoryCount + 3, "blocks") = tUserBlocks.%ToJSON()
         } Else {
@@ -579,6 +580,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
     }
     If $$$ISERR(tSC) Quit tSC
     If pState '= "" Quit $$$OK
+    Do ##class(OcuPilot.Kernel.Agent.Sanitize).Results(tAnswered)
     Set pMessages = pMessages + 1
     Set pMessages(pMessages, "role") = "user"
     Set pMessages(pMessages, "blocks") = tAnswered.%ToJSON()

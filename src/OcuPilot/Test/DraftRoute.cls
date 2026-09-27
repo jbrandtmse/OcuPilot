@@ -101,13 +101,28 @@ ClassMethod Text(pAnswer As %DynamicObject) As %String
     Quit tText
 }
 
-/// <p>The rows in the agent ledger, and the OcuPilot audit rows written since <var>pSince</var>.</p>
+/// <p>The rows in the agent ledger, and the OcuPilot audit rows written since <var>pSince</var> (a
+/// UTC ODBC timestamp); each <code>-1</code> when its read failed.</p>
+/// <p><b>The audit count runs in <code>%SYS</code></b> (AD-16): <code>%SYS.Audit</code>'s storage
+/// is not mapped into the install namespace, where the same query reads zero rows rather than
+/// failing. The source name is resolved before the switch, since
+/// <class>OcuPilot.Kernel.Audit.Event</class> is not compiled in <code>%SYS</code>.</p>
 ClassMethod Counts(pSince As %String, Output pLedger As %Integer, Output pMarkers As %Integer)
 {
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger")
-    Set pLedger = $Select(tRS.%Next(): tRS.%GetData(1), 1: -1)
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ?", pSince, ##class(OcuPilot.Kernel.Audit.Event).Source())
-    Set pMarkers = $Select(tRS.%Next(): tRS.%GetData(1), 1: -1)
+    Set pLedger = $Select((tRS.%SQLCODE >= 0) && tRS.%Next(): +tRS.%GetData(1), 1: -1)
+    Set tSource = ##class(OcuPilot.Kernel.Audit.Event).Source()
+    Set pMarkers = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ?", pSince, tSource)
+        Set pMarkers = $Select((tRS.%SQLCODE >= 0) && tRS.%Next(): +tRS.%GetData(1), 1: -1)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pMarkers = -1
+    }
 }
 
 Method TestTheRouteIsDeclaredBesideConfirmAndCancel()
@@ -161,6 +176,7 @@ Method TestAMergeWriteAnswersItsScriptAndChangesNothing()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 0, "and its token unspent")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Description"), tBefore, "the application reads back unchanged")
     Do ..Counts(tSince, .tLedgerAfter, .tMarkersAfter)
+    Do $$$AssertTrue((tLedgerAfter >= 0) && (tMarkersAfter >= 0), "the ledger and the audit trail are counted again: " _ tLedgerAfter _ " " _ tMarkersAfter)
     Do $$$AssertEquals(tLedgerAfter, tLedgerBefore, "no ledger row was written")
     Do $$$AssertEquals(tMarkersAfter, tMarkersBefore, "and no OcuPilot audit row")
 

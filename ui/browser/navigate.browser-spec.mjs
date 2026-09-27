@@ -31,6 +31,7 @@ import {
   escapeOs,
   forgetTag as sharedForgetTag,
   markerValue,
+  resultPayload,
   nextTag as sharedNextTag,
   runIris as sharedRunIris,
   scriptReply as sharedScriptReply,
@@ -427,7 +428,7 @@ test('AC7: a dirty form declines the move -- the URL stays, the announcement is 
     // "type": "string" outside `ResultSchema`'s `required`, so a null would be a value the
     // declared type does not admit. `deepEqual` on the parsed object is what makes the absence an
     // assertion rather than something nothing looks at.
-    assert.deepEqual(JSON.parse(resultBlock.content), { navigated: false, route: 'permissions/users', code: 'NAV.REFUSEDUNSAVED' });
+    assert.deepEqual(resultPayload(resultBlock), { navigated: false, route: 'permissions/users', code: 'NAV.REFUSEDUNSAVED' });
   } finally {
     await context.close();
     forgetTag(tag);
@@ -509,7 +510,7 @@ test('AC11: the next turn carries the arrived route as its own screen context, n
     );
     assert.ok(resultEntry, 'the third call still carries the synthetic screen_context tool result');
     const resultBlock = resultEntry.content.find((block) => block.tool_use_id === 'ocupilot_screen_context');
-    const payload = JSON.parse(resultBlock.content);
+    const payload = resultPayload(resultBlock);
     assert.equal(payload.route, 'tasks/schedule', 'the arrived route, not the departed one');
   } finally {
     await context.close();

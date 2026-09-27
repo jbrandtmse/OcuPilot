@@ -2,7 +2,8 @@
 title: 'Story 14.3: Tool and log content is defanged before it reaches the model'
 type: 'feature'
 created: '2026-09-26'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '199989c623bc779f086da1a3de13fadfb88e0211'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -127,6 +128,28 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-27 — Review pass
+
+- verdicts: 17 findings — high 0, medium 1, low 6, false 10, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `TurnContext.TestASecretScreenAnswersIdentityOnly` probed `sk-ant-should-never-leave`, which the sanitizer redacts, so its "never reaches the payload" check read AD-60's output as the defense — probe and check now use `ocupilot-sentinel-should-never-leave`, which no shape matches (run 1027 green).
+  - `[low]` `[patch]` the prompt's delimiter sentence and `OPENTAG`/`CLOSETAG`/`CUTOPENTAG` were not tied to `TAGNAME` — `Sanitize.TestEveryResultIsFramedAndOtherBlocksAreNot` now asserts each frame line carries `TAGNAME` and that `Prompt.Builtin()` names both tags (run 1026 green).
+  - `[low]` `[reject]` the production `LogFault` → `Kernel.Fault.LogRaw` body is never executed by a test (the fault leg overrides the seam) — the fail-closed answer, `is_error` and no-raw-content are pinned; `Emit` writes only to `messages.log` and swallows its own failures, so pinning it needs a new seam or a log reader, more than a direct correction. Signature checked against `Fault.cls:197`.
+  - `[false]` `[reject]` `## Auto Run Result` stale and no green run recorded — finalize writes both below.
+  - `[low]` `[reject]` `CleanTree` rebuild collapses two member names that clean to the same text — needs a name carrying a stripped character beside its stripped twin; loses a value, leaks nothing; a fix adds a collision branch.
+  - `[false]` `[reject]` the backstop and its 50-character cut frame contradict "no cut of its own" — the `[Spec gate]` task and AD-60 add it; it fires only above AD-24's total.
+  - `[low]` `[reject]` `AIza[A-Za-z0-9_-]{35}` has no trailing boundary, so a 36+ character run loses its first 39 characters — over-redaction only, in the safe direction; real keys are 39 characters.
+  - `[false]` `[reject]` `Results` has no `Try`, so a fault outside `Content` reaches `Loop` — a throw there aborts before `%ToJSON`, so nothing raw is sent; the only calls outside `Content` are `%Get`/`%Set` on the loop's own blocks.
+  - `[false]` `[reject]` citations and screens are not asserted unsanitized — `Results` runs after `Loop.cls:566/569` take step content and citations, and nothing upstream changed; the tool card is asserted in `TurnSanitize`.
+  - `[false]` `[reject]` a reply's wire total can exceed 65,536 by 33 per block — Design Notes place the frame outside the bound.
+  - `[low]` `[reject]` member-name collision (same root cause as the `CleanTree` row above).
+  - `[false]` `[reject]` the "PEM cut by the bound" row is built by hand, not through `Bound.Apply` — `TestABoundedPayloadPassesByteForByte` pins the bound's cut as 999 characters plus U+2026, which is the input the PEM leg uses.
+  - `[low]` `[reject]` the fault log is observed only through the overridden seam (same root cause as the `LogFault` row above).
+  - `[false]` `[reject]` idempotence is exercised per string, not on a re-wrapped value — the matrix reads "unchanged apart from the wrapper", which is what the tests pin.
+  - `[false]` `[reject]` `Prompt.cls`, `DraftRoute` and the roster lines are outside the intent contract — each is a spec task (AC4, DW-1722, Rule 1 roster).
+  - `[false]` `[reject]` `explain-screen` inlines the frame regex instead of `resultPayload` — Boundaries allow only its line near :116 to change, and the import would sit in Epic 16's :2-8 hunk.
+  - `[false]` `[reject]` the `Results` calls sit at `Loop.cls:182/583`, not :183/:584 — each is the statement immediately before the serialization.
+
 ## Design Notes
 
 **Why the loop is the seam (measured).** The history receives a `tool_result` at two statements only, and every producer feeds them: `Dispatch` (reads and refusals), `ClientResult` (navigation), the budget refusal and `BoundedContext`. Two alternatives were rejected:
@@ -184,9 +207,42 @@ This runs on slot B. Copy each changed `.cls` into `/tmp/ocupilot-b-ci/src` and 
 - **AC3:** make `Clean` cut strings over 500 characters. Expected: the `TurnSanitize` context leg goes red on the single cut at 1,000.
 - **AC4:** write a synthetic `AgentWrite` audit event between `DraftRoute`'s two `Counts` calls, on the test side, then revert. Expected: the draft leg goes red.
 
+**Observed on `ocupilot-b-ci` (each reverted byte-identical):**
+
+- mutation: `Results` call before `Loop.cls:584` removed → `TurnSanitize` both legs red (run 711), `ToolWire` 3 of 3 red (run 712).
+- mutation: `Results` call before `Loop.cls:183` removed → `TurnSanitize.TestLogTextReachesTheModelDefanged` red (run 713), `TurnContext` 4 of 16 red (run 714).
+- mutation: `RedactPem` dropped from `Redact` → `Sanitize` 2 red (run 715), `TurnSanitize` context leg red (run 716).
+- mutation: `Clean` blanks a string containing "ignore previous instructions" → `InjectionChannels` 7 of 7 red on "the seed reached the model" (run 717).
+- mutation: `Clean` cuts strings over 500 → `TurnSanitize` context leg red on the 1,000-character cut (run 718).
+- mutation: backstop disabled in `Content` → `Sanitize.TestTheBackstopCutsOnlyAboveTheTotal` red (run 719).
+- mutation: `RecordAgentWrite` between `DraftRoute`'s two counts → draft leg red on "no OcuPilot audit row" (run 721); the same marker against the old `HSCUSTOM` `Counts` stayed green (run 722).
+
+Note: `explain-screen.browser-spec.mjs` changes only its line near :116, so it asserts the frame inline rather than importing `resultPayload`.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only (halt after planning); nothing implemented. Proposes a new AD (Design Notes: NEW AD NEEDED) and a one-line amendment of AD-11's closing sentence for the runner to claim.
+**Change.** `OcuPilot.Kernel.Agent.Sanitize` (AD-60) strips, redacts five secret shapes, neutralizes `ocupilot-data` and wraps every `tool_result` at `Loop.cls`'s two history statements; a body above AD-24's 65,536 total is cut as a backstop under `<ocupilot-data truncated="true">`; a fault answers the wrapped `TOOL.UNAVAILABLE`. Sentence 4 of the built-in prompt names the frame. `DraftRoute.Counts` counts `%SYS.Audit` in `%SYS` (DW-1722).
+
+**Files.**
+
+- `src/OcuPilot/Kernel/Agent/Sanitize.cls` (new): the sanitizer.
+- `src/OcuPilot/Kernel/Agent/Loop.cls`: two `Results` calls.
+- `src/OcuPilot/Kernel/Agent/Prompt.cls`: sentence 4 and its doc clause.
+- `src/OcuPilot/Test/Sanitize.cls`, `SanitizeFault.cls` (new): unit legs and the throwing subclass.
+- `src/OcuPilot/Test/TurnSanitize.cls` (new): the armed tool and context legs.
+- `src/OcuPilot/Test/TurnWireFixture.cls`: `Unwrapped`.
+- `src/OcuPilot/Test/{TurnContext,TurnGrounding,ToolWire,TurnNavigate,TurnTools,TurnLoop}.cls`: recorded results read through `Unwrapped`; `TurnContext`'s secret probe is a sentinel no shape matches.
+- `src/OcuPilot/Test/DraftRoute.cls`: `Counts` in `%SYS`, both counts asserted at least 0.
+- `ui/browser/turnprobe-spec.mjs`: `resultPayload`; five browser specs use it, `explain-screen` asserts the frame inline.
+- `scripts/ci-throwaway.sh`: `TurnSanitize` in the PRINCIPALS and TEST_PROVIDER rosters.
+
+Contended files: `ui/browser/explain-screen.browser-spec.mjs` (line 116 only), `scripts/ci-throwaway.sh` (lines 199 and 324 added; Epic 16's :213-223 untouched).
+
+**Review.** 17 findings: 2 patched (1 medium, 1 low), 0 deferred, 15 rejected with reasons in the Review Triage Log. Follow-up review: false (no high patched, one medium).
+
+**Verification (`ocupilot-b-ci`).** Story classes one per call, green; 14.8's `InjectionChannels`, `InjectionCompromised`, `InjectionEgress` unedited and green. Browser: `seeded-injection`, `explain-entry`, `explain-screen`, `context-chip`, `default-search`, `navigate`, `screen-grounding` green. Full sweep 303 classes, 2,525 tests, 0 failed (runs 723-1025, `%UnitTest_Result`); after the review patches `Sanitize` (run 1026, 11) and `TurnContext` (run 1027, 16) green. `npm test` green, `npm run test:tools` 1,493 pass, smoke 49 of 49, `check-objectscript` 0, `lint-docs` 0, secret grep 0. Mutations as recorded under Verification.
+
+**Residual risks.** The production fault log line is unobserved by tests. Each block reaches the model 33 characters over the reply budget, which counts content before the frame. Two AC4 mutation audit rows (proposal id `ocupilotprobemutation`) remain on `ocupilot-b-ci`; audit rows cannot be deleted singly.
