@@ -996,6 +996,56 @@ describe('the Roles and Resources lists\u2019 Delete (Story 9.3)', () => {
     expect(handler.pending()?.advisory).toBe(reason);
   });
 
+  // AC4: a caller short the databases pair reads that part as unchecked, naming the pair, and
+  // the other two parts still counted -- never "it guards no database".
+  // Mutation (Rule 19): disable phraseOf's unchecked branch in core/impact.ts -> this goes red.
+  it('states a resource delete\u2019s unchecked part as its advisory, naming the missing pair, never as none', async () => {
+    const impact = {
+      kind: 'resource-delete',
+      refused: null,
+      parts: [
+        { part: 'grantingRoles', count: 2, names: ['A', 'B'], unchecked: '' },
+        { part: 'guardedApplications', count: 1, names: ['/csp/q'], unchecked: '' },
+        { part: 'guardedDatabases', count: 0, names: [], unchecked: '%Admin_Manage:USE' },
+      ],
+    };
+    const { handler, store } = mountWith([{ kind: 'ok', status: 200, body: { impact } }], RESOURCE_LIST);
+    handler.startFor(RESOURCE_LIST, 'delete', 'Probe', { Name: 'Probe', AllowDelete: true }, store);
+    await settle();
+    expect(handler.pending()?.advisory).toBe(
+      'Impact: 2 roles grant it: A, B; it guards 1 web application: /csp/q; which databases it guards was not checked (requires %Admin_Manage:USE).'
+    );
+    expect(handler.pending()?.advisory).not.toContain(STRINGS.impactGuardedDatabasesNone);
+  });
+
+  it('opens the dialog of the Delete started last when an earlier impact read answers after it', async () => {
+    // Story 16.19: an impact read that lands after another Delete started never opens its dialog.
+    // Mutation (Rule 19): drop the `ask` check in `openWithImpact` -> this goes red.
+    const impact = (name: string) => ({
+      kind: 'resource-delete',
+      refused: null,
+      parts: [
+        { part: 'grantingRoles', count: 1, names: [name], unchecked: '' },
+        { part: 'guardedApplications', count: 0, names: [], unchecked: '' },
+        { part: 'guardedDatabases', count: 0, names: [], unchecked: '' },
+      ],
+    });
+    let release: (value: JsonResult<unknown>) => void = () => undefined;
+    const slow = new Promise<JsonResult<unknown>>((resolve) => (release = resolve));
+    const { handler, store } = mountWith([], RESOURCE_LIST);
+    const api = TestBed.inject(ApiService) as unknown as { requestJson: (path: string, init?: ApiRequestInit) => Promise<JsonResult<unknown>> };
+    const answers: Promise<JsonResult<unknown>>[] = [slow, Promise.resolve({ kind: 'ok', status: 200, body: { impact: impact('RoleB') } })];
+    api.requestJson = async () => answers.shift() ?? { kind: 'ok', status: 200, body: {} };
+    handler.startFor(RESOURCE_LIST, 'delete', 'ResA', { Name: 'ResA', AllowDelete: true }, store);
+    handler.startFor(RESOURCE_LIST, 'delete', 'ResB', { Name: 'ResB', AllowDelete: true }, store);
+    await settle();
+    expect(handler.pending()?.target).toBe('ResB');
+    release({ kind: 'ok', status: 200, body: { impact: impact('RoleA') } });
+    await settle();
+    expect(handler.pending()?.target).toBe('ResB');
+    expect(handler.pending()?.advisory).toContain('RoleB');
+  });
+
   it('draws a predefined role and a system resource refused before anything is sent', async () => {
     // Mutation (Rule 19): pass no row to `selfProtectionReason` in `startFor` -> the resource leg goes red.
     const roles = mount(undefined, ROLE_LIST);

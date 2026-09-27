@@ -31,10 +31,6 @@ Parameter ROLEREADTYPE = "GET";
 
 Parameter ROLEIDPARAM = "name";
 
-/// <p>The most role rows one <method>Read</method> fetches before it answers
-/// <parameter>TRUNCATED</parameter>: the declared read's own cap.</p>
-Parameter MAXROLES As INTEGER = 1000;
-
 /// <p>What <method>Read</method>'s <var>pUnchecked</var> reads when a read was cut at its cap.</p>
 Parameter TRUNCATED = "truncated";
 
@@ -199,7 +195,8 @@ ClassMethod Read(pRoots As %DynamicArray, Output pRoleRows As %DynamicObject, Ou
         Set tHead = 0
         While tHead < tTail {
             Set tHead = tHead + 1
-            If tHead > ..#MAXROLES {
+            ; The declared read's own cap bounds the role rows one Read fetches.
+            If tHead > ##class(OcuPilot.Screen.Read).#DEFAULTMAXROWS {
                 Set pUnchecked = ..#TRUNCATED
                 Quit
             }

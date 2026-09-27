@@ -69,6 +69,17 @@ describe('the proposal card impact line', () => {
     expect(confirm.getAttribute('aria-disabled')).toBeNull();
   });
 
+  it('names the account a proposed role removal is about', () => {
+    // Mutation (Rule 19): render the card's impact about '' instead of the view's name -> this goes red.
+    const impact: Impact = {
+      kind: 'role-removal',
+      refused: null,
+      parts: [{ part: 'loses', count: 1, names: ['%DB_USER:RW'], unchecked: '' }],
+    };
+    const card = mount(liveView({ name: 'dana', impact }), 'live');
+    expect(card.querySelector('[data-slot="impact"]')?.textContent?.trim()).toBe('Impact: dana loses %DB_USER:RW.');
+  });
+
   it('renders no line for a null impact, and none once the card is no longer live', () => {
     const card = mount(liveView({ impact: null }), 'live');
     expect(card.querySelector('.ocu-proposal-card-confirm')).not.toBeNull();

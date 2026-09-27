@@ -134,7 +134,8 @@ ClassMethod Preview(pDescriptor As %String, pActionId As %String, pId As %String
 /// <p><method>Handle</method>'s resolution from the action onward, over the parsed body
 /// <var>pBody</var>. With <var>pPreviewOnly</var>, <method>Run</method> stops before the write and
 /// answers <var>pPreview</var>, and <var>pPreviewValue</var> is set as the action's first declared
-/// value.</p>
+/// value; a preview whose value the descriptor declares secret is refused 400
+/// <code>TOOL.ARGUMENTS</code>.</p>
 ClassMethod Resolve(pDescriptor As %String, pBody As %DynamicObject, pPreviewOnly As %Boolean, pPreviewValue As %String, Output pPreview As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -174,6 +175,11 @@ ClassMethod Resolve(pDescriptor As %String, pBody As %DynamicObject, pPreviewOnl
         Set tValuesProblem = ..Values(tBody, tTool, tToolClass, tActionId, .tValues, .tSecrets)
         If tValuesProblem '= "" {
             Set tSC = ..Refuse(tValuesProblem)
+            Quit
+        }
+        If pPreviewOnly && (tSecrets.%Size() > 0) {
+            Set tSecrets = ""
+            Set tSC = ..Refuse("a secret value is not accepted on this route")
             Quit
         }
 

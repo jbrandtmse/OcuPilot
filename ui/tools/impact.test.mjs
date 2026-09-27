@@ -99,6 +99,14 @@ test('a role removal names what the account loses, or that it loses nothing, abo
   assert.equal(impactLine(unread, 'Dana'), 'Impact: what Dana loses was not checked (requires %Admin_Secure:USE).');
 });
 
+test('a name is shown as written, even one holding a replacement pattern or a placeholder', () => {
+  // Mutation (Rule 19): insert the names with a plain string replacement in phraseOf() -> this goes red.
+  const loses = impactOf({ kind: 'role-removal', refused: null, parts: [part('loses', 1, ['R$&D:RW'])] });
+  assert.equal(impactLine(loses, 'a$`<names>'), 'Impact: a$`<names> loses R$&D:RW.');
+  const holders = impactOf({ kind: 'role-delete', refused: null, parts: [part('holders', 1, ["x$'y"]), part('grantingApplications', 0)] });
+  assert.equal(impactLine(holders, 'R'), "Impact: 1 user holds it: x$'y; no web application grants it.");
+});
+
 test('a refused removal renders the prohibited set\u2019s sentence and no impact, and none renders nothing', () => {
   const refused = impactOf({ kind: 'role-delete', refused: { code: 'PROHIBITED.OCUPILOTROLE', reason: 'This role belongs to OcuPilot.' }, parts: [] });
   assert.equal(impactLine(refused, 'R'), 'This role belongs to OcuPilot.');

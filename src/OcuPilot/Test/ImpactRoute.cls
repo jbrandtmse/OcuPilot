@@ -404,6 +404,17 @@ Method TestARoleRemovalLosesOnlyWhatNoOtherRoleGrants()
     Set tBody = ..Impact("permissions.users", "remove-role", tUser, ..#ROLEA, .tStatus)
     Do $$$AssertEquals(..Said(..Part(tBody.%Get("impact"), "loses")), "1|" _ ..#RESOURCE _ ":R|", "removing A loses R: the escalation role that grants it counts for nothing")
 
+    ; G2 held only through G1: its row is fetched by following G1's GrantedRoles.
+    ; Mutation (Rule 19): Effective.Read stops queueing GrantedRoles -- this leg goes red.
+    Set $NAMESPACE = "%SYS"
+    Kill tProps
+    Set tProps("Roles") = ..#ROLEA _ "," _ ..#ROLEB _ "," _ ..#ROLEG1 _ "," _ ..#ROLEPUBLIC
+    Set tSC = ##class(Security.Users).Modify(tUser, .tProps)
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertStatusOK(tSC, "the account holds G2 only through G1")
+    Set tBody = ..Impact("permissions.users", "remove-role", tUser, ..#ROLEG1, .tStatus)
+    Do $$$AssertEquals(..Said(..Part(tBody.%Get("impact"), "loses")), "1|" _ ..#RESOURCE _ ":U|", "removing G1 loses the U its granted G2 carries")
+
     Set $NAMESPACE = "%SYS"
     Kill tProps
     Set tProps("Roles") = ..#ROLEA _ "," _ ..#ROLEB _ "," _ ..#ROLEG1 _ "," _ ..#ROLEG2 _ "," _ ..#ROLEPUBLIC _ "," _ ..#ROLEALLVIA
@@ -532,8 +543,11 @@ ClassMethod OwnRole() As %List
     Quit $ListBuild($List(tRoles, 1))
 }
 
-/// <p>An action whose write removes nothing covered answers <code>impact: null</code>, and a
-/// request naming no action is refused before any read.</p>
+/// <p>An action whose write removes nothing covered answers <code>impact: null</code>, a request
+/// naming no action is refused as the action route refuses it, and a secret value is refused
+/// before any read.</p>
+/// <p>Mutation (Rule 19): drop the preview's secret refusal in
+/// <method>OcuPilot.Api.ScreenAction.Resolve</method> -- the secret leg goes red.</p>
 Method TestOtherActionsAnswerNoImpact()
 {
     Set tBody = ..Impact("webapp.list", "delete", ..#APP, "", .tStatus)
@@ -542,8 +556,11 @@ Method TestOtherActionsAnswerNoImpact()
     Set tBody = ..Impact("permissions.users", "add-role", ..#USERONE, ..#ROLEA, .tStatus)
     Do $$$AssertEquals($Select($IsObject(tBody): tBody.%GetTypeOf("impact"), 1: ""), "null", "a role add has none either")
     Set tBody = ..Impact("permissions.roles", "", ..#ROLEDELETE, "", .tStatus)
-    Do $$$AssertEquals(tStatus, 400, "no action is refused 400")
-    Do $$$AssertEquals($Select($IsObject(tBody): tBody.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "as the action route refuses it")
+    Do $$$AssertEquals(tStatus, 404, "no action is refused 404")
+    Do $$$AssertEquals($Select($IsObject(tBody): tBody.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#ROUTENOTFOUND, "as the action route refuses it")
+    Set tBody = ..Impact("permissions.users", "set-password", ..#USERONE, ..#PASSWORD, .tStatus)
+    Do $$$AssertEquals(tStatus, 400, "a secret value is refused 400")
+    Do $$$AssertEquals($Select($IsObject(tBody): tBody.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "as an argument this route does not take")
 }
 
 }

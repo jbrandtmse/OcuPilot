@@ -140,21 +140,25 @@ const PHRASES: Readonly<
 
 /** Why a part was not read: the pair it requires, or that its read was too long to check. */
 function whyUnchecked(unchecked: string): string {
-  return unchecked === IMPACT_TRUNCATED ? STRINGS.impactTooMany : STRINGS.impactRequires.replace('<pair>', unchecked);
+  return unchecked === IMPACT_TRUNCATED ? STRINGS.impactTooMany : STRINGS.impactRequires.replace('<pair>', () => unchecked);
 }
 
-/** One part's phrase, `subject` being the account a `loses` part is about. */
+/**
+ * One part's phrase, `subject` being the account a `loses` part is about. Every instance-supplied
+ * value is inserted through a replacer function, so a name holding `$&` or a placeholder is shown
+ * as written.
+ */
 function phraseOf(part: ImpactPart, subject: string): string {
   if (part.part === 'loses') {
-    if (part.unchecked !== '') return `${STRINGS.impactLosesUnchecked.replace('<user>', subject)}${whyUnchecked(part.unchecked)}`;
-    if (part.count === 0) return STRINGS.impactLosesNone.replace('<user>', subject);
-    return STRINGS.impactLoses.replace('<user>', subject).replace('<names>', namesOf(part));
+    if (part.unchecked !== '') return `${STRINGS.impactLosesUnchecked.replace('<user>', () => subject)}${whyUnchecked(part.unchecked)}`;
+    if (part.count === 0) return STRINGS.impactLosesNone.replace('<user>', () => subject);
+    return STRINGS.impactLoses.replace('<names>', () => namesOf(part)).replace('<user>', () => subject);
   }
   const phrases = PHRASES[part.part];
   if (part.unchecked !== '') return `${phrases.unchecked}${whyUnchecked(part.unchecked)}`;
   if (part.count === 0) return phrases.none;
   const template = part.count === 1 ? phrases.one : phrases.many.replace('<n>', String(part.count));
-  return template.replace('<names>', namesOf(part));
+  return template.replace('<names>', () => namesOf(part));
 }
 
 /**
@@ -166,5 +170,5 @@ export function impactLine(impact: Impact | null, subject: string): string {
   if (impact === null) return '';
   if (impact.refused !== null) return impact.refused.reason;
   if (impact.parts.length === 0) return '';
-  return STRINGS.impactLine.replace('<parts>', impact.parts.map((part) => phraseOf(part, subject)).join('; '));
+  return STRINGS.impactLine.replace('<parts>', () => impact.parts.map((part) => phraseOf(part, subject)).join('; '));
 }

@@ -639,10 +639,14 @@ export class ScreenActionHandler {
    * Open a removal's typed-name dialog with its impact line as the advisory (AD-8, Story 16.19),
    * read from `GET /screens/:screen/impact` as the dialog opens -- the route resolves the action as
    * the write would, with the caller's own privileges. A read that fails opens the dialog without
-   * the line; whether the target may be removed is the instance's answer at the write.
+   * the line; whether the target may be removed is the instance's answer at the write. An answer
+   * that lands after another action has started or opened is dropped, so it never replaces that
+   * action's dialog.
    */
   private async openWithImpact(descriptor: string, actionId: string, target: string, sink: ActionSink): Promise<void> {
+    const ask = ++this.impactAsk;
     const line = await this.impactFor(descriptor, actionId, target);
+    if (ask !== this.impactAsk) return;
     this.open('typed-name', descriptor, actionId, target, this.consequence(descriptor, actionId), [], sink, target, line);
   }
 
