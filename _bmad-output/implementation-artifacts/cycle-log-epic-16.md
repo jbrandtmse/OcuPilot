@@ -149,3 +149,6 @@
 2026-09-27T09:44:40Z	Story 16.21	ci_resolved	story=16.21 run=36307420890 result=failure resolved_at=next_implement head=36c21571 job=browser tests=home-findings:195(instance-specific_name),a11y-structural-invariants_hook(protocol_timeout;local_12/12_pass) first_red=16.21
 2026-09-27T09:44:40Z	Story 16.21	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI-home-findings-oauth2,CI-structural-walk-timeout scope_baseline=9ad17f7f
 2026-09-27T09:44:40Z	Story 16.21	stage_spawned	stage=implement spawn_at=2026-09-27T09:44:40Z model=opus agent_name=16-21-security-findings-with-a-fix-you-confirm-implement-2 cycle_iteration=2
+2026-09-27T10:03:19Z	Story 16.21	dev_complete	spawn_at=2026-09-27T09:44:40Z model=opus build_sha=7b8dcfa7 baseline_revision=4c81c839 review_loop_iteration=0 followup_review_recommended=false deferred=0 files=2 cycle_iteration=2 note=test-only;structural_walk_timeout_not_reproduced_at_4x/6x/20x_throttle ci=pending run=36311288540
+2026-09-27T10:03:19Z	Story 16.21	adr_verifications_complete	result=none_required note=rework_touched_one_browser_spec_only
+2026-09-27T10:03:19Z	Story 16.21	stage_spawned	stage=code-review spawn_at=2026-09-27T10:03:19Z model=opus agent_name=16-21-security-findings-with-a-fix-you-confirm-code-review-2 cycle_iteration=2
