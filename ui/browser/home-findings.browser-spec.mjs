@@ -3,7 +3,9 @@
  *
  * - **AC1 and AC5.** For the suite's own account the panel follows the performance row with its
  *   Security and Operations groups; it names a seeded unauthenticated application holding
- *   `%DB_USER`, the demo fixture's task suspended after an error and the four `%All` accounts, and
+ *   `%DB_USER`, the stock `/csp/user` and `/api/monitor`, every open application the instance's own
+ *   answer lists, the demo fixture's task
+ *   suspended after an error and the four `%All` accounts a stock install carries, and
  *   not `/ocupilot` or a task a person suspended. The panel passes the DW-1337 structural gate in
  *   light, narrow and dark with no new baseline entry.
  * - **AC2.** `_SYSTEM`'s line shows the prohibited set's sentence and no Fix it.
@@ -171,7 +173,8 @@ function frames(page) {
 }
 
 // Mutation (Rule 19): stop Home from rendering the panel (drop the `@if (findingsShown)` block) and
-// rebuild -> this goes red on the groups.
+// rebuild -> this goes red on the groups. Render a `webapp-open` finding without its name
+// (`findingLines`) and rebuild -> this goes red on the seeded application.
 test('AC1 and AC5: the panel follows the performance row, names what the instance holds, and passes the structural gate in both themes', async () => {
   const { context, page } = await signedInAt(browser, config, HOME_URL);
   try {
@@ -191,10 +194,13 @@ test('AC1 and AC5: the panel follows the performance row, names what the instanc
     assert.deepEqual(groups.map((group) => group.heading), [STRINGS.findingsSecurity, STRINGS.findingsOperations]);
     const security = groups[0].lines.map((line) => line.sentence);
     const operations = groups[1].lines.map((line) => line.sentence);
-    for (const name of [PROBE_APP, '/oauth2', '/csp/user']) {
-      assert.ok(security.includes(fill(STRINGS.findingWebappOpen, { name })), `${name} is named: ${JSON.stringify(security)}`);
+    assert.ok(security.includes(fill(STRINGS.findingWebappOpen, { name: PROBE_APP })), `the seeded application is named: ${JSON.stringify(security)}`);
+    assert.ok(security.includes(fill(STRINGS.findingWebappOpen, { name: '/csp/user' })), `the stock /csp/user is named: ${JSON.stringify(security)}`);
+    assert.ok(security.includes(fill(STRINGS.findingMonitorOpen, { name: '/api/monitor' })), 'the stock monitoring API is named');
+    for (const finding of answer.findings.filter((row) => row.check === 'webapp-open' || row.check === 'monitor-open')) {
+      const sentence = fill(finding.check === 'webapp-open' ? STRINGS.findingWebappOpen : STRINGS.findingMonitorOpen, { name: finding.name });
+      assert.ok(security.includes(sentence), `${finding.name}, which the instance answers, is named: ${JSON.stringify(security)}`);
     }
-    assert.ok(security.includes(fill(STRINGS.findingMonitorOpen, { name: '/api/monitor' })), 'the monitoring API is named');
     for (const name of ['SuperUser', '_SYSTEM', '_Ensemble', 'irisowner']) {
       assert.ok(security.includes(fill(STRINGS.findingAllHolder, { name })), `${name} holds %All`);
     }

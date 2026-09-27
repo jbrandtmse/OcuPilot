@@ -2,8 +2,8 @@
 title: 'Story 16.21: Security findings, with a fix you confirm'
 type: 'feature'
 created: '2026-09-26'
-status: 'in-progress'
-baseline_revision: '5cbc4c8bb7f0517e0ba533ed58232e6c83a57874'
+status: 'done'
+baseline_revision: '4c81c839c00224f8415f7ef1aa57a972eaafe2f7'
 baseline_commit: '5cbc4c8bb7f0517e0ba533ed58232e6c83a57874'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -251,8 +251,8 @@ Rejected:
 
 ### Rework (CI, iteration 1)
 
-- [ ] [CI] browser: `ui/browser/home-findings.browser-spec.mjs:195` (AC1/AC5) fails on run 36307420890 at head 36c21571: it asserts `/oauth2 is named`, a name measured on the reused `ocupilot-ci` that CI's fresh container does not flag. Assert only what the spec seeds itself (its own unauthenticated probe application, the demo task, the accounts a stock install carries), never instance-specific names; keep the leg falsifiable and write its `mutation:` line. Grep the story's other browser legs and the `FindingsWire`/`Findings` tests for any other name a fresh stock container would not hold, and fix each the same way. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36307420890>
-- [ ] [CI] browser: `ui/browser/a11y-structural-invariants.browser-spec.mjs` failed in its `before` hook on the same run after 227 s with `Runtime.callFunctionOn timed out` (puppeteer's 180 s protocol timeout): one evaluate on some walked page took over 180 s. Locally the same spec passes 12/12 (walk 119 s) against the current bundle, and 16.20's CI run passed it. Bounded investigation: rerun the spec locally with Chrome CPU throttling (e.g. `page.emulateCPUThrottling(4)` in a scratch copy of the walk under a directory named for epic-16, never committed) and time each walked page, above all Home (the findings panel and its reload triggers, the performance row's 10 s refresh). If a page this story changed stalls or loops, fix the cause in the story's code and pin it. If nothing reproduces, record the per-page timings as evidence in `## Auto Run Result`, change no shared test, and leave the verdict to CI's next run. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36307420890>
+- [x] [CI] browser: `ui/browser/home-findings.browser-spec.mjs:195` (AC1/AC5) fails on run 36307420890 at head 36c21571: it asserts `/oauth2 is named`, a name measured on the reused `ocupilot-ci` that CI's fresh container does not flag. Assert only what the spec seeds itself (its own unauthenticated probe application, the demo task, the accounts a stock install carries), never instance-specific names; keep the leg falsifiable and write its `mutation:` line. Grep the story's other browser legs and the `FindingsWire`/`Findings` tests for any other name a fresh stock container would not hold, and fix each the same way. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36307420890> Done: AC1 names only the seeded application, `/csp/user` and `/api/monitor` (both in the fresh container's rendered lines in that run's failure message), the stock `%All` accounts and the demo task, and checks every `webapp-open`/`monitor-open` finding the instance answers is rendered; no other story test names an unseeded object; 4/4 green on `ocupilot-ci`, mutation red.
+- [x] [CI] browser: `ui/browser/a11y-structural-invariants.browser-spec.mjs` failed in its `before` hook on the same run after 227 s with `Runtime.callFunctionOn timed out` (puppeteer's 180 s protocol timeout): one evaluate on some walked page took over 180 s. Locally the same spec passes 12/12 (walk 119 s) against the current bundle, and 16.20's CI run passed it. Bounded investigation: rerun the spec locally with Chrome CPU throttling (e.g. `page.emulateCPUThrottling(4)` in a scratch copy of the walk under a directory named for epic-16, never committed) and time each walked page, above all Home (the findings panel and its reload triggers, the performance row's 10 s refresh). If a page this story changed stalls or loops, fix the cause in the story's code and pin it. If nothing reproduces, record the per-page timings as evidence in `## Auto Run Result`, change no shared test, and leave the verdict to CI's next run. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36307420890> Done, not reproduced: the walk at 4x, 6x and 20x CPU throttling settled every visit, the slowest 2.0 s (Home in dark, the findings read) and no evaluate over 207 ms; `/ui/findings` was requested twice in the whole walk, so nothing loops; no shared test changed.
 
 ## Spec Change Log
 
@@ -292,6 +292,16 @@ Rejected:
   - `[low]` `[reject]` A rejected navigation is untested — `.catch(() => false)` feeds the same `navigated !== true` branch the declined case pins.
   - `[false]` `[reject]` Matrix key `findingFixTask` vs `findingFixTaskError` — Design Notes define `findingFix<Key>`; the text is identical.
   - `[false]` `[reject]` Bundle warning re-based — dispatch-authorized under DW-1166, 5% above the measured 1,908,082 bytes.
+
+### 2026-09-27 — Review pass (CI rework)
+
+- verdicts: 5 findings — high 0, medium 0, low 1, false 4, maybe-false 0 (verification-gap: none; intent-alignment: 5)
+- findings:
+  - `[false]` `[reject]` `/csp/user` is outside the rework's allowed set and unverified on a fresh container — run 36307420890's AC1 message lists the fresh container's rendered lines, `/csp/user` among them.
+  - `[false]` `[reject]` `/api/monitor` was never observed on a fresh container — the same message lists "The monitoring API, /api/monitor, answers without signing in."
+  - `[low]` `[reject]` The answer-driven loop checks rendering against the server's own answer, not the rule — the rule is pinned by `Findings` and `FindingsWire`, and the fixed names pin it on a real instance; nothing to add.
+  - `[false]` `[reject]` "No re-read on the tick" rests on an observation — the 16.18 tick case in `home.page.spec.ts` asserts `findings.calls` unchanged.
+  - `[false]` `[reject]` "No other story test names an unseeded object" contradicts the kept `/csp/user` — it is on the stock fresh container (first row); the rework item's evidence clause now names it.
 
 ## Design Notes
 
@@ -399,6 +409,7 @@ Where each row applies: Home's Findings panel (Story 16.21, AD-10, AD-11), under
   - mutation (review): dropped `MarkUnread` after `EffectiveRead` in `AllHolders` → `Findings` `TestAnUnreadableCheckIsUncheckedNamingThePair` red (run 15899).
   - mutation (review): About's `LOGMESSAGE` changed → `UiAboutRead` `TestTheSourceFailureLogLineNamesTheField` red (run 15902).
 - `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/ && OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/home-findings.browser-spec.mjs browser/home-performance.browser-spec.mjs browser/home-system-information.browser-spec.mjs browser/about-help-links.browser-spec.mjs browser/account-and-filter.browser-spec.mjs browser/explain-screen.browser-spec.mjs browser/explain-entry.browser-spec.mjs browser/suggested-view.browser-spec.mjs browser/suggested-prompts.browser-spec.mjs browser/screen-grounding.browser-spec.mjs browser/preferences-integration.browser-spec.mjs browser/rail-icons.browser-spec.mjs browser/task-resume.browser-spec.mjs browser/users-actions.browser-spec.mjs browser/impact.browser-spec.mjs browser/screen-height.browser-spec.mjs browser/a11y-structural-invariants.browser-spec.mjs` (loop). These are the story's spec plus every existing spec that Home, the panel hand-off or the reused paths could break. Expected: green, with no new structural baseline entry. Observed: all green (home-findings 4, with the gate in light, narrow and dark and no new entry) except `about-help-links`' DW-3 stamp leg, which compares the recorded `buildIdentity` (`main-ZWCBUUJV.js`, the throwaway's last install) with the `docker cp`-deployed bundle and so reads red after any redeploy without a reinstall. mutation: Home's Fix it requests without waiting for Task details' read (rebuilt, redeployed) → AC3 red on the context row; reverted, rebuilt byte-identical (`main-IBBXWY3H.js`), redeployed.
+  - mutation (CI rework): `findingLines` renders a `webapp-open` finding without its name (rebuilt, redeployed) → `home-findings` AC1 red on "the seeded application is named"; reverted byte-identical (`main-IBBXWY3H.js`), redeployed.
 - `cd ui && npm test`, `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh` (once, before dev_complete) -- green. The bundle stays under 1900 kB, or is re-based under DW-1166 if it crosses; the hard stop is 4000 kB.
 - The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before dev_complete) -- green.
 
@@ -418,3 +429,24 @@ Verification: `npm test` passed (1557 tool tests, 113 component files), as did `
 Process note: the handoff subagent returned an interim message while its sweep was in flight. The harness stopped that sweep after 12 classes, its in-flight run 15585 landed, and the stage ran the verification itself. No subagent committed.
 
 Planned from `epic-16-context.md` (cached, valid), the full spine, and measurements on `ocupilot-ci` (every seed removed and read back). No AD change is needed: AD-43's tick scope, AD-24's Home context and AD-10's one home are all kept. DW-1400 is addressed (`FieldRead`), and DW-118 is declined (resolved by 15.6).
+
+**CI rework pass (2026-09-27, iteration 1, follow-up pass).** Status: done. Blocking condition: none.
+
+- **AC1 named an instance-specific application.** `ui/browser/home-findings.browser-spec.mjs` no longer asserts `/oauth2`, which CI's fresh container does not flag. AC1 now names the seeded probe application, `/csp/user` and `/api/monitor` (all three appear in the fresh container's rendered lines in run 36307420890's failure message), the four stock `%All` accounts and the demo task. It also checks that every `webapp-open`/`monitor-open` finding in the instance's own answer is rendered. No other story test names an unseeded object. On `ocupilot-ci` the spec passed 4/4, and the served bundle is unchanged (`main-IBBXWY3H.js`). The mutation line is under Verification.
+- **Structural-walk timeout: not reproduced; no shared test changed.** A scratch copy of the walk (outside the worktree) ran at 4x, 6x and 20x CPU throttling, and every visit settled.
+  - The slowest single evaluate took 207 ms (Home at 20x), against the 180 s protocol timeout.
+  - `/ui/findings` was requested twice across the whole 174-visit walk.
+  - Per-page times at 6x, in ms, for 1280 light / 1280 dark / 720 light:
+    - Home: 633 / 2036 / 627. The dark visit includes the findings read.
+    - `tasks/schedule`: 1621 / 1623 / 1627.
+    - `database-free-space`: 1520 / 1502 / 1516.
+    - `logs/audit`: 727 / 714 / 715.
+    - `tasks/history`: 719 / 708 / 701.
+    - REST document: 710 / 704 / 698.
+    - `agent/definitions/edit`: 694 / 688 / 693.
+    - Every other screen: 578–656.
+  
+  The verdict is left to CI's next run.
+- **Review.** The verification-gap reviewer found nothing. The intent-alignment reviewer raised 5 findings: 4 false, and 1 low that was rejected. Nothing was patched or deferred. The follow-up review recommendation is `false`, because no high was patched.
+- **Checks.** `client-lint.mjs` and `lint-docs.sh` both returned 0, and the diff adds no non-ASCII to source.
+- **Residual risk.** CI's 180 s evaluate stall is still unexplained. If it recurs, the next step is per-evaluate page logging in CI.
