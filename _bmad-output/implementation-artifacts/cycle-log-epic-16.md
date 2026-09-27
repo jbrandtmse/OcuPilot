@@ -155,3 +155,4 @@
 2026-09-27T10:12:48Z	Story 16.21	cr_complete	spawn_at=2026-09-27T10:03:19Z model=opus resolved=3 fixed_at_source=3 routed=0 escalated=0 decision_pending=0 deferred=0 dismissed=17 high=0 med=0 low=15 rows=0 unresolved_high_med=0 clarifications=0 closing_sections_present=true cycle_iteration=2 note=rework_re-review_scoped_4c81c839..7b8dcfa7;AC1_example_amended_by_lead(tier1)
 2026-09-27T10:12:48Z	Story 16.21	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=slice_empty model=claude-opus-5-5
 2026-09-27T10:12:48Z	Story 16.21	smoke_complete	method=browser result=pass iterations=2 defects_caught=0 evidence=ocupilot-ci;home-findings.browser-spec_4/4_after_rework model=claude-opus-5-5
+2026-09-27T10:13:38Z	Story 16.21	committed	sha=d06b5090 submodules= ci=pending run=36311841421 cycle_iteration=2 amendments=spec-16-21:AC1_example_list(tier1) supersedes=36311288540
