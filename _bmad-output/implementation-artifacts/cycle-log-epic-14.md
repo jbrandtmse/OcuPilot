@@ -156,3 +156,8 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-27T17:31:54Z	Story 14.2	committed	sha=15b0fab4 submodules= ci=success run=36333932868 amendments=ARCHITECTURE-SPINE.md:AD-22,AD-53,AD-8 EXPERIENCE.md(in-place;981_lines)
 2026-09-27T17:31:54Z	Story 14.2	ci_resolved	story=14.2 run=36333932868 result=success resolved_at=boundary
 2026-09-27T17:31:54Z	Story 14.2	story_boundary	story=14.2 head=15b0fab4 ci_run=36333932868 ci=success
+2026-09-27T17:32:13Z	Epic 14	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp feature_head=83387693 conflicts=none brings=cycle-log-parallel_only skip_ci=true
+2026-09-27T17:32:13Z	Story 14.6	story_created	spawn_at=2026-09-27T16:38:01Z model=opus path=_bmad-output/implementation-artifacts/spec-14-6-per-user-turn-limits-and-the-banner-they-need.md build_status=ready-for-dev epic_context=reused cycle_iteration=1 warnings=oversized
+2026-09-27T17:32:13Z	Epic 14	spine_updated	ad=AD-41(amended:turns_an_hour),deferred_row(marked_done) reason=spec_gate by=runner story=14-6-per-user-turn-limits-and-the-banner-they-need lint=ok(pre-existing_low_unchanged) claimed=none
+2026-09-27T17:32:13Z	Story 14.6	spec_validated	service_introducing=false integration_ac=present(panel_banner_reads_TURN.LIMITHOUR) adr_constrained_acs=AD-41,AD-31,AD-30,AD-7,AD-9,AD-39,AD-12,AD-19,AD-50 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=true throwaway=ocupilot-b-ci model=claude-opus-5-5[1m]
+2026-09-27T17:32:14Z	Story 14.6	stage_spawned	stage=implement spawn_at=2026-09-27T17:32:14Z model=opus agent_name=14-6-per-user-turn-limits-implement-1 cycle_iteration=1 resolved_via=model-overrides.yaml:overrides.implement=opus
