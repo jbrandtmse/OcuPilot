@@ -29,6 +29,7 @@ import {
   markerValue,
   nextTag,
   requireFreeSlot,
+  resultPayload,
   runIris,
   scriptReply,
   setTag,
@@ -126,7 +127,7 @@ function screenContextPayload(messages) {
   );
   if (useIndex < 0) return null;
   const resultBlock = messages[useIndex + 1]?.content?.find?.((block) => block.type === 'tool_result');
-  return resultBlock ? JSON.parse(resultBlock.content) : null;
+  return resultBlock ? resultPayload(resultBlock) : null;
 }
 
 async function waitForReply(page, text) {
