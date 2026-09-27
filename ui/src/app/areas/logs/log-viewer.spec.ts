@@ -586,6 +586,17 @@ describe('LogViewerPage', () => {
     expect(fileChoice(fixture)?.value).toBe(gone);
   });
 
+  // Mutation (Rule 19): stop `read` clearing `gone` -> this goes red on the refusal text.
+  it('Story 16.20: a Refresh after a removed file shows what the new read answered, not the stale removal', async () => {
+    api.refuseTail(404, 'LOG.ABSENT');
+    const { fixture, store } = await mount(MESSAGES_SCREEN, `${ADDRESS}&file=messages.old_20200101`);
+    api.refuseTail(403, 'AUTH.NOPRIVILEGE', { failedPair: '%Admin_Operate:USE' });
+    await store.open();
+    fixture.detectChanges();
+    expect(store.gone()).toBe(false);
+    expect(textOf(fixture, '[data-ocu-log="refusal"]')).not.toBe(STRINGS.logViewerFileGone);
+  });
+
   it('Story 16.20: messages.log answering LOG.ABSENT keeps today\'s empty state, not the removed-file refusal', async () => {
     api.refuseTail(404, 'LOG.ABSENT');
     const { fixture, store } = await mount(MESSAGES_SCREEN, ADDRESS);
@@ -631,6 +642,16 @@ describe('LogViewerPage', () => {
     choose(fixture, OLDER);
     await settleNavigation(fixture);
     expect(published()).toEqual([{ time: '2026-09-26T21:00:00.000', severity: '1', text: 'from the older file' }]);
+  });
+
+  // Mutation (Rule 19): append Load newer's page in place, keeping the array -> this goes red.
+  it('Story 16.20: Load newer publishes the appended lines too, newest first', async () => {
+    const { store } = await mount(MESSAGES_SCREEN, ADDRESS);
+    api.tail(tailPage(['09/18/26-07:40:00:000 (1) 1 [Utility.Event] newer'], 500, 'first-line'));
+    await store.loadNewer();
+    await settle();
+    const published = TestBed.inject(ScreenStores).for(MESSAGES_SCREEN.descriptor, []).data();
+    expect(published.map((row) => (row as { text: string }).text)).toEqual(['newer', 'an informational entry', '[OcuPilot] a severe entry']);
   });
 
   // Mutation (Rule 19): publish only when the source lists files -> this goes red.

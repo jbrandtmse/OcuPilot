@@ -159,6 +159,40 @@ Client (`ui/src/app/`):
 - **AC4.** Given `README.md`, when this story completes, then Community ideas lists DPI-I-966 among the ideas OcuPilot implements. The Open Exchange listing is Epic 17's and is handed off (Design Notes).
 - **AC5 (Integration).** Given `ocupilot-ci` with a seeded rotated file, when the messages.log viewer (the consumer) reads `GET /logs/messages/files` and `GET /logs/messages?file=`, then it renders the choice and the older file's rows in both themes, passes the DW-1337 structural gate with no new allowance, and the bundle stays under 1900 kB (re-base under DW-1166 if crossed).
 
+### Review Findings
+
+Code review 2026-09-27 (full-opus; Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor): 34 raw findings, 26 entries, no high or medium. Lead's points 1-5 hold: published rows are the declared `{time, severity, text}` with `secretFields` empty, capped by `assembleScreenContext` and again on the instance; `file` reaches the filesystem only through `Page`'s pattern check (`Rows`, `logs.messages.read` and Explain pass none); containment by name holds (symlink case DW-1726); Epic 14's hunks untouched; README's DPI-I-966 title and Community Opportunity status checked on ideas.intersystems.com, nothing of Epic 17's edited.
+
+- [x] [Review][Patch] `gone` survived a Refresh, so the removed-file refusal masked the next read's rows or its real fault [ui/src/app/areas/logs/log-viewer.store.ts:302]
+- [x] [Review][Patch] Load newer's appended lines were never checked in the published screen store [ui/src/app/areas/logs/log-viewer.spec.ts:648]
+- [x] [Review][Patch] `explain-entry` leg (d), the only real-browser pin of AC2's screen-context clause, had no `mutation:` line [_bmad-output/implementation-artifacts/spec-16-20-older-messages-log-files.md, Verification]
+- [x] [Review][Patch] `LogMessageViewer`'s doc said the screen and its read are "the same window" with nothing added; it now names the `?file=` case [src/OcuPilot/Screen/Descriptor/LogMessageViewer.cls:3]
+- [x] [Review][Patch] `LogSourceFiles`' header said the manager directory is never written while it creates `ocupilotfilesprobe/` there [src/OcuPilot/Test/LogSourceFiles.cls:10]
+- [x] [Review][Defer] symlink/directory/FIFO with a rotated name [src/OcuPilot/Port/LogSourcePort.cls:1782] — deferred: DW-1726 wontfix-theoretical
+- [x] [Review][Defer] the choice navigates per change event (arrow keys on a closed select) [ui/src/app/areas/logs/log-viewer.page.ts:367] — deferred: DW-1727 wontfix-accepted
+- [x] [Review][Defer] older-file context names no file while `logs.messages.read` reads messages.log [ui/src/app/areas/logs/log-viewer.page.ts:333] — deferred: DW-1728 by-design (Decision 2)
+
+Rejected:
+
+- low: no `value: ''` option when the list lacks messages.log — IRIS always has messages.log; the page's own read would 404 too.
+- low (spec-bound): `?file=messages.log` shows the generic refusal — the matrix's Bad name row requires it.
+- low: leg (d) seeds before `signedInAt`'s try — the other legs' pattern; residue only on a throwaway.
+- false: `<INVALID OREF>` in `LogSourceFiles`/`LogSourceDenial`/`LogOlderFilesWire` when a page fails — the test still errors red.
+- low: DST fall-back could misorder local option text — CI and throwaway browsers run UTC.
+- low: an older file with a failed list shows no choice — list and page share one gate; only a transient list failure reaches it.
+- low: client ignores `truncated` — the spec asks nothing of the client; IRIS purges long before 1,000.
+- low: option text forms (empty `modified`, grouping, name-alone) — the Tasks and matrix specify them.
+- low: Auto Run Result's counts differ from its triage log — the fix edits the spec under review.
+- low: `ROTATEDSOURCE` repeats `"messages"` — no caller diverges; a rename reddens `LogSourceFiles`.
+- low: `GetFileDateModified` per entry before the cap — about 40 files on a real instance.
+- low: the alerts `?file=` legs check less than the messages legs — one `FileRefusal` path serves both.
+- low: `filesGeneration` and a failed Refresh list are untested — guards, not AC behavior.
+- low: `Files`' unreadable-directory branch is untested — the manager directory is IRIS's own.
+- false: `LogSourceWire`'s "source/file/path" label is stale — `filename` is still sent.
+- false: the alerts no-choice case pins two guards together — defense in depth, no defect.
+- false: the select's label reuses `databaseVolumeColumnFile` — documented departure; `strings.test.mjs` refuses a duplicate value.
+- false: spec `done` against sprint `review` — the review's sprint sync sets it.
+
 ## Spec Change Log
 
 - 2026-09-26, lead, spec gate: the AD-21 named case (the rotated messages files) written into the spine exactly as recommended under Design Notes (Rule 20, light path). No other change.
@@ -255,6 +289,9 @@ No other AD changes. **Why a query parameter and not an AD-13 segment:** the des
 - mutation: `Files` counts only rotated files against `FILESCAP` -> `LogSourceFiles.TestTheListIsCappedAndSaysSo` third leg red (1,001 entries).
 - mutation: `publishRows` returns early for a source without `filesPath` -> `log-viewer.spec.ts` "alerts.log publishes its lines" red.
 - mutation: the file choice loses its `aria-label` (rebuilt, redeployed) -> `messages-log-files.browser-spec.mjs` AC5 walk red (`select.ocu-criteria-select: no accessible name`) and AC1 red.
+- mutation: `publishRows` returns at once (rebuilt, redeployed on `ocupilot-ci`) -> `explain-entry.browser-spec.mjs` leg (d) red (`rowsSent` 0, expected 3).
+- mutation: `read` stops clearing `gone` -> `log-viewer.spec.ts` "a Refresh after a removed file" red.
+- mutation: Load newer appends into the held array (`Object.assign`) -> `log-viewer.spec.ts` "Load newer publishes the appended lines" red.
 
 ## Auto Run Result
 

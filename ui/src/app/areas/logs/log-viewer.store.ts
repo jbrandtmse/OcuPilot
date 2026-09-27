@@ -304,6 +304,7 @@ export class LogViewerStore {
     this.loadingValue = true;
     this.faultValue = null;
     this.failedPairValue = '';
+    this.goneValue = false;
     this.notify();
 
     const params: string[] = [];

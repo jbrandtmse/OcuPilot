@@ -7,8 +7,8 @@
 /// class creates and removes under <code>&lt;ManagerDirectory&gt;ocupilotfilesprobe/</code>, holding
 /// a <file>messages.log</file>, three rotated files written a second apart in an order their names
 /// do not sort in, and decoys: a directory carrying a rotated name, <file>messages.log.1</file>,
-/// <file>alerts.old_20260101</file> and <file>messages.old_20260101_1.bak</file>. The instance's own
-/// manager directory is never written. Needs a writable manager directory.</p>
+/// <file>alerts.old_20260101</file> and <file>messages.old_20260101_1.bak</file>. Nothing is
+/// written beside the instance's own <file>messages.log</file>. Needs a writable manager directory.</p>
 Class OcuPilot.Test.LogSourceFiles Extends %UnitTest.TestCase
 {
 

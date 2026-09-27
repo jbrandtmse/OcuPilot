@@ -7535,3 +7535,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-19-impact-lines-on-removals.md (cr rework re-review) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Class doc (line 62-64) and TestEveryProbeDispatchesToItsRoute doc and its failure message (line 511) tie expect to a why; the GET impact row declares expect=code=TOOL.ARGUMENTS with no why, so a red there reads 'the precondition its why rests on'. File contended with Epic 14; this pass may touch only the impact row.
 - 2026-09-27T03:11:10Z status=wontfix-accepted owner=16-19-impact-lines-on-removals by=cr note=reopen_if=a second why-less expect row lands, or an expect failure on the impact row is misread in a review
+
+### DW-1726: LogSourcePort.Page follows a symlink, and answers 503 on a directory or FIFO, carrying a rotated name in the manager directory; Files lists only Type F
+- source: spec-16-20-older-messages-log-files.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DirectlyIn compares names only (no link resolution); %File:FileSet types a symlink or FIFO F; %File.Exists is 1 for a directory (probed on ocupilot-ci), so OpenStream fails into LOG.UNREADABLE plus an error-log entry.
+- 2026-09-27T05:49:07Z status=wontfix-theoretical owner=16-20-older-messages-log-files by=cr note=real only if someone other than the instance owner can write the manager directory
+
+### DW-1727: The file choice navigates on every change event, so arrow keys on a closed select (Chrome on Windows/Linux) push one history entry and one read per file passed
+- source: spec-16-20-older-messages-log-files.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: log-viewer.page.ts onFile calls navigateByUrl with no replaceUrl on each change; each file view is its own address by design, so replaceUrl would change what Back does.
+- 2026-09-27T05:49:07Z status=wontfix-accepted owner=16-20-older-messages-log-files by=cr note=reopen_if=a user reports Back stepping through files they only scrolled past in the choice
+
+### DW-1728: An older file's lines reach the model as logs/messages screen context naming no file, while logs.messages.read still reads messages.log
+- source: spec-16-20-older-messages-log-files.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: publishRows sends {time, severity, text} under route logs/messages; Rows calls Page with no file; spec Decision 2 keeps the tool on messages.log and the context file-less.
+- 2026-09-27T05:49:07Z status=by-design owner=16-20-older-messages-log-files by=cr note=spec Decision 2 and AD-21 fourth case; reopens only via spec amendment adding file to context or a tool criterion
