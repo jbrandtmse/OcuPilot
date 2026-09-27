@@ -176,6 +176,7 @@ It is the same pattern as the product: the agents propose, and a person confirms
 ## Try it, and read the record
 
 - The live demo: [ocupilot.org](https://ocupilot.org), sign in as `demo` / `ocupilot-demo`.
+- A three-minute video of the agent at work: [OcuPilot: ask, review, confirm, audit](https://youtu.be/tbFVXdDR5iI).
 - The code and every planning document:
   [github.com/jbrandtmse/OcuPilot](https://github.com/jbrandtmse/OcuPilot).
 - The first article, on what OcuPilot does:
