@@ -2,7 +2,7 @@
 title: 'Story 16.21: Security findings, with a fix you confirm'
 type: 'feature'
 created: '2026-09-26'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '5cbc4c8bb7f0517e0ba533ed58232e6c83a57874'
 baseline_commit: '5cbc4c8bb7f0517e0ba533ed58232e6c83a57874'
 review_loop_iteration: 0
@@ -249,7 +249,14 @@ Rejected:
 - (low) Browser AC1 asserts only that `/ocupilot` is absent: that is AC1's wording, and `FindingsWire`'s read-only probe role pins the `%DB_*:R` rule.
 - (false) `FieldRead` cites "AD-36's shell-chrome exception": About and SystemInfo carried the same phrase at baseline, and AD-50 calls it AD-36's exception.
 
+### Rework (CI, iteration 1)
+
+- [ ] [CI] browser: `ui/browser/home-findings.browser-spec.mjs:195` (AC1/AC5) fails on run 36307420890 at head 36c21571: it asserts `/oauth2 is named`, a name measured on the reused `ocupilot-ci` that CI's fresh container does not flag. Assert only what the spec seeds itself (its own unauthenticated probe application, the demo task, the accounts a stock install carries), never instance-specific names; keep the leg falsifiable and write its `mutation:` line. Grep the story's other browser legs and the `FindingsWire`/`Findings` tests for any other name a fresh stock container would not hold, and fix each the same way. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36307420890>
+- [ ] [CI] browser: `ui/browser/a11y-structural-invariants.browser-spec.mjs` failed in its `before` hook on the same run after 227 s with `Runtime.callFunctionOn timed out` (puppeteer's 180 s protocol timeout): one evaluate on some walked page took over 180 s. Locally the same spec passes 12/12 (walk 119 s) against the current bundle, and 16.20's CI run passed it. Bounded investigation: rerun the spec locally with Chrome CPU throttling (e.g. `page.emulateCPUThrottling(4)` in a scratch copy of the walk under a directory named for epic-16, never committed) and time each walked page, above all Home (the findings panel and its reload triggers, the performance row's 10 s refresh). If a page this story changed stalls or loops, fix the cause in the story's code and pin it. If nothing reproduces, record the per-page timings as evidence in `## Auto Run Result`, change no shared test, and leave the verdict to CI's next run. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36307420890>
+
 ## Spec Change Log
+
+- 2026-09-27, lead: re-opened for one rework iteration on a red CI browser job (run 36307420890): an instance-specific name in the story's own browser spec, and a structural-walk protocol timeout to reproduce or rule out.
 
 - 2026-09-26, implement. `certificate` findings also carry `expired` (boolean), because `detail` is the date alone and the two sentences differ. `monitor-open` knows the monitoring API by its dispatch class (`%Api.Monitor`, from the Web applications read) rather than by a `/api/monitor` literal, which `check-objectscript.py`'s AD-1 rule refuses under `Kernel/Shell/`. The panel's group headings are `h3` under its `h2` "Findings", so the outline does not repeat a level. A `truncated` check contributes no finding; `task-manager` stays `checked` when only the rows are cut, since the banner does not depend on them. An account holding `%All` only through another role has no `remove-role` of `%All`, so it is never `refused`. Where the explain gate hides Fix it, an `agent` finding offers Open. The fixture seams beyond `PortClass`/`ProhibitedClass` are `Gate`, `ListRead`, `Detail`, `EffectiveRead`, `RemovalVerdict` and `Now`. The bundle crossed 1900kB and was re-based under DW-1166 to 2004kB (5% above the measured 1,908,082 bytes).
 
