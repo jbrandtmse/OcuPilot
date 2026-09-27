@@ -767,7 +767,7 @@ def check_escalation_containment(problems: list[str]) -> None:
 # property is held by review.
 RESTRAINT_CODE_RE = re.compile(
     r"AGENT\.(READONLY|KILLSWITCH)\b"
-    r"|KILLSWITCH\.(GLOBAL|USER)\b|READONLY\.(ENFORCED|DEFINITION)\b"
+    r"|KILLSWITCH\.(GLOBAL|USER)\b|READONLY\.(ENFORCED|DEFINITION|USER)\b"
     r"|AGENT(READONLY|KILLSWITCH)"
     r"|ReasonForRestraint|RestraintCodes",
 )

@@ -2,7 +2,8 @@
 title: 'Story 14.5: The per-user read-only toggle'
 type: 'feature'
 created: '2026-09-27'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'c099443ce3ab7f8be8bef6adbfc20a2f0ce3e864'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -145,6 +146,25 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-27 — Review pass
+
+- verdicts: 14 findings — high 0, medium 1, low 6, false 7, maybe-false 0
+- findings:
+  - `medium` `patch` A read racing a `setReadOnlyForYou` write is untested, so the `newest` assignment and the supersession guard are unpinned — added two interleaving cases to `ui/tools/agent-status.test.mjs`; each guard's removal reddens one.
+  - `low` `patch` Integration (`TurnGrounding`), AC1 client footer and AC3 no-row legs had no `mutation:` line — applied each mutation, observed red, reverted, lines added under Verification.
+  - `low` `reject` `angular.json` warning raised to 1900kB with a comment citing Story 16.1 — adopted byte-identical to Epic 16's hunk under the standing DW-1166 ruling so the merge is clean; this branch measures 1,857,424 bytes (Auto Run Result).
+  - `low` `reject` A GET served before a concurrent PUT commits can leave the switch stale until the next read — needs a read issued inside the PUT's round trip; the next read corrects it, and a fix adds ordering state.
+  - `false` `reject` Auto Run Result still reads `ready-for-dev` — finalize writes it.
+  - `low` `reject` `angular.json` change not in the contract (intent-alignment) — same as the budget row above.
+  - `low` `reject` `panel.spec.ts` edited though Design Notes say it is not — the Tasks' wrapper div changes the footer's children; the fix would edit this spec.
+  - `false` `reject` `resetRememberedState` now turns the choice off — required by the Tasks.
+  - `false` `reject` `Confirm` gains no test — it calls `Verdict` unchanged; AC4 forbids a second check, and the verdict legs pin the source.
+  - `false` `reject` `Loop.Boundary` does not abandon on a mid-turn toggle — the reading Design Notes adopt ("No step-boundary abandon").
+  - `false` `reject` another user unchanged is tested in-process only — `HandleRestraintUpdate` writes only `CallerUsername()`'s row; the verdict leg pins the other user.
+  - `low` `reject` the 500 path for an unreadable body is not exercised — shared `RenderBadBody`, reachable only by a transport failure the harness cannot produce.
+  - `false` `reject` AD-53/AD-55 untested — no screen route calls `Verdict`, and `check-objectscript` keeps restraint codes to `Restraint.cls`/`Error.cls`.
+  - `false` `reject` no-browser-storage untested — the diff adds no storage call; the choice travels only over `PUT /agent/restraint`.
+
 ## Design Notes
 
 **Governing ADs:** AD-30, AD-40, AD-24 (the `readOnly` member), AD-50, AD-9, AD-19, AD-53, AD-55, AD-39, AD-37, AD-21, and Conventions › Concurrent writes and › When `SCHEMAVERSION` moves. No new AD is needed: AD-30 already places this toggle over Story 3.7's single gate, and AD-50 is the store.
@@ -182,7 +202,35 @@ Slot B. Copy each changed `.cls` into `/tmp/ocupilot-b-ci/src` and load it on `o
 - **AC4:** add the literal `"READONLY.USER"` to `Dispatch.cls`. Expected: `check-objectscript` goes red.
 - **DW-1621:** unbind the checkbox's `(change)`. Expected: `definition-form.page.spec.ts` and the browser leg go red.
 
+- mutation: deleted the for-you `Refuse` branch in `Restraint.Verdict` (throwaway copy, recompiled) → `ReadOnlyForYou` red (4 of 10: `TestOnBlocksThatUserAlone`, `TestForYouWinsOverTheDefinition`, `TestPutStoresAndGetReadsItBack`, `TestTheChoiceIsNeverCachedWithinOneProcess`) and `ToolWrite` red (`TestAUserWithReadOnlyForThemselvesIsDroppedByTheRealVerdict`)
+- mutation: a stored `"0"` clears `enforcedReadOnly` in `Restraint.Verdict` → `ReadOnlyForYou` red (`TestEnforcedWins`, `TestPutFalseUnderEnforcedStaysEnforced`)
+- mutation: dropped the enforced `preventDefault` guard in `ReadOnlyToggle.onClick` → `read-only-toggle.spec.ts` red (the AC2 case)
+- mutation: `Pref.GuardedValue` answers a `^||` process-private memo → `ReadOnlyForYou` red (9 of 10, `TestTheChoiceIsNeverCachedWithinOneProcess` among them)
+- mutation: the literal `"READONLY.USER"` added to `Dispatch.cls` → `check-objectscript.py` red at `Dispatch.cls:65`; with the `USER` tail removed from `RESTRAINT_CODE_RE`, `test_check_objectscript.py` red (2 cases)
+- mutation: removed the Read-only checkbox's `(change)` binding → `definition-form.page.spec.ts` red (the DW-1621 case) and, rebuilt and redeployed, the `definitions.browser-spec.mjs` DW-1621 leg red
+- mutation: deleted the for-you `Refuse` branch in `Restraint.Verdict` (throwaway, recompiled) → `TurnGrounding` red (`TestReadOnlyForYouReadsTrue`), the Integration AC's second consumer
+- mutation: `Restraint.ReadOnlyForYou` reads any value but `"0"` as on (throwaway, recompiled) → `ReadOnlyForYou` red (`TestNoRowIsOff` and 3 more), AC3's no-row leg
+- mutation: dropped `'statusReadOnlyForYou'` from `FOOTER_KEYS` → `agent-status.test.mjs` red (the footer-key roster and the adopted-verdict case), AC1's client footer
+- mutation: dropped `this.newest = run.then(...)` in `setReadOnlyForYou` → `agent-status.test.mjs` red (the overtaken read hangs); dropped the `request !== this.request` guard in `writeReadOnlyForYou` → red (the older write replaces the newer read)
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** The user's own read-only choice is a `Pref` row (Kind `restraint`, name `readOnly`) and the fourth source `Restraint.Verdict` reads, with code `AGENT.READONLY.USER` and footer key `statusReadOnlyForYou`. `PUT /agent/restraint` stores it for the caller only; the panel gets a "Read-only for me" switch and the Definition form a Read-only checkbox (DW-1621). `Dispatch`, `Loop`, `Confirm`, `Turn` and `Gate` are unchanged.
+
+**Files.**
+
+- Server: `Kernel/Restraint.cls` (fourth source, precedence), `Kernel/State/Pref.cls` (kind, `GuardedValue`), `Api/Error.cls` (two codes), `Api/Switches.cls` (`RestraintBody`, `HandleRestraintUpdate`), `Api/Router.cls` (route).
+- Client: `shell/read-only-toggle.ts` (new), `shell/panel.ts`, `core/agent-status.ts` (`readOnlyForYou`, `setReadOnlyForYou`), `areas/agent/definition-form.page.ts`, `core/strings.ts`, `styles/_components.scss`; EXPERIENCE.md :289 and :335 in place (981 lines).
+- Gates: `scripts/check-objectscript.py` (`READONLY.USER` tail) and its harness; `ui/angular.json` and `ui/tools/angular-json.test.mjs` (warning 1854kB to 1900kB, Epic 16's hunk byte for byte; this build's initial total 1,857,424 bytes).
+- Tests: `Test/ReadOnlyForYou.cls`, `read-only-toggle.spec.ts`, `read-only-for-you.browser-spec.mjs` (new); legs in `ToolWrite`, `TurnGrounding`, `definition-form.page.spec.ts`, `definitions.browser-spec.mjs`, `agent-status.test.mjs`, `preferences-reset.test.mjs`; rosters in `AgentViolation`, `Restraint`, `SwitchesWire`, `EndpointCoverage`, `ConfigGate`, `panel.spec.ts`; `browser/preferences-reset.mjs` turns the choice off per context.
+
+Contended files: EXPERIENCE.md, `Error.cls`, `Router.cls`, `Pref.cls`, `EndpointCoverage.cls`, `strings.ts`, `panel.ts`, `panel.spec.ts`, `_components.scss`, `ui/angular.json`, `ui/tools/angular-json.test.mjs` (the last two identical to Epic 16's hunk).
+
+**Review.** 14 findings: 2 patched (1 medium: two `AgentStatus` interleaving tests; 1 low: four `mutation:` lines), 0 deferred, 12 rejected with reasons in the triage log. Follow-up review recommended: false (patched: high 0, medium 1, low 1).
+
+**Verification.** Full ObjectScript sweep on `ocupilot-b-ci` after a full-package compile: 306 classes, 2541 tests, 0 failed. `npm test` green (1,498 tools, 1,489 components; 1,500 tools after the patch), `npm run build` clean, `check-objectscript` 0 problems, its harness 135 OK, `lint-docs` clean. Browser, bundle redeployed: `read-only-for-you`, `definitions`, `switches`, `a11y-structural-invariants` green; `panel` failed once on the sign-out leg (sign-in surface still up after 30 s) and passed 12/12 alone. `smoke.sh --container ocupilot-b-ci`: 48/48 passed; the account's choice reads off afterwards.
+
+**Residual risk.** A GET served before a concurrent PUT commits can leave the switch stale until the next read (triage log).

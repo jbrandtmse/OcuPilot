@@ -1,7 +1,8 @@
 /// <p>Story 11.9 over HTTP, driven by real armed turns against the <code>turnprobe</code> row: the
 /// recorded provider request's <code>screen_context</code> result carries the two members the
 /// instance derives (<code>tools</code> and <code>readOnly</code>), <code>readOnly</code> follows
-/// the verdict dispatch enforces under enforced read-only and under a read-only definition, a
+/// the verdict dispatch enforces under enforced read-only, under a read-only definition and under
+/// the user's own read-only choice (Story 14.5), a
 /// request that supplies either member is refused before anything is reserved, and the error
 /// list's rows reach the turn narrowed to its summary fields and capped (AD-11, AD-24, AD-30,
 /// AD-48). Story 11.1: an explain turn carries the screen's read tool and the prompt's explain
@@ -85,6 +86,7 @@ Method OnBeforeOneTest() As %Status
     Do $ClassMethod(..#FIXTURE, "Sweep", $ListBuild(..#TAG))
     Do ##class(OcuPilot.Test.SwitchFixture).Reset(.tHolds)
     Do ##class(OcuPilot.Kernel.State.Sharing).DeleteAllGuarded()
+    Do ##class(OcuPilot.Kernel.State.Pref).GuardedRemove($Parameter(..#FIXTURE, "USERA"), ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY)
     Set tSC = ##class(OcuPilot.Test.Restraint).SetDefinitionReadOnly(..PreparedDefinitionId, 0)
     If $$$ISERR(tSC) Quit tSC
     Quit $ClassMethod(..#FIXTURE, "SetTag", ..PreparedDefinitionId, ..#TAG)
@@ -96,6 +98,7 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).Reset(.tHolds), "the switches are reset")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.Restraint).SetDefinitionReadOnly(..PreparedDefinitionId, 0), "the prepared definition's read-only flag is restored")
     Do ##class(OcuPilot.Kernel.State.Sharing).DeleteAllGuarded()
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedRemove($Parameter(..#FIXTURE, "USERA"), ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY), "the probe principal's read-only choice is removed")
     Quit $$$OK
 }
 
@@ -166,6 +169,19 @@ Method TestAReadOnlyDefinitionReadsTrue()
     Set tPayload = ..RecordedContext("what is running", ..ProcessContext())
     If '$IsObject(tPayload) Quit
     Do $$$AssertEquals(tPayload.readOnly, 1, "readOnly is true under a read-only definition")
+}
+
+/// <p>Story 14.5 (Integration): the probe principal turning read-only on for itself, through
+/// <code>PUT /agent/restraint</code>, makes <code>readOnly</code> true with the switch and the
+/// definition both off.</p>
+Method TestReadOnlyForYouReadsTrue()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).SetSwitches(0, "", 0), "the switches are off")
+    Do ..Call("PUT", "/agent/restraint", "{""readOnly"":true}", .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 200, "the probe principal turns read-only on for itself: " _ tText)
+    Set tPayload = ..RecordedContext("what is running", ..ProcessContext())
+    If '$IsObject(tPayload) Quit
+    Do $$$AssertEquals(tPayload.readOnly, 1, "readOnly is true under read-only for you")
 }
 
 /// <p>A request carrying <code>tools</code> or <code>readOnly</code> is refused 422

@@ -102,6 +102,9 @@ Method OnAfterOneTest() As %Status
     Set tSC = ##class(OcuPilot.Test.SwitchFixture).Reset(.tHolds)
     Do $$$AssertStatusOK(tSC, "every switch row and hold this class wrote is removed")
     Do $$$AssertEquals(tHolds, 0, "and none survives")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedRemove($Username, ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY), "the calling account's read-only choice is removed")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedValue($Username, ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY, .tForYou), "and read back")
+    Do $$$AssertEquals(tForYou, "", "so none survives")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForTurn(..#PROBETURN), "the probe turn's proposals are removed")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(..#PROBETURN), "and its ledger rows")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(..#PROBETURN, .tLeft), "the remainder is counted")
@@ -363,6 +366,24 @@ Method TestAHeldUserIsDroppedByTheRealRestraintVerdict()
     Do $$$AssertStatusOK(tSC, "the dispatcher answers")
     Do $$$AssertEquals(tIsError, 1, "the call is an error result")
     Do $$$AssertEquals(tContent.%Get("code"), ##class(OcuPilot.Api.Error).#AGENTKILLSWITCHUSER, "carrying the verdict's own code")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Count", "restraint"), 1, "the restraint was asked exactly once")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(..#PROBETURN, .tCount), "the turn's proposals are counted")
+    Do $$$AssertEquals(tCount, 0, "and nothing was minted")
+}
+
+/// <p>Story 14.5 (AC1, Integration): a user who turned read-only on for themselves is dropped by the
+/// <b>real</b> verdict before any mint, with the per-user read-only code as the tool result.</p>
+/// <p>Mutation: delete the for-you branch in <method>OcuPilot.Kernel.Restraint.Verdict</method> --
+/// the call mints and this goes red.</p>
+Method TestAUserWithReadOnlyForThemselvesIsDroppedByTheRealVerdict()
+{
+    Do $ClassMethod(..#PROBE, "SetRegistryClass", ..#REGISTRY)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedSetValue($Username, ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY, "1"), "the calling account turns read-only on for itself")
+
+    Set tSC = ..Dispatch({"Name": (..#LIVETARGET), "Description": "probe"}, .tIsError, .tContent)
+    Do $$$AssertStatusOK(tSC, "the dispatcher answers")
+    Do $$$AssertEquals(tIsError, 1, "the call is an error result")
+    Do $$$AssertEquals(tContent.%Get("code"), ##class(OcuPilot.Api.Error).#AGENTREADONLYUSER, "carrying the per-user read-only code")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Count", "restraint"), 1, "the restraint was asked exactly once")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(..#PROBETURN, .tCount), "the turn's proposals are counted")
     Do $$$AssertEquals(tCount, 0, "and nothing was minted")

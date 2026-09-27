@@ -378,7 +378,7 @@ describe('the agent co-pilot panel', () => {
 
     const footer = host.querySelector('.ocu-panel-footer') as HTMLElement;
     expect([...footer.children].map((node) => node.className)).toEqual([
-      'ocu-panel-read-only',
+      'ocu-panel-read-only-row',
       'ocu-panel-warning-slot',
       'ocu-field-label',
       'ocu-panel-composer-row',

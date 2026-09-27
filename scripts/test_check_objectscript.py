@@ -1295,6 +1295,21 @@ class TestRestraintContainmentReach(FixtureTreeCase):
             f"expected the assembled code refused at its tail, got {problems}",
         )
 
+    def test_the_per_user_read_only_tail_is_refused_outside_the_allowed_files(self):
+        # Story 14.5's code, spelled bare: the tail alone is a restraint code, in a slice and in
+        # the client alike.
+        self.write(
+            "src/OcuPilot/Kernel/Agent/Probe.cls",
+            "Class OcuPilot.Kernel.Agent.Probe Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %String\n{\n"
+            '    Quit "READONLY.USER"\n'
+            "}\n\n}\n",
+        )
+        self.write("ui/src/app/shell/panel/refusal.ts", "export const mine = 'READONLY.USER';\n")
+        problems = self.containment_problems()
+        self.assertTrue(any(p.startswith("src/OcuPilot/Kernel/Agent/Probe.cls:6:") for p in problems), f"got {problems}")
+        self.assertTrue(any(p.startswith("ui/src/app/shell/panel/refusal.ts:1:") for p in problems), f"got {problems}")
+
     def test_a_parameter_named_without_its_hash_is_refused(self):
         self.write(
             "src/OcuPilot/Kernel/Agent/Probe.cls",

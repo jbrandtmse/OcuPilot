@@ -79,6 +79,7 @@ import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { TranscriptFollow } from './panel-follow';
 import { PanelResizeHandle } from './panel-resize-handle';
 import { ProposalCard, type ProposalConfirmRequest } from './proposal-card';
+import { ReadOnlyToggle } from './read-only-toggle';
 import { Reply } from './reply';
 import { ToolCallCard } from './tool-call-card';
 
@@ -87,6 +88,9 @@ export const COMPOSER_ID = 'ocu-panel-composer';
 
 /** The id of whichever gate sentence the panel is showing, which is also the controls' reason. */
 const REASON_ID = 'ocu-panel-reason';
+
+/** The footer's read-only line's id, which describes the "Read-only for me" switch beside it. */
+const READ_ONLY_LINE_ID = 'ocu-panel-read-only-line';
 
 /** The not-marked banner's id, in the slot EXPERIENCE.md's banner order already reserves for it. */
 const NOT_MARKED_ID = 'ocu-panel-not-marked';
@@ -234,7 +238,7 @@ interface PanelTurnView {
 @Component({
   selector: 'app-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip, Reply, CodeBlock],
+  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip, Reply, CodeBlock, ReadOnlyToggle],
   template: `<aside class="ocu-panel" [class.ocu-panel-full-screen]="fullScreen" [attr.aria-label]="panelName">
     @if (docked) {
       <app-panel-resize-handle />
@@ -521,7 +525,10 @@ interface PanelTurnView {
     </div>
 
     <div class="ocu-panel-footer">
-      <p class="ocu-panel-read-only" [class.ocu-panel-read-only-on]="readOnlyOn">{{ readOnlyLine }}</p>
+      <div class="ocu-panel-read-only-row">
+        <p class="ocu-panel-read-only" [id]="readOnlyLineId" [class.ocu-panel-read-only-on]="readOnlyOn">{{ readOnlyLine }}</p>
+        <app-read-only-toggle [describedBy]="readOnlyLineId" />
+      </div>
       <div class="ocu-panel-warning-slot">
         @if (secretWarningVisible) {
           <p class="ocu-banner ocu-banner-warning ocu-panel-warning" role="status">
@@ -834,6 +841,9 @@ export class Panel {
     this.generation();
     return readOnlyFooterLine(this.agentStatus.restraint());
   }
+
+  /** The footer line's id, which the "Read-only for me" switch beside it is described by. */
+  protected readonly readOnlyLineId = READ_ONLY_LINE_ID;
 
   /** Whether a read-only state applies, which turns the footer line restrained. */
   protected get readOnlyOn(): boolean {

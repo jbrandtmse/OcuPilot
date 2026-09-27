@@ -3513,6 +3513,15 @@ app-data-table {
   color: var(--ocu-restrained);
 }
 
+// The read-only line and, beside it, the per-user "Read-only for me" switch (Story 14.5): one row,
+// the line taking the width and the switch at its trailing end.
+.ocu-panel-read-only-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ocu-space-2);
+}
+
 // The footer behind a 1px `{colors.outline-variant}` top edge (DESIGN.md `:1110`).
 .ocu-panel-footer {
   display: flex;
@@ -3668,7 +3677,8 @@ app-data-table {
   color: var(--ocu-egress-warning);
 }
 
-.ocu-context-chip-toggle {
+.ocu-context-chip-toggle,
+.ocu-read-only-toggle {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -3676,7 +3686,8 @@ app-data-table {
 
 // A native checkbox styled as a Material-shaped switch (track and thumb): `appearance: none`
 // drops the native box, and the track and thumb are drawn on the element and a `::before`.
-.ocu-context-chip-switch {
+.ocu-context-chip-switch,
+.ocu-read-only-switch {
   appearance: none;
   position: relative;
   flex: 0 0 auto;
@@ -3689,7 +3700,8 @@ app-data-table {
   cursor: pointer;
 }
 
-.ocu-context-chip-switch::before {
+.ocu-context-chip-switch::before,
+.ocu-read-only-switch::before {
   position: absolute;
   top: 1px;
   left: 1px;
@@ -3701,24 +3713,34 @@ app-data-table {
   content: '';
 }
 
-.ocu-context-chip-switch:checked {
+.ocu-context-chip-switch:checked,
+.ocu-read-only-switch:checked {
   border-color: var(--ocu-secondary);
   background: var(--ocu-secondary);
 }
 
-.ocu-context-chip-switch:checked::before {
+.ocu-context-chip-switch:checked::before,
+.ocu-read-only-switch:checked::before {
   background: var(--ocu-on-secondary);
   transform: translateX(14px);
 }
 
-.ocu-context-chip-switch:focus-visible {
+.ocu-context-chip-switch:focus-visible,
+.ocu-read-only-switch:focus-visible {
   @include ocu-focus-ring;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ocu-context-chip-switch::before {
+  .ocu-context-chip-switch::before,
+  .ocu-read-only-switch::before {
     transition: none;
   }
+}
+
+// Under enforced read-only the per-user switch reads on and a press changes nothing; it stays in
+// the tab order, described by the footer line that says why.
+.ocu-read-only-switch[aria-disabled='true'] {
+  cursor: not-allowed;
 }
 
 // "Explain this screen" (Story 11.1): a button-text beneath the chip, inset by the chip's own

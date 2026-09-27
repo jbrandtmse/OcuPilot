@@ -41,8 +41,12 @@ const ADVANCED_FIELDS: readonly string[] = [
   'temperature',
   'maxIterationsPerTurn',
   'systemPromptOverride',
+  'readOnly',
   'retentionDays',
 ];
+
+/** The read-only checkbox's id, the one control whose id is not its wire name's. */
+const READ_ONLY_CONTROL_ID = 'ocu-definition-read-only';
 
 /** The application root, which the first-save offer goes to. */
 const HOME_ROUTE = '';
@@ -434,6 +438,23 @@ interface FieldView {
               </div>
               @if (promptField.invalid) {
                 <p class="ocu-form-error" [id]="promptField.id + '-reason'">{{ promptField.reason }}</p>
+              }
+            </div>
+
+            <div class="ocu-field">
+              <label class="ocu-field-checkbox">
+                <input
+                  type="checkbox"
+                  [id]="readOnlyField.id"
+                  [checked]="readOnlyFlag"
+                  [attr.aria-invalid]="readOnlyField.invalid"
+                  [attr.aria-describedby]="readOnlyField.describedBy"
+                  (change)="onReadOnly($event)"
+                />
+                <span>{{ STRINGS.agentDefinitionFieldReadOnly }}</span>
+              </label>
+              @if (readOnlyField.invalid) {
+                <p class="ocu-form-error" [id]="readOnlyField.id + '-reason'">{{ readOnlyField.reason }}</p>
               }
             </div>
 
@@ -948,6 +969,16 @@ export class DefinitionFormPage {
     return this.fieldView('systemPromptOverride');
   }
 
+  protected get readOnlyField(): FieldView {
+    return this.fieldView('readOnly');
+  }
+
+  /** The definition's own read-only flag (DW-1621), which the verdict reads as its fourth source. */
+  protected get readOnlyFlag(): boolean {
+    this.generation();
+    return this.store.flag('readOnly');
+  }
+
   protected get retentionField(): FieldView {
     return this.fieldView('retentionDays');
   }
@@ -989,6 +1020,12 @@ export class DefinitionFormPage {
       return;
     }
     this.store.setValue('credType', this.store.admissibleCredType(this.heldCredType));
+  }
+
+  protected onReadOnly(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    this.store.setFlag('readOnly', target.checked);
   }
 
   protected onHttpAcknowledge(event: Event): void {
@@ -1159,6 +1196,7 @@ export class DefinitionFormPage {
   }
 
   private controlId(field: string): string {
+    if (field === 'readOnly') return READ_ONLY_CONTROL_ID;
     return `ocu-definition-${field}`;
   }
 

@@ -17,9 +17,9 @@
 /// <parameter>KINDFAVORITE</parameter>, <parameter>KINDRECENT</parameter> -- is a row that exists
 /// or does not, and ignores <property>Value</property>. A value kind --
 /// <parameter>KINDSCREENVIEW</parameter>, <parameter>KINDREFRESH</parameter>,
-/// <parameter>KINDSHELL</parameter> -- keeps exactly one row per key and carries what the user
-/// chose in <property>Value</property> (Story 15.5).</p>
-/// <p><b>The three value kinds are never trimmed.</b> Each holds one row per key rather than a
+/// <parameter>KINDSHELL</parameter>, <parameter>KINDRESTRAINT</parameter> -- keeps exactly one row
+/// per key and carries what the user chose in <property>Value</property> (Story 15.5).</p>
+/// <p><b>The value kinds are never trimmed.</b> Each holds one row per key rather than a
 /// bounded list, so <method>GuardedTrim</method>'s ordering warning does not reach them and
 /// nothing calls it for them.</p>
 /// <p>Named scalars only -- no <code>list Of</code> -- per the persistent-storage rule, and no
@@ -101,6 +101,20 @@ Parameter THEMELIGHT As %String = "light";
 
 /// <p>The <parameter>SHELLTHEME</parameter> value for the dark theme.</p>
 Parameter THEMEDARK As %String = "dark";
+
+/// <p>The <property>Kind</property> value for a restraint the user put on the agent for
+/// themselves (Story 14.5). Written only by
+/// <method>OcuPilot.Api.Switches.HandleRestraintUpdate</method> and read only by
+/// <method>OcuPilot.Kernel.Restraint.Verdict</method>; <class>OcuPilot.Api.Preferences</class>
+/// neither accepts nor lists it.</p>
+/// <p>It did not move <parameter>OcuPilot.Kernel.State.Base.SCHEMAVERSION</parameter>: it is a new
+/// <property>Kind</property> value, no row written before it holds it, and a user with no row reads
+/// the default, off.</p>
+Parameter KINDRESTRAINT As %String = "restraint";
+
+/// <p>The <parameter>KINDRESTRAINT</parameter> name holding the user's read-only choice, as
+/// <code>1</code> or <code>0</code>. No row, or any other value, reads as off.</p>
+Parameter RESTRAINTREADONLY As %String = "readOnly";
 
 /// <p>The longest <property>Value</property> this store holds, equal to that property's own
 /// <code>MAXLEN</code>, which a property cannot read from a parameter.
@@ -317,6 +331,28 @@ ClassMethod GuardedSetValue(pUserName As %String, pKind As %String, pName As %St
         Set tSC = ..GuardedSaveIfCurrent(tRow, tExpected)
         Set tRow = ""
     } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p><var>pUserName</var>'s <property>Value</property> at <code>(pKind, pName)</code> in
+/// <var>pValue</var>, or <code>""</code> when no row holds one.</p>
+/// <p><b>Read on every call.</b> The row's reference is dropped before this returns, so the next
+/// call opens it afresh rather than being handed the copy still in memory.</p>
+ClassMethod GuardedValue(pUserName As %String, pKind As %String, pName As %String, Output pValue As %String) As %Status
+{
+    Set pValue = ""
+    Set tSC = $$$OK
+    Try {
+        If pUserName = "" Quit
+        Set tSC = ..OpenByKey(pUserName, pKind, pName, .tRow)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tRow) Quit
+        Set pValue = ..Text(tRow.Value)
+        Set tRow = ""
+    } Catch ex {
+        Set pValue = ""
         Set tSC = ex.AsStatus()
     }
     Quit tSC

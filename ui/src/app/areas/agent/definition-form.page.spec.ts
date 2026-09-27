@@ -267,6 +267,39 @@ describe('the Definition form', () => {
     );
   });
 
+  it('DW-1621: Advanced carries a Read-only checkbox before Retention, bound to the definition\'s readOnly', async () => {
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') return ok(definition({ readOnly: true }));
+      return ok(definition({ readOnly: false }));
+    };
+    const { fixture, host, calls } = await mount(answer, '/agent/definitions/edit/7');
+    (host.querySelector('.ocu-form-disclosure') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const box = host.querySelector('#ocu-definition-read-only') as HTMLInputElement;
+    expect(box).not.toBeNull();
+    expect(box.type).toBe('checkbox');
+    expect(box.closest('label')?.textContent?.trim()).toBe(STRINGS.agentDefinitionFieldReadOnly);
+    expect(box.checked).toBe(false);
+    // Inside Advanced, before Retention.
+    const advanced = host.querySelector('#ocu-definition-advanced') as HTMLElement;
+    const order = [...advanced.querySelectorAll('input, textarea')].map((node) => node.id);
+    expect(order.indexOf('ocu-definition-read-only')).toBe(order.indexOf('ocu-definition-retentionDays') - 1);
+
+    // Mutation (Rule 19): unbind the checkbox's `(change)` -> the PUT carries readOnly false and
+    // this goes red.
+    box.checked = true;
+    box.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+    const put = calls.find((call) => call.method === 'PUT');
+    expect(put).toBeDefined();
+    expect(JSON.parse(put!.body).readOnly).toBe(true);
+    expect((host.querySelector('#ocu-definition-read-only') as HTMLInputElement).checked).toBe(true);
+  });
+
   it('DW-340: the key field is masked and empty, and its reveal toggle is labelled', async () => {
     const { fixture, host } = await mount(catalogOnly);
     const key = host.querySelector('#ocu-definition-apiKey') as HTMLInputElement;

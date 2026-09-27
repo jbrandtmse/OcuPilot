@@ -24,9 +24,10 @@
 /// <p><b>A read that fails blocks.</b> <method>Verdict</method> answers <var>pVerdict</var>
 /// <code>blocked</code> 1 alongside the error <class>%Status</class>: a caller that cannot learn
 /// whether the agent is restrained must not write.</p>
-/// <p><b>Story 14.5's per-user read-only becomes a fourth source read inside this method</b> -- one
-/// more <code>If</code> and one more footer key (<code>statusReadOnlyForYou</code>, already
-/// published) -- so the three call sites never change and no second check is possible.</p>
+/// <p><b>Four sources, read in one method.</b> The instance switches, the per-user hold, the
+/// user's own read-only choice (Story 14.5, <parameter>OcuPilot.Kernel.State.Pref.KINDRESTRAINT</parameter>)
+/// and the definition in force. Every caller reaches each source through <method>Verdict</method>,
+/// so a source added here reaches them all and no second check exists.</p>
 Class OcuPilot.Kernel.Restraint Extends %RegisteredObject
 {
 
@@ -51,6 +52,12 @@ Parameter FOOTERKEYENFORCED = "statusReadOnlyEnforced";
 /// <p>The client string key that line renders when the definition in force is itself read-only.</p>
 Parameter FOOTERKEYDEFINITION = "statusReadOnlyByDefinition";
 
+/// <p>The client string key that line renders when the acting user turned read-only on for
+/// themselves (Story 14.5). It wins over <parameter>FOOTERKEYDEFINITION</parameter> and loses to
+/// <parameter>FOOTERKEYENFORCED</parameter>, the order the published footer row lists them in
+/// <i>(inference)</i>.</p>
+Parameter FOOTERKEYFORYOU = "statusReadOnlyForYou";
+
 /// <p>Whether a write may happen for <var>pUserName</var> under the definition
 /// <var>pDefinitionId</var>, and why not.</p>
 /// <p><var>pVerdict</var> comes back subscripted by:</p>
@@ -66,11 +73,14 @@ Parameter FOOTERKEYDEFINITION = "statusReadOnlyByDefinition";
 /// <li><code>killSwitchReason</code> -- the operator's own text, verbatim, or <code>""</code>.</li>
 /// <li><code>enforcedReadOnly</code> -- 1 while the instance switch is on, which is the one
 /// read-only source that also carries a banner.</li>
+/// <li><code>readOnlyForYou</code> -- 1 while <var>pUserName</var>'s own stored choice is on,
+/// whether or not another source wins.</li>
 /// </ul>
 /// <p><b>Precedence is broadest first.</b> The kill switch outranks read-only, because a switched-off
 /// agent does not read either; within the kill switch, the instance outranks the user; within
-/// read-only, enforced outranks the definition. Exactly one <code>code</code> and exactly one
-/// <code>footerKey</code> come back, so the panel cannot say two things at once.</p>
+/// read-only, enforced outranks the user's own choice, which outranks the definition. Exactly one
+/// <code>code</code> and exactly one <code>footerKey</code> come back, so the panel cannot say two
+/// things at once.</p>
 /// <p><b>Caller contract:</b> <var>pDefinitionId</var> is the definition already resolved for this
 /// turn (<method>OcuPilot.Kernel.State.Agent.ResolveDefault</method>); <code>""</code> means no
 /// definition is in force, which contributes no read-only source of its own. Check
@@ -87,18 +97,24 @@ ClassMethod Verdict(pUserName As %String, pDefinitionId As %String, Output pVerd
     Set pVerdict("killSwitchAudience") = ""
     Set pVerdict("killSwitchReason") = ""
     Set pVerdict("enforcedReadOnly") = 0
+    Set pVerdict("readOnlyForYou") = 0
     Set tSC = $$$OK
     Try {
         Set tSC = ##class(OcuPilot.Kernel.State.Switch).Resolve(.tSwitches)
         If $$$ISERR(tSC) Quit
         Set tSC = ##class(OcuPilot.Kernel.State.Hold).GuardedForUser(pUserName, .tHeld, .tHoldReason)
         If $$$ISERR(tSC) Quit
+        Set tSC = ..ReadOnlyForYou(pUserName, .tForYou)
+        If $$$ISERR(tSC) Quit
         Set tSC = ..DefinitionReadOnly(pDefinitionId, .tByDefinition)
         If $$$ISERR(tSC) Quit
 
         Set pVerdict("enforcedReadOnly") = ''tSwitches("enforcedReadOnly")
+        Set pVerdict("readOnlyForYou") = tForYou
         If pVerdict("enforcedReadOnly") {
             Set pVerdict("footerKey") = ..#FOOTERKEYENFORCED
+        } ElseIf tForYou {
+            Set pVerdict("footerKey") = ..#FOOTERKEYFORYOU
         } ElseIf tByDefinition {
             Set pVerdict("footerKey") = ..#FOOTERKEYDEFINITION
         }
@@ -120,6 +136,8 @@ ClassMethod Verdict(pUserName As %String, pDefinitionId As %String, Output pVerd
             Do ..Refuse(.pVerdict, ##class(OcuPilot.Api.Error).#AGENTKILLSWITCHUSER)
         } ElseIf pVerdict("enforcedReadOnly") {
             Do ..Refuse(.pVerdict, ##class(OcuPilot.Api.Error).#AGENTREADONLYENFORCED)
+        } ElseIf tForYou {
+            Do ..Refuse(.pVerdict, ##class(OcuPilot.Api.Error).#AGENTREADONLYUSER)
         } ElseIf tByDefinition {
             Do ..Refuse(.pVerdict, ##class(OcuPilot.Api.Error).#AGENTREADONLYDEFINITION)
         }
@@ -139,6 +157,19 @@ ClassMethod Refuse(ByRef pVerdict, pCode As %String) [ Private ]
     Set pVerdict("blocked") = 1
     Set pVerdict("code") = pCode
     Set pVerdict("reason") = ##class(OcuPilot.Api.Error).ReasonForRestraint(pCode)
+}
+
+/// <p>Whether <var>pUserName</var> turned read-only on for themselves: their
+/// <parameter>OcuPilot.Kernel.State.Pref.KINDRESTRAINT</parameter> row reads <code>1</code>. No row,
+/// and any other value, is off. <method>OcuPilot.Kernel.State.Pref.GuardedValue</method> holds no
+/// reference across the call, so the next verdict re-reads the row.</p>
+ClassMethod ReadOnlyForYou(pUserName As %String, Output pOn As %Boolean) As %Status [ Private ]
+{
+    Set pOn = 0
+    Set tSC = ##class(OcuPilot.Kernel.State.Pref).GuardedValue(pUserName, ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY, .tValue)
+    If $$$ISERR(tSC) Quit tSC
+    Set pOn = (tValue = "1")
+    Quit $$$OK
 }
 
 /// <p>Whether the definition <var>pDefinitionId</var> is itself restrained to reads

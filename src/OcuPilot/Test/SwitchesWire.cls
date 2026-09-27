@@ -1,4 +1,4 @@
-/// <p>The five switch routes over HTTP -- status, content type and body shape (Conventions, Tests)
+/// <p>The switch routes over HTTP -- status, content type and body shape (Conventions, Tests)
 /// -- through the shipped router rather than by calling the handler in process.</p>
 /// <p><b>The caller is the suite's own privileged account</b>, so these assert what an
 /// administrator is served. The refusals a principal holding no OcuPilot administrative resource
@@ -409,7 +409,7 @@ Method TestTheRestraintReadAnswersTheCallersOwnVerdict()
     }
     ; `writesMarked` is Story 5.6's and is not part of the verdict: marking is not a restraint
     ; (AD-30), and only its false arm is ever rendered (AD-15).
-    Do $$$AssertEquals(tKeys, "blocked,code,reason,footerKey,killSwitch,killSwitchAudience,killSwitchReason,enforcedReadOnly,writesMarked", "the nine keys the panel reads")
+    Do $$$AssertEquals(tKeys, "blocked,code,reason,footerKey,killSwitch,killSwitchAudience,killSwitchReason,enforcedReadOnly,readOnlyForYou,writesMarked", "the ten keys the panel reads")
     Do $$$AssertEquals(tAnswer.blocked, 0, "a clean instance restrains nothing")
     Do $$$AssertEquals(tAnswer.%GetTypeOf("writesMarked"), "boolean", "and marking arrives as a JSON boolean")
     Do $$$AssertEquals(tAnswer.writesMarked, 1, "which an installed instance answers true, so no banner is drawn over a healthy one")
@@ -575,7 +575,7 @@ Method TestTheSwitchRoutesAreDeclaredInTheShippedRouter()
     If '$IsObject(tXData) Quit
     Do tXData.Data.Rewind()
     Set tMap = tXData.Data.Read(32000)
-    For tRoute = "<Route Url=""/agent/switches/holds/:id"" Method=""DELETE"" Call=""AgentSwitchHoldDelete""/>", "<Route Url=""/agent/switches/holds"" Method=""POST"" Call=""AgentSwitchHoldCreate""/>", "<Route Url=""/agent/switches"" Method=""GET"" Call=""AgentSwitchesRead""/>", "<Route Url=""/agent/switches"" Method=""PUT"" Call=""AgentSwitchesUpdate""/>", "<Route Url=""/agent/restraint"" Method=""GET"" Call=""AgentRestraint""/>" {
+    For tRoute = "<Route Url=""/agent/switches/holds/:id"" Method=""DELETE"" Call=""AgentSwitchHoldDelete""/>", "<Route Url=""/agent/switches/holds"" Method=""POST"" Call=""AgentSwitchHoldCreate""/>", "<Route Url=""/agent/switches"" Method=""GET"" Call=""AgentSwitchesRead""/>", "<Route Url=""/agent/switches"" Method=""PUT"" Call=""AgentSwitchesUpdate""/>", "<Route Url=""/agent/restraint"" Method=""GET"" Call=""AgentRestraint""/>", "<Route Url=""/agent/restraint"" Method=""PUT"" Call=""AgentRestraintUpdate""/>" {
         Do $$$AssertTrue(tMap [ tRoute, "the router declares " _ tRoute)
     }
 }

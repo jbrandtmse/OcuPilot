@@ -71,6 +71,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/switches" Method="GET" Call="AgentSwitchesRead"/>
   <Route Url="/agent/switches" Method="PUT" Call="AgentSwitchesUpdate"/>
   <Route Url="/agent/restraint" Method="GET" Call="AgentRestraint"/>
+  <Route Url="/agent/restraint" Method="PUT" Call="AgentRestraintUpdate"/>
   <Route Url="/agent/ledger" Method="GET" Call="AgentLedger"/>
   <Route Url="/agent/context" Method="GET" Call="AgentContextRead"/>
   <Route Url="/agent/context" Method="PUT" Call="AgentContextUpdate"/>
@@ -212,6 +213,14 @@ ClassMethod AgentSwitchesUpdate() As %Status
 ClassMethod AgentRestraint() As %Status
 {
     Quit ##class(OcuPilot.Api.Switches).HandleRestraint()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /agent/restraint</code> (Story 14.5) -- see
+/// <method>AgentSwitchHoldDelete</method>. Gates on nothing beyond this class, like
+/// <method>AgentRestraint</method>: it stores only the calling user's own read-only choice.</p>
+ClassMethod AgentRestraintUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Switches).HandleRestraintUpdate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /agent/ledger</code> (Story 4.9): delegates to

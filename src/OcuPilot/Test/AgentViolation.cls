@@ -56,8 +56,8 @@ Method TestEveryViolationCodeHasAPublishedSentence()
     Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForViolation("AGENT.NO.SUCH.CODE"), "", "and a code the vocabulary does not hold carries none, which is how a caller tells 'no sentence' from 'an empty one'")
 }
 
-/// <p><b>The vocabulary is every <code>AGENT*</code> code the class declares</b>, less the four
-/// that are envelope-level and the four restraint codes
+/// <p><b>The vocabulary is every <code>AGENT*</code> code the class declares</b>, less those
+/// that are envelope-level and the five restraint codes
 /// <method>OcuPilot.Kernel.Restraint.Verdict</method> answers with, and
 /// <method>OcuPilot.Api.Error.ViolationCodes</method> holds exactly that set.</p>
 /// <p>Without this, the sentence check above is a roster checking itself: its population is
@@ -71,11 +71,11 @@ Method TestEveryViolationCodeHasAPublishedSentence()
 /// sentence check above stays green.</p>
 Method TestViolationCodesHoldsEveryDeclaredFieldLevelCode()
 {
-    ; The AGENT codes that do not land on a field: four that ride on the envelope, and the four
+    ; The AGENT codes that do not land on a field: those that ride on the envelope, and the five
     ; restraint codes, whose sentences live in ReasonForRestraint and are asserted by
     ; OcuPilot.Test.Restraint. Named here, because "which codes are field-level" is the one fact
     ; this check cannot derive.
-    Set tEnvelope = $ListBuild("AGENTVALIDATION", "AGENTNOTFOUND", "AGENTBADBODY", "AGENTHOLDNOTFOUND", "AGENTREADONLYENFORCED", "AGENTREADONLYDEFINITION", "AGENTKILLSWITCHGLOBAL", "AGENTKILLSWITCHUSER", "AGENTCONTEXTSHARE")
+    Set tEnvelope = $ListBuild("AGENTVALIDATION", "AGENTNOTFOUND", "AGENTBADBODY", "AGENTHOLDNOTFOUND", "AGENTREADONLYENFORCED", "AGENTREADONLYDEFINITION", "AGENTREADONLYUSER", "AGENTKILLSWITCHGLOBAL", "AGENTKILLSWITCHUSER", "AGENTCONTEXTSHARE", "AGENTRESTRAINTBODY")
     Set tDeclared = ##class(OcuPilot.Api.Error).ViolationCodes()
     Set tFound = 0
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.CompiledParameter WHERE parent = ?", "OcuPilot.Api.Error")

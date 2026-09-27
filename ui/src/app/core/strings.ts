@@ -228,6 +228,8 @@ export const STRINGS = {
   statusReadOnlyForYou: 'Read-only: on \u2014 for you',
   /** EXPERIENCE.md:289 */
   statusReadOnlyByDefinition: 'Read-only: on \u2014 by the definition',
+  /** EXPERIENCE.md:289 */
+  agentReadOnlyForYouLabel: 'Read-only for me',
   /** EXPERIENCE.md:290 */
   tableChangeToastLink: 'Open in <screen>',
   /** EXPERIENCE.md:291 */
@@ -564,6 +566,8 @@ export const STRINGS = {
   agentDefinitionFieldRetention: 'Retention',
   /** EXPERIENCE.md:335 */
   actionCreate: 'Create',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionFieldReadOnly: 'Read-only',
   /** EXPERIENCE.md:336 */
   agentDefinitionShowKey: 'Show key',
   /** EXPERIENCE.md:336 */
