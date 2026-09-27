@@ -752,6 +752,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner plan, 2026-09-26 (voting week, Epic 18).** Epic 18 joins the voting-week run on slot B once Epic 14's stories are done, in its story order; Story 18.1 stays where it was placed (ahead of Story 16.4) unless slot B reaches Epic 18 first. Stage 2 builds against the pinned 2026.2 contest image, and its 2027.1 re-derivation waits until 2027.1 ships. Its destructive keys (Story 18.4) follow Story 14.2's baseline rule, so they default to disabled.
 
+**Owner survey, 2026-09-26 (evening).** Two new entries surveyed. Story 16.23 (a CSV download on every table) joins the voting week after Story 16.22; Story 16.21 gains an Operations group of findings; Story 16.18 already carries live global references and disk reads per second, so nothing is added there.
+
 **Owner triage, 2026-09-25 (logo), high priority.** The header draws the reversed lockup, a white wordmark on a transparent cut-out whose anti-aliased edges fringe against the navy chrome. Story 15.10 draws the navy-wordmark lockup on a white rounded tile instead, as the demo landing page does, and amends DESIGN.md at origin. It runs alone on slot B, free since Epic 12 merged, and the submission cut waits for it.
 
 **Owner triage, 2026-09-25 (model), high priority.** Anthropic has released Claude Opus 5.5, and the public demo already runs on it, verified by a connection test and a tool-calling turn. Story 10.7 makes `claude-opus-5-5` the default model of a new Anthropic definition, so a judge's fresh install starts on it. It runs on the first slot to free, and the submission cut waits for it.
@@ -6577,6 +6579,14 @@ So that I can fix them before they matter, with the same review and confirmation
 - **When** it renders
 - **Then** it shows a Security findings panel that checks, at least: web applications reachable without signing in that hold database or administrative roles; the monitoring API open without authentication; accounts holding `%All`; X.509 certificates expiring within 30 days or expired; and auditing switched off - each finding naming the object and why it matters, and the panel saying plainly when there is nothing to report.
 
+- **Given** Home's findings panel [AMENDED 2026-09-26, owner: an Operations group of findings added]
+- **When** it renders
+- **Then** it has a second group, Operations, that checks at least: a database that is dismounted, a database near its maximum size, the Task Manager suspended or stopped, and a task suspended after an error - each naming the object, why it matters and what to do.
+
+- **Given** an Operations finding
+- **When** a write tool can fix it
+- **Then** Fix it proposes that fix like any other finding's - resuming a task suspended after an error today; mounting a database and resuming the Task Manager once Stories 18.4 and 16.11 ship those writes - and until then the finding links to the screen that handles it.
+
 - **Given** a finding with a fix a write tool can make
 - **When** the person chooses **Fix it**
 - **Then** the agent opens the affected screen and proposes the change as an ordinary proposal - comparison, privilege line, Confirm - and nothing changes until it is confirmed; a finding with no automatic fix, such as an expiring certificate, links to the screen that handles it instead.
@@ -6608,6 +6618,36 @@ So that the safety is something I can read, not something I have to take on fait
 - **Given** the page is generated from the enforced rules
 - **When** a rule is added or changed
 - **Then** the page follows without a second edit, and a test fails if a prohibited action has no reason text to show.
+
+### Story 16.23: Any table, downloaded as CSV
+
+As an administrator taking a list somewhere else,
+I want to download what a table shows as a CSV file,
+So that I can sort, share or keep it in a spreadsheet without copying rows by hand.
+
+**Owner survey, 2026-09-26.** IRISOperationsPortal offers a CSV download on every table; OcuPilot's data table has none.
+
+**Acceptance Criteria:**
+
+- **Given** any screen built on the data table
+- **When** the person chooses **Download CSV** in its toolbar
+- **Then** the browser saves the rows the table holds, after its filter and in its sort order, with its visible columns in their order and a header row of their labels, as UTF-8, named after the screen and the time - built in the browser from the rows already read, with no new server route.
+
+- **Given** a cell whose text starts with `=`, `+`, `-`, `@`, a tab or a carriage return
+- **When** it is written
+- **Then** it is prefixed so a spreadsheet shows it as text rather than evaluating it as a formula.
+
+- **Given** a screen that withholds fields - secrets, or the variables IRIS keeps with an application error
+- **When** it is downloaded
+- **Then** the file holds only what the table shows, never a field the screen does not display.
+
+- **Given** a read that stopped at its row limit
+- **When** the table offers the download
+- **Then** it says the file holds the loaded rows only, in the words the table already uses for truncation.
+
+- **Given** the strings the download needs
+- **When** this story lands
+- **Then** they are added to the canonical Fixed strings table and the client string source in the same change.
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
