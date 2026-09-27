@@ -217,3 +217,6 @@
 2026-09-27T19:11:03Z	Story 16.8	committed	sha=d3869d3c submodules= ci=pending run=36343402272 amendments=ARCHITECTURE-SPINE.md:AD-21_fifth_case,LogSourcePort_scope,AD-29_ExecDirectNoPriv_note,Deferred_DW-1710_decided;EXPERIENCE.md:2_fixed-strings_rows supersedes=36340925008
 2026-09-27T20:01:58Z	Story 16.8	ci_resolved	story=16.8 run=36343402272 result=success resolved_at=story_boundary head=d3869d3c
 2026-09-27T20:01:58Z	Story 16.8	story_boundary	story=16.8 head=d3869d3c ci_run=36343402272 ci=success note=includes_16.1,16.17-16.23,16.8;ReadTool_count_126_option_A
+2026-09-27T20:03:30Z	Epic 16	spine_updated	ad=AD-8(area_coverage_own_pairs) reason=decision_sheet(DW-1755_option_B) by=runner story=16-8-the-six-secondary-log-viewers lint=ok(pre-existing_low_placeholder_AD-7)
+2026-09-27T20:03:30Z	Story 16.8	rework_opened	cycle_iteration=2 iteration=1 trigger=cap_override items=DW-1755 scope_baseline=5054e787 note=merge-gate_decision_after_review;orchestrator_directed_rework_under_the_freeze
+2026-09-27T20:03:30Z	Story 16.8	stage_spawned	stage=implement spawn_at=2026-09-27T20:03:30Z model=opus agent_name=16-8-the-six-secondary-log-viewers-implement-2 cycle_iteration=2

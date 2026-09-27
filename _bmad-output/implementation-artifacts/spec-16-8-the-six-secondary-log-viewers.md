@@ -2,7 +2,7 @@
 title: 'Story 16.8: The six secondary log viewers'
 type: 'feature'
 created: '2026-09-27'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '4ace0f45eaa80442913cad545a475af0b3b19409'
 baseline_commit: '4ace0f45eaa80442913cad545a475af0b3b19409'
 review_loop_iteration: 0
@@ -220,7 +220,13 @@ Rejected:
 - `low`: spec counts and citations — spec edits.
 - `false`: an xDBC `<PROTECT>` on the cache database (a `%DB_USER`-only principal read the store, measured); `Trace` renders raw `-1` (`log-line.ts` maps -1 to the debug word); the per-namespace database pair is dead (it restates `Payload`'s filter; no harm).
 
+### Rework (decision, iteration 1)
+
+- [ ] [Decision] DW-1755, decided at the merge gate (option B; AD-8 amended 2026-09-27, "An area's pair set covers its screens' pairs, except pairs a screen declares its own"): restore the Logs area's pair set in `src/OcuPilot/Screen/Area.cls` to Release 1's (`%Admin_Operate:USE`, `%Admin_Secure:USE`, `%DB_IRISSYS:READ`), and let a descriptor declare pairs beyond its area's as its own so `Screen.Registry.AreaCoverageProblem` leaves them out of the coverage check. The event-log descriptor declares `%Ens_EventLog:USE` and the analytics descriptor `%DeepSee_Portal:USE` as their own; each screen is still hidden from the side bar and command box and refused on its route and read tool for a caller without its pair (the existing per-screen gate). Keep the declaration validated identically wherever descriptors are validated (`Screen/Registry.cls` and, if it mirrors privilege pairs, `ui/tools/screen-mirror.mjs`), with a refusal for an own pair the screen's privilege set does not contain. Update `Area.cls`'s doc paragraph to match (delete the sentence it no longer holds). Tests: (a) a registry leg that an own pair passes coverage and an undeclared extra pair is still refused; (b) an integration leg on `ocupilot-ci` with a least-privileged principal holding exactly the Release 1 Logs pairs (plus what those screens need, as the existing Logs tests use) and **not** `%Ens_EventLog:USE`: the Logs area reads allowed, messages.log and alerts.log read allowed, and only the event-log screen and its read tool are refused naming `%Ens_EventLog:USE`; remove the principal after. Pin (b) with a Rule 19 mutation (put `%Ens_EventLog:USE` back in the area set -> the leg reds) and write its `mutation:` line. Re-run `WireSecurityRead` (its AUDITUSER expectation changed with the area set), `Descriptor`, `Wire`, `ScreenRead`, `EndpointCoverage`, `SurfaceCoverage`, `LogSecondary*` and the `secondary-logs` browser spec, one at a time.
+
 ## Spec Change Log
+
+- 2026-09-27, lead: re-opened for one rework iteration on the merge-gate decision on DW-1755 (option B): the Logs area keeps its Release 1 pair set; the event-log and analytics screens own their extra pairs (AD-8 amended).
 
 - 2026-09-27, lead, spec gate: orchestrator ruling (option A) on the contended `Test/ReadTool.cls:93-94,112` hunks: edit them on this branch for this story's six tools (count 126 here); the orchestrator reconciles with Story 14.4 at the second merge (127, name lists merged). The AD-21 fifth named case and the `LogSourcePort` description were written into the spine as recommended. Status reset to ready-for-dev.
 
