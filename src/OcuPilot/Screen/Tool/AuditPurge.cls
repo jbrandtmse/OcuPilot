@@ -2,10 +2,12 @@
 /// instance dated before a cut-off day's midnight, instance time. The Auditing screen reaches it
 /// through its <code>purge</code> row action, with the cut-off as the action's one value (AD-56
 /// (ii)).</p>
-/// <p><b>It is unadvertised</b> (<parameter>ADVERTISED</parameter> 0, AD-53's named case): a purge
-/// erases the marker trail of the agent's own writes, so no provider request, dispatch lookup or
-/// screen context sees it until Epic 14 registers it behind a policy key disabled by default
-/// (AD-22). Its screen's action route resolves it, and nothing else does.</p>
+/// <p><b>It is advertised behind a governance key disabled by default</b> (AD-22, AD-53): a purge
+/// erases the marker trail of the agent's own writes, so the baseline lists its key
+/// <code>false</code> and the agent's call answers <code>GOVERNANCE.DISABLED</code> until an
+/// administrator enables it on the Governance policy screen. A proposal it mints is destructive and
+/// carries <parameter>CONSEQUENCEPURGEMARKERS</parameter>. The screen's own action is not
+/// governed.</p>
 /// <p><b>It is action-style</b> (AD-51): the tool sends no body, and
 /// <class>OcuPilot.Port.AuditPort</class> composes the vendor's <code>Security.Audit.Record</code>
 /// <code>PURGE</code> body from <code>PurgeBefore</code>, which travels in the port query
@@ -24,8 +26,9 @@ Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.AuditingConfig";
 
 Parameter DESCRIPTION = "Propose removing every audit record on this instance dated before a cut-off day, including the agent's own audit markers from that period. It changes nothing by itself: it answers a proposal the user reviews and confirms. Once confirmed it cannot be undone. The target is the instance's auditing configuration, which has exactly one instance.";
 
-/// <p>Unadvertised (AD-53): the screen's caller alone reaches it.</p>
-Parameter ADVERTISED As BOOLEAN = 0;
+/// <p>The consequence a proposal of this tool carries: the purge removes the agent's own audit
+/// markers from the period it covers.</p>
+Parameter CONSEQUENCEPURGEMARKERS = "AUDIT.PURGEMARKERS";
 
 Parameter PORTCLASS = "OcuPilot.Port.AuditPort";
 
@@ -133,6 +136,13 @@ ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, p
     Set pProblem = ..CutoffProblem(tValue)
     If pProblem = "" Do pArgs.%Set(..#CUTOFFFIELD, tValue, "string")
     Quit $$$OK
+}
+
+/// <p><parameter>CONSEQUENCEPURGEMARKERS</parameter>, for every payload: whatever the cut-off, the
+/// purge removes the agent's own markers dated before it.</p>
+ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String
+{
+    Quit ..#CONSEQUENCEPURGEMARKERS
 }
 
 /// <p>The screen's own pairs and <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter>,

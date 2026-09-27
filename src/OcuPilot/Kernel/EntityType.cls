@@ -27,14 +27,15 @@
 /// Definitions list and the Switches screen publish AD-14's change event on them, and a key a slice
 /// invented would be a second spelling. <code>agent-switch</code> covers the instance-wide switches
 /// and the per-user holds together -- one screen administers both, and a hold is not a thing of its
-/// own outside it.</p>
+/// own outside it. <code>agent-policy</code> is the governance policy (Story 14.2), which the
+/// Governance policy screen administers and its audit row targets.</p>
 Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 {
 
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

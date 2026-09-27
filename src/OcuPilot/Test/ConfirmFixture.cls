@@ -1,6 +1,7 @@
-/// <p>Test-only <class>OcuPilot.Kernel.Proposal.Confirm</class> subclass with three replaced seams:
+/// <p>Test-only <class>OcuPilot.Kernel.Proposal.Confirm</class> subclass with four replaced seams:
 /// the port answers <class>OcuPilot.Test.ProposalFixture</class>'s armed objects and records what a
-/// write was sent, and the privilege check honours that fixture's refused pair.</p>
+/// write was sent, the privilege check honours that fixture's refused pair, and the governance gate
+/// can be armed to fail.</p>
 /// <p>Everything else -- the turn barrier, the closed channel, the claim, the gate order, the
 /// fingerprint re-read and the secret merge -- is the shipped code.</p>
 /// <p><b>Nothing this class reaches writes to the instance.</b> The confirmed write goes to the
@@ -32,6 +33,15 @@ ClassMethod ProhibitedClassName() As %String
 {
     Set tArmed = ##class(OcuPilot.Test.ProposalFixture).ProhibitedClass()
     If tArmed '= "" Quit tArmed
+    Quit ##super()
+}
+
+/// <p>The shipped gate, except while <method>OcuPilot.Test.GovernanceFixture.FailGate</method> is
+/// armed -- so the confirm's answer to a governance gate that cannot decide is driven without
+/// making the instance's policy store unreadable.</p>
+ClassMethod GovernanceGateClass() As %String
+{
+    If ##class(OcuPilot.Test.GovernanceFixture).GateFails() Quit "OcuPilot.Test.GovernanceFixture"
     Quit ##super()
 }
 

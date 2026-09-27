@@ -23,7 +23,7 @@ XData Declaration
   "route": "agent/transcripts",
   "area": "agent",
   "labelKey": "agentTranscriptsLabel",
-  "sideBarPosition": 4,
+  "sideBarPosition": 5,
   "archetype": "list",
   "built": true,
   "refreshes": false,

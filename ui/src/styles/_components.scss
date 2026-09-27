@@ -3129,6 +3129,53 @@ app-data-table {
   margin-top: var(--ocu-space-2);
 }
 
+// --- The Governance policy screen (Story 14.2) -----------------------------------------------
+//
+// A preset radio group over one row per write key. A form table rather than the data table: the
+// rows are edited in place and saved together, and sorting or filtering a buffer under edit would
+// move a select out from under the cursor.
+.ocu-governance-preset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-governance-table {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  margin-top: var(--ocu-space-4);
+  border-collapse: collapse;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-governance-table th,
+.ocu-governance-table td {
+  padding: var(--ocu-space-1) var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  text-align: start;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.ocu-governance-table th {
+  color: var(--ocu-on-surface-variant);
+  font-weight: normal;
+}
+
+.ocu-governance-key {
+  @include typo.ocu-type('code');
+}
+
+.ocu-governance-source {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-on-surface-variant);
+}
+
 // --- The agent co-pilot panel (Stories 3.6, 4.3) ----------------------------------------------
 //
 // Docked right of every screen on `{colors.surface-container-lowest}` with a 1px

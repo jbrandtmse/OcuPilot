@@ -164,7 +164,7 @@ Method TestTheOwnerLookupAnswersTheStoredUser()
 }
 
 /// <p>The Transcripts list and the transcript page are declared as Story 14.4 fixes them: a list
-/// at side-bar position 4 with no pair and no entity type over the <code>Convo</code> state read,
+/// at side-bar position 5 with no pair and no entity type over the <code>Convo</code> state read,
 /// and an unlisted detail beneath it with no read. The registry admits both.</p>
 Method TestTheListAndTheTranscriptPageAreDeclared()
 {
@@ -172,7 +172,7 @@ Method TestTheListAndTheTranscriptPageAreDeclared()
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Descriptor.AgentTranscripts).DeclarationJson(.tList), "the list's declaration reads")
     Do $$$AssertEquals(tList.route, "agent/transcripts", "the list's route")
     Do $$$AssertEquals(tList.archetype, "list", "is a list")
-    Do $$$AssertEquals(tList.sideBarPosition, 4, "at the agent area's fourth position")
+    Do $$$AssertEquals(tList.sideBarPosition, 5, "at the agent area's fifth position, after Governance policy")
     Do $$$AssertEquals(tList.privileges.%Size(), 0, "declaring no pair")
     Do $$$AssertEquals(tList.entityType, "", "and no entity type")
     Do $$$AssertEquals(tList.read.source.port, "state", "reading OcuPilot's own state")

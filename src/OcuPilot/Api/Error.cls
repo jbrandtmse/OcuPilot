@@ -775,6 +775,36 @@ Parameter TOOLUNKNOWN = "TOOL.UNKNOWN";
 /// advertised.</p>
 Parameter TOOLDENIED = "TOOL.DENIED";
 
+/// <p>Tool-result code (AD-22, Story 14.2): the governance policy disables the key this call
+/// resolves to. Answered as the content of an error tool result while the tool stays advertised,
+/// and as a 403 on the <parameter>FORBIDDEN</parameter> slug by the confirm of a proposal whose key
+/// was disabled after it was minted.</p>
+Parameter GOVERNANCEDISABLED = "GOVERNANCE.DISABLED";
+
+/// <p>Written sentence for <parameter>GOVERNANCEDISABLED</parameter>.</p>
+Parameter REASONGOVERNANCEDISABLED = "This tool is disabled by policy.";
+
+/// <p>Machine code (Story 14.2, AD-39): <code>PUT /agent/governance</code>'s body is not exactly
+/// <code>{preset, settings, rowVersion}</code> with a known preset and settings of
+/// <code>inherit</code>, <code>enabled</code> or <code>disabled</code>. Rendered on the
+/// <parameter>VALIDATIONFAILED</parameter> slug by <class>OcuPilot.Api.Governance</class>, with
+/// <code>detail.violations</code>; nothing is written.</p>
+Parameter GOVERNANCEBODY = "GOVERNANCE.BODY";
+
+/// <p>The envelope's <code>reason</code> for <parameter>GOVERNANCEBODY</parameter>, and the reason
+/// each of its violations carries.</p>
+Parameter REASONGOVERNANCEBODY = "The body must carry preset, settings and rowVersion, with a setting of inherit, enabled or disabled.";
+
+/// <p>Machine code (Story 14.2, AD-39): <code>PUT /agent/governance</code> named a key no
+/// registered write tool yields -- the ledger, the agent marker and a read tool among them.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug, with
+/// <code>detail.violations</code>; nothing is written.</p>
+Parameter GOVERNANCEKEY = "GOVERNANCE.KEY";
+
+/// <p>The envelope's <code>reason</code> for <parameter>GOVERNANCEKEY</parameter>, and the reason
+/// each of its violations carries.</p>
+Parameter REASONGOVERNANCEKEY = "That key names no write tool on this instance.";
+
 /// <p>Tool-result code (AD-11): the call's input is not an object, or does not satisfy the tool's
 /// input schema. <code>detail.problem</code> names the argument and the rule.</p>
 Parameter TOOLARGUMENTS = "TOOL.ARGUMENTS";
@@ -1033,11 +1063,11 @@ ClassMethod ReasonForTurn(pCode As %String) As %String
     Quit ""
 }
 
-/// <p>Every <code>TOOL.*</code> code, as a <class>%List</class>, so a test can hold
-/// <method>ReasonForTool</method> to the vocabulary.</p>
+/// <p>Every <code>TOOL.*</code> code and <parameter>GOVERNANCEDISABLED</parameter>, as a
+/// <class>%List</class>, so a test can hold <method>ReasonForTool</method> to the vocabulary.</p>
 ClassMethod ToolCodes() As %List
 {
-    Quit $ListBuild(..#TOOLUNAVAILABLE, ..#TOOLUNKNOWN, ..#TOOLDENIED, ..#TOOLARGUMENTS, ..#TOOLRESULTTOOLARGE)
+    Quit $ListBuild(..#TOOLUNAVAILABLE, ..#TOOLUNKNOWN, ..#TOOLDENIED, ..#TOOLARGUMENTS, ..#TOOLRESULTTOOLARGE, ..#GOVERNANCEDISABLED)
 }
 
 /// <p>The written sentence a <code>TOOL.*</code> code carries, or <code>""</code> for any other
@@ -1050,6 +1080,7 @@ ClassMethod ReasonForTool(pCode As %String) As %String
     If pCode = ..#TOOLDENIED Quit ..#REASONTOOLDENIED
     If pCode = ..#TOOLARGUMENTS Quit ..#REASONTOOLARGUMENTS
     If pCode = ..#TOOLRESULTTOOLARGE Quit ..#REASONTOOLRESULTTOOLARGE
+    If pCode = ..#GOVERNANCEDISABLED Quit ..#REASONGOVERNANCEDISABLED
     Quit ""
 }
 

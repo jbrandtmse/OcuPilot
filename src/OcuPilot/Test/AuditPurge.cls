@@ -1,7 +1,9 @@
-/// <p>Pins the audit database's purge (AD-51, AD-52, AD-53, Story 12.3): what
-/// <class>OcuPilot.Screen.Tool.AuditPurge</class> declares, that it is absent from every roster the
-/// agent sees while its screen's route still resolves it, the screen route's purge at the
-/// instance's own today, and the refusal of a malformed or future cut-off.</p>
+/// <p>Pins the audit database's purge (AD-51, AD-52, AD-53, AD-22, Stories 12.3 and 14.2): what
+/// <class>OcuPilot.Screen.Tool.AuditPurge</class> declares, that it is in every roster the agent
+/// sees and refused by the default policy, that with its key enabled the agent's purge is confirmed
+/// with its marker, the screen route's purge at the instance's own today, and the refusal of a
+/// malformed or future cut-off. Every test starts from no stored policy and puts back the one it
+/// found.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, auditing on, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>: it removes every record in this
 /// instance's audit database dated before today.</p>
@@ -27,6 +29,31 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.AuditPurge removes every record in this instance's audit database dated before today, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was removed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
+    Quit $$$OK
+}
+
+/// <p>The policy found before the test, put back after it.</p>
+Property StoredPolicy [ MultiDimensional ];
+
+Method OnBeforeOneTest() As %Status
+{
+    Kill ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Merge ..StoredPolicy = tRows
+    Quit ##class(OcuPilot.Test.GovernanceFixture).Clear()
+}
+
+Method OnAfterOneTest() As %Status
+{
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Kill tRows
+    Merge tRows = ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
+    Do $$$AssertStatusOK(tSC, "the policy found before the test is put back")
+    Do $$$AssertTrue(##class(OcuPilot.Test.GovernanceFixture).Matches(.tRows), "and reads back as it was")
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
+    Do $$$AssertStatusOK(tSC, "the probe proposals and turns are removed")
     Quit $$$OK
 }
 
@@ -89,28 +116,33 @@ ClassMethod ProposalRows(pToolName As %String) As %Integer
     Quit +tRS.%Get("N")
 }
 
-/// <p>AD-51, AD-52, AD-8: the purge is an unadvertised, destructive, action-style write over
+/// <p>AD-51, AD-52, AD-8: the purge is an advertised, destructive, action-style write over
 /// <code>Security.Audit.Record</code> <code>PURGE</code> through the audit port, fingerprinted
-/// over its one argument, carrying the screen's <code>purge</code> action and its value.</p>
-Method TestThePurgeIsAnUnadvertisedDestructiveActionWrite()
+/// over its one argument, carrying the screen's <code>purge</code> action and its value, and the
+/// consequence <code>AUDIT.PURGEMARKERS</code> whatever the cut-off.</p>
+/// <p>Mutation (Rule 19): remove <method>OcuPilot.Screen.Tool.AuditPurge.Consequence</method> ->
+/// the consequence leg goes red.</p>
+Method TestThePurgeIsAnAdvertisedDestructiveActionWrite()
 {
     Set tClass = ..#TOOLCLASS
-    Do $$$AssertEquals($ClassMethod(tClass, "Advertised"), 0, "declared unadvertised")
+    Do $$$AssertEquals($ClassMethod(tClass, "Advertised"), 1, "declared advertised")
     Do $$$AssertEquals($ClassMethod(tClass, "PortClass") _ " " _ $ClassMethod(tClass, "Endpoint"), "OcuPilot.Port.AuditPort Security.Audit.Record", "behind the audit port")
     Do $$$AssertEquals($ClassMethod(tClass, "ReadType") _ " " _ $ClassMethod(tClass, "WriteType") _ " " _ $ClassMethod(tClass, "SendsBody") _ " " _ $ClassMethod(tClass, "ChangeAction") _ " " _ $ClassMethod(tClass, "Destructive"), "DATABASE PURGE 0 updated 1", "a bodyless, destructive purge publishing updated")
     Do $$$AssertEquals($ListToString($ClassMethod(tClass, "SettableFields")) _ " " _ $ListToString($ClassMethod(tClass, "FingerprintSubject")) _ " " _ $ClassMethod(tClass, "PreconditionField"), "PurgeBefore PurgeBefore PurgeBefore", "admitting and fingerprinting the cut-off alone")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tClass), "", "which the registration guard holds adequate")
     Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionIds")) _ " " _ $ListToString($ClassMethod(tClass, "ScreenActionValueNames", "purge")), "purge PurgeBefore", "carrying the screen's purge action and its one value")
     Do $$$AssertEquals($ClassMethod(tClass, "CutoffProblem", ..Today()), "", "today is a cut-off")
+    Do $$$AssertEquals(##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||Consequence"), 1, "it declares a consequence")
+    If ##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||Consequence") Do $$$AssertEquals($ClassMethod(tClass, "Consequence", {"PurgeBefore": (..Today())}, 0, ""), "AUDIT.PURGEMARKERS", "and it is the purge's own")
 }
 
-/// <p>AC3, AD-53: the purge is absent from the provider tool list, the dispatch lookup and the
-/// Auditing screen's context <code>tools</code>, where the copy is present; the registry still lists
-/// it and the prohibited set's resolve and the screen route reach it; and a model's call to
-/// <code>security_auditing_purge</code> is refused as an unknown tool with no proposal written.</p>
-/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.Registry.ProviderTools</method> ignores
-/// <code>advertised</code> -> the provider-list assertion goes red.</p>
-Method TestThePurgeIsAbsentFromEveryRosterTheAgentSees()
+/// <p>AD-53, AD-22: the purge is in the provider tool list, the dispatch lookup and the Auditing
+/// screen's context <code>tools</code> beside the copy, and a model's call to
+/// <code>security_auditing_purge</code> under the default policy is refused
+/// <code>GOVERNANCE.DISABLED</code> with no proposal written.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Governance.Gate.Decide</method> answers allowed
+/// -> the refusal leg goes red.</p>
+Method TestThePurgeIsInEveryRosterAndDisabledByDefault()
 {
     Set tRegistry = "OcuPilot.Screen.Tool.Registry"
     Set tWire = $ClassMethod(tRegistry, "WireName", ..#TOOL)
@@ -118,41 +150,73 @@ Method TestThePurgeIsAbsentFromEveryRosterTheAgentSees()
     Do $$$AssertStatusOK($ClassMethod(tRegistry, "ProviderTools", .tProvider), "the provider tool list builds")
     Set tNames = ""
     For tI = 1:1:+$Get(tProvider) Set tNames = tNames _ $ListBuild(tProvider(tI, "name"))
-    Do $$$AssertEquals($ListFind(tNames, tWire), 0, "the provider tool list leaves the purge out")
-    Do $$$AssertTrue($ListFind(tNames, tCopyWire) > 0, "and carries the copy")
+    Do $$$AssertTrue(($ListFind(tNames, tWire) > 0) && ($ListFind(tNames, tCopyWire) > 0), "the provider tool list carries the purge and the copy")
     Do $ClassMethod(tRegistry, "ResolveWire", tWire, .tByWire)
-    Do $ClassMethod(tRegistry, "ResolveWire", tCopyWire, .tCopyByWire)
-    Do $$$AssertTrue('$IsObject($Get(tByWire)) && $IsObject($Get(tCopyByWire)), "the dispatch lookup finds the copy and not the purge")
+    Do $$$AssertTrue($IsObject($Get(tByWire)), "the dispatch lookup finds the purge")
     Do $ClassMethod(tRegistry, "Resolve", ..#TOOL, .tByName)
-    Do $$$AssertTrue('$IsObject($Get(tByName)), "and neither does a proposal-path resolve by name")
+    Do $$$AssertTrue($IsObject($Get(tByName)), "and so does a proposal-path resolve by name")
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).ScreenTools(..#SCREEN, .tTools), "the Auditing screen's context tools build")
-    Do $$$AssertTrue(($Select($IsObject($Get(tTools)): tTools.%ToJSON(), 1: "") '[ tWire) && ($Select($IsObject($Get(tTools)): tTools.%ToJSON(), 1: "") [ tCopyWire), "they carry the copy and not the purge: " _ $Select($IsObject($Get(tTools)): tTools.%ToJSON(), 1: ""))
-    Do $$$AssertStatusOK($ClassMethod(tRegistry, "ListTools", .tAll), "the registry lists")
-    Set tListed = 0
-    Set tIterator = tAll.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tEntry) { If tEntry.%Get("name") = ..#TOOL Set tListed = 1 }
-    Do $$$AssertEquals(tListed, 1, "the registry still lists the purge, so the screen route resolves it")
-    Do $ClassMethod(tRegistry, "Resolve", ..#TOOL, .tForRoute, 1)
-    Do $$$AssertTrue($IsObject($Get(tForRoute)), "and the prohibited set's resolve reaches it")
+    Set tJson = $Select($IsObject($Get(tTools)): tTools.%ToJSON(), 1: "")
+    Do $$$AssertTrue((tJson [ tWire) && (tJson [ tCopyWire), "they carry the purge and the copy: " _ tJson)
 
-    Set tProbe = "OcuPilot.Test.ToolDispatchProbe"
     Set tBefore = ..ProposalRows(..#TOOL)
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
     Do $$$AssertStatusOK(tSC, "a completed probe turn is seeded")
-    Do $ClassMethod(tProbe, "Reset")
-    Do $ClassMethod(tProbe, "SetRegistryClass", tRegistry)
-    Set tUse = {"type": "tool_use", "id": "toolu_purge", "input": {"Name": "SYSTEM", "rationale": "probe", "expectedImpact": "probe"}}
-    Do tUse.%Get("input").%Set("PurgeBefore", ..Today(), "string")
-    Do tUse.%Set("name", tWire, "string")
-    Set tSC = $ClassMethod(tProbe, "Answer", tTurnKey, $Username, "", [(tUse)], "OcuPilot.Kernel.Agent.Limits", .tResults, .tNames, 0, 0, .tDetails)
-    Do $ClassMethod(tProbe, "Reset")
+    Set tSC = ..Dispatch(tTurnKey, .tResults)
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey)
-    Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the dispatch answers")
     Set tCode = ""
     If $IsObject($Get(tResults)) && (tResults.%Size() = 1) Set tCode = ##class(%DynamicObject).%FromJSON(tResults.%Get(0).%Get("content")).%Get("code")
-    Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#TOOLUNKNOWN, "a model's purge is refused as an unknown tool")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, "a model's purge is refused as disabled by policy")
     Do $$$AssertEquals(..ProposalRows(..#TOOL), tBefore, "and no proposal is written")
+}
+
+/// <p>AC10 (routed from Story 12.3): with the purge's key enabled, the agent's purge is minted
+/// destructive carrying <code>AUDIT.PURGEMARKERS</code>, and its confirm purges the records dated
+/// before today with the agent's own marker written for the write.</p>
+/// <p>Mutation (Rule 19): remove <method>OcuPilot.Screen.Tool.AuditPurge.Consequence</method> ->
+/// the consequence leg goes red.</p>
+Method TestWithItsKeyEnabledTheAgentsPurgeIsConfirmedMarked()
+{
+    Kill tSettings
+    Set tSettings(..#TOOL) = "enabled"
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings), "the purge's key is enabled")
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a completed probe turn is seeded")
+    Set tSC = ..Dispatch(tTurnKey, .tResults)
+    Do $$$AssertStatusOK(tSC, "the dispatch answers")
+    Set tProposal = ""
+    If $IsObject($Get(tResults)) && (tResults.%Size() = 1) && 'tResults.%Get(0).%Get("is_error") Set tProposal = ##class(%DynamicObject).%FromJSON(tResults.%Get(0).%Get("content"))
+    Do $$$AssertTrue($IsObject(tProposal) && (tProposal.%Get("proposalId") '= ""), "the purge is minted: " _ $Select($IsObject($Get(tResults)) && (tResults.%Size() = 1): tResults.%Get(0).%Get("content"), 1: ""))
+    If '$IsObject(tProposal) Quit
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tProposal.%Get("proposalId"), .tFound, .tValues)
+    Do $$$AssertEquals(+$Get(tValues("destructive")) _ "|" _ $Get(tValues("consequence")), "1|AUDIT.PURGEMARKERS", "destructive, carrying the purge's consequence")
+
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "the purge is confirmed: " _ $Get(tCode))
+    Do $$$AssertEquals(..Count(..TodayStartUTC()), 0, "no record dated before today remains")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).MarkerRows(tSince, """proposalId"":""" _ tProposal.%Get("proposalId") _ """", .tData), 1, "and the audit database carries the agent's marker for it")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey), "this class removes the ledger rows it wrote")
+}
+
+/// <p>One model call to <code>security_auditing_purge</code> cutting off at today, through the
+/// shipped registry and the shipped gate, answering the dispatch's results.</p>
+Method Dispatch(pTurnKey As %String, Output pResults As %DynamicArray) As %Status
+{
+    Set tProbe = "OcuPilot.Test.ToolDispatchProbe"
+    Do $ClassMethod(tProbe, "Reset")
+    Do $ClassMethod(tProbe, "SetRegistryClass", "OcuPilot.Screen.Tool.Registry")
+    Set tUse = {"type": "tool_use", "id": "toolu_purge", "input": {"Name": "SYSTEM", "rationale": "probe", "expectedImpact": "probe"}}
+    Do tUse.%Get("input").%Set("PurgeBefore", ..Today(), "string")
+    Do tUse.%Set("name", ##class(OcuPilot.Screen.Tool.Registry).WireName(..#TOOL), "string")
+    ; The turn marker a real turn carries, so a proposal minted here names its turn (AD-40); cleared
+    ; before anything confirms.
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(pTurnKey)
+    Set tSC = $ClassMethod(tProbe, "Answer", pTurnKey, $Username, "", [(tUse)], "OcuPilot.Kernel.Agent.Limits", .pResults, .tNames, 0, 0, .tDetails)
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Do $ClassMethod(tProbe, "Reset")
+    Quit tSC
 }
 
 /// <p>AC2 on the screen's caller: a purge cutting off at the instance's own today answers 200

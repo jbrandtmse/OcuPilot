@@ -38,6 +38,7 @@ const {
   CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED,
   CONSEQUENCE_SERVERCLIENTSPRIVILEGED,
   CONSEQUENCE_PRIVILEGED,
+  CONSEQUENCE_PURGEMARKERS,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
   CONSEQUENCE_SERVICEUNAUTHENTICATED,
@@ -208,6 +209,19 @@ test('the two privilege-grant consequence codes resolve to their published sente
   assert.equal(CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED, 'WEBAPP.UNAUTHENTICATEDPRIVILEGED');
   assert.equal(consequenceSentence(CONSEQUENCE_PRIVILEGED), STRINGS.privilegedGrantEffect);
   assert.equal(consequenceSentence(CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED), STRINGS.privilegedGrantEffectUnauthenticated);
+});
+
+// Story 14.2, AC10: the agent's audit purge is minted destructive carrying the purge tool's own
+// consequence code, read here from `AuditPurge.cls` rather than restated, and the card says what it
+// removes.
+//
+// Mutation (Rule 19): drop the PURGEMARKERS branch from `consequenceSentence` -> this goes red.
+test("the audit purge's consequence code is the tool's own and resolves to its published sentence", () => {
+  const source = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'AuditPurge.cls'), 'utf8');
+  const declared = /^Parameter CONSEQUENCEPURGEMARKERS = "([^"]+)";/m.exec(source);
+  assert.ok(declared, 'AuditPurge.cls declares its consequence code');
+  assert.equal(CONSEQUENCE_PURGEMARKERS, declared[1]);
+  assert.equal(consequenceSentence(CONSEQUENCE_PURGEMARKERS), STRINGS.auditPurgeMarkersEffect);
 });
 
 // Story 9.7, AD-10: a task create that runs as another account is permitted, minted destructive

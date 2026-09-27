@@ -13,9 +13,10 @@
 /// <p><b>Every gate is evaluated here, at the write, never at the mint</b> (AD-40): the declared
 /// <code>(resource, permission)</code> pairs and the AD-10 prohibited set -- which are
 /// <class>OcuPilot.Kernel.Proposal.Operation</class>'s, shared with the screen's own caller
-/// (AD-53) -- then the restraint verdict, the conversation, the agent definition's version and the
-/// fingerprint re-read, which are this caller's alone. All six run before the claim commits,
-/// against state that may have moved since the proposal was minted.</p>
+/// (AD-53) -- then the governance policy (AD-22), the restraint verdict, the conversation, the
+/// agent definition's version and the fingerprint re-read, which are this caller's alone. All seven
+/// run before the claim commits, against state that may have moved since the proposal was
+/// minted.</p>
 /// <p><b>This class is the agent's caller of one operation, not the operation</b> (AD-53). The
 /// fresh read, the two shared gates and the port call are
 /// <class>OcuPilot.Kernel.Proposal.Operation</class>'s; what this class adds is the proposal --
@@ -34,10 +35,11 @@
 /// write that then fails leaves the proposal burned and confirmed, refused on any re-attempt.</p>
 /// <p>Seams a subclass overrides: <method>PortClass</method>, <method>StoreClass</method>,
 /// <method>LedgerClass</method>, <method>EventClass</method>, <method>LimitsClass</method>,
-/// <method>ToolRegistryClass</method> and <method>ProhibitedClassName</method>. The first two are
+/// <method>ToolRegistryClass</method>, <method>ProhibitedClassName</method> and
+/// <method>GovernanceGateClass</method>. The first two are
 /// <class>OcuPilot.Kernel.Proposal.Mint</class>'s own; <method>ToolRegistryClass</method> answers
 /// the same class <method>OcuPilot.Kernel.Proposal.Mint.RegistryClass</method> does, named for the
-/// registry it resolves because this class carries five other <code>*Class</code> seams beside it.
+/// registry it resolves because this class carries six other <code>*Class</code> seams beside it.
 /// Production overrides none of them.</p>
 Class OcuPilot.Kernel.Proposal.Confirm Extends %RegisteredObject
 {
@@ -214,6 +216,26 @@ ClassMethod Cancel(pProposalId As %String, pUser As %String, Output pResult As %
     Quit tSC
 }
 
+/// <p>The governance gate (AD-22) the transition asks at the write. Overridable so a fixture can
+/// drive the gate's failure; production never overrides it.</p>
+ClassMethod GovernanceGateClass() As %String
+{
+    Quit "OcuPilot.Kernel.Governance.Gate"
+}
+
+/// <p>The proposal's stored arguments <var>pJson</var> as an object, or <code>""</code> when they
+/// do not parse -- which the governance key then reads as carrying no action.</p>
+ClassMethod StoredArguments(pJson As %String) As %DynamicAbstractObject [ Private ]
+{
+    Set tArgs = ""
+    Try {
+        If pJson '= "" Set tArgs = ##class(%DynamicAbstractObject).%FromJSON(pJson)
+    } Catch {
+        Set tArgs = ""
+    }
+    Quit tArgs
+}
+
 /// <p>The gates, the claim and the write, in that order. <var>pRow</var> is the stored proposal as
 /// <method>OcuPilot.Kernel.Proposal.Write.ClaimById</method> answered it.</p>
 /// <p>Every gate here is evaluated against state <b>as it is now</b>, never against an answer the
@@ -265,6 +287,21 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         If tRefused {
             Set tSC = ..Refuse(tGateHttp, tGateCode, .pHttpStatus, .pCode)
             Set pDetail = tGateDetail
+            Quit
+        }
+
+        ; AD-22, AD-40: the governance policy, asked again at the write with the stored tool and
+        ; arguments, so a key disabled after the mint refuses here and leaves the row live. After
+        ; the two shared gates, because a prohibited effect keeps its own code whatever the policy
+        ; says (AD-10); before the restraint verdict, which a denial never touches (AD-30).
+        Kill tGovernance
+        Set tGovernanceSC = $ClassMethod(..GovernanceGateClass(), "Decide", $Get(pRow("toolName")), ##class(OcuPilot.Kernel.Governance.Policy).#WRITEKIND, pUser, ..StoredArguments($Get(pRow("arguments"))), .tGovernance)
+        If $$$ISERR(tGovernanceSC) {
+            Set tSC = ..Internal("the governance policy could not be read: " _ $System.Status.GetErrorText(tGovernanceSC), .pHttpStatus, .pCode)
+            Quit
+        }
+        If '$Get(tGovernance("allowed")) {
+            Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, .pHttpStatus, .pCode)
             Quit
         }
 

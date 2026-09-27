@@ -7708,3 +7708,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Mapping every fault to NotFound in Api/Transcripts.cls HandleRead leaves every suite green; driving it needs a failing ledger store reachable over HTTP, which no probe seam provides
 - 2026-09-27T11:57:42Z status=open owner=14-4-transcripts-retention-and-administrator-access by=harvest note=implement-stage deferral; for the code review to patch in-story or disposition
 - 2026-09-27T12:47:56Z status=resolved-by:14-4-transcripts-retention-and-administrator-access by=cr note=TranscriptGate.TestAnUnreadableStoreRendersA503OverTheRoute drives the 503 in process; 404-mapping mutation red run 1760
+
+### DW-1754: Policy.Resolve's fail-closed return on an unreadable policy store has no test at the resolver itself
+- source: spec-14-2-the-tool-governance-policy.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: The Confirm and dispatch legs drive a failing gate through seams; nothing makes State.Policy.GuardedAll fail, so a Resolve that fell through to the baseline on a read error would stay green (src/OcuPilot/Kernel/Governance/Policy.cls Resolve)
+- 2026-09-27T15:42:06Z status=open owner=14-2-the-tool-governance-policy by=harvest note=implement-stage deferral; for QA or the code review to pin in-story
+- 2026-09-27T16:06:25Z status=resolved-by:14-2-the-tool-governance-policy by=cr note=Policy.StoreClass seam + Test.GovernanceStoreProbe; Governance.TestAnUnreadableStoreResolvesTheKeyDisabled red run 2154

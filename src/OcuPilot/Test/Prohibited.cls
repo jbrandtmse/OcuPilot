@@ -603,11 +603,15 @@ Method TestNoRegisteredWriteToolHasAnUncoveredEntityType()
 }
 
 /// <p>AC5, AD-10: the verdict is reached before the restraint verdict and turns on no governance
-/// state -- the Release 1 gate allows the tool and the write is refused anyway.</p>
+/// state -- the governance gate allows the tool, whose baseline line enables it, and the write is
+/// refused anyway. The same holds under the <code>full</code> preset with the key's own setting
+/// enabled (<class>OcuPilot.Test.Governance</class>).</p>
 /// <p>Mutation: remove the prohibited call from
 /// <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method> -- this goes red.</p>
 Method TestGovernanceCannotEnableAProhibitedWrite()
 {
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tStored), "the stored policy reads")
+    Do $$$AssertTrue(##class(OcuPilot.Test.GovernanceFixture).IsDefault(.tStored), "and leaves every key to the baseline")
     Set tSC = ##class(OcuPilot.Kernel.Governance.Gate).Decide(..#TOOL, "write", $Username, {}, .tDecision)
     Do $$$AssertStatusOK(tSC, "the governance gate answers")
     Do $$$AssertEquals($Get(tDecision("allowed")), 1, "and allows this tool")

@@ -118,3 +118,46 @@ test('Story 14.5: the reset turns the account\'s read-only choice off, unless a 
   const kept = await sentByReset({ keepReadOnlyForYou: true });
   assert.deepEqual(kept.put, [], 'a spec about the choice surviving keeps it for that context');
 });
+
+test('Story 14.2: the reset puts every key the policy read answers back to inherit, with no preset, at the version it read', async () => {
+  // Mutation (Rule 19): drop the `resetGovernancePolicy` call from `resetRememberedState` -> this
+  // goes red, and one spec's disabled key refuses every later spec's agent writes.
+  const real = globalThis.fetch;
+  const put = [];
+  globalThis.fetch = async (url, init) => {
+    const path = new URL(url).pathname;
+    if (init !== undefined && init.method === 'PUT' && path.endsWith('/agent/governance')) put.push(JSON.parse(init.body));
+    const body = path.endsWith('/agent/governance') && (init === undefined || init.method === undefined)
+      ? { preset: 'read-only', rowVersion: 4, keys: [{ key: 'webapp.list.update' }, { key: 'security.auditing.purge' }] }
+      : {};
+    return { status: 200, text: async () => JSON.stringify(body) };
+  };
+  try {
+    await resetRememberedState();
+  } finally {
+    globalThis.fetch = real;
+  }
+  assert.deepEqual(put, [
+    { preset: '', settings: { 'webapp.list.update': 'inherit', 'security.auditing.purge': 'inherit' }, rowVersion: 4 },
+  ]);
+});
+
+test('Story 14.2: a policy that already reads default is left alone, so the reset writes no audit row', async () => {
+  // Mutation (Rule 19): drop the early return in `resetGovernancePolicy` -> this goes red.
+  const real = globalThis.fetch;
+  const put = [];
+  globalThis.fetch = async (url, init) => {
+    const path = new URL(url).pathname;
+    if (init !== undefined && init.method === 'PUT' && path.endsWith('/agent/governance')) put.push(JSON.parse(init.body));
+    const body = path.endsWith('/agent/governance') && (init === undefined || init.method === undefined)
+      ? { preset: '', rowVersion: 7, keys: [{ key: 'webapp.list.update', setting: 'inherit' }, { key: 'security.auditing.purge', setting: 'inherit' }] }
+      : {};
+    return { status: 200, text: async () => JSON.stringify(body) };
+  };
+  try {
+    await resetRememberedState();
+  } finally {
+    globalThis.fetch = real;
+  }
+  assert.deepEqual(put, []);
+});
