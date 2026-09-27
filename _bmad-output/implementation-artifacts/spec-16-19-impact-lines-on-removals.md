@@ -2,7 +2,7 @@
 title: 'Story 16.19: Impact lines on removals'
 type: 'feature'
 created: '2026-09-26'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '23a5ebe09c28906ae76a1dc2e74ef32a0ccd30ef'
 baseline_commit: '23a5ebe09c28906ae76a1dc2e74ef32a0ccd30ef'
 review_loop_iteration: 0
@@ -238,7 +238,13 @@ Rejected:
 - (low, theoretical) `Loses` unchecked has no server test: the write gate holds the Roles and Resources pairs first; only a 1,000-role cut reaches it, and its rendering is pinned in `tools/impact.test.mjs`.
 - (false) AC1, AC2 and AC5 clauses lack their own `mutation:` lines: Rule 19 asks one per AC's pinning test, and each AC has one.
 
+### Rework (CI, iteration 1)
+
+- [ ] [CI] instance: `OcuPilot.Test.EndpointCoverage.TestEveryProbeDispatchesToItsRoute` fails on run 36287213038 at head 6eef7155: the probe `GET /api/ocupilot/screens/osmgmt.locks/impact` (no query; line 447 pins every probe path to its route template, so it cannot carry `?action=`) now answers `ROUTE.NOTFOUND`, because the code review made an empty `action` answer 404 like the action route. Fix the handler, not the probe: a request with **no `action` parameter at all** is malformed and answers 400 (a new or existing request-shape code, never `ROUTE.NOTFOUND`) before any read -- the analogue of the action route's unreadable-body 400 -- while a **named** action the screen does not declare keeps the 404 parity with the action route. Update `ScreenImpact.cls` (or `ScreenAction.Preview`'s caller, whichever keeps the action route's own behavior byte-identical), the `ImpactRoute` leg that expects the empty-action 404, and the probe row's `substitutewhy` so it states what the probe now exercises; demonstrate each changed pinning test's mutation after recompiling the tree on `ocupilot-ci`, run `EndpointCoverage` and `ImpactRoute` one at a time, and write the `mutation:` lines. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36287213038>
+
 ## Spec Change Log
+
+- 2026-09-27, lead: re-opened for one rework iteration on a red CI instance job (run 36287213038): the impact route's empty-action 404 reads as route-not-found to EndpointCoverage's probe.
 
 - 2026-09-26, lead, spec gate: AD-8's "A removal names its impact" paragraph and AD-53's shared-list item written into the spine exactly as recommended below (Rule 20, light path; no existing Rule contradicted). Status reset to ready-for-dev; no other change.
 

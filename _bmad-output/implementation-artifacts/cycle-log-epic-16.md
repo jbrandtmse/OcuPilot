@@ -102,3 +102,6 @@
 2026-09-27T02:14:14Z	Story 16.20	story_created	spawn_at=2026-09-27T02:01:22Z model=opus path=_bmad-output/implementation-artifacts/spec-16-20-older-messages-log-files.md build_status=ready-for-dev epic_context=reused
 2026-09-27T02:14:14Z	Epic 16	spine_updated	ad=AD-21 reason=clarification(pre-agreed_named_case) by=runner story=16-20-older-messages-log-files lint=ok(pre-existing_low_placeholder_AD-7)
 2026-09-27T02:14:14Z	Story 16.20	spec_validated	service_introducing=false(extends_LogSourcePort) integration_ac=present(AC5) adr_constrained_acs=AD-21,AD-29,AD-24,AD-13 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=1(DW-118_epic_bullet) mutates_shared_runtime=true(ocupilot-ci_manager_dir_fixture) footprint_extension=README.md model=claude-opus-5-5
+2026-09-27T02:53:07Z	Story 16.19	ci_resolved	story=16.19 run=36287213038 result=failure resolved_at=next_implement head=6eef7155 job=instance test=EndpointCoverage.TestEveryProbeDispatchesToItsRoute first_red=16.19(cr_patch_empty_action_404)
+2026-09-27T02:53:07Z	Story 16.19	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI-instance-EndpointCoverage-impact-probe scope_baseline=9b06b53d
+2026-09-27T02:53:07Z	Story 16.19	stage_spawned	stage=implement spawn_at=2026-09-27T02:53:07Z model=opus agent_name=16-19-impact-lines-on-removals-implement-2 cycle_iteration=2
