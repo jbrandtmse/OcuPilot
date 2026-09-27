@@ -176,3 +176,6 @@
 2026-09-27T13:34:42Z	Story 16.22	ci_resolved	story=16.22 run=36320197671 result=failure resolved_at=next_implement head=dae9f00a job=browser test=definitions.browser-spec.mjs:418(area_entries_pinned_without_Guardrails) first_red=16.22
 2026-09-27T13:34:42Z	Story 16.22	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI-definitions-area-entries scope_baseline=c29c0061
 2026-09-27T13:34:42Z	Story 16.22	stage_spawned	stage=implement spawn_at=2026-09-27T13:34:42Z model=opus agent_name=16-22-the-guardrails-page-implement-2 cycle_iteration=2
+2026-09-27T13:42:25Z	Story 16.22	dev_complete	spawn_at=2026-09-27T13:34:42Z model=opus build_sha=aed735b0 baseline_revision=9e25f544 review_loop_iteration=0 followup_review_recommended=false deferred=0 files=2 cycle_iteration=2 note=test-only ci=pending run=36323308907
+2026-09-27T13:42:25Z	Story 16.22	adr_verifications_complete	result=none_required note=rework_touched_one_browser_spec_only
+2026-09-27T13:42:25Z	Story 16.22	stage_spawned	stage=code-review spawn_at=2026-09-27T13:42:25Z model=opus agent_name=16-22-the-guardrails-page-code-review-2 cycle_iteration=2
