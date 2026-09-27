@@ -112,3 +112,6 @@
 2026-09-27T03:13:00Z	Story 16.19	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=DW-1723_born_terminal_wontfix-accepted;slice_empty model=claude-opus-5-5
 2026-09-27T03:13:00Z	Story 16.19	smoke_complete	method=api result=pass iterations=2 defects_caught=0 evidence=ocupilot-ci:GET_impact_no_action_400_TOOL.ARGUMENTS,empty/undeclared_404,delete_without_id_400;ImpactRoute_10/10_run15214;EndpointCoverage_2/2_run15215 model=claude-opus-5-5
 2026-09-27T03:13:56Z	Story 16.19	committed	sha=464aec8e submodules= ci=pending run=36290792827 cycle_iteration=2 note=rework_for_ci_red_36287213038
+2026-09-27T04:06:47Z	Story 16.19	ci_resolved	story=16.19 run=36290792827 result=success resolved_at=next_implement head=464aec8e
+2026-09-27T04:06:47Z	Story 16.19	story_boundary	story=16.19 head=464aec8e ci_run=36290792827 ci=success note=includes_16.1,16.17,16.18,16.19
+2026-09-27T04:06:47Z	Story 16.20	stage_spawned	stage=implement spawn_at=2026-09-27T04:06:47Z model=opus agent_name=16-20-older-messages-log-files-implement-1 cycle_iteration=1
