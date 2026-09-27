@@ -39,14 +39,33 @@
 /// be deleted unseen; measured on this build, <code>DeleteByDate</code> did exactly that. Emptying
 /// a date by any method also restarts its numbering at 1, so each enumerated entry carries the
 /// vendor's <code>Time</code> and a reused number reads as a different error at the confirm.</p>
+/// <p><b>Six sources are read as recent entries rather than pages</b> (Story 16.8):
+/// <method>Recent</method> serves the System Monitor log, background task errors, xDBC errors, SQL
+/// diagnostics, the interoperability event log and the analytics log as the newest entries, bounded
+/// by a row cap. The last four are kept per namespace, so it merges the entries of every namespace
+/// the caller can read (<method>NamespaceResolver</method>'s <code>Payload</code>, AD-48), gated per
+/// namespace. The two files it reads, <parameter>SYSTEMMONITORFILE</parameter> and
+/// <parameter>ANALYTICSFORM</parameter>, are named here and never by a caller (AD-21); every other
+/// store is read through its vendor reader: <code>%CSP.UI.System.BackgroundTask</code>'s
+/// <code>EnumerateTasks</code> and <code>ErrorLog</code>, <code>%SQL.Manager.Catalog</code>'s
+/// <code>XdbcErrors</code>, and SQL over <code>%SQL_Diag.Result</code>, <code>%SQL_Diag.Message</code>
+/// and <code>Ens_Util.Log</code>. A captured stack and an xDBC error's client connection details are
+/// never read. The per-source readers (<method>SystemMonitor</method> to <method>EventLog</method>)
+/// answer <code>{time, pid, severity, text}</code> for one scope, newest first; only the
+/// <code>Fetch*</code> methods and <method>Interoperable</method> reach a vendor store. The two SQL
+/// fetchers switch into the target namespace by explicit save and restore, the restore first in every
+/// <code>Catch</code> (AD-16), call no <code>OcuPilot.*</code> class while switched, and run through
+/// <code>%ExecDirectNoPriv</code>, so the read rests on this port's gate and on the database
+/// <code>READ</code> IRIS enforces on the globals rather than on SQL grants (AD-8); a negative
+/// <code>%SQLCODE</code> or a failed <code>%Next</code> is a fault, never an empty result.</p>
 /// <p>Seams a test subclass overrides (<class>OcuPilot.Test.LogSourceFixture</class>,
 /// <class>OcuPilot.Test.ErrorLogFixture</class>): <method>Sources</method>,
 /// <method>PairsFor</method>, <method>FileFor</method>, <method>ManagerDirectory</method>,
 /// <method>MaxBytesCap</method>, <method>GateClass</method>, <method>FileExists</method>,
 /// <method>OpenStream</method>, <method>DirectoryEntries</method>,
 /// <method>ErrorLevels</method>, <method>QueryClass</method>,
-/// <method>DetailQuery</method>, <method>NamespaceResolver</method> and
-/// <method>OpenQuery</method>. Production overrides none of them.</p>
+/// <method>DetailQuery</method>, <method>NamespaceResolver</method>, <method>OpenQuery</method>
+/// and <method>RecordsClass</method>. Production overrides none of them.</p>
 Class OcuPilot.Port.LogSourcePort Extends %RegisteredObject
 {
 
@@ -59,8 +78,10 @@ Class OcuPilot.Port.LogSourcePort Extends %RegisteredObject
 /// it at the next step instead: the key's requirement is a function of a namespace
 /// <method>Page</method> never names, so <method>PairsFor</method> answers an empty set and the
 /// prologue's empty-pair-set refusal answers 403 rather than serving a page. No route can reach
-/// that -- each binds its own key -- and <class>OcuPilot.Test.ErrorLog</class> pins it.</p>
-Parameter SOURCES = "messages,alerts,applicationerrors";
+/// that -- each binds its own key -- and <class>OcuPilot.Test.ErrorLog</class> pins it. The six
+/// <parameter>RECENTSOURCES</parameter> are served by <method>Recent</method>, and
+/// <method>Page</method> refuses them by name.</p>
+Parameter SOURCES = "messages,alerts,applicationerrors,systemmonitor,taskerrors,xdbc,sqldiagnostics,eventlog,analytics";
 
 /// <p>The <parameter>SOURCES</parameter> key for the instance's console log.</p>
 Parameter MESSAGESKEY = "messages";
@@ -116,6 +137,77 @@ Parameter ALERTSFILE = "alerts.log";
 /// source declares this same one pair, so the gate a user meets is the same whichever way the
 /// screen reads (AD-8).</p>
 Parameter ALERTSPAIRS = "%Admin_Operate:USE";
+
+/// <p>The sources <method>Recent</method> serves, in their side-bar order.</p>
+Parameter RECENTSOURCES = "systemmonitor,taskerrors,xdbc,sqldiagnostics,eventlog,analytics";
+
+/// <p>The <parameter>RECENTSOURCES</parameter> kept per namespace, read over the set the caller can
+/// read and gated per namespace.</p>
+Parameter NAMESPACEDSOURCES = "xdbc,sqldiagnostics,eventlog,analytics";
+
+/// <p>The per-namespace sources read by SQL in the target namespace, whose per-namespace pairs add
+/// <code>READ</code> on that namespace's globals database (the permission IRIS enforces on the
+/// globals the read reaches).</p>
+Parameter DATABASEREADSOURCES = "sqldiagnostics,eventlog";
+
+/// <p>The <parameter>SOURCES</parameter> key for the System Monitor's log.</p>
+Parameter SYSTEMMONITORKEY = "systemmonitor";
+
+/// <p>The System Monitor's log file, resolved against <method>ManagerDirectory</method> on every
+/// call. A fixed-enum name like <parameter>MESSAGESFILE</parameter>.</p>
+Parameter SYSTEMMONITORFILE = "SystemMonitor.log";
+
+/// <p>The System Monitor log's pair set: the resource of the classic page that shows it
+/// (<code>%CSP.UI.Portal.ViewLog</code>). The file checks no privilege itself.</p>
+Parameter SYSTEMMONITORPAIRS = "%Admin_Operate:USE";
+
+/// <p>The <parameter>SOURCES</parameter> key for the background task error log.</p>
+Parameter TASKERRORSKEY = "taskerrors";
+
+/// <p>The background task error log's pair set. Its classic page
+/// (<code>%CSP.UI.Portal.BackgroundTaskError</code>) declares no resource, so it takes the one the
+/// Logs area's other pages carry.</p>
+Parameter TASKERRORSPAIRS = "%Admin_Operate:USE";
+
+/// <p>The <parameter>SOURCES</parameter> key for the xDBC error log.</p>
+Parameter XDBCKEY = "xdbc";
+
+/// <p>The xDBC error log's pair set: the resource of its classic page
+/// (<code>%CSP.UI.Portal.xDBCErrorNamespaces</code>).</p>
+Parameter XDBCPAIRS = "%Admin_Operate:USE";
+
+/// <p>The <parameter>SOURCES</parameter> key for the SQL diagnostics log.</p>
+Parameter SQLDIAGNOSTICSKEY = "sqldiagnostics";
+
+/// <p>The SQL diagnostics log's pair set: the resource of its classic page
+/// (<code>%CSP.UI.Portal.SQL.Logs</code>). Each namespace adds its globals database's
+/// <code>READ</code> (<parameter>DATABASEREADSOURCES</parameter>).</p>
+Parameter SQLDIAGNOSTICSPAIRS = "%Admin_Operate:USE";
+
+/// <p>The <parameter>SOURCES</parameter> key for the interoperability event log.</p>
+Parameter EVENTLOGKEY = "eventlog";
+
+/// <p>The interoperability event log's pair set: the resource of its classic page
+/// (<code>EnsPortal.EventLog</code>). Each namespace adds its globals database's
+/// <code>READ</code> (<parameter>DATABASEREADSOURCES</parameter>).</p>
+Parameter EVENTLOGPAIRS = "%Ens_EventLog:USE";
+
+/// <p>The <parameter>SOURCES</parameter> key for the analytics log.</p>
+Parameter ANALYTICSKEY = "analytics";
+
+/// <p>The analytics log's pair set: the resource of its classic page
+/// (<code>%DeepSee.UI.LogViewer</code>), which carries public <code>USE</code>, so the readable
+/// set is what narrows this source.</p>
+Parameter ANALYTICSPAIRS = "%DeepSee_Portal:USE";
+
+/// <p>The analytics log's file name for one namespace, the name
+/// <code>%DeepSee.Utils.%GetLogFileName</code> gives it (AD-21's fifth named case):
+/// <code>&lt;NS&gt;</code> is replaced by a member of the set the caller can read, never by a
+/// caller string, and the file is resolved against <method>ManagerDirectory</method>.</p>
+Parameter ANALYTICSFORM = "DeepSeeTasks_<NS>.log";
+
+/// <p>The class whose readers <method>Recent</method> calls: this port itself.</p>
+Parameter RECORDSCLASS = "OcuPilot.Port.LogSourcePort";
 
 /// <p>The <parameter>SOURCES</parameter> key for the instance's application error log, the
 /// <code>^ERRORS</code> global read through <code>SYS.ApplicationError</code> (AD-48). It has no
@@ -332,6 +424,9 @@ ClassMethod Sources() As %List
 /// answer that must not be read as "no privilege required"
 /// (<class>OcuPilot.Api.Namespaces</class>); an empty answer is refused by the caller rather than
 /// passed to the gate, which holds the empty set to be satisfied by everyone.</p>
+/// <p>For <parameter>DATABASEREADSOURCES</parameter>, a named namespace adds <code>READ</code> on
+/// its globals database's resource to the source's own pairs; the other secondary sources' pairs
+/// do not depend on the namespace.</p>
 /// <p><var>pNamespace</var> defaults to <code>""</code>, which is what <method>Page</method>
 /// passes: a file source's requirement does not depend on a namespace, and the error source has no
 /// namespace to resolve when asked without one, so it answers <code>""</code> and is refused.</p>
@@ -342,7 +437,28 @@ ClassMethod PairsFor(pSource As %String, pNamespace As %String = "") As %List
     If pSource = ..#MESSAGESKEY Set tDeclared = ..#MESSAGESPAIRS
     If pSource = ..#ALERTSKEY Set tDeclared = ..#ALERTSPAIRS
     If pSource = ..#ERRORSKEY Set tDeclared = ..ErrorPairSpec(pNamespace)
+    If pSource = ..#SYSTEMMONITORKEY Set tDeclared = ..#SYSTEMMONITORPAIRS
+    If pSource = ..#TASKERRORSKEY Set tDeclared = ..#TASKERRORSPAIRS
+    If pSource = ..#XDBCKEY Set tDeclared = ..#XDBCPAIRS
+    If pSource = ..#SQLDIAGNOSTICSKEY Set tDeclared = ..#SQLDIAGNOSTICSPAIRS
+    If pSource = ..#EVENTLOGKEY Set tDeclared = ..#EVENTLOGPAIRS
+    If pSource = ..#ANALYTICSKEY Set tDeclared = ..#ANALYTICSPAIRS
+    If (pNamespace '= "") && $ListFind($ListFromString(..#DATABASEREADSOURCES), pSource) {
+        Set tDeclared = ..DatabaseReadSpec(tDeclared, pNamespace)
+    }
     Quit ..ParsePairs(tDeclared)
+}
+
+/// <p><var>pDeclared</var> followed by <code>READ</code> on the resource guarding
+/// <var>pNamespace</var>'s globals database, or <code>""</code> when that resource cannot be
+/// resolved, which the caller refuses rather than admits (the reason
+/// <method>ErrorPairSpec</method> gives).</p>
+ClassMethod DatabaseReadSpec(pDeclared As %String, pNamespace As %String) As %String [ Private ]
+{
+    Set tResource = ""
+    If '$ClassMethod(..NamespaceResolver(), "GlobalDatabase", pNamespace, .tResource, .tReadOnly) Quit ""
+    If tResource = "" Quit ""
+    Quit pDeclared _ "," _ tResource _ ":READ"
 }
 
 /// <p>The comma-separated <code>resource:permission</code> specification the application error log
@@ -418,6 +534,14 @@ ClassMethod DetailQuery() As %String
 ClassMethod NamespaceResolver() As %String
 {
     Quit ..#NAMESPACERESOLVER
+}
+
+/// <p>The class whose readers <method>Recent</method> calls, this port in production. Overridable
+/// so a fixture subclass can answer canned vendor rows from its <code>Fetch*</code> seams and count
+/// the reads (<class>OcuPilot.Test.LogRecordsFixture</class>).</p>
+ClassMethod RecordsClass() As %String
+{
+    Quit ..#RECORDSCLASS
 }
 
 /// <p>Open a <class>%ResultSet</class> over <method>QueryClass</method>'s query
@@ -545,6 +669,10 @@ ClassMethod Page(pSource As %String = "", pOffset As %String = "", pMaxBytes As 
             Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGSOURCE, "OcuPilot does not serve a log source by that name", .pHttpStatus, .pFault)
             Quit
         }
+        If $ListFind($ListFromString(..#RECENTSOURCES), pSource) {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGSOURCE, "That log source is read as recent entries, not as pages", .pHttpStatus, .pFault)
+            Quit
+        }
 
         Set tPairs = ..PairsFor(pSource)
         If '$ListValid(tPairs) || ($ListLength(tPairs) = 0) {
@@ -653,6 +781,9 @@ ClassMethod Page(pSource As %String = "", pOffset As %String = "", pMaxBytes As 
 /// caller paging a file by byte offset asked for a file; a declared read asked for the instance's
 /// entries, and a fresh instance that has raised no alert has none. Every other refusal --
 /// the gate's included -- passes through unchanged.</p>
+/// <p>A <parameter>RECENTSOURCES</parameter> key is answered by <method>Recent</method> under the
+/// same cap, each entry projected to <code>{time, severity, text}</code>: never its pid or its
+/// raw line.</p>
 ClassMethod Rows(pSource As %String = "", pMaxRows As %Integer = 0, Output pAnswer As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set tSC = $$$OK
@@ -660,6 +791,16 @@ ClassMethod Rows(pSource As %String = "", pMaxRows As %Integer = 0, Output pAnsw
     Set pHttpStatus = 0
     Set pFault = ""
     Try {
+        If $ListFind($ListFromString(..#RECENTSOURCES), pSource) {
+            Set tSC = ..Recent(pSource, pMaxRows, .tRecent, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Set pAnswer = []
+            Set tIterator = tRecent.entries.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tEntry) {
+                Do pAnswer.%Push({"time": (tEntry.time), "severity": (tEntry.severity), "text": (tEntry.text)})
+            }
+            Quit
+        }
         Set tSC = ..Page(pSource, "", "", "", .tPage, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) {
             If $Select($IsObject(pFault): pFault.%Get("code"), 1: "") '= ##class(OcuPilot.Api.Error).#LOGABSENT Quit
@@ -743,6 +884,750 @@ ClassMethod HeadParts(pLine As %String, Output pTime As %String, Output pSeverit
         Set pText = $Extract(pText, tCloseAt + 1, *)
     }
     Quit 1
+}
+
+/// <p>The newest entries of <parameter>RECENTSOURCES</parameter> source <var>pSource</var>, at
+/// most <var>pMaxRows</var> (<parameter>DEFAULTMAXROWS</parameter> when below one), newest first
+/// (Story 16.8).</p>
+/// <p><b>The step order is fixed</b> (AD-29, AD-8): the enum, the source's own pair set, then --
+/// for a <parameter>NAMESPACEDSOURCES</parameter> key -- each namespace of the set the caller can
+/// read, whose own pair set is evaluated and whose source predicate (an interoperability-enabled
+/// namespace for the event log, a present file for the analytics log) is asked, then that
+/// namespace's read. Nothing above the source's gate reaches a store, and a namespace whose pairs
+/// fail is left out, which is not a fault. A read that faults after its gate fails the whole
+/// answer 500 <code>LOG.UNREADABLE</code>, never a partial list (AD-36); an absent System Monitor
+/// log is an empty answer.</p>
+/// <p>On success <var>pResult</var> is <code>{source, entries, truncated}</code>, each entry
+/// <code>{time, pid, severity, text, raw}</code> with <code>raw</code> the entry as one line,
+/// <code>&lt;time&gt; (&lt;pid&gt;) &lt;severity&gt; &lt;text&gt;</code>. Entries are merged across
+/// namespaces by time. <code>truncated</code> is true when more entries were held than the cap, or
+/// a read stopped short of older ones. Otherwise an error status is returned with
+/// <var>pHttpStatus</var> and the wire fault <var>pFault</var>.</p>
+/// <p>Caller contract: no namespace, path or file name is taken; the route's scope does not reach
+/// here (AD-21, AD-48). Must not be called from an escalated frame (AD-9); the caller's namespace
+/// is unchanged on return (AD-16).</p>
+ClassMethod Recent(pSource As %String = "", pMaxRows As %Integer = 0, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        If '$ListFind(..Sources(), pSource) || '$ListFind($ListFromString(..#RECENTSOURCES), pSource) {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGSOURCE, "OcuPilot does not serve a log source by that name", .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tMax = $Select(+pMaxRows < 1: ..#DEFAULTMAXROWS, 1: +pMaxRows \ 1)
+
+        Set tPairs = ..PairsFor(pSource)
+        If '$ListValid(tPairs) || ($ListLength(tPairs) = 0) {
+            Set tSC = ..DeniedRefusal("", .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tFailedPair = ""
+        If '..Gate(tPairs, .tFailedPair) {
+            Set tSC = ..DeniedRefusal(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+
+        Set tRecords = ..RecordsClass()
+        Set tWant = tMax + 1
+        Kill tHeld
+        Set tHeldCount = 0
+        Set tMore = 0
+        Set tReadSC = $$$OK
+        If '$ListFind($ListFromString(..#NAMESPACEDSOURCES), pSource) {
+            Set tReadSC = ..InstanceEntries(tRecords, pSource, tWant, .tEntries, .tScopeMore)
+            If $$$ISOK(tReadSC) {
+                Do ..Hold(.tHeld, .tHeldCount, tEntries)
+                If tScopeMore Set tMore = 1
+            }
+        } Else {
+            Set tSC = ..ReadableNamespaces(.tNames)
+            If $$$ISERR(tSC) {
+                Set tSC = ..Fail(pSource _ " could not read the namespaces the caller can read", tSC, .pHttpStatus, .pFault)
+                Quit
+            }
+            For tI = 1:1:$ListLength(tNames) {
+                Set tNamespace = $List(tNames, tI)
+                Set tNsPairs = ..PairsFor(pSource, tNamespace)
+                If '$ListValid(tNsPairs) || ($ListLength(tNsPairs) = 0) Continue
+                If '..Gate(tNsPairs, .tNsFailed) Continue
+                Set tReadSC = ..NamespaceEntries(tRecords, pSource, tNamespace, tWant, .tApplies, .tEntries, .tScopeMore)
+                Set $NAMESPACE = tOrigNS
+                If $$$ISERR(tReadSC) Quit
+                If 'tApplies Continue
+                Do ..Hold(.tHeld, .tHeldCount, tEntries)
+                If tScopeMore Set tMore = 1
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tReadSC) {
+            Set tSC = ..ReadFault(pSource, tReadSC, .pHttpStatus, .pFault)
+            Quit
+        }
+
+        Set tOut = []
+        Set tTime = ""
+        For {
+            Set tTime = $Order(tHeld(tTime), -1)
+            If tTime = "" Quit
+            Set tAt = ""
+            For {
+                Set tAt = $Order(tHeld(tTime, tAt), 1, tEntry)
+                If tAt = "" Quit
+                If tOut.%Size() >= tMax {
+                    Set tMore = 1
+                    Quit
+                }
+                Set tRaw = tEntry.time _ " (" _ tEntry.pid _ ") " _ tEntry.severity _ " " _ tEntry.text
+                Do tOut.%Push({"time": (tEntry.time), "pid": (tEntry.pid), "severity": (tEntry.severity), "text": (tEntry.text), "raw": (tRaw)})
+            }
+            If tMore && (tOut.%Size() >= tMax) Quit
+        }
+        Set pResult = {}
+        Do pResult.%Set("source", pSource)
+        Do pResult.%Set("entries", tOut)
+        Do pResult.%Set("truncated", ''tMore, "boolean")
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pResult = ""
+        Set tSC = ..Fail(pSource _ " failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>An instance-wide source's entries: the System Monitor log's tail, or the background task
+/// error log.</p>
+ClassMethod InstanceEntries(pRecords As %String, pSource As %String, pWant As %Integer, Output pEntries As %DynamicArray, Output pMore As %Boolean) As %Status [ Private ]
+{
+    Set pEntries = []
+    Set pMore = 0
+    If pSource = ..#TASKERRORSKEY Quit $ClassMethod(pRecords, "TaskErrors", pWant, .pEntries, .pMore)
+    Set tPath = ##class(%File).NormalizeFilename(..#SYSTEMMONITORFILE, ..ManagerDirectory())
+    If '..FileExists(tPath) Quit $$$OK
+    Set tSC = ..Tail(tPath, .tLines, .tFromStart)
+    If $$$ISERR(tSC) Quit tSC
+    If 'tFromStart Set pMore = 1
+    Quit $ClassMethod(pRecords, "SystemMonitor", tLines, pWant, .pEntries)
+}
+
+/// <p>One namespace's entries for a per-namespace source, after the source's predicate:
+/// <var>pApplies</var> is 0, and nothing is read, for a namespace the event log or the analytics
+/// log does not exist in.</p>
+ClassMethod NamespaceEntries(pRecords As %String, pSource As %String, pNamespace As %String, pWant As %Integer, Output pApplies As %Boolean, Output pEntries As %DynamicArray, Output pMore As %Boolean) As %Status [ Private ]
+{
+    Set pApplies = 1
+    Set pEntries = []
+    Set pMore = 0
+    If pSource = ..#XDBCKEY Quit $ClassMethod(pRecords, "Xdbc", pNamespace, pWant, .pEntries, .pMore)
+    If pSource = ..#SQLDIAGNOSTICSKEY Quit $ClassMethod(pRecords, "SqlDiagnostics", pNamespace, pWant, .pEntries, .pMore)
+    If pSource = ..#EVENTLOGKEY {
+        Set pApplies = $ClassMethod(pRecords, "Interoperable", pNamespace)
+        If 'pApplies Quit $$$OK
+        Quit $ClassMethod(pRecords, "EventLog", pNamespace, pWant, .pEntries, .pMore)
+    }
+    Set tPath = ##class(%File).NormalizeFilename($Replace(..#ANALYTICSFORM, "<NS>", pNamespace), ..ManagerDirectory())
+    Set pApplies = ..FileExists(tPath)
+    If 'pApplies Quit $$$OK
+    Set tSC = ..Tail(tPath, .tLines, .tFromStart)
+    If $$$ISERR(tSC) Quit tSC
+    If 'tFromStart Set pMore = 1
+    Quit $ClassMethod(pRecords, "Analytics", pNamespace, tLines, pWant, .pEntries)
+}
+
+/// <p>The whole lines of the last <parameter>DEFAULTMAXBYTES</parameter> of <var>pPath</var>, oldest
+/// first, through <method>OpenStream</method> and <method>ReadWindow</method>.
+/// <var>pFromStart</var> is 1 when the window began at the file's first byte.</p>
+ClassMethod Tail(pPath As %String, Output pLines As %DynamicArray, Output pFromStart As %Boolean) As %Status [ Private ]
+{
+    Set pLines = []
+    Set pFromStart = 1
+    Set tSC = ..OpenStream(pPath, .tStream)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(tStream) Quit $$$ERROR($$$GeneralError, "the log file could not be opened")
+    Set tSC = ..Identity(tStream, .tSize, .tIdentity)
+    If $$$ISERR(tSC) Quit tSC
+    Set tStart = tSize - ..#DEFAULTMAXBYTES + 1
+    If tStart < 1 Set tStart = 1
+    Set pFromStart = (tStart = 1)
+    Quit ..ReadWindow(tStream, tStart, ..#DEFAULTMAXBYTES, tSize, .pLines, .tNext, .tTruncated)
+}
+
+/// <p>The names in <method>NamespaceResolver</method>'s <code>Payload</code>: the namespaces the
+/// caller can read (AD-21, AD-48).</p>
+ClassMethod ReadableNamespaces(Output pNames As %List) As %Status [ Private ]
+{
+    Set pNames = ""
+    Set tSC = $ClassMethod(..NamespaceResolver(), "Payload", .tPayload)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(tPayload) || '$IsObject(tPayload.namespaces) Quit $$$ERROR($$$GeneralError, "the readable namespaces could not be read")
+    Set tIterator = tPayload.namespaces.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If $IsObject(tEntry) && (tEntry.name '= "") Set pNames = pNames _ $ListBuild(tEntry.name)
+    }
+    Quit $$$OK
+}
+
+/// <p>Add a reader's <var>pEntries</var>, newest first, to <var>pHeld</var> keyed by time then
+/// arrival, so the merge keeps each reader's own order among equal times.</p>
+ClassMethod Hold(ByRef pHeld, ByRef pCount As %Integer, pEntries As %DynamicArray) [ Private ]
+{
+    Set tIterator = pEntries.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        Set pCount = pCount + 1
+        Set pHeld(" " _ tEntry.time, pCount) = tEntry
+    }
+}
+
+/// <p>The 500 a read that faulted after its gate answers with: <code>LOG.UNREADABLE</code> on the
+/// wire, the raw status to the log alone (AD-36, AD-39).</p>
+ClassMethod ReadFault(pSource As %String, pStatus As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#LOGUNREADABLE, "That log could not be read on this instance", .pHttpStatus, .pFault)
+    Do ..LogFault(pSource _ " could not be read", pStatus, pFault.code)
+    Quit tSC
+}
+
+/// <p>A System Monitor head line: <code>MM/DD/YY-HH:MM:SS text</code>
+/// (<code>%SYS.Monitor.AbstractSubscriber.LogMsg</code>).</p>
+Parameter MONITORHEAD = "^[0-9]{2}/[0-9]{2}/[0-9]{2}-[0-9]{2}:[0-9]{2}:[0-9]{2} .*$";
+
+/// <p>An analytics head line: <code>YYYY-MM-DD HH:MM:SS.mmm</code>, the job right-justified in
+/// ten, the source right-justified in ten, then the message
+/// (<code>%DeepSee.Utils.%WriteToLog</code>).</p>
+Parameter ANALYTICSHEAD = "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3} .*$";
+
+/// <p>The lowest <code>%SQL_Diag.Message</code> severity an entry carries: 2 warning, 3 error,
+/// 4 abort (the vendor's own scale in <code>%SQL.Diag.Result.addDiagMessage</code>).</p>
+Parameter DIAGMESSAGEFLOOR As INTEGER = 2;
+
+/// <p>The System Monitor log's entries in <var>pLines</var>, the file's own lines oldest first.
+/// A line that does not open with a stamp continues the entry above it; a window that opens
+/// mid-entry yields a leading entry with no time. The pid is empty and the severity 0.</p>
+ClassMethod SystemMonitor(pLines As %DynamicArray, pMax As %Integer, Output pEntries As %DynamicArray) As %Status
+{
+    Set tSC = $$$OK
+    Set pEntries = []
+    Try {
+        Kill tHeld
+        Set tCount = 0
+        Set tIterator = pLines.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tLine) {
+            If $Match(tLine, ..#MONITORHEAD) {
+                Set tCount = tCount + 1
+                Set tYear = +$Extract(tLine, 7, 8)
+                Set tYear = $Select(tYear < 70: 2000 + tYear, 1: 1900 + tYear)
+                Set tHeld(tCount) = $ListBuild(tYear _ "-" _ $Extract(tLine, 1, 2) _ "-" _ $Extract(tLine, 4, 5) _ "T" _ $Extract(tLine, 10, 17) _ ".000", "", "0", $Extract(tLine, 19, *))
+                Continue
+            }
+            If tCount = 0 {
+                Set tCount = 1
+                Set tHeld(1) = $ListBuild("", "", "", tLine)
+                Continue
+            }
+            Set $List(tHeld(tCount), 4) = $List(tHeld(tCount), 4) _ $Char(10) _ tLine
+        }
+        Do ..Drain(.tHeld, tCount, pMax, .pEntries)
+    } Catch ex {
+        Set pEntries = []
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Namespace <var>pNamespace</var>'s analytics task log entries in <var>pLines</var>, oldest
+/// first, parsed as <parameter>ANALYTICSHEAD</parameter>. The severity is 0; the text is
+/// <code>[NS] &lt;source&gt; &lt;message&gt;</code>.</p>
+ClassMethod Analytics(pNamespace As %String, pLines As %DynamicArray, pMax As %Integer, Output pEntries As %DynamicArray) As %Status
+{
+    Set tSC = $$$OK
+    Set pEntries = []
+    Try {
+        Kill tHeld
+        Set tCount = 0
+        Set tPrefix = ..Prefix(pNamespace)
+        Set tIterator = pLines.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tLine) {
+            If $Match(tLine, ..#ANALYTICSHEAD) {
+                Set tCount = tCount + 1
+                Set tRest = $Extract(tLine, 25, *)
+                ; The job and the source are each right-justified in ten, so they are read by
+                ; position; a job wider than ten pushes the columns and is read by word instead.
+                If $Extract(tRest, 11) = " " {
+                    Set tJob = $ZStrip($Extract(tRest, 1, 10), "<>W")
+                    Set tSource = $ZStrip($Extract(tRest, 12, 21), "<>W")
+                    Set tMessage = $Extract(tRest, 23, *)
+                } Else {
+                    Set tRest = $ZStrip(tRest, "<W")
+                    Set tJob = $Piece(tRest, " ", 1)
+                    Set tRest = $ZStrip($Piece(tRest, " ", 2, *), "<W")
+                    Set tSource = $Piece(tRest, " ", 1)
+                    Set tMessage = $Piece(tRest, " ", 2, *)
+                }
+                Set tText = tPrefix _ $Select(tSource = "": tMessage, 1: tSource _ " " _ tMessage)
+                Set tHeld(tCount) = $ListBuild(..ClockStamp($Extract(tLine, 1, 23)), tJob, "0", tText)
+                Continue
+            }
+            If tCount = 0 {
+                Set tCount = 1
+                Set tHeld(1) = $ListBuild("", "", "", tPrefix _ tLine)
+                Continue
+            }
+            Set $List(tHeld(tCount), 4) = $List(tHeld(tCount), 4) _ $Char(10) _ tLine
+        }
+        Do ..Drain(.tHeld, tCount, pMax, .pEntries)
+    } Catch ex {
+        Set pEntries = []
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The background task error log (the instance's, whichever namespace each task ran in): for
+/// each task <code>EnumerateTasks</code> lists, one entry per <code>ErrorLog</code> row -- severity
+/// 2 for a row of type <code>ERROR</code>, 0 otherwise -- and, for a task whose status is
+/// <code>ERROR</code> with no rows, one entry carrying its details. The time is the task's start,
+/// the pid the task's own, and the text <code>[NS] &lt;task&gt;: &lt;message&gt;</code>.
+/// <var>pMore</var> is 1 when rows were left unread at the bound.</p>
+ClassMethod TaskErrors(pMax As %Integer, Output pEntries As %DynamicArray, Output pMore As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Set pEntries = []
+    Set pMore = 0
+    Try {
+        Set tSC = ..FetchTasks(.tTasks)
+        If $$$ISERR(tSC) Quit
+        Kill tHeld
+        Set tCount = 0
+        Set tAt = ""
+        For {
+            Set tAt = $Order(tTasks(tAt), 1, tTask)
+            If tAt = "" Quit
+            Set tId = $ListGet(tTask, 1)
+            Set tTime = ..ClockStamp($ListGet(tTask, 2))
+            Set tLead = ..Prefix($ListGet(tTask, 3)) _ $ListGet(tTask, 4) _ ": "
+            Kill tRows
+            Set tSC = ..FetchTaskErrors(tId, pMax, .tRows, .tCut)
+            If $$$ISERR(tSC) Quit
+            If tCut Set pMore = 1
+            Set tRowAt = ""
+            Set tHadRow = 0
+            For {
+                Set tRowAt = $Order(tRows(tRowAt), 1, tRow)
+                If tRowAt = "" Quit
+                Set tHadRow = 1
+                Set tCount = tCount + 1
+                Set tSeverity = $Select($ZConvert($ListGet(tRow, 1), "U") = "ERROR": "2", 1: "0")
+                Set tHeld(tCount) = $ListBuild(tTime, tId, tSeverity, tLead _ $ListGet(tRow, 3))
+            }
+            If 'tHadRow && ($ZConvert($ListGet(tTask, 5), "U") = "ERROR") {
+                Set tCount = tCount + 1
+                Set tHeld(tCount) = $ListBuild(tTime, tId, "2", tLead _ $ZStrip($ListGet(tTask, 6), "<>W"))
+            }
+        }
+        If $$$ISERR(tSC) Quit
+        If tCount > pMax Set pMore = 1
+        Do ..Drain(.tHeld, tCount, pMax, .pEntries)
+    } Catch ex {
+        Set pEntries = []
+        Set pMore = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Namespace <var>pNamespace</var>'s xDBC errors, one per process, from
+/// <code>XdbcErrors</code>: the logged time, the display pid, severity 2 and
+/// <code>[NS] &lt;SQLCODE&gt; &lt;MESSAGE&gt;</code>, the vendor's own two values.</p>
+ClassMethod Xdbc(pNamespace As %String, pMax As %Integer, Output pEntries As %DynamicArray, Output pMore As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Set pEntries = []
+    Set pMore = 0
+    Try {
+        Set tSC = ..FetchXdbc(pNamespace, .tRows)
+        If $$$ISERR(tSC) Quit
+        Kill tHeld
+        Set tCount = 0
+        Set tPrefix = ..Prefix(pNamespace)
+        Set tAt = ""
+        For {
+            Set tAt = $Order(tRows(tAt), 1, tRow)
+            If tAt = "" Quit
+            Set tCount = tCount + 1
+            Set tCode = $ZStrip($ListGet(tRow, 3), "<>W")
+            Set tMessage = $ZStrip($ListGet(tRow, 4), "<>W")
+            Set tHeld(tCount) = $ListBuild(..ClockStamp($ListGet(tRow, 1)), $ListGet(tRow, 2), "2", tPrefix _ tCode _ $Select(tMessage = "": "", 1: " " _ tMessage))
+        }
+        If tCount > pMax Set pMore = 1
+        Do ..Drain(.tHeld, tCount, pMax, .pEntries)
+    } Catch ex {
+        Set pEntries = []
+        Set pMore = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Namespace <var>pNamespace</var>'s SQL diagnostics results, newest first: the UTC creation
+/// time converted, the process id, severity 2 when the result's <code>sqlcode</code> is negative
+/// or it counted errors and 0 otherwise, and <code>[NS] &lt;statement&gt;</code> followed by one
+/// line per message of severity <parameter>DIAGMESSAGEFLOOR</parameter> or above.</p>
+ClassMethod SqlDiagnostics(pNamespace As %String, pMax As %Integer, Output pEntries As %DynamicArray, Output pMore As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Set pEntries = []
+    Set pMore = 0
+    Try {
+        Set tSC = ..FetchDiagnostics(pNamespace, pMax + 1, .tRows)
+        If $$$ISERR(tSC) Quit
+        Kill tHeld
+        Set tCount = 0
+        Set tPrefix = ..Prefix(pNamespace)
+        ; Newest first as fetched, so the recency Drain orders by runs the other way.
+        Set tTotal = +$Get(tRows)
+        For tAt = 1:1:tTotal {
+            Set tRow = tRows(tAt)
+            Set tCount = tCount + 1
+            Set tSqlCode = $ListGet(tRow, 4)
+            Set tFailed = ((tSqlCode '= "") && (+tSqlCode < 0)) || (+$ListGet(tRow, 5) > 0)
+            Set tText = tPrefix _ $ListGet(tRow, 6)
+            Set tLine = ""
+            For {
+                Set tLine = $Order(tRows(tAt, tLine), 1, tMessage)
+                If tLine = "" Quit
+                Set tText = tText _ $Char(10) _ tMessage
+            }
+            Set tHeld(tTotal - tAt + 1) = $ListBuild(..LocalFromUtc($ListGet(tRow, 2)), $ListGet(tRow, 3), $Select(tFailed: "2", 1: "0"), tText)
+        }
+        If tCount > pMax Set pMore = 1
+        Do ..Drain(.tHeld, tCount, pMax, .pEntries)
+    } Catch ex {
+        Set pEntries = []
+        Set pMore = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Namespace <var>pNamespace</var>'s interoperability event log, newest first: the UTC
+/// <code>TimeLogged</code> converted, the job, severity by type -- Assert, Error and Alert 2,
+/// Warning 1, Info 0, Trace -1 -- and <code>[NS] &lt;ConfigName&gt;: &lt;Text&gt;</code>, or
+/// <code>[NS] &lt;Text&gt;</code> where the entry names no host.</p>
+ClassMethod EventLog(pNamespace As %String, pMax As %Integer, Output pEntries As %DynamicArray, Output pMore As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Set pEntries = []
+    Set pMore = 0
+    Try {
+        Set tSC = ..FetchEvents(pNamespace, pMax + 1, .tRows)
+        If $$$ISERR(tSC) Quit
+        Kill tHeld
+        Set tCount = 0
+        Set tPrefix = ..Prefix(pNamespace)
+        Set tTotal = +$Get(tRows)
+        For tAt = 1:1:tTotal {
+            Set tRow = tRows(tAt)
+            Set tCount = tCount + 1
+            Set tHost = $ListGet(tRow, 5)
+            Set tText = tPrefix _ $Select(tHost = "": "", 1: tHost _ ": ") _ $ListGet(tRow, 6)
+            Set tHeld(tTotal - tAt + 1) = $ListBuild(..LocalFromUtc($ListGet(tRow, 2)), $ListGet(tRow, 4), ..EventSeverity($ListGet(tRow, 3)), tText)
+        }
+        If tCount > pMax Set pMore = 1
+        Do ..Drain(.tHeld, tCount, pMax, .pEntries)
+    } Catch ex {
+        Set pEntries = []
+        Set pMore = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>An <code>Ens.DataType.LogType</code> value, logical or display, on the console scale.</p>
+ClassMethod EventSeverity(pType As %String) As %String
+{
+    Set tType = $ZConvert(pType, "U")
+    If (tType = "1") || (tType = "2") || (tType = "6") || (tType = "ASSERT") || (tType = "ERROR") || (tType = "ALERT") Quit "2"
+    If (tType = "3") || (tType = "WARNING") Quit "1"
+    If (tType = "5") || (tType = "TRACE") Quit "-1"
+    Quit "0"
+}
+
+/// <p>Whether <var>pNamespace</var> is interoperability-enabled, which is what gives it an event
+/// log to read.</p>
+ClassMethod Interoperable(pNamespace As %String) As %Boolean
+{
+    Quit ''##class(%Library.EnsembleMgr).IsEnsembleNamespace(pNamespace)
+}
+
+/// <p>The background tasks <code>EnumerateTasks</code> lists, newest first, each
+/// <code>$ListBuild(ID, StartTime, Namespace, Task, Status, Details)</code>.</p>
+ClassMethod FetchTasks(Output pTasks) As %Status
+{
+    Set tSC = $$$OK
+    Kill pTasks
+    Set tRS = ""
+    Try {
+        Set tRS = ##class(%ResultSet).%New("%CSP.UI.System.BackgroundTask:EnumerateTasks")
+        If '$IsObject(tRS) {
+            Set tSC = $$$ERROR($$$GeneralError, "the background task list could not be opened")
+            Quit
+        }
+        Set tSC = tRS.Execute()
+        If $$$ISERR(tSC) Quit
+        Set tCount = 0
+        While tRS.Next(.tSC) {
+            Set tCount = tCount + 1
+            Set pTasks(tCount) = $ListBuild(tRS.Get("ID"), tRS.Get("StartTime"), tRS.Get("Namespace"), tRS.Get("Task"), tRS.Get("Status"), tRS.Get("Details"))
+        }
+    } Catch ex {
+        Kill pTasks
+        Set tSC = ex.AsStatus()
+    }
+    If $IsObject(tRS) Do tRS.Close()
+    Quit tSC
+}
+
+/// <p>Task <var>pId</var>'s error log rows, oldest first, at most <var>pMax</var>, each
+/// <code>$ListBuild(Type, ErrorNo, ErrorText)</code>. <var>pCut</var> is 1 when rows were left.</p>
+ClassMethod FetchTaskErrors(pId As %String, pMax As %Integer, Output pRows, Output pCut As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Kill pRows
+    Set pCut = 0
+    Set tRS = ""
+    Try {
+        Set tRS = ##class(%ResultSet).%New("%CSP.UI.System.BackgroundTask:ErrorLog")
+        If '$IsObject(tRS) {
+            Set tSC = $$$ERROR($$$GeneralError, "the background task error log could not be opened")
+            Quit
+        }
+        Set tSC = tRS.Execute(pId)
+        If $$$ISERR(tSC) Quit
+        Set tCount = 0
+        While tRS.Next(.tSC) {
+            If tCount >= pMax {
+                Set pCut = 1
+                Quit
+            }
+            Set tCount = tCount + 1
+            Set pRows(tCount) = $ListBuild(tRS.Get("Type"), tRS.Get("ErrorNo"), tRS.Get("ErrorText"))
+        }
+    } Catch ex {
+        Kill pRows
+        Set tSC = ex.AsStatus()
+    }
+    If $IsObject(tRS) Do tRS.Close()
+    Quit tSC
+}
+
+/// <p>Namespace <var>pNamespace</var>'s xDBC errors from <code>XdbcErrors</code>, each
+/// <code>$ListBuild(DATE_TIME, DisplayPID, SQLCODE, MESSAGE)</code>. The connection details the
+/// query also answers are not read.</p>
+ClassMethod FetchXdbc(pNamespace As %String, Output pRows) As %Status
+{
+    Set tSC = $$$OK
+    Kill pRows
+    Set tRS = ""
+    Try {
+        Set tRS = ##class(%ResultSet).%New("%SQL.Manager.Catalog:XdbcErrors")
+        If '$IsObject(tRS) {
+            Set tSC = $$$ERROR($$$GeneralError, "the xDBC error log could not be opened")
+            Quit
+        }
+        Set tSC = tRS.Execute(pNamespace, "")
+        If $$$ISERR(tSC) Quit
+        Set tCount = 0
+        While tRS.Next(.tSC) {
+            Set tCount = tCount + 1
+            Set pRows(tCount) = $ListBuild(tRS.Get("DATE_TIME"), tRS.Get("DisplayPID"), tRS.Get("SQLCODE"), tRS.Get("MESSAGE"))
+        }
+    } Catch ex {
+        Kill pRows
+        Set tSC = ex.AsStatus()
+    }
+    If $IsObject(tRS) Do tRS.Close()
+    Quit tSC
+}
+
+/// <p>At most <var>pMax</var> of namespace <var>pNamespace</var>'s SQL diagnostics results, newest
+/// first: <var>pRows</var> is their count and <code>pRows(n)</code> is
+/// <code>$ListBuild(ID, createTime, processId, sqlcode, errorCount, statement)</code>, with each
+/// message of severity <parameter>DIAGMESSAGEFLOOR</parameter> or above at
+/// <code>pRows(n, k)</code>. <code>createTime</code> is UTC.</p>
+ClassMethod FetchDiagnostics(pNamespace As %String, pMax As %Integer, Output pRows) As %Status
+{
+    Set tSC = $$$OK
+    Kill pRows
+    Set pRows = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tStatement.%SelectMode = 1
+        Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT TOP ? ID, createTime, processId, sqlcode, errorCount, statement FROM %SQL_Diag.Result ORDER BY ID DESC", pMax)
+        If '$IsObject(tResult) {
+            Set tSC = $$$ERROR($$$GeneralError, "the statement answered no result")
+            Quit
+        }
+        If tResult.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+            Quit
+        }
+        Set tCount = 0
+        While tResult.%Next(.tSC) {
+            Set tCount = tCount + 1
+            Set pRows(tCount) = $ListBuild(tResult.%GetData(1), tResult.%GetData(2), tResult.%GetData(3), tResult.%GetData(4), tResult.%GetData(5), tResult.%GetData(6))
+        }
+        If $$$ISERR(tSC) Quit
+        Set pRows = tCount
+        For tAt = 1:1:tCount {
+            Set tMessages = ##class(%SQL.Statement).%New()
+            Set tAnswer = ##class(%SQL.Statement).%ExecDirectNoPriv(.tMessages, "SELECT message FROM %SQL_Diag.Message WHERE diagResult = ? AND severity >= ? ORDER BY ID", $List(pRows(tAt), 1), ..#DIAGMESSAGEFLOOR)
+            If '$IsObject(tAnswer) {
+                Set tSC = $$$ERROR($$$GeneralError, "the statement answered no result")
+                Quit
+            }
+            If tAnswer.%SQLCODE < 0 {
+                Set tSC = $$$ERROR($$$SQLCode, tAnswer.%SQLCODE, tAnswer.%Message)
+                Quit
+            }
+            Set tLine = 0
+            While tAnswer.%Next(.tSC) {
+                Set tLine = tLine + 1
+                Set pRows(tAt, tLine) = tAnswer.%GetData(1)
+            }
+            If $$$ISERR(tSC) Quit
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Kill pRows
+        Set pRows = 0
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    If $$$ISERR(tSC) {
+        Kill pRows
+        Set pRows = 0
+    }
+    Quit tSC
+}
+
+/// <p>At most <var>pMax</var> of namespace <var>pNamespace</var>'s <code>Ens_Util.Log</code> rows,
+/// newest first: <var>pRows</var> is their count and <code>pRows(n)</code> is
+/// <code>$ListBuild(ID, TimeLogged, Type, Job, ConfigName, Text)</code>, <code>TimeLogged</code> in
+/// UTC. The captured stack is not selected.</p>
+ClassMethod FetchEvents(pNamespace As %String, pMax As %Integer, Output pRows) As %Status
+{
+    Set tSC = $$$OK
+    Kill pRows
+    Set pRows = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tStatement.%SelectMode = 1
+        Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT TOP ? ID, TimeLogged, Type, Job, ConfigName, Text FROM Ens_Util.Log ORDER BY ID DESC", pMax)
+        If '$IsObject(tResult) {
+            Set tSC = $$$ERROR($$$GeneralError, "the statement answered no result")
+            Quit
+        }
+        If tResult.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+            Quit
+        }
+        Set tCount = 0
+        While tResult.%Next(.tSC) {
+            Set tCount = tCount + 1
+            Set pRows(tCount) = $ListBuild(tResult.%GetData(1), tResult.%GetData(2), tResult.%GetData(3), tResult.%GetData(4), tResult.%GetData(5), tResult.%GetData(6))
+        }
+        If $$$ISERR(tSC) Quit
+        Set pRows = tCount
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Kill pRows
+        Set pRows = 0
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    If $$$ISERR(tSC) {
+        Kill pRows
+        Set pRows = 0
+    }
+    Quit tSC
+}
+
+/// <p>The <code>[NAMESPACE] </code> a per-namespace entry's text begins with, or <code>""</code>
+/// for none.</p>
+ClassMethod Prefix(pNamespace As %String) As %String
+{
+    If pNamespace = "" Quit ""
+    Quit "[" _ pNamespace _ "] "
+}
+
+/// <p>A local <code>YYYY-MM-DD HH:MM:SS[.f]</code> as <code>YYYY-MM-DDTHH:MM:SS.mmm</code>, the
+/// fraction cut or padded to three digits; <code>""</code> for a value that is not one.</p>
+ClassMethod ClockStamp(pLocal As %String) As %String
+{
+    Set tValue = $ZStrip(pLocal, "<>W")
+    If '$Match(tValue, "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]*)?$") Quit ""
+    Set tFraction = $Extract($Piece(tValue, ".", 2) _ "000", 1, 3)
+    Quit $Extract(tValue, 1, 10) _ "T" _ $Extract(tValue, 12, 19) _ "." _ tFraction
+}
+
+/// <p>A UTC <code>YYYY-MM-DD HH:MM:SS[.f]</code> in the instance's local time, as
+/// <method>ClockStamp</method> writes it; <code>""</code> for a value that is not one.</p>
+ClassMethod LocalFromUtc(pUtc As %String) As %String
+{
+    Set tValue = $ZStrip(pUtc, "<>W")
+    If '$Match(tValue, "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]*)?$") Quit ""
+    Set tFraction = $Extract($Piece(tValue, ".", 2) _ "000", 1, 3)
+    Set tLocal = ""
+    Try {
+        Set tLocal = $ZDateTime($ZDateTimeH($ZDateTimeH($Extract(tValue, 1, 19), 3), -3), 3, 1)
+    } Catch {
+        Set tLocal = ""
+    }
+    If tLocal = "" Quit ""
+    Quit $Extract(tLocal, 1, 10) _ "T" _ $Extract(tLocal, 12, 19) _ "." _ tFraction
+}
+
+/// <p>The <var>pCount</var> entries held as <code>pHeld(recency) = $ListBuild(time, pid, severity,
+/// text)</code>, a larger recency being newer, as at most <var>pMax</var> objects newest first:
+/// by time, then by recency. An entry with no time sorts last.</p>
+ClassMethod Drain(ByRef pHeld, pCount As %Integer, pMax As %Integer, Output pEntries As %DynamicArray) [ Private ]
+{
+    Set pEntries = []
+    Kill tOrder
+    For tAt = 1:1:pCount {
+        If '$Data(pHeld(tAt), tEntry) Continue
+        Set tOrder(" " _ $ListGet(tEntry, 1), tAt) = ""
+    }
+    Set tTime = ""
+    For {
+        Set tTime = $Order(tOrder(tTime), -1)
+        If tTime = "" Quit
+        Set tAt = ""
+        For {
+            Set tAt = $Order(tOrder(tTime, tAt), -1)
+            If tAt = "" Quit
+            If pEntries.%Size() >= pMax Quit
+            Set tEntry = pHeld(tAt)
+            Set tObject = {}
+            Do tObject.%Set("time", $ListGet(tEntry, 1))
+            Do tObject.%Set("pid", $ListGet(tEntry, 2) _ "")
+            Do tObject.%Set("severity", $ListGet(tEntry, 3) _ "")
+            Do tObject.%Set("text", $ListGet(tEntry, 4))
+            Do pEntries.%Push(tObject)
+        }
+        If pEntries.%Size() >= pMax Quit
+    }
 }
 
 /// <p>Serve one level of the application error log (AD-48). <var>pLevel</var> is one of

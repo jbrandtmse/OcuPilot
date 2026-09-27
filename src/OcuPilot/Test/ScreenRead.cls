@@ -382,7 +382,7 @@ Method TestEveryDeclaredLogSourceReadFieldIsAKeyOfTheLiveRow()
             Do $$$AssertTrue(tRow.%GetTypeOf(tField) '= "unassigned", tClass _ ": declared read field '" _ tField _ "' is a key of the live row")
         }
     }
-    Do $$$AssertEquals(tChecked, 2, "both production logsource reads are checked: " _ tChecked)
+    Do $$$AssertEquals(tChecked, 8, "all eight production logsource reads are checked, Story 16.8's six included: " _ tChecked)
 }
 
 /// <p>Story 2.8 -- the declared banner is evaluated inside the read, against the real port, and it

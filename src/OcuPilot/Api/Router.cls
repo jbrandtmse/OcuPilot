@@ -121,6 +121,12 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/logs/alerts" Method="GET" Call="LogAlerts"/>
   <Route Url="/logs/messages/files" Method="GET" Call="LogMessageFiles"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
+  <Route Url="/logs/systemmonitor" Method="GET" Call="LogSystemMonitor"/>
+  <Route Url="/logs/taskerrors" Method="GET" Call="LogTaskErrors"/>
+  <Route Url="/logs/xdbc" Method="GET" Call="LogXdbc"/>
+  <Route Url="/logs/sqldiagnostics" Method="GET" Call="LogSqlDiagnostics"/>
+  <Route Url="/logs/eventlog" Method="GET" Call="LogEventLog"/>
+  <Route Url="/logs/analytics" Method="GET" Call="LogAnalytics"/>
   <Route Url="/turn/:id/progress" Method="GET" Call="TurnProgress"/>
   <Route Url="/turn/:id/stop" Method="POST" Call="TurnStop"/>
   <Route Url="/turn/:id/navigation" Method="POST" Call="TurnNavigation"/>
@@ -713,6 +719,49 @@ ClassMethod LogMessages() As %Status
 ClassMethod LogMessageFiles() As %Status
 {
     Quit ##class(OcuPilot.Api.LogPage).HandleFiles(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/systemmonitor</code> (Story 16.8): the
+/// System Monitor log's newest entries through <method>OcuPilot.Api.LogPage.HandleRecent</method>,
+/// with the source key bound here from the port's own enum (AD-21).</p>
+ClassMethod LogSystemMonitor() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleRecent(##class(OcuPilot.Port.LogSourcePort).#SYSTEMMONITORKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/taskerrors</code> -- see
+/// <method>LogSystemMonitor</method>.</p>
+ClassMethod LogTaskErrors() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleRecent(##class(OcuPilot.Port.LogSourcePort).#TASKERRORSKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/xdbc</code> -- see
+/// <method>LogSystemMonitor</method>.</p>
+ClassMethod LogXdbc() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleRecent(##class(OcuPilot.Port.LogSourcePort).#XDBCKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/sqldiagnostics</code> -- see
+/// <method>LogSystemMonitor</method>.</p>
+ClassMethod LogSqlDiagnostics() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleRecent(##class(OcuPilot.Port.LogSourcePort).#SQLDIAGNOSTICSKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/eventlog</code> -- see
+/// <method>LogSystemMonitor</method>.</p>
+ClassMethod LogEventLog() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleRecent(##class(OcuPilot.Port.LogSourcePort).#EVENTLOGKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/analytics</code> -- see
+/// <method>LogSystemMonitor</method>.</p>
+ClassMethod LogAnalytics() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleRecent(##class(OcuPilot.Port.LogSourcePort).#ANALYTICSKEY)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /turn/:id/progress</code>: delegates to

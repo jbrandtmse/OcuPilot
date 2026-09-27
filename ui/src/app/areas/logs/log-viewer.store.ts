@@ -19,6 +19,11 @@ export interface LogViewerSource {
   readonly filesPath?: string;
   /** The name `filesPath`'s list answers for the source's own file, which the address never carries. */
   readonly ownFile?: string;
+  /**
+   * Whether the route answers the newest entries rather than a page of a file (Story 16.8): a bare
+   * GET with no cursor, answered as `{source, entries, truncated}` already normalized on the server.
+   */
+  readonly entries?: true;
 }
 
 /** The alerts.log screen's route. */
@@ -32,6 +37,14 @@ export const MESSAGES_SOURCE: LogViewerSource = {
   filesPath: '/api/ocupilot/logs/messages/files',
   ownFile: 'messages.log',
 };
+
+/** The six secondary logs (Story 16.8), each bound to its own source key by `Api/Router.cls`. */
+export const SYSTEM_MONITOR_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/systemmonitor', entries: true };
+export const TASK_ERRORS_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/taskerrors', entries: true };
+export const XDBC_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/xdbc', entries: true };
+export const SQL_DIAGNOSTICS_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/sqldiagnostics', entries: true };
+export const EVENT_LOG_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/eventlog', entries: true };
+export const ANALYTICS_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/analytics', entries: true };
 
 /**
  * `OcuPilot.Api.Error`'s code for a log file this instance does not have. It is a 404 rather than an
@@ -63,6 +76,29 @@ function flagAt(body: unknown, key: string): boolean {
   return (body as Record<string, unknown>)[key] === true;
 }
 
+/**
+ * A `Recent` answer's entries as rows, oldest first as the viewer draws them. Each already carries
+ * its local stamp, pid, severity and text, so no grammar is parsed here.
+ */
+function entriesOf(body: unknown): readonly LogLine[] {
+  if (body === null || typeof body !== 'object') return [];
+  const entries = (body as Record<string, unknown>)['entries'];
+  if (!Array.isArray(entries)) return [];
+  const lines: LogLine[] = [];
+  for (const entry of entries) {
+    lines.push({
+      stamp: textAt(entry, 'time'),
+      pid: textAt(entry, 'pid'),
+      severity: textAt(entry, 'severity'),
+      category: '',
+      text: textAt(entry, 'text'),
+      raw: textAt(entry, 'raw'),
+      head: true,
+    });
+  }
+  return lines.reverse();
+}
+
 function filesOf(body: unknown): readonly LogFileEntry[] {
   if (body === null || typeof body !== 'object') return [];
   const files = (body as Record<string, unknown>)['files'];
@@ -84,10 +120,11 @@ function filesOf(body: unknown): readonly LogFileEntry[] {
  * an explicit Load newer issues. A screen left open issues nothing at all.
  *
  * **Root-provided**, like the application error log's drill, so the cursor and the rows survive a
- * navigation. What it holds is which lines this principal was reading, so it belongs in the
- * sign-out teardown beside `auditSearch` and `errorLogDrill`; that teardown lives in `app.ts`,
- * which this story does not own, and until it is wired the rows survive a sign-out in the same tab
- * -- DW-1110.
+ * navigation. What it holds is which lines this principal was reading, so `app.ts`'s sign-out
+ * teardown resets it beside `auditSearch` and `errorLogDrill`.
+ *
+ * **A secondary log reads entries, not pages** (Story 16.8): its source declares `entries`, its read
+ * is a bare GET for the newest window, and Load newer reads that window again.
  *
  * Framework-only in its injection: the API service is resolved on the first read rather than in the
  * constructor, so constructing the shell does not drag a leaf screen's data dependency in behind it.
@@ -145,7 +182,7 @@ export class LogViewerStore {
     };
   }
 
-  /** Forget everything this principal had. See the class note on the sign-out teardown (DW-1110). */
+  /** Forget everything this principal had; the sign-out teardown calls it. */
   reset(): void {
     this.fileValue = '';
     this.filesValue = [];
@@ -271,13 +308,15 @@ export class LogViewerStore {
   }
 
   /**
-   * Whether Load newer is offered: only once a page has answered and left a cursor.
+   * Whether Load newer is offered: only once a page has answered and left a cursor, or, for a
+   * source that reads entries, once its window has answered.
    *
    * There is no control for the other end. The first page is the file's own tail, so the oldest end
    * is where the window starts; the viewer offers no way to ask for a page before it and issues no
    * request for one.
    */
   canLoadNewer(): boolean {
+    if (this.sourceValue.entries === true) return this.loadedValue && this.faultValue === null;
     return this.cursorValue;
   }
 
@@ -289,12 +328,17 @@ export class LogViewerStore {
   }
 
   /**
-   * One more page, from the cursor the last page returned.
+   * One more page, from the cursor the last page returned; for a source that reads entries, the
+   * newest window again.
    *
    * A rotation answers `restarted` true, which is an outcome and not a fault: the page is the new
    * file's own start, so the rows it replaces are gone and the held cursor with them.
    */
   async loadNewer(): Promise<void> {
+    if (this.sourceValue.entries === true) {
+      await this.read('');
+      return;
+    }
     if (!this.cursorValue) return;
     await this.read(String(this.offsetValue));
   }
@@ -307,11 +351,12 @@ export class LogViewerStore {
     this.goneValue = false;
     this.notify();
 
+    const entriesMode = this.sourceValue.entries === true;
     const params: string[] = [];
-    if (offset !== '') {
+    if (!entriesMode && offset !== '') {
       params.push('offset=' + encodeURIComponent(offset), 'identity=' + encodeURIComponent(this.identityValue));
     }
-    if (this.fileValue !== '') params.push('file=' + encodeURIComponent(this.fileValue));
+    if (!entriesMode && this.fileValue !== '') params.push('file=' + encodeURIComponent(this.fileValue));
     const path = this.sourceValue.tailPath + (params.length === 0 ? '' : '?' + params.join('&'));
     const result = await this.injector.get(ApiService).requestJson<unknown>(path, { scope: null });
     if (generation !== this.generation) return;
@@ -334,6 +379,16 @@ export class LogViewerStore {
         const pair = result.detail === null ? undefined : result.detail['failedPair'];
         this.failedPairValue = typeof pair === 'string' ? pair : '';
       }
+      this.notify();
+      return;
+    }
+
+    if (entriesMode) {
+      this.fileEntries = entriesOf(result.body);
+      this.truncatedValue = flagAt(result.body, 'truncated');
+      this.cursorValue = false;
+      this.loadedValue = true;
+      this.loadingValue = false;
       this.notify();
       return;
     }

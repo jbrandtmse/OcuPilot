@@ -1,5 +1,6 @@
-/// <p>The handler behind the log-page routes -- <code>GET /api/ocupilot/logs/messages</code>,
-/// <code>GET /api/ocupilot/logs/alerts</code> and <code>GET /api/ocupilot/logs/messages/files</code>.
+/// <p>The handler behind the log routes -- <code>GET /api/ocupilot/logs/messages</code>,
+/// <code>GET /api/ocupilot/logs/alerts</code>, <code>GET /api/ocupilot/logs/messages/files</code> and
+/// the six secondary logs' <code>GET /api/ocupilot/logs/&lt;key&gt;</code> (Story 16.8).
 /// It reads the page parameters off the request and answers what
 /// <class>OcuPilot.Port.LogSourcePort</class> returns, through OcuPilot's one success writer or
 /// its one error writer (AD-12).</p>
@@ -53,6 +54,27 @@ ClassMethod HandleFiles(pSource As %String) As %Status
     Try {
         Set tFilesSC = $ClassMethod(..PortClass(), "Files", pSource, .tResult, .tHttpStatus, .tFault)
         Set tSC = ..Answer(tFilesSC, .tResult, .tHttpStatus, .tFault)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
+/// <p>Answer the newest entries of secondary log source <var>pSource</var>
+/// (<method>OcuPilot.Port.LogSourcePort.Recent</method>) under the declared read's default cap
+/// (<parameter>OcuPilot.Screen.Read.DEFAULTMAXROWS</parameter>). The route reads no query
+/// parameter; a <code>file</code> parameter is refused 400 <code>LOG.FILE</code> before the port is
+/// asked, as on the alert log.</p>
+ClassMethod HandleRecent(pSource As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        If %request.IsDefined("file") {
+            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, "This log is read whole by its route and takes no file name", ##class(OcuPilot.Api.Error).#LOGFILE)
+            Quit
+        }
+        Set tRecentSC = $ClassMethod(..PortClass(), "Recent", pSource, ##class(OcuPilot.Screen.Read).#DEFAULTMAXROWS, .tResult, .tHttpStatus, .tFault)
+        Set tSC = ..Answer(tRecentSC, .tResult, .tHttpStatus, .tFault)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }

@@ -397,7 +397,7 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     ; principal, and a claim that the three readings agree has to cover the same eight.
     Do $$$AssertEquals($Get(tVerdict("home")), 1, "Home never gates")
     Do $$$AssertEquals($Get(tVerdict("agent")), 1, "and the agent rail item never gates")
-    Do $$$AssertEquals($Get(tVerdict("logs")), 0, "while Logs, which this principal's resource used to reach alone, now wants two more pairs")
+    Do $$$AssertEquals($Get(tVerdict("logs")), 0, "while Logs, which this principal's resource used to reach alone, now wants four more pairs")
     Do $$$AssertEquals($Get(tFailed("logs")), "%Admin_Secure:USE", "naming the audit endpoint's own gate, which this principal does not hold")
     ; os-management is denied on a different resource again, since Story 2.9: the query behind its
     ; first screen checks %Admin_Manage:USE for itself and the read runs in %SYS. This principal

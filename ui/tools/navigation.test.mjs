@@ -138,6 +138,13 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'logs/messages',
       'logs/errors',
       'logs/audit',
+      // Story 16.8: the six secondary log viewers, positions 5 to 10.
+      'logs/systemmonitor',
+      'logs/taskerrors',
+      'logs/xdbc',
+      'logs/sqldiagnostics',
+      'logs/eventlog',
+      'logs/analytics',
       'os-management/databases/details',
       'os-management/database-free-space',
       'os-management/databases/volumes',

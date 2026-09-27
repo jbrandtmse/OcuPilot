@@ -110,6 +110,12 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/logs/alerts" path="/api/ocupilot/logs/alerts" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/messages" path="/api/ocupilot/logs/messages" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/messages/files" path="/api/ocupilot/logs/messages/files" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/logs/systemmonitor" path="/api/ocupilot/logs/systemmonitor" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/logs/taskerrors" path="/api/ocupilot/logs/taskerrors" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/logs/xdbc" path="/api/ocupilot/logs/xdbc" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/logs/sqldiagnostics" path="/api/ocupilot/logs/sqldiagnostics" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/logs/eventlog" path="/api/ocupilot/logs/eventlog" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/logs/analytics" path="/api/ocupilot/logs/analytics" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/turn/:id/progress" path="/api/ocupilot/turn/ocupilot-coverage-probe/progress" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/turn/:id/stop" path="/api/ocupilot/turn/ocupilot-coverage-probe/stop" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/turn/:id/navigation" path="/api/ocupilot/turn/ocupilot-coverage-probe/navigation" disposition="envelope" refusal="1"/>

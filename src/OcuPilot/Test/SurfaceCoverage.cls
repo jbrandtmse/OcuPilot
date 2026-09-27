@@ -71,8 +71,14 @@ XData Coverage
 <screen name="LdapConfigList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="LockList" class="OcuPilot.Test.Descriptor" method="TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns"/>
 <screen name="LogAlertViewer" class="OcuPilot.Test.Descriptor" method="TestTheAlertLogViewerDeclaresTheLogSourceTailAndItsOnePair"/>
+<screen name="LogAnalyticsViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
 <screen name="LogErrorList" class="OcuPilot.Test.Descriptor" method="TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs"/>
+<screen name="LogEventViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
 <screen name="LogMessageViewer" class="OcuPilot.Test.Descriptor" method="TestTheConsoleLogViewerDeclaresTheLogSourceTailAndItsOnePair"/>
+<screen name="LogSqlDiagnosticsViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
+<screen name="LogSystemMonitorViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
+<screen name="LogTaskErrorViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
+<screen name="LogXdbcViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
 <screen name="OAuthClientTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="OAuthResourceServerTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="OAuthServerClientTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>

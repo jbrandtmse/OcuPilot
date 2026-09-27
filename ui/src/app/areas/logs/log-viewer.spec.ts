@@ -1,3 +1,4 @@
+import { ApplicationRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,6 +19,17 @@ import { LogViewerStore } from './log-viewer.store';
 /** The screens this page renders, resolved from the mirror as the shell's outlet resolves it. */
 const ALERTS_SCREEN = SCREENS.find((screen) => screen.route === 'logs/alerts')!;
 const MESSAGES_SCREEN = SCREENS.find((screen) => screen.route === 'logs/messages')!;
+const XDBC_SCREEN = SCREENS.find((screen) => screen.route === 'logs/xdbc')!;
+const XDBC_PATH = '/api/ocupilot/logs/xdbc';
+
+/** `GET /logs/xdbc`'s answer (Story 16.8): the newest entries first, already normalized. */
+function entriesPage(texts: readonly string[], truncated = false) {
+  const entries = texts.map((text, index) => {
+    const time = `2026-09-27T10:0${texts.length - index}:00.000`;
+    return { time, pid: String(100 + index), severity: '2', text: `[HSCUSTOM] ${text}`, raw: `${time} (${100 + index}) 2 [HSCUSTOM] ${text}` };
+  });
+  return { source: 'xdbc', entries, truncated };
+}
 
 const TAIL_PATH = '/api/ocupilot/logs/alerts';
 const MESSAGES_TAIL_PATH = '/api/ocupilot/logs/messages';
@@ -769,3 +781,131 @@ describe('LogViewerPage: Explain this entry', () => {
     expect(explainButtons(fixture)[0].getAttribute('aria-disabled')).toBe('true');
   });
 });
+
+describe('LogViewerPage over an entries source (Story 16.8)', () => {
+  let api: StubApi;
+
+  beforeEach(() => {
+    api = new StubApi();
+    api.tail(entriesPage(['newest match', 'middle match', 'oldest match']));
+  });
+
+  afterEach(() => {
+    TestBed.inject(LogViewerStore).reset();
+    TestBed.resetTestingModule();
+  });
+
+  async function settle(): Promise<void> {
+    for (let turn = 0; turn < 8; turn += 1) await Promise.resolve();
+  }
+
+  async function mount(): Promise<{ fixture: ComponentFixture<LogViewerPage>; store: LogViewerStore }> {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: XDBC_SCREEN.route, children: [] }, { path: '**', children: [] }]),
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: NavigationService, useValue: { screenForUrl: () => XDBC_SCREEN } as unknown as NavigationService },
+        { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
+      ],
+    });
+    const fixture = TestBed.createComponent(LogViewerPage);
+    fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
+    return { fixture, store: TestBed.inject(LogViewerStore) };
+  }
+
+  function cells(fixture: ComponentFixture<LogViewerPage>): string[][] {
+    return Array.from(fixture.nativeElement.querySelectorAll('.ocu-log-row')).map((row) =>
+      Array.from((row as HTMLElement).querySelectorAll('.ocu-log-cell')).map((cell) => ((cell as HTMLElement).textContent ?? '').trim())
+    );
+  }
+
+  function count(fixture: ComponentFixture<LogViewerPage>): string {
+    return ((fixture.nativeElement.querySelector('[data-ocu-log="count"]') as HTMLElement).textContent ?? '').trim();
+  }
+
+  // Mutation (Rule 19): send `offset` and `identity` on an entries source's read -> the bare-path
+  // assertion goes red.
+  it('reads a bare GET with no query and renders the entries oldest first, with no file choice', async () => {
+    const { fixture } = await mount();
+    expect(api.paths).toEqual([XDBC_PATH]);
+    const rendered = cells(fixture);
+    expect(rendered.map((row) => row[3])).toEqual(['[HSCUSTOM] oldest match', '[HSCUSTOM] middle match', '[HSCUSTOM] newest match']);
+    expect(rendered[0][0]).toBe('2026-09-27T10:01:00.000');
+    expect(rendered[0][1]).toBe('102');
+    expect(rendered[0][2]).toBe(STRINGS.logSeveritySevere);
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="file"]')).toBeNull();
+
+    (fixture.nativeElement.querySelector('[data-ocu-log="raw"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(textOfNode(fixture, '[data-ocu-log="raw-block"]')).toContain('2026-09-27T10:01:00.000 (102) 2 [HSCUSTOM] oldest match');
+  });
+
+  it('Load newer reads the newest window again and replaces the rows', async () => {
+    const { fixture, store } = await mount();
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="load-newer"]')).not.toBeNull();
+    api.tail(entriesPage(['arrived later', 'newest match', 'middle match', 'oldest match']));
+    await store.loadNewer();
+    await settle();
+    fixture.detectChanges();
+    expect(api.paths).toEqual([XDBC_PATH, XDBC_PATH]);
+    expect(cells(fixture).map((row) => row[3]).at(-1)).toBe('[HSCUSTOM] arrived later');
+    expect(cells(fixture)).toHaveLength(4);
+  });
+
+  // Mutation (Rule 19): delete the `afterNextRender(() => this.onBottom())` line from
+  // `LogViewerPage.onLoadNewer` -> the viewport is never scrolled and this goes red.
+  it('the Load newer button jumps to the bottom once the newest window has rendered', async () => {
+    const { fixture } = await mount();
+    const viewport = fixture.nativeElement.querySelector('[data-ocu-log="viewport"]') as HTMLElement;
+    const scrollTo = vi.fn();
+    viewport.scrollTo = scrollTo as unknown as HTMLElement['scrollTo'];
+    api.tail(entriesPage(['arrived later', 'newest match', 'middle match', 'oldest match']));
+    (fixture.nativeElement.querySelector('[data-ocu-log="load-newer"]') as HTMLButtonElement).click();
+    await settle();
+    fixture.detectChanges();
+    TestBed.inject(ApplicationRef).tick();
+    expect(scrollTo).toHaveBeenCalledWith({ top: viewport.scrollHeight });
+    expect(cells(fixture).map((row) => row[3]).at(-1)).toBe('[HSCUSTOM] arrived later');
+  });
+
+  it('publishes the entries on screen as the declared rows, newest first', async () => {
+    await mount();
+    const published = TestBed.inject(ScreenStores).for(XDBC_SCREEN.descriptor, []).data();
+    expect(published[0]).toEqual({ time: '2026-09-27T10:03:00.000', severity: '2', text: '[HSCUSTOM] newest match' });
+    expect(published).toHaveLength(3);
+  });
+
+  // Mutation (Rule 19): make Next match call `step(-1)` -> the forward sequence goes red.
+  it('DW-1102: Next match and Previous match carry their names and move the caret, wrapping', async () => {
+    const { fixture } = await mount();
+    const next = fixture.nativeElement.querySelector('[data-ocu-log="next"]') as HTMLButtonElement;
+    const previous = fixture.nativeElement.querySelector('[data-ocu-log="previous"]') as HTMLButtonElement;
+    expect(next.textContent?.trim()).toBe(STRINGS.logViewerNextMatch);
+    expect(previous.textContent?.trim()).toBe(STRINGS.logViewerPreviousMatch);
+    expect(next.getAttribute('type')).toBe('button');
+
+    const search = fixture.nativeElement.querySelector('[data-ocu-log="search"]') as HTMLInputElement;
+    search.value = 'match';
+    search.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(count(fixture)).toBe('1 of 3');
+    const seen: string[] = [];
+    for (let press = 0; press < 3; press += 1) {
+      next.click();
+      fixture.detectChanges();
+      seen.push(count(fixture));
+    }
+    expect(seen).toEqual(['2 of 3', '3 of 3', '1 of 3']);
+    previous.click();
+    fixture.detectChanges();
+    expect(count(fixture)).toBe('3 of 3');
+  });
+});
+
+function textOfNode(fixture: ComponentFixture<LogViewerPage>, selector: string): string {
+  const node = fixture.nativeElement.querySelector(selector) as HTMLElement | null;
+  return node === null ? '' : (node.textContent ?? '').trim();
+}

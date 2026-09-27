@@ -29,6 +29,7 @@ import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
 import { ApiService } from './core/api';
+import { LogViewerStore, XDBC_SOURCE } from './areas/logs/log-viewer.store';
 import { ChangeBus } from './core/change-bus';
 import { ConnectivityService } from './core/connectivity';
 import { FormDirty } from './core/form-dirty';
@@ -513,7 +514,18 @@ describe('the shell frame', () => {
         {
           provide: ApiService,
           useValue: {
-            requestJson: async () => ({ kind: 'ok', status: 200, body: { rows: [] } }),
+            requestJson: async (path: string) =>
+              path.startsWith('/api/ocupilot/logs/xdbc')
+                ? {
+                    kind: 'ok',
+                    status: 200,
+                    body: {
+                      source: 'xdbc',
+                      entries: [{ time: '2026-09-27T10:00:00.000', pid: '7', severity: '2', text: '[HSCUSTOM] <-30>', raw: 'x' }],
+                      truncated: false,
+                    },
+                  }
+                : { kind: 'ok', status: 200, body: { rows: [] } },
           } as unknown as ApiService,
         },
       ],
@@ -1068,6 +1080,12 @@ describe('the shell frame', () => {
     expect(errorLogDrill.level()).toBe('list');
     expect(errorLogDrill.namespace()).toBe('HSCUSTOM');
 
+    // DW-1110: the log viewer holds the entries THIS principal read.
+    const logViewer = TestBed.inject(LogViewerStore);
+    logViewer.setSource(XDBC_SOURCE);
+    await logViewer.open();
+    expect(logViewer.lines()).toHaveLength(1);
+
     // The eighth answer of the same kind (Story 3.5). The Definition form's buffer holds what THIS
     // principal typed, and `keyValue` holds a provider API key they pasted and have not yet
     // stored -- a secret, in a root-provided store, in the tab the next principal signs in to
@@ -1185,6 +1203,11 @@ describe('the shell frame', () => {
     expect(errorLogDrill.level()).toBe('namespaces');
     expect(errorLogDrill.namespace()).toBe('');
     expect(errorLogDrill.date()).toBe('');
+
+    // Mutation (Rule 19): delete `this.logViewer.reset()` from `App.verifyWhenSignedIn` -> these
+    // two go red, and the shipped shell shows the next principal the previous one's log entries.
+    expect(logViewer.lines()).toHaveLength(0);
+    expect(logViewer.loaded()).toBe(false);
 
     // Mutation (Rule 19): delete `this.refresh.reset()` from `App.verifyWhenSignedIn` -> these
     // two go red, and the shipped shell keeps ticking the previous principal's screen.

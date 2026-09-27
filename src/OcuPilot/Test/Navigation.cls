@@ -263,8 +263,14 @@ Method TestAnAreaGatesOnItsOwnDeclaredSet()
     Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", "os-management: now naming the system database read")
 
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+    ; Story 16.8's two pairs come last, so every refusal above names what it named before.
     Set tFailed = "unset"
-    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "and the logs area is admitted once its three are held")
+    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "logs: its first three held, still refused")
+    Do $$$AssertEquals(tFailed, "%Ens_EventLog:USE", "logs: naming the event log's pair")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Ens_EventLog", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DeepSee_Portal", "USE")
+    Set tFailed = "unset"
+    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "and the logs area is admitted once its five are held")
     Set tFailed = "unset"
     Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("tasks", .tFailed), "and the tasks area is admitted once both are held")
     Set tFailed = "unset"
@@ -354,23 +360,19 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
         Do $$$AssertEquals(tOsMgmt.screens.%Get(9).labelKey, "deviceListLabel", "under its own label key")
     }
 
-    ; Logs, pinned the same way and for the same reason: its four screens declare four
-    ; consecutive side-bar positions, so a screen landing on the wrong one is only visible as an
-    ; order. Story 6.14 took this from three screens to four by declaring messages.log at
-    ; position 2, between the alert log and the application error log; an added Logs screen
+    ; Logs, pinned the same way and for the same reason: its screens declare consecutive side-bar
+    ; positions, so a screen landing on the wrong one is only visible as an order. Story 16.8 took
+    ; it from four screens to ten, the six secondary logs at positions 5 to 10; an added Logs screen
     ; updates this count and the per-index assertions with it.
     Set tLogs = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "logs")
     Do $$$AssertTrue($IsObject(tLogs), "the payload carries the logs area")
     If $IsObject(tLogs) {
-        Do $$$AssertEquals(tLogs.screens.%Size(), 4, "which carries its four built screens -- an added Logs screen updates this count and the per-index assertions below with it")
-        Do $$$AssertEquals(tLogs.screens.%Get(0).route, "logs/alerts", "the alert log, position 1")
-        Do $$$AssertEquals(tLogs.screens.%Get(0).labelKey, "alertLogListLabel", "under its own label key")
-        Do $$$AssertEquals(tLogs.screens.%Get(1).route, "logs/messages", "then the console log, position 2")
-        Do $$$AssertEquals(tLogs.screens.%Get(1).labelKey, "messagesLogListLabel", "under its own label key")
-        Do $$$AssertEquals(tLogs.screens.%Get(2).route, "logs/errors", "then the application error log, position 3")
-        Do $$$AssertEquals(tLogs.screens.%Get(2).labelKey, "errorLogListLabel", "under its own label key")
-        Do $$$AssertEquals(tLogs.screens.%Get(3).route, "logs/audit", "and the audit database viewer last, position 4")
-        Do $$$AssertEquals(tLogs.screens.%Get(3).labelKey, "auditListLabel", "under its own label key")
+        Do $$$AssertEquals(tLogs.screens.%Size(), 10, "which carries its ten built screens -- an added Logs screen updates this count and the per-index assertions below with it")
+        Set tOrder = $ListBuild("logs/alerts|alertLogListLabel", "logs/messages|messagesLogListLabel", "logs/errors|errorLogListLabel", "logs/audit|auditListLabel", "logs/systemmonitor|systemMonitorLogListLabel", "logs/taskerrors|taskErrorLogListLabel", "logs/xdbc|xdbcErrorLogListLabel", "logs/sqldiagnostics|sqlDiagnosticsLogListLabel", "logs/eventlog|eventLogListLabel", "logs/analytics|analyticsLogListLabel")
+        For tAt = 1:1:$ListLength(tOrder) {
+            Set tScreen = tLogs.screens.%Get(tAt - 1)
+            Do $$$AssertEquals($Select($IsObject(tScreen): tScreen.route _ "|" _ tScreen.labelKey, 1: ""), $List(tOrder, tAt), "logs position " _ tAt _ " is its declared screen, under its own label key")
+        }
     }
 }
 

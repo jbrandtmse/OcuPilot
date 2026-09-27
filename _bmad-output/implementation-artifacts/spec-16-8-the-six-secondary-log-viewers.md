@@ -2,13 +2,22 @@
 title: 'Story 16.8: The six secondary log viewers'
 type: 'feature'
 created: '2026-09-27'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '4ace0f45eaa80442913cad545a475af0b3b19409'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The Logs area now also requires %Ens_EventLog:USE, so a principal without it, such as the stock %Manager role, loses the whole Logs rail item.
+    evidence: |-
+      Spec Tasks add the pair to Area.cls:117 and AD-8's area coverage requires it; %Manager lacks %Ens_EventLog:USE on ocupilot-ci (measured);
+      WireSecurityRead's AUDITUSER now reads false:%Ens_EventLog:USE. A product call (decision-pending): keep, or amend AD-8's area rule.
+    location: >-
+      src/OcuPilot/Screen/Area.cls:120
+    severity: medium
 ---
 
 <intent-contract>
@@ -188,6 +197,37 @@ Client (`ui/src/app/`):
 
 ## Review Triage Log
 
+### 2026-09-27 — Review pass
+
+- verdicts: 26 findings — high 0, medium 9, low 14, false 3, maybe-false 0
+- findings:
+  - `[low]` `[reject]` verification-gap: `LocalFromUtc` cannot fail on a UTC instance — direction measured correct with `TZ=America/New_York` (12:00Z → 08:00); a non-UTC test needs a time-zone seam around a one-line vendor call.
+  - `[medium]` `[patch]` verification-gap: either half of the SQL diagnostics severity rule deletable — added `LogSecondary.TestTheSeverityRulesCoverEachCondition`; mutation run 16608.
+  - `[medium]` `[patch]` verification-gap: the real fetchers' SQL fault path never ran — added `TestTheRealFetchersFailOnAnUnreadableStore` (`Ens_Util.Log` absent in `%SYS`, SQLCODE -30; an unknown namespace); mutation run 16609.
+  - `[medium]` `[patch]` verification-gap: event types Assert, Alert, Info unpinned — the severity test covers all six types and the display values.
+  - `[low]` `[patch]` verification-gap: `Page`'s refusal of the six keys unfalsifiable — the Page loop now runs holding no pair (404 vs 403); mutation run 16607.
+  - `[medium]` `[patch]` verification-gap: the AC3 browser leg could not tell one row from all — the seed logs a warning and the error; the leg asserts at least two rows; mutation (explain the last row) red.
+  - `[low]` `[patch]` verification-gap: browser clicks on the match controls with one match could not fail — removed; the component DW-1102 case pins them.
+  - `[medium]` `[patch]` verification-gap: Load newer's jump to the bottom untested — component case clicking the page's button with a `scrollTo` spy; mutation red.
+  - `[low]` `[patch]` verification-gap: AC2, AC3, AC4, AC7 had no mutation line — each named, applied, red observed and recorded in Verification.
+  - `[medium]` `[reject]` verification-gap other: the Logs area now also gates on `%Ens_EventLog:USE`, so a principal without it (the stock `%Manager` role, measured) loses the Logs rail item — spec-directed (Tasks, `Area.cls:117`) under AD-8's area-union rule, whose precedent `Area.cls` documents; filed in `deferred` for the lead's decision.
+  - `[low]` `[patch]` verification-gap other: the recorded store mutation could not isolate the guard it named — rewritten as the mutation actually applied, red observed.
+  - `[false]` `[reject]` intent-alignment A: `taskerrors` not filtered to the readable set — Design Notes give it instance scope at `%Admin_Operate:USE`, as its classic page.
+  - `[low]` `[reject]` intent-alignment B: `truncated` also set when a file window or a task's rows were cut — reports an incomplete answer honestly; no user harm.
+  - `[low]` `[reject]` intent-alignment C: a fault in the interoperability predicate answers the generic 500, not `LOG.UNREADABLE` — `IsEnsembleNamespace` reads configuration; a wrap adds a branch for an unobserved fault.
+  - `[false]` `[reject]` intent-alignment D: other query parameters ignored — "reads no query parameter" and `file` refused 400 as on alerts.log, which ignores the rest the same way.
+  - `[medium]` `[reject]` intent-alignment F: a principal's Logs rail verdict changes — same root cause as the area-gating row above.
+  - `[low]` `[reject]` intent-alignment 3.1: the readable set is pinned at the port, not over the wire — the resolver is the production `Namespaces.Payload`; readable-set mutation red (run 16613).
+  - `[medium]` `[patch]` intent-alignment 3.2: vendor faults only simulated by the fixture — grouped with the real-fetcher patch above.
+  - `[false]` `[reject]` intent-alignment 3.3: zero reader calls asserted only in the port — reads are observable only there; the wire legs pin the 403 naming the pair.
+  - `[low]` `[reject]` intent-alignment 3.4: `truncated` from the byte window untested — grouped with B.
+  - `[low]` `[reject]` intent-alignment 3.5: pid and severity word not asserted in the browser — pid in the Raw leg, word in the component case.
+  - `[medium]` `[patch]` intent-alignment 3.6: Load newer's jump unmeasured — grouped with the Load newer patch above.
+  - `[low]` `[reject]` intent-alignment 3.7: search and Raw exercised on `xdbc` only — one shared code path.
+  - `[low]` `[reject]` intent-alignment 3.8: sign-out pinned in `app.spec.ts` only — the precedent for every other root store.
+  - `[low]` `[reject]` intent-alignment 3.9: the fresh-stock leg depends on untouched stores — CI's browser job runs on a fresh throwaway; green on the reused one too.
+  - `[low]` `[reject]` intent-alignment 3.11: route and tool compared at `maxRows=5` — one `Recent`, the cap is the caller's argument.
+
 ## Design Notes
 
 **Sources (measured on `ocupilot-ci` 2026-09-27; `(inference)` where not run).** Scope "readable" means the `Payload` set.
@@ -291,22 +331,41 @@ Client (`ui/src/app/`):
 **Commands** (slot A; `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci` on every browser run; bundle rebuilt and `docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/` first):
 
 - `cd ui && npm run test:tools` (loop) -- green: `screen-mirror`, `strings` (rows, citation shift), `navigation`, `navigation-wire`, `explain-entry`, `screen-arrival`, `structural-baseline` and `ci` (roster).
-  - mutation: drop `LogSecondaryWire` from the `ci-throwaway.sh` roster → `ci.test.mjs` red.
+  - mutation: drop `LogSecondaryWire` from the `ci-throwaway.sh` roster → `ci.test.mjs` red (observed, reverted).
 - `cd ui && npx ng test --include src/app/areas/logs/log-viewer.spec.ts --include src/app/areas/logs/explain-roster.spec.ts --include src/app/app.spec.ts --include src/app/areas/home/home.page.spec.ts --include src/app/shell/command-box.spec.ts --include src/app/shell/side-bar.spec.ts --include src/app/shell/rail-wire.spec.ts --include src/app/shell/screen-outlet.spec.ts --include src/app/shell/fault-banner.spec.ts` (loop) -- green. Mutations:
-  - the store sends a cursor in entries mode → entries case red;
-  - Next match calls `step(-1)` → match-button case red;
-  - drop the `LogViewerStore` reset → `app.spec.ts` DW-1110 case red.
+  - an entries source's Load newer reads `?offset=…&identity=…` (the `loadNewer` entries branch passes the offset and `read()` drops its `!entriesMode` guard) → the Load newer case red (observed, reverted);
+  - drop `afterNextRender(() => this.onBottom())` from `onLoadNewer` → the Load newer jump case red (observed, reverted);
+  - Next match calls `step(-1)` → match-button case red (observed alone, reverted);
+  - drop the `LogViewerStore` reset → `app.spec.ts` DW-1110 case red (observed, reverted).
 - `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class <C>` (loop), one at a time, for `OcuPilot.Test.LogSecondary`, `LogSecondaryWire`, `LogSourceDenial`, `LogSource`, `LogSourceWire`, `LogOlderFilesWire`, `LogPairs`, `ErrorLog`, `EndpointCoverage`, `SurfaceCoverage`, `Descriptor`, `Navigation`, `Wire`, `ReadTool`, `ScreenReadWire` and `PromptCorpus` -- green. Mutations:
-  - a reader called before the gate → `LogSecondary` gate leg red;
-  - drop the namespace predicate for `eventlog` → predicate leg red;
-  - sort ascending → merge leg red;
-  - drop `%Ens_EventLog:USE` from `EVENTLOGPAIRS` → `LogSourceDenial` eventlog leg red.
+  - a reader called before the gate → `LogSecondary` gate leg red (observed, run 16263, reverted);
+  - drop the namespace predicate for `eventlog` → predicate leg red (observed, run 16264, reverted);
+  - sort ascending → merge leg red (observed with the mapping leg, run 16265, reverted);
+  - drop `%Ens_EventLog:USE` from `EVENTLOGPAIRS` → `LogSourceDenial` eventlog leg red (observed, run 16270, reverted);
+  - `EVENTLOGPAIRS` set to `%Admin_Operate:USE` → `LogPairs` classic-resource leg red (observed, reverted);
+  - `eventlog` dropped from `SOURCES` → `LogSource` six-keys leg red (observed, reverted);
+  - `LogEventViewer`'s read pointed at `xdbc` → `Descriptor` six-viewers leg red (observed, reverted);
+  - delete `Page`'s `RECENTSOURCES` refusal → `LogSecondary` Page leg red (run 16607, reverted);
+  - drop the `errorCount` half of the SQL diagnostics severity → `LogSecondary` severity leg red (run 16608, reverted);
+  - delete `FetchEvents`' `%SQLCODE < 0` check → `LogSecondary` real-fetcher leg red (run 16609, reverted);
+  - drop the per-namespace gate in `Recent` → `LogSecondary` refused-namespace leg red (run 16610, reverted);
+  - AC2 readable set: `Recent` reads `HSCUSTOM,USER` whatever the resolver answers → `LogSecondary` readable-set leg red (run 16613, reverted);
+  - AC4: an absent `SystemMonitor.log` answers an error → `LogSecondary` absent-log leg red (run 16611, reverted);
+  - AC7: `Rows` projects `pid` too → `LogSecondary` Rows leg red (run 16612, reverted);
+  - AC2 file: delete `HandleRecent`'s `file` refusal → `LogSecondaryWire` file leg red (run 16614, reverted).
 - `cd ui && npm run build && docker cp … && node --test --test-concurrency=1 browser/secondary-logs.browser-spec.mjs browser/messages-log.browser-spec.mjs browser/messages-log-files.browser-spec.mjs browser/alerts-log.browser-spec.mjs browser/explain-entry.browser-spec.mjs browser/screen-height.browser-spec.mjs browser/a11y-structural-invariants.browser-spec.mjs` (loop) -- green, within the structural baseline.
-  - mutation: `SOURCES` drops `logs/eventlog` → seeded-row leg red.
+  - mutation: `SOURCES` drops `logs/eventlog` → seeded-row leg red (observed on a rebuilt, redeployed bundle; reverted and redeployed).
+  - mutation (AC3): `onExplain` sends the last row instead of the clicked one → the Explain leg red, "the entry clicked" (observed on a rebuilt, redeployed bundle; reverted, rebuilt, redeployed, 6/6).
 - `cd ui && npm test`, `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh` (once, before dev_complete) -- green; bundle under 2004 kB.
 - The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before dev_complete) -- green.
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none (the contended ReadTool.cls hunks were ruled by the orchestrator, option A; AD-21's fifth case written at the spec gate on 2026-09-27)
+Status: done
+Blocking condition: none
+
+- **Change:** six fixed-enum secondary log sources on `LogSourcePort` served by `Recent` (routes, descriptors, declared reads, three prompts each), the viewer's entries mode, "Next match"/"Previous match" (DW-1102) and the `LogViewerStore` sign-out reset (DW-1110). The readers the spec placed in `Port/LogRecords.cls` live in `LogSourcePort` after `HeadParts`: `PortGate` requires every `OcuPilot.Port` class on a roster line Epic 14 also edits, so a new class there would contend.
+- **Files:** `Port/LogSourcePort.cls` (keys, pairs, `Recent`, readers), `Api/LogPage.cls`, `Api/Router.cls`, `Screen/Area.cls`, six `Screen/Descriptor/Log*Viewer.cls`; tests `LogSecondary`, `LogSecondaryWire`, `LogSecondarySeed`, `LogRecordsFixture`, and rows in `LogSource`, `LogSourceDenial`, `LogSourceFixture`, `LogPairs`, `Descriptor`, `EndpointCoverage`, `SurfaceCoverage`, `Navigation`, `Wire`, `WireSecurityRead`, `ReadTool` (126, as ruled), `ScreenRead` (eight logsource reads); client store, page, `app.ts`, `strings.ts`, `screens.generated.ts`, specs, `secondary-logs.browser-spec.mjs`; EXPERIENCE.md two rows and the log-viewer row; `ci-throwaway.sh` roster.
+- **Review:** 26 findings; 9 patched (medium 5 entries, low 4), all test-side, each with an observed mutation; 1 deferred (Logs area gating, decision-pending); 16 rejected with reasons in the triage log. Follow-up review: false — every patch is a test whose red was observed.
+- **Verification:** full ObjectScript sweep on `ocupilot-ci`: 308 ran, 16 refused (arming), 1 known residue (`WireSecurityRead` task history); `PortGate` and `ScreenRead` failed there and were fixed, then re-run green with every log class. `npm test` 1575 tool + 1558 component (log-viewer spec now 44); browser `secondary-logs` 6/6, `messages-log`, `messages-log-files`, `explain-entry`, `screen-height`, `a11y-structural-invariants`, `audit`, `error-log`, `suggested-prompts`, `suggested-view` green; `alerts-log` 5/7 on the reused throwaway only (seeded alerts outside the 64 KB tail of a 160 KB file; path unchanged). Bundle 1.94 MB. `check-objectscript` and `lint-docs` clean. Seeded stores read back empty.
+- **Residual risk:** the Logs area gating above; `LocalFromUtc` is falsifiable only on a non-UTC instance.
