@@ -7525,3 +7525,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-18-home-s-performance-row.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ocupilot-ci lacks OCUPILOT_ALLOW_ACCOUNT_PREFERENCES (docker exec printenv, 2026-09-26), so the class refuses; CI's instance job arms it via scripts/ci-throwaway.sh. Curl on ocupilot-ci read home favorite 422.
 - 2026-09-26T22:02:39Z status=wontfix-accepted owner=16-18-home-s-performance-row by=cr note=reopen_if=CI instance job reports PreferencesWire TestHomesRateIsRememberedUnderItsOwnName red
+
+### DW-1721: OcuPilot.Test.ErrorLog.TestABadMaxRowsIsRefusedNotDefaulted depends on sweep order (needs two application errors on one date)
+- source: spec-16-19-impact-lines-on-removals.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: failed once in the 16.19 implement sweep on ocupilot-ci, green re-run alone (run 15179); not touched by 16.19
+- 2026-09-27T01:32:52Z status=wontfix-accepted owner=16-19-impact-lines-on-removals by=harvest note=reopen_if=CI's instance job reports this test red
