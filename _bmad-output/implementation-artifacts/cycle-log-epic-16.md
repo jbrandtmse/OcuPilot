@@ -169,3 +169,5 @@
 2026-09-27T12:47:22Z	Story 16.22	protocol_violation	stage=code-review depth=2 agent=reviewer violation=four_test-runner_calls_in_one_message consequence=none(runner_reported_0_overlaps_0_foreign_runs,all_green) detected_by=reviewer_self_report outcome=recorded
 2026-09-27T12:47:22Z	Story 16.22	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=DW-1752_born_by-design;slice_empty model=claude-opus-5-5
 2026-09-27T12:47:22Z	Story 16.22	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci_rebuilt_redeployed;guardrails.browser-spec model=claude-opus-5-5
+2026-09-27T12:48:20Z	Story 16.22	committed	sha=dae9f00a submodules= ci=pending run=36320197671 amendments=EXPERIENCE.md:1_fixed-strings_row+in_place_152,169,226 footprint_extensions=scripts/ci-throwaway.sh supersedes=36319248246
+2026-09-27T12:48:26Z	Story 16.23	stage_spawned	stage=plan spawn_at=2026-09-27T12:48:26Z model=opus agent_name=16-23-any-table-downloaded-as-csv-plan-1 cycle_iteration=1 note=start_before_19:00Z_cutoff;est_green_by_~17:00Z
