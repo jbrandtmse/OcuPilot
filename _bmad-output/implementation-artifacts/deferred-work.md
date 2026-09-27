@@ -7556,3 +7556,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-22-the-guardrails-page.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Guardrails.Read lists Registry.SecretArguments per advertised write tool (spec Always); Write.SecretArguments answers the descriptor's list unless a tool overrides it, so delete/revoke tools list the screen's secrets. Accurate to what Mint refuses and Dispatch strips; noisy as a trust statement.
 - 2026-09-27T12:45:47Z status=by-design owner=16-22-the-guardrails-page by=cr note=reopens by spec amendment narrowing to SecretBodyNames+ComposedSecrets once that set is shown complete
+
+### DW-1753: Download CSV's formula guard reads only a field's first character: a whitespace-led formula, or a ';'-split cell in a semicolon-locale spreadsheet, is not prefixed
+- source: spec-16-23-any-table-downloaded-as-csv.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: csvField guards /^[=+\-@\t\r]/ only (core/csv.ts:17). LibreOffice evaluates ' =1+1' only with the non-default Trim spaces + Evaluate formulas import options; Excel on a ';' list separator splits 'a;=X()' mid-line, where quoting cannot help (inference, OWASP WSTG: depends on field separator).
+- 2026-09-27T15:38:45Z status=wontfix-accepted owner=16-23-any-table-downloaded-as-csv by=cr note=downloads get Protected View; reopen_if=a CSV from Download CSV opens with a formula cell evaluated in Excel or Calc with default import options

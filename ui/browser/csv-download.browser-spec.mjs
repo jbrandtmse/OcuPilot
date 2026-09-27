@@ -199,6 +199,15 @@ test('AC4: at Max rows 2 the control is described by the cap sentence and the fi
     });
     assert.deepEqual(description, { text: 'The file holds the first 2 rows only.', role: 'tooltip' });
 
+    // A keyboard user sees the same sentence: focused with no pointer over the bar, it is un-clipped.
+    await page.mouse.move(0, 0);
+    await page.focus(DOWNLOAD);
+    const onFocus = await page.$eval(DOWNLOAD, (node) => {
+      const reason = document.getElementById(node.getAttribute('aria-describedby'));
+      return { focusVisible: node.matches(':focus-visible'), clipPath: reason === null ? null : getComputedStyle(reason).clipPath };
+    });
+    assert.deepEqual(onFocus, { focusVisible: true, clipPath: 'none' }, 'on keyboard focus the description is shown, not only on hover');
+
     const { bytes } = await download(page, dir);
     assert.equal(records(bytes).length - 1, 2, 'the capped file holds two data rows');
   } finally {

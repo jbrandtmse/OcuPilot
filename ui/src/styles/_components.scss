@@ -1605,6 +1605,16 @@ app-database-details-page {
   clip-path: none;
 }
 
+// Download CSV's description at the cap (Story 16.23), on keyboard focus. The control is a view
+// control and never takes `.ocu-command-bar-action`, so the rule above reveals it on hover only.
+.ocu-command-bar-download:focus-visible + .ocu-command-bar-reason {
+  width: auto;
+  height: auto;
+  padding: 5px 8px;
+  overflow: visible;
+  clip-path: none;
+}
+
 .ocu-command-bar-spacer {
   flex: 1 1 auto;
 }

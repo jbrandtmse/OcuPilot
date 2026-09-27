@@ -1252,4 +1252,32 @@ describe('the data table', () => {
     );
     expect(text).not.toContain('hunter2');
   });
+
+  // Mutation (Rule 19): drop `this.pendingFields()` from `downloadCsv`'s `tableCsvRows` call -> red.
+  it('Story 16.23: a column still pending is written empty in the file', async () => {
+    const declaration = tableDeclaration();
+    const wired = await wire(declaration, ok(rows(2)));
+    wired.fixture.componentRef.setInput('pendingFields', ['Note']);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const blobs: Blob[] = [];
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = (blob: Blob) => (blobs.push(blob), 'blob:ocupilot/csv');
+    URL.revokeObjectURL = () => undefined;
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    try {
+      expect(wired.actions.run(declaration.descriptor, DOWNLOAD_CSV_ACTION_ID)).toBe(true);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    } finally {
+      click.mockRestore();
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    }
+
+    const lines = (await blobs[0].text()).split('\r\n');
+    // app01 carries "note 1", which the pending Note column must not write.
+    expect(lines.find((line) => line.startsWith('/csp/app01,'))).toBe(`/csp/app01,USER,1000,${STRINGS.tableStatusNo},`);
+  });
 });

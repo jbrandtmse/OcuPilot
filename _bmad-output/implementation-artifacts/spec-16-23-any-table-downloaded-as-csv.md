@@ -108,7 +108,33 @@ deferred: []
 - Given the formula, quoting, withheld and empty rows of the matrix, when encoded, then the output is exactly as the matrix states.
 - Given this change, when `npm run test:tools` runs, then the two new keys resolve to literals of EXPERIENCE.md :313, and no existing citation moved.
 
+### Review Findings
+
+Code review 2026-09-27 (full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 0 decision-needed, 2 patch, 0 defer, 22 rejected or closed.
+
+- [x] [Review][Patch] At the cap the description showed on hover only, never on keyboard focus (EXPERIENCE.md :834 bans hover-only affordances; the `design-tokens` row-action test holds the same rule) [ui/src/styles/_components.scss:1610] — med, in-story, fix-risk low. Added a `.ocu-command-bar-download:focus-visible + .ocu-command-bar-reason` reveal rule, a `design-tokens.test.mjs` pin and a browser AC4 focus check. This departs from the Never "No `_components.scss` change", whose reason ("the control is `ocu-button-text`") did not cover the Always's tooltip; the rule is additive and Epic 14's conflict set is unchanged.
+- [x] [Review][Patch] `pendingFields` forwarding from `downloadCsv` was pinned only at encoder level [ui/src/app/shell/data-table.spec.ts:1257] — low. Added a data-table test that writes a pending Note column empty.
+
+Rejected or closed:
+
+- `wontfix-accepted` DW-1753: the formula guard reads only the first character. A whitespace-led formula is evaluated only under non-default LibreOffice import options, and a `;` split cell (semicolon-locale Excel) cannot be closed by quoting (inference).
+- `by-design`: `-5` in a number column becomes `'-5` — the matrix row states it.
+- `wontfix-theoretical`: registering once at mount keeps the first descriptor. Every mount binds a screen fixed for the host's life (`list-page`, `databases`, `database-details`, `upcoming`, `history`, `audit`); routes are one `Route` per screen and there is no `RouteReuseStrategy`.
+- `wontfix-theoretical`: revoking the object URL on `setTimeout(0)`. Firefox bug 1282407 reports that `setTimeout(0)` avoids its failure, and no current Safari failure is documented.
+- `wontfix-theoretical`: the reason id could collide with a row action declared `download-csv`; none is declared.
+- `false`: the spec and sprint-status disagree on status — the implement stage sets `done`; the tracker's `review` is the pipeline stage.
+- `false`: adding `hasDownloadAction` to `hasContent` has no effect — it is harmless either way; no bad outcome.
+- `low`: five browser runs went out in one message during implement. Here the at-risk specs ran one at a time, all green.
+- `low`: the browser AC1 "(none) written empty" clause may compare no placeholder. The encoder test pins it.
+- `low`: `hasDownloadAction` repeats `matchCount`'s two-term test; a shared helper is a refactor.
+- `low`: the cap `<n>` after a failed re-read names the new Max rows. The table's own cap notice reads the same `maxRows()`.
+- `low`: the RFC 4180 reader is duplicated in two test files; `allowDownloads` never detaches its CDP session; AC4's restore swallows a failure (`signedInAt` resets remembered state).
+- `low`: AC3's Upcoming leg has no mutation line of its own. Rule 19 asks one per AC, and AC3 has two.
+- spec-bound: the file name omits the namespace; :650 omits quoting and pending (the task fixed its contents); the two AMENDED tag forms (the task fixed :313's).
+
 ## Spec Change Log
+
+- 2026-09-27, lead, after code review: the Boundaries rule "no `_components.scss` change" is relaxed by one added rule (the cap description revealed on `:focus-visible`), because EXPERIENCE.md :834 bans hover-only disclosure and the spec's own description needs it; added, no existing line edited.
 
 ## Review Triage Log
 
@@ -184,6 +210,8 @@ deferred: []
 - mutation: `getUTCHours` in `csvFileName` → observed red: `csv.test.mjs` name test (it pins `TZ=America/Los_Angeles`, since CI runs in UTC); reverted.
 - mutation: `<n>` from `store.data().length` in `downloadCapped` → observed red: the command-bar cap test (Max rows 3, two rows read); reverted.
 - mutation: drop `refresh.descriptor() === screen.descriptor` from `hasDownloadAction` → observed red: the command-bar test's "read landed for another screen" step; reverted.
+- mutation (review): the `.ocu-command-bar-download:focus-visible` reveal rule renamed away → observed red: `design-tokens.test.mjs` "Download CSV's cap description is revealed on keyboard focus too", and after rebuild + redeploy the browser AC4 (`clipPath: 'inset(50%)'` with `focusVisible: true`); reverted byte-identical, rebuilt, redeployed, 3/3 green.
+- mutation (review): drop `this.pendingFields()` from `downloadCsv`'s `tableCsvRows` call → observed red: the data-table spec's "a column still pending is written empty in the file"; reverted byte-identical.
 
 ## Auto Run Result
 
