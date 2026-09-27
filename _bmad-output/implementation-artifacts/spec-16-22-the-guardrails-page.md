@@ -2,7 +2,7 @@
 title: 'Story 16.22: The Guardrails page'
 type: 'feature'
 created: '2026-09-27'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'd485a0b6b56921766c58047cd02ae739b6a0dbb5'
 baseline_commit: 'd485a0b6b56921766c58047cd02ae739b6a0dbb5'
 review_loop_iteration: 1
@@ -209,7 +209,13 @@ Rejected:
 - `false`: the `ListTools` error guard and the `'$IsObject` guard each prove only while the other is present. Both fail closed, and the recorded mutation reddens.
 - `false`: an AD-36/AD-50 gap. No AD's Rule is contradicted (see above).
 
+### Rework (CI, iteration 1)
+
+- [ ] [CI] browser: `ui/browser/definitions.browser-spec.mjs:418` ("AC5: the form is routable and listed nowhere") fails on run 36320197671 at head dae9f00a: it pins the Agent co-pilot area's listed entries as exactly `Definitions, Switches`, and Guardrails is now listed third by design (this story's AC1). Update that leg's expected list (and its message) to include Guardrails in its declared position, keeping the leg's own point (the Definition form is listed nowhere); rebuild, redeploy and run that spec file alone on `ocupilot-ci`, demonstrate the mutation (drop Guardrails' side-bar position -> the leg reds), write its `mutation:` line. Then grep every other browser spec, component spec and node test for any other assertion that enumerates the Agent co-pilot area's entries, the side bar's entries or the command box's screen list, and fix each the same way, running each touched file alone. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36320197671>
+
 ## Spec Change Log
+
+- 2026-09-27, lead: re-opened for one rework iteration on a red CI browser job (run 36320197671): an existing spec pinned the Agent co-pilot area's entries without Guardrails.
 
 - 2026-09-27 (implement, Rule 5 apply-and-report): task (d) and AC2 named the password tool's secret argument `NewPassword`; the instance declares `Password` (`UserList`'s `secretArguments`; `Registry.SecretArguments` on `ocupilot-ci` answers declared=1, `Password`). Corrected the name only; the intent is unchanged.
 - 2026-09-27 (review pass 1, bad_spec): the secret list's lead-in "Values you type yourself at Confirm, which the agent never sees:" was false for most rows, because `SecretArguments` answers the screen's secret fields for every tool on it (`permissions.users.delete: Password`). Amended Copy item 5: the lead-in is now `"The fields each tool declares secret, which the agent never sees:"` [agentGuardrailsNeverDeclared], replacing `agentGuardrailsNeverTyped`. Known-bad state avoided: a trust page claiming a delete takes a password at Confirm. KEEP: re-apply `/tmp/epic-16-keep-16-22.patch` (`git apply`; it checked clean against `baseline_revision`) — the whole reviewed implementation, verified green — then change only that string (EXPERIENCE.md :583 row, `strings.ts` key and value, the page, and any spec that names the key) and add the open test items under Tasks.
