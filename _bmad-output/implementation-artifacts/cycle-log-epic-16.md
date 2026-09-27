@@ -179,3 +179,6 @@
 2026-09-27T13:42:25Z	Story 16.22	dev_complete	spawn_at=2026-09-27T13:34:42Z model=opus build_sha=aed735b0 baseline_revision=9e25f544 review_loop_iteration=0 followup_review_recommended=false deferred=0 files=2 cycle_iteration=2 note=test-only ci=pending run=36323308907
 2026-09-27T13:42:25Z	Story 16.22	adr_verifications_complete	result=none_required note=rework_touched_one_browser_spec_only
 2026-09-27T13:42:25Z	Story 16.22	stage_spawned	stage=code-review spawn_at=2026-09-27T13:42:25Z model=opus agent_name=16-22-the-guardrails-page-code-review-2 cycle_iteration=2
+2026-09-27T13:48:05Z	Story 16.22	cr_complete	spawn_at=2026-09-27T13:42:25Z model=opus resolved=1 fixed_at_source=1 routed=0 escalated=0 decision_pending=0 deferred=0 dismissed=14 high=0 med=0 low=1 rows=0 unresolved_high_med=0 clarifications=0 closing_sections_present=true cycle_iteration=2 note=rework_re-review_scoped_9e25f544..aed735b0
+2026-09-27T13:48:05Z	Story 16.22	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=slice_empty model=claude-opus-5-5
+2026-09-27T13:48:05Z	Story 16.22	smoke_complete	method=browser result=pass iterations=2 defects_caught=0 evidence=ocupilot-ci;definitions.browser-spec_9/9_after_rework;guardrails.browser-spec_2/2_earlier model=claude-opus-5-5

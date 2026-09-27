@@ -421,7 +421,7 @@ test('AC5: the form is routable and listed nowhere -- the area\'s listed entries
     const entries = await page.$$eval('app-side-bar .ocu-side-bar-label', (nodes) =>
       nodes.map((node) => node.textContent.trim())
     );
-    // The area's three side-bar entries, in declared order. The Definition form is not among them,
+    // The area's side-bar entries, in declared order. The Definition form is not among them,
     // which is the sentinel this test is about: it is built, routed and listed nowhere.
     assert.deepEqual(
       entries,
