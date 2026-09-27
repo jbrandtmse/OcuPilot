@@ -7486,6 +7486,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The task list row carries 8 of the create's 34 sent keys (probed on ocupilot-ci); the spec binds the re-read to the tool's declared list read. Row-key-only now reads unchecked; a partial compare still reads matches.
 - 2026-09-26T19:26:07Z status=decision-pending owner=burndown by=cr note=human=choose: keep list-row compare, or re-read a create by createdId through the update tool's read (AD-58 wording)
 - 2026-09-26T19:26:13Z status=decision-pending owner=burndown by=cr note=product call for the decision sheet: keep list-row compare, or re-read a create by createdId via the update tool's read
+- 2026-09-27T16:36:14Z status=routed owner=range-end-cleanup by=merge_gate note=decided: a create re-reads by createdId through the update tool's read; AD-58 wording amended with the fix (orchestrator 2026-09-27)
 
 ### DW-1711: Most Save routes' read-back verdict is not asserted by a route-level test (LDAP, X.509, audit event, service, resource, four OAuth updates, task create Save)
 - source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story

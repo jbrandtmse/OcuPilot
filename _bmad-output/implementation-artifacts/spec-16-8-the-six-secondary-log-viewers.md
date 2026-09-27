@@ -2,7 +2,7 @@
 title: 'Story 16.8: The six secondary log viewers'
 type: 'feature'
 created: '2026-09-27'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -184,6 +184,8 @@ Client (`ui/src/app/`):
 
 ## Spec Change Log
 
+- 2026-09-27, lead, spec gate: orchestrator ruling (option A) on the contended `Test/ReadTool.cls:93-94,112` hunks: edit them on this branch for this story's six tools (count 126 here); the orchestrator reconciles with Story 14.4 at the second merge (127, name lists merged). The AD-21 fifth named case and the `LogSourcePort` description were written into the spine as recommended. Status reset to ready-for-dev.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -306,7 +308,5 @@ Client (`ui/src/app/`):
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: contended hunk src/OcuPilot/Test/ReadTool.cls:93-94,112 -- `TestTheRegistryListsDescriptorReadsAndInheritedKinds` pins the exact production tool count (120) and the full name roster, and its descriptor-pair loop at `:112` lists every derived read. Story 14.4 on `origin/OCU-1-epic14` edits those same three lines to add `agent.transcripts.read`. Each of this story's six screens derives a read tool, as every Epic 16 screen must, so the design must change those lines. No design keeps the tools and stays off the hunk.
-
-**Recommended resolution:** accept the overlap and resolve it by union at whichever merge comes second. That gives a count of 127 (120, plus 14.4's one, plus these six), the name list as the sorted union, and the `:112` loop as the union of both pair lists. The overlap is textual, not semantic. Once decided, reset `status` to `ready-for-dev`; the spec is otherwise complete. The Spine change for the lead in Design Notes does not block.
+Status: ready-for-dev
+Blocking condition: none (the contended ReadTool.cls hunks were ruled by the orchestrator, option A; AD-21's fifth case written at the spec gate on 2026-09-27)
