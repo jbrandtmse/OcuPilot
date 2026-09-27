@@ -896,7 +896,7 @@ A user makes the portal their own - own password, favorites, recents, menu searc
 
 ### Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22). The owner's surveys of the late entries add a CSV download on every table (16.23), a merged timeline in the log hub (16.9) and a try-it request copied as curl (16.24, run right after 16.9). [AMENDED 2026-09-27, owner: 16.9's timeline and Story 16.24 added]
 
 **FRs covered:** FR-74, FR-76, FR-77, FR-78
 
@@ -6125,7 +6125,7 @@ So that the first thing I see looks finished.
 
 ## Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22). The owner's surveys of the late entries add a CSV download on every table (16.23), a merged timeline in the log hub (16.9) and a try-it request copied as curl (16.24, run right after 16.9). [AMENDED 2026-09-27, owner: 16.9's timeline and Story 16.24 added]
 
 **Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
 
@@ -6288,8 +6288,12 @@ So that "all the logs" is literally true.
 ### Story 16.9: The unified log hub
 
 As a developer-administrator investigating an incident,
-I want one screen listing every log source with how much is in it,
-So that I know where to look before I start looking.
+I want one screen listing every log source with how much is in it, and one timeline across all of them,
+So that I know where to look before I start looking, and can see what happened in order without opening each log.
+[AMENDED 2026-09-27, owner: the merged timeline added; was a list of sources only]
+
+**Owner survey, 2026-09-27.** IRIS Admin Deck and iris-flightdeck both merge their log sources into one stream ordered by
+time; the hub gains that timeline beside its list of sources.
 
 **Acceptance Criteria:**
 
@@ -6300,6 +6304,40 @@ So that I know where to look before I start looking.
 - **Given** each row
 - **When** it renders
 - **Then** it carries an explain entry point, so the hub is where the agent's log help is most reachable.
+
+- **Given** the hub's **Timeline** view
+- **When** it opens
+- **Then** it merges the entries of every source the hub lists and the person may read into one list ordered by time,
+  newest first, over a chosen window that defaults to the last hour, each entry showing its time, its source, its
+  severity where the source records one, and its text.
+
+- **Given** sources that write their times in different forms or time zones
+- **When** they are merged
+- **Then** every time is compared and shown on the instance's clock, so the order is the order things happened.
+
+- **Given** each source the timeline reads
+- **When** it is read
+- **Then** it is read through that source's own bounded read, with the privilege its own viewer requires and its fixed
+  source name, never a path; each source has a row cap, and a source that reaches its cap is marked as truncated in the
+  words the log viewers already use.
+
+- **Given** a source the person may not read
+- **When** the timeline is built
+- **Then** that source is left out without an error, and the timeline says which sources are not shown and the
+  privilege each needs.
+
+- **Given** the timeline
+- **When** the person filters by source, by severity or by text
+- **Then** only matching entries remain, and each source's count in the list updates to match.
+
+- **Given** an entry in the timeline
+- **When** it is chosen
+- **Then** its source opens at that entry, and the entry carries the same explain entry point as the source's own
+  viewer, sending that entry alone.
+
+- **Given** the strings the timeline needs
+- **When** this story lands
+- **Then** they are added to the canonical Fixed strings table and the client string source in the same change.
 
 ### Story 16.10: External language servers
 
@@ -6644,6 +6682,39 @@ So that I can sort, share or keep it in a spreadsheet without copying rows by ha
 - **Then** it says the file holds the loaded rows only, in the words the table already uses for truncation.
 
 - **Given** the strings the download needs
+- **When** this story lands
+- **Then** they are added to the canonical Fixed strings table and the client string source in the same change.
+
+### Story 16.24: A try-it request, copied as curl
+
+As a developer-administrator who has just tried a request,
+I want to copy it as a curl command,
+So that I can repeat it from a terminal, a script or a ticket.
+
+**Owner survey, 2026-09-27.** IRIS Admin Deck offers every call it makes as a copyable curl command; the try-it console
+(16.1) sends requests but offers no copy.
+
+**Acceptance Criteria:**
+
+- **Given** a request in the try-it console
+- **When** the person chooses **Copy as curl**
+- **Then** the clipboard holds one curl command with the method, the absolute URL with its query, the request headers
+  and the body, as the console would send them, and nothing is sent.
+
+- **Given** the session's access token, or any header the console masks in its record of a request
+- **When** the command is built
+- **Then** the value is never copied: the command carries a placeholder the person replaces, and the console says so
+  beside the copy.
+
+- **Given** a header or body value containing quotes, newlines or other shell metacharacters
+- **When** it is written into the command
+- **Then** it is quoted so the command runs exactly as shown in a POSIX shell.
+
+- **Given** a request the console refuses to send
+- **When** the person asks to copy it
+- **Then** the copy is refused too, with the same reason the console gives for not sending it.
+
+- **Given** the strings the copy needs
 - **When** this story lands
 - **Then** they are added to the canonical Fixed strings table and the client string source in the same change.
 
