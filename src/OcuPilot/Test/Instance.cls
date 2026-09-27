@@ -322,7 +322,7 @@ Method TestAFlagOutsideTheVendorsFourTravelsVerbatim()
 /// still a 200 with one envelope, and the refusal names itself in the log rather than
 /// leaving the segment silently absent.</p>
 /// <p>Mutation: delete the <code>Try</code> from
-/// <method>OcuPilot.Api.Instance.LicensedTo</method> -> the exception escapes
+/// <method>OcuPilot.Kernel.Shell.FieldRead.Field</method> -> the exception escapes
 /// <method>Payload</method>'s own <code>Catch</code>, <method>Handle</method> renders the
 /// internal-error envelope, and the status assertion goes red at 500.</p>
 Method TestAThrowingStatusBarSourceDegradesToAnEmptyField()
@@ -350,7 +350,7 @@ Method TestAThrowingStatusBarSourceDegradesToAnEmptyField()
 /// in-process capture exists. An emptied body would still pass here. Closing that needs a
 /// production seam, which is why it is filed rather than asserted.</p>
 /// <p>Mutation: delete the <code>Try</code> from
-/// <method>OcuPilot.Api.Instance.LogSourceFailure</method> -> the second case goes red,
+/// <method>OcuPilot.Kernel.Shell.FieldRead.LogSourceFailure</method> -> the second case goes red,
 /// because <code>DisplayString()</code> on a non-object throws, and in production that
 /// exception would escape the per-field <code>Catch</code> and become the 500 it exists to
 /// prevent.</p>

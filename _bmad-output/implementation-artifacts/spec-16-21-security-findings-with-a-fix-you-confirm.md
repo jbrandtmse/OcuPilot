@@ -2,8 +2,8 @@
 title: 'Story 16.21: Security findings, with a fix you confirm'
 type: 'feature'
 created: '2026-09-26'
-status: 'ready-for-dev'
-baseline_revision: 'cdf427754ed15f0fafa310025005908bda5cce4b'
+status: 'done'
+baseline_revision: '5cbc4c8bb7f0517e0ba533ed58232e6c83a57874'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -214,7 +214,40 @@ Client:
 
 ## Spec Change Log
 
+- 2026-09-26, implement. `certificate` findings also carry `expired` (boolean), because `detail` is the date alone and the two sentences differ. `monitor-open` knows the monitoring API by its dispatch class (`%Api.Monitor`, from the Web applications read) rather than by a `/api/monitor` literal, which `check-objectscript.py`'s AD-1 rule refuses under `Kernel/Shell/`. The panel's group headings are `h3` under its `h2` "Findings", so the outline does not repeat a level. A `truncated` check contributes no finding; `task-manager` stays `checked` when only the rows are cut, since the banner does not depend on them. An account holding `%All` only through another role has no `remove-role` of `%All`, so it is never `refused`. Where the explain gate hides Fix it, an `agent` finding offers Open. The fixture seams beyond `PortClass`/`ProhibitedClass` are `Gate`, `ListRead`, `Detail`, `EffectiveRead`, `RemovalVerdict` and `Now`. The bundle crossed 1900kB and was re-based under DW-1166 to 2004kB (5% above the measured 1,908,082 bytes).
+
 ## Review Triage Log
+
+### 2026-09-27 — Review pass
+
+- verdicts: 26 findings — high 0, medium 2, low 13, false 11, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` FindingsWire's read-only leg stays green when the second read fails — added the 200 and `webapp-open` `checked` assertions; mutation red.
+  - `[medium]` `[patch]` No real-verdict pin that a removable `%All` holder gets Fix it — FindingsWire asserts SuperUser `agent` with no `refused` (green on `ocupilot-ci`); mutation red.
+  - `[low]` `[patch]` `onFixFinding`'s gate re-check never exercised — panel spec case for a request pending when the gate closes; mutation red.
+  - `[low]` `[patch]` Open fallback under a hidden gate and the first-read fault line untested — two Home spec cases; mutations red.
+  - `[low]` `[patch]` Detail-404 skip, role-read cut and task-read cut have no fixture legs — one `Findings` method covers all three; mutation red.
+  - `[low]` `[patch]` The `link` → Open AC had no mutation line — mutation run and recorded.
+  - `[low]` `[reject]` `FINDINGS_CHANGE_TYPES` is not tied to descriptor `entityType`s — the values match today; a cross-file roster is more than a direct correction.
+  - `[false]` `[reject]` Client could print "Nothing to report." over a dropped finding — the server emits `refused` only with `ReasonFor`'s sentence and `task-manager` only with a banner key, so nothing is dropped.
+  - `[low]` `[reject]` One account's `RemovalVerdict` error fails the whole `all-holder` check — needs a user deleted between two reads; the fix adds a branch.
+  - `[false]` `[reject]` A check missing from the answer blanks its group — `Findings.Read` always lists all nine members.
+  - `[false]` `[reject]` `monitor-open` by dispatch class rather than path — it names `/api/monitor` on the instance (browser AC1); the path literal is refused by AD-1's checker; logged in the Spec Change Log.
+  - `[false]` `[reject]` `task-manager` stays `checked` on a cut read — the banner does not depend on the rows; now pinned.
+  - `[false]` `[reject]` "Logged once" read per check — each failed check logs once; the one-own-read-fails shape is now pinned (1 log, 7 checked).
+  - `[low]` `[patch]` An `agent` finding shows Open while the gate hides Fix it — kept as behavior and pinned (grouped with the Open-fallback row).
+  - `[low]` `[reject]` A holder with `%All` only through a role gets Fix it with the `%All` sentence — the measured holders hold it directly; changing it needs a new branch.
+  - `[false]` `[reject]` Certificate boundary in seconds, not days — the intent states 30 × 86,400 s.
+  - `[false]` `[reject]` `expired` added to the answer — the two sentences need it; documented.
+  - `[false]` `[reject]` In-place EXPERIENCE.md row and `strings.ts` citation edit — sanctioned by Tasks and required by `citations.test.mjs`.
+  - `[low]` `[patch]` Fix it end to end exercised only for `task-error` — Home spec drives `webapp-open`, `monitor-open`, `all-holder` and `auditing-off` (no id); all pass; mutation red.
+  - `[false]` `[reject]` Confirm-then-gone not exercised — the covered types equal the descriptors' `entityType`s (verified by the gap layer) and the reload is pinned.
+  - `[low]` `[patch]` "No tick re-read" untested — the 16.18 tick case now asserts `findings.calls` unchanged; Home's context rows are already pinned exactly by 16.18's context case.
+  - `[low]` `[patch]` Source-fails row tested only over a shared read — the edge method makes `certificate`'s own read raise (grouped with the fixture-legs row).
+  - `[low]` `[reject]` Same as the `RemovalVerdict` row above (grouped).
+  - `[low]` `[reject]` A rejected navigation is untested — `.catch(() => false)` feeds the same `navigated !== true` branch the declined case pins.
+  - `[false]` `[reject]` Matrix key `findingFixTask` vs `findingFixTaskError` — Design Notes define `findingFix<Key>`; the text is identical.
+  - `[false]` `[reject]` Bundle warning re-based — dispatch-authorized under DW-1166, 5% above the measured 1,908,082 bytes.
 
 ## Design Notes
 
@@ -289,28 +322,51 @@ Where each row applies: Home's Findings panel (Story 16.21, AD-10, AD-11), under
 **Commands** (the targeted runs are marked `(loop)`, and the full runs `(once, before dev_complete)`):
 
 - `cd ui && npm run test:tools` (loop) -- green, including `findings.test.mjs`, `fix-finding.test.mjs`, `strings.test.mjs`, `self-protection.test.mjs`, `citations.test.mjs` and `ci.test.mjs`. Mutations:
-  - `findingLines` prints "Nothing to report." for a group holding an unchecked check → red.
-  - Drop `FindingsWire` from the roster → `ci.test.mjs` red.
-- `cd ui && npx ng test --include src/app/areas/home/home.page.spec.ts --include src/app/shell/panel-fix-finding.spec.ts` (loop) -- green. Mutations:
-  - Fix it sends before the target store updates → red.
-  - The panel adds the finding's name to the message → red.
-  - Render Fix it for `fix: "refused"` → red.
-  - Drop the `user` bus type → the reload case red.
-- `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.Findings`, then `FindingsWire`, `UiAboutRead`, `UiAboutWire`, `UiSystemRead`, `UiSystemWire`, `Instance`, `RefusalCopy`, `ImpactRoute`, `Effective`, `EndpointCoverage`, `SurfaceCoverage`, `ScreenGrounding` and `TurnContext`, one at a time (loop) -- green. Mutations:
-  - Public letters count as privileged → `Findings` red.
-  - The 85% test uses `>` → the boundary leg red.
-  - Skip `Effective.Gate` → the `FindingsWire` least-privilege leg red.
-  - Hand-write `_SYSTEM`'s reason → the `FindingsWire` agreement leg red.
-  - A failed source reads `checked` → red.
-  - Drop the route's probe row → `EndpointCoverage` red.
-  - The `FieldRead` degrade stops logging → `UiSystemRead` :344 leg red.
-- `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/ && OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/home-findings.browser-spec.mjs browser/home-performance.browser-spec.mjs browser/home-system-information.browser-spec.mjs browser/about-help-links.browser-spec.mjs browser/account-and-filter.browser-spec.mjs browser/explain-screen.browser-spec.mjs browser/explain-entry.browser-spec.mjs browser/suggested-view.browser-spec.mjs browser/suggested-prompts.browser-spec.mjs browser/screen-grounding.browser-spec.mjs browser/preferences-integration.browser-spec.mjs browser/rail-icons.browser-spec.mjs browser/task-resume.browser-spec.mjs browser/users-actions.browser-spec.mjs browser/impact.browser-spec.mjs browser/screen-height.browser-spec.mjs browser/a11y-structural-invariants.browser-spec.mjs` (loop). These are the story's spec plus every existing spec that Home, the panel hand-off or the reused paths could break. Expected: green, with no new structural baseline entry. Mutation: Fix it navigates without waiting → AC3 red.
+  - mutation: `findingLines` prints "Nothing to report." whatever its checks read (dropped `allChecked &&`) → `findings.test.mjs` 2 red; reverted.
+  - mutation: dropped the `request !== this.request` guard in `Findings.load` → the late-answer row red; reverted.
+  - mutation: `FixFinding.request` records whatever `reason()` says → "a refused request records nothing" red; reverted.
+  - mutation: `fixSentenceKey` answers for any check → "the map is closed" red; reverted.
+  - mutation: dropped `# classes: FindingsWire` from `scripts/ci-throwaway.sh` → `ci.test.mjs` 1 red; reverted byte-identical.
+- `cd ui && npx ng test --include src/app/areas/home/home.page.spec.ts --include src/app/shell/panel-fix-finding.spec.ts` (loop) -- green (64). Mutations:
+  - mutation: `fixAndRequest` calls `fix.request` straight after the navigation → the AC2 and navigate-away cases red; reverted.
+  - mutation: `onFixFinding` appends the context's `entity` to the sentence → `panel-fix-finding.spec.ts` red ("... resuming it. 1002"); reverted.
+  - mutation: Fix it rendered for `fix: "refused"` in `resolvedFindings` → the actions case red; reverted.
+  - mutation: `'user'` dropped from `FINDINGS_CHANGE_TYPES` → the AC3 reload case red; reverted.
+  - mutation: dropped `navigated !== true` in `fixAndRequest` → "a declined navigation sends nothing" red; reverted byte-identical.
+  - mutation: any shown finding offers Fix it (`if (shown)`) → the actions case red on the `link` certificate; reverted.
+  - mutation: dropped `&& shown` from the Fix it branch → "while the explain gate hides Fix it, a fixable finding offers Open" red; reverted.
+  - mutation: `findingsShown` reads `answered()` alone → "a first read that fails shows the panel with the server-fault line" red; reverted.
+  - mutation: `fixAndRequest` navigates to the bare route → AC2 and "Fix it on each other fixable check opens its own screen" red; reverted.
+  - mutation: dropped `onFixFinding`'s own gate check → `panel-fix-finding.spec.ts` "a request still pending when the gate closes" red; reverted byte-identical.
+- `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.Findings`, then `FindingsWire`, `UiAboutRead`, `UiAboutWire`, `UiSystemRead`, `UiSystemWire`, `Instance`, `RefusalCopy`, `ImpactRoute`, `Effective`, `EndpointCoverage`, `SurfaceCoverage`, `ScreenGrounding` and `TurnContext`, one at a time (loop) -- green (11, 4, 12, 7, 17, 4, 21, 8, 10, 7, 2, 4, 12, 16). Each mutation was applied to the `ocupilot-ci` copy only, the class and its descendants recompiled, and restored byte-identical:
+  - mutation: `Privileged` counts a letter held only publicly → `Findings` `TestAnOpenApplicationHoldingPrivilegeIsAFindingAndNothingElseIs` red.
+  - mutation: the 85% test uses `>` (`<=` on the skip) → `TestDatabasesDismountedOrAtEightyFivePercentAreFindings` red.
+  - mutation: a degraded `Field` reads `checked` in `Read` → `TestAFailingSourceIsFailedAndLoggedAndTheOthersAnswer` red.
+  - mutation: the pair gate skipped in `Rows` → `FindingsWire` least-privilege leg red.
+  - mutation: a hand-written sentence in place of `ReasonFor` → `FindingsWire` agreement leg red.
+  - mutation: the database-write arm of `Privileged` dropped → `FindingsWire` probe-application leg red.
+  - mutation: the `/ui/findings` probe row dropped → `EndpointCoverage` `TestEveryRouteHasAProbeAndEveryProbeHasARoute` red.
+  - mutation: a detail 404 is fatal in `Applications` → `Findings` `TestDetailGoneRoleReadCutTaskReadCutAndOneOwnReadFailing` red.
+  - mutation: every `all-holder` finding reads `refused` → `FindingsWire` SuperUser leg red.
+  - mutation: `webapp-open` always marks itself unchecked → `FindingsWire` read-only leg red on "and the check was read".
+  - mutation: `FieldRead.Field` stops calling `LogSourceFailure` (recompiled with every subclass) → `UiSystemRead` 4 red, its refused-source legs (not the :344 leg, which calls the seam directly).
+- `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/ && OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/home-findings.browser-spec.mjs browser/home-performance.browser-spec.mjs browser/home-system-information.browser-spec.mjs browser/about-help-links.browser-spec.mjs browser/account-and-filter.browser-spec.mjs browser/explain-screen.browser-spec.mjs browser/explain-entry.browser-spec.mjs browser/suggested-view.browser-spec.mjs browser/suggested-prompts.browser-spec.mjs browser/screen-grounding.browser-spec.mjs browser/preferences-integration.browser-spec.mjs browser/rail-icons.browser-spec.mjs browser/task-resume.browser-spec.mjs browser/users-actions.browser-spec.mjs browser/impact.browser-spec.mjs browser/screen-height.browser-spec.mjs browser/a11y-structural-invariants.browser-spec.mjs` (loop). These are the story's spec plus every existing spec that Home, the panel hand-off or the reused paths could break. Expected: green, with no new structural baseline entry. Observed: all green (home-findings 4, with the gate in light, narrow and dark and no new entry) except `about-help-links`' DW-3 stamp leg, which compares the recorded `buildIdentity` (`main-ZWCBUUJV.js`, the throwaway's last install) with the `docker cp`-deployed bundle and so reads red after any redeploy without a reinstall. mutation: Home's Fix it requests without waiting for Task details' read (rebuilt, redeployed) → AC3 red on the context row; reverted, rebuilt byte-identical (`main-IBBXWY3H.js`), redeployed.
 - `cd ui && npm test`, `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh` (once, before dev_complete) -- green. The bundle stays under 1900 kB, or is re-based under DW-1166 if it crosses; the hard stop is 4000 kB.
 - The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before dev_complete) -- green.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Implement pass (2026-09-27).** `FieldRead` is extracted and About, SystemInfo and Instance extend it unchanged in behavior. `Findings` runs the nine checks as the caller behind each screen's gate and read, served by `GET /ui/findings` (`UiFindings`, a route and a probe row). Home shows the Findings panel after the performance row, and Fix it hands off through `FixFinding` to the panel's two additions. Copy lands as four Fixed strings rows and their `strings.ts` keys. Deviations are in the Spec Change Log, and the bundle warning is re-based to 2004kB under DW-1166.
+
+Files: `Kernel/Shell/FieldRead.cls`, `Findings.cls` (new) and `About`/`SystemInfo`/`Instance.cls` (on the base); `Api/UiFindings.cls` (new), `Router.cls`; `Test/Findings.cls`, `FindingsFixture.cls`, `FindingsWire.cls` (new), `EndpointCoverage.cls` and the three fixtures and suites on the unified seam; `scripts/ci-throwaway.sh` (roster line); `ui/src/app/core/findings.ts`, `fix-finding.ts`, `areas/home/findings-panel.ts`, `testing/findings.ts` (new); `home.page.ts`, `panel.ts`, `main.ts`, `app.ts`, `strings.ts`, `_components.scss`, `angular.json`; component, tool and browser specs; EXPERIENCE.md.
+
+Review: 26 findings (medium 2, low 13, false 11). Nine entries were patched, all as tests with an observed red: the FindingsWire read-only and SuperUser legs, the panel's gate re-check, Home's Open fallback, fault line, four other Fix it targets and tick, the fixture edge legs, and the `link` mutation. Nothing was deferred; the rejected rows carry their reasons in the triage log. Follow-up review: `false`. Two medium entries were patched, but both were test gaps that are now green on the instance and red under their mutations, so no unverified risk can be named.
+
+Verification: `npm test` passed (1557 tool tests, 113 component files), as did `check-objectscript.py` (0), `lint-docs.sh` (0) and the build at 1.91 MB. Browser loop: 77 of 78 passed. The one red is `about-help-links`' DW-3 stamp leg, which compares the installer's recorded bundle with a `docker cp`-deployed one and so reads red after any redeploy without a reinstall. The full ObjectScript sweep covered 304 classes, 2403 tests: 287 ran green, 16 refused (arming) and 1 is known residue (`WireSecurityRead` task history).
+
+Process note: the handoff subagent returned an interim message while its sweep was in flight. The harness stopped that sweep after 12 classes, its in-flight run 15585 landed, and the stage ran the verification itself. No subagent committed.
 
 Planned from `epic-16-context.md` (cached, valid), the full spine, and measurements on `ocupilot-ci` (every seed removed and read back). No AD change is needed: AD-43's tick scope, AD-24's Home context and AD-10's one home are all kept. DW-1400 is addressed (`FieldRead`), and DW-118 is declined (resolved by 15.6).

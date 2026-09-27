@@ -57,6 +57,8 @@ import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { SuggestedView } from './core/suggested-view';
 import { SystemInfo } from './core/system-info';
+import { Findings } from './core/findings';
+import { FixFinding } from './core/fix-finding';
 import { PerformanceRow } from './core/performance';
 import { ThemeState } from './core/theme';
 import { AgentNavigator } from './shell/agent-navigator';
@@ -229,6 +231,8 @@ export class App {
   private readonly about = inject(About);
   private readonly helpLinks = inject(HelpLinks);
   private readonly systemInfo = inject(SystemInfo);
+  private readonly findings = inject(Findings);
+  private readonly fixFinding = inject(FixFinding);
   private readonly performanceRow = inject(PerformanceRow);
   private readonly suggested = inject(SuggestedView);
   private readonly scope = inject(ScopeService);
@@ -636,6 +640,10 @@ export class App {
       // caller (Story 16.18, AD-8). The next sign-in reads them again, and a caller the instance
       // refuses sees no row rather than the departed principal's values.
       this.performanceRow.reset();
+      // The nineteenth and twentieth: Home's findings, the instance's answer to this caller, and
+      // a Fix it request not yet sent (Story 16.21, AD-8).
+      this.findings.reset();
+      this.fixFinding.reset();
       return;
     }
     void this.instance.verify();

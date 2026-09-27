@@ -334,7 +334,7 @@ Method TestARefusedProductionReadDegradesThatMemberAndIsLogged()
 /// reaches it through <class>OcuPilot.Test.UiSystemFixture</class>'s override, so without this the
 /// body that keeps a degraded member from becoming a 500 would never execute at all.</p>
 /// <p>Mutation: delete the <code>Try</code> from
-/// <method>OcuPilot.Kernel.Shell.SystemInfo.LogSourceFailure</method> -> the second case goes red,
+/// <method>OcuPilot.Kernel.Shell.FieldRead.LogSourceFailure</method> -> the second case goes red,
 /// because <code>DisplayString()</code> on a non-object throws.</p>
 Method TestTheProductionLogSeamRunsAndSwallowsItsOwnFailure()
 {

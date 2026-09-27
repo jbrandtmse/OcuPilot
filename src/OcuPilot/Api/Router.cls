@@ -140,6 +140,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ui/help" Method="GET" Call="UiHelp"/>
   <Route Url="/ui/system" Method="GET" Call="UiSystem"/>
   <Route Url="/ui/performance" Method="GET" Call="UiPerformance"/>
+  <Route Url="/ui/findings" Method="GET" Call="UiFindings"/>
   <Route Url="/ssl/form" Method="GET" Call="SslFormRead"/>
   <Route Url="/ssl/name" Method="GET" Call="SslNameCheck"/>
   <Route Url="/ssl/:id/test" Method="POST" Call="SslTest"/>
@@ -870,6 +871,15 @@ ClassMethod UiSystem() As %Status
 ClassMethod UiPerformance() As %Status
 {
     Quit ##class(OcuPilot.Api.UiPerformance).HandlePerformance()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ui/findings</code> (Story 16.21): delegates to
+/// <class>OcuPilot.Api.UiFindings</class> and carries no logic of its own -- see
+/// <method>UiAbout</method> for why the <code>/ui/*</code> routes constrain none of the others'
+/// position.</p>
+ClassMethod UiFindings() As %Status
+{
+    Quit ##class(OcuPilot.Api.UiFindings).HandleFindings()
 }
 
 /// <p>Resolves the authenticated caller for this request. Returns <code>$Username</code> —

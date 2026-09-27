@@ -220,6 +220,7 @@ services:
       # classes: ServiceEdit, LdapEdit, ServiceLdapProbe
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
+      # classes: FindingsWire
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

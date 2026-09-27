@@ -24,6 +24,7 @@ import { type Citation, formatCitationAbsent } from '../core/citations';
 import { decodeEntityId } from '../core/entity-id';
 import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../core/explain-entry';
 import { classifyFault, isBannerFault } from '../core/fault';
+import { FixFinding } from '../core/fix-finding';
 import {
   HOME_AREA_KEY,
   NavigationService,
@@ -579,6 +580,8 @@ export class Panel {
   private readonly suggested = inject(SuggestedView);
   /** A log or audit entry's explain request (Story 11.2). Optional, so a spec that needs none provides none. */
   private readonly explainEntry = inject(ExplainEntry, { optional: true });
+  /** A Findings panel's Fix it request (Story 16.21). Optional, so a spec that needs none provides none. */
+  private readonly fixFinding = inject(FixFinding, { optional: true });
 
   private readonly composerEl = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
 
@@ -717,6 +720,7 @@ export class Panel {
         this.syncSuggested();
       }),
       this.explainEntry?.subscribe(() => this.onExplainEntry()) ?? (() => {}),
+      this.fixFinding?.subscribe(() => this.onFixFinding()) ?? (() => {}),
     ];
     this.syncSuggested();
     // Every render that grows the transcript while it follows scrolls it to the newest entry.
@@ -1809,6 +1813,20 @@ export class Panel {
     });
     if (context === null) return;
     void this.sendWithContext(STRINGS.agentExplainEntryAction, context);
+  }
+
+  /**
+   * A Findings panel's Fix it (Story 16.21): take Home's pending request once the affected screen
+   * has read, check the gate again, and send that check's fixed sentence with the context this
+   * screen assembles, through the same path and leaving the draft as it is. The sentence carries no
+   * instance text; the object reaches the model only as the screen's own context (AD-11).
+   */
+  private onFixFinding(): void {
+    const fix = this.fixFinding;
+    const request = fix === null ? null : fix.take();
+    if (fix === null || request === null) return;
+    if (!fix.shown() || fix.reason() !== null) return;
+    void this.sendWithContext(STRINGS[request.key], this.assembleContext());
   }
 
   /**

@@ -26,6 +26,13 @@ import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { HOME_DESCRIPTOR, ScreenStores } from '../../core/screen-store';
 import { assembleScreenContext } from '../../core/screen-context';
 import { screenForDescriptor } from '../../core/navigation';
+import { ChangeBus } from '../../core/change-bus';
+import { Findings } from '../../core/findings';
+import { FixFinding } from '../../core/fix-finding';
+import { KILL_SWITCH_ID } from '../../core/explain-entry';
+import { cleanFindingsBody, stubFindings, stubFixFinding, type StubbedFindings } from '../../testing/findings';
+import type { ExplainEntryState } from '../../testing/explain-entry';
+import { FINDINGS_CHANGE_TYPES } from './home.page';
 import {
   homeRefresh,
   stubPerformanceRow,
@@ -230,6 +237,11 @@ describe('Home', () => {
   let stores: ScreenStores;
   let actions: ScreenActions;
   let scheduled: ScheduledArm[];
+  let findings: StubbedFindings;
+  let fixFinding: FixFinding;
+  let fixGate: ExplainEntryState;
+  let fireFixGate: () => void;
+  let bus: ChangeBus;
 
   /**
    * The two remembered blocks. Story 15.3 added two more sections of the same shape beside them --
@@ -300,6 +312,9 @@ describe('Home', () => {
         { provide: About, useValue: about },
         { provide: SystemInfo, useValue: systemInfo },
         { provide: PerformanceRow, useValue: performance },
+        { provide: Findings, useValue: findings },
+        { provide: FixFinding, useValue: fixFinding },
+        { provide: ChangeBus, useValue: bus },
         { provide: RefreshService, useValue: refresh },
         { provide: ScreenStores, useValue: stores },
         { provide: ScreenActions, useValue: actions },
@@ -321,6 +336,12 @@ describe('Home', () => {
           // A remembered row's own target, so the row that opens one asserts a URL the harness
           // could have reached.
           { path: 'logs/alerts', children: [] },
+          // Story 16.21: the screens a finding's Fix it and Open reach.
+          { path: 'tasks/schedule/details/:id', children: [] },
+          { path: 'security/x509/:id', children: [] },
+          { path: 'web-applications/list/:id', children: [] },
+          { path: 'permissions/users/:id', children: [] },
+          { path: 'security/auditing', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
@@ -347,6 +368,9 @@ describe('Home', () => {
     about = stubAbout();
     systemInfo = stubSystemInfo();
     performance = stubPerformanceRow();
+    findings = stubFindings();
+    ({ fix: fixFinding, state: fixGate, fire: fireFixGate } = stubFixFinding());
+    bus = new ChangeBus();
     preferences = stubAccountPreferences({
       favorites: ['logs/alerts', 'no-such-area/no-such-screen'],
       // `agent/definitions/edit` is built but unlisted (sideBarPosition 0) and keyed by an entity
@@ -1330,10 +1354,13 @@ describe('Home', () => {
 
     performance.setValues({ globalReferencesPerSecond: 4000 });
     const panelReads = systemInfo.calls.length;
+    const findingReads = findings.calls.length;
     await tick(1_700_000_005_000);
     expect(performance.points()).toHaveLength(2);
     // The tick re-reads the performance row alone; the System Information panel settles once.
     expect(systemInfo.calls.length).toBe(panelReads);
+    // Story 16.21: nor does the tick re-read the findings (AD-43).
+    expect(findings.calls.length).toBe(findingReads);
     const path = line() as SVGPathElement;
     expect(path).not.toBeNull();
     expect(path.namespaceURI).toBe('http://www.w3.org/2000/svg');
@@ -1455,5 +1482,209 @@ describe('Home', () => {
     expect(actions.run(HOME_DESCRIPTOR, REFRESH_ACTION_ID)).toBe(true);
     await settle();
     expect(performance.calls).toHaveLength(2);
+  });
+  // ---- Story 16.21: the Findings panel ----
+
+  const findingsPanel = (): HTMLElement | null => fixture.nativeElement.querySelector('app-findings-panel');
+  const groupTexts = (): string[][] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-home-findings-group') as NodeListOf<HTMLElement>).map((group) => [
+      group.querySelector('h3')?.textContent?.trim() ?? '',
+      ...Array.from(group.querySelectorAll('.ocu-home-finding-sentence')).map((line) => line.textContent?.trim() ?? ''),
+    ]);
+  const findingItem = (sentence: string): HTMLElement =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-home-finding') as NodeListOf<HTMLElement>).find(
+      (item) => item.querySelector('.ocu-home-finding-sentence')?.textContent?.trim() === sentence
+    ) as HTMLElement;
+
+  /** An answer whose every check was read, carrying `list`. */
+  const answerWith = (list: object[]) => ({ ...cleanFindingsBody(), findings: list });
+  const TASK = { check: 'task-error', group: 'operations', name: 'nightly', id: '1002', route: 'tasks/schedule/details', scope: 'instance', fix: 'agent' };
+  const CERT = { check: 'certificate', group: 'security', name: 'old', id: 'old', route: 'security/x509', scope: 'instance', detail: '2026-01-02', expired: true, fix: 'link' };
+  const SYSTEM = {
+    check: 'all-holder', group: 'security', name: '_SYSTEM', id: '_SYSTEM', route: 'permissions/users', scope: 'instance', fix: 'refused',
+    refused: { code: 'PROHIBITED.SYSTEMACCOUNT', reason: STRINGS.userRefusalSystemAccount },
+  };
+
+  const remount = async (): Promise<void> => {
+    fixture.destroy();
+    fixture = TestBed.createComponent(HomePage);
+    fixture.detectChanges();
+    await settle();
+  };
+
+  it('Story 16.21 AC1: the Findings panel follows the performance row, with both groups, each saying there is nothing to report', async () => {
+    await settle();
+    expect(findings.calls.map((call) => call.path)).toEqual(['/api/ocupilot/ui/findings']);
+    const home = fixture.nativeElement.querySelector('.ocu-home') as HTMLElement;
+    expect(findingsPanel()?.previousElementSibling?.tagName.toLowerCase()).toBe('app-performance-row');
+    expect(home.querySelector('.ocu-home-remembered')?.previousElementSibling).toBe(findingsPanel());
+    expect(findingsPanel()?.querySelector('h2')?.textContent?.trim()).toBe(STRINGS.findingsHeading);
+    expect(groupTexts()).toEqual([
+      [STRINGS.findingsSecurity, STRINGS.findingsNothing],
+      [STRINGS.findingsOperations, STRINGS.findingsNothing],
+    ]);
+    expect(fixture.nativeElement.querySelectorAll('.ocu-home-remembered .ocu-home-block')).toHaveLength(5);
+  });
+
+  // Mutation (Rule 19): render Fix it for `fix: "refused"` in Home's `resolvedFindings` -> this goes red.
+  it('Story 16.21: an agent finding offers Fix it, a link finding Open, and a refused one the prohibited set\'s sentence with no Fix it', async () => {
+    findings.setBody(answerWith([SYSTEM, CERT, TASK]));
+    await remount();
+    const system = findingItem('_SYSTEM holds %All.');
+    expect(system.querySelector('.ocu-home-finding-fix')).toBeNull();
+    expect(system.querySelector('.ocu-home-finding-open')).toBeNull();
+    expect(system.querySelector('.ocu-home-finding-refused')?.textContent?.trim()).toBe(STRINGS.userRefusalSystemAccount);
+    const cert = findingItem('The certificate old expired on 2026-01-02.');
+    expect(cert.querySelector('.ocu-home-finding-fix')).toBeNull();
+    expect(cert.querySelector('.ocu-home-finding-open')?.textContent?.trim()).toBe(STRINGS.homeSuggestedOpen);
+    expect(cert.querySelector('.ocu-home-finding-open')?.getAttribute('href')).toContain('security/x509/old');
+    const task = findingItem('The task nightly was suspended after an error.');
+    const fix = task.querySelector('.ocu-home-finding-fix') as HTMLButtonElement;
+    expect(fix.textContent?.trim()).toBe(STRINGS.findingsFix);
+    expect(fix.getAttribute('aria-disabled')).toBeNull();
+    const sentenceId = task.querySelector('.ocu-home-finding-sentence')?.id ?? '';
+    expect(fix.getAttribute('aria-describedby')).toBe(sentenceId);
+    expect(Array.from(task.querySelectorAll('.ocu-home-finding-detail')).map((line) => line.textContent?.trim())).toEqual([
+      STRINGS.findingTaskErrorWhy,
+      STRINGS.findingTaskErrorDo,
+    ]);
+  });
+
+  it('Story 16.21: under the kill switch Fix it is aria-disabled, described by the kill-switch reason, and sends nothing', async () => {
+    findings.setBody(answerWith([TASK]));
+    fixGate.killSwitch = true;
+    await remount();
+    const fix = findingItem('The task nightly was suspended after an error.').querySelector('.ocu-home-finding-fix') as HTMLButtonElement;
+    expect(fix.getAttribute('aria-disabled')).toBe('true');
+    expect((fix.getAttribute('aria-describedby') ?? '').split(' ')).toContain(KILL_SWITCH_ID);
+    fix.click();
+    await settle();
+    expect(router.url).toBe('/');
+    expect(fixFinding.take()).toBeNull();
+
+    fixGate.killSwitch = false;
+    fireFixGate();
+    fixture.detectChanges();
+    expect(fix.getAttribute('aria-disabled')).toBeNull();
+  });
+
+  // Mutation (Rule 19): call `fix.request` straight after the navigation in `fixAndRequest`,
+  // without waiting for the target store -> "nothing is requested before the screen has read" goes red.
+  it('Story 16.21 AC2: Fix it opens the affected screen on its object and asks for the fixed sentence only once that screen has read', async () => {
+    findings.setBody(answerWith([TASK]));
+    await remount();
+    const target = screenForRoute('tasks/schedule/details');
+    expect(target).not.toBeNull();
+    const store = stores.for(target!.descriptor, target!.refreshRates);
+    (findingItem('The task nightly was suspended after an error.').querySelector('.ocu-home-finding-fix') as HTMLButtonElement).click();
+    await settle();
+    expect(router.url).toBe('/tasks/schedule/details/1002');
+    expect(fixFinding.take(), 'nothing is requested before the screen has read').toBeNull();
+
+    store.applyTick([{ Name: 'nightly', Id: 1002 }], false, '', new Date());
+    expect(fixFinding.take()).toEqual({ check: 'task-error', key: 'findingFixTaskError' });
+    store.applyTick([{ Name: 'nightly', Id: 1002 }], false, '', new Date());
+    expect(fixFinding.take(), 'one request per click').toBeNull();
+  });
+
+  it('Story 16.21: Fix it on each other fixable check opens its own screen on its object, then asks for that check', async () => {
+    const cases = [
+      { finding: { check: 'webapp-open', group: 'security', name: '/csp/open', id: '/csp/open', route: 'web-applications/list', scope: 'instance', fix: 'agent' }, sentence: '/csp/open can be reached without signing in and holds a database or administrative role.', url: '/web-applications/list/%252Fcsp%252Fopen', key: 'findingFixWebappOpen' },
+      { finding: { check: 'monitor-open', group: 'security', name: '/api/monitor', id: '/api/monitor', route: 'web-applications/list', scope: 'instance', fix: 'agent' }, sentence: 'The monitoring API, /api/monitor, answers without signing in.', url: '/web-applications/list/%252Fapi%252Fmonitor', key: 'findingFixMonitorOpen' },
+      { finding: { check: 'all-holder', group: 'security', name: 'SuperUser', id: 'SuperUser', route: 'permissions/users', scope: 'instance', fix: 'agent' }, sentence: 'SuperUser holds %All.', url: '/permissions/users/SuperUser', key: 'findingFixAllHolder' },
+      { finding: { check: 'auditing-off', group: 'security', name: '', id: '', route: 'security/auditing', scope: 'instance', fix: 'agent' }, sentence: STRINGS.auditingStatusOff, url: '/security/auditing', key: 'findingFixAuditingOff' },
+    ];
+    for (const { finding, sentence, url, key } of cases) {
+      await router.navigateByUrl('/');
+      findings.setBody(answerWith([finding]));
+      await remount();
+      const target = screenForRoute(finding.route);
+      expect(target, finding.route).not.toBeNull();
+      const store = stores.for(target!.descriptor, target!.refreshRates);
+      (findingItem(sentence).querySelector('.ocu-home-finding-fix') as HTMLButtonElement).click();
+      await settle();
+      expect(router.url, finding.check).toBe(url);
+      expect(fixFinding.take(), `${finding.check}: not before the screen reads`).toBeNull();
+      store.applyTick([{ Name: finding.name }], false, '', new Date());
+      expect(fixFinding.take(), finding.check).toEqual({ check: finding.check, key });
+    }
+  });
+
+  it('Story 16.21: while the explain gate hides Fix it, a fixable finding offers Open to its screen', async () => {
+    findings.setBody(answerWith([TASK]));
+    fixGate.answered = false;
+    await remount();
+    const task = findingItem('The task nightly was suspended after an error.');
+    expect(task.querySelector('.ocu-home-finding-fix')).toBeNull();
+    expect(task.querySelector('.ocu-home-finding-open')?.getAttribute('href')).toContain('tasks/schedule/details/1002');
+  });
+
+  it('Story 16.21: a first read that fails shows the panel with the server-fault line and no group claims', async () => {
+    findings.reset();
+    findings.setUnreachable(true);
+    await remount();
+    expect(findingsPanel()?.textContent).toContain(STRINGS.connectivityServerFault);
+    expect(groupTexts()).toEqual([]);
+  });
+
+  it('Story 16.21: a navigation away before the screen reads sends nothing', async () => {
+    findings.setBody(answerWith([TASK]));
+    await remount();
+    const target = screenForRoute('tasks/schedule/details')!;
+    const store = stores.for(target.descriptor, target.refreshRates);
+    (findingItem('The task nightly was suspended after an error.').querySelector('.ocu-home-finding-fix') as HTMLButtonElement).click();
+    await settle();
+    await router.navigateByUrl('/logs/alerts');
+    store.applyTick([], false, '', new Date());
+    expect(fixFinding.take()).toBeNull();
+  });
+
+  // Mutation (Rule 19): drop the `navigated !== true` test in `fixAndRequest` -> the request lands and this goes red.
+  it('Story 16.21: a declined navigation sends nothing', async () => {
+    findings.setBody(answerWith([TASK]));
+    await remount();
+    const target = screenForRoute('tasks/schedule/details')!;
+    const store = stores.for(target.descriptor, target.refreshRates);
+    const declined = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
+    (findingItem('The task nightly was suspended after an error.').querySelector('.ocu-home-finding-fix') as HTMLButtonElement).click();
+    await settle();
+    expect(declined).toHaveBeenCalledOnce();
+    store.applyTick([{ Name: 'nightly', Id: 1002 }], false, '', new Date());
+    expect(fixFinding.take()).toBeNull();
+    declined.mockRestore();
+  });
+
+  // Mutation (Rule 19): drop `'user'` from `FINDINGS_CHANGE_TYPES` -> this goes red on the user event.
+  it('Story 16.21 AC3: a change to a checked type or a namespace switch reloads the findings, and anything else does not', async () => {
+    await settle();
+    const before = findings.calls.length;
+    bus.publish({ kind: 'changed', type: 'user', scope: 'instance', id: 'someone', action: 'updated' });
+    await settle();
+    expect(findings.calls.length).toBe(before + 1);
+    for (const type of ['web-application', 'role', 'x509-credential', 'auditing-configuration', 'database', 'task']) {
+      expect(FINDINGS_CHANGE_TYPES.has(type), type).toBe(true);
+    }
+    bus.publish({ kind: 'changed', type: 'process', scope: 'instance', id: '42', action: 'updated' });
+    await settle();
+    expect(findings.calls.length).toBe(before + 1);
+    scope.namespaceValue = 'USER';
+    scope.notify();
+    await settle();
+    expect(findings.calls.length).toBe(before + 2);
+    fixture.destroy();
+    bus.publish({ kind: 'changed', type: 'user', scope: 'instance', id: 'someone', action: 'updated' });
+    expect(findings.calls.length, 'a destroyed Home reads nothing').toBe(before + 2);
+  });
+
+  it('Story 16.21: an unread check reads "Not checked" and its group never says there is nothing to report', async () => {
+    findings.setBody({
+      checks: cleanFindingsBody().checks.map((row) =>
+        (row as { check: string }).check === 'all-holder' ? { check: 'all-holder', status: 'unchecked', pair: '%Admin_Secure:USE' } : row
+      ),
+      findings: [],
+    });
+    await remount();
+    expect(groupTexts()[0]).toEqual([STRINGS.findingsSecurity, 'Not checked: accounts holding %All (requires %Admin_Secure:USE)']);
+    expect(groupTexts()[1]).toEqual([STRINGS.findingsOperations, STRINGS.findingsNothing]);
   });
 });

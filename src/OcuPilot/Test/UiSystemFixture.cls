@@ -103,12 +103,12 @@ ClassMethod SourceLogCalls() As %Integer
     Quit $Get(^||OcuPilotSystemFixture("sourcelogcalls"), 0)
 }
 
-ClassMethod ReadSource(pField As %String, ByRef pDashboard) As %String
+ClassMethod ReadSource(pField As %String, ByRef pContext) As %String
 {
     If $Data(^||OcuPilotSystemFixture("sourcethrows", pField)) {
         Throw ##class(%Exception.General).%New("UiSystemFixture", 1, , "fixture: " _ pField _ " source refused")
     }
-    Quit ##super(pField, .pDashboard)
+    Quit ##super(pField, .pContext)
 }
 
 ClassMethod SampleDashboard(Output pDashboard)

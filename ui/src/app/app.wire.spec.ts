@@ -40,6 +40,9 @@ import { stubAbout, stubHelpLinks } from './testing/about';
 import { stubSystemInfo } from './testing/system-info';
 import { PerformanceRow } from './core/performance';
 import { stubPerformanceRow } from './testing/performance';
+import { Findings } from './core/findings';
+import { FixFinding } from './core/fix-finding';
+import { stubFindings, stubFixFinding } from './testing/findings';
 
 /**
  * The one crossing left after `app.spec.ts` and the two bar specs: `app.spec.ts` mounts the real
@@ -269,6 +272,8 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         { provide: About, useValue: stubAbout() },
         { provide: SystemInfo, useValue: stubSystemInfo() },
         { provide: PerformanceRow, useValue: stubPerformanceRow() },
+        { provide: Findings, useValue: stubFindings() },
+        { provide: FixFinding, useValue: stubFixFinding().fix },
         { provide: HelpLinks, useValue: stubHelpLinks() },
         { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter(routes),

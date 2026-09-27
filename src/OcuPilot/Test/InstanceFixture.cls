@@ -108,12 +108,12 @@ ClassMethod BuildIdentity() As %String
     Quit ^||OcuPilotInstanceFixture("build")
 }
 
-ClassMethod ReadSource(pField As %String) As %String
+ClassMethod ReadSource(pField As %String, ByRef pContext) As %String
 {
     If $Data(^||OcuPilotInstanceFixture("sourcethrows", pField)) {
         Throw ##class(%Exception.General).%New("InstanceFixture", 1, , "fixture: " _ pField _ " source refused")
     }
-    If '$Data(^||OcuPilotInstanceFixture("source", pField)) Quit ##super(pField)
+    If '$Data(^||OcuPilotInstanceFixture("source", pField)) Quit ##super(pField, .pContext)
     Quit ^||OcuPilotInstanceFixture("source", pField)
 }
 

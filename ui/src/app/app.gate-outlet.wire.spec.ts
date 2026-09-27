@@ -35,6 +35,9 @@ import { stubAbout, stubHelpLinks } from './testing/about';
 import { stubSystemInfo } from './testing/system-info';
 import { PerformanceRow } from './core/performance';
 import { stubPerformanceRow } from './testing/performance';
+import { Findings } from './core/findings';
+import { FixFinding } from './core/fix-finding';
+import { stubFindings, stubFixFinding } from './testing/findings';
 
 /**
  * The first-login gate against the requested screen's declared read (FR-28, AD-36).
@@ -299,6 +302,8 @@ describe('the first-login gate and the requested screen it may move off', () => 
         { provide: About, useValue: stubAbout() },
         { provide: SystemInfo, useValue: stubSystemInfo() },
         { provide: PerformanceRow, useValue: stubPerformanceRow() },
+        { provide: Findings, useValue: stubFindings() },
+        { provide: FixFinding, useValue: stubFixFinding().fix },
         { provide: HelpLinks, useValue: stubHelpLinks() },
         { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter(routes),

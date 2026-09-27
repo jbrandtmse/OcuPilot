@@ -62,6 +62,9 @@ import { stubAbout, stubHelpLinks, type StubbedAbout, type StubbedHelpLinks } fr
 import { stubSystemInfo, type StubbedSystemInfo } from './testing/system-info';
 import { PerformanceRow } from './core/performance';
 import { stubPerformanceRow, type StubbedPerformanceRow } from './testing/performance';
+import { Findings } from './core/findings';
+import { FixFinding } from './core/fix-finding';
+import { stubFindings, stubFixFinding } from './testing/findings';
 
 /**
  * The frame itself (DW-138, UX-DR80): which bands render, in what order, and around what.
@@ -451,6 +454,8 @@ describe('the shell frame', () => {
         { provide: About, useValue: about },
         { provide: SystemInfo, useValue: systemInfo },
         { provide: PerformanceRow, useValue: performanceRow },
+        { provide: Findings, useValue: stubFindings() },
+        { provide: FixFinding, useValue: stubFixFinding().fix },
         { provide: HelpLinks, useValue: helpLinks },
         { provide: AccountPreferences, useValue: accountPreferences },
         // Three real routes, so "the gate navigated" and "the gate did not" are different

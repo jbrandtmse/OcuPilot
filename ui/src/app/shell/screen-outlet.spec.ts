@@ -39,6 +39,10 @@ import { RefreshService } from '../core/refresh';
 import { ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { homeRefresh, stubPerformanceRow } from '../testing/performance';
+import { ChangeBus } from '../core/change-bus';
+import { Findings } from '../core/findings';
+import { FixFinding } from '../core/fix-finding';
+import { stubFindings, stubFixFinding } from '../testing/findings';
 
 /**
  * The deep-link path, rendered: a route the user's privileges do not allow shows the screen's
@@ -154,6 +158,9 @@ describe('the routed screen outlet', () => {
         { provide: About, useValue: stubAbout() },
         { provide: SystemInfo, useValue: stubSystemInfo() },
         { provide: PerformanceRow, useValue: stubPerformanceRow() },
+        { provide: Findings, useValue: stubFindings() },
+        { provide: FixFinding, useValue: stubFixFinding().fix },
+        { provide: ChangeBus, useValue: new ChangeBus() },
         { provide: RefreshService, useValue: home.refresh },
         { provide: ScreenStores, useValue: home.stores },
         { provide: ScreenActions, useValue: home.actions },

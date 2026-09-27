@@ -12,6 +12,8 @@ import { ApiService } from './app/core/api';
 import { ChangeBus } from './app/core/change-bus';
 import { ConnectivityService } from './app/core/connectivity';
 import { ExplainEntry } from './app/core/explain-entry';
+import { Findings } from './app/core/findings';
+import { FixFinding } from './app/core/fix-finding';
 import { FormDirty } from './app/core/form-dirty';
 import { ScreenArrivals } from './app/core/screen-arrival';
 import { HelpLinks } from './app/core/help';
@@ -215,6 +217,10 @@ const helpLinks = new HelpLinks({ api });
 // performance row refreshes.
 const systemInfo = new SystemInfo({ api });
 
+// Home's Findings panel (Story 16.21) and its Fix it hand-off, whose gate is the explain gate.
+const findings = new Findings({ api });
+const fixFinding = new FixFinding({ explainEntry });
+
 // Home's performance row (Story 16.18). Its read is Home's refresh read, so the one refresh
 // framework times it (AD-43); it holds the last answer and the answers this Home view received.
 const performanceRow = new PerformanceRow({ api });
@@ -273,6 +279,8 @@ bootstrapApplication(App, {
     { provide: About, useValue: about },
     { provide: HelpLinks, useValue: helpLinks },
     { provide: SystemInfo, useValue: systemInfo },
+    { provide: Findings, useValue: findings },
+    { provide: FixFinding, useValue: fixFinding },
     { provide: PerformanceRow, useValue: performanceRow },
     { provide: SuggestedView, useValue: suggested },
   ],

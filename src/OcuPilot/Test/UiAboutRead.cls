@@ -246,7 +246,7 @@ Method TestAnUnknownRouteResolvesToNothing()
 /// <p>The production log line a refused About source writes: one appended <code>[OcuPilot]</code>
 /// console line at <code>error</code> level under the About subsystem, naming the field; and a
 /// call with no exception object swallows its own failure rather than raising.</p>
-/// <p>Mutation (Rule 19): empty <method>OcuPilot.Kernel.Shell.About.LogSourceFailure</method>'s
+/// <p>Mutation (Rule 19): empty <method>OcuPilot.Kernel.Shell.FieldRead.LogSourceFailure</method>'s
 /// <code>Try</code> body -> no line is appended and this goes red.</p>
 Method TestTheSourceFailureLogLineNamesTheField()
 {

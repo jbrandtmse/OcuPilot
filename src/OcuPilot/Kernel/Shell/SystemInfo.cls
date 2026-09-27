@@ -5,9 +5,9 @@
 /// no refresh tick re-reads it: the panel settles with this one read, and on Home only the
 /// performance row refreshes (AD-43, Story 16.18).</p>
 /// <p><b>Each of the seven <method>Members</method> is read in the calling process behind its own
-/// <code>Try</code></b> (<method>Field</method>), so a refused or absent source degrades that one
-/// member to <code>""</code> and reaches the log, and the others still answer --
-/// <class>OcuPilot.Kernel.Shell.About</class>'s <method>ReadSource</method> seam, copied.</p>
+/// <code>Try</code></b> (<class>OcuPilot.Kernel.Shell.FieldRead</class>), so a refused or absent
+/// source degrades that one member to <code>""</code> and reaches the log, and the others still
+/// answer.</p>
 /// <p><b>Three sources, one sample.</b> The five dashboard members come from a single
 /// <method>Sample</method> of <parameter>DASHBOARDCLASS</parameter>, taken once per payload in
 /// <code>%SYS</code> by explicit save and restore with the restore as the first line of the
@@ -19,11 +19,14 @@
 /// <code>Not initialized</code>/<code>Primary</code>/..., and the vendor's own English production
 /// word. Nothing here translates one or invents a vocabulary of its own; only the panel's row
 /// labels are OcuPilot strings.</p>
-Class OcuPilot.Kernel.Shell.SystemInfo Extends %RegisteredObject
+Class OcuPilot.Kernel.Shell.SystemInfo Extends OcuPilot.Kernel.Shell.FieldRead
 {
 
 /// <p>The subsystem name a refused source is logged under.</p>
 Parameter LOGSUBSYSTEM = "uisystem";
+
+/// <p>The log line's message for a refused source.</p>
+Parameter LOGMESSAGE = "A System information source could not be read";
 
 /// <p>The class the five dashboard members are sampled from. Reached by name rather than by
 /// <code>##class()</code> because it exists only in <code>%SYS</code>, so a compiled reference
@@ -68,14 +71,9 @@ ClassMethod Payload(Output pObject As %DynamicObject) As %Status
     Set tSC = $$$OK
     Set pObject = ""
     Try {
-        Set pObject = {}
         Kill tDashboard
         Do ..Dashboard(.tDashboard)
-        Set tMembers = ..Members()
-        For tI = 1:1:$ListLength(tMembers) {
-            Set tMember = $List(tMembers, tI)
-            Do pObject.%Set(tMember, ..Field(tMember, .tDashboard), "string")
-        }
+        Set tSC = ..Fields(.pObject, .tDashboard)
     } Catch ex {
         Set pObject = ""
         Set tSC = ex.AsStatus()
@@ -83,34 +81,18 @@ ClassMethod Payload(Output pObject As %DynamicObject) As %Status
     Quit tSC
 }
 
-/// <p>One raw read, behind its own <code>Try</code>. <var>pField</var> is one of
-/// <method>Members</method> and <var>pDashboard</var> is <method>Dashboard</method>'s sample; a
-/// refusal reads <code>""</code> and reaches the log through <method>LogSourceFailure</method>
-/// rather than failing the payload.</p>
-ClassMethod Field(pField As %String, ByRef pDashboard) As %String
-{
-    Set tValue = ""
-    Try {
-        Set tValue = ..ReadSource(pField, .pDashboard)
-    } Catch ex {
-        Set tValue = ""
-        Do ..LogSourceFailure(pField, ex)
-    }
-    Quit tValue
-}
-
 /// <p>The seven raw reads behind one seam; an unknown field reads <code>""</code>.</p>
 /// <p>The seam exists so a test can make one source fail without touching the instance, and so
 /// the per-field <code>Try</code> in <method>Field</method> has something to guard. Production
-/// never overrides it. The five dashboard members are read out of <var>pDashboard</var>, which
+/// never overrides it. The five dashboard members are read out of <var>pContext</var>, which
 /// <method>Dashboard</method> has already filled or left empty; the other two reach their
 /// accessors here, neither of which switches namespace (AD-16).</p>
-ClassMethod ReadSource(pField As %String, ByRef pDashboard) As %String
+ClassMethod ReadSource(pField As %String, ByRef pContext) As %String
 {
     If pField = "mirror" Quit ..MirrorState()
     If pField = "production" Quit ..ProductionState()
     If $ListFind(..Members(), pField) = 0 Quit ""
-    Quit $Get(pDashboard(pField))
+    Quit $Get(pContext(pField))
 }
 
 /// <p>The five dashboard members, sampled once and left in <var>pDashboard</var> keyed by member
@@ -249,22 +231,6 @@ ClassMethod ProductionStatus(Output pName As %String, Output pState As %Integer)
 ClassMethod ProductionEnabled() As %Boolean
 {
     Quit ##class(%Library.EnsembleMgr).IsEnsembleNamespace(##class(OcuPilot.Kernel.Scope).Current())
-}
-
-/// <p>The audit-log seam a refused read travels through, so a member that degraded to
-/// <code>""</code> is recoverable from the log rather than silently absent from the panel.
-/// <var>pField</var> is the member that failed, or
-/// <parameter>DASHBOARDSOURCE</parameter> for the sample the five dashboard members share.</p>
-/// <p>It swallows its own failure: it is called from inside a per-field <code>Catch</code>, and an
-/// exception escaping here would reach <method>Payload</method>'s <code>Catch</code> and turn a
-/// degraded member into the failure the per-field <code>Try</code> exists to prevent. Overridable
-/// for capture in a test; production never overrides it.</p>
-ClassMethod LogSourceFailure(pField As %String, pException As %Exception.AbstractException)
-{
-    Try {
-        Do ##class(OcuPilot.Kernel.Audit.Log).Error(..#LOGSUBSYSTEM, "A System information source could not be read", {"field": (pField), "detail": (pException.DisplayString())})
-    } Catch {
-    }
 }
 
 }

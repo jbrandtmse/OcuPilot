@@ -1948,7 +1948,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:619 */
+  /** EXPERIENCE.md:623 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2961,6 +2961,100 @@ export const STRINGS = {
   logViewerFileOption: '<name> \u00b7 <size> KB \u00b7 <modified>',
   /** EXPERIENCE.md:578 */
   logViewerFileGone: 'That file is no longer in the manager directory.',
+  /** EXPERIENCE.md:579 */
+  findingsHeading: 'Findings',
+  /** EXPERIENCE.md:579 */
+  findingsSecurity: 'Security',
+  /** EXPERIENCE.md:579 */
+  findingsOperations: 'Operations',
+  /** EXPERIENCE.md:579 */
+  findingsNothing: 'Nothing to report.',
+  /** EXPERIENCE.md:579 */
+  findingsNotChecked: 'Not checked: <check>',
+  /** EXPERIENCE.md:579 */
+  findingsCouldNotRead: ' (could not be read)',
+  /** EXPERIENCE.md:579 */
+  findingsFix: 'Fix it',
+  /** EXPERIENCE.md:580 */
+  findingsCheckWebappOpen: 'web applications open without signing in',
+  /** EXPERIENCE.md:580 */
+  findingsCheckMonitorOpen: 'the monitoring API',
+  /** EXPERIENCE.md:580 */
+  findingsCheckAllHolder: 'accounts holding %All',
+  /** EXPERIENCE.md:580 */
+  findingsCheckCertificate: 'X.509 certificates',
+  /** EXPERIENCE.md:580 */
+  findingsCheckAuditingOff: 'auditing',
+  /** EXPERIENCE.md:580 */
+  findingsCheckDatabaseDismounted: 'database mounts',
+  /** EXPERIENCE.md:580 */
+  findingsCheckDatabaseFull: 'database sizes',
+  /** EXPERIENCE.md:580 */
+  findingsCheckTaskManager: 'the Task Manager',
+  /** EXPERIENCE.md:580 */
+  findingsCheckTaskError: 'suspended tasks',
+  /** EXPERIENCE.md:581 */
+  findingWebappOpen: '<name> can be reached without signing in and holds a database or administrative role.',
+  /** EXPERIENCE.md:581 */
+  findingWebappOpenWhy: 'Anyone who can reach this address can use that privilege.',
+  /** EXPERIENCE.md:581 */
+  findingWebappOpenDo: 'Require a password to sign in, or remove the role.',
+  /** EXPERIENCE.md:581 */
+  findingMonitorOpen: 'The monitoring API, <name>, answers without signing in.',
+  /** EXPERIENCE.md:581 */
+  findingMonitorOpenWhy: 'Anyone who can reach the instance can read its metrics.',
+  /** EXPERIENCE.md:581 */
+  findingMonitorOpenDo: 'Require a password, and give your metrics collector an account.',
+  /** EXPERIENCE.md:581 */
+  findingAllHolder: '<name> holds %All.',
+  /** EXPERIENCE.md:581 */
+  findingAllHolderWhy: 'Whoever signs in as this account can do anything on this instance.',
+  /** EXPERIENCE.md:581 */
+  findingAllHolderDo: 'Take %All off every account that does not need it.',
+  /** EXPERIENCE.md:581 */
+  findingCertificateExpired: 'The certificate <name> expired on <date>.',
+  /** EXPERIENCE.md:581 */
+  findingCertificate: 'The certificate <name> expires on <date>.',
+  /** EXPERIENCE.md:581 */
+  findingCertificateWhy: 'Connections that rely on it fail once it has expired.',
+  /** EXPERIENCE.md:581 */
+  findingCertificateDo: 'Import a renewed certificate.',
+  /** EXPERIENCE.md:581 */
+  findingAuditingOffWhy: 'Nothing that happens on this instance is recorded, OcuPilot\'s own changes included.',
+  /** EXPERIENCE.md:581 */
+  findingAuditingOffDo: 'Turn auditing on.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseDismounted: 'The database <name> is dismounted.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseDismountedWhy: 'Nothing can read or write it until it is mounted.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseDismountedDo: 'Mount it from its details.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseFull: 'The database <name> is at <percent>% of its maximum size.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseFullWhy: 'Writes to it fail once it is full.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseFullDo: 'Raise its maximum size, or free space in it.',
+  /** EXPERIENCE.md:581 */
+  findingTaskManagerSuspendedDo: 'Resume the Task Manager.',
+  /** EXPERIENCE.md:581 */
+  findingTaskManagerStoppedDo: 'Start the Task Manager.',
+  /** EXPERIENCE.md:581 */
+  findingTaskError: 'The task <name> was suspended after an error.',
+  /** EXPERIENCE.md:581 */
+  findingTaskErrorWhy: 'It does not run again until it is resumed.',
+  /** EXPERIENCE.md:581 */
+  findingTaskErrorDo: 'Read its error, then resume it.',
+  /** EXPERIENCE.md:582 */
+  findingFixWebappOpen: 'This web application can be reached without signing in and holds a database or administrative role. Propose requiring a password to sign in to it.',
+  /** EXPERIENCE.md:582 */
+  findingFixMonitorOpen: 'The monitoring API answers without signing in. Propose requiring a password to sign in to it.',
+  /** EXPERIENCE.md:582 */
+  findingFixAllHolder: 'This account holds %All. Propose taking %All off it.',
+  /** EXPERIENCE.md:582 */
+  findingFixAuditingOff: 'Auditing is off on this instance. Propose turning it on.',
+  /** EXPERIENCE.md:582 */
+  findingFixTaskError: 'This task was suspended after an error. Propose resuming it.',
 
 } as const;
 

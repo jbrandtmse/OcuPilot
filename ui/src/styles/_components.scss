@@ -6644,3 +6644,129 @@ app-data-table .ocu-data-table-header-cell {
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
+
+// Story 16.21. Home's Findings panel, its own row under the performance row: a heading, then the
+// Security and Operations groups side by side, wrapping to one column rather than widening Home.
+// Each finding is its sentence, two quieter lines, and one action. No new token.
+.ocu-home-findings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  min-width: 0;
+}
+
+.ocu-home-findings-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-4);
+}
+
+.ocu-home-findings-group {
+  display: flex;
+  flex: 1 1 var(--ocu-side-bar-width);
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  min-width: 0;
+}
+
+.ocu-home-findings-group-heading {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-home-findings-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container-lowest);
+  list-style: none;
+}
+
+.ocu-home-finding {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ocu-space-1);
+  min-width: 0;
+  padding: var(--ocu-space-2);
+}
+
+.ocu-home-finding + .ocu-home-finding {
+  border-top: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-home-finding-sentence {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  max-width: 100%;
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-home-finding-quiet .ocu-home-finding-sentence,
+.ocu-home-finding-detail,
+.ocu-home-finding-refused {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  max-width: 100%;
+  color: var(--ocu-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.ocu-home-finding-fix {
+  @include typo.ocu-type('label');
+
+  min-width: var(--ocu-icon-button-size);
+  height: var(--ocu-control-height);
+  padding: 0 var(--ocu-space-3);
+  border: 1px solid var(--ocu-outline);
+  border-radius: var(--ocu-radius-sm);
+  background: transparent;
+  color: var(--ocu-primary);
+  cursor: pointer;
+}
+
+.ocu-home-finding-fix:hover {
+  background: var(--ocu-surface-container-high);
+}
+
+.ocu-home-finding-fix:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// Refused while the explain gate names a reason (AD-8's shape): `aria-disabled`, never `disabled`,
+// so it keeps its place and its focus and only its colour changes.
+.ocu-home-finding-fix[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-home-finding-fix[aria-disabled='true']:hover {
+  background: transparent;
+}
+
+.ocu-home-finding-open {
+  @include typo.ocu-type('label');
+
+  display: inline-flex;
+  align-items: center;
+  min-width: var(--ocu-icon-button-size);
+  min-height: var(--ocu-control-height);
+  color: var(--ocu-secondary);
+  text-decoration: none;
+}
+
+.ocu-home-finding-open:hover {
+  text-decoration: underline;
+}
+
+.ocu-home-finding-open:focus-visible {
+  @include ocu-focus-ring;
+}
