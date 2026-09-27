@@ -4,10 +4,9 @@
  * - **AC1 and AC5.** For the suite's own account the panel follows the performance row with its
  *   Security and Operations groups; it names a seeded unauthenticated application holding
  *   `%DB_USER`, the stock `/csp/user` and `/api/monitor`, every open application the instance's own
- *   answer lists, the demo fixture's task
- *   suspended after an error and the four `%All` accounts a stock install carries, and
- *   not `/ocupilot` or a task a person suspended. The panel passes the DW-1337 structural gate in
- *   light, narrow and dark with no new baseline entry.
+ *   answer lists, the demo fixture's task suspended after an error and the four `%All` accounts a
+ *   stock install carries, and not `/ocupilot` or a task a person suspended. The panel passes the
+ *   DW-1337 structural gate in light, narrow and dark with no new baseline entry.
  * - **AC2.** `_SYSTEM`'s line shows the prohibited set's sentence and no Fix it.
  * - **AC3.** Fix it on the demo task opens Task details on it; the scripted turn's user message is
  *   the fixed sentence, its screen context names the task and carries its row, and the proposal
@@ -196,8 +195,10 @@ test('AC1 and AC5: the panel follows the performance row, names what the instanc
     const operations = groups[1].lines.map((line) => line.sentence);
     assert.ok(security.includes(fill(STRINGS.findingWebappOpen, { name: PROBE_APP })), `the seeded application is named: ${JSON.stringify(security)}`);
     assert.ok(security.includes(fill(STRINGS.findingWebappOpen, { name: '/csp/user' })), `the stock /csp/user is named: ${JSON.stringify(security)}`);
-    assert.ok(security.includes(fill(STRINGS.findingMonitorOpen, { name: '/api/monitor' })), 'the stock monitoring API is named');
-    for (const finding of answer.findings.filter((row) => row.check === 'webapp-open' || row.check === 'monitor-open')) {
+    assert.ok(security.includes(fill(STRINGS.findingMonitorOpen, { name: '/api/monitor' })), `the stock monitoring API is named: ${JSON.stringify(security)}`);
+    const openRows = answer.findings.filter((row) => row.check === 'webapp-open' || row.check === 'monitor-open');
+    assert.ok(openRows.some((row) => row.name === PROBE_APP), `the instance's answer lists the seeded application: ${JSON.stringify(openRows)}`);
+    for (const finding of openRows) {
       const sentence = fill(finding.check === 'webapp-open' ? STRINGS.findingWebappOpen : STRINGS.findingMonitorOpen, { name: finding.name });
       assert.ok(security.includes(sentence), `${finding.name}, which the instance answers, is named: ${JSON.stringify(security)}`);
     }

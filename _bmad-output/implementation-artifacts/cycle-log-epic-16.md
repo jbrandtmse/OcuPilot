@@ -152,3 +152,6 @@
 2026-09-27T10:03:19Z	Story 16.21	dev_complete	spawn_at=2026-09-27T09:44:40Z model=opus build_sha=7b8dcfa7 baseline_revision=4c81c839 review_loop_iteration=0 followup_review_recommended=false deferred=0 files=2 cycle_iteration=2 note=test-only;structural_walk_timeout_not_reproduced_at_4x/6x/20x_throttle ci=pending run=36311288540
 2026-09-27T10:03:19Z	Story 16.21	adr_verifications_complete	result=none_required note=rework_touched_one_browser_spec_only
 2026-09-27T10:03:19Z	Story 16.21	stage_spawned	stage=code-review spawn_at=2026-09-27T10:03:19Z model=opus agent_name=16-21-security-findings-with-a-fix-you-confirm-code-review-2 cycle_iteration=2
+2026-09-27T10:12:48Z	Story 16.21	cr_complete	spawn_at=2026-09-27T10:03:19Z model=opus resolved=3 fixed_at_source=3 routed=0 escalated=0 decision_pending=0 deferred=0 dismissed=17 high=0 med=0 low=15 rows=0 unresolved_high_med=0 clarifications=0 closing_sections_present=true cycle_iteration=2 note=rework_re-review_scoped_4c81c839..7b8dcfa7;AC1_example_amended_by_lead(tier1)
+2026-09-27T10:12:48Z	Story 16.21	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=slice_empty model=claude-opus-5-5
+2026-09-27T10:12:48Z	Story 16.21	smoke_complete	method=browser result=pass iterations=2 defects_caught=0 evidence=ocupilot-ci;home-findings.browser-spec_4/4_after_rework model=claude-opus-5-5
