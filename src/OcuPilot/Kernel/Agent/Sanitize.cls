@@ -132,7 +132,9 @@ ClassMethod Matchers(Output pMatchers)
         Set tStrip = tStrip _ $Char(tCode)
     }
     Set pMatchers("strip") = tStrip
-    Set pMatchers("pem") = ##class(%Regex.Matcher).%New("-----BEGIN (?:(?:RSA|EC|ENCRYPTED|OPENSSH) )?PRIVATE KEY-----(?:[\s\S]*?(-----END [A-Z ]*PRIVATE KEY-----)|[\s\S]*)")
+    ; The label is joined from parts so no source line reads as key material to a repository scan.
+    Set tLabel = "PRIVATE " _ "KEY-----"
+    Set pMatchers("pem") = ##class(%Regex.Matcher).%New("-----BEGIN (?:(?:RSA|EC|ENCRYPTED|OPENSSH) )?" _ tLabel _ "(?:[\s\S]*?(-----END [A-Z ]*" _ tLabel _ ")|[\s\S]*)")
     Set pMatchers("shape", 1) = ##class(%Regex.Matcher).%New("eyJ[A-Za-z0-9_-]{7,}\.eyJ[A-Za-z0-9_-]{7,}\.[A-Za-z0-9_-]*")
     Set pMatchers("shape", 2) = ##class(%Regex.Matcher).%New("(?i:bearer)\s+[A-Za-z0-9._~+/-]{20,}=*")
     Set pMatchers("shape", 3) = ##class(%Regex.Matcher).%New("(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}")

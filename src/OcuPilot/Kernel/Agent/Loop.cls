@@ -425,7 +425,8 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 /// rebuilt from <var>pText</var> and <var>pToolUses</var>.</p>
 /// <p><var>pCandidates</var>, when an array, gains the citation candidates of every non-error call
 /// to a descriptor-backed read tool answered here (<method>OcuPilot.Kernel.Agent.Citations.Candidates</method>),
-/// read from the bounded content the model was handed.</p>
+/// read from the bounded content before <method>OcuPilot.Kernel.Agent.Sanitize.Results</method>
+/// frames the model's copy.</p>
 ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String, pContextRowCap As %Integer = 0, pRoute As %String = "", pContentJson As %String = "", pCandidates As %DynamicArray = "") As %Status
 {
     Set pState = ""
@@ -560,10 +561,10 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
                     Set tCode = ""
                 }
             }
-            ; The bounded result content the model was handed, stored on the step (DW-1052). It is
-            ; the tool_result content itself -- already cut to the per-call budget by the
-            ; dispatcher -- so the panel's card shows what the model read rather than nothing. The
-            ; dispatcher-failed finish above records none: there was no result.
+            ; The bounded result content, stored on the step (DW-1052): the tool_result content
+            ; already cut to the per-call budget by the dispatcher, before Sanitize.Results cleans
+            ; and frames the model's copy below, so the panel's card shows the bounded instance
+            ; data. The dispatcher-failed finish above records none: there was no result.
             Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tName, $Select(tIsError: "error", 1: "ok"), tCode, pLimitsClass, tDetail.target, tDetail.arguments, tDetail.result, tDetail.reason, tDetail.failedPair, tDetail.argumentsTruncated, $Select($IsObject(tResult): tResult.%Get("content"), 1: ""))
             If $$$ISERR(tSC) Quit
             If 'tIsError && $IsObject(tResult) && $IsObject(pCandidates) && ..CitesRows(tRunningResolved) {

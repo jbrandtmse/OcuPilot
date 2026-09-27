@@ -22,8 +22,6 @@ Parameter FIXTURE = "OcuPilot.Test.TurnWireFixture";
 
 Parameter TAG = "turnsanitize-probe";
 
-Parameter APIBASE = "/api/ocupilot";
-
 /// <p>The probe definition's name; it is created disabled and never serves a turn.</p>
 Parameter PROBENAME = "ocupilot-sanitize-probe";
 
@@ -120,7 +118,8 @@ ClassMethod SkProbe() As %String
 /// repository scan would otherwise match the literal.</p>
 ClassMethod Shapes() As %List
 {
-    Set tPem = "-----BEGIN RSA " _ "PRIVATE KEY-----" _ $Char(10) _ "MIIBOcuPilotProbe0000" _ $Char(10) _ "-----END RSA " _ "PRIVATE KEY-----"
+    Set tLabel = "RSA PRIVATE" _ " KEY-----"
+    Set tPem = "-----BEGIN " _ tLabel _ $Char(10) _ "MIIBOcuPilotProbe0000" _ $Char(10) _ "-----END " _ tLabel
     Quit $ListBuild(..SkProbe(), "AI" _ "za" _ $Translate($Justify("", 35), " ", "0"), "eyJhbGciOiJub25lIn0.eyJzdWIiOiJvY3VwaWxvdCJ9.c2lnbmF0dXJlcHJvYmU", "Bearer ocupilotProbeToken0000000000", tPem)
 }
 

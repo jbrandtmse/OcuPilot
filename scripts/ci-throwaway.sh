@@ -197,6 +197,7 @@ services:
       # classes: TurnGrounding
       # classes: InjectionChannels, InjectionCompromised, InjectionSeed
       # classes: TurnSanitize
+      # classes: SanitizeAuditMask
       # classes: AccountPasswordWire, AgentConnectionRoles, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
       # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
       # classes: OAuthTabs
@@ -322,6 +323,7 @@ services:
       # classes: TurnWire, TurnWireFixture
       # classes: InjectionChannels, InjectionCompromised
       # classes: TurnSanitize
+      # classes: SanitizeAuditMask
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

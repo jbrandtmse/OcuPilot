@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-26'
 status: 'done'
 baseline_revision: '199989c623bc779f086da1a3de13fadfb88e0211'
+baseline_commit: '199989c623bc779f086da1a3de13fadfb88e0211'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -124,6 +125,25 @@ deferred: []
 - **AC3.** Given a field over 1,000 characters, or rows over the cap, when the result reaches the model, then it is cut exactly once, by AD-24's bound. The cut is marked by the U+2026 ending, by `truncatedFields` and `truncated`, or by `rowsSent` being below `rowsAvailable`, and no mark is lost.
 - **AC4 (DW-1722).** Given `DraftRoute`'s draft leg, when an agent marker is written between its two counts, then the comparison goes red.
 
+### Review Findings
+
+Code review 2026-09-27 (tier `full-opus`; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 decision-needed, 6 patch (applied), 9 closed terminal in the ledger, 4 rejected.
+
+- [x] [Review][Patch] (med) Two literals matched the commit secret grep's PEM-label pattern -- the PEM matcher and `TurnSanitize.Shapes` now join the label from parts on a separate line [src/OcuPilot/Kernel/Agent/Sanitize.cls:135, src/OcuPilot/Test/TurnSanitize.cls:121]
+- [x] [Review][Patch] (med) `CleanTree`'s nested put-back (array and object branch) and the rebuilt object's value types had no test -- `Sanitize.TestANestedRenamedObjectIsPutBack` added [src/OcuPilot/Test/Sanitize.cls:160]
+- [x] [Review][Patch] (low) `SanitizeAuditMask` and `SanitizeDialects` doc comments named mutations that cannot redden or cannot be written -- now name the mutations recorded under Verification [src/OcuPilot/Test/SanitizeAuditMask.cls:121, src/OcuPilot/Test/SanitizeDialects.cls:55]
+- [x] [Review][Patch] (low) `Loop.cls` comments still said the card and citations hold "the content the model was handed" [src/OcuPilot/Kernel/Agent/Loop.cls:426, src/OcuPilot/Kernel/Agent/Loop.cls:562]
+- [x] [Review][Patch] (low) Test headers narrated provenance ("QA coverage", "[Spec gate]") and tagged classes as `<parameter>` [src/OcuPilot/Test/SanitizeDialects.cls:1, src/OcuPilot/Test/SanitizeAuditMask.cls:1, src/OcuPilot/Test/Sanitize.cls:200]
+- [x] [Review][Patch] (low) `TurnSanitize.APIBASE` declared and never used -- removed [src/OcuPilot/Test/TurnSanitize.cls:25]
+- [x] [Review][Closed] (low) DW-1729 strip set omits U+061C/U+00AD/U+180E/variation selectors (by-design); DW-1730 neutralize is ASCII-hyphen only (by-design); DW-1731 closed shape list and Bearer over-match (by-design); DW-1732 a key cut by AD-24 below its shape minimum (wontfix-theoretical); DW-1733 model copy vs card/citations/fault step (by-design); DW-1734 rebuild name collision and number re-rendering (wontfix-theoretical); DW-1735 hand-copied frame readers, explain-screen TypeError (wontfix-accepted); DW-1736 prompt does not name the cut opening line (by-design); DW-1737 frame outside the reply budget (by-design)
+
+Rejected:
+
+- `false` `Sanitize.MaxLength` hard-codes `Limits` rather than the turn's limits class -- `Loop.LimitsClass()` answers `OcuPilot.Kernel.Agent.Limits` in production; only test subclasses lower it, and AD-24 fixes 65,536.
+- `false` JSON detection on the raw first character skips the tree path for content led by a stripped character -- every producer (`Dispatch`, `ClientResult`, the budget refusal, `BoundedContext`) emits `%ToJSON` output starting with `{`.
+- `false` AC1's strip, neutralize and four shapes lack their own `mutation:` lines -- Rule 19 requires one per AC; AC1 has three.
+- `reject` the Auto Run Result's stale line numbers and file list -- the fix edits the spec's run record, not code.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -218,6 +238,16 @@ This runs on slot B. Copy each changed `.cls` into `/tmp/ocupilot-b-ci/src` and 
 - mutation: `RecordAgentWrite` between `DraftRoute`'s two counts → draft leg red on "no OcuPilot audit row" (run 721); the same marker against the old `HSCUSTOM` `Counts` stayed green (run 722).
 
 Note: `explain-screen.browser-spec.mjs` changes only its line near :116, so it asserts the frame inline rather than importing `resultPayload`.
+
+**(QA) New test files, added after the story's own sweep, both green on `ocupilot-b-ci` (runs 1028-1033):**
+
+- `src/OcuPilot/Test/SanitizeDialects.cls`: the same sanitized `tool_result` translated to the OpenAI and Gemini wire dialects (`MessageAdapter`), closing the measured gap that `TurnProvider` (and so every other turn suite) drives only the Anthropic family. Mutation: `MessageAdapter.ResultText` returns a fixed string instead of the block's own `content` → both legs red (run 1032); reverted, green (run 1033).
+- `src/OcuPilot/Test/SanitizeAuditMask.cls`: a real AD-35-masked OAuth audit row (`AuditPort.MaskVendorSecrets`, the same write `AuditVendorSecrets` already pins) reaches the model through a real turn's `logs.audit.read` call carrying the vendor's own `*****` once, with no `OcuPilot.Kernel.Audit.Log.#REDACTED` mark added over it. Mutation: a sixth shape matching runs of `*` added to `Sanitize.Matchers`/`Redact` → the mask assertion and the once-not-twice assertion both red (run 1030); reverted, green (run 1031).
+- Both added to `scripts/ci-throwaway.sh`'s `OCUPILOT_ALLOW_PRINCIPALS`/`OCUPILOT_ALLOW_TEST_PROVIDER` rosters (`SanitizeAuditMask`; `SanitizeDialects` needs neither).
+
+**(Review) Added on `ocupilot-b-ci`, each reverted byte-identical:**
+
+- mutation: `CleanTree`'s array put-back removed → `Sanitize.TestANestedRenamedObjectIsPutBack` red (run 1035); object put-back removed → same test red (run 1036); rebuild `null` branch disabled → same test red (run 1037). Reverted, `Sanitize` 12 of 12 green; `TurnSanitize`, `SanitizeDialects`, `SanitizeAuditMask` green after the review patches (runs 1038-1041).
 
 ## Auto Run Result
 

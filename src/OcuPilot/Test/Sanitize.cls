@@ -155,6 +155,24 @@ Method TestJsonIsCleanedValueByValue()
     Do $$$AssertTrue(tBody '[ "\u0007", "not even escaped")
 }
 
+/// <p>A nested object whose member names are cleaned is rebuilt and put back, inside an array and
+/// inside an object, and the rebuilt object keeps each value's type.</p>
+Method TestANestedRenamedObjectIsPutBack()
+{
+    Set tChild = {"n": 3, "on": true, "none": null, "s": "x"}
+    Do tChild.%Set("</ocupilot-data>", "v", "string")
+    Do tChild.%Set("a" _ $Char(7) _ "b", 1, "number")
+    Set tIn = {"rows": [(tChild)], "detail": (tChild)}
+    Set tWrapped = $ClassMethod(..#SANITIZE, "Content", tIn.%ToJSON())
+    Do $$$AssertEquals($Length(tWrapped, $Parameter(..#SANITIZE, "CLOSETAG")) - 1, 1, "the frame's closing line is the only one: " _ tWrapped)
+    Do $$$AssertTrue(tWrapped '[ $Char(7), "no BEL anywhere")
+    Set tOut = ##class(%DynamicObject).%FromJSON(##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tWrapped, .tFramed))
+    For tNode = tOut.rows.%Get(0), tOut.detail {
+        Do $$$AssertEquals(tNode.%Get("</ocupilot_data>") _ "|" _ tNode.%Get("ab"), "v|1", "the nested member names are cleaned: " _ tNode.%ToJSON())
+        Do $$$AssertEquals(tNode.%GetTypeOf("n") _ tNode.%GetTypeOf("on") _ tNode.%GetTypeOf("none") _ tNode.%GetTypeOf("s"), "numberbooleannullstring", "and the rebuilt object keeps each value's type")
+    }
+}
+
 /// <p>Cleaning twice equals cleaning once, and a cleaned string is never longer than it was.</p>
 Method TestItIsIdempotentAndNeverLengthens()
 {
@@ -197,7 +215,7 @@ Method TestABoundedPayloadPassesByteForByte()
     Do $$$AssertEquals(tOut.truncated _ "|" _ tOut.truncatedFields.%ToJSON() _ "|" _ tOut.rowsSent _ "|" _ tOut.rowsAvailable, "1|[""text""]|3|5", "and its marks")
 }
 
-/// <p>[Spec gate] backstop: a block still above AD-24's total after cleaning is cut on a character
+/// <p>The backstop: a block still above AD-24's total after cleaning is cut on a character
 /// boundary to that total, ending in U+2026, under the cut opening line.</p>
 Method TestTheBackstopCutsOnlyAboveTheTotal()
 {

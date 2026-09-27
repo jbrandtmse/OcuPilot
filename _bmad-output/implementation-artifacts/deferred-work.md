@@ -7483,6 +7483,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 14.8 QA measured: the same query reads 0 in HSCUSTOM and 11,835 from %SYS on ocupilot-b-ci; InjectionSeed.WriteCounts had the identical defect and was fixed by switching to %SYS for that one query
 - 2026-09-27T02:52:01Z status=routed owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=harvest note=14.1 is closed; 14.3 is the next story of this epic and already runs the injection suite; a two-line fix plus a mutation
 - 2026-09-27T03:15:57Z occurrence=14-8-the-seeded-injection-test
+- 2026-09-27T06:52:41Z status=resolved-by:14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=adjudication note=DraftRoute.Counts switches to %SYS for the %SYS.Audit marker count and asserts both counts are real; AC4 pinned by a mutation (an agent marker written between the counts) that stayed green against the old HSCUSTOM count and goes red now (spec Verification)
 
 ### DW-1724: InjectionEgress cannot see an outbound connection the vendor opens behind an admin-API type OcuPilot sends (Security.SSLConfig/TEST, REGISTERCLIENT), so a new such type would not redden the egress roster
 - source: spec-14-8-the-seeded-injection-test.md (cr) | severity: med | fix-risk: high | footprint: in-story
@@ -7493,3 +7494,48 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-14-8-the-seeded-injection-test.md (cr) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ui/src/app/core/reply.ts imageNode:272-274 renders isSameOriginUrl images as <img src>; the 14.8 browser spec filters same-origin requests, so it pins off-origin only. No spine text scopes rule 4 to other hosts
 - 2026-09-27T03:15:58Z status=decision-pending owner=burndown by=cr note=product call: does rule 4's any host include the instance's own origin? If yes, render every image as its alt text
+
+### DW-1729: Sanitize.Strip omits invisible and bidi characters outside the spec's closed set (U+061C, U+00AD, U+180E, U+2028/9, U+FE00-FE0F, U+E0100-E01EF, U+FFF9-FFFB)
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Sanitize.cls Matchers strip loop lists exactly the spec's Always>Strip set; these code points reach the model unchanged. AD-60 is additional, not the defense.
+- 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=spec Always>Strip enumerates the set; reopen via spec amendment adding code points
+
+### DW-1730: Sanitize.Neutralize folds only ASCII case and the ASCII hyphen, so a lookalike-hyphen closing tag (U+2010/2011/2212/FF0D) survives
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Neutralize matches TAGNAME with $Find on an ASCII-folded copy; '</ocupilot' + U+2011 + 'data>' passes unchanged.
+- 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=spec Always>Neutralize names the ASCII string; AD-60 additional; reopen via spec amendment
+
+### DW-1731: Secret shapes are a closed list: DSA/PGP PEM, Basic auth, non-sk vendor keys unmatched; Bearer shape over-redacts 'bearer' + a 20-char word
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Matchers builds exactly the spec's five shapes (PEM words RSA/EC/ENCRYPTED/OPENSSH); over-match is the safe direction.
+- 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=AD-60 names a closed list; spec fixes each shape; reopen via spec amendment
+
+### DW-1732: A secret the AD-24 bound cut below its shape's minimum (e.g. sk- plus <20 chars then U+2026) is not redacted
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: Only RedactPem handles a bound-cut tail; other shapes need their full minimum length.
+- 2026-09-27T06:51:22Z status=wontfix-theoretical owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=real if a key prefix under 20 characters authenticates or narrows a brute force materially
+
+### DW-1733: Model copy diverges from card and citations: a row name the sanitizer changes gets no citation chip; a sanitizer fault leaves the step recorded ok
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: Loop.cls:566/569 take step content and citation candidates before Sanitize.Results at :583, by the spec's model-only scope.
+- 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=AD-60: tool card, citations and screens keep the bounded instance data
+
+### DW-1734: CleanTree's rebuild copies values by %Get/%Set: two names cleaning to the same text collide, and non-canonical JSON numbers are re-rendered
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: Rebuild runs only when a member name changes (control char, tag name or secret shape in a key); upstream producers emit %ToJSON output.
+- 2026-09-27T06:51:22Z status=wontfix-theoretical owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=real if a producer emits an object whose keys carry stripped characters beside their clean twin, or 1E10-style numbers
+
+### DW-1735: Turn-test frame readers are hand-copied (TurnContext/TurnSanitize ResultPayload, inline Unwrapped pairs, explain-screen's inline regex that throws TypeError on unframed)
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Every copy still reddens on an unframed block; explain-screen is limited to one line by Epic 16's contended hunks.
+- 2026-09-27T06:51:22Z status=wontfix-accepted owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=reopen_if=a CI red on an unframed result reads as a TypeError or a copy stops recognizing CUTOPENTAG
+
+### DW-1736: Built-in prompt names <ocupilot-data> but not the backstop's truncated="true" opening line
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Prompt.cls BUILTIN sentence 4 is fixed verbatim by the spec; the cut form fires only above 65,536 characters.
+- 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=spec Tasks fixes sentence 4 verbatim; reopen via spec amendment
+
+### DW-1737: Each tool_result reaches the model 33 characters (the frame) over the reply budget, counted before Sanitize wraps
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Loop.AnswerTools subtracts content length before Results frames it.
+- 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=spec Design Notes: the 33-character frame sits outside the payload's bound
