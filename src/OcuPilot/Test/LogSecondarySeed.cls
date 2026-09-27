@@ -73,7 +73,9 @@ ClassMethod Seed(pMarker As %String) As %Status
         Set @tTask@("Status") = "ERROR"
         Set @tTask@("StartTime") = tNow
         Set @tTask@("NS") = ..#NAMESPACE
-        Set @tTask@("Details") = ..Text(pMarker, "taskerrors")
+        ; Details differs from the error row, so an entry carrying the row's text was read from
+        ; ErrorLog and not from the no-rows fallback.
+        Set @tTask@("Details") = pMarker _ " taskerrors details"
         Set @tTask@("ErrorLog") = 1
         Set @tTask@("ErrorLog", 1) = $ListBuild("ERROR", -400, ..Text(pMarker, "taskerrors"), 1)
         Set ^OcuPilotSecondarySeed("task") = 1

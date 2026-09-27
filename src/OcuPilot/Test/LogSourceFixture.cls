@@ -125,9 +125,9 @@ ClassMethod Sources() As %List
 
 ClassMethod PairsFor(pSource As %String, pNamespace As %String = "") As %List
 {
-    ; Armed per source key, not per namespace: this fixture drives the file sources, whose
-    ; requirement does not depend on one. OcuPilot.Test.ErrorLogFixture is the one that arms a
-    ; namespace-dependent answer.
+    ; Armed per source key, or per source and namespace through nsPairs for the per-namespace
+    ; secondary sources. OcuPilot.Test.ErrorLogFixture arms the error log's namespace-dependent
+    ; answer.
     If (pNamespace '= "") && $Data(^||OcuPilotLogFixture("nsPairs", pSource, pNamespace)) {
         Set tDeclared = ^||OcuPilotLogFixture("nsPairs", pSource, pNamespace)
     } ElseIf '$Data(^||OcuPilotLogFixture("pairs", pSource)) {

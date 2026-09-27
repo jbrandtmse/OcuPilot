@@ -70,7 +70,7 @@ ClassMethod HandleRecent(pSource As %String) As %Status
     Set tSC = $$$OK
     Try {
         If %request.IsDefined("file") {
-            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, "This log is read whole by its route and takes no file name", ##class(OcuPilot.Api.Error).#LOGFILE)
+            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, "This log is named by its route and takes no file name", ##class(OcuPilot.Api.Error).#LOGFILE)
             Quit
         }
         Set tRecentSC = $ClassMethod(..PortClass(), "Recent", pSource, ##class(OcuPilot.Screen.Read).#DEFAULTMAXROWS, .tResult, .tHttpStatus, .tFault)

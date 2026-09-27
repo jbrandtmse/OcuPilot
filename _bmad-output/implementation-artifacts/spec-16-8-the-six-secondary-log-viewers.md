@@ -192,6 +192,34 @@ Client (`ui/src/app/`):
 - **AC6 (DW-1110).** Given a principal who read a log viewer, when they sign out, then `LogViewerStore` holds no rows.
 - **AC7 (Integration).** Given `ocupilot-ci` with seeded entries, when `LogViewerPage` (the consumer) reads `GET /logs/<key>` and the `logs.<key>.read` tool reads `Rows`, then both show the same newest entries. The six screens pass the DW-1337 walk with no new allowance in both themes, and the bundle stays under the 2004 kB warning (re-base under DW-1166 if crossed; stop and ask at 3800 kB).
 
+### Review Findings
+
+Code review 2026-09-27 (tier `full-opus`, four layers). 35 entries: high 0, medium 8, low 24, false 3. 9 patched, 26 rejected, 0 deferred; nothing ledgered (DW-1755 already holds the area gating).
+
+- [x] [Review][Patch] SQL diagnostics read every message of a result, unbounded (a load with no error limit writes one per failed row) [src/OcuPilot/Port/LogSourcePort.cls:1496] — `DIAGMESSAGEMAX` 20, then a U+2026 line; `LogSecondaryWire.TestADiagnosticsResultCarriesAtMostItsMessageCap`.
+- [x] [Review][Patch] The task wire leg could not tell an `ErrorLog` row from the `Details` fallback [src/OcuPilot/Test/LogSecondarySeed.cls:78] — the seeded details now differ from the row.
+- [x] [Review][Patch] `Recent`'s enum step had no test [src/OcuPilot/Test/LogSecondary.cls:303] — `messages` and an unknown key answer 404 `LOG.SOURCE`.
+- [x] [Review][Patch] No real reader's pid was asserted [src/OcuPilot/Test/LogSecondaryWire.cls:64] — each seeded entry's pid is checked.
+- [x] [Review][Patch] An entries source's `truncated` never reached a client test [ui/src/app/areas/logs/log-viewer.spec.ts:883].
+- [x] [Review][Patch] `Area.cls` did not say the Logs rail is now also gated on `%Ens_EventLog:USE` [src/OcuPilot/Screen/Area.cls:37].
+- [x] [Review][Patch] The `LOG.FILE` refusal said the log is "read whole" [src/OcuPilot/Api/LogPage.cls:73].
+- [x] [Review][Patch] Stale fixture comment above the `nsPairs` branch [src/OcuPilot/Test/LogSourceFixture.cls:128].
+- [x] [Review][Patch] AC7's mutation line pinned the `Rows` projection, not the route/tool integration test — recorded in Verification.
+
+Rejected:
+
+- `medium` spec-bound: one faulty namespace fails the whole per-namespace read — the Always rule and the Vendor fault row ("never partial").
+- `medium` duplicate: `%Manager` loses the Logs rail — DW-1755 (decision-pending); facts re-measured on `ocupilot-ci`: `%Manager` holds `%Admin_Operate`, `%Admin_Secure`, `%DB_IRISSYS:RW` and no `%Ens_EventLog`.
+- `medium` spec-bound: `%ExecDirectNoPriv` for `eventlog` and `sqldiagnostics` — Design Notes gate both on the database `READ`; the spec gate ruled it not elevation. Not in the spine (lead, Rule 20).
+- `low` spec-bound: exited or canceled tasks not listed; xDBC omits `IRIS_ERROR`/`LOCATION`; same-second tasks collapse (the vendor query's own keying, classic page alike; direct traversal is a Never); `raw` of a time-less entry follows the spec's grammar.
+- `low`: task status compared to "ERROR" (a non-English instance and a failed task with no rows); a task's rows past the cap keep the oldest (`truncated` reported); jump top/bottom and search exercised on one source (one code path); the AC1 browser title names pid and word; untested defensive branches.
+- `low` wontfix-accepted: Next/Previous match are enabled with no matches, as Enter/Shift+Enter are, and the count reads "0 of 0" — `reopen_if=an accessibility audit flags them as inert`.
+- `low`: Load newer's jump after a failed or superseded read, or on a destroyed view (a console error at most); a caret past a shrunk total (needs more than 1,000 entries to shift during a search).
+- `low` theoretical: `ExpectedLocal` across a DST change (containers run UTC); analytics rollover between exists and open; seed cleanup races and re-seed without removal (throwaway only); the diagnostics `%SQLCODE` branch (a `%` table exists everywhere and a `<PROTECT>` lands in the tested `Catch`); public readers taking a namespace (the port's seams, like `OpenStream`, are public for fixtures; no other caller).
+- `low`: EXPERIENCE.md's `[<namespace>]` sentence and the spine's AD-48/`LogSourcePort` wording — planning documents outside a review's edit.
+- `low`: spec counts and citations — spec edits.
+- `false`: an xDBC `<PROTECT>` on the cache database (a `%DB_USER`-only principal read the store, measured); `Trace` renders raw `-1` (`log-line.ts` maps -1 to the debug word); the per-namespace database pair is dead (it restates `Payload`'s filter; no harm).
+
 ## Spec Change Log
 
 - 2026-09-27, lead, spec gate: orchestrator ruling (option A) on the contended `Test/ReadTool.cls:93-94,112` hunks: edit them on this branch for this story's six tools (count 126 here); the orchestrator reconciles with Story 14.4 at the second merge (127, name lists merged). The AD-21 fifth named case and the `LogSourcePort` description were written into the spine as recommended. Status reset to ready-for-dev.
@@ -354,6 +382,9 @@ Client (`ui/src/app/`):
   - AC4: an absent `SystemMonitor.log` answers an error → `LogSecondary` absent-log leg red (run 16611, reverted);
   - AC7: `Rows` projects `pid` too → `LogSecondary` Rows leg red (run 16612, reverted);
   - AC2 file: delete `HandleRecent`'s `file` refusal → `LogSecondaryWire` file leg red (run 16614, reverted).
+  - Code review, run 16620, four mutations applied together, each reddening only its own assertion (reverted, source re-copied and byte-identical): AC7 `Rows` skips the newest entry → `TestEachToolReadsTheRoutesNewestEntries` red for all six keys; `FetchTaskErrors` executes `ErrorLog` on a wrong id → the seeded-entry leg's taskerrors row red; `FetchEvents` selects `ConfigName` before `Job` → the eventlog pid leg red; the diagnostics message cap removed → `TestADiagnosticsResultCarriesAtMostItsMessageCap` red.
+  - Code review: delete `Recent`'s enum check → `LogSecondary` Page/Recent leg red for `messages` and an unknown key (run 16621, reverted).
+  - Code review (client): drop the entries branch's `truncatedValue = flagAt(...)` → the log-viewer truncated case red alone (observed, reverted).
 - `cd ui && npm run build && docker cp … && node --test --test-concurrency=1 browser/secondary-logs.browser-spec.mjs browser/messages-log.browser-spec.mjs browser/messages-log-files.browser-spec.mjs browser/alerts-log.browser-spec.mjs browser/explain-entry.browser-spec.mjs browser/screen-height.browser-spec.mjs browser/a11y-structural-invariants.browser-spec.mjs` (loop) -- green, within the structural baseline.
   - mutation: `SOURCES` drops `logs/eventlog` → seeded-row leg red (observed on a rebuilt, redeployed bundle; reverted and redeployed).
   - mutation (AC3): `onExplain` sends the last row instead of the clicked one → the Explain leg red, "the entry clicked" (observed on a rebuilt, redeployed bundle; reverted, rebuilt, redeployed, 6/6).

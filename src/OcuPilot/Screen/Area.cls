@@ -33,7 +33,8 @@
 /// that pair. The last two are Story 16.8's: <code>%Ens_EventLog:USE</code> for the
 /// interoperability event log and <code>%DeepSee_Portal:USE</code> for the analytics log, which
 /// carries public <code>USE</code>; they are declared last so every earlier refusal names the pair
-/// it named before.</p>
+/// it named before. The same consequence follows: the whole Logs rail entry is also gated on
+/// <code>%Ens_EventLog:USE</code>, which the stock <code>%Manager</code> role does not hold.</p>
 /// <p><b>OS management names a third pair, <code>%Admin_Manage:USE</code></b> -- the only area pair
 /// an endpoint's own gate does not name and the port does not need either. Its first screen reads
 /// <code>SYS.Process:CONTROLPANEL</code>,

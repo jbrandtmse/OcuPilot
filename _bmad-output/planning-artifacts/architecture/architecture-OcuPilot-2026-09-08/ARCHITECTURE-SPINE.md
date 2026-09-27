@@ -409,6 +409,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **`MonitorPort` reads the dashboard sensors in-process** -- `SYS.Monitor.SAM.Sensors.PrometheusMetrics()` in `%SYS`, what `/api/monitor/metrics` serves (AD-1) -- and is the only class that names it. Its pair set is `%Admin_Operate:USE` (the dashboard's own `ResourcesOR()`) and `%DB_IRISSYS:READ`, measured on `ocupilot-ci`: neither the sensors nor `SYS.Stats.Dashboard` checks `%Admin_Operate`, and without `%DB_IRISSYS:READ` the switch to `%SYS` raises `<PROTECT>`. Its per-second values are the sensors' own, each over the interval since the previous collection (the vendor's stored previous value), so its reads shorten an external scraper's windows (inference) [ADDED 2026-09-26, Story 16.18 spec gate, Rule 20].
 
+  **`LogSourcePort` reads two vendor tables without SQL grants, behind its own gate** [ADDED 2026-09-27, Story 16.8 code review, Rule 20]: the interoperability event log (`Ens_Util.Log`) and SQL diagnostics (`%SQL_Diag.Result`) are read with `%ExecDirectNoPriv`, after the source's resource pair and READ on the namespace's database have passed. SQL grants are not the gate because they are not kept per namespace (measured on `ocupilot-ci`: the vendor's SELECT grant exists in USER and not in HSCUSTOM, where a `%EnsRole_Operator` holder got SQLCODE -99). This bypasses SQL privileges only; it is no role elevation (AD-8, AD-9), and the classic page's own SQL privilege path is unmeasured.
+
 ### AD-30 — Read-only and the kill switch are evaluated at the point of effect, and a turn re-reads them
 
 - **Binds:** FR-19, FR-20; the turn job, every write tool, the confirm path

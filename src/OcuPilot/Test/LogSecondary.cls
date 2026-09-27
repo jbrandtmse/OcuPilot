@@ -284,10 +284,12 @@ Method TestTheMergeIsNewestFirstAndCutAtTheCap()
 
 /// <p><method>Page</method> serves messages and alerts only: each of the six keys is refused
 /// <code>LOG.SOURCE</code> before its gate or any read, so a caller holding no pair is told the
-/// source is not paged rather than refused a privilege. <method>Rows</method> answers the same
+/// source is not paged rather than refused a privilege. <method>Recent</method> likewise refuses
+/// any other key, messages included, before its gate. <method>Rows</method> answers the same
 /// entries as <code>{time, severity, text}</code> alone.</p>
 /// <p>Mutation (Rule 19): delete <method>OcuPilot.Port.LogSourcePort.Page</method>'s
-/// <parameter>RECENTSOURCES</parameter> refusal -&gt; the gate answers 403 first and this goes red.</p>
+/// <parameter>RECENTSOURCES</parameter> refusal, or <method>OcuPilot.Port.LogSourcePort.Recent</method>'s
+/// enum check -&gt; the gate answers 403 first and this goes red.</p>
 Method TestPageRefusesTheSixAndRowsProjectsThreeFields()
 {
     For tI = 1:1:$Length(..#KEYPAIRS, ",") {
@@ -295,6 +297,10 @@ Method TestPageRefusesTheSixAndRowsProjectsThreeFields()
         Set tSC = $ClassMethod(..#PORT, "Page", tKey, "", "", "", .tPage, .tHttp, .tFault)
         Do $$$AssertEquals(tHttp, 404, tKey _ ": Page refuses it, holding no pair")
         Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.code, 1: ""), "LOG.SOURCE", tKey _ ": as a source it does not page")
+    }
+    For tKey = "messages", "ocupilotnosuchsource" {
+        Set tSC = ..Recent(tKey, 10, .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "404|LOG.SOURCE", tKey _ ": Recent refuses a key outside the six before its gate")
     }
     Do $$$AssertEquals(##class(OcuPilot.Test.LogRecordsFixture).Calls() + ##class(OcuPilot.Test.LogSourceFixture).Touches(), 0, "reading nothing")
     Do ..HoldAll()

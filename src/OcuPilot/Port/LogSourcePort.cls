@@ -1105,6 +1105,11 @@ Parameter ANALYTICSHEAD = "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2
 /// 4 abort (the vendor's own scale in <code>%SQL.Diag.Result.addDiagMessage</code>).</p>
 Parameter DIAGMESSAGEFLOOR As INTEGER = 2;
 
+/// <p>The most <code>%SQL_Diag.Message</code> lines one entry carries. A result's messages are
+/// unbounded (a load with no error limit records one per failed row), so a result holding more
+/// carries this many and then a line holding U+2026 alone.</p>
+Parameter DIAGMESSAGEMAX As INTEGER = 20;
+
 /// <p>The System Monitor log's entries in <var>pLines</var>, the file's own lines oldest first.
 /// A line that does not open with a stamp continues the entry above it; a window that opens
 /// mid-entry yields a leading entry with no time. The pid is empty and the severity 0.</p>
@@ -1458,7 +1463,8 @@ ClassMethod FetchXdbc(pNamespace As %String, Output pRows) As %Status
 /// first: <var>pRows</var> is their count and <code>pRows(n)</code> is
 /// <code>$ListBuild(ID, createTime, processId, sqlcode, errorCount, statement)</code>, with each
 /// message of severity <parameter>DIAGMESSAGEFLOOR</parameter> or above at
-/// <code>pRows(n, k)</code>. <code>createTime</code> is UTC.</p>
+/// <code>pRows(n, k)</code>, at most <parameter>DIAGMESSAGEMAX</parameter> of them.
+/// <code>createTime</code> is UTC.</p>
 ClassMethod FetchDiagnostics(pNamespace As %String, pMax As %Integer, Output pRows) As %Status
 {
     Set tSC = $$$OK
@@ -1487,7 +1493,7 @@ ClassMethod FetchDiagnostics(pNamespace As %String, pMax As %Integer, Output pRo
         Set pRows = tCount
         For tAt = 1:1:tCount {
             Set tMessages = ##class(%SQL.Statement).%New()
-            Set tAnswer = ##class(%SQL.Statement).%ExecDirectNoPriv(.tMessages, "SELECT message FROM %SQL_Diag.Message WHERE diagResult = ? AND severity >= ? ORDER BY ID", $List(pRows(tAt), 1), ..#DIAGMESSAGEFLOOR)
+            Set tAnswer = ##class(%SQL.Statement).%ExecDirectNoPriv(.tMessages, "SELECT TOP ? message FROM %SQL_Diag.Message WHERE diagResult = ? AND severity >= ? ORDER BY ID", ..#DIAGMESSAGEMAX + 1, $List(pRows(tAt), 1), ..#DIAGMESSAGEFLOOR)
             If '$IsObject(tAnswer) {
                 Set tSC = $$$ERROR($$$GeneralError, "the statement answered no result")
                 Quit
@@ -1499,6 +1505,10 @@ ClassMethod FetchDiagnostics(pNamespace As %String, pMax As %Integer, Output pRo
             Set tLine = 0
             While tAnswer.%Next(.tSC) {
                 Set tLine = tLine + 1
+                If tLine > ..#DIAGMESSAGEMAX {
+                    Set pRows(tAt, tLine) = $Char(8230)
+                    Quit
+                }
                 Set pRows(tAt, tLine) = tAnswer.%GetData(1)
             }
             If $$$ISERR(tSC) Quit

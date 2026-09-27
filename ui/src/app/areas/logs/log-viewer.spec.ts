@@ -878,6 +878,14 @@ describe('LogViewerPage over an entries source (Story 16.8)', () => {
     expect(published).toHaveLength(3);
   });
 
+  // Mutation (Rule 19): drop the entries branch's `truncatedValue = flagAt(...)` from
+  // `LogViewerStore.read` -> the published flag stays false and this goes red.
+  it('publishes whether the server cut the window, so the agent is not told a capped window is whole', async () => {
+    api.tail(entriesPage(['newest match', 'middle match', 'oldest match'], true));
+    await mount();
+    expect(TestBed.inject(ScreenStores).for(XDBC_SCREEN.descriptor, []).truncated()).toBe(true);
+  });
+
   // Mutation (Rule 19): make Next match call `step(-1)` -> the forward sequence goes red.
   it('DW-1102: Next match and Previous match carry their names and move the caret, wrapping', async () => {
     const { fixture } = await mount();

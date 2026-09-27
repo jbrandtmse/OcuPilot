@@ -58,9 +58,22 @@ Method Fetch(pPath As %String, Output pStatus As %Integer, Output pBody As %Stri
     Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", pPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .pBody, .pHeaders)
 }
 
+/// <p>The pid source <var>pKey</var>'s seeded entry carries: none for the System Monitor log, the
+/// seeded task's and xDBC error's own ids, and otherwise this process, which seeded the store in
+/// <method>OnBeforeAllTests</method>.</p>
+Method SeededPid(pKey As %String) As %String
+{
+    If pKey = "systemmonitor" Quit ""
+    If pKey = "taskerrors" Quit ##class(OcuPilot.Test.LogSecondarySeed).#TASKID
+    If pKey = "xdbc" Quit ##class(OcuPilot.Test.LogSecondarySeed).#XDBCPID
+    Quit $Job
+}
+
 /// <p>AC1, AC2 -- each route answers one envelope with its seeded entry: its time in the local
-/// <code>YYYY-MM-DDTHH:MM:SS.mmm</code> form, its store's severity, a namespace-scoped entry led
-/// by <code>[HSCUSTOM] </code>, and <code>raw</code> as one line.</p>
+/// <code>YYYY-MM-DDTHH:MM:SS.mmm</code> form, its store's severity and pid, a namespace-scoped
+/// entry led by <code>[HSCUSTOM] </code>, and <code>raw</code> as one line. The seeded task's
+/// details differ from its error row, so the task entry is found only through
+/// <code>ErrorLog</code>.</p>
 Method TestEachRouteAnswersItsSeededEntry()
 {
     For tI = 1:1:$Length(..#SEEDED, ",") {
@@ -89,6 +102,7 @@ Method TestEachRouteAnswersItsSeededEntry()
         If '$IsObject(tFound) Continue
         Do $$$AssertTrue($Match(tFound.time, "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}$"), tKey _ ": its time is local YYYY-MM-DDTHH:MM:SS.mmm: " _ tFound.time)
         Do $$$AssertEquals(tFound.severity, tSeverity, tKey _ ": at its store's severity")
+        Do $$$AssertEquals(tFound.pid, ..SeededPid(tKey), tKey _ ": under the pid its store filed it with")
         If tScoped Do $$$AssertEquals($Extract(tFound.text, 1, 11), "[HSCUSTOM] ", tKey _ ": led by its namespace")
         Do $$$AssertEquals(tFound.raw, tFound.time _ " (" _ tFound.pid _ ") " _ tFound.severity _ " " _ tFound.text, tKey _ ": raw is the entry as one line")
     }
@@ -135,6 +149,41 @@ Method TestEachToolReadsTheRoutesNewestEntries()
         Do $$$AssertEquals(tStatus _ "|" _ tStatus2, "200|200", tKey _ ": both the route and the declared read answer")
         Do $$$AssertTrue(tSame, tKey _ ": the declared read holds the route's newest entries")
     }
+}
+
+/// <p>AD-36 -- an SQL diagnostics result whose messages outnumber
+/// <parameter>OcuPilot.Port.LogSourcePort.DIAGMESSAGEMAX</parameter> is read with that many and a
+/// U+2026 line, never all of them. The result is added and removed here, in HSCUSTOM.</p>
+Method TestADiagnosticsResultCarriesAtMostItsMessageCap()
+{
+    Set tCap = ##class(OcuPilot.Port.LogSourcePort).#DIAGMESSAGEMAX
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = "HSCUSTOM"
+    Set tDiag = ##class(%SQL.Diag.Result).addDiagResult(0)
+    For tI = 1:1:(tCap + 2) Do ##class(%SQL.Diag.Result).addDiagMessage(tDiag, "OcuPilot", -400, ..#MARKER _ " capped " _ tI, 3)
+    Set $NAMESPACE = tOrigNS
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).FetchDiagnostics("HSCUSTOM", 5, .tRows)
+    Set $NAMESPACE = "HSCUSTOM"
+    Set tResult = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM %SQL_Diag.Message WHERE diagResult = ?", tDiag)
+    Set tResult = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM %SQL_Diag.Result WHERE ID = ?", tDiag)
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertStatusOK(tSC, "the diagnostics fetcher answers")
+    Set tAt = 0
+    For tI = 1:1:+$Get(tRows) {
+        If $ListGet(tRows(tI), 1) = tDiag Set tAt = tI
+    }
+    Do $$$AssertTrue(tAt > 0, "the added result is among the newest")
+    If tAt = 0 Quit
+    Set tLines = 0
+    Set tLine = ""
+    For {
+        Set tLine = $Order(tRows(tAt, tLine))
+        If tLine = "" Quit
+        Set tLines = tLines + 1
+    }
+    Do $$$AssertEquals(tLines, tCap + 1, "the cap's messages and one more line")
+    Do $$$AssertEquals($Get(tRows(tAt, tCap)), ..#MARKER _ " capped " _ tCap, "the first messages, in order")
+    Do $$$AssertEquals($Get(tRows(tAt, tCap + 1)), $Char(8230), "then U+2026 alone")
 }
 
 /// <p>The vendor readers this story depends on are internal, so their columns are pinned: a
