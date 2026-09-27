@@ -178,6 +178,37 @@ Client:
 - **AC4 (Integration).** Given `_SYSTEM`'s refused `%All` removal on Home's Findings panel, when both routes are read, then Findings' sentence equals the Guardrails row for that code.
 - **AC5.** Given the DW-1337 walk, when it visits `agent/guardrails` in light, at 720 px and in dark, then it records no violation and no baseline entry.
 
+### Review Findings
+
+Code review 2026-09-27 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 32 findings: 0 decision-needed, 2 patch, 0 defer, 1 by-design (2 findings), 28 rejected (grouped below).
+
+- [x] [Review][Patch] A failed read's recovery was untested: dropping `failedValue = false` on success kept the fault line on every later visit, with the suite green [ui/src/app/core/guardrails.ts:263] — added "a failed read is cleared by the next read that answers" to `ui/tools/guardrails.test.mjs`.
+- [x] [Review][Patch] `Read` restated the registry's advertised rule instead of asking it [src/OcuPilot/Kernel/Shell/Guardrails.cls:86] — now `Registry.IsAdvertised(tTool)`, the predicate `Resolve` and `ProviderTools` use (AD-53). `Guardrails` 10/10 on `ocupilot-ci`.
+- [x] [Review][By-design] The secret list shows a screen's secret fields against every tool on it (`permissions.users.delete: Password`) [src/OcuPilot/Kernel/Shell/Guardrails.cls:89] — DW-1752. The Always rule pins it to `SecretArguments`, which is exactly what `Mint` refuses from the agent and `Dispatch` strips, so the pass-1 lead-in is true for every row. Narrowing to `SecretBodyNames` plus `ComposedSecrets` answers a different question ("what you type at Confirm"), and that set is not shown complete (inference).
+
+Lead's points: (1) accurate and by-design, above. (2) Nothing new to a least-privileged caller: the codes and sentences are static text, AD-8 advertises every tool, every descriptor's `secretArguments` already ships in `screens.generated.ts`, and `GET /agent/restraint` answers the same verdict and more. (3) Confirmed: every failure path leaves `pAnswer` `""`, and `UiGuardrails` writes `Response.JSON` only after a successful `Read`, else one `RenderInternal` envelope. (4) Confirmed: nothing in `Restraint.cls`, `Api/Switches.cls`, `Router.cls` :73, `EndpointCoverage` :82 or EXPERIENCE.md :289/:335. AD-36: sound. A form page with no read is the `AgentSwitches` precedent, and instance-wide shell chrome is `/instance`'s, which AD-50 names.
+
+Rejected:
+
+- `false`: the empty-sentence row is not fail-closed at runtime. An empty `ReasonFor` is a declaration defect that `Test.Guardrails` (a) and `Test.Prohibited` refuse, not an unreadable part.
+- `low`: an unknown kill-switch audience would read as "everyone". `Restraint` answers `everyone`, `you` or `""`, and a guard would only matter for a future value.
+- `low`: the `h3` group ids are unreferenced. They are harmless, and each list follows its heading.
+- `low`: an empty tool or secret list still draws its lead-in. The registry today always has both.
+- `low`: `GuardrailsWire` (a) checks the shape, not equality with a privileged caller. `ListTools` takes no caller, and the matrix asks for the same shape.
+- `false`: "holds no sentence of its own" is unproven. The test renders probe sentences the client does not hold, so the rows come from the answer.
+- `low`: Copy item 3's key `agentGuardrailsSwitchesHeading` was not added. The page reuses the identical `agentSwitchesLabel`, which the EXPERIENCE :583 row records.
+- `low`: spec bookkeeping (pass-2 counts, identical headings, the "Open after review pass 1" bullet, a `/tmp` KEEP path, and review vs done). The fix is an edit to the spec under review.
+- `false`: `restoreSwitches` is skipped if `browser.close` throws. AC2's own `finally` restores the switches, and the hook order is the `switches.browser-spec` precedent. The fixed values are a fresh container's.
+- `low`: the (f) fault test lacks a `Mutation:` doc line. Its line is in Verification.
+- `low`: groups are rebuilt on each check. There are about 40 names, OnPush.
+- `low`: a 503 `installing` answer shows the fault line. The install gate covers the shell, and reopening reads again.
+- `low`: a re-opened page shows the previous answer while the new read is pending. It is the same principal, `aria-busy` is set, and `reset()` clears it at sign-out.
+- `low`: `GuardrailsWire` setup failing midway leaves the role or user. It runs on a throwaway only, and the next setup modifies or deletes both first (`FindingsWire` precedent).
+- `low`: a per-user hold left by an earlier spec could redden AC2. No spec leaves one, and CI runs on a fresh instance.
+- `low`: (f) and the fixture set `killSwitch` and `enforcedReadOnly` both to 1, so swapping their sources is invisible to the unit suite. Browser AC2 catches it: enforced on, kill switch off.
+- `false`: the `ListTools` error guard and the `'$IsObject` guard each prove only while the other is present. Both fail closed, and the recorded mutation reddens.
+- `false`: an AD-36/AD-50 gap. No AD's Rule is contradicted (see above).
+
 ## Spec Change Log
 
 - 2026-09-27 (implement, Rule 5 apply-and-report): task (d) and AC2 named the password tool's secret argument `NewPassword`; the instance declares `Password` (`UserList`'s `secretArguments`; `Registry.SecretArguments` on `ocupilot-ci` answers declared=1, `Password`). Corrected the name only; the intent is unchanged.
@@ -318,6 +349,8 @@ Client:
 - mutation: `.ocu-guardrails-note` color `--ocu-outline-variant` → the walk's "no violation outside the baseline" red on `agent/guardrails` (1.53:1 light, 2.07:1 dark).
 - mutation: the page renders only each tool's first secret field → `guardrails.page.spec.ts` "lists every secret field of a tool, in order" red.
 - mutation: `Guardrails.Read` drops `If $$$ISERR(tSC) Quit` after `..Verdict` → `Guardrails` `TestAnUnreadablePartFailsTheWholeAnswer` red.
+- mutation: `load()`'s success branch drops `this.failedValue = false` → `guardrails.test.mjs` "a failed read is cleared by the next read that answers" red.
+- mutation: `Guardrails.Read` drops its `Registry.IsAdvertised` filter (code review) → `Guardrails` `TestConfirmToolsAreTheAdvertisedWriteTools` red (run 16254), reverted and recompiled green.
 
 ## Auto Run Result
 

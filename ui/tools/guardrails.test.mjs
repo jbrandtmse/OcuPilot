@@ -70,6 +70,15 @@ test('a failed read fails closed: no answer is held, and failed() is raised', as
   assert.equal(store.failed(), true);
 });
 
+test('a failed read is cleared by the next read that answers', async () => {
+  const store = new Guardrails({ api: stubApi([{ error: true }, { body: body() }]) });
+  await store.load();
+  assert.equal(store.failed(), true);
+  await store.load();
+  assert.equal(store.failed(), false, 'the page shows its sections again, not the fault line');
+  assert.ok(store.data(), 'and holds the new answer');
+});
+
 test('a malformed answer counts as a failed read', async () => {
   for (const bad of [
     null,

@@ -7551,3 +7551,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-20-older-messages-log-files.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: publishRows sends {time, severity, text} under route logs/messages; Rows calls Page with no file; spec Decision 2 keeps the tool on messages.log and the context file-less.
 - 2026-09-27T05:49:07Z status=by-design owner=16-20-older-messages-log-files by=cr note=spec Decision 2 and AD-21 fourth case; reopens only via spec amendment adding file to context or a tool criterion
+
+### DW-1752: Guardrails secret list shows each screen's declared secrets against every tool on it (permissions.users.delete: Password)
+- source: spec-16-22-the-guardrails-page.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Guardrails.Read lists Registry.SecretArguments per advertised write tool (spec Always); Write.SecretArguments answers the descriptor's list unless a tool overrides it, so delete/revoke tools list the screen's secrets. Accurate to what Mint refuses and Dispatch strips; noisy as a trust statement.
+- 2026-09-27T12:45:47Z status=by-design owner=16-22-the-guardrails-page by=cr note=reopens by spec amendment narrowing to SecretBodyNames+ComposedSecrets once that set is shown complete

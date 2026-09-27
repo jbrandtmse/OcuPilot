@@ -83,7 +83,7 @@ ClassMethod Read(Output pAnswer As %DynamicObject) As %Status
         Set tIterator = tTools.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tTool) {
             If tTool.%Get("kind") '= ..#WRITEKIND Continue
-            If 'tTool.%Get("advertised") Continue
+            If '##class(OcuPilot.Screen.Tool.Registry).IsAdvertised(tTool) Continue
             Set tName = tTool.%Get("name")
             Do tConfirm.%Push({"name": (tName), "descriptor": ($Parameter(tTool.%Get("class"), "DESCRIPTORCLASS"))})
             Set tNames = $ClassMethod(tRegistry, "SecretArguments", tTool, .tDeclared)
