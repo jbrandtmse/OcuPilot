@@ -142,3 +142,4 @@
 2026-09-27T08:49:01Z	Story 16.21	cr_complete	spawn_at=2026-09-27T08:29:51Z model=opus resolved=4 fixed_at_source=4 by_design=0 routed=0 escalated=0 decision_pending=0 deferred=0 dismissed=24 high=0 med=2 low=2 rows=4 unresolved_high_med=0 clarifications=0 closing_sections_present=true
 2026-09-27T08:49:01Z	Story 16.21	ledger_adjudicated	owned=1 resolved=1(DW-1400) reowned=0 terminal=0 model=claude-opus-5-5
 2026-09-27T08:49:01Z	Story 16.21	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci;home-findings.browser-spec_4/4(AC1-AC5) model=claude-opus-5-5
+2026-09-27T08:49:52Z	Story 16.21	committed	sha=36c21571 submodules= ci=pending run=36307420890 amendments=EXPERIENCE.md:4_fixed-strings_rows_appended(986->990_lines;later_citations_shift) footprint_extensions=scripts/ci-throwaway.sh supersedes=36306145096
