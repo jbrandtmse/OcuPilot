@@ -7635,3 +7635,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-14-6 code review | severity: low | fix-risk: med | footprint: in-story
 - evidence: Kernel/State/Turn.cls GuardedReserve inserts the row, sets the lease signal, then records the start; a failed global Set under AddRoles answers 500 with the row queued. Same shape as the existing signal write.
 - 2026-09-27T19:14:16Z status=wontfix-theoretical owner=14-6-per-user-turn-limits-and-the-banner-they-need by=cr note=real only if a Set on the protected database fails (database full or read-only); the reconcile then abandons the row
+### DW-1759: 29 ObjectScript tests assume the instance holds no agent definitions (AgentState 13, TurnContext 7, AgentWire 3, StateRead 3, EgressLocal 1, Restraint 1, TurnWire 1); on any instance with a definition, e.g. an upgraded 1.0.1 install, they fail though the product works
+- source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: src/OcuPilot/Test/**
+- evidence: upgrade check on ocupilot-c-ci: 2,635/2,664 with two seeded definitions, 2,664/2,664 after deleting them; fresh 1.0.2 install with one definition seeded reproduces AgentState 13/13 and TurnWire 1/13
+- 2026-09-27T19:21:32Z status=open owner=range-end-cleanup by=orchestrator note=test isolation, not a product defect; each test should create and clean up its own definition state or tolerate existing definitions

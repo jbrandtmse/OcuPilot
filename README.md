@@ -167,6 +167,21 @@ and the agent has something to fix. The IPM install never creates them.
 To install without them, remove `OCUPILOT_DEMO: "1"` from `docker-compose.yml` before the first
 start.
 
+### Update to a new release
+
+Your agent definitions, keys, conversations, settings and audit records live in `./iris-data` and
+carry over.
+
+```bash
+git pull
+docker compose restart iris
+docker compose up -d --wait
+```
+
+`docker compose up` on its own does not update: the running container keeps the release it started
+with. The restart installs the new release over the same data, and `--wait` returns once the health
+check reports it installed.
+
 ## Get a model key in two minutes
 
 | Provider | Default model | Where to get a key |
