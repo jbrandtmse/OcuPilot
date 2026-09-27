@@ -32,6 +32,14 @@ a proposal you confirm; nothing changes until you press Confirm.** The change th
 privileges, is marked in the IRIS audit database as an agent write, and the screen refreshes and
 marks the row that changed.
 
+> **Requires InterSystems IRIS or IRIS for Health 2026.2 or later.** OcuPilot is built on version 2
+> of the IRIS admin API, which first shipped in 2026.2, so it does not run on earlier versions. The
+> Docker quick start below already uses 2026.2. If you install with IPM, check your instance first:
+> the `intersystemsdc/iris-community:latest` and `intersystemsdc/irishealth-community:latest` images
+> are currently 2026.1, so use their `2026.2` tags instead (for example
+> `intersystemsdc/irishealth-community:2026.2-zpm`). IPM refuses to install OcuPilot on an older
+> version.
+
 ## Try it without installing
 
 **[ocupilot.org](https://ocupilot.org)** runs the current release on a real IRIS for Health
