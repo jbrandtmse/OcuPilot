@@ -1,7 +1,8 @@
 /// <p>The retention sweep (Story 14.4, AD-37, DW-1122, DW-1240): an entry ages by its own
 /// definition's retention, an empty conversation and the ledger by the longest; a turn past its
 /// short retention takes its proposals with it while its conversation entry stays; and an account
-/// deleted from the instance has its turns abandoned and its preferences and sharing removed while
+/// deleted from the instance has its turns abandoned, its preferences and sharing removed and its
+/// turn start records aged out, while
 /// its transcripts and ledger rows survive and an administrator can still read them.</p>
 /// <p><b>It creates and deletes an IRIS user and two agent definitions, so
 /// <method>OnBeforeAllTests</method> refuses to run unless <parameter>ARMINGVARIABLE</parameter>
@@ -346,6 +347,23 @@ Method TestAFailingStepIsLoggedAndTheLaterStepsStillRun()
     Do $$$AssertStatusNotOK(tSC, "and the sweep answers the failure")
     Do ##class(OcuPilot.Kernel.State.Pref).GuardedUsers(.tUsers)
     Do $$$AssertEquals($Data(tUsers(..#GONEUSER)), 0, "while the principal-gone pass after it still ran")
+}
+
+/// <p>A deleted account's turn start records (AD-37, Story 14.6): the sweep removes each record
+/// past the turns-an-hour window, and one inside it stays until it ages out.</p>
+/// <p>Mutation (Rule 19): drop the start-record step from
+/// <method>OcuPilot.Kernel.Retention.Sweep</method> -- the old record stays and this goes red.</p>
+Method TestADeletedAccountsStartRecordsAgeOut()
+{
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedForgetStarts(..#GONEUSER)
+    Set tNow = ##class(OcuPilot.Kernel.State.Turn).NowSeconds()
+    Set ^OcuPilotTurnStarts(..#GONEUSER, tNow - 4000, "old") = ""
+    Set ^OcuPilotTurnStarts(..#GONEUSER, tNow - 10, "fresh") = ""
+    If ..Sweep() {
+        Do $$$AssertEquals($Data(^OcuPilotTurnStarts(..#GONEUSER, tNow - 4000)), 0, "the record past the window is removed")
+        Do $$$AssertEquals($Data(^OcuPilotTurnStarts(..#GONEUSER, tNow - 10, "fresh")), 1, "and the one inside it stays")
+    }
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedForgetStarts(..#GONEUSER), "the probe's records are removed")
 }
 
 /// <p>The Storage row's fallbacks: an entry stored before its time and definition were kept ages

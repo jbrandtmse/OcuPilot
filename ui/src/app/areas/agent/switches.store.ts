@@ -33,13 +33,14 @@ export const SWITCH_FIELDS = [
   'enforcedReadOnly',
   'shareContextByDefault',
   'contextRowCap',
+  'turnsPerHour',
 ] as const;
 
 /** The switch fields whose value is a JSON boolean on the wire. */
 const BOOLEAN_FIELDS: readonly string[] = ['killSwitch', 'enforcedReadOnly', 'shareContextByDefault'];
 
-/** The switch fields whose value is a JSON number on the wire (Story 4.4). */
-const NUMBER_FIELDS: readonly string[] = ['contextRowCap'];
+/** The switch fields whose value is a JSON number on the wire (Stories 4.4 and 14.6). */
+const NUMBER_FIELDS: readonly string[] = ['contextRowCap', 'turnsPerHour'];
 
 /** The edit buffer: text for an input, a flag for a checkbox. */
 export type SwitchBuffer = Record<string, string | boolean>;
@@ -92,6 +93,7 @@ function emptyBuffer(): SwitchBuffer {
     enforcedReadOnly: false,
     shareContextByDefault: true,
     contextRowCap: '200',
+    turnsPerHour: '0',
   };
 }
 
@@ -133,6 +135,9 @@ export class SwitchesStore {
 
   /** The row version the switches on screen were read at, or `null` before a read answered one. */
   private rowVersionValue: number | null = null;
+
+  /** The fixed concurrent bound the last read answered (Story 14.6), shown and never sent. */
+  private concurrentTurnsValue = '';
 
   private holdRows: readonly HoldRow[] = [];
 
@@ -181,6 +186,11 @@ export class SwitchesStore {
 
   holds(): readonly HoldRow[] {
     return this.holdRows;
+  }
+
+  /** The concurrent bound the instance answered, as text, or `''` before a read answered one. */
+  concurrentTurns(): string {
+    return this.concurrentTurnsValue;
   }
 
   violations(): readonly Violation[] {
@@ -244,6 +254,7 @@ export class SwitchesStore {
     this.savingValue = false;
     this.buffer = emptyBuffer();
     this.rowVersionValue = null;
+    this.concurrentTurnsValue = '';
     this.holdRows = [];
     this.violationList = [];
     this.clearRefusal();
@@ -503,6 +514,7 @@ export class SwitchesStore {
     }
     this.buffer = next;
     this.rowVersionValue = numberOrNullAt(body, 'rowVersion');
+    this.concurrentTurnsValue = textOrNumberAt(body, 'concurrentTurns');
     this.holdRows = holdsOf(body);
     this.loadedValue = true;
   }

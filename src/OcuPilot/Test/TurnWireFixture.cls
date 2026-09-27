@@ -342,7 +342,8 @@ ClassMethod AwaitCall(pTag As %String, pCall As %Integer, pSeconds As %Integer) 
 /// terminate any that has not, remove every probe turn and the stub nodes of each tag in
 /// <var>pTags</var>, and answer
 /// what was left, <code>""</code> when nothing was: a live job, a turn, a held slot, a held
-/// conversation lock or a stub node. Every probe user's conversations are removed too.</p>
+/// conversation lock or a stub node. Every probe user's conversations and turn start records are
+/// removed too.</p>
 ClassMethod Sweep(pTags As %List) As %String
 {
     Set tLeft = ""
@@ -368,6 +369,9 @@ ClassMethod Sweep(pTags As %List) As %String
     If $$$ISERR(tSC) || (tRemaining '= 0) Set tLeft = tLeft _ " turns (" _ tRemaining _ ")"
     If ##class(OcuPilot.Test.TurnFixture).AnyProbeSlotHeld() Set tLeft = tLeft _ " a slot"
     Set tLeft = tLeft _ ..SweepConversations()
+    For tUser = ..#USERA, ..#USERB {
+        If $$$ISERR(##class(OcuPilot.Kernel.State.Turn).GuardedForgetStarts(tUser)) Set tLeft = tLeft _ " starts of " _ tUser
+    }
     For tI = 1:1:$ListLength(pTags) {
         Do ##class(OcuPilot.Test.TurnProvider).Forget($List(pTags, tI))
         If ##class(OcuPilot.Test.TurnProvider).Remains($List(pTags, tI)) Set tLeft = tLeft _ " stub " _ $List(pTags, tI)

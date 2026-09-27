@@ -73,6 +73,7 @@ import {
   streamedText,
   turnErrorBanner,
 } from '../core/turn';
+import { turnLimitBanner } from '../core/turn-limit';
 import { isApplePlatform } from './command-box';
 import { CitationNavigator } from './citation-navigator';
 import { CodeBlock } from './code-block';
@@ -327,6 +328,12 @@ interface PanelTurnView {
           <p class="ocu-banner ocu-banner-warning ocu-panel-banner" role="alert" data-slot="send-error">
             <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
             <span class="ocu-banner-message">{{ sendErrorText }}</span>
+          </p>
+        }
+        @if (turnLimitText !== null) {
+          <p class="ocu-banner ocu-banner-warning ocu-panel-banner" role="alert" data-slot="turn-limit">
+            <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+            <span class="ocu-banner-message">{{ turnLimitText }}</span>
           </p>
         }
       </div>
@@ -924,6 +931,17 @@ export class Panel {
     );
     if (isBannerFault(fault)) return null;
     return STRINGS.connectivityServerFault;
+  }
+
+  /**
+   * The turns-an-hour banner's sentence (Story 14.6), or `null` when the last Send was not refused
+   * for that limit: the published banner, with the limit and the instance's `retryAt` in this
+   * browser's local time.
+   */
+  protected get turnLimitText(): string | null {
+    this.generation();
+    const limit = this.turn.turnLimit();
+    return limit === null ? null : turnLimitBanner(limit.limit, limit.retryAt);
   }
 
   protected get sendLabel(): string {

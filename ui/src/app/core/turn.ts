@@ -43,6 +43,7 @@ import { readBackOf, type ReadBack } from './read-back.ts';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
 import { type DraftOutcome, requestDraft } from './draft.ts';
+import { TURN_LIMIT_CODE, type TurnLimit, turnLimitLine, turnLimitOf } from './turn-limit.ts';
 
 export const CONVERSATION_PATH = '/api/ocupilot/conversation';
 export const TURN_PATH = '/api/ocupilot/turn';
@@ -795,6 +796,9 @@ export function turnErrorBanner(
 ): string | null {
   if (entry.state === 'completed' || entry.state === 'stopped') return null;
   if (entry.error === null) return null;
+  // A turn the instance refused to start (Story 14.6) ran no step: its line is already the whole
+  // published sentence, so no template wraps it.
+  if (entry.error.code === TURN_LIMIT_CODE) return entry.error.reason;
   const step = entry.steps.find((candidate) => candidate.seq === entry.error?.seq) ?? null;
   const reason = entry.error.reason.endsWith('.') ? entry.error.reason.slice(0, -1) : entry.error.reason;
   const label = step === null ? '' : stepLabel(step);
@@ -863,6 +867,9 @@ export class TurnStore {
 
   /** The last Send the instance refused with anything but 409, or `null` (Story 4.8, DW-1054). */
   private sendErrorValue: SendRefusal | null = null;
+
+  /** The last Send refused for the turns-an-hour limit, or `null` (Story 14.6). */
+  private turnLimitValue: TurnLimit | null = null;
 
   /** Where `createConversation` leaves a refusal for `send()` to read; `null` after a mint that
    * succeeded. Both `send()` and `newConversation()` promote it, because the banner is about the
@@ -951,12 +958,21 @@ export class TurnStore {
 
   /**
    * The Send the instance refused, or `null` (Story 4.8, DW-1054). Set on every non-409 refusal of
-   * `POST /turn` and on a conversation mint that failed, whichever press asked for that mint;
+   * `POST /turn` but `TURN.LIMITHOUR` (`turnLimit()`'s) and on a conversation mint that failed, whichever press asked for that mint;
    * cleared at the start of the next `send()`, by a `newConversation()` that succeeded and by
    * `endSession()`. A 409 is the lock banner's and never lands here.
    */
   sendError(): SendRefusal | null {
     return this.sendErrorValue;
+  }
+
+  /**
+   * The last Send the instance refused `TURN.LIMITHOUR`, as its `detail` carried it, or `null`
+   * (Story 14.6). Such a refusal is never `sendError()`'s: it raises its own banner and appends the
+   * refused turn's line to `entries()`. Cleared wherever `sendError()` is.
+   */
+  turnLimit(): TurnLimit | null {
+    return this.turnLimitValue;
   }
 
   /**
@@ -1050,6 +1066,7 @@ export class TurnStore {
     this.busyValue = true;
     this.lockedValue = false;
     this.sendErrorValue = null;
+    this.turnLimitValue = null;
     this.pendingNavigationValue = null;
     this.actedNavigationSeq = 0;
     const generation = (this.pollGeneration += 1);
@@ -1092,7 +1109,28 @@ export class TurnStore {
       }
       // `installing` is Session's surface, not this one (`api.ts`): it is not a refusal the user
       // can act on, and the caller's state stays where it is.
-      if (started.kind === 'error') {
+      const limited =
+        started.kind === 'error' && started.code === TURN_LIMIT_CODE ? turnLimitOf(started.detail) : null;
+      if (limited !== null) {
+        // Story 14.6: the instance started nothing and stores nothing for this turn, so its line is
+        // this tab's own entry, dropped by a reload.
+        this.turnLimitValue = limited;
+        this.entriesValue = [
+          ...this.entriesValue,
+          {
+            seq: -1,
+            message,
+            state: 'failed',
+            reply: null,
+            error: { seq: 0, code: TURN_LIMIT_CODE, reason: turnLimitLine(limited.limit) },
+            steps: [],
+            stepsDropped: 0,
+            proposals: [],
+            citations: [],
+            live: false,
+          },
+        ];
+      } else if (started.kind === 'error') {
         this.sendErrorValue = { status: started.status, code: started.code, reason: started.reason };
       }
       this.busyValue = false;
@@ -1383,6 +1421,7 @@ export class TurnStore {
     // A refusal belongs to the Send that met it. Leaving it set here would float it over a fresh,
     // empty transcript belonging to a conversation it was never about.
     this.sendErrorValue = null;
+    this.turnLimitValue = null;
     // The same reasoning for every card's own refusal: the cards are gone with the transcript.
     this.proposalRefusalsValue = new Map();
     this.notify();
@@ -1398,6 +1437,7 @@ export class TurnStore {
     this.busyValue = false;
     this.lockedValue = false;
     this.sendErrorValue = null;
+    this.turnLimitValue = null;
     this.mintRefusalValue = null;
     this.proposalRefusalsValue = new Map();
     this.currentTurnId = null;

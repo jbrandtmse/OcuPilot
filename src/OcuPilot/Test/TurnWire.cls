@@ -288,6 +288,71 @@ Method TestARefusedStartReservesNothing()
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).TurnCount(tUser), 0, "and no turn was reserved")
 }
 
+/// <p>Integration (Rule 1, Story 14.6): with a limit of one turn an hour stored on Switches, a start
+/// is accepted; once it ends, the next start is 403 <code>TURN.LIMITHOUR</code> over HTTP, as JSON,
+/// with the published sentence filled, <code>detail.limit</code> and <code>detail.retryAt</code>, and
+/// no turn is reserved. <method>OnAfterOneTest</method>'s switch reset restores no limit.</p>
+/// <p>Mutation: remove the count check in <method>OcuPilot.Kernel.State.Turn.GuardedReserve</method>
+/// -- the second start answers 202 and this goes red.</p>
+Method TestAStartPastTheHourLimitIsRefusedWithItsRetryTime()
+{
+    Set tUser = $Parameter(..#FIXTURE, "USERA")
+    Kill tValues
+    Set tValues("turnsPerHour") = 1
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues), "a limit of one turn an hour is stored")
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 1, ##class(OcuPilot.Test.TurnProvider).TextReply("done"))
+    Set tId = ..Start(tUser, "first", .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 202, "the first start is accepted: " _ tText)
+    If tStatus = 202 Do $$$AssertEquals(..AwaitEnd(tId, tUser, 30, .tView), "completed", "and completes")
+    Set tConvId = $ClassMethod(..#FIXTURE, "StartConversation", tUser, ..PreparedPassword, .tConvStatus, .tConvText)
+    Set tBefore = ##class(OcuPilot.Kernel.State.Turn).NowSeconds()
+    Do ..Call("POST", "/turn", tUser, $ClassMethod(..#FIXTURE, "StartBody", "second", tConvId), .tStatus, .tText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 403, "the next start is refused: " _ tText)
+    Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
+    If tStatus '= 403 Quit
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tText)
+    Do $$$AssertEquals(tAnswer.error _ "|" _ tAnswer.code, ##class(OcuPilot.Api.Error).#FORBIDDEN _ "|TURN.LIMITHOUR", "under the forbidden slug, by name")
+    Do $$$AssertEquals(tAnswer.detail.%GetTypeOf("limit"), "number", "the limit arrives as a JSON number")
+    Do $$$AssertEquals(tAnswer.detail.limit, 1, "and is the stored limit")
+    Set tRetryAt = tAnswer.detail.retryAt
+    Do $$$AssertTrue($Match(tRetryAt, "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00Z$"), "retryAt is ISO-8601 UTC on a whole minute: " _ tRetryAt)
+    Set tRetry = ##class(OcuPilot.Kernel.State.Turn).SecondsOf(tRetryAt)
+    Do $$$AssertTrue((tRetry >= (tBefore + 3540)) && (tRetry <= (tBefore + 3660)), "about an hour after the first start: " _ tRetryAt)
+    Set tExpected = $Replace($Replace(##class(OcuPilot.Api.Error).#REASONTURNLIMITHOUR, "<n>", 1), "<hh:mm>", $Extract(tRetryAt, 12, 16) _ " UTC")
+    Do $$$AssertEquals(tAnswer.reason, tExpected, "with the banner sentence filled")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).TurnCount(tUser), 1, "and no turn was reserved for the refused start")
+}
+
+/// <p>QA (Story 14.6): the hourly limit is counted per user, not instance-wide. With the limit
+/// stored at one and USERA already having reserved and completed a turn this hour, USERA's next
+/// start is refused 403 <code>TURN.LIMITHOUR</code> over HTTP while USERB -- uncounted -- still
+/// starts and completes on the same instance and the same stored limit.</p>
+/// <p>Mutation (Rule 19): in <method>OcuPilot.Kernel.State.Turn.GuardedReserve</method>, pass a
+/// fixed literal instead of <var>pUser</var> to both the prune and the record call -- USERB's
+/// start is then refused too and this goes red.</p>
+Method TestALimitedUserDoesNotRefuseAnotherUser()
+{
+    Set tUser = $Parameter(..#FIXTURE, "USERA")
+    Set tOther = $Parameter(..#FIXTURE, "USERB")
+    Kill tValues
+    Set tValues("turnsPerHour") = 1
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues), "a limit of one turn an hour is stored")
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 2, ##class(OcuPilot.Test.TurnProvider).TextReply("done"))
+    Set tId = ..Start(tUser, "first", .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 202, "USERA's first start is accepted: " _ tText)
+    If tStatus = 202 Do $$$AssertEquals(..AwaitEnd(tId, tUser, 30, .tView), "completed", "and completes")
+    Set tConvId = $ClassMethod(..#FIXTURE, "StartConversation", tUser, ..PreparedPassword, .tConvStatus, .tConvText)
+    Do ..Call("POST", "/turn", tUser, $ClassMethod(..#FIXTURE, "StartBody", "second", tConvId), .tStatus, .tText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 403, "USERA's second start is refused: " _ tText)
+    If tStatus = 403 Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tText).code, "TURN.LIMITHOUR", "by name")
+
+    Set tOtherId = ..Start(tOther, "first for the other user", .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 202, "USERB's first start is accepted despite USERA's limit: " _ tText)
+    If tStatus = 202 Do $$$AssertEquals(..AwaitEnd(tOtherId, tOther, 30, .tView), "completed", "and completes")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).TurnCount(tUser), 1, "USERA holds only the one accepted turn")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).TurnCount(tOther), 1, "USERB holds its own, unaffected by USERA's limit")
+}
+
 /// <p>A second start while a turn runs is 409 <code>TURN.BUSY</code> with the lock banner's
 /// sentence; a start while another process holds the caller's slot is refused the same way and
 /// inserts nothing; of two starts sent at once, exactly one is accepted.</p>

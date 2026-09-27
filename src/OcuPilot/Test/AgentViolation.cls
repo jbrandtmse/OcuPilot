@@ -44,8 +44,8 @@ ClassMethod Call(pMethod As %String, pSuffix As %String, pBody As %String, Outpu
 Method TestEveryViolationCodeHasAPublishedSentence()
 {
     Set tCodes = ##class(OcuPilot.Api.Error).ViolationCodes()
-    ; 32 since Story 8.9 added AGENT.CREDTYPE.UNAVAILABLE to OcuPilot.Api.Error.
-    Do $$$AssertEquals($ListLength(tCodes), 32, "the vocabulary holds thirty-two field-level codes; adding one is a deliberate edit in OcuPilot.Api.Error")
+    ; 34 since Story 14.6 added AGENT.SWITCH.TURNSPERHOUR and AGENT.SWITCH.CONCURRENTTURNS.
+    Do $$$AssertEquals($ListLength(tCodes), 34, "the vocabulary holds thirty-four field-level codes; adding one is a deliberate edit in OcuPilot.Api.Error")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation(tCode)

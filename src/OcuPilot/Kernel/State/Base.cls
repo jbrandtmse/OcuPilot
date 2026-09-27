@@ -561,6 +561,102 @@ ClassMethod GuardedTurnSignalKill(pKey As %String) As %Status [ Private ]
     Quit tSC
 }
 
+/// <p>Remove every start record <code>^OcuPilotTurnStarts(</code><var>pUser</var><code>, seconds,
+/// key)</code> whose seconds are at or before <var>pCutoff</var>, and answer the seconds of the
+/// records that remain, oldest first, one list element per record, as <var>pStarts</var>.</p>
+/// <p><b>Caller contract:</b> the caller holds <var>pUser</var>'s turn slot, so no other reserve
+/// for that user reads or writes these nodes meanwhile. Reach it through <code>..</code> dispatch
+/// from <class>OcuPilot.Kernel.State.Turn</class>.</p>
+ClassMethod GuardedTurnStartsPrune(pUser As %String, pCutoff As %Integer, Output pStarts As %List) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pStarts = ""
+    If pUser = "" Quit tSC
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tSeconds = $Order(^OcuPilotTurnStarts(pUser, ""))
+        While (tSeconds '= "") && (tSeconds <= pCutoff) {
+            Kill ^OcuPilotTurnStarts(pUser, tSeconds)
+            Set tSeconds = $Order(^OcuPilotTurnStarts(pUser, tSeconds))
+        }
+        While tSeconds '= "" {
+            Set tKey = $Order(^OcuPilotTurnStarts(pUser, tSeconds, ""))
+            While tKey '= "" {
+                Set pStarts = pStarts _ $ListBuild(+tSeconds)
+                Set tKey = $Order(^OcuPilotTurnStarts(pUser, tSeconds, tKey))
+            }
+            Set tSeconds = $Order(^OcuPilotTurnStarts(pUser, tSeconds))
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+        Set pStarts = ""
+    }
+    Quit tSC
+}
+
+/// <p>Record that turn <var>pKey</var> was reserved for <var>pUser</var> at <var>pSeconds</var>
+/// (<method>OcuPilot.Kernel.State.Turn.NowSeconds</method> units). Same caller contract as
+/// <method>GuardedTurnStartsPrune</method>.</p>
+ClassMethod GuardedTurnStartRecord(pUser As %String, pSeconds As %Integer, pKey As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    If (pUser = "") || (pKey = "") Quit $$$ERROR($$$GeneralError, "a turn start needs a user and a turn key")
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set ^OcuPilotTurnStarts(pUser, +pSeconds, pKey) = ""
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove every start record of <var>pUser</var>. Absent is never an error.</p>
+ClassMethod GuardedTurnStartsKill(pUser As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    If pUser = "" Quit tSC
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Kill ^OcuPilotTurnStarts(pUser)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove every user's start records whose seconds are at or before <var>pCutoff</var>; a user
+/// left with none has no node.</p>
+/// <p>Takes no slot lock: it removes only records outside the window, which no reserve counts, so
+/// a reserve running meanwhile decides the same way. Reach it through <code>..</code> dispatch from
+/// <class>OcuPilot.Kernel.State.Turn</class>.</p>
+ClassMethod GuardedTurnStartsSweep(pCutoff As %Integer) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tUser = $Order(^OcuPilotTurnStarts(""))
+        While tUser '= "" {
+            Set tSeconds = $Order(^OcuPilotTurnStarts(tUser, ""))
+            While (tSeconds '= "") && (tSeconds <= pCutoff) {
+                Kill ^OcuPilotTurnStarts(tUser, tSeconds)
+                Set tSeconds = $Order(^OcuPilotTurnStarts(tUser, tSeconds))
+            }
+            Set tUser = $Order(^OcuPilotTurnStarts(tUser))
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Whether the IRIS account <var>pUserName</var> is enabled, read through the identity
 /// escalation (AD-8 as amended 2026-09-19, AD-9, DW-444). <var>pKnown</var> is 1 only when the
 /// flag was actually read; a caller that treats <code>pKnown</code> 0 as "enabled" has invented a

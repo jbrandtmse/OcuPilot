@@ -278,7 +278,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "I'm ready. Ask about this screen, or try one of these." · "Click a row to select it; click its name to open it." | panel, Idle with no messages yet — the greeting and the selection hint on a first turn |
 | "Stopped by you at <step>" | tool-call card the turn halted on after Stop |
 | "The turn stopped at <step>: <reason>." | error banner ending a turn (FR-23) |
-| "A turn is in progress. Wait for it to finish before sending another message." | lock banner |
+| "A turn is in progress. Wait for it to finish before sending another message." · "You have reached this instance's limit of <n> agent turns an hour. You can send again at <hh:mm>." · "This turn was not started: you have used your <n> turns for this hour." | lock banner; then the turn-limit banner and the refused turn's transcript line (Story 14.6): `<n>` is the Switches limit and `<hh:mm>` the browser's local time of the instance's `retryAt` |
 | "I'm opening <screen> for <entity> — use Back to return." · "I'm opening <screen> — use Back to return." · "<title> — opened by the agent; Back returns" | the agent's navigation announcement (FR-16), the second form when no row is named so the clause has nothing to fill; the new screen's heading announcement [AMENDED 2026-09-18 — see the story change log] |
 | "Shall I show you the audit entry?" | last sentence of the agent's reply after a confirmed write |
 | "No agent definition is enabled. Configure one in Agent co-pilot › Definitions." | administrator reminder banner, and the Agent co-pilot attention dot's accessible name for that audience |
@@ -346,7 +346,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Definitions" | the administrator reminder banner's link, to Agent co-pilot › Definitions |
 | "Full screen" | the panel header's full-screen toggle name; its state is `aria-expanded` (UX-DR42) |
 | "Resize the agent co-pilot panel" | panel-resize-handle accessible name; its value is the width in px |
-| "Context rows sent with a turn" | Switches: the operator's row cap for screen context and read tool results (1 to 1,000, default 200) |
+| "Context rows sent with a turn" · "Agent turns per user an hour" · "0 means no limit." · "Agent turns running at once per user" · "Fixed at 1: the conversation lock and the panel's single transcript assume one turn at a time per user." | Switches: the operator's row cap for screen context and read tool results (1 to 1,000, default 200); the limit of turns each user may start in the trailing hour and its hint (0 to 10,000, default 0); and the concurrent bound, shown read-only with its reason (Story 14.6) |
 | "This looks like a password or key. Send anyway?" · "Send anyway" · "Edit" | the inline secret-like message warning above the composer and its two actions |
 | "Secret fields on this screen are never sent" | the context chip's key glyph accessible name |
 | "<n> rows returned · <m> sent" | the result line on an expanded read tool-call card: rows the read returned, and rows actually sent to the model |
@@ -763,7 +763,7 @@ Trigger · what the user sees · exit. Every state in PRD §5 and every user-fac
 | Token expired mid-turn | access token lapses during a 60–90 s turn | nothing — the turn must complete without an authentication failure (FR-18, OQ17) | — |
 | Full screen | full-screen toggle | the panel fills the app area below the header (the hidden content is `inert`); the same control restores; width unchanged on restore | toggle |
 
-`[NOTE FOR PRD]` step 7's per-user turn limits have no user-facing state or string yet — the panel needs a "turn limit reached" banner and the refusal sentence before that step ships.
+`[RESOLVED 2026-09-27, Story 14.6]` step 7's per-user turn limits have their user-facing state and strings: the turn-limit banner and the refused turn's transcript line are in Fixed strings (`:281`).
 
 ### Session (auth spike states 1–10 and 13; 11, 12 and 14 have no user-facing state in Release 1)
 
@@ -907,7 +907,7 @@ Desktop Chrome is the platform. No touch or mobile promises (§3.2), no offline 
 
 ## Open items
 
-The nine `[NOTE FOR ARCHITECTURE]` / `[NOTE FOR PRD]` markers in this document, indexed. Each stays inline at its point of use; this table is the way to find them. The 21 `[ASSUMPTION]` markers are not indexed here — they are working answers, not open asks, and stay where they are used.
+The nine `[NOTE FOR ARCHITECTURE]` / `[NOTE FOR PRD]` markers in this document, indexed. Each stays inline at its point of use; this table is the way to find them. One is resolved and marked so in its row. The 21 `[ASSUMPTION]` markers are not indexed here — they are working answers, not open asks, and stay where they are used.
 
 | Marker | Section | Ask |
 |---|---|---|
@@ -916,7 +916,7 @@ The nine `[NOTE FOR ARCHITECTURE]` / `[NOTE FOR PRD]` markers in this document, 
 | `[NOTE FOR ARCHITECTURE]` | Information Architecture › Adding a screen (1) | Fix the reversible entity-id encoding, so names with spaces, slashes and a leading `_` round-trip as one path segment. |
 | `[NOTE FOR ARCHITECTURE]` | Agent Write Lifecycle (2) | Where the API accepts a partial update, have the write tool send only the changed fields. |
 | `[NOTE FOR ARCHITECTURE]` | State Patterns › Shell and screens (Expired password) | Unexpire `_SYSTEM` at install, so the first screen never sends the user to the classic portal. |
-| `[NOTE FOR PRD]` | State Patterns › Panel | Step 7's per-user turn limits need a "turn limit reached" banner and a refusal sentence before that step ships. |
+| `[NOTE FOR PRD]` (resolved) | State Patterns › Panel | Resolved 2026-09-27 by Story 14.6: the turn-limit banner and the refused turn's transcript line are in Fixed strings (`:281`). |
 | `[NOTE FOR ARCHITECTURE]` | Accessibility Floor › Time limits | The proposal interval is a server-side constant; a per-instance setting is a Switches candidate for polish week. |
 | `[NOTE FOR ARCHITECTURE]` | Key Flows › UJ-3 (1) | Decide whether the FR-69 demo fixture that creates `/csp/myapp` is on by default in the Compose flow. |
 | `[NOTE FOR ARCHITECTURE]` | Key Flows › UJ-5 (edge) | Cross-reference to the expired-password ask above: the installer should make that edge disappear. |
