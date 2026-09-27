@@ -2,8 +2,8 @@
 title: 'Story 16.22: The Guardrails page'
 type: 'feature'
 created: '2026-09-27'
-status: 'in-progress'
-baseline_revision: 'd485a0b6b56921766c58047cd02ae739b6a0dbb5'
+status: 'done'
+baseline_revision: '9e25f5443d9ee2a8106aecd747afb3d0a2d2e76b'
 baseline_commit: 'd485a0b6b56921766c58047cd02ae739b6a0dbb5'
 review_loop_iteration: 1
 followup_review_recommended: false
@@ -211,7 +211,7 @@ Rejected:
 
 ### Rework (CI, iteration 1)
 
-- [ ] [CI] browser: `ui/browser/definitions.browser-spec.mjs:418` ("AC5: the form is routable and listed nowhere") fails on run 36320197671 at head dae9f00a: it pins the Agent co-pilot area's listed entries as exactly `Definitions, Switches`, and Guardrails is now listed third by design (this story's AC1). Update that leg's expected list (and its message) to include Guardrails in its declared position, keeping the leg's own point (the Definition form is listed nowhere); rebuild, redeploy and run that spec file alone on `ocupilot-ci`, demonstrate the mutation (drop Guardrails' side-bar position -> the leg reds), write its `mutation:` line. Then grep every other browser spec, component spec and node test for any other assertion that enumerates the Agent co-pilot area's entries, the side bar's entries or the command box's screen list, and fix each the same way, running each touched file alone. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36320197671>
+- [x] [CI] browser: `ui/browser/definitions.browser-spec.mjs:418` ("AC5: the form is routable and listed nowhere") fails on run 36320197671 at head dae9f00a: it pins the Agent co-pilot area's listed entries as exactly `Definitions, Switches`, and Guardrails is now listed third by design (this story's AC1). Update that leg's expected list (and its message) to include Guardrails in its declared position, keeping the leg's own point (the Definition form is listed nowhere); rebuild, redeploy and run that spec file alone on `ocupilot-ci`, demonstrate the mutation (drop Guardrails' side-bar position -> the leg reds), write its `mutation:` line. Then grep every other browser spec, component spec and node test for any other assertion that enumerates the Agent co-pilot area's entries, the side bar's entries or the command box's screen list, and fix each the same way, running each touched file alone. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36320197671> Done: AC5's expected list is now Definitions, Switches, Guardrails (message to match); the sweep found no other spec, component spec or node test enumerating the Agent area, the side bar or the command box's screens; `definitions` 9/9 on `ocupilot-ci` after rebuild and redeploy.
 
 ## Spec Change Log
 
@@ -261,6 +261,14 @@ Rejected:
   - `[low]` `[reject]` the walk's overflow check has no Guardrails mutation (intent-alignment) — AC5 has its contrast mutation, and the walk renders the live answer, which carries the longest real tool names.
   - `[false]` `[reject]` the client may hold a copy of a refusal sentence (intent-alignment) — this diff adds none; the seven existing copies in `strings.ts` are the self-protection refusals pinned equal by `self-protection.test.mjs` and `RefusalCopy`.
   - `[false]` `[reject]` the Never ranges and files (intent-alignment) — a confirmation; no hunk lands in them.
+
+### 2026-09-27 — Review pass
+
+- verdicts: 3 findings — high 0, medium 0, low 1, false 2, maybe-false 0
+- findings:
+  - `[low]` `[reject]` the leg pins the Agent area's roster exactly, so a later Agent entry reddens it (intent-alignment) — the exact list is how the leg proves the form is listed nowhere, as it did before this story; a later entry updates the roster in its own story, as this pass did.
+  - `[false]` `[reject]` the recorded mutation proves Guardrails is listed, not its third place (intent-alignment) — `deepEqual` on the ordered list reddens on a swap, and `guardrails.browser-spec.mjs` pins the place after Switches.
+  - `[false]` `[reject]` no browser test shows the side bar to a least-privileged caller (intent-alignment) — carried: `Wire` pins the navigation map's allowed flag, which is what the side bar renders.
 
 ## Design Notes
 
@@ -357,6 +365,7 @@ Rejected:
 - mutation: `Guardrails.Read` drops `If $$$ISERR(tSC) Quit` after `..Verdict` → `Guardrails` `TestAnUnreadablePartFailsTheWholeAnswer` red.
 - mutation: `load()`'s success branch drops `this.failedValue = false` → `guardrails.test.mjs` "a failed read is cleared by the next read that answers" red.
 - mutation: `Guardrails.Read` drops its `Registry.IsAdvertised` filter (code review) → `Guardrails` `TestConfirmToolsAreTheAdvertisedWriteTools` red (run 16254), reverted and recompiled green.
+- mutation: `AgentGuardrails` `sideBarPosition` 3 → 0, mirror regenerated (CI rework) → `definitions.browser-spec.mjs` "AC5: the form is routable and listed nowhere" red (actual `Definitions, Switches`), reverted, redeployed clean, 9/9.
 
 ## Auto Run Result
 
@@ -381,3 +390,5 @@ Blocking condition: none
 **Verification.** On `ocupilot-ci`: `Guardrails` 10/10, `GuardrailsWire` 2/2 (armed), `Wire` 20/20, `SurfaceCoverage` 4/4, `EndpointCoverage` 2/2, `Prohibited` 13/13, `RefusalCopy` 8/8, `Descriptor` 53/53. Full sweep once, pre-review, on the same non-test server code: 306 classes, 290 ran, 16 refused (arming), 1 known residue. `npm run test:tools` 1566/1566; `npm test` green; targeted component specs green. Browser after rebuild and redeploy: `guardrails` 2/2, structural walk 12/12 with 59 screens walked and no new baseline entry; `switches`, `shell`, `navigate`, `panel-principal`, `rail`, `suggested-prompts`, `explain-screen`, `screen-grounding` green in pass 1. Bundle 1.92 MB. `check-objectscript` 0, `lint-docs` 0. Switches read back at their defaults. Mutation lines under `## Verification`.
 
 **Residual risk.** The route's 500 mapping and a `Switch.Resolve` failure are exercised by no test (rejected in the log). The secret list shows each screen's secret fields against every tool on that screen, as the registry declares them.
+
+**Rework (CI, iteration 1).** `ui/browser/definitions.browser-spec.mjs` AC5 now expects the Agent area's entries as Definitions, Switches, Guardrails; the sweep found no other test enumerating that area, the side bar or the command box's screens (CI run 36320197671 had this one failure of 481). Verified: `definitions` 9/9 on `ocupilot-ci` after rebuild and redeploy; mutation line under `## Verification`. Review: 3 findings (low 1, false 2), all rejected; nothing patched or deferred. Follow-up review: false (patched high 0, medium 0, low 0).
