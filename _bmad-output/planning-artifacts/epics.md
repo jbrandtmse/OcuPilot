@@ -5800,6 +5800,8 @@ So that I can explore without any possibility of changing something.
 - **When** this story lands
 - **Then** it is **data and UI, not a new enforcement point**.
 
+- DW-1621: The Definition form draws no read-only control, so with the read/write default a per-definition read-only agent can be made only through the API - add the control (owner-confirmed 2026-09-26) (ledger; routed by merge_gate 2026-09-26)
+
 ### Story 14.6: Per-user turn limits, and the banner they need
 
 As an operator paying for tokens,
