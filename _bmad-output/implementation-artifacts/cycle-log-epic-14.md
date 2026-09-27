@@ -153,3 +153,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-27T16:36:59Z	Story 14.2	smoke_complete	method=browser+cli result=pass iterations=1 defects_caught=0 evidence=/tmp/epic-14-runner/smoke-14-2-{browser,class,audit}.log(governance+audit-copy-purge_3/3;audit_7/7;Governance_class_green;bundle_1.88MB) model=claude-opus-5-5[1m]
 2026-09-27T16:38:01Z	Story 14.2	committed_code	sha=15b0fab4 pushed=true ci=pending run=36333932868 head_confirmed_by=headSha supersedes_run=36330494508(b147b073,red_browser)
 2026-09-27T16:38:01Z	Story 14.6	stage_spawned	stage=plan spawn_at=2026-09-27T16:38:01Z model=opus agent_name=14-6-per-user-turn-limits-plan-1 cycle_iteration=1
+2026-09-27T17:31:54Z	Story 14.2	committed	sha=15b0fab4 submodules= ci=success run=36333932868 amendments=ARCHITECTURE-SPINE.md:AD-22,AD-53,AD-8 EXPERIENCE.md(in-place;981_lines)
+2026-09-27T17:31:54Z	Story 14.2	ci_resolved	story=14.2 run=36333932868 result=success resolved_at=boundary
+2026-09-27T17:31:54Z	Story 14.2	story_boundary	story=14.2 head=15b0fab4 ci_run=36333932868 ci=success
