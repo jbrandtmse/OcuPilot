@@ -115,3 +115,4 @@
 2026-09-27T04:06:47Z	Story 16.19	ci_resolved	story=16.19 run=36290792827 result=success resolved_at=next_implement head=464aec8e
 2026-09-27T04:06:47Z	Story 16.19	story_boundary	story=16.19 head=464aec8e ci_run=36290792827 ci=success note=includes_16.1,16.17,16.18,16.19
 2026-09-27T04:06:47Z	Story 16.20	stage_spawned	stage=implement spawn_at=2026-09-27T04:06:47Z model=opus agent_name=16-20-older-messages-log-files-implement-1 cycle_iteration=1
+2026-09-27T05:29:15Z	Story 16.20	dev_complete	spawn_at=2026-09-27T04:06:47Z model=opus build_sha=616fba95 baseline_revision=bdaff16a review_loop_iteration=0 followup_review_recommended=false deferred=0 diff=_24_files_changed,_1765_insertions(+),_77_deletions(-) cycle_iteration=1 bundle_bytes=1889964 sweep=302ran,285green,16refused_arming,1known_residue ci=pending run=36297327031 note=alerts-log_seed_outside_64KB_tail_on_reused_throwaway
