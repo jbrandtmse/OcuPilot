@@ -128,6 +128,10 @@ Property RetentionDays As %Integer [ InitialExpression = {..#DEFAULTRETENTIONDAY
 /// definition exists at all.</p>
 Parameter DEFAULTRETENTIONDAYS As %Integer = 30;
 
+/// <p>The longest retention a definition may keep; the retention sweep reads a larger stored value
+/// as this one.</p>
+Parameter MAXRETENTIONDAYS As %Integer = 365;
+
 /// <p>Whether this definition may serve a turn. A definition is created disabled, and a save
 /// that changes a security-relevant field disables it again
 /// (<method>GuardedUpdate</method>).</p>
@@ -452,7 +456,8 @@ ClassMethod GuardedList(Output pIds) As %Status
 /// default-marked definition's (<parameter>DEFAULTRETENTIONDAYS</parameter> when none is marked),
 /// and <var>pLongestDays</var> the longest of all of them and of <var>pDefaultDays</var>. A stored
 /// value that is not a whole number of days from 1 reads as
-/// <parameter>DEFAULTRETENTIONDAYS</parameter>, so no row can ask for everything to go. A row that
+/// <parameter>DEFAULTRETENTIONDAYS</parameter>, so no row can ask for everything to go, and one above
+/// <parameter>MAXRETENTIONDAYS</parameter> reads as that. A row that
 /// cannot be opened is skipped, the way <method>GuardedScreenRows</method> skips it.</p>
 ClassMethod GuardedRetentions(Output pById, Output pDefaultDays As %Integer, Output pLongestDays As %Integer) As %Status
 {
@@ -467,6 +472,7 @@ ClassMethod GuardedRetentions(Output pById, Output pDefaultDays As %Integer, Out
         If $$$ISERR(tOpenSC) || '$IsObject(tRow) Continue
         Set tDays = tRow.RetentionDays
         If '$Match(tDays, "^[1-9][0-9]*$") Set tDays = ..#DEFAULTRETENTIONDAYS
+        If tDays > ..#MAXRETENTIONDAYS Set tDays = ..#MAXRETENTIONDAYS
         Set pById(tIds(tI)) = +tDays
         If tRow.DefaultMark = "1" Set tMarked = tIds(tI)
         Set tRow = ""

@@ -393,14 +393,29 @@ Method TestEachStoreNamesAGoneAccountToThePass()
 
 /// <p>The Deleted-user row's error column: while the identity read is unavailable, the
 /// principal-gone pass removes nothing -- a name no account holds keeps its preference.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Retention.IsGone</method> ignore
-/// <code>pUnavailable</code> -- the preference is removed and this goes red.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Retention.IsGone</method> answer 1 when
+/// <code>GuardedUserAbsent</code> reports the read unavailable -- the preference is removed and this
+/// goes red.</p>
 Method TestAnUnreadableIdentityRemovesNothing()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedSetValue(..#GONEUSER, "shell", "theme", "dark"), "a name no account holds has a preference")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.RetentionIdentityDown).SweepGonePrincipals(), "the pass runs over an unavailable identity read")
     Do ##class(OcuPilot.Kernel.State.Pref).GuardedUsers(.tUsers)
     Do $$$AssertEquals($Data(tUsers(..#GONEUSER)), 1, "and removes nothing")
+}
+
+/// <p>Only an account the instance answers does not exist reads as absent: a name no account holds
+/// does, while an account that exists -- whatever the spelling -- and an empty name do not.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.State.Base.GuardedUserAbsent</method>
+/// answer absent without asking the instance -- the existing account's leg goes red.</p>
+Method TestOnlyAnAccountTheInstanceDoesNotHoldIsAbsent()
+{
+    Set tBase = "OcuPilot.Kernel.State.Base"
+    Do $$$AssertEquals($ClassMethod(tBase, "GuardedUserAbsent", ..#GONEUSER, .tUnavailable), 1, "a name no account holds is absent")
+    Do $$$AssertEquals(tUnavailable, 0, "read with the escalation in effect")
+    Do $$$AssertEquals($ClassMethod(tBase, "GuardedUserAbsent", "_SYSTEM", .tUnavailable), 0, "an account the instance holds is not")
+    Do $$$AssertEquals($ClassMethod(tBase, "GuardedUserAbsent", "_system", .tUnavailable), 0, "under any spelling")
+    Do $$$AssertEquals($ClassMethod(tBase, "GuardedUserAbsent", "", .tUnavailable), 0, "and an empty name is never absent")
 }
 
 }

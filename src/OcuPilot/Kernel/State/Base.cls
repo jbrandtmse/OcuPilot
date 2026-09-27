@@ -627,6 +627,42 @@ ClassMethod GuardedUserEnabled(pUserName As %String, Output pKnown As %Boolean, 
     Quit tEnabled
 }
 
+/// <p>Whether the instance holds no account named <var>pUserName</var>: 1 only when, with the
+/// identity escalation in effect, <method>Security.Users.Exists</method> answers 0 with the
+/// vendor's "user does not exist" error (#838). Every other outcome -- the escalation unavailable,
+/// the namespace switch failing, any other error or a raise -- answers 0, so a failed read never
+/// reads as a deleted account (the retention sweep's principal-gone pass, AD-37).
+/// <var>pUnavailable</var> is 1 when the escalation did not take or the read raised.</p>
+ClassMethod GuardedUserAbsent(pUserName As %String, Output pUnavailable As %Boolean) As %Boolean
+{
+    Set pUnavailable = 1
+    Set tAbsent = 0
+    If pUserName = "" Quit 0
+    New $ROLES
+    Set tOriginalNs = $NAMESPACE
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#IDENTITYAPPLICATION)
+        If $$$ISERR(tSC) Quit
+        If '..IdentityGrantsInEffect() Quit
+        ; Left by a plain assignment, as GuardedUserEnabled is (AD-16).
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOriginalNs)
+        If $$$ISERR(tSC) Quit
+        Set pUnavailable = 0
+        Set tStatus = $$$OK
+        Set tExists = ##class(Security.Users).Exists(pUserName, .tUser, .tStatus)
+        ; The opened account carries the password hash; drop it at once (AD-35).
+        Set tUser = ""
+        If 'tExists && $$$ISERR(tStatus) && ($System.Status.GetErrorCodes(tStatus) = 838) Set tAbsent = 1
+    } Catch ex {
+        Set $NAMESPACE = tOriginalNs
+        Set tUser = ""
+        Set tAbsent = 0
+        Set pUnavailable = 1
+    }
+    Set $NAMESPACE = tOriginalNs
+    Quit tAbsent
+}
+
 /// <p>Whether this process actually holds every pair
 /// <parameter>IDENTITYRESOURCES</parameter> declares. Called inside
 /// <method>GuardedUserEnabled</method>'s escalated frame as the oracle for "the escalation is in

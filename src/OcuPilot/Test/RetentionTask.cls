@@ -25,7 +25,9 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.RetentionTask runs OcuPilot's production install, on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was run.")
     }
-    Quit $$$OK
+    ; Every method starts from the installed task, whatever order they run in and whether or not
+    ; the container's start hook installed this code.
+    Quit ##class(OcuPilot.Install.Installer).Install("")
 }
 
 Method OnAfterOneTest() As %Status
@@ -196,6 +198,29 @@ Method TestAProbeProfileSchedulesNoTaskAndLeavesTheProductionOne()
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Uninstall("probe", 1), "the probe profile uninstalls")
     Do $$$AssertStatusOK(..TaskIds(.tAfter), "the tasks read")
     Do $$$AssertEquals(+$Get(tAfter) _ "|" _ $Get(tAfter(1)), "1|" _ tBefore(1), "and the production task is left in place")
+}
+
+/// <p>DW-1750: <method>OcuPilot.Install.Installer.Uninstall</method>'s own body carries the
+/// statement <code>Set tSC = ..RemoveRetentionTask(.tNames)</code> on a line of its own, not
+/// commented out and not behind a one-line condition. A production <code>Uninstall</code> would
+/// tear down the instance under this suite, and a probe profile names no task class, so the
+/// statement is read from the method's own implementation rather than run;
+/// <method>TestInstallSchedulesExactlyOneTaskAndRepairsDrift</method> runs the step it calls.</p>
+/// <p>Mutation (Rule 19): comment out the call in
+/// <method>OcuPilot.Install.Installer.Uninstall</method> with <code>;</code> -- this goes red.</p>
+Method TestUninstallsBodyCallsRemoveRetentionTask()
+{
+    Set tMethod = ##class(%Dictionary.MethodDefinition).%OpenId("OcuPilot.Install.Installer||Uninstall")
+    Do $$$AssertTrue($IsObject(tMethod), "Uninstall's definition opens")
+    If '$IsObject(tMethod) Quit
+    Set tFound = 0
+    Do tMethod.Implementation.Rewind()
+    While 'tMethod.Implementation.AtEnd {
+        Set tLine = $ZStrip(tMethod.Implementation.ReadLine(), "<>WC")
+        If tLine = "Set tSC = ..RemoveRetentionTask(.tNames)" Set tFound = tFound + 1
+    }
+    Set tMethod = ""
+    Do $$$AssertEquals(tFound, 1, "Uninstall's own body runs the retention task's removal once, as a statement of its own")
 }
 
 }

@@ -2,8 +2,9 @@
 title: 'Story 14.4: Transcripts, retention and administrator access'
 type: 'feature'
 created: '2026-09-27'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'a95032ab212a514db252cff52c74c473d6a33a7f'
+baseline_commit: 'a95032ab212a514db252cff52c74c473d6a33a7f'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -200,6 +201,8 @@ deferred:
     - `ui/browser/transcripts.browser-spec.mjs`: two `turnprobe` turns, New conversation, then Transcripts lists the first and opens it with its message, reply and context.
   - Update the roster files in the Code Map.
 
+- [ ] [CI] browser: `a11y-structural-invariants.browser-spec.mjs:59` (AC5 of the DW-1337 walk) fails on CI run 36317381863 (`browser` job, head 6478aaae): "these screens need an id the walk could not resolve and are not in SKIP: agent/transcripts/details" -- the new detail screen declares `parentScope` `agent/transcripts`, and on CI's fresh browser container the Transcripts list has no row when the walk (which runs first, alphabetically) reaches it. Fix so the gate holds on a fresh instance: prefer giving the walk a real row to open (seed one conversation for the walking user before the walk, through the existing test fixtures and cleaned up after), so the transcript page's own structural invariants are measured; only if that cannot be done without a production seam, add the route to `SKIP` in `ui/browser/structural-walk.mjs` with its reason AND pin the page's structural invariants in `transcripts.browser-spec.mjs`. Verify with the a11y spec on `ocupilot-b-ci` after deleting every conversation of the walking user (the CI condition), bundle rebuilt and redeployed, and keep the DW-1337 baseline (225) holding in both themes.
+
 **Acceptance Criteria:**
 
 - **AC1.** Given a finished turn, when its owner opens `GET /transcripts/:id`, then each turn carries its stored screen context, and the Transcripts list and that route show a non-administrator only their own.
@@ -211,9 +214,54 @@ deferred:
 - **AC5.** Given a user deleted through OcuPilot, when the sweep runs, then their transcripts and ledger rows survive while their turns are abandoned and their token is refused.
 - **Integration (Rule 1).** Given the admin's `access` row, when the admin's own `ViewForUser` (16.16's read) runs, then the row appears with `kind` `access`. The browser consumer renders a real transcript from the route.
 
+### Review Findings
+
+Code review 2026-09-27 (full-opus tier; blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor all ran). 11 patched, 0 deferred, 23 rejected.
+
+- [x] [Review][Patch] [high] An entry appended between the gate and the row read was released to an administrator ungated (AD-46, AC3) [src/OcuPilot/Api/Transcripts.cls:90]: another user's row whose `seq` the gate never saw is now withheld; `TranscriptGate.TestATurnAppendedAfterTheGateIsWithheld` over new fixtures `LedgerAppendProbe` and `TranscriptsAppendRouteProbe`.
+- [x] [Review][Patch] [medium] The principal-gone pass read any failed account read as a deleted account (AD-37) [src/OcuPilot/Kernel/Retention.cls:133]: `IsGone` now asks the new `Base.GuardedUserAbsent`, which answers absent only on `Security.Users.Exists` 0 with error #838 (measured on `ocupilot-slot-b`).
+- [x] [Review][Patch] [medium] `UserDelete.AfterWrite` matched the confirm path's lower-case canonical id against the stored `$USERNAME` spelling with `%EXACT`, so the agent's delete abandoned nothing [src/OcuPilot/Screen/Tool/UserDelete.cls:133]: live turns' users are matched without regard to case; the `ToolWrite` leg now passes the lower-case id.
+- [x] [Review][Patch] [medium] DW-1750's pin was a substring match over the whole class, green with the call commented out [src/OcuPilot/Test/RetentionTask.cls:211]: it now reads `Uninstall`'s own implementation and requires the statement on an uncommented line of its own.
+- [x] [Review][Patch] [low] `GateTurns` doc claimed every cross-user call records itself; a fault path records nothing [src/OcuPilot/Kernel/Audit/Ledger.cls:691]
+- [x] [Review][Patch] [low] A stored retention above 365 was not clamped by the sweep [src/OcuPilot/Kernel/State/Agent.cls:475]: `MAXRETENTIONDAYS`.
+- [x] [Review][Patch] [low] Two `RetentionTask` methods assumed the start hook had installed the task [src/OcuPilot/Test/RetentionTask.cls:23]: `OnBeforeAllTests` installs.
+- [x] [Review][Patch] [low] The AC3 page spec asserted no tool card over a fixture with no steps, which cannot fail [ui/src/app/areas/agent/transcript.page.spec.ts:109]: assertion removed.
+- [x] [Review][Patch] [low] The 503 route leg's need for a runner holding `OcuPilotAdmin:USE` was unstated [src/OcuPilot/Test/TranscriptGate.cls:9]
+- [x] [Review][Patch] [low] `TestATurnWithNoLedgerRowIsWithheldOverTheRoute`'s doc named a different mutation than the recorded one [src/OcuPilot/Test/TranscriptsWire.cls:283]
+- [x] [Review][Patch] [low] No full-class green was recorded for `RetentionTask` and `TranscriptsWire` after QA: runs 1782 and 1781.
+
+**Rejected:**
+
+- low: `EnsureRetentionTask` leaves `Suspended` and `RunAsUser` alone. `SuspendOnError` defaults to 0 (measured), so only an operator suspends it; reopen_if a retention task reads suspended with no operator action.
+- low: `Entry.GuardedPurge` reads every entry into one array. reopen_if the purge step logs `<STORE>`.
+- low: the list's cap takes the newest-created conversations while the sort is by last activity. reopen_if an administrator with more conversations than the cap misses an active one.
+- low: after retention the title is the oldest surviving message; the fix needs a stored title.
+- low: EXPERIENCE :152, :169 and :335 still describe Transcripts as unbuilt. Epic 16 edits those lines; reopen_if they still do after the Rule 22 merge.
+- low (spec-bound): the page shows no owner, state or time per turn, and no citations.
+- false (spec-bound): the prompts' group is the one the spec names.
+- low: the list and the gate check the administrative pair through different faces; both call the same vendor check.
+- low (spec-bound, AD-41): access rows are capped per conversation.
+- false: `GuardedPurgeEmpty` cannot meet a turn's lock; a conversation with a running first turn has a recent `CreatedAt`.
+- low: a withheld transcript with no named pair shows no sentence. Same root as the earlier triage row.
+- false: the wire always carries a numeric `seq`, so no duplicate track key.
+- low: title and list case sensitivity. Same root as the earlier triage row.
+- low (theoretical): a confirm still applying 15 minutes after its turn ended loses its proposal row to the sweep.
+- low: the spec's `deferred:` list and residual-risk line are stale. The fix edits the spec; the ledger holds the resolution.
+- low: the spec grew under `oversized`. The fix edits the spec.
+- low: the test sweep touches other suites' orphaned per-user rows; suites run one at a time and clean up.
+- low (theoretical): a turn running more than an hour past AD-31's limit could lose its oldest ledger rows before its entry.
+- false: Rule 3 is met by `transcripts.browser-spec` and the `TranscriptsWire` HTTP legs.
+- low (by-design): `UserDelete.SnippetAfter` renders nothing; the step writes only OcuPilot's protected state, which no script can write (AD-9), and the sweep covers it.
+- low (theoretical): a store fault on the key read answers 500 rather than the shared 404.
+- low (by-design, AD-15 posture): a failed access-row write is logged and the read is still served.
+- false: AC5's token refusal. Already rejected in the earlier triage log.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+- 2026-09-27, rework iteration 1 (trigger=ci): re-opened by the runner for the `[CI]` item above; scope is that item only.
+
 
 ### 2026-09-27 — Review pass
 
@@ -343,6 +391,26 @@ Slot B. Copy each changed `.cls` into `/tmp/ocupilot-b-ci/src` and load it on `o
 - mutation: stop mapping `AUTH.NOPRIVILEGE` to the shared 404 in `Transcripts.HandleRead` → `TranscriptsWire.TestANonAdministratorGetsTheSameNotFoundAsAnUnknownId` red (run 1746)
 - mutation: drop the retention input's `(input)` binding → `definition-form.page.spec.ts` "Story 14.4 AC2" red
 - mutation: pass `""` for the definition in `Job.AppendConvoEntry` (throwaway) → `transcripts.browser-spec` red
+
+**QA pass (this stage), `ocupilot-b-ci`:**
+
+- New/changed test files: `src/OcuPilot/Test/TranscriptsRouteProbe.cls` (QA, new fixture), `src/OcuPilot/Test/TranscriptGate.cls` (QA, +`TestAnUnreadableStoreRendersA503OverTheRoute`), `src/OcuPilot/Test/RetentionTask.cls` (QA, +`TestUninstallsBodyCallsRemoveRetentionTask`), `src/OcuPilot/Test/TranscriptsWire.cls` (QA, +`TestATurnWithNoLedgerRowIsWithheldOverTheRoute`).
+- DW-1751 pinned: `Transcripts.HandleRead`'s route-level mapping of the ledger's `LEDGER.UNAVAILABLE` fault to 503, driven in process against `TranscriptsRouteProbe` (the same `LedgerRouteProbe` precedent, one level up).
+- DW-1750 pinned by source text, not by running a production `Uninstall` on the shared throwaway: `TestUninstallsBodyCallsRemoveRetentionTask` reads `Installer`'s compiled source and asserts the `..RemoveRetentionTask(.tNames)` call is present in `Uninstall`'s body.
+- Matrix row "Fail closed" gained a route-level (not just `GateTurns`-level) leg: a turn with no ledger row at all is withheld over the real `GET /transcripts/:id` route for an administrator holding every pair.
+- mutation: map `LEDGER.UNAVAILABLE` to the shared 404 in `Transcripts.HandleRead` → `TranscriptGate.TestAnUnreadableStoreRendersA503OverTheRoute` red (run 1760), green after revert (run 1761)
+- mutation: delete the `..RemoveRetentionTask(.tNames)` line from `Installer.Uninstall` → `RetentionTask.TestUninstallsBodyCallsRemoveRetentionTask` red (run 1762), green after revert (run 1763)
+- mutation: make `Ledger.GateTurns` answer `tReleased = 1` regardless of `tClosed` → `TranscriptsWire.TestATurnWithNoLedgerRowIsWithheldOverTheRoute` red (run 1764), green after revert (run 1765)
+- Code review (`ocupilot-b-ci`), each reverted byte-identical and re-run green:
+  - mutation: release every row on the gate's answer in `Transcripts.HandleRead` → `TranscriptGate.TestATurnAppendedAfterTheGateIsWithheld` red (run 1772), green (run 1773)
+  - mutation: `Base.GuardedUserAbsent` answers absent without asking → `Retention.TestOnlyAnAccountTheInstanceDoesNotHoldIsAbsent` red (run 1775)
+  - mutation: `Retention.IsGone` answers gone when the read is unavailable → `Retention.TestAnUnreadableIdentityRemovesNothing` red (run 1776), green (run 1777)
+  - mutation: `UserDelete.AfterWrite` passes the id as given → `ToolWrite.TestADeletedAccountsTurnsAreAbandonedByTheDelete` red (run 1779), green (run 1780)
+  - mutation: comment out the `RemoveRetentionTask` call in `Installer.Uninstall` → `RetentionTask.TestUninstallsBodyCallsRemoveRetentionTask` red (run 1783), green (run 1784)
+  - Full classes green: `TranscriptGate` 8/8, `Retention` 8/8, `ToolWrite` 33/33, `TranscriptsWire` 7/7 (run 1781), `RetentionTask` 4/4 (runs 1782, 1784), `TranscriptStore` 5/5, `Disabled` 4/4; `npm run test:components` 1496 pass.
+- Full-class re-runs after revert, all green: `TranscriptGate` 7/7 (run 1766), `Retention` 7/7 (run 1767), `TranscriptStore` 5/5 (run 1768), `EndpointCoverage` 2/2 (run 1769), `SurfaceCoverage` 4/4 (run 1770).
+- `uv run scripts/check-objectscript.py`: 0 problems.
+- Residual gap, reported rather than closed: a full-execution pin of DW-1750 (running the real `Uninstall` for a non-probe profile, whose `retentionTaskClass` is the only profile value that is non-empty) would tear down the live installed instance under this profile's naming, since only the literal `"probe"` profile gets isolated names; closing it fully needs a minimal seam (e.g. a third, isolated profile that still names a real, differently-scoped retention task class) — a code-review decision, not applied here.
 
 ## Auto Run Result
 

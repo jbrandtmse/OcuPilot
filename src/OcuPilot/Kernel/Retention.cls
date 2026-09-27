@@ -8,9 +8,9 @@
 /// retention, so the per-row gate (AD-46) outlives every transcript it gates; and, for an account the
 /// instance no longer holds, its running turns, its preferences and its sharing choice.</p>
 /// <p><b>What is never removed for a deletion.</b> A deleted user's transcripts and ledger rows age
-/// like everyone's; the principal-gone pass abandons turns and removes per-user settings only. An
-/// account whose existence cannot be read -- the identity escalation unavailable -- is treated as
-/// present, so an unreadable identity removes nothing.</p>
+/// like everyone's; the principal-gone pass abandons turns and removes per-user settings only. Only
+/// an account the instance answers does not exist is gone; one whose read fails, or whose identity
+/// escalation is unavailable, is treated as present, so an unreadable identity removes nothing.</p>
 /// <p>Each step's failure is logged under <parameter>LOGSUBSYSTEM</parameter> and does not stop the
 /// next; <method>Sweep</method> answers the first failure.</p>
 Class OcuPilot.Kernel.Retention Extends %RegisteredObject
@@ -95,9 +95,8 @@ ClassMethod Sweep(pLimitsClass As %String = "OcuPilot.Kernel.Agent.Limits") As %
 }
 
 /// <p>The principal-gone pass (AD-37): every user a <code>queued</code> or <code>running</code>
-/// turn, a preference row or a sharing row names is asked about through
-/// <method>OcuPilot.Kernel.State.Base.GuardedUserEnabled</method>; for an account it answers is not
-/// there -- not read, while the escalation was in effect -- the user's turns are asked to abandon and
+/// turn, a preference row or a sharing row names is asked about through <method>IsGone</method>;
+/// for an account the instance answers does not exist, the user's turns are asked to abandon and
 /// the user's preference and sharing rows are deleted. Anything else about the user is left. The
 /// first failure is answered after every user has been visited.</p>
 ClassMethod SweepGonePrincipals() As %Status
@@ -128,14 +127,12 @@ ClassMethod SweepGonePrincipals() As %Status
     Quit tFirst
 }
 
-/// <p>Whether the instance no longer holds account <var>pUser</var>: its enabled flag was not read
-/// while the identity escalation was in effect. An unavailable escalation answers 0.</p>
+/// <p>Whether the instance no longer holds account <var>pUser</var>, as
+/// <method>OcuPilot.Kernel.State.Base.GuardedUserAbsent</method> answers it: only a positive "no
+/// such account" is gone, and an unavailable escalation or a failed read answers 0.</p>
 ClassMethod IsGone(pUser As %String) As %Boolean
 {
-    Set tKnown = 0
-    Set tUnavailable = 1
-    Do $ClassMethod(..IdentityClass(), "GuardedUserEnabled", pUser, .tKnown, .tUnavailable)
-    Quit ('tKnown) && ('tUnavailable)
+    Quit ''$ClassMethod(..IdentityClass(), "GuardedUserAbsent", pUser, .tUnavailable)
 }
 
 /// <p>The storage face <method>IsGone</method> asks. Overridable so a test can drive an

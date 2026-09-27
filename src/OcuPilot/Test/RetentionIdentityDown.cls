@@ -11,9 +11,8 @@ ClassMethod IdentityClass() As %String
 }
 
 /// <p>Answers that no account was read because the escalation was not in effect.</p>
-ClassMethod GuardedUserEnabled(pUserName As %String, Output pKnown As %Boolean, Output pUnavailable As %Boolean) As %Boolean
+ClassMethod GuardedUserAbsent(pUserName As %String, Output pUnavailable As %Boolean) As %Boolean
 {
-    Set pKnown = 0
     Set pUnavailable = 1
     Quit 0
 }

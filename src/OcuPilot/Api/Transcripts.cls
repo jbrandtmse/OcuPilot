@@ -28,7 +28,8 @@ ClassMethod LedgerClass() As %String
 /// <code>steps</code> and <code>context</code> carry what was stored -- always, for the owner --
 /// and when it is false every turn's <code>steps</code> is <code>[]</code> and its
 /// <code>context</code> null, with <code>failedPair</code> naming the first recorded pair the
-/// caller does not hold, or <code>""</code>. An unknown id, and another user's id asked for by a
+/// caller does not hold, or <code>""</code>. Another user's turn whose entry was appended after
+/// the gate read the turn keys carries no steps and no context either. An unknown id, and another user's id asked for by a
 /// caller without <method>OcuPilot.Kernel.Audit.Ledger.AdminPair</method>, are one 404
 /// <code>TURN.CONVERSATION.NOTFOUND</code>.</p>
 ClassMethod HandleRead(pId As %String) As %Status
@@ -83,7 +84,11 @@ ClassMethod HandleRead(pId As %String) As %Status
         Set tTurns = []
         Set tIterator = tRows.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tRow) {
-            Do tTurns.%Push(..TurnObject(tRow, tReleased))
+            ; An entry appended after the gate read its turn keys was never gated, so another
+            ; user's is withheld whatever the gate answered.
+            Set tRowReleased = tReleased
+            If 'tOwn && '$Data(tKeys(+tRow.%Get("seq"))) Set tRowReleased = 0
+            Do tTurns.%Push(..TurnObject(tRow, tRowReleased))
         }
         Set tView = {}
         Do tView.%Set("conversationId", pId, "string")

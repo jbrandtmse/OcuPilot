@@ -5,7 +5,10 @@
 /// the decision moved into <code>ReleasesRow</code>.</p>
 /// <p><b>Live-safe.</b> It creates no principal and spawns nothing; every row it writes names
 /// <parameter>SUBJECT</parameter> or <parameter>READER</parameter>, which name no account, and both
-/// users' rows are deleted after every method.</p>
+/// users' rows are deleted after every method, except the late-entry leg's access row, which names the
+/// runner and is deleted by its own method. The 503 leg runs the handler as the test process's
+/// own user and asks the real privilege gate, so it needs a runner holding
+/// <code>OcuPilotAdmin:USE</code>; a runner without it reads the shared 404 and fails.</p>
 Class OcuPilot.Test.TranscriptGate Extends %UnitTest.TestCase
 {
 
@@ -202,6 +205,86 @@ Method TestTheAccessRowAppearsInTheReadersOwnLedgerView()
         Do $$$AssertEquals(tView.rows.%Get(0).kind, "access", "of kind access")
         Do $$$AssertEquals(tView.rows.%Get(0).target, ..#SUBJECT, "naming whose transcript was read")
     }
+}
+
+/// <p>DW-1751: the route's 503 leg. When the ledger store cannot be read,
+/// <method>OcuPilot.Api.Transcripts.HandleRead</method> maps <code>GateTurns</code>'s
+/// <code>LEDGER.UNAVAILABLE</code> fault to HTTP 503 -- not the shared 404 an unknown or refused
+/// id gets.</p>
+/// <p>Driven in process through <class>OcuPilot.Test.Dispatch</class> against
+/// <class>OcuPilot.Test.TranscriptsRouteProbe</class>: the router names
+/// <class>OcuPilot.Api.Transcripts</class> by class, so a fixture subclass has no route of its
+/// own to arrive on -- the same precedent <class>OcuPilot.Test.LedgerRouteProbe</class> exists
+/// for.</p>
+/// <p>Mutation (Rule 19): map <code>LEDGER.UNAVAILABLE</code> to the shared 404 in
+/// <method>OcuPilot.Api.Transcripts.HandleRead</method> -- the status assertion goes red.</p>
+Method TestAnUnreadableStoreRendersA503OverTheRoute()
+{
+    Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate("", ..#SUBJECT, 5, .tLoadSC, .tConflict)
+    Do $$$AssertTrue($IsObject(tConvo), "a conversation is created")
+    Set tKey = tConvo.ConvKey
+    Set tTurn = ..NewKey()
+    Set tSteps = [{"seq": 1, "kind": "tool", "name": "tasks.schedule.read", "status": "ok", "summary": "", "text": ""}]
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Convo).AppendEntry(tConvo, "probe message", "completed", "probe reply", "", 0, tSteps, 0, ..#LIMITS, tTurn, "", "", ""), "an entry naming the turn is appended")
+    Set tConvo = ""
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.Dispatch).InvokeHandlerWithRequest(##class(%CSP.Request).%New(), "OcuPilot.Test.TranscriptsRouteProbe", "HandleRead", tKey, .tBody, .tStatus), "the handler answers rather than raising")
+    Do $$$AssertEquals(tStatus, 503, "on the unavailable status: " _ tBody)
+    Set tAnswer = ""
+    Try {
+        Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    } Catch {
+        Set tAnswer = ""
+    }
+    Do $$$AssertTrue($IsObject(tAnswer), "which parses as one JSON object: " _ tBody)
+    If $IsObject(tAnswer) {
+        Do $$$AssertEquals(tAnswer.error, ##class(OcuPilot.Api.Error).#UNAVAILABLE, "carrying the slug")
+        Do $$$AssertEquals(tAnswer.code, ##class(OcuPilot.Api.Error).#LEDGERUNAVAILABLE, "the ledger-unavailable machine code, not the conversation-not-found code the 404 carries")
+    }
+    Do ##class(OcuPilot.Kernel.State.Convo).GuardedDelete(tKey)
+}
+
+/// <p>AC3, over the route: an entry appended after the gate read the conversation's turn keys --
+/// the owner's turn finishing mid-read -- carries no steps and no context to an administrator,
+/// even when the gate released every turn it saw, which keep theirs.</p>
+/// <p>Mutation (Rule 19): release every row on the gate's answer in
+/// <method>OcuPilot.Api.Transcripts.HandleRead</method> -- the late turn carries its steps and this
+/// goes red.</p>
+Method TestATurnAppendedAfterTheGateIsWithheld()
+{
+    Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate("", ..#SUBJECT, 5, .tLoadSC, .tConflict)
+    Do $$$AssertTrue($IsObject(tConvo), "a conversation is created")
+    If '$IsObject(tConvo) Quit
+    Set tKey = tConvo.ConvKey
+    Set tTurn = ..NewKey()
+    Set tSteps = [{"seq": 1, "kind": "tool", "name": "tasks.schedule.read", "status": "ok", "summary": "", "text": ""}]
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Convo).AppendEntry(tConvo, "probe message", "completed", "probe reply", "", 0, tSteps, 0, ..#LIMITS, tTurn, "", "{""route"":""tasks/schedule""}", ""), "an entry naming the turn is appended")
+    Set tConvo = ""
+    Do $$$AssertStatusOK(..Record(tTurn, $ListBuild($ListBuild("%Admin_Operate", "USE"))), "its ledger row is recorded")
+    Do ##class(OcuPilot.Test.LedgerGate).Grant("%Admin_Operate", "USE")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.Dispatch).InvokeHandlerWithRequest(##class(%CSP.Request).%New(), "OcuPilot.Test.TranscriptsAppendRouteProbe", "HandleRead", tKey, .tBody, .tStatus), "the handler answers rather than raising")
+    Do $$$AssertEquals(tStatus, 200, "with the transcript: " _ tBody)
+    Set tAnswer = ""
+    Try {
+        Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    } Catch {
+        Set tAnswer = ""
+    }
+    Do $$$AssertTrue($IsObject(tAnswer), "which parses as one JSON object: " _ tBody)
+    If $IsObject(tAnswer) {
+        Do $$$AssertEquals(tAnswer.released, 1, "the gate released every turn it saw")
+        Do $$$AssertEquals(tAnswer.turns.%Size(), 2, "and the late entry is listed")
+        If tAnswer.turns.%Size() = 2 {
+            Do $$$AssertEquals(tAnswer.turns.%Get(0).steps.%Size(), 1, "the gated turn keeps its steps")
+            Do $$$AssertEquals(tAnswer.turns.%Get(0).%GetTypeOf("context"), "object", "and its context")
+            Do $$$AssertEquals(tAnswer.turns.%Get(1).steps.%Size(), 0, "the late turn carries no steps")
+            Do $$$AssertEquals(tAnswer.turns.%Get(1).%GetTypeOf("context"), "null", "and no context")
+            Do $$$AssertEquals(tAnswer.turns.%Get(1).reply, "late reply", "while its reply is still sent")
+        }
+    }
+    Do ##class(OcuPilot.Kernel.State.Convo).GuardedDelete(tKey)
+    Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.Ledger WHERE Kind = 'access' AND %EXACT(TurnKey) = ?", tKey)
 }
 
 }

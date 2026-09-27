@@ -277,6 +277,34 @@ ClassMethod RowsById(pAnswer As %DynamicObject, Output pRows)
     }
 }
 
+/// <p>Matrix row "Fail closed", over the route: a turn with no ledger row at all withholds the
+/// whole transcript for an administrator holding every pair there is, and the read is still
+/// recorded, withheld.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Audit.Ledger.GateTurns</method> answer
+/// released whatever closed the gate -- this goes red.</p>
+Method TestATurnWithNoLedgerRowIsWithheldOverTheRoute()
+{
+    Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate("", ..Owner(), 5, .tLoadSC, .tConflict)
+    Do $$$AssertTrue($IsObject(tConvo), "a conversation is created")
+    Set tKey = tConvo.ConvKey
+    Set ..CreatedKeys(tKey) = ""
+    Set tTurn = "probetranscriptwirenoledger" _ $ZConvert($Translate($System.Util.CreateGUID(), "-", ""), "L")
+    Set tSteps = [{"seq": 1, "kind": "tool", "name": "tasks.schedule.read", "status": "ok", "summary": "", "text": ""}]
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Convo).AppendEntry(tConvo, "No ledger row backs this one", "completed", "Reply", "", 0, tSteps, 0, ..#LIMITS, tTurn, "", "", ""), "an entry with no ledger row is appended")
+    Set tConvo = ""
+
+    Do $$$AssertStatusOK(..SetReaderResources("OcuPilotAdmin:U,%Admin_Secure:U"), "the reader holds every pair there is")
+    Do ..CallAs(..Reader(), ..Transcript(tKey), .tStatus, .tText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the read answers 200: " _ $Extract(tText, 1, 300))
+    If tStatus '= 200 Quit
+    Set tView = ##class(%DynamicObject).%FromJSON(tText)
+    Do $$$AssertEquals(tView.released, 0, "withheld, failing closed on a turn with no stored row")
+    Do $$$AssertEquals(tView.turns.%Get(0).steps.%Size(), 0, "no steps")
+    Do $$$AssertEquals(tView.turns.%Get(0).%GetTypeOf("context"), "null", "and no screen context")
+    Do $$$AssertTrue(tView.turns.%Get(0).message '= "", "but its message")
+    Do $$$AssertEquals(..AccessCount(tKey), 1, "and the read is still recorded")
+}
+
 /// <p>Integration (Rule 1): the access row an administrator's read writes appears in that
 /// administrator's own ledger view, the route 16.16's viewer reads, with <code>kind</code>
 /// <code>access</code>.</p>

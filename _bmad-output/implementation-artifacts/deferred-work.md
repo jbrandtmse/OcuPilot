@@ -3503,6 +3503,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T03:19:55Z status=routed owner=14-4-transcripts-retention-and-administrator-access by=x0 note=the entry names Story 14.4 as the bound's home; retention is that story's subject
 - 2026-09-19T18:35:54Z status=routed owner=range-end-cleanup by=burndown note=Rule 27 non-blocking: ledger row growth until Story 14.4 owns it
 - 2026-09-26T09:53:47Z status=routed owner=14-4-transcripts-retention-and-administrator-access by=spec_gate note=14.4 AC2's retention purge task; the spine's Retention row puts the agent ledger in that purge
+- 2026-09-27T12:50:19Z status=resolved-by:14-4-transcripts-retention-and-administrator-access by=adjudication note=Kernel/Retention.cls purges ledger rows older than the longest retention across definitions plus LEDGERMARGINSECONDS, run daily by Kernel/RetentionTask; pinned by Test/Retention.cls (spec Verification mutations)
 
 ### DW-1123: Six write and read branches have no assertion: a provider row's `error` leg, the boundary-stop refusal writer, the three client-call writers (step-cap drop, boundary stop during the wait, settle), `truncated` reading true, the unparseable-requirement withhold, and `Api.Ledger.RenderFault`'s 503 and 
 - source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4499,6 +4500,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The I/O row describes a reload after retention dropping the cards; nothing sweeps, so the row describes behaviour no code produces. Location: src/OcuPilot/Kernel/Agent/Limits.cls RETENTIONSECONDS
 - 2026-09-19T18:03:41Z status=routed owner=14-4-transcripts-retention-and-administrator-access by=harvest note=downstream-blocking (Rule 27) for 14.4, which is the story that builds the retention sweep this row assumes
+- 2026-09-27T12:50:19Z status=resolved-by:14-4-transcripts-retention-and-administrator-access by=adjudication note=Kernel/State/Turn.cls GuardedDelete now deletes the turn's proposals (Propose.GuardedDeleteForTurn), so a conversation reloaded after retention shows no cards; pinned by Test/Retention.cls and ProposalWrite (spec Verification)
 
 ### DW-1241: ledger.sh load marked every range-end-cleanup entry UNKNOWN although check_owner accepts it, so Rule 17's epic-start gate would halt or repair the symbolic owner away
 - source: Story 5.2 harvest 2026-09-19 | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -7600,3 +7602,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-epic
 - evidence: dry-run merge against the Epic 16 tip conflicts only in these two files among 14.5's; this branch measures 1,857,424 bytes
 - 2026-09-27T09:32:38Z status=by-design owner=14-5-the-per-user-read-only-toggle by=cr note=standing ruling: resolved at merge by taking Epic 16's side (DW-1166 re-base); not edited here
+
+### DW-1750: The production Uninstall's call to Installer.RemoveRetentionTask is covered by no test
+- source: spec-14-4-transcripts-retention-and-administrator-access.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Deleting the call in Install/Installer.cls Uninstall leaves every suite green; no test runs the production uninstall, and a probe uninstall names no task class
+- 2026-09-27T11:57:42Z status=open owner=14-4-transcripts-retention-and-administrator-access by=harvest note=implement-stage deferral; for the code review to patch in-story
+- 2026-09-27T12:47:55Z status=resolved-by:14-4-transcripts-retention-and-administrator-access by=cr note=RetentionTask pins Uninstall's own uncommented statement via MethodDefinition; comment-out mutation red run 1783
+
+### DW-1751: GET /transcripts/:id maps a LEDGER.UNAVAILABLE gate fault to 503 and no test drives it
+- source: spec-14-4-transcripts-retention-and-administrator-access.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Mapping every fault to NotFound in Api/Transcripts.cls HandleRead leaves every suite green; driving it needs a failing ledger store reachable over HTTP, which no probe seam provides
+- 2026-09-27T11:57:42Z status=open owner=14-4-transcripts-retention-and-administrator-access by=harvest note=implement-stage deferral; for the code review to patch in-story or disposition
+- 2026-09-27T12:47:56Z status=resolved-by:14-4-transcripts-retention-and-administrator-access by=cr note=TranscriptGate.TestAnUnreadableStoreRendersA503OverTheRoute drives the 503 in process; 404-mapping mutation red run 1760

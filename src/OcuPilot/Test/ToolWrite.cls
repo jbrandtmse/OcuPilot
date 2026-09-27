@@ -1364,10 +1364,12 @@ Method Dispatch(pArgs As %DynamicObject, Output pIsError As %Boolean, Output pCo
 /// share asks every turn that account has queued or running to abandon, through
 /// <method>OcuPilot.Screen.Tool.UserDelete.AfterWrite</method>. The write goes to
 /// <class>OcuPilot.Test.AcceptPort</class>, which accepts it and changes nothing, so no account is
-/// deleted; the probe user names no account.</p>
+/// deleted; the probe user names no account. The id is the canonical lower-case spelling the
+/// agent's confirm passes (AD-13), while the turn records the name as typed.</p>
 /// <p>Mutation (Rule 19): remove <code>AfterWrite</code> from
 /// <class>OcuPilot.Screen.Tool.UserDelete</class> -- the turn is not asked to abandon and this goes
-/// red.</p>
+/// red. Mutation: pass <var>pIdValue</var> to <code>GuardedAbandonForUser</code> as given -- the
+/// lower-case id matches no turn and this goes red.</p>
 Method TestADeletedAccountsTurnsAreAbandonedByTheDelete()
 {
     Set tUser = "OcuPilotProbeToolWriteDeleted"
@@ -1375,7 +1377,7 @@ Method TestADeletedAccountsTurnsAreAbandonedByTheDelete()
     Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "", "TURN.UNAVAILABLE", ..#LIMITS, .tTurn, .tBusy, .tSweep)
     Do $$$AssertStatusOK(tSC, "the probe user has a queued turn")
     Do ##class(OcuPilot.Test.AcceptPort).Clear()
-    Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tTool, "OcuPilot.Test.AcceptPort", $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tUser, "", "", .tWritten, .tHttp, .tFault, {"Enabled": true}, .tApplied)
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tTool, "OcuPilot.Test.AcceptPort", $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), $ZConvert(tUser, "L"), "", "", .tWritten, .tHttp, .tFault, {"Enabled": true}, .tApplied)
     Do $$$AssertStatusOK(tSC, "the delete applies")
     Do $$$AssertEquals(tApplied, 1, "and reads as applied")
     Do $$$AssertEquals(##class(OcuPilot.Test.AcceptPort).CallTypes(), "DELETE", "through one DELETE and nothing else")

@@ -126,14 +126,25 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
 /// <p>Once the account is gone, ask every turn it has queued or running to abandon at its next
 /// step boundary (AD-37, AD-31), for both callers of the operation (AD-53, AD-55): a deleted
 /// account's job keeps the roles it was spawned with, and nothing else would stop it before the
-/// retention sweep. Its transcripts and ledger rows are kept. A failure is logged and never fails
-/// the delete, which has already happened.</p>
+/// retention sweep. Its transcripts and ledger rows are kept. <var>pIdValue</var> may be the
+/// canonical lower-case spelling (AD-13) while a turn records the name as <code>$USERNAME</code>
+/// spelled it, so every live turn's user is matched without regard to case. A failure is logged
+/// and never fails the delete, which has already happened.</p>
 ClassMethod AfterWrite(pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pFresh As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set pHttpStatus = 0
     Set pFault = ""
     Try {
-        Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedAbandonForUser(pIdValue, .tCount)
+        Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedLiveUsers(.tUsers)
+        Set tWanted = $ZConvert(pIdValue, "U")
+        Set tName = ""
+        For {
+            If $$$ISERR(tSC) Quit
+            Set tName = $Order(tUsers(tName))
+            If tName = "" Quit
+            If $ZConvert(tName, "U") '= tWanted Continue
+            Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedAbandonForUser(tName, .tCount)
+        }
         If $$$ISERR(tSC) Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "a deleted account's turns could not be abandoned", tSC)
     } Catch ex {
         Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "abandoning a deleted account's turns failed", ex.AsStatus())

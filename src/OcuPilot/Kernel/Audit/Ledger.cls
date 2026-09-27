@@ -688,10 +688,10 @@ ClassMethod ReleasesRow(ByRef pValues, pIndex As %Integer, Output pFailedPair As
 /// column), a turn with no stored row, a read the row cap truncated, a row that could not be read
 /// back, or any call counted and not stored withholds the whole transcript. <var>pFailedPair</var>
 /// is the first pair a withheld row names, or <code>""</code>.</p>
-/// <p><b>A cross-user call always records itself</b>, released or not, through
+/// <p><b>A cross-user call that reaches a decision records itself</b>, released or not, through
 /// <method>RecordTranscriptAccess</method>; a caller asking about its own conversation is answered
 /// released and records nothing. An unreadable store answers <var>pFault</var>
-/// <code>LEDGER.UNAVAILABLE</code>.</p>
+/// <code>LEDGER.UNAVAILABLE</code>, releases nothing and records nothing.</p>
 ClassMethod GateTurns(pCaller As %String, pSubject As %String, pConvKey As %String, pTurnKeys As %List, Output pReleased As %Boolean, Output pFailedPair As %String, Output pFault As %DynamicObject) As %Status
 {
     Set pReleased = 0

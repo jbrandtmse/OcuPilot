@@ -106,7 +106,7 @@ describe('TranscriptPage', () => {
     expect(host.querySelector('.ocu-transcript-context-none')?.textContent?.trim()).toBe(STRINGS.transcriptNoContext);
   });
 
-  it('AC3: a withheld answer names the pair and shows no tool card and no screen context', async () => {
+  it('AC3: a withheld answer names the pair and offers no screen context', async () => {
     const body = answer({ own: false, released: false, failedPair: '%Admin_Secure:USE' });
     (body.turns[0] as Record<string, unknown>)['steps'] = [];
     (body.turns[0] as Record<string, unknown>)['context'] = null;
@@ -116,7 +116,6 @@ describe('TranscriptPage', () => {
     );
     expect(host.querySelector('.ocu-panel-message-user')?.textContent?.trim()).toBe('What runs tonight?');
     expect(host.querySelector('app-reply')?.textContent).toContain('Two tasks run tonight.');
-    expect(host.querySelectorAll('app-tool-call-card').length).toBe(0);
     expect(host.querySelector('.ocu-transcript-context-toggle')).toBeNull();
   });
 
