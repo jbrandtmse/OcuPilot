@@ -43,3 +43,6 @@ __pycache__/
 
 # A uv-managed virtualenv, should one ever be created here or in an epic worktree
 .venv/
+
+# The owner's private production notes (video shot lists and scripts); kept out of the public repository.
+docs/videos/
