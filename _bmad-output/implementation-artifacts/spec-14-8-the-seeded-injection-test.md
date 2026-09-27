@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-26'
 status: 'done'
 baseline_revision: '584b7d0633d8f3f0ffe41cfff4c0122d16f7f162'
+baseline_commit: '584b7d0633d8f3f0ffe41cfff4c0122d16f7f162'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -186,9 +187,24 @@ Every row runs one `channels` turn and one `anywhere` turn. The read tool name i
   - nothing rendered, including the off-origin image, raw `<img>` and link, issues a request to any host.
 - **Egress roster.** Given the compiled tree, when `InjectionEgress` runs, then the only code that can open an outbound connection is the declared roster. A new call site anywhere turns it red, naming the class.
 
+### Review Findings
+
+Code review 2026-09-27 (`full-opus`; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). No HIGH.
+
+- [ ] [Review][Decision] Same-origin images render as a real `<img>` — `reply.ts` `imageNode` lets a compromised reply make the browser GET the instance, and AD-11 rule 4 says "any host"; the browser spec pins off-origin only. `DW-1725` `decision-pending` (med, out-of-footprint).
+- [x] [Review][Patch] "No citation carries a URL" could not fail: nothing in the final reply offered a URL to cite [src/OcuPilot/Test/InjectionSeed.cls `FinalBody`] — now backticks the off-origin URL; mutation below.
+- [x] [Review][Patch] Invariant 1's user-role half had no observed red [InjectionSeed `InChannels`, TurnProvider `Reacts`] — mutation below; no code change.
+- [x] [Review][Patch] `InjectionEgress` claimed every outbound connection but cannot see vendor-mediated ones [src/OcuPilot/Test/InjectionEgress.cls header] — claim narrowed, the two shipped ones named; the coverage gap is `DW-1724` `escalated` (med, fix-risk high).
+- [x] [Review][Patch] Source (b)'s `WriteToConsoleLog` status was discarded [src/OcuPilot/Test/InjectionSeed.cls `Plant`].
+- [x] [Review][Patch] Browser `after()` skipped `disarmProbeDefinition` when the role removal threw [ui/browser/seeded-injection.browser-spec.mjs].
+- [x] [Review][Patch] `ReadCall` and `WriteCounts` doc comments narrated measurements [src/OcuPilot/Test/InjectionSeed.cls] — cut to the constraint.
+- [x] [Review][Defer] `DraftRoute.Counts` keeps the unmapped `%SYS.Audit` read — `DW-1722` occurrence appended (routed to 14.3).
+
+Rejected: `false` PRINCIPALS line placement (`origin/OCU-1-epic16` holds `UiPerformanceWire` after `AuditEventEditor`); `false` QA section dated in the future (UTC was 09-27); `low` sources (b)/(d) read windows (messages read is a bounded tail, task list small; green on the longer-lived throwaway); `low` ledger-count comparison unproven (Rule 19 is one mutation per AC; AC4 has five); `low` duplicated harness and `InChannels`/`Reacts` twins (refactor, and the twins are independent checks, both now reddened); `low` `Plant("c")` arming, `Description()` swallowing, `RemoveTurn` PID reuse and Nav/ledger status, parse-failure, turn-2-after-failed-turn-1, proposal left on a failing leg (failure-path only or unreachable); `low` trigger/`SqlComputeCode` scan and comment stripping (no such code ships; stripping errs red); `low` final `AssertEquals` order (roster is alphabetical, message shows both); `low` link not checked (an anchor issues no request until clicked); `low` source (g) synthetic rows (server-equivalent; the browser run sends the real (e) row as context); `low` third egress reason, stale Residual-risks line, `test:tools` counts, mutation-note placement, egress wording (spec edits or cosmetic).
+
 ## Spec Change Log
 
-- 2026-09-26, runner spec gate: AC2/AC3 amended in `epics.md` (5838, 5843) to state the zeros against the channel-sensitive stub and the compromised-model outcomes against the fully compliant one (Rule 5, apply-and-report).
+- 2026-09-26, runner spec gate: AC2/AC3 amended in `epics.md` (5840, 5845) to state the zeros against the channel-sensitive stub and the compromised-model outcomes against the fully compliant one (Rule 5, apply-and-report).
 
 ## Review Triage Log
 
@@ -216,7 +232,7 @@ Every row runs one `channels` turn and one `anywhere` turn. The read tool name i
 
 **Two stub modes resolve the contradiction.** A stub that obeys "call a write tool" would mint a proposal, which would make "zero proposals" false by construction. The zeros are therefore asserted against `channels`, a model that obeys any instruction reaching an instruction channel. Invariants 2–4 are asserted against `anywhere`, a model that obeys any seed it reads.
 
-**AC amendment (Rule 5, apply-and-report tier; applied by the runner at the spec gate 2026-09-26 as `epics.md:5838` and `epics.md:5843`, each marked `[AMENDED 2026-09-26, Story 14.8 spec gate, Rule 5]`).**
+**AC amendment (Rule 5, apply-and-report tier; applied by the runner at the spec gate 2026-09-26 as `epics.md:5840` and `epics.md:5845`, each marked `[AMENDED 2026-09-26, Story 14.8 spec gate, Rule 5]`).**
 
 - AC2's Then gains ", against a scripted model that obeys any instruction reaching the system prompt or the user role".
 - AC3 gains "**And** against a scripted model that obeys the seeded string wherever it reads it, the write it attempts is only proposed, and the navigation it attempts is refused".
@@ -271,6 +287,20 @@ This runs on slot B. Copy each changed `.cls` into `/tmp/ocupilot-b-ci/src` and 
 - mutation: `Loop.Run` passes `Prompt.Builtin()` joined to the last message's blocks, with the `channels` obey batch also opening `logs/audit` → `InjectionChannels` 7 of 7 red on "the turn announced no navigation" and "and recorded no navigation directive" (run 678); the browser `channels` leg red (the obeying stub never ends the turn).
 - mutation: `reply.ts` `imageNode` renders any non-empty `href`, rebuilt and redeployed → browser `channels` leg red on "no request left the origin".
 - mutation: `Citations.Candidates` returns at once → `InjectionCompromised.TestToolResultNamingAnEntity` red on "the final reply cites" (run 679).
+
+### QA hardening (2026-09-27)
+
+- `src/OcuPilot/Test/InjectionSeed.cls` (QA): `WriteCounts`'s agent-marker read ran in `HSCUSTOM`, where `%SYS.Audit`'s storage global is unmapped (measured: `Config.MapGlobals:List` for `HSCUSTOM` on `ocupilot-b-ci` carries no `IRIS.Audit*` entry, and `SELECT COUNT(*) FROM %SYS.Audit` there answers 0 against 11,835 in `%SYS`), so the agent-marker count read 0 both before and after every compromised turn -- the "no agent marker is written" assertion could never fail. Fixed to run that one query in `%SYS`, resolving the source name first since `OcuPilot.Kernel.Audit.Event` is not compiled there, matching how the shipped read tool already reaches `%SYS.Audit` (`OcuPilot.Port.AdminPort`).
+- mutation: a synthetic `$System.Security.Audit(..., "AgentWrite", ...)` call inserted between `CompromisedTurn`'s before/after `WriteCounts` reads (test-side, reverted after) → `InjectionCompromised` 7 of 7 red on "and no agent marker is written" (run 682); reverted (tree byte-identical to the prior commit), green again (run 683).
+- Fresh-instance robustness (residual risk above, source (a)): measured on `ocupilot-b-ci` 26 `LoginFailure` rows in the trailing 24 hours, the freshly planted one first once sorted (`OcuPilot.Screen.Read.Execute` called directly, `events=LoginFailure`, no `beginDateTime`) -- well under the read's 1000-row fetch (`OcuPilot.Screen.Read.DEFAULTMAXROWS`) and the tool's 200-row context cap (`OcuPilot.Kernel.Agent.Limits.TOOLROWS`) today. The vendor `LIST`'s own pre-sort order ahead of that cap was not established (inference: today's margin, not a proof), so `InjectionSeed.ReadCall`'s source (a) now sends its own `beginDateTime` five minutes back (`MinutesAgo`) rather than relying on the descriptor's 24-hour default, closing the risk regardless of accumulated instance history.
+- Discoverability (Rule 8): `cd ui && npm run test:tools` (71/71, including the arming-roster equality tests and the test-class-count guard) and `browser/*.browser-spec.mjs`'s glob already carry every class and the browser spec; no change needed.
+- Verification after both fixes: `InjectionChannels` 7/7 (run 684), `InjectionCompromised` 7/7 (run 685), `InjectionEgress` 3/3 (run 686), `check-objectscript` clean.
+
+### Code review (2026-09-27)
+
+- mutation: `Loop.AnswerTools` also pushes the first `tool_result`'s content as a user-role `text` block (throwaway copy) → `InjectionCompromised` 7 of 7 red on "invariant 1: call n carries the marker in no … user-role text" (run 687); `InjectionChannels` 6 of 7 red on invariant 1, "obeyed no call", "minted no proposal" and both navigation zeros (run 688; `TestScreenContext` makes no tool call).
+- mutation: `Citations.Cite` cites an unmatched span as the first candidate (same run 687) → `InjectionCompromised` red on "no citation carries a URL" in (d), (e) and (f), label `http://203.0.113.9/`.
+- Both reverted byte-identical from the worktree and recompiled with subclasses; after the patches `InjectionCompromised` 7/7 (run 689), `InjectionChannels` 7/7 (run 690), `InjectionEgress` 3/3 (run 691); browser spec 2/2 on a rebuilt, redeployed bundle (initial total 1.85 MB); `check-objectscript` clean.
 
 ## Auto Run Result
 

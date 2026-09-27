@@ -7477,3 +7477,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-14-1-the-copy-out-draft.md (cr rework 1) | severity: low | fix-risk: low | footprint: in-story
 - evidence: tGoneCode switches to LOG.DATE when tOtherDate differs from tDate; then a date-wide over-delete passes, and residue on the new date gives a false red. Needs two SeedInto calls microseconds apart to cross midnight.
 - 2026-09-26T22:29:00Z status=wontfix-theoretical owner=14-1-the-copy-out-draft by=cr note=real only if a CI run seeds across midnight; reopen_if=a DraftExecute red or false green whose two seeded dates differ
+
+### DW-1722: DraftRoute.Counts reads %SYS.Audit in HSCUSTOM, where the audit global is unmapped, so its 'no agent marker is written' comparison is 0 against 0 and cannot fail
+- source: spec-14-8-the-seeded-injection-test.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 14.8 QA measured: the same query reads 0 in HSCUSTOM and 11,835 from %SYS on ocupilot-b-ci; InjectionSeed.WriteCounts had the identical defect and was fixed by switching to %SYS for that one query
+- 2026-09-27T02:52:01Z status=routed owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=harvest note=14.1 is closed; 14.3 is the next story of this epic and already runs the injection suite; a two-line fix plus a mutation
+- 2026-09-27T03:15:57Z occurrence=14-8-the-seeded-injection-test
+
+### DW-1724: InjectionEgress cannot see an outbound connection the vendor opens behind an admin-API type OcuPilot sends (Security.SSLConfig/TEST, REGISTERCLIENT), so a new such type would not redden the egress roster
+- source: spec-14-8-the-seeded-injection-test.md (cr) | severity: med | fix-risk: high | footprint: in-story
+- evidence: SslRules.Test sends Security.SSLConfig/TEST (vendor Security.SSLConfigs.TestConnection to operator Host:Port); OAuthClientPort.Register sends REGISTERCLIENT (vendor dynamic registration POST). Neither is on ROSTER; both user-originated (screen-only route / confirm), so no turn reaches them today (inference from callers)
+- 2026-09-27T03:15:58Z status=escalated owner=burndown by=cr note=no structural signal marks which admin-API types the vendor answers by connecting out; class doc now names both. Needs a per-type decision
+
+### DW-1725: The reply renderer turns a same-origin Markdown image into a real <img>, so a compromised reply can make the browser issue a GET to the instance; AD-11 rule 4 says nothing rendered issues a request to any host
+- source: spec-14-8-the-seeded-injection-test.md (cr) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/src/app/core/reply.ts imageNode:272-274 renders isSameOriginUrl images as <img src>; the 14.8 browser spec filters same-origin requests, so it pins off-origin only. No spine text scopes rule 4 to other hosts
+- 2026-09-27T03:15:58Z status=decision-pending owner=burndown by=cr note=product call: does rule 4's any host include the instance's own origin? If yes, render every image as its alt text

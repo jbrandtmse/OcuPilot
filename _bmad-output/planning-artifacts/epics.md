@@ -5743,6 +5743,8 @@ So that the invariants have a second layer behind them.
 - **When** it occurs
 - **Then** the truncation is marked, so the model is not silently given a partial record it may treat as complete.
 
+- DW-1722: DraftRoute.Counts reads %SYS.Audit in HSCUSTOM, where the audit global is unmapped, so its "no agent marker is written" comparison cannot fail - switch that query to %SYS and prove it with a mutation (ledger; routed by harvest 2026-09-27)
+
 ### Story 14.4: Transcripts, retention and administrator access
 
 As a developer-administrator,

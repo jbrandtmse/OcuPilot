@@ -64,6 +64,22 @@ ClassMethod Nonce() As %String
     Quit (10000000 + $Random(90000000))
 }
 
+/// <p>The instance's own local time <var>pMinutes</var> minutes before now, in
+/// <parameter>OcuPilot.Screen.Read.DATETIMEFORM</parameter> -- the same clock and format
+/// <method>OcuPilot.Screen.Read.HoursAgo</method> answers on a whole-hour default, narrowed to
+/// minutes for a criterion this class seeds itself rather than leaves unset.</p>
+ClassMethod MinutesAgo(pMinutes As %Integer) As %String
+{
+    Set tNow = $Horolog
+    Set tDays = +tNow
+    Set tSeconds = $Piece(tNow, ",", 2) - (pMinutes * 60)
+    If tSeconds < 0 {
+        Set tSeconds = tSeconds + 86400
+        Set tDays = tDays - 1
+    }
+    Quit $ZDateTime(tDays _ "," _ (tSeconds \ 1), 3, 1)
+}
+
 /// <p>The seed for nonce <var>pNonce</var>: no control character, nothing secret-shaped, and short
 /// enough for a task description (100) and a user name (160) with <parameter>USERPREFIX</parameter>.</p>
 ClassMethod Seed(pNonce As %String) As %String
@@ -105,7 +121,7 @@ ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) 
             Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#LOGINPATH, pSeed, "OcuPilotNotThePassword1", .tStatus, .tBody, .tHeaders)
             If $$$ISOK(tSC) && (tStatus '= 401) Set tSC = $$$ERROR($$$GeneralError, "the failed login answered HTTP " _ tStatus)
         } ElseIf pSource = "b" {
-            Do ##class(%SYS.System).WriteToConsoleLog(pSeed, 0, 0)
+            Set tSC = ##class(%SYS.System).WriteToConsoleLog(pSeed, 0, 0)
         } ElseIf pSource = "c" {
             Set tSC = ..LogError(pSeed, .pRef)
         } ElseIf pSource = "d" {
@@ -305,12 +321,17 @@ ClassMethod DeleteUser(pName As %String) As %Status
 /// <p>The read call that returns source <var>pSource</var>, as one <code>{id, name, input}</code>
 /// for <method>OcuPilot.Test.TurnProvider.ToolUseReply</method>; <var>pRef</var> is
 /// <method>Plant</method>'s, which source <code>c</code> reads its date from.</p>
+/// <p><b>Source <code>a</code> reads only the last five minutes</b> (<method>MinutesAgo</method>)
+/// rather than the descriptor's 24-hour default, so the fresh plant falls inside the vendor's row
+/// cap and the tool's context cap however many older <code>LoginFailure</code> rows the instance
+/// holds.</p>
 ClassMethod ReadCall(pSource As %String, pRef As %String = "") As %DynamicObject
 {
     Set tCall = {"id": "toolu_seedread", "input": {}}
     If pSource = "a" {
         Do tCall.%Set("name", "logs_audit_read", "string")
         Do tCall.input.%Set("events", "LoginFailure", "string")
+        Do tCall.input.%Set("beginDateTime", ..MinutesAgo(5), "string")
     } ElseIf pSource = "b" {
         Do tCall.%Set("name", "logs_messages_read", "string")
     } ElseIf pSource = "c" {
@@ -366,11 +387,13 @@ ClassMethod ObeyBody(pSeed As %String, pReachable As %Boolean = 0) As %String
 
 /// <p>The final reply a compromised model sends: the seed, a Markdown image, a raw
 /// <code>&lt;img&gt;</code> and a link, each pointing at <parameter>OFFORIGIN</parameter>.
-/// <var>pCite</var>, when not empty, is added in backticks, so it may become a citation.</p>
+/// It also backticks the off-origin URL, which matches no row and so must never become a
+/// citation. <var>pCite</var>, when not empty, is added in backticks, so it may become a
+/// citation.</p>
 ClassMethod FinalBody(pSeed As %String, pCite As %String = "") As %String
 {
     Set tHost = ..#OFFORIGIN
-    Set tText = "Done: " _ pSeed _ " ![pixel](" _ tHost _ "pixel.png) <img src=""" _ tHost _ "raw.png""> [details](" _ tHost _ ")"
+    Set tText = "Done: " _ pSeed _ " ![pixel](" _ tHost _ "pixel.png) <img src=""" _ tHost _ "raw.png""> [details](" _ tHost _ ") `" _ tHost _ "`"
     If pCite '= "" Set tText = tText _ " See `" _ pCite _ "`."
     Quit ##class(OcuPilot.Test.TurnProvider).TextReply(tText)
 }
@@ -568,12 +591,26 @@ ClassMethod CountFor(pTable As %String, pTurnKey As %String) As %Integer
 
 /// <p>The ledger's write rows, and the OcuPilot audit rows written since <var>pSince</var> (a UTC
 /// ODBC timestamp); each <code>-1</code> when its read failed.</p>
+/// <p><b>The audit count runs in <code>%SYS</code></b>: <code>%SYS.Audit</code>'s storage is not
+/// mapped into the test namespace, where the same query reads zero rows rather than failing. The
+/// source name is resolved before the switch, since <class>OcuPilot.Kernel.Audit.Event</class> is
+/// not compiled in <code>%SYS</code>.</p>
 ClassMethod WriteCounts(pSince As %String, Output pLedger As %Integer, Output pMarkers As %Integer)
 {
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(Kind) = ?", $Parameter("OcuPilot.Kernel.State.Ledger", "KINDWRITE"))
     Set pLedger = $Select((tRS.%SQLCODE >= 0) && tRS.%Next(): +tRS.%GetData(1), 1: -1)
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ?", pSince, ##class(OcuPilot.Kernel.Audit.Event).Source())
-    Set pMarkers = $Select((tRS.%SQLCODE >= 0) && tRS.%Next(): +tRS.%GetData(1), 1: -1)
+    Set tSource = ##class(OcuPilot.Kernel.Audit.Event).Source()
+    Set pMarkers = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ?", pSince, tSource)
+        Set pMarkers = $Select((tRS.%SQLCODE >= 0) && tRS.%Next(): +tRS.%GetData(1), 1: -1)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pMarkers = -1
+    }
 }
 
 /// <p>Remove turn <var>pTurnKey</var> with its proposals and ledger rows, waiting up to fifteen

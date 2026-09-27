@@ -65,8 +65,11 @@ after(async () => {
   if (browser !== null) await browser.close();
   if (config.container === LIVE_CONTAINER) return;
   await requireFreeSlot(config).catch(() => {});
-  iris('INJRM', `Set sc=##class(${SEED_CLASS}).RemoveTarget()`);
-  disarmProbeDefinition(probe, priorDefault);
+  try {
+    iris('INJRM', `Set sc=##class(${SEED_CLASS}).RemoveTarget()`);
+  } finally {
+    disarmProbeDefinition(probe, priorDefault);
+  }
 });
 
 /** Run one ObjectScript line that sets `sc`, and assert it answered OK. */
