@@ -143,3 +143,4 @@
 2026-09-27T08:49:01Z	Story 16.21	ledger_adjudicated	owned=1 resolved=1(DW-1400) reowned=0 terminal=0 model=claude-opus-5-5
 2026-09-27T08:49:01Z	Story 16.21	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci;home-findings.browser-spec_4/4(AC1-AC5) model=claude-opus-5-5
 2026-09-27T08:49:52Z	Story 16.21	committed	sha=36c21571 submodules= ci=pending run=36307420890 amendments=EXPERIENCE.md:4_fixed-strings_rows_appended(986->990_lines;later_citations_shift) footprint_extensions=scripts/ci-throwaway.sh supersedes=36306145096
+2026-09-27T08:50:00Z	Story 16.22	stage_spawned	stage=plan spawn_at=2026-09-27T08:50:00Z model=opus agent_name=16-22-the-guardrails-page-plan-1 cycle_iteration=1 note=feature_moved_docs_only(33bae5f3,76a418ca)_merged_at_next_boundary
