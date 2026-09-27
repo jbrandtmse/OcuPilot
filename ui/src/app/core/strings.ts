@@ -1948,7 +1948,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:618 */
+  /** EXPERIENCE.md:619 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2957,6 +2957,10 @@ export const STRINGS = {
   impactRequires: ' (requires <pair>)',
   /** EXPERIENCE.md:577 */
   impactTooMany: ' (too many to check)',
+  /** EXPERIENCE.md:578 */
+  logViewerFileOption: '<name> \u00b7 <size> KB \u00b7 <modified>',
+  /** EXPERIENCE.md:578 */
+  logViewerFileGone: 'That file is no longer in the manager directory.',
 
 } as const;
 

@@ -3,12 +3,15 @@
 /// <p><method>Page</method> is the entry point a route uses, and <method>Rows</method> the one a
 /// declared read uses (AD-36): the same window, projected into <code>{time, severity, text}</code>
 /// rows newest first instead of raw lines. A caller names a <b>source key</b> from
-/// <method>Sources</method>'s fixed enum and never a path, a file name or any part of one: the
-/// directory comes from <code>$System.Util.ManagerDirectory()</code> on every call and the file
-/// name from the key (AD-21). The step order is load-bearing -- enum, gate, <var>maxBytes</var>,
-/// the offset/identity pair, resolve, open, identity, window, read -- and nothing above the gate
-/// reaches the filesystem (AD-29: this port inherits no vendor gate, so it declares its own
-/// <code>(resource, permission)</code> set and evaluates it first).</p>
+/// <method>Sources</method>'s fixed enum and never a path: the directory comes from
+/// <code>$System.Util.ManagerDirectory()</code> on every call and the file name from the key
+/// (AD-21). The one exception is AD-21's fourth named case: on the <code>messages</code> source a
+/// caller may name one rotated console log by <parameter>ROTATEDFORM</parameter>, a single
+/// segment resolved directly in that same directory, and <method>Files</method> lists the names
+/// that pattern matches. The step order is load-bearing -- enum, gate, <var>maxBytes</var>, the
+/// offset/identity pair, the file name, resolve, open, identity, window, read -- and nothing above
+/// the gate reaches the filesystem (AD-29: this port inherits no vendor gate, so it declares its
+/// own <code>(resource, permission)</code> set and evaluates it first).</p>
 /// <p><b>The file moves under a paging reader.</b> The instance rotates the console log at its
 /// configured maximum size by renaming it away and creating a new one, so a byte offset held
 /// across a rotation points into a file that no longer exists. Each page therefore carries an
@@ -40,14 +43,15 @@
 /// <class>OcuPilot.Test.ErrorLogFixture</class>): <method>Sources</method>,
 /// <method>PairsFor</method>, <method>FileFor</method>, <method>ManagerDirectory</method>,
 /// <method>MaxBytesCap</method>, <method>GateClass</method>, <method>FileExists</method>,
-/// <method>OpenStream</method>, <method>ErrorLevels</method>, <method>QueryClass</method>,
+/// <method>OpenStream</method>, <method>DirectoryEntries</method>,
+/// <method>ErrorLevels</method>, <method>QueryClass</method>,
 /// <method>DetailQuery</method>, <method>NamespaceResolver</method> and
 /// <method>OpenQuery</method>. Production overrides none of them.</p>
 Class OcuPilot.Port.LogSourcePort Extends %RegisteredObject
 {
 
 /// <p>The fixed enum of source keys this port serves (AD-21), comma-separated. A caller names a
-/// key from this list and nothing else; a route binds the key, so no caller names a file.</p>
+/// key from this list and nothing else; a route binds the key, so no caller names a source.</p>
 /// <p><b>Two kinds of source, two entry points.</b> <method>Page</method> serves the file sources;
 /// <method>Errors</method> serves <parameter>ERRORSKEY</parameter>, which is a global read through
 /// a vendor query rather than a file (AD-48). Both entry points read this one enum, so
@@ -76,6 +80,25 @@ Parameter MESSAGESFILE = "messages.log";
 /// (<file>irislib/%CSP/UI/Portal/ViewLog.cls</file>'s <code>RESOURCE</code>), so a user reaches a
 /// line through OcuPilot only if they could have read it directly (AD-29).</p>
 Parameter MESSAGESPAIRS = "%Admin_Operate:USE";
+
+/// <p>The one source whose older generations a caller may name (AD-21's fourth case): the
+/// console log, which the instance rotates at its configured maximum size. A rotated file is read
+/// under this source's own gate, cursor and identity.</p>
+Parameter ROTATEDSOURCE = "messages";
+
+/// <p>The name the instance gives <parameter>MESSAGESFILE</parameter> when it rotates it:
+/// <code>messages.old_YYYYMMDD</code>, then <code>_1</code>, <code>_2</code> and on within a day.
+/// A caller's <var>pFile</var> must match it whole; anything else is refused
+/// <code>LOG.FILE</code> before the filesystem is touched.</p>
+Parameter ROTATEDFORM = "^messages\.old_[0-9]{8}(_[0-9]{1,6})?$";
+
+/// <p>The most entries <method>Files</method> answers; a longer listing reports
+/// <code>truncated</code> (AD-36).</p>
+Parameter FILESCAP As INTEGER = 1000;
+
+/// <p>The one listing pattern <method>DirectoryEntries</method> asks the filesystem for beside the
+/// source's own file; <parameter>ROTATEDFORM</parameter> then decides what is listed.</p>
+Parameter ROTATEDWILDCARD = "messages.old_*";
 
 /// <p>The <parameter>SOURCES</parameter> key for the instance's alert log.</p>
 Parameter ALERTSKEY = "alerts";
@@ -458,8 +481,9 @@ ClassMethod GateClass() As %String
     Quit ..#GATECLASS
 }
 
-/// <p>Whether <var>pPath</var> is present. <b>The port's first filesystem touch</b>, and one of
-/// only two; a fixture overrides it to count them, which is what makes "nothing above the gate
+/// <p>Whether <var>pPath</var> is present. <b>The port's first filesystem touch</b> on a page, and
+/// one of only three beside <method>OpenStream</method> and <method>DirectoryEntries</method>; a
+/// fixture overrides each to count them, which is what makes "nothing above the gate
 /// reaches the filesystem" an observation rather than an assertion against nothing.</p>
 ClassMethod FileExists(pPath As %String) As %Boolean
 {
@@ -501,11 +525,16 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 /// <class>%Status</class> is returned with <var>pResult</var> empty, <var>pHttpStatus</var> the
 /// numeric status to answer with and <var>pFault</var> the wire fault
 /// <code>{error, reason, code}</code>, plus <code>detail</code> when there is one.</p>
-/// <p>Caller contract: <var>pOffset</var>, <var>pMaxBytes</var> and <var>pIdentity</var> arrive
-/// as caller text and are validated here, so a handler passes a query parameter through
-/// unchanged. Must not be called from an escalated frame (AD-9); the caller's namespace is
-/// unchanged on return.</p>
-ClassMethod Page(pSource As %String = "", pOffset As %String = "", pMaxBytes As %String = "", pIdentity As %String = "", Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+/// <p><var>pFile</var> names the file to page: <code>""</code> for the source's own file, or, on
+/// <parameter>ROTATEDSOURCE</parameter> alone, one rotated file matching
+/// <parameter>ROTATEDFORM</parameter>. Any other value -- the source's own file name included --
+/// is refused 400 <code>LOG.FILE</code> after the gate and before the filesystem is touched, and
+/// no refusal echoes it (AD-21).</p>
+/// <p>Caller contract: <var>pOffset</var>, <var>pMaxBytes</var>, <var>pIdentity</var> and
+/// <var>pFile</var> arrive as caller text and are validated here, so a handler passes a query
+/// parameter through unchanged. Must not be called from an escalated frame (AD-9); the caller's
+/// namespace is unchanged on return.</p>
+ClassMethod Page(pSource As %String = "", pOffset As %String = "", pMaxBytes As %String = "", pIdentity As %String = "", Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pFile As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set pResult = ""
@@ -549,7 +578,12 @@ ClassMethod Page(pSource As %String = "", pOffset As %String = "", pMaxBytes As 
             Quit
         }
 
-        Set tSC = ..Resolve(pSource, .tPath, .pHttpStatus, .pFault)
+        If (pFile '= "") && '..RotatedName(pSource, pFile) {
+            Set tSC = ..FileRefusal(.pHttpStatus, .pFault)
+            Quit
+        }
+
+        Set tSC = ..Resolve(pSource, .tPath, .pHttpStatus, .pFault, pFile)
         If $$$ISERR(tSC) Quit
 
         Set tOpenSC = ..OpenStream(tPath, .tStream)
@@ -1705,24 +1739,208 @@ ClassMethod Gate(pPairs As %List, Output pFailedPair As %String) As %Boolean [ P
 }
 
 /// <p>The path source <var>pSource</var> reads, resolved from <method>ManagerDirectory</method>
-/// and <method>FileFor</method> on this call and checked for presence.</p>
-/// <p>Refuses <code>LOG.SOURCE</code> for a key with no file and <code>LOG.ABSENT</code> when the
-/// resolved file is not there; neither refusal echoes the path (AD-21, AD-47).</p>
-ClassMethod Resolve(pSource As %String, Output pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// and <method>FileFor</method> on this call and checked for presence. <var>pFile</var>, when not
+/// <code>""</code>, is a rotated file's name <method>RotatedName</method> has already admitted; it
+/// replaces <method>FileFor</method>'s name and must resolve directly in that same directory.</p>
+/// <p>Refuses <code>LOG.SOURCE</code> for a key with no file, <code>LOG.FILE</code> for a named file
+/// that does not resolve directly in the manager directory, and <code>LOG.ABSENT</code> when the
+/// resolved file is not there; no refusal echoes the path (AD-21, AD-47).</p>
+ClassMethod Resolve(pSource As %String, Output pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pFile As %String = "") As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pPath = ""
-    Set tFile = ..FileFor(pSource)
+    Set tFile = $Select(pFile '= "": pFile, 1: ..FileFor(pSource))
     If tFile = "" {
         Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGSOURCE, "OcuPilot does not serve a log source by that name", .pHttpStatus, .pFault)
     } Else {
-        Set pPath = ##class(%File).NormalizeFilename(tFile, ..ManagerDirectory())
-        If '..FileExists(pPath) {
+        Set tDirectory = ..ManagerDirectory()
+        Set pPath = ##class(%File).NormalizeFilename(tFile, tDirectory)
+        If (pFile '= "") && '..DirectlyIn(pPath, tDirectory, pFile) {
+            Set pPath = ""
+            Set tSC = ..FileRefusal(.pHttpStatus, .pFault)
+        } ElseIf '..FileExists(pPath) {
             Set pPath = ""
             Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGABSENT, "That log file is not present on this instance", .pHttpStatus, .pFault)
         }
     }
     Quit tSC
+}
+
+/// <p>Whether <var>pFile</var> is a name a caller may page on source <var>pSource</var>: the
+/// source is <parameter>ROTATEDSOURCE</parameter> and the whole name matches
+/// <parameter>ROTATEDFORM</parameter>. A string test only; nothing here reaches the
+/// filesystem.</p>
+ClassMethod RotatedName(pSource As %String, pFile As %String) As %Boolean [ Private ]
+{
+    If pSource '= ..#ROTATEDSOURCE Quit 0
+    Quit ''$Match(pFile, ..#ROTATEDFORM)
+}
+
+/// <p>Whether <var>pPath</var>, normalized, names <var>pFile</var> directly in
+/// <var>pDirectory</var> -- neither above it nor in a directory beneath it. The precedent is
+/// <method>OcuPilot.Area.WebApp.Location.Resolve</method>'s post-normalization containment.</p>
+ClassMethod DirectlyIn(pPath As %String, pDirectory As %String, pFile As %String) As %Boolean [ Private ]
+{
+    If pPath = "" Quit 0
+    Set tDirectory = ##class(%File).NormalizeDirectory(pDirectory)
+    If tDirectory = "" Quit 0
+    If ##class(%File).GetDirectory(pPath) '= tDirectory Quit 0
+    Quit (##class(%File).GetFilename(pPath) = pFile)
+}
+
+/// <p>The 400 a file name this port does not admit answers with (AD-21). The sentence names no
+/// path and repeats nothing the caller sent.</p>
+ClassMethod FileRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#LOGFILE, "A log file is named only as one of the console log's rotated files, by its name alone", .pHttpStatus, .pFault)
+}
+
+/// <p>The files source <var>pSource</var> can page: its own file first, then every rotated file
+/// in the manager directory matching <parameter>ROTATEDFORM</parameter>, newest first by
+/// last-modified time and then by name descending, at most <parameter>FILESCAP</parameter> entries
+/// in all (AD-21, AD-36).</p>
+/// <p>On success <var>pResult</var> is <code>{source, files: [{name, size, modified}],
+/// truncated}</code>, <code>size</code> in bytes and <code>modified</code> ISO-8601 UTC, and
+/// <var>pHttpStatus</var> is 200. Regular files only: a directory or anything else carrying a
+/// matching name is not listed. The order is enum, gate, then the one directory read
+/// (<method>DirectoryEntries</method>), so nothing above the gate reaches the filesystem; a source
+/// other than <parameter>ROTATEDSOURCE</parameter> is refused <code>LOG.SOURCE</code> after the
+/// gate. Otherwise as <method>Page</method>: an error <class>%Status</class>, the numeric status
+/// and the wire fault.</p>
+/// <p>Caller contract: <var>pSource</var> is route-bound. Must not be called from an escalated
+/// frame (AD-9).</p>
+ClassMethod Files(pSource As %String = "", Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        If '$ListFind(..Sources(), pSource) {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGSOURCE, "OcuPilot does not serve a log source by that name", .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tPairs = ..PairsFor(pSource)
+        If '$ListValid(tPairs) || ($ListLength(tPairs) = 0) {
+            Set tSC = ..DeniedRefusal("", .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tFailedPair = ""
+        If '..Gate(tPairs, .tFailedPair) {
+            Set tSC = ..DeniedRefusal(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pSource '= ..#ROTATEDSOURCE {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGSOURCE, "OcuPilot lists no older files for that log source", .pHttpStatus, .pFault)
+            Quit
+        }
+
+        Set tCurrent = ..FileFor(pSource)
+        Set tListSC = ..DirectoryEntries(..ManagerDirectory(), tCurrent, .tEntries)
+        If $$$ISERR(tListSC) {
+            Set tSC = ..Unreadable(tListSC, .pHttpStatus, .pFault)
+            Quit
+        }
+
+        Set tHead = ""
+        Kill tSorted
+        Set tAt = ""
+        For {
+            Set tAt = $Order(tEntries(tAt), 1, tEntry)
+            If tAt = "" Quit
+            If $ListGet(tEntry, 2) '= "F" Continue
+            Set tName = $ListGet(tEntry, 1)
+            If (tCurrent '= "") && (tName = tCurrent) {
+                Set tHead = tEntry
+                Continue
+            }
+            If '$Match(tName, ..#ROTATEDFORM) Continue
+            Set tSorted(..Seconds($ListGet(tEntry, 4)), tName) = tEntry
+        }
+
+        Set tFiles = []
+        Set tTruncated = 0
+        If tHead '= "" Do tFiles.%Push(..FileEntry(tHead))
+        Set tKey = ""
+        For {
+            Set tKey = $Order(tSorted(tKey), -1)
+            If tKey = "" Quit
+            Set tName = ""
+            For {
+                Set tName = $Order(tSorted(tKey, tName), -1, tEntry)
+                If tName = "" Quit
+                If tFiles.%Size() >= ..#FILESCAP {
+                    Set tTruncated = 1
+                    Quit
+                }
+                Do tFiles.%Push(..FileEntry(tEntry))
+            }
+            If tTruncated Quit
+        }
+
+        Set pResult = {}
+        Do pResult.%Set("source", pSource)
+        Do pResult.%Set("files", tFiles)
+        Do pResult.%Set("truncated", ''tTruncated, "boolean")
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail(pSource _ " files failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The items in <var>pDirectory</var> named <var>pCurrent</var> or matching
+/// <parameter>ROTATEDWILDCARD</parameter>, as <var>pEntries</var>(<i>n</i>) =
+/// <code>$ListBuild(name, type, size, modified)</code>: the name alone, the listing's own type
+/// (<code>F</code> for a regular file), the size in bytes, and for a regular file its last-modified
+/// time as UTC <code>$Horolog</code>. <b>The listing's one filesystem touch</b>; a fixture
+/// overrides it to count it and to answer a listing it arms. <method>Files</method> applies the
+/// pattern, the type and the cap.</p>
+ClassMethod DirectoryEntries(pDirectory As %String, pCurrent As %String, Output pEntries) As %Status
+{
+    Set tSC = $$$OK
+    Kill pEntries
+    Try {
+        Set tWildcards = ..#ROTATEDWILDCARD
+        If pCurrent '= "" Set tWildcards = pCurrent _ ";" _ tWildcards
+        Set tRS = ##class(%ResultSet).%New("%File:FileSet")
+        Set tSC = tRS.Execute(pDirectory, tWildcards, "", 0)
+        If $$$ISERR(tSC) Quit
+        Set tCount = 0
+        While tRS.Next() {
+            Set tType = tRS.Get("Type")
+            Set tModified = ""
+            If tType = "F" Set tModified = ##class(%File).GetFileDateModified(tRS.Get("Name"), 1)
+            Set tCount = tCount + 1
+            Set pEntries(tCount) = $ListBuild(tRS.Get("ItemName"), tType, +tRS.Get("Size"), tModified)
+        }
+        Do tRS.Close()
+    } Catch ex {
+        Kill pEntries
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>A UTC <code>$Horolog</code> value as one number of seconds, fractions kept, for ordering;
+/// <code>0</code> for a value that is not one.</p>
+ClassMethod Seconds(pHorolog As %String) As %Numeric [ Private ]
+{
+    If pHorolog '[ "," Quit 0
+    Quit (+$Piece(pHorolog, ",", 1) * 86400) + $Piece(pHorolog, ",", 2)
+}
+
+/// <p>One <method>DirectoryEntries</method> entry as the wire's <code>{name, size, modified}</code>,
+/// <code>modified</code> ISO-8601 UTC, or <code>""</code> when the listing had no time for it.</p>
+ClassMethod FileEntry(pEntry As %List) As %DynamicObject [ Private ]
+{
+    Set tModified = $ListGet(pEntry, 4)
+    Set tEntry = {}
+    Do tEntry.%Set("name", $ListGet(pEntry, 1))
+    Do tEntry.%Set("size", +$ListGet(pEntry, 3), "number")
+    Do tEntry.%Set("modified", $Select(tModified [ ",": $Translate($ZDateTime(tModified, 3, 1), " ", "T") _ "Z", 1: ""))
+    Quit tEntry
 }
 
 /// <p>The file's size and its identity token: the URL-safe Base64 of the SHA-256 of the file's

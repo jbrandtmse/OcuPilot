@@ -9,9 +9,14 @@
 /// consumes the next one and the last queued answers every later call. That is what makes
 /// "resolved on every call, never cached" observable: two different directories holding two
 /// different files, and a port that cached the first would serve the first file twice.</p>
-/// <p><b>It counts filesystem touches.</b> <method>FileExists</method> and
-/// <method>OpenStream</method> each add one to <method>Touches</method>, so "nothing above the
-/// gate reaches the filesystem" is read off a counter rather than asserted against nothing.</p>
+/// <p><b>It counts filesystem touches.</b> <method>FileExists</method>,
+/// <method>OpenStream</method> and <method>DirectoryEntries</method> each add one to
+/// <method>Touches</method>, so "nothing above the gate reaches the filesystem" is read off a
+/// counter rather than asserted against nothing.</p>
+/// <p><b>A directory listing can be armed.</b> <method>AddEntry</method> queues listing entries,
+/// and while any is queued <method>DirectoryEntries</method> answers those instead of reading the
+/// directory -- which is how a thousand-file listing, or two files sharing one modification time,
+/// is driven without creating them.</p>
 /// <p>State lives in <code>^||OcuPilotLogFixture</code>; <method>Clear</method> forgets it.</p>
 Class OcuPilot.Test.LogSourceFixture Extends OcuPilot.Port.LogSourcePort
 {
@@ -71,6 +76,16 @@ ClassMethod Touches() As %Integer
 ClassMethod ClearTouches()
 {
     Kill ^||OcuPilotLogFixture("touches")
+}
+
+/// <p>Queue one entry <method>DirectoryEntries</method> answers: <var>pName</var>, its listing type
+/// <var>pType</var> (<code>F</code> for a regular file), <var>pSize</var> in bytes and
+/// <var>pModified</var> as UTC <code>$Horolog</code>.</p>
+ClassMethod AddEntry(pName As %String, pType As %String, pSize As %Integer, pModified As %String)
+{
+    Set tAt = $Get(^||OcuPilotLogFixture("entryCount"), 0) + 1
+    Set ^||OcuPilotLogFixture("entry", tAt) = $ListBuild(pName, pType, pSize, pModified)
+    Set ^||OcuPilotLogFixture("entryCount") = tAt
 }
 
 /// <p>Forget every override and every count.</p>
@@ -144,6 +159,18 @@ ClassMethod OpenStream(pPath As %String, Output pStream As %Stream.Object) As %S
 {
     Set ^||OcuPilotLogFixture("touches") = $Get(^||OcuPilotLogFixture("touches"), 0) + 1
     Quit ##super(pPath, .pStream)
+}
+
+ClassMethod DirectoryEntries(pDirectory As %String, pCurrent As %String, Output pEntries) As %Status
+{
+    Set ^||OcuPilotLogFixture("touches") = $Get(^||OcuPilotLogFixture("touches"), 0) + 1
+    Set tCount = $Get(^||OcuPilotLogFixture("entryCount"), 0)
+    If tCount = 0 Quit ##super(pDirectory, pCurrent, .pEntries)
+    Kill pEntries
+    For tAt = 1:1:tCount {
+        Set pEntries(tAt) = ^||OcuPilotLogFixture("entry", tAt)
+    }
+    Quit $$$OK
 }
 
 }

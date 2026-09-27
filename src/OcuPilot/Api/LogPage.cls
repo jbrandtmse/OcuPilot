@@ -1,11 +1,14 @@
-/// <p>The handler behind the log-page routes -- <code>GET /api/ocupilot/logs/messages</code>
-/// today. It reads the three page parameters off the request and answers what
+/// <p>The handler behind the log-page routes -- <code>GET /api/ocupilot/logs/messages</code>,
+/// <code>GET /api/ocupilot/logs/alerts</code> and <code>GET /api/ocupilot/logs/messages/files</code>.
+/// It reads the page parameters off the request and answers what
 /// <class>OcuPilot.Port.LogSourcePort</class> returns, through OcuPilot's one success writer or
 /// its one error writer (AD-12).</p>
 /// <p>Thin, per the router's <code>Call=</code> contract: <b>the source key is bound by the
-/// route</b>, never taken from the request, so no caller names a file or any part of one
-/// (AD-21). Validation of <code>offset</code>, <code>maxBytes</code> and <code>identity</code> is
-/// the port's, so this passes each query parameter through as the caller sent it.</p>
+/// route</b>, never taken from the request (AD-21). The one name a caller supplies is the
+/// <code>file</code> parameter, AD-21's fourth named case, which the port admits only as a rotated
+/// console log's name. Validation of <code>offset</code>, <code>maxBytes</code>,
+/// <code>identity</code> and <code>file</code> is the port's, so this passes each query parameter
+/// through as the caller sent it.</p>
 Class OcuPilot.Api.LogPage Extends %RegisteredObject
 {
 
@@ -33,20 +36,39 @@ ClassMethod Handle(pSource As %String) As %Status
         Set tOffset = %request.Get("offset", "")
         Set tMaxBytes = %request.Get("maxBytes", "")
         Set tIdentity = %request.Get("identity", "")
-        Set tPageSC = $ClassMethod(..PortClass(), "Page", pSource, tOffset, tMaxBytes, tIdentity, .tResult, .tHttpStatus, .tFault)
-        If $$$ISERR(tPageSC) {
-            If '$IsObject($Get(tFault)) {
-                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tPageSC))
-                Quit
-            }
-            Set tSC = ##class(OcuPilot.Api.Error).Render(tHttpStatus, tFault.error, tFault.reason, tFault.code, tFault.detail)
-            Quit
-        }
-        Set tSC = ##class(OcuPilot.Api.Response).JSON(tResult)
+        Set tFile = %request.Get("file", "")
+        Set tPageSC = $ClassMethod(..PortClass(), "Page", pSource, tOffset, tMaxBytes, tIdentity, .tResult, .tHttpStatus, .tFault, tFile)
+        Set tSC = ..Answer(tPageSC, .tResult, .tHttpStatus, .tFault)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
     Quit tSC
+}
+
+/// <p>Answer the list of files log source <var>pSource</var> can page
+/// (<method>OcuPilot.Port.LogSourcePort.Files</method>), through the same two writers.</p>
+ClassMethod HandleFiles(pSource As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tFilesSC = $ClassMethod(..PortClass(), "Files", pSource, .tResult, .tHttpStatus, .tFault)
+        Set tSC = ..Answer(tFilesSC, .tResult, .tHttpStatus, .tFault)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
+/// <p>Write the port's answer: <var>pResult</var> through the success writer when
+/// <var>pPortSC</var> is OK, else <var>pFault</var> through the error writer, or the generic
+/// internal envelope when the port produced no fault.</p>
+ClassMethod Answer(pPortSC As %Status, ByRef pResult, ByRef pHttpStatus, ByRef pFault) As %Status [ Private ]
+{
+    If $$$ISOK(pPortSC) Quit ##class(OcuPilot.Api.Response).JSON(pResult)
+    If '$IsObject($Get(pFault)) {
+        Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pPortSC))
+    }
+    Quit ##class(OcuPilot.Api.Error).Render(pHttpStatus, pFault.error, pFault.reason, pFault.code, pFault.detail)
 }
 
 }

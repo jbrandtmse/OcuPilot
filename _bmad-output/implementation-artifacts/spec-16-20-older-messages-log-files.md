@@ -2,7 +2,8 @@
 title: 'Story 16.20: Older messages.log files'
 type: 'feature'
 created: '2026-09-26'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'bdaff16aaf1b217aef326b13b13e47b213b84fb6'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -163,6 +164,27 @@ Client (`ui/src/app/`):
 
 ## Review Triage Log
 
+### 2026-09-26 — Review pass
+
+- verdicts: 16 findings — high 0, medium 4, low 8, false 3, maybe-false 1
+- findings:
+  - `[low]` `[reject]` `modified`'s UTC flag is unfalsifiable on a UTC host — the code passes `GetFileDateModified(p, 1)` (`%Library.File` `utc` argument) as the spec requires; the throwaway and CI images are UTC, so a leg cannot redden without a non-UTC instance; the fix adds environment machinery for a correct line.
+  - `[medium]` `[patch]` the cap is never exercised with `messages.log` in the listing — added a third leg to `LogSourceFiles.TestTheListIsCappedAndSaysSo` (messages.log + 1,000 rotated = 1,000 entries, truncated); mutation recorded.
+  - `[low]` `[reject]` `DirectlyIn` is unreachable — every name reaching `Resolve` has matched `ROTATEDFORM` whole (no `/`, no `..`), so no input can make it return 0; it is the spec's post-normalization containment kept as defense in depth (wontfix-theoretical; real only if the pattern is widened).
+  - `[medium]` `[patch]` alerts.log's published rows are untested — added "alerts.log publishes its lines into its own screen store too" to `log-viewer.spec.ts`; mutation recorded.
+  - `[low]` `[patch]` AC5's walk leg had no mutation line — applied the `aria-label` removal, rebuilt, redeployed, observed AC5 red, reverted, green; line recorded.
+  - `[low]` `[reject]` the select's name reuses `databaseVolumeColumnFile` instead of a `logViewerFileLabel` key — `ui/tools/strings.test.mjs` refuses duplicate values and a key carries one citation, so a second "File" key cannot exist; both published labels are "File".
+  - `[medium]` `[patch]` (intent) the cap's reading R1a (messages.log counted) was unpinned — same root cause and patch as the cap row above.
+  - `[low]` `[reject]` (intent) the tie-break is plain string order (`_2` before `_10`) — the spec says "name descending"; two rotations sharing one modification second is rare and a natural sort adds a comparator.
+  - `[false]` `[reject]` (intent) `README.md` edited against "nothing of Epic 17's" — the README edit is AC4 itself; Epic 17's deliverable is the Open Exchange listing, untouched.
+  - `[maybe-false]` `[reject]` (intent) `?file=` naming a directory with a rotated name is not refused cleanly — would need `%File.Exists` on a directory checked on the instance; if true it is low: IRIS never creates such a directory and the outcome is a failure envelope with no content.
+  - `[false]` `[reject]` (intent) Refresh re-reading the list is unstated — the spec's Tasks list names it ("Refresh re-reads the list and the window").
+  - `[medium]` `[patch]` (intent) alerts.log screen context untested — same root cause and patch as the alerts row above.
+  - `[low]` `[reject]` (intent) offset-past-the-end restart not exercised with `file` — the named file changes only the resolved path; the restart branch is shared and pinned by `LogSource`.
+  - `[low]` `[reject]` (intent) browser leg does not click Load newer or Raw on an older file — Load newer with `file` is pinned in `log-viewer.spec.ts`; Raw reads the same loaded lines regardless of file.
+  - `[low]` `[reject]` (intent) the bad-name page refusal has no browser leg — the 400 is pinned over the wire (`LogOlderFilesWire`) and the page side in `log-viewer.spec.ts` with a recorded mutation.
+  - `[false]` `[reject]` (intent) decoys and zero touches pinned at the port, not the wire — the port owns both guarantees and the wire calls the same `Files`/`Page`; no divergent path exists.
+
 ## Design Notes
 
 **Spine change for the lead (AD-21 named case):** append to AD-21's first paragraph, after the task-output case:
@@ -215,7 +237,37 @@ No other AD changes. **Why a query parameter and not an AD-13 segment:** the des
 - `cd ui && npm test`, `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh` (once, before dev_complete) -- green; bundle under 1900 kB.
 - The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before dev_complete) -- green.
 
+**Mutations (implement, 2026-09-26, each applied, red observed, reverted byte-identical; ObjectScript reloaded with `LoadDir` on `ocupilot-ci`, client rebuilt and redeployed):**
+
+- mutation: store omits `file=` -> `log-viewer.spec.ts` choose, Load-newer and shared-link cases red.
+- mutation: `publishRows` writes nothing -> the published-rows case red.
+- mutation: `ALERTS_SOURCE` gains a `filesPath` -> the alerts case red.
+- mutation: `RotatedName` drops the `ROTATEDFORM` match -> `LogSourceFiles.TestEveryOtherNameIsRefusedBeforeAnyFileAccess` red.
+- mutation: the `LOG.FILE` check moved above the gate -> `LogSourceFiles.TestTheNameIsCheckedAfterTheGate` red.
+- mutation: `Files` lists before the gate -> `LogSourceFiles.TestNothingIsListedBeforeTheGate` and `TestOnlyTheConsoleLogListsOlderFiles` red.
+- mutation: sort ascending -> `LogSourceFiles` order, tie-break and cap legs red.
+- mutation: drop the `Type` = `F` filter -> `LogSourceFiles.TestDecoysAreNotListed` red.
+- mutation: `MESSAGESPAIRS` gains `%DB_IRISSYS:READ` -> `LogSourceDenial.TestTheOlderFilesMeetTheConsoleLogsOnePair` red.
+- mutation: drop `LogOlderFilesWire` from the `ci-throwaway.sh` roster -> `ci.test.mjs` DW-1276 red.
+- mutation: the page ignores the address's `file` -> the shared-link leg red in `log-viewer.spec.ts` and in `messages-log-files.browser-spec.mjs`.
+- mutation: the store treats `LOG.FILE` as `LOG.ABSENT` -> `log-viewer.spec.ts` "a name the server refuses LOG.FILE is the generic refusal" red (matrix row Bad name, the page side).
+- mutation: `Files` counts only rotated files against `FILESCAP` -> `LogSourceFiles.TestTheListIsCappedAndSaysSo` third leg red (1,001 entries).
+- mutation: `publishRows` returns early for a source without `filesPath` -> `log-viewer.spec.ts` "alerts.log publishes its lines" red.
+- mutation: the file choice loses its `aria-label` (rebuilt, redeployed) -> `messages-log-files.browser-spec.mjs` AC5 walk red (`select.ocu-criteria-select: no accessible name`) and AC1 red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** `LogSourcePort` lists the console log's rotated files (`Files`, gate first, one directory read, regular files matching `ROTATEDFORM`, messages.log first then newest first, cap 1,000 with `truncated`) and pages one by `file` under the `messages` gate, cursor and identity; any other name is 400 `LOG.FILE` after the gate and before any filesystem touch. `GET /logs/messages/files` is routed; the viewer shows a file choice (messages only), carries `?file=`, shows the removed-file refusal, and publishes its lines to its screen store. README lists DPI-I-966.
+
+**Files.** Server: `Port/LogSourcePort.cls`, `Api/Error.cls` (`LOGFILE`), `Api/LogPage.cls` (`file`, `HandleFiles`), `Api/Router.cls` (route + `LogMessageFiles`). Tests: new `Test/LogSourceFiles.cls`, `Test/LogOlderFilesWire.cls`; `LogSourceFixture`, `LogSourceWire`, `LogSourceDenial`, `EndpointCoverage`; `scripts/ci-throwaway.sh` roster. Client: `log-viewer.store.ts`, `log-viewer.page.ts`, `log-line.ts`, `strings.ts` (two keys, one citation shift), `_components.scss` (one bar-sizing rule), specs `log-viewer.spec.ts`, `log-line.spec.ts`, new `browser/messages-log-files.browser-spec.mjs` and `browser/older-file-spec.mjs`, `explain-entry.browser-spec.mjs` leg (d). Docs: EXPERIENCE.md (row :578, :85 and log-viewer pattern in place), `README.md` (footprint extension).
+
+**Departures from the spec text.** The select's name reuses `databaseVolumeColumnFile` ("File"): `strings.test.mjs` refuses a second key with the same value. One SCSS rule sizes the select in the bar (the jump buttons wrapped without it). `ownFile` on the source names messages.log's list entry.
+
+**Review.** 16 findings: 3 patched (cap leg with messages.log, alerts published-rows case, AC5 mutation line), 13 rejected with reasons in the triage log; nothing deferred. Follow-up review: false — two medium entries were patched, both test-only additions with observed-red mutations; no unverified risk can be named.
+
+**Verification.** `npm run test:tools` 1,546 green; `npm test` 112 files / 1,522 green, then `log-viewer.spec.ts` 37 green after the review cases; `check-objectscript` 0, `lint-docs` 0. Full ObjectScript sweep on `ocupilot-ci`: 302 ran, 285 green, 16 refused (arming), 1 known residue (`WireSecurityRead` task history, DW-1425/DW-1468); `LogSourceFiles` re-run green after the patch. Browser (rebuilt, redeployed): `messages-log-files`, `explain-entry`, `messages-log`, `screen-height`, `a11y-structural-invariants` 40/40; `alerts-log` 7/7 with `ocupilot-ci`'s `alerts.log` emptied for the run and restored (its seed lines sat outside the 64 KB tail, the DW-1190 shape on the alerts spec). Bundle 1,889,964 B, under 1900 kB, no re-base. Trial merge with `origin/OCU-1-epic14` adds no conflict beyond the three already present at HEAD.
+
+**Residual risks.** The alerts browser spec's re-seed check still greps the whole file (it passes on CI's fresh throwaway). Open Exchange sentence for Epic 17 is in Design Notes for the lead.

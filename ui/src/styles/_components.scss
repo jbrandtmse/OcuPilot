@@ -4846,6 +4846,14 @@ app-data-table {
   min-width: 0;
 }
 
+// The messages.log viewer's file choice (Story 16.20) is the criteria select, sized to its options
+// rather than to the bar, so the jump controls beside it keep their one line.
+.ocu-log-viewer-bar .ocu-criteria-select {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
 .ocu-log-viewer-count {
   @include typo.ocu-type('label');
 

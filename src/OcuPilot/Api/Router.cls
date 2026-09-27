@@ -119,6 +119,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/logs/errors/list" Method="GET" Call="LogErrorList"/>
   <Route Url="/logs/errors/detail" Method="GET" Call="LogErrorDetail"/>
   <Route Url="/logs/alerts" Method="GET" Call="LogAlerts"/>
+  <Route Url="/logs/messages/files" Method="GET" Call="LogMessageFiles"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
   <Route Url="/turn/:id/progress" Method="GET" Call="TurnProgress"/>
   <Route Url="/turn/:id/stop" Method="POST" Call="TurnStop"/>
@@ -697,10 +698,19 @@ ClassMethod LogErrorDetail() As %Status
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/messages</code>: delegates to
 /// <class>OcuPilot.Api.LogPage</class> and carries no logic of its own.</p>
 /// <p>The route is literal and <b>binds the source key here</b>, from the port's own enum, so no
-/// caller supplies a file name, a path or any part of one (AD-21).</p>
+/// caller supplies a path (AD-21). Its one caller-named value is <code>file</code>, a rotated
+/// console log's name the port admits by pattern or refuses (AD-21's fourth named case).</p>
 ClassMethod LogMessages() As %Status
 {
     Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/messages/files</code>: the console log
+/// and its rotated files, through <method>OcuPilot.Api.LogPage.HandleFiles</method>, with the
+/// source key bound here as <method>LogMessages</method> binds it.</p>
+ClassMethod LogMessageFiles() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleFiles(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /turn/:id/progress</code>: delegates to

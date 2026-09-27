@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../../core/strings';
 import {
   SEVERITY_CHIPS,
+  fileOptionText,
   highlightSpans,
   matchCountText,
   matchesSearch,
@@ -119,5 +120,28 @@ describe('the sticky search helpers', () => {
 
   it("resolves the polite count's two slots", () => {
     expect(matchCountText(2, 7)).toBe('2 of 7');
+  });
+});
+
+describe('fileOptionText (Story 16.20)', () => {
+  // Built from a local wall-clock time, so the expectation holds in any time zone the runner uses.
+  const localSeven = new Date(2026, 8, 26, 7, 5, 30).toISOString();
+
+  it('reads name, size in KB rounded up with en-US grouping, and the local time to the minute', () => {
+    expect(fileOptionText({ name: 'messages.old_20260926_5', size: 2982895, modified: localSeven })).toBe(
+      'messages.old_20260926_5 \u00b7 2,913 KB \u00b7 2026-09-26 07:05'
+    );
+  });
+
+  it('rounds any part of a kilobyte up', () => {
+    expect(fileOptionText({ name: 'messages.log', size: 1024, modified: localSeven })).toContain(' 1 KB ');
+    expect(fileOptionText({ name: 'messages.log', size: 1025, modified: localSeven })).toContain(' 2 KB ');
+    expect(fileOptionText({ name: 'messages.log', size: 0, modified: localSeven })).toContain(' 0 KB ');
+  });
+
+  it('is the published option, and an unreadable time leaves its slot empty rather than NaN', () => {
+    const text = fileOptionText({ name: 'messages.log', size: 1, modified: 'not a time' });
+    expect(text).toBe(STRINGS.logViewerFileOption.replace('<name>', 'messages.log').replace('<size>', '1').replace('<modified>', ''));
+    expect(text).not.toContain('NaN');
   });
 });
