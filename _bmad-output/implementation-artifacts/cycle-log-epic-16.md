@@ -156,3 +156,7 @@
 2026-09-27T10:12:48Z	Story 16.21	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=slice_empty model=claude-opus-5-5
 2026-09-27T10:12:48Z	Story 16.21	smoke_complete	method=browser result=pass iterations=2 defects_caught=0 evidence=ocupilot-ci;home-findings.browser-spec_4/4_after_rework model=claude-opus-5-5
 2026-09-27T10:13:38Z	Story 16.21	committed	sha=d06b5090 submodules= ci=pending run=36311841421 cycle_iteration=2 amendments=spec-16-21:AC1_example_list(tier1) supersedes=36311288540
+2026-09-27T10:13:47Z	Story 16.22	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp merge=2c2a8a48 conflicts=none content=docs_only(README,articles) ci=rides_on_next_code_push(DW-1435)
+2026-09-27T11:06:48Z	Story 16.21	ci_resolved	story=16.21 run=36311841421 result=success resolved_at=next_implement head=d06b5090 note=structural_walk_green_on_rerun(timeout_not_recurring)
+2026-09-27T11:06:48Z	Story 16.21	story_boundary	story=16.21 head=d06b5090 ci_run=36311841421 ci=success note=includes_16.1,16.17-16.21
+2026-09-27T11:06:48Z	Story 16.22	stage_spawned	stage=implement spawn_at=2026-09-27T11:06:48Z model=opus agent_name=16-22-the-guardrails-page-implement-1 cycle_iteration=1
