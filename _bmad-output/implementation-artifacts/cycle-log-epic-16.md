@@ -99,3 +99,6 @@
 2026-09-27T02:00:22Z	Story 16.19	committed	sha=6eef7155 submodules= ci=pending run=36287213038 amendments=ARCHITECTURE-SPINE.md:AD-8(impact_of_a_removal),AD-53(shared_list),EXPERIENCE.md:577_row+citation_617->618 supersedes=36285845787
 2026-09-27T02:01:22Z	Epic 16	epic_context_compiled	reason=planning_artifact_newer(epics.md_epic18,16.19_done) model=claude-opus-5-5 agent=a42e7fd61bac7f013
 2026-09-27T02:01:22Z	Story 16.20	stage_spawned	stage=plan spawn_at=2026-09-27T02:01:22Z model=opus agent_name=16-20-older-messages-log-files-plan-1 cycle_iteration=1
+2026-09-27T02:14:14Z	Story 16.20	story_created	spawn_at=2026-09-27T02:01:22Z model=opus path=_bmad-output/implementation-artifacts/spec-16-20-older-messages-log-files.md build_status=ready-for-dev epic_context=reused
+2026-09-27T02:14:14Z	Epic 16	spine_updated	ad=AD-21 reason=clarification(pre-agreed_named_case) by=runner story=16-20-older-messages-log-files lint=ok(pre-existing_low_placeholder_AD-7)
+2026-09-27T02:14:14Z	Story 16.20	spec_validated	service_introducing=false(extends_LogSourcePort) integration_ac=present(AC5) adr_constrained_acs=AD-21,AD-29,AD-24,AD-13 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=1(DW-118_epic_bullet) mutates_shared_runtime=true(ocupilot-ci_manager_dir_fixture) footprint_extension=README.md model=claude-opus-5-5
