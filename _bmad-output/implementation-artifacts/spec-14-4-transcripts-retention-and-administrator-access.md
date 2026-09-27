@@ -2,11 +2,11 @@
 title: 'Story 14.4: Transcripts, retention and administrator access'
 type: 'feature'
 created: '2026-09-27'
-status: 'in-progress'
-baseline_revision: 'a95032ab212a514db252cff52c74c473d6a33a7f'
+status: 'done'
+baseline_revision: 'b5c31d55eccb81d9fd66e801f0819e49b856a7a3'
 baseline_commit: 'a95032ab212a514db252cff52c74c473d6a33a7f'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md'
 warnings: ['multiple-goals', 'oversized']
@@ -201,7 +201,7 @@ deferred:
     - `ui/browser/transcripts.browser-spec.mjs`: two `turnprobe` turns, New conversation, then Transcripts lists the first and opens it with its message, reply and context.
   - Update the roster files in the Code Map.
 
-- [ ] [CI] browser: `a11y-structural-invariants.browser-spec.mjs:59` (AC5 of the DW-1337 walk) fails on CI run 36317381863 (`browser` job, head 6478aaae): "these screens need an id the walk could not resolve and are not in SKIP: agent/transcripts/details" -- the new detail screen declares `parentScope` `agent/transcripts`, and on CI's fresh browser container the Transcripts list has no row when the walk (which runs first, alphabetically) reaches it. Fix so the gate holds on a fresh instance: prefer giving the walk a real row to open (seed one conversation for the walking user before the walk, through the existing test fixtures and cleaned up after), so the transcript page's own structural invariants are measured; only if that cannot be done without a production seam, add the route to `SKIP` in `ui/browser/structural-walk.mjs` with its reason AND pin the page's structural invariants in `transcripts.browser-spec.mjs`. Verify with the a11y spec on `ocupilot-b-ci` after deleting every conversation of the walking user (the CI condition), bundle rebuilt and redeployed, and keep the DW-1337 baseline (225) holding in both themes.
+- [x] [CI] browser: `a11y-structural-invariants.browser-spec.mjs:59` (AC5 of the DW-1337 walk) fails on CI run 36317381863 (`browser` job, head 6478aaae): "these screens need an id the walk could not resolve and are not in SKIP: agent/transcripts/details" -- the new detail screen declares `parentScope` `agent/transcripts`, and on CI's fresh browser container the Transcripts list has no row when the walk (which runs first, alphabetically) reaches it. Fix so the gate holds on a fresh instance: prefer giving the walk a real row to open (seed one conversation for the walking user before the walk, through the existing test fixtures and cleaned up after), so the transcript page's own structural invariants are measured; only if that cannot be done without a production seam, add the route to `SKIP` in `ui/browser/structural-walk.mjs` with its reason AND pin the page's structural invariants in `transcripts.browser-spec.mjs`. Verify with the a11y spec on `ocupilot-b-ci` after deleting every conversation of the walking user (the CI condition), bundle rebuilt and redeployed, and keep the DW-1337 baseline (225) holding in both themes.
 
 **Acceptance Criteria:**
 
@@ -297,6 +297,19 @@ Code review 2026-09-27 (full-opus tier; blind-hunter, edge-case-hunter, verifica
   - `[false]` `[reject]` Stored context not tested for secret stripping — the entry stores the payload `Job.Run` already holds, as the Storage row says.
   - `[false]` `[reject]` The proposal cascade also runs from `GuardedReserve`'s sweep — same `RETENTIONSECONDS`, which `ProposalWrite` pins at or above the proposal window.
   - `[low]` `[reject]` Legacy transcripts show no sentence to an admin — same root as the withheld-sentence row above.
+
+### 2026-09-27 — Review pass (rework 1, CI)
+
+- verdicts: 8 findings — high 0, medium 0, low 4, false 4, maybe-false 0
+- findings:
+  - `[low]` `[reject]` No test fails if `removeConversation` is dropped from the walk's `finally` — harness hygiene, not an AC; `removeConversation`'s own assertion runs whenever it is called, and a pin would add a test for cleanup.
+  - `[low]` `[reject]` An error from `removeConversation` in the `finally` replaces the walk's own error — needs a failed walk and a failed delete together; the fix adds a branch.
+  - `[low]` `[reject]` A seed whose `AppendEntry` fails leaves an entry-less conversation — Transcripts never lists it and the retention sweep's empty-conversation purge removes it.
+  - `[false]` `[reject]` The CI condition, the green run and the baseline in both themes are not recorded — recorded under Auto Run Result: 0 conversations before the run, 12/12 green, 0 found against 0 in the baseline.
+  - `[false]` `[reject]` The newly measured transcript pages may add keys outside the unchanged baseline — the run found 0 entries against a 0-entry baseline, light and dark.
+  - `[false]` `[reject]` On a reused instance the walk may open another user's conversation — the list sorts by `lastActivity` descending (`AgentTranscripts.cls:53`), so the just-seeded row is first.
+  - `[false]` `[reject]` The seed bypasses the existing test fixtures — it uses the existing `turnprobe-spec.mjs` `runIris` helper over the store's own methods, as the ObjectScript suites do; no production seam.
+  - `[low]` `[reject]` The removal assertion inside `finally` can mask a walk failure — same root as the second row.
 
 ## Design Notes
 
@@ -412,6 +425,10 @@ Slot B. Copy each changed `.cls` into `/tmp/ocupilot-b-ci/src` and load it on `o
 - `uv run scripts/check-objectscript.py`: 0 problems.
 - Residual gap, reported rather than closed: a full-execution pin of DW-1750 (running the real `Uninstall` for a non-probe profile, whose `retentionTaskClass` is the only profile value that is non-empty) would tear down the live installed instance under this profile's naming, since only the literal `"probe"` profile gets isolated names; closing it fully needs a minimal seam (e.g. a third, isolated profile that still names a real, differently-scoped retention task class) — a code-review decision, not applied here.
 
+**Rework 1 (CI), `ocupilot-b-ci`:**
+
+- mutation: delete the `AppendEntry` call in `structural-walk.mjs` `seedConversation` (the seeded conversation holds no entry, so Transcripts lists no row) → `a11y-structural-invariants` AC5 "every built screen is walked or skipped" red naming `agent/transcripts/details` (rebuilt, redeployed; reverted byte-identical)
+
 ## Auto Run Result
 
 Status: done
@@ -430,3 +447,5 @@ Contended files: EXPERIENCE.md, `scripts/ci-throwaway.sh`, `Api/Router.cls`, `Ke
 **Verification.** Full ObjectScript sweep on `ocupilot-b-ci`: 311 classes, 2564 tests, 1 failure (`ProposalWrite`, fixed and re-run green, run 1731); every class touched after the sweep re-run green (runs 1747-1755). `npm test` 1505 + 1496 pass; `npm run build` 1.87 MB initial; browser `transcripts`, `definitions`, `panel` 23/23 after redeploy; smoke 49/49; check-objectscript 0; lint-docs clean. Every mutation above reverted byte-identical.
 
 **Residual risk.** A transcript withheld for a row's shape shows no reason; the two deferred coverage gaps.
+
+**Rework 1 (CI).** `ui/browser/structural-walk.mjs`: `walk()` seeds one `_SYSTEM` conversation with one completed entry and a screen context (`seedConversation`, the store's `LoadOrCreate`/`AppendEntry` through `turnprobe-spec.mjs` `runIris`) before its three passes and removes it by exact key in a `finally` (`removeConversation`, `GuardedDelete`, then a zero count), so `agent/transcripts/details` is walked rather than skipped. No production code, `SKIP` stays empty. Reproduced on `ocupilot-b-ci`: deleted all 114 `_SYSTEM` conversations (probe residue; keys in `/tmp/epic-14-rework4/deleted-convos.txt` plus `4097eb1a…`, `8b78a924…`), AC5 red with CI's message. After the fix, from 0 conversations with the bundle rebuilt and redeployed: a11y spec 12/12, 60/60 screens walked, 0 unresolved, 0 found against 0 in `structural-baseline.json` (the 225 entries were drained before this story; light and dark), 0 conversations left; `transcripts.browser-spec` 1/1; `npm run test:tools` 1505/1505. Review: 8 findings, 0 patched, 0 deferred, 8 rejected (triage log). Follow-up review: not recommended (follow-up pass, no high patched).
