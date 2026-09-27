@@ -110,16 +110,13 @@ test('the membership kinds are in the cleared set -- the three under-cleared one
   }
 });
 
-/** The governance reset's PUT when the stubbed read answers `{}`: no preset, no key, version 0. */
-const GOVERNANCE_DEFAULT = { path: '/api/ocupilot/agent/governance', body: { preset: '', settings: {}, rowVersion: 0 } };
-
 test('Story 14.5: the reset turns the account\'s read-only choice off, unless a spec keeps it for one context', async () => {
   // Mutation (Rule 19): drop the `resetReadOnlyForYou` call from `resetRememberedState` -> the
   // first assertion goes red, and one spec's leftover switch blocks every later spec's writes.
   const { put } = await sentByReset();
-  assert.deepEqual(put, [{ path: '/api/ocupilot/agent/restraint', body: { readOnly: false } }, GOVERNANCE_DEFAULT]);
+  assert.deepEqual(put, [{ path: '/api/ocupilot/agent/restraint', body: { readOnly: false } }]);
   const kept = await sentByReset({ keepReadOnlyForYou: true });
-  assert.deepEqual(kept.put, [GOVERNANCE_DEFAULT], 'a spec about the choice surviving keeps it for that context');
+  assert.deepEqual(kept.put, [], 'a spec about the choice surviving keeps it for that context');
 });
 
 test('Story 14.2: the reset puts every key the policy read answers back to inherit, with no preset, at the version it read', async () => {
@@ -143,4 +140,24 @@ test('Story 14.2: the reset puts every key the policy read answers back to inher
   assert.deepEqual(put, [
     { preset: '', settings: { 'webapp.list.update': 'inherit', 'security.auditing.purge': 'inherit' }, rowVersion: 4 },
   ]);
+});
+
+test('Story 14.2: a policy that already reads default is left alone, so the reset writes no audit row', async () => {
+  // Mutation (Rule 19): drop the early return in `resetGovernancePolicy` -> this goes red.
+  const real = globalThis.fetch;
+  const put = [];
+  globalThis.fetch = async (url, init) => {
+    const path = new URL(url).pathname;
+    if (init !== undefined && init.method === 'PUT' && path.endsWith('/agent/governance')) put.push(JSON.parse(init.body));
+    const body = path.endsWith('/agent/governance') && (init === undefined || init.method === undefined)
+      ? { preset: '', rowVersion: 7, keys: [{ key: 'webapp.list.update', setting: 'inherit' }, { key: 'security.auditing.purge', setting: 'inherit' }] }
+      : {};
+    return { status: 200, text: async () => JSON.stringify(body) };
+  };
+  try {
+    await resetRememberedState();
+  } finally {
+    globalThis.fetch = real;
+  }
+  assert.deepEqual(put, []);
 });

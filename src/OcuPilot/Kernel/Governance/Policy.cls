@@ -90,10 +90,17 @@ ClassMethod Resolve(pKey As %String, pKind As %String, Output pEnabled As %Boole
         Quit $$$OK
     }
     If pKind '= ..#WRITEKIND Quit $$$OK
-    Set tSC = ##class(OcuPilot.Kernel.State.Policy).GuardedAll(.tValues, .tVersion)
+    Set tSC = $ClassMethod(..StoreClass(), "GuardedAll", .tValues, .tVersion)
     If $$$ISERR(tSC) Quit tSC
     Do ..Cascade(.tValues, pKey, pKind, .pEnabled, .pSource)
     Quit $$$OK
+}
+
+/// <p>The store <method>Resolve</method> reads the stored policy from. Production overrides
+/// nothing; a test subclass answers a store that cannot be read.</p>
+ClassMethod StoreClass() As %String
+{
+    Quit "OcuPilot.Kernel.State.Policy"
 }
 
 /// <p>The cascade over stored values <var>pValues</var> (as

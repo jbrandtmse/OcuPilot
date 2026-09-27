@@ -105,6 +105,7 @@ describe('the Governance policy screen', () => {
     ]);
     const purge = row(host, PURGE);
     expect(purge.cells[1].textContent?.trim()).toBe(STRINGS.agentGovernanceDisabled);
+    expect(row(host, TOOL).cells[1].textContent?.trim()).toBe(STRINGS.tableColumnEnabled);
     expect(purge.cells[3].textContent?.trim()).toBe(
       `${STRINGS.agentGovernanceDisabled} \u00B7 ${STRINGS.agentGovernanceSourceBaseline}`
     );

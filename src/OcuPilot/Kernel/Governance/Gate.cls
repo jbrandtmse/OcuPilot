@@ -22,7 +22,7 @@ Class OcuPilot.Kernel.Governance.Gate Extends %RegisteredObject
 /// <code>code</code> (<code>GOVERNANCE.DISABLED</code> on a denial, <code>""</code> when allowed),
 /// <code>key</code> (the key that was resolved) and <code>source</code> (the layer that decided).
 /// A read is allowed without resolving its tool. A tool the registry does not carry is governed by
-/// its name, which no baseline lists, so a write of that name is denied.</p>
+/// its name, and a write of a name the baseline does not list is denied.</p>
 ClassMethod Decide(pTool As %String, pKind As %String, pUser As %String, pArgs As %DynamicAbstractObject, Output pDecision) As %Status
 {
     Kill pDecision

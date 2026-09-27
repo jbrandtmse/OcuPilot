@@ -46,6 +46,7 @@ Method OnBeforeOneTest() As %Status
 
 Method OnAfterOneTest() As %Status
 {
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Kill tRows
     Merge tRows = ..StoredPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)

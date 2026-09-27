@@ -140,6 +140,45 @@ Method TestAnUnclassifiableKindIsDenied()
     Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, "and the gate refuses it with the governance code")
 }
 
+/// <p>The matrix's unreadable store at the resolver itself: a store read that fails is an error
+/// with the key disabled and no layer named, never a fall-through to the preset or the baseline.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Governance.Policy.Resolve</method> goes on to the
+/// cascade after a failed read -> this goes red, the key resolving enabled by the baseline.</p>
+Method TestAnUnreadableStoreResolvesTheKeyDisabled()
+{
+    Set tSC = ##class(OcuPilot.Test.GovernanceStoreProbe).Resolve(..#TOOL, "write", .tEnabled, .tSource)
+    Do $$$AssertStatusNotOK(tSC, "a store that cannot be read is an error")
+    Do $$$AssertEquals(''tEnabled _ "|" _ tSource, "0|", "and the key the baseline enables resolves disabled, no layer deciding")
+}
+
+/// <p>A stored key's setting is changed in place, and <code>inherit</code> removes its row, so the
+/// baseline decides again.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.State.Policy.GuardedApply</method> skips the
+/// delete for <code>inherit</code> -> the inherit leg goes red.</p>
+Method TestAStoredKeyIsChangedInPlaceAndInheritRemovesIt()
+{
+    Do ..Store("", ..#TOOL, "disabled")
+    Do ..Store("", ..#TOOL, "enabled")
+    Do $$$AssertEquals(..Resolved(..#TOOL), "1|setting", "a stored disabled is changed to enabled")
+    Do ..Store("", ..#TOOL, "disabled")
+    Do $$$AssertEquals(..Resolved(..#TOOL), "0|setting", "and back to disabled")
+    Do ..Store("", ..#TOOL, "inherit")
+    Do $$$AssertEquals(..Resolved(..#TOOL), "1|baseline", "inherit hands the key back to the baseline")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows), "the stored rows are read")
+    Do $$$AssertEquals($Data(tRows(..#TOOL)), 0, "and leaves no row for the key")
+}
+
+/// <p>The system prompt tells the model what a governance denial means and not to call the tool
+/// again (AD-22).</p>
+/// <p>Mutation (Rule 19): delete the sentence from
+/// <parameter>OcuPilot.Kernel.Agent.Prompt.BUILTIN</parameter> -> this goes red.</p>
+Method TestThePromptSaysWhatAGovernanceDenialMeans()
+{
+    Set tPrompt = ##class(OcuPilot.Kernel.Agent.Prompt).Builtin()
+    Do $$$AssertTrue(tPrompt [ "When a tool answers GOVERNANCE.DISABLED, say that the tool is disabled by policy on this instance", "the prompt names the governance code and what to say")
+    Do $$$AssertTrue(tPrompt [ "and do not call it again.", "and tells the model not to call the tool again")
+}
+
 /// <p>No cache: a setting stored and then removed changes the next resolution each time.</p>
 Method TestEveryResolutionReadsTheStore()
 {
@@ -294,13 +333,14 @@ Method TestADisabledKeyAnswersBeforeTheRestraintVerdict()
     Set tKey = ..MintFixture()
     If tKey = "" Quit
     Do ..Store("", ..#TOOL, "disabled")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).Resolve(.tPrior), "the switches are read before the change")
     Kill tValues
     Set tValues("enforcedReadOnly") = 1
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues), "enforced read-only is turned on after the mint")
     Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Kill tRestore
-    Set tRestore("enforcedReadOnly") = 0
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tRestore), "and is turned off again")
+    Set tRestore("enforcedReadOnly") = ''$Get(tPrior("enforcedReadOnly"))
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tRestore), "and is put back as it was")
     Do $$$AssertStatusNotOK(tSC, "the confirm is refused")
     Do $$$AssertEquals(tHttp _ "|" _ tCode, "403|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, "with the governance code, not a restraint one")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", "and the row stays live")

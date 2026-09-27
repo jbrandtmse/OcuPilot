@@ -134,7 +134,7 @@ Method TestAGateDenialReachesNothingAndTheToolStaysAdvertised()
 
 /// <p>Under the default policy the shipped gate point allows every live tool except the audit
 /// purge, which its baseline line disables (AD-10, AD-22). It reads the stored policy, so it
-/// asserts the default only where no policy is stored.</p>
+/// first asserts that no policy is stored.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.Governance.Gate.Decide</method> answers 0 -> this goes red.</p>
 Method TestTheShippedGateAllowsEveryLiveToolButThePurge()
 {

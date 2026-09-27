@@ -84,7 +84,8 @@ export async function resetRememberedState({ keepReadOnlyForYou = false } = {}) 
 
 /**
  * Put the governance policy back to the default (Story 14.2): no preset, every key inheriting,
- * saved at the version the read answered, asserting both answers.
+ * saved at the version the read answered, asserting both answers. A policy that already reads
+ * default is left alone, so the reset adds no audit row and does not move the version.
  */
 export async function resetGovernancePolicy() {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this helper writes the instance\'s governance policy, so it never runs against the live container');
@@ -92,8 +93,10 @@ export async function resetGovernancePolicy() {
   const text = await read.text();
   assert.equal(read.status, 200, `the governance policy reads: ${text}`);
   const policy = JSON.parse(text);
+  const rows = Array.isArray(policy.keys) ? policy.keys : [];
+  if ((policy.preset ?? '') === '' && rows.every((row) => row.setting === 'inherit')) return;
   const settings = {};
-  for (const row of Array.isArray(policy.keys) ? policy.keys : []) settings[row.key] = 'inherit';
+  for (const row of rows) settings[row.key] = 'inherit';
   const rowVersion = typeof policy.rowVersion === 'number' ? policy.rowVersion : 0;
   const answer = await fetch(`${config.origin}${GOVERNANCE_PATH}`, {
     method: 'PUT',

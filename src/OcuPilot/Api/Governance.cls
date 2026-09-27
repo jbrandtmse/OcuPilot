@@ -105,8 +105,8 @@ ClassMethod HandleUpdate() As %Status
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The governance policy could not be saved", ##class(%Exception.StatusException).CreateFromStatus(tSaveSC))
             Quit
         }
-        Set tAfterSC = ##class(OcuPilot.Kernel.State.Policy).GuardedAll(.tAfter, .tAfterVersion)
-        If $$$ISOK(tAfterSC) Do ..LogChange(.tBefore, .tAfter, .tSettings)
+        Do ..Applied(.tBefore, tPreset, .tSettings, .tAfter)
+        Do ..LogChange(.tBefore, .tAfter, .tSettings)
         Set tBodySC = ..Projection(.tAnswer)
         If $$$ISERR(tBodySC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tBodySC))
@@ -192,10 +192,34 @@ ClassMethod Validate(pBody, ByRef pKnown, Output pPreset As %String, Output pSet
     }
 }
 
+/// <p>The stored values <var>pAfter</var> an accepted write leaves: <var>pBefore</var> (as
+/// <method>OcuPilot.Kernel.State.Policy.GuardedAll</method> read it before the write) with the
+/// preset <var>pPreset</var> and every setting in <var>pSettings</var> applied, an
+/// <code>inherit</code> removing the key. Computed rather than read back, so the record names what
+/// this request wrote.</p>
+ClassMethod Applied(ByRef pBefore, pPreset As %String, ByRef pSettings, Output pAfter) [ Private ]
+{
+    Kill pAfter
+    Merge pAfter = pBefore
+    Set tStore = "OcuPilot.Kernel.State.Policy"
+    Set pAfter($Parameter(tStore, "PRESETNAME")) = pPreset
+    Set tKey = ""
+    For {
+        Set tKey = $Order(pSettings(tKey), 1, tSetting)
+        If tKey = "" Quit
+        If tSetting = $Parameter(tStore, "VALUEINHERIT") {
+            Kill pAfter(tKey)
+        } Else {
+            Set pAfter(tKey) = tSetting
+        }
+    }
+}
+
 /// <p>Record one accepted write: the structured log line and the audit row, carrying the old and
-/// new preset and the old and new setting of every key <var>pSettings</var> named whose stored
-/// setting changed. <var>pBefore</var> and <var>pAfter</var> are the store as
-/// <method>OcuPilot.Kernel.State.Policy.GuardedAll</method> read it on either side of the write.
+/// new preset and, under <code>keys</code>, one <code>{tool, old, new}</code> entry for every key
+/// <var>pSettings</var> named whose setting changed. The key is a member's value, never a member's
+/// name, so a key ending in a credential word is not masked by the redaction backstop.
+/// <var>pBefore</var> and <var>pAfter</var> are the stored values on either side of the write.
 /// It swallows its own failure, and emission never fails the write it records (AD-15).</p>
 ClassMethod LogChange(ByRef pBefore, ByRef pAfter, ByRef pSettings)
 {
@@ -207,6 +231,7 @@ ClassMethod LogChange(ByRef pBefore, ByRef pAfter, ByRef pSettings)
         Do tPreset.%Set("old", $Get(pBefore(tPresetName)), "string")
         Do tPreset.%Set("new", $Get(pAfter(tPresetName)), "string")
         Do tChanges.%Set("preset", tPreset)
+        Set tKeys = []
         Set tKey = ""
         For {
             Set tKey = $Order(pSettings(tKey))
@@ -215,10 +240,12 @@ ClassMethod LogChange(ByRef pBefore, ByRef pAfter, ByRef pSettings)
             Set tNew = ..SettingOf(.pAfter, tKey)
             If tOld = tNew Continue
             Set tEntry = {}
+            Do tEntry.%Set("tool", tKey, "string")
             Do tEntry.%Set("old", tOld, "string")
             Do tEntry.%Set("new", tNew, "string")
-            Do tChanges.%Set(tKey, tEntry)
+            Do tKeys.%Push(tEntry)
         }
+        Do tChanges.%Set("keys", tKeys)
         Set tData = {}
         Do tData.%Set("changes", tChanges)
         Do tData.%Set("securityChange", 1, "boolean")

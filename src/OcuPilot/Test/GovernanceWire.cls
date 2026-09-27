@@ -19,6 +19,9 @@ Parameter PATH = "/agent/governance";
 
 Parameter TOOL = "webapp.list.update";
 
+/// <p>A registered write key whose name ends in a word the audit redaction backstop masks.</p>
+Parameter CREDENTIALKEY = "permissions.users.password";
+
 /// <p>The principal holding <code>%Admin_Operate:USE</code> and not OcuPilot's administrative
 /// resource.</p>
 Parameter OPERATEUSER = "OcuPilotGovernanceOperate";
@@ -174,18 +177,20 @@ Method TestTheReadAnswersEveryWriteKey()
     Do $$$AssertEquals($ListToString(tRead), $ListToString(tExpected), "one entry per registered write key, in name order")
     Set tPurge = ..Entry(tAnswer, "security.auditing.purge")
     Do $$$AssertEquals($Select($IsObject(tPurge): tPurge.%ToJSON(), 1: ""), "{""key"":""security.auditing.purge"",""baseline"":""disabled"",""setting"":""inherit"",""enabled"":false,""source"":""baseline""}", "the purge is disabled by the baseline")
+    Set tTool = ..Entry(tAnswer, ..#TOOL)
+    Do $$$AssertEquals($Select($IsObject(tTool): tTool.%ToJSON(), 1: ""), "{""key"":""" _ ..#TOOL _ """,""baseline"":""enabled"",""setting"":""inherit"",""enabled"":true,""source"":""baseline""}", "and a key the baseline lists true reads enabled by it")
 }
 
 /// <p>AC1: a write naming <parameter>TOOL</parameter> disabled under <code>read-only</code> is
 /// answered and read back, the version moves, and one audit row names the actor, the target and
 /// the old and new value of the preset and of the key.</p>
 /// <p>Mutation (Rule 19): drop <method>OcuPilot.Api.Governance.RecordAudit</method>'s call -> the
-/// audit leg goes red.</p>
+/// audit leg goes red; name each key's entry by the key -> the credential-word leg goes red.</p>
 Method TestAnAcceptedWriteIsReadBackAndAudited()
 {
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     ; webapp.list.create is named and stays inherit, so the audit row must leave it out.
-    Do ..Call("PUT", "{""preset"":""read-only"",""settings"":{""" _ ..#TOOL _ """:""disabled"",""webapp.list.create"":""inherit""},""rowVersion"":0}", .tStatus, .tAnswer)
+    Do ..Call("PUT", "{""preset"":""read-only"",""settings"":{""" _ ..#TOOL _ """:""disabled"",""webapp.list.create"":""inherit"",""" _ ..#CREDENTIALKEY _ """:""enabled""},""rowVersion"":0}", .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "the write is accepted: " _ tAnswer.%ToJSON())
     Do $$$AssertEquals(tAnswer.%Get("preset") _ "|" _ tAnswer.%Get("rowVersion"), "read-only|1", "the answer carries the stored preset at version 1")
     Do ..Call("GET", "", .tStatus, .tRead)
@@ -199,8 +204,9 @@ Method TestAnAcceptedWriteIsReadBackAndAudited()
     Do $$$AssertTrue(tData [ ("""actor"":""" _ ##class(OcuPilot.Test.Http).GetTestUsername() _ """"), "naming the actor: " _ tData)
     Do $$$AssertTrue(tData [ """type"":""agent-policy""", "and the target")
     Do $$$AssertTrue(tData [ """preset"":{""old"":"""",""new"":""read-only""}", "and the preset's old and new value")
-    Do $$$AssertTrue(tData [ ("""" _ ..#TOOL _ """:{""old"":""inherit"",""new"":""disabled""}"), "and the key's old and new value")
-    Do $$$AssertTrue(tData '[ """webapp.list.create"":{", "and no entry for a key the write named without changing it")
+    Do $$$AssertTrue(tData [ ("{""tool"":""" _ ..#TOOL _ """,""old"":""inherit"",""new"":""disabled""}"), "and the key's old and new value: " _ tData)
+    Do $$$AssertTrue(tData [ ("{""tool"":""" _ ..#CREDENTIALKEY _ """,""old"":""inherit"",""new"":""enabled""}"), "and a key ending in a credential word is recorded, not masked: " _ tData)
+    Do $$$AssertTrue(tData '[ """tool"":""webapp.list.create""", "and no entry for a key the write named without changing it")
 }
 
 /// <p>A write leaves every key its <code>settings</code> does not name as it was: a key disabled by

@@ -47,6 +47,9 @@ Method TestEveryWriteToolYieldsAKey()
 
 /// <p>The purge's line is <code>false</code> (Story 12.3's routed criterion) and every other line
 /// is <code>true</code>, and a key the baseline does not list reads disabled.</p>
+/// <p>The expected list is the set of lines some story's criteria ship disabled. A story that adds
+/// a line listed <code>false</code> (Epic 18's are) adds its key to that list, in name order, in
+/// the same change; this failing on such a line is the prompt to do so, never to delete it.</p>
 Method TestThePurgeIsTheOneDisabledLine()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Governance.Baseline).Keys(.tList), "the baseline reads")

@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-27'
 status: 'done'
 baseline_revision: '0c1ea07b7bd6882b9be85d20659fe17b397b45b1'
+baseline_commit: '0c1ea07b7bd6882b9be85d20659fe17b397b45b1'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -217,6 +218,49 @@ deferred:
 - **AC11.** Given a tool declaring `GOVERNANCEACTION`, when its keys are derived and one of them is set, then its keys are `tool:<value>`, and the setting governs that action alone.
 - **Integration (Rule 1).** Given a key disabled in the real store, when `Dispatch.Answer` and `Confirm.Confirm` are driven against the real instance, then each refuses with `GOVERNANCE.DISABLED`. These are `Governance.cls` legs.
 
+### Review Findings
+
+Code review 2026-09-27 (full-opus tier; blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor all ran). 13 patched, 0 deferred, 22 rejected. No AD violation found (AD-22, AD-10, AD-53/AD-8, AD-40/AD-34, AD-39, AD-9 checked clause by clause). Rule 3: `governance.browser-spec` and the `GovernanceWire` HTTP legs.
+
+- [x] [Review][Patch] [medium] DW-1754: the resolver's fail-closed read had no test [src/OcuPilot/Kernel/Governance/Policy.cls:93]: `Policy.StoreClass()` seam, `Test/GovernanceStoreProbe`, `Governance.TestAnUnreadableStoreResolvesTheKeyDisabled`.
+- [x] [Review][Patch] [medium] A change to a key ending in a credential word (`permissions.users.password`, `*.setpassword`, `*.setsecret`, `*.settoken`) was audited as `[redacted]` (AC1, FR-29) [src/OcuPilot/Api/Governance.cls:LogChange]: key changes are now `changes.keys[{tool, old, new}]`; the AC1 wire leg names `permissions.users.password`.
+- [x] [Review][Patch] [medium] `GuardedApply`'s in-place change and `inherit` delete were unpinned [src/OcuPilot/Kernel/State/Policy.cls:103]: `Governance.TestAStoredKeyIsChangedInPlaceAndInheritRemovesIt`.
+- [x] [Review][Patch] [medium] The GET's `baseline: "enabled"` was asserted nowhere, on the wire or on the screen [src/OcuPilot/Kernel/Governance/Policy.cls:158]: `GovernanceWire.TestTheReadAnswersEveryWriteKey` pins the `webapp.list.update` entry; the page spec pins its Baseline cell.
+- [x] [Review][Patch] [low] The audit was skipped when the post-commit re-read failed, and a concurrent save could be credited to this actor [src/OcuPilot/Api/Governance.cls:108]: the after-state is computed from what this request wrote (`Applied`).
+- [x] [Review][Patch] [low] The browser reset saved the policy for every spec, adding a security-change audit row and moving the version each time [ui/browser/preferences-reset.mjs:96]: a policy that reads default is left alone; `preferences-reset.test.mjs` pins it.
+- [x] [Review][Patch] [low] The prompt's GOVERNANCE.DISABLED sentence was untested [src/OcuPilot/Kernel/Agent/Prompt.cls:19]: `Governance.TestThePromptSaysWhatAGovernanceDenialMeans`.
+- [x] [Review][Patch] [low] `Gate.Decide`'s doc said an unregistered name is always denied; a stale baseline line would allow it [src/OcuPilot/Kernel/Governance/Gate.cls:24]
+- [x] [Review][Patch] [low] The restraint-precedence leg forced enforced read-only to 0 afterwards [src/OcuPilot/Test/Governance.cls:302]: it restores the value it read.
+- [x] [Review][Patch] [low] `Wire` did not assert the Governance screen is denied to a principal holding nothing [src/OcuPilot/Test/Wire.cls:481]
+- [x] [Review][Patch] [low] `AuditPurge.OnAfterOneTest` did not clear the turn marker [src/OcuPilot/Test/AuditPurge.cls:47]
+- [x] [Review][Patch] [low] `TestThePurgeIsTheOneDisabledLine` gave no instruction for a later `false` line (Epic 18's) [src/OcuPilot/Test/GovernanceBaseline.cls:48]
+- [x] [Review][Patch] [low] `ToolDispatch`'s doc said it asserts the default only where no policy is stored; it asserts none is stored [src/OcuPilot/Test/ToolDispatch.cls:137]
+
+**Rejected:**
+
+- low (theoretical): the AC9 leg would leave `/api/ocupilot` repointed only if the prohibited gate regressed, on a discarded throwaway; real if that leg ever runs outside one.
+- false: `Governance` declares no arming variable; `ProposalFixture.EnsureWriteTarget` holds the refusal, as for `DraftRoute`, and the roster pins declaring classes.
+- low: a stored row for a key no longer registered cannot be cleared from the screen. reopen_if a tool is removed while a stored row names it.
+- low (spec-bound): no reverse baseline check; lines are never removed (Design Notes).
+- low (spec-bound): unparseable JSON answers 422 `GOVERNANCE.BODY`, not 400 ("any other shape is refused 422").
+- low: `Validate`'s non-object `settings` and string `rowVersion` branches are untested. reopen_if a malformed body is stored.
+- low (theoretical): a `GOVERNANCEACTION` call with an out-of-enum value answers `GOVERNANCE.DISABLED`, not `TOOL.ARGUMENTS`; real when a tool declares the parameter (Dispatch order is fixed).
+- low (theoretical): a numeric enum member in `KeysOf`; same trigger.
+- low: the GET parses the baseline once per key. reopen_if `GET /agent/governance` takes over 1 s.
+- low: `AuditPurge`'s failed-mint early exit leaves that turn's ledger rows. reopen_if a later class reads them.
+- low: the policy table has no accessible name, like every other in-page table; the walk reads 0 violations. reopen_if the walk flags unnamed tables.
+- low: EXPERIENCE.md's amended rows carry no amendment marker; the fix edits a planning document.
+- low: the Epic 16 merge residue is recorded only in the Auto Run Result; the orchestrator holds it, and the fix edits the spec.
+- low (theoretical): a `settings` member past the local subscript limit answers 500, writing nothing.
+- low: `ToolDispatch` and `Prohibited` fail on a stored policy; adjudicated in the triage log above.
+- low (theoretical): `GovernanceFixture.Restore` deletes, then re-applies, outside one transaction.
+- low: a network-level failure on the first GET leaves the page empty, as on Switches. reopen_if an administrator reports a blank Governance screen.
+- low (spec-bound): a 409 keeps the buffer and asks for a reload, the Switches pattern.
+- low (spec-bound): a save that changes nothing is audited; every accepted PUT is.
+- low: the second halves of AC5, AC6, AC8 and AC10 carry no mutation of their own; Rule 19 asks one per AC, and each has one.
+- low: `GovernanceBaseline.TestEveryWriteToolYieldsAKey` cannot fail on today's registry. reopen_if a tool declares `GOVERNANCEACTION`.
+- low: the commit's "audited on every accepted write" claim; true after the two audit patches above.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -329,6 +373,15 @@ Recorded on `ocupilot-b-ci` (ObjectScript mutated in the mount copy and recompil
 - mutation (AC1 non-admin half): both handlers skip `IsAdministrator` → `GovernanceWire.TestANonAdministratorIsRefusedBothRoutes` red (run 1837).
 - mutation (AC2 every other key enabled): `webapp.list.create` listed `false` → `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` red (run 1838).
 - AC7: the port-call half is the AC6 mutation above (run 1817: the write reaches the port) with run 1832; the `Dispatch.cls` half is inspection, `git diff --stat` names no `Dispatch.cls`.
+
+Code review, same method (green runs 2153, 2155, 2157-2160):
+
+- mutation (matrix: store unreadable, DW-1754): `Policy.Resolve` goes on to the cascade after a failed store read -> `Governance.TestAnUnreadableStoreResolvesTheKeyDisabled` red (run 2154).
+- mutation (inherit and in-place change): `State.Policy.GuardedApply` skips the `inherit` delete -> `Governance.TestAStoredKeyIsChangedInPlaceAndInheritRemovesIt` red (run 2154).
+- mutation (prompt): the GOVERNANCE.DISABLED sentence removed from `BUILTIN` -> `Governance.TestThePromptSaysWhatAGovernanceDenialMeans` red (run 2154).
+- mutation (audit of a credential-word key): `LogChange` names each key's entry by the key -> `GovernanceWire.TestAnAcceptedWriteIsReadBackAndAudited` red (run 2156).
+- mutation (baseline enabled): `Effective` drops the enabled arm -> `GovernanceWire.TestTheReadAnswersEveryWriteKey` red (run 2156); `BASELINE_WORDS.enabled` mapped to Disabled -> `governance.page.spec.ts` render leg red.
+- mutation (reset leaves a default policy alone): the early return removed from `resetGovernancePolicy` -> `preferences-reset.test.mjs` red.
 
 ## Auto Run Result
 
