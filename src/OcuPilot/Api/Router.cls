@@ -72,6 +72,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/switches" Method="PUT" Call="AgentSwitchesUpdate"/>
   <Route Url="/agent/restraint" Method="GET" Call="AgentRestraint"/>
   <Route Url="/agent/restraint" Method="PUT" Call="AgentRestraintUpdate"/>
+  <Route Url="/agent/governance" Method="GET" Call="AgentGovernanceRead"/>
+  <Route Url="/agent/governance" Method="PUT" Call="AgentGovernanceUpdate"/>
   <Route Url="/agent/ledger" Method="GET" Call="AgentLedger"/>
   <Route Url="/agent/context" Method="GET" Call="AgentContextRead"/>
   <Route Url="/agent/context" Method="PUT" Call="AgentContextUpdate"/>
@@ -222,6 +224,20 @@ ClassMethod AgentRestraint() As %Status
 ClassMethod AgentRestraintUpdate() As %Status
 {
     Quit ##class(OcuPilot.Api.Switches).HandleRestraintUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/governance</code> (Story 14.2): delegates
+/// to <class>OcuPilot.Api.Governance</class> and carries no logic of its own.</p>
+ClassMethod AgentGovernanceRead() As %Status
+{
+    Quit ##class(OcuPilot.Api.Governance).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /agent/governance</code> -- see
+/// <method>AgentGovernanceRead</method>.</p>
+ClassMethod AgentGovernanceUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Governance).HandleUpdate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /agent/ledger</code> (Story 4.9): delegates to

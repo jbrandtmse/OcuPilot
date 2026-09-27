@@ -24,6 +24,10 @@
  * is about that choice surviving into a fresh context passes `keepReadOnlyForYou` for that one
  * context and turns the choice off itself afterwards.
  *
+ * **The governance policy is put back to the default too** (Story 14.2). It is instance-wide, and
+ * one spec's disabled key or read-only preset would refuse every later spec's agent writes, so the
+ * reset reads the policy and saves no preset and every key inheriting at the version it read.
+ *
  * A spec that is **about** this state surviving (`preferences-integration`,
  * `ui-state-survives-sign-out`) arranges and clears its own rows and does not call this.
  *
@@ -44,6 +48,8 @@ const config = browserConfig();
 const PREFERENCES_PATH = '/api/ocupilot/account/preferences';
 
 const RESTRAINT_PATH = '/api/ocupilot/agent/restraint';
+
+const GOVERNANCE_PATH = '/api/ocupilot/agent/governance';
 
 function authHeader() {
   return 'Basic ' + Buffer.from(`${config.username}:${config.password}`).toString('base64');
@@ -73,6 +79,28 @@ export async function resetRememberedState({ keepReadOnlyForYou = false } = {}) 
     assert.equal(answer.status, 200, `the ${kind} kind cleared: ${await answer.text()}`);
   }
   if (!keepReadOnlyForYou) await resetReadOnlyForYou();
+  await resetGovernancePolicy();
+}
+
+/**
+ * Put the governance policy back to the default (Story 14.2): no preset, every key inheriting,
+ * saved at the version the read answered, asserting both answers.
+ */
+export async function resetGovernancePolicy() {
+  assert.notEqual(config.container, LIVE_CONTAINER, 'this helper writes the instance\'s governance policy, so it never runs against the live container');
+  const read = await fetch(`${config.origin}${GOVERNANCE_PATH}`, { headers: { Authorization: authHeader() } });
+  const text = await read.text();
+  assert.equal(read.status, 200, `the governance policy reads: ${text}`);
+  const policy = JSON.parse(text);
+  const settings = {};
+  for (const row of Array.isArray(policy.keys) ? policy.keys : []) settings[row.key] = 'inherit';
+  const rowVersion = typeof policy.rowVersion === 'number' ? policy.rowVersion : 0;
+  const answer = await fetch(`${config.origin}${GOVERNANCE_PATH}`, {
+    method: 'PUT',
+    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ preset: '', settings, rowVersion }),
+  });
+  assert.equal(answer.status, 200, `the governance policy was put back to the default: ${await answer.text()}`);
 }
 
 /** Turn the signing-in account's own read-only choice off (Story 14.5), asserting the answer. */

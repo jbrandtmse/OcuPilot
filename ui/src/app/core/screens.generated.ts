@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -436,7 +436,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "application-error",
   "log-entry",
   "agent-definition",
-  "agent-switch"
+  "agent-switch",
+  "agent-policy"
 ];
 
 /**
@@ -845,6 +846,75 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentGovernance",
+    "route": "agent/governance",
+    "area": "agent",
+    "labelKey": "agentGovernanceLabel",
+    "sideBarPosition": 4,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "OcuPilotAdmin",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "agent-policy",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "governance",
+      "tool policy"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentGovernancePrompt1"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentGovernancePrompt2"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentGovernancePrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "agent.governance",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.AgentSwitches",
     "route": "agent/switches",
     "area": "agent",
@@ -987,7 +1057,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "route": "agent/transcripts",
     "area": "agent",
     "labelKey": "agentTranscriptsLabel",
-    "sideBarPosition": 4,
+    "sideBarPosition": 5,
     "archetype": "list",
     "built": true,
     "refreshes": false,

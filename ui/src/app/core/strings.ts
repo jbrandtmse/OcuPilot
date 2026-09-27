@@ -638,6 +638,48 @@ export const STRINGS = {
   agentSwitchesContextRowCap: 'Context rows sent with a turn',
   /** EXPERIENCE.md:344 */
   agentSwitchesRefusedAction: 'change the switches',
+  // Story 14.2: the Governance policy screen, its refusal action, the governance tool refusal, the
+  // purge card's consequence and the screen's prompts. "None", "Read-only" and "Enabled" reuse
+  // `sslVerifyPeerNone`, `agentDefinitionFieldReadOnly` and `tableColumnEnabled`.
+  /** EXPERIENCE.md:342 */
+  agentGovernanceLabel: 'Governance policy',
+  /** EXPERIENCE.md:342 */
+  agentGovernancePreset: 'Preset',
+  /** EXPERIENCE.md:342 */
+  agentGovernancePresetFull: 'Full',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceColumnTool: 'Write tool',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceColumnBaseline: 'Baseline',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceColumnSetting: 'Setting',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceColumnEffect: 'In effect',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceSettingInherit: 'Inherit',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceDisabled: 'Disabled',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceSourceSetting: 'by this setting',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceSourcePreset: 'by the preset',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceSourceBaseline: 'by the baseline',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceBaselineAbsent: 'not in the baseline',
+  /** EXPERIENCE.md:344 */
+  agentGovernanceRefusedAction: 'change the governance policy',
+  /** EXPERIENCE.md:257 */
+  governanceToolDisabled: 'This tool is disabled by policy.',
+  /** EXPERIENCE.md:516 */
+  auditPurgeMarkersEffect:
+    'This removes audit records, including the markers that record the agent\'s own writes. It cannot be undone.',
+  /** EXPERIENCE.md:526 */
+  agentGovernancePrompt1: 'What does the read-only preset change?',
+  /** EXPERIENCE.md:526 */
+  agentGovernancePrompt2: 'What happens when the agent calls a tool the policy disables?',
+  /** EXPERIENCE.md:526 */
+  agentGovernancePrompt3: 'Why is the audit purge disabled by default?',
   /** EXPERIENCE.md:345 */
   formStaleSave:
     'Someone else changed this while you were here. Reload to see the current values, then save again.',

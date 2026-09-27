@@ -2,12 +2,21 @@
 title: 'Story 14.2: The tool governance policy'
 type: 'feature'
 created: '2026-09-27'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '0c1ea07b7bd6882b9be85d20659fe17b397b45b1'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Policy.Resolve's fail-closed return on an unreadable policy store has no test at the resolver itself.
+    evidence: |-
+      The Confirm and dispatch legs drive a failing gate through seams; nothing makes State.Policy.GuardedAll fail, so
+      a Resolve that fell through to the baseline on a read error would stay green. Settling it needs a store seam.
+    location: >-
+      src/OcuPilot/Kernel/Governance/Policy.cls Resolve
+    severity: medium
 ---
 
 <intent-contract>
@@ -212,6 +221,32 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-27 — Review pass
+
+- verdicts: 21 findings — high 0, medium 7, low 14, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Confirm's order (prohibited before governance before restraint) had no two-gate test — added `TestAProhibitedEffectAnswersBeforeADisabledKey` and `TestADisabledKeyAnswersBeforeTheRestraintVerdict`; red under runs 1830 and 1831.
+  - `[medium]` `[patch]` AC9's test ran with the key enabled, so no 14.2 mutation could redden it — the disabled-key-plus-prohibited leg is AC9's pin (run 1830).
+  - `[medium]` `[patch]` "a key missing from settings is left unchanged" was unpinned — added `GovernanceWire.TestAKeyTheWriteDoesNotNameIsLeftAsItIs` (run 1835).
+  - `[low]` `[patch]` The audit row's changed-keys-only filter was unpinned — the AC1 PUT now names an unchanged key and asserts it is absent (run 1836).
+  - `[medium]` `[patch]` The store-unreadable row had no test — added the `Confirm.GovernanceGateClass` seam, its `ConfirmFixture` override and `TestAGateThatCannotDecideFailsTheConfirmClosed` (run 1832); the resolver-level half is deferred (no store seam).
+  - `[low]` `[reject]` `tool:action` is verified at `KeyFor`/`Resolve` only — no shipped tool declares `GOVERNANCEACTION`, and driving `Decide` with the fixture needs a registry seam in `Gate`.
+  - `[low]` `[patch]` AC7, AC9, AC1's non-admin half, AC8's ledger half and AC2's second clause lacked `mutation:` lines — applied and recorded (runs 1830, 1834, 1837, 1838; AC7 by run 1817 and inspection).
+  - `[medium]` `[patch]` "nothing is minted" could not fail because the target did not exist — the dispatch leg now targets the probe application with the turn marker set (run 1833 reddens it).
+  - `[low]` `[reject]` `governanceToolDisabled` in `strings.ts` is unreferenced — it mirrors EXPERIENCE.md:257 as `agentWriteBlockedByReadOnly` mirrors the same row; the server renders the sentence.
+  - `[low]` `[reject]` `ToolDispatch`/`Prohibited` fail rather than skip on a stored policy — a leaked policy refuses later suites' writes, so failing loudly is the wanted tripwire; CI starts with no rows.
+  - `[low]` `[patch]` `KeyFor`'s doc said an argument-less key "resolves disabled", false under `full` — now says the baseline layer reads it disabled.
+  - `[low]` `[reject]` No client test of the proposal card after a post-mint disable — the generic live-row refusal path is unchanged; the 403 code is pinned by `Governance` and its sentence by `ToolEmit`.
+  - `[low]` `[reject]` No client test of the tool-call card's failed line — it renders the server's reason, pinned as above.
+  - `[medium]` `[patch]` Confirm order untested (intent-alignment view of the first finding) — same patch.
+  - `[low]` `[reject]` Dispatch order is pinned only by the existing probe-seam tests — `Dispatch.cls` is unchanged (Never list).
+  - `[medium]` `[patch]` Store-unreadable untested (intent-alignment view of the fifth finding) — same patch.
+  - `[low]` `[reject]` A non-admin's refused GET is not rendered in a test — the descriptor gates the screen on `OcuPilotAdmin:USE` (pinned by `Wire`), and a refused GET takes the `absorbAnswer` path the PUT tests cover.
+  - `[low]` `[reject]` The purge card's rendering is not tested for this code — generic consequence rendering; the mapping is pinned by `proposal-view.test.mjs` and the stored code by `AuditPurge`.
+  - `[low]` `[reject]` Environment-conditioned preconditions (intent-alignment view of the tenth finding) — as above.
+  - `[low]` `[reject]` The dispatch leg does not assert `readOnly` or the footer untouched — `Restraint.cls` and the context builder are unchanged, and the governance code is distinct.
+  - `[low]` `[patch]` `StoredArguments` sat inside `Confirm.cls` :426+ under the literal reading of Epic 16's hunk list — moved, with the new seam, above `Transition`.
+
 ## Design Notes
 
 **Governing ADs:** AD-22, AD-10, AD-53, AD-8, AD-30, AD-40, AD-34, AD-39, AD-12, AD-9, AD-15, AD-24, AD-5, AD-59, AD-55, and Conventions › Config, › Concurrent writes and › Tool naming.
@@ -273,7 +308,39 @@ Slot B. Load the changed `.cls` into `ocupilot-b-ci` from `/tmp/ocupilot-b-ci/sr
 - **AC10:** remove `Consequence` → `AuditPurge` goes red.
 - **AC11:** `KeyFor` ignores `GOVERNANCEACTION` → `Governance` goes red.
 
+Recorded on `ocupilot-b-ci` (ObjectScript mutated in the mount copy and recompiled with subclasses; the client mutation rebuilt and redeployed; each reverted byte-identical, `git diff --stat` unchanged):
+
+- mutation: deleted the `webapp.list.delete` baseline line → `GovernanceBaseline.TestEveryRegisteredWriteKeyHasABaselineLine` red (run 1812).
+- mutation: `Policy.Cascade` answers false when any layer holds false → `Governance.TestTheFirstLayerHoldingAValueDecides` red (run 1813).
+- mutation: `Policy.Resolve` reads a kind that is not `write` as allowed → `Governance.TestAnUnclassifiableKindIsDenied` red (run 1814).
+- mutation: `Gate.Decide` answers allowed → `Governance` dispatch and confirm legs red (run 1815), `AuditPurge.TestThePurgeIsInEveryRosterAndDisabledByDefault` red (run 1816).
+- mutation: the `Confirm.Transition` governance refusal disabled → `Governance.TestADisableAfterTheMintRefusesTheConfirmAndTheDraftStillCloses` red (run 1817).
+- mutation: `Api.Governance.LogChange` records no audit row → `GovernanceWire.TestAnAcceptedWriteIsReadBackAndAudited` red (run 1818).
+- mutation: the PUT admits a `.read` key → `GovernanceWire.TestABadBodyOrKeyIsRefusedAndWritesNothing` red (run 1819).
+- mutation: `AuditPurge.Consequence` removed → `AuditPurge.TestThePurgeIsAnAdvertisedDestructiveActionWrite` and `TestWithItsKeyEnabledTheAgentsPurgeIsConfirmedMarked` red (run 1820).
+- mutation: `Policy.KeyFor` ignores `GOVERNANCEACTION` → `Governance.TestAnActionKeyGovernsThatActionAlone` red (run 1821).
+- mutation: the setting select's `(change)` binding removed → `governance.page.spec.ts` AC1 red and `governance.browser-spec.mjs` AC1 red (timeout on the saved row).
+- mutation (AC9): the Confirm governance block moved above the shared gates → `Governance.TestAProhibitedEffectAnswersBeforeADisabledKey` red (run 1830).
+- mutation (Confirm precedence): the governance block moved below the restraint verdict → `Governance.TestADisabledKeyAnswersBeforeTheRestraintVerdict` red (run 1831).
+- mutation (matrix: store unreadable): Confirm reads a gate error as allowed → `Governance.TestAGateThatCannotDecideFailsTheConfirmClosed` red (run 1832).
+- mutation (AC5, AC8 ledger half): `Gate.Decide` answers allowed → the dispatch leg's code, "nothing is minted" and ledger assertions red (run 1833); `Decide` drops the denial's code → the dispatch leg's code and ledger assertions red (run 1834).
+- mutation (PUT leaves unnamed keys): `State.Policy.GuardedApply` deletes every key row first → `GovernanceWire.TestAKeyTheWriteDoesNotNameIsLeftAsItIs` red (run 1835).
+- mutation (audit carries changed keys only): `LogChange`'s unchanged-key skip removed → `GovernanceWire.TestAnAcceptedWriteIsReadBackAndAudited` red (run 1836).
+- mutation (AC1 non-admin half): both handlers skip `IsAdministrator` → `GovernanceWire.TestANonAdministratorIsRefusedBothRoutes` red (run 1837).
+- mutation (AC2 every other key enabled): `webapp.list.create` listed `false` → `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` red (run 1838).
+- AC7: the port-call half is the AC6 mutation above (run 1817: the write reaches the port) with run 1832; the `Dispatch.cls` half is inspection, `git diff --stat` names no `Dispatch.cls`.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- Built A, B and C: the kernel (baseline of 76 keys measured on `ocupilot-b-ci`, `State.Policy`, `Governance.Policy`, `Gate`, the Confirm block, the three codes, the purge advertised with `AUDIT.PURGEMARKERS`, the prompt), the two routes with audit, and the Governance policy screen at side-bar position 4 with Transcripts moved to 5.
+- Loop verification, one class per call on `ocupilot-b-ci`, all green: `GovernanceBaseline`, `Governance`, `GovernanceWire`, `AuditPurge`, `ToolDispatch`, `Prohibited`, `SurfaceCoverage`, `EndpointCoverage`, `ConfigGate`, `ToolEmit`, `ToolSetFull`, `ScreenGrounding`, `DraftRoute`, `ToolWrite`, `LedgerSense`, `Descriptor`, `TranscriptStore`, `Wire`, `ProposalConfirm`, `LedgerClientRows`, `Navigation`, `ToolNavigate`. Browser: `governance`, `audit-copy-purge`, `switches`, `definitions` and the structural walk (0 violations) green. `npm run test:tools` 1507/1507, `npm run test:components` 1499/1499, `check-objectscript` and `lint-docs` clean. Initial bundle 1.88 MB, under the 1900 kB warning.
+- Tests the spec did not list that the new screen or code moved: `Wire` (six agent screens, positions), `TranscriptStore` (position 5), `Descriptor` (31 entity types), `ToolEmit`'s tool-code sweep (admits `GOVERNANCEDISABLED`), `navigation.test.mjs`, `definitions.browser-spec.mjs`, `preferences-reset.test.mjs`, `proposal-view.test.mjs`; `GovernanceWire` joins the `OCUPILOT_ALLOW_PRINCIPALS` roster in `ci-throwaway.sh`.
+- Contended files: `EXPERIENCE.md`, `scripts/ci-throwaway.sh`, `Api/Error.cls`, `Api/Router.cls`, `Kernel/Proposal/Confirm.cls`, `Test/Descriptor.cls`, `Test/EndpointCoverage.cls`, `Test/SurfaceCoverage.cls`, `Test/Wire.cls`, `ui/browser/definitions.browser-spec.mjs`, `proposal-view.ts`, `screens.generated.ts`, `strings.ts`, `screen-outlet.ts`, `_components.scss`, `navigation.test.mjs`. A trial three-way merge against `origin/OCU-1-epic16` adds no conflict: `Wire.cls`, `definitions.browser-spec.mjs`, `screen-outlet.ts` and `navigation.test.mjs` already conflict at HEAD (Story 14.4 against 16.22), on the lines this story also moves.
+- Review pass (two layers, 21 findings; 0 high, 7 medium, 14 low): 11 rows patched, 10 rejected with reasons, 1 residue deferred to `deferred:`. Patches: the `Confirm.GovernanceGateClass` seam and its `ConfirmFixture` override; three `Governance` legs (prohibited before governance, governance before restraint, a gate that cannot decide answers 500 with the row live); the dispatch leg aimed at a real target so "nothing is minted" can fail; `GovernanceWire`'s partial-PUT leg and unchanged-key audit assertion; the `KeyFor` doc; `StoredArguments` moved above `Transition`. Every new or missing pin has its `mutation:` line (runs 1830-1838).
+- Follow-up review recommended: false. Two or more mediums were patched, but each patch is a test or a seam whose mutation was observed red; no unverified risk can be named.
+- Full ObjectScript sweep on `ocupilot-b-ci` (`ci-runner.mjs`, one class at a time, each checked against the result global): 314 classes, 2,595 tests, 1 failed. The failure is `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` "nothing is cut at 1,000": the reused throwaway's task history holds 1,110 rows. The diff touches no task code, so this reads as the container's accumulated history (inference), not this story. Browser, run after the final build and redeploy: `governance`, `audit-copy-purge`, `switches`, `definitions` and the structural walk, 29/29. `npm test`: 1,507 tools and 1,499 components green. `npm run build` green, initial total 1.88 MB. Smoke: 48/48. `check-objectscript` and `lint-docs` clean. EXPERIENCE.md holds 981 lines. The policy reads default afterwards (no preset, 76 keys, all `inherit`).
+- Took longest: the implementation hand-off (36 min), then the sweep (33 min).
+- Residual risk: Epic 16's `Test/Guardrails.cls` pins the purge as unadvertised, and its new write tools need baseline lines. `GovernanceBaseline` goes red, naming each missing key, until they are added at the merge.

@@ -199,6 +199,7 @@ services:
       # classes: TurnSanitize
       # classes: SanitizeAuditMask
       # classes: Retention, TranscriptsWire
+      # classes: GovernanceWire
       # classes: AccountPasswordWire, AgentConnectionRoles, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
       # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
       # classes: OAuthTabs

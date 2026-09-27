@@ -179,6 +179,9 @@ export const CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED = 'OAUTH.SERVERCLIENTSHID
 /** Story 12.8: a server client's new secret, which its application must use from then on. */
 export const CONSEQUENCE_SERVERCLIENTSECRETCHANGE = 'OAUTH.SERVERCLIENTSECRETCHANGE';
 
+/** Story 14.2: the agent's audit purge, which removes the markers of the agent's own writes too. */
+export const CONSEQUENCE_PURGEMARKERS = 'AUDIT.PURGEMARKERS';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -203,6 +206,7 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SERVERCLIENTSPRIVILEGED) return STRINGS.oauthAuthServerClientsPrivilegedEffect;
   if (code === CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED) return STRINGS.oauthAuthServerClientsHiddenPrivilegedEffect;
   if (code === CONSEQUENCE_SERVERCLIENTSECRETCHANGE) return STRINGS.oauthRegisteredClientSecretEffect;
+  if (code === CONSEQUENCE_PURGEMARKERS) return STRINGS.auditPurgeMarkersEffect;
   return '';
 }
 

@@ -59,6 +59,7 @@ XData Coverage
 <screen name="AgentSwitches" class="OcuPilot.Test.Wire" method="TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource"/>
 <screen name="AgentTranscript" class="OcuPilot.Test.TranscriptStore" method="TestTheListAndTheTranscriptPageAreDeclared" corpus="one declaration test pins both screens Story 14.4 adds, the list and the transcript page beneath it"/>
 <screen name="AgentTranscripts" class="OcuPilot.Test.TranscriptStore" method="TestTheListAndTheTranscriptPageAreDeclared" corpus="one declaration test pins both screens Story 14.4 adds, the list and the transcript page beneath it"/>
+<screen name="AgentGovernance" class="OcuPilot.Test.GovernanceWire" method="TestTheReadAnswersEveryWriteKey"/>
 <screen name="AuditList" class="OcuPilot.Test.Descriptor" method="TestTheAuditListValidatesAndDeclaresItsServerCriteria"/>
 <screen name="AuditingConfig" class="OcuPilot.Test.Descriptor" method="TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTool"/>
 <screen name="AuditSystemEventList" class="OcuPilot.Test.AuditingScreen" method="TestTheSystemEventListReadsSystemEvents"/>
@@ -144,7 +145,7 @@ XData Coverage
 <tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>
 <tool name="security.auditing.update" class="OcuPilot.Test.ToolWrite" method="TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestructive"/>
 <tool name="security.auditing.copy" class="OcuPilot.Test.AuditCopy" method="TestTheToolsAreQueuedActionWritesOverTheScreensPairsAndOperate"/>
-<tool name="security.auditing.purge" class="OcuPilot.Test.AuditPurge" method="TestThePurgeIsAnUnadvertisedDestructiveActionWrite"/>
+<tool name="security.auditing.purge" class="OcuPilot.Test.AuditPurge" method="TestThePurgeIsAnAdvertisedDestructiveActionWrite"/>
 <tool name="security.auditsystemevents.reset" class="OcuPilot.Test.AuditEventTools" method="TestTheResetToolsAreActionWritesWithOneStateRow" corpus="the system and user tools are asserted together in one loop"/>
 <tool name="security.auditsystemevents.update" class="OcuPilot.Test.AuditEventTools" method="TestTheUpdateToolsAdmitTheirFieldsOverTheClassDerivedList" corpus="the system and user tools are asserted together in one loop"/>
 <tool name="security.audituserevents.create" class="OcuPilot.Test.AuditEventRules" method="TestTheCreateToolDeclaresACreateOverTheDerivedList"/>

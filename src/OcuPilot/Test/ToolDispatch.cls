@@ -132,10 +132,14 @@ Method TestAGateDenialReachesNothingAndTheToolStaysAdvertised()
     Do $$$AssertTrue($ClassMethod(..#PROBE, "Logged") [ "governance gate could not decide", "and is logged: " _ $ClassMethod(..#PROBE, "Logged"))
 }
 
-/// <p>Every live tool is allowed by the shipped gate point (AD-10, AD-22).</p>
+/// <p>Under the default policy the shipped gate point allows every live tool except the audit
+/// purge, which its baseline line disables (AD-10, AD-22). It reads the stored policy, so it
+/// asserts the default only where no policy is stored.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.Governance.Gate.Decide</method> answers 0 -> this goes red.</p>
-Method TestTheShippedGateAllowsEveryLiveTool()
+Method TestTheShippedGateAllowsEveryLiveToolButThePurge()
 {
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tStored), "the stored policy reads")
+    Do $$$AssertTrue(##class(OcuPilot.Test.GovernanceFixture).IsDefault(.tStored), "and leaves every key to the baseline")
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools), "the live tools list")
     If '$IsObject(tTools) Quit
     Do $$$AssertTrue(tTools.%Size() > 0, "there are live tools: " _ tTools.%Size())
@@ -143,7 +147,8 @@ Method TestTheShippedGateAllowsEveryLiveTool()
     While tIterator.%GetNext(.tIndex, .tTool) {
         Kill tDecision
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Governance.Gate).Decide(tTool.name, tTool.kind, $Username, {}, .tDecision), tTool.name _ ": the gate decides")
-        Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), "1|", tTool.name _ ": allowed, with no code")
+        Set tExpected = $Select(tTool.name = "security.auditing.purge": "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, 1: "1|")
+        Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), tExpected, tTool.name _ ": " _ tExpected)
     }
 }
 
