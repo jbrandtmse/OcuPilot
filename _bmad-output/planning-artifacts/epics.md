@@ -872,7 +872,7 @@ A user completes the area the contest names most specifically: five OAuth 2.0 ed
 
 ### Epic 13: Bonus deliverables and engineering hygiene
 
-The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline.
+The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline. Story 13.5, added after the submission, splits CI's two long suites across parallel jobs; the owner ranked it the first story after release 1.0.2. [AMENDED 2026-09-27, owner: Story 13.5 added]
 
 **FRs covered:** FR-79
 
@@ -5554,7 +5554,7 @@ So that the area the task statement names reads as rebuilt.
 
 ## Epic 13: Bonus deliverables and engineering hygiene
 
-The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline.
+The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline. Story 13.5, added after the submission, splits CI's two long suites across parallel jobs; the owner ranked it the first story after release 1.0.2. [AMENDED 2026-09-27, owner: Story 13.5 added]
 
 ### Story 13.1: The uninstall hook
 
@@ -5651,6 +5651,66 @@ which is a public, irreversible act that ships whatever the build is at that mom
   configured, requested or used, the package is exercised only as a local build and install,
   and the story is **not** reported done by having published. A gate that can only be closed by
   publishing is an unmet gate, to be escalated rather than closed - the release is the owner's alone.
+
+### Story 13.5: CI in parallel - the two long suites split across containers
+
+As the owner, waiting on CI at every story boundary and every release,
+I want the ObjectScript suite and the browser specs split across parallel jobs,
+So that a run takes about 20 minutes instead of about 50, and stays inside its time limits as the suites grow.
+
+**Owner decision 2026-09-27, HIGH: the first story after release/1.0.2 is cut, on the first slot to free.** Run
+36347461573 took 55 minutes. Its `instance` job spent 52.2 of its 54.6 minutes running 327 test classes one at a time
+against one container (limit 60); its `browser` job spent 48.3 of 50.8 minutes running 100 spec files one at a time
+against one container (limit 50 on feature, 75 on the 1.0.2 staging branch). Every other job finished within 5
+minutes. One class at a time is a rule per instance, because classes share one instance's fixtures; nothing requires
+one instance per run.
+
+**Acceptance Criteria:**
+
+- **Given** a CI run
+- **When** the ObjectScript suite runs
+- **Then** it runs as **three parallel shard jobs**, each bringing up its own throwaway container and running its share
+  of the test classes **one class at a time**, exactly as the single job does today.
+
+- **Given** a CI run
+- **When** the browser specs run
+- **Then** they run as **three parallel shard jobs**, each with its own throwaway container, running its share of the
+  spec files one file at a time against its own instance.
+
+- **Given** the classes and spec files to share out
+- **When** the shards are assigned
+- **Then** the assignment is deterministic and balanced by recorded duration, longest first, from a timings file
+  committed in the repository; a class or spec file with no recorded time is still assigned; and one documented command
+  refreshes the timings file from a run's output.
+
+- **Given** the shards of one run
+- **When** they have finished
+- **Then** a roll-up job for each suite, still named `instance` and `browser`, fails unless every test class the
+  instance offers and every spec file the checkout carries ran in exactly one shard and no shard executed zero tests -
+  so a class or spec cannot be dropped silently.
+
+- **Given** a failing class or spec file
+- **When** its shard fails
+- **Then** the failure names the shard and the class or spec as today, and that shard's capture-on-failure step still
+  collects its container's logs.
+
+- **Given** the steps that run once per suite today - the admin API drift check and the smoke script
+- **When** CI runs
+- **Then** each still runs, once per run, against a freshly installed instance.
+
+- **Given** a developer running `ci-runner.mjs` or `npm run test:browser` locally without a shard option
+- **When** it runs
+- **Then** it behaves exactly as it does today: the full suite, one class or file at a time.
+
+- **Given** the pinned workflow rosters in `ui/tools/ci.test.mjs`
+- **When** the workflow changes
+- **Then** they are updated in the same change, and removing a shard from either matrix turns a test red.
+
+- **Given** the story's own green CI run on GitHub-hosted runners
+- **When** it is measured
+- **Then** the run takes **25 minutes or less** from its first job's start to its last job's end, with about 20 the
+  target; the measured time is recorded in the story; and each shard job's `timeout-minutes` leaves at least half again
+  its measured share as margin.
 
 ---
 
