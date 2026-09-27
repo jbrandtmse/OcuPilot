@@ -24,6 +24,7 @@ import { type Citation, formatCitationAbsent } from '../core/citations';
 import { decodeEntityId } from '../core/entity-id';
 import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../core/explain-entry';
 import { classifyFault, isBannerFault } from '../core/fault';
+import { FixFinding } from '../core/fix-finding';
 import {
   HOME_AREA_KEY,
   NavigationService,
@@ -45,6 +46,7 @@ import {
   phaseForState,
   toCardView,
 } from '../core/proposal-view';
+import type { ReadBack } from '../core/read-back';
 import { ScopeService, onScopeChange } from '../core/scope';
 import {
   assembleEntryContext,
@@ -171,6 +173,8 @@ interface PanelProposalView {
   readonly phase: ProposalPhase;
   /** The moment the instance committed the write, for the confirmed status line; `''` until then. */
   readonly confirmedAt: string;
+  /** The confirmed write's read-back, for the card's line under that status line (AD-58). */
+  readonly readBack: ReadBack | null;
 }
 
 /** One turn's rendered view, precomputed once per read so the template does no substitution. */
@@ -465,6 +469,7 @@ interface PanelTurnView {
                   [nowMs]="nowMs"
                   [userName]="userName"
                   [confirmedAt]="proposal.confirmedAt"
+                  [readBack]="proposal.readBack"
                   (confirm)="onCardConfirm($event)"
                   (cancel)="onCardCancel($event)"
                   (repropose)="onCardRepropose($event)"
@@ -575,6 +580,8 @@ export class Panel {
   private readonly suggested = inject(SuggestedView);
   /** A log or audit entry's explain request (Story 11.2). Optional, so a spec that needs none provides none. */
   private readonly explainEntry = inject(ExplainEntry, { optional: true });
+  /** A Findings panel's Fix it request (Story 16.21). Optional, so a spec that needs none provides none. */
+  private readonly fixFinding = inject(FixFinding, { optional: true });
 
   private readonly composerEl = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
 
@@ -713,6 +720,7 @@ export class Panel {
         this.syncSuggested();
       }),
       this.explainEntry?.subscribe(() => this.onExplainEntry()) ?? (() => {}),
+      this.fixFinding?.subscribe(() => this.onFixFinding()) ?? (() => {}),
     ];
     this.syncSuggested();
     // Every render that grows the transcript while it follows scrolls it to the newest entry.
@@ -998,6 +1006,7 @@ export class Panel {
       ),
       phase: this.phaseFor(proposal),
       confirmedAt: clockOf(proposal.confirmedAt),
+      readBack: proposal.readBack ?? null,
     };
   }
 
@@ -1565,8 +1574,8 @@ export class Panel {
    * **The namespace is the key**, which is what bounds this to one call per line per Home visit per
    * namespace (AD-24): every store this reads answers a round trip after the panel is built, so
    * this runs on each of their notifications, and without a key it would read on all of them. A
-   * namespace switch is a different question and reads once (AD-44). Home is not in AD-43's
-   * refresh roster, so there is no timer.
+   * namespace switch is a different question and reads once (AD-44). Home's auto-refresh tick
+   * (AD-43) re-reads only its performance row, so there is no timer here.
    *
    * It withholds the read until the block's own preconditions hold -- Home, an answered status
    * with an enabled definition, and a resolved namespace -- rather than reading and discarding:
@@ -1804,6 +1813,20 @@ export class Panel {
     });
     if (context === null) return;
     void this.sendWithContext(STRINGS.agentExplainEntryAction, context);
+  }
+
+  /**
+   * A Findings panel's Fix it (Story 16.21): take Home's pending request once the affected screen
+   * has read, check the gate again, and send that check's fixed sentence with the context this
+   * screen assembles, through the same path and leaving the draft as it is. The sentence carries no
+   * instance text; the object reaches the model only as the screen's own context (AD-11).
+   */
+  private onFixFinding(): void {
+    const fix = this.fixFinding;
+    const request = fix === null ? null : fix.take();
+    if (fix === null || request === null) return;
+    if (!fix.shown() || fix.reason() !== null) return;
+    void this.sendWithContext(STRINGS[request.key], this.assembleContext());
   }
 
   /**

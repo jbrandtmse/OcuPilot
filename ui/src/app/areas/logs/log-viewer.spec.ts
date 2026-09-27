@@ -1,14 +1,17 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiService, type JsonResult } from '../../core/api';
 import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../../core/explain-entry';
 import { NavigationService } from '../../core/navigation';
 import { ScreenActions } from '../../core/screen-actions';
+import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
+import { stubAccountPreferences } from '../../testing/account-preferences';
 import { stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
+import { fileOptionText } from './log-line';
 import { LogViewerPage } from './log-viewer.page';
 import { LogViewerStore } from './log-viewer.store';
 
@@ -18,6 +21,14 @@ const MESSAGES_SCREEN = SCREENS.find((screen) => screen.route === 'logs/messages
 
 const TAIL_PATH = '/api/ocupilot/logs/alerts';
 const MESSAGES_TAIL_PATH = '/api/ocupilot/logs/messages';
+const FILES_PATH = '/api/ocupilot/logs/messages/files';
+
+/** `GET /logs/messages/files`' answer: messages.log first, then the rotated files newest first. */
+const FILES = [
+  { name: 'messages.log', size: 1637621, modified: '2026-09-27T03:10:48Z' },
+  { name: 'messages.old_20260926_5', size: 2982895, modified: '2026-09-26T21:18:14Z' },
+  { name: 'messages.old_20260926_4', size: 2048, modified: '2026-09-26T09:00:00Z' },
+];
 
 const FILE_LINES = [
   '09/18/26-07:33:42:173 (423284) 2 [OcuPilot.Log] [OcuPilot] a severe entry',
@@ -44,6 +55,19 @@ class StubApi {
 
   private tailRefusal: { status: number; code: string | null; detail: Record<string, unknown> | null } | null = null;
 
+  private filesBody: unknown = { source: 'messages', files: FILES, truncated: false };
+
+  private filesRefused = false;
+
+  /** Answer the file list with `files`. */
+  listFiles(files: unknown[]): void {
+    this.filesBody = { source: 'messages', files, truncated: false };
+  }
+
+  refuseFiles(): void {
+    this.filesRefused = true;
+  }
+
   /** Queue one answer per tail request, in order; the last one repeats. */
   tail(...bodies: unknown[]): void {
     this.tailBodies = bodies;
@@ -55,6 +79,10 @@ class StubApi {
 
   async requestJson<T>(path: string): Promise<JsonResult<T>> {
     this.paths.push(path);
+    if (path === FILES_PATH) {
+      if (this.filesRefused) return { kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: null, detail: null };
+      return { kind: 'ok', status: 200, body: this.filesBody as T };
+    }
     if (this.tailRefusal !== null) {
       return {
         kind: 'error',
@@ -91,7 +119,8 @@ describe('LogViewerPage', () => {
    * screen as it opens rather than against a second read of its own.
    */
   async function mount(
-    screen = ALERTS_SCREEN
+    screen = ALERTS_SCREEN,
+    address = ''
   ): Promise<{ fixture: ComponentFixture<LogViewerPage>; store: LogViewerStore }> {
     TestBed.configureTestingModule({
       providers: [
@@ -102,8 +131,10 @@ describe('LogViewerPage', () => {
           useValue: { screenForUrl: () => screen } as unknown as NavigationService,
         },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
       ],
     });
+    if (address !== '') await TestBed.inject(Router).navigateByUrl(address);
     const fixture = TestBed.createComponent(LogViewerPage);
     fixture.detectChanges();
     await settle();
@@ -360,7 +391,8 @@ describe('LogViewerPage', () => {
     await settle();
 
     expect(api.paths.filter((path) => path.startsWith(TAIL_PATH))).toHaveLength(0);
-    const asked = api.paths.filter((path) => path.startsWith(MESSAGES_TAIL_PATH));
+    // The file list (Story 16.20) is its own route, not a page of the file.
+    const asked = api.paths.filter((path) => path.startsWith(MESSAGES_TAIL_PATH) && path !== FILES_PATH);
     expect(asked).toEqual([MESSAGES_TAIL_PATH, `${MESSAGES_TAIL_PATH}?offset=400&identity=first-line`]);
     for (const path of asked) expect(path).not.toContain('maxBytes');
   });
@@ -454,6 +486,193 @@ describe('LogViewerPage', () => {
     fixture.detectChanges();
     expect(textOf(fixture, '[data-ocu-log="count"]')).toBe('1 of 1');
   });
+
+  // --- Story 16.20: older messages.log files ---------------------------------------------------
+
+  const ADDRESS = '/logs/messages?ns=HSCUSTOM';
+  const OLDER = 'messages.old_20260926_5';
+
+  /** Let a navigation and the read it starts settle. */
+  async function settleNavigation(fixture: ComponentFixture<LogViewerPage>): Promise<void> {
+    for (let turn = 0; turn < 4; turn += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await settle();
+    }
+    fixture.detectChanges();
+  }
+
+  function fileChoice(fixture: ComponentFixture<LogViewerPage>): HTMLSelectElement | null {
+    return fixture.nativeElement.querySelector('select[data-ocu-log="file"]');
+  }
+
+  function choose(fixture: ComponentFixture<LogViewerPage>, value: string): void {
+    const select = fileChoice(fixture)!;
+    select.value = value;
+    select.dispatchEvent(new Event('change'));
+  }
+
+  const tailRequests = (): string[] => api.paths.filter((path) => path.startsWith(MESSAGES_TAIL_PATH) && path !== FILES_PATH);
+
+  it('Story 16.20 AC1: the file choice lists messages.log, then the rotated files newest first, each with size and time', async () => {
+    const { fixture } = await mount(MESSAGES_SCREEN, ADDRESS);
+
+    const select = fileChoice(fixture);
+    expect(select).not.toBeNull();
+    expect(select?.classList.contains('ocu-criteria-select')).toBe(true);
+    expect(select?.getAttribute('aria-label')).toBe(STRINGS.databaseVolumeColumnFile);
+    const options = Array.from(select!.querySelectorAll('option'));
+    expect(options.map((option) => option.textContent?.trim())).toEqual(FILES.map((entry) => fileOptionText(entry)));
+    expect(options.map((option) => option.value)).toEqual(['', FILES[1].name, FILES[2].name]);
+    expect(select?.value).toBe('');
+    expect(api.paths.filter((path) => path === FILES_PATH)).toHaveLength(1);
+    expect(tailRequests()).toEqual([MESSAGES_TAIL_PATH]);
+  });
+
+  // Mutation (Rule 19): drop `file=` from the store's read -> this goes red on the request path.
+  it('Story 16.20 AC2: choosing an older file puts it in the address beside ns and reads that file', async () => {
+    const { fixture } = await mount(MESSAGES_SCREEN, ADDRESS);
+    api.tail(tailPage(['09/26/26-21:00:00:000 (7) 0 [Utility.Event] from the older file'], 90, 'older-line'));
+
+    choose(fixture, OLDER);
+    await settleNavigation(fixture);
+
+    const url = TestBed.inject(Router).url;
+    expect(url).toContain('ns=HSCUSTOM');
+    expect(url).toContain(`file=${OLDER}`);
+    expect(tailRequests().at(-1)).toBe(`${MESSAGES_TAIL_PATH}?file=${OLDER}`);
+    expect(rows(fixture).map((cells) => cells[3])).toEqual(['from the older file']);
+    expect(fileChoice(fixture)?.value).toBe(OLDER);
+  });
+
+  it('Story 16.20 AC2: Load newer on an older file carries its cursor and its name', async () => {
+    const { store } = await mount(MESSAGES_SCREEN, `${ADDRESS}&file=${OLDER}`);
+    await store.loadNewer();
+    await settle();
+    expect(tailRequests()).toEqual([`${MESSAGES_TAIL_PATH}?file=${OLDER}`, `${MESSAGES_TAIL_PATH}?offset=400&identity=first-line&file=${OLDER}`]);
+  });
+
+  // Mutation (Rule 19): stop the page reading `file` from the address -> this goes red.
+  it('Story 16.20 AC2: a shared link opens the named file and the choice shows it', async () => {
+    const { fixture, store } = await mount(MESSAGES_SCREEN, `${ADDRESS}&file=${OLDER}`);
+
+    expect(store.file()).toBe(OLDER);
+    expect(tailRequests()).toEqual([`${MESSAGES_TAIL_PATH}?file=${OLDER}`]);
+    expect(fileChoice(fixture)?.value).toBe(OLDER);
+  });
+
+  it('Story 16.20: choosing messages.log takes file out of the address and reads the current file', async () => {
+    const { fixture } = await mount(MESSAGES_SCREEN, `${ADDRESS}&file=${OLDER}`);
+
+    choose(fixture, '');
+    await settleNavigation(fixture);
+
+    const url = TestBed.inject(Router).url;
+    expect(url).toContain('ns=HSCUSTOM');
+    expect(url).not.toContain('file=');
+    expect(tailRequests().at(-1)).toBe(MESSAGES_TAIL_PATH);
+    expect(fileChoice(fixture)?.value).toBe('');
+  });
+
+  it('Story 16.20: a named file no longer on disk is the published refusal, listed by its name alone, with no empty state', async () => {
+    api.refuseTail(404, 'LOG.ABSENT');
+    const gone = 'messages.old_20200101';
+    const { fixture, store } = await mount(MESSAGES_SCREEN, `${ADDRESS}&file=${gone}`);
+
+    expect(store.gone()).toBe(true);
+    expect(textOf(fixture, '[data-ocu-log="refusal"]')).toBe(STRINGS.logViewerFileGone);
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="empty"]')).toBeNull();
+    const options = Array.from(fileChoice(fixture)!.querySelectorAll('option'));
+    expect(options.at(-1)?.textContent?.trim()).toBe(gone);
+    expect(fileChoice(fixture)?.value).toBe(gone);
+  });
+
+  // Mutation (Rule 19): stop `read` clearing `gone` -> this goes red on the refusal text.
+  it('Story 16.20: a Refresh after a removed file shows what the new read answered, not the stale removal', async () => {
+    api.refuseTail(404, 'LOG.ABSENT');
+    const { fixture, store } = await mount(MESSAGES_SCREEN, `${ADDRESS}&file=messages.old_20200101`);
+    api.refuseTail(403, 'AUTH.NOPRIVILEGE', { failedPair: '%Admin_Operate:USE' });
+    await store.open();
+    fixture.detectChanges();
+    expect(store.gone()).toBe(false);
+    expect(textOf(fixture, '[data-ocu-log="refusal"]')).not.toBe(STRINGS.logViewerFileGone);
+  });
+
+  it('Story 16.20: messages.log answering LOG.ABSENT keeps today\'s empty state, not the removed-file refusal', async () => {
+    api.refuseTail(404, 'LOG.ABSENT');
+    const { fixture, store } = await mount(MESSAGES_SCREEN, ADDRESS);
+    expect(store.gone()).toBe(false);
+    expect(textOf(fixture, '[data-ocu-log="empty"]')).toBe(STRINGS.logViewerEmpty);
+  });
+
+  it('Story 16.20: a name the server refuses LOG.FILE is the generic refusal, not the removed-file one', async () => {
+    api.refuseTail(400, 'LOG.FILE');
+    const { fixture, store } = await mount(MESSAGES_SCREEN, `${ADDRESS}&file=${OLDER}.bak`);
+    expect(store.gone()).toBe(false);
+    expect(textOf(fixture, '[data-ocu-log="refusal"]')).toBe(STRINGS.connectivityRequestRefused);
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="empty"]')).toBeNull();
+  });
+
+  it('Story 16.20: a refused list renders no choice, and the rows are as today', async () => {
+    api.refuseFiles();
+    const { fixture } = await mount(MESSAGES_SCREEN, ADDRESS);
+    expect(fileChoice(fixture)).toBeNull();
+    expect(rows(fixture)).toHaveLength(2);
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="refusal"]')).toBeNull();
+  });
+
+  // Mutation (Rule 19): give ALERTS_SOURCE a `filesPath` -> this goes red.
+  it('Story 16.20: alerts.log renders no file choice, asks for no list, and sends no file', async () => {
+    const { fixture } = await mount(ALERTS_SCREEN, `/logs/alerts?ns=HSCUSTOM&file=${OLDER}`);
+    expect(fileChoice(fixture)).toBeNull();
+    expect(api.paths.filter((path) => path.includes('/files'))).toHaveLength(0);
+    expect(api.paths).toEqual([TAIL_PATH]);
+  });
+
+  // Mutation (Rule 19): drop `publishRows` from the page -> this goes red on the published rows.
+  it('Story 16.20: the lines on screen are published into the screen store, newest first, and replaced by the next file', async () => {
+    const { fixture } = await mount(MESSAGES_SCREEN, ADDRESS);
+    const published = () => TestBed.inject(ScreenStores).for(MESSAGES_SCREEN.descriptor, []).data();
+
+    expect(published()).toEqual([
+      { time: '2026-09-18T07:33:56.057', severity: '0', text: 'an informational entry' },
+      { time: '2026-09-18T07:33:42.173', severity: '2', text: '[OcuPilot] a severe entry' },
+    ]);
+
+    api.tail(tailPage(['09/26/26-21:00:00:000 (7) 1 [Utility.Event] from the older file'], 90, 'older-line'));
+    choose(fixture, OLDER);
+    await settleNavigation(fixture);
+    expect(published()).toEqual([{ time: '2026-09-26T21:00:00.000', severity: '1', text: 'from the older file' }]);
+  });
+
+  // Mutation (Rule 19): append Load newer's page in place, keeping the array -> this goes red.
+  it('Story 16.20: Load newer publishes the appended lines too, newest first', async () => {
+    const { store } = await mount(MESSAGES_SCREEN, ADDRESS);
+    api.tail(tailPage(['09/18/26-07:40:00:000 (1) 1 [Utility.Event] newer'], 500, 'first-line'));
+    await store.loadNewer();
+    await settle();
+    const published = TestBed.inject(ScreenStores).for(MESSAGES_SCREEN.descriptor, []).data();
+    expect(published.map((row) => (row as { text: string }).text)).toEqual(['newer', 'an informational entry', '[OcuPilot] a severe entry']);
+  });
+
+  // Mutation (Rule 19): publish only when the source lists files -> this goes red.
+  it('Story 16.20: alerts.log publishes its lines into its own screen store too', async () => {
+    await mount(ALERTS_SCREEN, '/logs/alerts?ns=HSCUSTOM');
+    const published = TestBed.inject(ScreenStores).for(ALERTS_SCREEN.descriptor, []).data();
+    expect(published).toEqual([
+      { time: '2026-09-18T07:33:56.057', severity: '0', text: 'an informational entry' },
+      { time: '2026-09-18T07:33:42.173', severity: '2', text: '[OcuPilot] a severe entry' },
+    ]);
+  });
+
+  it('Story 16.20: Refresh re-reads the list and the window', async () => {
+    const { fixture } = await mount(MESSAGES_SCREEN, ADDRESS);
+    const before = api.paths.length;
+    const actions = TestBed.inject(ScreenActions);
+    actions.run(MESSAGES_SCREEN.descriptor, 'refresh');
+    await settle();
+    fixture.detectChanges();
+    expect(api.paths.slice(before).sort()).toEqual([FILES_PATH, MESSAGES_TAIL_PATH].sort());
+  });
 });
 
 // --- Story 11.2: "Explain this entry" on each parsed row -----------------------------------------
@@ -475,6 +694,7 @@ describe('LogViewerPage: Explain this entry', () => {
         { provide: NavigationService, useValue: { screenForUrl: () => screen } as unknown as NavigationService },
         { provide: ScreenActions, useValue: new ScreenActions() },
         { provide: ExplainEntry, useValue: stub.entry },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
       ],
     });
     const fixture = TestBed.createComponent(LogViewerPage);

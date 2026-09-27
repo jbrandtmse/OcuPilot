@@ -183,10 +183,10 @@ services:
       # it is a change these rosters cannot see -- scripts/check-objectscript.py's
       # destructive-test-guard rule reads that, but only for a class making a call it names.
       #
-      # Rotates the instance's own messages.log. Set here and nowhere else: this container is
+      # Rotates the instance's own messages.log, or writes a file beside it. Set here and nowhere else: this container is
       # discarded, and the test refuses to run anywhere the variable is absent rather than
       # trusting a doc comment to keep it off a development instance.
-      # classes: LogSourceRotation
+      # classes: LogOlderFilesWire, LogSourceRotation
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
       # Every class that creates or deletes IRIS principals, or the OAuth 2.0 configuration
       # objects handled the same way. Same reasoning, same single home: test classes are selected
@@ -213,11 +213,14 @@ services:
       # classes: UserCreateWire, RoleWire, ResourceWire, X509Wire, WalletWire, DeviceWire, DeviceWriteGate
       # classes: UserSave, UserSignIn, WebAppSave, WebAppWeakening
       # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
-      # classes: RoleSave, RoleUpdate
+      # classes: RoleSave, RoleUpdate, ReadBackRoute
+      # classes: ImpactRoute
       # classes: SslWire
       # classes: TaskWire
       # classes: ServiceEdit, LdapEdit, ServiceLdapProbe
       # classes: AuditEventEditor
+      # classes: UiPerformanceWire
+      # classes: FindingsWire, GuardrailsWire
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

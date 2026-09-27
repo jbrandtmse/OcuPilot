@@ -56,6 +56,7 @@ XData Coverage
 <coverage>
 <screen name="AgentDefinitionForm" class="OcuPilot.Test.AgentDefinitionForm" method="TestTheFormDeclaresNoReadOrTableAndOneIdAndNoClassicPage"/>
 <screen name="AgentDefinitionList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<screen name="AgentGuardrails" class="OcuPilot.Test.Guardrails" method="TestTheDescriptorIsAListedUngatedAgentScreenWithNoRead"/>
 <screen name="AgentSwitches" class="OcuPilot.Test.Wire" method="TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource"/>
 <screen name="AuditList" class="OcuPilot.Test.Descriptor" method="TestTheAuditListValidatesAndDeclaresItsServerCriteria"/>
 <screen name="AuditingConfig" class="OcuPilot.Test.Descriptor" method="TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTool"/>
@@ -66,7 +67,7 @@ XData Coverage
 <screen name="DatabaseList" class="OcuPilot.Test.Descriptor" method="TestTheDatabasesGeneralViewDeclaresExactlyItsFiveFieldsAndFiveColumns"/>
 <screen name="DatabaseVolumeList" class="OcuPilot.Test.Descriptor" method="TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall"/>
 <screen name="DeviceList" class="OcuPilot.Test.Descriptor" method="TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns"/>
-<screen name="Home" class="OcuPilot.Test.Descriptor" method="TestARefreshingScreenDeclaresItsRatesAndHomeDeclaresNone"/>
+<screen name="Home" class="OcuPilot.Test.Descriptor" method="TestARefreshingScreenDeclaresItsRatesAndHomeDefaultsToTen"/>
 <screen name="LdapConfigList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="LockList" class="OcuPilot.Test.Descriptor" method="TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns"/>
 <screen name="LogAlertViewer" class="OcuPilot.Test.Descriptor" method="TestTheAlertLogViewerDeclaresTheLogSourceTailAndItsOnePair"/>

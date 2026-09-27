@@ -154,7 +154,8 @@ Method TestARequestSupplyingADerivedMemberIsRefused()
 /// <p>Home's route is <code>""</code>: a context carrying it is accepted while a route that is not a
 /// string is refused, and its payload is Home's identity with no tool, no row and a boolean
 /// <code>readOnly</code>. The namespace and view checks still apply on Home's route, and a row sent
-/// with it reaches the payload with no field value.</p>
+/// with it reaches the payload narrowed to Home's context fields, the performance row's five
+/// values.</p>
 Method TestHomesEmptyRouteIsAccepted()
 {
     Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
@@ -177,12 +178,13 @@ Method TestHomesEmptyRouteIsAccepted()
     Set tBadRows = {"context": {"route": "", "view": {"rows": {}}}}
     Do tBadRows.context.%Set("namespace", tNamespace, "string")
     Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tBadRows, ..#LIMITS), ##class(OcuPilot.Api.Error).#TURNCONTEXTINVALID, "Home with rows that are not an array is refused")
-    Set tRowed = {"context": {"route": "", "view": {"rows": [{"Pid": "homeprobevalue"}]}}}
+    Set tRowed = {"context": {"route": "", "view": {"rows": [{"Pid": "homeprobevalue", "globalReferencesPerSecond": 4711}]}}}
     Do tRowed.context.%Set("namespace", tNamespace, "string")
     Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tRowed, ..#LIMITS), "", "Home with a well-formed view passes the shape check")
     Do $$$AssertStatusOK(##class(OcuPilot.Api.Turn).BoundedContext(tRowed.context, 0, 200, ..#LIMITS, .tRowedJson), "Home's payload with a row builds")
     Do $$$AssertTrue(tRowedJson '= "", "and is not empty")
-    Do $$$AssertTrue('(tRowedJson [ "homeprobevalue"), "and carries no field value, since Home declares no context field")
+    Do $$$AssertTrue('(tRowedJson [ "homeprobevalue"), "and carries no value of a field Home does not declare")
+    Do $$$AssertTrue(tRowedJson [ """globalReferencesPerSecond"":4711", "while a declared field's value reaches it")
 }
 
 /// <p>Both members ride the rows branch and the identity-only branch, with <code>readOnly</code> a

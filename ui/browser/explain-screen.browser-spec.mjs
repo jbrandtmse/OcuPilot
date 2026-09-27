@@ -2,7 +2,8 @@
  * "Explain this screen" in a real browser against the throwaway instance (Story 11.1): on the
  * process list one click sends the fixed sentence with the screen's context, leaves the draft as it
  * was, and a scripted reply naming the read tool renders verbatim; on Home the turn carries Home's
- * identity; with sharing off the button is unavailable and sends nothing.
+ * identity and its one performance row (Story 16.18); with sharing off the button is unavailable and
+ * sends nothing.
  *
  * Arms the `turnprobe` definition the way `screen-grounding.browser-spec.mjs` does and reads what
  * reached the provider back through `OcuPilot.Test.TurnProvider.Recorded`. The per-user sharing
@@ -167,7 +168,8 @@ test('(a) List screen: one click sends the sentence with the screen context and 
   }
 });
 
-test('(b) Home: the turn carries Home\'s identity, with no tool and no row', async () => {
+// Story 16.18 AC4: Home's context carries its performance row, the same five numbers the row shows.
+test('(b) Home: the turn carries Home\'s identity and its one performance row, with no tool', async () => {
   await requireFreeSlot(config);
   const tag = nextTag(probe);
   setTag(probe, preparedId, tag);
@@ -175,6 +177,7 @@ test('(b) Home: the turn carries Home\'s identity, with no tool and no row', asy
   const { context, page } = await signedInAt(browser, config, HOME_URL);
   try {
     await page.waitForSelector(EXPLAIN, { visible: true, timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('.ocu-home-performance-item', { timeout: config.navigationTimeoutMs });
     await waitForExplainAvailable(page);
     await page.click(EXPLAIN);
     await waitForReply(page, 'home explained');
@@ -185,7 +188,13 @@ test('(b) Home: the turn carries Home\'s identity, with no tool and no row', asy
     assert.equal(payload.route, '');
     assert.deepEqual(payload.tools, []);
     assert.equal(typeof payload.readOnly, 'boolean');
-    assert.equal(payload.rowsSent, 0);
+    assert.equal(payload.rowsSent, 1, 'one row: the performance row');
+    assert.deepEqual(
+      Object.keys(payload.rows[0]).sort(),
+      ['cacheEfficiency', 'diskReadsPerSecond', 'diskWritesPerSecond', 'globalReferencesPerSecond', 'globalUpdatesPerSecond'],
+      `carrying the five values: ${JSON.stringify(payload.rows)}`
+    );
+    assert.ok(Object.values(payload.rows[0]).every((value) => typeof value === 'number'), 'each a number');
   } finally {
     await context.close();
     forgetTag(probe, tag);

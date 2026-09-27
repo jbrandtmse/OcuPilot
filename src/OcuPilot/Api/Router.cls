@@ -113,11 +113,13 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/device" Method="POST" Call="DeviceCreate"/>
   <Route Url="/screens/:screen/action" Method="POST" Call="ScreenAction"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
+  <Route Url="/screens/:screen/impact" Method="GET" Call="ScreenImpact"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
   <Route Url="/logs/errors/list" Method="GET" Call="LogErrorList"/>
   <Route Url="/logs/errors/detail" Method="GET" Call="LogErrorDetail"/>
   <Route Url="/logs/alerts" Method="GET" Call="LogAlerts"/>
+  <Route Url="/logs/messages/files" Method="GET" Call="LogMessageFiles"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
   <Route Url="/turn/:id/progress" Method="GET" Call="TurnProgress"/>
   <Route Url="/turn/:id/stop" Method="POST" Call="TurnStop"/>
@@ -137,6 +139,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ui/about" Method="GET" Call="UiAbout"/>
   <Route Url="/ui/help" Method="GET" Call="UiHelp"/>
   <Route Url="/ui/system" Method="GET" Call="UiSystem"/>
+  <Route Url="/ui/performance" Method="GET" Call="UiPerformance"/>
+  <Route Url="/ui/findings" Method="GET" Call="UiFindings"/>
+  <Route Url="/ui/guardrails" Method="GET" Call="UiGuardrails"/>
   <Route Url="/ssl/form" Method="GET" Call="SslFormRead"/>
   <Route Url="/ssl/name" Method="GET" Call="SslNameCheck"/>
   <Route Url="/ssl/:id/test" Method="POST" Call="SslTest"/>
@@ -652,6 +657,13 @@ ClassMethod ScreenRead(pScreen As %String) As %Status
     Quit ##class(OcuPilot.Api.ScreenRead).Handle(pScreen)
 }
 
+/// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/impact</code>: delegates to
+/// <class>OcuPilot.Api.ScreenImpact</class> and carries no logic of its own.</p>
+ClassMethod ScreenImpact(pScreen As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.ScreenImpact).Handle(pScreen)
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/errors/namespaces</code>: delegates to
 /// <class>OcuPilot.Api.ErrorLog</class> and carries no logic of its own.</p>
 /// <p>The route is literal and <b>binds the drill level here</b>, from the port's own enum, so no
@@ -688,10 +700,19 @@ ClassMethod LogErrorDetail() As %Status
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/messages</code>: delegates to
 /// <class>OcuPilot.Api.LogPage</class> and carries no logic of its own.</p>
 /// <p>The route is literal and <b>binds the source key here</b>, from the port's own enum, so no
-/// caller supplies a file name, a path or any part of one (AD-21).</p>
+/// caller supplies a path (AD-21). Its one caller-named value is <code>file</code>, a rotated
+/// console log's name the port admits by pattern or refuses (AD-21's fourth named case).</p>
 ClassMethod LogMessages() As %Status
 {
     Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/messages/files</code>: the console log
+/// and its rotated files, through <method>OcuPilot.Api.LogPage.HandleFiles</method>, with the
+/// source key bound here as <method>LogMessages</method> binds it.</p>
+ClassMethod LogMessageFiles() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleFiles(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /turn/:id/progress</code>: delegates to
@@ -842,6 +863,33 @@ ClassMethod UiHelp() As %Status
 ClassMethod UiSystem() As %Status
 {
     Quit ##class(OcuPilot.Api.UiSystem).HandleSystem()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ui/performance</code> (Story 16.18): delegates
+/// to <class>OcuPilot.Api.UiPerformance</class> and carries no logic of its own -- see
+/// <method>UiAbout</method> for why the <code>/ui/*</code> routes constrain none of the others'
+/// position.</p>
+ClassMethod UiPerformance() As %Status
+{
+    Quit ##class(OcuPilot.Api.UiPerformance).HandlePerformance()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ui/findings</code> (Story 16.21): delegates to
+/// <class>OcuPilot.Api.UiFindings</class> and carries no logic of its own -- see
+/// <method>UiAbout</method> for why the <code>/ui/*</code> routes constrain none of the others'
+/// position.</p>
+ClassMethod UiFindings() As %Status
+{
+    Quit ##class(OcuPilot.Api.UiFindings).HandleFindings()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ui/guardrails</code> (Story 16.22): delegates to
+/// <class>OcuPilot.Api.UiGuardrails</class> and carries no logic of its own -- see
+/// <method>UiAbout</method> for why the <code>/ui/*</code> routes constrain none of the others'
+/// position.</p>
+ClassMethod UiGuardrails() As %Status
+{
+    Quit ##class(OcuPilot.Api.UiGuardrails).HandleGuardrails()
 }
 
 /// <p>Resolves the authenticated caller for this request. Returns <code>$Username</code> —

@@ -217,7 +217,8 @@ test('AC1, AC4: the row action revokes exactly the account\'s tokens behind the 
     assert.equal(writes[0].path, '/api/ocupilot/screens/permissions.users/action');
     assert.deepEqual(JSON.parse(writes[0].body), { action: 'revoke-tokens', id: HOLDER });
     const changed = await page.$eval(CHANGED_ROW, (row) => row.querySelector('[role="gridcell"]')?.textContent?.trim() ?? '');
-    assert.equal(changed, `${HOLDER}${STRINGS.tableChangedTag}`, 'the list marks the account\'s row');
+    // Story 16.17: the tag may be followed by the instance's read-back line.
+    assert.ok(changed.startsWith(`${HOLDER}${STRINGS.tableChangedTag}`), `the list marks the account's row: ${changed}`);
     assert.equal(counts(), '0/1/1', 'its two tokens are gone; the lower-cased spelling\'s and the other account\'s remain');
   } finally {
     await context.close();

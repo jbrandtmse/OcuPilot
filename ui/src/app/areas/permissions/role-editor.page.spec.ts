@@ -65,6 +65,16 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   }
 }
 
+/** What `GET /screens/permissions.roles/impact` answers for a role Delete (Story 16.19). */
+const IMPACT = {
+  kind: 'role-delete',
+  refused: null,
+  parts: [
+    { part: 'holders', count: 2, names: ['Ann', 'Bo'], unchecked: '' },
+    { part: 'grantingApplications', count: 0, names: [], unchecked: '' },
+  ],
+};
+
 async function mount(
   name = 'Probe',
   save: JsonResult<unknown> = { kind: 'ok', status: 200, body: { name } },
@@ -79,6 +89,9 @@ async function mount(
       calls.push({ path, method, body: init.body ?? '' });
       if (method === 'PUT') return save as JsonResult<T>;
       if (method === 'POST') return { kind: 'ok', status: 200, body: { action: options.postAction ?? 'updated', target: { type: 'role', scope: 'instance', id: name } } } as JsonResult<T>;
+      if (path.startsWith('/api/ocupilot/screens/permissions.roles/impact?')) {
+        return { kind: 'ok', status: 200, body: { impact: IMPACT } } as JsonResult<T>;
+      }
       const roles = options.roles ?? ROLES;
       const named = path.startsWith(`${ROLES_FORM_PATH}?name=`) ? decodeURIComponent(path.slice(`${ROLES_FORM_PATH}?name=`.length)) : '';
       const body = named !== ''
@@ -221,18 +234,21 @@ describe('the role editor (Story 9.3)', () => {
     expect(document.activeElement?.id).toBe('ocu-role-edit-Description');
   });
 
-  it('AC3: Delete states how many accounts hold the role, and a predefined role\u2019s Delete is drawn refused', async () => {
-    // Mutation (Rule 19): drop the advisory from the handler's role delete -> the holder-line assertion goes red.
+  it('AC3: Delete states the removal\u2019s impact, and a predefined role\u2019s Delete is drawn refused', async () => {
+    // Story 16.19 replaced DW-1513's holders line with the impact line, read as the dialog opens.
+    // Mutation (Rule 19): drop the advisory from the handler's role delete -> the impact-line assertion goes red.
     const { fixture, host, calls } = await mount();
-    const formReads = (): number => calls.filter((call) => call.path === `${ROLES_FORM_PATH}?name=Probe` && call.method === 'GET').length;
-    const beforeDelete = formReads();
+    const impactReads = (): number => calls.filter((call) => call.path === '/api/ocupilot/screens/permissions.roles/impact?action=delete&id=Probe' && call.method === 'GET').length;
+    expect(impactReads()).toBe(0);
     (host.querySelector('[data-action="delete"]') as HTMLButtonElement).click();
     await settle(fixture);
-    expect(formReads()).toBe(beforeDelete + 1);
+    expect(impactReads()).toBe(1);
     const dialog = host.querySelector('app-screen-action-dialogs app-typed-name-dialog') as HTMLElement;
     expect(dialog).not.toBeNull();
     expect(dialog.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(STRINGS.roleDeleteConsequence);
-    expect(dialog.querySelector('[data-slot="advisory"] .ocu-banner-message')?.textContent?.trim()).toBe('2 users hold this role.');
+    expect(dialog.querySelector('[data-slot="advisory"] .ocu-banner-message')?.textContent?.trim()).toBe(
+      'Impact: 2 users hold it: Ann, Bo; no web application grants it.'
+    );
 
     // Mutation (Rule 19): clear the `system-role` rule -> the aria-disabled assertion goes red.
     const system = await mount('%Developer');

@@ -57,6 +57,10 @@ import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { SuggestedView } from './core/suggested-view';
 import { SystemInfo } from './core/system-info';
+import { Findings } from './core/findings';
+import { Guardrails } from './core/guardrails';
+import { FixFinding } from './core/fix-finding';
+import { PerformanceRow } from './core/performance';
 import { ThemeState } from './core/theme';
 import { AgentNavigator } from './shell/agent-navigator';
 import { RecentsRecorder } from './shell/recents-recorder';
@@ -228,6 +232,10 @@ export class App {
   private readonly about = inject(About);
   private readonly helpLinks = inject(HelpLinks);
   private readonly systemInfo = inject(SystemInfo);
+  private readonly findings = inject(Findings);
+  private readonly fixFinding = inject(FixFinding);
+  private readonly guardrails = inject(Guardrails);
+  private readonly performanceRow = inject(PerformanceRow);
   private readonly suggested = inject(SuggestedView);
   private readonly scope = inject(ScopeService);
   private readonly router = inject(Router);
@@ -630,6 +638,17 @@ export class App {
       // (Story 15.4, AD-8), so the next sign-in in this tab asks again rather than showing a
       // departed principal's answer.
       this.systemInfo.reset();
+      // The eighteenth: Home's performance row and its line, what the instance answered this
+      // caller (Story 16.18, AD-8). The next sign-in reads them again, and a caller the instance
+      // refuses sees no row rather than the departed principal's values.
+      this.performanceRow.reset();
+      // The nineteenth and twentieth: Home's findings, the instance's answer to this caller, and
+      // a Fix it request not yet sent (Story 16.21, AD-8).
+      this.findings.reset();
+      this.fixFinding.reset();
+      // The twenty-first: the Guardrails page's answer, whose switches are this caller's own verdict
+      // (Story 16.22, AD-8).
+      this.guardrails.reset();
       return;
     }
     void this.instance.verify();

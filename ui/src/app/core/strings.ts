@@ -1816,12 +1816,6 @@ export const STRINGS = {
   /** EXPERIENCE.md:479 */
   roleDeleteConsequence: 'Deleting this role takes it from every account and role that holds it. This cannot be undone.',
   /** EXPERIENCE.md:479 */
-  roleDeleteHolders: '<n> users hold this role.',
-  /** EXPERIENCE.md:479 */
-  roleDeleteHoldersOne: '1 user holds this role.',
-  /** EXPERIENCE.md:479 */
-  roleDeleteHoldersNone: 'No user holds this role.',
-  /** EXPERIENCE.md:479 */
   resourceDeleteConsequence: 'Every role that grants this resource loses it. This cannot be undone.',
   /** EXPERIENCE.md:480 */
   roleRefusalSystem: 'A name beginning with % belongs to one of the instance\'s own roles.',
@@ -1954,7 +1948,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:614 */
+  /** EXPERIENCE.md:624 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2855,6 +2849,261 @@ export const STRINGS = {
   oauthRegisteredClientFormRefusedAction: 'change this server client description',
   /** EXPERIENCE.md:573 */
   citationAbsent: '<name> is no longer present on this instance, so there is nothing to select.',
+  // The try-it console (Story 16.1). "Send" is `actionSend` and "Request" is `sslVerifyPeerRequest`:
+  // one key per value.
+  /** EXPERIENCE.md:574 */
+  tryItToggle: 'Try it',
+  /** EXPERIENCE.md:574 */
+  tryItResponse: 'Response',
+  /** EXPERIENCE.md:574 */
+  tryItBody: 'Body',
+  /** EXPERIENCE.md:574 */
+  tryItConfirmTitle: 'Send <VERB> <URL>?',
+  /** EXPERIENCE.md:574 */
+  tryItOwnApplication: 'This request goes to one of OcuPilot\'s own applications, so the console does not send it.',
+  /** EXPERIENCE.md:574 */
+  tryItAdminWrite: 'The console does not send changes to the admin API; OcuPilot\'s own screens make them.',
+  /** EXPERIENCE.md:574 */
+  tryItTraversal: 'A path parameter cannot be a single or double dot.',
+  /** EXPERIENCE.md:574 */
+  tryItNoAddress: 'This operation has no address on this instance, so it cannot be tried here.',
+  /** EXPERIENCE.md:574 */
+  tryItFailed: 'The request did not complete.',
+  /** EXPERIENCE.md:574 */
+  tryItCut: 'The response was cut at 256 KB.',
+  /** EXPERIENCE.md:574 */
+  tryItBinary: '<n> bytes, not shown as text.',
+  /** EXPERIENCE.md:575 */
+  readBackMatches: 'Read back: matches',
+  /** EXPERIENCE.md:575 */
+  readBackDiffers: 'Read back: differs in <fields>',
+  /** EXPERIENCE.md:575 */
+  readBackNotFound: 'Read back: not found',
+  /** EXPERIENCE.md:575 */
+  readBackPresent: 'Read back: still present',
+  /** EXPERIENCE.md:575 */
+  readBackWritten: 'Read back: <fields> written, not read back',
+  /** EXPERIENCE.md:575 */
+  readBackWrittenClause: '<fields> written, not read back',
+  /** EXPERIENCE.md:575 */
+  readBackNothingSent: 'Read back: nothing sent to compare',
+  /** EXPERIENCE.md:575 */
+  readBackRunning: 'Read back: not checked, the write is still running',
+  /** EXPERIENCE.md:575 */
+  readBackUnreadable: 'Read back: could not be read',
+  /** EXPERIENCE.md:575 */
+  readBackMore: ' and <n> more',
+  /** EXPERIENCE.md:576 */
+  performanceHeading: 'Performance',
+  /** EXPERIENCE.md:576 */
+  performanceDiskReads: 'Disk reads',
+  /** EXPERIENCE.md:576 */
+  performanceDiskWrites: 'Disk writes',
+  /** EXPERIENCE.md:576 */
+  performanceRateUnit: '/s',
+  /** EXPERIENCE.md:576 */
+  performanceCacheUnit: 'refs per block read or write',
+  /** EXPERIENCE.md:576 */
+  performanceSparklineLabel: 'Global references per second, last ten minutes',
+  /** EXPERIENCE.md:577 */
+  impactLine: 'Impact: <parts>.',
+  /** EXPERIENCE.md:577 */
+  impactHolders: '<n> users hold it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactHoldersOne: '1 user holds it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactHoldersNone: 'no user holds it',
+  /** EXPERIENCE.md:577 */
+  impactGrantingApplications: '<n> web applications grant it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGrantingApplicationsOne: '1 web application grants it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGrantingApplicationsNone: 'no web application grants it',
+  /** EXPERIENCE.md:577 */
+  impactGrantingRoles: '<n> roles grant it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGrantingRolesOne: '1 role grants it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGrantingRolesNone: 'no role grants it',
+  /** EXPERIENCE.md:577 */
+  impactGuardedApplications: 'it guards <n> web applications: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGuardedApplicationsOne: 'it guards 1 web application: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGuardedApplicationsNone: 'it guards no web application',
+  /** EXPERIENCE.md:577 */
+  impactGuardedDatabases: 'it guards <n> databases: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGuardedDatabasesOne: 'it guards 1 database: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGuardedDatabasesNone: 'it guards no database',
+  /** EXPERIENCE.md:577 */
+  impactLoses: '<user> loses <names>',
+  /** EXPERIENCE.md:577 */
+  impactLosesNone: '<user> loses nothing their other roles do not still grant',
+  /** EXPERIENCE.md:577 */
+  impactHoldersUnchecked: 'who holds it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactGrantingApplicationsUnchecked: 'which web applications grant it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactGrantingRolesUnchecked: 'which roles grant it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactGuardedApplicationsUnchecked: 'which web applications it guards was not checked',
+  /** EXPERIENCE.md:577 */
+  impactGuardedDatabasesUnchecked: 'which databases it guards was not checked',
+  /** EXPERIENCE.md:577 */
+  impactLosesUnchecked: 'what <user> loses was not checked',
+  /** EXPERIENCE.md:577 */
+  impactRequires: ' (requires <pair>)',
+  /** EXPERIENCE.md:577 */
+  impactTooMany: ' (too many to check)',
+  /** EXPERIENCE.md:578 */
+  logViewerFileOption: '<name> \u00b7 <size> KB \u00b7 <modified>',
+  /** EXPERIENCE.md:578 */
+  logViewerFileGone: 'That file is no longer in the manager directory.',
+  /** EXPERIENCE.md:579 */
+  findingsHeading: 'Findings',
+  /** EXPERIENCE.md:579 */
+  findingsSecurity: 'Security',
+  /** EXPERIENCE.md:579 */
+  findingsOperations: 'Operations',
+  /** EXPERIENCE.md:579 */
+  findingsNothing: 'Nothing to report.',
+  /** EXPERIENCE.md:579 */
+  findingsNotChecked: 'Not checked: <check>',
+  /** EXPERIENCE.md:579 */
+  findingsCouldNotRead: ' (could not be read)',
+  /** EXPERIENCE.md:579 */
+  findingsFix: 'Fix it',
+  /** EXPERIENCE.md:580 */
+  findingsCheckWebappOpen: 'web applications open without signing in',
+  /** EXPERIENCE.md:580 */
+  findingsCheckMonitorOpen: 'the monitoring API',
+  /** EXPERIENCE.md:580 */
+  findingsCheckAllHolder: 'accounts holding %All',
+  /** EXPERIENCE.md:580 */
+  findingsCheckCertificate: 'X.509 certificates',
+  /** EXPERIENCE.md:580 */
+  findingsCheckAuditingOff: 'auditing',
+  /** EXPERIENCE.md:580 */
+  findingsCheckDatabaseDismounted: 'database mounts',
+  /** EXPERIENCE.md:580 */
+  findingsCheckDatabaseFull: 'database sizes',
+  /** EXPERIENCE.md:580 */
+  findingsCheckTaskManager: 'the Task Manager',
+  /** EXPERIENCE.md:580 */
+  findingsCheckTaskError: 'suspended tasks',
+  /** EXPERIENCE.md:581 */
+  findingWebappOpen: '<name> can be reached without signing in and holds a database or administrative role.',
+  /** EXPERIENCE.md:581 */
+  findingWebappOpenWhy: 'Anyone who can reach this address can use that privilege.',
+  /** EXPERIENCE.md:581 */
+  findingWebappOpenDo: 'Require a password to sign in, or remove the role.',
+  /** EXPERIENCE.md:581 */
+  findingMonitorOpen: 'The monitoring API, <name>, answers without signing in.',
+  /** EXPERIENCE.md:581 */
+  findingMonitorOpenWhy: 'Anyone who can reach the instance can read its metrics.',
+  /** EXPERIENCE.md:581 */
+  findingMonitorOpenDo: 'Require a password, and give your metrics collector an account.',
+  /** EXPERIENCE.md:581 */
+  findingAllHolder: '<name> holds %All.',
+  /** EXPERIENCE.md:581 */
+  findingAllHolderWhy: 'Whoever signs in as this account can do anything on this instance.',
+  /** EXPERIENCE.md:581 */
+  findingAllHolderDo: 'Take %All off every account that does not need it.',
+  /** EXPERIENCE.md:581 */
+  findingCertificateExpired: 'The certificate <name> expired on <date>.',
+  /** EXPERIENCE.md:581 */
+  findingCertificate: 'The certificate <name> expires on <date>.',
+  /** EXPERIENCE.md:581 */
+  findingCertificateWhy: 'Connections that rely on it fail once it has expired.',
+  /** EXPERIENCE.md:581 */
+  findingCertificateDo: 'Import a renewed certificate.',
+  /** EXPERIENCE.md:581 */
+  findingAuditingOffWhy: 'Nothing that happens on this instance is recorded, OcuPilot\'s own changes included.',
+  /** EXPERIENCE.md:581 */
+  findingAuditingOffDo: 'Turn auditing on.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseDismounted: 'The database <name> is dismounted.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseDismountedWhy: 'Nothing can read or write it until it is mounted.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseDismountedDo: 'Mount it from its details.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseFull: 'The database <name> is at <percent>% of its maximum size.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseFullWhy: 'Writes to it fail once it is full.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseFullDo: 'Raise its maximum size, or free space in it.',
+  /** EXPERIENCE.md:581 */
+  findingTaskManagerSuspendedDo: 'Resume the Task Manager.',
+  /** EXPERIENCE.md:581 */
+  findingTaskManagerStoppedDo: 'Start the Task Manager.',
+  /** EXPERIENCE.md:581 */
+  findingTaskError: 'The task <name> was suspended after an error.',
+  /** EXPERIENCE.md:581 */
+  findingTaskErrorWhy: 'It does not run again until it is resumed.',
+  /** EXPERIENCE.md:581 */
+  findingTaskErrorDo: 'Read its error, then resume it.',
+  /** EXPERIENCE.md:582 */
+  findingFixWebappOpen: 'This web application can be reached without signing in and holds a database or administrative role. Propose requiring a password to sign in to it.',
+  /** EXPERIENCE.md:582 */
+  findingFixMonitorOpen: 'The monitoring API answers without signing in. Propose requiring a password to sign in to it.',
+  /** EXPERIENCE.md:582 */
+  findingFixAllHolder: 'This account holds %All. Propose taking %All off it.',
+  /** EXPERIENCE.md:582 */
+  findingFixAuditingOff: 'Auditing is off on this instance. Propose turning it on.',
+  /** EXPERIENCE.md:582 */
+  findingFixTaskError: 'This task was suspended after an error. Propose resuming it.',
+  // Story 16.22: the Guardrails page.
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsLabel: 'Guardrails',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsIntro: 'What the agent refuses, what waits for your Confirm and what it never sees, read from the rules this instance enforces.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsRefusedHeading: 'Refused outright',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsRefusedNote: 'Neither the agent nor a screen can make these changes, whoever asks.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsKillSwitchOff: 'Kill switch: off',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsKillSwitchEveryone: 'Kill switch: on for everyone',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsKillSwitchYou: 'Kill switch: on for you',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsReadOnlyOff: 'Enforced read-only: off',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsReadOnlyOn: 'Enforced read-only: on',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsSwitchesNote: 'The kill switch stops the agent. Enforced read-only lets it read and explain but not propose a change. Neither stops what you do on a screen yourself.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsConfirmHeading: 'Always needs your Confirm',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsConfirmNote: 'These are the agent\'s tools that change the instance. Each one only proposes its change, and nothing happens until you press Confirm.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsNeverHeading: 'Never sent to the agent',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsNeverSecrets: 'Fields declared secret, such as passwords, keys and tokens, never leave the instance for the agent: its reads drop them, and you type them yourself at Confirm.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsNeverErrorVariables: 'An application error reaches the agent as its summary only, never the variables captured with it.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsNeverDeclared: 'The fields each tool declares secret, which the agent never sees:',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsContextHeading: 'Screen context',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsContextLimits: 'Each turn carries at most <rows> rows of the screen you are on, <total> characters in all and <field> characters a field.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsPrompt1: 'Which of your tools can change this instance?',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsPrompt2: 'Are you read-only on this instance right now?',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsPrompt3: 'What happens between your proposal and a change on the instance?',
+
+  // Story 16.23: the data table's Download CSV control in the command bar, and its description at the cap.
+  /** EXPERIENCE.md:313 */
+  tableDownloadCsv: 'Download CSV',
+  /** EXPERIENCE.md:313 */
+  tableDownloadCsvCapped: 'The file holds the first <n> rows only.',
 
 } as const;
 

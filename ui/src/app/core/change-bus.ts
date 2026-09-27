@@ -29,6 +29,7 @@
  */
 
 import { entityRefKey } from './entity-ref.ts';
+import type { ReadBack } from './read-back.ts';
 
 export type ChangeEventKind = 'changed' | 'proposal-open' | 'proposal-closed';
 
@@ -65,6 +66,12 @@ export interface ChangeEvent {
    * `proposal-closed`.
    */
   readonly expiresAt: number;
+  /**
+   * The instance's read-back of the write this `changed` reports (AD-58). Present only on a
+   * `changed` whose write answered one; absent on the two proposal kinds. An annotation beside the
+   * row mark, never row data (AD-14).
+   */
+  readonly readBack?: ReadBack;
 }
 
 /** What a publisher supplies. Everything the bus can work out for itself is optional. */
@@ -77,6 +84,8 @@ export interface ChangeEventInput {
   readonly action?: ChangeAction;
   readonly proposalId?: string;
   readonly expiresAt?: number;
+  /** The write's read-back, on `changed` only; refused on the two proposal kinds. */
+  readonly readBack?: ReadBack | null;
 }
 
 export interface ChangeBusOptions {
@@ -140,10 +149,11 @@ export class ChangeBus {
     if (input.kind !== 'changed' && proposalId === '') return false;
     if (input.kind === 'changed') {
       if (input.action === undefined || !CHANGE_ACTIONS.includes(input.action)) return false;
-    } else if (input.action !== undefined) {
+    } else if (input.action !== undefined || (input.readBack !== undefined && input.readBack !== null)) {
       return false;
     }
     const expiresAt = input.kind === 'proposal-open' ? this.expiryFor(input.expiresAt) : 0;
+    const readBack = input.kind === 'changed' ? (input.readBack ?? null) : null;
     const event: ChangeEvent = {
       kind: input.kind,
       type: input.type,
@@ -153,6 +163,7 @@ export class ChangeBus {
       action: input.kind === 'changed' ? (input.action as ChangeAction) : '',
       proposalId,
       expiresAt,
+      ...(readBack === null ? {} : { readBack }),
     };
     // A copy, so a subscriber that unsubscribes from inside its own handler -- a screen being
     // torn down by the very re-fetch it was told about -- does not mutate the set being walked.

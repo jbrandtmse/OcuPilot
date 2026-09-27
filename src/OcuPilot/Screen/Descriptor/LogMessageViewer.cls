@@ -5,8 +5,8 @@
 /// declared read the tool derives from travels on
 /// <method>OcuPilot.Port.LogSourcePort.Rows</method> -- the same window projected into
 /// <code>{time, severity, text}</code> rows instead of raw lines. Neither path reaches the
-/// monitoring API. Nothing is added for this screen: the source key, the route and the shared
-/// <code>log-viewer</code> page all ship already, so this declaration is the whole screen.</p>
+/// monitoring API. The page may also open one rotated file by <code>?file=</code> (AD-21's fourth
+/// case); the declared read stays on <code>messages.log</code>.</p>
 /// <p><b>The privilege set is one pair.</b> <code>%Admin_Operate:USE</code> is exactly
 /// <parameter>OcuPilot.Port.LogSourcePort.MESSAGESPAIRS</parameter>, so the gate a user meets is the
 /// same whichever way the screen reads; reading a file off disk consults no database resource and

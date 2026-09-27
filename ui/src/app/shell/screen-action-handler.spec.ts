@@ -22,13 +22,11 @@ import {
   REMOVE_ROLE,
   REQUIRE_PASSWORD_CHANGE,
   RESOURCE_LIST,
-  ROLE_FORM_READ_PATH,
   ROLE_LIST,
   SCREEN_ACTION_DESCRIPTORS,
   SET_PASSWORD,
   SET_RESOURCE_GRANT,
   ScreenActionHandler,
-  roleHoldersLine,
 } from './screen-action-handler';
 
 /** The screen this handler serves first, read from the mirror rather than restated here. */
@@ -117,6 +115,39 @@ describe('the generic screen-action handler', () => {
     expect(events[0].action).toBe('deleted');
     expect(events[0].type).toBe('web-application');
     expect(events[0].id).toBe(ORDINARY_ROW);
+  });
+
+  it('carries the instance\u2019s read-back onto the change event, and none it did not answer', async () => {
+    // Mutation (Rule 19): drop `readBack` from `send()`'s publish -> the first assertion goes red,
+    // and the marked row would say "Changed" and nothing about what the instance now holds (AD-58).
+    const answered = mount({
+      kind: 'ok',
+      status: 200,
+      body: {
+        action: 'updated',
+        target: { type: 'web-application', scope: 'instance', id: ORDINARY_ROW },
+        readBack: { verdict: 'matches', fields: [], written: [] },
+      },
+    });
+    answered.store.setSelection([ORDINARY_ROW]);
+    answered.actions.run(WEB_APPS.descriptor, 'enable');
+    await settle();
+    expect(answered.events[0].readBack).toEqual({ verdict: 'matches', fields: [], written: [], reason: '' });
+
+    const outside = mount({
+      kind: 'ok',
+      status: 200,
+      body: {
+        action: 'updated',
+        target: { type: 'web-application', scope: 'instance', id: ORDINARY_ROW },
+        readBack: { verdict: 'probably', fields: [], written: [] },
+      },
+    });
+    outside.store.setSelection([ORDINARY_ROW]);
+    outside.actions.run(WEB_APPS.descriptor, 'enable');
+    await settle();
+    expect(outside.events).toHaveLength(1);
+    expect('readBack' in outside.events[0]).toBe(false);
   });
 
   it('sends nothing with no row selected', async () => {
@@ -408,6 +439,38 @@ describe('the Users list row actions (Story 7.2)', () => {
     handler.submitRole('Probe');
     await settle();
     expect(JSON.parse(calls[1].body)).toEqual({ action: ADD_ROLE, id: 'probe', values: { Role: 'Probe' } });
+  });
+
+  it('reads a Remove role\u2019s impact for the chosen role, and drops an answer for a choice that moved on', async () => {
+    // Story 16.19 (AD-8): the line is read each time the choice changes, and a late answer for an
+    // earlier choice never lands. Mutation (Rule 19): drop the `ask` check in `chooseRole` -> the
+    // stale leg goes red.
+    let release: (value: JsonResult<unknown>) => void = () => undefined;
+    const slow = new Promise<JsonResult<unknown>>((resolve) => (release = resolve));
+    const losesSql = { kind: 'role-removal', refused: null, parts: [{ part: 'loses', count: 1, names: ['%DB_USER:RW'], unchecked: '' }] };
+    const losesNothing = { kind: 'role-removal', refused: null, parts: [{ part: 'loses', count: 0, names: [], unchecked: '' }] };
+    const { actions, handler, calls } = mountUsers([]);
+    const api = TestBed.inject(ApiService) as unknown as { requestJson: (path: string, init?: ApiRequestInit) => Promise<JsonResult<unknown>> };
+    const answers: Promise<JsonResult<unknown>>[] = [slow, Promise.resolve({ kind: 'ok', status: 200, body: { impact: losesNothing } })];
+    api.requestJson = async (path: string, init: ApiRequestInit = {}) => {
+      calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+      return answers.shift() ?? { kind: 'ok', status: 200, body: {} };
+    };
+    actions.run(USERS.descriptor, REMOVE_ROLE);
+    await settle();
+    expect(handler.pending()?.impact).toBe('');
+
+    const first = handler.chooseRole('%SQL');
+    const second = handler.chooseRole('%Developer');
+    await second;
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${USERS.toolIdentifier}/impact?action=remove-role&id=probe&value=%25SQL`);
+    expect(handler.pending()?.impact).toBe('Impact: probe loses nothing their other roles do not still grant.');
+    release({ kind: 'ok', status: 200, body: { impact: losesSql } });
+    await first;
+    expect(handler.pending()?.impact).toBe('Impact: probe loses nothing their other roles do not still grant.');
+
+    void handler.chooseRole('');
+    expect(handler.pending()?.impact).toBe('');
   });
 });
 
@@ -892,17 +955,26 @@ describe('the Roles and Resources lists\u2019 Delete (Story 9.3)', () => {
     }
   });
 
-  it('states how many accounts hold the role, and opens without the line when the count cannot be read', async () => {
-    // Mutation (Rule 19): open the role delete without its holder read -> the advisory assertion goes red.
-    const { handler, calls, store } = mountWith([{ kind: 'ok', status: 200, body: { holders: 2 } }], ROLE_LIST);
+  it('states the removal\u2019s impact as its advisory, read as the dialog opens, and opens without it when the read fails', async () => {
+    // Story 16.19 (AD-8), replacing the holders line (DW-1513).
+    // Mutation (Rule 19): open the role delete without its impact read -> the advisory assertion goes red.
+    const impact = {
+      kind: 'role-delete',
+      refused: null,
+      parts: [
+        { part: 'holders', count: 2, names: ['Ann', 'Bo'], unchecked: '' },
+        { part: 'grantingApplications', count: 1, names: ['/csp/p'], unchecked: '' },
+      ],
+    };
+    const { handler, calls, store } = mountWith([{ kind: 'ok', status: 200, body: { impact } }], ROLE_LIST);
     handler.startFor(ROLE_LIST, 'delete', 'Probe', { Name: 'Probe' }, store);
     await settle();
-    expect(calls[0].path).toBe(`${ROLE_FORM_READ_PATH}?name=Probe`);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${ROLES_LIST.toolIdentifier}/impact?action=delete&id=Probe`);
+    expect(calls[0].method).toBe('GET');
     expect(handler.pending()?.consequence).toBe(STRINGS.roleDeleteConsequence);
-    expect(handler.pending()?.advisory).toBe('2 users hold this role.');
+    expect(handler.pending()?.advisory).toBe('Impact: 2 users hold it: Ann, Bo; 1 web application grants it: /csp/p.');
     handler.cancelPending();
-    expect(roleHoldersLine(1)).toBe(STRINGS.roleDeleteHoldersOne);
-    expect(roleHoldersLine(0)).toBe(STRINGS.roleDeleteHoldersNone);
 
     const failed = mountWith([{ kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'no', detail: null } as JsonResult<unknown>], ROLE_LIST);
     failed.handler.startFor(ROLE_LIST, 'delete', 'Probe', { Name: 'Probe' }, failed.store);
@@ -910,6 +982,68 @@ describe('the Roles and Resources lists\u2019 Delete (Story 9.3)', () => {
     expect(failed.handler.pending()?.kind).toBe('typed-name');
     expect(failed.handler.pending()?.advisory).toBe('');
     expect(ROLES_LIST.rowActions.find((action) => action.id === 'delete')?.selfProtection).toBe('system-role');
+  });
+
+  it('states a resource delete\u2019s refusal as its advisory, in the prohibited set\u2019s own sentence', async () => {
+    // Story 16.19 (AD-10): a refused removal's line is the refusal's reason, never an impact.
+    const reason = 'This resource guards OcuPilot\u2019s own data.';
+    const { handler, store } = mountWith(
+      [{ kind: 'ok', status: 200, body: { impact: { kind: 'resource-delete', refused: { code: 'PROHIBITED.OCUPILOTRESOURCE', reason }, parts: [] } } }],
+      RESOURCE_LIST
+    );
+    handler.startFor(RESOURCE_LIST, 'delete', 'Probe', { Name: 'Probe', AllowDelete: true }, store);
+    await settle();
+    expect(handler.pending()?.advisory).toBe(reason);
+  });
+
+  // AC4: a caller short the databases pair reads that part as unchecked, naming the pair, and
+  // the other two parts still counted -- never "it guards no database".
+  // Mutation (Rule 19): disable phraseOf's unchecked branch in core/impact.ts -> this goes red.
+  it('states a resource delete\u2019s unchecked part as its advisory, naming the missing pair, never as none', async () => {
+    const impact = {
+      kind: 'resource-delete',
+      refused: null,
+      parts: [
+        { part: 'grantingRoles', count: 2, names: ['A', 'B'], unchecked: '' },
+        { part: 'guardedApplications', count: 1, names: ['/csp/q'], unchecked: '' },
+        { part: 'guardedDatabases', count: 0, names: [], unchecked: '%Admin_Manage:USE' },
+      ],
+    };
+    const { handler, store } = mountWith([{ kind: 'ok', status: 200, body: { impact } }], RESOURCE_LIST);
+    handler.startFor(RESOURCE_LIST, 'delete', 'Probe', { Name: 'Probe', AllowDelete: true }, store);
+    await settle();
+    expect(handler.pending()?.advisory).toBe(
+      'Impact: 2 roles grant it: A, B; it guards 1 web application: /csp/q; which databases it guards was not checked (requires %Admin_Manage:USE).'
+    );
+    expect(handler.pending()?.advisory).not.toContain(STRINGS.impactGuardedDatabasesNone);
+  });
+
+  it('opens the dialog of the Delete started last when an earlier impact read answers after it', async () => {
+    // Story 16.19: an impact read that lands after another Delete started never opens its dialog.
+    // Mutation (Rule 19): drop the `ask` check in `openWithImpact` -> this goes red.
+    const impact = (name: string) => ({
+      kind: 'resource-delete',
+      refused: null,
+      parts: [
+        { part: 'grantingRoles', count: 1, names: [name], unchecked: '' },
+        { part: 'guardedApplications', count: 0, names: [], unchecked: '' },
+        { part: 'guardedDatabases', count: 0, names: [], unchecked: '' },
+      ],
+    });
+    let release: (value: JsonResult<unknown>) => void = () => undefined;
+    const slow = new Promise<JsonResult<unknown>>((resolve) => (release = resolve));
+    const { handler, store } = mountWith([], RESOURCE_LIST);
+    const api = TestBed.inject(ApiService) as unknown as { requestJson: (path: string, init?: ApiRequestInit) => Promise<JsonResult<unknown>> };
+    const answers: Promise<JsonResult<unknown>>[] = [slow, Promise.resolve({ kind: 'ok', status: 200, body: { impact: impact('RoleB') } })];
+    api.requestJson = async () => answers.shift() ?? { kind: 'ok', status: 200, body: {} };
+    handler.startFor(RESOURCE_LIST, 'delete', 'ResA', { Name: 'ResA', AllowDelete: true }, store);
+    handler.startFor(RESOURCE_LIST, 'delete', 'ResB', { Name: 'ResB', AllowDelete: true }, store);
+    await settle();
+    expect(handler.pending()?.target).toBe('ResB');
+    release({ kind: 'ok', status: 200, body: { impact: impact('RoleA') } });
+    await settle();
+    expect(handler.pending()?.target).toBe('ResB');
+    expect(handler.pending()?.advisory).toContain('RoleB');
   });
 
   it('draws a predefined role and a system resource refused before anything is sent', async () => {
@@ -921,9 +1055,13 @@ describe('the Roles and Resources lists\u2019 Delete (Story 9.3)', () => {
     const resources = mount(undefined, RESOURCE_LIST);
     resources.handler.startFor(RESOURCE_LIST, 'delete', '%DB_IRISSYS', { Name: '%DB_IRISSYS', AllowDelete: false }, resources.store);
     expect(resources.store.refusal()).toBe(STRINGS.resourceRefusalSystem);
-    resources.handler.startFor(RESOURCE_LIST, 'delete', 'Probe', { Name: 'Probe', AllowDelete: true }, resources.store);
-    expect(resources.handler.pending()?.consequence).toBe(STRINGS.resourceDeleteConsequence);
     expect(resources.calls).toHaveLength(0);
+    resources.handler.startFor(RESOURCE_LIST, 'delete', 'Probe', { Name: 'Probe', AllowDelete: true }, resources.store);
+    await settle();
+    expect(resources.handler.pending()?.consequence).toBe(STRINGS.resourceDeleteConsequence);
+    // The one request is the impact read the dialog opens with; nothing is sent to the action route.
+    expect(resources.calls.map((call) => call.method)).toEqual(['GET']);
+    expect(resources.calls[0].path).toBe(`/api/ocupilot/screens/${RESOURCES_LIST.toolIdentifier}/impact?action=delete&id=Probe`);
     expect(RESOURCES_LIST.rowActions.find((action) => action.id === 'delete')?.selfProtection).toBe('system-resource');
   });
 });

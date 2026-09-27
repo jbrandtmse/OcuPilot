@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-27-2026 02:36'
+last_updated: '09-27-2026 15:39'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -234,8 +234,8 @@ development_status:
   15-10-the-header-logo-on-a-white-tile: done
   epic-15-retrospective: optional
 
-  epic-16: backlog
-  16-1-the-try-it-request-console: backlog
+  epic-16: in-progress
+  16-1-the-try-it-request-console: done
   16-2-web-sessions-listed-and-ended: backlog
   16-3-effective-privileges-and-the-permission-check-tool: backlog
   16-4-task-export-and-import: backlog
@@ -251,13 +251,13 @@ development_status:
   16-14-the-ldap-and-kerberos-editor: backlog
   16-15-the-data-egress-line: backlog
   16-16-the-agent-audit-viewer: backlog
-  16-17-the-read-back-line: backlog
-  16-18-home-s-performance-row: backlog
-  16-19-impact-lines-on-removals: backlog
-  16-20-older-messages-log-files: backlog
-  16-21-security-findings-with-a-fix-you-confirm: backlog
-  16-22-the-guardrails-page: backlog
-  16-23-any-table-downloaded-as-csv: backlog
+  16-17-the-read-back-line: done
+  16-18-home-s-performance-row: done
+  16-19-impact-lines-on-removals: done
+  16-20-older-messages-log-files: done
+  16-21-security-findings-with-a-fix-you-confirm: done
+  16-22-the-guardrails-page: done
+  16-23-any-table-downloaded-as-csv: done
   epic-16-retrospective: optional
 
   epic-17: backlog

@@ -8,7 +8,8 @@
  *
  * Arms the `turnprobe` definition the way `explain-screen.browser-spec.mjs` does, and seeds one
  * application error through the guarded `OcuPilot.Test.ErrorDelete`, cleared again in `after`, so
- * it runs only in a throwaway.
+ * it runs only in a throwaway. Leg (d) seeds an older messages file through `older-file-spec.mjs`
+ * and removes it in the same leg (Story 16.20).
  *
  * Run: `npm run build` then `docker cp` the bundle into the throwaway, then
  * `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test browser/explain-entry.browser-spec.mjs`.
@@ -21,6 +22,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
+import { OLDER_FILE, OLDER_LINES, OLDER_MARKER, removeOlderFile, seedOlderFile } from './older-file-spec.mjs';
 import { authHeader, signedInAt } from './panel-spec.mjs';
 import {
   armProbeDefinition,
@@ -289,5 +291,59 @@ test('(c) Audit database: the record dialog\u2019s action sends that one record,
   } finally {
     await context.close();
     forgetTag(probe, tag);
+  }
+});
+
+test('(d) an older messages file: a row\u2019s button sends that line, and a typed turn\u2019s screen context carries that file\u2019s lines', async () => {
+  await requireFreeSlot(config);
+  seedOlderFile(config.container);
+  const explainTag = nextTag(probe);
+  setTag(probe, preparedId, explainTag);
+  scriptReply(probe, explainTag, 0, `##class(OcuPilot.Test.TurnProvider).TextReply("that older line explained")`);
+  const { context, page } = await signedInAt(browser, config, `${MESSAGES_URL}&file=${OLDER_FILE}`);
+  let typedTag = '';
+  try {
+    await page.waitForFunction(
+      (marker, total) => {
+        const rows = [...document.querySelectorAll('.ocu-log-row')];
+        return rows.length === total && rows.every((row) => row.textContent.includes(marker));
+      },
+      { timeout: config.navigationTimeoutMs },
+      OLDER_MARKER,
+      OLDER_LINES.length
+    );
+    await waitForAvailable(page, LOG_EXPLAIN);
+    const rows = await page.$$('.ocu-log-row');
+    const chosen = rows[1];
+    const text = await chosen.$eval('.ocu-log-cell-text', (cell) => cell.textContent.trim());
+    await (await chosen.$(LOG_EXPLAIN)).click();
+    await waitForReply(page, 'that older line explained');
+    const payload = assertOneEntry(explainTag, 'logs/messages');
+    assert.equal(payload.rows[0].text, text, 'the row sent is the older file\u2019s row clicked');
+    assert.ok(payload.rows[0].text.includes(OLDER_MARKER), 'and it is the older file\u2019s own line');
+    await requireFreeSlot(config);
+
+    typedTag = nextTag(probe);
+    setTag(probe, preparedId, typedTag);
+    scriptReply(probe, typedTag, 0, `##class(OcuPilot.Test.TurnProvider).TextReply("that older file read")`);
+    await page.type('#ocu-panel-composer', 'What happened in this file?');
+    await page.click('.ocu-panel-send');
+    await page.waitForFunction(
+      (expected) => [...document.querySelectorAll('.ocu-panel-message-agent-text')].some((node) => node.textContent === expected),
+      { timeout: config.navigationTimeoutMs },
+      'that older file read'
+    );
+    const typed = screenContextPayload(recordedMessages(typedTag));
+    assert.ok(typed, 'the typed turn carried a screen_context pair');
+    assert.equal(typed.route, 'logs/messages');
+    assert.equal(typed.rowsSent, OLDER_LINES.length, 'every line on screen was sent');
+    assert.equal(typed.rows.length, OLDER_LINES.length);
+    for (const row of typed.rows) assert.ok(String(row.text).includes(OLDER_MARKER), `a row from the older file: ${JSON.stringify(row)}`);
+    assert.deepEqual(Object.keys(typed.rows[0]).sort(), ['severity', 'text', 'time'], 'narrowed to the declared fields');
+  } finally {
+    await context.close();
+    forgetTag(probe, explainTag);
+    if (typedTag !== '') forgetTag(probe, typedTag);
+    removeOlderFile(config.container);
   }
 });

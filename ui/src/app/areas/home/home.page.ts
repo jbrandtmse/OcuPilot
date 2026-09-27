@@ -6,7 +6,8 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Router } from '@angular/router';
+import { LocationStrategy } from '@angular/common';
+import { NavigationStart, Router } from '@angular/router';
 
 import {
   AccountPreferences,
@@ -16,7 +17,14 @@ import {
   type PreferenceKind,
 } from '../../core/account-preferences';
 import { About } from '../../core/about';
+import { ChangeBus } from '../../core/change-bus';
+import { Findings, findingLines, type Finding } from '../../core/findings';
+import { FixFinding, isFixable } from '../../core/fix-finding';
 import { InstanceService, serverFlagKind } from '../../core/instance';
+import { PerformanceRow, type PerformancePoint, type PerformanceValues } from '../../core/performance';
+import { RefreshService } from '../../core/refresh';
+import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { HOME_DESCRIPTOR, ScreenStores } from '../../core/screen-store';
 import {
   SYSTEM_INFO_FIELDS,
   SystemInfo,
@@ -25,9 +33,11 @@ import {
 import {
   NavigationService,
   areaByKey,
+  entityUrl,
   firstAllowedScreen,
   formatRequires,
   isListedScreen,
+  screenForDescriptor,
   screenForRoute,
   withQuery,
 } from '../../core/navigation';
@@ -38,6 +48,31 @@ import { ShellState } from '../../core/shell-state';
 import { STRINGS, stringFor } from '../../core/strings';
 import { AreaIcon } from '../../shell/rail-icon';
 import { ServerFlag } from '../../shell/server-flag';
+import { FindingsPanel, type FindingGroupView, type FindingRow } from './findings-panel';
+import { PerformanceRowComponent } from './performance-row';
+
+/**
+ * The change-event types that reload the Findings panel: every object type a check reads (Story
+ * 16.21). A change is the only thing that moves a finding, so no timer re-reads it (AD-43).
+ */
+export const FINDINGS_CHANGE_TYPES: ReadonlySet<string> = new Set([
+  'web-application',
+  'user',
+  'role',
+  'x509-credential',
+  'auditing-configuration',
+  'database',
+  'task',
+]);
+
+/**
+ * Releases the wait the latest Fix it left on its screen's read, if any. Module-held rather than
+ * the page's: the navigation a Fix it makes destroys Home, and the wait has to outlive it.
+ */
+let releasePendingFix: () => void = () => {};
+
+/** Bumped by each Fix it, so a navigation that resolves after a newer one began sends nothing. */
+let fixGeneration = 0;
 
 /** One screen name inside a tile's caption; every part but the first carries a separator. */
 interface CaptionPart {
@@ -230,6 +265,16 @@ interface LineSegment {
  * offers a remove or a Clear: they are fixed rosters, not stored lists, so there is nothing to
  * announce and neither uses the polite region below.
  *
+ * **The performance row comes first** (Story 16.18; EXPERIENCE.md "the performance row first"):
+ * five instance metrics and the ten-minute Global references line, drawn by `PerformanceRowComponent`
+ * once the instance has answered and never for a caller it refuses. It is a row of its own above
+ * the blocks rather than one of them, so the blocks wrap as they did. Home binds the shared refresh
+ * framework for it and nothing else on Home refreshes.
+ *
+ * **The Findings panel follows it** (Story 16.21; EXPERIENCE.md "then the Findings panel"): its own
+ * row, not a sixth block, read on arrival, on a namespace switch and on a change to a type a check
+ * reads. It is never part of Home's screen context (AD-24).
+ *
  * **System information is the fifth block** (Story 15.4, FR-73; EXPERIENCE.md
  * "Home - System Information panel - favorites - recents"): the same
  * `role="list"` shape, one labelled row per member of its own caller-own read. Every state word
@@ -258,8 +303,19 @@ interface LineSegment {
 @Component({
   selector: 'app-home-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AreaIcon, ServerFlag],
+  imports: [AreaIcon, ServerFlag, PerformanceRowComponent, FindingsPanel],
   template: `<section class="ocu-home">
+    @if (performanceValues) {
+      <app-performance-row [values]="performanceValues" [points]="performancePoints" />
+    }
+    @if (findingsShown) {
+      <app-findings-panel
+        [groups]="findingGroups"
+        [unanswered]="findingsUnanswered"
+        (fix)="onFix($event)"
+        (open)="onOpenFinding($event)"
+      />
+    }
     <div class="ocu-home-remembered">
       @for (block of blocks; track block.key) {
         <section class="ocu-home-block">
@@ -428,6 +484,14 @@ export class HomePage {
   private readonly preferences = inject(AccountPreferences);
   private readonly about = inject(About);
   private readonly systemInfo = inject(SystemInfo);
+  private readonly performance = inject(PerformanceRow);
+  private readonly refresh = inject(RefreshService);
+  private readonly actions = inject(ScreenActions);
+  private readonly findings = inject(Findings);
+  private readonly fixFinding = inject(FixFinding);
+  private readonly bus = inject(ChangeBus);
+  private readonly stores = inject(ScreenStores);
+  private readonly locationStrategy = inject(LocationStrategy);
 
   protected readonly STRINGS = STRINGS;
 
@@ -451,6 +515,12 @@ export class HomePage {
 
   /** Bumped whenever the System information read settles, so the panel follows it. */
   private readonly systemGeneration = signal(0);
+
+  /** Bumped whenever the performance row's store moves, so the row follows it. */
+  private readonly performanceGeneration = signal(0);
+
+  /** Bumped whenever the findings or the Fix it gate move, so the panel follows them. */
+  private readonly findingsGeneration = signal(0);
 
   /** The polite region's text: empty until a removal or a clear has changed the store. */
   private readonly announcementValue = signal('');
@@ -622,6 +692,42 @@ export class HomePage {
   });
 
   /**
+   * The Findings panel's two groups, each line resolved with its one action (Story 16.21): Fix it
+   * for a finding a write tool fixes while the Fix it gate shows, Open for any other finding, and
+   * the prohibited set's own sentence for a refused one. Fix it is `aria-disabled` and described by
+   * the gate's reason while one is in force, and otherwise by its finding's sentence.
+   */
+  private readonly resolvedFindings = computed<readonly FindingGroupView[]>(() => {
+    this.findingsGeneration();
+    const answer = this.findings.data();
+    if (answer === null) return [];
+    const shown = this.fixFinding.shown();
+    const reasonId = this.fixFinding.reason() === null ? null : this.fixFinding.describedBy();
+    let index = 0;
+    return findingLines(answer).map((group) => ({
+      key: group.key,
+      heading: group.heading,
+      headingId: `ocu-home-findings-${group.key}`,
+      rows: group.lines.map((line): FindingRow => {
+        const sentenceId = `ocu-home-finding-${index++}`;
+        const finding = line.finding;
+        const base = { ...line, sentenceId, href: '', refusal: '', ariaDisabled: null, describedBy: null };
+        if (finding === null) return { ...base, action: 'none' };
+        if (finding.fix === 'refused') return { ...base, action: 'refused', refusal: finding.refused?.reason ?? '' };
+        if (finding.fix === 'agent' && isFixable(finding.check) && shown) {
+          return {
+            ...base,
+            action: 'fix',
+            ariaDisabled: reasonId === null ? null : 'true',
+            describedBy: reasonId === null ? sentenceId : `${sentenceId} ${reasonId}`,
+          };
+        }
+        return { ...base, action: 'open', href: this.locationStrategy.prepareExternalUrl(this.findingUrl(finding)) };
+      }),
+    }));
+  });
+
+  /**
    * The five values in DESIGN.md `:896`'s order, with the ones the instance could not report
    * dropped. The flag is a segment like any other so the separators fall where the rendered
    * values are, and its own "nothing is set" state (`serverFlagKind` `none`, the ordinary case
@@ -671,9 +777,9 @@ export class HomePage {
     );
     void this.about.load();
     // The System Information panel's own read (Story 15.4). It is chrome, not a declared read,
-    // and it runs no timer: Home is not on AD-43's auto-refresh roster, so the panel settles with
-    // this one call. Read here for the reason the About read is -- the panel is on Home, and a
-    // tab that never opens Home never spends the request.
+    // and no tick re-reads it: on Home only the performance row refreshes (AD-43, Story 16.18), so
+    // the panel settles with this one call. Read here for the reason the About read is -- the
+    // panel is on Home, and a tab that never opens Home never spends the request.
     const stopSystem = this.systemInfo.subscribe(() =>
       this.systemGeneration.set(this.systemGeneration() + 1)
     );
@@ -685,6 +791,31 @@ export class HomePage {
     // AD-44's "switching re-fetches rather than re-routing" on the channel `onScopeChange`
     // exists to carry -- an event, not a timer, so AD-43's closed roster is unaffected.
     const stopSystemScope = onScopeChange(this.scope, () => void this.systemInfo.load());
+    // The Findings panel (Story 16.21): read on arrival, again on a namespace switch, and again on
+    // a change to any object type a check reads. No tick re-reads it (AD-43).
+    const stopFindings = this.findings.subscribe(() => this.findingsGeneration.set(this.findingsGeneration() + 1));
+    const stopFixGate = this.fixFinding.subscribe(() => this.findingsGeneration.set(this.findingsGeneration() + 1));
+    void this.findings.load();
+    const stopFindingsScope = onScopeChange(this.scope, () => void this.findings.load());
+    const stopFindingsBus = this.bus.subscribe((event) => {
+      if (event.kind === 'changed' && FINDINGS_CHANGE_TYPES.has(event.type)) void this.findings.load();
+    });
+    // The performance row (Story 16.18). Home is on AD-43's roster, so the shared framework owns
+    // its timer, its remembered rate and its Refresh action; the row's read is what a tick calls,
+    // and the one row it answers is Home's store row, which is what a turn's screen context sends
+    // (AD-24). Home starts at its declared default rate, every 10 s, until a remembered one lands.
+    const stopPerformance = this.performance.subscribe(() =>
+      this.performanceGeneration.set(this.performanceGeneration() + 1)
+    );
+    const home = screenForDescriptor(HOME_DESCRIPTOR);
+    let stopRefreshAction = (): void => {};
+    if (home !== null) {
+      this.refresh.bind(home, this.performance.read);
+      void this.refresh.readNow();
+      stopRefreshAction = this.actions.register(home.descriptor, REFRESH_ACTION_ID, () => {
+        void this.refresh.readNow();
+      });
+    }
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopInstance();
@@ -694,6 +825,15 @@ export class HomePage {
       stopAbout();
       stopSystem();
       stopSystemScope();
+      stopFindings();
+      stopFixGate();
+      stopFindingsScope();
+      stopFindingsBus();
+      stopPerformance();
+      stopRefreshAction();
+      // The line plots only what this Home view received, so leaving Home clears it.
+      this.performance.clearHistory();
+      if (home !== null && this.refresh.descriptor() === home.descriptor) this.refresh.unbind();
     });
   }
 
@@ -721,6 +861,93 @@ export class HomePage {
 
   protected get systemRows(): readonly SystemRow[] {
     return this.resolvedSystemRows();
+  }
+
+  /**
+   * The performance row's last answer, or `null` -- before the first one, and after a 403, when
+   * the row is not drawn at all: no heading, no value and no zero.
+   */
+  protected get performanceValues(): PerformanceValues | null {
+    this.performanceGeneration();
+    return this.performance.values();
+  }
+
+  /** The answers this Home view received, which the row's line plots. */
+  protected get performancePoints(): readonly PerformancePoint[] {
+    this.performanceGeneration();
+    return this.performance.points();
+  }
+
+  protected get findingGroups(): readonly FindingGroupView[] {
+    return this.resolvedFindings();
+  }
+
+  /** Whether the Findings panel renders: once its read has answered, or has failed with none held. */
+  protected get findingsShown(): boolean {
+    this.findingsGeneration();
+    return this.findings.answered() || this.findings.failed();
+  }
+
+  /** Whether the Findings read has never answered and the last one failed. */
+  protected get findingsUnanswered(): boolean {
+    this.findingsGeneration();
+    return !this.findings.answered() && this.findings.failed();
+  }
+
+  /**
+   * Fix it (Story 16.21): open the affected screen on the finding's object, wait for that screen's
+   * store to hold a read made after the move began, as `CitationNavigator.open` does, and only then
+   * ask the panel to send the check's fixed sentence (AD-11). A refused control, a declined
+   * navigation or a newer Fix it sends nothing, and a navigation away before the read releases the
+   * wait. The click is the person's own, so the move is not announced.
+   */
+  protected onFix(row: FindingRow): void {
+    if (row.action !== 'fix' || row.ariaDisabled !== null || row.finding === null) return;
+    void this.fixAndRequest(row.finding);
+  }
+
+  /** Open's ordinary click: the finding's screen, in place. */
+  protected onOpenFinding(row: FindingRow): void {
+    if (row.finding === null) return;
+    void this.router.navigateByUrl(this.findingUrl(row.finding));
+  }
+
+  private findingUrl(finding: Finding): string {
+    return entityUrl(finding.route, finding.id, finding.scope, this.router.url);
+  }
+
+  private async fixAndRequest(finding: Finding): Promise<void> {
+    releasePendingFix();
+    releasePendingFix = () => {};
+    const generation = ++fixGeneration;
+    if (!this.fixFinding.shown() || this.fixFinding.reason() !== null || !isFixable(finding.check)) return;
+    const screen = screenForRoute(finding.route);
+    if (screen === null || !screen.built) return;
+    const store = this.stores.for(screen.descriptor, screen.refreshRates);
+    const before = store.lastUpdate();
+    const router = this.router;
+    const fix = this.fixFinding;
+    const navigated = await router.navigateByUrl(this.findingUrl(finding)).catch(() => false);
+    if (generation !== fixGeneration || navigated !== true) return;
+    const decide = (): boolean => {
+      const at = store.lastUpdate();
+      if (at === null || at === before) return false;
+      fix.request(finding.check);
+      return true;
+    };
+    if (decide()) return;
+    const stopStore = store.subscribe(() => {
+      if (decide()) release();
+    });
+    const leaving = router.events.subscribe((event) => {
+      if (event instanceof NavigationStart) release();
+    });
+    const release = (): void => {
+      stopStore();
+      leaving.unsubscribe();
+      if (releasePendingFix === release) releasePendingFix = () => {};
+    };
+    releasePendingFix = release;
   }
 
   /**

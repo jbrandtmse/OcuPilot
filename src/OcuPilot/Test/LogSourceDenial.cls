@@ -34,6 +34,13 @@ Parameter ALERTREADPATH = "/api/ocupilot/screens/logs.alerts/read";
 /// <parameter>LOGPATH</parameter> pages.</p>
 Parameter MESSAGESREADPATH = "/api/ocupilot/screens/logs.messages/read";
 
+/// <p>The console log's list of older files (Story 16.20).</p>
+Parameter FILESPATH = "/api/ocupilot/logs/messages/files";
+
+/// <p>A rotated file's name no instance writes and no test creates, so a request that passes the
+/// gate answers <code>LOG.ABSENT</code> -- which is itself evidence the gate admitted it.</p>
+Parameter NEVERWRITTEN = "messages.old_20000102";
+
 /// <p>The environment variable that arms this class, and the one value that arms it:
 /// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the principals are
 /// created on the container that script builds and nowhere else. Anything else -- absent, empty,
@@ -323,6 +330,41 @@ Method TestTheAlertLogsOnePairGovernsBothWaysIn()
         Set tRead = ##class(%DynamicObject).%FromJSON(tBody)
         Do $$$AssertEquals(tRead.fields.%ToJSON(), "[""time"",""severity"",""text""]", "which answers the declared fields")
     }
+}
+
+/// <p>Story 16.20 AC3 -- the list of older files and an older file itself meet the console log's
+/// own one pair, measured on the same two principals: without <code>%Admin_Operate:USE</code> both
+/// answer 403 naming it; with that pair alone the list answers 200 and a never-written rotated
+/// name answers 404 <code>LOG.ABSENT</code>, which is past the gate.</p>
+/// <p>Mutation: add <code>%DB_IRISSYS:READ</code> to
+/// <parameter>OcuPilot.Port.LogSourcePort.MESSAGESPAIRS</parameter> -&gt; the operate-only
+/// principal is refused 403 on both and the served assertions go red.</p>
+Method TestTheOlderFilesMeetTheConsoleLogsOnePair()
+{
+    For tPath = ..#FILESPATH, ..#LOGPATH _ "?file=" _ ..#NEVERWRITTEN {
+        Set tSC = ..FetchPath(..#SECUREUSER, tPath, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, tPath _ ": the refused request completes")
+        Do $$$AssertEquals(tStatus, 403, tPath _ ": refused to a principal without %Admin_Operate:USE")
+        Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", tPath _ ": as application/json")
+        Do $$$AssertEquals((tBody [ "}{"), 0, tPath _ ": exactly one envelope")
+        Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tFault.code, "AUTH.NOPRIVILEGE", tPath _ ": on the screen-privilege code")
+        Do $$$AssertEquals($Select($IsObject(tFault.detail): tFault.detail.failedPair, 1: ""), "%Admin_Operate:USE", tPath _ ": naming the pair that failed")
+    }
+
+    Set tSC = ..FetchPath(..#OPERATEUSER, ..#FILESPATH, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the served list request completes")
+    Do $$$AssertEquals(tStatus, 200, "%Admin_Operate:USE alone is served the list")
+    If tStatus = 200 {
+        Set tList = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tList.files.%Get(0).name, "messages.log", "which opens on messages.log")
+    }
+
+    Set tSC = ..FetchPath(..#OPERATEUSER, ..#LOGPATH _ "?file=" _ ..#NEVERWRITTEN, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the older-file request completes")
+    Do $$$AssertEquals(tStatus, 404, "%Admin_Operate:USE alone carries an older file past the gate")
+    Set tAbsent = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAbsent.code, "LOG.ABSENT", "to the file's absence")
 }
 
 }

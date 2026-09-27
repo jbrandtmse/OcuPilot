@@ -102,12 +102,14 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/web-applications" path="/api/ocupilot/web-applications" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/screens/:screen/action" path="/api/ocupilot/screens/osmgmt.locks/action" disposition="envelope" refusal="1" substitute="osmgmt.locks" substitutewhy="a screen identifier that resolves to nothing answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes a real screen; the body is the unreadable one every write-verb probe sends, and the screen declares no row action, so the handler refuses before any write"/>
 <probe class="Api.Router" method="GET" url="/screens/:screen/read" path="/api/ocupilot/screens/osmgmt.locks/read" disposition="envelope" substitute="osmgmt.locks" substitutewhy="a screen identifier that resolves to nothing answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this one route probes a real screen"/>
+<probe class="Api.Router" method="GET" url="/screens/:screen/impact" path="/api/ocupilot/screens/osmgmt.locks/impact" disposition="envelope" substitute="osmgmt.locks" expect="code=TOOL.ARGUMENTS" substitutewhy="a screen identifier that resolves to nothing answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes a real screen; the path carries no action parameter, which the handler refuses 400 TOOL.ARGUMENTS as malformed before any read, and expect asserts that code"/>
 <probe class="Api.Router" method="GET" url="/logs/errors/namespaces" path="/api/ocupilot/logs/errors/namespaces" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/errors/dates" path="/api/ocupilot/logs/errors/dates" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/errors/list" path="/api/ocupilot/logs/errors/list" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/errors/detail" path="/api/ocupilot/logs/errors/detail" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/alerts" path="/api/ocupilot/logs/alerts" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/messages" path="/api/ocupilot/logs/messages" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/logs/messages/files" path="/api/ocupilot/logs/messages/files" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/turn/:id/progress" path="/api/ocupilot/turn/ocupilot-coverage-probe/progress" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/turn/:id/stop" path="/api/ocupilot/turn/ocupilot-coverage-probe/stop" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/turn/:id/navigation" path="/api/ocupilot/turn/ocupilot-coverage-probe/navigation" disposition="envelope" refusal="1"/>
@@ -127,6 +129,9 @@ XData Probes
      OcuPilot.Test.UiAboutWire's. -->
 <probe class="Api.Router" method="GET" url="/ui/help" path="/api/ocupilot/ui/help" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/ui/system" path="/api/ocupilot/ui/system" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/ui/performance" path="/api/ocupilot/ui/performance" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/ui/findings" path="/api/ocupilot/ui/findings" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/ui/guardrails" path="/api/ocupilot/ui/guardrails" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/users/form" path="/api/ocupilot/users/form" disposition="envelope"/>
 <!-- /users/name carries no query string here, for /web-applications/name's reason: it draws the
      documented 422 USER.NAME.REQUIRED envelope. Its own answers are OcuPilot.Test.UserCreateWire's. -->

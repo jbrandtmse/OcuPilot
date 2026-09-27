@@ -5804,6 +5804,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Kernel/Shell/About.cls, Kernel/Shell/Instance.cls and Kernel/Shell/SystemInfo.cls each carry the six members; Test/Instance.cls:357 and Test/UiSystemRead.cls's log-seam row are the same test copied too
 - 2026-09-20T21:40:27Z status=routed owner=range-end-cleanup by=cr note=the spec ratifies copying About whole; at three copies it needs a base class, which touches two earlier stories' files
 - 2026-09-26T09:53:52Z status=routed owner=16-18-home-s-performance-row by=spec_gate note=16.18 AC1 extends SystemInfo's dashboard read seam; extract the shared base before a fourth reader
+- 2026-09-26T22:04:46Z status=routed owner=16-21-security-findings-with-a-fix-you-confirm by=adjudication note=16.18 read through MonitorPort and added no fourth seam copy; 16.21's Home findings panel is the next shell-chrome reader: extract the base first
+- 2026-09-27T08:49:01Z status=resolved-by:16-21-security-findings-with-a-fix-you-confirm by=adjudication note=Kernel/Shell/FieldRead.cls extracted in 620f6e1b; About, SystemInfo, Instance and Findings extend it; their read suites unchanged and green
 
 ### DW-1401: Two chrome surfaces render EXPERIENCE.md's Generic internal error sentence as a plain paragraph, without the role=alert and the Retry and Open messages.log actions that row publishes, and neither can tell an unreachable instance from a 5xx
 - source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -7466,3 +7468,96 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-11-the-screen-shows-what-the-agent-is-talking-about.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Screen/Registry.cls CriteriaDefaultProblem and screen-mirror.mjs criteriaDefaultProblem check kind, field membership and vendorParam only
 - 2026-09-26T14:09:15Z status=wontfix-theoretical owner=11-11-the-screen-shows-what-the-agent-is-talking-about by=cr note=real once a descriptor declares atOrAfterField over a read not answered newest first (only TaskHistoryList's HISTORY today)
+
+### DW-1704: CLAUDE.md tells agents to read all 56 ADs; the spine holds 57 since AD-57 landed at Story 16.1's spec gate
+- source: spec-16-1-the-try-it-request-console.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: grep -c '^### AD-' ARCHITECTURE-SPINE.md reads 57; CLAUDE.md:105 says 'all 56 ADs'
+- 2026-09-26T16:14:16Z status=wontfix-accepted owner=16-1-the-try-it-request-console by=cr note=agent-context file, lead's to edit; reopen_if=a gate or agent uses CLAUDE.md's AD count as a completeness check
+- 2026-09-26T16:16:03Z status=resolved-by:16-1-the-try-it-request-console by=adjudication note=CLAUDE.md:105 now reads all 57 ADs (lead bookkeeping in the 16.1 commit)
+
+### DW-1709: A role's Resources grant sent with Permissions "WR" (or members reordered) reads back as "differs in Resources": the compare vocabulary has no nested mode
+- source: spec-16-17-the-read-back-line.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: unordered compares each element's whole Display JSON; the vendor stores WR as RW (measured, spec Design Notes); settle by an agent role update granting WR on ocupilot-ci
+- 2026-09-26T18:47:27Z status=open owner=16-17-the-read-back-line by=harvest note=in-story; code review patches or it takes the MED iteration
+- 2026-09-26T19:26:07Z status=resolved-by:16-17-the-read-back-line by=cr note=Resources[].Permissions letters under unordered (field-lists element-member mode); ReadBackRoute WR->RW grant reads matches on ocupilot-ci
+
+### DW-1710: A list-row create (TaskCreate, OAuthRegisteredClientCreate) reads matches over only the fields its declared list row carries
+- source: spec-16-17-the-read-back-line.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: The task list row carries 8 of the create's 34 sent keys (probed on ocupilot-ci); the spec binds the re-read to the tool's declared list read. Row-key-only now reads unchecked; a partial compare still reads matches.
+- 2026-09-26T19:26:07Z status=decision-pending owner=burndown by=cr note=human=choose: keep list-row compare, or re-read a create by createdId through the update tool's read (AD-58 wording)
+- 2026-09-26T19:26:13Z status=decision-pending owner=burndown by=cr note=product call for the decision sheet: keep list-row compare, or re-read a create by createdId via the update tool's read
+
+### DW-1711: Most Save routes' read-back verdict is not asserted by a route-level test (LDAP, X.509, audit event, service, resource, four OAuth updates, task create Save)
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Verdicts are pinned for the web app, role, user, device, wallet, SSL, task edit Saves, the OAuth resource server create and three create editors; the declarations are pinned in field-lists.test.mjs.
+- 2026-09-26T19:26:07Z status=wontfix-accepted owner=16-17-the-read-back-line by=cr note=reopen_if=a Save on one of the named editors reads differs or could-not-be-read on an ordinary edit
+
+### DW-1712: Classification.cls carries two permissions.users.create entries; JSON parsing keeps only the last
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Pre-existing since Story 8.2 (git log -S); both copies carry the same compare declaration.
+- 2026-09-26T19:26:07Z status=wontfix-accepted owner=16-17-the-read-back-line by=cr note=reopen_if=the two permissions.users.create entries in Classification.cls differ
+
+### DW-1713: A 202 write's read-back stays unchecked/running on the proposal row after the queued work finishes
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Spec intent: a 202 write is unchecked with reason running and no re-read is made (AD-26, AD-58).
+- 2026-09-26T19:26:07Z status=by-design owner=16-17-the-read-back-line by=cr note=reopens only by amending AD-58 to re-read a finished continuation
+
+### DW-1714: The default read-back rule compares two numeric strings by value, so 007 matches 7 and very long digit strings lose precision
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Spec's default comparison: where both are valid numbers compare by value (measured 0900 read back 900).
+- 2026-09-26T19:26:07Z status=by-design owner=16-17-the-read-back-line by=cr note=real only for a string field whose leading zeros matter or a >18-digit numeric id; then declare a mode
+
+### DW-1715: A read-back that compared nothing reports reason unreadable, which renders as could not be read
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec closes the reason vocabulary at running and unreadable; nothing-compared is a failure to reach a verdict.
+- 2026-09-26T19:26:07Z status=by-design owner=16-17-the-read-back-line by=cr note=reopens by a spec amendment adding a reason and its copy
+
+### DW-1716: A web app Save that changes MatchRoles reports it written, not read back, because its nested rows default to secret
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ToolFields classifies MatchRoles[].MatchRole and TargetRoles[] secret (default class); AD-35 forbids examining a secret's read value.
+- 2026-09-26T19:26:07Z status=by-design owner=16-17-the-read-back-line by=cr note=reopens if webapp.list.update's classification reclassifies MatchRoles rows ordinary
+
+### DW-1717: A list-row create re-reads by the sent name, so a same-named object created concurrently could be compared
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The mint and the confirm refuse a name any task or client holds; only a create racing between the write and its re-read reaches it.
+- 2026-09-26T19:26:07Z status=wontfix-theoretical owner=16-17-the-read-back-line by=cr note=real if the vendor or another caller creates the same name inside the write-to-re-read window
+
+### DW-1719: PreferencesWire's home-refusal leg (a favorite or view named home is refused) has never run locally and its widening mutation is unrecorded
+- source: spec-16-18-home-s-performance-row.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ocupilot-ci lacks OCUPILOT_ALLOW_ACCOUNT_PREFERENCES (docker exec printenv, 2026-09-26), so the class refuses; CI's instance job arms it via scripts/ci-throwaway.sh. Curl on ocupilot-ci read home favorite 422.
+- 2026-09-26T22:02:39Z status=wontfix-accepted owner=16-18-home-s-performance-row by=cr note=reopen_if=CI instance job reports PreferencesWire TestHomesRateIsRememberedUnderItsOwnName red
+
+### DW-1721: OcuPilot.Test.ErrorLog.TestABadMaxRowsIsRefusedNotDefaulted depends on sweep order (needs two application errors on one date)
+- source: spec-16-19-impact-lines-on-removals.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: failed once in the 16.19 implement sweep on ocupilot-ci, green re-run alone (run 15179); not touched by 16.19
+- 2026-09-27T01:32:52Z status=wontfix-accepted owner=16-19-impact-lines-on-removals by=harvest note=reopen_if=CI's instance job reports this test red
+
+### DW-1723: EndpointCoverage documents expect only as a why's precondition; the impact row now uses it to assert a refusal code
+- source: spec-16-19-impact-lines-on-removals.md (cr rework re-review) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Class doc (line 62-64) and TestEveryProbeDispatchesToItsRoute doc and its failure message (line 511) tie expect to a why; the GET impact row declares expect=code=TOOL.ARGUMENTS with no why, so a red there reads 'the precondition its why rests on'. File contended with Epic 14; this pass may touch only the impact row.
+- 2026-09-27T03:11:10Z status=wontfix-accepted owner=16-19-impact-lines-on-removals by=cr note=reopen_if=a second why-less expect row lands, or an expect failure on the impact row is misread in a review
+
+### DW-1726: LogSourcePort.Page follows a symlink, and answers 503 on a directory or FIFO, carrying a rotated name in the manager directory; Files lists only Type F
+- source: spec-16-20-older-messages-log-files.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DirectlyIn compares names only (no link resolution); %File:FileSet types a symlink or FIFO F; %File.Exists is 1 for a directory (probed on ocupilot-ci), so OpenStream fails into LOG.UNREADABLE plus an error-log entry.
+- 2026-09-27T05:49:07Z status=wontfix-theoretical owner=16-20-older-messages-log-files by=cr note=real only if someone other than the instance owner can write the manager directory
+
+### DW-1727: The file choice navigates on every change event, so arrow keys on a closed select (Chrome on Windows/Linux) push one history entry and one read per file passed
+- source: spec-16-20-older-messages-log-files.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: log-viewer.page.ts onFile calls navigateByUrl with no replaceUrl on each change; each file view is its own address by design, so replaceUrl would change what Back does.
+- 2026-09-27T05:49:07Z status=wontfix-accepted owner=16-20-older-messages-log-files by=cr note=reopen_if=a user reports Back stepping through files they only scrolled past in the choice
+
+### DW-1728: An older file's lines reach the model as logs/messages screen context naming no file, while logs.messages.read still reads messages.log
+- source: spec-16-20-older-messages-log-files.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: publishRows sends {time, severity, text} under route logs/messages; Rows calls Page with no file; spec Decision 2 keeps the tool on messages.log and the context file-less.
+- 2026-09-27T05:49:07Z status=by-design owner=16-20-older-messages-log-files by=cr note=spec Decision 2 and AD-21 fourth case; reopens only via spec amendment adding file to context or a tool criterion
+
+### DW-1752: Guardrails secret list shows each screen's declared secrets against every tool on it (permissions.users.delete: Password)
+- source: spec-16-22-the-guardrails-page.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Guardrails.Read lists Registry.SecretArguments per advertised write tool (spec Always); Write.SecretArguments answers the descriptor's list unless a tool overrides it, so delete/revoke tools list the screen's secrets. Accurate to what Mint refuses and Dispatch strips; noisy as a trust statement.
+- 2026-09-27T12:45:47Z status=by-design owner=16-22-the-guardrails-page by=cr note=reopens by spec amendment narrowing to SecretBodyNames+ComposedSecrets once that set is shown complete
+
+### DW-1753: Download CSV's formula guard reads only a field's first character: a whitespace-led formula, or a ';'-split cell in a semicolon-locale spreadsheet, is not prefixed
+- source: spec-16-23-any-table-downloaded-as-csv.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: csvField guards /^[=+\-@\t\r]/ only (core/csv.ts:17). LibreOffice evaluates ' =1+1' only with the non-default Trim spaces + Evaluate formulas import options; Excel on a ';' list separator splits 'a;=X()' mid-line, where quoting cannot help (inference, OWASP WSTG: depends on field separator).
+- 2026-09-27T15:38:45Z status=wontfix-accepted owner=16-23-any-table-downloaded-as-csv by=cr note=downloads get Protected View; reopen_if=a CSV from Download CSV opens with a formula cell evaluated in Excel or Calc with default import options

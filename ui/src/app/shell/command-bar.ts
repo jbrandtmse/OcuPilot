@@ -14,13 +14,13 @@ import { Router } from '@angular/router';
 import { NavigationService } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
-import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
+import { DOWNLOAD_CSV_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
 import { applyView } from '../core/screen-read';
 import { ScreenStores, type SortDirection } from '../core/screen-store';
 import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
-import { formatRowCount, rowFor } from '../core/table-model';
+import { formatCapNotice, formatRowCount, rowFor } from '../core/table-model';
 import { ViewOptions } from '../core/view-options';
 
 /**
@@ -31,6 +31,9 @@ const FILTER_COUNT_ID = 'ocu-command-bar-count';
 
 /** The filter field's id, which a list page hands focus to when its focused table empties. */
 export const COMMAND_BAR_FILTER_ID = 'ocu-command-bar-filter';
+
+/** The Download CSV control's description id, drawn only while the screen's read is at the cap. */
+const DOWNLOAD_REASON_ID = 'ocu-command-bar-reason-download-csv';
 
 /** The sort menu's trigger id, which the menu names as its own label (`aria-labelledby`). */
 export const SORT_TRIGGER_ID = 'ocu-command-bar-sort-trigger';
@@ -143,7 +146,7 @@ interface SortOption {
  * has `read === null` -- Home, most form pages, the error drill-down -- has nothing to filter, so the
  * field and its count are not drawn, and no list of such screens is written here. **The bar itself
  * is not drawn when every slot is empty** (`hasContent`): no primary action, filter, row action,
- * View or Sort control, Refresh action or chip.
+ * View or Sort control, Refresh action, Download CSV control or chip.
  *
  * **The filter is the current screen's store's** (AD-19): the field is named "Filter rows"
  * (`commandBarFilterLabel`), reads and writes the filter of the store the screen's table renders,
@@ -309,6 +312,21 @@ interface SortOption {
       >
         {{ refreshActionLabel }}
       </button>
+    }
+    @if (hasDownloadAction) {
+      <span class="ocu-command-bar-action-slot">
+        <button
+          type="button"
+          class="ocu-button-text ocu-command-bar-download"
+          [attr.aria-describedby]="downloadDescribedBy"
+          (click)="onDownloadCsv()"
+        >
+          {{ STRINGS.tableDownloadCsv }}
+        </button>
+        @if (downloadCapped) {
+          <span class="ocu-command-bar-reason" role="tooltip" [id]="downloadReasonId">{{ downloadCapped }}</span>
+        }
+      </span>
     }
     <span class="ocu-command-bar-spacer"></span>
     @if (hasRefreshChip) {
@@ -592,6 +610,7 @@ export class CommandBar {
       this.hasViewControl ||
       this.hasSortControl ||
       this.hasRefreshAction ||
+      this.hasDownloadAction ||
       this.hasRefreshChip
     );
   }
@@ -638,8 +657,8 @@ export class CommandBar {
 
   /**
    * The manual Refresh control (DW-260), drawn on exactly the screens that registered a handler
-   * for it: the five list screens, the audit viewer once it has a search to re-run, and the
-   * error-log drill. Home registers none, because it reads nothing.
+   * for it: a screen with nothing to re-read registers none, and the audit viewer registers only
+   * once it has a search to re-run.
    *
    * It is separate from the auto-refresh chip beside it and stands whatever the chip says: a
    * screen that does not auto-refresh is the one that most needs a way to re-read, and a paused
@@ -660,6 +679,40 @@ export class CommandBar {
     const screen = this.screen();
     if (screen === null) return;
     this.actions.run(screen.descriptor, REFRESH_ACTION_ID);
+  }
+
+  /**
+   * The Download CSV control (Story 16.23): drawn while the screen's data table has registered its
+   * handler and the screen's read has landed, the test `matchCount` applies. It is a view control
+   * like Sort, not an action, so it never takes `ocu-command-bar-action` and the command box does
+   * not list it.
+   */
+  protected get hasDownloadAction(): boolean {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null || !this.actions.has(screen.descriptor, DOWNLOAD_CSV_ACTION_ID)) return false;
+    return this.refresh.descriptor() === screen.descriptor && this.refresh.hasLoaded();
+  }
+
+  protected readonly downloadReasonId = DOWNLOAD_REASON_ID;
+
+  /** At the cap (AD-36), the sentence that describes the control: the file holds the first <n> rows only. */
+  protected get downloadCapped(): string {
+    if (!this.hasDownloadAction) return '';
+    const screen = this.screen();
+    if (screen === null) return '';
+    const store = this.stores.for(screen.descriptor, screen.refreshRates);
+    return store.truncated() ? formatCapNotice(STRINGS.tableDownloadCsvCapped, store.maxRows()) : '';
+  }
+
+  protected get downloadDescribedBy(): string | null {
+    return this.downloadCapped === '' ? null : DOWNLOAD_REASON_ID;
+  }
+
+  protected onDownloadCsv(): void {
+    const screen = this.screen();
+    if (screen === null) return;
+    this.actions.run(screen.descriptor, DOWNLOAD_CSV_ACTION_ID);
   }
 
   /**

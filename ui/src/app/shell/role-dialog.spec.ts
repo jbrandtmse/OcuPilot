@@ -14,6 +14,8 @@ import { RoleDialog } from './role-dialog';
     [target]="target"
     [options]="options"
     [privileged]="privileged"
+    [impact]="impact()"
+    (chose)="chosen.set([...chosen(), $event])"
     (submitted)="roles.set([...roles(), $event])"
     (cancelled)="cancels.set(cancels() + 1)"
   />`,
@@ -25,6 +27,8 @@ class Host {
   readonly privileged: readonly string[] = ['%Operator'];
   readonly roles = signal<string[]>([]);
   readonly cancels = signal(0);
+  readonly impact = signal('');
+  readonly chosen = signal<string[]>([]);
 }
 
 describe('the role dialog (Story 7.2, AD-56)', () => {
@@ -93,5 +97,30 @@ describe('the role dialog (Story 7.2, AD-56)', () => {
     choose('%Developer');
     expect(host.querySelector('.ocu-field-caption')).toBeNull();
     expect(select().getAttribute('aria-describedby')).toBeNull();
+  });
+
+  // Story 16.19 (AD-8): the caller's impact line for the chosen role is a caption under the select,
+  // read with it beside the privilege caption, and every choice is reported so the caller can read it.
+  // Mutation (Rule 19): drop the impact caption from the template -> the caption assertion goes red.
+  it('reports each choice and states the impact line for it under the select', () => {
+    select().value = '%Developer';
+    select().dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.chosen()).toEqual(['%Developer']);
+    expect(host.querySelector('[data-slot="impact"]')).toBeNull();
+
+    fixture.componentInstance.impact.set('Impact: probe loses %DB_USER:RW.');
+    fixture.detectChanges();
+    const caption = host.querySelector('[data-slot="impact"]') as HTMLElement;
+    expect(caption?.textContent?.trim()).toBe('Impact: probe loses %DB_USER:RW.');
+    expect(caption.classList.contains('ocu-field-caption')).toBe(true);
+    expect(select().getAttribute('aria-describedby')).toBe(caption.id);
+
+    select().value = '%Operator';
+    select().dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    const described = (select().getAttribute('aria-describedby') ?? '').split(' ');
+    expect(described).toHaveLength(2);
+    expect(described).toContain(caption.id);
   });
 });

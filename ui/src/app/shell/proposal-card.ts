@@ -23,6 +23,8 @@ import {
   offersRepropose,
   statusLineFor,
 } from '../core/proposal-view';
+import { impactLine } from '../core/impact';
+import { type ReadBack, readBackLine } from '../core/read-back';
 import { STRINGS } from '../core/strings';
 import {
   type ProposalCardView,
@@ -293,9 +295,26 @@ export interface ProposalConfirmRequest {
             >
               {{ statusLine }}
             </p>
+            @if (readBackText !== '') {
+              <p class="ocu-proposal-card-read-back" data-slot="read-back">{{ readBackText }}</p>
+            }
           }
         }
         @if (buttonsVisible) {
+          @if (impactText !== '') {
+            @if (impactRefused) {
+              <p
+                class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+                role="status"
+                data-slot="impact"
+              >
+                <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+                <span class="ocu-banner-message">{{ impactText }}</span>
+              </p>
+            } @else {
+              <p class="ocu-proposal-card-runs-as" data-slot="impact">{{ impactText }}</p>
+            }
+          }
           @if (privilegeLine; as line) {
             @if (line.missing) {
               <p
@@ -371,6 +390,12 @@ export class ProposalCard {
 
   /** The moment a confirmed write landed, as `hh:mm:ss`, from the instance's own stamp. */
   readonly confirmedAt = input<string>('');
+
+  /**
+   * The confirmed write's read-back, as the instance answered it (AD-58), or `null`. The card
+   * renders the line under its confirmed status line and compares nothing itself.
+   */
+  readonly readBack = input<ReadBack | null>(null);
 
   /**
    * Confirm was pressed: the proposal's id and the values typed into its masked fields (AD-6,
@@ -790,6 +815,24 @@ export class ProposalCard {
   protected get statusLine(): string {
     const phase = this.livePhase;
     return phase === null ? '' : statusLineFor(phase, this.userName(), this.confirmedAt());
+  }
+
+  /** The read-back line under a confirmed card's status line, or `''` (AD-58). */
+  protected get readBackText(): string {
+    return this.confirmed ? readBackLine(this.readBack()) : '';
+  }
+
+  /**
+   * The removal's impact line (AD-8), or `''`: the instance's own answer from the mint, rendered
+   * about the proposal's target. It shows only inside the buttons' block, above the privilege line.
+   */
+  protected get impactText(): string {
+    return impactLine(this.view().impact ?? null, this.view().name);
+  }
+
+  /** Whether the impact line is the prohibited set's refusal, which takes the warning treatment. */
+  protected get impactRefused(): boolean {
+    return (this.view().impact?.refused ?? null) !== null;
   }
 
   /**

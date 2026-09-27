@@ -8,11 +8,15 @@
 /// is carried as that number, never refused -- the client needs the number to name it.</p>
 /// <p>Neither <code>%SYS.System</code> nor <code>$ZVERSION</code> needs a namespace switch
 /// (AD-16).</p>
-Class OcuPilot.Kernel.Shell.Instance Extends %RegisteredObject
+Class OcuPilot.Kernel.Shell.Instance Extends OcuPilot.Kernel.Shell.FieldRead
 {
 
-/// <p>The subsystem name the verification detail is logged under.</p>
+/// <p>The subsystem name the verification detail and a refused status-bar source are logged
+/// under.</p>
 Parameter LOGSUBSYSTEM = "adminport";
+
+/// <p>The log line's message for a refused status-bar source.</p>
+Parameter LOGMESSAGE = "A status-bar source could not be read";
 
 /// <p>Build the instance identity, writing nothing. <var>pObject</var> carries
 /// <code>adminApiVersion</code>, <code>instanceName</code>, <code>instanceVersion</code>,
@@ -100,74 +104,37 @@ ClassMethod InstanceVersion() As %String
 /// misconfiguration.</p>
 ClassMethod ServerFlag() As %String
 {
-    Set tValue = ""
-    Try {
-        Set tValue = ..ReadSource("flag")
-    } Catch ex {
-        Set tValue = ""
-        Do ..LogSourceFailure("flag", ex)
-    }
-    Quit tValue
+    Quit ..Field("flag")
 }
 
 /// <p>The customer name on the active licence key, or <code>""</code>.</p>
 ClassMethod LicensedTo() As %String
 {
-    Set tValue = ""
-    Try {
-        Set tValue = ..ReadSource("licensee")
-    } Catch ex {
-        Set tValue = ""
-        Do ..LogSourceFailure("licensee", ex)
-    }
-    Quit tValue
+    Quit ..Field("licensee")
 }
 
 /// <p>The host node this instance runs on, or <code>""</code>.</p>
 ClassMethod ServerName() As %String
 {
-    Set tValue = ""
-    Try {
-        Set tValue = ..ReadSource("node")
-    } Catch ex {
-        Set tValue = ""
-        Do ..LogSourceFailure("node", ex)
-    }
-    Quit tValue
+    Quit ..Field("node")
 }
 
 /// <p>The three raw reads the status-bar fields are built from, behind one seam.
 /// <var>pField</var> is <code>flag</code>, <code>licensee</code> or <code>node</code>; an
 /// unknown field reads <code>""</code>.</p>
 /// <p>The seam exists so a test can make a source fail without touching the instance: each
-/// caller above wraps this in its own <code>Try</code>, and that per-field
+/// caller above reads it through <method>Field</method>'s own <code>Try</code>, and that per-field
 /// <code>Try</code> is what makes the question of whether these reads need a privilege moot
 /// -- a refusal degrades that one field to <code>""</code>, names itself in the log through
 /// <method>LogSourceFailure</method>, and the payload is still built.
 /// Production never overrides it, and none of the three reads switches namespace
 /// (AD-16).</p>
-ClassMethod ReadSource(pField As %String) As %String
+ClassMethod ReadSource(pField As %String, ByRef pContext) As %String
 {
     If pField = "flag" Quit $SYSTEM.Version.SystemMode()
     If pField = "licensee" Quit $SYSTEM.License.KeyCustomerName()
     If pField = "node" Quit ##class(%SYS.System).GetNodeName()
     Quit ""
-}
-
-/// <p>The audit-log seam a refused status-bar read travels through, so a field that
-/// degraded to <code>""</code> is recoverable from the log rather than being silently
-/// absent from the band. <var>pField</var> is the field that failed.</p>
-/// <p>It swallows its own failure: this is called from inside a per-field
-/// <code>Catch</code>, and an exception escaping here would reach
-/// <method>Payload</method>'s <code>Catch</code> and turn a degraded field into the failure the
-/// per-field <code>Try</code> exists to prevent. Overridable for capture in a test;
-/// production never overrides it.</p>
-ClassMethod LogSourceFailure(pField As %String, pException As %Exception.AbstractException)
-{
-    Try {
-        Do ##class(OcuPilot.Kernel.Audit.Log).Error(..#LOGSUBSYSTEM, "A status-bar source could not be read", {"field": (pField), "detail": (pException.DisplayString())})
-    } Catch {
-    }
 }
 
 /// <p>The audit-log seam the verification detail travels through, so an actionable message

@@ -2,7 +2,7 @@ import { Injectable, Injector, inject } from '@angular/core';
 
 import { ApiService } from '../../core/api';
 import { classifyFault, type Fault } from '../../core/fault';
-import { parseFileLines, type LogLine } from './log-line';
+import { parseFileLines, type LogFileEntry, type LogLine } from './log-line';
 
 /**
  * Which file a viewer is reading (AD-21: the source key is bound by the route, so the path carries
@@ -11,6 +11,14 @@ import { parseFileLines, type LogLine } from './log-line';
  */
 export interface LogViewerSource {
   readonly tailPath: string;
+  /**
+   * The route listing the files this source can page (Story 16.20), present only on a source whose
+   * older rotated files a caller may name. A source without it offers no file choice and issues no
+   * list request.
+   */
+  readonly filesPath?: string;
+  /** The name `filesPath`'s list answers for the source's own file, which the address never carries. */
+  readonly ownFile?: string;
 }
 
 /** The alerts.log screen's route. */
@@ -21,6 +29,8 @@ export const ALERTS_SOURCE: LogViewerSource = {
 /** The messages.log screen's route, bound to the `messages` source key by `Api/Router.cls`. */
 export const MESSAGES_SOURCE: LogViewerSource = {
   tailPath: '/api/ocupilot/logs/messages',
+  filesPath: '/api/ocupilot/logs/messages/files',
+  ownFile: 'messages.log',
 };
 
 /**
@@ -53,6 +63,19 @@ function flagAt(body: unknown, key: string): boolean {
   return (body as Record<string, unknown>)[key] === true;
 }
 
+function filesOf(body: unknown): readonly LogFileEntry[] {
+  if (body === null || typeof body !== 'object') return [];
+  const files = (body as Record<string, unknown>)['files'];
+  if (!Array.isArray(files)) return [];
+  const entries: LogFileEntry[] = [];
+  for (const file of files) {
+    const name = textAt(file, 'name');
+    if (name === '') continue;
+    entries.push({ name, size: numberAt(file, 'size'), modified: textAt(file, 'modified') });
+  }
+  return entries;
+}
+
 /**
  * The log viewer's own state: the entries on screen and the tail cursor they were read under.
  *
@@ -74,6 +97,19 @@ export class LogViewerStore {
   private readonly injector = inject(Injector);
 
   private sourceValue: LogViewerSource = ALERTS_SOURCE;
+
+  /** The rotated file the window reads, `''` for the source's own file. */
+  private fileValue = '';
+
+  private filesValue: readonly LogFileEntry[] = [];
+
+  private filesLoadedValue = false;
+
+  /** Whether the named file answered `LOG.ABSENT`: it was removed since it was listed or linked. */
+  private goneValue = false;
+
+  /** Bumped per issued list read, so a late list for a source the user has left is dropped. */
+  private filesGeneration = 0;
 
   private fileEntries: readonly LogLine[] = [];
 
@@ -111,6 +147,16 @@ export class LogViewerStore {
 
   /** Forget everything this principal had. See the class note on the sign-out teardown (DW-1110). */
   reset(): void {
+    this.fileValue = '';
+    this.filesValue = [];
+    this.filesLoadedValue = false;
+    this.filesGeneration += 1;
+    this.clearWindow();
+  }
+
+  /** Drop the window and its cursor, keeping the source's file list. */
+  private clearWindow(): void {
+    this.goneValue = false;
     this.fileEntries = [];
     this.offsetValue = 0;
     this.identityValue = '';
@@ -127,17 +173,67 @@ export class LogViewerStore {
   }
 
   /**
-   * Point the viewer at one file. A different source drops everything the previous one left, so a
-   * second log screen cannot render the first one's rows under its own title.
+   * Point the viewer at one file: `file` names a rotated file of a source that lists them, `''`
+   * the source's own file. A different source drops everything the previous one left, so a second
+   * log screen cannot render the first one's rows under its own title; a different file on the same
+   * source drops the window and keeps the list. Neither reads anything: the caller opens.
    */
-  setSource(source: LogViewerSource): void {
-    if (source.tailPath === this.sourceValue.tailPath) return;
-    this.sourceValue = source;
-    this.reset();
+  setSource(source: LogViewerSource, file = ''): void {
+    const named = source.filesPath === undefined ? '' : file;
+    if (source.tailPath !== this.sourceValue.tailPath) {
+      this.sourceValue = source;
+      this.reset();
+      this.fileValue = named;
+      return;
+    }
+    if (named === this.fileValue) return;
+    this.fileValue = named;
+    this.clearWindow();
   }
 
   source(): LogViewerSource {
     return this.sourceValue;
+  }
+
+  /** The rotated file the window reads, `''` for the source's own file. */
+  file(): string {
+    return this.fileValue;
+  }
+
+  /** The files the source can page, its own first, as the last list read answered them. */
+  files(): readonly LogFileEntry[] {
+    return this.filesValue;
+  }
+
+  /** Whether a list read has answered. A refused or failed list leaves this false. */
+  filesLoaded(): boolean {
+    return this.filesLoadedValue;
+  }
+
+  /** Whether the file the window names is no longer in the manager directory. */
+  gone(): boolean {
+    return this.goneValue;
+  }
+
+  /**
+   * Read the source's file list. A source with no `filesPath` issues nothing; a refused list leaves
+   * the choice unrendered and the window as it is.
+   */
+  async loadFiles(): Promise<void> {
+    const path = this.sourceValue.filesPath;
+    if (path === undefined) return;
+    const generation = (this.filesGeneration += 1);
+    const result = await this.injector.get(ApiService).requestJson<unknown>(path, { scope: null });
+    if (generation !== this.filesGeneration) return;
+    if (result.kind !== 'ok') {
+      this.filesValue = [];
+      this.filesLoadedValue = false;
+      this.notify();
+      return;
+    }
+    this.filesValue = filesOf(result.body);
+    this.filesLoadedValue = true;
+    this.notify();
   }
 
   lines(): readonly LogLine[] {
@@ -208,23 +304,27 @@ export class LogViewerStore {
     this.loadingValue = true;
     this.faultValue = null;
     this.failedPairValue = '';
+    this.goneValue = false;
     this.notify();
 
-    const query =
-      offset === ''
-        ? ''
-        : '?offset=' + encodeURIComponent(offset) + '&identity=' + encodeURIComponent(this.identityValue);
-    const path = this.sourceValue.tailPath + query;
+    const params: string[] = [];
+    if (offset !== '') {
+      params.push('offset=' + encodeURIComponent(offset), 'identity=' + encodeURIComponent(this.identityValue));
+    }
+    if (this.fileValue !== '') params.push('file=' + encodeURIComponent(this.fileValue));
+    const path = this.sourceValue.tailPath + (params.length === 0 ? '' : '?' + params.join('&'));
     const result = await this.injector.get(ApiService).requestJson<unknown>(path, { scope: null });
     if (generation !== this.generation) return;
 
     if (result.kind !== 'ok') {
       this.loadingValue = false;
       // A log the instance has not written yet is an empty screen, not a refusal: a fresh instance
-      // that has raised no alert has no alerts.log, and the port says so by name.
+      // that has raised no alert has no alerts.log, and the port says so by name. A rotated file the
+      // address named and the directory no longer holds is the one exception: it was there.
       if (result.kind === 'error' && result.code === ABSENT_CODE) {
         this.fileEntries = [];
         this.cursorValue = false;
+        this.goneValue = this.fileValue !== '';
         this.loadedValue = true;
         this.notify();
         return;

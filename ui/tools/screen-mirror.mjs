@@ -845,7 +845,7 @@ export function refreshProblem(declaration) {
   }
   const rates = refreshRates ?? [];
   if (refreshes !== true) {
-    if (rates.length === 0) return null;
+    if (rates.length === 0) return refreshDefaultProblem(declaration, rates);
     return (
       `refreshRates declares ${rates.length} rate(s) while refreshes is not true; a screen ` +
       `that does not refresh permits none (AD-43)`
@@ -864,7 +864,24 @@ export function refreshProblem(declaration) {
     }
     previous = rate;
   }
-  return null;
+  return refreshDefaultProblem(declaration, rates);
+}
+
+/**
+ * What is wrong with a declared `refreshDefault`, or `null` (AD-43 as amended, Story 16.18). The
+ * key is optional: absent or `0`, the screen starts off. Any other value must be one of the
+ * declared rates -- so a screen that does not refresh can declare no other -- and, JSON being able
+ * to say so, a number.
+ */
+function refreshDefaultProblem(declaration, rates) {
+  if (!('refreshDefault' in declaration)) return null;
+  const value = declaration.refreshDefault;
+  if (value === 0) return null;
+  if (typeof value === 'number' && rates.includes(value)) return null;
+  return (
+    `refreshDefault (${JSON.stringify(value)}) is not one of refreshRates; a screen's default rate ` +
+    `is a rate its chip may set (AD-43)`
+  );
 }
 
 /** The tool-identifier shape a read-declaring descriptor carries (Conventions, Tool naming). */
@@ -909,6 +926,7 @@ export const DECLARATION_KEYS = [
   'built',
   'refreshes',
   'refreshRates',
+  'refreshDefault',
   'privileges',
   'entityType',
   'entityLabelKey',
@@ -2582,6 +2600,8 @@ export function buildMirror({
     // descriptor would fail as an unreadable `tsc` error rather than at the named refusal.
     refreshes: screen.declaration.refreshes ?? false,
     refreshRates: screen.declaration.refreshRates ?? [],
+    // Absent is off, the published default (AD-43); only Home declares one.
+    refreshDefault: screen.declaration.refreshDefault ?? 0,
     // Defaulted the same way and for the same reason: Story 1.15 added `label` and `href` to
     // `classicLinkExemption`, and a descriptor written before they existed declares neither.
     // Spread first so a declaration that carries them emits byte-identically in its own order.
@@ -2925,6 +2945,8 @@ export interface ScreenDeclaration {
   readonly refreshes: boolean;
   /** The rates, in whole seconds ascending, the chip may set. Empty unless \`refreshes\`. */
   readonly refreshRates: readonly number[];
+  /** The rate the framework starts at when none is remembered: one of \`refreshRates\`, or \`0\`, off. */
+  readonly refreshDefault: number;
   readonly privileges: readonly PrivilegePair[];
   readonly entityType: string;
   /** The string key of the singular noun for \`entityType\`, or \`''\` (AD-5, AD-14). */

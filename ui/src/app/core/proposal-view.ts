@@ -21,6 +21,7 @@
  * declares a secret, so a test supplies a screen record as data.
  */
 
+import type { Impact } from './impact.ts';
 import { STRINGS } from './strings.ts';
 import type { TurnProposal, TurnProposalPrivilege, TurnProposalUnchangedRow } from './turn.ts';
 
@@ -120,6 +121,11 @@ export interface ProposalCardView {
    * recorded no pairs. The card shows it only while Confirm does; it gates nothing.
    */
   readonly privilege?: ProposalPrivilegeLine | null;
+  /**
+   * The removal's impact (AD-8), the wire's own value read at the mint, or `null` when the write
+   * removes nothing covered. The card shows its line only while Confirm does; it gates nothing.
+   */
+  readonly impact?: Impact | null;
 }
 
 /** The privilege line as the card draws it: the filled sentence, and whether it is the warning. */
@@ -448,6 +454,7 @@ export function toCardView(
     destructive: proposal.destructive,
     consequence: proposal.consequence,
     privilege: privilegeLine(proposal.privilege),
+    impact: proposal.impact ?? null,
     refusalReason,
   };
 }

@@ -449,6 +449,11 @@ test('AD-43: the generator refuses a malformed refresh pair', () => {
     // a sound rate list on the instance unless something refuses the shape first.
     [{ refreshes: true, refreshRates: { a: 10 } }, /not a list of rates/],
     [{ refreshes: true, refreshRates: 10 }, /not a list of rates/],
+    // Story 16.18: a declared default is one of the declared rates, and nothing else.
+    [{ refreshes: true, refreshRates: [5, 10], refreshDefault: 15 }, /refreshDefault \(15\) is not one of refreshRates/],
+    [{ refreshes: true, refreshRates: [5, 10], refreshDefault: '10' }, /refreshDefault \("10"\) is not one of refreshRates/],
+    [{ refreshes: false, refreshRates: [], refreshDefault: 10 }, /refreshDefault \(10\) is not one of refreshRates/],
+    [{ refreshDefault: 10 }, /refreshDefault \(10\) is not one of refreshRates/],
   ];
   for (const [declaration, message] of refused) {
     assert.throws(
@@ -467,6 +472,26 @@ test('AD-43: the generator refuses a malformed refresh pair', () => {
   assert.doesNotThrow(() => build({ refreshes: true, refreshRates: [10] }));
   assert.doesNotThrow(() => build({ refreshes: false, refreshRates: [] }));
   assert.doesNotThrow(() => build({}));
+  assert.doesNotThrow(() => build({ refreshes: true, refreshRates: [5, 10], refreshDefault: 10 }));
+  assert.doesNotThrow(() => build({ refreshes: true, refreshRates: [5, 10], refreshDefault: 0 }), '0 is off');
+  assert.doesNotThrow(() => build({ refreshes: false, refreshRates: [], refreshDefault: 0 }), 'on any screen');
+});
+
+// AD-43 as amended (Story 16.18): Home is the one screen whose default rate is not off, and the
+// mirror carries it; every other screen reads 0.
+//
+// Mutation (Rule 19): drop the `refreshDefault` default from `buildMirror`'s emitted shape -> every
+// other screen reads `undefined` and the second assertion goes red.
+test('AD-43: only Home declares a default rate, and it reaches the mirror as every 10 s', () => {
+  const shipped = JSON.parse(
+    readCheckedInMirror().match(/export const SCREENS: readonly ScreenDeclaration\[\] = (\[[\s\S]*?\n\]);/)[1]
+  );
+  const declaring = shipped.filter((screen) => screen.refreshDefault !== 0).map((screen) => screen.descriptor);
+  assert.deepEqual(declaring, ['OcuPilot.Screen.Descriptor.Home']);
+  assert.ok(shipped.every((screen) => typeof screen.refreshDefault === 'number'), 'every screen carries a number');
+  const home = shipped.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.Home');
+  assert.equal(home.refreshDefault, 10);
+  assert.ok(home.refreshRates.includes(home.refreshDefault), 'one of its own rates');
 });
 
 // AD-36: a declared read is refused here in the shapes `OcuPilot.Screen.Registry.ReadProblem`

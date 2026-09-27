@@ -173,7 +173,9 @@ ClassMethod CallCount() As %Integer
     Quit +$Get(^||OcuPilotProposalFixture("calls"))
 }
 
-/// <p>The value the last call carried for query parameter <var>pName</var>.</p>
+/// <p>The value the last call carried for query parameter <var>pName</var>. Once a write has been
+/// recorded, a read after it is the write's read-back (AD-58) and leaves the write's own call
+/// recorded here, as it does for <method>LastType</method>.</p>
 ClassMethod LastQuery(pName As %String) As %String
 {
     Quit $Get(^||OcuPilotProposalFixture("query", pName))
@@ -192,14 +194,16 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set pHttpStatus = 0
     Set pFault = ""
     Do $Increment(^||OcuPilotProposalFixture("calls"))
-    Set ^||OcuPilotProposalFixture("endpoint") = pEndpoint
-    Set ^||OcuPilotProposalFixture("type") = pType
-    Kill ^||OcuPilotProposalFixture("query")
-    Set tName = ""
-    For {
-        Set tName = $Order(pQuery(tName))
-        If tName = "" Quit
-        Set ^||OcuPilotProposalFixture("query", tName) = pQuery(tName)
+    If ##class(OcuPilot.Port.AdminPort).IsMutating(pEndpoint, pType) || '$Get(^||OcuPilotProposalFixture("writes")) {
+        Set ^||OcuPilotProposalFixture("endpoint") = pEndpoint
+        Set ^||OcuPilotProposalFixture("type") = pType
+        Kill ^||OcuPilotProposalFixture("query")
+        Set tName = ""
+        For {
+            Set tName = $Order(pQuery(tName))
+            If tName = "" Quit
+            Set ^||OcuPilotProposalFixture("query", tName) = pQuery(tName)
+        }
     }
     If ##class(OcuPilot.Port.AdminPort).IsMutating(pEndpoint, pType) {
         ; A mutating call, classified by the port's own (endpoint, type) roster rather than by

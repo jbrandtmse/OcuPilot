@@ -371,6 +371,14 @@ Parameter LOGENTRY = "LOG.ENTRY";
 /// ceiling, so a large value is honoured rather than refused.</p>
 Parameter LOGMAXROWS = "LOG.MAXROWS";
 
+/// <p>Machine code (AD-12, AD-21): a log page named a <code>file</code> the port does not admit --
+/// anything but one rotated console log's name (<code>messages.old_YYYYMMDD</code>, optionally
+/// <code>_n</code>) on the <code>messages</code> source, <code>messages.log</code> itself included,
+/// or a name that does not resolve directly in the manager directory. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug by <method>OcuPilot.Port.LogSourcePort.Page</method>,
+/// after the gate and before the filesystem is touched, and never with the value or a path.</p>
+Parameter LOGFILE = "LOG.FILE";
+
 /// <p>Machine code (AD-12, AD-39): the agent configuration the request submitted broke one or more
 /// of the rules <class>OcuPilot.Kernel.AgentRules</class> (a definition) or
 /// <class>OcuPilot.Kernel.SwitchRules</class> (the switches and the per-user holds) applies.

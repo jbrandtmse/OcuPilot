@@ -20,6 +20,25 @@ import { SYSTEM_INFO_FIELDS, SystemInfo } from '../../core/system-info';
 import { stubSystemInfo, type StubbedSystemInfo } from '../../testing/system-info';
 import { SHORTCUT_ROUTES, shortcutScreens } from '../../core/shortcuts';
 import type { StubbedAbout } from '../../testing/about';
+import { PerformanceRow } from '../../core/performance';
+import { RefreshService } from '../../core/refresh';
+import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { HOME_DESCRIPTOR, ScreenStores } from '../../core/screen-store';
+import { assembleScreenContext } from '../../core/screen-context';
+import { screenForDescriptor } from '../../core/navigation';
+import { ChangeBus } from '../../core/change-bus';
+import { Findings } from '../../core/findings';
+import { FixFinding } from '../../core/fix-finding';
+import { KILL_SWITCH_ID } from '../../core/explain-entry';
+import { cleanFindingsBody, stubFindings, stubFixFinding, type StubbedFindings } from '../../testing/findings';
+import type { ExplainEntryState } from '../../testing/explain-entry';
+import { FINDINGS_CHANGE_TYPES } from './home.page';
+import {
+  homeRefresh,
+  stubPerformanceRow,
+  type ScheduledArm,
+  type StubbedPerformanceRow,
+} from '../../testing/performance';
 
 /**
  * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "Six tiles in daily-use order").
@@ -213,6 +232,16 @@ describe('Home', () => {
   let preferences: ReturnType<typeof stubAccountPreferences>;
   let about: StubbedAbout;
   let systemInfo: StubbedSystemInfo;
+  let performance: StubbedPerformanceRow;
+  let refresh: RefreshService;
+  let stores: ScreenStores;
+  let actions: ScreenActions;
+  let scheduled: ScheduledArm[];
+  let findings: StubbedFindings;
+  let fixFinding: FixFinding;
+  let fixGate: ExplainEntryState;
+  let fireFixGate: () => void;
+  let bus: ChangeBus;
 
   /**
    * The two remembered blocks. Story 15.3 added two more sections of the same shape beside them --
@@ -277,10 +306,18 @@ describe('Home', () => {
    */
   const buildWith = (account: ReturnType<typeof stubAccountPreferences>) => {
     preferences = account;
+    ({ refresh, stores, actions, scheduled } = homeRefresh(account));
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: about },
         { provide: SystemInfo, useValue: systemInfo },
+        { provide: PerformanceRow, useValue: performance },
+        { provide: Findings, useValue: findings },
+        { provide: FixFinding, useValue: fixFinding },
+        { provide: ChangeBus, useValue: bus },
+        { provide: RefreshService, useValue: refresh },
+        { provide: ScreenStores, useValue: stores },
+        { provide: ScreenActions, useValue: actions },
         { provide: AccountPreferences, useValue: account },
         provideRouter([
           { path: '', children: [] },
@@ -299,6 +336,12 @@ describe('Home', () => {
           // A remembered row's own target, so the row that opens one asserts a URL the harness
           // could have reached.
           { path: 'logs/alerts', children: [] },
+          // Story 16.21: the screens a finding's Fix it and Open reach.
+          { path: 'tasks/schedule/details/:id', children: [] },
+          { path: 'security/x509/:id', children: [] },
+          { path: 'web-applications/list/:id', children: [] },
+          { path: 'permissions/users/:id', children: [] },
+          { path: 'security/auditing', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
@@ -324,6 +367,10 @@ describe('Home', () => {
     // degrade row needs a stored route that resolves to nothing.
     about = stubAbout();
     systemInfo = stubSystemInfo();
+    performance = stubPerformanceRow();
+    findings = stubFindings();
+    ({ fix: fixFinding, state: fixGate, fire: fireFixGate } = stubFixFinding());
+    bus = new ChangeBus();
     preferences = stubAccountPreferences({
       favorites: ['logs/alerts', 'no-such-area/no-such-screen'],
       // `agent/definitions/edit` is built but unlisted (sideBarPosition 0) and keyed by an entity
@@ -1162,11 +1209,12 @@ describe('Home', () => {
     expect(systemInfo.calls.length).toBe(before + 1);
   });
 
-  it('Story 15.4 (AD-43): the panel settles with its own read and starts no timer', async () => {
+  it('Story 15.4 (AD-43): the panel settles with its own read and no timer re-reads it', async () => {
     expect(systemInfo.calls.length).toBe(1);
     expect(systemInfo.calls[0].path).toBe('/api/ocupilot/ui/system');
 
-    // Home is not on the auto-refresh roster. The clock is faked **before** the component is
+    // Home's own refresh times the performance row alone, through the framework's `schedule`
+    // seam, which this spec holds (Story 16.18). The clock is faked **before** the component is
     // constructed, because a timer the constructor registers against the real clock is invisible
     // to a fake one installed afterwards; ten minutes of fake time then outruns any period the
     // product would plausibly use, and `vi.getTimerCount()` makes "registers no timer" an
@@ -1184,7 +1232,8 @@ describe('Home', () => {
     // fixed 100 ms held on node 26 and did not on node 24), and then advance the window
     // **synchronously**, which yields to the real loop not at all. A repeating timer still fires
     // and still re-registers under a synchronous advance, and a read it issues still lands in
-    // `systemInfo.calls`, so neither assertion below loses any of its reach.
+    // `systemInfo.calls`. The framework's own tick is held by this spec's `schedule` seam and never
+    // fires here; the Story 16.18 AC2 case below fires it and pins that it leaves the panel alone.
     //
     // The synchronous advance is what makes the measurement sound; the drain only narrows the one
     // remaining yield, the `advanceTimersByTimeAsync(0)` settle. So the drain is best-effort and
@@ -1241,4 +1290,401 @@ describe('Home', () => {
     expect(block.querySelector('.ocu-home-block-list')).not.toBeNull();
   });
 
+  // --- Story 16.18: the performance row -------------------------------------------------------
+
+  const performanceRow = (): HTMLElement | null => fixture.nativeElement.querySelector('app-performance-row');
+  const performanceItems = (): { label: string; value: string; unit: string }[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-home-performance-item') as NodeListOf<HTMLElement>).map((item) => ({
+      label: item.querySelector('.ocu-home-performance-label')?.textContent?.trim() ?? '',
+      value: item.querySelector('.ocu-home-performance-value')?.textContent?.trim() ?? '',
+      unit: item.querySelector('.ocu-home-performance-unit')?.textContent?.trim() ?? '',
+    }));
+  const sparkline = (): SVGElement | null => fixture.nativeElement.querySelector('.ocu-home-performance-sparkline');
+  const line = (): SVGPathElement | null => fixture.nativeElement.querySelector('.ocu-home-performance-line');
+
+  /** Let the bound read land and render. */
+  const settle = async (): Promise<void> => {
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+  };
+
+  /** Fire the one tick the framework has armed, and let its read land. */
+  const tick = async (atMs: number): Promise<void> => {
+    performance.setNow(atMs);
+    const armed = scheduled[scheduled.length - 1];
+    armed.run();
+    await settle();
+  };
+
+  it('Story 16.18 AC1: Home binds the refresh framework at every 10 s and renders five readings, each with its unit', async () => {
+    await settle();
+    expect(refresh.descriptor()).toBe(HOME_DESCRIPTOR);
+    expect(refresh.rate()).toBe(10);
+    expect(scheduled[scheduled.length - 1].delayMs).toBe(10_000);
+    expect(performance.calls.map((call) => call.path)).toEqual(['/api/ocupilot/ui/performance']);
+
+    const row = performanceRow() as HTMLElement;
+    expect(row).not.toBeNull();
+    expect(row.querySelector('.ocu-home-block-heading')?.textContent?.trim()).toBe(STRINGS.performanceHeading);
+    expect(performanceItems()).toEqual([
+      { label: STRINGS.systemUsageCacheEfficiency, value: '1,000.0', unit: STRINGS.performanceCacheUnit },
+      { label: STRINGS.processDetailsGlobalReferences, value: '2,000', unit: STRINGS.performanceRateUnit },
+      { label: STRINGS.systemUsageGlobalUpdates, value: '3,000', unit: STRINGS.performanceRateUnit },
+      { label: STRINGS.performanceDiskReads, value: '4,000', unit: STRINGS.performanceRateUnit },
+      { label: STRINGS.performanceDiskWrites, value: '5,000', unit: STRINGS.performanceRateUnit },
+    ]);
+    // The row sits before the blocks, the System Information panel among them.
+    const home = fixture.nativeElement.querySelector('.ocu-home') as HTMLElement;
+    expect(home.firstElementChild?.tagName.toLowerCase()).toBe('app-performance-row');
+  });
+
+  it('Story 16.18 AC2: the line is drawn only once two answers have arrived, through exactly the points received', async () => {
+    await settle();
+    const svg = sparkline() as SVGElement;
+    expect(svg).not.toBeNull();
+    expect(svg.namespaceURI).toBe('http://www.w3.org/2000/svg');
+    expect(svg.getAttribute('role')).toBe('img');
+    expect(svg.getAttribute('aria-label')).toBe(STRINGS.performanceSparklineLabel);
+    // It sits under Global references.
+    expect(svg.closest('.ocu-home-performance-item')?.querySelector('.ocu-home-performance-label')?.textContent?.trim()).toBe(
+      STRINGS.processDetailsGlobalReferences
+    );
+    expect(line()).toBeNull();
+
+    performance.setValues({ globalReferencesPerSecond: 4000 });
+    const panelReads = systemInfo.calls.length;
+    const findingReads = findings.calls.length;
+    await tick(1_700_000_005_000);
+    expect(performance.points()).toHaveLength(2);
+    // The tick re-reads the performance row alone; the System Information panel settles once.
+    expect(systemInfo.calls.length).toBe(panelReads);
+    // Story 16.21: nor does the tick re-read the findings (AD-43).
+    expect(findings.calls.length).toBe(findingReads);
+    const path = line() as SVGPathElement;
+    expect(path).not.toBeNull();
+    expect(path.namespaceURI).toBe('http://www.w3.org/2000/svg');
+    expect(path.getAttribute('d')?.match(/[ML]/g)).toEqual(['M', 'L']);
+    // The values update silently: the reading moved, and nothing else was announced.
+    expect(performanceItems()[1].value).toBe('4,000');
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('.ocu-home-status')?.textContent?.trim()).toBe('');
+    const row = host.querySelector('.ocu-home-performance') as HTMLElement;
+    expect(row.getAttribute('aria-live')).toBeNull();
+    expect(row.querySelector('[aria-live], [role="status"], [role="alert"]')).toBeNull();
+  });
+
+  it('Story 16.18 AC2: leaving Home clears the line and lets the framework go, and the next Home starts empty', async () => {
+    await settle();
+    await tick(1_700_000_005_000);
+    expect(performance.points()).toHaveLength(2);
+
+    fixture.destroy();
+    expect(performance.points()).toHaveLength(0);
+    expect(refresh.descriptor()).toBe('');
+    expect(actions.has(HOME_DESCRIPTOR, REFRESH_ACTION_ID)).toBe(false);
+
+    const next = TestBed.createComponent(HomePage);
+    next.detectChanges();
+    await next.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    next.detectChanges();
+    expect(performance.points()).toHaveLength(1);
+    expect(next.nativeElement.querySelector('.ocu-home-performance-line')).toBeNull();
+    next.destroy();
+  });
+
+  // Mutation (Rule 19): render the row whenever the store has answered, zeros included -> this
+  // goes red on the heading.
+  it('Story 16.18 AC3: a caller the instance refuses sees no heading, no value and no zero, and the rest of Home is unchanged', async () => {
+    // A fresh Home over an account the instance refuses from the first read.
+    fixture.destroy();
+    performance.reset();
+    performance.setStatus(403);
+    const before = performance.calls.length;
+    fixture = TestBed.createComponent(HomePage);
+    fixture.detectChanges();
+    await settle();
+
+    expect(performance.calls.length).toBe(before + 1);
+    expect(performanceRow()).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.performanceHeading);
+    expect(fixture.nativeElement.querySelectorAll('.ocu-home-performance-item')).toHaveLength(0);
+    // A 403 is an answer, not a fault: no fault stamp, and the store row is empty.
+    expect(refresh.fault()).toBeNull();
+    expect(stores.for(HOME_DESCRIPTOR, []).data()).toEqual([]);
+    // The rest of Home is as it was.
+    expect(tiles()).toHaveLength(6);
+    expect(fixedBlocks().length).toBeGreaterThan(0);
+  });
+
+  it('Story 16.18 AC3: a 403 after an answer clears the row and its line', async () => {
+    await settle();
+    expect(performanceRow()).not.toBeNull();
+    performance.setStatus(403);
+    await tick(1_700_000_005_000);
+    expect(performanceRow()).toBeNull();
+    expect(performance.points()).toHaveLength(0);
+    expect(stores.for(HOME_DESCRIPTOR, []).data()).toEqual([]);
+  });
+
+  it('Story 16.18: a fault after an answer keeps the last values, and the framework raises its own fault', async () => {
+    await settle();
+    performance.setStatus(500);
+    await tick(1_700_000_005_000);
+    expect(performanceItems()[1].value).toBe('2,000');
+    expect(refresh.fault()?.kind).toBe('server-fault');
+  });
+
+  it('Story 16.18 AC4: the screen context from Home carries the one store row with the same five numbers, and none when refused', async () => {
+    await settle();
+    const home = screenForDescriptor(HOME_DESCRIPTOR);
+    const store = stores.for(HOME_DESCRIPTOR, []);
+    const context = assembleScreenContext({
+      descriptor: home,
+      namespace: 'HSCUSTOM',
+      entity: '',
+      share: true,
+      rows: store.data(),
+      filter: store.filter(),
+      sort: store.sort(),
+      direction: store.direction(),
+      rowCap: 200,
+    });
+    expect(context?.view?.rows).toEqual([
+      {
+        cacheEfficiency: 1000,
+        globalReferencesPerSecond: 2000,
+        globalUpdatesPerSecond: 3000,
+        diskReadsPerSecond: 4000,
+        diskWritesPerSecond: 5000,
+      },
+    ]);
+
+    performance.setStatus(403);
+    await tick(1_700_000_005_000);
+    const refused = assembleScreenContext({
+      descriptor: home,
+      namespace: 'HSCUSTOM',
+      entity: '',
+      share: true,
+      rows: store.data(),
+      filter: '',
+      sort: '',
+      direction: '',
+      rowCap: 200,
+    });
+    expect(refused?.view?.rows).toEqual([]);
+  });
+
+  it('Story 16.18: Home registers the Refresh action, which reads the row again', async () => {
+    await settle();
+    expect(actions.run(HOME_DESCRIPTOR, REFRESH_ACTION_ID)).toBe(true);
+    await settle();
+    expect(performance.calls).toHaveLength(2);
+  });
+  // ---- Story 16.21: the Findings panel ----
+
+  const findingsPanel = (): HTMLElement | null => fixture.nativeElement.querySelector('app-findings-panel');
+  const groupTexts = (): string[][] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-home-findings-group') as NodeListOf<HTMLElement>).map((group) => [
+      group.querySelector('h3')?.textContent?.trim() ?? '',
+      ...Array.from(group.querySelectorAll('.ocu-home-finding-sentence')).map((line) => line.textContent?.trim() ?? ''),
+    ]);
+  const findingItem = (sentence: string): HTMLElement =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-home-finding') as NodeListOf<HTMLElement>).find(
+      (item) => item.querySelector('.ocu-home-finding-sentence')?.textContent?.trim() === sentence
+    ) as HTMLElement;
+
+  /** An answer whose every check was read, carrying `list`. */
+  const answerWith = (list: object[]) => ({ ...cleanFindingsBody(), findings: list });
+  const TASK = { check: 'task-error', group: 'operations', name: 'nightly', id: '1002', route: 'tasks/schedule/details', scope: 'instance', fix: 'agent' };
+  const CERT = { check: 'certificate', group: 'security', name: 'old', id: 'old', route: 'security/x509', scope: 'instance', detail: '2026-01-02', expired: true, fix: 'link' };
+  const SYSTEM = {
+    check: 'all-holder', group: 'security', name: '_SYSTEM', id: '_SYSTEM', route: 'permissions/users', scope: 'instance', fix: 'refused',
+    refused: { code: 'PROHIBITED.SYSTEMACCOUNT', reason: STRINGS.userRefusalSystemAccount },
+  };
+
+  const remount = async (): Promise<void> => {
+    fixture.destroy();
+    fixture = TestBed.createComponent(HomePage);
+    fixture.detectChanges();
+    await settle();
+  };
+
+  it('Story 16.21 AC1: the Findings panel follows the performance row, with both groups, each saying there is nothing to report', async () => {
+    await settle();
+    expect(findings.calls.map((call) => call.path)).toEqual(['/api/ocupilot/ui/findings']);
+    const home = fixture.nativeElement.querySelector('.ocu-home') as HTMLElement;
+    expect(findingsPanel()?.previousElementSibling?.tagName.toLowerCase()).toBe('app-performance-row');
+    expect(home.querySelector('.ocu-home-remembered')?.previousElementSibling).toBe(findingsPanel());
+    expect(findingsPanel()?.querySelector('h2')?.textContent?.trim()).toBe(STRINGS.findingsHeading);
+    expect(groupTexts()).toEqual([
+      [STRINGS.findingsSecurity, STRINGS.findingsNothing],
+      [STRINGS.findingsOperations, STRINGS.findingsNothing],
+    ]);
+    expect(fixture.nativeElement.querySelectorAll('.ocu-home-remembered .ocu-home-block')).toHaveLength(5);
+  });
+
+  // Mutation (Rule 19): render Fix it for `fix: "refused"` in Home's `resolvedFindings` -> this goes red.
+  it('Story 16.21: an agent finding offers Fix it, a link finding Open, and a refused one the prohibited set\'s sentence with no Fix it', async () => {
+    findings.setBody(answerWith([SYSTEM, CERT, TASK]));
+    await remount();
+    const system = findingItem('_SYSTEM holds %All.');
+    expect(system.querySelector('.ocu-home-finding-fix')).toBeNull();
+    expect(system.querySelector('.ocu-home-finding-open')).toBeNull();
+    expect(system.querySelector('.ocu-home-finding-refused')?.textContent?.trim()).toBe(STRINGS.userRefusalSystemAccount);
+    const cert = findingItem('The certificate old expired on 2026-01-02.');
+    expect(cert.querySelector('.ocu-home-finding-fix')).toBeNull();
+    expect(cert.querySelector('.ocu-home-finding-open')?.textContent?.trim()).toBe(STRINGS.homeSuggestedOpen);
+    expect(cert.querySelector('.ocu-home-finding-open')?.getAttribute('href')).toContain('security/x509/old');
+    const task = findingItem('The task nightly was suspended after an error.');
+    const fix = task.querySelector('.ocu-home-finding-fix') as HTMLButtonElement;
+    expect(fix.textContent?.trim()).toBe(STRINGS.findingsFix);
+    expect(fix.getAttribute('aria-disabled')).toBeNull();
+    const sentenceId = task.querySelector('.ocu-home-finding-sentence')?.id ?? '';
+    expect(fix.getAttribute('aria-describedby')).toBe(sentenceId);
+    expect(Array.from(task.querySelectorAll('.ocu-home-finding-detail')).map((line) => line.textContent?.trim())).toEqual([
+      STRINGS.findingTaskErrorWhy,
+      STRINGS.findingTaskErrorDo,
+    ]);
+  });
+
+  it('Story 16.21: under the kill switch Fix it is aria-disabled, described by the kill-switch reason, and sends nothing', async () => {
+    findings.setBody(answerWith([TASK]));
+    fixGate.killSwitch = true;
+    await remount();
+    const fix = findingItem('The task nightly was suspended after an error.').querySelector('.ocu-home-finding-fix') as HTMLButtonElement;
+    expect(fix.getAttribute('aria-disabled')).toBe('true');
+    expect((fix.getAttribute('aria-describedby') ?? '').split(' ')).toContain(KILL_SWITCH_ID);
+    fix.click();
+    await settle();
+    expect(router.url).toBe('/');
+    expect(fixFinding.take()).toBeNull();
+
+    fixGate.killSwitch = false;
+    fireFixGate();
+    fixture.detectChanges();
+    expect(fix.getAttribute('aria-disabled')).toBeNull();
+  });
+
+  // Mutation (Rule 19): call `fix.request` straight after the navigation in `fixAndRequest`,
+  // without waiting for the target store -> "nothing is requested before the screen has read" goes red.
+  it('Story 16.21 AC2: Fix it opens the affected screen on its object and asks for the fixed sentence only once that screen has read', async () => {
+    findings.setBody(answerWith([TASK]));
+    await remount();
+    const target = screenForRoute('tasks/schedule/details');
+    expect(target).not.toBeNull();
+    const store = stores.for(target!.descriptor, target!.refreshRates);
+    (findingItem('The task nightly was suspended after an error.').querySelector('.ocu-home-finding-fix') as HTMLButtonElement).click();
+    await settle();
+    expect(router.url).toBe('/tasks/schedule/details/1002');
+    expect(fixFinding.take(), 'nothing is requested before the screen has read').toBeNull();
+
+    store.applyTick([{ Name: 'nightly', Id: 1002 }], false, '', new Date());
+    expect(fixFinding.take()).toEqual({ check: 'task-error', key: 'findingFixTaskError' });
+    store.applyTick([{ Name: 'nightly', Id: 1002 }], false, '', new Date());
+    expect(fixFinding.take(), 'one request per click').toBeNull();
+  });
+
+  it('Story 16.21: Fix it on each other fixable check opens its own screen on its object, then asks for that check', async () => {
+    const cases = [
+      { finding: { check: 'webapp-open', group: 'security', name: '/csp/open', id: '/csp/open', route: 'web-applications/list', scope: 'instance', fix: 'agent' }, sentence: '/csp/open can be reached without signing in and holds a database or administrative role.', url: '/web-applications/list/%252Fcsp%252Fopen', key: 'findingFixWebappOpen' },
+      { finding: { check: 'monitor-open', group: 'security', name: '/api/monitor', id: '/api/monitor', route: 'web-applications/list', scope: 'instance', fix: 'agent' }, sentence: 'The monitoring API, /api/monitor, answers without signing in.', url: '/web-applications/list/%252Fapi%252Fmonitor', key: 'findingFixMonitorOpen' },
+      { finding: { check: 'all-holder', group: 'security', name: 'SuperUser', id: 'SuperUser', route: 'permissions/users', scope: 'instance', fix: 'agent' }, sentence: 'SuperUser holds %All.', url: '/permissions/users/SuperUser', key: 'findingFixAllHolder' },
+      { finding: { check: 'auditing-off', group: 'security', name: '', id: '', route: 'security/auditing', scope: 'instance', fix: 'agent' }, sentence: STRINGS.auditingStatusOff, url: '/security/auditing', key: 'findingFixAuditingOff' },
+    ];
+    for (const { finding, sentence, url, key } of cases) {
+      await router.navigateByUrl('/');
+      findings.setBody(answerWith([finding]));
+      await remount();
+      const target = screenForRoute(finding.route);
+      expect(target, finding.route).not.toBeNull();
+      const store = stores.for(target!.descriptor, target!.refreshRates);
+      (findingItem(sentence).querySelector('.ocu-home-finding-fix') as HTMLButtonElement).click();
+      await settle();
+      expect(router.url, finding.check).toBe(url);
+      expect(fixFinding.take(), `${finding.check}: not before the screen reads`).toBeNull();
+      store.applyTick([{ Name: finding.name }], false, '', new Date());
+      expect(fixFinding.take(), finding.check).toEqual({ check: finding.check, key });
+    }
+  });
+
+  it('Story 16.21: while the explain gate hides Fix it, a fixable finding offers Open to its screen', async () => {
+    findings.setBody(answerWith([TASK]));
+    fixGate.answered = false;
+    await remount();
+    const task = findingItem('The task nightly was suspended after an error.');
+    expect(task.querySelector('.ocu-home-finding-fix')).toBeNull();
+    expect(task.querySelector('.ocu-home-finding-open')?.getAttribute('href')).toContain('tasks/schedule/details/1002');
+  });
+
+  it('Story 16.21: a first read that fails shows the panel with the server-fault line and no group claims', async () => {
+    findings.reset();
+    findings.setUnreachable(true);
+    await remount();
+    expect(findingsPanel()?.textContent).toContain(STRINGS.connectivityServerFault);
+    expect(groupTexts()).toEqual([]);
+  });
+
+  it('Story 16.21: a navigation away before the screen reads sends nothing', async () => {
+    findings.setBody(answerWith([TASK]));
+    await remount();
+    const target = screenForRoute('tasks/schedule/details')!;
+    const store = stores.for(target.descriptor, target.refreshRates);
+    (findingItem('The task nightly was suspended after an error.').querySelector('.ocu-home-finding-fix') as HTMLButtonElement).click();
+    await settle();
+    await router.navigateByUrl('/logs/alerts');
+    store.applyTick([], false, '', new Date());
+    expect(fixFinding.take()).toBeNull();
+  });
+
+  // Mutation (Rule 19): drop the `navigated !== true` test in `fixAndRequest` -> the request lands and this goes red.
+  it('Story 16.21: a declined navigation sends nothing', async () => {
+    findings.setBody(answerWith([TASK]));
+    await remount();
+    const target = screenForRoute('tasks/schedule/details')!;
+    const store = stores.for(target.descriptor, target.refreshRates);
+    const declined = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
+    (findingItem('The task nightly was suspended after an error.').querySelector('.ocu-home-finding-fix') as HTMLButtonElement).click();
+    await settle();
+    expect(declined).toHaveBeenCalledOnce();
+    store.applyTick([{ Name: 'nightly', Id: 1002 }], false, '', new Date());
+    expect(fixFinding.take()).toBeNull();
+    declined.mockRestore();
+  });
+
+  // Mutation (Rule 19): drop `'user'` from `FINDINGS_CHANGE_TYPES` -> this goes red on the user event.
+  it('Story 16.21 AC3: a change to a checked type or a namespace switch reloads the findings, and anything else does not', async () => {
+    await settle();
+    const before = findings.calls.length;
+    bus.publish({ kind: 'changed', type: 'user', scope: 'instance', id: 'someone', action: 'updated' });
+    await settle();
+    expect(findings.calls.length).toBe(before + 1);
+    for (const type of ['web-application', 'role', 'x509-credential', 'auditing-configuration', 'database', 'task']) {
+      expect(FINDINGS_CHANGE_TYPES.has(type), type).toBe(true);
+    }
+    bus.publish({ kind: 'changed', type: 'process', scope: 'instance', id: '42', action: 'updated' });
+    await settle();
+    expect(findings.calls.length).toBe(before + 1);
+    scope.namespaceValue = 'USER';
+    scope.notify();
+    await settle();
+    expect(findings.calls.length).toBe(before + 2);
+    fixture.destroy();
+    bus.publish({ kind: 'changed', type: 'user', scope: 'instance', id: 'someone', action: 'updated' });
+    expect(findings.calls.length, 'a destroyed Home reads nothing').toBe(before + 2);
+  });
+
+  it('Story 16.21: an unread check reads "Not checked" and its group never says there is nothing to report', async () => {
+    findings.setBody({
+      checks: cleanFindingsBody().checks.map((row) =>
+        (row as { check: string }).check === 'all-holder' ? { check: 'all-holder', status: 'unchecked', pair: '%Admin_Secure:USE' } : row
+      ),
+      findings: [],
+    });
+    await remount();
+    expect(groupTexts()[0]).toEqual([STRINGS.findingsSecurity, 'Not checked: accounts holding %All (requires %Admin_Secure:USE)']);
+    expect(groupTexts()[1]).toEqual([STRINGS.findingsOperations, STRINGS.findingsNothing]);
+  });
 });

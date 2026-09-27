@@ -420,9 +420,10 @@ test('a changed editor asks before it is left, and staying keeps the edit', asyn
   }
 });
 
-// AC3, DW-1513. Mutation (Rule 19): drop the advisory from the handler's role delete and redeploy ->
-// the holder-line assertion goes red; clear the `system-role` rule -> the %Developer leg goes red.
-test('AC3: the Roles list\u2019s Delete states the holders, deletes the role once typed, and the list re-reads; %Developer is drawn refused', async () => {
+// AC3; Story 16.19 replaced DW-1513's holders line with the removal's impact. Mutation (Rule 19): drop
+// the advisory from the handler's role delete and redeploy -> the impact-line assertion goes red;
+// clear the `system-role` rule -> the %Developer leg goes red.
+test('AC3: the Roles list\u2019s Delete states the impact, deletes the role once typed, and the list re-reads; %Developer is drawn refused', async () => {
   createProbes();
   const { context, page } = await signedInAt(LIST_URL);
   try {
@@ -438,8 +439,11 @@ test('AC3: the Roles list\u2019s Delete states the holders, deletes the role onc
     assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.roleDeleteConsequence);
     assert.equal(
       await page.$eval('[data-slot="advisory"] .ocu-banner-message', (node) => node.textContent.trim()),
-      '2 users hold this role.',
-      'the dialog states how many accounts hold the role'
+      STRINGS.impactLine.replace(
+        '<parts>',
+        `${STRINGS.impactHolders.replace('<n>', '2').replace('<names>', HOLDERS.join(', '))}; ${STRINGS.impactGrantingApplicationsNone}`
+      ),
+      'the dialog states the impact: the two accounts that hold the role, and no granting application'
     );
     await page.type('.ocu-typed-name-field', DOOMED);
     await page.keyboard.press('Enter');

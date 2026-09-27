@@ -182,16 +182,18 @@ Method TestHalfACursorIsRefusedOverTheWire()
 /// <method>OcuPilot.Port.LogSourcePort.Sources</method>'s fixed enum, so the request that used
 /// to answer 200 with the route-bound source answers 404 <code>LOG.SOURCE</code> instead, red on
 /// the status and on the source-name assertion. Second mutation, the one only the witness
-/// catches: resolve the file from a caller-supplied <code>file</code> parameter in
+/// catches: resolve the file from a caller-supplied <code>filename</code> parameter in
 /// <method>OcuPilot.Port.LogSourcePort.Resolve</method> -&gt; status, label and line count are
-/// unchanged and the identity assertion goes red alone.</p>
+/// unchanged and the identity assertion goes red alone. <code>file</code> is not among the
+/// parameters here: it is the one name the route admits, and
+/// <class>OcuPilot.Test.LogOlderFilesWire</class> pins it.</p>
 Method TestAPathShapedQueryParameterChangesNothing()
 {
     Set tClean = ..CurrentIdentity()
     Do $$$AssertNotEquals(tClean, "", "a clean page answered with an identity to compare against")
     If tClean = "" Quit
 
-    Set tSC = ..Fetch("maxBytes=4096&source=../../../../../../etc/passwd&file=/etc/passwd&path=../../../../etc/passwd&dir=/etc&name=passwd&logfile=passwd&filename=../messages.old_20260914", .tStatus, .tBody, .tHeaders)
+    Set tSC = ..Fetch("maxBytes=4096&source=../../../../../../etc/passwd&path=../../../../etc/passwd&dir=/etc&name=passwd&logfile=passwd&filename=../messages.old_20260914", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 200, "an injected source/file/path query parameter is simply ignored")
     Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json")

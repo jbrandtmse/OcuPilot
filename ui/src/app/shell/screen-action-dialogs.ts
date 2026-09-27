@@ -45,6 +45,8 @@ import { WarningDialog } from './warning-dialog';
         [target]="pending.target"
         [options]="pending.options"
         [privileged]="pending.privileged"
+        [impact]="pending.impact"
+        (chose)="onChoose($event)"
         (submitted)="onRole($event)"
         (cancelled)="onCancel()"
       />
@@ -104,6 +106,11 @@ export class ScreenActionDialogs {
   protected onPassword(event: { readonly password: string; readonly changeOnLogin: boolean }): void {
     this.acting.emit();
     void this.handler.submitPassword(event.password, event.changeOnLogin);
+  }
+
+  /** The role dialog's choice changed: a Remove role reads the removal's impact for it (AD-8). */
+  protected onChoose(role: string): void {
+    void this.handler.chooseRole(role);
   }
 
   /** The role dialog's one role. */
