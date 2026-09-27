@@ -195,6 +195,7 @@ services:
       # population. AuditCopy and AuditStarted also copy the instance's audit database into USER and empty USER's
       # audit globals, and AuditCopy's least-privilege leg sends a purge the route must refuse.
       # classes: TurnGrounding
+      # classes: InjectionChannels, InjectionCompromised, InjectionSeed
       # classes: AccountPasswordWire, AgentConnectionRoles, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
       # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
       # classes: OAuthTabs
@@ -226,6 +227,8 @@ services:
       # classes: DraftExecute, ErrorDelete, ErrorLogSeed, ProviderSecret, ProviderStub, ProviderStubTransport
       # classes: DemoErrorSeed
       # classes: SecretLeak, SecretStoreProbe
+      # It also covers the seeded injection's append-only messages.log line and failed-login audit row.
+      # classes: InjectionChannels, InjectionCompromised, InjectionSeed
       OCUPILOT_ALLOW_ERROR_SEED: "1"
       # Deletes OcuPilot's own audit event registrations to prove an unregistered triple drops
       # its row, then reinstalls to put them back -- the configuration triple, and the BASELINE
@@ -285,6 +288,7 @@ services:
       # classes: TaskResume
       # classes: TaskCreate, TaskRules, TaskSave, TaskWire
       # classes: TaskUpdate, TaskEdit
+      # classes: InjectionChannels, InjectionCompromised, InjectionSeed
       OCUPILOT_ALLOW_TASK_CONTROL: "1"
       # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
       # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted
@@ -296,6 +300,7 @@ services:
       # one present when it finishes.
       # classes: DraftExecute, ErrorDelete
       # classes: DemoErrorSeed
+      # classes: InjectionChannels, InjectionCompromised, InjectionSeed
       OCUPILOT_ALLOW_ERROR_DELETE: "1"
       # Writes a service and LDAP configurations in this instance's own security database through
       # the shipped Save and confirm paths. The service classes write only %Service_CallIn, which is
@@ -314,6 +319,7 @@ services:
       # classes: AgentConnectionBound, AgentConnectionRoles, AgentConnectionWire, LedgerWire, ToolWire, TurnChain
       # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnStore
       # classes: TurnWire, TurnWireFixture
+      # classes: InjectionChannels, InjectionCompromised
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

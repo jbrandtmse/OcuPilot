@@ -23,6 +23,10 @@
 /// reader in 7-byte slices, as the real transport would; <method>ScriptStream</method> paces those
 /// slices and can break the stream at half. The call records <code>stream</code>, 1 when the
 /// request asked for a stream.</p>
+/// <p><b>Reactive entries (Story 14.8).</b> <method>ScriptReaction</method> appends an entry that
+/// answers one of two bodies by whether the request carries a marker, searched in one of two modes
+/// (<method>Reacts</method>). Every call records <code>url</code>, the URL the adapter posted to,
+/// and <code>obeyed</code>, 1 only when a reactive entry answered its obey body.</p>
 Class OcuPilot.Test.TurnProvider Extends OcuPilot.Kernel.Provider.Anthropic
 {
 
@@ -60,6 +64,51 @@ ClassMethod ScriptStream(pTag As %String, pHangSeconds As %Numeric, pReplyBody A
     Set tIndex = $Increment(^IRIS.Temp.OcuPilotTurnProvider(pTag, "script"))
     Set ^IRIS.Temp.OcuPilotTurnProvider(pTag, "script", tIndex) = $ListBuild(+pHangSeconds, pReplyBody, 200, "", +pMidHangSeconds, ''pBreakAtHalf)
     Quit $$$OK
+}
+
+/// <p>Append a reactive entry for <var>pTag</var>: answered at once with HTTP 200, its body
+/// <var>pObeyBody</var> when the request carries <var>pMarker</var> in the places
+/// <var>pMode</var> searches (<method>Reacts</method>), else <var>pElseBody</var>.
+/// <var>pMode</var> is <code>channels</code> or <code>anywhere</code>.</p>
+ClassMethod ScriptReaction(pTag As %String, pMode As %String, pMarker As %String, pObeyBody As %String, pElseBody As %String) As %Status
+{
+    If pTag = "" Quit $$$ERROR($$$GeneralError, "ScriptReaction requires a tag")
+    If (pMode '= "channels") && (pMode '= "anywhere") Quit $$$ERROR($$$GeneralError, "ScriptReaction's mode is channels or anywhere")
+    If pMarker = "" Quit $$$ERROR($$$GeneralError, "ScriptReaction requires a marker")
+    Set tIndex = $Increment(^IRIS.Temp.OcuPilotTurnProvider(pTag, "script"))
+    Set ^IRIS.Temp.OcuPilotTurnProvider(pTag, "script", tIndex) = $ListBuild(0, pElseBody, 200, "", 0, 0, pMode, pMarker, pObeyBody)
+    Quit $$$OK
+}
+
+/// <p>Whether request <var>pSent</var> carries <var>pMarker</var> where <var>pMode</var> looks.
+/// <code>anywhere</code> searches the request's whole <code>system</code> and
+/// <code>messages</code> JSON. <code>channels</code> searches only the instruction channels: the
+/// system text, and the string content and <code>text</code> blocks of user-role messages -- never
+/// a <code>tool_result</code> block, and never an assistant-role message.</p>
+ClassMethod Reacts(pSent As %DynamicObject, pMode As %String, pMarker As %String) As %Boolean
+{
+    Set tSystem = pSent.%Get("system")
+    If $IsObject(tSystem) Set tSystem = tSystem.%ToJSON()
+    If tSystem [ pMarker Quit 1
+    Set tMessages = pSent.%Get("messages")
+    If '$IsObject(tMessages) Quit 0
+    If pMode = "anywhere" Quit (tMessages.%ToJSON() [ pMarker)
+    Set tFound = 0
+    Set tIterator = tMessages.%GetIterator()
+    While 'tFound && tIterator.%GetNext(.tIndex, .tMessage) {
+        If '$IsObject(tMessage) || (tMessage.%Get("role") '= "user") Continue
+        If tMessage.%GetTypeOf("content") = "string" {
+            Set tFound = (tMessage.%Get("content") [ pMarker)
+            Continue
+        }
+        If tMessage.%GetTypeOf("content") '= "array" Continue
+        Set tBlocks = tMessage.%Get("content").%GetIterator()
+        While tBlocks.%GetNext(.tBlockIndex, .tBlock) {
+            If '$IsObject(tBlock) || (tBlock.%Get("type") '= "text") Continue
+            If tBlock.%Get("text") [ pMarker Set tFound = 1  Quit
+        }
+    }
+    Quit tFound
 }
 
 /// <p>Make every call for <var>pTag</var> plain: <method>StreamsFor</method> answers 0, so the
@@ -170,10 +219,17 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "tools") = $Select($IsObject(tSent.tools): tSent.tools.%ToJSON(), 1: "")
     Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "at") = ##class(OcuPilot.Kernel.State.Turn).NowSeconds()
     Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "stream") = ''tSent.stream
+    Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "url") = pUrl
     Set tIndex = tCall
     If tIndex > +$Get(^IRIS.Temp.OcuPilotTurnProvider(tTag, "script")) Set tIndex = +$Get(^IRIS.Temp.OcuPilotTurnProvider(tTag, "script"))
     Set tEntry = $Select(tIndex > 0: $Get(^IRIS.Temp.OcuPilotTurnProvider(tTag, "script", tIndex)), 1: "")
     If tEntry = "" Set tEntry = $ListBuild(0, ..TextReply("ok"))
+    Set tObeyed = 0
+    If $ListGet(tEntry, 7) '= "" {
+        Set tObeyed = ..Reacts(tSent, $ListGet(tEntry, 7), $ListGet(tEntry, 8))
+        If tObeyed Set $List(tEntry, 2) = $ListGet(tEntry, 9)
+    }
+    Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "obeyed") = tObeyed
     If $List(tEntry, 1) > 0 Hang $List(tEntry, 1)
     Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "returned") = ##class(OcuPilot.Kernel.State.Turn).NowSeconds()
     ; An entry written before the status was scriptable, and the unscripted default, both carry no
