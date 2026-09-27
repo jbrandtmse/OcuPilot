@@ -267,7 +267,8 @@ Method TestTaskManagerAndTasksSuspendedAfterAnError()
 
 /// <p>Unread: a caller short of a screen's pair reads every check on that screen
 /// <code>unchecked</code> naming the pair, with no finding; a caller short of the role read reads
-/// <code>webapp-open</code> unchecked naming that pair. Neither says "nothing to report".</p>
+/// <code>webapp-open</code> and <code>all-holder</code> unchecked naming that pair, with no
+/// finding. None says "nothing to report".</p>
 Method TestAnUnreadableCheckIsUncheckedNamingThePair()
 {
     Do ##class(OcuPilot.Test.FindingsFixture).SetRows(..#WEBAPPS, [(..App("/all", 64, ["%All"])), (..App("/api/monitor", 64, ["%DB_IRISSYS"], 1, "%Api.Monitor"))])
@@ -285,6 +286,14 @@ Method TestAnUnreadableCheckIsUncheckedNamingThePair()
     Do ##class(OcuPilot.Test.FindingsFixture).SetEffective({}, {}, "%DB_IRISSYS:READ")
     Set tRow = ..CheckRow(..Answer(), "webapp-open")
     Do $$$AssertEquals(tRow.%Get("status") _ " " _ tRow.%Get("pair"), "unchecked %DB_IRISSYS:READ", "an unreadable role read leaves the check unchecked, naming that pair")
+
+    Do ##class(OcuPilot.Test.FindingsFixture).Clear()
+    Do ##class(OcuPilot.Test.FindingsFixture).SetRows(..#USERS, [{"Name": "direct", "Enabled": true, "Roles": ["%All"]}, {"Name": "granted", "Enabled": true, "Roles": ["Wrapper"]}])
+    Do ##class(OcuPilot.Test.FindingsFixture).SetEffective({}, {}, "%DB_IRISSYS:READ")
+    Set tAnswer = ..Answer()
+    Set tRow = ..CheckRow(tAnswer, "all-holder")
+    Do $$$AssertEquals(tRow.%Get("status") _ " " _ tRow.%Get("pair"), "unchecked %DB_IRISSYS:READ", "an unreadable role read leaves all-holder unchecked, naming that pair")
+    Do $$$AssertEquals(..Names(tAnswer, "all-holder"), "", "and lists no holder, not even a direct one")
 }
 
 /// <p>Too many: a users read cut at its cap reads <code>all-holder</code> <code>truncated</code>,

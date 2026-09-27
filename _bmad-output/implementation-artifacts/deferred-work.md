@@ -5805,6 +5805,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T21:40:27Z status=routed owner=range-end-cleanup by=cr note=the spec ratifies copying About whole; at three copies it needs a base class, which touches two earlier stories' files
 - 2026-09-26T09:53:52Z status=routed owner=16-18-home-s-performance-row by=spec_gate note=16.18 AC1 extends SystemInfo's dashboard read seam; extract the shared base before a fourth reader
 - 2026-09-26T22:04:46Z status=routed owner=16-21-security-findings-with-a-fix-you-confirm by=adjudication note=16.18 read through MonitorPort and added no fourth seam copy; 16.21's Home findings panel is the next shell-chrome reader: extract the base first
+- 2026-09-27T08:49:01Z status=resolved-by:16-21-security-findings-with-a-fix-you-confirm by=adjudication note=Kernel/Shell/FieldRead.cls extracted in 620f6e1b; About, SystemInfo, Instance and Findings extend it; their read suites unchanged and green
 
 ### DW-1401: Two chrome surfaces render EXPERIENCE.md's Generic internal error sentence as a plain paragraph, without the role=alert and the Retry and Open messages.log actions that row publishes, and neither can tell an unreachable instance from a 5xx
 - source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint

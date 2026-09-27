@@ -213,6 +213,42 @@ Client:
 - Given a caller who may not read a check's screen, when Home renders, then that check contributes no finding and no "Nothing to report", and says "Not checked" with the pair.
 - Given the DW-1400 extraction, when About, System information and the status bar are read, then each answers exactly as before (their suites unchanged and green) from one `FieldRead` base, which `Findings` also extends.
 
+### Review Findings
+
+Code review 2026-09-27 (full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 decision-needed, 4 patch (all applied), 0 defer, 24 rejected. No AD mismatch: AD-8, AD-10, AD-11 (the click is the person's, so rule 3's announcement does not apply; the message is a closed-map constant), AD-24, AD-29, AD-36, AD-40, AD-43, AD-53 checked against the diff. `FieldRead` keeps members, order, degrade value, subsystems and messages byte-identical. `/api/monitor` is matched on `DispatchClass` `%Api.Monitor`, which no OcuPilot application carries. No half-applied change found. Epic 14's hunks are untouched: a three-way merge is conflict-free.
+
+- [x] [Review][Patch] (med) The sign-out reset of `Findings` and `FixFinding` was unpinned [ui/src/app/app.spec.ts:848] — the sign-out case now primes both stores and asserts both resets.
+- [x] [Review][Patch] (med) `all-holder` could read `checked` over an unreadable role read, and nothing pinned it [src/OcuPilot/Test/Findings.cls:295] — a leg asserts `unchecked` naming the pair and no holder.
+- [x] [Review][Patch] (low) The extraction's "log text unchanged" was not pinned by a literal [src/OcuPilot/Test/UiAboutRead.cls:275] — asserts the `uiabout` subsystem and About's message by value.
+- [x] [Review][Patch] (low) AC1's pinning case had no `mutation:` line [ui/src/app/areas/home/home.page.spec.ts:1515] — run and recorded in Verification.
+
+Rejected:
+
+- (low, by-design) `webapp-open` ignores UnknownUser's roles and the `MatchRoles` entries that need a role: the intent names only the unconditional roles. An enabled UnknownUser holding `%All` is itself an `all-holder` finding.
+- (low) An account holding `%All` only through another role gets Fix it: this is in the Spec Change Log. The agent proposes from the account's screen context, and the write path asks `Prohibits` at mint.
+- (low, by-design) A refused line keeps its why and what-to-do beside `ReasonFor`'s sentence: AD-10 and AD-53 require one sentence, the same one the impact route shows.
+- (low, theoretical) A row a checked read cannot interpret is skipped (the certificate date, the auditing row, a detail that is not an object). The date format was measured on `ocupilot-ci` (`OcuPilotDemoCert`, `2036-09-07 12:27:21`). A `rowGet` fault fails the whole read (AD-36), so the check reads `failed`.
+- (low) `task-manager` reads `checked` when the Task Manager banner read faults: `Screen.Read.BannerKey` suppresses faults by contract, and the Task schedule screen shows the same silence. A fix needs a second ~1 s call or a change to the shared read. reopen_if: a `Task.Manager` fault in the `adminport` log while Operations reads "Nothing to report."
+- (false) `database-full` assumes a numeric `MaxSize`. Measured on `ocupilot-ci`: `/durable/iris/mgr/user/` at `MaxSize` 500 read `"500"` and gave a 92% finding. The value was restored to 0.
+- (low, by-design) `database-dismounted` flags every `Status` not beginning `Mounted`: this is the intent's rule over the measured values.
+- (low) If the target's read fails, the Fix it wait stays armed and a later read sends the sentence late. It is still the person's own click and the same constant; a timeout would add state.
+- (low) A `NavigationStart` that is later canceled drops the pending request: nothing is sent that was not asked for, and the person can click again.
+- (false) The client drops a finding and prints "Nothing to report.": the server emits only values the client phrases (prior triage).
+- (low) An account deleted between the two reads fails `all-holder`: this was rejected in the earlier triage.
+- (low) A shared read that fails is re-issued and logged once per check that uses it: each failed check logging once is pinned, and caching failures would add state.
+- (low, by-design) A failed reload keeps the earlier answer with no stale note: this is the About dialog's documented shape.
+- (false) Open's link keeps the old namespace: the findings are instance-scoped, the switch reloads and recomputes the rows, and the click builds its URL fresh.
+- (false) `FINDINGS_CHANGE_TYPES` lacks `rest-service`: no write tool targets `RestApiList` or `OpenApiViewer`, so no such change event exists.
+- (false) The cost is unmeasured: Design Notes measure about 1.8 s.
+- (by-design) Nothing refreshes while Home stays open: AD-43 rules out a tick read, and a change event reloads the panel.
+- (low) Only `_SYSTEM`'s refusal is asserted: `Prohibited`'s own suites pin the codes. `FindingsWire` pins agreement with the impact route and SuperUser's `agent`. On the instance, `_Ensemble` reads `SERVICEACCOUNT` and the signed-in account reads `CURRENTUSER`.
+- (low) The spec's triage counts and process note: the fix would edit the spec under review.
+- (low) The `about-help-links` stamp red is not ledgered: it is a throwaway artifact outside this story.
+- (low, by-design) The `certificate` check reads X.509 credentials only: this is the intent's check list.
+- (low) `panel.ts` has four hunks, not two: the import and the injected field serve the two additions.
+- (low) Browser AC1 asserts only that `/ocupilot` is absent: that is AC1's wording, and `FindingsWire`'s read-only probe role pins the `%DB_*:R` rule.
+- (false) `FieldRead` cites "AD-36's shell-chrome exception": About and SystemInfo carried the same phrase at baseline, and AD-50 calls it AD-36's exception.
+
 ## Spec Change Log
 
 - 2026-09-26, implement. `certificate` findings also carry `expired` (boolean), because `detail` is the date alone and the two sentences differ. `monitor-open` knows the monitoring API by its dispatch class (`%Api.Monitor`, from the Web applications read) rather than by a `/api/monitor` literal, which `check-objectscript.py`'s AD-1 rule refuses under `Kernel/Shell/`. The panel's group headings are `h3` under its `h2` "Findings", so the outline does not repeat a level. A `truncated` check contributes no finding; `task-manager` stays `checked` when only the rows are cut, since the banner does not depend on them. An account holding `%All` only through another role has no `remove-role` of `%All`, so it is never `refused`. Where the explain gate hides Fix it, an `agent` finding offers Open. The fixture seams beyond `PortClass`/`ProhibitedClass` are `Gate`, `ListRead`, `Detail`, `EffectiveRead`, `RemovalVerdict` and `Now`. The bundle crossed 1900kB and was re-based under DW-1166 to 2004kB (5% above the measured 1,908,082 bytes).
@@ -339,6 +375,8 @@ Where each row applies: Home's Findings panel (Story 16.21, AD-10, AD-11), under
   - mutation: `findingsShown` reads `answered()` alone → "a first read that fails shows the panel with the server-fault line" red; reverted.
   - mutation: `fixAndRequest` navigates to the bare route → AC2 and "Fix it on each other fixable check opens its own screen" red; reverted.
   - mutation: dropped `onFixFinding`'s own gate check → `panel-fix-finding.spec.ts` "a request still pending when the gate closes" red; reverted byte-identical.
+  - mutation (review): `findingsShown` answers `false` → `home.page.spec.ts` "Story 16.21 AC1" red (10 cases); reverted byte-identical.
+  - mutation (review): deleted `this.findings.reset()`, then `this.fixFinding.reset()`, from `App`'s sign-out branch → `app.spec.ts` sign-out case red each time; reverted byte-identical.
 - `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.Findings`, then `FindingsWire`, `UiAboutRead`, `UiAboutWire`, `UiSystemRead`, `UiSystemWire`, `Instance`, `RefusalCopy`, `ImpactRoute`, `Effective`, `EndpointCoverage`, `SurfaceCoverage`, `ScreenGrounding` and `TurnContext`, one at a time (loop) -- green (11, 4, 12, 7, 17, 4, 21, 8, 10, 7, 2, 4, 12, 16). Each mutation was applied to the `ocupilot-ci` copy only, the class and its descendants recompiled, and restored byte-identical:
   - mutation: `Privileged` counts a letter held only publicly → `Findings` `TestAnOpenApplicationHoldingPrivilegeIsAFindingAndNothingElseIs` red.
   - mutation: the 85% test uses `>` (`<=` on the skip) → `TestDatabasesDismountedOrAtEightyFivePercentAreFindings` red.
@@ -351,6 +389,8 @@ Where each row applies: Home's Findings panel (Story 16.21, AD-10, AD-11), under
   - mutation: every `all-holder` finding reads `refused` → `FindingsWire` SuperUser leg red.
   - mutation: `webapp-open` always marks itself unchecked → `FindingsWire` read-only leg red on "and the check was read".
   - mutation: `FieldRead.Field` stops calling `LogSourceFailure` (recompiled with every subclass) → `UiSystemRead` 4 red, its refused-source legs (not the :344 leg, which calls the seam directly).
+  - mutation (review): dropped `MarkUnread` after `EffectiveRead` in `AllHolders` → `Findings` `TestAnUnreadableCheckIsUncheckedNamingThePair` red (run 15899).
+  - mutation (review): About's `LOGMESSAGE` changed → `UiAboutRead` `TestTheSourceFailureLogLineNamesTheField` red (run 15902).
 - `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/ && OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/home-findings.browser-spec.mjs browser/home-performance.browser-spec.mjs browser/home-system-information.browser-spec.mjs browser/about-help-links.browser-spec.mjs browser/account-and-filter.browser-spec.mjs browser/explain-screen.browser-spec.mjs browser/explain-entry.browser-spec.mjs browser/suggested-view.browser-spec.mjs browser/suggested-prompts.browser-spec.mjs browser/screen-grounding.browser-spec.mjs browser/preferences-integration.browser-spec.mjs browser/rail-icons.browser-spec.mjs browser/task-resume.browser-spec.mjs browser/users-actions.browser-spec.mjs browser/impact.browser-spec.mjs browser/screen-height.browser-spec.mjs browser/a11y-structural-invariants.browser-spec.mjs` (loop). These are the story's spec plus every existing spec that Home, the panel hand-off or the reused paths could break. Expected: green, with no new structural baseline entry. Observed: all green (home-findings 4, with the gate in light, narrow and dark and no new entry) except `about-help-links`' DW-3 stamp leg, which compares the recorded `buildIdentity` (`main-ZWCBUUJV.js`, the throwaway's last install) with the `docker cp`-deployed bundle and so reads red after any redeploy without a reinstall. mutation: Home's Fix it requests without waiting for Task details' read (rebuilt, redeployed) → AC3 red on the context row; reverted, rebuilt byte-identical (`main-IBBXWY3H.js`), redeployed.
 - `cd ui && npm test`, `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh` (once, before dev_complete) -- green. The bundle stays under 1900 kB, or is re-based under DW-1166 if it crosses; the hard stop is 4000 kB.
 - The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before dev_complete) -- green.

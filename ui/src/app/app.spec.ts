@@ -64,7 +64,7 @@ import { PerformanceRow } from './core/performance';
 import { stubPerformanceRow, type StubbedPerformanceRow } from './testing/performance';
 import { Findings } from './core/findings';
 import { FixFinding } from './core/fix-finding';
-import { stubFindings, stubFixFinding } from './testing/findings';
+import { stubFindings, stubFixFinding, type StubbedFindings } from './testing/findings';
 
 /**
  * The frame itself (DW-138, UX-DR80): which bands render, in what order, and around what.
@@ -379,6 +379,9 @@ describe('the shell frame', () => {
   let about: StubbedAbout;
   let systemInfo: StubbedSystemInfo;
   let performanceRow: StubbedPerformanceRow;
+  let findings: StubbedFindings;
+  let fixFinding: FixFinding;
+  let fixFindingResets: number;
   let helpLinks: StubbedHelpLinks;
   /** The definitions the stubbed read answers with. Mutated to arrange an Enable. */
   let definitionRows: { enabled: boolean }[];
@@ -419,6 +422,15 @@ describe('the shell frame', () => {
     about = stubAbout();
     systemInfo = stubSystemInfo();
     performanceRow = stubPerformanceRow();
+    // Story 16.21: held by name so the sign-out row below can see whether both were dropped.
+    findings = stubFindings();
+    fixFinding = stubFixFinding().fix;
+    fixFindingResets = 0;
+    const fixFindingReset = fixFinding.reset.bind(fixFinding);
+    fixFinding.reset = () => {
+      fixFindingResets += 1;
+      fixFindingReset();
+    };
     helpLinks = stubHelpLinks({ 'permissions/users': '/csp/docbook/DocBook.UI.PortalHelpPage.cls?KEY=Users' });
     scope = new StubScope();
     connectivity = new StubConnectivity();
@@ -454,8 +466,8 @@ describe('the shell frame', () => {
         { provide: About, useValue: about },
         { provide: SystemInfo, useValue: systemInfo },
         { provide: PerformanceRow, useValue: performanceRow },
-        { provide: Findings, useValue: stubFindings() },
-        { provide: FixFinding, useValue: stubFixFinding().fix },
+        { provide: Findings, useValue: findings },
+        { provide: FixFinding, useValue: fixFinding },
         { provide: HelpLinks, useValue: helpLinks },
         { provide: AccountPreferences, useValue: accountPreferences },
         // Three real routes, so "the gate navigated" and "the gate did not" are different
@@ -775,7 +787,10 @@ describe('the shell frame', () => {
     await helpLinks.load('permissions/users');
     await systemInfo.load();
     await performanceRow.read();
+    await findings.load();
     expect(about.answered()).toBe(true);
+    expect(findings.answered()).toBe(true);
+    expect(fixFindingResets).toBe(0);
     expect(systemInfo.answered()).toBe(true);
     expect(performanceRow.values()).not.toBeNull();
     expect(helpLinks.hrefFor('permissions/users')).toBe(
@@ -828,6 +843,12 @@ describe('the shell frame', () => {
     // red, and Home's performance row would open on the departed principal's values -- drawn even
     // for a next principal the instance refuses them to (Story 16.18, AD-8).
     expect(performanceRow.values()).toBeNull();
+    // Mutation (Rule 19): delete `this.findings.reset()` from the same branch -> this goes red, and
+    // Home's Findings panel would open on the departed principal's findings (Story 16.21, AD-8).
+    expect(findings.answered()).toBe(false);
+    // Mutation (Rule 19): delete `this.fixFinding.reset()` from the same branch -> this goes red,
+    // and a Fix it request not yet taken could send under the next principal.
+    expect(fixFindingResets).toBe(1);
 
     // Mutation (Rule 19): delete `this.recentsRecorder.reset()` from the same branch -> this goes
     // red, answering []. The next principal resumes on the screen this tab is already on, and a
