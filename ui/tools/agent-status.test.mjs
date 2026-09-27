@@ -427,9 +427,10 @@ test('a footerKey the server may not answer with falls back to the off key', asy
 });
 
 test('every footer key the verdict may answer with exists in the string source', () => {
-  // The server half is `OcuPilot.Test.Restraint`, which pins the same three literals against
+  // The server half is `OcuPilot.Test.Restraint`, which pins the same four literals against
   // `OcuPilot.Kernel.Restraint`'s own parameters -- so a key renamed on either side reddens.
-  assert.equal(FOOTER_KEYS.length, 3, 'three now; statusReadOnlyForYou is Story 14.5\'s');
+  assert.equal(FOOTER_KEYS.length, 4, 'the four published footer keys');
+  assert.ok(FOOTER_KEYS.includes('statusReadOnlyForYou'), 'Story 14.5\'s key among them');
   for (const key of FOOTER_KEYS) {
     assert.ok(Object.hasOwn(STRINGS, key), `${key} is a published string key`);
     assert.ok(STRINGS[key].length > 0, `${key} carries a sentence`);
@@ -453,6 +454,120 @@ test('the kill switch and enforced read-only are each restraining; the definitio
     await status.load();
     assert.equal(status.restrained(), expected, JSON.stringify(verdict));
   }
+});
+
+// --- Story 14.5: the per-user read-only choice ---------------------------------------------------
+
+test('readOnlyForYou comes off the instance\'s answer, and a value that is not the boolean true reads off', async () => {
+  for (const [value, expected] of [[true, true], [false, false], ['true', false], [1, false], [undefined, false]]) {
+    const status = new AgentStatus({
+      api: stubApi([ok(rows(true))], [ok({ ...UNRESTRAINED, readOnlyForYou: value })]),
+    });
+    await status.load();
+    assert.equal(status.restraint().readOnlyForYou, expected, JSON.stringify(value));
+  }
+});
+
+test('setReadOnlyForYou sends PUT {readOnly} to the restraint route and adopts the answered verdict', async () => {
+  const sent = [];
+  const answered = { ...UNRESTRAINED, blocked: true, readOnlyForYou: true, footerKey: 'statusReadOnlyForYou' };
+  const api = {
+    requestJson: async (path, init = {}) => {
+      sent.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+      if (init.method === 'PUT') return ok(answered);
+      return path === AGENT_RESTRAINT_PATH ? ok(UNRESTRAINED) : ok(rows(true));
+    },
+  };
+  const status = new AgentStatus({ api });
+  await status.load();
+  let heard = 0;
+  status.subscribe(() => (heard += 1));
+  // Mutation (Rule 19): adopt nothing from the answer -> the verdict assertions go red.
+  assert.equal(await status.setReadOnlyForYou(true), true, 'the write landed');
+  const put = sent.find((call) => call.method === 'PUT');
+  assert.deepEqual(put, { path: AGENT_RESTRAINT_PATH, method: 'PUT', body: '{"readOnly":true}' });
+  assert.equal(status.restraint().readOnlyForYou, true, 'the stored choice is adopted');
+  assert.equal(status.restraint().footerKey, 'statusReadOnlyForYou', 'with the footer key the instance chose');
+  assert.equal(heard, 1, 'and subscribers hear it once');
+});
+
+test('a refused, unreachable or malformed write leaves the previous verdict standing and answers false', async () => {
+  for (const answer of [REFUSED, { kind: 'network', status: 0 }, ok('not an object')]) {
+    const api = {
+      requestJson: async (path, init = {}) => {
+        if (init.method === 'PUT') return answer;
+        return path === AGENT_RESTRAINT_PATH ? ok(UNRESTRAINED) : ok(rows(true));
+      },
+    };
+    const status = new AgentStatus({ api });
+    await status.load();
+    let heard = 0;
+    status.subscribe(() => (heard += 1));
+    assert.equal(await status.setReadOnlyForYou(true), false, JSON.stringify(answer));
+    assert.equal(status.restraint().readOnlyForYou, false, 'nothing was mirrored');
+    assert.equal(heard, 0, 'and nothing was announced');
+  }
+});
+
+test('a write answered after reset() is dropped', async () => {
+  const release = [];
+  const api = {
+    requestJson: (path, init = {}) =>
+      init.method === 'PUT'
+        ? new Promise((resolve) => release.push(resolve))
+        : Promise.resolve(path === AGENT_RESTRAINT_PATH ? ok(UNRESTRAINED) : ok(rows(true))),
+  };
+  const status = new AgentStatus({ api });
+  await status.load();
+  const pending = status.setReadOnlyForYou(true);
+  status.reset();
+  release[0](ok({ ...UNRESTRAINED, readOnlyForYou: true }));
+  assert.equal(await pending, false, 'the answer belongs to a principal who has left');
+  assert.equal(status.restraint().readOnlyForYou, false);
+});
+
+test('a read overtaken by a write resolves on the write, and the write\'s verdict stands', async () => {
+  // Mutation (Rule 19): drop the `this.newest = ...` assignment in `setReadOnlyForYou` -> the
+  // overtaken read awaits itself, `load()` never settles, and this goes red on the race below.
+  const heldReads = [];
+  let first = true;
+  const api = {
+    requestJson: (path, init = {}) => {
+      if (init.method === 'PUT') return Promise.resolve(ok({ ...UNRESTRAINED, readOnlyForYou: true, footerKey: 'statusReadOnlyForYou' }));
+      if (path !== AGENT_RESTRAINT_PATH) return Promise.resolve(ok(rows(true)));
+      if (first) {
+        first = false;
+        return Promise.resolve(ok(UNRESTRAINED));
+      }
+      return new Promise((resolve) => heldReads.push(resolve));
+    },
+  };
+  const status = new AgentStatus({ api });
+  await status.load();
+  const reading = status.load();
+  assert.equal(await status.setReadOnlyForYou(true), true, 'the write landed');
+  heldReads[0](ok(UNRESTRAINED));
+  const settled = await Promise.race([reading.then(() => 'settled'), new Promise((resolve) => setTimeout(() => resolve('hung'), 200))]);
+  assert.equal(settled, 'settled', 'the overtaken read resolves');
+  assert.equal(status.restraint().readOnlyForYou, true, 'and its stale answer does not replace the write\'s');
+});
+
+test('a write overtaken by a later read does not replace the read\'s verdict', async () => {
+  // Mutation (Rule 19): drop `if (request !== this.request) return true;` in
+  // `writeReadOnlyForYou` -> the older write answer is adopted over the newer read and this goes red.
+  const heldWrites = [];
+  const api = {
+    requestJson: (path, init = {}) => {
+      if (init.method === 'PUT') return new Promise((resolve) => heldWrites.push(resolve));
+      return Promise.resolve(path === AGENT_RESTRAINT_PATH ? ok({ ...UNRESTRAINED, enforcedReadOnly: true, footerKey: 'statusReadOnlyEnforced' }) : ok(rows(true)));
+    },
+  };
+  const status = new AgentStatus({ api });
+  const writing = status.setReadOnlyForYou(true);
+  await status.load();
+  heldWrites[0](ok({ ...UNRESTRAINED, readOnlyForYou: true, footerKey: 'statusReadOnlyForYou' }));
+  assert.equal(await writing, true, 'the write itself landed');
+  assert.equal(status.restraint().footerKey, 'statusReadOnlyEnforced', 'the newer read\'s verdict stands');
 });
 
 // --- Story 5.6: the marking fact the not-marked banner reads ------------------------------------

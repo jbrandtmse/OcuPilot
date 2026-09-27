@@ -163,6 +163,18 @@ export const STRINGS = {
   proposalStatusExpired: 'Expired',
   /** EXPERIENCE.md:275 */
   proposalStatusAgentSwitchedOff: 'The agent is switched off',
+  /** EXPERIENCE.md:275 */
+  proposalStatusCanceledByDraft: 'Canceled \u2014 you took the script instead',
+  /** EXPERIENCE.md:269 */
+  actionTakeScript: 'Give me the script instead',
+  /** EXPERIENCE.md:269 */
+  actionCopyToClipboard: 'Copy to clipboard',
+  /** EXPERIENCE.md:269 */
+  copyAnnouncementCopied: 'Copied',
+  /** EXPERIENCE.md:269 */
+  copyAnnouncementUnavailable: 'The clipboard is not available here. Select the text and copy it yourself.',
+  /** EXPERIENCE.md:273 */
+  proposalDraftCaption: 'Nothing was changed. Fill in each value in angle brackets before you run this.',
   /** EXPERIENCE.md:276 */
   proposalUnchangedFieldsDisclosure: 'N unchanged fields',
   /** EXPERIENCE.md:277 */
@@ -179,6 +191,11 @@ export const STRINGS = {
   agentTurnStoppedNoStepBanner: 'The turn stopped: <reason>.',
   /** EXPERIENCE.md:281 */
   agentTurnLockBanner: 'A turn is in progress. Wait for it to finish before sending another message.',
+  /** EXPERIENCE.md:281 */
+  agentTurnLimitBanner:
+    'You have reached this instance\'s limit of <n> agent turns an hour. You can send again at <hh:mm>.',
+  /** EXPERIENCE.md:281 */
+  agentTurnLimitLine: 'This turn was not started: you have used your <n> turns for this hour.',
   /** EXPERIENCE.md:500 */
   agentJumpToLatest: 'Jump to latest',
   // Story 4.5's four: from the tool-call-card Component Patterns row (:378) and the panel's
@@ -216,6 +233,8 @@ export const STRINGS = {
   statusReadOnlyForYou: 'Read-only: on \u2014 for you',
   /** EXPERIENCE.md:289 */
   statusReadOnlyByDefinition: 'Read-only: on \u2014 by the definition',
+  /** EXPERIENCE.md:289 */
+  agentReadOnlyForYouLabel: 'Read-only for me',
   /** EXPERIENCE.md:290 */
   tableChangeToastLink: 'Open in <screen>',
   /** EXPERIENCE.md:291 */
@@ -552,12 +571,40 @@ export const STRINGS = {
   agentDefinitionFieldRetention: 'Retention',
   /** EXPERIENCE.md:335 */
   actionCreate: 'Create',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionFieldReadOnly: 'Read-only',
   /** EXPERIENCE.md:336 */
   agentDefinitionShowKey: 'Show key',
   /** EXPERIENCE.md:336 */
   agentDefinitionHideKey: 'Hide key',
   /** EXPERIENCE.md:336 */
   agentDefinitionRetentionCaption: 'Transcripts are kept for <n> days.',
+  // Story 14.4: the Transcripts list, its columns, empty state and prompts, and the transcript
+  // page's screen-context disclosure and its withheld sentence's action slot.
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsLabel: 'Transcripts',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptLabel: 'Transcript',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsColumnTurns: 'Turns',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsColumnLastActivity: 'Last activity',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsColumnTitle: 'First message',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsEmpty: 'No conversations are kept for you yet.',
+  /** EXPERIENCE.md:336 */
+  transcriptScreenContext: 'Screen context',
+  /** EXPERIENCE.md:336 */
+  transcriptNoContext: 'No screen context was sent with this turn.',
+  /** EXPERIENCE.md:336 */
+  transcriptRefusedAction: 'see this transcript\'s tool results and screen context',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsPrompt1: 'Which conversations did I have today?',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsPrompt2: 'Which of my conversations ran the most turns?',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsPrompt3: 'When did I last talk to the agent?',
   /** EXPERIENCE.md:337 */
   proposalCardTitle: 'Proposal \u00b7 <entity type> <name>',
   /** EXPERIENCE.md:338 */
@@ -594,8 +641,59 @@ export const STRINGS = {
   agentSwitchesShareContext: 'Screen context is shared by default',
   /** EXPERIENCE.md:349 */
   agentSwitchesContextRowCap: 'Context rows sent with a turn',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesTurnsPerHour: 'Agent turns per user an hour',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesTurnsPerHourHint: '0 means no limit.',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesConcurrentTurns: 'Agent turns running at once per user',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesConcurrentTurnsReason:
+    'Fixed at 1: the conversation lock and the panel\'s single transcript assume one turn at a time per user.',
   /** EXPERIENCE.md:344 */
   agentSwitchesRefusedAction: 'change the switches',
+  // Story 14.2: the Governance policy screen, its refusal action, the governance tool refusal, the
+  // purge card's consequence and the screen's prompts. "None", "Read-only" and "Enabled" reuse
+  // `sslVerifyPeerNone`, `agentDefinitionFieldReadOnly` and `tableColumnEnabled`.
+  /** EXPERIENCE.md:342 */
+  agentGovernanceLabel: 'Governance policy',
+  /** EXPERIENCE.md:342 */
+  agentGovernancePreset: 'Preset',
+  /** EXPERIENCE.md:342 */
+  agentGovernancePresetFull: 'Full',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceColumnTool: 'Write tool',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceColumnBaseline: 'Baseline',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceColumnSetting: 'Setting',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceColumnEffect: 'In effect',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceSettingInherit: 'Inherit',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceDisabled: 'Disabled',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceSourceSetting: 'by this setting',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceSourcePreset: 'by the preset',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceSourceBaseline: 'by the baseline',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceBaselineAbsent: 'not in the baseline',
+  /** EXPERIENCE.md:344 */
+  agentGovernanceRefusedAction: 'change the governance policy',
+  /** EXPERIENCE.md:257 */
+  governanceToolDisabled: 'This tool is disabled by policy.',
+  /** EXPERIENCE.md:516 */
+  auditPurgeMarkersEffect:
+    'This removes audit records, including the markers that record the agent\'s own writes. It cannot be undone.',
+  /** EXPERIENCE.md:526 */
+  agentGovernancePrompt1: 'What does the read-only preset change?',
+  /** EXPERIENCE.md:526 */
+  agentGovernancePrompt2: 'What happens when the agent calls a tool the policy disables?',
+  /** EXPERIENCE.md:526 */
+  agentGovernancePrompt3: 'Why is the audit purge disabled by default?',
   /** EXPERIENCE.md:345 */
   formStaleSave:
     'Someone else changed this while you were here. Reload to see the current values, then save again.',
@@ -1816,12 +1914,6 @@ export const STRINGS = {
   /** EXPERIENCE.md:479 */
   roleDeleteConsequence: 'Deleting this role takes it from every account and role that holds it. This cannot be undone.',
   /** EXPERIENCE.md:479 */
-  roleDeleteHolders: '<n> users hold this role.',
-  /** EXPERIENCE.md:479 */
-  roleDeleteHoldersOne: '1 user holds this role.',
-  /** EXPERIENCE.md:479 */
-  roleDeleteHoldersNone: 'No user holds this role.',
-  /** EXPERIENCE.md:479 */
   resourceDeleteConsequence: 'Every role that grants this resource loses it. This cannot be undone.',
   /** EXPERIENCE.md:480 */
   roleRefusalSystem: 'A name beginning with % belongs to one of the instance\'s own roles.',
@@ -1954,7 +2046,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:614 */
+  /** EXPERIENCE.md:626 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2855,7 +2947,316 @@ export const STRINGS = {
   oauthRegisteredClientFormRefusedAction: 'change this server client description',
   /** EXPERIENCE.md:573 */
   citationAbsent: '<name> is no longer present on this instance, so there is nothing to select.',
+  // The try-it console (Story 16.1). "Send" is `actionSend` and "Request" is `sslVerifyPeerRequest`:
+  // one key per value.
+  /** EXPERIENCE.md:574 */
+  tryItToggle: 'Try it',
+  /** EXPERIENCE.md:574 */
+  tryItResponse: 'Response',
+  /** EXPERIENCE.md:574 */
+  tryItBody: 'Body',
+  /** EXPERIENCE.md:574 */
+  tryItConfirmTitle: 'Send <VERB> <URL>?',
+  /** EXPERIENCE.md:574 */
+  tryItOwnApplication: 'This request goes to one of OcuPilot\'s own applications, so the console does not send it.',
+  /** EXPERIENCE.md:574 */
+  tryItAdminWrite: 'The console does not send changes to the admin API; OcuPilot\'s own screens make them.',
+  /** EXPERIENCE.md:574 */
+  tryItTraversal: 'A path parameter cannot be a single or double dot.',
+  /** EXPERIENCE.md:574 */
+  tryItNoAddress: 'This operation has no address on this instance, so it cannot be tried here.',
+  /** EXPERIENCE.md:574 */
+  tryItFailed: 'The request did not complete.',
+  /** EXPERIENCE.md:574 */
+  tryItCut: 'The response was cut at 256 KB.',
+  /** EXPERIENCE.md:574 */
+  tryItBinary: '<n> bytes, not shown as text.',
+  /** EXPERIENCE.md:575 */
+  readBackMatches: 'Read back: matches',
+  /** EXPERIENCE.md:575 */
+  readBackDiffers: 'Read back: differs in <fields>',
+  /** EXPERIENCE.md:575 */
+  readBackNotFound: 'Read back: not found',
+  /** EXPERIENCE.md:575 */
+  readBackPresent: 'Read back: still present',
+  /** EXPERIENCE.md:575 */
+  readBackWritten: 'Read back: <fields> written, not read back',
+  /** EXPERIENCE.md:575 */
+  readBackWrittenClause: '<fields> written, not read back',
+  /** EXPERIENCE.md:575 */
+  readBackNothingSent: 'Read back: nothing sent to compare',
+  /** EXPERIENCE.md:575 */
+  readBackRunning: 'Read back: not checked, the write is still running',
+  /** EXPERIENCE.md:575 */
+  readBackUnreadable: 'Read back: could not be read',
+  /** EXPERIENCE.md:575 */
+  readBackMore: ' and <n> more',
+  /** EXPERIENCE.md:576 */
+  performanceHeading: 'Performance',
+  /** EXPERIENCE.md:576 */
+  performanceDiskReads: 'Disk reads',
+  /** EXPERIENCE.md:576 */
+  performanceDiskWrites: 'Disk writes',
+  /** EXPERIENCE.md:576 */
+  performanceRateUnit: '/s',
+  /** EXPERIENCE.md:576 */
+  performanceCacheUnit: 'refs per block read or write',
+  /** EXPERIENCE.md:576 */
+  performanceSparklineLabel: 'Global references per second, last ten minutes',
+  /** EXPERIENCE.md:577 */
+  impactLine: 'Impact: <parts>.',
+  /** EXPERIENCE.md:577 */
+  impactHolders: '<n> users hold it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactHoldersOne: '1 user holds it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactHoldersNone: 'no user holds it',
+  /** EXPERIENCE.md:577 */
+  impactGrantingApplications: '<n> web applications grant it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGrantingApplicationsOne: '1 web application grants it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGrantingApplicationsNone: 'no web application grants it',
+  /** EXPERIENCE.md:577 */
+  impactGrantingRoles: '<n> roles grant it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGrantingRolesOne: '1 role grants it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGrantingRolesNone: 'no role grants it',
+  /** EXPERIENCE.md:577 */
+  impactGuardedApplications: 'it guards <n> web applications: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGuardedApplicationsOne: 'it guards 1 web application: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGuardedApplicationsNone: 'it guards no web application',
+  /** EXPERIENCE.md:577 */
+  impactGuardedDatabases: 'it guards <n> databases: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGuardedDatabasesOne: 'it guards 1 database: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGuardedDatabasesNone: 'it guards no database',
+  /** EXPERIENCE.md:577 */
+  impactLoses: '<user> loses <names>',
+  /** EXPERIENCE.md:577 */
+  impactLosesNone: '<user> loses nothing their other roles do not still grant',
+  /** EXPERIENCE.md:577 */
+  impactHoldersUnchecked: 'who holds it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactGrantingApplicationsUnchecked: 'which web applications grant it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactGrantingRolesUnchecked: 'which roles grant it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactGuardedApplicationsUnchecked: 'which web applications it guards was not checked',
+  /** EXPERIENCE.md:577 */
+  impactGuardedDatabasesUnchecked: 'which databases it guards was not checked',
+  /** EXPERIENCE.md:577 */
+  impactLosesUnchecked: 'what <user> loses was not checked',
+  /** EXPERIENCE.md:577 */
+  impactRequires: ' (requires <pair>)',
+  /** EXPERIENCE.md:577 */
+  impactTooMany: ' (too many to check)',
+  /** EXPERIENCE.md:578 */
+  logViewerFileOption: '<name> \u00b7 <size> KB \u00b7 <modified>',
+  /** EXPERIENCE.md:578 */
+  logViewerFileGone: 'That file is no longer in the manager directory.',
+  /** EXPERIENCE.md:579 */
+  findingsHeading: 'Findings',
+  /** EXPERIENCE.md:579 */
+  findingsSecurity: 'Security',
+  /** EXPERIENCE.md:579 */
+  findingsOperations: 'Operations',
+  /** EXPERIENCE.md:579 */
+  findingsNothing: 'Nothing to report.',
+  /** EXPERIENCE.md:579 */
+  findingsNotChecked: 'Not checked: <check>',
+  /** EXPERIENCE.md:579 */
+  findingsCouldNotRead: ' (could not be read)',
+  /** EXPERIENCE.md:579 */
+  findingsFix: 'Fix it',
+  /** EXPERIENCE.md:580 */
+  findingsCheckWebappOpen: 'web applications open without signing in',
+  /** EXPERIENCE.md:580 */
+  findingsCheckMonitorOpen: 'the monitoring API',
+  /** EXPERIENCE.md:580 */
+  findingsCheckAllHolder: 'accounts holding %All',
+  /** EXPERIENCE.md:580 */
+  findingsCheckCertificate: 'X.509 certificates',
+  /** EXPERIENCE.md:580 */
+  findingsCheckAuditingOff: 'auditing',
+  /** EXPERIENCE.md:580 */
+  findingsCheckDatabaseDismounted: 'database mounts',
+  /** EXPERIENCE.md:580 */
+  findingsCheckDatabaseFull: 'database sizes',
+  /** EXPERIENCE.md:580 */
+  findingsCheckTaskManager: 'the Task Manager',
+  /** EXPERIENCE.md:580 */
+  findingsCheckTaskError: 'suspended tasks',
+  /** EXPERIENCE.md:581 */
+  findingWebappOpen: '<name> can be reached without signing in and holds a database or administrative role.',
+  /** EXPERIENCE.md:581 */
+  findingWebappOpenWhy: 'Anyone who can reach this address can use that privilege.',
+  /** EXPERIENCE.md:581 */
+  findingWebappOpenDo: 'Require a password to sign in, or remove the role.',
+  /** EXPERIENCE.md:581 */
+  findingMonitorOpen: 'The monitoring API, <name>, answers without signing in.',
+  /** EXPERIENCE.md:581 */
+  findingMonitorOpenWhy: 'Anyone who can reach the instance can read its metrics.',
+  /** EXPERIENCE.md:581 */
+  findingMonitorOpenDo: 'Require a password, and give your metrics collector an account.',
+  /** EXPERIENCE.md:581 */
+  findingAllHolder: '<name> holds %All.',
+  /** EXPERIENCE.md:581 */
+  findingAllHolderWhy: 'Whoever signs in as this account can do anything on this instance.',
+  /** EXPERIENCE.md:581 */
+  findingAllHolderDo: 'Take %All off every account that does not need it.',
+  /** EXPERIENCE.md:581 */
+  findingCertificateExpired: 'The certificate <name> expired on <date>.',
+  /** EXPERIENCE.md:581 */
+  findingCertificate: 'The certificate <name> expires on <date>.',
+  /** EXPERIENCE.md:581 */
+  findingCertificateWhy: 'Connections that rely on it fail once it has expired.',
+  /** EXPERIENCE.md:581 */
+  findingCertificateDo: 'Import a renewed certificate.',
+  /** EXPERIENCE.md:581 */
+  findingAuditingOffWhy: 'Nothing that happens on this instance is recorded, OcuPilot\'s own changes included.',
+  /** EXPERIENCE.md:581 */
+  findingAuditingOffDo: 'Turn auditing on.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseDismounted: 'The database <name> is dismounted.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseDismountedWhy: 'Nothing can read or write it until it is mounted.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseDismountedDo: 'Mount it from its details.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseFull: 'The database <name> is at <percent>% of its maximum size.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseFullWhy: 'Writes to it fail once it is full.',
+  /** EXPERIENCE.md:581 */
+  findingDatabaseFullDo: 'Raise its maximum size, or free space in it.',
+  /** EXPERIENCE.md:581 */
+  findingTaskManagerSuspendedDo: 'Resume the Task Manager.',
+  /** EXPERIENCE.md:581 */
+  findingTaskManagerStoppedDo: 'Start the Task Manager.',
+  /** EXPERIENCE.md:581 */
+  findingTaskError: 'The task <name> was suspended after an error.',
+  /** EXPERIENCE.md:581 */
+  findingTaskErrorWhy: 'It does not run again until it is resumed.',
+  /** EXPERIENCE.md:581 */
+  findingTaskErrorDo: 'Read its error, then resume it.',
+  /** EXPERIENCE.md:582 */
+  findingFixWebappOpen: 'This web application can be reached without signing in and holds a database or administrative role. Propose requiring a password to sign in to it.',
+  /** EXPERIENCE.md:582 */
+  findingFixMonitorOpen: 'The monitoring API answers without signing in. Propose requiring a password to sign in to it.',
+  /** EXPERIENCE.md:582 */
+  findingFixAllHolder: 'This account holds %All. Propose taking %All off it.',
+  /** EXPERIENCE.md:582 */
+  findingFixAuditingOff: 'Auditing is off on this instance. Propose turning it on.',
+  /** EXPERIENCE.md:582 */
+  findingFixTaskError: 'This task was suspended after an error. Propose resuming it.',
+  // Story 16.22: the Guardrails page.
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsLabel: 'Guardrails',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsIntro: 'What the agent refuses, what waits for your Confirm and what it never sees, read from the rules this instance enforces.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsRefusedHeading: 'Refused outright',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsRefusedNote: 'Neither the agent nor a screen can make these changes, whoever asks.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsKillSwitchOff: 'Kill switch: off',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsKillSwitchEveryone: 'Kill switch: on for everyone',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsKillSwitchYou: 'Kill switch: on for you',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsReadOnlyOff: 'Enforced read-only: off',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsReadOnlyOn: 'Enforced read-only: on',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsSwitchesNote: 'The kill switch stops the agent. Enforced read-only lets it read and explain but not propose a change. Neither stops what you do on a screen yourself.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsConfirmHeading: 'Always needs your Confirm',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsConfirmNote: 'These are the agent\'s tools that change the instance. Each one only proposes its change, and nothing happens until you press Confirm.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsNeverHeading: 'Never sent to the agent',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsNeverSecrets: 'Fields declared secret, such as passwords, keys and tokens, never leave the instance for the agent: its reads drop them, and you type them yourself at Confirm.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsNeverErrorVariables: 'An application error reaches the agent as its summary only, never the variables captured with it.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsNeverDeclared: 'The fields each tool declares secret, which the agent never sees:',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsContextLimits: 'Each turn carries at most <rows> rows of the screen you are on, <total> characters in all and <field> characters a field.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsPrompt1: 'Which of your tools can change this instance?',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsPrompt2: 'Are you read-only on this instance right now?',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsPrompt3: 'What happens between your proposal and a change on the instance?',
 
+  // Story 16.23: the data table's Download CSV control in the command bar, and its description at the cap.
+  /** EXPERIENCE.md:313 */
+  tableDownloadCsv: 'Download CSV',
+  /** EXPERIENCE.md:313 */
+  tableDownloadCsvCapped: 'The file holds the first <n> rows only.',
+
+  // Story 16.8: the six secondary log viewers' side-bar entries and titles, and the log viewer's two
+  // match controls (DW-1102).
+  /** EXPERIENCE.md:584 */
+  systemMonitorLogListLabel: 'System Monitor log',
+  /** EXPERIENCE.md:584 */
+  taskErrorLogListLabel: 'Background task error log',
+  /** EXPERIENCE.md:584 */
+  xdbcErrorLogListLabel: 'xDBC error log',
+  /** EXPERIENCE.md:584 */
+  sqlDiagnosticsLogListLabel: 'SQL diagnostics log',
+  /** EXPERIENCE.md:584 */
+  eventLogListLabel: 'Interoperability event log',
+  /** EXPERIENCE.md:584 */
+  analyticsLogListLabel: 'Analytics log',
+  /** EXPERIENCE.md:584 */
+  logViewerNextMatch: 'Next match',
+  /** EXPERIENCE.md:584 */
+  logViewerPreviousMatch: 'Previous match',
+
+  // Story 16.8: the six secondary log viewers' suggested prompts, three per screen.
+  /** EXPERIENCE.md:585 */
+  logSystemMonitorViewerPrompt1: 'What has the System Monitor reported recently?',
+  /** EXPERIENCE.md:585 */
+  logSystemMonitorViewerPrompt2: 'Did the System Monitor raise alerts today?',
+  /** EXPERIENCE.md:585 */
+  logSystemMonitorViewerPrompt3: 'When did the System Monitor last start?',
+  /** EXPERIENCE.md:585 */
+  logTaskErrorViewerPrompt1: 'Which background tasks failed, and why?',
+  /** EXPERIENCE.md:585 */
+  logTaskErrorViewerPrompt2: 'Which namespace did each failed background task run in?',
+  /** EXPERIENCE.md:585 */
+  logTaskErrorViewerPrompt3: 'Did any recent import or link task report errors?',
+  /** EXPERIENCE.md:585 */
+  logXdbcViewerPrompt1: 'Which xDBC connections hit an SQL error recently?',
+  /** EXPERIENCE.md:585 */
+  logXdbcViewerPrompt2: 'What does the most recent xDBC error mean?',
+  /** EXPERIENCE.md:585 */
+  logXdbcViewerPrompt3: 'Which namespaces are these xDBC errors in?',
+  /** EXPERIENCE.md:585 */
+  logSqlDiagnosticsViewerPrompt1: 'Which SQL loads reported errors?',
+  /** EXPERIENCE.md:585 */
+  logSqlDiagnosticsViewerPrompt2: 'What went wrong in the most recent failed load?',
+  /** EXPERIENCE.md:585 */
+  logSqlDiagnosticsViewerPrompt3: 'Did the latest load finish without errors?',
+  /** EXPERIENCE.md:585 */
+  logEventViewerPrompt1: 'Which production items logged errors recently?',
+  /** EXPERIENCE.md:585 */
+  logEventViewerPrompt2: 'Are any warnings repeating in the event log?',
+  /** EXPERIENCE.md:585 */
+  logEventViewerPrompt3: 'Summarize the interoperability errors by namespace.',
+  /** EXPERIENCE.md:585 */
+  logAnalyticsViewerPrompt1: 'Did any cube build or synchronization fail recently?',
+  /** EXPERIENCE.md:585 */
+  logAnalyticsViewerPrompt2: 'Summarize the recent analytics log entries by namespace.',
+  /** EXPERIENCE.md:585 */
+  logAnalyticsViewerPrompt3: 'Which analytics errors need attention?',
 } as const;
 
 /**

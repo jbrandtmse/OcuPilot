@@ -149,6 +149,45 @@ describe('the web application editor store (Story 9.2)', () => {
     expect(store.applicationRoles()).toEqual([]);
   });
 
+  it('Story 16.17: an editor a create opens on shows that create\u2019s read-back, never an earlier Save\u2019s', async () => {
+    // Mutation (Rule 19): drop `this.readBackValue = arrivingReadBack` from `open` -> the arriving
+    // assertion goes red; drop `this.readBackValue = null` from `reset` -> the stale-verdict
+    // assertions go red.
+    TestBed.resetTestingModule();
+    const differs = { verdict: 'differs', fields: ['Timeout'], written: [] };
+    const api = {
+      requestJson: async <T,>(_path?: string, init: { method?: string } = {}): Promise<JsonResult<T>> => {
+        if (init.method === 'PUT') return { kind: 'ok', status: 200, body: { readBack: differs } } as JsonResult<T>;
+        const body = { requiredFields: [], maxLengths: {}, rules: [], roles: [], serveFilesChoices: ['No', 'Always'], application: application() };
+        return { kind: 'ok', status: 200, body } as JsonResult<T>;
+      },
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: FormDirty, useValue: new FormDirty() },
+        { provide: ChangeBus, useValue: new ChangeBus() },
+      ],
+    });
+    const store = TestBed.inject(WebAppEditor);
+    await store.open('/csp/a');
+    store.setText('Timeout', '1200');
+    await store.save();
+    expect(store.readBack()?.verdict).toBe('differs');
+    await store.open('/csp/d');
+    expect(store.readBack()).toBeNull();
+
+    store.arriveSaved('/csp/b', { verdict: 'matches', fields: [], written: [], reason: '' });
+    await store.open('/csp/b');
+    expect(store.saved()).toBe(true);
+    expect(store.readBack()).toEqual({ verdict: 'matches', fields: [], written: [], reason: '' });
+
+    store.arriveSaved('/csp/c');
+    await store.open('/csp/c');
+    expect(store.saved()).toBe(true);
+    expect(store.readBack()).toBeNull();
+  });
+
   it('holds an application the instance does not have as absent, with the server\'s own reason and nothing to save', async () => {
     // Mutation (Rule 19): drop the 404 branch from `absorb` -> the absent assertion goes red.
     TestBed.resetTestingModule();

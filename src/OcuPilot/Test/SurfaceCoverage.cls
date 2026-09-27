@@ -56,7 +56,11 @@ XData Coverage
 <coverage>
 <screen name="AgentDefinitionForm" class="OcuPilot.Test.AgentDefinitionForm" method="TestTheFormDeclaresNoReadOrTableAndOneIdAndNoClassicPage"/>
 <screen name="AgentDefinitionList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<screen name="AgentGuardrails" class="OcuPilot.Test.Guardrails" method="TestTheDescriptorIsAListedUngatedAgentScreenWithNoRead"/>
 <screen name="AgentSwitches" class="OcuPilot.Test.Wire" method="TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource"/>
+<screen name="AgentTranscript" class="OcuPilot.Test.TranscriptStore" method="TestTheListAndTheTranscriptPageAreDeclared" corpus="one declaration test pins both screens Story 14.4 adds, the list and the transcript page beneath it"/>
+<screen name="AgentTranscripts" class="OcuPilot.Test.TranscriptStore" method="TestTheListAndTheTranscriptPageAreDeclared" corpus="one declaration test pins both screens Story 14.4 adds, the list and the transcript page beneath it"/>
+<screen name="AgentGovernance" class="OcuPilot.Test.GovernanceWire" method="TestTheReadAnswersEveryWriteKey"/>
 <screen name="AuditList" class="OcuPilot.Test.Descriptor" method="TestTheAuditListValidatesAndDeclaresItsServerCriteria"/>
 <screen name="AuditingConfig" class="OcuPilot.Test.Descriptor" method="TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTool"/>
 <screen name="AuditSystemEventList" class="OcuPilot.Test.AuditingScreen" method="TestTheSystemEventListReadsSystemEvents"/>
@@ -66,12 +70,18 @@ XData Coverage
 <screen name="DatabaseList" class="OcuPilot.Test.Descriptor" method="TestTheDatabasesGeneralViewDeclaresExactlyItsFiveFieldsAndFiveColumns"/>
 <screen name="DatabaseVolumeList" class="OcuPilot.Test.Descriptor" method="TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall"/>
 <screen name="DeviceList" class="OcuPilot.Test.Descriptor" method="TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns"/>
-<screen name="Home" class="OcuPilot.Test.Descriptor" method="TestARefreshingScreenDeclaresItsRatesAndHomeDeclaresNone"/>
+<screen name="Home" class="OcuPilot.Test.Descriptor" method="TestARefreshingScreenDeclaresItsRatesAndHomeDefaultsToTen"/>
 <screen name="LdapConfigList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="LockList" class="OcuPilot.Test.Descriptor" method="TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns"/>
 <screen name="LogAlertViewer" class="OcuPilot.Test.Descriptor" method="TestTheAlertLogViewerDeclaresTheLogSourceTailAndItsOnePair"/>
+<screen name="LogAnalyticsViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
 <screen name="LogErrorList" class="OcuPilot.Test.Descriptor" method="TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs"/>
+<screen name="LogEventViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
 <screen name="LogMessageViewer" class="OcuPilot.Test.Descriptor" method="TestTheConsoleLogViewerDeclaresTheLogSourceTailAndItsOnePair"/>
+<screen name="LogSqlDiagnosticsViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
+<screen name="LogSystemMonitorViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
+<screen name="LogTaskErrorViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
+<screen name="LogXdbcViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
 <screen name="OAuthClientTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="OAuthResourceServerTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="OAuthServerClientTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
@@ -142,7 +152,7 @@ XData Coverage
 <tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>
 <tool name="security.auditing.update" class="OcuPilot.Test.ToolWrite" method="TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestructive"/>
 <tool name="security.auditing.copy" class="OcuPilot.Test.AuditCopy" method="TestTheToolsAreQueuedActionWritesOverTheScreensPairsAndOperate"/>
-<tool name="security.auditing.purge" class="OcuPilot.Test.AuditPurge" method="TestThePurgeIsAnUnadvertisedDestructiveActionWrite"/>
+<tool name="security.auditing.purge" class="OcuPilot.Test.AuditPurge" method="TestThePurgeIsAnAdvertisedDestructiveActionWrite"/>
 <tool name="security.auditsystemevents.reset" class="OcuPilot.Test.AuditEventTools" method="TestTheResetToolsAreActionWritesWithOneStateRow" corpus="the system and user tools are asserted together in one loop"/>
 <tool name="security.auditsystemevents.update" class="OcuPilot.Test.AuditEventTools" method="TestTheUpdateToolsAdmitTheirFieldsOverTheClassDerivedList" corpus="the system and user tools are asserted together in one loop"/>
 <tool name="security.audituserevents.create" class="OcuPilot.Test.AuditEventRules" method="TestTheCreateToolDeclaresACreateOverTheDerivedList"/>

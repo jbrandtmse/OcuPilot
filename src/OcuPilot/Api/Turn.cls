@@ -33,6 +33,10 @@ ClassMethod CallerUsername() As %String
 /// with no definition in force, reserve the caller's one slot, spawn the job, and answer 202 with
 /// the opaque turn id. Nothing is reserved when a refusal answers before the reserve; a turn whose
 /// job could not be spawned is finished <code>failed</code> and answers 503.</p>
+/// <p>The reserve refuses a busy caller 409 <code>TURN.BUSY</code> first, then a caller at the
+/// Switches limit of turns an hour 403 <code>TURN.LIMITHOUR</code> (AD-41, Story 14.6), with
+/// <code>detail</code> <code>{limit, retryAt}</code> and the banner sentence filled with the limit
+/// and the retry time as <code>HH:MM UTC</code>. Neither refusal reserves or records anything.</p>
 ClassMethod HandleStart() As %Status
 {
     Set tSC = $$$OK
@@ -119,7 +123,8 @@ ClassMethod HandleStart() As %Status
             }
         }
 
-        Set tReserveSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, tDefinitionId, ##class(OcuPilot.Api.Error).#TURNABANDONEDJOBLOST, tLimits, .tKey, .tBusy, .tSweepSC)
+        Set tHourLimit = +$Get(tSwitchValues("turnsPerHour"))
+        Set tReserveSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, tDefinitionId, ##class(OcuPilot.Api.Error).#TURNABANDONEDJOBLOST, tLimits, .tKey, .tBusy, .tSweepSC, tHourLimit, .tLimited, .tRetrySeconds)
         If $$$ISERR(tSweepSC) Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "terminal turns past retention could not be swept", tSweepSC, ##class(OcuPilot.Api.Error).#INTERNAL)
         If $$$ISERR(tReserveSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReserveSC))
@@ -127,6 +132,10 @@ ClassMethod HandleStart() As %Status
         }
         If tBusy {
             Set tSC = ##class(OcuPilot.Api.Error).Render(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#REASONTURNBUSY, ##class(OcuPilot.Api.Error).#TURNBUSY)
+            Quit
+        }
+        If tLimited {
+            Set tSC = ..RenderHourLimit(tHourLimit, tRetrySeconds)
             Quit
         }
         Kill tValues
@@ -163,6 +172,22 @@ ClassMethod HandleStart() As %Status
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
     Quit tSC
+}
+
+/// <p>Refuse a start at the limit of <var>pLimit</var> turns an hour: 403
+/// <code>TURN.LIMITHOUR</code>, <code>detail</code> <code>{limit, retryAt}</code> with
+/// <code>retryAt</code> ISO-8601 UTC for <var>pRetrySeconds</var>
+/// (<method>OcuPilot.Kernel.State.Turn.NowSeconds</method> units), and the published sentence with
+/// <code>&lt;n&gt;</code> filled and <code>&lt;hh:mm&gt;</code> given as <code>HH:MM UTC</code>.</p>
+ClassMethod RenderHourLimit(pLimit As %Integer, pRetrySeconds As %Integer) As %Status
+{
+    Set tRetryAt = ##class(OcuPilot.Kernel.State.Turn).IsoOfSeconds(pRetrySeconds)
+    Set tReason = ##class(OcuPilot.Api.Error).#REASONTURNLIMITHOUR
+    Set tReason = $Replace($Replace(tReason, "<n>", +pLimit), "<hh:mm>", $Extract(tRetryAt, 12, 16) _ " UTC")
+    Set tDetail = {}
+    Do tDetail.%Set("limit", +pLimit, "number")
+    Do tDetail.%Set("retryAt", tRetryAt, "string")
+    Quit ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, tReason, ##class(OcuPilot.Api.Error).#TURNLIMITHOUR, tDetail)
 }
 
 /// <p>Answer <code>GET /turn/:id/progress</code> for the caller's own turn: finish it first when

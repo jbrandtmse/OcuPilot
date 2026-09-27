@@ -121,7 +121,7 @@ change and says what would be needed; Home marks the screens this user may not o
 | Security and secrets | SSL/TLS, X.509 credentials, wallet, OAuth 2.0 (client server descriptions, client configurations, resource servers, the authorization server, server client descriptions), LDAP, auditing | Editors for each, SSL/TLS and LDAP connection tests, OAuth token revocation, audit event configuration, and audit database copy and purge |
 | Tasks | Task schedule, on-demand tasks, upcoming tasks, task history, task details | A New Task wizard, edit, run, suspend, resume and delete |
 | OS management | Processes, process details, locks, system usage, databases, devices | Suspend, resume and terminate processes; edit devices; free space per database |
-| Logs | `alerts.log`, `messages.log`, application errors, the audit database | Search and page each log, filter the audit database to agent writes, delete application errors, and ask the agent to explain any entry |
+| Logs | `alerts.log`, `messages.log` and its older files, application errors, the audit database | Search and page each log, filter the audit database to agent writes, delete application errors, and ask the agent to explain any entry |
 
 ## Quick start
 
@@ -375,7 +375,7 @@ Against your own install, use `http://localhost:52774/api/ocupilot` and your own
 
 ## Community ideas
 
-OcuPilot implements two ideas from the [InterSystems Ideas portal](https://ideas.intersystems.com/)
+OcuPilot implements three ideas from the [InterSystems Ideas portal](https://ideas.intersystems.com/)
 that carry Community Opportunity status:
 
 - [DPI-I-516](https://ideas.intersystems.com/ideas/DPI-I-516), **Integration with LLMs like GPT,
@@ -384,6 +384,9 @@ that carry Community Opportunity status:
 - [DPI-I-574](https://ideas.intersystems.com/ideas/DPI-I-574), **AI analysis of error logs:** the
   agent explains any application error, `messages.log` line, alert or audit record in front of it
   and suggests what to do next.
+- [DPI-I-966](https://ideas.intersystems.com/ideas/DPI-I-966), **Option to show older message.log in
+  IRIS SMP:** the `messages.log` viewer opens every older messages file the instance keeps, with the
+  same search, filters and agent explanations.
 
 ## Known limitations
 
@@ -412,7 +415,6 @@ Improvements continue through the contest's voting week, released to `main` in t
 - a try-it console that sends a request from the REST API explorer;
 - a read-back line showing that the instance now holds what a change wrote;
 - a performance row on Home, and impact lines on removals ("3 users hold this role");
-- older `messages.log` files in the Logs area ([DPI-I-966](https://ideas.intersystems.com/ideas/DPI-I-966));
 - the remaining log viewers and a unified log hub;
 - the agent handing you a script instead of running a change, and tests that content the agent
   reads cannot steer it.

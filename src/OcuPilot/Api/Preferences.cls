@@ -194,7 +194,7 @@ ClassMethod HandleUpdate() As %Status
         ; The registry gates what may be stored, never what may be removed: a row whose screen
         ; stopped resolving is dropped from the client's rendering (AD-37) and would otherwise
         ; be unremovable, holding one of the favorites slots for good.
-        If (tKeyMember = ..#ROUTEMEMBER) && (tAction '= ..#ACTIONREMOVE) && tNamesKey && '..IsBuiltRoute(tKey) {
+        If (tKeyMember = ..#ROUTEMEMBER) && (tAction '= ..#ACTIONREMOVE) && tNamesKey && '..IsBuiltRoute(tKey) && '..IsHomeRefresh(tKind, tKey) {
             Set tSC = ..RenderViolation(##class(OcuPilot.Api.Error).#PREFERENCESROUTE, ..#ROUTEMEMBER)
             Quit
         }
@@ -389,6 +389,14 @@ ClassMethod IsBuiltRoute(pRoute As %String) As %Boolean [ Private ]
         Set tBuilt = 0
     }
     Quit tBuilt
+}
+
+/// <p>Whether <var>pKey</var> is Home's remembered rate: the refresh kind, keyed by
+/// <parameter>OcuPilot.Kernel.State.Pref.HOMEREFRESHNAME</parameter>. Every other kind still
+/// requires a built route.</p>
+ClassMethod IsHomeRefresh(pKind As %String, pKey As %String) As %Boolean [ Private ]
+{
+    Quit (pKind = ##class(OcuPilot.Kernel.State.Pref).#KINDREFRESH) && (pKey = ##class(OcuPilot.Kernel.State.Pref).#HOMEREFRESHNAME)
 }
 
 /// <p>Refuse the body with 422 <parameter>OcuPilot.Api.Error.PREFERENCESBODY</parameter> and no

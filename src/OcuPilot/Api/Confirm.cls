@@ -1,5 +1,5 @@
-/// <p>The handler behind the two <code>/proposal/:id</code> routes (Story 5.3, AD-12, AD-39):
-/// confirm a proposal, and cancel one. Every caller has cleared
+/// <p>The handler behind the three <code>/proposal/:id</code> routes (Story 5.3, AD-12, AD-39,
+/// AD-59): confirm a proposal, cancel one, and take one's copy-out draft. Every caller has cleared
 /// <method>OcuPilot.Api.Router.OnPreDispatch</method>; every proposal is the caller's own, the same
 /// discipline <class>OcuPilot.Api.Turn</class> already holds a turn to.</p>
 /// <p><b>Nothing is decided here.</b> Whether the write may happen is
@@ -70,6 +70,41 @@ ClassMethod HandleCancel(pId As %String) As %Status
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
     Quit tSC
+}
+
+/// <p>Answer <code>POST /proposal/:id/draft</code>: take the copy-out draft of the caller's own live
+/// proposal <var>pId</var> (AD-59). 200 with <code>{proposalId, state, closedReason, confirmedAt,
+/// draft}</code>, the row closed <code>canceled</code> reason <code>draft</code>; one refusal
+/// envelope otherwise, carrying the kernel's own code. The request carries no body; the origin the
+/// script addresses is this request's own.</p>
+ClassMethod HandleDraft(pId As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tDraftSC = ##class(OcuPilot.Kernel.Proposal.Draft).Take(pId, ..CallerUsername(), ..RequestOrigin(), .tResult, .tHttpStatus, .tCode)
+        If $$$ISERR(tDraftSC) {
+            Set tSC = ..RenderRefusal(tDraftSC, tHttpStatus, tCode, "")
+            Quit
+        }
+        Set tSC = ##class(OcuPilot.Api.Response).JSON(tResult)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
+/// <p>The scheme and host this request reached the instance at, as <code>scheme://host</code>:
+/// <code>https</code> when <code>%request</code> is secure, <code>http</code> otherwise, and the
+/// request's own <code>HTTP_HOST</code>.</p>
+ClassMethod RequestOrigin() As %String
+{
+    Set tOrigin = ""
+    Try {
+        Set tOrigin = $Select(%request.Secure: "https", 1: "http") _ "://" _ $Get(%request.CgiEnvs("HTTP_HOST"))
+    } Catch {
+        Set tOrigin = ""
+    }
+    Quit tOrigin
 }
 
 /// <p>Render one refusal envelope for the kernel's <var>pCode</var> at <var>pHttpStatus</var>, with

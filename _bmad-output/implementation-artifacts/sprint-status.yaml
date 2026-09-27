@@ -212,14 +212,14 @@ development_status:
   13-5-ci-in-parallel-the-two-long-suites-split-across-containers: backlog
   epic-13-retrospective: optional
 
-  epic-14: backlog
-  14-1-the-copy-out-draft: backlog
-  14-2-the-tool-governance-policy: backlog
-  14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model: backlog
-  14-4-transcripts-retention-and-administrator-access: backlog
-  14-5-the-per-user-read-only-toggle: backlog
-  14-6-per-user-turn-limits-and-the-banner-they-need: backlog
-  14-8-the-seeded-injection-test: backlog
+  epic-14: done
+  14-1-the-copy-out-draft: done
+  14-2-the-tool-governance-policy: done
+  14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model: done
+  14-4-transcripts-retention-and-administrator-access: done
+  14-5-the-per-user-read-only-toggle: done
+  14-6-per-user-turn-limits-and-the-banner-they-need: done
+  14-8-the-seeded-injection-test: done
   epic-14-retrospective: optional
 
   epic-15: done
@@ -235,15 +235,15 @@ development_status:
   15-10-the-header-logo-on-a-white-tile: done
   epic-15-retrospective: optional
 
-  epic-16: backlog
-  16-1-the-try-it-request-console: backlog
+  epic-16: in-progress
+  16-1-the-try-it-request-console: done
   16-2-web-sessions-listed-and-ended: backlog
   16-3-effective-privileges-and-the-permission-check-tool: backlog
   16-4-task-export-and-import: backlog
   16-5-background-tasks: backlog
   16-6-broadcast-a-message-to-processes: backlog
   16-7-license-usage-and-the-full-dashboard: backlog
-  16-8-the-six-secondary-log-viewers: backlog
+  16-8-the-six-secondary-log-viewers: done
   16-9-the-unified-log-hub: backlog
   16-10-external-language-servers: backlog
   16-11-start-suspend-and-resume-the-task-manager: backlog
@@ -252,13 +252,13 @@ development_status:
   16-14-the-ldap-and-kerberos-editor: backlog
   16-15-the-data-egress-line: backlog
   16-16-the-agent-audit-viewer: backlog
-  16-17-the-read-back-line: backlog
-  16-18-home-s-performance-row: backlog
-  16-19-impact-lines-on-removals: backlog
-  16-20-older-messages-log-files: backlog
-  16-21-security-findings-with-a-fix-you-confirm: backlog
-  16-22-the-guardrails-page: backlog
-  16-23-any-table-downloaded-as-csv: backlog
+  16-17-the-read-back-line: done
+  16-18-home-s-performance-row: done
+  16-19-impact-lines-on-removals: done
+  16-20-older-messages-log-files: done
+  16-21-security-findings-with-a-fix-you-confirm: done
+  16-22-the-guardrails-page: done
+  16-23-any-table-downloaded-as-csv: done
   16-24-a-try-it-request-copied-as-curl: backlog
   epic-16-retrospective: optional
 

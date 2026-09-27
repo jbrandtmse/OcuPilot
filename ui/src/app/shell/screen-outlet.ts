@@ -13,6 +13,8 @@ import { ActivatedRoute } from '@angular/router';
 
 import { DefinitionFormPage } from '../areas/agent/definition-form.page';
 import { SwitchesPage } from '../areas/agent/switches.page';
+import { GuardrailsPage } from '../areas/agent/guardrails.page';
+import { TranscriptPage } from '../areas/agent/transcript.page';
 import { DatabaseDetailsPage } from '../areas/os-management/database-details.page';
 import { DatabasesPage } from '../areas/os-management/databases.page';
 import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
@@ -45,6 +47,7 @@ import { DeviceFormPage } from '../areas/os-management/device-form.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
+import { GovernancePage } from '../areas/agent/governance.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
@@ -107,6 +110,8 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
  */
 export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AgentSwitches': SwitchesPage,
+  'OcuPilot.Screen.Descriptor.AgentGuardrails': GuardrailsPage,
+  'OcuPilot.Screen.Descriptor.AgentTranscript': TranscriptPage,
   'OcuPilot.Screen.Descriptor.AuditingConfig': AuditingConfigPage,
   'OcuPilot.Screen.Descriptor.TaskUpcomingList': UpcomingPage,
   'OcuPilot.Screen.Descriptor.TaskHistoryList': HistoryPage,
@@ -131,6 +136,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
   'OcuPilot.Screen.Descriptor.LdapConfigForm': ReducedFormPage,
   'OcuPilot.Screen.Descriptor.AuditUserEventList': AuditUserEventListPage,
+  'OcuPilot.Screen.Descriptor.AgentGovernance': GovernancePage,
 };
 
 /**

@@ -16,7 +16,9 @@
 /// whose read is not the declared grammar (AD-36, <method>ReadProblem</method>),
 /// whose declared server-search criteria are not the declared grammar (AD-21,
 /// <method>CriteriaProblem</method>),
-/// whose privilege set names a pair its area does not (AD-8,
+/// whose declared own pairs are not among its privileges (AD-8,
+/// <method>OwnPrivilegesProblem</method>),
+/// whose privilege set names a pair its area does not and it does not declare its own (AD-8,
 /// <method>AreaCoverageProblem</method>),
 /// whose banner is not the declared grammar (<method>BannerProblem</method>),
 /// whose archetype or classic link-out is not a permitted shape (AD-44,
@@ -245,10 +247,17 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": declared privilege pair " _ tBadPair _ " is missing its resource or its permission"
                 Quit
             }
+            ; AD-8: a pair a screen declares its own is one of its privileges, and only such a pair
+            ; is left out of the area's coverage below.
+            Set tOwnProblem = ..OwnPrivilegesProblem(tObject)
+            If tOwnProblem '= "" {
+                Set pProblem = tClass _ ": " _ tOwnProblem
+                Quit
+            }
             ; AD-8: OcuPilot.Screen.Gate evaluates an area's set and a screen's set separately and
             ; never unions them, so an area declaring less than one of its screens requires shows
             ; the rail item allowed and refuses everything inside it.
-            Set tCoverageProblem = ..AreaCoverageProblem(tArea, $ClassMethod(tClass, "PrivilegePairs"))
+            Set tCoverageProblem = ..AreaCoverageProblem(tArea, $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs"))
             If tCoverageProblem '= "" {
                 Set pProblem = tClass _ ": " _ tCoverageProblem
                 Quit
@@ -257,7 +266,7 @@ ClassMethod Validate(Output pProblem As %String) As %Status
             ; what rates, so a malformed pair has to fail where it is declared. Refusing it here
             ; means install stops; the alternative is a screen that binds the shared framework at
             ; render time and arms a timer at a rate nobody declared.
-            Set tRefreshProblem = ..RefreshProblem($ClassMethod(tClass, "Refreshes"), $ClassMethod(tClass, "RefreshRates"))
+            Set tRefreshProblem = ..RefreshProblem($ClassMethod(tClass, "Refreshes"), $ClassMethod(tClass, "RefreshRates"), $ClassMethod(tClass, "RefreshDefault"))
             If tRefreshProblem '= "" {
                 Set pProblem = tClass _ ": " _ tRefreshProblem
                 Quit
@@ -373,15 +382,15 @@ ClassMethod EntityLabelProblem(pDeclaration As %DynamicObject) As %String
 
 /// <p>The keys a screen declaration may carry at its top level -- the whole vocabulary, in the
 /// order <class>OcuPilot.Screen.Descriptor.Base</class> reads them (AD-5).</p>
-/// <p>Ten are optional and the rest are not, but this parameter says nothing about which:
+/// <p>Eleven are optional and the rest are not, but this parameter says nothing about which:
 /// <method>DeclarationProblem</method> is an <b>unknown-key</b> check, never a presence check. A
-/// declaration missing an optional key -- <code>refreshes</code>, <code>refreshRates</code>,
+/// declaration missing an optional key -- <code>refreshes</code>, <code>refreshRates</code>, <code>refreshDefault</code>,
 /// <code>read</code>, <code>table</code>, <code>banner</code>, <code>tab</code>,
 /// <code>rowTarget</code>, <code>secretArguments</code>, <code>fingerprintExcludes</code>,
 /// <code>entityLabelKey</code> -- is sound, and a declaration missing a required one is already
 /// refused by the rule that reads it, with a sentence naming what it was for. <code>suggestedPrompts</code>
 /// is required on a built screen and optional on an unbuilt one (Story 11.3).</p>
-Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
+Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,refreshDefault,privileges,ownPrivileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
 
 /// <p>What is wrong with <var>pDeclaration</var>'s own top-level keys, or <code>""</code> when
 /// nothing is (DW-271). Every key must be one of <parameter>DECLARATIONKEYS</parameter>.</p>
@@ -421,17 +430,25 @@ ClassMethod DeclarationProblem(pDeclaration As %DynamicObject) As %String
 /// rate the chip could advance through: a duplicate would make one step of the cycle a no-op, a
 /// fraction would arm a timer at a delay no copy names, and zero is spelled by turning the chip
 /// off rather than by declaring it.</p>
+/// <p><var>pDefault</var> is the declared <code>refreshDefault</code>: the rate the framework starts
+/// at when the person has remembered none. <code>""</code> (none declared) and <code>0</code> are
+/// off, the published default; any other value must be one of the rates, so a screen that does not
+/// refresh can declare no other.</p>
 /// <p><b>Public, unlike <method>MalformedPair</method></b>, so the shapes above can be exercised
 /// as values rather than as a fixture descriptor per shape -- six malformed declarations would
 /// otherwise be six fixture classes and six registries, because <method>Validate</method> reports
 /// only the first problem in a roster.</p>
-ClassMethod RefreshProblem(pRefreshes As %Boolean, pRates As %List) As %String
+ClassMethod RefreshProblem(pRefreshes As %Boolean, pRates As %List, pDefault As %String = "") As %String
 {
     Set tProblem = ""
     Try {
         Set tCount = $ListLength(pRates)
         If 'pRefreshes {
-            If tCount > 0 Set tProblem = "refreshRates declares " _ tCount _ " rate(s) while refreshes is false; a screen that does not refresh permits none"
+            If tCount > 0 {
+                Set tProblem = "refreshRates declares " _ tCount _ " rate(s) while refreshes is false; a screen that does not refresh permits none"
+            } ElseIf (pDefault '= "") && (pDefault '= 0) {
+                Set tProblem = ..RefreshDefaultSentence(pDefault)
+            }
             Quit
         }
         If tCount = 0 {
@@ -451,10 +468,18 @@ ClassMethod RefreshProblem(pRefreshes As %Boolean, pRates As %List) As %String
             }
             Set tPrevious = tRate
         }
+        If tProblem '= "" Quit
+        If (pDefault '= "") && (pDefault '= 0) && '$ListFind(pRates, pDefault) Set tProblem = ..RefreshDefaultSentence(pDefault)
     } Catch ex {
         Set tProblem = "the refresh declaration could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
+}
+
+/// <p>The refusal of a declared <code>refreshDefault</code> that is not one of the screen's rates.</p>
+ClassMethod RefreshDefaultSentence(pDefault As %String) As %String [ Private ]
+{
+    Quit "refreshDefault ('" _ pDefault _ "') is not one of refreshRates; a screen's default rate is a rate its chip may set"
 }
 
 /// <p>What is wrong with a <b>built</b> <var>pDeclaration</var>'s <code>sideBarPosition</code>, or
@@ -698,9 +723,52 @@ ClassMethod TabGroupProblem(pScreens As %DynamicArray) As %String
     Quit tProblem
 }
 
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>ownPrivileges</code>, or <code>""</code>
+/// when nothing is (AD-8). The key is optional; when declared it is an array of privilege pairs,
+/// each carrying both halves and each one of the screen's own <code>privileges</code>, matched
+/// exactly. A screen declares a pair its own when it requires that pair beyond its area's set:
+/// <method>AreaCoverageProblem</method> leaves such a pair out, and the screen's own gate still
+/// requires it.</p>
+/// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>ownPrivilegesProblem</code> returns the same
+/// sentence for every case in <class>OcuPilot.Test.DeclarationCorpus</class>'s
+/// <code>OwnPrivilegeCases</code>.</p>
+/// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
+ClassMethod OwnPrivilegesProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) Quit
+        Set tType = pDeclaration.%GetTypeOf("ownPrivileges")
+        If (tType = "unassigned") || (tType = "null") Quit
+        If tType '= "array" {
+            Set tProblem = "ownPrivileges is not an array of privilege pairs"
+            Quit
+        }
+        Set tOwn = pDeclaration.%Get("ownPrivileges")
+        Set tBad = ..MalformedPair(tOwn)
+        If tBad '= "" {
+            Set tProblem = "declared own privilege pair " _ tBad _ " is missing its resource or its permission"
+            Quit
+        }
+        Set tDeclared = ##class(OcuPilot.Screen.Area).PairsFrom(pDeclaration.%Get("privileges"))
+        Set tIterator = tOwn.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tPair) {
+            If $ListFind(tDeclared, $ListBuild(tPair.resource, tPair.permission)) Continue
+            Set tProblem = "own privilege pair " _ tPair.resource _ ":" _ tPair.permission _ " is not one of the screen's declared privileges, and a screen owns only a pair it requires (AD-8)"
+            Quit
+        }
+    } Catch ex {
+        Set tProblem = "the declared own privileges could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
 /// <p>The first of <var>pPairs</var> that the area declared under <var>pAreaKey</var> does not
-/// itself declare, as the sentence <method>Validate</method> prefixes with the declaring class, or
-/// <code>""</code> when the area covers all of them (AD-8).</p>
+/// itself declare and <var>pOwnPairs</var> does not hold, as the sentence <method>Validate</method>
+/// prefixes with the declaring class, or <code>""</code> when the area covers all the rest (AD-8).</p>
+/// <p><var>pOwnPairs</var> is the screen's own pairs, in the same form: pairs it requires beyond
+/// its area's, which gate that screen alone and never its area, so they are left out of the
+/// check. <method>OwnPrivilegesProblem</method> holds each of them to the screen's privileges.</p>
 /// <p><var>pPairs</var> is one screen's pair set in the form
 /// <method>OcuPilot.Screen.Descriptor.Base.PrivilegePairs</method> answers. An area that declares
 /// more than a screen requires is sound; one that declares less is not, because
@@ -723,7 +791,7 @@ ClassMethod TabGroupProblem(pScreens As %DynamicArray) As %String
 /// refused, because that is an area that meant to gate and gated too little.</p>
 /// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is: a covered
 /// and an uncovered set are exercised as values rather than as one fixture descriptor per case.</p>
-ClassMethod AreaCoverageProblem(pAreaKey As %String, pPairs As %List) As %String
+ClassMethod AreaCoverageProblem(pAreaKey As %String, pPairs As %List, pOwnPairs As %List = "") As %String
 {
     Set tProblem = ""
     Try {
@@ -735,6 +803,10 @@ ClassMethod AreaCoverageProblem(pAreaKey As %String, pPairs As %List) As %String
             For tJ = 1:1:$ListLength(tAreaPairs) {
                 Set tAreaPair = $List(tAreaPairs, tJ)
                 If ($List(tAreaPair, 1) = $List(tPair, 1)) && ($List(tAreaPair, 2) = $List(tPair, 2)) Set tCovered = 1
+            }
+            For tJ = 1:1:$ListLength(pOwnPairs) {
+                Set tOwnPair = $List(pOwnPairs, tJ)
+                If ($List(tOwnPair, 1) = $List(tPair, 1)) && ($List(tOwnPair, 2) = $List(tPair, 2)) Set tCovered = 1
             }
             If tCovered Continue
             Set tProblem = "area '" _ pAreaKey _ "' does not declare " _ $List(tPair, 1) _ ":" _ $List(tPair, 2) _ ", which this screen requires, so the area would read allowed while the screen is refused (AD-8)"

@@ -157,4 +157,17 @@ ClassMethod Absent(pCode As %String, pReason As %String, Output pHttpStatus As %
     Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, pCode, pReason, .pHttpStatus, .pFault)
 }
 
+/// <p>The admin port's answer: this port carries out no write of its own.</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    Quit ##super(pEndpoint, pType)
+}
+
+/// <p>The admin port's script (AD-59): <method>Invoke</method>'s own branch is a read, and every
+/// write is the admin port's call.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+}
+
 }

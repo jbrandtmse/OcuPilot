@@ -8,7 +8,7 @@ import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
+import { DOWNLOAD_CSV_ACTION_ID, REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -1102,12 +1102,12 @@ describe('the command bar', () => {
 
   // --- Story 15.9: no filter where there is nothing to filter ---------------------------------
   //
-  // Mutations (Rule 19): render the filter unconditionally -> the Home and error-drill legs go red;
-  // force `hasContent` true -> the Home leg goes red; hide the filter on every screen -> the list
-  // leg goes red.
+  // Mutations (Rule 19): render the filter unconditionally -> the read-less and error-drill legs go
+  // red; force `hasContent` true -> the read-less leg goes red; hide the filter on every screen -> the
+  // list leg goes red.
 
-  it('Home, which declares no read and registers nothing, draws no command bar', () => {
-    build(screenDeclaration({ route: '', archetype: 'home', read: null }));
+  it('a screen that declares no read, does not refresh and registers nothing draws no command bar', () => {
+    build(screenDeclaration({ read: null, refreshes: false }));
     expect(fixture.nativeElement.querySelector('.ocu-command-bar')).toBeNull();
     expect(fixture.nativeElement.querySelector('#ocu-command-bar-filter')).toBeNull();
   });
@@ -1137,11 +1137,11 @@ describe('the command bar', () => {
 
   it('DW-260: the bar draws Refresh only where a handler is registered for it', () => {
     // The control is not a declared action: Refresh re-reads whatever the screen reads, and the
-    // registration is what says a screen can carry it out. Home registers none, because it reads
-    // nothing, and the audit viewer registers only once it has a search to re-run.
+    // registration is what says a screen can carry it out. A screen with nothing to re-read registers
+    // none, and the audit viewer registers only once it has a search to re-run.
     //
     // Mutation (Rule 19): draw the button unconditionally -> the "before registration" assertion
-    // goes red, and every read-less screen grows a control with nothing behind it.
+    // goes red, and every screen that registers none grows a control with nothing behind it.
     const declared = screenDeclaration({});
     build(declared);
     const refreshButton = (): HTMLElement | null =>
@@ -1161,6 +1161,57 @@ describe('the command bar', () => {
     stop();
     fixture.detectChanges();
     expect(refreshButton()).toBeNull();
+  });
+
+  // --- Story 16.23: Download CSV --------------------------------------------------------------
+
+  const download = (): HTMLButtonElement | null => fixture.nativeElement.querySelector('.ocu-command-bar-download');
+
+  it('Story 16.23: a registered Download CSV draws no control until the bound read has landed, then runs it', async () => {
+    const declared = tableDeclaration();
+    build(declared);
+    let ran = 0;
+    actions.register(declared.descriptor, DOWNLOAD_CSV_ACTION_ID, () => {
+      ran += 1;
+    });
+    fixture.detectChanges();
+    expect(download()).toBeNull();
+
+    // A read that landed for another screen does not count.
+    refresh.bind(READING(), async () => ({ kind: 'ok' as const, rows: [{ Name: 'a' }], truncated: false }));
+    await refresh.readNow();
+    fixture.detectChanges();
+    expect(download()).toBeNull();
+
+    refresh.bind(declared, async () => ({ kind: 'ok' as const, rows: [{ Name: 'a' }], truncated: false }));
+    fixture.detectChanges();
+    expect(download()).toBeNull();
+
+    await refresh.readNow();
+    fixture.detectChanges();
+    expect(download()?.textContent?.trim()).toBe(STRINGS.tableDownloadCsv);
+    expect(download()?.classList.contains('ocu-command-bar-action')).toBe(false);
+    expect(download()?.hasAttribute('aria-describedby')).toBe(false);
+
+    download()?.click();
+    expect(ran).toBe(1);
+  });
+
+  it('Story 16.23: at the cap the control is described by "The file holds the first <n> rows only."', async () => {
+    const declared = tableDeclaration();
+    build(declared);
+    actions.register(declared.descriptor, DOWNLOAD_CSV_ACTION_ID, () => {});
+    // The cap (3) differs from the rows read (2), so `<n>` can only be Max rows.
+    stores.for(declared.descriptor, declared.refreshRates).setMaxRows(3);
+    refresh.bind(declared, async () => ({ kind: 'ok' as const, rows: [{ Name: 'a' }, { Name: 'b' }], truncated: true }));
+    await refresh.readNow();
+    fixture.detectChanges();
+
+    const describedBy = download()?.getAttribute('aria-describedby') ?? '';
+    const reason = describedBy === '' ? null : fixture.nativeElement.querySelector(`#${describedBy}`);
+    expect(reason?.textContent?.trim()).toBe('The file holds the first 3 rows only.');
+    expect(reason?.getAttribute('role')).toBe('tooltip');
+    expect(reason?.classList.contains('ocu-command-bar-reason')).toBe(true);
   });
 
   it('AC: every command-bar action is reachable from the command box', () => {

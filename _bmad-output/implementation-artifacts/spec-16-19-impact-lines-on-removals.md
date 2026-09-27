@@ -1,0 +1,449 @@
+---
+title: 'Story 16.19: Impact lines on removals'
+type: 'feature'
+created: '2026-09-26'
+status: 'done'
+baseline_revision: 'eb1e19c4888cbc5590f011806abd1d19c965c7e2'
+baseline_commit: 'eb1e19c4888cbc5590f011806abd1d19c965c7e2'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
+warnings: ['oversized']
+deferred:
+  - summary: >-
+      OcuPilot.Test.ErrorLog.TestABadMaxRowsIsRefusedNotDefaulted failed once in the implement sweep and passed re-run alone.
+    evidence: |-
+      Run 15179 alone green; the test needs two application errors on one date, which depends on sweep order. Not touched by this story.
+    location: >-
+      src/OcuPilot/Test/ErrorLog.cls
+    severity: low
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** A person about to delete a role or a resource, or to take a role from a user, is not told what else depends on it. The agent's proposal card and the screen's dialog show neither the accounts, applications and databases affected nor the privileges a user would actually lose.
+
+**Approach:** One kernel computation answers an `impact` object on the instance, with the caller's own privileges. The agent's mint records it on the proposal, and a new read route answers it to the screen's dialog when that dialog opens. The client renders one "Impact: …" line from Fixed strings on the proposal card, above 11.8's privilege line, and in the dialog. The user's net loss comes from a reusable composition of effective privileges that Story 16.3 will take.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- **Covered removals.** Only these three get an impact; every other tool answers `impact: null`.
+
+  | Removal | Tool | Proposal card | Screen dialog |
+  |---|---|---|---|
+  | Role delete | `permissions.roles.delete` | yes | Roles list Delete. The role editor's Delete uses the same dialog. |
+  | Resource delete | `permissions.resources.delete` | yes | Resources list Delete |
+  | Role removal | `permissions.users.update`, whenever the sent `Roles` lacks a role the fresh read held | yes | Users list "Remove role" dialog, when a role is chosen |
+
+- **Wire shape (names only, AD-11).**
+  - The shape is `impact: {kind, refused, parts}`.
+    - `kind` is one of `role-delete | resource-delete | role-removal`.
+    - `refused` is `null` or `{code, reason}`.
+    - `parts` is `[{part, count, names, unchecked}]`.
+  - `part` is one of `holders | grantingApplications | grantingRoles | guardedApplications | guardedDatabases | loses`. The order is fixed per kind (see Design Notes).
+  - `names` holds the first three by name order. `unchecked` is `""`, the first missing pair, or `truncated`.
+  - A `loses` name is `<resource>:<letters>` (`%DB_USER:RW`), or `%All`.
+  - No value other than names, counts, pairs and the refusal leaves the instance. Nothing is added to screen context or to the model's tool result (AD-24).
+- **Refused before counted (AD-10).**
+  - `Impact.Of` asks `Prohibited.Prohibits` first, with the write's own tool, target, payload and diff.
+  - A refused removal answers `refused: {code, reason: ReasonFor(code)}` and no parts. The line renders that reason, never an impact.
+  - The write-time check is unchanged and stays the verdict (AD-40).
+- **Every part is read as the caller (AD-8, AD-29).** Each part is read through the declared read or `AdminPort` call of the screen that owns that data.
+  - Before reading, `Gate` checks that screen's pair set (`Gate.RequiredPairs` of `RoleList`, `UserList`, `ResourceList`, `WebAppList` or `DatabaseList`).
+  - A missing pair makes the part `unchecked: "<pair>"` with `count` 0. It is never read, and the line never says "no …" for it.
+  - A read that truncates is `unchecked: "truncated"`.
+  - There is no escalation, and nothing reads `%SYS` classes directly for this.
+- **Fresh at mint and at open.**
+  - Mint computes the impact once and stores it (`Propose.Impact`). It is never recomputed at serialization, because the AC ties it to mint.
+  - The dialog asks the route each time it opens, and each time the remove-role choice changes. A late answer for a stale choice is dropped.
+- **Composition (measured, Design Notes)** is `Kernel/Shell/Effective.cls`:
+  - pure `Compose(roles, roleRows, public)` and `Loss(before, after, public)`;
+  - `Read(roots, …)`, which fetches the `GrantedRoles` closure with role GETs, guarded against cycles, and the public permissions from the resource list.
+
+  A role's loss is `Loss(Compose(fresh Roles), Compose(sent Roles), public)`.
+- **A mint or dialog never fails over the impact.**
+  - A fault in the computation, or a stored value over `MAXLEN`, logs and records `""`. The card then has no line and the proposal is minted as it is today.
+  - A route failure opens the dialog without a line.
+- **Placement.**
+  - **Card:** first child of `@if (buttonsVisible)` in `proposal-card.ts`, above the privilege line.
+    - An impact is a caption with the runs-as class and `data-slot="impact"`.
+    - A refusal is the privilege line's warning banner with `role="status"`.
+  - **Typed-name dialogs:** the `advisory` slot. It replaces the role-delete holders line (DW-1513).
+  - **Role dialog:** a caption under the select, with `aria-describedby`.
+- **Copy** is the Fixed-strings row in Design Notes, verbatim.
+  - Append it at EXPERIENCE.md:577 and cite it `/** EXPERIENCE.md:577 */` in `strings.ts`.
+  - Every existing `EXPERIENCE.md:n` citation with n >= 577 moves up by one. Today that is `strings.ts:1957` (`:617`); grep the whole tree for others.
+  - Row 479 is edited in place: drop the three holders literals, and say the advisory is the impact line (Story 16.19). Delete `roleHoldersLine` and its three keys.
+  - The anatomy footer bullet (:664) gains one sentence, in place.
+
+**Never:**
+
+- No change to `Kernel/Governance/Gate.cls`, `Operation.cls`, `Confirm.cls`, the ledger, `AdminPort.cls`, `Prompt.cls`, `screens.generated.ts` or `structural-baseline.json`. No new tool and no governance key.
+- No impact on the user editor's or role editor's inline member removals. They open no dialog, and adding one is out of scope. No impact on a role update's `GrantedRoles` or `Resources`.
+- Epic 14's hunks stay untouched. `proposal-card.ts` 661-672 stays untouched. The contended files are listed in the Code Map.
+- No reuse of `Prohibited.Walk`/`DirectRoles`. They read `%SYS` directly for AD-10's live predicates, not as the caller.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|---|---|---|---|
+| Role delete | role held directly by U1, U2 (one as escalation), and granted by `/csp/p` MatchRoles (as an application role or a matching role's target) | `holders` 2 `[U1,U2]`, `grantingApplications` 1 `[/csp/p]` | none |
+| Union | U holds A (X:R) and B (X:W); remove B | `loses [X:W]` | none |
+| Transitive | U holds G1 and G2; G1 grants G2; remove G2 | `loses` count 0: "loses nothing their other roles do not still grant" | none |
+| %All kept | U holds A and AllVia (grants `%All`); remove A | `loses` 0 | none |
+| %All lost | U holds AllVia and P; remove AllVia | `loses` names start `%All`, then each pair P itself does not grant | none |
+| Public | X public R; remove the role granting X:R | X:R not in `loses` | none |
+| Escalation | an escalation role on the user | never counted as held | none |
+| Resource delete | R granted by roles A, B; `/csp/q` Resource R; database USER guarded by R | `grantingRoles` 2, `guardedApplications` 1, `guardedDatabases` 1 | none |
+| Unread part | caller lacks `%Admin_Manage:USE` | `guardedDatabases` `unchecked "%Admin_Manage:USE"` → "which databases it guards was not checked (requires %Admin_Manage:USE)" | other parts still read |
+| Refused | delete an OcuPilot role; remove the last `%All` holder's `%All` | `refused` with the code's reason; no parts | the write-time refusal is unchanged |
+| Other tools | a web app delete | `impact: null`; no line | none |
+
+</intent-contract>
+
+## Code Map
+
+Server (under `src/OcuPilot/`):
+
+- `Kernel/Proposal/Mint.cls`: `tValues` is filled at :293-342. Add `impact` beside `consequence` at :332, and `GuardedMint` is at :343. The model's `pProposal` at :354-360 stays unchanged.
+- `Kernel/State/Propose.cls`:
+  - properties :51-179. Add `Impact As %String(MAXLEN = 4000)` after `ReadBack` :179, with the no-`SCHEMAVERSION` line.
+  - `GuardedMint`: contract :209-216, fields :234-259.
+  - `RowValues` :660-699, `WireRow` :713-751. Add `impact` (object or null), after `readBack` :743-748.
+  - Epic 14 edits only :46-50.
+- `Kernel/Proposal/Disclosure.cls:89` `Privilege`: the pattern for a wire builder.
+- `Kernel/Proposal/Prohibited.cls`: `Prohibits` :777 and `ReasonFor` :478. The arms are `Role` :1290, `User` :1228 and `Resource` :1386.
+- `Api/ScreenAction.cls`: `Handle` :76 (descriptor and action resolution); `Run` :167, which does pairs `Gate` :194, fresh `Read` :204, `ScreenActionDelta` :221, `Body` :241, then the prohibited `Gate` :252.
+  - Add an optional preview argument to `Run` that returns tool, target, fresh, payload and diff after `Body`, before :252, without writing, so the route reuses the exact resolution.
+  - `Run`'s write path must stay byte-identical in behavior.
+- `Api/Router.cls`: add `/screens/:screen/impact` GET beside :114-115. Put its thin target near `ScreenRead` :651. Epic 14 edits :129 and :750.
+- `Screen/Read.cls:234` `Execute` (`truncated` :385/:413). `Screen/Gate.cls` `RequiredPairs` :106, `EvaluatePairs` :132. `Port/AdminPort.cls:747` `Invoke`.
+- `Area/Permissions/RoleCreateRules.cls:506` `Members`: the `OWNERLIST` precedent, to copy and not to call (the kernel does not depend on a slice).
+- Tools:
+  - `Screen/Tool/RoleDelete.cls` and `ResourceDelete.cls`.
+  - `UserUpdate.cls`: `ScreenActionDelta` :213-271 (remove-role); `EscalationRoles` excluded :72.
+- Descriptors (pairs): `UserList` :56 (`Roles` only via `rowGet`), `RoleList` :39, `ResourceList` :41, `WebAppList` :62 (LIST has `Resource`, no `MatchRoles`), `DatabaseList` :63 (`%Admin_Manage:USE` + `%DB_IRISSYS:READ`, `Database.SysCRUD` rows carry `Resource`).
+- Tests:
+  - `Test/ProposalWire.cls:28` `WIREKEYS`.
+  - `Test/EndpointCoverage.cls` beside :104 (Epic 14 edits :118).
+  - `Test/TurnWireFixture.cls` `EnsurePrincipal` :70, `SetRoleResources` :115, `RemovePrincipals` :162.
+  - `Test/UserUpdate.cls:1077-1133`: HTTP precedent. `Install/Smoke.cls:1410`: a direct `Mint.Mint` call.
+
+Client (under `ui/src/app/`):
+
+- `shell/proposal-card.ts`: `@if (buttonsVisible)` :302 and the privilege line :303-315; `readBackText` :805-808 (add the `impactLine` getter after it). Epic 14 edits :337-345, :399-404 and :875.
+- `core/proposal-view.ts`: `ProposalCardView` `privilege` :118-122 (add `impact` after it); `toCardView` :426-452 (`privilege:` :449). Epic 14 edits :207-372.
+- `core/turn.ts`: `TurnProposal` :253-259 (optional `impact?`); `parseProposal` :581-582. Epic 14 edits :43 and :1136.
+- `shell/screen-action-handler.ts`:
+  - `startFor` :462-541, with role delete at :521-524;
+  - `openRoleDelete` :609-632, which becomes the generic impact preflight;
+  - `openRole` :576-607;
+  - `roleHoldersLine` :778-783, to delete;
+  - `ROLE_LIST` :82, `RESOURCE_LIST` :85, `REMOVE_ROLE` :128;
+  - GET through `ApiService.requestJson` (`core/api.ts:328`).
+- `shell/role-dialog.ts`: select :30-41, caption precedent :42-44, `onChange`. `shell/typed-name-dialog.ts`: `advisory` slot :50-55.
+- `core/strings.ts`: append before `} as const` :2915; `readBackMore` :2901 is reused; delete `roleDeleteHolders*` :1819-1824.
+- Specs:
+  - `shell/proposal-card-privilege.spec.ts` (pattern);
+  - `screen-action-handler.spec.ts` :928-945 (holders test to replace), :429;
+  - `role-dialog.spec.ts`;
+  - `ui/tools/proposal-privilege.test.mjs` (pattern).
+- Browser:
+  - `ui/browser/roles-editor.browser-spec.mjs:425` (the holders assertion becomes impact);
+  - `resources-editor.browser-spec.mjs:340`;
+  - `users-actions.browser-spec.mjs:243`;
+  - DW-1337 pattern `read-back.browser-spec.mjs:173-232`.
+
+## Tasks & Acceptance
+
+**Execution:**
+
+- `src/OcuPilot/Kernel/Shell/Effective.cls` (new): the composition piece.
+  - `Compose(pRoles As %DynamicArray, pRoleRows As %DynamicObject, pPublic As %DynamicObject) As %DynamicObject` answers `{all, allVia, resources: {<res>: {<letter>: <granting role>}}}`. It takes the closure over `GrantedRoles` and unions the letters. `%All` anywhere in the closure sets `all`. Escalation roles are never passed in.
+  - `Loss(pBefore, pAfter, pPublic) As %DynamicArray`.
+  - `Read(pRoots, Output pRoleRows, Output pPublic, Output pUnchecked) As %Status`: role GETs through `AdminPort` with a visited set, and the public permissions from the `ResourceList` read, each after its pair gate.
+- `src/OcuPilot/Kernel/Proposal/Impact.cls` (new): `Of(pToolName, pTargetRef, pFreshJson, pPayloadJson, pDiffJson) As %DynamicObject` (or `""`).
+  - It checks the prohibited set first.
+  - Then, per kind:
+    - holders: `Security.Role` `OWNERLIST`, `Type` beginning `User`, de-duplicated by name;
+    - granting applications: each `WebAppList` row's GET, `MatchRoles[].TargetRoles`;
+    - granting roles: each `RoleList` row's GET, `Resources[].Name`;
+    - guarded applications and databases: the `Resource` field of the `WebAppList` and `DatabaseList` rows;
+    - loses: `Effective`.
+  - Names are compared case-insensitively (inference: IRIS resolves these names without case).
+- `Kernel/Proposal/Mint.cls`, `Kernel/State/Propose.cls`: record `impact` (fault or over-length gives `""` and a log line); property, `GuardedMint`, `RowValues`, and `WireRow` `impact`.
+- `src/OcuPilot/Api/ScreenImpact.cls` (new) plus `ScreenAction.cls` preview plus `Router.cls`: `GET /screens/:screen/impact?action=&id=&value=`.
+  - It resolves exactly as the action POST does.
+  - It answers `{impact}` (null for a tool with none) through `Response.JSON`, and faults through `Error.Render`.
+- Client:
+  - new `core/impact.ts`: `impactOf(unknown)`, which answers null outside the vocabulary; `impactLine(impact, subject)`.
+  - `turn.ts` and `proposal-view.ts` carry it.
+  - `proposal-card.ts` renders it.
+  - `screen-action-handler.ts`: role and resource delete preflight to the route (`advisory`); remove-role fetches on choice and hands the line to `role-dialog.ts`, which gets a new `impact` input and a caption.
+- `strings.ts`, EXPERIENCE.md (append at 577; edit 479 and 664 in place; move the shifted citations).
+- Tests:
+  - new `Test/Effective.cls`: the measured table, through `Compose`/`Loss` over literal rows.
+  - new `Test/ImpactRoute.cls`, HTTP on `ocupilot-ci` with `OcuImpact*` probe objects removed in `OnAfterAllTests`: each matrix row over the route, and one `Mint.Mint` role delete whose wire row carries `impact`.
+  - `ProposalWire` `WIREKEYS` + `impact`.
+  - `EndpointCoverage` probe row.
+  - `ui/tools/impact.test.mjs`.
+  - new `shell/proposal-card-impact.spec.ts`; cases in `screen-action-handler.spec.ts` and `role-dialog.spec.ts`.
+  - new `ui/browser/impact.browser-spec.mjs`; update `roles-editor.browser-spec.mjs:425`.
+
+**Acceptance Criteria:**
+
+- **AC1.** Given a role two users hold and one web application grants, when the Roles list's Delete dialog opens or the agent's delete proposal is minted, then each shows "Impact: 2 users hold it: <a>, <b>; 1 web application grants it: <app>.", and a holder added after the mint is absent from the card but present when the dialog is reopened.
+- **AC2.** Given a user whose other roles still grant part of what role A grants (directly, through a granted role, `%All`, or a public permission), when A's removal is proposed or chosen in the Remove role dialog, then the line names only the pairs no remaining role grants, or "loses nothing their other roles do not still grant".
+- **AC3.** Given a resource two roles grant, guarding one web application and one database, when its Delete dialog opens or its delete is minted, then the line names all three parts with counts and names.
+- **AC4.** Given a caller holding the Resources screen's pairs but not `%Admin_Manage:USE`, when a resource delete's line renders, then it reads "which databases it guards was not checked (requires %Admin_Manage:USE)" and never "it guards no database".
+- **AC5.** Given a removal the prohibited set refuses (one of OcuPilot's own roles), when the card or dialog renders, then the line is that refusal's reason and no impact.
+- **AC6 (Integration).** The Roles list and the role editor, the consumers, read `GET /screens/permissions.roles/impact` on `ocupilot-ci` and render the line in the typed-name dialog in both themes. It passes the DW-1337 structural gate (wide and narrow, light and dark) with no new allowance, and the bundle stays under 1900 kB.
+
+### Review Findings
+
+Code review 2026-09-26 (full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 decision-needed, 9 patch (all applied), 0 defer, 17 rejected.
+
+- [x] [Review][Patch] (med) `Effective.Read`'s `GrantedRoles` walk was unpinned: every fixture account held G2 directly [src/OcuPilot/Test/ImpactRoute.cls:407] — leg added: the account holds G2 only through G1, and removing G1 loses `OcuImpactRes:U`.
+- [x] [Review][Patch] (med) the card's role-removal line was never rendered about the account [ui/src/app/shell/proposal-card-impact.spec.ts:72] — case added.
+- [x] [Review][Patch] (low) the impact route answered an empty `action` 400 while the action route answers 404 `ROUTE.NOTFOUND`, and its doc and test claimed parity [src/OcuPilot/Api/ScreenImpact.cls:26] — pre-check deleted, so `Resolve` answers both routes; test expects 404.
+- [x] [Review][Patch] (low) the GET route accepted a secret-declared value (`set-password`) in its query string [src/OcuPilot/Api/ScreenAction.cls:180] — a preview carrying a secret is refused 400 `TOOL.ARGUMENTS`; test leg added.
+- [x] [Review][Patch] (low) names and the subject were inserted by plain `String.replace`, so `$&`, `` $` `` or a `<names>` text in a name garbled the line [ui/src/app/core/impact.ts:151] — replacer functions, `<names>` before `<user>`; test added.
+- [x] [Review][Patch] (low) a late impact read for an earlier Delete replaced the later Delete's dialog, now also on the Resources list [ui/src/app/shell/screen-action-handler.ts:647] — `impactAsk` guard; spec case added.
+- [x] [Review][Patch] (low) `Effective.MAXROLES` restated `Screen.Read.DEFAULTMAXROWS` as a literal [src/OcuPilot/Kernel/Shell/Effective.cls:199] — references the constant.
+- [x] [Review][Patch] (low) the QA test title carried a literal U+2019 (Rule 14) [ui/src/app/shell/screen-action-handler.spec.ts:1002] — escaped.
+- [x] [Review][Patch] (low) the QA test's comment named a mutation of its own input rather than of production code [ui/src/app/shell/screen-action-handler.spec.ts:1001] — now names `phraseOf`'s unchecked branch, as `## Verification` records.
+
+Rejected:
+
+- (low, by-design) one failed per-row read, in `Impact` or `Effective.Read`, discards the whole impact: the intent's "a fault logs and records `""`" rule; no line is not an "Impact: no ..." line.
+- (low, by-design) role-type owners of a deleted role are not counted: Decision 3.
+- (low, by-design) a resource's public permission is not a resource-delete part: the parts list is the intent's.
+- (low) the role form read still computes `holders` nobody reads: one `OWNERLIST` call per form read, in an Epic 9 file outside this footprint.
+- (low) per-row port reads and no busy state before the dialog opens: in-process reads (AD-36's 100 GETs in 30.5 ms); the overlap case is the guarded patch above.
+- (low) the client's names limit comes from read-back and `names.length <= count` is unchecked: the server is the only source.
+- (low) the triage counts in this spec disagree: the fix edits the spec under review.
+- (low) frontmatter `done` against tracker `review`: lifecycle bookkeeping the lead owns.
+- (low) `ImpactRoute` passes roughly 500 lines and restores `USERLOSS` without a guard: `OnBeforeAllTests` rebuilds every probe object each run.
+- (low, by-design) a refusal adds a second `role="status"` banner: Placement mandates it.
+- (low, by-design) other removals (granted roles, resource grants, application roles) carry no impact: the covered-removals table and the Never list.
+- (low, by-design) a computation fault answers `{impact: null}` 200: "a mint or dialog never fails over the impact".
+- (false) `Effective.Loss`'s `pPublic` is redundant: it keeps `Loss` right for a caller that composed without public permissions; no caller diverges.
+- (low) no browser leg renders a refused card: Rule 3 is met by `impact.browser-spec.mjs`, and the banner is the privilege line's, browser-tested by `proposal-privilege.browser-spec.mjs` (b).
+- (low, theoretical) the over-`MAXLEN` path is untested: three names a part keep the answer far below 4,000 characters.
+- (low, theoretical) `Loses` unchecked has no server test: the write gate holds the Roles and Resources pairs first; only a 1,000-role cut reaches it, and its rendering is pinned in `tools/impact.test.mjs`.
+- (false) AC1, AC2 and AC5 clauses lack their own `mutation:` lines: Rule 19 asks one per AC's pinning test, and each AC has one.
+
+### Rework (CI, iteration 1)
+
+- [x] [CI] instance: `OcuPilot.Test.EndpointCoverage.TestEveryProbeDispatchesToItsRoute` fails on run 36287213038 at head 6eef7155: the probe `GET /api/ocupilot/screens/osmgmt.locks/impact` (no query; line 447 pins every probe path to its route template, so it cannot carry `?action=`) now answers `ROUTE.NOTFOUND`, because the code review made an empty `action` answer 404 like the action route. Fix the handler, not the probe: a request with **no `action` parameter at all** is malformed and answers 400 (a new or existing request-shape code, never `ROUTE.NOTFOUND`) before any read -- the analogue of the action route's unreadable-body 400 -- while a **named** action the screen does not declare keeps the 404 parity with the action route. Update `ScreenImpact.cls` (or `ScreenAction.Preview`'s caller, whichever keeps the action route's own behavior byte-identical), the `ImpactRoute` leg that expects the empty-action 404, and the probe row's `substitutewhy` so it states what the probe now exercises; demonstrate each changed pinning test's mutation after recompiling the tree on `ocupilot-ci`, run `EndpointCoverage` and `ImpactRoute` one at a time, and write the `mutation:` lines. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36287213038>
+
+### Review Findings (CI rework 1 re-review)
+
+Code review 2026-09-27 of `eb1e19c4..6f38ca1a` (full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Rework item confirmed fixed: no `action` answers 400 `TOOL.ARGUMENTS`, empty and undeclared answer 404 `ROUTE.NOTFOUND`, `ScreenAction.cls` and `Router.cls` unchanged since `eb1e19c4`, all three legs falsified. 0 decision-needed, 4 patch (all applied), 0 defer, 11 rejected; no high.
+
+- [x] [Review][Patch] (low) the class doc said the refusal comes "before anything is read" while the screen lookup runs first [src/OcuPilot/Api/ScreenImpact.cls:9] — now "before the target is read".
+- [x] [Review][Patch] (low) the missing-action leg's code assertion had no mutation of its own [src/OcuPilot/Test/ImpactRoute.cls:570] — mutation run, line recorded.
+- [x] [Review][Patch] (low) the undeclared-action leg had no mutation [src/OcuPilot/Test/ImpactRoute.cls:575] — mutation run, line recorded.
+- [x] [Review][Patch] (low) the last `EndpointCoverage` green predated the last mutate-and-revert of the handler [src/OcuPilot/Test/EndpointCoverage.cls:105] — both classes re-run after this pass's final revert.
+
+Rejected:
+
+- (false) the frontmatter's two baselines disagree: `3bd2d242` set both to `eb1e19c4`.
+- (low, by-design) "the analogue of the action route's unreadable body": the rework item's own wording, and the doc lists it among the route's own refusals, so it claims no parity.
+- (low) the impact route ignores stray query parameters while the action route refuses stray body keys: the sentence predates the rework and nothing is written; not high.
+- (low) `Error.cls` calls `TOOL.ARGUMENTS` a tool-result code: `ScreenAction.Refuse` already renders it as an envelope; predates the rework.
+- (low, spec-bound) the 400 and 404 envelopes are built inline rather than through `ScreenAction.Refuse`/`NotFound`: sharing them changes the action route, which this rework keeps byte-identical.
+- (low, wontfix-accepted, DW-1723) `EndpointCoverage` documents `expect` only as a `why`'s precondition: file contended with Epic 14; this pass may touch only the impact row.
+- (low) the `Probes` doc says one row needs `substitute`: predates the rework, contended file.
+- (low) the missing-action leg does not assert `detail.problem`: with no `action`, no other 400 `TOOL.ARGUMENTS` is reachable.
+- (low) `TestOtherActionsAnswerNoImpact` holds refusal legs beyond its name: cosmetic.
+- (low) the missing-action leg rebuilds the path instead of using `Impact`: the fix adds a helper parameter.
+- (low) mixed dates and the "(Epic 14's version has no such row)" aside: the fix edits the spec under review.
+
+## Spec Change Log
+
+- 2026-09-27, lead: re-opened for one rework iteration on a red CI instance job (run 36287213038): the impact route's empty-action 404 reads as route-not-found to EndpointCoverage's probe.
+
+- 2026-09-26, lead, spec gate: AD-8's "A removal names its impact" paragraph and AD-53's shared-list item written into the spine exactly as recommended below (Rule 20, light path; no existing Rule contradicted). Status reset to ready-for-dev; no other change.
+
+## Review Triage Log
+
+### 2026-09-26 — Review pass
+
+- verdicts: 16 findings — high 0, medium 2, low 8, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) the agent's minted role removal was never tested, so Mint's fresh-read and payload inputs to the impact were unpinned — added `ImpactRoute.TestAMintedRoleRemovalCarriesItsLoss` (a minted `permissions.users.update` dropping RoleB reads `loses 1|OcuImpactRes:W|`; a minted removal from `_SYSTEM` carries the SYSTEMACCOUNT refusal); mutation recorded.
+  - `[low]` `[patch]` (verification-gap) no `mutation:` line for `Impact.Holders`'s escalation prefix or `Impact.Guarded` — both mutations run, red observed, lines recorded.
+  - `[low]` `[patch]` (verification-gap) no `mutation:` line for the card's only-while-Confirm-shows placement — mutation run, red observed, line recorded.
+  - `[medium]` `[patch]` (verification-gap) the impact route's parity with the action route's refusals was untested — added `ImpactRoute.TestTheImpactRouteRefusesWhomTheActionRouteRefuses` with a principal holding `%Admin_Operate:U` (reaches the API) but not `%Admin_Secure:USE`; both routes answer the same 403 and code; mutation recorded.
+  - `[low]` `[reject]` (verification-gap) the card's `loses` subject is the folded target id while the dialog uses the row key — the card's own title uses the same folded id, so the card is self-consistent; carrying the account's spelling onto the wire adds surface for a cosmetic difference.
+  - `[false]` `[reject]` (verification-gap) the Auto Run Result section still read ready-for-dev — it is written at finalize, in this pass.
+  - `[false]` `[reject]` (intent-alignment) `UserList`'s pair set gates nothing — the user record a removal reads is the write's own fresh read, taken after the write tool's pair gate, whose pair is `UserList`'s own (`UserUpdate.WRITERESOURCE` doc); every part Impact reads (role rows, public permissions, lists) is gated by its owning screen.
+  - `[false]` `[reject]` (intent-alignment) a caller short of the write pairs gets no line rather than per-part unchecked — Tasks require the route to resolve "exactly as the action POST does", which refuses that caller; the dialog opens without a line, as the intent's route-failure rule says.
+  - `[low]` `[patch]` (intent-alignment) resource-delete and role-removal cards not reached through a mint — same root cause as the first row; the role-removal mint leg added there pins the input-dependent path, and the resource delete shares the role delete's tool-name-only mint path already pinned.
+  - `[low]` `[patch]` (intent-alignment) a refused impact on the card only tested from a literal — the new mint leg mints a refused removal and reads its wire row.
+  - `[low]` `[reject]` (intent-alignment) `PROHIBITED.LASTALLHOLDER` never reached — `Impact.Of` passes through whatever code `Prohibits` answers, and the refused behavior is code-agnostic; forcing the last-holder state means stripping `%All` from every other holder on the instance.
+  - `[low]` `[reject]` (intent-alignment) the matching-role-target form of `MatchRoles` untested — the code iterates `TargetRoles` of every `MatchRoles` entry without distinguishing an empty `MatchRole`, so there is no separate path.
+  - `[low]` `[reject]` (intent-alignment) overlapping Delete clicks could open the dialog for the earlier row — the pattern predates this story (`openRoleDelete`), the dialog titles its target and requires typing that name, and the intent's stale-drop rule names the remove-role choice only.
+  - `[low]` `[reject]` (intent-alignment) a refused Remove-role caption untested — the caption renders `impactLine`, whose refusal branch `tools/impact.test.mjs` pins.
+  - `[false]` `[reject]` (intent-alignment) `ScreenAction.Handle`'s restructure is not pinned by a test in the diff — the existing action-route classes (`UserUpdate`, `RoleUpdate`, `ReadBackRoute` and others) ran green in the implement sweep over the restructured code.
+  - `[false]` `[reject]` (intent-alignment) spec bookkeeping (the Auto Run Result section) — duplicate of the verification-gap row; written at finalize.
+
+### 2026-09-27 — Review pass (CI rework 1)
+
+- verdicts: 4 findings — high 0, medium 0, low 2, false 2, maybe-false 0
+- findings:
+  - `[low]` `[patch]` (verification-gap) no `mutation:` line pins `IsDefined` over an empty check — mutation run (run 15210 red, 15211 green), line recorded.
+  - `[low]` `[reject]` (verification-gap) the undeclared-action leg has no `mutation:` line — it pins `Resolve`'s pre-existing 404, which this pass did not change; not an AC's pinning test.
+  - `[false]` `[reject]` (intent-alignment) the doc calls the refusal the unreadable body's analogue while it answers `TOOL.ARGUMENTS` — the same sentence names the code it answers; "analogue" is the category.
+  - `[false]` `[reject]` (intent-alignment) the 400 branch is unreachable from the client — by design: the client always sends `action`; the branch serves the coverage probe and any malformed caller.
+
+### 2026-09-27 — Code review (CI rework 1 re-review)
+
+- verdicts: 17 findings in 15 entries — high 0, medium 0, low 14, false 1, maybe-false 0; 4 patched, 11 rejected (one ledgered `wontfix-accepted`, DW-1723). Listed under `### Review Findings (CI rework 1 re-review)`.
+
+## Design Notes
+
+**Recommended spine change (the halt, Rule 20).** This story adds two things later stories rely on:
+
+- a piece shared by both callers of three write tools, which AD-53's list of shared things would otherwise miss;
+- a measured composition rule that Story 16.3 will assume.
+
+Recommended text:
+
+> **AD-8, appended after the 11.8 paragraph:** "**A removal names its impact** [AMENDED 2026-09-26, Story 16.19 spec gate, Rule 20]. A role delete, a resource delete and a write that removes roles from a user carry an impact computed on the instance, once when the proposal is minted (kept on the proposal row) and again when the screen's dialog opens. For a role, it gives its direct holders and the web applications whose `MatchRoles` grant it. For a resource, it gives the roles granting it and the web applications and databases it guards. For a user, it gives the pairs lost net of the remaining roles. Each part is read with the caller's own privileges through the owning screen's declared read and pair set. A part the caller cannot read is reported unchecked, naming the pair, never as no impact. A target the prohibited set refuses shows that refusal's reason instead (AD-10). Effective privilege is composed as the instance composes it (measured on `ocupilot-ci`, 2026-09-26): the union over the user's roles and, transitively, every role they grant; `%All` anywhere in that closure holds everything; a resource's public permission is held by every user; an escalation role counts for nothing until the user escalates. `Kernel.Shell.Effective` is the one composition, and a later effective-privilege read uses it. The impact is names only and never enters screen context or a tool result."
+>
+> **AD-53, "What both callers share":** add "the impact of a removal (AD-8)".
+
+No AC contradicts an existing AD Rule. Once the text is in the spine, set `status: ready-for-dev` with no other change.
+
+**Measured on `ocupilot-ci`, 2026-09-26.** Ground truth was `CheckUserPermission`, cross-checked by real logins. The probe objects were removed and a count query read 0.
+
+- **Union.** Permissions union across roles: A X:R and B X:W give RW, and removing B leaves R.
+- **Transitive.** `GrantedRoles` are followed at every depth, and `$roles` at login lists the chain. A role still reachable through another held role loses nothing when removed directly.
+- **`%All`.** Held directly or through `GrantedRoles`, `%All` answers RWU on any resource, even one that does not exist. The `%All` role's GET shows `Resources: []`, so it must be special-cased.
+- **Public.** `PublicPermission` R is held by a user with no roles, and W is not.
+- **Escalation.** `EscalationOnly` roles are refused as ordinary roles (#1485). A user's `EscalationRoles` give nothing until the user escalates.
+- **Admin API v2.**
+  - `security/role` GET carries `GrantedRoles`, `Resources[{Name,Permissions}]` and `EscalationOnly`; the LIST carries none of them.
+  - `security/role/owners` (`OWNERLIST`) lists direct holders only, typed `User`, `Role` or `User (escalation)`. `%All` holders appear twice.
+  - `security/user` GET carries `Roles` and `EscalationRoles`.
+  - `security/resources` carries `PublicPermission`.
+  - `web-app` GET carries `MatchRoles[{MatchRole,TargetRoles}]`, where an empty `MatchRole` is an application role; LIST carries `Resource`.
+  - `database-dirs` carries `Resource`.
+
+**Part order:** role-delete is `holders`, `grantingApplications`; resource-delete is `grantingRoles`, `guardedApplications`, `guardedDatabases`; role-removal is `loses`. The parts are joined with "; ". Names are joined with ", ", and past three they are followed by `readBackMore`.
+
+**Copy for the EXPERIENCE.md row at 577, verbatim:**
+
+> "Impact: <parts>." · "<n> users hold it: <names>" · "1 user holds it: <names>" · "no user holds it" · "<n> web applications grant it: <names>" · "1 web application grants it: <names>" · "no web application grants it" · "<n> roles grant it: <names>" · "1 role grants it: <names>" · "no role grants it" · "it guards <n> web applications: <names>" · "it guards 1 web application: <names>" · "it guards no web application" · "it guards <n> databases: <names>" · "it guards 1 database: <names>" · "it guards no database" · "<user> loses <names>" · "<user> loses nothing their other roles do not still grant" · "who holds it was not checked" · "which web applications grant it was not checked" · "which roles grant it was not checked" · "which web applications it guards was not checked" · "which databases it guards was not checked" · "what <user> loses was not checked" · " (requires <pair>)" · " (too many to check)"
+
+Where column: "the impact line of a removal (Story 16.19, AD-8): on the proposal card above the privilege line, while Confirm shows; in a role or resource Delete dialog as its advisory; under the role picker of Remove role. `<parts>` joins the part phrases with "; "; `<names>` lists up to three names with ", ", then " and <n> more"; an unchecked part takes " (requires <pair>)" or " (too many to check)"; a refused removal shows the prohibited set's reason instead. [ADDED 2026-09-26 - Story 16.19]"
+
+**Decisions:**
+
+1. The impact is stored at mint, not re-read per poll (AC4: "read fresh when the proposal is minted").
+2. The impact replaces the role-delete holders advisory, because it contains the same count.
+3. Holders are the direct holders, escalation holders included. Users who hold the role only through another role are not counted (inference: this is the AC's "hold the role").
+
+**Governing ADs:** AD-8, AD-10, AD-6, AD-9, AD-11, AD-12, AD-13, AD-19, AD-20, AD-24, AD-29, AD-36, AD-39, AD-40, AD-53, AD-55, AD-58.
+
+**Integration ACs.**
+
+- **Consumes:** 11.8's privilege line placement and `Disclosure` pattern, 16.17's card layout, `Prohibited.Prohibits`, `Screen.Read`, `AdminPort`.
+- **Consumed-by:**
+  - 16.3: `Effective.Compose`/`Loss`, for effective privileges and the permission check naming the granting role (inference until its plan).
+  - 16.21: Fix it proposals carry the impact through the ordinary card (inference).
+
+**Governance:** no tool is added and `Gate.cls` is untouched. **DW-118** is declined, because Story 15.6 already resolved it. The ledger inbox is empty.
+
+## Verification
+
+**Commands:**
+
+- `cd ui && node --test tools/impact.test.mjs tools/strings.test.mjs tools/proposal-privilege.test.mjs` (loop). Expected: green. Mutation: `impactLine` renders "no user holds it" for an unchecked part, and the unchecked case should turn red.
+- `cd ui && npx ng test --include src/app/shell/proposal-card-impact.spec.ts --include src/app/shell/screen-action-handler.spec.ts --include src/app/shell/role-dialog.spec.ts` (loop). Expected: green. Mutation: drop the card's impact slot, and the card case should turn red.
+- `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.Effective`, then `ImpactRoute`, `ProposalWire` and `EndpointCoverage`, one at a time (loop). Expected: green. Mutations:
+  - drop the `GrantedRoles` walk: the transitive case turns red;
+  - skip the pair gate: the unchecked case turns red;
+  - skip `Prohibits`: the refused case turns red.
+- `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/ && OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/impact.browser-spec.mjs browser/roles-editor.browser-spec.mjs` (loop). Expected: green in both themes, within the structural baseline. Mutation: the route answers `{impact:null}`, and the AC6 case should turn red.
+- `cd ui && npm test`, `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh` (once, before dev_complete). Expected: green, and the bundle under 1900 kB.
+- The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before dev_complete). Expected: green.
+
+**Mutations run (implement, 2026-09-26).** Each was applied, observed red, and reverted; `git status --short` and every mutated file were byte-identical afterwards, and `ocupilot-ci` was reloaded from the reverted tree.
+
+- mutation: `impactLine` answers the none phrase for an unchecked part -> `tools/impact.test.mjs` "an unchecked part is said to be unchecked" red.
+- mutation: drop `impact` from `parseProposal` -> `tools/impact.test.mjs` "the proposal row carries the impact" red.
+- mutation: the card's impact `@if` never true -> `proposal-card-impact.spec.ts` caption and refusal cases red (2 of 3).
+- mutation: drop the stale-choice check in `ScreenActionHandler.chooseRole` -> the handler spec's stale leg red.
+- mutation: open the typed-name dialog without its impact read -> three handler-spec cases and `role-editor.page.spec.ts` AC3 red.
+- mutation: drop the role dialog's impact caption -> `role-dialog.spec.ts` impact case red.
+- mutation: `Effective.Compose` stops queueing granted roles (classes reloaded on `ocupilot-ci`) -> `OcuPilot.Test.Effective` 4 of 7 red; `ImpactRoute` role-removal leg red.
+- mutation: `Impact.ListRows` skips its pair gate -> `ImpactRoute` unchecked-part leg red (the database read is refused inside the port, so no impact).
+- mutation: `Impact.Of` skips `Prohibits` -> `ImpactRoute` refused leg red.
+- mutation: `Propose.WireRow` drops `impact` -> `ImpactRoute` minted-row leg red.
+- mutation: `ScreenImpact.Handle` answers `{impact: null}` -> `impact.browser-spec.mjs` 4 dialog legs red, the card leg green.
+- mutation: `Mint.ImpactValue` records `""` -> `impact.browser-spec.mjs` card leg red, the 4 dialog legs green.
+
+**Sweep (implement, 2026-09-26).** `node tools/ci-runner.mjs --container ocupilot-ci`: 300 classes, 2,370 tests; 282 green, 16 refused (arming), `WireSecurityRead` task-history leg (known residue, DW-1425/DW-1468), and `ErrorLog.TestABadMaxRowsIsRefusedNotDefaulted` red once in the sweep and green re-run alone (run 15179; it needs two application errors on one date, which the sweep's order varies). `npm test` 1,545 node tests and 1,505 component tests green; bundle 1,885,812 bytes, under 1900 kB.
+
+**Mutations run (review pass, 2026-09-26).** Same discipline; each mutated class was reloaded on `ocupilot-ci` from the reverted file, and every file compared byte-identical to its saved copy.
+
+- mutation: `Mint.Mint` passes `""` for the fresh read to `ImpactValue` -> `ImpactRoute.TestAMintedRoleRemovalCarriesItsLoss` red (run 15185).
+- mutation: `ScreenAction.Run` answers the preview before the write pairs' gate -> `ImpactRoute.TestTheImpactRouteRefusesWhomTheActionRouteRefuses` red, with the refused and role-removal legs (run 15189).
+- mutation: `Impact.Holders` keeps only owner rows typed exactly `User` -> `ImpactRoute.TestARoleDeleteNamesItsHoldersAndGrantingApplications` and the minted role-delete leg red (run 15190).
+- mutation: `Impact.Guarded` compares `Resource` with case -> `ImpactRoute` resource-delete, guarded-database and unchecked-part legs red (run 15191).
+- mutation: the card's impact block moved outside `@if (buttonsVisible)` -> `proposal-card-impact.spec.ts` "none once the card is no longer live" red.
+
+**Tests added (QA).** AC4's unchecked-part text was pinned server-side (`ImpactRoute`) and at the
+pure `impactLine` function (`tools/impact.test.mjs`), but no test rendered it through the actual
+typed-name dialog the user sees. Added
+`ui/src/app/shell/screen-action-handler.spec.ts` `"states a resource delete's unchecked part as
+its advisory, naming the missing pair, never as none"`.
+
+- mutation: `core/impact.ts` `phraseOf`'s unchecked branch (`if (part.unchecked !== '')`) disabled
+  for the non-`loses` parts -> the new test's advisory assertion red (42 of 43 in the file still
+  green); reverted, `git diff --stat` on `core/impact.ts` empty afterwards.
+
+**Mutations run (code review, 2026-09-26).** Each applied, observed red, reverted byte-identical; `ocupilot-ci` reloaded from the reverted tree.
+
+- mutation: `Effective.Read` stops queueing `GrantedRoles` -> `ImpactRoute.TestARoleRemovalLosesOnlyWhatNoOtherRoleGrants` G1 leg red (run 15197).
+- mutation: the preview's secret refusal in `ScreenAction.Resolve` disabled -> `ImpactRoute.TestOtherActionsAnswerNoImpact` secret leg red (run 15197); green after revert (run 15198).
+- mutation: `impactText` renders about `''` -> `proposal-card-impact.spec.ts` "names the account a proposed role removal is about" red.
+- mutation: drop the `ask` check in `openWithImpact` -> `screen-action-handler.spec.ts` "opens the dialog of the Delete started last ..." red.
+- mutation: `phraseOf` inserts names by plain string -> `tools/impact.test.mjs` "a name is shown as written ..." red.
+
+**Mutations run (CI rework 1, 2026-09-27).** Same discipline on `ocupilot-ci`.
+
+- mutation: `ScreenImpact.Handle`'s missing-action refusal disabled -> `ImpactRoute.TestOtherActionsAnswerNoImpact` missing-action leg red (run 15202); `EndpointCoverage.TestEveryProbeDispatchesToItsRoute` impact probe red (run 15203).
+- mutation: that refusal answers `AGENT.BADBODY` instead of `TOOL.ARGUMENTS` -> `EndpointCoverage` red on the impact row's `expect` alone (run 15204).
+- mutation: that refusal keyed on an empty `action` instead of `IsDefined` -> `ImpactRoute.TestOtherActionsAnswerNoImpact` empty-action leg red (run 15210); green after revert (run 15211).
+
+**Mutations run (CI rework 1 re-review, 2026-09-27).** Same discipline on `ocupilot-ci`, whole tree reloaded each time; working tree byte-identical after each revert.
+
+- mutation: the missing-action refusal answers `AGENT.BADBODY` -> `ImpactRoute.TestOtherActionsAnswerNoImpact` red on "as a request-shape refusal, never the router's route-not-found" alone (run 15212).
+- mutation: that refusal also taken for a named action not in `RowActionIds` -> `ImpactRoute.TestOtherActionsAnswerNoImpact` red on the undeclared leg's two assertions alone, the empty leg green (run 15213).
+- after the final revert: `ImpactRoute` 10/10 (run 15214), `EndpointCoverage` 2/2 (run 15215).
+
+## Auto Run Result
+
+Status: done
+Blocking condition: none
+
+**Change.** A role delete, a resource delete and a user update that drops a role now carry an impact computed on the instance as the caller: `Kernel/Shell/Effective.cls` (the composition), `Kernel/Proposal/Impact.cls` (prohibited set first, then each part behind its screen's pair gate), stored at mint on `Propose.Impact` and served on the wire row, and read fresh by the dialogs through `GET /screens/:screen/impact` (`Api/ScreenImpact.cls`, resolved by `ScreenAction.Preview`). The client renders one "Impact: ..." line (`core/impact.ts`) on the card above the privilege line, as the Delete dialogs' advisory (replacing DW-1513's holders line), and under Remove role's picker.
+
+**Files.** New: `Effective.cls`, `Impact.cls`, `ScreenImpact.cls`, `Test/Effective.cls`, `Test/ImpactRoute.cls`, `core/impact.ts`, `proposal-card-impact.spec.ts`, `tools/impact.test.mjs`, `browser/impact.browser-spec.mjs`. Changed: `Mint.cls`, `Propose.cls`, `ScreenAction.cls` (preview), `Router.cls`, `EndpointCoverage.cls`, `ProposalWire.cls`, `turn.ts`, `proposal-view.ts`, `proposal-card.ts`, `role-dialog.ts`, `screen-action-dialogs.ts`, `screen-action-handler.ts`, `strings.ts`, EXPERIENCE.md (row 577 added; 479 and the footer bullet edited in place; `:617` citation moved to `:618`), `scripts/ci-throwaway.sh` (roster line), and three existing specs whose role-delete leg now expects the impact line (`roles-editor.browser-spec.mjs`, `role-editor.page.spec.ts`, `screen-action-handler.spec.ts`).
+
+**Review.** 16 findings: 2 medium and 5 low patched (two `ImpactRoute` legs added, five mutation lines recorded), 6 false, 5 low rejected with reasons in the triage log, 0 deferred from review; one pre-existing flake recorded under `deferred:`. Follow-up review: `false` (two medium patches, both test additions whose mutations were observed red; no unverified risk can be named).
+
+**Verification (stage).** Node tools 40/40; component specs 67/67 (five files); `Effective` 7/7, `ImpactRoute` 10/10 (re-run after the review mutations were reverted), `ProposalWire` 16/16, `EndpointCoverage` 2/2 on `ocupilot-ci`; bundle rebuilt and redeployed (1.89 MB initial, under 1900 kB), `impact.browser-spec.mjs` 5/5 and `roles-editor.browser-spec.mjs` 8/8; `npm test` 1,545 node + 112 component files green; `check-objectscript` 0 problems; `lint-docs` clean. Full ObjectScript sweep ran once in the handoff (above). No lock on Epic 14's hunks was needed; none of its files' hunks were touched.
+
+**Residual risk.** The sweep ran before the two review legs were added to `ImpactRoute`; that class was re-run alone green afterwards.
+
+**Rework (CI, iteration 1).** `Api/ScreenImpact.cls`: a request with no `action` parameter answers 400 `TOOL.ARGUMENTS` before any read; an empty or undeclared action keeps the action route's 404 `ROUTE.NOTFOUND`; `ScreenAction.cls` and `Router.cls` untouched. `Test/ImpactRoute.cls`: missing, empty and undeclared legs. `Test/EndpointCoverage.cls`: the impact probe row's `substitutewhy` and `expect="code=TOOL.ARGUMENTS"` only (Epic 14's version has no such row). Review: 1 low patched (a mutation line), 1 low and 2 false rejected; nothing deferred; follow-up review `false` (no high patched). Verified on `ocupilot-ci`: `EndpointCoverage` 2/2 (run 15208), `ImpactRoute` 10/10 (run 15211), `ProhibitedRoute` 24/24 (run 15207, the action route's undeclared-action 404); `check-objectscript` 0 problems.

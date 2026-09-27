@@ -111,4 +111,32 @@ ClassMethod TerminateWithError(pEndpoint As %String, pPid As %String, Output pRe
     Quit tSC
 }
 
+/// <p>The kind of script step <method>Snippet</method> renders: <code>objectscript</code> for
+/// <parameter>PROCESSENDPOINT</parameter> <parameter>TERMINATETYPE</parameter>, which this port
+/// carries out itself when the error flag is asked for, and the admin port's answer otherwise.</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    If (pEndpoint = ..#PROCESSENDPOINT) && (pType = ..#TERMINATETYPE) Quit "objectscript"
+    Quit ##super(pEndpoint, pType)
+}
+
+/// <p><method>Invoke</method>'s branches as a script (AD-59): a terminate that carries the error
+/// flag is the <code>SYS.Process</code> call <method>TerminateWithError</method> makes, behind the
+/// same terminable check; every other call is the admin port's script with
+/// <parameter>SENDERRORPARAM</parameter> removed from a copy of <var>pQuery</var>.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    Kill tQuery
+    Merge tQuery = pQuery
+    Set tSendError = $Get(tQuery(..#SENDERRORPARAM))
+    Kill tQuery(..#SENDERRORPARAM)
+    If (pEndpoint = ..#PROCESSENDPOINT) && (pType = ..#TERMINATETYPE) && (tSendError = 1) {
+        Set tPid = ..Literal($Get(tQuery(..#IDPARAM)))
+        Set tSteps = []
+        Do tSteps.%Push(..ObjectScriptStep($ListBuild("Set tProcess = ##class(SYS.Process).%OpenId(" _ tPid _ ")", "Set tSC = $Select($IsObject(tProcess) && tProcess.CanBeTerminated: tProcess.Terminate(1), 1: $System.Status.Error(5001, ""that process is gone or cannot be terminated""))", "Do $System.Status.DisplayError(tSC)")))
+        Quit tSteps
+    }
+    Quit ##super(pEndpoint, pType, .tQuery, pBody, pContext)
+}
+
 }

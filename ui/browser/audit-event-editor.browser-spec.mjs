@@ -119,7 +119,8 @@ async function clickDialogButton(page, label) {
 
 async function waitForSaved(page) {
   await page.waitForFunction(
-    (sentence) => document.querySelector('[role="dialog"] [role="status"]')?.textContent?.trim() === sentence,
+    // Story 16.17: the text, or the text and the instance's read-back line after it.
+    (sentence) => ((shown) => shown === sentence || shown.startsWith(`${sentence} \u00b7 `))(document.querySelector('[role="dialog"] [role="status"]')?.textContent?.trim() ?? ''),
     { timeout: config.navigationTimeoutMs },
     STRINGS.formSaved
   );

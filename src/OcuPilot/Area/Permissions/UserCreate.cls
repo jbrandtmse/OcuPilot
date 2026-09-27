@@ -48,9 +48,10 @@ ClassMethod ProhibitedClass() As %String
 }
 
 /// <p>Answer <code>POST /users</code>: create one account from the body and answer
-/// <code>{name, user}</code> with 201, the account as the instance then holds it. A broken rule is
-/// one 422 <parameter>OcuPilot.Api.Error.USERVALIDATION</parameter> envelope carrying every
-/// violation; any other refusal is the port's or the prohibited set's own envelope.</p>
+/// <code>{name, user, readBack}</code> with 201, the account as the instance then holds it and the
+/// write's read-back (AD-58). A broken rule is one 422
+/// <parameter>OcuPilot.Api.Error.USERVALIDATION</parameter> envelope carrying every violation; any
+/// other refusal is the port's or the prohibited set's own envelope.</p>
 ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
@@ -68,7 +69,7 @@ ClassMethod HandleCreate() As %Status
 
         Set tName = ""
         If tBody.%GetTypeOf(..#IDARGUMENT) = "string" Set tName = tBody.%Get(..#IDARGUMENT)
-        Set tPerformSC = ..Perform(tName, tBody, .tCreated, .tHttp, .tFault, .tViolations)
+        Set tPerformSC = ..Perform(tName, tBody, .tCreated, .tHttp, .tFault, .tViolations, .tReadBack)
         Set tBody = ""
         If $Get(tViolations) > 0 {
             Set tSC = ..RenderViolations(.tViolations)
@@ -85,6 +86,7 @@ ClassMethod HandleCreate() As %Status
         Set tAnswer = {}
         Do tAnswer.%Set("name", tName, "string")
         Do tAnswer.%Set("user", $Select($IsObject($Get(tCreated)): tCreated, 1: {}))
+        If $IsObject($Get(tReadBack)) Do tAnswer.%Set("readBack", tReadBack)
         Set tSC = ##class(OcuPilot.Api.Response).JSONStatus(201, tAnswer)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -94,16 +96,17 @@ ClassMethod HandleCreate() As %Status
 
 /// <p>Create the account <var>pName</var> from <var>pArgs</var>, and answer the account the
 /// instance then holds in <var>pCreated</var>.</p>
-/// <p><b>Caller contract:</b> <var>pViolations</var> is the violation array
-/// (<code>pViolations(n) = $ListBuild(field, code[, reason])</code>, count in
-/// <code>pViolations</code>); a non-zero count means nothing was written and the other outputs say
-/// nothing. Otherwise an error status carries <var>pHttpStatus</var> and <var>pFault</var>, and
-/// success carries the created account.</p>
-ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations) As %Status
+/// <p><b>Caller contract:</b> <var>pViolations</var> is the violation array (<code>pViolations(n) =
+/// $ListBuild(field, code[, reason])</code>, count in <code>pViolations</code>); a non-zero count
+/// means nothing was written and the other outputs say nothing. Otherwise an error status carries
+/// <var>pHttpStatus</var> and <var>pFault</var>, and success carries the created account and, in
+/// <var>pReadBack</var>, the write's read-back (AD-58).</p>
+ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pReadBack As %DynamicObject) As %Status
 {
     Set pCreated = ""
     Set pHttpStatus = 0
     Set pFault = ""
+    Set pReadBack = ""
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -158,6 +161,8 @@ ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated A
         Kill tQuery
         Set tQuery($ClassMethod(tClass, "IdParam")) = pName
         Set tSC = $ClassMethod(..PortClass(), "Invoke", $ClassMethod(tClass, "Endpoint"), $ClassMethod(tClass, "WriteType"), .tQuery, tPayload, .pCreated, .pHttpStatus, .pFault)
+        ; AD-58: the account read back through the tool's port and compared with what was sent.
+        If $$$ISOK(tSC) Set pReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(tClass, pName, tPayload, "", ..PortClass(), $Get(pCreated), pHttpStatus)
         Set tPayload = ""
     } Catch ex {
         Set pCreated = ""

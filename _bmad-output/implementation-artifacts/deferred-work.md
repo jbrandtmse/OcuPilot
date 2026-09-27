@@ -3318,6 +3318,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T03:19:56Z status=routed owner=11-4-citation-chips-with-click-through by=x0 note=a new reply-surface affordance; 11.4 is the named story that adds reply-surface affordances
 - 2026-09-19T18:35:53Z status=routed owner=range-end-cleanup by=burndown note=Rule 27 non-blocking: a DESIGN.md affordance Epic 4 did not build; nothing breaks without a copy button
 - 2026-09-26T09:53:47Z status=routed owner=14-1-the-copy-out-draft by=spec_gate note=14.1 AC2 builds a copy control on the code surface; build it once for reply code blocks too
+- 2026-09-26T21:18:38Z status=resolved-by:14-1-the-copy-out-draft by=adjudication note=ui/src/app/shell/reply.ts attaches createCopyButton (shell/copy-control.ts) to each pre.ocu-reply-pre after DOMPurify; pinned by reply.spec.ts and the reply leg of copy-out-draft.browser-spec.mjs (mutation recorded in the spec)
 
 ### DW-1082: GFM tables in an agent reply render as their literal Markdown source, not as a table
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3502,6 +3503,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T03:19:55Z status=routed owner=14-4-transcripts-retention-and-administrator-access by=x0 note=the entry names Story 14.4 as the bound's home; retention is that story's subject
 - 2026-09-19T18:35:54Z status=routed owner=range-end-cleanup by=burndown note=Rule 27 non-blocking: ledger row growth until Story 14.4 owns it
 - 2026-09-26T09:53:47Z status=routed owner=14-4-transcripts-retention-and-administrator-access by=spec_gate note=14.4 AC2's retention purge task; the spine's Retention row puts the agent ledger in that purge
+- 2026-09-27T12:50:19Z status=resolved-by:14-4-transcripts-retention-and-administrator-access by=adjudication note=Kernel/Retention.cls purges ledger rows older than the longest retention across definitions plus LEDGERMARGINSECONDS, run daily by Kernel/RetentionTask; pinned by Test/Retention.cls (spec Verification mutations)
 
 ### DW-1123: Six write and read branches have no assertion: a provider row's `error` leg, the boundary-stop refusal writer, the three client-call writers (step-cap drop, boundary stop during the wait, settle), `truncated` reading true, the unparseable-requirement withhold, and `Api.Ledger.RenderFault`'s 503 and 
 - source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4100,6 +4102,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T09:42:46Z status=open owner=burndown by=dev note=needs one owner decision: publish two names in EXPERIENCE.md's Fixed strings table, or keep the keyboard-only affordance
 - 2026-09-18T16:42:53Z status=decision-pending owner=burndown by=burndown note=needs published copy: EXPERIENCE.md names the next and previous match controls but publishes no accessible name for either, and a runner may not invent product copy; today they are Enter and Shift+Enter on the sticky search, pinned in the component and browser specs
 - 2026-09-18T19:44:55Z status=routed owner=16-8-the-six-secondary-log-viewers by=merge_gate note=copy approved: Next match / Previous match, with the strings rows
+- 2026-09-27T19:07:34Z status=resolved-by:16-8-the-six-secondary-log-viewers by=adjudication note=log-viewer.page.ts renders Next match / Previous match buttons (strings.ts:3123); pinned in log-viewer.spec.ts
 
 ### DW-1103: IRIS escalates only severity 3 to alerts.log, so the file cannot be seeded at the other four levels through its own writer
 - source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4125,6 +4128,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: app.ts's sign-out teardown calls instance, navigation, scope, connectivity, refresh, auditSearch, errorLogDrill, definitionForm, formDirty and agentStatus reset(); LogViewerStore is absent, and grep finds it named only by log-viewer.page.ts and its spec. The store is providedIn root and holds loaded()=true, so after a sign-out and a new sign-in in the same tab the page constructor's 'if (!loaded && !loading) open()' does not re-read and the previous principal's alerts.log rows render under the new one (AD-8: rows are data THIS principal was allowed to read). The fix is one line in app.ts, which this story does not own.
 - 2026-09-18T10:34:11Z status=escalated owner=burndown by=cr note=app.ts is contended (Epic 4) and this story may not edit it. The store's own doc comment claimed the wiring existed; that claim was corrected at its origin in this pass. reopen_if: sign in, open logs/alerts, sign out, sign in as another principal, open logs/alerts - the first principal's rows are on screen.
 - 2026-09-18T19:44:55Z status=routed owner=16-8-the-six-secondary-log-viewers by=merge_gate note=add LogViewerStore to sign-out teardown; one principal's rows must not survive a sign-out
+- 2026-09-27T19:07:34Z status=resolved-by:16-8-the-six-secondary-log-viewers by=adjudication note=app.ts:566 resets LogViewerStore at sign-out; pinned in app.spec.ts:1207 with a mutation
 
 ### DW-1111: Screen/Tool/ErrorRead.cls still carries the admin-port-only claim this story falsifies
 - source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -4498,6 +4502,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The I/O row describes a reload after retention dropping the cards; nothing sweeps, so the row describes behaviour no code produces. Location: src/OcuPilot/Kernel/Agent/Limits.cls RETENTIONSECONDS
 - 2026-09-19T18:03:41Z status=routed owner=14-4-transcripts-retention-and-administrator-access by=harvest note=downstream-blocking (Rule 27) for 14.4, which is the story that builds the retention sweep this row assumes
+- 2026-09-27T12:50:19Z status=resolved-by:14-4-transcripts-retention-and-administrator-access by=adjudication note=Kernel/State/Turn.cls GuardedDelete now deletes the turn's proposals (Propose.GuardedDeleteForTurn), so a conversation reloaded after retention shows no cards; pinned by Test/Retention.cls and ProposalWrite (spec Verification)
 
 ### DW-1241: ledger.sh load marked every range-end-cleanup entry UNKNOWN although check_owner accepts it, so Rule 17's epic-start gate would halt or repair the symbolic owner away
 - source: Story 5.2 harvest 2026-09-19 | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -5804,6 +5809,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Kernel/Shell/About.cls, Kernel/Shell/Instance.cls and Kernel/Shell/SystemInfo.cls each carry the six members; Test/Instance.cls:357 and Test/UiSystemRead.cls's log-seam row are the same test copied too
 - 2026-09-20T21:40:27Z status=routed owner=range-end-cleanup by=cr note=the spec ratifies copying About whole; at three copies it needs a base class, which touches two earlier stories' files
 - 2026-09-26T09:53:52Z status=routed owner=16-18-home-s-performance-row by=spec_gate note=16.18 AC1 extends SystemInfo's dashboard read seam; extract the shared base before a fourth reader
+- 2026-09-26T22:04:46Z status=routed owner=16-21-security-findings-with-a-fix-you-confirm by=adjudication note=16.18 read through MonitorPort and added no fourth seam copy; 16.21's Home findings panel is the next shell-chrome reader: extract the base first
+- 2026-09-27T08:49:01Z status=resolved-by:16-21-security-findings-with-a-fix-you-confirm by=adjudication note=Kernel/Shell/FieldRead.cls extracted in 620f6e1b; About, SystemInfo, Instance and Findings extend it; their read suites unchanged and green
 
 ### DW-1401: Two chrome surfaces render EXPERIENCE.md's Generic internal error sentence as a plain paragraph, without the role=alert and the Retry and Open messages.log actions that row publishes, and neither can tell an unreachable instance from a 5xx
 - source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -7024,6 +7031,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: FR-24 and EXPERIENCE.md's Definition form row list a read-only flag; definition-form.page.ts renders none (only the store carries readOnly). Pre-existing; 11.10's flip to read/write makes the API the only way to a read-only definition.
 - 2026-09-24T17:07:50Z status=decision-pending owner=burndown by=cr note=product call: add the control (new string, row, tests) or accept Switches' enforced read-only as the UI path
 - 2026-09-26T18:31:50Z status=routed owner=14-5-the-per-user-read-only-toggle by=merge_gate note=orchestrator (recommended disposition, owner may veto): the Definition form's read-only control belongs with 14.5's read-only work
+- 2026-09-27T09:33:55Z status=resolved-by:14-5-the-per-user-read-only-toggle by=adjudication note=definition-form.page.ts draws a Read-only checkbox in Advanced before Retention bound to the definition's readOnly; pinned by definition-form.page.spec.ts and the DW-1621 leg of definitions.browser-spec.mjs (unbinding (change) turns both red, spec Verification)
 
 ### DW-1622: A create whose body sends readOnly as a quoted string stores the read/write default without telling the caller
 - source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: low | fix-risk: med | footprint: in-epic
@@ -7471,3 +7479,266 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: src/OcuPilot/Test/**
 - evidence: upgrade check on ocupilot-c-ci: 2,635/2,664 with two seeded definitions, 2,664/2,664 after deleting them; fresh 1.0.2 install with one definition seeded reproduces AgentState 13/13 and TurnWire 1/13
 - 2026-09-27T19:21:32Z status=open owner=range-end-cleanup by=orchestrator note=test isolation, not a product defect; each test should create and clean up its own definition state or tolerate existing definitions
+### DW-1704: CLAUDE.md tells agents to read all 56 ADs; the spine holds 57 since AD-57 landed at Story 16.1's spec gate
+- source: spec-16-1-the-try-it-request-console.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: grep -c '^### AD-' ARCHITECTURE-SPINE.md reads 57; CLAUDE.md:105 says 'all 56 ADs'
+- 2026-09-26T16:14:16Z status=wontfix-accepted owner=16-1-the-try-it-request-console by=cr note=agent-context file, lead's to edit; reopen_if=a gate or agent uses CLAUDE.md's AD count as a completeness check
+- 2026-09-26T16:16:03Z status=resolved-by:16-1-the-try-it-request-console by=adjudication note=CLAUDE.md:105 now reads all 57 ADs (lead bookkeeping in the 16.1 commit)
+
+### DW-1709: A role's Resources grant sent with Permissions "WR" (or members reordered) reads back as "differs in Resources": the compare vocabulary has no nested mode
+- source: spec-16-17-the-read-back-line.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: unordered compares each element's whole Display JSON; the vendor stores WR as RW (measured, spec Design Notes); settle by an agent role update granting WR on ocupilot-ci
+- 2026-09-26T18:47:27Z status=open owner=16-17-the-read-back-line by=harvest note=in-story; code review patches or it takes the MED iteration
+- 2026-09-26T19:26:07Z status=resolved-by:16-17-the-read-back-line by=cr note=Resources[].Permissions letters under unordered (field-lists element-member mode); ReadBackRoute WR->RW grant reads matches on ocupilot-ci
+
+### DW-1710: A list-row create (TaskCreate, OAuthRegisteredClientCreate) reads matches over only the fields its declared list row carries
+- source: spec-16-17-the-read-back-line.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: The task list row carries 8 of the create's 34 sent keys (probed on ocupilot-ci); the spec binds the re-read to the tool's declared list read. Row-key-only now reads unchecked; a partial compare still reads matches.
+- 2026-09-26T19:26:07Z status=decision-pending owner=burndown by=cr note=human=choose: keep list-row compare, or re-read a create by createdId through the update tool's read (AD-58 wording)
+- 2026-09-26T19:26:13Z status=decision-pending owner=burndown by=cr note=product call for the decision sheet: keep list-row compare, or re-read a create by createdId via the update tool's read
+- 2026-09-27T16:36:14Z status=routed owner=range-end-cleanup by=merge_gate note=decided: a create re-reads by createdId through the update tool's read; AD-58 wording amended with the fix (orchestrator 2026-09-27)
+
+### DW-1711: Most Save routes' read-back verdict is not asserted by a route-level test (LDAP, X.509, audit event, service, resource, four OAuth updates, task create Save)
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Verdicts are pinned for the web app, role, user, device, wallet, SSL, task edit Saves, the OAuth resource server create and three create editors; the declarations are pinned in field-lists.test.mjs.
+- 2026-09-26T19:26:07Z status=wontfix-accepted owner=16-17-the-read-back-line by=cr note=reopen_if=a Save on one of the named editors reads differs or could-not-be-read on an ordinary edit
+
+### DW-1712: Classification.cls carries two permissions.users.create entries; JSON parsing keeps only the last
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Pre-existing since Story 8.2 (git log -S); both copies carry the same compare declaration.
+- 2026-09-26T19:26:07Z status=wontfix-accepted owner=16-17-the-read-back-line by=cr note=reopen_if=the two permissions.users.create entries in Classification.cls differ
+
+### DW-1713: A 202 write's read-back stays unchecked/running on the proposal row after the queued work finishes
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Spec intent: a 202 write is unchecked with reason running and no re-read is made (AD-26, AD-58).
+- 2026-09-26T19:26:07Z status=by-design owner=16-17-the-read-back-line by=cr note=reopens only by amending AD-58 to re-read a finished continuation
+
+### DW-1714: The default read-back rule compares two numeric strings by value, so 007 matches 7 and very long digit strings lose precision
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Spec's default comparison: where both are valid numbers compare by value (measured 0900 read back 900).
+- 2026-09-26T19:26:07Z status=by-design owner=16-17-the-read-back-line by=cr note=real only for a string field whose leading zeros matter or a >18-digit numeric id; then declare a mode
+
+### DW-1715: A read-back that compared nothing reports reason unreadable, which renders as could not be read
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec closes the reason vocabulary at running and unreadable; nothing-compared is a failure to reach a verdict.
+- 2026-09-26T19:26:07Z status=by-design owner=16-17-the-read-back-line by=cr note=reopens by a spec amendment adding a reason and its copy
+
+### DW-1716: A web app Save that changes MatchRoles reports it written, not read back, because its nested rows default to secret
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ToolFields classifies MatchRoles[].MatchRole and TargetRoles[] secret (default class); AD-35 forbids examining a secret's read value.
+- 2026-09-26T19:26:07Z status=by-design owner=16-17-the-read-back-line by=cr note=reopens if webapp.list.update's classification reclassifies MatchRoles rows ordinary
+
+### DW-1717: A list-row create re-reads by the sent name, so a same-named object created concurrently could be compared
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The mint and the confirm refuse a name any task or client holds; only a create racing between the write and its re-read reaches it.
+- 2026-09-26T19:26:07Z status=wontfix-theoretical owner=16-17-the-read-back-line by=cr note=real if the vendor or another caller creates the same name inside the write-to-re-read window
+
+### DW-1719: PreferencesWire's home-refusal leg (a favorite or view named home is refused) has never run locally and its widening mutation is unrecorded
+- source: spec-16-18-home-s-performance-row.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ocupilot-ci lacks OCUPILOT_ALLOW_ACCOUNT_PREFERENCES (docker exec printenv, 2026-09-26), so the class refuses; CI's instance job arms it via scripts/ci-throwaway.sh. Curl on ocupilot-ci read home favorite 422.
+- 2026-09-26T22:02:39Z status=wontfix-accepted owner=16-18-home-s-performance-row by=cr note=reopen_if=CI instance job reports PreferencesWire TestHomesRateIsRememberedUnderItsOwnName red
+
+### DW-1721: OcuPilot.Test.ErrorLog.TestABadMaxRowsIsRefusedNotDefaulted depends on sweep order (needs two application errors on one date)
+- source: spec-16-19-impact-lines-on-removals.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: failed once in the 16.19 implement sweep on ocupilot-ci, green re-run alone (run 15179); not touched by 16.19
+- 2026-09-27T01:32:52Z status=wontfix-accepted owner=16-19-impact-lines-on-removals by=harvest note=reopen_if=CI's instance job reports this test red
+
+### DW-1723: EndpointCoverage documents expect only as a why's precondition; the impact row now uses it to assert a refusal code
+- source: spec-16-19-impact-lines-on-removals.md (cr rework re-review) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Class doc (line 62-64) and TestEveryProbeDispatchesToItsRoute doc and its failure message (line 511) tie expect to a why; the GET impact row declares expect=code=TOOL.ARGUMENTS with no why, so a red there reads 'the precondition its why rests on'. File contended with Epic 14; this pass may touch only the impact row.
+- 2026-09-27T03:11:10Z status=wontfix-accepted owner=16-19-impact-lines-on-removals by=cr note=reopen_if=a second why-less expect row lands, or an expect failure on the impact row is misread in a review
+
+### DW-1726: LogSourcePort.Page follows a symlink, and answers 503 on a directory or FIFO, carrying a rotated name in the manager directory; Files lists only Type F
+- source: spec-16-20-older-messages-log-files.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DirectlyIn compares names only (no link resolution); %File:FileSet types a symlink or FIFO F; %File.Exists is 1 for a directory (probed on ocupilot-ci), so OpenStream fails into LOG.UNREADABLE plus an error-log entry.
+- 2026-09-27T05:49:07Z status=wontfix-theoretical owner=16-20-older-messages-log-files by=cr note=real only if someone other than the instance owner can write the manager directory
+
+### DW-1727: The file choice navigates on every change event, so arrow keys on a closed select (Chrome on Windows/Linux) push one history entry and one read per file passed
+- source: spec-16-20-older-messages-log-files.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: log-viewer.page.ts onFile calls navigateByUrl with no replaceUrl on each change; each file view is its own address by design, so replaceUrl would change what Back does.
+- 2026-09-27T05:49:07Z status=wontfix-accepted owner=16-20-older-messages-log-files by=cr note=reopen_if=a user reports Back stepping through files they only scrolled past in the choice
+
+### DW-1728: An older file's lines reach the model as logs/messages screen context naming no file, while logs.messages.read still reads messages.log
+- source: spec-16-20-older-messages-log-files.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: publishRows sends {time, severity, text} under route logs/messages; Rows calls Page with no file; spec Decision 2 keeps the tool on messages.log and the context file-less.
+- 2026-09-27T05:49:07Z status=by-design owner=16-20-older-messages-log-files by=cr note=spec Decision 2 and AD-21 fourth case; reopens only via spec amendment adding file to context or a tool criterion
+
+### DW-1752: Guardrails secret list shows each screen's declared secrets against every tool on it (permissions.users.delete: Password)
+- source: spec-16-22-the-guardrails-page.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Guardrails.Read lists Registry.SecretArguments per advertised write tool (spec Always); Write.SecretArguments answers the descriptor's list unless a tool overrides it, so delete/revoke tools list the screen's secrets. Accurate to what Mint refuses and Dispatch strips; noisy as a trust statement.
+- 2026-09-27T12:45:47Z status=by-design owner=16-22-the-guardrails-page by=cr note=reopens by spec amendment narrowing to SecretBodyNames+ComposedSecrets once that set is shown complete
+
+### DW-1753: Download CSV's formula guard reads only a field's first character: a whitespace-led formula, or a ';'-split cell in a semicolon-locale spreadsheet, is not prefixed
+- source: spec-16-23-any-table-downloaded-as-csv.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: csvField guards /^[=+\-@\t\r]/ only (core/csv.ts:17). LibreOffice evaluates ' =1+1' only with the non-default Trim spaces + Evaluate formulas import options; Excel on a ';' list separator splits 'a;=X()' mid-line, where quoting cannot help (inference, OWASP WSTG: depends on field separator).
+- 2026-09-27T15:38:45Z status=wontfix-accepted owner=16-23-any-table-downloaded-as-csv by=cr note=downloads get Protected View; reopen_if=a CSV from Download CSV opens with a formula cell evaluated in Excel or Calc with default import options
+### DW-1718: A copy-out draft of a merge write renders the stored payload as a full PUT, so running it after the target changed reverts the change
+- source: spec-14-1-the-copy-out-draft.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Draft.Render reads only the stored row and never re-reads the target (no fingerprint check); Confirm refuses TARGETCHANGED, the draft cannot.
+- 2026-09-26T21:17:13Z status=by-design owner=14-1-the-copy-out-draft by=cr note=AD-59: the script runs outside OcuPilot's fingerprint (AD-6); reopen only via an AD-59 amendment
+
+### DW-1720: DraftExecute application-error delete test accepts LOG.DATE when its two seeds straddle midnight
+- source: spec-14-1-the-copy-out-draft.md (cr rework 1) | severity: low | fix-risk: low | footprint: in-story
+- evidence: tGoneCode switches to LOG.DATE when tOtherDate differs from tDate; then a date-wide over-delete passes, and residue on the new date gives a false red. Needs two SeedInto calls microseconds apart to cross midnight.
+- 2026-09-26T22:29:00Z status=wontfix-theoretical owner=14-1-the-copy-out-draft by=cr note=real only if a CI run seeds across midnight; reopen_if=a DraftExecute red or false green whose two seeded dates differ
+
+### DW-1722: DraftRoute.Counts reads %SYS.Audit in HSCUSTOM, where the audit global is unmapped, so its 'no agent marker is written' comparison is 0 against 0 and cannot fail
+- source: spec-14-8-the-seeded-injection-test.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 14.8 QA measured: the same query reads 0 in HSCUSTOM and 11,835 from %SYS on ocupilot-b-ci; InjectionSeed.WriteCounts had the identical defect and was fixed by switching to %SYS for that one query
+- 2026-09-27T02:52:01Z status=routed owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=harvest note=14.1 is closed; 14.3 is the next story of this epic and already runs the injection suite; a two-line fix plus a mutation
+- 2026-09-27T03:15:57Z occurrence=14-8-the-seeded-injection-test
+- 2026-09-27T06:52:41Z status=resolved-by:14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=adjudication note=DraftRoute.Counts switches to %SYS for the %SYS.Audit marker count and asserts both counts are real; AC4 pinned by a mutation (an agent marker written between the counts) that stayed green against the old HSCUSTOM count and goes red now (spec Verification)
+
+### DW-1724: InjectionEgress cannot see an outbound connection the vendor opens behind an admin-API type OcuPilot sends (Security.SSLConfig/TEST, REGISTERCLIENT), so a new such type would not redden the egress roster
+- source: spec-14-8-the-seeded-injection-test.md (cr) | severity: med | fix-risk: high | footprint: in-story
+- evidence: SslRules.Test sends Security.SSLConfig/TEST (vendor Security.SSLConfigs.TestConnection to operator Host:Port); OAuthClientPort.Register sends REGISTERCLIENT (vendor dynamic registration POST). Neither is on ROSTER; both user-originated (screen-only route / confirm), so no turn reaches them today (inference from callers)
+- 2026-09-27T03:15:58Z status=escalated owner=burndown by=cr note=no structural signal marks which admin-API types the vendor answers by connecting out; class doc now names both. Needs a per-type decision
+
+### DW-1725: The reply renderer turns a same-origin Markdown image into a real <img>, so a compromised reply can make the browser issue a GET to the instance; AD-11 rule 4 says nothing rendered issues a request to any host
+- source: spec-14-8-the-seeded-injection-test.md (cr) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/src/app/core/reply.ts imageNode:272-274 renders isSameOriginUrl images as <img src>; the 14.8 browser spec filters same-origin requests, so it pins off-origin only. No spine text scopes rule 4 to other hosts
+- 2026-09-27T03:15:58Z status=decision-pending owner=burndown by=cr note=product call: does rule 4's any host include the instance's own origin? If yes, render every image as its alt text
+
+### DW-1729: Sanitize.Strip omits invisible and bidi characters outside the spec's closed set (U+061C, U+00AD, U+180E, U+2028/9, U+FE00-FE0F, U+E0100-E01EF, U+FFF9-FFFB)
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Sanitize.cls Matchers strip loop lists exactly the spec's Always>Strip set; these code points reach the model unchanged. AD-60 is additional, not the defense.
+- 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=spec Always>Strip enumerates the set; reopen via spec amendment adding code points
+
+### DW-1730: Sanitize.Neutralize folds only ASCII case and the ASCII hyphen, so a lookalike-hyphen closing tag (U+2010/2011/2212/FF0D) survives
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Neutralize matches TAGNAME with $Find on an ASCII-folded copy; '</ocupilot' + U+2011 + 'data>' passes unchanged.
+- 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=spec Always>Neutralize names the ASCII string; AD-60 additional; reopen via spec amendment
+
+### DW-1731: Secret shapes are a closed list: DSA/PGP PEM, Basic auth, non-sk vendor keys unmatched; Bearer shape over-redacts 'bearer' + a 20-char word
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Matchers builds exactly the spec's five shapes (PEM words RSA/EC/ENCRYPTED/OPENSSH); over-match is the safe direction.
+- 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=AD-60 names a closed list; spec fixes each shape; reopen via spec amendment
+
+### DW-1732: A secret the AD-24 bound cut below its shape's minimum (e.g. sk- plus <20 chars then U+2026) is not redacted
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: Only RedactPem handles a bound-cut tail; other shapes need their full minimum length.
+- 2026-09-27T06:51:22Z status=wontfix-theoretical owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=real if a key prefix under 20 characters authenticates or narrows a brute force materially
+
+### DW-1733: Model copy diverges from card and citations: a row name the sanitizer changes gets no citation chip; a sanitizer fault leaves the step recorded ok
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: Loop.cls:566/569 take step content and citation candidates before Sanitize.Results at :583, by the spec's model-only scope.
+- 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=AD-60: tool card, citations and screens keep the bounded instance data
+
+### DW-1734: CleanTree's rebuild copies values by %Get/%Set: two names cleaning to the same text collide, and non-canonical JSON numbers are re-rendered
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: Rebuild runs only when a member name changes (control char, tag name or secret shape in a key); upstream producers emit %ToJSON output.
+- 2026-09-27T06:51:22Z status=wontfix-theoretical owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=real if a producer emits an object whose keys carry stripped characters beside their clean twin, or 1E10-style numbers
+
+### DW-1735: Turn-test frame readers are hand-copied (TurnContext/TurnSanitize ResultPayload, inline Unwrapped pairs, explain-screen's inline regex that throws TypeError on unframed)
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Every copy still reddens on an unframed block; explain-screen is limited to one line by Epic 16's contended hunks.
+- 2026-09-27T06:51:22Z status=wontfix-accepted owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=reopen_if=a CI red on an unframed result reads as a TypeError or a copy stops recognizing CUTOPENTAG
+
+### DW-1736: Built-in prompt names <ocupilot-data> but not the backstop's truncated="true" opening line
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Prompt.cls BUILTIN sentence 4 is fixed verbatim by the spec; the cut form fires only above 65,536 characters.
+- 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=spec Tasks fixes sentence 4 verbatim; reopen via spec amendment
+
+### DW-1737: Each tool_result reaches the model 33 characters (the frame) over the reply budget, counted before Sanitize wraps
+- source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Loop.AnswerTools subtracts content length before Results frames it.
+- 2026-09-27T06:51:22Z status=by-design owner=14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model by=cr note=spec Design Notes: the 33-character frame sits outside the payload's bound
+
+### DW-1738: ReadOnlyForYou and ToolWrite remove the suite account's read-only row without restoring it, so a run on a dev instance clears the operator's own choice
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test/ReadOnlyForYou.cls OnBefore/OnAfterOneTest and ToolWrite remove the Http/$Username row by key; SwitchFixture.Reset already resets instance switches the same way
+- 2026-09-27T09:32:37Z status=wontfix-accepted owner=14-5-the-per-user-read-only-toggle by=cr note=reopen_if=an owner reports a read-only-for-me choice lost after a suite run on a dev or slot instance
+
+### DW-1739: An AgentStatus read overtaken by setReadOnlyForYou drops its configured() answer, and a failed write that overtook a read leaves neither answer adopted
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: agent-status.ts read(): request !== this.request awaits newest and returns; writeReadOnlyForYou bumps request and adopts only restraint, and adopts nothing on failure
+- 2026-09-27T09:32:37Z status=wontfix-accepted owner=14-5-the-per-user-read-only-toggle by=cr note=reopen_if=the rail dot, banner or switch reads stale after pressing the switch while a status read (Enable, sign-in pass) is in flight
+
+### DW-1740: Two PUT /agent/restraint from one tab (a double press) could commit out of order and leave the switch showing the other value
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: read-only-toggle.ts onChange has no pending guard; the client adopts only the newest request's answer
+- 2026-09-27T09:32:37Z status=wontfix-theoretical owner=14-5-the-per-user-read-only-toggle by=cr note=real only if two requests from one tab ~100 ms apart are processed out of order server-side
+
+### DW-1741: setReadOnlyForYou adopts restraintOf defaults (all off) from a 200 body that is an array or lacks the verdict keys
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: writeReadOnlyForYou checks only typeof object; restraintOf falls back per key, the same as load()
+- 2026-09-27T09:32:37Z status=wontfix-theoretical owner=14-5-the-per-user-read-only-toggle by=cr note=real only if /agent/restraint answers 200 with a non-verdict body; RestraintBody always writes all ten keys
+
+### DW-1742: PUT /agent/restraint answers 500 when the choice was stored but the verdict read after it fails
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: HandleRestraintUpdate renders RenderInternal when RestraintBody errs after GuardedSetValue succeeded, so the client keeps the old state
+- 2026-09-27T09:32:37Z status=wontfix-theoretical owner=14-5-the-per-user-read-only-toggle by=cr note=real if Restraint.Resolved faults in the same request right after a successful Pref write (state DB unreadable mid-request)
+
+### DW-1743: The Definition form's read-only checkbox id ocu-definition-read-only breaks the ocu-definition-<wireName> pattern its siblings follow
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: definition-form.page.ts special-cases readOnly in controlId with a new constant
+- 2026-09-27T09:32:37Z status=by-design owner=14-5-the-per-user-read-only-toggle by=cr note=spec Tasks names the id ocu-definition-read-only; reopen via spec amendment
+
+### DW-1744: Precedence enforced > for you > definition, and the absent step-boundary abandon for the per-user toggle, rest on the spec's inference, not on AD-30 text
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Restraint.cls FOOTERKEYFORYOU marks the order (inference); AD-30 names enforced read-only and the kill switch for the step-boundary re-read
+- 2026-09-27T09:32:37Z status=by-design owner=14-5-the-per-user-read-only-toggle by=cr note=spec Design Notes: Precedence (inference) and No step-boundary abandon; AD-30 says the toggle sits over one gate; reopen via spec/AD
+
+### DW-1745: The read-only choice is stored per account, so a shared account's toggle restrains everyone signed in as it
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: Pref row keyed by UserName; the epics' user story says 'for my own session'
+- 2026-09-27T09:32:37Z status=by-design owner=14-5-the-per-user-read-only-toggle by=cr note=AD-50 per-user store and spec Always > Store define the per-user row; reopen via spec amendment
+
+### DW-1746: HandleRestraintUpdate copies Context.HandleUpdate's one-boolean-member body validation instead of sharing it
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: Api/Switches.cls HandleRestraintUpdate read/parse/extra-member/boolean checks mirror Api/Context.cls HandleUpdate
+- 2026-09-27T09:32:37Z status=wontfix-accepted owner=14-5-the-per-user-read-only-toggle by=cr note=reopen_if=a third route copies the exactly-one-boolean check, or the two copies are found to differ
+
+### DW-1747: The switch's AC2 legs press only with a pointer, and the browser leg waits a fixed 1 s to show nothing was sent
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: read-only-toggle.spec.ts and read-only-for-you.browser-spec.mjs click only; Space on a checkbox fires the same click activation
+- 2026-09-27T09:32:37Z status=wontfix-theoretical owner=14-5-the-per-user-read-only-toggle by=cr note=real if a keyboard press on the aria-disabled switch sends a PUT, or a PUT from a click lands after 1 s
+
+### DW-1748: The Read-only for me switch has an accessible name only, no visible label, and reads on under enforced whatever the stored choice
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-story
+- evidence: read-only-toggle.ts: visually hidden span plus aria-label; checked = readOnlyForYou || enforcedReadOnly
+- 2026-09-27T09:32:37Z status=by-design owner=14-5-the-per-user-read-only-toggle by=cr note=EXPERIENCE.md:289 publishes the string as the switch's accessible name and 'checked while ... enforced'; reopen via UX amendment
+
+### DW-1749: ui/angular.json and angular-json.test.mjs set maximumWarning 1900kB while origin/OCU-1-epic16 now holds 2004kB, so the two epics conflict there at merge
+- source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: dry-run merge against the Epic 16 tip conflicts only in these two files among 14.5's; this branch measures 1,857,424 bytes
+- 2026-09-27T09:32:38Z status=by-design owner=14-5-the-per-user-read-only-toggle by=cr note=standing ruling: resolved at merge by taking Epic 16's side (DW-1166 re-base); not edited here
+
+### DW-1750: The production Uninstall's call to Installer.RemoveRetentionTask is covered by no test
+- source: spec-14-4-transcripts-retention-and-administrator-access.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Deleting the call in Install/Installer.cls Uninstall leaves every suite green; no test runs the production uninstall, and a probe uninstall names no task class
+- 2026-09-27T11:57:42Z status=open owner=14-4-transcripts-retention-and-administrator-access by=harvest note=implement-stage deferral; for the code review to patch in-story
+- 2026-09-27T12:47:55Z status=resolved-by:14-4-transcripts-retention-and-administrator-access by=cr note=RetentionTask pins Uninstall's own uncommented statement via MethodDefinition; comment-out mutation red run 1783
+
+### DW-1751: GET /transcripts/:id maps a LEDGER.UNAVAILABLE gate fault to 503 and no test drives it
+- source: spec-14-4-transcripts-retention-and-administrator-access.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Mapping every fault to NotFound in Api/Transcripts.cls HandleRead leaves every suite green; driving it needs a failing ledger store reachable over HTTP, which no probe seam provides
+- 2026-09-27T11:57:42Z status=open owner=14-4-transcripts-retention-and-administrator-access by=harvest note=implement-stage deferral; for the code review to patch in-story or disposition
+- 2026-09-27T12:47:56Z status=resolved-by:14-4-transcripts-retention-and-administrator-access by=cr note=TranscriptGate.TestAnUnreadableStoreRendersA503OverTheRoute drives the 503 in process; 404-mapping mutation red run 1760
+
+### DW-1754: Policy.Resolve's fail-closed return on an unreadable policy store has no test at the resolver itself
+- source: spec-14-2-the-tool-governance-policy.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: The Confirm and dispatch legs drive a failing gate through seams; nothing makes State.Policy.GuardedAll fail, so a Resolve that fell through to the baseline on a read error would stay green (src/OcuPilot/Kernel/Governance/Policy.cls Resolve)
+- 2026-09-27T15:42:06Z status=open owner=14-2-the-tool-governance-policy by=harvest note=implement-stage deferral; for QA or the code review to pin in-story
+- 2026-09-27T16:06:25Z status=resolved-by:14-2-the-tool-governance-policy by=cr note=Policy.StoreClass seam + Test.GovernanceStoreProbe; Governance.TestAnUnreadableStoreResolvesTheKeyDisabled red run 2154
+
+### DW-1756: Epic 16's Guardrails page lists the instance's limits without Story 14.6's turns-per-hour setting once the branches merge
+- source: spec-14-6-per-user-turn-limits-and-the-banner-they-need.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: origin/OCU-1-epic16 src/OcuPilot/Kernel/Shell/Guardrails.cls:103-110 lists contextRowCap and two character caps; turnsPerHour (Kernel.State.Switch, Story 14.6) is absent (inference until merged)
+- 2026-09-27T18:41:50Z status=routed owner=16-22-the-guardrails-page by=harvest note=the Guardrails page belongs to Story 16.22; add turnsPerHour at or after the 1.0.2 staging merge
+
+### DW-1757: Smoke's two turn reserves record start records against the operator, counting toward that account's turns an hour
+- source: spec-14-6 code review | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Install/Smoke.cls:1394 and :1534 call Turn.GuardedReserve($Username, ...) with no limit; every reserve records a start and Smoke never forgets it, so smoke.sh as an administrator uses two of that account's hourly turns (inference).
+- 2026-09-27T19:14:16Z status=wontfix-accepted owner=14-6-per-user-turn-limits-and-the-banner-they-need by=cr note=reopen_if=an operator reports TURN.LIMITHOUR right after smoke.sh, or smoke runs on a schedule under a panel user's account
+
+### DW-1758: A failed start-record write after the row insert in Turn.GuardedReserve leaves a queued row until the lost-job reconcile finishes it
+- source: spec-14-6 code review | severity: low | fix-risk: med | footprint: in-story
+- evidence: Kernel/State/Turn.cls GuardedReserve inserts the row, sets the lease signal, then records the start; a failed global Set under AddRoles answers 500 with the row queued. Same shape as the existing signal write.
+- 2026-09-27T19:14:16Z status=wontfix-theoretical owner=14-6-per-user-turn-limits-and-the-banner-they-need by=cr note=real only if a Set on the protected database fails (database full or read-only); the reconcile then abandons the row
+
+### DW-1755: The Logs area now also requires %Ens_EventLog:USE (Story 16.8's interoperability event log), so a principal without it, such as the stock %Manager role, loses the whole Logs rail item, messages.log and alerts.log included
+- source: spec-16-8-the-six-secondary-log-viewers.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Area.cls logs row gains the pair because Registry.AreaCoverageProblem makes an area's set cover its screens'; %Manager lacks %Ens_EventLog:USE on ocupilot-ci (measured); the Epic 16 preamble forbids breaking a Release 1 screen
+- 2026-09-27T18:31:11Z status=decision-pending owner=burndown by=harvest note=product call: keep; or gate the event-log screen alone (amend AD-8's area rule); or drop the screen to Stage 2
+- 2026-09-27T20:03:07Z status=open owner=16-8-the-six-secondary-log-viewers by=merge_gate note=decided option B: gate only the event-log screen; Logs keeps its Release 1 set; AD-8 amended; fixed in a 16.8 rework

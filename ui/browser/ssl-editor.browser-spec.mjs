@@ -214,7 +214,8 @@ async function save(page) {
 /** Wait for the form bar's "Saved". */
 async function saved(page) {
   await page.waitForFunction(
-    (text) => document.querySelector('.ocu-form-bar-status [role="status"]')?.textContent.trim() === text,
+    // Story 16.17: the text, or the text and the instance's read-back line after it.
+    (text) => ((shown) => shown === text || shown.startsWith(`${text} \u00b7 `))(document.querySelector('.ocu-form-bar-status [role="status"]')?.textContent.trim() ?? ''),
     { timeout: config.navigationTimeoutMs },
     STRINGS.formSaved
   );

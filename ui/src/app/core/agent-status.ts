@@ -113,6 +113,12 @@ export interface Restraint {
   readonly killSwitchReason: string;
   readonly enforcedReadOnly: boolean;
   /**
+   * Whether this caller turned read-only on for themselves (Story 14.5): the stored choice, which
+   * the verdict reports whether or not another source wins. The panel's "Read-only for me" switch
+   * reads it; nothing here decides what it restrains.
+   */
+  readonly readOnlyForYou: boolean;
+  /**
    * Whether the instance was marking agent writes when that was last observed (AD-15).
    *
    * **Not part of the verdict**: marking is not a restraint (AD-30), so it blocks nothing and the
@@ -127,14 +133,14 @@ export interface Restraint {
  * The footer keys the verdict may answer with, which is the roster
  * `ui/tools/agent-status.test.mjs` holds against `core/strings.ts`.
  *
- * The server half is `OcuPilot.Test.Restraint`, which pins the same three literals against
+ * The server half is `OcuPilot.Test.Restraint`, which pins the same four literals against
  * `OcuPilot.Kernel.Restraint`'s own parameters, so a key renamed on either side reddens.
- * `statusReadOnlyForYou` is Story 14.5's and is deliberately not here yet.
  */
 export const FOOTER_KEYS = [
   'statusReadOnlyOff',
   'statusReadOnlyEnforced',
   'statusReadOnlyByDefinition',
+  'statusReadOnlyForYou',
 ] as const;
 
 /** The verdict before one has been read, and the one a malformed body falls back to. */
@@ -147,6 +153,7 @@ export const UNRESTRAINED: Restraint = {
   killSwitchAudience: '',
   killSwitchReason: '',
   enforcedReadOnly: false,
+  readOnlyForYou: false,
   // `true`, deliberately: an unanswered read must never show the not-marked banner over a healthy
   // instance, and the banner's absence is never a claim that marking works.
   writesMarked: true,
@@ -301,6 +308,7 @@ function restraintOf(body: unknown): Restraint {
     killSwitchAudience: textAt(row, 'killSwitchAudience'),
     killSwitchReason: textAt(row, 'killSwitchReason'),
     enforcedReadOnly: flagAt(row, 'enforcedReadOnly'),
+    readOnlyForYou: flagAt(row, 'readOnlyForYou'),
     // Absent reads as the UNRESTRAINED default, never as `false`: `flagAt` answers `false` for a
     // key that is not there, and a body without this one would otherwise draw the not-marked
     // banner over a healthy instance -- a positive claim in the one direction this story forbids.
@@ -319,6 +327,7 @@ function sameRestraint(a: Restraint, b: Restraint): boolean {
     a.killSwitchAudience === b.killSwitchAudience &&
     a.killSwitchReason === b.killSwitchReason &&
     a.enforcedReadOnly === b.enforcedReadOnly &&
+    a.readOnlyForYou === b.readOnlyForYou &&
     a.writesMarked === b.writesMarked
   );
 }
@@ -461,6 +470,44 @@ export class AgentStatus {
     this.restraintValue = nextRestraint;
     this.answeredValue = true;
     if (moved) this.notify();
+  }
+
+  /**
+   * Store this caller's own read-only choice (`PUT /agent/restraint {readOnly}`, Story 14.5) and
+   * adopt the verdict the instance answers with, notifying when it lands. No verdict is assumed
+   * before the answer: `restraint()` changes only to what the instance answered.
+   *
+   * A refusal, an unreachable instance or a malformed body leaves the previous verdict standing
+   * and answers `false`; so does an answer that arrives after `reset()`.
+   */
+  setReadOnlyForYou(on: boolean): Promise<boolean> {
+    const run = this.writeReadOnlyForYou(on);
+    // This write bumps `request`, so it is now the newest request and `read()`'s superseded
+    // branch must await it. A rejection is the caller's own `run` to answer for.
+    this.newest = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
+  }
+
+  private async writeReadOnlyForYou(on: boolean): Promise<boolean> {
+    const generation = this.generation;
+    const request = (this.request += 1);
+    const result = await this.api.requestJson<unknown>(AGENT_RESTRAINT_PATH, {
+      method: 'PUT',
+      body: JSON.stringify({ readOnly: on }),
+    });
+    if (generation !== this.generation) return false;
+    if (result.kind !== 'ok') return false;
+    if (result.body === null || typeof result.body !== 'object') return false;
+    // A later read or write has already landed; its answer stands.
+    if (request !== this.request) return true;
+    const next = restraintOf(result.body);
+    const moved = !sameRestraint(this.restraintValue, next);
+    this.restraintValue = next;
+    if (moved) this.notify();
+    return true;
   }
 
   /**

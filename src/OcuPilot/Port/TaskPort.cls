@@ -257,4 +257,30 @@ ClassMethod Create(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Quit tSC
 }
 
+/// <p>The admin port's answer: this port's create and edit are the vendor's own routes.</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    Quit ##super(pEndpoint, pType)
+}
+
+/// <p><method>Invoke</method>'s branches as a script (AD-59): <parameter>UPDATETYPE</parameter>
+/// sends <method>Trimmed</method>'s body, measured against the stored task the proposal read. A
+/// field the proposal's diff (<code>pContext.diff</code>, its changed field names) does not name
+/// still holds that read's value, so it is the comparison's stored value; a field the diff names
+/// is kept. Every other call is the admin port's script.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    If (pEndpoint = ..#TASKENDPOINT) && (pType = ..#UPDATETYPE) && $IsObject(pBody) && pBody.%IsA("%Library.DynamicObject") {
+        Set tStored = ##class(%DynamicAbstractObject).%FromJSON(pBody.%ToJSON())
+        If $IsObject(pContext) && (pContext.%GetTypeOf("diff") = "array") {
+            Set tIterator = pContext.%Get("diff").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tField) {
+                If '$IsObject(tField) && (tField '= "") Do tStored.%Remove(tField)
+            }
+        }
+        Set pBody = ..Trimmed(pBody, tStored)
+    }
+    Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+}
+
 }

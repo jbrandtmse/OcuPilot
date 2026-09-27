@@ -4,6 +4,7 @@ import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeAction } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
+import { readBackOf, type ReadBack } from '../../core/read-back';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
 
 /** The routes the form saves through: `POST` registers a client, `PUT <path>/<clientId>` edits one. */
@@ -301,6 +302,8 @@ export class OAuthRegisteredClientForm {
   private refusalPairValue = '';
 
   private savedValue = false;
+  /** The instance's read-back of the last accepted Save (AD-58), or `null`. */
+  private readBackValue: ReadBack | null = null;
 
   private secretRefusedValue = '';
 
@@ -435,6 +438,11 @@ export class OAuthRegisteredClientForm {
 
   refusalPair(): string {
     return this.refusalPairValue;
+  }
+
+  /** The read-back the last accepted Save answered (AD-58), which its "Saved" line renders. */
+  readBack(): ReadBack | null {
+    return this.readBackValue;
   }
 
   saved(): boolean {
@@ -626,6 +634,7 @@ export class OAuthRegisteredClientForm {
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
+    this.readBackValue = null;
     this.secretRefusedValue = '';
     this.notify();
     const result = creating
@@ -655,6 +664,7 @@ export class OAuthRegisteredClientForm {
     this.secretRefusedValue = textAt(result.body, 'secretRefused');
     this.opened = this.buffer;
     this.savedValue = true;
+    this.readBackValue = readBackOf((result.body as Record<string, unknown> | null)?.['readBack']);
     this.formDirty.setDirty(false);
     this.publish(id, creating ? 'created' : 'updated');
     this.notify();
@@ -793,7 +803,7 @@ export class OAuthRegisteredClientForm {
 
   private publish(id: string, action: ChangeAction): void {
     if (id === '') return;
-    this.injector.get(ChangeBus).publish({ kind: 'changed', type: OAUTH_REGISTERED_CLIENT_ENTITY, scope: OAUTH_REGISTERED_CLIENT_SCOPE, id, action });
+    this.injector.get(ChangeBus).publish({ kind: 'changed', type: OAUTH_REGISTERED_CLIENT_ENTITY, scope: OAUTH_REGISTERED_CLIENT_SCOPE, id, action, readBack: this.readBackValue });
   }
 
   private notify(): void {

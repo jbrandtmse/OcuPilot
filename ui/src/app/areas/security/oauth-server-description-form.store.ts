@@ -4,6 +4,7 @@ import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeAction } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
+import { readBackOf, type ReadBack } from '../../core/read-back';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
 
 /** The routes the form saves through: `POST` creates, `PUT <path>/<id>` edits. */
@@ -193,6 +194,8 @@ export class OAuthServerDescriptionForm {
   private refusalPairValue = '';
 
   private savedValue = false;
+  /** The instance's read-back of the last accepted Save (AD-58), or `null`. */
+  private readBackValue: ReadBack | null = null;
 
   private tokenRefusedValue = '';
 
@@ -337,6 +340,11 @@ export class OAuthServerDescriptionForm {
 
   refusalPair(): string {
     return this.refusalPairValue;
+  }
+
+  /** The read-back the last accepted Save answered (AD-58), which its "Saved" line renders. */
+  readBack(): ReadBack | null {
+    return this.readBackValue;
   }
 
   saved(): boolean {
@@ -537,6 +545,7 @@ export class OAuthServerDescriptionForm {
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
+    this.readBackValue = null;
     this.tokenRefusedValue = '';
     this.discoveredValue = '';
     this.notify();
@@ -567,6 +576,7 @@ export class OAuthServerDescriptionForm {
     this.tokenRefusedValue = textAt(result.body, 'tokenRefused');
     this.opened = this.buffer;
     this.savedValue = true;
+    this.readBackValue = readBackOf((result.body as Record<string, unknown> | null)?.['readBack']);
     this.formDirty.setDirty(false);
     this.publish(id, creating ? 'created' : 'updated');
     this.notify();
@@ -704,7 +714,7 @@ export class OAuthServerDescriptionForm {
 
   private publish(id: string, action: ChangeAction): void {
     if (id === '') return;
-    this.injector.get(ChangeBus).publish({ kind: 'changed', type: OAUTH_SERVER_ENTITY, scope: OAUTH_SERVER_SCOPE, id, action });
+    this.injector.get(ChangeBus).publish({ kind: 'changed', type: OAUTH_SERVER_ENTITY, scope: OAUTH_SERVER_SCOPE, id, action, readBack: this.readBackValue });
   }
 
   private notify(): void {

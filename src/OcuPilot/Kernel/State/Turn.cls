@@ -152,14 +152,24 @@ ClassMethod Cap(pValue As %String, pMax As %Integer, ByRef pTruncated As %Boolea
 /// nothing inserted, when the user already has a queued or running turn or another request holds
 /// the slot this instant.</p>
 /// <p>Under the slot lock, and in this order: turns of this user whose job is gone are finished
-/// <code>abandoned</code> with <var>pLostCode</var>; busy is refused; the row is inserted and its
-/// lease set to now; terminal turns past retention are deleted with their steps and signals. The
-/// lock is released before this returns. <var>pSweepStatus</var> reports the retention sweep alone,
-/// which never fails the reserve.</p>
-ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode As %String, pLimitsClass As %String, Output pKey As %String, Output pBusy As %Boolean, Output pSweepStatus As %Status) As %Status
+/// <code>abandoned</code> with <var>pLostCode</var>; busy is refused; the user's start records at or
+/// before the window's start are pruned; a user with <var>pHourLimit</var> or more starts left in
+/// the window is refused; the row is inserted, its lease set to now and its start recorded; terminal
+/// turns past retention are deleted with their steps and signals. The lock is released before this
+/// returns. <var>pSweepStatus</var> reports the retention sweep alone, which never fails the
+/// reserve.</p>
+/// <p><b>The turns-an-hour bound</b> (AD-41, Story 14.6). <var>pHourLimit</var> 0 or less is no
+/// limit, and every reserve records its start whatever the limit, so a limit set later counts the
+/// turns already reserved. The window is the limits class's <code>TURNLIMITWINDOWSECONDS</code>. On
+/// refusal <var>pLimited</var> is 1, nothing is inserted or recorded, and <var>pRetrySeconds</var>
+/// (<method>NowSeconds</method> units) is when the (count - limit + 1)-th oldest counted start leaves
+/// the window, rounded up to the next whole minute.</p>
+ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode As %String, pLimitsClass As %String, Output pKey As %String, Output pBusy As %Boolean, Output pSweepStatus As %Status, pHourLimit As %Integer = 0, Output pLimited As %Boolean, Output pRetrySeconds As %Integer) As %Status
 {
     Set pKey = ""
     Set pBusy = 0
+    Set pLimited = 0
+    Set pRetrySeconds = 0
     Set pSweepStatus = $$$OK
     Set tSC = ..GuardedTurnSlotLock(pUser, 0, .tHeld)
     If $$$ISERR(tSC) Quit tSC
@@ -175,6 +185,17 @@ ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode
             Quit
         }
         Set tStamp = $ZTimeStamp
+        Set tNow = ..NowSeconds(tStamp)
+        Set tWindow = +$Parameter(pLimitsClass, "TURNLIMITWINDOWSECONDS")
+        Set tSC = ..GuardedTurnStartsPrune(pUser, tNow - tWindow, .tStarts)
+        If $$$ISERR(tSC) Quit
+        Set tLimit = +pHourLimit
+        Set tCount = $ListLength(tStarts)
+        If (tLimit > 0) && (tCount >= tLimit) {
+            Set pLimited = 1
+            Set pRetrySeconds = ..MinuteCeiling($List(tStarts, tCount - tLimit + 1) + tWindow)
+            Quit
+        }
         Set tRow = ..%New()
         Set tRow.TurnKey = ..NewKey()
         Set tRow.UserName = pUser
@@ -185,7 +206,9 @@ ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode
         If $$$ISERR(tSC) Quit
         Set tKey = tRow.TurnKey
         Set tRow = ""
-        Set tSC = ..GuardedTurnSignalSet(tKey, "renewed", ..NowSeconds(tStamp))
+        Set tSC = ..GuardedTurnSignalSet(tKey, "renewed", tNow)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..GuardedTurnStartRecord(pUser, tNow, tKey)
         If $$$ISERR(tSC) Quit
         Set pKey = tKey
         Set pSweepStatus = ..GuardedSweep(pLimitsClass)
@@ -194,6 +217,37 @@ ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode
     }
     Do ..GuardedTurnSlotUnlock(pUser)
     Quit tSC
+}
+
+/// <p><var>pSeconds</var> (<method>NowSeconds</method> units) rounded up to the next whole minute;
+/// a value already on a minute is answered unchanged.</p>
+ClassMethod MinuteCeiling(pSeconds As %Integer) As %Integer
+{
+    Quit ((+pSeconds + 59) \ 60) * 60
+}
+
+/// <p>ISO-8601 UTC for <var>pSeconds</var> in <method>NowSeconds</method> units.</p>
+ClassMethod IsoOfSeconds(pSeconds As %Integer) As %String
+{
+    Quit ..Timestamp((+pSeconds \ 86400) _ "," _ (+pSeconds # 86400))
+}
+
+/// <p>Remove every start record of <var>pUser</var>, so the turns-an-hour count starts from none.
+/// For tests and fixtures; production never forgets a start before its window ends.</p>
+ClassMethod GuardedForgetStarts(pUser As %String) As %Status
+{
+    Quit ..GuardedTurnStartsKill(pUser)
+}
+
+/// <p>Remove every user's start records that have left the turns-an-hour window of
+/// <var>pLimitsClass</var>: the retention task's pass (AD-37), so the records of a user who stops
+/// sending, or whose account is deleted, do not outlive the window by more than a day. A limits
+/// class with no positive window removes nothing and answers an error.</p>
+ClassMethod GuardedSweepStarts(pLimitsClass As %String) As %Status
+{
+    Set tWindow = +$Parameter(pLimitsClass, "TURNLIMITWINDOWSECONDS")
+    If tWindow <= 0 Quit $$$ERROR($$$GeneralError, "the limits class names no turns-an-hour window")
+    Quit ..GuardedTurnStartsSweep(..NowSeconds() - tWindow)
 }
 
 /// <p>Finish every turn of <var>pUser</var> whose job is gone, when the slot is free this instant:
@@ -395,6 +449,21 @@ ClassMethod GuardedAbandonForUser(pUser As %String, Output pCount As %Integer) A
     Quit tSC
 }
 
+/// <p>Every user named by a <code>queued</code> or <code>running</code> turn, as stored:
+/// <var>pUsers(name)</var>. The retention sweep asks, for each, whether the account still exists
+/// (AD-37).</p>
+ClassMethod GuardedLiveUsers(Output pUsers) As %Status
+{
+    Kill pUsers
+    Set tSC = ..GuardedIdsWhereNoParam("SELECT DISTINCT %EXACT(UserName) FROM OcuPilot_Kernel_State.Turn WHERE State IN ('queued', 'running')", .tRows)
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 1:1:+$Get(tRows) {
+        Set tName = ..Text($Get(tRows(tI)))
+        If tName '= "" Set pUsers(tName) = ""
+    }
+    Quit $$$OK
+}
+
 /// <p>Whether job <var>pJobId</var> is running a turn: <var>pIsTurnJob</var> is 1 when a
 /// <code>running</code> row carries that <property>JobId</property>, which
 /// <method>GuardedBegin</method> stamps from the job's own <code>$JOB</code>.</p>
@@ -545,8 +614,8 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
     Quit $$$OK
 }
 
-/// <p>Delete every terminal turn that ended retention seconds ago or more, with its steps and
-/// signals.</p>
+/// <p>Delete every terminal turn that ended retention seconds ago or more, with everything
+/// <method>GuardedDelete</method> removes beside it.</p>
 ClassMethod GuardedSweep(pLimitsClass As %String) As %Status
 {
     Set tSC = ..GuardedIdsWhereNoParam("SELECT ID FROM OcuPilot_Kernel_State.Turn WHERE State IN ('completed', 'stopped', 'abandoned', 'failed') ORDER BY ID", .tIds)
@@ -565,12 +634,17 @@ ClassMethod GuardedSweep(pLimitsClass As %String) As %Status
     Quit tSC
 }
 
-/// <p>Delete turn <var>pKey</var>, its steps, its navigation directive and its signals.</p>
+/// <p>Delete turn <var>pKey</var>, its steps, its navigation directive, its proposals and its
+/// signals. A proposal outlives its turn's job by construction (AD-6), but not its turn row: once
+/// the turn itself is past retention, a reloaded conversation carries no card for it (DW-1240),
+/// while the conversation entry and the ledger rows stay.</p>
 ClassMethod GuardedDelete(pKey As %String) As %Status
 {
     Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedDeleteForTurn(pKey)
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ##class(OcuPilot.Kernel.State.Nav).GuardedDeleteForTurn(pKey)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForTurn(pKey)
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedTurnSignalKill(pKey)
     If $$$ISERR(tSC) Quit tSC

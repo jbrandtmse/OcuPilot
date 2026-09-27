@@ -165,3 +165,31 @@ export function highlightSpans(text: string, needle: string): readonly { readonl
 export function matchCountText(position: number, total: number): string {
   return STRINGS.logViewerMatchCount.replace('<n>', String(position)).replace('<N>', String(total));
 }
+
+/** One file the messages.log viewer can open, as `GET /logs/messages/files` lists it (Story 16.20). */
+export interface LogFileEntry {
+  readonly name: string;
+  /** Bytes. */
+  readonly size: number;
+  /** ISO-8601 UTC, or `''` when the instance had no time for it. */
+  readonly modified: string;
+}
+
+function twoDigits(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+/**
+ * The file choice's option text for `entry`, per
+ * EXPERIENCE.md "the messages.log viewer's file choice": its name, its size in kilobytes rounded
+ * up with `en-US` grouping, and its last-modified time in the browser's local time as
+ * `YYYY-MM-DD HH:MM`. A time that does not parse leaves its slot empty rather than printing `NaN`.
+ */
+export function fileOptionText(entry: LogFileEntry): string {
+  const kilobytes = Math.ceil(Math.max(0, entry.size) / 1024).toLocaleString('en-US');
+  const when = new Date(entry.modified);
+  const modified = Number.isNaN(when.getTime())
+    ? ''
+    : `${when.getFullYear()}-${twoDigits(when.getMonth() + 1)}-${twoDigits(when.getDate())} ${twoDigits(when.getHours())}:${twoDigits(when.getMinutes())}`;
+  return STRINGS.logViewerFileOption.replace('<name>', entry.name).replace('<size>', kilobytes).replace('<modified>', modified);
+}

@@ -6,21 +6,23 @@
 /// <code>/instance</code> does not make, so widening the hot identity call would cost every
 /// sign-in those reads.</p>
 /// <p><b>Every one of the twelve <method>Members</method> is read in the calling process, each
-/// behind its own <code>Try</code></b> (<method>Field</method>), so a refused or broken source
-/// degrades that one member and leaves the other eleven answering: to <code>""</code> with a log
-/// line where the accessor raises, and to the accessor's own failure value where it traps instead
-/// (<method>%SYS.System.GetGlobalCache</method> answers 0) --
-/// <class>OcuPilot.Kernel.Shell.Instance</class>'s <method>ReadSource</method> seam, copied. None
-/// of the twelve switches namespace (AD-16); <method>DocBookEnabled</method> is the one thing here
+/// behind its own <code>Try</code></b> (<class>OcuPilot.Kernel.Shell.FieldRead</class>), so a
+/// refused or broken source degrades that one member and leaves the other eleven answering: to
+/// <code>""</code> with a log line where the accessor raises, and to the accessor's own failure
+/// value where it traps instead (<method>%SYS.System.GetGlobalCache</method> answers 0). None of
+/// the twelve switches namespace (AD-16); <method>DocBookEnabled</method> is the one thing here
 /// that does, by explicit save and restore.</p>
 /// <p>Three of the classic page's fourteen fields are declined and say why in the story's Design
 /// Notes: mirror state, cluster support and uptime all belong to Story 15.4's System Information
 /// panel, which reads them from one source.</p>
-Class OcuPilot.Kernel.Shell.About Extends %RegisteredObject
+Class OcuPilot.Kernel.Shell.About Extends OcuPilot.Kernel.Shell.FieldRead
 {
 
 /// <p>The subsystem name a refused source is logged under.</p>
 Parameter LOGSUBSYSTEM = "uiabout";
+
+/// <p>The log line's message for a refused source.</p>
+Parameter LOGMESSAGE = "An About source could not be read";
 
 /// <p>The web application whose presence decides whether documentation is served by this instance
 /// or by the web (<code>irissys/%ZEN/Portal/standardPage.cls</code>'s <method>GetDocURL</method>).</p>
@@ -69,12 +71,8 @@ ClassMethod Payload(Output pObject As %DynamicObject) As %Status
     Set tSC = $$$OK
     Set pObject = ""
     Try {
-        Set pObject = {}
-        Set tMembers = ..Members()
-        For tI = 1:1:$ListLength(tMembers) {
-            Set tMember = $List(tMembers, tI)
-            Do pObject.%Set(tMember, ..Field(tMember), "string")
-        }
+        Set tSC = ..Fields(.pObject)
+        If $$$ISERR(tSC) Quit
         Do pObject.%Set("buildIdentity", ##class(OcuPilot.Kernel.Shell.Instance).BuildIdentity(), "string")
         Do pObject.%Set("links", ..Links())
     } Catch ex {
@@ -82,21 +80,6 @@ ClassMethod Payload(Output pObject As %DynamicObject) As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
-}
-
-/// <p>One raw read, behind its own <code>Try</code>. <var>pField</var> is one of
-/// <method>Members</method>; a refusal reads <code>""</code> and reaches the log through
-/// <method>LogSourceFailure</method> rather than failing the payload.</p>
-ClassMethod Field(pField As %String) As %String
-{
-    Set tValue = ""
-    Try {
-        Set tValue = ..ReadSource(pField)
-    } Catch ex {
-        Set tValue = ""
-        Do ..LogSourceFailure(pField, ex)
-    }
-    Quit tValue
 }
 
 /// <p>The twelve raw reads behind one seam; an unknown field reads <code>""</code>.</p>
@@ -112,7 +95,7 @@ ClassMethod Field(pField As %String) As %String
 /// answers 0. <method>%Studio.General.GetWebServerPort</method> is used rather than
 /// <method>%RoutineMgr.GetWebServerPort</method>, which is itself <code>[ Internal ]</code> and
 /// forwards to it.</p>
-ClassMethod ReadSource(pField As %String) As %String
+ClassMethod ReadSource(pField As %String, ByRef pContext) As %String
 {
     If pField = "version" Quit $ZVersion
     If pField = "productComponents" Quit $ListToString($System.Version.GetISCComponentVersionList($System.Version.GetISCProduct()), "|", 1)
@@ -291,21 +274,6 @@ ClassMethod DocsSiteProduct() As %String
     If $ListFind(tComponents, "Health") Quit "irisforhealth"
     If $ListFind(tComponents, "HealthConnect") Quit "healthconnect"
     Quit "iris"
-}
-
-/// <p>The audit-log seam a refused read travels through, so a field that degraded to
-/// <code>""</code> is recoverable from the log rather than silently absent from the dialog.
-/// <var>pField</var> is the field that failed.</p>
-/// <p>It swallows its own failure: it is called from inside a per-field <code>Catch</code>, and an
-/// exception escaping here would reach <method>Payload</method>'s <code>Catch</code> and turn a
-/// degraded field into the failure the per-field <code>Try</code> exists to prevent. Overridable
-/// for capture in a test; production never overrides it.</p>
-ClassMethod LogSourceFailure(pField As %String, pException As %Exception.AbstractException)
-{
-    Try {
-        Do ##class(OcuPilot.Kernel.Audit.Log).Error(..#LOGSUBSYSTEM, "An About source could not be read", {"field": (pField), "detail": (pException.DisplayString())})
-    } Catch {
-    }
 }
 
 }

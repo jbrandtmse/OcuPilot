@@ -86,7 +86,7 @@ Method TestEveryLiveToolIsAdvertisedInTheSubset()
     Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ProviderTools", .tAdvertised), "the tools are advertised")
     Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ListTools", .tListed), "the live tools list")
     If '$IsObject(tListed) Quit
-    ; AD-53: an unadvertised tool is listed and never advertised.
+    ; AD-53: an unadvertised tool, of which none ships today, is listed and never advertised.
     Set tTools = []
     Set tListIterator = tListed.%GetIterator()
     While tListIterator.%GetNext(.tListIndex, .tListedTool) { If $ClassMethod(..#REGISTRY, "IsAdvertised", tListedTool) Do tTools.%Push(tListedTool) }
@@ -338,8 +338,9 @@ Method TestTheErrorToolClampsAndPassesItsPortsFault()
     Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.code _ "|" _ tFault.detail.failedPair, 1: ""), "403|AUTH.NOPRIVILEGE|%DB_USER:READ", "with the port's status, code and detail")
 }
 
-/// <p>Every <code>TOOL.*</code> code <class>OcuPilot.Api.Error</class> declares is in
-/// <method>OcuPilot.Api.Error.ToolCodes</method> and carries a written sentence.</p>
+/// <p>Every <code>TOOL.*</code> code <class>OcuPilot.Api.Error</class> declares, and
+/// <code>GOVERNANCE.DISABLED</code>, is in <method>OcuPilot.Api.Error.ToolCodes</method> and carries
+/// a written sentence.</p>
 Method TestEveryToolCodeHasASentence()
 {
     Set tDeclared = ##class(OcuPilot.Api.Error).ToolCodes()
@@ -347,13 +348,13 @@ Method TestEveryToolCodeHasASentence()
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.CompiledParameter WHERE parent = ?", "OcuPilot.Api.Error")
     While tRS.%Next() {
         Set tName = tRS.%GetData(1)
-        If $Extract(tName, 1, 4) '= "TOOL" Continue
+        If ($Extract(tName, 1, 4) '= "TOOL") && (tName '= "GOVERNANCEDISABLED") Continue
         Set tFound = tFound + 1
         Set tCode = $Parameter("OcuPilot.Api.Error", tName)
         Do $$$AssertTrue($ListFind(tDeclared, tCode) > 0, tName _ " is in ToolCodes()")
         Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).ReasonForTool(tCode), "", tName _ " has a written sentence")
     }
-    Do $$$AssertEquals(tFound, 5, "the vocabulary declares five tool codes")
+    Do $$$AssertEquals(tFound, 6, "the vocabulary declares five tool codes and the governance code")
     Do $$$AssertEquals($ListLength(tDeclared), tFound, "and ToolCodes() holds no code the class does not declare")
 }
 

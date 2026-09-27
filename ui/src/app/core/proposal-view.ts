@@ -21,6 +21,7 @@
  * declares a secret, so a test supplies a screen record as data.
  */
 
+import type { Impact } from './impact.ts';
 import { STRINGS } from './strings.ts';
 import type { TurnProposal, TurnProposalPrivilege, TurnProposalUnchangedRow } from './turn.ts';
 
@@ -120,6 +121,11 @@ export interface ProposalCardView {
    * recorded no pairs. The card shows it only while Confirm does; it gates nothing.
    */
   readonly privilege?: ProposalPrivilegeLine | null;
+  /**
+   * The removal's impact (AD-8), the wire's own value read at the mint, or `null` when the write
+   * removes nothing covered. The card shows its line only while Confirm does; it gates nothing.
+   */
+  readonly impact?: Impact | null;
 }
 
 /** The privilege line as the card draws it: the filled sentence, and whether it is the warning. */
@@ -179,6 +185,9 @@ export const CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED = 'OAUTH.SERVERCLIENTSHID
 /** Story 12.8: a server client's new secret, which its application must use from then on. */
 export const CONSEQUENCE_SERVERCLIENTSECRETCHANGE = 'OAUTH.SERVERCLIENTSECRETCHANGE';
 
+/** Story 14.2: the agent's audit purge, which removes the markers of the agent's own writes too. */
+export const CONSEQUENCE_PURGEMARKERS = 'AUDIT.PURGEMARKERS';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -203,11 +212,12 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SERVERCLIENTSPRIVILEGED) return STRINGS.oauthAuthServerClientsPrivilegedEffect;
   if (code === CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED) return STRINGS.oauthAuthServerClientsHiddenPrivilegedEffect;
   if (code === CONSEQUENCE_SERVERCLIENTSECRETCHANGE) return STRINGS.oauthRegisteredClientSecretEffect;
+  if (code === CONSEQUENCE_PURGEMARKERS) return STRINGS.auditPurgeMarkersEffect;
   return '';
 }
 
 /**
- * Where one card is in the proposal lifecycle: live, the in-flight Confirm, and the seven terminal
+ * Where one card is in the proposal lifecycle: live, the in-flight Confirm, and the eight terminal
  * states EXPERIENCE.md's status-line row publishes a sentence for.
  */
 export type ProposalPhase =
@@ -217,6 +227,7 @@ export type ProposalPhase =
   | 'canceled-by-you'
   | 'canceled-by-message'
   | 'canceled-sibling'
+  | 'canceled-by-draft'
   | 'target-changed'
   | 'expired'
   | 'switched-off';
@@ -227,6 +238,7 @@ const TERMINAL_PHASES: ReadonlySet<ProposalPhase> = new Set<ProposalPhase>([
   'canceled-by-you',
   'canceled-by-message',
   'canceled-sibling',
+  'canceled-by-draft',
   'target-changed',
   'expired',
   'switched-off',
@@ -253,9 +265,10 @@ export function offersRepropose(phase: ProposalPhase): boolean {
 /**
  * The phase a wire `state` and its `closedReason` read as.
  *
- * `canceled` is four phases, told apart by the reason the instance recorded with it -- and a
- * `canceled` row whose reason this client does not recognise reads as the user's own decision,
- * which is the one of the four that claims least about why. Anything this client does not
+ * `canceled` is five phases, told apart by the reason the instance recorded with it -- `draft` is
+ * the user taking the script instead (AD-59) -- and a `canceled` row whose reason this client does
+ * not recognise reads as the user's own decision, which is the one of the five that claims least
+ * about why. Anything this client does not
  * recognise at all reads as `expired`: a card drawn restrained with no Confirm is the restrained
  * direction, and the alternative -- treating an unknown state as live -- would offer a decision on
  * a proposal whose fate the instance has already settled.
@@ -266,6 +279,7 @@ export function phaseForState(state: string, closedReason = ''): ProposalPhase {
   if (state === 'canceled') {
     if (closedReason === 'message') return 'canceled-by-message';
     if (closedReason === 'sibling') return 'canceled-sibling';
+    if (closedReason === 'draft') return 'canceled-by-draft';
     if (closedReason === 'target-changed') return 'target-changed';
     return 'canceled-by-you';
   }
@@ -365,6 +379,7 @@ export function statusLineFor(phase: ProposalPhase, userName: string, at: string
   if (phase === 'canceled-by-you') return STRINGS.proposalStatusCanceledByYou;
   if (phase === 'canceled-by-message') return STRINGS.proposalStatusCanceledByMessage;
   if (phase === 'canceled-sibling') return STRINGS.proposalStatusCanceledSibling;
+  if (phase === 'canceled-by-draft') return STRINGS.proposalStatusCanceledByDraft;
   // EXPERIENCE.md publishes one fixed string for this transition, and DESIGN.md says the warning
   // banner's fixed string is EXPERIENCE.md's -- so the status line IS the banner's text, rendered
   // inside it, rather than a second piece of copy invented here.
@@ -448,6 +463,7 @@ export function toCardView(
     destructive: proposal.destructive,
     consequence: proposal.consequence,
     privilege: privilegeLine(proposal.privilege),
+    impact: proposal.impact ?? null,
     refusalReason,
   };
 }

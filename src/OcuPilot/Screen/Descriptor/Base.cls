@@ -16,7 +16,8 @@
 /// root), <code>area</code> (a key from <class>OcuPilot.Screen.Area</class>),
 /// <code>labelKey</code> (a key in the one client string source, used for the side-bar entry
 /// and the screen title), <code>sideBarPosition</code>, <code>archetype</code>,
-/// <code>built</code>, <code>privileges</code> (the AD-8 pair set),
+/// <code>built</code>, <code>privileges</code> (the AD-8 pair set), <code>ownPrivileges</code>
+/// (those of its pairs it requires beyond its area's set, AD-8, or absent),
 /// <code>entityType</code> plus <code>secondaryEntityTypes</code> (AD-14 keys, all of which
 /// participate in change-event routing), <code>scope</code>
 /// (<code>namespace</code> or the literal <code>instance</code>, AD-13),
@@ -29,7 +30,7 @@
 /// <code>commandAliases</code>, <code>classicPage</code> (the class name of the classic page
 /// this screen replaces, AD-27/AD-44), <code>classicLinkExemption</code> with its
 /// <code>reason</code>, <code>label</code> and <code>href</code> (AD-44),
-/// <code>refreshes</code> plus <code>refreshRates</code> (AD-43),
+/// <code>refreshes</code> plus <code>refreshRates</code> and an optional <code>refreshDefault</code> (AD-43),
 /// <code>read</code> (the one declared read, AD-36, or absent), <code>table</code> (the columns and
 /// empty-state keys a read's rows render with, declared exactly when <code>read</code> is),
 /// <code>banner</code> (a second declared port read whose value raises a strip above the table, or
@@ -214,6 +215,21 @@ ClassMethod PrivilegePairs() As %List
     Set tPairs = ""
     Try {
         Set tPairs = ##class(OcuPilot.Screen.Area).PairsFrom(..CachedValue("privileges"))
+    } Catch {
+        Set tPairs = ""
+    }
+    Quit tPairs
+}
+
+/// <p>The pairs of <method>PrivilegePairs</method> this screen declares its own, in the same form:
+/// pairs it requires beyond its area's set, which gate this screen alone and are left out of
+/// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> (AD-8). Empty when it declares
+/// none.</p>
+ClassMethod OwnPrivilegePairs() As %List
+{
+    Set tPairs = ""
+    Try {
+        Set tPairs = ##class(OcuPilot.Screen.Area).PairsFrom(..CachedValue("ownPrivileges"))
     } Catch {
         Set tPairs = ""
     }
@@ -444,6 +460,46 @@ ClassMethod RefreshRates() As %List
         Set tRates = ""
     }
     Quit tRates
+}
+
+/// <p>The rate, in whole seconds, the shared framework starts this screen at when the person has
+/// remembered none, or <code>""</code> when the screen declares none; <code>""</code> and
+/// <code>0</code> are off, the published default (AD-43). Declared only by a refreshing screen, as one of its
+/// <method>RefreshRates</method>; <method>OcuPilot.Screen.Registry.RefreshProblem</method> refuses
+/// any other value. <method>RefreshDefaultOf</method> reads the declaration.</p>
+ClassMethod RefreshDefault() As %String
+{
+    Set tValue = ""
+    Try {
+        Set tSC = ..Declaration(.tObject)
+        If $$$ISERR(tSC) Quit
+        Set tValue = ..RefreshDefaultOf(tObject)
+    } Catch {
+        Set tValue = ""
+    }
+    Quit tValue
+}
+
+/// <p>The <code>refreshDefault</code> <var>pDeclaration</var> declares: <code>""</code> when the key
+/// is absent, the number when it is a JSON number, and <code>"?"</code> for any other JSON type -- a
+/// string, a boolean, <code>null</code>, an object or an array -- so
+/// <method>OcuPilot.Screen.Registry.RefreshProblem</method> refuses exactly what
+/// <file>ui/tools/screen-mirror.mjs</file> refuses rather than reading <code>"10"</code> as a rate or
+/// <code>null</code> as absent.</p>
+ClassMethod RefreshDefaultOf(pDeclaration As %DynamicObject) As %String
+{
+    Set tValue = "?"
+    Try {
+        Set tType = pDeclaration.%GetTypeOf("refreshDefault")
+        If tType = "unassigned" {
+            Set tValue = ""
+            Quit
+        }
+        If tType = "number" Set tValue = pDeclaration.%Get("refreshDefault")
+    } Catch {
+        Set tValue = "?"
+    }
+    Quit tValue
 }
 
 /// <p>The stable identifier this screen's tools are named from (AD-5). Declared, never derived

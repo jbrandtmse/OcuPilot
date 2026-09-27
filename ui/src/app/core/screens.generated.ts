@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -345,7 +345,11 @@ export interface ScreenDeclaration {
   readonly refreshes: boolean;
   /** The rates, in whole seconds ascending, the chip may set. Empty unless `refreshes`. */
   readonly refreshRates: readonly number[];
+  /** The rate the framework starts at when none is remembered: one of `refreshRates`, or `0`, off. */
+  readonly refreshDefault: number;
   readonly privileges: readonly PrivilegePair[];
+  /** The pairs of `privileges` it requires beyond its area's set, gating this screen alone (AD-8). */
+  readonly ownPrivileges?: readonly PrivilegePair[];
   readonly entityType: string;
   /** The string key of the singular noun for `entityType`, or `''` (AD-5, AD-14). */
   readonly entityLabelKey: string;
@@ -436,7 +440,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "application-error",
   "log-entry",
   "agent-definition",
-  "agent-switch"
+  "agent-switch",
+  "agent-policy"
 ];
 
 /**
@@ -684,6 +689,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "agent.definition",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -837,6 +843,143 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "agentDefinitionListEmptyAgent"
     },
     "toolIdentifier": "agent.definitions",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentGovernance",
+    "route": "agent/governance",
+    "area": "agent",
+    "labelKey": "agentGovernanceLabel",
+    "sideBarPosition": 4,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "OcuPilotAdmin",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "agent-policy",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "governance",
+      "tool policy"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentGovernancePrompt1"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentGovernancePrompt2"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentGovernancePrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "agent.governance",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentGuardrails",
+    "route": "agent/guardrails",
+    "area": "agent",
+    "labelKey": "agentGuardrailsLabel",
+    "sideBarPosition": 3,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "guardrails",
+      "prohibited actions",
+      "what the agent refuses"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentGuardrailsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentGuardrailsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentGuardrailsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "agent.guardrails",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -910,8 +1053,209 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "agent.switches",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentTranscript",
+    "route": "agent/transcripts/details",
+    "area": "agent",
+    "labelKey": "agentTranscriptLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "agent/transcripts",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "id"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentTranscriptsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentTranscriptsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentTranscriptsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "agent.transcript",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentTranscripts",
+    "route": "agent/transcripts",
+    "area": "agent",
+    "labelKey": "agentTranscriptsLabel",
+    "sideBarPosition": 5,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "id"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "id",
+        "user",
+        "started",
+        "lastActivity",
+        "turns",
+        "title"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "agentTranscriptsEmpty",
+    "commandAliases": [
+      "transcripts",
+      "conversation history"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentTranscriptsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentTranscriptsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentTranscriptsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "state",
+        "endpoint": "Convo",
+        "type": "LIST"
+      },
+      "fields": [
+        "id",
+        "user",
+        "started",
+        "lastActivity",
+        "turns",
+        "title"
+      ],
+      "filter": [
+        "user",
+        "started",
+        "lastActivity",
+        "title"
+      ],
+      "sort": {
+        "fields": [
+          "user",
+          "started",
+          "lastActivity",
+          "turns",
+          "title"
+        ],
+        "default": "lastActivity",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "started",
+          "labelKey": "taskHistoryColumnStarted",
+          "kind": "name"
+        },
+        {
+          "field": "user",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "turns",
+          "labelKey": "agentTranscriptsColumnTurns",
+          "kind": "number"
+        },
+        {
+          "field": "lastActivity",
+          "labelKey": "agentTranscriptsColumnLastActivity",
+          "kind": "text"
+        },
+        {
+          "field": "title",
+          "labelKey": "agentTranscriptsColumnTitle",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "agent.transcripts",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -1195,6 +1539,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "logs.audit",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -1352,6 +1697,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "auditSystemEventListEmptyAgent"
     },
     "toolIdentifier": "security.auditsystemevents",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -1512,6 +1858,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "auditUserEventListEmptyAgent"
     },
     "toolIdentifier": "security.audituserevents",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -1622,6 +1969,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "paging": "cap"
     },
     "toolIdentifier": "security.auditing",
+    "refreshDefault": 0,
     "table": null,
     "banner": null,
     "tab": null,
@@ -1881,6 +2229,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.databasedetails",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2041,6 +2390,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.databasefreespace",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2187,6 +2537,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.databases",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2344,6 +2695,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.databasevolumes",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2414,6 +2766,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "osmgmt.deviceform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -2564,6 +2917,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "deviceListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.devices",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2579,8 +2933,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "sideBarPosition": 1,
     "archetype": "home",
     "built": true,
-    "refreshes": false,
-    "refreshRates": [],
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "refreshDefault": 10,
     "privileges": [],
     "entityType": "",
     "secondaryEntityTypes": [],
@@ -2591,7 +2951,13 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "context": {
-      "fields": [],
+      "fields": [
+        "cacheEfficiency",
+        "globalReferencesPerSecond",
+        "globalUpdatesPerSecond",
+        "diskReadsPerSecond",
+        "diskWritesPerSecond"
+      ],
       "secretFields": []
     },
     "primaryAction": {
@@ -2698,6 +3064,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": "/csp/sys/sec/%25CSP.UI.Portal.LDAPs.zen"
     },
     "toolIdentifier": "security.ldapform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -2820,6 +3187,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "security.ldap",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -2988,6 +3356,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "field": "Pid"
     },
     "toolIdentifier": "osmgmt.locks",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "secretArguments": [],
@@ -3105,6 +3474,132 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "logs.alerts",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogAnalyticsViewer",
+    "route": "logs/analytics",
+    "area": "logs",
+    "labelKey": "analyticsLogListLabel",
+    "sideBarPosition": 10,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "analytics",
+      "deepsee"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logAnalyticsViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logAnalyticsViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logAnalyticsViewerPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.LogViewer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "analytics",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.analytics",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -3193,6 +3688,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "logs.applicationerrors",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -3200,6 +3696,131 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "secretArguments": [],
     "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogEventViewer",
+    "route": "logs/eventlog",
+    "area": "logs",
+    "labelKey": "eventLogListLabel",
+    "sideBarPosition": 9,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_EventLog",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_EventLog",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "event log",
+      "interoperability"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logEventViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logEventViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logEventViewerPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.EventLog",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "eventlog",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.eventlog",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LogMessageViewer",
@@ -3312,6 +3933,483 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "logs.messages",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogSqlDiagnosticsViewer",
+    "route": "logs/sqldiagnostics",
+    "area": "logs",
+    "labelKey": "sqlDiagnosticsLogListLabel",
+    "sideBarPosition": 8,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "sql diagnostics",
+      "load data"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logSqlDiagnosticsViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logSqlDiagnosticsViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logSqlDiagnosticsViewerPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Logs",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "sqldiagnostics",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.sqldiagnostics",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogSystemMonitorViewer",
+    "route": "logs/systemmonitor",
+    "area": "logs",
+    "labelKey": "systemMonitorLogListLabel",
+    "sideBarPosition": 5,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "system monitor",
+      "SystemMonitor.log"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logSystemMonitorViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logSystemMonitorViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logSystemMonitorViewerPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ViewLog",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "systemmonitor",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.systemmonitor",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogTaskErrorViewer",
+    "route": "logs/taskerrors",
+    "area": "logs",
+    "labelKey": "taskErrorLogListLabel",
+    "sideBarPosition": 6,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "background task errors"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logTaskErrorViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logTaskErrorViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logTaskErrorViewerPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.BackgroundTaskError",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "taskerrors",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.taskerrors",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogXdbcViewer",
+    "route": "logs/xdbc",
+    "area": "logs",
+    "labelKey": "xdbcErrorLogListLabel",
+    "sideBarPosition": 7,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "xdbc",
+      "odbc",
+      "jdbc"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logXdbcViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logXdbcViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logXdbcViewerPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.xDBCErrorNamespaces",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "xdbc",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.xdbc",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -3387,6 +4485,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.oauthclientform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -3558,6 +4657,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabClients"
     },
     "toolIdentifier": "security.oauthclients",
+    "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
     "fingerprintExcludes": [],
@@ -3632,6 +4732,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.oauthresourceserverform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -3762,6 +4863,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabResourceServers"
     },
     "toolIdentifier": "security.oauthresourceservers",
+    "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
     "fingerprintExcludes": [],
@@ -3832,6 +4934,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.oauthserverclientform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -3991,6 +5094,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabServerClients"
     },
     "toolIdentifier": "security.oauthserverclients",
+    "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
     "fingerprintExcludes": [],
@@ -4061,6 +5165,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.oauthserverdescriptionform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -4203,6 +5308,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabServerDescriptions"
     },
     "toolIdentifier": "security.oauthserverdescriptions",
+    "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
     "fingerprintExcludes": [],
@@ -4273,6 +5379,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.oauthserverform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -4446,6 +5553,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabServer"
     },
     "toolIdentifier": "security.oauthserver",
+    "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
     "fingerprintExcludes": [],
@@ -4579,6 +5687,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "webapp.openapi",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -4958,6 +6067,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "processListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.processdetails",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -5141,6 +6251,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "processListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.processes",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -5283,6 +6394,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "resourceListEmptyAgent"
     },
     "toolIdentifier": "permissions.resources",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -5420,6 +6532,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "webapp.restapis",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -5490,6 +6603,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "permissions.roleform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -5640,6 +6754,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "roleListEmptyAgent"
     },
     "toolIdentifier": "permissions.roles",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -5710,6 +6825,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": "/csp/sys/sec/%25CSP.UI.Portal.Services.zen"
     },
     "toolIdentifier": "permissions.serviceform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -5853,6 +6969,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "permissions.services",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -5990,6 +7107,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "sslListEmptyAgent"
     },
     "toolIdentifier": "security.ssl",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -6061,6 +7179,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.sslform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -6340,6 +7459,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.systemusage",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -6617,6 +7737,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "tasks.taskdetails",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -6687,6 +7808,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "tasks.scheduleform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -6890,6 +8012,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "tasks.history",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -7050,6 +8173,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "taskOnDemandEmptyAgent"
     },
     "toolIdentifier": "tasks.ondemand",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -7231,6 +8355,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "tasks.taskhistory",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -7436,6 +8561,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "toolIdentifier": "tasks.schedule",
+    "refreshDefault": 0,
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
@@ -7592,6 +8718,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "tasks.upcoming",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -7664,6 +8791,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "permissions.userform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -7862,6 +8990,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "userListEmptyAgent"
     },
     "toolIdentifier": "permissions.users",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -7983,6 +9112,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "security.wallet",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -8055,6 +9185,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.secretform",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -8184,6 +9315,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "walletSecretListEmptyAgent"
     },
     "toolIdentifier": "security.secrets",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -8253,6 +9385,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "webapp.form",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,
@@ -8432,6 +9565,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "webAppListEmptyAgent"
     },
     "toolIdentifier": "webapp.list",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null
@@ -8594,6 +9728,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "x509ListEmptyAgent"
     },
     "toolIdentifier": "security.x509",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
@@ -8667,6 +9802,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "security.x509form",
+    "refreshDefault": 0,
     "read": null,
     "table": null,
     "banner": null,

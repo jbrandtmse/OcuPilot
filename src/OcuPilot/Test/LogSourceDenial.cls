@@ -34,6 +34,13 @@ Parameter ALERTREADPATH = "/api/ocupilot/screens/logs.alerts/read";
 /// <parameter>LOGPATH</parameter> pages.</p>
 Parameter MESSAGESREADPATH = "/api/ocupilot/screens/logs.messages/read";
 
+/// <p>The console log's list of older files (Story 16.20).</p>
+Parameter FILESPATH = "/api/ocupilot/logs/messages/files";
+
+/// <p>A rotated file's name no instance writes and no test creates, so a request that passes the
+/// gate answers <code>LOG.ABSENT</code> -- which is itself evidence the gate admitted it.</p>
+Parameter NEVERWRITTEN = "messages.old_20000102";
+
 /// <p>The environment variable that arms this class, and the one value that arms it:
 /// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the principals are
 /// created on the container that script builds and nowhere else. Anything else -- absent, empty,
@@ -55,6 +62,19 @@ Parameter OPERATEUSER = "OcuPilotLogOperate";
 
 /// <p>See <parameter>OPERATEUSER</parameter>.</p>
 Parameter OPERATEROLE = "OcuPilotLogOperateRole";
+
+/// <p>The principal holding <code>%Ens_EventLog:U</code> and <code>%Admin_Secure:U</code> (which
+/// clears the API's own gate) and not <code>%Admin_Operate:U</code>: the interoperability event log's
+/// served principal (Story 16.8).</p>
+Parameter EVENTUSER = "OcuPilotLogEvent";
+
+/// <p>See <parameter>EVENTUSER</parameter>.</p>
+Parameter EVENTROLE = "OcuPilotLogEventRole";
+
+/// <p>Story 16.8's six routes and the pair each names when refused,
+/// <code>key=resource:permission</code>. <code>%DeepSee_Portal</code> carries public
+/// <code>USE</code>, so no real principal lacks it and the analytics route has no refused leg.</p>
+Parameter SECONDARYROUTES = "systemmonitor=%Admin_Operate:USE,taskerrors=%Admin_Operate:USE,xdbc=%Admin_Operate:USE,sqldiagnostics=%Admin_Operate:USE,eventlog=%Ens_EventLog:USE,analytics=";
 
 /// <p>The two accounts' password for this run, generated in <method>OnBeforeAllTests</method> and
 /// never written to source.</p>
@@ -117,14 +137,18 @@ Method OnBeforeAllTests() As %Status
         If $$$ISERR(tSC) Quit
         Set tSC = ..EnsurePrincipal(..#OPERATEROLE, ..#OPERATEUSER, tCodeRead _ ",%Admin_Operate:U", ..PreparedPassword)
         If $$$ISERR(tSC) Quit
+        Set tSC = ..EnsurePrincipal(..#EVENTROLE, ..#EVENTUSER, tCodeRead _ ",%Admin_Secure:U,%Ens_EventLog:U", ..PreparedPassword)
+        If $$$ISERR(tSC) Quit
 
         Set tSecure = ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%Admin_Secure", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%Admin_Operate", "USE") '= 1)
         ; The allowed principal holds the one pair and NEITHER of the two the Logs area also
         ; declares. Reading both back is what makes the DW-278 measurement a measurement.
         Set tOperate = ($SYSTEM.Security.CheckUserPermission(..#OPERATEUSER, "%Admin_Operate", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#OPERATEUSER, "%Admin_Secure", "USE") '= 1) && ($SYSTEM.Security.CheckUserPermission(..#OPERATEUSER, "%DB_IRISSYS", "READ") '= 1)
-        Set ..PreparedSetupOk = tSecure && tOperate
+        Set tEvent = ($SYSTEM.Security.CheckUserPermission(..#EVENTUSER, "%Ens_EventLog", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#EVENTUSER, "%Admin_Operate", "USE") '= 1)
+        Set tSecure = tSecure && ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%Ens_EventLog", "USE") '= 1)
+        Set ..PreparedSetupOk = tSecure && tOperate && tEvent
         If '..PreparedSetupOk {
-            Set tSC = $$$ERROR($$$GeneralError, "Setup could not confirm the two principals' pairs: secure " _ tSecure _ ", operate " _ tOperate)
+            Set tSC = $$$ERROR($$$GeneralError, "Setup could not confirm the principals' pairs: secure " _ tSecure _ ", operate " _ tOperate _ ", event " _ tEvent)
         }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -145,11 +169,11 @@ Method OnAfterAllTests() As %Status
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
         Set tLeft = ""
-        For tUser = ..#SECUREUSER, ..#OPERATEUSER {
+        For tUser = ..#SECUREUSER, ..#OPERATEUSER, ..#EVENTUSER {
             If ##class(Security.Users).Exists(tUser, .tU, .tUS) Do ##class(Security.Users).Delete(tUser)
             If ##class(Security.Users).Exists(tUser, .tU2, .tUS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "user " _ tUser
         }
-        For tRole = ..#SECUREROLE, ..#OPERATEROLE {
+        For tRole = ..#SECUREROLE, ..#OPERATEROLE, ..#EVENTROLE {
             If ##class(Security.Roles).Exists(tRole, .tR, .tRS) Do ##class(Security.Roles).Delete(tRole)
             If ##class(Security.Roles).Exists(tRole, .tR2, .tRS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "role " _ tRole
         }
@@ -322,6 +346,74 @@ Method TestTheAlertLogsOnePairGovernsBothWaysIn()
     If tStatus = 200 {
         Set tRead = ##class(%DynamicObject).%FromJSON(tBody)
         Do $$$AssertEquals(tRead.fields.%ToJSON(), "[""time"",""severity"",""text""]", "which answers the declared fields")
+    }
+}
+
+/// <p>Story 16.20 AC3 -- the list of older files and an older file itself meet the console log's
+/// own one pair, measured on the same two principals: without <code>%Admin_Operate:USE</code> both
+/// answer 403 naming it; with that pair alone the list answers 200 and a never-written rotated
+/// name answers 404 <code>LOG.ABSENT</code>, which is past the gate.</p>
+/// <p>Mutation: add <code>%DB_IRISSYS:READ</code> to
+/// <parameter>OcuPilot.Port.LogSourcePort.MESSAGESPAIRS</parameter> -&gt; the operate-only
+/// principal is refused 403 on both and the served assertions go red.</p>
+Method TestTheOlderFilesMeetTheConsoleLogsOnePair()
+{
+    For tPath = ..#FILESPATH, ..#LOGPATH _ "?file=" _ ..#NEVERWRITTEN {
+        Set tSC = ..FetchPath(..#SECUREUSER, tPath, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, tPath _ ": the refused request completes")
+        Do $$$AssertEquals(tStatus, 403, tPath _ ": refused to a principal without %Admin_Operate:USE")
+        Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", tPath _ ": as application/json")
+        Do $$$AssertEquals((tBody [ "}{"), 0, tPath _ ": exactly one envelope")
+        Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tFault.code, "AUTH.NOPRIVILEGE", tPath _ ": on the screen-privilege code")
+        Do $$$AssertEquals($Select($IsObject(tFault.detail): tFault.detail.failedPair, 1: ""), "%Admin_Operate:USE", tPath _ ": naming the pair that failed")
+    }
+
+    Set tSC = ..FetchPath(..#OPERATEUSER, ..#FILESPATH, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the served list request completes")
+    Do $$$AssertEquals(tStatus, 200, "%Admin_Operate:USE alone is served the list")
+    If tStatus = 200 {
+        Set tList = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tList.files.%Get(0).name, "messages.log", "which opens on messages.log")
+    }
+
+    Set tSC = ..FetchPath(..#OPERATEUSER, ..#LOGPATH _ "?file=" _ ..#NEVERWRITTEN, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the older-file request completes")
+    Do $$$AssertEquals(tStatus, 404, "%Admin_Operate:USE alone carries an older file past the gate")
+    Set tAbsent = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAbsent.code, "LOG.ABSENT", "to the file's absence")
+}
+
+/// <p>Story 16.8 AC2 -- each secondary log route and its screen's declared read, measured on real
+/// principals: without the route's pair the answer is 403 naming it; with that pair alone it is 200
+/// (the event log's principal holds <code>%Ens_EventLog:USE</code> and read on HSCUSTOM's database,
+/// which the per-namespace gate adds). The analytics route's pair carries public <code>USE</code>,
+/// so it is served to the principal the others refuse.</p>
+/// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Port.LogSourcePort.EVENTLOGPAIRS</parameter>
+/// -&gt; the event log's refusal names no pair and its served leg is refused, so both go red.</p>
+Method TestEachSecondaryLogRouteMeetsItsPair()
+{
+    For tI = 1:1:$Length(..#SECONDARYROUTES, ",") {
+        Set tRow = $Piece(..#SECONDARYROUTES, ",", tI)
+        Set tKey = $Piece(tRow, "=", 1)
+        Set tPair = $Piece(tRow, "=", 2)
+        For tPath = "/api/ocupilot/logs/" _ tKey, "/api/ocupilot/screens/logs." _ tKey _ "/read?maxRows=5" {
+            Set tSC = ..FetchPath(..#SECUREUSER, tPath, .tStatus, .tBody, .tHeaders)
+            Do $$$AssertStatusOK(tSC, tPath _ ": the request completes")
+            Do $$$AssertEquals((tBody [ "}{"), 0, tPath _ ": in exactly one envelope")
+            If tPair = "" {
+                Do $$$AssertEquals(tStatus, 200, tPath _ ": served to a principal holding only the public pair")
+                Continue
+            }
+            Do $$$AssertEquals(tStatus, 403, tPath _ ": refused without " _ tPair)
+            Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tFault.code, "AUTH.NOPRIVILEGE", tPath _ ": on the screen-privilege code")
+            Do $$$AssertEquals($Select($IsObject(tFault.detail): tFault.detail.failedPair, 1: ""), tPair, tPath _ ": naming the pair")
+
+            Set tServed = $Select(tKey = "eventlog": ..#EVENTUSER, 1: ..#OPERATEUSER)
+            Set tSC = ..FetchPath(tServed, tPath, .tStatus2, .tBody2, .tHeaders2)
+            Do $$$AssertEquals(tStatus2, 200, tPath _ ": served with " _ tPair _ " alone: " _ $Extract(tBody2, 1, 200))
+        }
     }
 }
 

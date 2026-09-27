@@ -1,14 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ChangeBus } from '../core/change-bus';
 import type { ConnectivityService } from '../core/connectivity';
 import type { Fault } from '../core/fault';
 import { OverlayStack } from '../core/overlay-stack';
+import { readBackOf } from '../core/read-back';
 import { RefreshService, type RefreshReadResult } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { ScreenActions } from '../core/screen-actions';
+import { DOWNLOAD_CSV_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -741,6 +742,37 @@ describe('the data table', () => {
     expect(wired.store.changed().has('/csp/app01')).toBe(true);
   });
 
+  it('Story 16.17: a marked row carries the read-back line after its tag, and in its announcement', async () => {
+    // Mutation (Rule 19): drop the read-back span from the name cell -> the line assertions go red,
+    // and the row says "Changed" without saying whether the instance holds what was sent (AD-58).
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const slot = () =>
+      (wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement).textContent?.trim();
+
+    wired.store.markChanged('/csp/app01', 'updated', readBackOf({ verdict: 'differs', fields: ['Description'], written: [] }));
+    await settle(wired.fixture);
+    const row = wired.host().querySelector('[aria-rowindex="3"]') as HTMLElement;
+    const tag = row.querySelector('.ocu-data-table-changed-tag') as HTMLElement;
+    expect(tag.textContent?.trim()).toBe(STRINGS.tableChangedTag);
+    const line = row.querySelector('.ocu-data-table-read-back') as HTMLElement;
+    expect(line.textContent?.trim()).toBe('Read back: differs in Description');
+    // The line is clipped with an ellipsis in a narrow cell, so its whole text is its title.
+    expect(line.getAttribute('title')).toBe('Read back: differs in Description');
+    expect(tag.nextElementSibling).toBe(line);
+    expect(slot()).toBe('Updated: /csp/app01 updated \u00b7 Read back: differs in Description');
+
+    // A mark with no read-back draws no line, and a second write under the same action whose
+    // read-back differs is announced again.
+    wired.store.markChanged('/csp/app02', 'updated');
+    await settle(wired.fixture);
+    expect((wired.host().querySelector('[aria-rowindex="4"]') as HTMLElement).querySelector('.ocu-data-table-read-back')).toBeNull();
+    wired.store.markChanged('/csp/app01', 'updated', readBackOf({ verdict: 'matches', fields: [], written: [] }));
+    await settle(wired.fixture);
+    expect(slot()).toBe('Updated: /csp/app01 updated \u00b7 Read back: matches');
+  });
+
   it('Story 5.7: the change names the canonical id, and the row the instance spells otherwise is marked', async () => {
     // Mutation (Rule 19): compare the bus key against the row keys directly again
     // (`changed.has(key)`, `lastKeys.includes(key)`) -> every assertion here goes red. A confirmed
@@ -1153,5 +1185,99 @@ describe('the data table', () => {
     expect(wired.focusFilterRequests()).toBe(1);
     expect(wired.host().querySelector('.ocu-data-table-empty')).toBeNull();
     expect(wired.host().querySelector('.ocu-data-table-count')?.textContent?.trim()).toBe('0 rows');
+  });
+
+  // --- Story 16.23: Download CSV --------------------------------------------------------------
+
+  it('Story 16.23: the table registers Download CSV while mounted and removes it when destroyed', async () => {
+    const declaration = tableDeclaration();
+    const wired = await wire(declaration, ok(rows(2)));
+    expect(wired.actions.has(declaration.descriptor, DOWNLOAD_CSV_ACTION_ID)).toBe(true);
+    wired.fixture.destroy();
+    expect(wired.actions.has(declaration.descriptor, DOWNLOAD_CSV_ACTION_ID)).toBe(false);
+  });
+
+  it('Story 16.23: run through the registry, the file is the view in view order under the header labels, and nothing undeclared', async () => {
+    const declaration = tableDeclaration();
+    const withheld = rows(12).map((row) => ({ ...row, Password: 'hunter2' }));
+    const wired = await wire(declaration, ok(withheld));
+    await wired.refresh.readNow();
+    wired.store.setFilter('app1');
+    wired.store.setDirection('desc');
+    await settle(wired.fixture);
+
+    const blobs: Blob[] = [];
+    const saved: { download: string; href: string; attached: boolean }[] = [];
+    const create = vi.fn((blob: Blob) => {
+      blobs.push(blob);
+      return 'blob:ocupilot/csv';
+    });
+    const revoke = vi.fn();
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = create;
+    URL.revokeObjectURL = revoke;
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push({ download: this.download, href: this.getAttribute('href') ?? '', attached: this.isConnected });
+    });
+    try {
+      expect(wired.actions.run(declaration.descriptor, DOWNLOAD_CSV_ACTION_ID)).toBe(true);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    } finally {
+      click.mockRestore();
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    }
+
+    expect(saved).toHaveLength(1);
+    // The screen label's slug ("Web applications and REST API explorer"), then the local date and time.
+    expect(saved[0].download).toMatch(/^web-applications-and-rest-api-explorer-\d{8}-\d{6}\.csv$/);
+    expect(saved[0].href).toBe('blob:ocupilot/csv');
+    expect(saved[0].attached).toBe(true);
+    expect(revoke).toHaveBeenCalledWith('blob:ocupilot/csv');
+    expect(document.querySelector('a[download]')).toBeNull();
+    expect(blobs[0].type).toBe('text/csv;charset=utf-8');
+
+    // `Blob.text()` decodes UTF-8 and drops a leading BOM, so the BOM is read as bytes.
+    const bytes = new Uint8Array(await blobs[0].arrayBuffer());
+    expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
+    const text = await blobs[0].text();
+    const headers = Array.from(wired.host().querySelectorAll('.ocu-data-table-header-label')).map((label) =>
+      (label as HTMLElement).textContent?.trim()
+    );
+    expect(text).toBe(
+      `${headers.join(',')}\r\n` +
+        `/csp/app11,USER,11000,${STRINGS.tableStatusNo},note 11\r\n` +
+        `/csp/app10,USER,10000,${STRINGS.tableStatusYes},note 10\r\n`
+    );
+    expect(text).not.toContain('hunter2');
+  });
+
+  // Mutation (Rule 19): drop `this.pendingFields()` from `downloadCsv`'s `tableCsvRows` call -> red.
+  it('Story 16.23: a column still pending is written empty in the file', async () => {
+    const declaration = tableDeclaration();
+    const wired = await wire(declaration, ok(rows(2)));
+    wired.fixture.componentRef.setInput('pendingFields', ['Note']);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const blobs: Blob[] = [];
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = (blob: Blob) => (blobs.push(blob), 'blob:ocupilot/csv');
+    URL.revokeObjectURL = () => undefined;
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    try {
+      expect(wired.actions.run(declaration.descriptor, DOWNLOAD_CSV_ACTION_ID)).toBe(true);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    } finally {
+      click.mockRestore();
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    }
+
+    const lines = (await blobs[0].text()).split('\r\n');
+    // app01 carries "note 1", which the pending Note column must not write.
+    expect(lines.find((line) => line.startsWith('/csp/app01,'))).toBe(`/csp/app01,USER,1000,${STRINGS.tableStatusNo},`);
   });
 });

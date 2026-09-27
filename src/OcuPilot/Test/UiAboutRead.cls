@@ -246,8 +246,9 @@ Method TestAnUnknownRouteResolvesToNothing()
 /// <p>The production log line a refused About source writes: one appended <code>[OcuPilot]</code>
 /// console line at <code>error</code> level under the About subsystem, naming the field; and a
 /// call with no exception object swallows its own failure rather than raising.</p>
-/// <p>Mutation (Rule 19): empty <method>OcuPilot.Kernel.Shell.About.LogSourceFailure</method>'s
-/// <code>Try</code> body -> no line is appended and this goes red.</p>
+/// <p>Mutation (Rule 19): empty <method>OcuPilot.Kernel.Shell.FieldRead.LogSourceFailure</method>'s
+/// <code>Try</code> body -> no line is appended and this goes red; change About's
+/// <parameter>LOGMESSAGE</parameter> -> the message assertion goes red.</p>
 Method TestTheSourceFailureLogLineNamesTheField()
 {
     Set tPath = ##class(%File).NormalizeFilename(##class(OcuPilot.Port.LogSourcePort).FileFor("messages"), ##class(OcuPilot.Port.LogSourcePort).ManagerDirectory())
@@ -270,7 +271,8 @@ Method TestTheSourceFailureLogLineNamesTheField()
     If tLine '= "" {
         Set tEntry = ##class(%DynamicObject).%FromJSON($Piece(tLine, "[OcuPilot] ", 2, *))
         Do $$$AssertEquals(tEntry.level, "error", "at error level")
-        Do $$$AssertEquals(tEntry.subsystem, ##class(OcuPilot.Kernel.Shell.About).#LOGSUBSYSTEM, "under the About subsystem")
+        Do $$$AssertEquals(tEntry.subsystem, "uiabout", "under the About subsystem")
+        Do $$$AssertEquals(tEntry.msg, "An About source could not be read", "with About's own message")
         Do $$$AssertEquals(tEntry.data.field, tField, "naming the field")
     }
 

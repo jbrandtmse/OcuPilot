@@ -17,6 +17,7 @@ import { ApiService } from '../core/api';
 import { ChangeBus } from '../core/change-bus';
 import { FormDirty } from '../core/form-dirty';
 import { NavigationService, ownIdSegment, withQuery } from '../core/navigation';
+import { savedLine } from '../core/read-back';
 import { type ReducedField, type ReducedFormDeclaration, ReducedFormStore } from '../core/reduced-form.store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
@@ -189,7 +190,7 @@ interface FieldView {
       <div class="ocu-form-bar">
         <div class="ocu-form-bar-status">
           @if (showSaved) {
-            <span role="status">{{ STRINGS.formSaved }}</span>
+            <span role="status">{{ savedText }}</span>
           }
         </div>
         <div class="ocu-form-bar-actions">
@@ -287,6 +288,12 @@ export class ReducedFormPage {
   protected get showSaved(): boolean {
     this.generation();
     return this.store.saved();
+  }
+
+  /** "Saved", with the instance's read-back line where the Save answered one (AD-58). */
+  protected get savedText(): string {
+    this.generation();
+    return savedLine(this.store.readBack());
   }
 
   protected get leavePending(): boolean {

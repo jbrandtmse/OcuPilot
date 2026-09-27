@@ -1190,3 +1190,54 @@ test('the framework reaches no API service: classification and probing are Story
   assert.ok(!/\bclassifyFault\b/.test(code), 'and classifies nothing: there is one taxonomy');
   assert.ok(!/\bfetch\s*\(/.test(code), 'nor does it issue a request of its own (AD-36)');
 });
+
+// --- Story 16.18: a declared default rate, and a remembered rate that lands after the bind -------
+//
+// Mutation (Rule 19): drop the store subscription `bind` makes (`onStoreChanged`) -> "a remembered
+// rate the account answers after the bind re-arms at it" goes red: the arm stays at the default
+// and the chip keeps reading every 10 s.
+
+test('Story 16.18: a screen declaring a default rate is armed at it on bind, with no rate remembered', () => {
+  const harness = wired();
+  harness.refresh.bind(screen({ refreshRates: [5, 10, 30, 60], refreshDefault: 10 }), harness.read);
+  assert.equal(harness.refresh.rate(), 10);
+  assert.equal(harness.refresh.armedFor(), 'tick');
+  assert.equal(harness.scheduled[harness.scheduled.length - 1].delayMs, 10_000);
+  assert.equal(harness.refresh.chipLabel(), 'Auto-refresh: every 10 s');
+});
+
+test('Story 16.18: a remembered rate the account answers after the bind re-arms at it, once', async () => {
+  const account = stubAccountPreferences({ refreshRates: { 'os-management/processes': '30' } });
+  const harness = wired({ account });
+  harness.refresh.bind(screen({ refreshRates: [5, 10, 30, 60], refreshDefault: 10 }), harness.read);
+  assert.equal(harness.scheduled[harness.scheduled.length - 1].delayMs, 10_000, 'the default, before the account answers');
+  const before = harness.scheduled.length;
+  let notified = 0;
+  harness.refresh.subscribe(() => (notified += 1));
+
+  await account.load();
+  assert.equal(harness.refresh.rate(), 30);
+  assert.equal(harness.scheduled.length, before + 1, 'one new arm');
+  assert.equal(harness.scheduled[harness.scheduled.length - 1].delayMs, 30_000, 'at the remembered rate');
+  assert.equal(harness.refresh.chipLabel(), 'Auto-refresh: every 30 s');
+  assert.ok(notified > 0, 'and the chrome was told');
+
+  // A remembered off stops the timer the default armed.
+  const offAccount = stubAccountPreferences({ refreshRates: { 'os-management/processes': '0' } });
+  const off = wired({ account: offAccount });
+  off.refresh.bind(screen({ refreshRates: [5, 10, 30, 60], refreshDefault: 10 }), off.read);
+  await offAccount.load();
+  assert.equal(off.refresh.rate(), 0);
+  assert.equal(off.refresh.armedFor(), 'none');
+  assert.equal(off.refresh.chipLabel(), 'Auto-refresh: off');
+});
+
+test('Story 16.18: setRate re-arms once, and a tick writing the store re-arms nothing extra', async () => {
+  const harness = wired();
+  harness.refresh.bind(screen({ refreshRates: [5, 10, 30, 60], refreshDefault: 10 }), harness.read);
+  const before = harness.scheduled.length;
+  harness.refresh.setRate(30);
+  assert.equal(harness.scheduled.length, before + 1, 'one arm for the new rate');
+  await harness.fire();
+  assert.equal(harness.scheduled.length, before + 2, 'and one for the tick that landed');
+});

@@ -5738,6 +5738,8 @@ So that I can take its work into a process it is not allowed to bypass.
 - **When** the draft is taken
 - **Then** the proposal is resolved as a cancel rather than left live, and the panel says so.
 
+- DW-1081: DESIGN.md gives reply code blocks a copy icon button; Story 4.6 does not build one - build the copy control once, for reply code blocks too (ledger; routed by spec_gate 2026-09-26)
+
 ### Story 14.2: The tool governance policy
 
 As an OcuPilot administrator,
@@ -5803,6 +5805,8 @@ So that the invariants have a second layer behind them.
 - **When** it occurs
 - **Then** the truncation is marked, so the model is not silently given a partial record it may treat as complete.
 
+- DW-1722: DraftRoute.Counts reads %SYS.Audit in HSCUSTOM, where the audit global is unmapped, so its "no agent marker is written" comparison cannot fail - switch that query to %SYS and prove it with a mutation (ledger; routed by harvest 2026-09-27)
+
 ### Story 14.4: Transcripts, retention and administrator access
 
 As a developer-administrator,
@@ -5832,6 +5836,9 @@ So that the agent has memory of my work without keeping it forever.
 - **When** the retention task next sweeps
 - **Then** their transcripts survive as an audit record while their sessions are invalidated - stored references being weak by contract.
 
+- DW-1122: Nothing bounds the ledger table across turns until Story 14.4 - the retention purge also bounds the agent ledger (ledger; routed by spec_gate 2026-09-26)
+- DW-1240: The reload-after-retention row has no mechanism - the retention sweep this story builds is what drops a restored turn's cards after RETENTIONSECONDS (ledger; routed by harvest 2026-09-19)
+
 ### Story 14.5: The per-user read-only toggle
 
 As a cautious administrator on someone else's instance,
@@ -5855,6 +5862,8 @@ So that I can explore without any possibility of changing something.
 - **Given** the gate already exists and is evaluated at the write
 - **When** this story lands
 - **Then** it is **data and UI, not a new enforcement point**.
+
+- DW-1621: The Definition form draws no read-only control, so with the read/write default a per-definition read-only agent can be made only through the API - add the control (owner-confirmed 2026-09-26) (ledger; routed by merge_gate 2026-09-26)
 
 ### Story 14.6: Per-user turn limits, and the banner they need
 
@@ -5895,11 +5904,12 @@ So that "the model is assumed compromised" is a tested claim rather than a postu
 
 - **Given** a turn then runs over each seeded source
 - **When** the test asserts
-- **Then** it asserts **zero proposals, zero navigations and zero outbound requests to any host other than the configured provider**.
+- **Then** it asserts **zero proposals, zero navigations and zero outbound requests to any host other than the configured provider**, against a scripted model that obeys any instruction reaching the system prompt or the user role. [AMENDED 2026-09-26, Story 14.8 spec gate, Rule 5: an obeying stub that reads "call a write tool" in a tool result would mint a proposal by construction, so the zeros are stated against the channel-sensitive stub, which goes red if any seed ever reaches an instruction channel]
 
 - **Given** the five invariants the defense actually rests on
 - **When** they are verified
 - **Then** it confirms that untrusted text entered only as delimited tool-result content and never the system prompt or user role; that no write occurred without a confirmation on a server-computed diff; that navigation accepted only allow-listed route identifiers; and that nothing rendered issued a request to any host
+- **And** against a scripted model that obeys the seeded string wherever it reads it, the write it attempts is only proposed, and the navigation it attempts is refused [AMENDED 2026-09-26, Story 14.8 spec gate, Rule 5]
 - **And** the polish-week sanitizer is **additional** to these, never the defense.
 
 ---
@@ -6692,6 +6702,8 @@ So that I can fix them before they matter, with the same review and confirmation
 - **Given** a finding whose fix OcuPilot refuses - taking `%All` from the last account that holds it, say
 - **When** it renders
 - **Then** it offers no Fix it and says why, in the prohibited set's own words, and a finding the caller may not read is left out rather than reported as clean.
+
+- DW-1400: the shell-chrome read seam is in its third verbatim copy (About, Instance, SystemInfo) with no extracted base; extract it before this story's Home panel adds a fourth reader (ledger; routed by adjudication 2026-09-26)
 
 ### Story 16.22: The Guardrails page
 

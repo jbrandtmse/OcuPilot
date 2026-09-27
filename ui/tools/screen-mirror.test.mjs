@@ -26,6 +26,7 @@ import {
   extractXData,
   generate,
   malformedPair,
+  ownPrivilegesProblem,
   parentScopeResolutionProblem,
   IMPLEMENTED_ID_RULES,
   parseEntityTypes,
@@ -449,6 +450,11 @@ test('AD-43: the generator refuses a malformed refresh pair', () => {
     // a sound rate list on the instance unless something refuses the shape first.
     [{ refreshes: true, refreshRates: { a: 10 } }, /not a list of rates/],
     [{ refreshes: true, refreshRates: 10 }, /not a list of rates/],
+    // Story 16.18: a declared default is one of the declared rates, and nothing else.
+    [{ refreshes: true, refreshRates: [5, 10], refreshDefault: 15 }, /refreshDefault \(15\) is not one of refreshRates/],
+    [{ refreshes: true, refreshRates: [5, 10], refreshDefault: '10' }, /refreshDefault \("10"\) is not one of refreshRates/],
+    [{ refreshes: false, refreshRates: [], refreshDefault: 10 }, /refreshDefault \(10\) is not one of refreshRates/],
+    [{ refreshDefault: 10 }, /refreshDefault \(10\) is not one of refreshRates/],
   ];
   for (const [declaration, message] of refused) {
     assert.throws(
@@ -467,6 +473,26 @@ test('AD-43: the generator refuses a malformed refresh pair', () => {
   assert.doesNotThrow(() => build({ refreshes: true, refreshRates: [10] }));
   assert.doesNotThrow(() => build({ refreshes: false, refreshRates: [] }));
   assert.doesNotThrow(() => build({}));
+  assert.doesNotThrow(() => build({ refreshes: true, refreshRates: [5, 10], refreshDefault: 10 }));
+  assert.doesNotThrow(() => build({ refreshes: true, refreshRates: [5, 10], refreshDefault: 0 }), '0 is off');
+  assert.doesNotThrow(() => build({ refreshes: false, refreshRates: [], refreshDefault: 0 }), 'on any screen');
+});
+
+// AD-43 as amended (Story 16.18): Home is the one screen whose default rate is not off, and the
+// mirror carries it; every other screen reads 0.
+//
+// Mutation (Rule 19): drop the `refreshDefault` default from `buildMirror`'s emitted shape -> every
+// other screen reads `undefined` and the second assertion goes red.
+test('AD-43: only Home declares a default rate, and it reaches the mirror as every 10 s', () => {
+  const shipped = JSON.parse(
+    readCheckedInMirror().match(/export const SCREENS: readonly ScreenDeclaration\[\] = (\[[\s\S]*?\n\]);/)[1]
+  );
+  const declaring = shipped.filter((screen) => screen.refreshDefault !== 0).map((screen) => screen.descriptor);
+  assert.deepEqual(declaring, ['OcuPilot.Screen.Descriptor.Home']);
+  assert.ok(shipped.every((screen) => typeof screen.refreshDefault === 'number'), 'every screen carries a number');
+  const home = shipped.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.Home');
+  assert.equal(home.refreshDefault, 10);
+  assert.ok(home.refreshRates.includes(home.refreshDefault), 'one of its own rates');
 });
 
 // AD-36: a declared read is refused here in the shapes `OcuPilot.Screen.Registry.ReadProblem`
@@ -2056,6 +2082,47 @@ test('declarationProblem returns every sentence OcuPilot.Test.DeclarationCorpus 
         screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }],
       }),
     /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): the declaration declares the unknown key 'banners'/
+  );
+});
+
+// AD-8, DW-1755: every case in `OcuPilot.Test.DeclarationCorpus`'s `OwnPrivilegeCases`, the corpus
+// `OcuPilot.Test.Descriptor` runs through `OcuPilot.Screen.Registry.OwnPrivilegesProblem`, gets its
+// exact sentence or `null` from `ownPrivilegesProblem`; every shipped descriptor passes; and the
+// refusal reaches the generator.
+//
+// Mutation (Rule 19): delete the `ownPrivilegesProblem` call from `buildMirror` -> the "reaches the
+// generator" assertion goes red while the corpus run stays green.
+test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, and an unrequired own pair never reaches the mirror', () => {
+  const corpus = testCorpus(['Test', 'DeclarationCorpus.cls'], 'OwnPrivilegeCases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = { privileges: structuredClone(corpus.privileges) };
+    if ('ownPrivileges' in testCase) declaration.ownPrivileges = structuredClone(testCase.ownPrivileges);
+    assert.equal(ownPrivilegesProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+
+  const { screens } = readSources();
+  for (const screen of screens) {
+    assert.equal(ownPrivilegesProblem(screen.declaration), null, `${screen.className}'s own pairs pass`);
+  }
+  const owners = screens.filter((screen) => Array.isArray(screen.declaration.ownPrivileges)).map((screen) => screen.className);
+  assert.deepEqual(
+    owners.sort(),
+    ['OcuPilot.Screen.Descriptor.LogAnalyticsViewer', 'OcuPilot.Screen.Descriptor.LogEventViewer'],
+    'the two screens AD-8 names are the ones declaring own pairs'
+  );
+
+  const hostile = structuredClone(testCorpus(['Test', 'DeclarationCorpus.cls'], 'Cases').declaration);
+  hostile.ownPrivileges = [{ resource: '%Ens_EventLog', permission: 'USE' }];
+  assert.throws(
+    () =>
+      buildMirror({
+        ...readSources(),
+        screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }],
+      }),
+    /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): own privilege pair %Ens_EventLog:USE is not one of the screen's declared privileges/
   );
 });
 

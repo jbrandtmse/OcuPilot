@@ -3,7 +3,9 @@
 /// read them from here, through the class name <method>OcuPilot.Kernel.Agent.Loop.LimitsClass</method>
 /// answers.</p>
 /// <p>A subclass that narrows a parameter is how a test drives a bound without waiting it out.
-/// Story 14.6 replaces these constants with per-user settings.</p>
+/// The per-turn bounds stay constants; the one per-user setting beside them is the turns an hour an
+/// administrator sets on Switches (<property>OcuPilot.Kernel.State.Switch.TurnsPerHour</property>),
+/// counted over <parameter>TURNLIMITWINDOWSECONDS</parameter>.</p>
 Class OcuPilot.Kernel.Agent.Limits Extends %RegisteredObject
 {
 
@@ -116,5 +118,15 @@ Parameter PROVIDERCALLSECONDS As %Integer = 300;
 /// <p>Milliseconds between two writes of a streamed model call's text so far to its running step
 /// (AD-33); the first text is written as soon as it arrives.</p>
 Parameter STREAMINTERVALMS As %Integer = 400;
+
+/// <p>Turns one user may have running at once (AD-41). Structural rather than a setting: the slot
+/// lock <method>OcuPilot.Kernel.State.Turn.GuardedReserve</method> takes admits one holder, and the
+/// conversation lock and the panel's single transcript assume one turn at a time. Switches shows
+/// it read-only and refuses any other value.</p>
+Parameter CONCURRENTTURNS As %Integer = 1;
+
+/// <p>Seconds of the trailing window a user's turns an hour are counted over (AD-41, Story 14.6):
+/// a start reserved this many seconds ago or earlier no longer counts.</p>
+Parameter TURNLIMITWINDOWSECONDS As %Integer = 3600;
 
 }
