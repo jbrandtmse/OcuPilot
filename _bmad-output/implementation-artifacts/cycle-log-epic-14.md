@@ -106,3 +106,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-27T09:36:01Z	Story 14.5	committed_code	sha=d084a712 pushed=true ci=pending run=36309845596 head_confirmed_by=headSha supersedes_run=36308203686(64b629b4)
 2026-09-27T09:36:01Z	Epic 14	ledger_routed_planned	story=14-4-transcripts-retention-and-administrator-access entries=2 excess=0 by=spec_gate dw=DW-1122,DW-1240 note=epics.md_bullets_added
 2026-09-27T09:36:01Z	Story 14.4	stage_spawned	stage=plan spawn_at=2026-09-27T09:36:01Z model=opus agent_name=14-4-transcripts-retention-plan-1 cycle_iteration=1
+2026-09-27T10:23:12Z	Story 14.5	committed	sha=d084a712 submodules= ci=success run=36309845596 amendments=EXPERIENCE.md:289,335(in-place;981_lines) ui/angular.json:maximumWarning_1900kB(DW-1166)
+2026-09-27T10:23:12Z	Story 14.5	ci_resolved	story=14.5 run=36309845596 result=success resolved_at=boundary
+2026-09-27T10:23:12Z	Story 14.5	story_boundary	story=14.5 head=d084a712 ci_run=36309845596 ci=success
