@@ -28,6 +28,9 @@ export type ScreenActionRun = () => void;
  */
 export const REFRESH_ACTION_ID = 'refresh';
 
+/** Download CSV (Story 16.23): a view control the data table registers, which the command box does not list. */
+export const DOWNLOAD_CSV_ACTION_ID = 'download-csv';
+
 /**
  * The label a surface draws for `actionId` on `descriptor`.
  *

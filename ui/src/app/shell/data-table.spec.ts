@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ChangeBus } from '../core/change-bus';
 import type { ConnectivityService } from '../core/connectivity';
@@ -9,7 +9,7 @@ import { OverlayStack } from '../core/overlay-stack';
 import { readBackOf } from '../core/read-back';
 import { RefreshService, type RefreshReadResult } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { ScreenActions } from '../core/screen-actions';
+import { DOWNLOAD_CSV_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -1185,5 +1185,71 @@ describe('the data table', () => {
     expect(wired.focusFilterRequests()).toBe(1);
     expect(wired.host().querySelector('.ocu-data-table-empty')).toBeNull();
     expect(wired.host().querySelector('.ocu-data-table-count')?.textContent?.trim()).toBe('0 rows');
+  });
+
+  // --- Story 16.23: Download CSV --------------------------------------------------------------
+
+  it('Story 16.23: the table registers Download CSV while mounted and removes it when destroyed', async () => {
+    const declaration = tableDeclaration();
+    const wired = await wire(declaration, ok(rows(2)));
+    expect(wired.actions.has(declaration.descriptor, DOWNLOAD_CSV_ACTION_ID)).toBe(true);
+    wired.fixture.destroy();
+    expect(wired.actions.has(declaration.descriptor, DOWNLOAD_CSV_ACTION_ID)).toBe(false);
+  });
+
+  it('Story 16.23: run through the registry, the file is the view in view order under the header labels, and nothing undeclared', async () => {
+    const declaration = tableDeclaration();
+    const withheld = rows(12).map((row) => ({ ...row, Password: 'hunter2' }));
+    const wired = await wire(declaration, ok(withheld));
+    await wired.refresh.readNow();
+    wired.store.setFilter('app1');
+    wired.store.setDirection('desc');
+    await settle(wired.fixture);
+
+    const blobs: Blob[] = [];
+    const saved: { download: string; href: string; attached: boolean }[] = [];
+    const create = vi.fn((blob: Blob) => {
+      blobs.push(blob);
+      return 'blob:ocupilot/csv';
+    });
+    const revoke = vi.fn();
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = create;
+    URL.revokeObjectURL = revoke;
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push({ download: this.download, href: this.getAttribute('href') ?? '', attached: this.isConnected });
+    });
+    try {
+      expect(wired.actions.run(declaration.descriptor, DOWNLOAD_CSV_ACTION_ID)).toBe(true);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    } finally {
+      click.mockRestore();
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    }
+
+    expect(saved).toHaveLength(1);
+    // The screen label's slug ("Web applications and REST API explorer"), then the local date and time.
+    expect(saved[0].download).toMatch(/^web-applications-and-rest-api-explorer-\d{8}-\d{6}\.csv$/);
+    expect(saved[0].href).toBe('blob:ocupilot/csv');
+    expect(saved[0].attached).toBe(true);
+    expect(revoke).toHaveBeenCalledWith('blob:ocupilot/csv');
+    expect(document.querySelector('a[download]')).toBeNull();
+    expect(blobs[0].type).toBe('text/csv;charset=utf-8');
+
+    // `Blob.text()` decodes UTF-8 and drops a leading BOM, so the BOM is read as bytes.
+    const bytes = new Uint8Array(await blobs[0].arrayBuffer());
+    expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
+    const text = await blobs[0].text();
+    const headers = Array.from(wired.host().querySelectorAll('.ocu-data-table-header-label')).map((label) =>
+      (label as HTMLElement).textContent?.trim()
+    );
+    expect(text).toBe(
+      `${headers.join(',')}\r\n` +
+        `/csp/app11,USER,11000,${STRINGS.tableStatusNo},note 11\r\n` +
+        `/csp/app10,USER,10000,${STRINGS.tableStatusYes},note 10\r\n`
+    );
+    expect(text).not.toContain('hunter2');
   });
 });

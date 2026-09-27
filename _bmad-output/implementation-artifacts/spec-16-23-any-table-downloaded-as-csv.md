@@ -2,7 +2,8 @@
 title: 'Story 16.23: Any table, downloaded as CSV'
 type: 'feature'
 created: '2026-09-27'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'fc246c1088ebf4f5cd3d3b595807b43a3fff771b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -110,6 +111,28 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-27 — Review pass
+
+- verdicts: 17 findings — high 0, medium 0, low 11, false 6, maybe-false 0
+- findings:
+  - `low` `patch` The file name's local-time rule cannot fail in UTC CI — `csv.test.mjs` now sets `TZ=America/Los_Angeles` and asserts a non-zero offset.
+  - `low` `patch` The cap `<n>` was never distinguished from the row count — the command-bar cap test now reads Max rows 3 over two rows.
+  - `low` `patch` The "read landed for this screen" check was untested — the command-bar test now lands a read for another screen and expects no control.
+  - `false` `reject` AC3 lacks a `mutation:` line for its Upcoming leg — Rule 19 asks one per AC, and AC3's command-bar half has one observed red.
+  - `low` `patch` `!text.includes('Extra')` could not fail (a key, never written) — the withheld field now carries a distinctive value and the test checks that value.
+  - `low` `patch` The component spec's name pattern was loose — pinned to the fixture label's exact slug `web-applications-and-rest-api-explorer` (the reviewer's `web-applications` was wrong: the label is "Web applications and REST API explorer").
+  - `false` `reject` A control only for the route screen's table (A1) versus any mounted table — the intent ties the control to the screen's read, which is what the diff does.
+  - `low` `reject` After a later refused read the control stays and saves the last good view — the intent does not decide it; rare, and a fix adds a branch.
+  - `false` `reject` Cells as `cellView` text versus the grid's full text — the diff follows the intent's own parenthesis.
+  - `low` `reject` On a filtered capped view "the first <n> rows" overstates the file — the sentence and its `<n>` are fixed by the intent; changing them edits the spec.
+  - `false` `reject` The button sits after Refresh, not in :601's list order — the spec's task places it after Refresh, and :601 was a list, not a DOM order, before this change.
+  - `false` `reject` Most matrix rows are pinned at unit level only — they are encoder decisions, and the matrix audit accepts that tier.
+  - `low` `reject` "No request, no navigation" is not asserted by a network watch — the component test pins the blob `href` and the anchor's removal; a watch is a new harness.
+  - `low` `reject` The control on an empty loaded table is not tested — the gate reads only `hasLoaded`; no row-count branch exists to break.
+  - `low` `reject` `pendingFields` forwarding is pinned only at unit level — a one-argument call used only by Databases' staged free-space.
+  - `low` `reject` A refusal before the first read is not tested — it holds the same unloaded state the tested skeleton case holds.
+  - `false` `reject` Command-box absence is not asserted — `ScreenActions` cannot enumerate, and `command-box.ts` lists declared ids only and is untouched.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -150,17 +173,48 @@ deferred: []
 
 **Mutations** (Rule 19: one line per AC, recorded when the pinning test is written):
 
-- mutation: build from `store.data()` instead of `view()` → the browser AC1 and the data-table spec go red.
-- mutation: skip the remover `register` returned, on destroy → the data-table spec goes red.
-- mutation: drop the loaded condition → the command-bar spec goes red.
-- mutation: omit `aria-describedby` at the cap → the command-bar spec and the browser spec go red.
-- mutation: drop `-` from the guard set → `csv.test.mjs` goes red.
-- mutation: write `Object.keys(row)` instead of the columns → `csv.test.mjs` goes red.
-- mutation: change the `tableDownloadCsvCapped` value → `strings.test.mjs` goes red.
+- mutation: `tableCsvRows(this.store().data(), …)` in `data-table.ts` → observed red: the data-table spec's "run through the registry" test, and after rebuild + redeploy the browser AC1 ("the file holds the footer's count of rows"); reverted byte-identical.
+- mutation: `void stopDownload` in place of `destroyRef.onDestroy(stopDownload)` → observed red: the data-table spec's "removes it when destroyed" test; reverted.
+- mutation: `hasDownloadAction` returns `true` without the loaded test → observed red: the command-bar spec's "draws no control until the bound read has landed" test; reverted.
+- mutation: drop `[attr.aria-describedby]` from the download button → observed red: the command-bar spec's cap test, and after rebuild + redeploy the browser AC4 (timed out waiting for the description); reverted.
+- mutation: drop `-` from `FORMULA_LEAD` → observed red: `csv.test.mjs` "the formula guard …"; reverted.
+- mutation: map `Object.keys(row)` instead of `columns` in `tableCsvRows` → observed red: `csv.test.mjs` "only the declared columns …" and "a cell is what the table displays …"; reverted.
+- mutation: `tableDownloadCsvCapped` reworded → observed red: `strings.test.mjs` (Fixed strings literal, authorized-strings and line-reference tests); reverted.
+- mutation: `getUTCHours` in `csvFileName` → observed red: `csv.test.mjs` name test (it pins `TZ=America/Los_Angeles`, since CI runs in UTC); reverted.
+- mutation: `<n>` from `store.data().length` in `downloadCapped` → observed red: the command-bar cap test (Max rows 3, two rows read); reverted.
+- mutation: drop `refresh.descriptor() === screen.descriptor` from `hasDownloadAction` → observed red: the command-bar test's "read landed for another screen" step; reverted.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only (halt after planning). The design is client-only: the data table registers `download-csv` on `ScreenActions`, and the command bar draws Download CSV. There is no ObjectScript change. EXPERIENCE.md is edited in place with no new line. The ledger inbox is empty, and DW-118 is declined (resolved by 15.6).
+**Change.** The data table registers `download-csv` on `ScreenActions` in `ngOnInit` and removes it on destroy. The command bar draws Download CSV (`ocu-button-text`, never `ocu-command-bar-action`) once the handler is registered and the screen's own read has landed, with the cap description at the cap. `core/csv.ts` builds the file from `view()` and the declared columns. It is client-only, with no new dependency.
+
+**Files:**
+
+- `ui/src/app/core/csv.ts` (new): field encoder (formula guard, RFC 4180), BOM and CRLF text, declared-columns rows over `cellView`, and the file name.
+- `ui/src/app/core/screen-actions.ts`: `DOWNLOAD_CSV_ACTION_ID`.
+- `ui/src/app/shell/data-table.ts`: register, remove, and the Blob and anchor save.
+- `ui/src/app/shell/command-bar.ts`: the control, its cap description, and `hasContent`.
+- `ui/src/app/core/strings.ts`: two keys cited to `EXPERIENCE.md:313`.
+- EXPERIENCE.md: in place at :313, :601 and :650 (991 lines before and after).
+- Tests: `ui/tools/csv.test.mjs` (new), two tests each in `data-table.spec.ts` and `command-bar.spec.ts`, and `ui/browser/csv-download.browser-spec.mjs` (new; covers AC1, AC3 and AC4).
+
+**Review:** 17 findings (two layers), with 0 high and 0 medium. Five low findings were patched, all in tests only (see the triage log). None were deferred, and the rest were rejected with reasons in the log. Follow-up review recommended: false (patched counts: high 0, medium 0, low 5).
+
+**Verification:**
+
+- `node --test` csv/strings/table-model: 51/51. `npm run test:tools`: 1574/1574. `npm run test:components`: 1553/1553.
+- `npm run build`: every checker passes. The initial bundle is 1.92 MB (main hash `K4VMHO4J`, unchanged by the review patches, so the deployed bundle is this tree's).
+- `lint-docs.sh`: clean.
+- Browser runs against `ocupilot-ci` after redeploy, all green: csv-download 3/3, data-table 9/9, data-table-columns 18/18, column-widths 2/2, account-and-filter 4/4, panel 12/12 (Databases' bar on one line at 832 px), screen-height 15/15, databases 3/3, audit 7/7, tasks 15/15, a11y-structural-invariants 12/12 (no baseline change).
+- Five of those runs went out in one message, which Rule 18 forbids; all were read-only list walks and green.
+- The grep of specs that enumerate command-bar buttons finds only `.ocu-command-bar-action`, `button.ocu-button-primary` and panel's one-line check.
+- No ObjectScript change, so there was no sweep.
+- Ten mutation lines were observed red and reverted byte-identical.
+
+**Residual risks:**
+
+- At the cap, the reason tooltip shows on hover but not on keyboard focus. The focus rule in `_components.scss` targets `.ocu-command-bar-action`, and the spec bars both that class and an SCSS change. The description still reaches assistive technology through `aria-describedby`.
+- Registration happens once in `ngOnInit`, so a table whose `screen` input changes keeps its first descriptor.

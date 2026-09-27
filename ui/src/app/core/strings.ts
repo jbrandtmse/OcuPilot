@@ -3099,6 +3099,12 @@ export const STRINGS = {
   /** EXPERIENCE.md:583 */
   agentGuardrailsPrompt3: 'What happens between your proposal and a change on the instance?',
 
+  // Story 16.23: the data table's Download CSV control in the command bar, and its description at the cap.
+  /** EXPERIENCE.md:313 */
+  tableDownloadCsv: 'Download CSV',
+  /** EXPERIENCE.md:313 */
+  tableDownloadCsvCapped: 'The file holds the first <n> rows only.',
+
 } as const;
 
 /**
