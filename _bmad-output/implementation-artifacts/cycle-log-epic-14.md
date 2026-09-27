@@ -87,3 +87,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-27T06:55:28Z	Story 14.3	committed_code	sha=3492ea88 pushed=true ci=pending run=36301507596 head_confirmed_by=headSha supersedes_run=36299696543(aaa51aea)
 2026-09-27T06:55:50Z	Epic 14	ledger_routed_planned	story=14-5-the-per-user-read-only-toggle entries=1 excess=0 by=merge_gate dw=DW-1621 note=epics.md_bullet_added
 2026-09-27T06:55:50Z	Story 14.5	stage_spawned	stage=plan spawn_at=2026-09-27T06:55:50Z model=opus agent_name=14-5-per-user-read-only-plan-1 cycle_iteration=1
+2026-09-27T07:46:50Z	Story 14.3	committed	sha=3492ea88 submodules= ci=success run=36301507596 amendments=ARCHITECTURE-SPINE.md:AD-11_closing_sentence,AD-60
+2026-09-27T07:46:50Z	Story 14.3	ci_resolved	story=14.3 run=36301507596 result=success resolved_at=boundary
+2026-09-27T07:46:50Z	Story 14.3	story_boundary	story=14.3 head=3492ea88 ci_run=36301507596 ci=success
