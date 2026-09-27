@@ -195,3 +195,4 @@
 2026-09-27T15:40:19Z	Story 16.23	cr_complete	spawn_at=2026-09-27T15:23:44Z model=opus resolved=2 fixed_at_source=2 by_design=1 wontfix_theoretical=2 wontfix_accepted=1(DW-1753) routed=0 escalated=0 decision_pending=0 deferred=1 dismissed=22 high=0 med=1 low=2 rows=1 unresolved_high_med=0 clarifications=0 closing_sections_present=true
 2026-09-27T15:40:19Z	Story 16.23	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=DW-1753_born_terminal;slice_empty model=claude-opus-5-5
 2026-09-27T15:40:19Z	Story 16.23	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci_patched_bundle;csv-download.browser-spec_3/3 model=claude-opus-5-5
+2026-09-27T15:41:23Z	Story 16.23	committed	sha=b7179aef submodules= ci=pending run=36330463424 amendments=EXPERIENCE.md:313,601,650_in_place;spec-16-23:scss_boundary_relaxed_one_rule supersedes=36329117363
