@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-27-2026 11:06'
+last_updated: '09-27-2026 12:31'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -256,7 +256,7 @@ development_status:
   16-19-impact-lines-on-removals: done
   16-20-older-messages-log-files: done
   16-21-security-findings-with-a-fix-you-confirm: done
-  16-22-the-guardrails-page: in-progress
+  16-22-the-guardrails-page: review
   16-23-any-table-downloaded-as-csv: backlog
   epic-16-retrospective: optional
 

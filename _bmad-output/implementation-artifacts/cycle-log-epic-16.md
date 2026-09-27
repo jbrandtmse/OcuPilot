@@ -160,3 +160,4 @@
 2026-09-27T11:06:48Z	Story 16.21	ci_resolved	story=16.21 run=36311841421 result=success resolved_at=next_implement head=d06b5090 note=structural_walk_green_on_rerun(timeout_not_recurring)
 2026-09-27T11:06:48Z	Story 16.21	story_boundary	story=16.21 head=d06b5090 ci_run=36311841421 ci=success note=includes_16.1,16.17-16.21
 2026-09-27T11:06:48Z	Story 16.22	stage_spawned	stage=implement spawn_at=2026-09-27T11:06:48Z model=opus agent_name=16-22-the-guardrails-page-implement-1 cycle_iteration=1
+2026-09-27T12:31:24Z	Story 16.22	dev_complete	spawn_at=2026-09-27T11:06:48Z model=opus build_sha=6b3fd940 baseline_revision=d485a0b6 review_loop_iteration=1 followup_review_recommended=false deferred=0 diff=_29_files_changed,_2086_insertions(+),_20_deletions(-) cycle_iteration=1 bundle=1.92MB sweep=306classes,290ran,16refused_arming,1known_residue ci=pending run=36319248246 note=secret-list_intro_sentence_reworded_by_implement(flag_for_review)
