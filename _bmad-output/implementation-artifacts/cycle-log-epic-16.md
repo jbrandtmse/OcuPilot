@@ -111,3 +111,4 @@
 2026-09-27T03:13:00Z	Story 16.19	cr_complete	spawn_at=2026-09-27T03:04:44Z model=opus resolved=4 fixed_at_source=4 wontfix_accepted=1(DW-1723) routed=0 escalated=0 decision_pending=0 deferred=1 dismissed=11 high=0 med=0 low=14 rows=1 unresolved_high_med=0 clarifications=0 closing_sections_present=true cycle_iteration=2 note=rework_re-review_scoped_eb1e19c4..6f38ca1a
 2026-09-27T03:13:00Z	Story 16.19	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=DW-1723_born_terminal_wontfix-accepted;slice_empty model=claude-opus-5-5
 2026-09-27T03:13:00Z	Story 16.19	smoke_complete	method=api result=pass iterations=2 defects_caught=0 evidence=ocupilot-ci:GET_impact_no_action_400_TOOL.ARGUMENTS,empty/undeclared_404,delete_without_id_400;ImpactRoute_10/10_run15214;EndpointCoverage_2/2_run15215 model=claude-opus-5-5
+2026-09-27T03:13:56Z	Story 16.19	committed	sha=464aec8e submodules= ci=pending run=36290792827 cycle_iteration=2 note=rework_for_ci_red_36287213038
