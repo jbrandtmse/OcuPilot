@@ -7562,3 +7562,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-23-any-table-downloaded-as-csv.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: csvField guards /^[=+\-@\t\r]/ only (core/csv.ts:17). LibreOffice evaluates ' =1+1' only with the non-default Trim spaces + Evaluate formulas import options; Excel on a ';' list separator splits 'a;=X()' mid-line, where quoting cannot help (inference, OWASP WSTG: depends on field separator).
 - 2026-09-27T15:38:45Z status=wontfix-accepted owner=16-23-any-table-downloaded-as-csv by=cr note=downloads get Protected View; reopen_if=a CSV from Download CSV opens with a formula cell evaluated in Excel or Calc with default import options
+
+### DW-1755: The Logs area now also requires %Ens_EventLog:USE (Story 16.8's interoperability event log), so a principal without it, such as the stock %Manager role, loses the whole Logs rail item, messages.log and alerts.log included
+- source: spec-16-8-the-six-secondary-log-viewers.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Area.cls logs row gains the pair because Registry.AreaCoverageProblem makes an area's set cover its screens'; %Manager lacks %Ens_EventLog:USE on ocupilot-ci (measured); the Epic 16 preamble forbids breaking a Release 1 screen
+- 2026-09-27T18:31:11Z status=decision-pending owner=burndown by=harvest note=product call: keep; or gate the event-log screen alone (amend AD-8's area rule); or drop the screen to Stage 2
