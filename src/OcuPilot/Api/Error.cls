@@ -586,6 +586,16 @@ Parameter AGENTSWITCHREASONREQUIRED = "AGENT.SWITCH.REASONREQUIRED";
 /// field <code>contextRowCap</code>.</p>
 Parameter AGENTSWITCHCONTEXTROWCAP = "AGENT.SWITCH.CONTEXTROWCAP";
 
+/// <p>Violation code (Story 14.6, AD-41): <code>turnsPerHour</code> is not a whole number from 0 to
+/// 10,000. Produced by <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> on the field
+/// <code>turnsPerHour</code>.</p>
+Parameter AGENTSWITCHTURNSPERHOUR = "AGENT.SWITCH.TURNSPERHOUR";
+
+/// <p>Violation code (Story 14.6, AD-41): a body carried <code>concurrentTurns</code> as anything
+/// but the number 1. Produced by <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> on
+/// the field <code>concurrentTurns</code>.</p>
+Parameter AGENTSWITCHCONCURRENTTURNS = "AGENT.SWITCH.CONCURRENTTURNS";
+
 /// <p>Violation code (FR-20): a per-user hold named no user. Produced by
 /// <method>OcuPilot.Kernel.SwitchRules.ValidateHold</method> on the field <code>userName</code>.</p>
 Parameter AGENTHOLDUSERREQUIRED = "AGENT.HOLD.USERREQUIRED";
@@ -720,6 +730,11 @@ Parameter TURNCONVERSATIONNOTFOUND = "TURN.CONVERSATION.NOTFOUND";
 /// <p>Machine code (AD-41): the caller already has a queued or running turn. Rendered on the
 /// <parameter>CONFLICT</parameter> slug, HTTP 409.</p>
 Parameter TURNBUSY = "TURN.BUSY";
+
+/// <p>Machine code (AD-41, Story 14.6): the caller has reached the instance's limit of turns an
+/// hour. Rendered on the <parameter>FORBIDDEN</parameter> slug, HTTP 403, with
+/// <code>detail</code> <code>{limit, retryAt}</code>, and nothing is reserved.</p>
+Parameter TURNLIMITHOUR = "TURN.LIMITHOUR";
 
 /// <p>Machine code (AD-33): no turn with that id belongs to the caller. Rendered on the
 /// <parameter>NOTFOUND</parameter> slug for an unknown id and for another user's alike.</p>
@@ -878,6 +893,12 @@ Parameter REASONTURNCONVERSATIONNOTFOUND = "No conversation with that identifier
 /// <p>Written sentence for <parameter>TURNBUSY</parameter>: EXPERIENCE.md's lock banner.</p>
 Parameter REASONTURNBUSY = "A turn is in progress. Wait for it to finish before sending another message.";
 
+/// <p>Written sentence for <parameter>TURNLIMITHOUR</parameter>: EXPERIENCE.md's turn-limit
+/// banner. The handler fills <code>&lt;n&gt;</code> with the limit and <code>&lt;hh:mm&gt;</code>
+/// with the retry time as <code>HH:MM UTC</code>; the panel renders the same sentence with the
+/// browser's local time.</p>
+Parameter REASONTURNLIMITHOUR = "You have reached this instance's limit of <n> agent turns an hour. You can send again at <hh:mm>.";
+
 /// <p>Written sentence for <parameter>TURNNOTFOUND</parameter>.</p>
 Parameter REASONTURNNOTFOUND = "No turn with that identifier exists for this account.";
 
@@ -1027,7 +1048,7 @@ ClassMethod ReasonForNav(pCode As %String) As %String
 /// <method>ReasonForTurn</method> to the vocabulary.</p>
 ClassMethod TurnCodes() As %List
 {
-    Quit $ListBuild(..#TURNBADBODY, ..#TURNMESSAGEREQUIRED, ..#TURNMESSAGELENGTH, ..#TURNCONTEXTINVALID, ..#TURNCONVERSATIONREQUIRED, ..#TURNCONVERSATIONNOTFOUND, ..#TURNBUSY, ..#TURNNOTFOUND, ..#TURNUNAVAILABLE, ..#TURNSTOPPED, ..#TURNABANDONEDREADONLY, ..#TURNABANDONEDPRIVILEGE, ..#TURNABANDONEDLEASE, ..#TURNABANDONEDSIGNOUT, ..#TURNABANDONEDJOBLOST, ..#TURNLIMITDURATION, ..#TURNLIMITTOKENS, ..#TURNNAVIGATIONINVALID)
+    Quit $ListBuild(..#TURNBADBODY, ..#TURNMESSAGEREQUIRED, ..#TURNMESSAGELENGTH, ..#TURNCONTEXTINVALID, ..#TURNCONVERSATIONREQUIRED, ..#TURNCONVERSATIONNOTFOUND, ..#TURNBUSY, ..#TURNLIMITHOUR, ..#TURNNOTFOUND, ..#TURNUNAVAILABLE, ..#TURNSTOPPED, ..#TURNABANDONEDREADONLY, ..#TURNABANDONEDPRIVILEGE, ..#TURNABANDONEDLEASE, ..#TURNABANDONEDSIGNOUT, ..#TURNABANDONEDJOBLOST, ..#TURNLIMITDURATION, ..#TURNLIMITTOKENS, ..#TURNNAVIGATIONINVALID)
 }
 
 /// <p>The written sentence a <code>TURN.*</code> code carries, or <code>""</code> for any other
@@ -1041,6 +1062,7 @@ ClassMethod ReasonForTurn(pCode As %String) As %String
     If pCode = ..#TURNCONVERSATIONREQUIRED Quit ..#REASONTURNCONVERSATIONREQUIRED
     If pCode = ..#TURNCONVERSATIONNOTFOUND Quit ..#REASONTURNCONVERSATIONNOTFOUND
     If pCode = ..#TURNBUSY Quit ..#REASONTURNBUSY
+    If pCode = ..#TURNLIMITHOUR Quit ..#REASONTURNLIMITHOUR
     If pCode = ..#TURNNOTFOUND Quit ..#REASONTURNNOTFOUND
     If pCode = ..#TURNUNAVAILABLE Quit ..#REASONTURNUNAVAILABLE
     If pCode = ..#TURNSTOPPED Quit ..#REASONTURNSTOPPED
@@ -1159,6 +1181,8 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#AGENTCREDENTIALNOPRIVILEGE Quit ..#REASONAGENTCREDENTIALNOPRIVILEGE
     If pCode = ..#AGENTSWITCHREASONREQUIRED Quit ..#REASONAGENTSWITCHREASONREQUIRED
     If pCode = ..#AGENTSWITCHCONTEXTROWCAP Quit ..#REASONAGENTSWITCHCONTEXTROWCAP
+    If pCode = ..#AGENTSWITCHTURNSPERHOUR Quit ..#REASONAGENTSWITCHTURNSPERHOUR
+    If pCode = ..#AGENTSWITCHCONCURRENTTURNS Quit ..#REASONAGENTSWITCHCONCURRENTTURNS
     If pCode = ..#AGENTHOLDUSERREQUIRED Quit ..#REASONAGENTHOLDUSERREQUIRED
     If pCode = ..#AGENTHOLDREASONREQUIRED Quit ..#REASONAGENTHOLDREASONREQUIRED
     If pCode = ..#AGENTHOLDDUPLICATE Quit ..#REASONAGENTHOLDDUPLICATE
@@ -1344,7 +1368,7 @@ ClassMethod DeviceViolationCodes() As %List
 /// <class>OcuPilot.Test.AccountPasswordWire</class>, which asserts each sentence over the wire.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTCREDTYPEUNAVAILABLE, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTHTTPACKREQUIRED, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
+    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTCREDTYPEUNAVAILABLE, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTHTTPACKREQUIRED, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTSWITCHTURNSPERHOUR, ..#AGENTSWITCHCONCURRENTTURNS, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
 }
 
 /// <p>Refusal sentence for <parameter>AGENTNAMEREQUIRED</parameter>.</p>
@@ -1446,6 +1470,12 @@ Parameter REASONAGENTSWITCHREASONREQUIRED = "Give a reason for switching the age
 
 /// <p>Refusal sentence for <parameter>AGENTSWITCHCONTEXTROWCAP</parameter>.</p>
 Parameter REASONAGENTSWITCHCONTEXTROWCAP = "Context rows sent with a turn is a whole number from 1 to 1,000.";
+
+/// <p>Refusal sentence for <parameter>AGENTSWITCHTURNSPERHOUR</parameter>.</p>
+Parameter REASONAGENTSWITCHTURNSPERHOUR = "Agent turns per user an hour is a whole number from 0 to 10,000, where 0 means no limit.";
+
+/// <p>Refusal sentence for <parameter>AGENTSWITCHCONCURRENTTURNS</parameter>.</p>
+Parameter REASONAGENTSWITCHCONCURRENTTURNS = "Agent turns running at once per user is fixed at 1.";
 
 /// <p>Refusal sentence for <parameter>AGENTHOLDUSERREQUIRED</parameter>.</p>
 Parameter REASONAGENTHOLDUSERREQUIRED = "Name the user the agent is switched off for.";

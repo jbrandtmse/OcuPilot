@@ -152,14 +152,24 @@ ClassMethod Cap(pValue As %String, pMax As %Integer, ByRef pTruncated As %Boolea
 /// nothing inserted, when the user already has a queued or running turn or another request holds
 /// the slot this instant.</p>
 /// <p>Under the slot lock, and in this order: turns of this user whose job is gone are finished
-/// <code>abandoned</code> with <var>pLostCode</var>; busy is refused; the row is inserted and its
-/// lease set to now; terminal turns past retention are deleted with their steps and signals. The
-/// lock is released before this returns. <var>pSweepStatus</var> reports the retention sweep alone,
-/// which never fails the reserve.</p>
-ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode As %String, pLimitsClass As %String, Output pKey As %String, Output pBusy As %Boolean, Output pSweepStatus As %Status) As %Status
+/// <code>abandoned</code> with <var>pLostCode</var>; busy is refused; the user's start records at or
+/// before the window's start are pruned; a user with <var>pHourLimit</var> or more starts left in
+/// the window is refused; the row is inserted, its lease set to now and its start recorded; terminal
+/// turns past retention are deleted with their steps and signals. The lock is released before this
+/// returns. <var>pSweepStatus</var> reports the retention sweep alone, which never fails the
+/// reserve.</p>
+/// <p><b>The turns-an-hour bound</b> (AD-41, Story 14.6). <var>pHourLimit</var> 0 or less is no
+/// limit, and every reserve records its start whatever the limit, so a limit set later counts the
+/// turns already reserved. The window is the limits class's <code>TURNLIMITWINDOWSECONDS</code>. On
+/// refusal <var>pLimited</var> is 1, nothing is inserted or recorded, and <var>pRetrySeconds</var>
+/// (<method>NowSeconds</method> units) is when the (count - limit + 1)-th oldest counted start leaves
+/// the window, rounded up to the next whole minute.</p>
+ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode As %String, pLimitsClass As %String, Output pKey As %String, Output pBusy As %Boolean, Output pSweepStatus As %Status, pHourLimit As %Integer = 0, Output pLimited As %Boolean, Output pRetrySeconds As %Integer) As %Status
 {
     Set pKey = ""
     Set pBusy = 0
+    Set pLimited = 0
+    Set pRetrySeconds = 0
     Set pSweepStatus = $$$OK
     Set tSC = ..GuardedTurnSlotLock(pUser, 0, .tHeld)
     If $$$ISERR(tSC) Quit tSC
@@ -175,6 +185,17 @@ ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode
             Quit
         }
         Set tStamp = $ZTimeStamp
+        Set tNow = ..NowSeconds(tStamp)
+        Set tWindow = +$Parameter(pLimitsClass, "TURNLIMITWINDOWSECONDS")
+        Set tSC = ..GuardedTurnStartsPrune(pUser, tNow - tWindow, .tStarts)
+        If $$$ISERR(tSC) Quit
+        Set tLimit = +pHourLimit
+        Set tCount = $ListLength(tStarts)
+        If (tLimit > 0) && (tCount >= tLimit) {
+            Set pLimited = 1
+            Set pRetrySeconds = ..MinuteCeiling($List(tStarts, tCount - tLimit + 1) + tWindow)
+            Quit
+        }
         Set tRow = ..%New()
         Set tRow.TurnKey = ..NewKey()
         Set tRow.UserName = pUser
@@ -185,7 +206,9 @@ ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode
         If $$$ISERR(tSC) Quit
         Set tKey = tRow.TurnKey
         Set tRow = ""
-        Set tSC = ..GuardedTurnSignalSet(tKey, "renewed", ..NowSeconds(tStamp))
+        Set tSC = ..GuardedTurnSignalSet(tKey, "renewed", tNow)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..GuardedTurnStartRecord(pUser, tNow, tKey)
         If $$$ISERR(tSC) Quit
         Set pKey = tKey
         Set pSweepStatus = ..GuardedSweep(pLimitsClass)
@@ -194,6 +217,26 @@ ClassMethod GuardedReserve(pUser As %String, pDefinitionId As %String, pLostCode
     }
     Do ..GuardedTurnSlotUnlock(pUser)
     Quit tSC
+}
+
+/// <p><var>pSeconds</var> (<method>NowSeconds</method> units) rounded up to the next whole minute;
+/// a value already on a minute is answered unchanged.</p>
+ClassMethod MinuteCeiling(pSeconds As %Integer) As %Integer
+{
+    Quit ((+pSeconds + 59) \ 60) * 60
+}
+
+/// <p>ISO-8601 UTC for <var>pSeconds</var> in <method>NowSeconds</method> units.</p>
+ClassMethod IsoOfSeconds(pSeconds As %Integer) As %String
+{
+    Quit ..Timestamp((+pSeconds \ 86400) _ "," _ (+pSeconds # 86400))
+}
+
+/// <p>Remove every start record of <var>pUser</var>, so the turns-an-hour count starts from none.
+/// For tests and fixtures; production never forgets a start before its window ends.</p>
+ClassMethod GuardedForgetStarts(pUser As %String) As %Status
+{
+    Quit ..GuardedTurnStartsKill(pUser)
 }
 
 /// <p>Finish every turn of <var>pUser</var> whose job is gone, when the slot is free this instant:

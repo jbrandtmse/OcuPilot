@@ -165,6 +165,50 @@ interface FieldView {
             </p>
           }
         </div>
+
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="turnsPerHourField.id">{{
+            STRINGS.agentSwitchesTurnsPerHour
+          }}</label>
+          <div class="ocu-field-control">
+            <input
+              class="ocu-field-input"
+              type="number"
+              min="0"
+              max="10000"
+              [id]="turnsPerHourField.id"
+              [value]="turnsPerHourValue"
+              [attr.aria-invalid]="turnsPerHourField.invalid"
+              [attr.aria-describedby]="turnsPerHourDescribedBy"
+              (input)="onText('turnsPerHour', $event)"
+            />
+          </div>
+          <p class="ocu-field-caption" [id]="turnsPerHourHintId">{{ STRINGS.agentSwitchesTurnsPerHourHint }}</p>
+          @if (turnsPerHourField.invalid) {
+            <p class="ocu-form-error" [id]="turnsPerHourField.id + '-reason'">
+              {{ turnsPerHourField.reason }}
+            </p>
+          }
+        </div>
+
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="concurrentTurnsId">{{
+            STRINGS.agentSwitchesConcurrentTurns
+          }}</label>
+          <div class="ocu-field-control">
+            <input
+              class="ocu-field-input"
+              type="number"
+              readonly
+              [id]="concurrentTurnsId"
+              [value]="concurrentTurnsValue"
+              [attr.aria-describedby]="concurrentTurnsReasonId"
+            />
+          </div>
+          <p class="ocu-field-caption" [id]="concurrentTurnsReasonId">
+            {{ STRINGS.agentSwitchesConcurrentTurnsReason }}
+          </p>
+        </div>
       </div>
 
       <section class="ocu-switches-holds">
@@ -303,6 +347,13 @@ export class SwitchesPage {
 
   protected readonly shareContextId = 'ocu-switches-share-context';
 
+  protected readonly turnsPerHourHintId = 'ocu-switches-turnsPerHour-hint';
+
+  /** The fixed concurrent bound's read-only control (Story 14.6); never sent on save. */
+  protected readonly concurrentTurnsId = 'ocu-switches-concurrentTurns';
+
+  protected readonly concurrentTurnsReasonId = 'ocu-switches-concurrentTurns-reason';
+
   /** Bumped by both stores, so the template re-reads them under `OnPush`. */
   private readonly generation = signal(0);
 
@@ -406,6 +457,26 @@ export class SwitchesPage {
 
   protected get contextRowCapField(): FieldView {
     return this.field('contextRowCap');
+  }
+
+  protected get turnsPerHourValue(): string {
+    this.generation();
+    return this.store.value('turnsPerHour');
+  }
+
+  protected get turnsPerHourField(): FieldView {
+    return this.field('turnsPerHour');
+  }
+
+  /** The hint always, then the refusal when there is one. */
+  protected get turnsPerHourDescribedBy(): string {
+    const field = this.turnsPerHourField;
+    return field.describedBy === null ? this.turnsPerHourHintId : `${this.turnsPerHourHintId} ${field.describedBy}`;
+  }
+
+  protected get concurrentTurnsValue(): string {
+    this.generation();
+    return this.store.concurrentTurns();
   }
 
   protected get holdUserValue(): string {

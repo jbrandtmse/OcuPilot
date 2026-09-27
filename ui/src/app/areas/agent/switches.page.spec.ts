@@ -66,6 +66,8 @@ const switches = (overrides: Record<string, unknown> = {}) => ({
   enforcedReadOnly: false,
   shareContextByDefault: true,
   contextRowCap: 200,
+  turnsPerHour: 0,
+  concurrentTurns: 1,
   updatedAt: '',
   holds: [],
   ...overrides,
@@ -172,6 +174,7 @@ describe('the Switches screen', () => {
       'killSwitch',
       'killSwitchReason',
       'shareContextByDefault',
+      'turnsPerHour',
     ]);
     expect(body.enforcedReadOnly).toBe(true);
     expect(body.shareContextByDefault).toBe(false);
@@ -200,6 +203,82 @@ describe('the Switches screen', () => {
     expect(body.contextRowCap).toBe(500);
     expect(typeof body.contextRowCap).toBe('number');
     expect(input(host, 'ocu-switches-contextRowCap').value).toBe('500');
+  });
+
+  it('Story 14.6: turns an hour renders the stored value, is described by its hint, and round-trips as a number', async () => {
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (init.method === 'PUT') {
+        return ok(switches({ turnsPerHour: 3 }));
+      }
+      return ok(switches());
+    });
+    const field = input(host, 'ocu-switches-turnsPerHour');
+    expect(field.value).toBe('0');
+    expect(field.getAttribute('min')).toBe('0');
+    expect(field.getAttribute('max')).toBe('10000');
+    expect(host.querySelector(`label[for="ocu-switches-turnsPerHour"]`)?.textContent?.trim()).toBe(
+      STRINGS.agentSwitchesTurnsPerHour
+    );
+    const hint = host.querySelector('#ocu-switches-turnsPerHour-hint') as HTMLElement;
+    expect(hint.textContent?.trim()).toBe(STRINGS.agentSwitchesTurnsPerHourHint);
+    expect(field.getAttribute('aria-describedby')).toBe('ocu-switches-turnsPerHour-hint');
+
+    type(field, '3');
+    (host.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const body = JSON.parse(calls.find((call) => call.method === 'PUT')?.body ?? '{}');
+    expect(body.turnsPerHour).toBe(3);
+    expect(typeof body.turnsPerHour).toBe('number');
+    expect(input(host, 'ocu-switches-turnsPerHour').value).toBe('3');
+  });
+
+  it('Story 14.6: a turns-an-hour refusal renders on its own field, after its hint', async () => {
+    const { fixture, host } = await mount((path, init) => {
+      if (init.method === 'PUT') {
+        return refused([
+          {
+            field: 'turnsPerHour',
+            code: 'AGENT.SWITCH.TURNSPERHOUR',
+            reason: 'Agent turns per user an hour is a whole number from 0 to 10,000, where 0 means no limit.',
+          },
+        ]);
+      }
+      return ok(switches());
+    });
+    type(input(host, 'ocu-switches-turnsPerHour'), '10001');
+    (host.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    const field = input(host, 'ocu-switches-turnsPerHour');
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(field.getAttribute('aria-describedby')).toBe(
+      'ocu-switches-turnsPerHour-hint ocu-switches-turnsPerHour-reason'
+    );
+  });
+
+  it('Story 14.6: the concurrent bound is a read-only control showing the stored value, described by its reason, and never sent', async () => {
+    // Mutation (Rule 19): drop `readonly` from the concurrent input -> the first assertion goes red.
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (init.method === 'PUT') return ok(switches());
+      return ok(switches());
+    });
+    const field = input(host, 'ocu-switches-concurrentTurns');
+    expect(field.readOnly).toBe(true);
+    expect(field.value).toBe('1');
+    expect(host.querySelector(`label[for="ocu-switches-concurrentTurns"]`)?.textContent?.trim()).toBe(
+      STRINGS.agentSwitchesConcurrentTurns
+    );
+    expect(field.getAttribute('aria-describedby')).toBe('ocu-switches-concurrentTurns-reason');
+    expect(
+      (host.querySelector('#ocu-switches-concurrentTurns-reason') as HTMLElement).textContent?.trim()
+    ).toBe(STRINGS.agentSwitchesConcurrentTurnsReason);
+
+    type(input(host, 'ocu-switches-turnsPerHour'), '2');
+    (host.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    const put = calls.find((call) => call.method === 'PUT');
+    expect(put).toBeDefined();
+    expect('concurrentTurns' in JSON.parse(put?.body ?? '{}')).toBe(false);
   });
 
   it('Story 4.4: a row-cap refusal renders on its own field, not the reason field', async () => {

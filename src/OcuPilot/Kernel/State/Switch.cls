@@ -40,6 +40,10 @@ Parameter DEFAULTWRITESMARKED As %Integer = 1;
 /// one row-count cap <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> resolves per turn.</p>
 Parameter DEFAULTCONTEXTROWCAP As %Integer = 200;
 
+/// <p>The turns one user may have reserved in the trailing hour on an instance that has stored
+/// nothing, or that stored an empty or out-of-range value (Story 14.6, AD-41). 0 is no limit.</p>
+Parameter DEFAULTTURNSPERHOUR As %Integer = 0;
+
 /// <p>Whether the agent is switched off for everyone.</p>
 Property KillSwitch As %Boolean [ InitialExpression = 0 ];
 
@@ -91,11 +95,21 @@ Property UpdatedAt As %String(MAXLEN = 32);
 /// after.</p>
 Property Singleton As %Integer [ InitialExpression = 1 ];
 
+/// <p>The turns one user may have reserved in the trailing hour, applied to each user separately,
+/// from 0 to 10,000; 0 is no limit (Story 14.6, AD-41). Counted and refused at
+/// <method>OcuPilot.Kernel.State.Turn.GuardedReserve</method>; kept in range by
+/// <method>Resolve</method> and by <class>OcuPilot.Kernel.SwitchRules</class>'s write-time check.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions): a row stored
+/// before this property existed reads it back as <code>""</code>, which <method>Resolve</method>
+/// answers as 0, the default, so no older row means anything different.</p>
+Property TurnsPerHour As %Integer [ InitialExpression = 0 ];
+
 Index SwitchSingletonIdx On Singleton [ Unique ];
 
 /// <p>The switches in force, as <var>pValues</var> subscripted by <code>killSwitch</code>,
-/// <code>killSwitchReason</code>, <code>enforcedReadOnly</code>, <code>shareContextByDefault</code>
-/// and <code>updatedAt</code>: the stored row's values where the instance holds one, the defaults
+/// <code>killSwitchReason</code>, <code>enforcedReadOnly</code>, <code>shareContextByDefault</code>,
+/// <code>contextRowCap</code>, <code>turnsPerHour</code>, <code>writesMarked</code> and
+/// <code>updatedAt</code>: the stored row's values where the instance holds one, the defaults
 /// otherwise.</p>
 /// <p>An instance with no row is the ordinary state, never an error. A read that fails answers the
 /// defaults and says so through the error <class>%Status</class>; the caller decides what to do,
@@ -109,6 +123,7 @@ ClassMethod Resolve(Output pValues) As %Status
     Set pValues("enforcedReadOnly") = ..#DEFAULTENFORCEDREADONLY
     Set pValues("shareContextByDefault") = ..#DEFAULTSHARECONTEXT
     Set pValues("contextRowCap") = ..#DEFAULTCONTEXTROWCAP
+    Set pValues("turnsPerHour") = ..#DEFAULTTURNSPERHOUR
     Set pValues("writesMarked") = ..#DEFAULTWRITESMARKED
     Set pValues("updatedAt") = ""
     Set tSC = $$$OK
@@ -122,6 +137,8 @@ ClassMethod Resolve(Output pValues) As %Status
         Set pValues("shareContextByDefault") = ''tRow.ShareContextByDefault
         Set tRowCap = +tRow.ContextRowCap
         If (tRowCap >= 1) && (tRowCap <= 1000) Set pValues("contextRowCap") = tRowCap
+        Set tTurns = tRow.TurnsPerHour
+        If $Match(tTurns, "^[0-9]+$") && (+tTurns <= 10000) Set pValues("turnsPerHour") = +tTurns
         ; The slot's presence, not its truth -- a row written before this property existed holds
         ; nothing there, and reading that as 0 would show the banner over a healthy instance.
         If tRow.WritesMarked '= "" Set pValues("writesMarked") = ''tRow.WritesMarked
@@ -159,6 +176,7 @@ ClassMethod SetGuarded(ByRef pValues, pExpectedVersion As %String = "") As %Stat
         If $Data(pValues("enforcedReadOnly")) Set tRow.EnforcedReadOnly = ''+pValues("enforcedReadOnly")
         If $Data(pValues("shareContextByDefault")) Set tRow.ShareContextByDefault = ''+pValues("shareContextByDefault")
         If $Data(pValues("contextRowCap")) Set tRow.ContextRowCap = +pValues("contextRowCap")
+        If $Data(pValues("turnsPerHour")) Set tRow.TurnsPerHour = +pValues("turnsPerHour")
         If $Data(pValues("writesMarked")) Set tRow.WritesMarked = ''+pValues("writesMarked")
         Set tRow.UpdatedAt = ..Timestamp()
         Set tSC = ..GuardedSaveIfCurrent(tRow, tVersion)

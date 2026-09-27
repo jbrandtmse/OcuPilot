@@ -2,13 +2,21 @@
 title: 'Story 14.6: Per-user turn limits, and the banner they need'
 type: 'feature'
 created: '2026-09-27'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'b125676477d2eeb8dc16afa4c4e98c8ea1d15506'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-14-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Epic 16's Guardrails page reports its limits without the new turns-an-hour setting once the branches merge.
+    evidence: |-
+      origin/OCU-1-epic16 src/OcuPilot/Kernel/Shell/Guardrails.cls:103-110 lists contextRowCap and two character caps as limits; turnsPerHour is not on this branch's copy (inference until merged).
+    location: >-
+      src/OcuPilot/Kernel/Shell/Guardrails.cls:103
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -173,6 +181,31 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-27 — Review pass
+
+- verdicts: 20 findings — high 0, medium 3, low 9, false 8, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` No tool test pins `resetRememberedState`'s turns-an-hour reset — added the set and leave-alone cases to `ui/tools/preferences-reset.test.mjs`, both mutations observed red.
+  - `[low]` `[reject]` No mutation for AC3's busy-before-limit clause — Rule 19 scopes one demonstrated mutation per AC; AC3 carries five.
+  - `[low]` `[reject]` No mutation for AC3's "reserves nothing" clause — same: AC3 already carries demonstrated mutations.
+  - `[low]` `[patch]` No mutation for the panel banner — demonstrated (`@if (false)` → `panel-turn-limit.spec.ts` red) and recorded.
+  - `[low]` `[reject]` No mutation for AC1's reload-and-audit clause — AC1 carries three demonstrated mutations.
+  - `[low]` `[reject]` No mutation for the integration AC's browser half — the integration AC carries the `TurnWire` mutation; the browser spec was re-run green after its patch.
+  - `[low]` `[patch]` `turn-limit.test.mjs` header names two unrecorded mutations — both demonstrated red and recorded.
+  - `[low]` `[patch]` `assert.notEqual(local, utc)` in the browser spec cannot fail — replaced with the page's own `getTimezoneOffset()` equal to -330.
+  - `[low]` `[patch]` `panel-turn-limit.spec.ts` claims "in local time" in an unpinned zone — title corrected; the local-time property is pinned by `turn-limit.test.mjs` and the browser spec.
+  - `[low]` `[reject]` Start records of a user who stops sending stay until that user's next reserve — bounded to one window per user; a sweep adds a new code path for no reachable harm.
+  - `[medium]` `[defer]` Epic 16's Guardrails page lists limits without `turnsPerHour` after the merge (inference) — the page is not on this branch.
+  - `[medium]` `[patch]` Browser spec's refusal captured in an async `response` handler can resolve after the banner assert — replaced with `page.waitForResponse` awaited before the asserts.
+  - `[false]` `[reject]` A reserve whose job fails to spawn is not shown to count — the start is recorded inside `GuardedReserve` before it returns, ahead of the spawn.
+  - `[false]` `[reject]` Validation, kill-switch or no-definition refusals might record — each answers before `GuardedReserve` is called.
+  - `[false]` `[reject]` Busy-before-limit untested over HTTP — `HandleStart` renders `tBusy` before `tLimited`, and the reserve returns before the prune when busy (`TestABusyUserAtTheLimitIsRefusedBusy`).
+  - `[false]` `[reject]` The HTTP `retryAt` check is self-referential — the exact value is pinned at the reserve (`TestAtTheLimitIsRefusedWithTheRetryRoundedUp`, `TestALoweredLimitRetriesFromTheFourthOldest`).
+  - `[false]` `[reject]` "Applied to each user separately" untested — every read and write is subscripted by the user, so no other user's records are reachable.
+  - `[false]` `[reject]` The reload-drops-the-line property untested — the entry exists only in `entriesValue`; a reload rebuilds entries from the instance, which stores nothing for a refused start.
+  - `[false]` `[reject]` Nothing pins the Switches strings to EXPERIENCE.md — `strings.test.mjs` checks every `/** EXPERIENCE.md:n */` string on its line (the `:282` mutation reddens it).
+  - `[false]` `[reject]` The index at :900 still says nine markers — the sentence adds that one is resolved and marked in its row, as the spec asks.
+
 ## Design Notes
 
 **Governing ADs:** AD-41 (the count lives beside the concurrency bound, on the instance, at the reserve), AD-31, AD-30, AD-7, AD-9, AD-39, AD-12, AD-19, AD-15/FR-29 (switch audit), and Conventions › Concurrent writes, › Dates, › Error shape and › When `SCHEMAVERSION` moves.
@@ -208,7 +241,38 @@ Slot B. Copy each changed `.cls` into `/tmp/ocupilot-b-ci/src` and load it on `o
   - Drop the `turnErrorBanner` case. Expected: `panel-turn-limit.spec.ts` goes red.
 - **AC4:** move a new ref to `EXPERIENCE.md:282`. Expected: `strings.test.mjs` goes red.
 
+ObjectScript mutations were applied to the throwaway's copies only, recompiled with subclasses (`cbk`), and reverted by copying the worktree file back (byte-identical, `diff -rq src /tmp/ocupilot-b-ci/src` empty). The first round carried four mutations at once; each reddened only its own leg, named below.
+
+- mutation: dropped the `turnsPerHour` rule in `SwitchRules.ValidateSwitches` → `SwitchesWire` red (`TestTurnsPerHourValidatesItsRangeAndIsAudited`: -1, 10001, 1.5 answered 200) and `TurnHourLimit` red (`TestTheRulesRefuse...`)
+- mutation: dropped the `concurrentTurns` rule → `SwitchesWire` red (`TestConcurrentTurnsIsFixedAtOne`: 2, 0 and "1" answered 200)
+- mutation: dropped `readonly` from the concurrent input → `switches.page.spec.ts` red (the Story 14.6 read-only case: `readOnly` false)
+- mutation: `DEFAULTTURNSPERHOUR = 1` → `TurnHourLimit` red (`TestNoLimitByDefaultRefusesNothingAndStillRecords`, and the clamp leg) and `SwitchesWire` red (the defaults roster)
+- mutation: count check in `Turn.GuardedReserve` replaced by `If 0` → `TurnHourLimit` red (`TestAtTheLimit...`, `TestALoweredLimit...`) and `TurnWire` red (`TestAStartPastTheHourLimitIsRefusedWithItsRetryTime`: the second start answered 202)
+- mutation: pruning loop in `Base.GuardedTurnStartsPrune` disabled → `TurnHourLimit` red (`TestAStartOlderThanTheWindowIsPrunedAndNotCounted` alone)
+- mutation: `Turn.MinuteCeiling` answers its argument → `TurnHourLimit` red (`TestAtTheLimitIsRefusedWithTheRetryRoundedUp`: retry `...:35:01Z`)
+- mutation: `getUTCHours`/`getUTCMinutes` in `turnLimitBanner` → `turn-limit.test.mjs` red (the local-time case)
+- mutation: dropped the `TURN.LIMITHOUR` arm in `turnErrorBanner` → `panel-turn-limit.spec.ts` red (the line read "The turn stopped: This turn was not started...")
+- mutation: `agentTurnLimitLine`'s ref moved to `EXPERIENCE.md:282` → `strings.test.mjs` red (the line-reference test)
+- mutation: the panel's `@if (turnLimitText !== null)` block made `@if (false)` → `panel-turn-limit.spec.ts` red (the banner case)
+- mutation: the `TURN.LIMITHOUR` arm in `TurnStore.send` made `null` → `turn-limit.test.mjs` red (the store refusal and fallback cases)
+- mutation: `REASONTURNLIMITHOUR` reworded in `Error.cls` → `turn-limit.test.mjs` red (the byte-for-byte pin)
+- mutation: `resetTurnLimit` call dropped from `resetRememberedState` → `preferences-reset.test.mjs` red (the Story 14.6 reset case); its early return dropped → red (the leave-alone case)
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** `Switch.TurnsPerHour` (0 to 10,000, 0 no limit, placed last so no stored slot moves) is counted at `Turn.GuardedReserve` under the slot lock from `^OcuPilotTurnStarts(user, seconds, key)`, pruned at each reserve and recorded whatever the limit; busy is refused first. `Api/Turn` renders 403 `TURN.LIMITHOUR` with `{limit, retryAt}`. `GET /agent/switches` answers `concurrentTurns` from `Limits.CONCURRENTTURNS`; a `PUT` carrying any other value is refused. The panel shows the banner in local time and a local refused entry. The `Limits` class comment that said Story 14.6 would make the per-turn constants settings now says what shipped.
+
+**Files.** Server: `Kernel/Agent/Limits.cls`, `Kernel/State/Base.cls`, `Kernel/State/Turn.cls`, `Kernel/State/Switch.cls`, `Kernel/SwitchRules.cls`, `Api/Switches.cls`, `Api/Error.cls`, `Api/Turn.cls`. Client: `core/turn-limit.ts` (new), `core/turn.ts`, `shell/panel.ts`, `areas/agent/switches.store.ts`, `switches.page.ts`, `core/strings.ts`; EXPERIENCE.md :281, :349, :756, :900, :909 in place (981 lines). Tests: `Test/TurnHourLimit.cls`, `tools/turn-limit.test.mjs`, `shell/panel-turn-limit.spec.ts`, `browser/turn-limit.browser-spec.mjs` (new); legs in `TurnWire`, `TurnWireFixture.Sweep`, `SwitchesWire`, `switches.page.spec.ts`; `AgentViolation`'s count 32 to 34; `browser/preferences-reset.mjs` `resetTurnLimit`.
+
+Contended files: `Error.cls`, `turn.ts`, `panel.ts`, `strings.ts`, EXPERIENCE.md. Each merges with `origin/OCU-1-epic16` without conflict (`git merge-file` against the merge base).
+
+**Verification.** On `ocupilot-b-ci`, one class per call, totals checked against `%UnitTest_Result`: `TurnHourLimit` 8/8, `TurnWire` 14/14, `TurnStore` 11/11, `SwitchesWire` 24/24, `SwitchState` 13/13, `Envelope` 15/15, `AgentViolation` 8/8. `npm run test:tools` 1,516 pass; `npm run test:components` 1,504 pass; `npm run build` clean (initial total 1,885,523 bytes); `check-objectscript` 0 problems; `lint-docs` clean. Browser, bundle rebuilt and redeployed: `turn-limit`, `switches`, `panel` and `a11y-structural-invariants` green. `smoke.sh --container ocupilot-b-ci` 49/49. The full sweep is the runner's (Rule 29).
+
+**Review.** Two layers (verification-gap, intent-alignment), 20 findings: 7 patched (2 medium, 5 low), 1 deferred (Epic 16's Guardrails page omits the limit after the merge, inference), 12 rejected with reasons in the triage log. Patches: `preferences-reset.test.mjs` gains the set and leave-alone reset cases; the browser spec awaits the 403 with `page.waitForResponse` and checks the page's own zone offset instead of an assertion that could not fail; the panel spec's title no longer claims a time-zone check it cannot make; four more mutations recorded, the zone check's too (emulation dropped → red, 420 vs -330). Follow-up review: not recommended; both patched mediums are test-only and were verified red and green.
+
+**Final verification.** Changed classes recompiled on `ocupilot-b-ci` with subclasses (`cbk`, 0 errors). Full ObjectScript sweep, one class at a time: 315 classes, 2,609 tests, 1 failed — `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal`, the known reused-throwaway residue (`%SYS_Task.History` over 1,000 rows). `npm run test:tools` 1,518 pass; `npm run test:components` 1,504 pass; `npm run build` clean (initial 1.89 MB, under the 1900kB warning); `turn-limit.browser-spec.mjs` 2/2 after redeploy; `smoke.sh --container ocupilot-b-ci` 48/48 with `agentswitches` skipped because browser specs wrote the switches on this reused instance. The limit reads 0 on the throwaway afterwards.
+
+**Residual risk.** Start records of a user who stops sending stay until that user's next reserve (bounded to one window). The refused line is tab-local by design and a reload drops it.

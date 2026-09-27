@@ -37,6 +37,9 @@ Parameter MAXUSERNAMELENGTH As %Integer = 160;
 /// turn's screen context and every read tool result are cut to.
 /// <method>OcuPilot.Api.Switches.MergeBody</method> turns a value that is not a JSON number into
 /// <code>""</code>, which this rule refuses on the field.</p>
+/// <p><b>Turns an hour must be a whole number from 0 to 10,000</b> (Story 14.6, AD-41), where 0 is
+/// no limit, and <b>turns running at once must be 1</b>: <code>concurrentTurns</code> is carried
+/// only for this rule and is never stored. Each applies only when its value is present.</p>
 ClassMethod ValidateSwitches(ByRef pValues, Output pViolations) As %Integer
 {
     Kill pViolations
@@ -47,6 +50,18 @@ ClassMethod ValidateSwitches(ByRef pValues, Output pViolations) As %Integer
     Set tRowCap = $Get(pValues("contextRowCap"))
     If (tRowCap = "") || '$Match(tRowCap, "^[0-9]+$") || (+tRowCap < 1) || (+tRowCap > 1000) {
         Do ..Add(.pViolations, "contextRowCap", ##class(OcuPilot.Api.Error).#AGENTSWITCHCONTEXTROWCAP)
+    }
+    If $Data(pValues("turnsPerHour")) {
+        Set tTurns = pValues("turnsPerHour")
+        If '$Match(tTurns, "^[0-9]+$") || (+tTurns > 10000) {
+            Do ..Add(.pViolations, "turnsPerHour", ##class(OcuPilot.Api.Error).#AGENTSWITCHTURNSPERHOUR)
+        }
+    }
+    If $Data(pValues("concurrentTurns")) {
+        Set tConcurrent = pValues("concurrentTurns")
+        If (tConcurrent = "") || (+tConcurrent '= 1) {
+            Do ..Add(.pViolations, "concurrentTurns", ##class(OcuPilot.Api.Error).#AGENTSWITCHCONCURRENTTURNS)
+        }
     }
     Quit +$Get(pViolations)
 }

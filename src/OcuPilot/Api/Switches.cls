@@ -55,10 +55,10 @@ Parameter RELEASEVERB = "release";
 /// <p><code>security</code> is 1 for a field that decides whether the agent may act or what leaves
 /// the instance, which is what <method>IsSecurityChange</method> classifies a write by.
 /// <code>killSwitchReason</code> is 0: it is the operator's copy for the banner, and moving it
-/// changes no restraint.</p>
+/// changes no restraint. <code>turnsPerHour</code> is 1: it bounds how often the agent acts.</p>
 ClassMethod Fields() As %List
 {
-    Quit $ListBuild($ListBuild("killSwitch", "KillSwitch", "boolean", 1), $ListBuild("killSwitchReason", "KillSwitchReason", "string", 0), $ListBuild("enforcedReadOnly", "EnforcedReadOnly", "boolean", 1), $ListBuild("shareContextByDefault", "ShareContextByDefault", "boolean", 1), $ListBuild("contextRowCap", "ContextRowCap", "integer", 1))
+    Quit $ListBuild($ListBuild("killSwitch", "KillSwitch", "boolean", 1), $ListBuild("killSwitchReason", "KillSwitchReason", "string", 0), $ListBuild("enforcedReadOnly", "EnforcedReadOnly", "boolean", 1), $ListBuild("shareContextByDefault", "ShareContextByDefault", "boolean", 1), $ListBuild("contextRowCap", "ContextRowCap", "integer", 1), $ListBuild("turnsPerHour", "TurnsPerHour", "integer", 1))
 }
 
 /// <p>The wire names of the switch fields whose change is a security change, derived from
@@ -420,7 +420,9 @@ ClassMethod CallerUsername() As %String
 
 /// <p>The switch state and its holds, as the object both reads answer, with
 /// <code>rowVersion</code> -- the version <var>pValues</var> were read at, which the screen sends
-/// back on save.</p>
+/// back on save -- and <code>concurrentTurns</code>, the fixed per-user bound
+/// <parameter>OcuPilot.Kernel.Agent.Limits.CONCURRENTTURNS</parameter>, which is shown and never
+/// stored (AD-41).</p>
 ClassMethod Projection(ByRef pValues, pHolds As %DynamicArray) As %DynamicObject
 {
     Set tOut = {}
@@ -437,6 +439,7 @@ ClassMethod Projection(ByRef pValues, pHolds As %DynamicArray) As %DynamicObject
             Do tOut.%Set(tField, tValue, "string")
         }
     }
+    Do tOut.%Set("concurrentTurns", +##class(OcuPilot.Kernel.Agent.Limits).#CONCURRENTTURNS, "number")
     Do tOut.%Set("updatedAt", $Get(pValues("updatedAt")), "string")
     Do tOut.%Set("rowVersion", +$Get(pValues("rowVersion")), "number")
     Do tOut.%Set("holds", pHolds)
@@ -497,6 +500,9 @@ ClassMethod UserExists(pUserName As %String) As %Boolean
 /// <method>StringMember</method> applies on the hold routes: a number or a boolean sent as
 /// <code>killSwitchReason</code> would otherwise reach the published banner as the operator's
 /// reason.</p>
+/// <p><b>A present <code>concurrentTurns</code> is copied for
+/// <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> alone</b>, as <code>""</code> when
+/// it is not a JSON number; it is not a stored field, so nothing saves it.</p>
 ClassMethod MergeBody(pBody As %DynamicObject, ByRef pValues)
 {
     If '$IsObject(pBody) Quit
@@ -516,6 +522,9 @@ ClassMethod MergeBody(pBody As %DynamicObject, ByRef pValues)
         ; any other type becomes "" and meets that rule's empty-value refusal.
         If ($List(tEntry, 3) = "integer") && (tType '= "number") Set tValue = ""
         Set pValues(tField) = tValue
+    }
+    If pBody.%IsDefined("concurrentTurns") {
+        Set pValues("concurrentTurns") = $Select(pBody.%GetTypeOf("concurrentTurns") = "number": pBody.%Get("concurrentTurns"), 1: "")
     }
 }
 

@@ -161,3 +161,44 @@ test('Story 14.2: a policy that already reads default is left alone, so the rese
   }
   assert.deepEqual(put, []);
 });
+
+test('Story 14.6: the reset puts a set turns-an-hour limit back to none, at the version it read', async () => {
+  // Mutation (Rule 19): drop the `resetTurnLimit` call from `resetRememberedState` -> this goes
+  // red, and one spec's limit refuses every later spec's second Send.
+  const real = globalThis.fetch;
+  const put = [];
+  globalThis.fetch = async (url, init) => {
+    const path = new URL(url).pathname;
+    if (init !== undefined && init.method === 'PUT' && path.endsWith('/agent/switches')) put.push(JSON.parse(init.body));
+    const body = path.endsWith('/agent/switches') && (init === undefined || init.method === undefined)
+      ? { turnsPerHour: 3, rowVersion: 7 }
+      : {};
+    return { status: 200, text: async () => JSON.stringify(body) };
+  };
+  try {
+    await resetRememberedState();
+  } finally {
+    globalThis.fetch = real;
+  }
+  assert.deepEqual(put, [{ turnsPerHour: 0, rowVersion: 7 }]);
+});
+
+test('Story 14.6: a limit that already reads none is left alone, so the reset writes no audit row', async () => {
+  // Mutation (Rule 19): drop the early return in `resetTurnLimit` -> this goes red.
+  const real = globalThis.fetch;
+  const put = [];
+  globalThis.fetch = async (url, init) => {
+    const path = new URL(url).pathname;
+    if (init !== undefined && init.method === 'PUT' && path.endsWith('/agent/switches')) put.push(JSON.parse(init.body));
+    const body = path.endsWith('/agent/switches') && (init === undefined || init.method === undefined)
+      ? { turnsPerHour: 0, rowVersion: 7 }
+      : {};
+    return { status: 200, text: async () => JSON.stringify(body) };
+  };
+  try {
+    await resetRememberedState();
+  } finally {
+    globalThis.fetch = real;
+  }
+  assert.deepEqual(put, []);
+});

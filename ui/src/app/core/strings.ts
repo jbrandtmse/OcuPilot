@@ -191,6 +191,11 @@ export const STRINGS = {
   agentTurnStoppedNoStepBanner: 'The turn stopped: <reason>.',
   /** EXPERIENCE.md:281 */
   agentTurnLockBanner: 'A turn is in progress. Wait for it to finish before sending another message.',
+  /** EXPERIENCE.md:281 */
+  agentTurnLimitBanner:
+    'You have reached this instance\'s limit of <n> agent turns an hour. You can send again at <hh:mm>.',
+  /** EXPERIENCE.md:281 */
+  agentTurnLimitLine: 'This turn was not started: you have used your <n> turns for this hour.',
   /** EXPERIENCE.md:500 */
   agentJumpToLatest: 'Jump to latest',
   // Story 4.5's four: from the tool-call-card Component Patterns row (:378) and the panel's
@@ -636,6 +641,15 @@ export const STRINGS = {
   agentSwitchesShareContext: 'Screen context is shared by default',
   /** EXPERIENCE.md:349 */
   agentSwitchesContextRowCap: 'Context rows sent with a turn',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesTurnsPerHour: 'Agent turns per user an hour',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesTurnsPerHourHint: '0 means no limit.',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesConcurrentTurns: 'Agent turns running at once per user',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesConcurrentTurnsReason:
+    'Fixed at 1: the conversation lock and the panel\'s single transcript assume one turn at a time per user.',
   /** EXPERIENCE.md:344 */
   agentSwitchesRefusedAction: 'change the switches',
   // Story 14.2: the Governance policy screen, its refusal action, the governance tool refusal, the
