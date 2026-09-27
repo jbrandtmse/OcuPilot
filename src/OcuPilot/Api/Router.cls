@@ -71,6 +71,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/switches" Method="GET" Call="AgentSwitchesRead"/>
   <Route Url="/agent/switches" Method="PUT" Call="AgentSwitchesUpdate"/>
   <Route Url="/agent/restraint" Method="GET" Call="AgentRestraint"/>
+  <Route Url="/agent/restraint" Method="PUT" Call="AgentRestraintUpdate"/>
   <Route Url="/agent/ledger" Method="GET" Call="AgentLedger"/>
   <Route Url="/agent/context" Method="GET" Call="AgentContextRead"/>
   <Route Url="/agent/context" Method="PUT" Call="AgentContextUpdate"/>
@@ -128,8 +129,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/turn" Method="POST" Call="TurnStart"/>
   <Route Url="/proposal/:id/confirm" Method="POST" Call="ProposalConfirm"/>
   <Route Url="/proposal/:id/cancel" Method="POST" Call="ProposalCancel"/>
+  <Route Url="/proposal/:id/draft" Method="POST" Call="ProposalDraft"/>
   <Route Url="/conversation/:id" Method="GET" Call="ConversationRead"/>
   <Route Url="/conversation" Method="POST" Call="ConversationCreate"/>
+  <Route Url="/transcripts/:id" Method="GET" Call="TranscriptRead"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
@@ -216,6 +219,14 @@ ClassMethod AgentSwitchesUpdate() As %Status
 ClassMethod AgentRestraint() As %Status
 {
     Quit ##class(OcuPilot.Api.Switches).HandleRestraint()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /agent/restraint</code> (Story 14.5) -- see
+/// <method>AgentSwitchHoldDelete</method>. Gates on nothing beyond this class, like
+/// <method>AgentRestraint</method>: it stores only the calling user's own read-only choice.</p>
+ClassMethod AgentRestraintUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Switches).HandleRestraintUpdate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /agent/ledger</code> (Story 4.9): delegates to
@@ -767,6 +778,13 @@ ClassMethod ProposalCancel(pId As %String) As %Status
     Quit ##class(OcuPilot.Api.Confirm).HandleCancel(pId)
 }
 
+/// <p>Thin <code>Call=</code> target for <code>POST /proposal/:id/draft</code> -- see
+/// <method>ProposalConfirm</method>.</p>
+ClassMethod ProposalDraft(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Confirm).HandleDraft(pId)
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /conversation/:id</code>: delegates to
 /// <class>OcuPilot.Api.Conversation</class> and carries no logic of its own. Declared before
 /// <code>POST /conversation</code>, for the third ordering invariant.</p>
@@ -780,6 +798,13 @@ ClassMethod ConversationRead(pId As %String) As %Status
 ClassMethod ConversationCreate() As %Status
 {
     Quit ##class(OcuPilot.Api.Conversation).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /transcripts/:id</code> (Story 14.4): delegates
+/// to <class>OcuPilot.Api.Transcripts</class> and carries no logic of its own.</p>
+ClassMethod TranscriptRead(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Transcripts).HandleRead(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/alerts</code> -- see

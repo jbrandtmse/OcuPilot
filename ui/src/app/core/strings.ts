@@ -163,6 +163,18 @@ export const STRINGS = {
   proposalStatusExpired: 'Expired',
   /** EXPERIENCE.md:275 */
   proposalStatusAgentSwitchedOff: 'The agent is switched off',
+  /** EXPERIENCE.md:275 */
+  proposalStatusCanceledByDraft: 'Canceled \u2014 you took the script instead',
+  /** EXPERIENCE.md:269 */
+  actionTakeScript: 'Give me the script instead',
+  /** EXPERIENCE.md:269 */
+  actionCopyToClipboard: 'Copy to clipboard',
+  /** EXPERIENCE.md:269 */
+  copyAnnouncementCopied: 'Copied',
+  /** EXPERIENCE.md:269 */
+  copyAnnouncementUnavailable: 'The clipboard is not available here. Select the text and copy it yourself.',
+  /** EXPERIENCE.md:273 */
+  proposalDraftCaption: 'Nothing was changed. Fill in each value in angle brackets before you run this.',
   /** EXPERIENCE.md:276 */
   proposalUnchangedFieldsDisclosure: 'N unchanged fields',
   /** EXPERIENCE.md:277 */
@@ -216,6 +228,8 @@ export const STRINGS = {
   statusReadOnlyForYou: 'Read-only: on \u2014 for you',
   /** EXPERIENCE.md:289 */
   statusReadOnlyByDefinition: 'Read-only: on \u2014 by the definition',
+  /** EXPERIENCE.md:289 */
+  agentReadOnlyForYouLabel: 'Read-only for me',
   /** EXPERIENCE.md:290 */
   tableChangeToastLink: 'Open in <screen>',
   /** EXPERIENCE.md:291 */
@@ -552,12 +566,40 @@ export const STRINGS = {
   agentDefinitionFieldRetention: 'Retention',
   /** EXPERIENCE.md:335 */
   actionCreate: 'Create',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionFieldReadOnly: 'Read-only',
   /** EXPERIENCE.md:336 */
   agentDefinitionShowKey: 'Show key',
   /** EXPERIENCE.md:336 */
   agentDefinitionHideKey: 'Hide key',
   /** EXPERIENCE.md:336 */
   agentDefinitionRetentionCaption: 'Transcripts are kept for <n> days.',
+  // Story 14.4: the Transcripts list, its columns, empty state and prompts, and the transcript
+  // page's screen-context disclosure and its withheld sentence's action slot.
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsLabel: 'Transcripts',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptLabel: 'Transcript',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsColumnTurns: 'Turns',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsColumnLastActivity: 'Last activity',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsColumnTitle: 'First message',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsEmpty: 'No conversations are kept for you yet.',
+  /** EXPERIENCE.md:336 */
+  transcriptScreenContext: 'Screen context',
+  /** EXPERIENCE.md:336 */
+  transcriptNoContext: 'No screen context was sent with this turn.',
+  /** EXPERIENCE.md:336 */
+  transcriptRefusedAction: 'see this transcript\'s tool results and screen context',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsPrompt1: 'Which conversations did I have today?',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsPrompt2: 'Which of my conversations ran the most turns?',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsPrompt3: 'When did I last talk to the agent?',
   /** EXPERIENCE.md:337 */
   proposalCardTitle: 'Proposal \u00b7 <entity type> <name>',
   /** EXPERIENCE.md:338 */
@@ -3088,8 +3130,6 @@ export const STRINGS = {
   agentGuardrailsNeverErrorVariables: 'An application error reaches the agent as its summary only, never the variables captured with it.',
   /** EXPERIENCE.md:583 */
   agentGuardrailsNeverDeclared: 'The fields each tool declares secret, which the agent never sees:',
-  /** EXPERIENCE.md:583 */
-  agentGuardrailsContextHeading: 'Screen context',
   /** EXPERIENCE.md:583 */
   agentGuardrailsContextLimits: 'Each turn carries at most <rows> rows of the screen you are on, <total> characters in all and <field> characters a field.',
   /** EXPERIENCE.md:583 */

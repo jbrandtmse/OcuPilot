@@ -42,6 +42,7 @@ import { impactOf, type Impact } from './impact.ts';
 import { readBackOf, type ReadBack } from './read-back.ts';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
+import { type DraftOutcome, requestDraft } from './draft.ts';
 
 export const CONVERSATION_PATH = '/api/ocupilot/conversation';
 export const TURN_PATH = '/api/ocupilot/turn';
@@ -447,7 +448,8 @@ function parseStepResult(value: unknown): TurnStepResult | null {
   };
 }
 
-function parseStep(value: unknown): TurnStep | null {
+/** One stored or polled progress step, or `null` when `value` is not a step object. */
+export function parseStep(value: unknown): TurnStep | null {
   const row = asRecord(value);
   if (row === null) return null;
   const kindRaw = textAt(row, 'kind');
@@ -1152,6 +1154,33 @@ export class TurnStore {
   /** Cancel proposal `id`: the user's own decision not to apply it. */
   async cancelProposal(id: string): Promise<ProposalOutcome> {
     return this.decideProposal(proposalCancelPath(id), id, '{}', 'cancel');
+  }
+
+  /**
+   * Take proposal `id`'s script instead of confirming it (Story 14.1, AD-59), and record what the
+   * instance answered the way a decision's answer is recorded.
+   *
+   * A draft the instance took closed the row as `canceled`/`draft`: that state is recorded against
+   * the proposal, which republishes and so closes the AD-43 pause, and any earlier refusal is
+   * cleared. A refusal records the row's state only where its `detail` names one, and records the
+   * envelope's written `reason` for the card to draw (DW-1348). Nothing is published as `changed`:
+   * the draft sends nothing. The script itself is returned and never stored here.
+   */
+  async draftProposal(id: string): Promise<DraftOutcome> {
+    const outcome = await requestDraft(this.api, id);
+    const state = { ...NO_OUTCOME, state: outcome.state, closedReason: outcome.closedReason, confirmedAt: outcome.confirmedAt };
+    if (outcome.ok) {
+      this.recordProposalState(id, state);
+      this.recordProposalRefusal(id, null);
+    } else if (outcome.status !== 0) {
+      if (outcome.state !== '') this.recordProposalState(id, state);
+      this.recordProposalRefusal(id, {
+        status: outcome.status,
+        code: outcome.code === '' ? null : outcome.code,
+        reason: outcome.reason === '' ? null : outcome.reason,
+      });
+    }
+    return outcome;
   }
 
   /**

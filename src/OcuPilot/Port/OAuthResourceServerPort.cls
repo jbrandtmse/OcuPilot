@@ -562,4 +562,39 @@ ClassMethod Text(pObject, pKey As %String) As %String
     Quit pObject.%Get(pKey)
 }
 
+/// <p>The kind of script step <method>Snippet</method> renders: a mapping type's is the mapping
+/// endpoint's route, and every other type's the admin port's answer.</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    If (pEndpoint = ..#RESOURCEENDPOINT) && (pType = ..#ADDTYPE) Quit ##super(..#MAPPINGENDPOINT, "PUT")
+    If (pEndpoint = ..#RESOURCEENDPOINT) && (pType = ..#REMOVETYPE) Quit ##super(..#MAPPINGENDPOINT, "DELETE")
+    Quit ##super(pEndpoint, pType)
+}
+
+/// <p><method>Invoke</method>'s write branches as a script (AD-59): <parameter>ADDTYPE</parameter>
+/// is the mapping endpoint's <code>PUT</code> of <code>{Resource}</code> under the query's service
+/// and key, <parameter>REMOVETYPE</parameter> its <code>DELETE</code>, and
+/// <parameter>SECRETSTYPE</parameter> the vendor call with <parameter>SECRETFIELD</parameter> alone.
+/// Every other call, the <code>PUT</code> among them, is the admin port's script of the body as
+/// given.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    If pEndpoint '= ..#RESOURCEENDPOINT Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+    If (pType = ..#ADDTYPE) || (pType = ..#REMOVETYPE) {
+        Kill tQuery
+        Set tQuery(..#SERVICEQUERY) = $Get(pQuery(..#SERVICEQUERY))
+        Set tQuery(..#KEYQUERY) = $Get(pQuery(..#KEYQUERY))
+        If pType = ..#REMOVETYPE Quit ##super(..#MAPPINGENDPOINT, "DELETE", .tQuery, "", pContext)
+        Set tBody = {}
+        Do tBody.%Set("Resource", $Get(pQuery(..#NAMEQUERY)), "string")
+        Quit ##super(..#MAPPINGENDPOINT, "PUT", .tQuery, tBody, pContext)
+    }
+    If pType = ..#SECRETSTYPE {
+        Set tBody = {}
+        Do tBody.%Set(..#SECRETFIELD, ..Scalar(pBody, ..#SECRETFIELD), "string")
+        Quit ##super(pEndpoint, pType, .pQuery, tBody, pContext)
+    }
+    Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+}
+
 }

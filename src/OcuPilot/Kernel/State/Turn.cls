@@ -395,6 +395,21 @@ ClassMethod GuardedAbandonForUser(pUser As %String, Output pCount As %Integer) A
     Quit tSC
 }
 
+/// <p>Every user named by a <code>queued</code> or <code>running</code> turn, as stored:
+/// <var>pUsers(name)</var>. The retention sweep asks, for each, whether the account still exists
+/// (AD-37).</p>
+ClassMethod GuardedLiveUsers(Output pUsers) As %Status
+{
+    Kill pUsers
+    Set tSC = ..GuardedIdsWhereNoParam("SELECT DISTINCT %EXACT(UserName) FROM OcuPilot_Kernel_State.Turn WHERE State IN ('queued', 'running')", .tRows)
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 1:1:+$Get(tRows) {
+        Set tName = ..Text($Get(tRows(tI)))
+        If tName '= "" Set pUsers(tName) = ""
+    }
+    Quit $$$OK
+}
+
 /// <p>Whether job <var>pJobId</var> is running a turn: <var>pIsTurnJob</var> is 1 when a
 /// <code>running</code> row carries that <property>JobId</property>, which
 /// <method>GuardedBegin</method> stamps from the job's own <code>$JOB</code>.</p>
@@ -545,8 +560,8 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
     Quit $$$OK
 }
 
-/// <p>Delete every terminal turn that ended retention seconds ago or more, with its steps and
-/// signals.</p>
+/// <p>Delete every terminal turn that ended retention seconds ago or more, with everything
+/// <method>GuardedDelete</method> removes beside it.</p>
 ClassMethod GuardedSweep(pLimitsClass As %String) As %Status
 {
     Set tSC = ..GuardedIdsWhereNoParam("SELECT ID FROM OcuPilot_Kernel_State.Turn WHERE State IN ('completed', 'stopped', 'abandoned', 'failed') ORDER BY ID", .tIds)
@@ -565,12 +580,17 @@ ClassMethod GuardedSweep(pLimitsClass As %String) As %Status
     Quit tSC
 }
 
-/// <p>Delete turn <var>pKey</var>, its steps, its navigation directive and its signals.</p>
+/// <p>Delete turn <var>pKey</var>, its steps, its navigation directive, its proposals and its
+/// signals. A proposal outlives its turn's job by construction (AD-6), but not its turn row: once
+/// the turn itself is past retention, a reloaded conversation carries no card for it (DW-1240),
+/// while the conversation entry and the ledger rows stay.</p>
 ClassMethod GuardedDelete(pKey As %String) As %Status
 {
     Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedDeleteForTurn(pKey)
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ##class(OcuPilot.Kernel.State.Nav).GuardedDeleteForTurn(pKey)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForTurn(pKey)
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedTurnSignalKill(pKey)
     If $$$ISERR(tSC) Quit tSC

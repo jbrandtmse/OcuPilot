@@ -45,7 +45,7 @@ describe('GuardrailsPage', () => {
       STRINGS.agentSwitchesLabel,
       STRINGS.agentGuardrailsConfirmHeading,
       STRINGS.agentGuardrailsNeverHeading,
-      STRINGS.agentGuardrailsContextHeading,
+      STRINGS.transcriptScreenContext,
     ]);
     expect(root.querySelector('.ocu-guardrails-fault')).toBeNull();
     expect(root.querySelector('.ocu-guardrails')?.getAttribute('aria-busy')).toBe('false');

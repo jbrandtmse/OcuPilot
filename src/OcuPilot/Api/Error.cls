@@ -416,6 +416,15 @@ Parameter AGENTCONTEXTSHARE = "AGENT.CONTEXT.SHARE";
 /// <p>The envelope's <code>reason</code> for <parameter>AGENTCONTEXTSHARE</parameter>.</p>
 Parameter REASONAGENTCONTEXTSHARE = "The body must carry exactly one member, the boolean share.";
 
+/// <p>Machine code (Story 14.5, AD-39): <code>PUT /agent/restraint</code>'s body carries anything
+/// other than exactly the boolean member <code>readOnly</code> -- an absent, badly typed or extra
+/// member, or a body that is not JSON. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug
+/// by <class>OcuPilot.Api.Switches</class>; nothing is written.</p>
+Parameter AGENTRESTRAINTBODY = "AGENT.RESTRAINT.BODY";
+
+/// <p>The envelope's <code>reason</code> for <parameter>AGENTRESTRAINTBODY</parameter>.</p>
+Parameter REASONAGENTRESTRAINTBODY = "The body must carry exactly one member, the boolean readOnly.";
+
 /// <p>Violation code (rule 1): a definition needs a name of one to sixty-four characters.
 /// Rendered inside <code>detail.violations</code> on the <parameter>VALIDATIONFAILED</parameter>
 /// slug, on the field <code>name</code>. Covers both an absent name and one over the length the
@@ -629,6 +638,11 @@ Parameter AGENTREADONLYENFORCED = "AGENT.READONLY.ENFORCED";
 /// (<property>OcuPilot.Kernel.State.Agent.ReadOnly</property>).</p>
 Parameter AGENTREADONLYDEFINITION = "AGENT.READONLY.DEFINITION";
 
+/// <p>Restraint code (AD-30, FR-19, Story 14.5): the acting user turned read-only on for
+/// themselves (<parameter>OcuPilot.Kernel.State.Pref.KINDRESTRAINT</parameter>). Enforced
+/// read-only wins over it, and it wins over <parameter>AGENTREADONLYDEFINITION</parameter>.</p>
+Parameter AGENTREADONLYUSER = "AGENT.READONLY.USER";
+
 /// <p>Restraint code (AD-30, FR-20): the kill switch is on for everyone on this instance.</p>
 Parameter AGENTKILLSWITCHGLOBAL = "AGENT.KILLSWITCH.GLOBAL";
 
@@ -646,6 +660,7 @@ ClassMethod ReasonForRestraint(pCode As %String) As %String
 {
     If pCode = ..#AGENTREADONLYENFORCED Quit ..#REASONAGENTREADONLYENFORCED
     If pCode = ..#AGENTREADONLYDEFINITION Quit ..#REASONAGENTREADONLYDEFINITION
+    If pCode = ..#AGENTREADONLYUSER Quit ..#REASONAGENTREADONLYUSER
     If pCode = ..#AGENTKILLSWITCHGLOBAL Quit ..#REASONAGENTKILLSWITCHGLOBAL
     If pCode = ..#AGENTKILLSWITCHUSER Quit ..#REASONAGENTKILLSWITCHUSER
     Quit ""
@@ -656,7 +671,7 @@ ClassMethod ReasonForRestraint(pCode As %String) As %String
 /// catches a code added with no sentence behind it.</p>
 ClassMethod RestraintCodes() As %List
 {
-    Quit $ListBuild(..#AGENTREADONLYENFORCED, ..#AGENTREADONLYDEFINITION, ..#AGENTKILLSWITCHGLOBAL, ..#AGENTKILLSWITCHUSER)
+    Quit $ListBuild(..#AGENTREADONLYENFORCED, ..#AGENTREADONLYDEFINITION, ..#AGENTREADONLYUSER, ..#AGENTKILLSWITCHGLOBAL, ..#AGENTKILLSWITCHUSER)
 }
 
 /// <p>Written sentence for <parameter>AGENTREADONLYENFORCED</parameter>.</p>
@@ -664,6 +679,9 @@ Parameter REASONAGENTREADONLYENFORCED = "Read-only mode is enforced on this inst
 
 /// <p>Written sentence for <parameter>AGENTREADONLYDEFINITION</parameter>.</p>
 Parameter REASONAGENTREADONLYDEFINITION = "The agent definition in force is read-only, so no write can be made through the agent.";
+
+/// <p>Written sentence for <parameter>AGENTREADONLYUSER</parameter>.</p>
+Parameter REASONAGENTREADONLYUSER = "Read-only is on for this user, so no write can be made through the agent.";
 
 /// <p>Written sentence for <parameter>AGENTKILLSWITCHGLOBAL</parameter>.</p>
 Parameter REASONAGENTKILLSWITCHGLOBAL = "The agent is switched off on this instance.";

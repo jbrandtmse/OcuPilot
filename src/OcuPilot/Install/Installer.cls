@@ -200,6 +200,12 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
             Quit
         }
         Set pNames("sslConfig") = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG _ tSuffix
+        ; The daily retention task (Story 14.4, AD-37). Production only: its run sweeps the
+        ; production stores, which the probe profile's escalation does not reach, so a probe install
+        ; creates none and a probe uninstall leaves the production one alone. Resolved here, in the
+        ; install namespace, because the task class is an OcuPilot class.
+        Set pNames("retentionTaskClass") = $Select(tIsProbe: "", 1: "OcuPilot.Kernel.RetentionTask")
+        Set pNames("retentionTaskName") = $Select(tIsProbe: "", 1: ##class(OcuPilot.Kernel.RetentionTask).#TaskName)
 
         Set tDirName = $ZConvert(pNames("database"), "L")
         Set pNames("directory") = ##class(%File).NormalizeDirectory(tDirName, $System.Util.ManagerDirectory())
@@ -876,6 +882,9 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureAuditingEnabled"
         Set tSC = ..EnsureAuditingEnabled(.tReports)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureRetentionTask"
+        Set tSC = ..EnsureRetentionTask(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         ; AD-15, AD-17, AD-38: install is one of the two parties that can see whether this
         ; instance marks agent writes, so it reads the answer here, inside the %SYS window, and
@@ -3018,6 +3027,106 @@ ClassMethod EnsureAuditEvents(ByRef pNames, ByRef pReports) As %Status [ Private
     Quit tSC
 }
 
+/// <p>The daily retention task's start, in seconds after local midnight: 03:15.</p>
+Parameter RETENTIONTASKSTART As %Integer = 11700;
+
+/// <p>Ensure exactly one Task Manager task of <code>pNames("retentionTaskClass")</code> exists
+/// (Story 14.4, AD-17, AD-37): daily at <parameter>RETENTIONTASKSTART</parameter>, in
+/// <var>pInstallNs</var>, named <code>pNames("retentionTaskName")</code>. Guard-then-act by the
+/// task class, whatever the task's name or namespace: none is created, one is repaired where its
+/// name, namespace or schedule has drifted, and any second one is deleted. The run user is left at
+/// the vendor's default, the account that saved the task. A probe profile names no class and the
+/// step reports that it made none.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> is <code>%SYS</code>.</p>
+ClassMethod EnsureRetentionTask(ByRef pNames, pInstallNs As %String, ByRef pReports) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tClass = $Get(pNames("retentionTaskClass"))
+        If tClass = "" {
+            Do ..Report(.pReports, "info", "Skipped the retention task -- only the production profile schedules one", "")
+            Quit
+        }
+        Set tName = pNames("retentionTaskName")
+        Set tSC = ..RetentionTaskIds(tClass, .tIds)
+        If $$$ISERR(tSC) Quit
+        For tI = 2:1:+$Get(tIds) {
+            Set tSC = ##class(%SYS.Task).%DeleteId(tIds(tI))
+            If $$$ISERR(tSC) Quit
+            Do ..Report(.pReports, "warn", "Deleted a second retention task", {"id": (tIds(tI))})
+        }
+        If $$$ISERR(tSC) Quit
+        Set tTask = ""
+        If +$Get(tIds) > 0 Set tTask = ##class(%SYS.Task).%OpenId(tIds(1))
+        Set tCreated = '$IsObject(tTask)
+        If tCreated {
+            Set tTask = ##class(%SYS.Task).%New()
+            Set tTask.TaskClass = tClass
+            Set tTask.Description = "OcuPilot: removes conversation entries and agent ledger rows past their retention, daily"
+        }
+        Set tChanged = tCreated
+        For tPair = $ListBuild("Name", tName), $ListBuild("NameSpace", pInstallNs), $ListBuild("TimePeriod", 0), $ListBuild("TimePeriodEvery", 1), $ListBuild("DailyFrequency", 0), $ListBuild("DailyStartTime", ..#RETENTIONTASKSTART) {
+            Set tProperty = $List(tPair, 1)
+            If $Property(tTask, tProperty) = $List(tPair, 2) Continue
+            Set $Property(tTask, tProperty) = $List(tPair, 2)
+            Set tChanged = 1
+        }
+        If tChanged Set tSC = tTask.%Save()
+        Set tId = tTask.%Id()
+        Set tTask = ""
+        If $$$ISERR(tSC) Quit
+        Do ..Report(.pReports, "info", $Select(tCreated: "Created the retention task", tChanged: "Repaired the retention task", 1: "The retention task is scheduled"), {"name": (tName), "id": (tId)})
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Delete every Task Manager task of <code>pNames("retentionTaskClass")</code>: the step
+/// <method>Uninstall</method> takes, and the one <class>OcuPilot.Test.RetentionTask</class> drives,
+/// since no test runs the production uninstall. <var>pNames</var> is <method>Names</method>'s answer,
+/// or carries <code>retentionTaskClass</code> alone. It enters <code>%SYS</code> by explicit save and
+/// restore (AD-16) when called from elsewhere, and leaves the caller's namespace as it found it.</p>
+ClassMethod RemoveRetentionTask(ByRef pNames) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tClass = $Get(pNames("retentionTaskClass"))
+        If tClass = "" Quit
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ..RetentionTaskIds(tClass, .tIds)
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:+$Get(tIds) {
+            Set tSC = ##class(%SYS.Task).%DeleteId(tIds(tI))
+            If $$$ISERR(tSC) Quit
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The ids of every task of class <var>pClass</var>, in any namespace and under any name, as
+/// <var>pIds(1)</var>, <var>pIds(2)</var>, ... <b>Caller contract:</b> <code>$NAMESPACE</code> is
+/// <code>%SYS</code>.</p>
+ClassMethod RetentionTaskIds(pClass As %String, Output pIds) As %Status [ Private ]
+{
+    Kill pIds
+    Kill tRaw
+    Set tSC = ##class(%SYS.TaskSuper).QueryTasks(pClass, "", "", .tRaw)
+    If $$$ISERR(tSC) Quit tSC
+    If '($Data(tRaw) \ 10) Quit $$$OK
+    Set tSub = $Order(tRaw(""))
+    While tSub '= "" {
+        Set pIds($Increment(pIds)) = tRaw(tSub)
+        Set tSub = $Order(tRaw(tSub))
+    }
+    Quit $$$OK
+}
+
 /// <p>Ensure instance-wide auditing is enabled (FR-66), reporting which of "already
 /// enabled" and "enabled now" happened as a distinct outcome (AC10). Never touches
 /// <code>AuditEncrypt</code> -- changing it deletes the audit database.</p>
@@ -3787,7 +3896,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
                 Set tRoleList = tRoleList _ $Select(tRoleList = "": "", 1: ", ") _ "'" _ tURole _ "'"
             }
             If tAppList = "" Set tAppList = "(no web application carries a provenance record, so none would be removed)"
-            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "' and '" _ tNames("identityRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "', '" _ tNames("identityApplication") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit events '" _ ..EventList(.tNames) _ "', TLS configuration '" _ tNames("sslConfig") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "' and '" _ tNames("identityRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "', '" _ tNames("identityApplication") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit events '" _ ..EventList(.tNames) _ "', TLS configuration '" _ tNames("sslConfig") _ "'" _ $Select($Get(tNames("retentionTaskName")) = "": "", 1: ", the retention task '" _ tNames("retentionTaskName") _ "'") _ ", and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
             Set $NAMESPACE = tOrigNS
             Quit
         }
@@ -3987,6 +4096,8 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             Set tSC = ##class(Security.SSLConfigs).Delete(tNames("sslConfig"))
             If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         }
+        Set tSC = ..RemoveRetentionTask(.tNames)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
 
         Set $NAMESPACE = tOrigNS
 

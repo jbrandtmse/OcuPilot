@@ -3523,6 +3523,15 @@ app-data-table {
   color: var(--ocu-restrained);
 }
 
+// The read-only line and, beside it, the per-user "Read-only for me" switch (Story 14.5): one row,
+// the line taking the width and the switch at its trailing end.
+.ocu-panel-read-only-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ocu-space-2);
+}
+
 // The footer behind a 1px `{colors.outline-variant}` top edge (DESIGN.md `:1110`).
 .ocu-panel-footer {
   display: flex;
@@ -3678,7 +3687,8 @@ app-data-table {
   color: var(--ocu-egress-warning);
 }
 
-.ocu-context-chip-toggle {
+.ocu-context-chip-toggle,
+.ocu-read-only-toggle {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -3686,7 +3696,8 @@ app-data-table {
 
 // A native checkbox styled as a Material-shaped switch (track and thumb): `appearance: none`
 // drops the native box, and the track and thumb are drawn on the element and a `::before`.
-.ocu-context-chip-switch {
+.ocu-context-chip-switch,
+.ocu-read-only-switch {
   appearance: none;
   position: relative;
   flex: 0 0 auto;
@@ -3699,7 +3710,8 @@ app-data-table {
   cursor: pointer;
 }
 
-.ocu-context-chip-switch::before {
+.ocu-context-chip-switch::before,
+.ocu-read-only-switch::before {
   position: absolute;
   top: 1px;
   left: 1px;
@@ -3711,24 +3723,34 @@ app-data-table {
   content: '';
 }
 
-.ocu-context-chip-switch:checked {
+.ocu-context-chip-switch:checked,
+.ocu-read-only-switch:checked {
   border-color: var(--ocu-secondary);
   background: var(--ocu-secondary);
 }
 
-.ocu-context-chip-switch:checked::before {
+.ocu-context-chip-switch:checked::before,
+.ocu-read-only-switch:checked::before {
   background: var(--ocu-on-secondary);
   transform: translateX(14px);
 }
 
-.ocu-context-chip-switch:focus-visible {
+.ocu-context-chip-switch:focus-visible,
+.ocu-read-only-switch:focus-visible {
   @include ocu-focus-ring;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ocu-context-chip-switch::before {
+  .ocu-context-chip-switch::before,
+  .ocu-read-only-switch::before {
     transition: none;
   }
+}
+
+// Under enforced read-only the per-user switch reads on and a press changes nothing; it stays in
+// the tab order, described by the footer line that says why.
+.ocu-read-only-switch[aria-disabled='true'] {
+  cursor: not-allowed;
 }
 
 // "Explain this screen" (Story 11.1): a button-text beneath the chip, inset by the chip's own
@@ -3973,6 +3995,126 @@ app-data-table {
     max-width: 100%;
     border-radius: var(--ocu-radius-md);
   }
+}
+
+// --- The code frame and its copy control (Story 14.1, DW-1081) --------------------------------
+//
+// A code surface beside its one copy icon button (DESIGN.md `message-agent`: code blocks carry a
+// copy icon button). The frame carries the surface, so the button sits on it; the `pre` inside
+// scrolls on its own and drops the margin a reply's `pre` carries outside a frame. Focus on the
+// code surface is DESIGN.md's `focus-ring.on-code-surface`: 2px `focus-ring-dark` outside a 2px
+// `code-surface` halo, in both modes, because the light-mode ring is too dark on the surface.
+
+@mixin ocu-focus-ring-on-code-surface {
+  outline: 2px solid var(--ocu-focus-ring-dark);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--ocu-code-surface);
+}
+
+.ocu-code-frame {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ocu-space-1);
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0 0 var(--ocu-space-2);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-code-surface);
+  color: var(--ocu-on-code-surface);
+}
+
+.ocu-code-frame > .ocu-reply-pre {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+// A draft's step: the same surface, with its own horizontal scroll rather than wrapping (the
+// EXPERIENCE.md 1.4.10 two-dimensional-scroll exception), reachable from the keyboard.
+.ocu-code-block-pre {
+  @include typo.ocu-type('code');
+
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+  padding: var(--ocu-space-3);
+  overflow-x: auto;
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-code-surface);
+  color: var(--ocu-on-code-surface);
+  white-space: pre;
+}
+
+// Inside the frame the ring is drawn inset, so a step at the transcript's edge is not clipped.
+.ocu-code-block-pre:focus-visible {
+  outline: 2px solid var(--ocu-focus-ring-dark);
+  outline-offset: -4px;
+  box-shadow: inset 0 0 0 2px var(--ocu-code-surface);
+}
+
+.ocu-code-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-code-block .ocu-code-frame {
+  margin: 0;
+}
+
+.ocu-copy-control {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: var(--ocu-space-1);
+}
+
+.ocu-copy-button {
+  color: var(--ocu-on-code-surface);
+}
+
+// The glyph is drawn here rather than as a text node, so the control adds nothing to a block's
+// `textContent`; its name is the button's own `aria-label`.
+.ocu-copy-button::before {
+  font-size: 20px;
+  line-height: 1;
+  content: '\29C9';
+}
+
+.ocu-copy-button:hover {
+  background: color-mix(in srgb, var(--ocu-on-code-surface) 12%, transparent);
+}
+
+.ocu-copy-button:focus-visible {
+  @include ocu-focus-ring-on-code-surface;
+}
+
+// The selection route's scratch field: selectable, never seen, never scrolled to.
+.ocu-copy-scratch {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip-path: inset(50%);
+}
+
+// The script a copy-out draft shows on its card, with the caption above it.
+.ocu-proposal-card-draft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-proposal-card-draft-caption {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
 }
 
 // The turn error banner (`agentTurnStoppedBanner` in `core/strings.ts`), in the agent's slot

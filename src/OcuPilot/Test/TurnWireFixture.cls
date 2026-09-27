@@ -250,6 +250,26 @@ ClassMethod SetTag(pId As %String, pTag As %String) As %Status
     Quit tSC
 }
 
+/// <p>The body of a recorded <code>tool_result</code> content that
+/// <class>OcuPilot.Kernel.Agent.Sanitize</class> framed: <var>pContent</var> without its opening
+/// line (plain or cut) and its closing line. <var>pWrapped</var> is 1 only when both lines frame it
+/// exactly; otherwise it is 0 and the answer is <var>pContent</var> unchanged.</p>
+ClassMethod Unwrapped(pContent As %String, Output pWrapped As %Boolean) As %String
+{
+    Set pWrapped = 0
+    Set tClose = $Char(10) _ ##class(OcuPilot.Kernel.Agent.Sanitize).#CLOSETAG
+    If $Extract(pContent, * - $Length(tClose) + 1, *) '= tClose Quit pContent
+    For tOpen = ##class(OcuPilot.Kernel.Agent.Sanitize).#OPENTAG, ##class(OcuPilot.Kernel.Agent.Sanitize).#CUTOPENTAG {
+        Set tOpenLine = tOpen _ $Char(10)
+        If $Extract(pContent, 1, $Length(tOpenLine)) '= tOpenLine Continue
+        If $Length(pContent) < ($Length(tOpenLine) + $Length(tClose)) Continue
+        Set pWrapped = 1
+        Quit
+    }
+    If 'pWrapped Quit pContent
+    Quit $Extract(pContent, $Length(tOpenLine) + 1, * - $Length(tClose))
+}
+
 /// <p>Remove the probe definitions and the credential entry, and move the default marker back to
 /// <var>pPrior</var> when it is still an enabled definition.</p>
 ClassMethod RemoveDefinition(pPrior As %String) As %Status

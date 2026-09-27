@@ -18,6 +18,12 @@
  * already accepts `clear` for the membership kinds (`Api/Preferences.cls`), so nothing but this
  * roster decides what is forgotten.
  *
+ * **The per-user read-only choice is turned off too** (Story 14.5). It is not a preferences kind --
+ * only `PUT /agent/restraint` writes it -- but it is remembered on the instance for the same
+ * account, and one spec's leftover toggle would block every later spec's agent writes. A spec that
+ * is about that choice surviving into a fresh context passes `keepReadOnlyForYou` for that one
+ * context and turns the choice off itself afterwards.
+ *
  * A spec that is **about** this state surviving (`preferences-integration`,
  * `ui-state-survives-sign-out`) arranges and clears its own rows and does not call this.
  *
@@ -37,6 +43,8 @@ const config = browserConfig();
 
 const PREFERENCES_PATH = '/api/ocupilot/account/preferences';
 
+const RESTRAINT_PATH = '/api/ocupilot/agent/restraint';
+
 function authHeader() {
   return 'Basic ' + Buffer.from(`${config.username}:${config.password}`).toString('base64');
 }
@@ -50,8 +58,11 @@ export async function rememberedShellMember(name) {
   return row === undefined ? null : row.value;
 }
 
-/** Forget everything the instance remembers about the signing-in account, kind by kind. */
-export async function resetRememberedState() {
+/**
+ * Forget everything the instance remembers about the signing-in account, kind by kind, and turn
+ * its read-only choice off unless `keepReadOnlyForYou` is set.
+ */
+export async function resetRememberedState({ keepReadOnlyForYou = false } = {}) {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this helper writes the account\'s preferences, so it never runs against the live container');
   for (const kind of PREFERENCE_KINDS) {
     const answer = await fetch(`${config.origin}${PREFERENCES_PATH}`, {
@@ -61,4 +72,16 @@ export async function resetRememberedState() {
     });
     assert.equal(answer.status, 200, `the ${kind} kind cleared: ${await answer.text()}`);
   }
+  if (!keepReadOnlyForYou) await resetReadOnlyForYou();
+}
+
+/** Turn the signing-in account's own read-only choice off (Story 14.5), asserting the answer. */
+export async function resetReadOnlyForYou() {
+  assert.notEqual(config.container, LIVE_CONTAINER, 'this helper writes the account\'s read-only choice, so it never runs against the live container');
+  const answer = await fetch(`${config.origin}${RESTRAINT_PATH}`, {
+    method: 'PUT',
+    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ readOnly: false }),
+  });
+  assert.equal(answer.status, 200, `the read-only choice was turned off: ${await answer.text()}`);
 }

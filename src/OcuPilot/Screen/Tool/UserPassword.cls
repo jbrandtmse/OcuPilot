@@ -118,6 +118,27 @@ ClassMethod AfterWrite(pPort As %String, pEndpoint As %String, pIdParam As %Stri
     Quit $ClassMethod(pPort, "Invoke", pEndpoint, ..#FLAGWRITETYPE, .tQuery, tNow, .tWritten, .pHttpStatus, .pFault)
 }
 
+/// <p><method>AfterWrite</method> as a copy-out script step (AD-59): the change-on-login flag the
+/// vendor's password change clears, set again on account <var>pIdValue</var> through
+/// <class>Security.Users</class> in <code>%SYS</code>, which changes that one property. A stored
+/// read <var>pStoredPayload</var> that carries the flag decides: set, one step; clear, none. A read
+/// that does not carry it -- the proposal stores only its fingerprint subject -- answers the step
+/// guarded by the <code>&lt;ChangeAtNextLogin&gt;</code> placeholder, the condition
+/// <method>AfterWrite</method> tests, which the person fills in with 1 or 0.</p>
+ClassMethod SnippetAfter(pEndpoint As %String, pIdParam As %String, pIdValue As %String, pStoredPayload As %DynamicObject, pContext As %DynamicObject = "") As %DynamicArray
+{
+    Set tSteps = []
+    Set tKnown = $IsObject(pStoredPayload) && (pStoredPayload.%GetTypeOf(..#CHANGEPASSWORDFIELD) = "boolean")
+    If tKnown && 'pStoredPayload.%Get(..#CHANGEPASSWORDFIELD) Quit tSteps
+    Set tLines = $ListBuild("Kill tProps", "Set tProps(" _ ##class(OcuPilot.Port.AdminPort).Literal(..#CHANGEPASSWORDFIELD) _ ") = 1", "Set tSC = ##class(Security.Users).Modify(" _ ##class(OcuPilot.Port.AdminPort).Literal(pIdValue) _ ", .tProps)", "Do $System.Status.DisplayError(tSC)")
+    If 'tKnown {
+        ; One line, so the guard holds when the step is pasted into a terminal line by line.
+        Set tLines = $ListBuild("; <ChangeAtNextLogin>: 1 when the account had to change its password at next login before this change, else 0", "If <ChangeAtNextLogin> { " _ $ListToString(tLines, "  ") _ " }")
+    }
+    Do tSteps.%Push(##class(OcuPilot.Port.AdminPort).ObjectScriptStep(tLines))
+    Quit tSteps
+}
+
 /// <p>The card's one row, from the fresh read <var>pFresh</var>: <code>{field: "Password",
 /// before: "", after: ""}</code>. It names the declared secret, so the card masks it and asks for
 /// it; neither side carries a value, because no read returns one and the new one is supplied at

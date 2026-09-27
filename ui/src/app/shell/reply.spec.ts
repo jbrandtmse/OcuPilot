@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
+import { STRINGS } from '../core/strings';
+import { COPY_BUTTON_CLASS, COPY_STATUS_CLASS } from './copy-control';
 import { Reply, sanitizeReplyRoot } from './reply';
 
 /**
@@ -206,5 +208,69 @@ describe('citation chips', () => {
     expect(emitted).toEqual([]);
     (host.querySelector('button.ocu-reply-citation') as HTMLButtonElement).click();
     expect(emitted).toEqual([cited]);
+  });
+});
+
+// --- DW-1081: the copy control on a fenced code block ----------------------------------------
+
+describe('a reply code block', () => {
+  const restores: Array<() => void> = [];
+
+  function stub(target: object, key: string, value: unknown): void {
+    const prior = Object.getOwnPropertyDescriptor(target, key);
+    Object.defineProperty(target, key, { configurable: true, writable: true, value });
+    restores.push(() => {
+      if (prior === undefined) {
+        delete (target as Record<string, unknown>)[key];
+      } else {
+        Object.defineProperty(target, key, prior);
+      }
+    });
+  }
+
+  afterEach(() => {
+    while (restores.length > 0) restores.pop()?.();
+  });
+
+  // Mutation (Rule 19): drop the `attachCopyControls(root)` call from the effect -> both tests
+  // below go red.
+  it('carries one copy control per block, named "Copy to clipboard", beside the pre and outside it', () => {
+    const { host } = mount('```sql\nSELECT 1 -- c\n```\n\nand\n\n```\nplain\n```');
+    const pres = host.querySelectorAll('pre.ocu-reply-pre');
+    expect(pres).toHaveLength(2);
+    const buttons = host.querySelectorAll(`button.${COPY_BUTTON_CLASS}`);
+    expect(buttons).toHaveLength(2);
+    for (const button of buttons) {
+      expect(button.getAttribute('aria-label')).toBe(STRINGS.actionCopyToClipboard);
+      expect(button.closest('pre')).toBeNull();
+    }
+    for (const pre of pres) {
+      const frame = pre.parentElement as HTMLElement;
+      expect(frame.classList.contains('ocu-code-frame')).toBe(true);
+      expect(frame.querySelectorAll(`button.${COPY_BUTTON_CLASS}`)).toHaveLength(1);
+    }
+    // The highlighted code inside is exactly as it was built.
+    expect(host.querySelector('pre > code.language-sql span.hljs-keyword')).not.toBeNull();
+    // A reply with no code block carries none.
+    expect(mount('no code here').host.querySelector(`button.${COPY_BUTTON_CLASS}`)).toBeNull();
+  });
+
+  it("pressing it copies exactly the block's text, and announces Copied", async () => {
+    const written: string[] = [];
+    stub(window, 'isSecureContext', true);
+    stub(navigator, 'clipboard', {
+      writeText: (text: string) => {
+        written.push(text);
+        return Promise.resolve();
+      },
+    });
+    const { host } = mount('```sql\nSELECT 1 -- c\n```\n\n```\nsecond block\n```');
+    const frames = host.querySelectorAll('.ocu-code-frame');
+    (frames[0].querySelector('button') as HTMLButtonElement).click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const pre = frames[0].querySelector('pre') as HTMLElement;
+    expect(written).toEqual([pre.textContent]);
+    expect(written).toEqual(['SELECT 1 -- c']);
+    expect(frames[0].querySelector(`.${COPY_STATUS_CLASS}`)?.textContent).toBe(STRINGS.copyAnnouncementCopied);
   });
 });

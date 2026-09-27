@@ -80,6 +80,7 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/agent/switches" path="/api/ocupilot/agent/switches" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/agent/switches" path="/api/ocupilot/agent/switches" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/agent/restraint" path="/api/ocupilot/agent/restraint" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/agent/restraint" path="/api/ocupilot/agent/restraint" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/agent/ledger" path="/api/ocupilot/agent/ledger" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/agent/context" path="/api/ocupilot/agent/context" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/agent/context" path="/api/ocupilot/agent/context" disposition="envelope" refusal="1"/>
@@ -117,8 +118,10 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/turn" path="/api/ocupilot/turn" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/proposal/:id/confirm" path="/api/ocupilot/proposal/ocupilot-coverage-probe/confirm" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/proposal/:id/cancel" path="/api/ocupilot/proposal/ocupilot-coverage-probe/cancel" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/proposal/:id/draft" path="/api/ocupilot/proposal/ocupilot-coverage-probe/draft" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/conversation/:id" path="/api/ocupilot/conversation/ocupilot-coverage-probe" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/conversation" path="/api/ocupilot/conversation" disposition="envelope" why="it reads no body and always creates, so no body refuses it" cleanup="conversation"/>
+<probe class="Api.Router" method="GET" url="/transcripts/:id" path="/api/ocupilot/transcripts/ocupilot-coverage-probe" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/instance" path="/api/ocupilot/instance" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/namespaces" path="/api/ocupilot/namespaces" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/navigation" path="/api/ocupilot/navigation" disposition="envelope"/>

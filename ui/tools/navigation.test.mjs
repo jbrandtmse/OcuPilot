@@ -194,11 +194,13 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/oauth',
       'security/auditing',
       'agent/definitions/edit',
+      'agent/transcripts/details',
       'agent/definitions',
       'agent/switches',
       'agent/guardrails',
+      'agent/transcripts',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list, Switches and Guardrails, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails and Transcripts list, in area rail order'
   );
 });
 
@@ -209,17 +211,17 @@ test('a side bar lists only built screens, in side-bar order', () => {
 // the listed-roster assertion below goes red at two entries where one is expected, and the
 // `builtScreens()` roster leg above stays green -- which is what proves the filter is on listing
 // and not on routing.
-test('an unlisted screen is routable and never advertised: the agent area lists three screens and builds four', () => {
+test('an unlisted screen is routable and never advertised: the agent area lists four screens and builds six', () => {
   const built = builtScreensForArea('agent');
   assert.deepEqual(
     built.map((screen) => screen.route),
-    ['agent/definitions/edit', 'agent/definitions', 'agent/switches', 'agent/guardrails'],
-    'all four agent screens are built, the form first because it takes position 0'
+    ['agent/definitions/edit', 'agent/transcripts/details', 'agent/definitions', 'agent/switches', 'agent/guardrails', 'agent/transcripts'],
+    'all six agent screens are built, the form and the transcript page first because they take position 0'
   );
   assert.deepEqual(
     listedScreensForArea('agent').map((screen) => screen.route),
-    ['agent/definitions', 'agent/switches', 'agent/guardrails'],
-    'the side bar lists Definitions, Switches then Guardrails -- the form takes no position'
+    ['agent/definitions', 'agent/switches', 'agent/guardrails', 'agent/transcripts'],
+    'the side bar lists Definitions, Switches, Guardrails then Transcripts -- the form and the transcript page take no position'
   );
   assert.equal(
     isListedScreen(built.find((screen) => screen.route === 'agent/definitions/edit')),

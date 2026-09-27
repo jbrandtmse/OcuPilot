@@ -244,7 +244,7 @@ describe('the Definition form', () => {
     expect(host.querySelector('#ocu-definition-retentionDays')).toBeNull();
   });
 
-  it('AC1: the Advanced section holds the five tuning fields, and retention is aria-disabled under its caption', async () => {
+  it('AC1: the Advanced section holds the five tuning fields, and retention is an editable field under its caption', async () => {
     const { fixture, host } = await mount(catalogOnly);
     (host.querySelector('.ocu-form-disclosure') as HTMLButtonElement).click();
     await settle(fixture);
@@ -260,11 +260,88 @@ describe('the Definition form', () => {
     ]);
 
     const retention = host.querySelector('#ocu-definition-retentionDays') as HTMLInputElement;
-    expect(retention.getAttribute('aria-disabled')).toBe('true');
+    expect(retention.hasAttribute('aria-disabled')).toBe(false);
+    expect(retention.hasAttribute('readonly')).toBe(false);
     expect(retention.hasAttribute('disabled')).toBe(false);
+    expect(retention.getAttribute('aria-describedby')).toBe('ocu-definition-retentionDays-caption');
     expect(host.querySelector('#ocu-definition-retentionDays-caption')?.textContent?.trim()).toBe(
       STRINGS.agentDefinitionRetentionCaption.replace('<n>', '30')
     );
+  });
+
+  it('Story 14.4 AC2: the retention field is editable, sends its value on Save, and shows its refusal at the field', async () => {
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') {
+        const days = JSON.parse(init.body ?? '{}').retentionDays;
+        if (days === 0) return refused([{ field: 'retentionDays', code: 'AGENT.RETENTION.RANGE', reason: 'Retention is a whole number of days from 1 to 365.' }]);
+        return ok(definition({ retentionDays: days }));
+      }
+      return ok(definition());
+    };
+    const { fixture, host, calls } = await mount(answer, '/agent/definitions/edit/7');
+    (host.querySelector('.ocu-form-disclosure') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    // Mutation (Rule 19): drop the input's `(input)` binding -> the PUT carries 30 and the caption
+    // keeps 30, and this goes red.
+    const retention = host.querySelector('#ocu-definition-retentionDays') as HTMLInputElement;
+    retention.value = '7';
+    retention.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-retentionDays-caption')?.textContent?.trim()).toBe(
+      STRINGS.agentDefinitionRetentionCaption.replace('<n>', '7')
+    );
+    const save = () => ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    save();
+    await settle(fixture);
+    const put = calls.filter((call) => call.method === 'PUT').at(-1);
+    expect(put).toBeDefined();
+    expect(JSON.parse(put!.body).retentionDays).toBe(7);
+
+    const field = host.querySelector('#ocu-definition-retentionDays') as HTMLInputElement;
+    field.value = '0';
+    field.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    save();
+    await settle(fixture);
+    const refusedField = host.querySelector('#ocu-definition-retentionDays') as HTMLInputElement;
+    expect(refusedField.getAttribute('aria-invalid')).toBe('true');
+    expect(host.querySelector('#ocu-definition-retentionDays-reason')?.textContent?.trim()).toBe('Retention is a whole number of days from 1 to 365.');
+    expect(refusedField.getAttribute('aria-describedby')).toBe('ocu-definition-retentionDays-caption ocu-definition-retentionDays-reason');
+  });
+
+  it('DW-1621: Advanced carries a Read-only checkbox before Retention, bound to the definition\'s readOnly', async () => {
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') return ok(definition({ readOnly: true }));
+      return ok(definition({ readOnly: false }));
+    };
+    const { fixture, host, calls } = await mount(answer, '/agent/definitions/edit/7');
+    (host.querySelector('.ocu-form-disclosure') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const box = host.querySelector('#ocu-definition-read-only') as HTMLInputElement;
+    expect(box).not.toBeNull();
+    expect(box.type).toBe('checkbox');
+    expect(box.closest('label')?.textContent?.trim()).toBe(STRINGS.agentDefinitionFieldReadOnly);
+    expect(box.checked).toBe(false);
+    // Inside Advanced, before Retention.
+    const advanced = host.querySelector('#ocu-definition-advanced') as HTMLElement;
+    const order = [...advanced.querySelectorAll('input, textarea')].map((node) => node.id);
+    expect(order.indexOf('ocu-definition-read-only')).toBe(order.indexOf('ocu-definition-retentionDays') - 1);
+
+    // Mutation (Rule 19): unbind the checkbox's `(change)` -> the PUT carries readOnly false and
+    // this goes red.
+    box.checked = true;
+    box.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+    const put = calls.find((call) => call.method === 'PUT');
+    expect(put).toBeDefined();
+    expect(JSON.parse(put!.body).readOnly).toBe(true);
+    expect((host.querySelector('#ocu-definition-read-only') as HTMLInputElement).checked).toBe(true);
   });
 
   it('DW-340: the key field is masked and empty, and its reveal toggle is labelled', async () => {

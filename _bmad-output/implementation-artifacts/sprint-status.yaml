@@ -211,14 +211,14 @@ development_status:
   13-3-publish-the-package-to-the-community-registry: done
   epic-13-retrospective: optional
 
-  epic-14: backlog
-  14-1-the-copy-out-draft: backlog
+  epic-14: in-progress
+  14-1-the-copy-out-draft: done
   14-2-the-tool-governance-policy: backlog
-  14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model: backlog
-  14-4-transcripts-retention-and-administrator-access: backlog
-  14-5-the-per-user-read-only-toggle: backlog
+  14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model: done
+  14-4-transcripts-retention-and-administrator-access: done
+  14-5-the-per-user-read-only-toggle: done
   14-6-per-user-turn-limits-and-the-banner-they-need: backlog
-  14-8-the-seeded-injection-test: backlog
+  14-8-the-seeded-injection-test: done
   epic-14-retrospective: optional
 
   epic-15: done

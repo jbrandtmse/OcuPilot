@@ -192,7 +192,8 @@ Method TestTheIterationCapCompletesWithTheFallbackReply()
     Do $$$AssertEquals(tSecond.messages.%Get(1).content.%Get(0).type, "tool_use", "the assistant's tool call, verbatim")
     Set tResult = tSecond.messages.%Get(2).content.%Get(0)
     Do $$$AssertEquals(tResult.type _ "|" _ tResult."tool_use_id" _ "|" _ tResult."is_error", "tool_result|toolu_1|1", "one error result per call")
-    Do $$$AssertEquals(tResult.content, "{""code"":""TOOL.UNKNOWN""}", "with the unknown tool's content")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tResult.content, .tWrapped), "{""code"":""TOOL.UNKNOWN""}", "with the unknown tool's content")
+    Do $$$AssertTrue(tWrapped, "framed as data: " _ tResult.content)
 }
 
 /// <p>A stop request and a sign-out each end the turn at the first boundary with no provider

@@ -46,6 +46,10 @@ Parameter REASONSIBLING = "sibling";
 /// longer matched (AD-6, FR-17).</p>
 Parameter REASONTARGETCHANGED = "target-changed";
 
+/// <p><property>ClosedReason</property>: the minting user took the copy-out draft instead of the
+/// write (AD-59).</p>
+Parameter REASONDRAFT = "draft";
+
 /// <p>The opaque, server-minted proposal id: 32 lower-case hex characters. Unique; matched
 /// exactly.</p>
 Property ProposalKey As %String(MAXLEN = 64);

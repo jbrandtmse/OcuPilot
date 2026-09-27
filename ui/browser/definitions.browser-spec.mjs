@@ -2,7 +2,7 @@
  * The Definition form and the Definitions list in a real browser, against the throwaway instance
  * (Story 3.5's Integration AC).
  *
- * Seven claims, each asserted on rendered DOM and on the real URL rather than on store state:
+ * Eight claims, each asserted on rendered DOM and on the real URL rather than on store state:
  *
  * 1. **A definition is created through the form**, its saved sentence appears in the sticky bar,
  *    and the row appears in the list -- the whole path from a typed name to a row, through the
@@ -25,6 +25,8 @@
  *    failure line, which passes every DW-1337 invariant.
  * 7. **A new definition opens on the catalog's Anthropic default** (Story 10.7): the form's model
  *    field reads `claude-opus-5-5`, first of the datalist's suggestions, and Save stores it.
+ * 8. **The definition's read-only flag has a control** (DW-1621, Story 14.5): "Read-only" checked
+ *    inside Advanced and saved reads back checked after a reload, and the instance stores it.
  *
  * **It refuses the live container**, for the reason its siblings do: the throwaway is the instance
  * a browser run drives, and this spec creates a definition. It **creates the rows it filters and
@@ -70,7 +72,7 @@ const DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 /** Every definition this spec creates is named with this prefix and removed in `after`. */
 const PREFIX = 'OcuPilotBrowserProbe';
 
-const NAMES = [`${PREFIX}Alpha`, `${PREFIX}Beta`, `${PREFIX}Local`, `${PREFIX}Sampling`, `${PREFIX}Timeout`, `${PREFIX}Opus`];
+const NAMES = [`${PREFIX}Alpha`, `${PREFIX}Beta`, `${PREFIX}Local`, `${PREFIX}Sampling`, `${PREFIX}Timeout`, `${PREFIX}Opus`, `${PREFIX}ReadOnly`];
 
 /** The form's key route in the structural baseline. */
 const FORM_ROUTE = 'agent/definitions/edit';
@@ -425,8 +427,8 @@ test('AC5: the form is routable and listed nowhere -- the area\'s listed entries
     // which is the sentinel this test is about: it is built, routed and listed nowhere.
     assert.deepEqual(
       entries,
-      [STRINGS.agentDefinitionListLabel, STRINGS.agentSwitchesLabel, STRINGS.agentGuardrailsLabel],
-      'the area lists Definitions, Switches then Guardrails, and no form'
+      [STRINGS.agentDefinitionListLabel, STRINGS.agentSwitchesLabel, STRINGS.agentGuardrailsLabel, STRINGS.agentTranscriptsLabel],
+      'the area lists Definitions, Switches, Guardrails then Transcripts, and no form'
     );
 
     await page.keyboard.down('Control');
@@ -735,6 +737,49 @@ test('Story 10.7: a new definition opens on claude-opus-5-5, first of the sugges
     assert.ok(one.ok, 'the single-definition route answers');
     const stored = await one.json();
     assert.equal(stored.model, 'claude-opus-5-5', `and it stores claude-opus-5-5: ${JSON.stringify(stored)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('DW-1621: Read-only checked inside Advanced and saved reads back checked, and the instance stores it', async () => {
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await page.waitForSelector('#ocu-definition-name', { visible: true, timeout: config.navigationTimeoutMs });
+    await fill(page, 'ocu-definition-name', NAMES[6]);
+    await page.click('.ocu-form-disclosure');
+    await page.waitForSelector('#ocu-definition-read-only', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('#ocu-definition-read-only', (box) => box.checked), false, 'a new definition opens writable');
+    await page.click('#ocu-definition-read-only');
+    const save = (await page.$$('.ocu-form-bar-actions button')).at(-1);
+    assert.ok(save, 'the sticky bar carries a primary action');
+    await save.click();
+    await page.waitForFunction(
+      (sentence) => document.querySelector('.ocu-form-bar-status')?.textContent?.includes(sentence) === true,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.formSavedPendingTest
+    );
+    await page.waitForFunction(
+      () => /\/agent\/definitions\/edit\/[^/]+$/.test(new URL(window.location.href).pathname),
+      { timeout: config.navigationTimeoutMs }
+    );
+    const editor = new URL(page.url());
+    const id = decodeURIComponent(editor.pathname.split('/').at(-1));
+
+    // A reload of the editor: the form reads the stored row, not the buffer it saved from.
+    await page.goto(editor.href, { waitUntil: 'networkidle2' });
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, editor.pathname + editor.search);
+    await page.waitForSelector('.ocu-form-disclosure', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.click('.ocu-form-disclosure');
+    await page.waitForSelector('#ocu-definition-read-only', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('#ocu-definition-read-only', (box) => box.checked), true, 'the reload reads it checked');
+
+    const one = await fetch(`${config.origin}${DEFINITIONS_PATH}/${encodeURIComponent(id)}`, {
+      headers: { Authorization: authHeader() },
+    });
+    assert.ok(one.ok, 'the single-definition route answers');
+    const stored = await one.json();
+    assert.equal(stored.readOnly, true, `and the instance stores readOnly true: ${JSON.stringify(stored)}`);
   } finally {
     await context.close();
   }

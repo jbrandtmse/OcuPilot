@@ -627,6 +627,42 @@ ClassMethod GuardedUserEnabled(pUserName As %String, Output pKnown As %Boolean, 
     Quit tEnabled
 }
 
+/// <p>Whether the instance holds no account named <var>pUserName</var>: 1 only when, with the
+/// identity escalation in effect, <method>Security.Users.Exists</method> answers 0 with the
+/// vendor's "user does not exist" error (#838). Every other outcome -- the escalation unavailable,
+/// the namespace switch failing, any other error or a raise -- answers 0, so a failed read never
+/// reads as a deleted account (the retention sweep's principal-gone pass, AD-37).
+/// <var>pUnavailable</var> is 1 when the escalation did not take or the read raised.</p>
+ClassMethod GuardedUserAbsent(pUserName As %String, Output pUnavailable As %Boolean) As %Boolean
+{
+    Set pUnavailable = 1
+    Set tAbsent = 0
+    If pUserName = "" Quit 0
+    New $ROLES
+    Set tOriginalNs = $NAMESPACE
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#IDENTITYAPPLICATION)
+        If $$$ISERR(tSC) Quit
+        If '..IdentityGrantsInEffect() Quit
+        ; Left by a plain assignment, as GuardedUserEnabled is (AD-16).
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOriginalNs)
+        If $$$ISERR(tSC) Quit
+        Set pUnavailable = 0
+        Set tStatus = $$$OK
+        Set tExists = ##class(Security.Users).Exists(pUserName, .tUser, .tStatus)
+        ; The opened account carries the password hash; drop it at once (AD-35).
+        Set tUser = ""
+        If 'tExists && $$$ISERR(tStatus) && ($System.Status.GetErrorCodes(tStatus) = 838) Set tAbsent = 1
+    } Catch ex {
+        Set $NAMESPACE = tOriginalNs
+        Set tUser = ""
+        Set tAbsent = 0
+        Set pUnavailable = 1
+    }
+    Set $NAMESPACE = tOriginalNs
+    Quit tAbsent
+}
+
 /// <p>Whether this process actually holds every pair
 /// <parameter>IDENTITYRESOURCES</parameter> declares. Called inside
 /// <method>GuardedUserEnabled</method>'s escalated frame as the oracle for "the escalation is in
@@ -1021,6 +1057,38 @@ ClassMethod GuardedIdsWhereNoParam(pSql As %String, Output pIds) As %Status [ Pr
         }
         While tRS.%Next() {
             Set pIds($Increment(pIds)) = tRS.%GetData(1)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Escalated: run <var>pSql</var>, a caller literal binding no parameter, and collect every
+/// column of every row: <var>pRows(n, i)</var> is column <var>i</var> of row <var>n</var>, and
+/// <var>pRows</var> the row count. For a whole-table read whose rows need more than two columns (the
+/// retention sweep's walk over the entries). Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedIdsWhere</method>.</p>
+ClassMethod GuardedRowsNoParam(pSql As %String, Output pRows) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pRows
+    Set pRows = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedRowsNoParam failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        Set tColumns = tRS.%GetMetadata().columns.Count()
+        While tRS.%Next() {
+            Set tIndex = $Increment(pRows)
+            For tI = 1:1:tColumns {
+                Set pRows(tIndex, tI) = tRS.%GetData(tI)
+            }
         }
     } Catch ex {
         Set tSC = ex.AsStatus()

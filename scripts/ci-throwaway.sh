@@ -195,6 +195,10 @@ services:
       # population. AuditCopy and AuditStarted also copy the instance's audit database into USER and empty USER's
       # audit globals, and AuditCopy's least-privilege leg sends a purge the route must refuse.
       # classes: TurnGrounding
+      # classes: InjectionChannels, InjectionCompromised, InjectionSeed
+      # classes: TurnSanitize
+      # classes: SanitizeAuditMask
+      # classes: Retention, TranscriptsWire
       # classes: AccountPasswordWire, AgentConnectionRoles, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
       # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
       # classes: OAuthTabs
@@ -205,6 +209,7 @@ services:
       # classes: OAuthAuthorizationServerClients, OAuthAuthorizationServerCreate, OAuthAuthorizationServerKeys, OAuthAuthorizationServerSecret, OAuthAuthorizationServerUpdate, OAuthAuthorizationServerWire
       # classes: OAuthRegisteredClientCreate, OAuthRegisteredClientJwks, OAuthRegisteredClientSecret, OAuthRegisteredClientUpdate, OAuthRegisteredClientWire
       # classes: AuditCopy, AuditStarted
+      # classes: DraftExecute
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
@@ -225,9 +230,11 @@ services:
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
       # would leave it there.
-      # classes: ErrorDelete, ErrorLogSeed, ProviderSecret, ProviderStub, ProviderStubTransport
+      # classes: DraftExecute, ErrorDelete, ErrorLogSeed, ProviderSecret, ProviderStub, ProviderStubTransport
       # classes: DemoErrorSeed
       # classes: SecretLeak, SecretStoreProbe
+      # It also covers the seeded injection's append-only messages.log line and failed-login audit row.
+      # classes: InjectionChannels, InjectionCompromised, InjectionSeed
       OCUPILOT_ALLOW_ERROR_SEED: "1"
       # Deletes OcuPilot's own audit event registrations to prove an unregistered triple drops
       # its row, then reinstalls to put them back -- the configuration triple, and the BASELINE
@@ -250,6 +257,7 @@ services:
       # classes: IdentityInstall, InstallNamespaceSource, Installer, Manifest, Provenance, Static
       # classes: UninstallGuard, UninstallResidue, UninstallSurvival, WebApp
       # classes: AuditEvent, AuditMarker, ConfigGate, State, Token, UnexpireScope, Version, Wire
+      # classes: RetentionTask
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same
@@ -287,6 +295,7 @@ services:
       # classes: TaskResume
       # classes: TaskCreate, TaskRules, TaskSave, TaskWire
       # classes: TaskUpdate, TaskEdit
+      # classes: InjectionChannels, InjectionCompromised, InjectionSeed
       OCUPILOT_ALLOW_TASK_CONTROL: "1"
       # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
       # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted
@@ -296,8 +305,9 @@ services:
       # OCUPILOT_ALLOW_ERROR_SEED as well, because it seeds through that class's own guarded helper.
       # DemoErrorSeed deletes the demo fixture's own entries from the install namespace and leaves
       # one present when it finishes.
-      # classes: ErrorDelete
+      # classes: DraftExecute, ErrorDelete
       # classes: DemoErrorSeed
+      # classes: InjectionChannels, InjectionCompromised, InjectionSeed
       OCUPILOT_ALLOW_ERROR_DELETE: "1"
       # Writes a service and LDAP configurations in this instance's own security database through
       # the shipped Save and confirm paths. The service classes write only %Service_CallIn, which is
@@ -316,6 +326,9 @@ services:
       # classes: AgentConnectionBound, AgentConnectionRoles, AgentConnectionWire, LedgerWire, ToolWire, TurnChain
       # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnStore
       # classes: TurnWire, TurnWireFixture
+      # classes: InjectionChannels, InjectionCompromised
+      # classes: TurnSanitize
+      # classes: SanitizeAuditMask
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

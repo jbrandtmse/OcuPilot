@@ -10,7 +10,9 @@
  * an id -- one that declares `parentScope`, or the one-object viewer -- is walked at
  * `<route>/<id>`, the id taken from its parent list's first rendered row (or, for the viewer, the
  * `/api/ocupilot` application the REST explorer lists); one whose id cannot be found is named in
- * `SKIP` with its reason, and one in neither place fails the gate.
+ * `SKIP` with its reason, and one in neither place fails the gate. The Transcripts list, which a
+ * fresh instance leaves empty, gets one conversation seeded for the walk (`seedConversation`),
+ * removed by its exact key when the walk ends.
  *
  * **It runs in baseline form.** `a11y-structural-invariants.browser-spec.mjs` compares what the walk
  * finds against `structural-baseline.json` by key and fails only on a key outside it; a baseline
@@ -40,6 +42,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { signedInAt } from './panel-spec.mjs';
+import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { builtScreens } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
@@ -81,6 +84,40 @@ const VIEWER_ID = '/api/ocupilot';
  * reported as skipped; an id-requiring screen that is neither here nor resolved fails the gate.
  */
 export const SKIP = {};
+
+/** The limits class the seeded entry is capped by, as the turn's own append is. */
+const SEED_LIMITS = 'OcuPilot.Kernel.Agent.Limits';
+
+/**
+ * Seed one conversation of the walking account, holding one completed entry with a screen context,
+ * through the store's own `LoadOrCreate` and `AppendEntry`, so the Transcripts list -- which shows
+ * only conversations holding an entry, and which nothing before the walk has given one on a fresh
+ * instance -- has a row whose detail screen the walk can open. Answers the conversation's key;
+ * throws when either call fails, after removing a conversation `LoadOrCreate` already created.
+ */
+export function seedConversation(config) {
+  const output = runIris(config.container, [
+    `Set c=##class(OcuPilot.Kernel.State.Convo).LoadOrCreate("","${escapeOs(config.username)}",5,.sc,.cf)`,
+    'Set k=$Select($IsObject(c):c.ConvKey,1:"")',
+    `If k'="" Set sc=##class(OcuPilot.Kernel.State.Convo).AppendEntry(c,"What runs tonight?","completed","Two tasks run tonight.","",0,[],0,"${SEED_LIMITS}","","","{""route"":""tasks/schedule""}","")`,
+    'Kill c',
+    'Write "OCU-WALKSEED-START:",k,"|",$System.Status.IsOK(sc),":OCU-WALKSEED-END",!',
+  ]);
+  const [key, ok] = String(markerValue(output, 'WALKSEED') ?? '|').split('|');
+  if (key !== '' && ok !== '1') removeConversation(config, key);
+  assert.ok(key !== '' && ok === '1', `the walk seeds one conversation for ${config.username}:\n${output}`);
+  return key;
+}
+
+/** Remove conversation `key` and its entries by that exact key, and confirm it is gone. */
+export function removeConversation(config, key) {
+  const output = runIris(config.container, [
+    `Set sc=##class(OcuPilot.Kernel.State.Convo).GuardedDelete("${escapeOs(key)}")`,
+    `Set rs=##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ?","${escapeOs(key)}")`,
+    'Write "OCU-WALKUNSEED-START:",$System.Status.IsOK(sc),"|",$Select(rs.%Next():rs.%GetData(1),1:"none"),":OCU-WALKUNSEED-END",!',
+  ]);
+  assert.equal(markerValue(output, 'WALKUNSEED'), '1|0', `the seeded conversation ${key} is removed:\n${output}`);
+}
 
 /** How long a screen may take to settle before the walk records it as unsettled. */
 const SETTLE_TIMEOUT_MS = 20000;
@@ -647,7 +684,8 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
 /**
  * The whole walk: 1280 px in light (every invariant), then 1280 px in dark (contrast) after the
  * account menu's own toggle, switched back at the end; then 720 px in light (every structural
- * invariant). Answers `{entries, report}`; `report` counts walked, skipped, not built,
+ * invariant), all with one conversation seeded (`seedConversation`) and removed on every exit
+ * path. Answers `{entries, report}`; `report` counts walked, skipped, not built,
  * unresolved (an id-requiring screen neither walked nor skipped), unsettled and unmeasurable.
  */
 export async function walk(browser, config) {
@@ -664,24 +702,29 @@ export async function walk(browser, config) {
   const entries = [];
   const reducedMotion = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 
-  const wide = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
+  const seeded = seedConversation(config);
   try {
-    const requests = trackRequests(wide.page);
-    entries.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'light', checks: INVARIANTS, minimums, report })));
-    await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
-    entries.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'dark', checks: ['contrast'], minimums, report })));
-    await goInApp(wide.page, requests, `/ocupilot/${NAMESPACE_QUERY}`, config.navigationTimeoutMs);
-    await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
-  } finally {
-    await wide.context.close();
-  }
+    const wide = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
+    try {
+      const requests = trackRequests(wide.page);
+      entries.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'light', checks: INVARIANTS, minimums, report })));
+      await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
+      entries.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'dark', checks: ['contrast'], minimums, report })));
+      await goInApp(wide.page, requests, `/ocupilot/${NAMESPACE_QUERY}`, config.navigationTimeoutMs);
+      await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
+    } finally {
+      await wide.context.close();
+    }
 
-  const narrow = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.narrow, reducedMotion);
-  try {
-    const requests = trackRequests(narrow.page);
-    entries.push(...(await walkPass(narrow.page, requests, config, { viewport: VIEWPORTS.narrow.width, theme: 'light', checks: ['name', 'min-width', 'overflow'], minimums, report })));
+    const narrow = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.narrow, reducedMotion);
+    try {
+      const requests = trackRequests(narrow.page);
+      entries.push(...(await walkPass(narrow.page, requests, config, { viewport: VIEWPORTS.narrow.width, theme: 'light', checks: ['name', 'min-width', 'overflow'], minimums, report })));
+    } finally {
+      await narrow.context.close();
+    }
   } finally {
-    await narrow.context.close();
+    removeConversation(config, seeded);
   }
   return { entries: collapse(entries), report };
 }
