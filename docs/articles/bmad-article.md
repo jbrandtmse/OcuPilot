@@ -2,8 +2,8 @@
 
 <!-- Draft of the second contest article. The Tsvetkov quote was checked word for word against Banksia
 Global's LinkedIn post on 2026-09-26; the numbers were re-counted on 2026-09-27 from the sprint status and the
-cycle logs. When posting: restore his British spelling of the bracketed word (with an s, as in the post), and
-upload the two charts from images/ where they appear. -->
+cycle logs; the quote keeps his spelling. When posting, upload the two charts from images/ where they
+appear. -->
 
 *How I used the BMAD Method and AI agents to build OcuPilot in nineteen days - and why a person
 stayed in the loop the whole way.*
@@ -17,7 +17,7 @@ that has stayed with me:
 > the Summit that's the part every serious conversation kept coming back to - not the AI. It
 > reframed the problem for me: in agentic AI the hard, interesting engineering isn't getting a
 > model to call tools, it's making that safe and observable enough that a regulated
-> [organization] would actually switch it on."
+> organisation would actually switch it on."
 
 He is right, and it matches what I found. For the last three weeks I have been building
 [OcuPilot](https://ocupilot.org), an AI co-pilot for the IRIS Management Portal, for the "Build
