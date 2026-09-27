@@ -4102,6 +4102,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T09:42:46Z status=open owner=burndown by=dev note=needs one owner decision: publish two names in EXPERIENCE.md's Fixed strings table, or keep the keyboard-only affordance
 - 2026-09-18T16:42:53Z status=decision-pending owner=burndown by=burndown note=needs published copy: EXPERIENCE.md names the next and previous match controls but publishes no accessible name for either, and a runner may not invent product copy; today they are Enter and Shift+Enter on the sticky search, pinned in the component and browser specs
 - 2026-09-18T19:44:55Z status=routed owner=16-8-the-six-secondary-log-viewers by=merge_gate note=copy approved: Next match / Previous match, with the strings rows
+- 2026-09-27T19:07:34Z status=resolved-by:16-8-the-six-secondary-log-viewers by=adjudication note=log-viewer.page.ts renders Next match / Previous match buttons (strings.ts:3123); pinned in log-viewer.spec.ts
 
 ### DW-1103: IRIS escalates only severity 3 to alerts.log, so the file cannot be seeded at the other four levels through its own writer
 - source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4127,6 +4128,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: app.ts's sign-out teardown calls instance, navigation, scope, connectivity, refresh, auditSearch, errorLogDrill, definitionForm, formDirty and agentStatus reset(); LogViewerStore is absent, and grep finds it named only by log-viewer.page.ts and its spec. The store is providedIn root and holds loaded()=true, so after a sign-out and a new sign-in in the same tab the page constructor's 'if (!loaded && !loading) open()' does not re-read and the previous principal's alerts.log rows render under the new one (AD-8: rows are data THIS principal was allowed to read). The fix is one line in app.ts, which this story does not own.
 - 2026-09-18T10:34:11Z status=escalated owner=burndown by=cr note=app.ts is contended (Epic 4) and this story may not edit it. The store's own doc comment claimed the wiring existed; that claim was corrected at its origin in this pass. reopen_if: sign in, open logs/alerts, sign out, sign in as another principal, open logs/alerts - the first principal's rows are on screen.
 - 2026-09-18T19:44:55Z status=routed owner=16-8-the-six-secondary-log-viewers by=merge_gate note=add LogViewerStore to sign-out teardown; one principal's rows must not survive a sign-out
+- 2026-09-27T19:07:34Z status=resolved-by:16-8-the-six-secondary-log-viewers by=adjudication note=app.ts:566 resets LogViewerStore at sign-out; pinned in app.spec.ts:1207 with a mutation
 
 ### DW-1111: Screen/Tool/ErrorRead.cls still carries the admin-port-only claim this story falsifies
 - source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -7490,6 +7492,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The task list row carries 8 of the create's 34 sent keys (probed on ocupilot-ci); the spec binds the re-read to the tool's declared list read. Row-key-only now reads unchecked; a partial compare still reads matches.
 - 2026-09-26T19:26:07Z status=decision-pending owner=burndown by=cr note=human=choose: keep list-row compare, or re-read a create by createdId through the update tool's read (AD-58 wording)
 - 2026-09-26T19:26:13Z status=decision-pending owner=burndown by=cr note=product call for the decision sheet: keep list-row compare, or re-read a create by createdId via the update tool's read
+- 2026-09-27T16:36:14Z status=routed owner=range-end-cleanup by=merge_gate note=decided: a create re-reads by createdId through the update tool's read; AD-58 wording amended with the fix (orchestrator 2026-09-27)
 
 ### DW-1711: Most Save routes' read-back verdict is not asserted by a route-level test (LDAP, X.509, audit event, service, resource, four OAuth updates, task create Save)
 - source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
@@ -7729,3 +7732,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-14-6 code review | severity: low | fix-risk: med | footprint: in-story
 - evidence: Kernel/State/Turn.cls GuardedReserve inserts the row, sets the lease signal, then records the start; a failed global Set under AddRoles answers 500 with the row queued. Same shape as the existing signal write.
 - 2026-09-27T19:14:16Z status=wontfix-theoretical owner=14-6-per-user-turn-limits-and-the-banner-they-need by=cr note=real only if a Set on the protected database fails (database full or read-only); the reconcile then abandons the row
+
+### DW-1755: The Logs area now also requires %Ens_EventLog:USE (Story 16.8's interoperability event log), so a principal without it, such as the stock %Manager role, loses the whole Logs rail item, messages.log and alerts.log included
+- source: spec-16-8-the-six-secondary-log-viewers.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Area.cls logs row gains the pair because Registry.AreaCoverageProblem makes an area's set cover its screens'; %Manager lacks %Ens_EventLog:USE on ocupilot-ci (measured); the Epic 16 preamble forbids breaking a Release 1 screen
+- 2026-09-27T18:31:11Z status=decision-pending owner=burndown by=harvest note=product call: keep; or gate the event-log screen alone (amend AD-8's area rule); or drop the screen to Stage 2
+- 2026-09-27T20:03:07Z status=open owner=16-8-the-six-secondary-log-viewers by=merge_gate note=decided option B: gate only the event-log screen; Logs keeps its Release 1 set; AD-8 amended; fixed in a 16.8 rework

@@ -44,6 +44,28 @@ ClassMethod SetPairs(pSource As %String, pPairs As %String)
     Set ^||OcuPilotLogFixture("pairs", pSource) = pPairs
 }
 
+/// <p>Answer <method>PairsFor</method> for <var>pSource</var> in namespace <var>pNamespace</var>
+/// from <var>pPairs</var>, spelled as <method>SetPairs</method> spells them. Armed per namespace,
+/// it wins over <method>SetPairs</method> for that namespace alone.</p>
+ClassMethod SetNamespacePairs(pSource As %String, pNamespace As %String, pPairs As %String)
+{
+    Set ^||OcuPilotLogFixture("nsPairs", pSource, pNamespace) = pPairs
+}
+
+/// <p>Answer <method>RecordsClass</method> with <var>pClass</var> --
+/// <class>OcuPilot.Test.LogRecordsFixture</class>, whose vendor rows a test arms.</p>
+ClassMethod SetRecordsClass(pClass As %String)
+{
+    Set ^||OcuPilotLogFixture("records") = pClass
+}
+
+/// <p>Answer <method>NamespaceResolver</method> with <var>pClass</var> --
+/// <class>OcuPilot.Test.NamespaceFixture</class>, whose roster and gate a test arms.</p>
+ClassMethod SetNamespaceResolver(pClass As %String)
+{
+    Set ^||OcuPilotLogFixture("resolver") = pClass
+}
+
 /// <p>Answer <method>FileFor</method> for <var>pSource</var> with the file name
 /// <var>pFile</var>.</p>
 ClassMethod SetFile(pSource As %String, pFile As %String)
@@ -103,18 +125,37 @@ ClassMethod Sources() As %List
 
 ClassMethod PairsFor(pSource As %String, pNamespace As %String = "") As %List
 {
-    ; Armed per source key, not per namespace: this fixture drives the file sources, whose
-    ; requirement does not depend on one. OcuPilot.Test.ErrorLogFixture is the one that arms a
-    ; namespace-dependent answer.
-    If '$Data(^||OcuPilotLogFixture("pairs", pSource)) Quit ##super(pSource, pNamespace)
+    ; Armed per source key, or per source and namespace through nsPairs for the per-namespace
+    ; secondary sources. OcuPilot.Test.ErrorLogFixture arms the error log's namespace-dependent
+    ; answer.
+    If (pNamespace '= "") && $Data(^||OcuPilotLogFixture("nsPairs", pSource, pNamespace)) {
+        Set tDeclared = ^||OcuPilotLogFixture("nsPairs", pSource, pNamespace)
+    } ElseIf '$Data(^||OcuPilotLogFixture("pairs", pSource)) {
+        Quit ##super(pSource, pNamespace)
+    } Else {
+        Set tDeclared = ^||OcuPilotLogFixture("pairs", pSource)
+    }
     Set tPairs = ""
-    Set tDeclared = ^||OcuPilotLogFixture("pairs", pSource)
     For tI = 1:1:$Length(tDeclared, ",") {
         Set tPair = $Piece(tDeclared, ",", tI)
         If tPair = "" Continue
         Set tPairs = tPairs _ $ListBuild($ListBuild($Piece(tPair, ":", 1), $Piece(tPair, ":", 2)))
     }
     Quit tPairs
+}
+
+ClassMethod RecordsClass() As %String
+{
+    Set tForced = $Get(^||OcuPilotLogFixture("records"), "")
+    If tForced '= "" Quit tForced
+    Quit ##super()
+}
+
+ClassMethod NamespaceResolver() As %String
+{
+    Set tForced = $Get(^||OcuPilotLogFixture("resolver"), "")
+    If tForced '= "" Quit tForced
+    Quit ##super()
 }
 
 ClassMethod FileFor(pSource As %String) As %String

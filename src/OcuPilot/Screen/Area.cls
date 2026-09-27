@@ -21,7 +21,7 @@
 /// without read on that database fails inside every screen, so a set without the pair would show
 /// the areas allowed and refuse everything in them.
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> is what holds each area's set to
-/// its screens' (AD-8).</p>
+/// its screens', less the pairs a screen declares its own (AD-8).</p>
 /// <p><b>Logs names three pairs, and the first is not its first screen's endpoint gate.</b>
 /// <code>%Admin_Operate:USE</code> is AD-48's, and it is also what
 /// <code>%Api.Admin.Endpoints.AsyncResult</code> requires -- the endpoint the port polls a queued
@@ -30,7 +30,10 @@
 /// caller short of both is named the operate pair first, which is the pair every Logs screen needs.
 /// The consequence AD-8 makes unavoidable: the whole Logs rail entry, Stories 2.11 and 2.12's
 /// screens included, is gated on <code>%Admin_Secure:USE</code> because one screen in it requires
-/// that pair.</p>
+/// that pair. Story 16.8's interoperability event log and analytics log declare
+/// <code>%Ens_EventLog:USE</code> and <code>%DeepSee_Portal:USE</code> as their own pairs (AD-8),
+/// so neither is on this set: a caller without one is refused that screen alone, and the rest of
+/// Logs stays open to them.</p>
 /// <p><b>OS management names a third pair, <code>%Admin_Manage:USE</code></b> -- the only area pair
 /// an endpoint's own gate does not name and the port does not need either. Its first screen reads
 /// <code>SYS.Process:CONTROLPANEL</code>,

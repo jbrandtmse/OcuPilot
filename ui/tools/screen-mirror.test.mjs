@@ -26,6 +26,7 @@ import {
   extractXData,
   generate,
   malformedPair,
+  ownPrivilegesProblem,
   parentScopeResolutionProblem,
   IMPLEMENTED_ID_RULES,
   parseEntityTypes,
@@ -2081,6 +2082,47 @@ test('declarationProblem returns every sentence OcuPilot.Test.DeclarationCorpus 
         screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }],
       }),
     /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): the declaration declares the unknown key 'banners'/
+  );
+});
+
+// AD-8, DW-1755: every case in `OcuPilot.Test.DeclarationCorpus`'s `OwnPrivilegeCases`, the corpus
+// `OcuPilot.Test.Descriptor` runs through `OcuPilot.Screen.Registry.OwnPrivilegesProblem`, gets its
+// exact sentence or `null` from `ownPrivilegesProblem`; every shipped descriptor passes; and the
+// refusal reaches the generator.
+//
+// Mutation (Rule 19): delete the `ownPrivilegesProblem` call from `buildMirror` -> the "reaches the
+// generator" assertion goes red while the corpus run stays green.
+test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, and an unrequired own pair never reaches the mirror', () => {
+  const corpus = testCorpus(['Test', 'DeclarationCorpus.cls'], 'OwnPrivilegeCases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = { privileges: structuredClone(corpus.privileges) };
+    if ('ownPrivileges' in testCase) declaration.ownPrivileges = structuredClone(testCase.ownPrivileges);
+    assert.equal(ownPrivilegesProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+
+  const { screens } = readSources();
+  for (const screen of screens) {
+    assert.equal(ownPrivilegesProblem(screen.declaration), null, `${screen.className}'s own pairs pass`);
+  }
+  const owners = screens.filter((screen) => Array.isArray(screen.declaration.ownPrivileges)).map((screen) => screen.className);
+  assert.deepEqual(
+    owners.sort(),
+    ['OcuPilot.Screen.Descriptor.LogAnalyticsViewer', 'OcuPilot.Screen.Descriptor.LogEventViewer'],
+    'the two screens AD-8 names are the ones declaring own pairs'
+  );
+
+  const hostile = structuredClone(testCorpus(['Test', 'DeclarationCorpus.cls'], 'Cases').declaration);
+  hostile.ownPrivileges = [{ resource: '%Ens_EventLog', permission: 'USE' }];
+  assert.throws(
+    () =>
+      buildMirror({
+        ...readSources(),
+        screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }],
+      }),
+    /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): own privilege pair %Ens_EventLog:USE is not one of the screen's declared privileges/
   );
 });
 

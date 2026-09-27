@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, inject, signal, viewChild } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 
 import { ExplainEntry } from '../../core/explain-entry';
@@ -18,7 +18,18 @@ import {
   severityWord,
   type LogLine,
 } from './log-line';
-import { ALERTS_SOURCE, MESSAGES_SOURCE, LogViewerStore, type LogViewerSource } from './log-viewer.store';
+import {
+  ALERTS_SOURCE,
+  ANALYTICS_SOURCE,
+  EVENT_LOG_SOURCE,
+  MESSAGES_SOURCE,
+  SQL_DIAGNOSTICS_SOURCE,
+  SYSTEM_MONITOR_SOURCE,
+  TASK_ERRORS_SOURCE,
+  XDBC_SOURCE,
+  LogViewerStore,
+  type LogViewerSource,
+} from './log-viewer.store';
 
 /** One row, resolved for drawing: the cells' text and the search spans of its message. */
 interface RowView {
@@ -56,11 +67,17 @@ interface ChipView {
 const SOURCES: Readonly<Record<string, LogViewerSource>> = {
   'logs/alerts': ALERTS_SOURCE,
   'logs/messages': MESSAGES_SOURCE,
+  'logs/systemmonitor': SYSTEM_MONITOR_SOURCE,
+  'logs/taskerrors': TASK_ERRORS_SOURCE,
+  'logs/xdbc': XDBC_SOURCE,
+  'logs/sqldiagnostics': SQL_DIAGNOSTICS_SOURCE,
+  'logs/eventlog': EVENT_LOG_SOURCE,
+  'logs/analytics': ANALYTICS_SOURCE,
 };
 
 /**
- * The page every `log-viewer` archetype renders (AD-5): a bounded window of one instance log file,
- * read from the file itself.
+ * The page every `log-viewer` archetype renders (AD-5): a bounded window of one instance log, read
+ * from the file itself or, for the six secondary logs, as their newest entries.
  *
  * Each log screen adds one `SOURCES` route rather than a page of its own.
  *
@@ -89,9 +106,11 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
  * screen's store as the declared `{time, severity, text}` rows, newest first, so a typed turn and
  * the context chip see the file that is open.
  *
- * **Next and previous over the matches are the search field's own Enter and Shift+Enter**, not two
- * buttons. EXPERIENCE.md publishes no name for either control, and an icon button with no published
- * accessible name is worse than a keyboard affordance the polite count already announces.
+ * **Next match and Previous match move the caret over the matches, wrapping** (DW-1102): two text
+ * buttons beside the polite count, and the search field's own Enter and Shift+Enter do the same.
+ *
+ * **The six secondary logs read entries** (Story 16.8): their sources declare `entries`, the rows
+ * arrive already normalized, and Load newer reads the newest window again and jumps to the bottom.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -124,6 +143,12 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
         </select>
       }
       <p class="ocu-log-viewer-count" role="status" data-ocu-log="count">{{ countText }}</p>
+      <button type="button" class="ocu-button-text" data-ocu-log="next" (click)="onNext()">
+        {{ STRINGS.logViewerNextMatch }}
+      </button>
+      <button type="button" class="ocu-button-text" data-ocu-log="previous" (click)="onPrevious()">
+        {{ STRINGS.logViewerPreviousMatch }}
+      </button>
       <button type="button" class="ocu-button-text" data-ocu-log="top" (click)="onTop()">
         {{ STRINGS.logViewerJumpTop }}
       </button>
@@ -263,6 +288,8 @@ export class LogViewerPage {
   protected readonly STRINGS = STRINGS;
 
   private readonly viewport = viewChild<ElementRef<HTMLElement>>('viewport');
+
+  private readonly injector = inject(Injector);
 
   /** Bumped by the store, so the rows re-render under `OnPush`. */
   private readonly generation = signal(0);
@@ -567,7 +594,18 @@ export class LogViewerPage {
   }
 
   protected onLoadNewer(): void {
-    void this.store.loadNewer();
+    void this.store.loadNewer().then(() => {
+      if (this.source.entries !== true) return;
+      afterNextRender(() => this.onBottom(), { injector: this.injector });
+    });
+  }
+
+  protected onNext(): void {
+    this.step(1);
+  }
+
+  protected onPrevious(): void {
+    this.step(-1);
   }
 
   /** Move the caret over the matches, wrapping at both ends so neither control is a dead end. */

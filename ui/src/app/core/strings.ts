@@ -2046,7 +2046,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:624 */
+  /** EXPERIENCE.md:626 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -3201,6 +3201,62 @@ export const STRINGS = {
   /** EXPERIENCE.md:313 */
   tableDownloadCsvCapped: 'The file holds the first <n> rows only.',
 
+  // Story 16.8: the six secondary log viewers' side-bar entries and titles, and the log viewer's two
+  // match controls (DW-1102).
+  /** EXPERIENCE.md:584 */
+  systemMonitorLogListLabel: 'System Monitor log',
+  /** EXPERIENCE.md:584 */
+  taskErrorLogListLabel: 'Background task error log',
+  /** EXPERIENCE.md:584 */
+  xdbcErrorLogListLabel: 'xDBC error log',
+  /** EXPERIENCE.md:584 */
+  sqlDiagnosticsLogListLabel: 'SQL diagnostics log',
+  /** EXPERIENCE.md:584 */
+  eventLogListLabel: 'Interoperability event log',
+  /** EXPERIENCE.md:584 */
+  analyticsLogListLabel: 'Analytics log',
+  /** EXPERIENCE.md:584 */
+  logViewerNextMatch: 'Next match',
+  /** EXPERIENCE.md:584 */
+  logViewerPreviousMatch: 'Previous match',
+
+  // Story 16.8: the six secondary log viewers' suggested prompts, three per screen.
+  /** EXPERIENCE.md:585 */
+  logSystemMonitorViewerPrompt1: 'What has the System Monitor reported recently?',
+  /** EXPERIENCE.md:585 */
+  logSystemMonitorViewerPrompt2: 'Did the System Monitor raise alerts today?',
+  /** EXPERIENCE.md:585 */
+  logSystemMonitorViewerPrompt3: 'When did the System Monitor last start?',
+  /** EXPERIENCE.md:585 */
+  logTaskErrorViewerPrompt1: 'Which background tasks failed, and why?',
+  /** EXPERIENCE.md:585 */
+  logTaskErrorViewerPrompt2: 'Which namespace did each failed background task run in?',
+  /** EXPERIENCE.md:585 */
+  logTaskErrorViewerPrompt3: 'Did any recent import or link task report errors?',
+  /** EXPERIENCE.md:585 */
+  logXdbcViewerPrompt1: 'Which xDBC connections hit an SQL error recently?',
+  /** EXPERIENCE.md:585 */
+  logXdbcViewerPrompt2: 'What does the most recent xDBC error mean?',
+  /** EXPERIENCE.md:585 */
+  logXdbcViewerPrompt3: 'Which namespaces are these xDBC errors in?',
+  /** EXPERIENCE.md:585 */
+  logSqlDiagnosticsViewerPrompt1: 'Which SQL loads reported errors?',
+  /** EXPERIENCE.md:585 */
+  logSqlDiagnosticsViewerPrompt2: 'What went wrong in the most recent failed load?',
+  /** EXPERIENCE.md:585 */
+  logSqlDiagnosticsViewerPrompt3: 'Did the latest load finish without errors?',
+  /** EXPERIENCE.md:585 */
+  logEventViewerPrompt1: 'Which production items logged errors recently?',
+  /** EXPERIENCE.md:585 */
+  logEventViewerPrompt2: 'Are any warnings repeating in the event log?',
+  /** EXPERIENCE.md:585 */
+  logEventViewerPrompt3: 'Summarize the interoperability errors by namespace.',
+  /** EXPERIENCE.md:585 */
+  logAnalyticsViewerPrompt1: 'Did any cube build or synchronization fail recently?',
+  /** EXPERIENCE.md:585 */
+  logAnalyticsViewerPrompt2: 'Summarize the recent analytics log entries by namespace.',
+  /** EXPERIENCE.md:585 */
+  logAnalyticsViewerPrompt3: 'Which analytics errors need attention?',
 } as const;
 
 /**

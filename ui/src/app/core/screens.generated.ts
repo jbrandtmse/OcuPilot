@@ -348,6 +348,8 @@ export interface ScreenDeclaration {
   /** The rate the framework starts at when none is remembered: one of `refreshRates`, or `0`, off. */
   readonly refreshDefault: number;
   readonly privileges: readonly PrivilegePair[];
+  /** The pairs of `privileges` it requires beyond its area's set, gating this screen alone (AD-8). */
+  readonly ownPrivileges?: readonly PrivilegePair[];
   readonly entityType: string;
   /** The string key of the singular noun for `entityType`, or `''` (AD-5, AD-14). */
   readonly entityLabelKey: string;
@@ -3481,6 +3483,131 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogAnalyticsViewer",
+    "route": "logs/analytics",
+    "area": "logs",
+    "labelKey": "analyticsLogListLabel",
+    "sideBarPosition": 10,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "analytics",
+      "deepsee"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logAnalyticsViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logAnalyticsViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logAnalyticsViewerPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.LogViewer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "analytics",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.analytics",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.LogErrorList",
     "route": "logs/errors",
     "area": "logs",
@@ -3569,6 +3696,131 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "secretArguments": [],
     "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogEventViewer",
+    "route": "logs/eventlog",
+    "area": "logs",
+    "labelKey": "eventLogListLabel",
+    "sideBarPosition": 9,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_EventLog",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_EventLog",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "event log",
+      "interoperability"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logEventViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logEventViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logEventViewerPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.EventLog",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "eventlog",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.eventlog",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LogMessageViewer",
@@ -3681,6 +3933,482 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "logs.messages",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogSqlDiagnosticsViewer",
+    "route": "logs/sqldiagnostics",
+    "area": "logs",
+    "labelKey": "sqlDiagnosticsLogListLabel",
+    "sideBarPosition": 8,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "sql diagnostics",
+      "load data"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logSqlDiagnosticsViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logSqlDiagnosticsViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logSqlDiagnosticsViewerPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Logs",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "sqldiagnostics",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.sqldiagnostics",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogSystemMonitorViewer",
+    "route": "logs/systemmonitor",
+    "area": "logs",
+    "labelKey": "systemMonitorLogListLabel",
+    "sideBarPosition": 5,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "system monitor",
+      "SystemMonitor.log"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logSystemMonitorViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logSystemMonitorViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logSystemMonitorViewerPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ViewLog",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "systemmonitor",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.systemmonitor",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogTaskErrorViewer",
+    "route": "logs/taskerrors",
+    "area": "logs",
+    "labelKey": "taskErrorLogListLabel",
+    "sideBarPosition": 6,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "background task errors"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logTaskErrorViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logTaskErrorViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logTaskErrorViewerPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.BackgroundTaskError",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "taskerrors",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.taskerrors",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogXdbcViewer",
+    "route": "logs/xdbc",
+    "area": "logs",
+    "labelKey": "xdbcErrorLogListLabel",
+    "sideBarPosition": 7,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "xdbc",
+      "odbc",
+      "jdbc"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logXdbcViewerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logXdbcViewerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logXdbcViewerPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.xDBCErrorNamespaces",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "xdbc",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.xdbc",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
