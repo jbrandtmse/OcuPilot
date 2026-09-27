@@ -123,3 +123,4 @@
 2026-09-27T05:50:54Z	Story 16.20	cr_complete	spawn_at=2026-09-27T05:33:55Z model=opus resolved=5 fixed_at_source=5 by_design=1(DW-1728) wontfix_theoretical=1(DW-1726) wontfix_accepted=1(DW-1727) routed=0 escalated=0 decision_pending=0 deferred=3 dismissed=18 high=0 med=0 low=21 rows=26 unresolved_high_med=0 clarifications=0 closing_sections_present=true
 2026-09-27T05:50:54Z	Story 16.20	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=cr_entries_born_terminal;slice_empty model=claude-opus-5-5
 2026-09-27T05:50:54Z	Story 16.20	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci_bundle_redeployed_by_cr;messages-log-files.browser-spec_5/5 model=claude-opus-5-5
+2026-09-27T05:51:44Z	Story 16.20	committed	sha=6f07f568 submodules= ci=pending run=36298408391 amendments=ARCHITECTURE-SPINE.md:AD-21_fourth_named_case,EXPERIENCE.md:578_row+2_in_place,README.md:DPI-I-966 supersedes=36297327031
