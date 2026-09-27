@@ -2,8 +2,8 @@
 title: 'Story 16.19: Impact lines on removals'
 type: 'feature'
 created: '2026-09-26'
-status: 'in-progress'
-baseline_revision: '23a5ebe09c28906ae76a1dc2e74ef32a0ccd30ef'
+status: 'done'
+baseline_revision: 'eb1e19c4888cbc5590f011806abd1d19c965c7e2'
 baseline_commit: '23a5ebe09c28906ae76a1dc2e74ef32a0ccd30ef'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -240,7 +240,7 @@ Rejected:
 
 ### Rework (CI, iteration 1)
 
-- [ ] [CI] instance: `OcuPilot.Test.EndpointCoverage.TestEveryProbeDispatchesToItsRoute` fails on run 36287213038 at head 6eef7155: the probe `GET /api/ocupilot/screens/osmgmt.locks/impact` (no query; line 447 pins every probe path to its route template, so it cannot carry `?action=`) now answers `ROUTE.NOTFOUND`, because the code review made an empty `action` answer 404 like the action route. Fix the handler, not the probe: a request with **no `action` parameter at all** is malformed and answers 400 (a new or existing request-shape code, never `ROUTE.NOTFOUND`) before any read -- the analogue of the action route's unreadable-body 400 -- while a **named** action the screen does not declare keeps the 404 parity with the action route. Update `ScreenImpact.cls` (or `ScreenAction.Preview`'s caller, whichever keeps the action route's own behavior byte-identical), the `ImpactRoute` leg that expects the empty-action 404, and the probe row's `substitutewhy` so it states what the probe now exercises; demonstrate each changed pinning test's mutation after recompiling the tree on `ocupilot-ci`, run `EndpointCoverage` and `ImpactRoute` one at a time, and write the `mutation:` lines. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36287213038>
+- [x] [CI] instance: `OcuPilot.Test.EndpointCoverage.TestEveryProbeDispatchesToItsRoute` fails on run 36287213038 at head 6eef7155: the probe `GET /api/ocupilot/screens/osmgmt.locks/impact` (no query; line 447 pins every probe path to its route template, so it cannot carry `?action=`) now answers `ROUTE.NOTFOUND`, because the code review made an empty `action` answer 404 like the action route. Fix the handler, not the probe: a request with **no `action` parameter at all** is malformed and answers 400 (a new or existing request-shape code, never `ROUTE.NOTFOUND`) before any read -- the analogue of the action route's unreadable-body 400 -- while a **named** action the screen does not declare keeps the 404 parity with the action route. Update `ScreenImpact.cls` (or `ScreenAction.Preview`'s caller, whichever keeps the action route's own behavior byte-identical), the `ImpactRoute` leg that expects the empty-action 404, and the probe row's `substitutewhy` so it states what the probe now exercises; demonstrate each changed pinning test's mutation after recompiling the tree on `ocupilot-ci`, run `EndpointCoverage` and `ImpactRoute` one at a time, and write the `mutation:` lines. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36287213038>
 
 ## Spec Change Log
 
@@ -270,6 +270,15 @@ Rejected:
   - `[low]` `[reject]` (intent-alignment) a refused Remove-role caption untested — the caption renders `impactLine`, whose refusal branch `tools/impact.test.mjs` pins.
   - `[false]` `[reject]` (intent-alignment) `ScreenAction.Handle`'s restructure is not pinned by a test in the diff — the existing action-route classes (`UserUpdate`, `RoleUpdate`, `ReadBackRoute` and others) ran green in the implement sweep over the restructured code.
   - `[false]` `[reject]` (intent-alignment) spec bookkeeping (the Auto Run Result section) — duplicate of the verification-gap row; written at finalize.
+
+### 2026-09-27 — Review pass (CI rework 1)
+
+- verdicts: 4 findings — high 0, medium 0, low 2, false 2, maybe-false 0
+- findings:
+  - `[low]` `[patch]` (verification-gap) no `mutation:` line pins `IsDefined` over an empty check — mutation run (run 15210 red, 15211 green), line recorded.
+  - `[low]` `[reject]` (verification-gap) the undeclared-action leg has no `mutation:` line — it pins `Resolve`'s pre-existing 404, which this pass did not change; not an AC's pinning test.
+  - `[false]` `[reject]` (intent-alignment) the doc calls the refusal the unreadable body's analogue while it answers `TOOL.ARGUMENTS` — the same sentence names the code it answers; "analogue" is the category.
+  - `[false]` `[reject]` (intent-alignment) the 400 branch is unreachable from the client — by design: the client always sends `action`; the branch serves the coverage probe and any malformed caller.
 
 ## Design Notes
 
@@ -383,6 +392,12 @@ its advisory, naming the missing pair, never as none"`.
 - mutation: drop the `ask` check in `openWithImpact` -> `screen-action-handler.spec.ts` "opens the dialog of the Delete started last ..." red.
 - mutation: `phraseOf` inserts names by plain string -> `tools/impact.test.mjs` "a name is shown as written ..." red.
 
+**Mutations run (CI rework 1, 2026-09-27).** Same discipline on `ocupilot-ci`.
+
+- mutation: `ScreenImpact.Handle`'s missing-action refusal disabled -> `ImpactRoute.TestOtherActionsAnswerNoImpact` missing-action leg red (run 15202); `EndpointCoverage.TestEveryProbeDispatchesToItsRoute` impact probe red (run 15203).
+- mutation: that refusal answers `AGENT.BADBODY` instead of `TOOL.ARGUMENTS` -> `EndpointCoverage` red on the impact row's `expect` alone (run 15204).
+- mutation: that refusal keyed on an empty `action` instead of `IsDefined` -> `ImpactRoute.TestOtherActionsAnswerNoImpact` empty-action leg red (run 15210); green after revert (run 15211).
+
 ## Auto Run Result
 
 Status: done
@@ -397,3 +412,5 @@ Blocking condition: none
 **Verification (stage).** Node tools 40/40; component specs 67/67 (five files); `Effective` 7/7, `ImpactRoute` 10/10 (re-run after the review mutations were reverted), `ProposalWire` 16/16, `EndpointCoverage` 2/2 on `ocupilot-ci`; bundle rebuilt and redeployed (1.89 MB initial, under 1900 kB), `impact.browser-spec.mjs` 5/5 and `roles-editor.browser-spec.mjs` 8/8; `npm test` 1,545 node + 112 component files green; `check-objectscript` 0 problems; `lint-docs` clean. Full ObjectScript sweep ran once in the handoff (above). No lock on Epic 14's hunks was needed; none of its files' hunks were touched.
 
 **Residual risk.** The sweep ran before the two review legs were added to `ImpactRoute`; that class was re-run alone green afterwards.
+
+**Rework (CI, iteration 1).** `Api/ScreenImpact.cls`: a request with no `action` parameter answers 400 `TOOL.ARGUMENTS` before any read; an empty or undeclared action keeps the action route's 404 `ROUTE.NOTFOUND`; `ScreenAction.cls` and `Router.cls` untouched. `Test/ImpactRoute.cls`: missing, empty and undeclared legs. `Test/EndpointCoverage.cls`: the impact probe row's `substitutewhy` and `expect="code=TOOL.ARGUMENTS"` only (Epic 14's version has no such row). Review: 1 low patched (a mutation line), 1 low and 2 false rejected; nothing deferred; follow-up review `false` (no high patched). Verified on `ocupilot-ci`: `EndpointCoverage` 2/2 (run 15208), `ImpactRoute` 10/10 (run 15211), `ProhibitedRoute` 24/24 (run 15207, the action route's undeclared-action 404); `check-objectscript` 0 problems.

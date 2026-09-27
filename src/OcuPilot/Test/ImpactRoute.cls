@@ -544,10 +544,13 @@ ClassMethod OwnRole() As %List
 }
 
 /// <p>An action whose write removes nothing covered answers <code>impact: null</code>, a request
-/// naming no action is refused as the action route refuses it, and a secret value is refused
-/// before any read.</p>
+/// with no <code>action</code> parameter is refused 400 as malformed, an empty or undeclared action
+/// is refused 404 as the action route refuses it, and a secret value is refused before any
+/// read.</p>
 /// <p>Mutation (Rule 19): drop the preview's secret refusal in
-/// <method>OcuPilot.Api.ScreenAction.Resolve</method> -- the secret leg goes red.</p>
+/// <method>OcuPilot.Api.ScreenAction.Resolve</method> -- the secret leg goes red; drop the
+/// missing-action refusal in <method>OcuPilot.Api.ScreenImpact.Handle</method> -- the missing-action
+/// leg goes red.</p>
 Method TestOtherActionsAnswerNoImpact()
 {
     Set tBody = ..Impact("webapp.list", "delete", ..#APP, "", .tStatus)
@@ -555,8 +558,21 @@ Method TestOtherActionsAnswerNoImpact()
     Do $$$AssertEquals($Select($IsObject(tBody): tBody.%GetTypeOf("impact"), 1: ""), "null", "with no impact")
     Set tBody = ..Impact("permissions.users", "add-role", ..#USERONE, ..#ROLEA, .tStatus)
     Do $$$AssertEquals($Select($IsObject(tBody): tBody.%GetTypeOf("impact"), 1: ""), "null", "a role add has none either")
+    Set tPath = $Replace(..#ROUTE, ":screen", "permissions.roles") _ "?id=" _ $ZConvert(..#ROLEDELETE, "O", "URL")
+    Do ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw)
+    Set tCode = ""
+    Try {
+        Set tCode = ##class(%DynamicAbstractObject).%FromJSON(tRaw).%Get("code")
+    } Catch {
+        Set tCode = ""
+    }
+    Do $$$AssertEquals(tStatus, 400, "a request with no action parameter is refused 400 as malformed")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "as a request-shape refusal, never the router's route-not-found")
     Set tBody = ..Impact("permissions.roles", "", ..#ROLEDELETE, "", .tStatus)
-    Do $$$AssertEquals(tStatus, 404, "no action is refused 404")
+    Do $$$AssertEquals(tStatus, 404, "an empty action is refused 404")
+    Do $$$AssertEquals($Select($IsObject(tBody): tBody.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#ROUTENOTFOUND, "as the action route refuses it")
+    Set tBody = ..Impact("permissions.roles", "no-such-action", ..#ROLEDELETE, "", .tStatus)
+    Do $$$AssertEquals(tStatus, 404, "an action the screen does not declare is refused 404")
     Do $$$AssertEquals($Select($IsObject(tBody): tBody.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#ROUTENOTFOUND, "as the action route refuses it")
     Set tBody = ..Impact("permissions.users", "set-password", ..#USERONE, ..#PASSWORD, .tStatus)
     Do $$$AssertEquals(tStatus, 400, "a secret value is refused 400")

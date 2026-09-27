@@ -4,9 +4,13 @@
 /// <p><b>It resolves the action exactly as the action route does</b>
 /// (<method>OcuPilot.Api.ScreenAction.Preview</method>): the same descriptor, declared action,
 /// write tool, value channel, pair gate, fresh read and body, and a request that route would refuse
-/// is refused here with the same envelope. It also refuses a value the action declares secret,
-/// which a query string would carry into access logs. It writes nothing and asks the prohibited set
-/// only through <method>OcuPilot.Kernel.Proposal.Impact.Of</method>.</p>
+/// is refused here with the same envelope. Two refusals are its own: a request with no
+/// <code>action</code> parameter at all is malformed, the analogue of the action route's unreadable
+/// body, and answers 400 <code>TOOL.ARGUMENTS</code> before anything is read; and a value the
+/// action declares secret, which a query string would carry into access logs, is refused 400.
+/// A named action the screen does not declare, an empty one included, answers 404
+/// <code>ROUTE.NOTFOUND</code>, as the action route answers it. It writes nothing and asks the
+/// prohibited set only through <method>OcuPilot.Kernel.Proposal.Impact.Of</method>.</p>
 /// <p>It answers <code>{impact}</code>: that method's object, or <code>null</code> for an action
 /// whose write removes nothing it covers. <code>value</code>, where present, is the action's one
 /// declared value (the role a Remove role would take).</p>
@@ -21,6 +25,12 @@ ClassMethod Handle(pScreen As %String) As %Status
         Set tDescriptor = $ClassMethod(##class(OcuPilot.Api.ScreenAction).RegistryClass(), "DescriptorForTool", pScreen)
         If tDescriptor = "" {
             Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, "The requested route does not exist", ##class(OcuPilot.Api.Error).#ROUTENOTFOUND)
+            Quit
+        }
+        If '%request.IsDefined("action") {
+            Set tDetail = {}
+            Do tDetail.%Set("problem", "'action' names the row action and is required", "string")
+            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, tDetail)
             Quit
         }
         Set tSC = ##class(OcuPilot.Api.ScreenAction).Preview(tDescriptor, %request.Get("action"), %request.Get("id"), %request.Get("value"), .tPreview)
