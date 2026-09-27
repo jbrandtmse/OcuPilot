@@ -66,3 +66,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-27T03:30:13Z	Story 14.8	smoke_complete	method=browser+cli result=pass iterations=1 defects_caught=0 evidence=/tmp/epic-14-runner/smoke-14-8-browser.log(seeded-injection_2/2_rebuilt_redeployed_1.85MB),/tmp/epic-14-runner/smoke-14-8-compromised.log(InjectionCompromised_7/7) model=claude-opus-5-5[1m]
 2026-09-27T03:31:16Z	Story 14.8	committed_code	sha=333871c3 pushed=true ci=pending run=36291624145 head_confirmed_by=headSha amendments=epics.md:5840,5845
 2026-09-27T03:31:16Z	Story 14.3	stage_spawned	stage=plan spawn_at=2026-09-27T03:31:16Z model=opus agent_name=14-3-defanged-content-plan-1 cycle_iteration=1
+2026-09-27T04:14:18Z	Story 14.8	committed	sha=333871c3 submodules= ci=success run=36291624145 amendments=epics.md:5840,5845
+2026-09-27T04:14:18Z	Story 14.8	ci_resolved	story=14.8 run=36291624145 result=success resolved_at=boundary
+2026-09-27T04:14:18Z	Story 14.8	story_boundary	story=14.8 head=333871c3 ci_run=36291624145 ci=success
