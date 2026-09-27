@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-09-26'
+updated: '2026-09-27'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -232,7 +232,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A citation chip is a reference, not a navigation proposal** [AMENDED 2026-09-26, Story 11.4 spec gate, Rule 20]. The instance derives it when the turn ends, from the backticked spans of the final reply that equal a row a read tool returned in that turn (the AD-13 triple plus the descriptor's route), and stores it with the turn as data (AD-37). A click is user-initiated and opens the row through the navigation tool's own allow-list and URL builder, subject to the departing screen's unsaved-work guard, so it is not announced; a chip never carries a URL.
 
-  The polish-week sanitizer is additional; these five are the defense.
+  The polish-week sanitizer (AD-60) is additional; these five are the defense. [AMENDED 2026-09-27, Story 14.3 spec gate, Rule 20: names the sanitizer's AD]
 
 ### AD-12 — One error envelope, one response writer
 
@@ -703,6 +703,12 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Binds:** Story 14.1 and every write tool, present and future (Epic 16's among them); AD-3, AD-6, AD-10, AD-11, AD-15, AD-27, AD-34, AD-35, AD-40, AD-52, AD-54, AD-56
 - **Prevents:** a script that makes a different change from the one the card reviewed, because it was written from a per-tool table, by the client, or by the model; a script that carries a secret; and a write tool that ships with no way to take its script
 - **Rule:** Taking the script instead of a live proposal is a **user-originated request** (refused from a turn, AD-40) that renders a REST or ObjectScript script **on the instance** from the proposal's stored arguments and payload (AD-6), and never from a per-tool table, the client or the model. **Each port that defines `Invoke` defines, in the same class, a pure `Snippet` that mirrors every branch `Invoke` takes**: a branch that reaches the admin API renders the call against the route the vendor's own dispatch map names (a checked-in table derived inside `AdminPort`, AD-27, held equal to a fresh derivation by a test), and a branch that calls a documented `%SYS` class renders that call. A tool that overrides its after-write step also renders that step. **A registry test fails, naming the tool, when any registered write tool's port or request type has no script form**, so a new write tool cannot ship without one. **No secret value is ever rendered**: every declared secret name, and every name the credential pattern matches (Conventions > Secrets), reads as a `"<Name>"` placeholder, pinned across every secret-bearing tool. The draft **sends nothing**: no port write, no mint, no token, no ledger row, no agent marker (AD-15 binds only executed writes), no change event. It is refused for an effect the prohibited set refuses (AD-10), leaving the proposal live, and otherwise closes the proposal through the same conditional live-to-terminal transition Cancel uses (AD-34) as `canceled` with reason `draft`. The script is shown once and not persisted; whoever runs it is checked by the instance, and OcuPilot's fingerprint (AD-6) does not protect it. [ADDED 2026-09-26, Story 14.1 spec gate, Rule 20]
+
+### AD-60 -- Tool results and log text reach the model through one sanitizer, additional to AD-11's five rules
+
+- **Binds:** Story 14.3 and every tool result, screen-context payload and log text a turn sends to a provider, present and future (Epic 16's log readers among them); AD-11, AD-24, AD-33, AD-35, AD-39, AD-48, Conventions > Secrets
+- **Prevents:** content the agent reads carrying control or invisible characters, text that imitates the data delimiter, or a secret-shaped string into the model's context; and the opposite error, a sanitizer that some invariant, gate or test comes to rely on as the defense
+- **Rule:** Every `tool_result` block enters the turn's canonical history through **one** sanitizer, at the point the turn loop builds that history (the screen-context message and each reply's results), so every producer -- instance reads, refusals, navigation settles, budget refusals, screen context -- passes it and a new read tool needs no change. In order, per string value and member name: it **strips** C0 controls other than TAB, LF and CR, DEL, C1, and the zero-width, bidirectional-override and tag characters; it **redacts** a closed list of secret shapes (provider-key prefixes, JWTs, bearer tokens, PEM private-key blocks) to `[redacted]`, as a backstop that only ever adds redaction to the schema-driven classification and AD-35's declared masks and never replaces either; it **neutralizes** its own delimiter's name inside the data; and it **wraps** the content in `<ocupilot-data>` ... `</ocupilot-data>`, which the built-in system prompt names as data. **AD-24's bound is the one marked cut** for everything AD-24 bounds; the sanitizer cuts only as a backstop, marked the same way, for a block still above AD-24's total bound after it. It never lengthens a body beyond its fixed frame, and applying it twice equals applying it once. **It fails closed**: a fault replaces the block with a wrapped error, never the raw content. It governs only what reaches the model: the tool card, citations, screens and the ledger keep the bounded instance data (AD-24, AD-35 still apply there). It is additional: no invariant, gate or test reads its output as the defense, and AD-11's rule 5 test (Story 14.8) passes with it and would pass without it. [ADDED 2026-09-27, Story 14.3 spec gate, Rule 20]
 
 ## Consistency Conventions
 
