@@ -242,6 +242,29 @@ Rejected:
 
 - [x] [CI] instance: `OcuPilot.Test.EndpointCoverage.TestEveryProbeDispatchesToItsRoute` fails on run 36287213038 at head 6eef7155: the probe `GET /api/ocupilot/screens/osmgmt.locks/impact` (no query; line 447 pins every probe path to its route template, so it cannot carry `?action=`) now answers `ROUTE.NOTFOUND`, because the code review made an empty `action` answer 404 like the action route. Fix the handler, not the probe: a request with **no `action` parameter at all** is malformed and answers 400 (a new or existing request-shape code, never `ROUTE.NOTFOUND`) before any read -- the analogue of the action route's unreadable-body 400 -- while a **named** action the screen does not declare keeps the 404 parity with the action route. Update `ScreenImpact.cls` (or `ScreenAction.Preview`'s caller, whichever keeps the action route's own behavior byte-identical), the `ImpactRoute` leg that expects the empty-action 404, and the probe row's `substitutewhy` so it states what the probe now exercises; demonstrate each changed pinning test's mutation after recompiling the tree on `ocupilot-ci`, run `EndpointCoverage` and `ImpactRoute` one at a time, and write the `mutation:` lines. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36287213038>
 
+### Review Findings (CI rework 1 re-review)
+
+Code review 2026-09-27 of `eb1e19c4..6f38ca1a` (full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Rework item confirmed fixed: no `action` answers 400 `TOOL.ARGUMENTS`, empty and undeclared answer 404 `ROUTE.NOTFOUND`, `ScreenAction.cls` and `Router.cls` unchanged since `eb1e19c4`, all three legs falsified. 0 decision-needed, 4 patch (all applied), 0 defer, 11 rejected; no high.
+
+- [x] [Review][Patch] (low) the class doc said the refusal comes "before anything is read" while the screen lookup runs first [src/OcuPilot/Api/ScreenImpact.cls:9] — now "before the target is read".
+- [x] [Review][Patch] (low) the missing-action leg's code assertion had no mutation of its own [src/OcuPilot/Test/ImpactRoute.cls:570] — mutation run, line recorded.
+- [x] [Review][Patch] (low) the undeclared-action leg had no mutation [src/OcuPilot/Test/ImpactRoute.cls:575] — mutation run, line recorded.
+- [x] [Review][Patch] (low) the last `EndpointCoverage` green predated the last mutate-and-revert of the handler [src/OcuPilot/Test/EndpointCoverage.cls:105] — both classes re-run after this pass's final revert.
+
+Rejected:
+
+- (false) the frontmatter's two baselines disagree: `3bd2d242` set both to `eb1e19c4`.
+- (low, by-design) "the analogue of the action route's unreadable body": the rework item's own wording, and the doc lists it among the route's own refusals, so it claims no parity.
+- (low) the impact route ignores stray query parameters while the action route refuses stray body keys: the sentence predates the rework and nothing is written; not high.
+- (low) `Error.cls` calls `TOOL.ARGUMENTS` a tool-result code: `ScreenAction.Refuse` already renders it as an envelope; predates the rework.
+- (low, spec-bound) the 400 and 404 envelopes are built inline rather than through `ScreenAction.Refuse`/`NotFound`: sharing them changes the action route, which this rework keeps byte-identical.
+- (low, wontfix-accepted, DW-1723) `EndpointCoverage` documents `expect` only as a `why`'s precondition: file contended with Epic 14; this pass may touch only the impact row.
+- (low) the `Probes` doc says one row needs `substitute`: predates the rework, contended file.
+- (low) the missing-action leg does not assert `detail.problem`: with no `action`, no other 400 `TOOL.ARGUMENTS` is reachable.
+- (low) `TestOtherActionsAnswerNoImpact` holds refusal legs beyond its name: cosmetic.
+- (low) the missing-action leg rebuilds the path instead of using `Impact`: the fix adds a helper parameter.
+- (low) mixed dates and the "(Epic 14's version has no such row)" aside: the fix edits the spec under review.
+
 ## Spec Change Log
 
 - 2026-09-27, lead: re-opened for one rework iteration on a red CI instance job (run 36287213038): the impact route's empty-action 404 reads as route-not-found to EndpointCoverage's probe.
@@ -279,6 +302,10 @@ Rejected:
   - `[low]` `[reject]` (verification-gap) the undeclared-action leg has no `mutation:` line — it pins `Resolve`'s pre-existing 404, which this pass did not change; not an AC's pinning test.
   - `[false]` `[reject]` (intent-alignment) the doc calls the refusal the unreadable body's analogue while it answers `TOOL.ARGUMENTS` — the same sentence names the code it answers; "analogue" is the category.
   - `[false]` `[reject]` (intent-alignment) the 400 branch is unreachable from the client — by design: the client always sends `action`; the branch serves the coverage probe and any malformed caller.
+
+### 2026-09-27 — Code review (CI rework 1 re-review)
+
+- verdicts: 17 findings in 15 entries — high 0, medium 0, low 14, false 1, maybe-false 0; 4 patched, 11 rejected (one ledgered `wontfix-accepted`, DW-1723). Listed under `### Review Findings (CI rework 1 re-review)`.
 
 ## Design Notes
 
@@ -397,6 +424,12 @@ its advisory, naming the missing pair, never as none"`.
 - mutation: `ScreenImpact.Handle`'s missing-action refusal disabled -> `ImpactRoute.TestOtherActionsAnswerNoImpact` missing-action leg red (run 15202); `EndpointCoverage.TestEveryProbeDispatchesToItsRoute` impact probe red (run 15203).
 - mutation: that refusal answers `AGENT.BADBODY` instead of `TOOL.ARGUMENTS` -> `EndpointCoverage` red on the impact row's `expect` alone (run 15204).
 - mutation: that refusal keyed on an empty `action` instead of `IsDefined` -> `ImpactRoute.TestOtherActionsAnswerNoImpact` empty-action leg red (run 15210); green after revert (run 15211).
+
+**Mutations run (CI rework 1 re-review, 2026-09-27).** Same discipline on `ocupilot-ci`, whole tree reloaded each time; working tree byte-identical after each revert.
+
+- mutation: the missing-action refusal answers `AGENT.BADBODY` -> `ImpactRoute.TestOtherActionsAnswerNoImpact` red on "as a request-shape refusal, never the router's route-not-found" alone (run 15212).
+- mutation: that refusal also taken for a named action not in `RowActionIds` -> `ImpactRoute.TestOtherActionsAnswerNoImpact` red on the undeclared leg's two assertions alone, the empty leg green (run 15213).
+- after the final revert: `ImpactRoute` 10/10 (run 15214), `EndpointCoverage` 2/2 (run 15215).
 
 ## Auto Run Result
 

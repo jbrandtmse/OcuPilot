@@ -7530,3 +7530,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-19-impact-lines-on-removals.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: failed once in the 16.19 implement sweep on ocupilot-ci, green re-run alone (run 15179); not touched by 16.19
 - 2026-09-27T01:32:52Z status=wontfix-accepted owner=16-19-impact-lines-on-removals by=harvest note=reopen_if=CI's instance job reports this test red
+
+### DW-1723: EndpointCoverage documents expect only as a why's precondition; the impact row now uses it to assert a refusal code
+- source: spec-16-19-impact-lines-on-removals.md (cr rework re-review) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Class doc (line 62-64) and TestEveryProbeDispatchesToItsRoute doc and its failure message (line 511) tie expect to a why; the GET impact row declares expect=code=TOOL.ARGUMENTS with no why, so a red there reads 'the precondition its why rests on'. File contended with Epic 14; this pass may touch only the impact row.
+- 2026-09-27T03:11:10Z status=wontfix-accepted owner=16-19-impact-lines-on-removals by=cr note=reopen_if=a second why-less expect row lands, or an expect failure on the impact row is misread in a review

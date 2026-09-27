@@ -6,7 +6,7 @@
 /// write tool, value channel, pair gate, fresh read and body, and a request that route would refuse
 /// is refused here with the same envelope. Two refusals are its own: a request with no
 /// <code>action</code> parameter at all is malformed, the analogue of the action route's unreadable
-/// body, and answers 400 <code>TOOL.ARGUMENTS</code> before anything is read; and a value the
+/// body, and answers 400 <code>TOOL.ARGUMENTS</code> before the target is read; and a value the
 /// action declares secret, which a query string would carry into access logs, is refused 400.
 /// A named action the screen does not declare, an empty one included, answers 404
 /// <code>ROUTE.NOTFOUND</code>, as the action route answers it. It writes nothing and asks the
