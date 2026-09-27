@@ -5776,6 +5776,9 @@ So that the agent has memory of my work without keeping it forever.
 - **When** the retention task next sweeps
 - **Then** their transcripts survive as an audit record while their sessions are invalidated - stored references being weak by contract.
 
+- DW-1122: Nothing bounds the ledger table across turns until Story 14.4 - the retention purge also bounds the agent ledger (ledger; routed by spec_gate 2026-09-26)
+- DW-1240: The reload-after-retention row has no mechanism - the retention sweep this story builds is what drops a restored turn's cards after RETENTIONSECONDS (ledger; routed by harvest 2026-09-19)
+
 ### Story 14.5: The per-user read-only toggle
 
 As a cautious administrator on someone else's instance,
