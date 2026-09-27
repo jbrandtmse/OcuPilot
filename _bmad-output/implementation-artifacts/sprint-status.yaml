@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-26-2026 23:12'
+last_updated: '09-27-2026 00:04'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -253,7 +253,7 @@ development_status:
   16-16-the-agent-audit-viewer: backlog
   16-17-the-read-back-line: done
   16-18-home-s-performance-row: done
-  16-19-impact-lines-on-removals: ready-for-dev
+  16-19-impact-lines-on-removals: in-progress
   16-20-older-messages-log-files: backlog
   16-21-security-findings-with-a-fix-you-confirm: backlog
   16-22-the-guardrails-page: backlog
@@ -354,4 +354,5 @@ action_items:
     owner: "user"
     status: done
     ref: "DW-1527"
-    resolution: "filed by the owner 2026-09-26 at github.com/intersystems-community/sysadmin-api-specification (issues #1 and #2, the second being DW-1640)"
+    resolution: "filed by the owner 2026-09-26 at github.com/intersystems-community/sysadmin-api-specification
+      (issues #1 and #2, the second being DW-1640)"

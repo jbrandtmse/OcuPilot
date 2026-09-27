@@ -84,3 +84,7 @@
 2026-09-26T23:13:16Z	Story 16.18	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=slice_empty_after_rework model=claude-opus-5-5
 2026-09-26T23:13:16Z	Story 16.18	smoke_complete	method=browser result=pass iterations=2 defects_caught=0 evidence=account-and-filter.browser-spec_4/4,home-performance.browser-spec_4/4_on_ocupilot-ci model=claude-opus-5-5
 2026-09-26T23:14:11Z	Story 16.18	committed	sha=cf706fd9 submodules= ci=pending run=36278786982 cycle_iteration=2 note=rework_for_ci_red_36275199146
+2026-09-26T23:14:28Z	Story 16.20	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@a1a081dd merge=9f5ea5c7 conflicts=none content=planning_and_docs_only ci=rides_on_next_code_push(DW-1435)
+2026-09-27T00:04:06Z	Story 16.18	ci_resolved	story=16.18 run=36278786982 result=success resolved_at=next_implement head=cf706fd9
+2026-09-27T00:04:06Z	Story 16.18	story_boundary	story=16.18 head=cf706fd9 ci_run=36278786982 ci=success note=includes_16.1,16.17,16.18_and_integrate_forward_f075c769;later_skip_commits_are_bookkeeping_and_a_docs-only_merge
+2026-09-27T00:04:06Z	Story 16.19	stage_spawned	stage=implement spawn_at=2026-09-27T00:04:06Z model=opus agent_name=16-19-impact-lines-on-removals-implement-1 cycle_iteration=1
