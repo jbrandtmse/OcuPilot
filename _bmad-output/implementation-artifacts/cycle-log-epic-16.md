@@ -186,3 +186,5 @@
 2026-09-27T14:42:00Z	Story 16.22	ci_resolved	story=16.22 run=36323687091 result=success resolved_at=next_implement head=62a5dd8d
 2026-09-27T14:42:00Z	Story 16.22	story_boundary	story=16.22 head=62a5dd8d ci_run=36323687091 ci=success note=includes_16.1,16.17-16.22_and_docs_merge_2c2a8a48
 2026-09-27T14:42:00Z	Story 16.23	stage_spawned	stage=implement spawn_at=2026-09-27T14:42:00Z model=opus agent_name=16-23-any-table-downloaded-as-csv-implement-1 cycle_iteration=1
+2026-09-27T15:19:40Z	Story 16.23	protocol_violation	stage=implement depth=2 agent=stage violation=five_browser_specs_in_one_message consequence=none(read-only_specs,all_green) detected_by=stage_self_report outcome=recorded
+2026-09-27T15:19:40Z	Story 16.23	dev_complete	spawn_at=2026-09-27T14:42:00Z model=opus build_sha=27909bce baseline_revision=fc246c10 review_loop_iteration=1 followup_review_recommended=false deferred=0 diff=_11_files_changed,_679_insertions(+),_20_deletions(-) cycle_iteration=1 bundle=1.92MB sweep=none(no_ObjectScript_change) ci=pending run=36329117363
