@@ -93,7 +93,7 @@ const SEED_LIMITS = 'OcuPilot.Kernel.Agent.Limits';
  * through the store's own `LoadOrCreate` and `AppendEntry`, so the Transcripts list -- which shows
  * only conversations holding an entry, and which nothing before the walk has given one on a fresh
  * instance -- has a row whose detail screen the walk can open. Answers the conversation's key;
- * throws when either call fails.
+ * throws when either call fails, after removing a conversation `LoadOrCreate` already created.
  */
 export function seedConversation(config) {
   const output = runIris(config.container, [
@@ -104,6 +104,7 @@ export function seedConversation(config) {
     'Write "OCU-WALKSEED-START:",k,"|",$System.Status.IsOK(sc),":OCU-WALKSEED-END",!',
   ]);
   const [key, ok] = String(markerValue(output, 'WALKSEED') ?? '|').split('|');
+  if (key !== '' && ok !== '1') removeConversation(config, key);
   assert.ok(key !== '' && ok === '1', `the walk seeds one conversation for ${config.username}:\n${output}`);
   return key;
 }

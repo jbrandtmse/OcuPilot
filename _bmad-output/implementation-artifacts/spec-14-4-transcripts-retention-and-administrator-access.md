@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-27'
 status: 'done'
 baseline_revision: 'b5c31d55eccb81d9fd66e801f0819e49b856a7a3'
-baseline_commit: 'a95032ab212a514db252cff52c74c473d6a33a7f'
+baseline_commit: 'b5c31d55eccb81d9fd66e801f0819e49b856a7a3'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -256,6 +256,26 @@ Code review 2026-09-27 (full-opus tier; blind-hunter, edge-case-hunter, verifica
 - low (by-design, AD-15 posture): a failed access-row write is logged and the read is still served.
 - false: AC5's token refusal. Already rejected in the earlier triage log.
 
+### Review Findings (rework 1)
+
+Code review 2026-09-27 of `b5c31d55..f6876ef6` (full-opus tier; all four layers ran). The `[CI]` item is confirmed fixed: on `ocupilot-b-ci`, with the bundle rebuilt and redeployed, the a11y spec passed 12/12. It walked 60 of 60 screens with 0 unresolved and left the `_SYSTEM` count unchanged at 2. `GET /transcripts/<seed>` answered 200 with the seeded turn. 1 patched, 0 deferred, 11 rejected.
+
+- [x] [Review][Patch] [low] A seed whose `AppendEntry` failed threw before the walk's `try`, leaving the conversation `LoadOrCreate` had created [ui/browser/structural-walk.mjs:107]. `seedConversation` now removes that key before it throws. To check it, the `AppendEntry` OREF was mutated to `""`. Without the fix the count went from 2 to 3; with it, it stayed at 2. The orphan was removed by its exact key.
+
+**Rejected:**
+
+- low: a failure in `removeConversation` inside the `finally` replaces the walk's own error, but only when both fail at once. reopen_if a CI `browser` failure names only the removal.
+- low: the walk never asserts that the detail page shows the seeded turn. The read was measured at 200 with the turn, and `transcripts.browser-spec` pins the rendering. reopen_if that route answers other than 200 for a seeded key.
+- low: the context disclosure stays collapsed and the seed has no steps, so the walk does not measure the `<pre>` or a tool card. The walk measures every screen in its default state. reopen_if an overflow is reported on an expanded transcript turn.
+- low (theoretical): an `OCUPILOT_BROWSER_USER` whose case differs from `$Username`. CI and the default use `_SYSTEM`.
+- false: drift in `AppendEntry`'s argument order is not silent. The seed's assertion fails with the session output.
+- low: seeds have no distinctive marker and nothing sweeps leftovers. Every exit path except a killed process removes the seed, and the 114 leftovers came from probes, not the walk. reopen_if a walk seed is found left behind.
+- false: the removal check counts only `Convo` rows, but `GuardedDelete` removes the entries first and returns their error (`Convo.cls:301`).
+- false (Rule 19): cleanup is not an acceptance criterion. AC5's `mutation:` line is recorded under Rework 1.
+- low: the `[x]` line's "(225)", the `/tmp` evidence path and the bookkeeping frontmatter. The fix edits the spec.
+- low: no CI run on the new head yet. CI runs on push, and Rule 28 gates it.
+- low: the a11y header's "fresh throwaway state", `assertThrowaway`'s message, `walk()` not checking for a throwaway itself (its callers do), and exports with no outside caller.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -304,7 +324,7 @@ Code review 2026-09-27 (full-opus tier; blind-hunter, edge-case-hunter, verifica
 - findings:
   - `[low]` `[reject]` No test fails if `removeConversation` is dropped from the walk's `finally` — harness hygiene, not an AC; `removeConversation`'s own assertion runs whenever it is called, and a pin would add a test for cleanup.
   - `[low]` `[reject]` An error from `removeConversation` in the `finally` replaces the walk's own error — needs a failed walk and a failed delete together; the fix adds a branch.
-  - `[low]` `[reject]` A seed whose `AppendEntry` fails leaves an entry-less conversation — Transcripts never lists it and the retention sweep's empty-conversation purge removes it.
+  - `[low]` `[reject]` A seed whose `AppendEntry` fails leaves an entry-less conversation — patched in the rework 1 review (`GuardedPurgeEmpty` removes it only past the longest retention cutoff).
   - `[false]` `[reject]` The CI condition, the green run and the baseline in both themes are not recorded — recorded under Auto Run Result: 0 conversations before the run, 12/12 green, 0 found against 0 in the baseline.
   - `[false]` `[reject]` The newly measured transcript pages may add keys outside the unchanged baseline — the run found 0 entries against a 0-entry baseline, light and dark.
   - `[false]` `[reject]` On a reused instance the walk may open another user's conversation — the list sorts by `lastActivity` descending (`AgentTranscripts.cls:53`), so the just-seeded row is first.
