@@ -215,3 +215,5 @@
 2026-09-27T19:10:13Z	Story 16.8	ledger_adjudicated	owned=2 resolved=2(DW-1102,DW-1110) reowned=0 terminal=0 note=DW-1755_decision-pending_owner_burndown_for_the_sheet model=claude-opus-5-5
 2026-09-27T19:10:13Z	Story 16.8	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci_recompiled_and_redeployed;secondary-logs.browser-spec_6/6 model=claude-opus-5-5
 2026-09-27T19:11:03Z	Story 16.8	committed	sha=d3869d3c submodules= ci=pending run=36343402272 amendments=ARCHITECTURE-SPINE.md:AD-21_fifth_case,LogSourcePort_scope,AD-29_ExecDirectNoPriv_note,Deferred_DW-1710_decided;EXPERIENCE.md:2_fixed-strings_rows supersedes=36340925008
+2026-09-27T20:01:58Z	Story 16.8	ci_resolved	story=16.8 run=36343402272 result=success resolved_at=story_boundary head=d3869d3c
+2026-09-27T20:01:58Z	Story 16.8	story_boundary	story=16.8 head=d3869d3c ci_run=36343402272 ci=success note=includes_16.1,16.17-16.23,16.8;ReadTool_count_126_option_A
