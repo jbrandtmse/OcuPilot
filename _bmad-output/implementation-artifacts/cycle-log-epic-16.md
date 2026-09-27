@@ -214,3 +214,4 @@
 2026-09-27T19:10:13Z	Epic 16	spine_updated	ad=AD-29 reason=code_review_by-design(ExecDirectNoPriv_reads) by=runner story=16-8-the-six-secondary-log-viewers lint=ok(pre-existing_low_placeholder_AD-7)
 2026-09-27T19:10:13Z	Story 16.8	ledger_adjudicated	owned=2 resolved=2(DW-1102,DW-1110) reowned=0 terminal=0 note=DW-1755_decision-pending_owner_burndown_for_the_sheet model=claude-opus-5-5
 2026-09-27T19:10:13Z	Story 16.8	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci_recompiled_and_redeployed;secondary-logs.browser-spec_6/6 model=claude-opus-5-5
+2026-09-27T19:11:03Z	Story 16.8	committed	sha=d3869d3c submodules= ci=pending run=36343402272 amendments=ARCHITECTURE-SPINE.md:AD-21_fifth_case,LogSourcePort_scope,AD-29_ExecDirectNoPriv_note,Deferred_DW-1710_decided;EXPERIENCE.md:2_fixed-strings_rows supersedes=36340925008
