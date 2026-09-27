@@ -131,6 +131,7 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/ui/system" path="/api/ocupilot/ui/system" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/ui/performance" path="/api/ocupilot/ui/performance" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/ui/findings" path="/api/ocupilot/ui/findings" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/ui/guardrails" path="/api/ocupilot/ui/guardrails" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/users/form" path="/api/ocupilot/users/form" disposition="envelope"/>
 <!-- /users/name carries no query string here, for /web-applications/name's reason: it draws the
      documented 422 USER.NAME.REQUIRED envelope. Its own answers are OcuPilot.Test.UserCreateWire's. -->

@@ -2,8 +2,9 @@
 title: 'Story 16.22: The Guardrails page'
 type: 'feature'
 created: '2026-09-27'
-status: 'ready-for-dev'
-review_loop_iteration: 0
+status: 'done'
+baseline_revision: 'd485a0b6b56921766c58047cd02ae739b6a0dbb5'
+review_loop_iteration: 1
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
@@ -122,7 +123,7 @@ Client:
   - (a) every `Codes()` entry is a row in order, with a non-empty reason equal to `ReasonFor`;
   - (b) a fixture Prohibited subclass whose `Codes()` appends a probe code and whose `ReasonFor` answers a probe sentence shows that row last;
   - (c) `confirmTools` equals `ListTools`' advertised writes, with `security.auditing.purge` absent, and every `descriptor` in `Screen.Registry.Descriptors`;
-  - (d) `secrets` equals `SecretArguments` per tool, with `permissions.users.password` carrying `NewPassword`;
+  - (d) `secrets` equals `SecretArguments` per tool, with `permissions.users.password` carrying `Password`;
   - (e) the limits equal `Switch.Resolve` and `Limits`;
   - (f) a fixture verdict (hold, enforced) is reflected: `killSwitch` true, audience `you`, `enforcedReadOnly` true;
   - (g) `TestTheDescriptorIsAListedUngatedAgentScreenWithNoRead`: built, agent area, position 3, no pairs, `Read()` not an object, no `agent.guardrails.*` tool in `ListTools`.
@@ -160,6 +161,7 @@ Client:
   - `ui/tools/guardrails.test.mjs` (store and helpers);
   - `ui/src/app/areas/agent/guardrails.page.spec.ts` (sections, groups, the three kill-switch lines, fault, no copy of any sentence);
   - `ui/browser/guardrails.browser-spec.mjs` (the ACs below).
+  - Open after review pass 1: `Test.Guardrails` gains a fail-closed leg for an advertised write tool whose secret arguments answer `declared` 0 and one for a `ListTools` error, through a fixture registry reached by `RegistryClass()`; `guardrails.test.mjs` gains "a read in flight across `reset()` never lands"; `guardrails.page.spec.ts` asserts `aria-busy` "true" while the read is pending. Record `mutation:` lines for each, and for AC2's kill-switch line, Users group and secret line and for AC5 (a contrast failure on a `.ocu-guardrails-*` rule reddens the walk).
 
 **Acceptance Criteria:**
 
@@ -167,7 +169,7 @@ Client:
 - **AC2.** Given enforced read-only on and a row cap of 150 set on `ocupilot-ci`, when the page renders, then it reads:
   - "Enforced read-only: on", and the kill-switch line of the caller's verdict;
   - `permissions.users.delete` under the Users label in "Always needs your Confirm";
-  - `permissions.users.password: NewPassword` under "Never sent to the agent", with both sentences;
+  - `permissions.users.password: Password` under "Never sent to the agent", with both sentences;
   - the limits line with 150, 65,536 and 1,000.
 
   The switches are restored afterwards.
@@ -177,7 +179,50 @@ Client:
 
 ## Spec Change Log
 
+- 2026-09-27 (implement, Rule 5 apply-and-report): task (d) and AC2 named the password tool's secret argument `NewPassword`; the instance declares `Password` (`UserList`'s `secretArguments`; `Registry.SecretArguments` on `ocupilot-ci` answers declared=1, `Password`). Corrected the name only; the intent is unchanged.
+- 2026-09-27 (review pass 1, bad_spec): the secret list's lead-in "Values you type yourself at Confirm, which the agent never sees:" was false for most rows, because `SecretArguments` answers the screen's secret fields for every tool on it (`permissions.users.delete: Password`). Amended Copy item 5: the lead-in is now `"The fields each tool declares secret, which the agent never sees:"` [agentGuardrailsNeverDeclared], replacing `agentGuardrailsNeverTyped`. Known-bad state avoided: a trust page claiming a delete takes a password at Confirm. KEEP: re-apply `/tmp/epic-16-keep-16-22.patch` (`git apply`; it checked clean against `baseline_revision`) — the whole reviewed implementation, verified green — then change only that string (EXPERIENCE.md :583 row, `strings.ts` key and value, the page, and any spec that names the key) and add the open test items under Tasks.
+
 ## Review Triage Log
+
+### 2026-09-27 — Review pass
+
+- verdicts: 15 findings — high 0, medium 4, low 6, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `Read`'s `declared` 0 and `ListTools`-error branches are reached by no test (verification-gap) — carried into the re-derivation as a fixture-registry leg in `Test.Guardrails`.
+  - `[medium]` `[patch]` `reset()` during an in-flight `load()` is untested; dropping its generation bump stays green (verification-gap) — carried: an in-flight-across-reset case in `guardrails.test.mjs`.
+  - `[low]` `[patch]` nothing asserts `aria-busy` "true" while loading (verification-gap) — carried: a pending-transport case in `guardrails.page.spec.ts`.
+  - `[low]` `[patch]` AC2's kill-switch line, Users group and secret line have no `mutation:` line (verification-gap) — carried: record the three.
+  - `[low]` `[patch]` AC5 has no `mutation:` line (verification-gap) — carried: a contrast mutation on a `.ocu-guardrails-*` rule against the walk.
+  - `[low]` `[reject]` `UiGuardrails`' `RenderInternal` branch is untested over HTTP (verification-gap) — a fault test needs a production seam on the handler; the branch is the two-line mapping `UiFindings` uses, and `Read`'s failure and the page's fault line are each pinned.
+  - `[false]` `[reject]` the page spec's limits test uses `toContain` (verification-gap) — the reviewer's own note: `guardrails.test.mjs` and browser AC2 assert the exact line.
+  - `[medium]` `[bad_spec]` the secret list's lead-in claims each listed field is typed at Confirm, false for delete and other tools (intent-alignment) — Copy item 5 amended (Spec Change Log).
+  - `[low]` `[reject]` the "rule added" fixture overrides `Guardrails.ProhibitedClass()`, not `Write.ProhibitedClass()` (intent-alignment) — the shipped seam delegates to `Write.ProhibitedClass()`; a divergence needs a hard-coded class, which no reachable change introduces.
+  - `[medium]` `[patch]` "a part unreadable" is tested only for the verdict (intent-alignment) — grouped with the first row; its HTTP-500 half is the rejected handler row.
+  - `[low]` `[reject]` "Kill switch: on for everyone" is covered only on stubbed bodies (intent-alignment) — the server passes `Restraint`'s `AUDIENCEEVERYONE` through unchanged (Restraint.cls:36,108); the page spec draws both lines and (f) pins the pass-through.
+  - `[false]` `[reject]` the Default row's numbers are pinned relative to their sources (intent-alignment) — that is stronger than a literal; a probe of `ocupilot-ci` read 18, `{false,"",false}` and `{200,65536,1000}`.
+  - `[false]` `[reject]` the unadvertised purge is absent from `secrets` only by construction (intent-alignment) — (d) asserts every listed tool is an advertised write tool, so a listed purge reddens it.
+  - `[false]` `[reject]` least-privileged coverage (intent-alignment) — a confirmation; no defect claimed.
+  - `[false]` `[reject]` the Fixed "never sent" sentences restate enforcement (intent-alignment) — the intent makes all copy Fixed strings; no rule list is written a second time.
+
+### 2026-09-27 — Review pass
+
+- verdicts: 15 findings — high 0, medium 0, low 7, false 8, maybe-false 0
+- findings:
+  - `[low]` `[patch]` a tool with several secret fields is rendered by no test (verification-gap) — added "lists every secret field of a tool, in order" to `guardrails.page.spec.ts`; first-field-only mutation red, reverted.
+  - `[false]` `[reject]` no unfalsifiable assertion found (verification-gap) — a confirmation; no defect claimed.
+  - `[low]` `[patch]` the verdict fault leg has no `mutation:` line (verification-gap) — recorded: dropping the verdict's error check reddens it on `ocupilot-ci`, reverted and recompiled green.
+  - `[low]` `[reject]` "rule added" is tested at Guardrails' own seam (intent-alignment) — carried: the shipped seam delegates to `Write.ProhibitedClass()`; no reachable change hard-codes the class.
+  - `[low]` `[reject]` no test sets a real kill switch (intent-alignment) — carried: `Restraint`'s audience passes through unchanged; the page spec draws both lines.
+  - `[low]` `[reject]` `Switch.Resolve`'s failure and the handler's 500 are not faulted (intent-alignment) — carried for the 500; a `Resolve` fault needs a new seam on the shipped class for a branch shaped like the three pinned ones.
+  - `[false]` `[reject]` the Default row's literals are not asserted (intent-alignment) — carried: relative pins are stronger; the probe read 18, `{false,"",false}`, `{200,65536,1000}`.
+  - `[false]` `[reject]` the kept sentence ends "you type them yourself at Confirm" (intent-alignment) — a general statement of where a needed secret is entered, true on every screen that takes one.
+  - `[false]` `[reject]` name order is inherited, not asserted (intent-alignment) — (c) asserts equality with `ListTools`' `$Order`-by-name list; the page's grouping is the spec's.
+  - `[false]` `[reject]` enforced read-only and cap 150 (intent-alignment) — surfaces match; no defect claimed.
+  - `[false]` `[reject]` the unadvertised purge (intent-alignment) — carried: surfaces match.
+  - `[false]` `[reject]` no browser test runs as the least-privileged account (intent-alignment) — `Wire` pins the navigation map's allowed flag, which is what the side bar renders.
+  - `[low]` `[reject]` the walk's overflow check has no Guardrails mutation (intent-alignment) — AC5 has its contrast mutation, and the walk renders the live answer, which carries the longest real tool names.
+  - `[false]` `[reject]` the client may hold a copy of a refusal sentence (intent-alignment) — this diff adds none; the seven existing copies in `strings.ts` are the self-protection refusals pinned equal by `self-protection.test.mjs` and `RefusalCopy`.
+  - `[false]` `[reject]` the Never ranges and files (intent-alignment) — a confirmation; no hunk lands in them.
 
 ## Design Notes
 
@@ -218,7 +263,7 @@ Client:
 2. `"Refused outright"` [agentGuardrailsRefusedHeading] · `"Neither the agent nor a screen can make these changes, whoever asks."` [agentGuardrailsRefusedNote]
 3. `"Switches"` [agentGuardrailsSwitchesHeading] · `"Kill switch: off"` [agentGuardrailsKillSwitchOff] · `"Kill switch: on for everyone"` [agentGuardrailsKillSwitchEveryone] · `"Kill switch: on for you"` [agentGuardrailsKillSwitchYou] · `"Enforced read-only: off"` [agentGuardrailsReadOnlyOff] · `"Enforced read-only: on"` [agentGuardrailsReadOnlyOn] · `"The kill switch stops the agent. Enforced read-only lets it read and explain but not propose a change. Neither stops what you do on a screen yourself."` [agentGuardrailsSwitchesNote]
 4. `"Always needs your Confirm"` [agentGuardrailsConfirmHeading] · `"These are the agent's tools that change the instance. Each one only proposes its change, and nothing happens until you press Confirm."` [agentGuardrailsConfirmNote]
-5. `"Never sent to the agent"` [agentGuardrailsNeverHeading] · `"Fields declared secret, such as passwords, keys and tokens, never leave the instance for the agent: its reads drop them, and you type them yourself at Confirm."` [agentGuardrailsNeverSecrets] · `"An application error reaches the agent as its summary only, never the variables captured with it."` [agentGuardrailsNeverErrorVariables] · `"Values you type yourself at Confirm, which the agent never sees:"` [agentGuardrailsNeverTyped]
+5. `"Never sent to the agent"` [agentGuardrailsNeverHeading] · `"Fields declared secret, such as passwords, keys and tokens, never leave the instance for the agent: its reads drop them, and you type them yourself at Confirm."` [agentGuardrailsNeverSecrets] · `"An application error reaches the agent as its summary only, never the variables captured with it."` [agentGuardrailsNeverErrorVariables] · `"The fields each tool declares secret, which the agent never sees:"` [agentGuardrailsNeverDeclared]
 6. `"Screen context"` [agentGuardrailsContextHeading] · `"Each turn carries at most <rows> rows of the screen you are on, <total> characters in all and <field> characters a field."` [agentGuardrailsContextLimits]
 7. `"Which of your tools can change this instance?"` [agentGuardrailsPrompt1] · `"Are you read-only on this instance right now?"` [agentGuardrailsPrompt2] · `"What happens between your proposal and a change on the instance?"` [agentGuardrailsPrompt3]
 
@@ -250,9 +295,49 @@ Client:
 - AC4: `Read` answers `""` for one code's reason → `GuardrailsWire` (b) red.
 - The ungated gate: declare `OcuPilotAdmin:USE` on the descriptor → `Wire` red on allowed.
 
+**Observed (applied, red seen, reverted byte-identical; server mutations on the `ocupilot-ci` copy with the class and its fixture subclass recompiled and recompiled back; client mutations rebuilt and redeployed, then redeployed clean):**
+
+- mutation: `guardrails.page.ts` `prohibited` returns a constant row → `guardrails.browser-spec.mjs` AC1 red, `guardrails.page.spec.ts` "renders each refused row" red.
+- mutation: `readOnlyLine` answers the off line whatever `enforcedReadOnly` reads → AC2 red, `guardrails.test.mjs` "the read-only line follows enforcedReadOnly" red.
+- mutation: `limitsLine` prints a constant 200 for `<rows>` → AC2 red at 150 (after AC2's expectation was made independent of `limitsLine`), `guardrails.test.mjs` "groups each number" red.
+- mutation: `Guardrails.Read` drops the `advertised` filter → `Guardrails` (c) `TestConfirmToolsAreTheAdvertisedWriteTools` red.
+- mutation: `UNCOVEREDFIELDREASON = ""` → `Guardrails` (a) `TestEveryProhibitedCodeIsARowWithItsOwnSentence` red.
+- mutation: `Read` takes `##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()` in place of `ProhibitedClass()`'s → `Guardrails` (b) red.
+- mutation: `Read` answers `""` for the fifth code's reason (`_SYSTEM`'s) → `GuardrailsWire` (b) red.
+- mutation: `UiGuardrails` refuses a caller without `OcuPilotAdmin:USE` → `GuardrailsWire` (a) red.
+- mutation: `"privileges": [{"resource": "OcuPilotAdmin", "permission": "USE"}]` on `AgentGuardrails` → `Wire` red on allowed and failed pair, `Guardrails` (g) red.
+- mutation: delete `this.guardrails.reset()` from `app.ts`'s sign-out block → `app.spec.ts` sign-out row red.
+- mutation: `Guardrails.Read` reads a failed `ListTools` as an empty list → `Guardrails` `TestAnUnlistedRegistryFailsTheWholeAnswer` red.
+- mutation: `Guardrails.Read` skips the `declared` check → `Guardrails` `TestAnUndeclaredSecretListFailsTheWholeAnswer` red.
+- mutation: `reset()` bumps neither `generation` nor `request` → `guardrails.test.mjs` "a read in flight across reset() never lands" red.
+- mutation: the page's `busy` answers false while the store loads → `guardrails.page.spec.ts` "is busy while its read is pending" red.
+- mutation: `killSwitchLine` answers the everyone line when off → `guardrails.browser-spec.mjs` AC2 red at the kill-switch line.
+- mutation: the page's `screenLabel` answers null → AC2 red, "a group is headed Users".
+- mutation: the secret list drops each tool's first field → AC2 red, `permissions.users.password: Password` not listed.
+- mutation: `.ocu-guardrails-note` color `--ocu-outline-variant` → the walk's "no violation outside the baseline" red on `agent/guardrails` (1.53:1 light, 2.07:1 dark).
+- mutation: the page renders only each tool's first secret field → `guardrails.page.spec.ts` "lists every secret field of a tool, in order" red.
+- mutation: `Guardrails.Read` drops `If $$$ISERR(tSC) Quit` after `..Verdict` → `Guardrails` `TestAnUnreadablePartFailsTheWholeAnswer` red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only (halt after planning). Epic context reused (`epic-16-context.md`); EXPERIENCE.md's only newer change is 16.21's own rows, read directly. Ledger inbox empty; DW-118 declined in Design Notes. No AD change is needed: the page uses a shell-chrome answer and no declared read.
+**Change.** A read-only Guardrails screen, third in the Agent co-pilot side bar and ungated, renders `GET /ui/guardrails`: the prohibited set's codes and `ReasonFor` sentences, the caller's switches from `Restraint.Resolved`, the advertised write tools grouped by screen, their declared secret arguments, and the context caps. Any unreadable part fails the whole answer.
+
+**Files.**
+
+- `src/OcuPilot/Kernel/Shell/Guardrails.cls`: composes the answer through `ProhibitedClass()`, `Verdict()` and `RegistryClass()` seams.
+- `src/OcuPilot/Api/UiGuardrails.cls`, `Api/Router.cls`: the route and its thin target.
+- `src/OcuPilot/Screen/Descriptor/AgentGuardrails.cls`: form-page, `privileges: []`, no read, three prompts.
+- `src/OcuPilot/Test/Guardrails.cls`, `GuardrailsFixture.cls`, `GuardrailsWire.cls`: legs (a)-(g), three fail-closed legs, the least-privileged and Findings-parity wire legs.
+- `Test/Wire.cls`, `SurfaceCoverage.cls`, `EndpointCoverage.cls`, `scripts/ci-throwaway.sh`, `ui/tools/navigation.test.mjs`, `ui/src/app/core/screens.generated.ts`: rosters.
+- `ui/src/app/core/guardrails.ts`, `ui/src/app/areas/agent/guardrails.page.ts`, `ui/src/app/testing/guardrails.ts`, `screen-outlet.ts`, `main.ts`, `app.ts`, three app specs: the store, the page, its stub and its wiring and sign-out reset.
+- `strings.ts`, EXPERIENCE.md (:152, :169, :226, the :583 row, one shifted citation), `_components.scss`: copy and styles, add-only.
+- Tests: `ui/tools/guardrails.test.mjs`, `guardrails.page.spec.ts`, `ui/browser/guardrails.browser-spec.mjs`.
+
+**Review.** Pass 1: 15 findings (medium 4, low 6, false 5); one `bad_spec` (the secret list's lead-in, Copy item 5 amended) re-derived from the KEEP patch with four test items and five mutation lines carried in; four rejected with reasons in the log. Pass 2: 15 findings (low 7, false 8); two low patched (a multi-field secret test, the verdict fault leg's mutation line); five rejected, three of them carried. Nothing deferred. Follow-up review: false (pass 2 patched low 2, medium 0, high 0).
+
+**Verification.** On `ocupilot-ci`: `Guardrails` 10/10, `GuardrailsWire` 2/2 (armed), `Wire` 20/20, `SurfaceCoverage` 4/4, `EndpointCoverage` 2/2, `Prohibited` 13/13, `RefusalCopy` 8/8, `Descriptor` 53/53. Full sweep once, pre-review, on the same non-test server code: 306 classes, 290 ran, 16 refused (arming), 1 known residue. `npm run test:tools` 1566/1566; `npm test` green; targeted component specs green. Browser after rebuild and redeploy: `guardrails` 2/2, structural walk 12/12 with 59 screens walked and no new baseline entry; `switches`, `shell`, `navigate`, `panel-principal`, `rail`, `suggested-prompts`, `explain-screen`, `screen-grounding` green in pass 1. Bundle 1.92 MB. `check-objectscript` 0, `lint-docs` 0. Switches read back at their defaults. Mutation lines under `## Verification`.
+
+**Residual risk.** The route's 500 mapping and a `Switch.Resolve` failure are exercised by no test (rejected in the log). The secret list shows each screen's secret fields against every tool on that screen, as the registry declares them.

@@ -13,6 +13,7 @@ import { ChangeBus } from './app/core/change-bus';
 import { ConnectivityService } from './app/core/connectivity';
 import { ExplainEntry } from './app/core/explain-entry';
 import { Findings } from './app/core/findings';
+import { Guardrails } from './app/core/guardrails';
 import { FixFinding } from './app/core/fix-finding';
 import { FormDirty } from './app/core/form-dirty';
 import { ScreenArrivals } from './app/core/screen-arrival';
@@ -221,6 +222,9 @@ const systemInfo = new SystemInfo({ api });
 const findings = new Findings({ api });
 const fixFinding = new FixFinding({ explainEntry });
 
+// The Guardrails page's answer (Story 16.22), the caller's own; the page loads it when it opens.
+const guardrails = new Guardrails({ api });
+
 // Home's performance row (Story 16.18). Its read is Home's refresh read, so the one refresh
 // framework times it (AD-43); it holds the last answer and the answers this Home view received.
 const performanceRow = new PerformanceRow({ api });
@@ -281,6 +285,7 @@ bootstrapApplication(App, {
     { provide: SystemInfo, useValue: systemInfo },
     { provide: Findings, useValue: findings },
     { provide: FixFinding, useValue: fixFinding },
+    { provide: Guardrails, useValue: guardrails },
     { provide: PerformanceRow, useValue: performanceRow },
     { provide: SuggestedView, useValue: suggested },
   ],

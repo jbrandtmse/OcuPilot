@@ -849,6 +849,72 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentGuardrails",
+    "route": "agent/guardrails",
+    "area": "agent",
+    "labelKey": "agentGuardrailsLabel",
+    "sideBarPosition": 3,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "guardrails",
+      "prohibited actions",
+      "what the agent refuses"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentGuardrailsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentGuardrailsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupAgentSetup",
+        "textKey": "agentGuardrailsPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "agent.guardrails",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.AgentSwitches",
     "route": "agent/switches",
     "area": "agent",

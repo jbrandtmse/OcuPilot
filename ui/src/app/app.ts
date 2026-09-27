@@ -58,6 +58,7 @@ import { STRINGS } from './core/strings';
 import { SuggestedView } from './core/suggested-view';
 import { SystemInfo } from './core/system-info';
 import { Findings } from './core/findings';
+import { Guardrails } from './core/guardrails';
 import { FixFinding } from './core/fix-finding';
 import { PerformanceRow } from './core/performance';
 import { ThemeState } from './core/theme';
@@ -233,6 +234,7 @@ export class App {
   private readonly systemInfo = inject(SystemInfo);
   private readonly findings = inject(Findings);
   private readonly fixFinding = inject(FixFinding);
+  private readonly guardrails = inject(Guardrails);
   private readonly performanceRow = inject(PerformanceRow);
   private readonly suggested = inject(SuggestedView);
   private readonly scope = inject(ScopeService);
@@ -644,6 +646,9 @@ export class App {
       // a Fix it request not yet sent (Story 16.21, AD-8).
       this.findings.reset();
       this.fixFinding.reset();
+      // The twenty-first: the Guardrails page's answer, whose switches are this caller's own verdict
+      // (Story 16.22, AD-8).
+      this.guardrails.reset();
       return;
     }
     void this.instance.verify();

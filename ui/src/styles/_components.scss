@@ -6770,3 +6770,87 @@ app-data-table .ocu-data-table-header-cell {
 .ocu-home-finding-open:focus-visible {
   @include ocu-focus-ring;
 }
+
+// The Guardrails page (Story 16.22): five read-only sections on the form-page shell. Names and codes
+// are code-face and wrap anywhere, so a long tool name never scrolls the page sideways at 720 px.
+.ocu-guardrails-intro,
+.ocu-guardrails-line {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-guardrails-fault,
+.ocu-guardrails-note {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-guardrails-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+}
+
+.ocu-guardrails-heading {
+  @include typo.ocu-type('title');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-guardrails-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  min-width: 0;
+}
+
+.ocu-guardrails-group-heading {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-guardrails-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container-lowest);
+  list-style: none;
+}
+
+.ocu-guardrails-item {
+  @include typo.ocu-type('body');
+
+  min-width: 0;
+  padding: var(--ocu-space-2);
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-guardrails-item + .ocu-guardrails-item {
+  border-top: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-guardrails-refused .ocu-guardrails-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+}
+
+.ocu-guardrails-code {
+  @include typo.ocu-type('code');
+
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}

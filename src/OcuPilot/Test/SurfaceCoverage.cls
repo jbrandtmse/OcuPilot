@@ -56,6 +56,7 @@ XData Coverage
 <coverage>
 <screen name="AgentDefinitionForm" class="OcuPilot.Test.AgentDefinitionForm" method="TestTheFormDeclaresNoReadOrTableAndOneIdAndNoClassicPage"/>
 <screen name="AgentDefinitionList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<screen name="AgentGuardrails" class="OcuPilot.Test.Guardrails" method="TestTheDescriptorIsAListedUngatedAgentScreenWithNoRead"/>
 <screen name="AgentSwitches" class="OcuPilot.Test.Wire" method="TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource"/>
 <screen name="AuditList" class="OcuPilot.Test.Descriptor" method="TestTheAuditListValidatesAndDeclaresItsServerCriteria"/>
 <screen name="AuditingConfig" class="OcuPilot.Test.Descriptor" method="TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTool"/>

@@ -63,8 +63,10 @@ import { stubSystemInfo, type StubbedSystemInfo } from './testing/system-info';
 import { PerformanceRow } from './core/performance';
 import { stubPerformanceRow, type StubbedPerformanceRow } from './testing/performance';
 import { Findings } from './core/findings';
+import { Guardrails } from './core/guardrails';
 import { FixFinding } from './core/fix-finding';
 import { stubFindings, stubFixFinding, type StubbedFindings } from './testing/findings';
+import { stubGuardrails, type StubbedGuardrails } from './testing/guardrails';
 
 /**
  * The frame itself (DW-138, UX-DR80): which bands render, in what order, and around what.
@@ -380,6 +382,7 @@ describe('the shell frame', () => {
   let systemInfo: StubbedSystemInfo;
   let performanceRow: StubbedPerformanceRow;
   let findings: StubbedFindings;
+  let guardrails: StubbedGuardrails;
   let fixFinding: FixFinding;
   let fixFindingResets: number;
   let helpLinks: StubbedHelpLinks;
@@ -424,6 +427,8 @@ describe('the shell frame', () => {
     performanceRow = stubPerformanceRow();
     // Story 16.21: held by name so the sign-out row below can see whether both were dropped.
     findings = stubFindings();
+    // Story 16.22: held by name so the sign-out row below can see whether it was dropped.
+    guardrails = stubGuardrails();
     fixFinding = stubFixFinding().fix;
     fixFindingResets = 0;
     const fixFindingReset = fixFinding.reset.bind(fixFinding);
@@ -468,6 +473,7 @@ describe('the shell frame', () => {
         { provide: PerformanceRow, useValue: performanceRow },
         { provide: Findings, useValue: findings },
         { provide: FixFinding, useValue: fixFinding },
+        { provide: Guardrails, useValue: guardrails },
         { provide: HelpLinks, useValue: helpLinks },
         { provide: AccountPreferences, useValue: accountPreferences },
         // Three real routes, so "the gate navigated" and "the gate did not" are different
@@ -788,7 +794,9 @@ describe('the shell frame', () => {
     await systemInfo.load();
     await performanceRow.read();
     await findings.load();
+    await guardrails.load();
     expect(about.answered()).toBe(true);
+    expect(guardrails.data()).not.toBeNull();
     expect(findings.answered()).toBe(true);
     expect(fixFindingResets).toBe(0);
     expect(systemInfo.answered()).toBe(true);
@@ -849,6 +857,9 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.fixFinding.reset()` from the same branch -> this goes red,
     // and a Fix it request not yet taken could send under the next principal.
     expect(fixFindingResets).toBe(1);
+    // Mutation (Rule 19): delete `this.guardrails.reset()` from the same branch -> this goes red,
+    // and the Guardrails page would open on the departed principal's verdict (Story 16.22, AD-8).
+    expect(guardrails.data()).toBeNull();
 
     // Mutation (Rule 19): delete `this.recentsRecorder.reset()` from the same branch -> this goes
     // red, answering []. The next principal resumes on the screen this tab is already on, and a

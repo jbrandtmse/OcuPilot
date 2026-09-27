@@ -1948,7 +1948,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:623 */
+  /** EXPERIENCE.md:624 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -3055,6 +3055,49 @@ export const STRINGS = {
   findingFixAuditingOff: 'Auditing is off on this instance. Propose turning it on.',
   /** EXPERIENCE.md:582 */
   findingFixTaskError: 'This task was suspended after an error. Propose resuming it.',
+  // Story 16.22: the Guardrails page.
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsLabel: 'Guardrails',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsIntro: 'What the agent refuses, what waits for your Confirm and what it never sees, read from the rules this instance enforces.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsRefusedHeading: 'Refused outright',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsRefusedNote: 'Neither the agent nor a screen can make these changes, whoever asks.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsKillSwitchOff: 'Kill switch: off',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsKillSwitchEveryone: 'Kill switch: on for everyone',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsKillSwitchYou: 'Kill switch: on for you',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsReadOnlyOff: 'Enforced read-only: off',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsReadOnlyOn: 'Enforced read-only: on',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsSwitchesNote: 'The kill switch stops the agent. Enforced read-only lets it read and explain but not propose a change. Neither stops what you do on a screen yourself.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsConfirmHeading: 'Always needs your Confirm',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsConfirmNote: 'These are the agent\'s tools that change the instance. Each one only proposes its change, and nothing happens until you press Confirm.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsNeverHeading: 'Never sent to the agent',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsNeverSecrets: 'Fields declared secret, such as passwords, keys and tokens, never leave the instance for the agent: its reads drop them, and you type them yourself at Confirm.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsNeverErrorVariables: 'An application error reaches the agent as its summary only, never the variables captured with it.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsNeverDeclared: 'The fields each tool declares secret, which the agent never sees:',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsContextHeading: 'Screen context',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsContextLimits: 'Each turn carries at most <rows> rows of the screen you are on, <total> characters in all and <field> characters a field.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsPrompt1: 'Which of your tools can change this instance?',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsPrompt2: 'Are you read-only on this instance right now?',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsPrompt3: 'What happens between your proposal and a change on the instance?',
 
 } as const;
 
