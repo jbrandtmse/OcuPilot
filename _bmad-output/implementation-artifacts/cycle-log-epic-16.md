@@ -97,3 +97,5 @@
 2026-09-27T01:59:32Z	Story 16.19	ledger_adjudicated	owned=1 resolved=0 reowned=0 terminal=1(DW-1721_wontfix-accepted_at_harvest) model=claude-opus-5-5
 2026-09-27T01:59:32Z	Story 16.19	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci_bundle_redeployed_by_cr;impact.browser-spec_5/5 model=claude-opus-5-5
 2026-09-27T02:00:22Z	Story 16.19	committed	sha=6eef7155 submodules= ci=pending run=36287213038 amendments=ARCHITECTURE-SPINE.md:AD-8(impact_of_a_removal),AD-53(shared_list),EXPERIENCE.md:577_row+citation_617->618 supersedes=36285845787
+2026-09-27T02:01:22Z	Epic 16	epic_context_compiled	reason=planning_artifact_newer(epics.md_epic18,16.19_done) model=claude-opus-5-5 agent=a42e7fd61bac7f013
+2026-09-27T02:01:22Z	Story 16.20	stage_spawned	stage=plan spawn_at=2026-09-27T02:01:22Z model=opus agent_name=16-20-older-messages-log-files-plan-1 cycle_iteration=1

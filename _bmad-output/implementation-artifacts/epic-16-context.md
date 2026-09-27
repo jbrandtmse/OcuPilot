@@ -4,7 +4,7 @@
 
 ## Goal
 
-This is voting-week work, done after the submission cut. It adds the second-tier screens and actions a judge sees when comparing entries: a try-it console, web sessions, effective privileges, task export and import, background tasks, broadcast, license usage and the full dashboard, six secondary log viewers with a hub, and external language servers. It also carries six stories deferred from the contest build (16.11 to 16.16), and survey-driven stories: read-back, Home's performance row, impact lines, older messages.log files (Community Idea DPI-I-966), a security findings panel whose fixes are agent proposals, and a Guardrails page. **This run's order:** 16.1, 16.17 and 16.18 (all done), then 16.19, 16.20, 16.21, 16.22, then 16.8, then 16.9. The other stories stay backlog. Everything merges to the feature branch; `main` moves only at owner-approved releases (Release 1.0.2 is cut 2026-09-27 21:00 UTC and takes only stories done at a green story boundary). **Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
+This is voting-week work, done after the submission cut. It adds the second-tier screens and actions a judge sees when comparing entries: a try-it console, web sessions, effective privileges, task export and import, background tasks, broadcast, license usage and the full dashboard, six secondary log viewers with a hub, and external language servers. It also carries six stories deferred from the contest build (16.11 to 16.16), and survey-driven stories: read-back, Home's performance row, impact lines, older messages.log files (Community Idea DPI-I-966), a security findings panel whose fixes are agent proposals, and a Guardrails page. **This run's order:** 16.1, 16.17, 16.18 and 16.19 (all done), then 16.20, 16.21, 16.22, then 16.8, then 16.9. The other stories stay backlog. Everything merges to the feature branch; `main` moves only at owner-approved releases (Release 1.0.2 is cut 2026-09-27 21:00 UTC and takes only stories done at a green story boundary). **Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
 
 ## Stories
 
@@ -37,11 +37,7 @@ This is voting-week work, done after the submission cut. It adds the second-tier
 - **Governance baseline (Story 14.2, released, on slot B).** Until 14.2 merges into the feature branch, nothing here touches governance and the gate point keeps returning "allowed" for everything not prohibited. Once it has merged, every new write key an Epic 16 story ships joins the baseline in that same story, enabled unless the story's criteria say disabled (through 2026-10-04).
 - **Bundle budget.** The hard stop is 4000kB with a 3800kB ask line; still no lazy routes or `@defer`.
 - **Home performance row (16.18, done).** Cache efficiency, global references and updates per second, and disk reads and writes per second, with a ten-minute sparkline that starts empty. The row is absent, not zeros, for a caller who may not read the metrics, and Home's agent context carries the same values. Later Home work must leave it intact.
-- **Impact lines (16.19),** on both proposal cards and screen dialogs:
-  - Role delete: how many users hold the role and web applications grant it, with the first few names.
-  - Role removed from a user: the resources and permissions lost, net of what the user's other roles still grant.
-  - Resource delete: the granting roles, and the applications and databases it guards.
-  - Counts are read fresh at mint or dialog open. A part the caller cannot read is named as unchecked, never reported as "no impact".
+- **Impact lines (16.19, done).** Role delete, role removed from a user, and resource delete carry an impact line on proposal cards and screen dialogs. Later work touching those writes keeps it (see the AD-8 decision below).
 - **Older messages files (16.20).**
   - The file choice lists `messages.log` plus the rotated `messages.old_*` files in the manager directory, newest first, with size and modification time.
   - Paging, search, filter, screen context and explain work exactly as on `messages.log`, and the address names the file.
@@ -74,11 +70,13 @@ This is voting-week work, done after the submission cut. It adds the second-tier
 - **Switches and classification (AD-22, AD-30).** Every tool declares `read` or `write`. Read-only and the kill switch are instance state evaluated at the point of effect; `Kernel.Restraint.Verdict` gives the `blocked` answer, and every screen-context payload carries `tools` and `readOnly` (AD-24).
 - **What the agent never sees (AD-35, AD-48).** Secret-typed fields are schema-driven, never sent. Error-log detail (captured variables) is secret by default: summary fields only reach the model.
 - **Privilege (AD-8, AD-29).**
+  - **A removal names its impact.** Computed on the instance, once at mint (kept on the proposal row) and again when the screen dialog opens, with the caller's own privileges through the owning screen's read and pair set. A part the caller cannot read is reported unchecked, naming the pair. A target the prohibited set refuses shows that refusal's reason instead. The impact is names only and never enters screen context or a tool result.
+  - **`Kernel.Shell.Effective` is the one effective-privilege composition,** and any later effective-privilege read (16.3's screen and permission-check tool) uses it rather than re-deriving. It composes as the instance does: the union over the user's roles and, transitively, every role they grant; `%All` anywhere in that closure holds everything; a resource's public permission is held by every user; an escalation role counts for nothing until the user escalates.
   - A pair set is `(resource, permission)` pairs; `%Admin_*` and `%Service_*` are required at `USE`, never `WRITE`.
   - Every non-admin port declares and checks its own gate. Establish each set from the backing class's own check, then by a real least-privileged run on a throwaway.
   - There is no elevation. What a caller cannot read is reported as such, never inferred.
 - **Paths and files (AD-21).** No endpoint accepts a filesystem path. A file source is named from a fixed enum, its directory is `$System.Util.ManagerDirectory()` resolved on every call, and paging validates the file's identity. 16.20's pattern-matched rotated-file name is a new named case, so amend AD-21 before building it (inference).
-- **Writes (AD-53, AD-55, AD-10).** A screen action and the agent's write are two callers of one tool, sharing target resolution through the declared port, the fresh read, the prohibited-set predicates, the caller's privileges, the change event, the read-back and the vendor audit record. Kinds are merge (AD-4), action-style (AD-51), create (AD-54) and secret-only (AD-56); the port is declared per tool (AD-52). 16.19 extends these shipped kernel paths and must leave Release 1 writes unchanged.
+- **Writes (AD-53, AD-55, AD-10).** A screen action and the agent's write are two callers of one tool, sharing target resolution through the declared port, the fresh read, the prohibited-set predicates, the caller's privileges, the change event, the read-back, a removal's impact and the vendor audit record. Kinds are merge (AD-4), action-style (AD-51), create (AD-54) and secret-only (AD-56); the port is declared per tool (AD-52).
 - **Read-back (AD-58, done in 16.17).** Every confirmed write, from either caller, re-reads its target through the tool's declared port with the caller's own privileges, after the ledger row and outside any transaction, and answers `readBack {verdict, fields, written, reason?}` without failing or altering the write's answer. A write tool touched or added later inherits it. A field the instance normalizes on save declares `compare` in its reviewed Classification entry; a secret is reported written, never read back. Only names and a verdict leave the instance, riding the change event as an annotation, never as row data.
 - **Open decision DW-1710.** Whether a list-row create (`TaskCreate`, `OAuthRegisteredClientCreate`) reads back over only its list row's fields (8 of the task create's 34 keys) or re-reads by `createdId`. It is on the Epic 16 merge-gate decision sheet; either answer amends AD-58.
 - **Try-it console (AD-57, done in 16.1).** A browser request under the tab's own Bearer token, never a tool or OcuPilot's write path. Targets under OcuPilot's own applications and `/api/admin` writes are refused before sending; other mutating verbs need a confirmation dialog. The response reaches the screen only, as data.
@@ -91,12 +89,12 @@ This is voting-week work, done after the submission cut. It adds the second-tier
 ## UX & Interaction Patterns
 
 - **Log viewer.** Rows show time, pid, a severity chip (with its word) and text. The sticky search shows a polite "n of N". Raw is a bounded monospace view on `code-surface`. It is a tail, not live, and never loads the whole file.
-- **Meters (16.7, 16.18).** Each meter shows its state as a word as well as a colour.
-- **Proposal card.** Diff rows, "N unchanged fields", "Agent's rationale", "Expected impact", 11.8's privilege line ("Requires ...") and a focus-taking status line, with the read-back line under it once confirmed. 16.19's impact line is 11.8's sibling.
+- **Meters (16.7).** Each meter shows its state as a word as well as a colour, as 16.18's row already does.
+- **Proposal card.** Diff rows, "N unchanged fields", "Agent's rationale", "Expected impact", 11.8's privilege line ("Requires ...") and a focus-taking status line, with the read-back line under it once confirmed. 16.19's "Impact: ..." line is 11.8's sibling.
 - **Read-back copy.** The "Read back: ..." lines are Fixed strings. They follow the "Changed" tag on the marked row, join its announcement with " · ", and read "Saved · <line>" on a form.
 - **Destructive confirmations.** A screen's destructive dialog asks for the target's typed name, and its destructive button is labeled with the verb. A destructive agent proposal takes the destructive bar and a destructive Confirm, with no typed name.
 - **Gated controls.** They use `aria-disabled`, never `disabled`, and name their reason ("Requires <resource>").
-- **New copy.** Neither 16.18's row, 16.19's impact line, 16.21's panel nor 16.22's page has Fixed strings yet, so their copy must be added to EXPERIENCE.md before a runner uses it.
+- **New copy.** 16.18's row and 16.19's impact line have their Fixed strings. 16.20's file choice, 16.21's panel and 16.22's page do not yet, so their copy must be added to EXPERIENCE.md before a runner uses it.
 
 ## Cross-Story Dependencies
 
@@ -104,9 +102,10 @@ This is voting-week work, done after the submission cut. It adds the second-tier
 - **Process rules.** After an integrate forward, load the merged ObjectScript into the throwaway before testing (Rule 22). Push a code commit alone and confirm its CI run before pushing a skip-tagged commit (Rule 28).
 - **Epic 14 runs concurrently on slot B,** including 14.2's governance baseline. Story 14.1 adds a "script instead" snippet to every write tool with a registry check, and Story 14.3 adds a sanitizer. A write tool or a registry change landing here must still satisfy them once they merge (inference).
 - **Home.** 16.21 extends Home (15.4's System Information panel and 16.18's performance row), after 16.21's own DW-1400 seam extraction.
-- **16.21 on 16.17 and 16.19.** Fix it proposals go through the ordinary proposal path, which carries the read-back line and 16.19's impact lines when they apply (inference).
+- **16.21 on 16.17 and 16.19.** Fix it proposals go through the ordinary proposal path, which carries the read-back line and, for a removal (taking `%All` from an account, say), 16.19's impact line (inference).
 - **16.22.** It reads the kernel's prohibited set, tool classification, switches and context cap. It adds no new enforcement.
 - **16.20.** Extends 6.14's messages.log viewer and 11.2's "Explain this entry".
 - **16.9 after 16.8,** because the hub lists 16.8's sources.
-- **Held.** 16.4 needs Story 18.1's directory allow-list, which is out of range.
+- **Held.** 16.4 needs Story 18.1's directory allow-list. Epic 18 joins the voting-week run on slot B after Epic 14, in story order; 18.1 runs on slot A after this group, ahead of 16.4, unless slot B reaches it first. Epic 18's destructive keys default to disabled under 14.2's baseline rule.
+- **16.3 on 16.19.** Its effective privileges and permission-check tool use `Kernel.Shell.Effective`.
 - **Backlog notes.** 16.6 is the first screen to need multi-select. 16.13 and 16.14 each remove a classic-link exemption (AD-44) and replace Story 9.9's reduced forms; 16.13 draws the `%Service_WebGateway` disable as disabled with the published sentence, because AD-10 refuses it from any caller.
