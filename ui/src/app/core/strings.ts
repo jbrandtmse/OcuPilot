@@ -1816,12 +1816,6 @@ export const STRINGS = {
   /** EXPERIENCE.md:479 */
   roleDeleteConsequence: 'Deleting this role takes it from every account and role that holds it. This cannot be undone.',
   /** EXPERIENCE.md:479 */
-  roleDeleteHolders: '<n> users hold this role.',
-  /** EXPERIENCE.md:479 */
-  roleDeleteHoldersOne: '1 user holds this role.',
-  /** EXPERIENCE.md:479 */
-  roleDeleteHoldersNone: 'No user holds this role.',
-  /** EXPERIENCE.md:479 */
   resourceDeleteConsequence: 'Every role that grants this resource loses it. This cannot be undone.',
   /** EXPERIENCE.md:480 */
   roleRefusalSystem: 'A name beginning with % belongs to one of the instance\'s own roles.',
@@ -1954,7 +1948,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:617 */
+  /** EXPERIENCE.md:618 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2911,6 +2905,58 @@ export const STRINGS = {
   performanceCacheUnit: 'refs per block read or write',
   /** EXPERIENCE.md:576 */
   performanceSparklineLabel: 'Global references per second, last ten minutes',
+  /** EXPERIENCE.md:577 */
+  impactLine: 'Impact: <parts>.',
+  /** EXPERIENCE.md:577 */
+  impactHolders: '<n> users hold it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactHoldersOne: '1 user holds it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactHoldersNone: 'no user holds it',
+  /** EXPERIENCE.md:577 */
+  impactGrantingApplications: '<n> web applications grant it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGrantingApplicationsOne: '1 web application grants it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGrantingApplicationsNone: 'no web application grants it',
+  /** EXPERIENCE.md:577 */
+  impactGrantingRoles: '<n> roles grant it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGrantingRolesOne: '1 role grants it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGrantingRolesNone: 'no role grants it',
+  /** EXPERIENCE.md:577 */
+  impactGuardedApplications: 'it guards <n> web applications: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGuardedApplicationsOne: 'it guards 1 web application: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGuardedApplicationsNone: 'it guards no web application',
+  /** EXPERIENCE.md:577 */
+  impactGuardedDatabases: 'it guards <n> databases: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGuardedDatabasesOne: 'it guards 1 database: <names>',
+  /** EXPERIENCE.md:577 */
+  impactGuardedDatabasesNone: 'it guards no database',
+  /** EXPERIENCE.md:577 */
+  impactLoses: '<user> loses <names>',
+  /** EXPERIENCE.md:577 */
+  impactLosesNone: '<user> loses nothing their other roles do not still grant',
+  /** EXPERIENCE.md:577 */
+  impactHoldersUnchecked: 'who holds it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactGrantingApplicationsUnchecked: 'which web applications grant it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactGrantingRolesUnchecked: 'which roles grant it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactGuardedApplicationsUnchecked: 'which web applications it guards was not checked',
+  /** EXPERIENCE.md:577 */
+  impactGuardedDatabasesUnchecked: 'which databases it guards was not checked',
+  /** EXPERIENCE.md:577 */
+  impactLosesUnchecked: 'what <user> loses was not checked',
+  /** EXPERIENCE.md:577 */
+  impactRequires: ' (requires <pair>)',
+  /** EXPERIENCE.md:577 */
+  impactTooMany: ' (too many to check)',
 
 } as const;
 

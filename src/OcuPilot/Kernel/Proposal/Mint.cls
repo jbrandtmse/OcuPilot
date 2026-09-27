@@ -331,6 +331,8 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         }
         Set tValues("consequence") = ..ConsequenceOf(pToolClass, tPayload, tPrivileged, tEffect)
         Set tValues("destructive") = (..DestructiveTool(pToolName) || tPrivileged || (tEffect '= ""))
+        ; AD-8: a removal names its impact, computed once here, as the caller, and kept on the row.
+        Set tValues("impact") = ..ImpactValue(pToolName, tTargetRef, $Select(tPresent: tFresh.%ToJSON(), 1: ""), tValues("payload"), tValues("diff"))
         ; FR-17's definition condition is answered at confirm against the definition that was in
         ; force here. Read, never written: the definition store is Epic 10's.
         Set tDefinitionSC = ..DefinitionInForce(.tDefinitionId, .tDefinitionVersion)
@@ -365,6 +367,30 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set tSC = ..Internal("the proposal could not be minted: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The stored impact of the write <var>pToolName</var> would make to <var>pTargetRef</var>
+/// (<method>OcuPilot.Kernel.Proposal.Impact.Of</method>), as compact JSON, or <code>""</code> for a
+/// write with none (AD-8).</p>
+/// <p><b>It never fails the mint.</b> A fault, or an answer longer than the store's
+/// <code>IMPACTMAXLENGTH</code>, logs one line and records <code>""</code>, so the proposal is minted
+/// with no impact line rather than not at all.</p>
+ClassMethod ImpactValue(pToolName As %String, pTargetRef As %String, pFreshJson As %String, pPayloadJson As %String, pDiffJson As %String) As %String
+{
+    Set tValue = ""
+    Try {
+        Set tImpact = ##class(OcuPilot.Kernel.Proposal.Impact).Of(pToolName, pTargetRef, pFreshJson, pPayloadJson, pDiffJson)
+        If '$IsObject(tImpact) Quit
+        Set tValue = tImpact.%ToJSON()
+        If $Length(tValue) > +$Parameter(..StoreClass(), "IMPACTMAXLENGTH") {
+            Set tValue = ""
+            Do ##class(OcuPilot.Kernel.Fault).LogRaw("proposal", "the removal's impact is longer than the proposal row holds, so none is recorded", $$$ERROR($$$GeneralError, pToolName), "")
+        }
+    } Catch ex {
+        Set tValue = ""
+        Do ##class(OcuPilot.Kernel.Fault).LogRaw("proposal", "the removal's impact could not be recorded", ex.AsStatus(), "")
+    }
+    Quit tValue
 }
 
 /// <p>Whether the write this proposal carries would stop the instance marking agent writes in the

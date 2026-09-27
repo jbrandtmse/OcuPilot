@@ -4,6 +4,7 @@ import { AGENT_WRITE_EVENT } from '../core/agent-status';
 import { ApiService } from '../core/api';
 import { ChangeBus, type ChangeAction } from '../core/change-bus';
 import { splitCompositeId } from '../core/entity-id';
+import { impactLine, impactOf } from '../core/impact';
 import { readBackOf } from '../core/read-back';
 import { ScreenActions, actionLabel } from '../core/screen-actions';
 import { SCREEN_READ_PATH_PREFIX } from '../core/screen-read';
@@ -16,6 +17,9 @@ import { rowKey } from '../core/table-model';
 
 /** The absolute path a screen's own row action is issued under (AD-20, AD-53). */
 export const SCREEN_ACTION_PATH_SUFFIX = '/action';
+
+/** The path a removal's impact is read from when its dialog opens (AD-8, Story 16.19). */
+export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
 
 /**
  * The descriptors whose declared row actions this handler carries out.
@@ -37,7 +41,7 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * scope its target's composite id selects, and the System events and User events lists (Story 7.11),
  * whose Enable and Reset counters are sent at once, whose marker-event Disable warns first, and
  * whose user-event Delete types the event's name, and the Roles and Resources lists (Story 9.3),
- * whose Delete types the name -- a role's stating how many accounts hold it -- and whose role value
+ * whose Delete types the name and states the removal's impact -- and whose role value
  * actions the role editor sends, and the X.509 credentials, Secrets and SSL/TLS configurations lists
  * (Story 9.5), whose Delete types the name, and the OAuth 2.0 Resource servers tab (Story 12.6), whose
  * Delete types the name, and the Authorization server tab (Story 12.7), whose Delete types the issuer
@@ -89,12 +93,6 @@ export const ADD_GRANTED_ROLE = 'add-granted-role';
 export const REMOVE_GRANTED_ROLE = 'remove-granted-role';
 export const SET_RESOURCE_GRANT = 'set-resource-grant';
 export const REMOVE_RESOURCE_GRANT = 'remove-resource-grant';
-
-/**
- * The role form read whose `holders` a role Delete states (Story 9.3, DW-1513): the number of
- * accounts that hold the role, as the instance's own holder list reports it.
- */
-export const ROLE_FORM_READ_PATH = '/api/ocupilot/roles/form';
 
 /** The Task schedule's descriptor, whose delete types a name that is not its row key. */
 const TASK_SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
@@ -183,8 +181,14 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  */
 const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens'];
 
-/** The Roles list's destructive action, whose dialog states how many accounts hold the role. */
-const ROLE_DELETE = 'delete';
+/**
+ * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
+ * keyed by descriptor (AD-8, Story 16.19): read from the instance each time the dialog opens.
+ */
+const IMPACT_ACTIONS: Readonly<Record<string, readonly string[]>> = {
+  [ROLE_LIST]: ['delete'],
+  [RESOURCE_LIST]: ['delete'],
+};
 
 /**
  * The consequence sentence a destructive action states above its typed-name field, keyed by
@@ -301,7 +305,8 @@ export type PendingKind = 'typed-name' | 'warning' | 'set-password' | 'role';
  * `target` is the row key the write is sent with. `name` is what the typed-name dialog titles and
  * asks for -- the row key itself unless the screen names another field (`TYPED_NAME_ROWS`) --
  * `advisory` the dialog's second sentence, `''` when none applies, and `flagLabel` the label of
- * the dialog's optional checkbox (`FLAGGED_ACTIONS`), `''` when it offers none.
+ * the dialog's optional checkbox (`FLAGGED_ACTIONS`), `''` when it offers none. `impact` is a
+ * Remove role dialog's impact line for the role now chosen, `''` until one is read.
  */
 export interface PendingConfirm {
   readonly kind: PendingKind;
@@ -316,6 +321,7 @@ export interface PendingConfirm {
   readonly options: readonly string[];
   /** The role dialog's choices that grant %All or an administrative privilege (AD-10, DW-1523). */
   readonly privileged: readonly string[];
+  readonly impact: string;
 }
 
 /**
@@ -374,6 +380,9 @@ export class ScreenActionHandler {
 
   /** The sink of the action `waiting` holds, which its dialog's answer reports to. */
   private waitingSink: ActionSink | null = null;
+
+  /** Which impact read is current; an answer carrying an older one is stale. */
+  private impactAsk = 0;
 
   constructor() {
     for (const screen of SCREENS) {
@@ -446,6 +455,24 @@ export class ScreenActionHandler {
   }
 
   /**
+   * The role dialog's choice changed to `role` (`''` for none). A Remove role reads the removal's
+   * impact for it from the instance (AD-8) and puts the line on the pending dialog; an answer for a
+   * choice that is no longer current, or a dialog that has closed, is dropped. A read that fails
+   * leaves the dialog without a line.
+   */
+  async chooseRole(role: string): Promise<void> {
+    const pending = this.waiting();
+    if (pending === null || pending.kind !== 'role' || pending.actionId !== REMOVE_ROLE) return;
+    const ask = ++this.impactAsk;
+    this.waiting.set({ ...pending, impact: '' });
+    if (role === '') return;
+    const line = await this.impactFor(pending.descriptor, pending.actionId, pending.target, role);
+    const now = this.waiting();
+    if (ask !== this.impactAsk || now === null || now.kind !== 'role' || now.target !== pending.target) return;
+    this.waiting.set({ ...now, impact: line });
+  }
+
+  /**
    * Start declared action `actionId` of `descriptor` on the row keyed `target`, as a row menu does:
    * open its dialog, or send it at once where it has none (AD-53). `rowFields` is that row's own
    * fields where the caller holds them -- a Remove role reads its `Roles` -- and `sink` is where a
@@ -508,8 +535,8 @@ export class ScreenActionHandler {
       this.open('typed-name', descriptor, actionId, target, scoped.consequence, [], sink, scoped.name, '', scoped.verb);
       return;
     }
-    if (descriptor === ROLE_LIST && actionId === ROLE_DELETE) {
-      void this.openRoleDelete(descriptor, actionId, target, sink);
+    if ((IMPACT_ACTIONS[descriptor] ?? []).includes(actionId)) {
+      void this.openWithImpact(descriptor, actionId, target, sink);
       return;
     }
     // The row's own name and advisory, where the screen declares them; the row key otherwise.
@@ -550,6 +577,7 @@ export class ScreenActionHandler {
     privileged: readonly string[] = []
   ): void {
     this.waitingSink = sink;
+    this.impactAsk++;
     this.waiting.set({
       kind,
       descriptor,
@@ -562,6 +590,7 @@ export class ScreenActionHandler {
       flagLabel: kind === 'typed-name' ? (this.flag(descriptor, actionId)?.label ?? '') : '',
       options,
       privileged,
+      impact: '',
     });
   }
 
@@ -607,27 +636,33 @@ export class ScreenActionHandler {
   }
 
   /**
-   * Open a role Delete's typed-name dialog with the number of accounts that hold the role, read
-   * from `GET /roles/form?name=` -- the form read's own gate applies -- as its advisory line
-   * (DW-1513). A read that fails opens the dialog without the line; whether the role may be deleted
-   * is the instance's answer at the write.
+   * Open a removal's typed-name dialog with its impact line as the advisory (AD-8, Story 16.19),
+   * read from `GET /screens/:screen/impact` as the dialog opens -- the route resolves the action as
+   * the write would, with the caller's own privileges. A read that fails opens the dialog without
+   * the line; whether the target may be removed is the instance's answer at the write.
    */
-  private async openRoleDelete(descriptor: string, actionId: string, target: string, sink: ActionSink): Promise<void> {
+  private async openWithImpact(descriptor: string, actionId: string, target: string, sink: ActionSink): Promise<void> {
+    const line = await this.impactFor(descriptor, actionId, target);
+    this.open('typed-name', descriptor, actionId, target, this.consequence(descriptor, actionId), [], sink, target, line);
+  }
+
+  /**
+   * The impact line the instance answers for `actionId` on `target` -- with `value` as the action's
+   * one declared value, where given -- rendered about `target`, or `''` when the read fails or the
+   * action removes nothing covered.
+   */
+  private async impactFor(descriptor: string, actionId: string, target: string, value = ''): Promise<string> {
+    const screen = SCREENS.find((entry) => entry.descriptor === (ACTION_ADDRESS[descriptor] ?? descriptor));
+    if (screen === undefined) return '';
+    const query = new URLSearchParams({ action: actionId, id: target });
+    if (value !== '') query.set('value', value);
     const result = await this.injector
       .get(ApiService)
-      .requestJson<{ readonly holders?: unknown }>(`${ROLE_FORM_READ_PATH}?name=${encodeURIComponent(target)}`);
-    const holders = result.kind === 'ok' ? result.body?.holders : undefined;
-    this.open(
-      'typed-name',
-      descriptor,
-      actionId,
-      target,
-      this.consequence(descriptor, actionId),
-      [],
-      sink,
-      target,
-      typeof holders === 'number' ? roleHoldersLine(holders) : ''
-    );
+      .requestJson<{ readonly impact?: unknown }>(
+        `${SCREEN_READ_PATH_PREFIX}${encodeURIComponent(screen.toolIdentifier)}${SCREEN_IMPACT_PATH_SUFFIX}?${query.toString()}`
+      );
+    if (result.kind !== 'ok') return '';
+    return impactLine(impactOf(result.body?.impact), target);
   }
 
   /** The row keyed `target` on the screen's last read, or `null`. */
@@ -773,13 +808,6 @@ export class ScreenActionHandler {
     if (own === undefined) return '';
     return Object.hasOwn(own, actionId) ? own[actionId] : '';
   }
-}
-
-/** The advisory line a role Delete states for `count` accounts holding the role. */
-export function roleHoldersLine(count: number): string {
-  if (count === 0) return STRINGS.roleDeleteHoldersNone;
-  if (count === 1) return STRINGS.roleDeleteHoldersOne;
-  return STRINGS.roleDeleteHolders.replace('<n>', String(count));
 }
 
 /** The roles `rowFields` holds, as the instance spells them. */

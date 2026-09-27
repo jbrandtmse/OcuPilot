@@ -214,6 +214,7 @@ services:
       # classes: UserSave, UserSignIn, WebAppSave, WebAppWeakening
       # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
       # classes: RoleSave, RoleUpdate, ReadBackRoute
+      # classes: ImpactRoute
       # classes: SslWire
       # classes: TaskWire
       # classes: ServiceEdit, LdapEdit, ServiceLdapProbe

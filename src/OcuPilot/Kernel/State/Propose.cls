@@ -178,6 +178,19 @@ Property RequiredPairs As %String(MAXLEN = 1024);
 /// OcuPilot reads it.</p>
 Property ReadBack As %String(MAXLEN = 4000);
 
+/// <p>The longest <property>Impact</property> a row holds; the property's own <code>MAXLEN</code>
+/// equals it.</p>
+Parameter IMPACTMAXLENGTH As INTEGER = 4000;
+
+/// <p>The impact of the removal this proposal carries (AD-8), as the compact JSON of
+/// <method>OcuPilot.Kernel.Proposal.Impact.Of</method>'s answer, computed once at the mint -- names,
+/// counts, pairs and a refusal, never a value; <code>""</code> for a write with none.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b>, for the reason
+/// <property>AuditWarning</property> records: every pre-existing row reads <code>""</code>, which
+/// the wire serializes as <code>null</code>, so no older row means anything different once a newer
+/// OcuPilot reads it.</p>
+Property Impact As %String(MAXLEN = 4000);
+
 Index ProposalKeyIdx On ProposalKey [ Unique ];
 
 Index ProposalTokenIdx On Token [ Unique ];
@@ -211,7 +224,7 @@ Index ProposalTargetIdx On (TargetRef As Exact, State);
 /// <code>arguments</code>, <code>payload</code>, <code>diff</code>, <code>unchangedCount</code>,
 /// <code>rationale</code>, <code>expectedImpact</code>, <code>reverse</code>,
 /// <code>auditWarning</code>, <code>consequence</code>, <code>definitionId</code>,
-/// <code>definitionVersion</code> and <code>requiredPairs</code>, every one already
+/// <code>definitionVersion</code>, <code>requiredPairs</code> and <code>impact</code>, every one already
 /// built and already stripped of secret-declared keys by
 /// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method>; nothing here strips anything.
 /// <var>pLimitsClass</var> is the class <code>PROPOSALEXPIRYSECONDS</code> is read from, so a test
@@ -254,6 +267,8 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
         Set tRow.DefinitionId = ..Cut($Get(pValues("definitionId")), 64)
         Set tRow.DefinitionVersion = ..Cut($Get(pValues("definitionVersion")), 32)
         Set tRow.RequiredPairs = $Get(pValues("requiredPairs"))
+        ; A cut impact would be unreadable JSON, so one over the column's length is not stored.
+        Set tRow.Impact = $Select($Length($Get(pValues("impact"))) > ..#IMPACTMAXLENGTH: "", 1: $Get(pValues("impact")))
         Set tRow.CreatedAt = ..Stamp(tStamp)
         Set tRow.ExpiresAt = ..StampOfSeconds(tSeconds)
         Set tRow.State = ..#STATELIVE
@@ -686,6 +701,7 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
     Set pValues("consequence") = ..Text(pRow.Consequence)
     Set pValues("requiredPairs") = ..Text(pRow.RequiredPairs)
     Set pValues("readBack") = ..Text(pRow.ReadBack)
+    Set pValues("impact") = ..Text(pRow.Impact)
     Set tSC = ..GuardedStreamText(pRow, "Arguments", .tArguments)
     If $$$ISERR(tSC) Quit tSC
     Set pValues("arguments") = tArguments
@@ -709,7 +725,8 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
 /// <method>OcuPilot.Kernel.Proposal.Disclosure.Privilege</method>'s answer for the recorded pairs and
 /// the row's owner, evaluated at this call, or <code>null</code> when no pairs were recorded.
 /// <code>readBack</code> is the confirmed write's recorded read-back (AD-58), or <code>null</code>
-/// until one is recorded.</p>
+/// until one is recorded. <code>impact</code> is the removal's impact recorded at the mint (AD-8), or
+/// <code>null</code> for a write with none.</p>
 ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ Private ]
 {
     Set pOut = ""
@@ -745,6 +762,12 @@ ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ P
         Do tOut.%Set("readBack", tReadBack)
     } Else {
         Do tOut.%Set("readBack", "", "null")
+    }
+    Set tImpact = ..ParsedObject($Get(pValues("impact")))
+    If $IsObject(tImpact) {
+        Do tOut.%Set("impact", tImpact)
+    } Else {
+        Do tOut.%Set("impact", "", "null")
     }
     Set pOut = tOut
     Quit $$$OK

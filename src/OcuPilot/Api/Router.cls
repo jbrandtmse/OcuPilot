@@ -113,6 +113,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/device" Method="POST" Call="DeviceCreate"/>
   <Route Url="/screens/:screen/action" Method="POST" Call="ScreenAction"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
+  <Route Url="/screens/:screen/impact" Method="GET" Call="ScreenImpact"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
   <Route Url="/logs/errors/list" Method="GET" Call="LogErrorList"/>
@@ -651,6 +652,13 @@ ClassMethod ScreenAction(pScreen As %String) As %Status
 ClassMethod ScreenRead(pScreen As %String) As %Status
 {
     Quit ##class(OcuPilot.Api.ScreenRead).Handle(pScreen)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/impact</code>: delegates to
+/// <class>OcuPilot.Api.ScreenImpact</class> and carries no logic of its own.</p>
+ClassMethod ScreenImpact(pScreen As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.ScreenImpact).Handle(pScreen)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/errors/namespaces</code>: delegates to

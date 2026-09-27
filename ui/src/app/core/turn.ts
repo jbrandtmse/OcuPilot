@@ -38,6 +38,7 @@
 import type { ApiService, JsonResult } from './api';
 import { CHANGE_ACTIONS, type ChangeAction, type ChangeBus } from './change-bus.ts';
 import { parseCitations, type Citation } from './citations.ts';
+import { impactOf, type Impact } from './impact.ts';
 import { readBackOf, type ReadBack } from './read-back.ts';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
@@ -257,6 +258,11 @@ export interface TurnProposal {
    * Optional so a literal built before it existed still compiles.
    */
   readonly readBack?: ReadBack | null;
+  /**
+   * The impact of the removal this proposal carries (AD-8), as the instance read it at the mint, or
+   * `null` for a write with none. Optional so a literal built before it existed still compiles.
+   */
+  readonly impact?: Impact | null;
 }
 
 /**
@@ -580,6 +586,7 @@ function parseProposal(value: unknown): TurnProposal | null {
     consequence: textAt(row, 'consequence'),
     privilege: parseProposalPrivilege(row['privilege']),
     readBack: readBackOf(row['readBack']),
+    impact: impactOf(row['impact']),
   };
 }
 
