@@ -1,0 +1,316 @@
+---
+title: 'Story 16.21: Security findings, with a fix you confirm'
+type: 'feature'
+created: '2026-09-26'
+status: 'ready-for-dev'
+baseline_revision: 'cdf427754ed15f0fafa310025005908bda5cce4b'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
+warnings: ['oversized']
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** Home says nothing about the settings that put the instance at risk or stop it working, so a person finds them only by visiting each screen. The contest rival leads with findings; OcuPilot can turn each finding's fix into an ordinary confirmed proposal.
+
+**Approach:**
+
+- Extract the shell-chrome field-read base (DW-1400) and build a fourth reader on it: `Kernel.Shell.Findings`, served as `GET /api/ocupilot/ui/findings`. It runs nine checks in two groups, each through its owning screen's pair gate and read, as the caller.
+- Home shows a Findings panel under the performance row. A finding names its object, why it matters and what to do, and offers **Fix it** (an existing write tool), **Open** (no write tool yet) or the prohibited set's own refusal sentence.
+- **Fix it** is the person's click: Home opens the affected screen on that object, then the panel sends a fixed sentence per check. The agent proposes through the ordinary proposal path, and nothing changes until Confirm.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- **The checks** (keys, group, owning screen whose pair gate and read each uses, rule):
+  - `webapp-open` (security; `WebAppList`'s gate and read, then each enabled row's `WebApp.App` `GET` through `AdminPort` as `Impact.GrantingApplications` does, then `Effective.Read`/`Compose` over its application roles):
+    - The application's own `AutheEnabled` (an integer) has bit 64.
+    - Its application roles (the `TargetRoles` of `MatchRoles` entries whose `MatchRole` is `""`) compose to `all`, or to a letter granted by a role (not held only publicly) that is `U` on any `%Admin_*` or `%Development` resource, or `W` on any `%DB_*` resource.
+    - `/api/monitor` is left to the next check.
+  - `monitor-open` (security; the same gate and `GET`): `/api/monitor` enabled with bit 64.
+  - `all-holder` (security; `UserList`'s gate and read, whose `GET` rowGet carries `Roles`, then `Effective`): every row with `Enabled` whose `Roles` compose to `all`.
+  - `certificate` (security; `X509CredentialList`, whose `CERTINFO` rowGet carries `ValidityNotAfter` as UTC `YYYY-MM-DD HH:MM:SS`):
+    - expired when it is earlier than `$ZTimeStamp`;
+    - expiring when it falls within 30 × 86,400 s of it.
+  - `auditing-off` (security; `AuditingConfig`, `Security.Audit.Enabled` `GET`): `Enabled` false.
+  - `database-dismounted` (operations; `DatabaseList`, `Database.SysCRUD` `LIST`): a row whose `Status` does not begin with `Mounted` (measured values: `Mounted/RW`, `Mounted/R`, `Dismounted`).
+  - `database-full` (operations; the same rows, mounted only): `MaxSize` is MB as text or `Unlimited`, and `Size` is integer MB. A finding when `MaxSize` is numeric and > 0 and `Size` ≥ 85% of it, 85 being `meter-state.ts`'s warning bound.
+  - `task-manager` (operations; `TaskScheduleList`'s declared `banner`, `Task.Manager` `GET`): the answer's `banner` is `taskManagerSuspendedBanner` or `taskManagerStoppedBanner`.
+  - `task-error` (operations; the same read, whose `INFO` rowGet makes `Suspended` truthful):
+    - For each suspended row, one `Task.CRUD` `INFO` through `AdminPort` reads `Error`.
+    - A finding when `Error` is non-empty and not the vendor's `Success`.
+    - A person's suspend leaves `Error` empty (measured), and so is not a finding.
+- **Answer shape.** `{checks: [{check, group, status}], findings: [{check, group, name, id, route, scope, detail?, fix, refused?}]}`.
+  - `status` is `checked`, `unchecked` (with `pair`: the first pair the caller lacks on the owning screen, or the pair `Effective.Read` reports), `truncated` (the read hit its cap) or `failed` (the source threw or faulted; logged through the base's `LogSourceFailure`). Only `checked` may contribute "nothing to report".
+  - `fix` is `agent` (a write tool fixes it), `link` or `refused`, and `refused` is `{code, reason}` with `reason` = `Prohibited.ReasonFor(code)`.
+  - `detail` carries a check's one value: the certificate's date (`YYYY-MM-DD`), the database's percent, or the banner key.
+  - A 403 is never answered: an unreadable check is `unchecked`, and the route has no gate of its own (like `/ui/system`).
+- **Routes** (each finding's `route`, `id` and `scope`, and the target of both Fix it and Open):
+  - `web-applications/list/<Name>` for `webapp-open` and `monitor-open`;
+  - `permissions/users/<Name>`;
+  - `security/x509/<Alias>`;
+  - `security/auditing`;
+  - `os-management/databases/details/<Directory>`;
+  - `tasks/schedule`;
+  - `tasks/schedule/details/<Id>`.
+  The scope is `instance`, and the ids are encoded by the client's `entityUrl`.
+- **Fix kinds.** `agent` means `webapp-open` and `monitor-open` (`webapp.list.update`), `all-holder` (`permissions.users.update`), `auditing-off` (`security.auditing.update`) and `task-error` (`tasks.schedule.resume`). `link` means `certificate`, `database-dismounted`, `database-full` and `task-manager` (Stories 18.4 and 16.11 will add Fix it for mount and resume).
+- **Refused.** For each `all-holder` account, the verdict is `Prohibited.Prohibits` over the Users list's `remove-role` action with value `%All`. The target, payload and diff are built from the same public entry points the action route's preview uses: `Operation.Read`, the tool's `ScreenActionDelta` and `Mint.Merge`. A prohibited account's `fix` is `refused`, and the panel shows `reason` verbatim.
+- **Fix it.** The click opens the affected screen with `entityUrl(route, id, scope, router.url)`:
+  - `web-applications/list/<name>`, `permissions/users/<name>`, `security/auditing` and `tasks/schedule/details/<id>`.
+  - Home waits for that screen's store `lastUpdate()` to move, as `CitationNavigator.open` does, then calls `FixFinding.request(check)`.
+  - The panel takes the request and sends that check's fixed sentence with `assembleContext()`, through the same send path as `onExplainEntry`.
+  - Fix it is shown and refused under exactly `ExplainEntry`'s gate (`shown`, `reason`, `describedBy`). A declined or failed navigation sends nothing.
+- **Refresh.** Findings load when Home opens. They reload on a `changed` bus event whose `type` is `web-application`, `user`, `role`, `x509-credential`, `auditing-configuration`, `database` or `task`, and on a namespace switch. Home's 10 s tick never re-reads them (AD-43 unchanged).
+- **Copy.** All copy is new Fixed strings rows appended after EXPERIENCE.md:578, plus `strings.ts` keys appended before `} as const` (see Design Notes). Reused strings: `homeSuggestedOpen`, `impactRequires`, `impactTooMany`, the two banner keys, and the prohibited set's sentences, which come from the server. Tokens only.
+
+**Never:**
+
+- Add a write tool, read tool, governance key or `Kernel/Governance/Gate.cls` change.
+- Put instance-derived text into a user message. The five sentences are constants, and the object reaches the model only through the opened screen's own context (AD-11).
+- Put findings into Home's screen context (16.18's `context.fields` stay).
+- Duplicate a prohibited-set predicate or sentence.
+- Treat an unread check as clean.
+- Re-read findings on the tick.
+- Use lazy loading or `@defer`.
+- Edit Epic 14's hunks: `Router.cls:126-131` and `:746-756`, `EndpointCoverage.cls:115-118`, `turn.ts:40-44` and `:1133-1165`, `strings.ts:163-175`, `_components.scss:3965-4090`, `Write.cls:62-96`, `Operation.cls:320-328`, and `panel.ts` except the two additions named in Tasks.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|--------------|---------------------------|----------------|
+| Clean | Every check `checked`, no finding | Each group reads "Nothing to report." | None |
+| Unread | Caller lacks `%Admin_Secure:USE` | All five security checks (their screens all require it) are `unchecked` with that pair; the group shows "Not checked: …" lines and never "Nothing to report." | No 403 |
+| Too many | The users read hits its 1,000-row cap | `all-holder` is `truncated`; the line reads "… (too many to check)" | — |
+| Source fails | One check's read throws | That check is `failed` ("could not be read"); the other eight answer | Logged once |
+| `_SYSTEM` holds `%All` | `all-holder` finding for `_SYSTEM` | `fix` `refused`, `PROHIBITED.SYSTEMACCOUNT`, reason = `userRefusalSystemAccount`'s sentence; no Fix it | — |
+| Suspended by a person | `Suspended` without an error | No `task-error` finding | — |
+| Unlimited DB | `MaxSize` 0 | No `database-full` finding | — |
+| Boundary | Size exactly 85% / cert on day 30 | Finding / finding; at 84.9% and day 31, none | — |
+| Fix it | Click on `task-error` | Task details opens on the task; the user message equals `findingFixTask`; the context `entity` is the task id | Declined navigation: nothing sent |
+| Kill switch on | Fix it | Rendered `aria-disabled`, described by the kill-switch id | — |
+
+</intent-contract>
+
+## Code Map
+
+Server (seam and reads):
+
+- `src/OcuPilot/Kernel/Shell/About.cls` :56-130, :303-309; `SystemInfo.cls` :56-114, :262-268; `Instance.cls` :101-137, :149-171. These are the three copies of `Members`/`Payload`/`Field`/`ReadSource`/`LogSourceFailure`/`LOGSUBSYSTEM` (DW-1400). `Instance` inlines `Field` three times.
+- Fixtures that override the seam: `Test/UiAboutFixture.cls:61,89`, `Test/UiSystemFixture.cls:106,158`, `Test/InstanceFixture.cls:111,126`. Direct callers: `Test/Instance.cls:362,370`, `Test/UiSystemRead.cls:344,352`, `Test/UiAboutRead.cls:257,273,279`.
+- `src/OcuPilot/Api/UiSystem.cls:16-30` is the handler template (no gate, `RenderInternal`). `Api/UiPerformance.cls:14-32` renders a fault object. Add routes in `Api/Router.cls`:
+  - the route after `/ui/performance` at :142;
+  - the `Call` target after `UiPerformance()` at :870-873.
+- `src/OcuPilot/Test/EndpointCoverage.cls:132`: add the probe row after this one.
+- `src/OcuPilot/Kernel/Proposal/Impact.cls`:
+  - `ListRows` :332-343 gates with `Effective.Gate` (unchecked pair), then reads with `Screen.Read.Execute(descriptor, "")`, where a truncated read means `truncated`;
+  - `GrantingApplications` :211-245 does the per-app `AdminPort.Invoke("WebApp.App","GET")` and handles a 404 skip.
+  Copy this shape, and do not call Impact's private methods.
+- `src/OcuPilot/Kernel/Shell/Effective.cls`:
+  - `Compose` :53 answers `{all, allVia, resources{res:{letter:grantingRole}}}`, where `""` marks a public letter;
+  - `Read` :171 and `Gate` :252.
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls`: `Prohibits` :777, `ReasonFor` :478. The user arm is at :1228 and orders `_SYSTEM` → current user → service account → last holder.
+- `Kernel/Proposal/Operation.cls:192` `Read`, `Mint.cls:532` `Merge`, `Screen/Tool/UserUpdate.cls:213` `ScreenActionDelta` (action `remove-role`, value `Role`). The sequence to mirror is `Api/ScreenAction.cls:217-300` without the rendering.
+- `Screen/Read.cls:234` `Execute`; the `banner` in the result is at :414 and :814.
+- The descriptors:
+  - `Screen/Descriptor/WebAppList.cls` (read lacks `AutheEnabled`/`MatchRoles`);
+  - `UserList.cls:85-93` (rowGet `Roles`);
+  - `X509CredentialList.cls:71-78` (`ValidityNotAfter` is `YYYY-MM-DD HH:MM:SS`, so `beforeToday` does not parse it; compute in Findings);
+  - `AuditingConfig.cls:72`;
+  - `DatabaseList.cls` (`Status` text, LIST `MaxSize` `"Unlimited"` or MB text);
+  - `TaskScheduleList.cls:113-135` (rowGet `INFO` fields `["Suspended"]` only, and `banner`; `Task.Manager` `GET` costs about 1 s).
+- `Port/AdminPort.cls` `Invoke(endpoint, type, .query, body, .out, .http, .fault)`, as `Impact.cls:222` calls it.
+
+Client:
+
+- `ui/src/app/areas/home/home.page.ts`:
+  - template :274-434 (performance row :275-277, then `.ocu-home-remembered` :278);
+  - constructor :664-740 (store subscriptions :701/708, refresh binding :716-724);
+  - destroy :725-739.
+  A sixth `.ocu-home-block` would break `BLOCK_COUNT = 5` in `home-system-information.browser-spec.mjs`, so the panel is its own row after :277.
+- `ui/src/app/core/system-info.ts` (`load` :122 with its generation guard, `reset` :149) is the store template. Wire it at `ui/src/main.ts:216-220/275-276` and reset it at `app.ts:634-638`. The stubs go in `ui/src/app/testing/`.
+- `ui/src/app/core/explain-entry.ts` is the hand-off and gate template. The panel side is `shell/panel.ts:719` (subscribe) and `:1799-1815` (`onExplainEntry`), plus `sendWithContext` :1821 and `assembleContext` :1834.
+- `ui/src/app/shell/citation-navigator.ts:53-81` is the navigate-then-wait pattern. `core/navigation.ts:653` `entityUrl`; `core/entity-id.ts:41` `joinCompositeId`.
+- `ui/src/app/core/change-bus.ts:104` `subscribe`; the event field is `type`.
+- `ui/src/app/core/meter-state.ts`: the warning bound is ≥ 85.
+- `ui/src/app/core/strings.ts`: append before `} as const` at :2965. Reuse `homeSuggestedOpen` :480, `impactRequires`/`impactTooMany` :2957/2959 and `taskManagerSuspendedBanner`/`taskManagerStoppedBanner` :280/282. `tools/strings.test.mjs` matches by text, and `/** EXPERIENCE.md:n */` comments are line-checked.
+- EXPERIENCE.md (`_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`): the last Fixed strings row is :578. Edit the Home surfaces row :83 in place.
+- Browser:
+  - the Home precedents are `home-performance.browser-spec.mjs` (principal, the structural gate at :258-292) and `home-system-information.browser-spec.mjs`;
+  - `turnprobe-spec.mjs` (`armProbeDefinition`, `scriptReply`) with `task-resume.browser-spec.mjs` is the scripted-agent pattern.
+
+## Tasks & Acceptance
+
+**Execution:**
+
+- `src/OcuPilot/Kernel/Shell/FieldRead.cls` (new) -- the base (DW-1400):
+  - parameters `LOGSUBSYSTEM` and `LOGMESSAGE`;
+  - `Members()` → `""`;
+  - `Field(pField, ByRef pContext)`, the one `Try` whose degrade value is `""`, logged;
+  - abstract-style `ReadSource(pField, ByRef pContext)` → `""`;
+  - `LogSourceFailure(pField, pException)`, which swallows its own failure;
+  - `Fields(Output pObject, ByRef pContext)`, which loops `Members`.
+  Then `About`, `SystemInfo` and `Instance` extend it and delete their copies (Instance's three accessors become `..Field(...)`). The three fixtures take the unified `ReadSource` signature. Behavior and log text are unchanged. This is a pure refactor, pinned by the existing `UiAboutRead`, `UiSystemRead` and `Instance` suites staying green.
+- `src/OcuPilot/Kernel/Shell/Findings.cls` (new) -- extends `FieldRead`:
+  - `Members` = the nine check keys;
+  - `ReadSource(check)` answers that check's `{status, pair?, findings[]}` object;
+  - `Read(Output pAnswer)` assembles the answer shape;
+  - a `PortClass()`/`ProhibitedClass()` seam for fixtures.
+  A check whose `Field` degrades to `""` is `failed`. The rules, gates, `refused` composition and 85%/30-day constants are as in Boundaries, with the constants as class parameters. Dates use `$ZTimeStamp` (UTC; see Design Notes for the certificate time zone).
+- `src/OcuPilot/Api/UiFindings.cls` (new) -- `Handle()` has `UiSystem`'s shape: `Findings.Read`, then `Response.JSON`, with `RenderInternal` on failure.
+- `src/OcuPilot/Api/Router.cls` -- add `<Route Url="/ui/findings" Method="GET" Call="UiFindings"/>` after :142, and `ClassMethod UiFindings()` after :873.
+- `src/OcuPilot/Test/EndpointCoverage.cls` -- add the `/ui/findings` probe row after :132.
+- `src/OcuPilot/Test/FindingsFixture.cls`, `Test/Findings.cls` (new) -- unit legs over fixture rows for every I/O row and rule edge: each rule's positive and negative, the 85% and 30-day bounds, `MaxSize` 0, public-only letters, a disabled `%All` account, a granted-role `%All`, `/api/monitor` not double-reported, unchecked with pair, truncated, failed.
+- `src/OcuPilot/Test/FindingsWire.cls` (new, `ocupilot-ci`; declares `OCUPILOT_ALLOW_PRINCIPALS`) -- over HTTP, with seeds removed after:
+  - an unauthenticated probe application `/csp/ocuprobe1621` whose application role is `%DB_USER` reads as a `webapp-open` finding;
+  - the same application with a probe role holding only `%DB_USER:R` does not;
+  - the demo task reads as `task-error`;
+  - `_SYSTEM` reads `refused` with the same code and reason as `GET /screens/<users>/impact?action=remove-role&id=_SYSTEM&value=%All`;
+  - a least-privileged principal without `%Admin_Secure:USE` reads those checks `unchecked`, naming the pair, and holds no finding from them.
+- `scripts/ci-throwaway.sh` -- add `# classes: FindingsWire` as a new line after :217, in the `OCUPILOT_ALLOW_PRINCIPALS` roster. Epic 14's hunks begin at :224.
+- `ui/src/app/core/findings.ts` (new) + `ui/tools/findings.test.mjs` -- the framework-free store: `FINDINGS_PATH`, a generation-guarded `load`, `reset`, `answered`/`failed`, and `data()`. The pure `findingLines(answer)` builds each group's lines (finding, unchecked, failed, clean).
+- `ui/src/app/core/fix-finding.ts` (new) + tests -- the hand-off: `request(check)`/`take()`/`subscribe`. Its gate delegates to the `ExplainEntry` instance. The check → sentence-key map is closed, and a check not in it throws.
+- `ui/src/app/areas/home/findings-panel.ts` (new) -- the presentational panel:
+  - two sections, each with an `h2` and a list;
+  - each finding's sentence, why and what-to-do lines;
+  - an action: Fix it (`button`, `aria-disabled` under the gate, `aria-describedby` the finding's sentence), Open (a link), or the refusal sentence.
+  Names are rendered as text.
+- `ui/src/app/areas/home/home.page.ts` (+ `home.page.spec.ts`) -- inject `Findings`, `FixFinding`, `ChangeBus`, `ScreenStores` and `Router`:
+  - load on construct and on a namespace switch;
+  - reload on the listed bus types;
+  - render the panel after :277;
+  - add the Fix it navigate-and-wait, then `request`;
+  - the destroy stops everything.
+- `ui/src/main.ts`, `ui/src/app/app.ts`, `ui/src/app/testing/findings.ts` -- create, provide and sign-out reset `Findings` and `FixFinding`, and add the stubs.
+- `ui/src/app/shell/panel.ts` -- exactly two additions: a `fixFinding.subscribe` beside :719, and `onFixFinding()` beside `onExplainEntry` (:1799-1815). `onFixFinding` does `take()`, re-checks the gate, then `sendWithContext(STRINGS[key], this.assembleContext())`. Pin it with `ui/src/app/shell/panel-fix-finding.spec.ts` (new).
+- `ui/src/app/core/strings.ts`, EXPERIENCE.md -- the keys and rows in Design Notes. EXPERIENCE.md :83 is edited in place: "the performance row first, then the Findings panel (Story 16.21)".
+- `ui/src/styles/_components.scss` -- append the panel styles at the end of the file. Tokens only.
+- `ui/browser/home-findings.browser-spec.mjs` (new; refuses the live container, seeds and removes its probe app):
+  - AC1: both groups render, and the probe app's finding names it;
+  - AC2: the `_SYSTEM` line shows the refusal sentence and no Fix it;
+  - AC3: Fix it on the `task-error` finding opens Task details, the scripted turn's user message equals `findingFixTask`, and the proposal card appears with Confirm;
+  - AC4: a principal without `%Admin_Secure:USE` sees "Not checked" lines;
+  - AC5: the structural gate passes in light, narrow and dark with no new baseline entry.
+
+**Acceptance Criteria:**
+
+- Given Home, when it renders for `_SYSTEM` on `ocupilot-ci` with the demo fixture, then a Findings panel with Security and Operations groups follows the performance row. It lists:
+  - `/oauth2`, `/csp/user` and `/api/monitor`;
+  - the four `%All` accounts;
+  - the demo task, and neither task 4 nor task 21.
+  It does not list `/ocupilot`. Each finding shows its name, why and what to do, and a group with none says "Nothing to report."
+- Given a finding with `fix` `agent`, when the person chooses Fix it, then the affected screen opens on that object and a turn is sent whose user message is that check's fixed sentence and whose context `entity` is the object. The agent's proposal is an ordinary card (comparison, privilege line, impact where 16.19 applies, Confirm), and the instance is unchanged until Confirm.
+- Given a confirmed fix, when Home is next shown, or a `changed` event of a covered type arrives while it shows, then its findings reload and the fixed finding is gone.
+- Given a `link` finding, when rendered, then it shows Open to its screen and no Fix it.
+- Given an `all-holder` finding the prohibited set refuses, when rendered, then it shows no Fix it and the server's `reason`, character-equal to that code's published sentence.
+- Given a caller who may not read a check's screen, when Home renders, then that check contributes no finding and no "Nothing to report", and says "Not checked" with the pair.
+- Given the DW-1400 extraction, when About, System information and the status bar are read, then each answers exactly as before (their suites unchanged and green) from one `FieldRead` base, which `Findings` also extends.
+
+## Spec Change Log
+
+## Review Triage Log
+
+## Design Notes
+
+**Governing ADs:**
+
+- **AD-8 and AD-29:** each check is read as the caller behind its owning screen's pair set (`Effective.Gate`), with no elevation. An unread check is reported, never inferred.
+- **AD-10 and AD-53:** the refusal is `Prohibits` plus `ReasonFor`, the one home and the one sentence.
+- **AD-11:** the user message is one of five constants, and the object travels only as the opened screen's context `entity` and rows.
+- **AD-24:** Home's context is unchanged.
+- **AD-36:** the declared reads are reused, and the per-row `GET` follows Impact's precedent.
+- **AD-40:** Confirm stays the person's.
+- **AD-43:** there is no tick read. A full pass costs about 1.8 s (measured below), which is 18% of a 10 s tick per open Home and is dominated by the vendor's 1 s Task Manager read. A finding changes only by a write, and a write publishes the change event that reloads the panel. The performance row stays the only thing the tick re-reads.
+- **AD-5, AD-13, AD-14, AD-16** (switching lives inside the ports), **AD-19, AD-20, AD-39** and **AD-58/AD-57:** untouched. The read-back and try-it paths are not reached.
+- **AD-22:** no key.
+
+**Why no read tool and no Home context.** A finding's object reaches the model on the screen that owns it, under that screen's context cap and secret list. Findings in Home's context would put entity names on every Home turn for no request that needs them. The panel is shell chrome, like `/ui/system`.
+
+**Why the person's click opens the screen.** An agent navigation would need the object's name in the user message, and AD-11 forbids that. The click is user-initiated, so it is not announced (a citation-chip click is the precedent), and the form guard still applies.
+
+**Consumes / Consumed-by / Integration.**
+
+- **Consumes:**
+  - 16.19's `Effective`, `Prohibits` over a remove-role preview, and the impact line on the `%All` removal the agent proposes;
+  - 16.17's read-back on the confirmed fix;
+  - 16.18's Home layout, left intact;
+  - 11.2's `ExplainEntry` gate;
+  - 7.2's remove role, 7.4's auditing enable, 5.11's resume and 9.2's web-app update tools.
+- **Consumed-by:** 16.22's Guardrails page reads the same `Prohibited.ReasonFor` sentences (inference until its plan); 16.11 and 18.4 will flip `task-manager` and `database-dismounted` to `agent`.
+- **Integration ACs:** `FindingsWire` (the impact route and the findings route agree on `_SYSTEM`) and browser AC3 (Home drives the panel and proposal path on a real instance).
+
+**Ledger.** DW-1400 is addressed by `FieldRead`. DW-118 is declined, because it was resolved by 15.6.
+
+**Concurrent epics.** Epic 14's hunks are listed under Never and avoided. `panel.ts` gains only the two additions, away from its hunks at 21, 72, 232, 468, 678-688, 1287-1330 and 1868. Epic 18 has no branch, and Epic 23 has no source diff.
+
+**Copy (EXPERIENCE.md rows appended after :578; `strings.ts` keys in brackets).** Design Notes defines the text here; the implementer transcribes it.
+
+Every value below is new unless named as reused, and each `|` row is one Fixed strings row:
+
+1. Panel: `"Findings"` [`findingsHeading`] · `"Security"` [`findingsSecurity`] · `"Operations"` [`findingsOperations`] · `"Nothing to report."` [`findingsNothing`] · `"Not checked: <check>"` [`findingsNotChecked`] · `" (could not be read)"` [`findingsCouldNotRead`] · `"Fix it"` [`findingsFix`]. Also reused, so no row: `homeSuggestedOpen` ("Open"), `impactRequires`, `impactTooMany`, `auditingStatusOff` ("Auditing is off."), and `taskManagerSuspendedBanner`/`taskManagerStoppedBanner`.
+2. The nine `<check>` names: `"web applications open without signing in"` · `"the monitoring API"` · `"accounts holding %All"` · `"X.509 certificates"` · `"auditing"` · `"database mounts"` · `"database sizes"` · `"the Task Manager"` · `"suspended tasks"` [`findingsCheck<Key>`].
+3. Findings, each as sentence · why · what to do, with `<name>` rendered as text [`finding<Key>`, `finding<Key>Why`, `finding<Key>Do`]:
+   - **webapp-open:** `"<name> can be reached without signing in and holds a database or administrative role."` · `"Anyone who can reach this address can use that privilege."` · `"Require a password to sign in, or remove the role."`
+   - **monitor-open:** `"The monitoring API, <name>, answers without signing in."` · `"Anyone who can reach the instance can read its metrics."` · `"Require a password, and give your metrics collector an account."`
+   - **all-holder:** `"<name> holds %All."` · `"Whoever signs in as this account can do anything on this instance."` · `"Take %All off every account that does not need it."`
+   - **certificate:** `"The certificate <name> expired on <date>."` / `"The certificate <name> expires on <date>."` · `"Connections that rely on it fail once it has expired."` · `"Import a renewed certificate."`
+   - **auditing-off:** (reused `auditingStatusOff`) · `"Nothing that happens on this instance is recorded, OcuPilot's own changes included."` · `"Turn auditing on."`
+   - **database-dismounted:** `"The database <name> is dismounted."` · `"Nothing can read or write it until it is mounted."` · `"Mount it from its details."`
+   - **database-full:** `"The database <name> is at <percent>% of its maximum size."` · `"Writes to it fail once it is full."` · `"Raise its maximum size, or free space in it."`
+   - **task-manager:** (the reused banner sentence, which carries its own why) · `"Resume the Task Manager."` / `"Start the Task Manager."`
+   - **task-error:** `"The task <name> was suspended after an error."` · `"It does not run again until it is resumed."` · `"Read its error, then resume it."`
+4. The five Fix it user messages [`findingFix<Key>`], constants carrying no instance text:
+   - `"This web application can be reached without signing in and holds a database or administrative role. Propose requiring a password to sign in to it."`
+   - `"The monitoring API answers without signing in. Propose requiring a password to sign in to it."`
+   - `"This account holds %All. Propose taking %All off it."`
+   - `"Auditing is off on this instance. Propose turning it on."`
+   - `"This task was suspended after an error. Propose resuming it."`
+
+Where each row applies: Home's Findings panel (Story 16.21, AD-10, AD-11), under the performance row. A group says "Nothing to report." only when every one of its checks was read. An unread check reads "Not checked: <check>" plus " (requires <pair>)", " (too many to check)" or " (could not be read)". A refused fix shows the prohibited set's own sentence from the server, never a copy. Each row ends `[ADDED 2026-09-26 - Story 16.21]`.
+
+**Measured on `ocupilot-ci` (2026-09-26, every seed removed and read back):**
+
+- **Unauthenticated applications with roles.** `/oauth2` holds `%All`, `/csp/user` holds `%DB_USER` RW, and `/csp/healthshare/hssys/app/api` holds four `%DB_*` RW, so all three are findings. `/api/monitor` holds `%DB_IRISSYS` RW, and an anonymous `/api/monitor/metrics` answers 200. `/ocupilot` and `/api/ocupilot/readiness` hold only `%DB_HSCUSTOM:R`, so they are not findings.
+- **The admin API.** The web application LIST carries no roles; its `GET` carries `AutheEnabled` (integer) and `MatchRoles`. The Users LIST carries no roles; its `GET` does.
+- **`%All` holders.** They are `SuperUser`, `_SYSTEM`, `_Ensemble` and `irisowner`. The expected verdicts for `_SYSTEM` and the two service accounts are refused, and SuperUser gets Fix it (inference from `Prohibited` :1228 and `SERVICEACCOUNTS` :387; `FindingsWire` pins it).
+- **Suspended tasks.** Tasks 4 and 21 are `Suspended` with an empty `Error`, so they are not findings. Demo task 1002 was suspended after an error, and is one. The task LIST answers `Suspended:false` for every row; `INFO` answers the truth.
+- **Cost.** A full pass over HTTP takes about 1.8 s, and more than half of that is `Task.Manager` `GET` at about 1 s.
+
+**Named gap.** The instance-wide authentication mask (`Security.System` `AutheEnabled`) also gates an application, and no admin endpoint reads it. The check therefore reads each application's own setting, as its editor does. Where the instance itself refuses unauthenticated access, the finding over-reports (inference).
+
+## Verification
+
+**Commands** (the targeted runs are marked `(loop)`, and the full runs `(once, before dev_complete)`):
+
+- `cd ui && npm run test:tools` (loop) -- green, including `findings.test.mjs`, `fix-finding.test.mjs`, `strings.test.mjs`, `self-protection.test.mjs`, `citations.test.mjs` and `ci.test.mjs`. Mutations:
+  - `findingLines` prints "Nothing to report." for a group holding an unchecked check → red.
+  - Drop `FindingsWire` from the roster → `ci.test.mjs` red.
+- `cd ui && npx ng test --include src/app/areas/home/home.page.spec.ts --include src/app/shell/panel-fix-finding.spec.ts` (loop) -- green. Mutations:
+  - Fix it sends before the target store updates → red.
+  - The panel adds the finding's name to the message → red.
+  - Render Fix it for `fix: "refused"` → red.
+  - Drop the `user` bus type → the reload case red.
+- `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.Findings`, then `FindingsWire`, `UiAboutRead`, `UiAboutWire`, `UiSystemRead`, `UiSystemWire`, `Instance`, `RefusalCopy`, `ImpactRoute`, `Effective`, `EndpointCoverage`, `SurfaceCoverage`, `ScreenGrounding` and `TurnContext`, one at a time (loop) -- green. Mutations:
+  - Public letters count as privileged → `Findings` red.
+  - The 85% test uses `>` → the boundary leg red.
+  - Skip `Effective.Gate` → the `FindingsWire` least-privilege leg red.
+  - Hand-write `_SYSTEM`'s reason → the `FindingsWire` agreement leg red.
+  - A failed source reads `checked` → red.
+  - Drop the route's probe row → `EndpointCoverage` red.
+  - The `FieldRead` degrade stops logging → `UiSystemRead` :344 leg red.
+- `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/ && OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/home-findings.browser-spec.mjs browser/home-performance.browser-spec.mjs browser/home-system-information.browser-spec.mjs browser/about-help-links.browser-spec.mjs browser/account-and-filter.browser-spec.mjs browser/explain-screen.browser-spec.mjs browser/explain-entry.browser-spec.mjs browser/suggested-view.browser-spec.mjs browser/suggested-prompts.browser-spec.mjs browser/screen-grounding.browser-spec.mjs browser/preferences-integration.browser-spec.mjs browser/rail-icons.browser-spec.mjs browser/task-resume.browser-spec.mjs browser/users-actions.browser-spec.mjs browser/impact.browser-spec.mjs browser/screen-height.browser-spec.mjs browser/a11y-structural-invariants.browser-spec.mjs` (loop). These are the story's spec plus every existing spec that Home, the panel hand-off or the reused paths could break. Expected: green, with no new structural baseline entry. Mutation: Fix it navigates without waiting → AC3 red.
+- `cd ui && npm test`, `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh` (once, before dev_complete) -- green. The bundle stays under 1900 kB, or is re-based under DW-1166 if it crosses; the hard stop is 4000 kB.
+- The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before dev_complete) -- green.
+
+## Auto Run Result
+
+Status: ready-for-dev
+Blocking condition: none
+
+Planned from `epic-16-context.md` (cached, valid), the full spine, and measurements on `ocupilot-ci` (every seed removed and read back). No AD change is needed: AD-43's tick scope, AD-24's Home context and AD-10's one home are all kept. DW-1400 is addressed (`FieldRead`), and DW-118 is declined (resolved by 15.6).
