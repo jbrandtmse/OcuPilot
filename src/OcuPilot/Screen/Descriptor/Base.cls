@@ -16,7 +16,8 @@
 /// root), <code>area</code> (a key from <class>OcuPilot.Screen.Area</class>),
 /// <code>labelKey</code> (a key in the one client string source, used for the side-bar entry
 /// and the screen title), <code>sideBarPosition</code>, <code>archetype</code>,
-/// <code>built</code>, <code>privileges</code> (the AD-8 pair set),
+/// <code>built</code>, <code>privileges</code> (the AD-8 pair set), <code>ownPrivileges</code>
+/// (those of its pairs it requires beyond its area's set, AD-8, or absent),
 /// <code>entityType</code> plus <code>secondaryEntityTypes</code> (AD-14 keys, all of which
 /// participate in change-event routing), <code>scope</code>
 /// (<code>namespace</code> or the literal <code>instance</code>, AD-13),
@@ -214,6 +215,21 @@ ClassMethod PrivilegePairs() As %List
     Set tPairs = ""
     Try {
         Set tPairs = ##class(OcuPilot.Screen.Area).PairsFrom(..CachedValue("privileges"))
+    } Catch {
+        Set tPairs = ""
+    }
+    Quit tPairs
+}
+
+/// <p>The pairs of <method>PrivilegePairs</method> this screen declares its own, in the same form:
+/// pairs it requires beyond its area's set, which gate this screen alone and are left out of
+/// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> (AD-8). Empty when it declares
+/// none.</p>
+ClassMethod OwnPrivilegePairs() As %List
+{
+    Set tPairs = ""
+    Try {
+        Set tPairs = ##class(OcuPilot.Screen.Area).PairsFrom(..CachedValue("ownPrivileges"))
     } Catch {
         Set tPairs = ""
     }

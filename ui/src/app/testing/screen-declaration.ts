@@ -23,6 +23,7 @@ export function screenDeclaration(overrides: Partial<ScreenDeclaration> = {}): S
     refreshRates: [],
     refreshDefault: 0,
     privileges: [],
+    ownPrivileges: [],
     entityType: 'user',
     entityLabelKey: '',
     secondaryEntityTypes: [],

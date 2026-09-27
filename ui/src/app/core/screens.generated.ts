@@ -348,6 +348,8 @@ export interface ScreenDeclaration {
   /** The rate the framework starts at when none is remembered: one of `refreshRates`, or `0`, off. */
   readonly refreshDefault: number;
   readonly privileges: readonly PrivilegePair[];
+  /** The pairs of `privileges` it requires beyond its area's set, gating this screen alone (AD-8). */
+  readonly ownPrivileges?: readonly PrivilegePair[];
   readonly entityType: string;
   /** The string key of the singular noun for `entityType`, or `''` (AD-5, AD-14). */
   readonly entityLabelKey: string;
@@ -507,14 +509,6 @@ export const AREAS: readonly AreaDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
-      },
-      {
-        "resource": "%Ens_EventLog",
-        "permission": "USE"
-      },
-      {
-        "resource": "%DeepSee_Portal",
-        "permission": "USE"
       }
     ]
   },
@@ -3233,6 +3227,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "USE"
       }
     ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      }
+    ],
     "entityType": "log-entry",
     "secondaryEntityTypes": [],
     "scope": "instance",
@@ -3437,6 +3437,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshes": false,
     "refreshRates": [],
     "privileges": [
+      {
+        "resource": "%Ens_EventLog",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
       {
         "resource": "%Ens_EventLog",
         "permission": "USE"

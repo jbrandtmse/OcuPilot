@@ -2,23 +2,15 @@
 title: 'Story 16.8: The six secondary log viewers'
 type: 'feature'
 created: '2026-09-27'
-status: 'in-progress'
-baseline_revision: '4ace0f45eaa80442913cad545a475af0b3b19409'
+status: 'done'
+baseline_revision: '95515d9d55100694da203a8cdb3fb4eaef7523ff'
 baseline_commit: '4ace0f45eaa80442913cad545a475af0b3b19409'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
 warnings: ['oversized']
-deferred:
-  - summary: >-
-      The Logs area now also requires %Ens_EventLog:USE, so a principal without it, such as the stock %Manager role, loses the whole Logs rail item.
-    evidence: |-
-      Spec Tasks add the pair to Area.cls:117 and AD-8's area coverage requires it; %Manager lacks %Ens_EventLog:USE on ocupilot-ci (measured);
-      WireSecurityRead's AUDITUSER now reads false:%Ens_EventLog:USE. A product call (decision-pending): keep, or amend AD-8's area rule.
-    location: >-
-      src/OcuPilot/Screen/Area.cls:120
-    severity: medium
+deferred: []
 ---
 
 <intent-contract>
@@ -222,7 +214,7 @@ Rejected:
 
 ### Rework (decision, iteration 1)
 
-- [ ] [Decision] DW-1755, decided at the merge gate (option B; AD-8 amended 2026-09-27, "An area's pair set covers its screens' pairs, except pairs a screen declares its own"): restore the Logs area's pair set in `src/OcuPilot/Screen/Area.cls` to Release 1's (`%Admin_Operate:USE`, `%Admin_Secure:USE`, `%DB_IRISSYS:READ`), and let a descriptor declare pairs beyond its area's as its own so `Screen.Registry.AreaCoverageProblem` leaves them out of the coverage check. The event-log descriptor declares `%Ens_EventLog:USE` and the analytics descriptor `%DeepSee_Portal:USE` as their own; each screen is still hidden from the side bar and command box and refused on its route and read tool for a caller without its pair (the existing per-screen gate). Keep the declaration validated identically wherever descriptors are validated (`Screen/Registry.cls` and, if it mirrors privilege pairs, `ui/tools/screen-mirror.mjs`), with a refusal for an own pair the screen's privilege set does not contain. Update `Area.cls`'s doc paragraph to match (delete the sentence it no longer holds). Tests: (a) a registry leg that an own pair passes coverage and an undeclared extra pair is still refused; (b) an integration leg on `ocupilot-ci` with a least-privileged principal holding exactly the Release 1 Logs pairs (plus what those screens need, as the existing Logs tests use) and **not** `%Ens_EventLog:USE`: the Logs area reads allowed, messages.log and alerts.log read allowed, and only the event-log screen and its read tool are refused naming `%Ens_EventLog:USE`; remove the principal after. Pin (b) with a Rule 19 mutation (put `%Ens_EventLog:USE` back in the area set -> the leg reds) and write its `mutation:` line. Re-run `WireSecurityRead` (its AUDITUSER expectation changed with the area set), `Descriptor`, `Wire`, `ScreenRead`, `EndpointCoverage`, `SurfaceCoverage`, `LogSecondary*` and the `secondary-logs` browser spec, one at a time.
+- [x] [Decision] DW-1755, decided at the merge gate (option B; AD-8 amended 2026-09-27, "An area's pair set covers its screens' pairs, except pairs a screen declares its own"): restore the Logs area's pair set in `src/OcuPilot/Screen/Area.cls` to Release 1's (`%Admin_Operate:USE`, `%Admin_Secure:USE`, `%DB_IRISSYS:READ`), and let a descriptor declare pairs beyond its area's as its own so `Screen.Registry.AreaCoverageProblem` leaves them out of the coverage check. The event-log descriptor declares `%Ens_EventLog:USE` and the analytics descriptor `%DeepSee_Portal:USE` as their own; each screen is still hidden from the side bar and command box and refused on its route and read tool for a caller without its pair (the existing per-screen gate). Keep the declaration validated identically wherever descriptors are validated (`Screen/Registry.cls` and, if it mirrors privilege pairs, `ui/tools/screen-mirror.mjs`), with a refusal for an own pair the screen's privilege set does not contain. Update `Area.cls`'s doc paragraph to match (delete the sentence it no longer holds). Tests: (a) a registry leg that an own pair passes coverage and an undeclared extra pair is still refused; (b) an integration leg on `ocupilot-ci` with a least-privileged principal holding exactly the Release 1 Logs pairs (plus what those screens need, as the existing Logs tests use) and **not** `%Ens_EventLog:USE`: the Logs area reads allowed, messages.log and alerts.log read allowed, and only the event-log screen and its read tool are refused naming `%Ens_EventLog:USE`; remove the principal after. Pin (b) with a Rule 19 mutation (put `%Ens_EventLog:USE` back in the area set -> the leg reds) and write its `mutation:` line. Re-run `WireSecurityRead` (its AUDITUSER expectation changed with the area set), `Descriptor`, `Wire`, `ScreenRead`, `EndpointCoverage`, `SurfaceCoverage`, `LogSecondary*` and the `secondary-logs` browser spec, one at a time.
 
 ## Spec Change Log
 
@@ -262,6 +254,17 @@ Rejected:
   - `[low]` `[reject]` intent-alignment 3.8: sign-out pinned in `app.spec.ts` only — the precedent for every other root store.
   - `[low]` `[reject]` intent-alignment 3.9: the fresh-stock leg depends on untouched stores — CI's browser job runs on a fresh throwaway; green on the reused one too.
   - `[low]` `[reject]` intent-alignment 3.11: route and tool compared at `maxRows=5` — one `Recent`, the cap is the caller's argument.
+
+### 2026-09-27 — Review pass (rework iteration 1, DW-1755)
+
+- verdicts: 6 findings — high 0, medium 0, low 5, false 1, maybe-false 0
+- findings:
+  - `[low]` `[reject]` verification-gap other: `## Auto Run Result` still names the Logs area gating as deferred and records no re-run of this pass — a spec edit; this pass's finalize writes it (re-runs confirmed from `%UnitTest_Result`, runs 16641-16651).
+  - `[false]` `[reject]` intent-alignment 1: the event log is shown gated in the side bar and command box, not removed — the item says "(the existing per-screen gate)", which is what renders it; unchanged.
+  - `[low]` `[reject]` intent-alignment 2: leg (b) reuses `AUDITUSER` (exactly the three Release 1 pairs plus code read), removed in `OnAfterAllTests` — meets "remove the principal after"; the leg asserts the missing pair first.
+  - `[low]` `[reject]` intent-alignment 3: "only the event log" rests on route/tool calls for messages and alerts plus `ScreensFor`'s ten verdicts — the other secondaries' route pairs are pinned by `LogSourceDenial` (run 16651 green); `%DeepSee_Portal` has public `USE`, so no principal can lack it.
+  - `[low]` `[reject]` intent-alignment 4: the area mutation cannot redden the event-log route/tool refusals — those are pinned by the existing `LogSourceDenial` eventlog mutation (run 16270); the item's named mutation targets the area verdict.
+  - `[low]` `[reject]` intent-alignment 5: re-run evidence not on the diff — same as the first row; `secondary-logs` re-run 6/6 on a rebuilt, redeployed bundle during triage.
 
 ## Design Notes
 
@@ -367,6 +370,7 @@ Rejected:
 
 - `cd ui && npm run test:tools` (loop) -- green: `screen-mirror`, `strings` (rows, citation shift), `navigation`, `navigation-wire`, `explain-entry`, `screen-arrival`, `structural-baseline` and `ci` (roster).
   - mutation: drop `LogSecondaryWire` from the `ci-throwaway.sh` roster → `ci.test.mjs` red (observed, reverted).
+  - mutation (DW-1755): delete the `ownPrivilegesProblem` call from `buildMirror` → the `screen-mirror.test.mjs` own-pair case red; skip its not-declared check → the same case red on the `OwnPrivilegeCases` corpus (each observed, reverted).
 - `cd ui && npx ng test --include src/app/areas/logs/log-viewer.spec.ts --include src/app/areas/logs/explain-roster.spec.ts --include src/app/app.spec.ts --include src/app/areas/home/home.page.spec.ts --include src/app/shell/command-box.spec.ts --include src/app/shell/side-bar.spec.ts --include src/app/shell/rail-wire.spec.ts --include src/app/shell/screen-outlet.spec.ts --include src/app/shell/fault-banner.spec.ts` (loop) -- green. Mutations:
   - an entries source's Load newer reads `?offset=…&identity=…` (the `loadNewer` entries branch passes the offset and `read()` drops its `!entriesMode` guard) → the Load newer case red (observed, reverted);
   - drop `afterNextRender(() => this.onBottom())` from `onLoadNewer` → the Load newer jump case red (observed, reverted);
@@ -391,6 +395,8 @@ Rejected:
   - Code review, run 16620, four mutations applied together, each reddening only its own assertion (reverted, source re-copied and byte-identical): AC7 `Rows` skips the newest entry → `TestEachToolReadsTheRoutesNewestEntries` red for all six keys; `FetchTaskErrors` executes `ErrorLog` on a wrong id → the seeded-entry leg's taskerrors row red; `FetchEvents` selects `ConfigName` before `Job` → the eventlog pid leg red; the diagnostics message cap removed → `TestADiagnosticsResultCarriesAtMostItsMessageCap` red.
   - Code review: delete `Recent`'s enum check → `LogSecondary` Page/Recent leg red for `messages` and an unknown key (run 16621, reverted).
   - Code review (client): drop the entries branch's `truncatedValue = flagAt(...)` → the log-viewer truncated case red alone (observed, reverted).
+  - DW-1755 (b): `%Ens_EventLog:USE` put back on the `logs` area → `WireSecurityRead.TestTheLogsAreaStaysOpenWithoutTheEventLogsPair` red, with the audit test's Release 1 area verdict (run 16638, reverted).
+  - DW-1755 (a): `AreaCoverageProblem` ignores own pairs → `Descriptor`'s own-pair, six-viewers and production-roster legs red (run 16639); delete `Validate`'s `OwnPrivilegesProblem` call → the own-pair leg red alone (run 16640); each reverted with `Registry` and its subclasses recompiled.
 - `cd ui && npm run build && docker cp … && node --test --test-concurrency=1 browser/secondary-logs.browser-spec.mjs browser/messages-log.browser-spec.mjs browser/messages-log-files.browser-spec.mjs browser/alerts-log.browser-spec.mjs browser/explain-entry.browser-spec.mjs browser/screen-height.browser-spec.mjs browser/a11y-structural-invariants.browser-spec.mjs` (loop) -- green, within the structural baseline.
   - mutation: `SOURCES` drops `logs/eventlog` → seeded-row leg red (observed on a rebuilt, redeployed bundle; reverted and redeployed).
   - mutation (AC3): `onExplain` sends the last row instead of the clicked one → the Explain leg red, "the entry clicked" (observed on a rebuilt, redeployed bundle; reverted, rebuilt, redeployed, 6/6).
@@ -406,4 +412,12 @@ Blocking condition: none
 - **Files:** `Port/LogSourcePort.cls` (keys, pairs, `Recent`, readers), `Api/LogPage.cls`, `Api/Router.cls`, `Screen/Area.cls`, six `Screen/Descriptor/Log*Viewer.cls`; tests `LogSecondary`, `LogSecondaryWire`, `LogSecondarySeed`, `LogRecordsFixture`, and rows in `LogSource`, `LogSourceDenial`, `LogSourceFixture`, `LogPairs`, `Descriptor`, `EndpointCoverage`, `SurfaceCoverage`, `Navigation`, `Wire`, `WireSecurityRead`, `ReadTool` (126, as ruled), `ScreenRead` (eight logsource reads); client store, page, `app.ts`, `strings.ts`, `screens.generated.ts`, specs, `secondary-logs.browser-spec.mjs`; EXPERIENCE.md two rows and the log-viewer row; `ci-throwaway.sh` roster.
 - **Review:** 26 findings; 9 patched (medium 5 entries, low 4), all test-side, each with an observed mutation; 1 deferred (Logs area gating, decision-pending); 16 rejected with reasons in the triage log. Follow-up review: false — every patch is a test whose red was observed.
 - **Verification:** full ObjectScript sweep on `ocupilot-ci`: 308 ran, 16 refused (arming), 1 known residue (`WireSecurityRead` task history); `PortGate` and `ScreenRead` failed there and were fixed, then re-run green with every log class. `npm test` 1575 tool + 1558 component (log-viewer spec now 44); browser `secondary-logs` 6/6, `messages-log`, `messages-log-files`, `explain-entry`, `screen-height`, `a11y-structural-invariants`, `audit`, `error-log`, `suggested-prompts`, `suggested-view` green; `alerts-log` 5/7 on the reused throwaway only (seeded alerts outside the 64 KB tail of a 160 KB file; path unchanged). Bundle 1.94 MB. `check-objectscript` and `lint-docs` clean. Seeded stores read back empty.
-- **Residual risk:** the Logs area gating above; `LocalFromUtc` is falsifiable only on a non-UTC instance.
+- **Residual risk:** `LocalFromUtc` is falsifiable only on a non-UTC instance.
+- **Rework iteration 1 (DW-1755, option B):**
+  - Change: the Logs area is back to its Release 1 pairs. A descriptor may declare `ownPrivileges`, a subset of its `privileges` that `AreaCoverageProblem` leaves out. `OwnPrivilegesProblem` and the mirror's `ownPrivilegesProblem` refuse an own pair outside `privileges`, over one shared corpus. `LogEventViewer` owns `%Ens_EventLog:USE` and `LogAnalyticsViewer` owns `%DeepSee_Portal:USE`.
+  - Files: `Screen/Area.cls`, `Screen/Registry.cls`, `Screen/Descriptor/Base.cls`, the two descriptors, `ui/tools/screen-mirror.mjs`, `screens.generated.ts` and `testing/screen-declaration.ts`. Tests: `DeclarationCorpus`, `Descriptor`, `WireSecurityRead` (the new leg (b), with the `AUDITUSER` area verdict now `true`), `Navigation`, `Wire`, the new fixtures `Test/OwnPair/Bad.cls` and `Test/OwnPairRegistry.cls`, and `screen-mirror.test.mjs`.
+  - Review: 6 findings (low 5, false 1), 0 patched, 0 deferred, all rejected with reasons in the triage log. Follow-up review: false (a follow-up pass that patched no high). The DW-1755 `deferred:` entry was cleared as resolved.
+  - Verification on `ocupilot-ci`, one class per call:
+    - Green: `Descriptor` 55/55 (run 16649), `Wire`, `Navigation`, `ReadTool`, `ScreenRead`, `EndpointCoverage`, `SurfaceCoverage`, `LogSecondary` and `LogSecondaryWire` (runs 16641-16648), and `LogSourceDenial` (run 16651).
+    - `WireSecurityRead` passed 23 of 24 (run 16650). The one failure is the known task-history residue.
+  - Client and checks: `npm run test:tools` 1576/1576; `screen-mirror.test.mjs` 58/58 and `--check` up to date; `secondary-logs` 6/6 on a rebuilt, redeployed bundle (1.94 MB); `check-objectscript` clean. Mutations are recorded in Verification (runs 16638-16640 and the two mirror mutations).

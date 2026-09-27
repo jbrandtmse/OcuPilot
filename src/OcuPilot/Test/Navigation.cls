@@ -263,14 +263,8 @@ Method TestAnAreaGatesOnItsOwnDeclaredSet()
     Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", "os-management: now naming the system database read")
 
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
-    ; Story 16.8's two pairs come last, so every refusal above names what it named before.
     Set tFailed = "unset"
-    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "logs: its first three held, still refused")
-    Do $$$AssertEquals(tFailed, "%Ens_EventLog:USE", "logs: naming the event log's pair")
-    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Ens_EventLog", "USE")
-    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DeepSee_Portal", "USE")
-    Set tFailed = "unset"
-    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "and the logs area is admitted once its five are held")
+    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "and the logs area is admitted once its three are held")
     Set tFailed = "unset"
     Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("tasks", .tFailed), "and the tasks area is admitted once both are held")
     Set tFailed = "unset"
