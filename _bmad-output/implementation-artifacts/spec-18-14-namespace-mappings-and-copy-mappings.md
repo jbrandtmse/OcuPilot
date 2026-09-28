@@ -3,6 +3,7 @@ title: 'Story 18.14: Namespace mappings and copy-mappings'
 type: 'feature'
 created: '2026-09-28'
 baseline_revision: '57c4a1d797567e26000d343ecd7d41069457f4a7'
+baseline_commit: 'c267f6da5e9ababff6ea59664edcb9f4050afcc7'
 status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -511,6 +512,7 @@ The work has two parts, built in order:
 - 2026-09-28, spec gate (runner, after the re-plan): the six proposed amendments under Design Notes were written into the spine verbatim (Rule 20) -- AD-8 (a paragraph), AD-10 (a bullet), AD-26 (a paragraph, with the read-once rule), AD-36 (a paragraph), AD-51 (a named case) and AD-44 (appended to the DW-1784 paragraph). Accepted at the gate: the update and copy also declare classic pages, as "every classic page whose operation it performs" reads.
 
 - 2026-09-28, implement (Task 0), for the runner (Rule 20): AD-8's Story 18.14 paragraph gains the sentence "`osmgmt.namespaces.copymappings` also declares `%DB_IRISSYS:WRITE`: a principal holding the Namespaces screens' pairs and `%Admin_Operate:USE` was answered 500, its queued copy failing `<PROTECT>` in `Config.Namespaces.CopyMaps` with the destination unchanged (measured on `ocupilot-b-ci`, 2026-09-28)."
+- 2026-09-28, runner: the implement commit (first 12a936cc) was moved by cherry-pick to 35f085bc on top of 18.1's DW-1790 fix, which the orchestrator ordered first; the code is byte-identical, and the review baseline is `c267f6da`, the cherry-pick's parent (`baseline_commit`), since `baseline_revision` 57c4a1d7 now also spans the DW-1790 commits.
 
 ## Review Triage Log
 

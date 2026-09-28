@@ -7985,3 +7985,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: InstanceFile answers 0 for /durable/iris/csp/ocupilot/index.html on ocupilot-b-ci (read-only, blind-hunter layer); DW-1790's 17:21:25Z trailer lists the bundle, and its merge_gate decision names database and journal directories only; no overwriting consumer exists yet.
 - 2026-09-28T22:34:01Z status=decision-pending owner=burndown by=cr note=owner: should an overwriting consumer also be refused OcuPilot's own served files, as self-protection?
+
+### DW-1799: A global mapping's Collation cannot be cleared from the edit form
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: reported by the implement stage's client work (mapping-form)
+- 2026-09-28T22:38:33Z status=open owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=in-story LOW, adjudicated at 18.14's gate
+
+### DW-1800: The mapping form's locator screen segment opens the create route without its namespace, which shows the namespace-absent message
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: reported by the implement stage's client work (locator segment of the mapping form)
+- 2026-09-28T22:38:33Z status=open owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=in-story LOW, adjudicated at 18.14's gate
+
+### DW-1801: A mapping create refused on Namespace shows its sentence only in the form's summary, on no field
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the form draws no Namespace control, so a MAPPING.NAMESPACE.ABSENT violation has no field to attach to
+- 2026-09-28T22:38:33Z status=open owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=in-story LOW, adjudicated at 18.14's gate
