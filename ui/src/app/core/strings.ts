@@ -3291,7 +3291,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:574 */
   tryItCurlAccessToken: '<AccessToken>',
   /** EXPERIENCE.md:574 */
-  tryItCurlNote: 'The command leaves out your access token and every secret value: each reads as a name in angle brackets for you to replace.',
+  tryItCurlNote: 'The command replaces your access token, and each value this console masks in its record of the request, with a name in angle brackets for you to fill in. Check the command for any other secret before you share it.',
 } as const;
 
 /**
