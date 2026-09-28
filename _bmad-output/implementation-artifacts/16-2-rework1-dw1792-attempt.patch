@@ -1,0 +1,744 @@
+diff --git a/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md b/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md
+index 2011a16c..5d39fb0b 100644
+--- a/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md
++++ b/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md
+@@ -354,7 +354,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
+ | "Suggested view" | the eyebrow over Home's suggested-view block [ADDED 2026-09-18 — see the story change log] |
+ | "Open" | the accessible name of a suggested-view line's open control, whose › is decorative [ADDED 2026-09-18 — see the story change log] |
+ | "Application errors in <NAMESPACE>: <n> on <DATE>" · "Application errors in <NAMESPACE>: could not be read" | the application-errors attention line, and the prompt that line places in the composer; or, when the read was refused or failed, the line saying so (DW-1147) [ADDED 2026-09-18 — see the story change log] [AMENDED 2026-09-25 - Story 11.3] |
+-| "REST API explorer" · "Spec-based" · "No REST applications in <NAMESPACE>." · "Web sessions" · "Session" · "Expires (UTC)" · "No web sessions on this instance." · "end a web session that is stuck or unwanted" · "End session" · "Ending this session discards what its application kept for it, and its next request starts a new session. This cannot be undone." · "OcuPilot itself is running in this session. It cannot be ended from OcuPilot." · "Web session" · "Which web sessions are open on this instance, and for which applications?" · "Which users have more than one web session open?" · "Which web sessions expire soonest?" | REST API explorer: its side-bar entry and screen title, the second in the Web applications area; its column header beyond the shared Name, Enabled and Dispatch class, with Namespace reusing the namespace switch's accessible name; and its empty state, whose second line is the Web applications row's. Web sessions (Story 16.2), the third Web applications entry (`:134`, `:167`): its side-bar entry and screen title; its session id and expiry column headers beside the Processes row's process id and user headers and the shared application header, the process cell linking to Process details; its empty state and the agent invitation that follows it; its End session row action, whose typed-name dialog asks for the session id and states the consequence; the refusal a session OcuPilot is itself running in carries, drawn on the row before a click and returned by the instance after one (`:220`); the proposal card's noun; and its three suggested prompts [ADDED 2026-09-28 - Story 16.2] |
++| "REST API explorer" · "Spec-based" · "No REST applications in <NAMESPACE>." · "Web sessions" · "Session" · "Expires (UTC)" · "No web sessions on this instance." · "end a web session that is stuck or unwanted" · "End session" · "Ending this session discards what its application kept for it, and its next request starts a new session. This cannot be undone." · "OcuPilot itself is running in this session. It cannot be ended from OcuPilot." · "This session's own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session." · "Web session" · "Which web sessions are open on this instance, and for which applications?" · "Which users have more than one web session open?" · "Which web sessions expire soonest?" | REST API explorer: its side-bar entry and screen title, the second in the Web applications area; its column header beyond the shared Name, Enabled and Dispatch class, with Namespace reusing the namespace switch's accessible name; and its empty state, whose second line is the Web applications row's. Web sessions (Story 16.2), the third Web applications entry (`:134`, `:167`): its side-bar entry and screen title; its session id and expiry column headers beside the Processes row's process id and user headers and the shared application header, the process cell linking to Process details; its empty state and the agent invitation that follows it; its End session row action, whose typed-name dialog asks for the session id and states the consequence; the refusal a session OcuPilot is itself running in carries, drawn on the row before a click and returned by the instance after one (`:220`); the refusal a preserve-mode session carries the same way, because its own process holds its lock, pointing to that process in Process details; the proposal card's noun; and its three suggested prompts [ADDED 2026-09-28 - Story 16.2] |
+ | "OpenAPI document" · "Path" · "Verb" · "Summary" · "Parameters" · "Responses" · "Required" · "Raw" · "This document declares no paths." · "read this document" · "This document was cut at the row cap — some operations are not shown." | OpenAPI document viewer: its screen title, reached from the REST API explorer's name cell and never a side-bar entry; its declared table's column labels, which the descriptor grammar requires of a screen that declares a read and which the viewer's own page does not draw; the two section headings inside an open path and the required-parameter marker; the Raw toggle; its empty state; the action slot the request-refused pattern resolves when its read is refused for privilege; and its cap notice, which names no max-rows control because this screen carries none |
+ | "Created by" · "Escalation only" · "No roles on this instance." | Roles list, the second Permissions entry, whose side-bar entry and screen title reuse the Users row's "Roles"; its column headers beyond the shared Name and Description; and its empty state, which names the instance because the read is instance-scoped, and whose second line is the Web applications row's |
+ | "Resources" · "Public permission" · "Deletable" · "No resources on this instance." | Resources list side-bar entry and screen title, the third Permissions entry; its column headers beyond the shared Name, Description and Type, Deletable reading Yes or No because a system resource is not deletable; and its empty state, which names the instance because the read is instance-scoped, and whose second line is the Web applications row's |
+diff --git a/src/OcuPilot/Kernel/Proposal/Prohibited.cls b/src/OcuPilot/Kernel/Proposal/Prohibited.cls
+index 31f33937..52e54caa 100644
+--- a/src/OcuPilot/Kernel/Proposal/Prohibited.cls
++++ b/src/OcuPilot/Kernel/Proposal/Prohibited.cls
+@@ -362,6 +362,20 @@ Parameter FIELDAPPLICATION = "Application";
+ /// <p>A web session's id field, compared exactly with the serving request's own session id.</p>
+ Parameter FIELDSESSIONID = "ID";
+ 
++/// <p>The write would end a preserve-mode web session (<method>IsPreservedSession</method>): the
++/// session's own process holds its lock, so the vendor's end waits out the lock timeout and the
++/// session stays listed (AD-10 as amended 2026-09-28). Refused whatever the caller, before any
++/// <code>DELETE</code> is sent.</p>
++Parameter PRESERVEDSESSION = "PROHIBITED.PRESERVEDSESSION";
++
++/// <p>The one sentence <parameter>PRESERVEDSESSION</parameter> carries, caller-neutral, published
++/// in EXPERIENCE.md's Fixed strings and pinned equal to <code>webSessionRefusalPreserved</code> by
++/// <file>ui/tools/self-protection.test.mjs</file>.</p>
++Parameter PRESERVEDSESSIONREASON = "This session's own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session.";
++
++/// <p>A web session's preserve-mode field, which the vendor's list answers as a number.</p>
++Parameter FIELDPRESERVE = "Preserve";
++
+ /// <p>The write would turn off the service OcuPilot is served through
+ /// (<parameter>SERVINGSERVICENAME</parameter>): every request to OcuPilot arrives through it (AD-10 as
+ /// amended 2026-09-24).</p>
+@@ -486,11 +500,11 @@ Parameter READTYPE = "GET";
+ /// only a web application reaches, then the two <method>Process</method> adds, then the one every
+ /// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
+ /// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
+-/// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the one
+-/// <method>WebSession</method> adds last -- nineteen in all.</p>
++/// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the two
++/// <method>WebSession</method> adds last -- twenty in all.</p>
+ ClassMethod Codes() As %List
+ {
+-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTSESSION)
++    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION)
+ }
+ 
+ /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
+@@ -521,6 +535,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
+     If pCode = ..#OCUPILOTSSL Quit ..#OCUPILOTSSLREASON
+     If pCode = ..#SERVINGSERVICE Quit ..#SERVINGSERVICEREASON
+     If pCode = ..#OCUPILOTSESSION Quit ..#OCUPILOTSESSIONREASON
++    If pCode = ..#PRESERVEDSESSION Quit ..#PRESERVEDSESSIONREASON
+     Quit ""
+ }
+ 
+@@ -3230,8 +3245,9 @@ ClassMethod LdapFields() As %List
+ }
+ 
+ /// <p>The web session predicates (Story 16.2): a session OcuPilot is itself running in is refused
+-/// <parameter>OCUPILOTSESSION</parameter> (<method>IsOcuPilotSession</method>), and every other
+-/// session may be ended. <var>pTarget</var> is the fresh list row and <var>pOwnSession</var> the
++/// <parameter>OCUPILOTSESSION</parameter> (<method>IsOcuPilotSession</method>), then a preserve-mode
++/// session <parameter>PRESERVEDSESSION</parameter> (<method>IsPreservedSession</method>), and every
++/// other session may be ended. <var>pTarget</var> is the fresh list row and <var>pOwnSession</var> the
+ /// serving request's own session id, <code>""</code> when it runs in none.</p>
+ /// <p>The end sends no body (AD-51), and its card rows are removals read from the fresh read, so it
+ /// reaches the reviewed-few sweep with nothing changed, as <method>Device</method> reasons.</p>
+@@ -3245,6 +3261,10 @@ ClassMethod WebSession(pTarget As %DynamicObject, pOwnSession As %String, ByRef
+             Do ..Refuse(..#OCUPILOTSESSION, .pProhibits, .pCode)
+             Quit
+         }
++        If ..IsPreservedSession(pTarget) {
++            Do ..Refuse(..#PRESERVEDSESSION, .pProhibits, .pCode)
++            Quit
++        }
+         Kill pChanged
+         Set tSC = ..ReviewedFewOnly(..#TYPEWEBSESSION, .pChanged, .pProhibits, .pCode)
+     } Catch ex {
+@@ -3273,6 +3293,15 @@ ClassMethod IsOcuPilotSession(pTarget As %DynamicObject, pOwnSession As %String
+     Quit ''tServes
+ }
+ 
++/// <p>Whether <var>pTarget</var>, a web session's list row, is in preserve mode: its
++/// <code>Preserve</code> reads 1, as the vendor's number or as a boolean true. A row that carries
++/// no <code>Preserve</code> is not one.</p>
++ClassMethod IsPreservedSession(pTarget As %DynamicObject) As %Boolean
++{
++    Set tPreserve = ..Rendered(pTarget, ..#FIELDPRESERVE)
++    Quit (tPreserve = 1) || (tPreserve = "true")
++}
++
+ /// <p>The session id of the CSP session the serving request runs in, or <code>""</code> when
+ /// <code>%session</code> is not an object -- a request served with no session, a background job, a
+ /// test.</p>
+diff --git a/src/OcuPilot/Screen/Descriptor/WebSessionList.cls b/src/OcuPilot/Screen/Descriptor/WebSessionList.cls
+index d5f731cb..89af9e3d 100644
+--- a/src/OcuPilot/Screen/Descriptor/WebSessionList.cls
++++ b/src/OcuPilot/Screen/Descriptor/WebSessionList.cls
+@@ -17,8 +17,8 @@
+ /// applications and the REST API explorer open to a holder of the area's two pairs alone.</p>
+ /// <p>It declares one row action, <code>end</code>, carried out by
+ /// <class>OcuPilot.Screen.Tool.WebSessionEnd</class>, and its self-protection rule
+-/// <code>ocupilot-session</code> explains the refusal the kernel makes for a session OcuPilot is
+-/// itself running in (AD-10). It declares no refresh (AD-43).</p>
++/// <code>ocupilot-session</code> explains the refusals the kernel makes for a session OcuPilot is
++/// itself running in and for a preserve-mode session (AD-10). It declares no refresh (AD-43).</p>
+ /// <p>The classic page is <code>%CSP.UI.Portal.CSPSessions</code>. As a list archetype it links
+ /// out to nothing.</p>
+ Class OcuPilot.Screen.Descriptor.WebSessionList Extends OcuPilot.Screen.Descriptor.Base
+diff --git a/src/OcuPilot/Screen/Registry.cls b/src/OcuPilot/Screen/Registry.cls
+index 317b4c31..c0ef388c 100644
+--- a/src/OcuPilot/Screen/Registry.cls
++++ b/src/OcuPilot/Screen/Registry.cls
+@@ -2528,7 +2528,9 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
+ /// by <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSSLREASON</parameter> and refused by
+ /// the kernel whatever the caller. <code>ocupilot-session</code> is a web session OcuPilot is itself
+ /// running in (Story 16.2), explained by
+-/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSESSIONREASON</parameter> and refused by
++/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSESSIONREASON</parameter>, and then a
++/// preserve-mode session, explained by
++/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.PRESERVEDSESSIONREASON</parameter>, each refused by
+ /// the kernel whatever the caller.</p>
+ Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session";
+ 
+diff --git a/src/OcuPilot/Test/AuditingUpdate.cls b/src/OcuPilot/Test/AuditingUpdate.cls
+index dd51de1e..531d465a 100644
+--- a/src/OcuPilot/Test/AuditingUpdate.cls
++++ b/src/OcuPilot/Test/AuditingUpdate.cls
+@@ -502,7 +502,7 @@ Method TestTheProhibitedBranchPermitsEnabledAndRefusesEveryOtherField()
+ {
+     Set tType = $ClassMethod(..#SCREEN, "PrimaryEntityType")
+     Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes(), tType) > 0, "the set covers this entity type")
+-    Do $$$AssertEquals($ListLength(##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()), 19, "the set declares nineteen codes, and this write earned none of them: Story 5.10 added no code, Story 5.12's two are a process's, Story 5.14's is an account's, Story 8.3's is a role's, Story 8.4's is a resource's, Story 9.1's is an account's, Story 9.5's is an SSL/TLS configuration's, Story 9.9's is a service's and Story 16.2's is a web session's")
++    Do $$$AssertEquals($ListLength(##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()), 20, "the set declares twenty codes, and this write earned none of them: Story 5.10 added no code, Story 5.12's two are a process's, Story 5.14's is an account's, Story 8.3's is a role's, Story 8.4's is a resource's, Story 9.1's is an account's, Story 9.5's is an SSL/TLS configuration's, Story 9.9's is a service's and Story 16.2's two are a web session's")
+ 
+     ; The SHIPPED set, so its target is re-read through the shipped port from the real endpoint --
+     ; no fixture stands in for the object the predicate judges.
+diff --git a/src/OcuPilot/Test/PreservedSession.cls b/src/OcuPilot/Test/PreservedSession.cls
+new file mode 100644
+index 00000000..04c4aaf5
+--- /dev/null
++++ b/src/OcuPilot/Test/PreservedSession.cls
+@@ -0,0 +1,32 @@
++/// <p>A page that puts the web session serving it in preserve mode (<code>%session.Preserve</code>
++/// 1), so <file>ui/browser/web-sessions.browser-spec.mjs</file> can list a real preserve-mode
++/// session on a throwaway: such a session keeps its own process, which holds the session's lock.</p>
++/// <p>It answers an empty 200 at <code>/csp/hscustom/OcuPilot.Test.PreservedSession.cls</code>, to
++/// a caller holding <code>%Admin_Operate:USE</code> -- the pair that ends a session or terminates
++/// its process. Its session expires after <parameter>TIMEOUT</parameter> seconds without a request,
++/// so a session a run leaves behind does not outlive it for long.</p>
++Class OcuPilot.Test.PreservedSession Extends %CSP.Page
++{
++
++Parameter CONTENTTYPE = "text/plain";
++
++Parameter SECURITYRESOURCE = "%Admin_Operate:USE";
++
++/// <p>Seconds a preserve-mode session this page opened lives without a request.</p>
++Parameter TIMEOUT As INTEGER = 300;
++
++/// <p>Keeps this session's process for the session and bounds its life.</p>
++ClassMethod OnPreHTTP() As %Boolean [ ServerOnly = 1 ]
++{
++    Set %session.AppTimeout = ..#TIMEOUT
++    Set %session.Preserve = 1
++    Quit 1
++}
++
++/// <p>The body is empty; the session is what the request leaves.</p>
++ClassMethod OnPage() As %Status [ ServerOnly = 1 ]
++{
++    Quit $$$OK
++}
++
++}
+diff --git a/src/OcuPilot/Test/Prohibited.cls b/src/OcuPilot/Test/Prohibited.cls
+index af4fe056..0a763c0d 100644
+--- a/src/OcuPilot/Test/Prohibited.cls
++++ b/src/OcuPilot/Test/Prohibited.cls
+@@ -669,7 +669,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
+     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
+ 
+     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
+-    Do $$$AssertEquals($ListLength(tCodes), 19, "the set declares nineteen codes")
++    Do $$$AssertEquals($ListLength(tCodes), 20, "the set declares twenty codes")
+     For tI = 1:1:$ListLength(tCodes) {
+         Set tCode = $List(tCodes, tI)
+         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")
+diff --git a/src/OcuPilot/Test/RefusalCopy.cls b/src/OcuPilot/Test/RefusalCopy.cls
+index 176197df..0e6a76d2 100644
+--- a/src/OcuPilot/Test/RefusalCopy.cls
++++ b/src/OcuPilot/Test/RefusalCopy.cls
+@@ -96,7 +96,7 @@ Method TestTheCredentialTypeRefusalIsItsParameter()
+ }
+ 
+ /// <p>DW-1598, AD-53 (Stories 9.3, 9.5, 16.2): the unreviewed-field, own-role, own-resource, own
+-/// SSL/TLS configuration and own web session codes each answer their own parameter, published in
++/// SSL/TLS configuration, own web session and preserve-mode session codes each answer their own parameter, published in
+ /// EXPERIENCE.md's Fixed strings, and none names a caller -- a screen's Save or row action reaches
+ /// each as well as the agent's confirm.</p>
+ /// <p>Mutation (Rule 19): restore the literal for <code>UNCOVEREDFIELD</code> in
+@@ -105,7 +105,7 @@ Method TestTheCredentialTypeRefusalIsItsParameter()
+ Method TestEachKernelRefusalIsItsParameterAndNamesNoCaller()
+ {
+     Set tClass = "OcuPilot.Kernel.Proposal.Prohibited"
+-    For tCode = "UNCOVEREDFIELD", "OCUPILOTROLE", "OCUPILOTRESOURCE", "OCUPILOTSSL", "OCUPILOTSESSION" {
++    For tCode = "UNCOVEREDFIELD", "OCUPILOTROLE", "OCUPILOTRESOURCE", "OCUPILOTSSL", "OCUPILOTSESSION", "PRESERVEDSESSION" {
+         Set tServer = ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter(tClass, tCode))
+         Do $$$AssertNotEquals(tServer, "", tCode _ ": the kernel answers a written sentence")
+         Do $$$AssertEquals(tServer, $Parameter(tClass, tCode _ "REASON"), tCode _ ": which is its parameter, not a literal in the lookup")
+diff --git a/src/OcuPilot/Test/WebSessions.cls b/src/OcuPilot/Test/WebSessions.cls
+index 5c11bba5..0075647d 100644
+--- a/src/OcuPilot/Test/WebSessions.cls
++++ b/src/OcuPilot/Test/WebSessions.cls
+@@ -1,8 +1,8 @@
+ /// <p>Pins Story 16.2's Web sessions list and its end tool over canned reads (AD-5, AD-6, AD-8,
+ /// AD-10, AD-51, AD-53): what <class>OcuPilot.Screen.Descriptor.WebSessionList</class> and
+ /// <class>OcuPilot.Screen.Tool.WebSessionEnd</class> declare, the card's removal rows, the fresh
+-/// read's exact-case compare, the fingerprint's subject, and the prohibited set's own-session arm
+-/// on both callers.</p>
++/// read's exact-case compare, the fingerprint's subject, and the prohibited set's own-session and
++/// preserve-mode arms on both callers.</p>
+ /// <p><b>What it needs from the environment:</b> OcuPilot installed and a caller holding
+ /// <code>%All</code>. Every read and write goes through <class>OcuPilot.Test.ProposalFixture</class>'s
+ /// port, and the daemon wait through <class>OcuPilot.Test.AwaitPort</class>, so no session on the
+@@ -285,6 +285,72 @@ Method TestBothCallersAreRefusedForOcuPilotsOwnSession()
+     Do $$$AssertEquals(tVerdict, $Parameter("OcuPilot.Kernel.Proposal.ReadBack", "PRESENT"), "and a session still listed after the write reads back present, the write standing as made")
+ }
+ 
++/// <p>AD-10 as amended 2026-09-28, AD-53: a preserve-mode session, whose own process holds its
++/// lock, is refused <code>PROHIBITED.PRESERVEDSESSION</code> on both callers with nothing sent --
++/// after the own-session arm, whose code a preserve-mode session under OcuPilot's own application
++/// still earns -- while a session under <code>/csp/sys/</code> with <code>Preserve</code> 0 is
++/// still ended, the vendor's <code>AllowEndSession</code> false notwithstanding. The reason is the
++/// published sentence, and the Guardrails page lists the code with it.</p>
++/// <p>Mutation (Rule 19): drop the <code>WebSession</code> branch's
++/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsPreservedSession</method> refusal -- the set, route
++/// and confirm legs go red.</p>
++Method TestBothCallersAreRefusedForAPreserveModeSession()
++{
++    Set tCode = $Parameter(..#SET, "PRESERVEDSESSION")
++    Set tReason = $Parameter(..#SET, "PRESERVEDSESSIONREASON")
++    For tForm = "number", "boolean" {
++        Set tRow = ..Preserved(..#SESSION, "/api/atelier/")
++        Do tRow.%Set("Preserve", 1, tForm)
++        Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(tRow))
++        Set tSC = ..Ask(..#SESSION, .tProhibits, .tAnswered)
++        Do $$$AssertEquals(tProhibits _ " " _ tAnswered, "1 " _ tCode, "a session whose Preserve reads 1 as a " _ tForm _ " is refused as preserve-mode")
++    }
++    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(..Preserved(..#SESSION, "/api/ocupilot/")))
++    Set tSC = ..Ask(..#SESSION, .tProhibits, .tAnswered)
++    Do $$$AssertEquals(tProhibits _ " " _ tAnswered, "1 " _ $Parameter(..#SET, "OCUPILOTSESSION"), "and one under OcuPilot's own application is refused as OcuPilot's own first")
++
++    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(..Preserved(..#SESSION, "/api/atelier/")))
++    Set tSC = $ClassMethod(..#ACTION, "Act", "webapp.sessions", {"action": "end", "id": (..#SESSION)}, .tAnswer, .tStatus)
++    Do $$$AssertStatusOK(tSC, "the route answers")
++    Set tEnvelope = ..Parsed(tAnswer)
++    Do $$$AssertEquals(tStatus _ " " _ tEnvelope.%Get("code"), "403 " _ tCode, "the screen's End session is refused as preserve-mode: " _ tAnswer)
++    Do $$$AssertEquals(tEnvelope.%Get("reason"), tReason, "with the published sentence")
++    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing is sent")
++
++    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
++    Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
++    If $$$ISERR(tSC) Quit
++    Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited(..#FIXTURESET)
++    Set tSC = ..MintFor(..#SESSION, .tProposal, .tHttp, .tFault, tTurn)
++    Do $$$AssertStatusOK(tSC, "the agent's end mints")
++    If $$$ISOK(tSC) {
++        Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tConfirmCode, .tDetail)
++        Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Get(tConfirmCode), "403 " _ tCode, "and its confirm is refused as preserve-mode")
++        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "with nothing sent")
++    }
++    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
++
++    Set tRow = ..Row(..#SESSION, "/csp/sys/")
++    Do tRow.%Set("AllowEndSession", 0, "boolean")
++    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(tRow))
++    Set tSC = $ClassMethod(..#ACTION, "Act", "webapp.sessions", {"action": "end", "id": (..#SESSION)}, .tAnswer, .tStatus)
++    Set tEnvelope = ..Parsed(tAnswer)
++    Do $$$AssertEquals(tStatus _ " " _ tEnvelope.%Get("action"), "200 deleted", "a /csp/sys/ session with Preserve 0 is still ended: " _ tAnswer)
++    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount() _ " " _ ##class(OcuPilot.Test.ProposalFixture).LastType() _ " " _ ##class(OcuPilot.Test.ProposalFixture).LastQuery("id"), "1 DELETE " _ ..#SESSION, "by one DELETE naming it")
++
++    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode), tReason, "the reason is the published sentence")
++    Set tSC = ##class(OcuPilot.Kernel.Shell.Guardrails).Read(.tAnswer)
++    Do $$$AssertStatusOK(tSC, "the Guardrails page reads")
++    Set tListed = 0
++    If $IsObject($Get(tAnswer)) {
++        Set tIterator = tAnswer.%Get("prohibited").%GetIterator()
++        While tIterator.%GetNext(.tIndex, .tEntry) {
++            If (tEntry.code = tCode) && (tEntry.reason = tReason) Set tListed = 1
++        }
++    }
++    Do $$$AssertEquals(tListed, 1, "and lists the code with that sentence")
++}
++
+ /// <p>AD-26, AD-58: the port's wait for the daemon never fails the write. A row still listed is
+ /// re-read until the bound passes and then left, the fact logged without the session id; a row
+ /// already gone, or a list that cannot be read, ends the wait at the first read.</p>
+@@ -344,6 +410,17 @@ ClassMethod Row(pId As %String, pApplication As %String, pTimeout As %String = "
+     Quit tRow
+ }
+ 
++/// <p>One preserve-mode session row as the vendor's <code>LIST</code> answers it: its own process
++/// named, and <code>AllowEndSession</code> false.</p>
++ClassMethod Preserved(pId As %String, pApplication As %String) As %DynamicObject
++{
++    Set tRow = ..Row(pId, pApplication)
++    Do tRow.%Set("Preserve", 1, "number")
++    Do tRow.%Set("SesProcessId", "4242", "string")
++    Do tRow.%Set("AllowEndSession", 0, "boolean")
++    Quit tRow
++}
++
+ /// <p>The rows given, as the JSON array text the fixture's port answers.</p>
+ ClassMethod Rows(pFirst As %DynamicObject, pSecond As %DynamicObject = "") As %String
+ {
+diff --git a/src/OcuPilot/Test/WebSessionsLive.cls b/src/OcuPilot/Test/WebSessionsLive.cls
+index 0b2f8267..04488272 100644
+--- a/src/OcuPilot/Test/WebSessionsLive.cls
++++ b/src/OcuPilot/Test/WebSessionsLive.cls
+@@ -1,13 +1,15 @@
+-/// <p>Pins Story 16.2 against live web sessions (AD-2, AD-8, AD-26, AD-53, AD-58): the declared
+-/// read fields held to a live row, <class>OcuPilot.Port.AdminPort</class>'s wait for the daemon, the
+-/// screen's End session and the agent's confirm each ending a real session, a principal without
+-/// <code>%DB_IRISSYS:WRITE</code> refused by name, and a holder of the area's pairs alone keeping
+-/// Web applications while Web sessions is refused.</p>
+-/// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as
+-/// <class>OcuPilot.Test.Http</class>'s test account, <code>/api/atelier/</code> answering that
+-/// account, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class
+-/// creates and deletes two users and two roles. Each test seeds its own <code>/api/atelier/</code>
+-/// session and ends every one it seeded.</p>
++/// <p>Pins Story 16.2 against live web sessions (AD-2, AD-8, AD-10, AD-26, AD-53, AD-58): the
++/// declared read fields held to a live row, <class>OcuPilot.Port.AdminPort</class>'s wait for the
++/// daemon, the screen's End session and the agent's confirm each ending a real session and each
++/// refused for a preserve-mode one, a principal without <code>%DB_IRISSYS:WRITE</code> refused by
++/// name, and a holder of the area's pairs alone keeping Web applications while Web sessions is
++/// refused.</p>
++/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and
++/// serving over HTTP as <class>OcuPilot.Test.Http</class>'s test account, <code>/api/atelier/</code>
++/// and <parameter>PRESERVEDPAGE</parameter> answering that account, and
++/// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class creates and
++/// deletes two users and two roles and terminates the process of a preserve-mode session it seeded.
++/// Each test seeds its own sessions and ends every one it seeded.</p>
+ Class OcuPilot.Test.WebSessionsLive Extends %UnitTest.TestCase
+ {
+ 
+@@ -24,6 +26,10 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
+ /// <p>The application whose request leaves a session behind.</p>
+ Parameter SEEDPATH = "/api/atelier/";
+ 
++/// <p>The page whose request leaves a preserve-mode session behind, under the install namespace's
++/// default CSP application (<class>OcuPilot.Test.PreservedSession</class>).</p>
++Parameter PRESERVEDPAGE = "/csp/hscustom/OcuPilot.Test.PreservedSession.cls";
++
+ /// <p>A session id no session carries.</p>
+ Parameter ABSENT = "OcuNoSessn";
+ 
+@@ -94,13 +100,16 @@ Method OnBeforeOneTest() As %Status
+     Quit $$$OK
+ }
+ 
+-/// <p>End every session this test seeded that is still listed, and assert none is.</p>
++/// <p>End every session this test seeded that is still listed, and assert none is. A preserve-mode
++/// session's own process holds its lock, so that process is terminated first.</p>
+ Method OnAfterOneTest() As %Status
+ {
+     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+     For tI = 1:1:$ListLength(..PreparedSeeded) {
+         Set tId = $List(..PreparedSeeded, tI)
+-        If '..Listed(tId) Continue
++        Set tRow = ..LiveRow(tId)
++        If '$IsObject(tRow) Continue
++        If (tRow.%Get("Preserve") = 1) && (tRow.%Get("SesProcessId") '= "") Do $SYSTEM.Process.Terminate(tRow.%Get("SesProcessId"))
+         Kill tQuery
+         Set tQuery("id") = tId
+         Do ##class(OcuPilot.Port.AdminPort).Invoke("WebSession", "DELETE", .tQuery, "", .tAnswer, .tHttp, .tFault)
+@@ -285,24 +294,63 @@ Method TestAnAreaHolderKeepsTheAreaAndIsRefusedWebSessions()
+     Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody) _ " " _ ..FailedPair(tBody), "403 AUTH.NOPRIVILEGE %Admin_Operate:USE", "and its read is refused naming that pair")
+ }
+ 
+-/// <p>Seed one <parameter>SEEDPATH</parameter> session as the test account, answering its id: the
+-/// one row with that user and application the list did not carry before the request.</p>
+-Method Seed(Output pId As %String) As %Status
++/// <p>AD-10 as amended 2026-09-28, AD-53: a real preserve-mode session lists with <code>Preserve</code>
++/// the number 1 and its own process, and both callers are refused
++/// <code>PROHIBITED.PRESERVEDSESSION</code> at once, the session still listed: no <code>DELETE</code>
++/// was sent to wait on the lock its process holds.</p>
++/// <p>Mutation (Rule 19): drop the <code>WebSession</code> branch's
++/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsPreservedSession</method> refusal -- the route's
++/// <code>DELETE</code> waits on the lock and the refused legs go red.</p>
++Method TestAPreserveModeSessionIsRefusedOnBothCallers()
++{
++    Set tCode = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "PRESERVEDSESSION")
++    Set tSC = ..Seed(.tId, ..#PRESERVEDPAGE)
++    Do $$$AssertStatusOK(tSC, "a preserve-mode session is seeded: " _ $System.Status.GetErrorText(tSC))
++    If $$$ISERR(tSC) Quit
++    Set tRow = ..LiveRow(tId)
++    Do $$$AssertTrue($IsObject(tRow) && (tRow.%GetTypeOf("Preserve") = "number") && (tRow.%Get("Preserve") = 1) && (tRow.%Get("SesProcessId") '= ""), "the list answers it in preserve mode, as a number, with its own process: " _ $Select($IsObject(tRow): tRow.%ToJSON(), 1: ""))
++    Set tStart = $ZHorolog
++    Set tSC = ..Act(tId, "", "", .tStatus, .tBody)
++    Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody), "403 " _ tCode, "the screen's End session is refused as preserve-mode")
++    Do $$$AssertTrue(($ZHorolog - tStart) < 10, "at once: " _ ($ZHorolog - tStart) _ " s")
++    Do $$$AssertEquals(..Listed(tId), 1, "and the session is still listed")
++
++    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
++    Do $$$AssertStatusOK(tSC, "a turn is seeded")
++    If $$$ISERR(tSC) Quit
++    Set tArgs = {}
++    Do tArgs.%Set("ID", tId, "string")
++    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint(..#SCREEN, $Parameter(..#TOOL, "TOOLNAME"), $Username, "", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(..#TOOL, "Endpoint"), $ClassMethod(..#TOOL, "IdParam"), tId, $ClassMethod(..#TOOL, "IdArgument"), $ClassMethod(..#TOOL, "SettableFields"), ..#TOOL)
++    Do $$$AssertStatusOK(tSC, "the agent's end mints: " _ $System.Status.GetErrorText(tSC))
++    If $$$ISOK(tSC) {
++        Set tStart = $ZHorolog
++        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tConfirmCode, .tDetail)
++        Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Get(tConfirmCode), "403 " _ tCode, "and its confirm is refused as preserve-mode")
++        Do $$$AssertTrue(($ZHorolog - tStart) < 10, "at once: " _ ($ZHorolog - tStart) _ " s")
++    }
++    Do $$$AssertEquals(..Listed(tId), 1, "and the session is still listed")
++    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
++}
++
++/// <p>Seed one session as the test account through <var>pPath</var>, answering its id: the one row
++/// with that user and the path's application the list did not carry before the request.</p>
++Method Seed(Output pId As %String, pPath As %String = {..#SEEDPATH}) As %Status
+ {
+     Set pId = ""
+     Set tSC = ..Ids(.tBefore)
+     If $$$ISERR(tSC) Quit tSC
+     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+-    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#SEEDPATH, tUser, ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
++    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", pPath, tUser, ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
+     If $$$ISERR(tSC) Quit tSC
+-    If tStatus '= 200 Quit $$$ERROR($$$GeneralError, ..#SEEDPATH _ " answered " _ tStatus)
++    If tStatus '= 200 Quit $$$ERROR($$$GeneralError, pPath _ " answered " _ tStatus)
++    Set tApplication = $Piece(pPath, "/", 1, $Length(pPath, "/") - 1) _ "/"
+     Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebSession", "LIST", .tNoQuery, "", .tRows, .tHttp, .tFault)
+     If $$$ISERR(tSC) Quit tSC
+     Set tNew = ""
+     Set tIterator = tRows.%GetIterator()
+     While tIterator.%GetNext(.tIndex, .tRow) {
+         If $ListFind(tBefore, tRow.%Get("ID")) Continue
+-        If (tRow.%Get("Application") '= ..#SEEDPATH) || (tRow.%Get("Username") '= tUser) Continue
++        If (tRow.%Get("Application") '= tApplication) || (tRow.%Get("Username") '= tUser) Continue
+         Set tNew = tNew _ $ListBuild(tRow.%Get("ID"))
+     }
+     Set ..PreparedSeeded = ..PreparedSeeded _ tNew
+diff --git a/ui/browser/web-sessions.browser-spec.mjs b/ui/browser/web-sessions.browser-spec.mjs
+index 8ab1e464..67ffaf05 100644
+--- a/ui/browser/web-sessions.browser-spec.mjs
++++ b/ui/browser/web-sessions.browser-spec.mjs
+@@ -8,11 +8,16 @@
+  * with the verb and the session id and stating the published consequence; a case twin of the id
+  * sends nothing, the exact id sends one request, and the row leaves on the re-read that follows.
+  * With the dialog open, the screen passes the structural and contrast checks at 1280 light, 720
+- * light and 1280 dark, with no entry beyond the baseline (DW-1337).
++ * light and 1280 dark, with no entry beyond the baseline (DW-1337). A real preserve-mode session,
++ * opened through `OcuPilot.Test.PreservedSession` under `/csp/hscustom/`, lists with its process
++ * linked to Process details, and its End session is drawn refused with the published sentence that
++ * points to that process, sending nothing.
+  *
+- * **It ends web sessions**, so it runs on a throwaway only. It seeds each session itself as the
+- * configured account over HTTP, reads its id from the admin API's `WebSession` `LIST` through
+- * `docker exec`, and its `after` hook ends every session it seeded that is still listed.
++ * **It ends web sessions and terminates processes**, so it runs on a throwaway only. It seeds each
++ * session itself as the configured account over HTTP, reads its id from the admin API's
++ * `WebSession` `LIST` through `docker exec`, and its `after` hook ends every session it seeded that
++ * is still listed, terminating a preserve-mode session's own process first, since that process
++ * holds the session's lock.
+  *
+  * Run: `node --test --test-concurrency=1 browser/web-sessions.browser-spec.mjs` (after
+  * `npm run build`, the bundle copied into the throwaway, and `sh scripts/ci-throwaway.sh up`).
+@@ -35,39 +40,50 @@ const ROUTE = 'web-applications/sessions';
+ const LIST_URL = `/ocupilot/${ROUTE}?ns=HSCUSTOM`;
+ const ACTION_PATH = '/api/ocupilot/screens/webapp.sessions/action';
+ const SEED_PATH = '/api/atelier/';
++const PRESERVED_PATH = '/csp/hscustom/OcuPilot.Test.PreservedSession.cls';
+ 
+ let browser = null;
+ const seeded = [];
+ 
+-/** The session ids the admin API's `WebSession` `LIST` carries now, with each row's user and application. */
++/**
++ * The session ids the admin API's `WebSession` `LIST` carries now, with each row's user, application,
++ * `Preserve` and process.
++ */
+ function listed() {
+   const output = runIris(config.container, [
+     'Kill q Set sc=##class(OcuPilot.Port.AdminPort).Invoke("WebSession","LIST",.q,"",.rows,.http,.fault)',
+-    'Set out="" If $System.Status.IsOK(sc) { Set it=rows.%GetIterator() While it.%GetNext(.i,.row) { Set out=out_$Select(out="":"",1:";")_row.ID_"|"_row.Username_"|"_row.Application } }',
++    'Set out="" If $System.Status.IsOK(sc) { Set it=rows.%GetIterator() While it.%GetNext(.i,.row) { Set out=out_$Select(out="":"",1:";")_row.ID_"|"_row.Username_"|"_row.Application_"|"_row.Preserve_"|"_row.SesProcessId } }',
+     'Write "OCU-WSLIST-START:"_$Select($System.Status.IsOK(sc):"ok",1:"fail")_"#"_out_":OCU-WSLIST-END",!',
+   ]);
+   const value = markerValue(output, 'WSLIST');
+   assert.ok(value !== null && value.startsWith('ok#'), `the admin list answers: ${output}`);
+   const body = value.slice(3);
+   return body === '' ? [] : body.split(';').map((entry) => {
+-    const [id, user, application] = entry.split('|');
+-    return { id, user, application };
++    const [id, user, application, preserve, pid] = entry.split('|');
++    return { id, user, application, preserve, pid };
+   });
+ }
+ 
+-/** Seed one `/api/atelier/` session as the configured account, answering its id. */
+-async function seed() {
++/** Seed one session as the configured account by requesting `path`, answering its id. */
++async function seed(path = SEED_PATH) {
++  const application = path.slice(0, path.lastIndexOf('/') + 1);
+   const before = new Set(listed().map((row) => row.id));
+-  const answer = await fetch(`${config.origin}${SEED_PATH}`, { headers: { Authorization: authHeader(config) } });
+-  assert.equal(answer.status, 200, `${SEED_PATH} answers the configured account (HTTP ${answer.status})`);
+-  const fresh = listed().filter((row) => !before.has(row.id) && row.application === SEED_PATH && row.user === config.username);
++  const answer = await fetch(`${config.origin}${path}`, { headers: { Authorization: authHeader(config) } });
++  assert.equal(answer.status, 200, `${path} answers the configured account (HTTP ${answer.status})`);
++  const fresh = listed().filter((row) => !before.has(row.id) && row.application === application && row.user === config.username);
+   seeded.push(...fresh.map((row) => row.id));
+   assert.equal(fresh.length, 1, `the request left one new session: ${JSON.stringify(fresh)}`);
+   return fresh[0].id;
+ }
+ 
+-/** End session `id` through the admin API, as a teardown step. */
++/**
++ * End session `id` through the admin API, as a teardown step. A preserve-mode session's own process
++ * holds its lock, so that process is terminated first.
++ */
+ function endSession(id) {
++  const row = listed().find((candidate) => candidate.id === id);
++  if (row === undefined) return;
++  if (row.preserve === '1' && /^\d+$/.test(row.pid)) runIris(config.container, [`Do $SYSTEM.Process.Terminate(${row.pid})`]);
+   runIris(config.container, [`Kill q Set q("id")="${escapeOs(id)}" Set sc=##class(OcuPilot.Port.AdminPort).Invoke("WebSession","DELETE",.q,"",.r,.h,.f)`]);
+ }
+ 
+@@ -266,3 +282,42 @@ test('AC2: End session types the session id, sends one request on the exact id,
+     await context.close();
+   }
+ });
++
++// DW-1792. Mutation (Rule 19): answer '' for a `Preserve` 1 row in `selfProtectionReason`'s
++// `ocupilot-session` branch, then rebuild and redeploy -> the entry is offered and the refusal
++// assertions go red.
++test('DW-1792: a real preserve-mode session lists with its process linked, and its End session is drawn refused with the sentence pointing to that process', async () => {
++  const id = await seed(PRESERVED_PATH);
++  const session = listed().find((row) => row.id === id);
++  assert.equal(session?.preserve, '1', `the page left a preserve-mode session: ${JSON.stringify(session)}`);
++  assert.match(session.pid, /^\d+$/, 'with its own process');
++  const { context, page, posts } = await atList();
++  try {
++    await selectSession(page, id);
++    const cell = await page.evaluate((rowSelector) => {
++      const link = document.querySelector(`${rowSelector}[aria-selected="true"] [role="gridcell"] .ocu-data-table-link`);
++      return link === null ? null : { text: link.textContent.trim(), href: link.getAttribute('href') };
++    }, ROW_SELECTOR);
++    assert.equal(cell?.text, session.pid, 'the Process cell carries the session\'s own process');
++    assert.ok(cell.href.includes(`/os-management/processes/details/${session.pid}`), `and links to its Process details: ${cell.href}`);
++
++    await page.click(`${ROW_SELECTOR}[aria-selected="true"] .ocu-data-table-trigger`);
++    await page.waitForSelector('[role="menu"]', { timeout: config.navigationTimeoutMs });
++    const entry = await page.evaluate((label) => {
++      const item = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]')).find(
++        (candidate) => candidate.querySelector('.ocu-data-table-menu-label')?.textContent.trim() === label
++      );
++      if (item === undefined) return null;
++      const refused = { disabled: item.getAttribute('aria-disabled'), reason: item.querySelector('.ocu-data-table-menu-reason')?.textContent.trim() ?? '' };
++      item.click();
++      return refused;
++    }, STRINGS.webSessionEndAction);
++    assert.deepEqual(entry, { disabled: 'true', reason: STRINGS.webSessionRefusalPreserved }, 'End session is drawn refused with the sentence pointing to the process');
++    await frames(page);
++    assert.equal(await page.$('app-typed-name-dialog'), null, 'and its click opens no dialog');
++    assert.equal(posts.length, 0, 'and sends nothing');
++    assert.equal(listed().some((row) => row.id === id), true, 'the session is still listed');
++  } finally {
++    await context.close();
++  }
++});
+diff --git a/ui/src/app/core/self-protection.ts b/ui/src/app/core/self-protection.ts
+index 7d788d6e..aef1a4b8 100644
+--- a/ui/src/app/core/self-protection.ts
++++ b/ui/src/app/core/self-protection.ts
+@@ -78,7 +78,9 @@ export const OCUPILOT_SSL_CONFIGURATION = 'OcuPilotProvider';
+  * The rule that protects a web session OcuPilot is itself running in (Story 16.2, AD-10): the
+  * instance refuses ending one under an application OcuPilot is served through, or the serving
+  * request's own session, whoever asks. The client reads the row's `Application`; the serving
+- * request's own session is the instance's alone to know.
++ * request's own session is the instance's alone to know. The same rule then answers a
++ * preserve-mode session (`Preserve` 1), which the instance refuses because its own process holds
++ * its lock.
+  */
+ export const OCUPILOT_SESSION_RULE = 'ocupilot-session';
+ 
+@@ -125,7 +127,8 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
+  * `row` is the row's own fields where the caller holds them. `system-role` reads the key alone;
+  * `system-resource` reads the row's `AllowDelete` and answers `''` with no row, where the instance
+  * still refuses the write. `ocupilot-session` reads the row's `Application` under the web
+- * application's canonical rule, and answers `''` with no row.
++ * application's canonical rule, then its `Preserve` (the list's number 1), and answers `''` with
++ * no row.
+  */
+ export function selfProtectionReason(
+   rule: string,
+@@ -145,7 +148,9 @@ export function selfProtectionReason(
+     if (typeof application !== 'string' || application === '') return '';
+     const canonical = normalizeEntityId(WEB_APPLICATION, application);
+     const own = OCUPILOT_APPLICATION_PATHS.some((path) => normalizeEntityId(WEB_APPLICATION, path) === canonical);
+-    return own ? STRINGS.webSessionRefusalOcuPilot : '';
++    if (own) return STRINGS.webSessionRefusalOcuPilot;
++    const preserve = row?.['Preserve'];
++    return preserve === 1 || preserve === '1' || preserve === true ? STRINGS.webSessionRefusalPreserved : '';
+   }
+   if (rule === PROTECTED_ACCOUNT_RULE) {
+     const account = normalizeEntityId(USER, rowKey);
+diff --git a/ui/src/app/core/strings.ts b/ui/src/app/core/strings.ts
+index 373cfd73..2351e6b7 100644
+--- a/ui/src/app/core/strings.ts
++++ b/ui/src/app/core/strings.ts
+@@ -3407,6 +3407,9 @@ export const STRINGS = {
+   webSessionListPrompt2: 'Which users have more than one web session open?',
+   /** EXPERIENCE.md:357 */
+   webSessionListPrompt3: 'Which web sessions expire soonest?',
++  /** EXPERIENCE.md:357 */
++  webSessionRefusalPreserved:
++    'This session\'s own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session.',
+ } as const;
+ 
+ /**
+diff --git a/ui/src/app/shell/list-page.spec.ts b/ui/src/app/shell/list-page.spec.ts
+index 176777c7..74c7e247 100644
+--- a/ui/src/app/shell/list-page.spec.ts
++++ b/ui/src/app/shell/list-page.spec.ts
+@@ -747,7 +747,7 @@ describe('the list page', () => {
+       Timeout: '2026-09-28 16:00:00',
+       Preserve: pid === '' ? 0 : 1,
+     });
+-    const listed = [session('ownSess001', '/api/ocupilot/', ''), session('prsvSess02', '/csp/sys/', '4711')];
++    const listed = [session('ownSess001', '/api/ocupilot/', ''), session('prsvSess02', '/csp/sys/', '4711'), session('endSess003', '/api/atelier/', '')];
+     const rowFor = (host: HTMLElement, id: string) =>
+       Array.from(host.querySelectorAll('.ocu-data-table-body [role="row"]')).find((row) => row.textContent?.includes(id)) as HTMLElement;
+ 
+@@ -790,7 +790,7 @@ describe('the list page', () => {
+       expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+       expect(page.bodies).toEqual([]);
+ 
+-      (rowFor(page.host(), 'prsvSess02').querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
++      (rowFor(page.host(), 'endSess003').querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
+       await settle(page.fixture);
+       const offered = page.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+       expect(offered.hasAttribute('aria-disabled')).toBe(false);
+@@ -798,9 +798,26 @@ describe('the list page', () => {
+       await settle(page.fixture);
+       const dialog = page.host().querySelector('[role="dialog"]') as HTMLElement;
+       expect(dialog).not.toBeNull();
+-      expect(dialog.textContent).toContain(`${STRINGS.webSessionEndAction} prsvSess02`);
++      expect(dialog.textContent).toContain(`${STRINGS.webSessionEndAction} endSess003`);
+       expect(dialog.textContent).toContain(STRINGS.webSessionEndConsequence);
+       expect(page.bodies).toEqual([]);
+     });
++
++    it('draws End session refused on a preserve-mode session with the sentence pointing to its process, sending nothing', async () => {
++      // Through the real handler, page and table; only the transport is stubbed.
++      // Mutation (Rule 19): answer '' for a `Preserve` 1 row in `ocupilot-session` -> the entry is
++      // offered and its click opens the dialog, red.
++      const page = await mount(SESSIONS, listed, true, '/web-applications/sessions?ns=HSCUSTOM');
++      (rowFor(page.host(), 'prsvSess02').querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
++      await settle(page.fixture);
++      const refused = page.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
++      expect(refused.querySelector('.ocu-data-table-menu-label')?.textContent?.trim()).toBe(STRINGS.webSessionEndAction);
++      expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.webSessionRefusalPreserved);
++      expect(refused.getAttribute('aria-disabled')).toBe('true');
++      refused.click();
++      await settle(page.fixture);
++      expect(page.host().querySelector('[role="dialog"]')).toBeNull();
++      expect(page.bodies).toEqual([]);
++    });
+   });
+ });
+diff --git a/ui/src/app/shell/screen-action-handler.spec.ts b/ui/src/app/shell/screen-action-handler.spec.ts
+index 3b4a9bd4..b90b2851 100644
+--- a/ui/src/app/shell/screen-action-handler.spec.ts
++++ b/ui/src/app/shell/screen-action-handler.spec.ts
+@@ -1157,4 +1157,14 @@ describe('the Web sessions list\u2019s End session (Story 16.2)', () => {
+     expect(handler.pending()).toBeNull();
+     expect(calls).toHaveLength(0);
+   });
++
++  it('draws a preserve-mode session refused with the sentence pointing to its process before anything is sent', () => {
++    // Mutation (Rule 19): answer '' for a `Preserve` 1 row in `selfProtectionReason` -> the
++    // dialog opens and the refusal assertion goes red.
++    const { handler, store, calls } = mount(undefined, SESSIONS);
++    handler.startFor(SESSIONS, 'end', ID, { ID, Application: '/csp/hscustom/', Preserve: 1, SesProcessId: '4242' }, store);
++    expect(store.refusal()).toBe(STRINGS.webSessionRefusalPreserved);
++    expect(handler.pending()).toBeNull();
++    expect(calls).toHaveLength(0);
++  });
+ });
+diff --git a/ui/tools/self-protection.test.mjs b/ui/tools/self-protection.test.mjs
+index ce370cd0..e2b8baf7 100644
+--- a/ui/tools/self-protection.test.mjs
++++ b/ui/tools/self-protection.test.mjs
+@@ -263,6 +263,9 @@ const KERNEL_REFUSALS = [
+   // Story 16.2: a web session OcuPilot is itself running in, whose End session the Web sessions
+   // list draws refused before a click with this same sentence.
+   ['OCUPILOTSESSION', 'webSessionRefusalOcuPilot'],
++  // Story 16.2 (DW-1792): a preserve-mode web session, whose own process holds its lock, whose End
++  // session the Web sessions list draws refused before a click with this same sentence.
++  ['PRESERVEDSESSION', 'webSessionRefusalPreserved'],
+ ];
+ 
+ test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
+@@ -324,3 +327,29 @@ test("Story 16.2: ocupilot-session answers a row under one of OcuPilot's own app
+   assert.equal(selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId'), '', 'with no row the instance alone refuses');
+   assert.equal(selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId' }), '', 'and a row with no application is the instance\'s to refuse');
+ });
++
++test('Story 16.2 (DW-1792): ocupilot-session answers a preserve-mode row, in the form the list answers, after the OcuPilot check', async () => {
++  // Mutation (Rule 19): answer '' for a `Preserve` 1 row in `ocupilot-session` -> the preserve-mode
++  // legs go red; check `Preserve` before the application -> the OcuPilot-first leg goes red.
++  const { selfProtectionReason, OCUPILOT_SESSION_RULE } = await import('../src/app/core/self-protection.ts');
++  const { STRINGS } = await import('../src/app/core/strings.ts');
++  for (const preserve of [1, '1', true]) {
++    assert.equal(
++      selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId', Application: '/csp/hscustom/', Preserve: preserve, SesProcessId: '4242' }),
++      STRINGS.webSessionRefusalPreserved,
++      `a session whose Preserve reads ${JSON.stringify(preserve)} is refused as preserve-mode`
++    );
++  }
++  assert.equal(
++    selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId', Application: '/api/ocupilot/', Preserve: 1 }),
++    STRINGS.webSessionRefusalOcuPilot,
++    'a preserve-mode session under OcuPilot\'s own application answers the OcuPilot sentence first'
++  );
++  for (const preserve of [0, '0', false, undefined]) {
++    assert.equal(
++      selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId', Application: '/csp/sys/', Preserve: preserve }),
++      '',
++      `a /csp/sys/ session whose Preserve reads ${JSON.stringify(preserve)} may be ended`
++    );
++  }
++});

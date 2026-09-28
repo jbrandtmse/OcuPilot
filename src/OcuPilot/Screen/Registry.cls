@@ -2526,8 +2526,11 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// its <class>OcuPilot.Api.Error</class> reason and refused by its delete tool.
 /// <code>ocupilot-ssl</code> is OcuPilot's own provider SSL/TLS configuration (Story 9.5), explained
 /// by <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSSLREASON</parameter> and refused by
+/// the kernel whatever the caller. <code>ocupilot-session</code> is a web session OcuPilot is itself
+/// running in (Story 16.2), explained by
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSESSIONREASON</parameter> and refused by
 /// the kernel whatever the caller.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl";
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session";
 
 /// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
 Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;

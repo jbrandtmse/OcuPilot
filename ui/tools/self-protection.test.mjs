@@ -249,7 +249,7 @@ test('AD-53, DW-1513, DW-1528: each delete refusal is one sentence on both surfa
   }
 });
 
-/** The three kernel refusals Story 9.3 publishes (DW-1598), each a `Prohibited.cls` parameter and a `strings.ts` key. */
+/** The kernel refusals published in Fixed strings (DW-1598, from Story 9.3), each a `Prohibited.cls` parameter and a `strings.ts` key. */
 const KERNEL_REFUSALS = [
   ['UNCOVEREDFIELD', 'uncoveredFieldRefusal'],
   ['OCUPILOTROLE', 'roleRefusalOcuPilot'],
@@ -263,10 +263,16 @@ const KERNEL_REFUSALS = [
   // Story 18.2: OcuPilot's install namespace and %SYS, whose Delete dialog states this sentence as
   // its advisory when it opens.
   ['OCUPILOTNAMESPACE', 'namespaceRefusalOcuPilot'],
+  // Story 16.2: a web session OcuPilot is itself running in, whose End session the Web sessions
+  // list draws refused before a click with this same sentence.
+  ['OCUPILOTSESSION', 'webSessionRefusalOcuPilot'],
+  // Story 16.2 (DW-1792): a preserve-mode web session while its own process runs, which holds its
+  // lock; the instance answers End session's click with this same sentence.
+  ['PRESERVEDSESSION', 'webSessionRefusalPreserved'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
-  // Mutation (Rule 19): answer a literal for any of the three codes in `Prohibited.ReasonFor`, or
+  // Mutation (Rule 19): answer a literal for any of these codes in `Prohibited.ReasonFor`, or
   // change one word of its parameter -> that code's legs go red.
   const prohibited = readFileSync(PROHIBITED, 'utf8');
   const experience = readFileSync(EXPERIENCE, 'utf8');
@@ -304,4 +310,42 @@ test("Story 9.5: ocupilot-ssl answers OcuPilot's own provider configuration alon
   assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, OCUPILOT_SSL_CONFIGURATION), STRINGS.sslRefusalOcuPilot, 'its own configuration is refused');
   assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, OCUPILOT_SSL_CONFIGURATION.toLowerCase()), '', 'compared exactly, as the instance resolves a name');
   assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, 'ISC.FeatureTracker.SSL.Config'), '', 'and any other configuration is not');
+});
+
+test("Story 16.2: ocupilot-session answers a row under one of OcuPilot's own applications, in every spelling the instance resolves", async () => {
+  // Mutation (Rule 19): answer '' for `ocupilot-session` -> the four own-application legs go red;
+  // compare the Application without normalizeEntityId -> the re-cased and slash-suffixed legs go red.
+  const { selfProtectionReason, OCUPILOT_SESSION_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  for (const application of ['/api/ocupilot/', '/API/OcuPilot', '/ocupilot/', '/api/ocupilot/readiness']) {
+    assert.equal(
+      selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId', Application: application }),
+      STRINGS.webSessionRefusalOcuPilot,
+      `a session under ${application} is OcuPilot's own`
+    );
+  }
+  for (const application of ['/api/atelier/', '/csp/sys/', '/api/ocupilotx/']) {
+    assert.equal(selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId', Application: application }), '', `a session under ${application} is not`);
+  }
+  assert.equal(selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId'), '', 'with no row the instance alone refuses');
+  assert.equal(selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId' }), '', 'and a row with no application is the instance\'s to refuse');
+});
+
+test('Story 16.2 (DW-1792): ocupilot-session leaves a preserve-mode row to the instance, which alone knows whether its process runs', async () => {
+  // Mutation (Rule 19): answer the preserve-mode sentence for a `Preserve` 1 row in
+  // `ocupilot-session` -> the preserve-mode legs go red.
+  const { selfProtectionReason, OCUPILOT_SESSION_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  for (const preserve of [1, '1', true, 0, false, undefined]) {
+    assert.equal(
+      selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId', Application: '/csp/hscustom/', Preserve: preserve, SesProcessId: '4242' }),
+      '',
+      `a session whose Preserve reads ${JSON.stringify(preserve)} is offered, the instance answering the click`
+    );
+  }
+  assert.equal(
+    selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId', Application: '/api/ocupilot/', Preserve: 1 }),
+    STRINGS.webSessionRefusalOcuPilot,
+    'while a preserve-mode session under OcuPilot\'s own application is drawn refused as OcuPilot\'s own'
+  );
 });

@@ -180,6 +180,12 @@ Parameter READIDPARAM = "";
 /// no such row reads as absent (404).</p>
 Parameter READROWKEY = "";
 
+/// <p>Whether a <b>list-type</b> fresh read compares <parameter>READROWKEY</parameter> with the id
+/// exactly, case included, rather than without regard to case. <code>0</code> here, which is every
+/// tool whose row key the instance resolves case-insensitively; a tool whose key is a case-bearing
+/// value, such as a web session's mixed-case id, declares <code>1</code>.</p>
+Parameter READROWKEYEXACT As BOOLEAN = 0;
+
 /// <p>The declared secret arguments an action-style write sends as its <b>only</b> body,
 /// comma-separated, or <code>""</code> for a write whose body is a merge or nothing (AD-56 (i)).
 /// <code>""</code> here, which is every write but a password change.</p>
@@ -233,6 +239,13 @@ ClassMethod ReadIdParam() As %String
 ClassMethod ReadRowKey() As %String
 {
     Quit ..#READROWKEY
+}
+
+/// <p><parameter>READROWKEYEXACT</parameter> as a boolean, for the same helper
+/// (<method>OcuPilot.Kernel.Proposal.Operation.ReadTarget</method>).</p>
+ClassMethod ReadRowKeyExact() As %Boolean
+{
+    Quit ''..#READROWKEYEXACT
 }
 
 /// <p>What happens once this tool's write has read OK, through the same port, for the target

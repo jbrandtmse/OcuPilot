@@ -129,6 +129,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.OAuthServerTab': { rotatekeys: STRINGS.oauthClientRotateKeys },
   // Story 12.8: the OAuth 2.0 Server client descriptions tab's key-set refresh.
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab': { updatejwks: STRINGS.oauthServerUpdateJwks },
+  // Story 16.2: the Web sessions list's End session.
+  'OcuPilot.Screen.Descriptor.WebSessionList': { end: STRINGS.webSessionEndAction },
 };
 
 export class ScreenActions {
