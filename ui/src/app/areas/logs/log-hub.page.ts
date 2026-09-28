@@ -596,8 +596,9 @@ export class LogHubPage {
     document.getElementById('ocu-log-hub-source')?.focus();
   }
 
-  /** Open a shown source at its bare route. */
-  protected onOpenSource(event: Event, source: SourceView): void {
+  /** Open a shown source at its bare route; a modified click is the browser's (a new tab, say). */
+  protected onOpenSource(event: MouseEvent, source: SourceView): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     void this.router.navigateByUrl(withQuery(source.route, this.router.url));
   }
@@ -605,9 +606,10 @@ export class LogHubPage {
   /**
    * Open an entry's source at that entry: a log viewer through a one-shot arrival carrying the
    * entry, the audit viewer on the entry's id route with criteria bracketing its second, and a
-   * keyed source on its id route.
+   * keyed source on its id route. A modified click is the browser's, and hands nothing off.
    */
-  protected onOpenEntry(event: Event, entry: EntryView): void {
+  protected onOpenEntry(event: MouseEvent, entry: EntryView): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     const row = entry.row;
     const target = screenForRoute(row.source);

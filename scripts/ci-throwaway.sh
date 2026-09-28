@@ -188,6 +188,7 @@ services:
       # discarded, and the test refuses to run anywhere the variable is absent rather than
       # trusting a doc comment to keep it off a development instance.
       # classes: LogOlderFilesWire, LogSecondarySeed, LogSecondaryWire, LogSourceRotation
+      # classes: LogHubWire
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
       # Every class that creates or deletes IRIS principals, or the OAuth 2.0 configuration
       # objects handled the same way. Same reasoning, same single home: test classes are selected

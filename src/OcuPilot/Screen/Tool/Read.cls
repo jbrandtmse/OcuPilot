@@ -157,7 +157,7 @@ ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Pr
         If tMaxLength > 0 Do tProperty.%Set("maxLength", tMaxLength, "number")
         If tKind = "datetime" {
             Set tHours = tField.%Get("defaultHoursAgo")
-            Set tOmit = $Select(tHours > 0: "Omit to use the screen's default (" _ tHours _ " hours back); an empty string leaves the bound unset.", 1: "Omit it to leave that bound unset.")
+            Set tOmit = $Select(tHours > 0: "Omit to use the screen's default (" _ tHours _ $Select(tHours = 1: " hour", 1: " hours") _ " back); an empty string leaves the bound unset.", 1: "Omit it to leave that bound unset.")
             Do tProperty.%Set("description", "A server-search criterion, as instance local time in the form YYYY-MM-DD HH:MM:SS. The time part is required; a date alone is refused before the search runs. " _ tOmit)
         } ElseIf tKind = "choice" {
             Do tProperty.%Set("description", "A server-search criterion. One of the listed values, spelled exactly; any other value is refused before the search runs.")

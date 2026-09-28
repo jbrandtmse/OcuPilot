@@ -5,8 +5,9 @@
 /// open (AD-8 as amended for DW-1755).</p>
 /// <p>It writes one interoperability event in HSCUSTOM, by <class>OcuPilot.Test.LogSecondarySeed</class>'s
 /// event log recipe, and creates one IRIS user, so it runs only where
-/// <parameter>ARMINGVARIABLE</parameter> reads 1 -- a <file>scripts/ci-throwaway.sh</file>
-/// container -- and removes both in <method>OnAfterAllTests</method>. It needs a configured test
+/// <parameter>ARMINGVARIABLE</parameter> and <parameter>SEEDVARIABLE</parameter> read 1 -- a
+/// <file>scripts/ci-throwaway.sh</file> container -- and removes both in
+/// <method>OnAfterAllTests</method>, or at once when the setup fails. It needs a configured test
 /// account (<class>OcuPilot.Test.Http</class>) that reads every Logs source.</p>
 Class OcuPilot.Test.LogHubWire Extends %UnitTest.TestCase
 {
@@ -14,6 +15,10 @@ Class OcuPilot.Test.LogHubWire Extends %UnitTest.TestCase
 /// <p>The variable that arms this class: it creates a principal, as
 /// <class>OcuPilot.Test.WireSecurityRead</class> does.</p>
 Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
+/// <p>The variable that arms seeding the event log, as it arms
+/// <class>OcuPilot.Test.LogSecondaryWire</class>.</p>
+Parameter SEEDVARIABLE = "OCUPILOT_ALLOW_LOG_ROTATION";
 
 /// <p>The namespace the event is seeded in.</p>
 Parameter NAMESPACE = "HSCUSTOM";
@@ -51,6 +56,9 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogHubWire writes an interoperability event and creates an IRIS user on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was written. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
+    If $System.Util.GetEnviron(..#SEEDVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogHubWire writes an interoperability event on this instance and runs on a throwaway container only. " _ ..#SEEDVARIABLE _ " does not read 1 here, so nothing was written. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
@@ -74,6 +82,8 @@ Method OnBeforeAllTests() As %Status
         Set tSC = ex.AsStatus()
     }
     Set $NAMESPACE = tOrigNS
+    ; The framework calls no OnAfterAllTests after a failed OnBeforeAllTests, so undo the seed here.
+    If $$$ISERR(tSC) Do ..OnAfterAllTests()
     Quit tSC
 }
 

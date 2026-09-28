@@ -1,4 +1,4 @@
-/// <p>Subclass of <class>OcuPilot.Screen.Timeline</class> overriding only its three seams, so
+/// <p>Subclass of <class>OcuPilot.Screen.Timeline</class> overriding only its four seams, so
 /// <class>OcuPilot.Test.LogHub</class> drives the real composition -- projection, window, merge, cut
 /// and per-source summary -- against member rows it arms. It never reads a member: an unarmed
 /// member answers no rows.</p>
@@ -28,6 +28,13 @@ ClassMethod Arm(pDescriptor As %String, pRows As %DynamicArray, pTruncated As %B
     Set ^||OcuPilotLogHubFixture("cut", pDescriptor) = ''pTruncated
 }
 
+/// <p>Arm member <var>pDescriptor</var>'s newest row whatever the bound, <var>pRow</var> in that
+/// member's own row shape, which <method>LastMember</method> answers.</p>
+ClassMethod ArmLast(pDescriptor As %String, pRow As %DynamicObject)
+{
+    Set ^||OcuPilotLogHubFixture("last", pDescriptor) = pRow.%ToJSON()
+}
+
 /// <p>Make member <var>pDescriptor</var>'s read fail with <var>pHttp</var> and <var>pCode</var>,
 /// naming <var>pPair</var> as <code>detail.failedPair</code> when there is one.</p>
 ClassMethod Fault(pDescriptor As %String, pHttp As %Integer, pCode As %String, pPair As %String = "")
@@ -47,6 +54,12 @@ ClassMethod Reads(pDescriptor As %String = "") As %Integer
 {
     If pDescriptor = "" Quit +$Get(^||OcuPilotLogHubFixture("reads"))
     Quit +$Get(^||OcuPilotLogHubFixture("readsFor", pDescriptor))
+}
+
+/// <p>How many times <var>pDescriptor</var>'s newest row whatever the bound was asked for.</p>
+ClassMethod LastReads(pDescriptor As %String) As %Integer
+{
+    Quit +$Get(^||OcuPilotLogHubFixture("lastReads", pDescriptor))
 }
 
 /// <p>How many member gates were asked.</p>
@@ -106,6 +119,17 @@ ClassMethod ReadMember(pDescriptor As %String, pKind As %String, pMaxRows As %In
     Set tJson = $Get(^||OcuPilotLogHubFixture("rows", pDescriptor))
     If tJson '= "" Set pRows = ##class(%DynamicArray).%FromJSON(tJson)
     Set pTruncated = +$Get(^||OcuPilotLogHubFixture("cut", pDescriptor))
+    Quit $$$OK
+}
+
+ClassMethod LastMember(pDescriptor As %String, pKind As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set ^||OcuPilotLogHubFixture("lastReads", pDescriptor) = $Get(^||OcuPilotLogHubFixture("lastReads", pDescriptor)) + 1
+    Set pRow = ""
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Set tJson = $Get(^||OcuPilotLogHubFixture("last", pDescriptor))
+    If tJson '= "" Set pRow = ##class(%DynamicObject).%FromJSON(tJson)
     Quit $$$OK
 }
 

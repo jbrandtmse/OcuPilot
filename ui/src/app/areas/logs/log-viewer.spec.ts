@@ -594,6 +594,18 @@ describe('LogViewerPage', () => {
     expect(fileChoice(fixture)?.value).toBe(OLDER);
   });
 
+  it('Story 16.9: choosing another file takes down the sentence that the hub\'s entry has left the window', async () => {
+    const arrivals = new ScreenArrivals();
+    arrivals.set({ route: 'logs/messages', criterion: '', criteria: {}, entry: { time: '2026-09-17T00:00:00.000', text: 'long gone' } });
+    const { fixture } = await mount(MESSAGES_SCREEN, ADDRESS, arrivals);
+    await settle();
+    fixture.detectChanges();
+    expect(textOf(fixture, '[data-ocu-log="entry-gone"]')).toBe(STRINGS.logViewerEntryGone);
+    choose(fixture, OLDER);
+    await settleNavigation(fixture);
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="entry-gone"]')).toBeNull();
+  });
+
   it('Story 16.20 AC2: Load newer on an older file carries its cursor and its name', async () => {
     const { store } = await mount(MESSAGES_SCREEN, `${ADDRESS}&file=${OLDER}`);
     await store.loadNewer();

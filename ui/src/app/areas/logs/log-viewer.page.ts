@@ -306,6 +306,9 @@ export class LogViewerPage {
   /** Whether the entry the log hub opened this viewer at was not in the window it read. */
   private entryGoneValue = false;
 
+  /** Set when the page is destroyed, so a read that lands afterwards marks nothing. */
+  private destroyed = false;
+
   /** The screen this page renders, which an explained entry is sent as. */
   private readonly screen: ScreenDeclaration | null;
 
@@ -364,10 +367,14 @@ export class LogViewerPage {
       if (this.navigation.screenForUrl(this.router.url)?.descriptor !== screen.descriptor) return;
       const file = this.addressedFile();
       if (file === this.store.file()) return;
+      // Another file is not the window the log hub's entry was looked for in.
+      this.currentLine = null;
+      this.entryGoneValue = false;
       this.store.setSource(source, file);
       void this.store.open();
     });
     inject(DestroyRef).onDestroy(() => {
+      this.destroyed = true;
       stop();
       stopExplain?.();
       stopRefreshAction?.();
@@ -401,7 +408,7 @@ export class LogViewerPage {
     this.entryGoneValue = false;
     this.generation.update((value) => value + 1);
     void this.store.open().then(() => {
-      if (!this.store.loaded() || this.store.fault() !== null) return;
+      if (this.destroyed || !this.store.loaded() || this.store.fault() !== null) return;
       this.currentLine = arrivalLine(this.store.lines(), entry);
       this.entryGoneValue = this.currentLine === null;
       this.generation.update((value) => value + 1);

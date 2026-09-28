@@ -2,9 +2,9 @@
 /// <class>OcuPilot.Test.LogHubFixture</class>: the roster, a refused member read zero times, a
 /// member 403 left out and a member 500 failing the read, the window, the two truncation rules and
 /// the merged cut, <code>last</code>, the merge order, the audit and error projections under a fixed
-/// clock offset, the audit member's begin criterion, and a bad bound refused before any member is
-/// read. It seeds nothing and needs nothing of the instance
-/// beyond the compiled registry.</p>
+/// clock offset, the audit member's begin criterion and its last-entry read, the production gate
+/// and read seams, and a bad bound refused before any member is read. It seeds nothing; beyond
+/// the compiled registry it reads messages.log and the audit database, and needs one audit event.</p>
 Class OcuPilot.Test.LogHub Extends %UnitTest.TestCase
 {
 
@@ -172,6 +172,7 @@ Method TestTheWindowDropsRowsBeforeTheBound()
     Do $$$AssertStatusOK(tSC, "the read succeeds")
     Do $$$AssertEquals(..Texts(.tAnswer), "logs/messages:after|logs/messages:at the bound", "only the rows at or after the bound, a row with no time left out")
     Set tMessages = ..Source(.tAnswer, "logs/messages")
+    Do $$$AssertTrue($IsObject(tMessages), "messages.log keeps its summary")
     If $IsObject(tMessages) Do $$$AssertEquals(tMessages.count, 2, "and the count is the rows kept")
 }
 
@@ -229,10 +230,76 @@ Method TestLastIsTheNewestEntryWhateverTheWindow()
         Do $$$AssertEquals($Length(tAlerts.last.text) _ "|" _ $Extract(tAlerts.last.text, *), "1000|" _ $Char(8230), "its text cut at 1,000 characters, the last U+2026")
     }
     Set tMessages = ..Source(.tAnswer, "logs/messages")
-    If $IsObject(tMessages) Do $$$AssertEquals(tMessages.last.text, "newest", "the newest row, whatever order the member answered in")
+    Do $$$AssertTrue($IsObject(tMessages) && $IsObject(tMessages.last), "messages.log carries a last entry")
+    If $IsObject(tMessages) && $IsObject(tMessages.last) Do $$$AssertEquals(tMessages.last.text, "newest", "the newest row, whatever order the member answered in")
     Set tXdbc = ..Source(.tAnswer, "logs/xdbc")
+    Do $$$AssertTrue($IsObject(tXdbc), "the xDBC log keeps its summary")
     If $IsObject(tXdbc) Do $$$AssertEquals(tXdbc.%GetTypeOf("last"), "null", "a source with no rows has no last entry")
     Do $$$AssertEquals(..Texts(.tAnswer), "logs/messages:newest", "the timeline holds the one row inside the window")
+}
+
+/// <p>AC1 -- a member whose own read took the bound (the audit viewer's begin) and answered no row
+/// is asked once for its newest row whatever the bound, so a quiet audit database still names its
+/// last entry; a member with a row in the window, or one whose read takes no bound, is not asked.</p>
+/// <p>Mutation (Rule 19): drop the last-entry read from
+/// <method>OcuPilot.Screen.Timeline.Compose</method> -&gt; the audit last entry goes red.</p>
+Method TestAQuietAuditDatabaseStillNamesItsLastEntry()
+{
+    Do ##class(OcuPilot.Test.LogHubFixture).Offset(0)
+    Do ##class(OcuPilot.Test.LogHubFixture).ArmLast(..#AUDIT, {"UTCTimeStamp": "2026-09-25 08:00:00.000", "SystemID": "host:IRIS", "AuditIndex": 7, "EventSource": "%System", "EventType": "%Login", "Event": "Login", "Description": ""})
+    Do ##class(OcuPilot.Test.LogHubFixture).ArmLast(..#MESSAGES, ..Row("2026-09-25T08:00:00.000", "never asked"))
+    Set tSC = ..Compose(50, ..#SINCE, .tAnswer, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    Set tAudit = ..Source(.tAnswer, "logs/audit")
+    Do $$$AssertTrue($IsObject(tAudit) && $IsObject(tAudit.last), "the quiet audit database carries a last entry")
+    If $IsObject(tAudit) && $IsObject(tAudit.last) Do $$$AssertEquals(tAudit.count _ "|" _ tAudit.last.time _ "|" _ tAudit.last.text, "0|2026-09-25T08:00:00.000|%System/%Login/Login", "count 0, and its newest event, two days before the window")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogHubFixture).LastReads(..#AUDIT) _ "|" _ ##class(OcuPilot.Test.LogHubFixture).LastReads(..#MESSAGES), "1|0", "asked once, and a member whose read takes no bound is not asked")
+    Do $$$AssertEquals(..Texts(.tAnswer), "", "and nothing reaches the timeline")
+
+    Do ##class(OcuPilot.Test.LogHubFixture).Clear()
+    Do ##class(OcuPilot.Test.LogHubFixture).Arm(..#AUDIT, [{"UTCTimeStamp": "2026-09-27 10:15:00.000", "SystemID": "host:IRIS", "AuditIndex": 8, "EventSource": "%System", "EventType": "%Login", "Event": "Login", "Description": ""}])
+    Set tSC = ..Compose(50, ..#SINCE, .tAnswer, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogHubFixture).LastReads(..#AUDIT), 0, "an audit read with a row in the window is not asked again")
+}
+
+/// <p>AC5 -- the production seams against this instance: a member's gate is its own screen's gate,
+/// a name that is no screen refused; a member is read at the hub's cap, messages.log cut at two
+/// lines; and the audit viewer's read takes the bound as its begin, so a bound at its newest event
+/// answers that event and a bound in 2099 answers none, whichever side of the viewer's own
+/// 24-hour default the newest event falls. Needs messages.log and one audit event.</p>
+/// <p>Mutations (Rule 19): <method>OcuPilot.Screen.Timeline.GateMember</method> answers 1 -&gt; the
+/// no-screen leg goes red; <method>OcuPilot.Screen.Timeline.ReadMember</method> reads at the
+/// default cap -&gt; the messages leg goes red; it drops the criteria -&gt; one of the two audit
+/// legs goes red.</p>
+Method TestTheProductionSeamsGateAndReadAsEachScreenDoes()
+{
+    Set tSC = ##class(OcuPilot.Screen.Timeline).Members("logs", .tMembers)
+    Do $$$AssertStatusOK(tSC, "the members list")
+    For tI = 1:1:$ListLength(tMembers) {
+        Set tMember = $List(tMembers, tI)
+        Set tHub = ##class(OcuPilot.Screen.Timeline).GateMember(tMember, .tHubPair)
+        Set tOwn = ##class(OcuPilot.Screen.Gate).Evaluate(tMember, .tOwnPair)
+        Do $$$AssertEquals(tHub _ "|" _ tHubPair, tOwn _ "|" _ tOwnPair, tMember _ " is gated by its own screen's gate")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Timeline).GateMember("OcuPilot.Screen.Descriptor.NoSuchScreen", .tNone), 0, "a name that is no screen is refused")
+
+    Set tSC = ##class(OcuPilot.Screen.Timeline).ReadMember(..#MESSAGES, "log", 2, "", .tRows, .tCut, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "messages.log reads")
+    If $$$ISOK(tSC) Do $$$AssertEquals(tRows.%Size() _ "|" _ tCut, "2|1", "at the hub's cap of two, cut")
+
+    Set tSC = ##class(OcuPilot.Screen.Timeline).LastMember(..#AUDIT, "audit", .tLast, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the audit database reads with the bound unset")
+    Do $$$AssertTrue($IsObject(tLast) && (tLast.%Get("UTCTimeStamp") '= ""), "and answers its newest event")
+    If $IsObject(tLast) && (tLast.%Get("UTCTimeStamp") '= "") {
+        Set tAt = $Translate($Extract(##class(OcuPilot.Screen.Timeline).LocalTime(tLast.%Get("UTCTimeStamp")), 1, 19), "T", " ")
+        Set tSC = ##class(OcuPilot.Screen.Timeline).ReadMember(..#AUDIT, "audit", 5, tAt, .tRows, .tCut, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tSC, "the audit database reads from its newest event")
+        If $$$ISOK(tSC) Do $$$AssertTrue(tRows.%Size() >= 1, "and answers it, the bound " _ tAt _ " being its begin")
+    }
+    Set tSC = ##class(OcuPilot.Screen.Timeline).ReadMember(..#AUDIT, "audit", 5, "2099-01-01 00:00:00", .tRows, .tCut, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the audit database reads from a bound in 2099")
+    If $$$ISOK(tSC) Do $$$AssertEquals(tRows.%Size(), 0, "and answers no event")
 }
 
 /// <p>AC3 -- the merge is newest first, and equal times keep roster order, then each member's own

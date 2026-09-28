@@ -7,8 +7,8 @@
 /// bound. A member the caller may not read is left out and named with its failed pair; any other
 /// member fault fails the whole read (AD-36).</p>
 /// <p>Seams a test subclass overrides (<class>OcuPilot.Test.LogHubFixture</class>):
-/// <method>GateMember</method>, <method>ReadMember</method> and <method>LocalTime</method>.
-/// Production overrides none.</p>
+/// <method>GateMember</method>, <method>ReadMember</method>, <method>LastMember</method> and
+/// <method>LocalTime</method>. Production overrides none.</p>
 Class OcuPilot.Screen.Timeline Extends %RegisteredObject
 {
 
@@ -119,6 +119,19 @@ ClassMethod MemberCriteria(pDescriptor As %String, pSince As %String, Output pCr
     If $ListFind(##class(OcuPilot.Screen.Read).CriteriaParams(pDescriptor), ..#BEGINPARAM) Set pCriteria(..#BEGINPARAM) = pSince
 }
 
+/// <p>Member <var>pDescriptor</var>'s newest row whatever the bound, as its own row
+/// (<var>pRow</var>, <code>""</code> when it has none): its own read at one row with the bound
+/// unset. <method>Compose</method> asks for it only where the member's read took the bound and
+/// answered no row, so a quiet audit database still names its last entry.</p>
+ClassMethod LastMember(pDescriptor As %String, pKind As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pRow = ""
+    Set tSC = ..ReadMember(pDescriptor, pKind, 1, "", .tRows, .tCut, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If $IsObject(tRows) && (tRows.%Size() > 0) Set pRow = tRows.%Get(0)
+    Quit tSC
+}
+
 /// <p><var>pUtc</var>, a UTC <code>YYYY-MM-DD HH:MM:SS[.fff]</code> stamp, on the instance's clock in
 /// the hub's form (<method>OcuPilot.Port.LogSourcePort.LocalFromUtc</method>). A test fixture
 /// overrides it with a fixed offset, so the conversion is observable on an instance kept in UTC.</p>
@@ -173,7 +186,8 @@ ClassMethod Project(pKind As %String, pRoute As %String, pRow As %DynamicObject)
 /// <code>sources</code> holds one <code>{source, shown, requires, count, truncated, last}</code> per
 /// member in roster order: <code>requires</code> the failed pair of a member not shown,
 /// <code>count</code> its rows in the answer, <code>last</code> its newest timed row whatever the
-/// bound, its text cut at <parameter>LASTTEXTMAX</parameter>, or <code>null</code>. A member is
+/// bound (<method>LastMember</method> where its read took the bound and answered none), its text
+/// cut at <parameter>LASTTEXTMAX</parameter>, or <code>null</code>. A member is
 /// <code>truncated</code> when its own read was cut while its oldest returned row is still at or
 /// after the bound, or when the merged cut dropped one of its rows; the answer's
 /// <code>truncated</code> is their OR.</p>
@@ -241,6 +255,25 @@ ClassMethod Compose(pMaxRows As %Integer, pSince As %String, Output pAnswer As %
                 Set tSeq = tSeq + 1
                 Set tHeld(" " _ tTime, tSeq) = tProjected
                 Set tOwner(tSeq) = tEntry
+            }
+            ; A read that took the bound (the audit viewer's begin) holds nothing older than it, so
+            ; a member it answered no row for is asked once for its newest row whatever the bound.
+            If '$IsObject(tNewest) && (pSince '= "") {
+                Kill tTook
+                Do ..MemberCriteria(tMember, pSince, .tTook)
+                If $Data(tTook) {
+                    Set tLastSC = ..LastMember(tMember, tKind, .tLastRow, .tLastHttp, .tLastFault)
+                    If $$$ISERR(tLastSC) {
+                        Set pHttpStatus = tLastHttp
+                        Set pFault = tLastFault
+                        Set tSC = tLastSC
+                        Quit
+                    }
+                    If $IsObject(tLastRow) {
+                        Set tProjected = ..Project(tKind, tRoute, tLastRow)
+                        If tProjected.time '= "" Set tNewest = tProjected
+                    }
+                }
             }
             ; A cut read whose oldest row is still inside the window may have left window rows
             ; unread; one whose oldest row is before the bound read the whole window.

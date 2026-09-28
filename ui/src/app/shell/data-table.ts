@@ -32,7 +32,7 @@ import { OverlayStack } from '../core/overlay-stack';
 import { readBackLine, withReadBack } from '../core/read-back';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { csvFileName, csvText, tableCsvRows } from '../core/csv';
+import { csvFileName, csvText, saveCsv, tableCsvRows } from '../core/csv';
 import { DOWNLOAD_CSV_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
 import { applyView, textOf } from '../core/screen-read';
 import type { ScreenStore } from '../core/screen-store';
@@ -732,23 +732,14 @@ export class DataTable implements OnInit {
 
   /**
    * Save the view as it stands -- filter and sort applied, the declared columns under their header
-   * labels, each cell as displayed -- as a CSV file built here: an in-document anchor over an
-   * object URL, clicked and removed, with the URL revoked on a later task. No request leaves the
-   * page and nothing navigates (AD-20, AD-47).
+   * labels, each cell as displayed -- as a CSV file built here and saved through `saveCsv`. No
+   * request leaves the page and nothing navigates (AD-20, AD-47).
    */
   private downloadCsv(): void {
     const columns = this.columns();
     const header = columns.map((column) => this.lookup(column.labelKey));
     const text = csvText(header, tableCsvRows(this.view(), columns, this.lookup, this.pendingFields()));
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = csvFileName(this.gridLabel, new Date());
-    anchor.hidden = true;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    saveCsv(document, text, csvFileName(this.gridLabel, new Date()));
   }
 
   // --- What renders ------------------------------------------------------------------------------

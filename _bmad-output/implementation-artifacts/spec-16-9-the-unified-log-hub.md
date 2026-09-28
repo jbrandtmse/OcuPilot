@@ -273,6 +273,50 @@ Client (`ui/src/app/`):
 - **AC9.** Given the new strings, when this story lands, then they are in EXPERIENCE.md's Fixed strings and in `strings.ts`, pinned equal by `npm run test:tools`.
 - **AC10 (Integration).** Given `ocupilot-ci` with seeded entries, when `LogHubPage` (consumer) reads `GET /api/ocupilot/screens/logs.hub/read` and the `logs.hub.read` tool reads the same composed read, then both show the same newest rows and the same `sources`. And when `LogViewerPage` (consumer) takes the hub's arrival, then it marks the chosen line. The hub passes the DW-1337 walk with no new allowance in both themes, and the bundle stays under 2004 kB (stop and ask at 3800 kB).
 
+### Review Findings
+
+Code review 2026-09-28 (review tier `full-opus`; layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 51 rows, 36 entries after grouping: 0 high, 4 medium, 13 low patched, 19 dismissed. All patched in this pass; nothing deferred. Fields: severity, fix-risk, footprint.
+
+- [x] [Review][Patch] The audit source's `last` was bounded by its own `beginDateTime`, so a quiet audit database read "No entries." against AC1 [src/OcuPilot/Screen/Timeline.cls:261] — med; fix-risk low (one extra read at one row, only when a bound-taking member answered none); in-story. `LastMember` seam; `LogHub.TestAQuietAuditDatabaseStillNamesItsLastEntry`.
+- [x] [Review][Patch] The production member gate and read were never observed: the fixture overrides both, and the wire refusal also came from the port [src/OcuPilot/Screen/Timeline.cls:84] — med; fix-risk low (test only); in-story. `LogHub.TestTheProductionSeamsGateAndReadAsEachScreenDoes`: each member's gate equals its screen's, a non-screen is refused, messages.log is read at the cap, and the audit begin is honoured on both sides of the viewer's 24-hour default.
+- [x] [Review][Patch] AC8 at runtime opened only the event log's viewer; the messages.log family (server and client parse the same line) had no end-to-end leg [ui/browser/log-hub.browser-spec.mjs:330] — med; fix-risk low; in-story. The seeded console line now opens `logs/messages` marked.
+- [x] [Review][Patch] No component case could tell a source's `last` from its timeline row [ui/src/app/areas/logs/log-hub.page.spec.ts:38] — med; fix-risk low; in-story. An out-of-window xDBC `last` is rendered and explained, with and without a Source filter hiding it.
+- [x] [Review][Patch] A Ctrl/Cmd-click on a source or entry link was taken over instead of left to the browser [ui/src/app/areas/logs/log-hub.page.ts:600] — low; fix-risk low; in-story.
+- [x] [Review][Patch] "That entry is no longer in the loaded range." stayed up after choosing another messages.log file [ui/src/app/areas/logs/log-viewer.page.ts:370] — low; fix-risk low; in-story.
+- [x] [Review][Patch] `openAt` registered `afterNextRender` after the viewer could have been destroyed [ui/src/app/areas/logs/log-viewer.page.ts:411] — low; fix-risk low; in-story.
+- [x] [Review][Patch] `saveCsv` was extracted while `data-table.ts` kept its own copy [ui/src/app/shell/data-table.ts:742] — low; fix-risk low; in-epic.
+- [x] [Review][Patch] The read tool's criterion description read "(1 hours back)" [src/OcuPilot/Screen/Tool/Read.cls:160] — low; fix-risk low; in-epic.
+- [x] [Review][Patch] A `CriteriaCorpus` case name still said "neither admin nor mgmnt" [src/OcuPilot/Test/CriteriaCorpus.cls:83] — low; fix-risk low; in-story.
+- [x] [Review][Patch] The browser text-filter wait was true on zero rows [ui/browser/log-hub.browser-spec.mjs:251] — low; fix-risk low; in-story.
+- [x] [Review][Patch] Three `LogHub` asserts sat behind `If $IsObject` with no presence assertion [src/OcuPilot/Test/LogHub.cls:175] — low; fix-risk low; in-story.
+- [x] [Review][Patch] A component case claimed "Debug covers both debug levels" over rows holding neither; the claim is dropped from its name [ui/src/app/areas/logs/log-hub.page.spec.ts:230] — low; fix-risk low; in-story.
+- [x] [Review][Patch] Two audit doc comments described only agent arrivals [ui/src/app/areas/logs/audit.store.ts:189] — low; fix-risk low; in-epic.
+- [x] [Review][Patch] `LogHubWire` seeds the event log but was armed by `OCUPILOT_ALLOW_PRINCIPALS` alone; it now also requires `OCUPILOT_ALLOW_LOG_ROTATION`, as `LogSecondaryWire` does (roster line added) [src/OcuPilot/Test/LogHubWire.cls:21] — low; fix-risk low; in-story.
+- [x] [Review][Patch] A failed `LogHubWire.OnBeforeAllTests` left its seeded event, since the framework then skips `OnAfterAllTests` [src/OcuPilot/Test/LogHubWire.cls:86] — low; fix-risk low; in-story.
+- [x] [Review][Patch] The timeline bound's `atOrAfterField`, second-criterion and kind arms had no corpus case in either engine [src/OcuPilot/Test/ReadSourceCorpus.cls:135] — low; fix-risk low; in-story.
+
+Rejected (Rule 15 disposition in brackets):
+
+- low [by-design]: the audit member fetches its declared read's fields, `EventData` included, only to project four; the spec requires each member's own read.
+- low [by-design]: a messages.log tail longer than 64 KB reports `truncated` and shows the cap sentence (Design Notes decisions 4 and 6).
+- low [wontfix-accepted, reopen_if=a shape-valid impossible date answers 500]: `since` such as `2026-02-30 10:00:00` passes the shared `DATETIMEFORM` check. Probed on `ocupilot-ci`: the hub answers 200 and windows lexically; the audit viewer has the same pre-existing gap.
+- low [by-design]: the agent cannot open the hub with criteria; the hub is `list` and AD-11 takes criteria on `list (server criteria)` only.
+- low [wontfix-accepted, reopen_if=the data table stops showing its rows beside a failed refresh]: a failed re-read keeps the previous rows beside the refusal, as the data table and log viewer do.
+- low [wontfix-accepted, reopen_if=the audit criteria form names a refused field]: a `READ.CRITERION` refusal reads the generic sentence, as on the audit viewer.
+- maybe-false [wontfix-theoretical, real if typing in the command-bar filter lags at 1,000 rows]: the page's getters rebuild the entry views per change detection.
+- low [wontfix-theoretical, real when a listed Logs screen reads other than `logsource` or the audit LIST; `LogHub`'s roster pin goes red first]: `MemberKind` is checked at run time only.
+- false: `defaultHoursAgo` 0 or null validates. `CriteriaDefaultProblem` refuses both.
+- low [wontfix-theoretical, real if a member read answers 403 without `detail.failedPair`]: the notice would read "requires .". Every member's gate refuses first, and its port names the pair.
+- low [wontfix-accepted, reopen_if=a refused Search leaves the hub refusing after navigating away and back]: a malformed searched bound persists in the root store.
+- low [wontfix-theoretical, real if a click lands inside `drillTo`'s four reads]: the error-log drill has no supersede token.
+- false: an entry older than a secondary viewer's newest 1,000 shows the gone sentence, and that sentence says "loaded range", which is accurate.
+- low [wontfix-theoretical, real if `SYS.ApplicationError` throws mid-read]: `RecentErrorsRead` closes its result set outside `%SYS` on the exception path; the read fails whole either way.
+- low [wontfix-accepted, reopen_if=route and tool diverge on any source summary]: the AC10 wire leg compares the seeded row and each source's shown state, not every count. One executor serves both.
+- low [by-design]: `sources[].last.text` is cut at 1,000 by the composition and not reported in `truncatedFields`, as the spec states.
+- low: the Design Notes quote `:629` where EXPERIENCE.md reads `:627`. The fix would edit the spec's frozen text; the Auto Run Result already records it.
+- low: some AC sub-assertions carry no mutation line. Rule 19 asks for one per AC, and each AC has one.
+- low [wontfix-accepted, reopen_if=the audit or error route opens a different entry than chosen]: the browser audit and error legs accept any dialog or detail level; the component specs pin the id routes.
+
 ## Spec Change Log
 
 - 2026-09-28T01:59Z, lead spec gate: (1) EXPERIENCE.md is edited in place with its line count unchanged (orchestrator's standing rule for shared-append files); the two new Fixed-strings rows are folded into the existing Story 16.8 lines `:584`/`:585` instead of added, so no citation shifts (Design Notes and Tasks updated). (2) The three spine changes under Design Notes are written into the spine by the lead in this gate's commit (AD-36 amended, Conventions › Dates, the Design Paradigm's `LogSourcePort` clause); the implement stage does not write them. (3) `src/OcuPilot/Screen/Timeline.cls`, `ui/src/app/app.ts` and `app.spec.ts` sit outside Epic 16's listed paths and are not contended; the lead reports them as footprint extensions.
@@ -421,6 +465,12 @@ Client (`ui/src/app/`):
 - mutation: `Read.Execute` drops the port's cut → `LogSource` declared-read leg red; `Timeline.MemberCriteria` gives audit no begin → `LogHub` begin leg red.
 - mutation: `RecentErrors` answers `truncated` 0 → `LogHubErrors` cap leg red; skips the per-namespace gate → `LogHubErrors` namespace leg red.
 - mutation: `LogHubPage.downloadCsv` writes `hub.rows()` → `log-hub.page.spec.ts` CSV case red.
+- mutation (CR): `Timeline.Compose` drops the last-entry read → `LogHub` `TestAQuietAuditDatabaseStillNamesItsLastEntry` red (run 17050).
+- mutation (CR): `Timeline.GateMember` answers 1; `ReadMember` reads at the default cap; `ReadMember` drops the criteria → `LogHub` `TestTheProductionSeamsGateAndReadAsEachScreenDoes` red each time (runs 17051-17053).
+- mutation (CR): the Sources list takes `last` from the visible rows → `log-hub.page.spec.ts` AC1 and AC2 cases red.
+- mutation (CR): `onOpenEntry` handles a modified click → `log-hub.page.spec.ts` modified-click case red.
+- mutation (CR): the viewer keeps the gone sentence across a file choice → `log-viewer.spec.ts` file-choice case red.
+- mutation (CR): `screen-mirror.mjs` `timelineProblem` accepts `atOrAfterField` → `screen-mirror.test.mjs` ReadSourceCorpus "compared on the instance" case red.
 
 ## Auto Run Result
 

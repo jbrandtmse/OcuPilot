@@ -1,7 +1,8 @@
 /**
  * A data table's view as a CSV file (Story 16.23): the field encoder, the file text and its name.
- * `shell/data-table.ts` decides which rows and columns go in and saves the result; nothing here
- * reads a store, and only `saveCsv` touches a page, the one it is handed.
+ * `shell/data-table.ts` and the log hub decide which rows and columns go in and save the result
+ * through `saveCsv`; nothing here reads a store, and only `saveCsv` touches a page, the one it is
+ * handed.
  *
  * Framework-free, like the rest of `core/`, so `ui/tools/csv.test.mjs` executes it under
  * `node --test`.
@@ -70,8 +71,7 @@ export function csvFileName(label: string, date: Date): string {
 /**
  * Save `text` as the CSV file `fileName`: an in-document anchor over an object URL, clicked and
  * removed, the URL revoked on a later task. No request leaves the page and nothing navigates
- * (AD-20, AD-47). The log hub saves its timeline through it (Story 16.9); `doc` is the page's
- * document.
+ * (AD-20, AD-47). `doc` is the page's document.
  */
 export function saveCsv(doc: Document, text: string, fileName: string): void {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));

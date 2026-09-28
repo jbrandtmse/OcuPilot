@@ -34,12 +34,19 @@ const ROWS = [
   { time: '2026-09-27T10:10:00.000', source: 'logs/alerts', severity: '1', text: 'a warning', id: '' },
 ];
 
-/** One summary per member; the event log is left out, messages.log is cut and holds nothing. */
+/** The xDBC log's newest line, two days before the window, so it is no timeline row. */
+const QUIET = { time: '2026-09-25T08:00:00.000', source: 'logs/xdbc', severity: '0', text: 'a quiet xDBC line', id: '' };
+
+/**
+ * One summary per member; the event log is left out, messages.log is cut and holds nothing, and
+ * the xDBC log's last entry is older than the window.
+ */
 const SOURCES = [
   { source: 'logs/alerts', shown: true, requires: '', count: 2, truncated: false, last: ROWS[0] },
   { source: 'logs/messages', shown: true, requires: '', count: 0, truncated: true, last: null },
   { source: 'logs/errors', shown: true, requires: '', count: 1, truncated: false, last: ROWS[1] },
   { source: 'logs/audit', shown: true, requires: '', count: 1, truncated: false, last: ROWS[2] },
+  { source: 'logs/xdbc', shown: true, requires: '', count: 0, truncated: false, last: QUIET },
   { source: 'logs/eventlog', shown: false, requires: '%Ens_EventLog:USE', count: 0, truncated: false, last: null },
 ];
 
@@ -163,7 +170,8 @@ describe('LogHubPage', () => {
     expect(alerts.querySelector('a[data-ocu-hub="source-link"]')?.textContent?.trim()).toBe(STRINGS.alertLogListLabel);
     expect(alerts.querySelector('a[data-ocu-hub="source-link"]')?.getAttribute('href')).toContain('logs/alerts');
     expect(alerts.querySelector('[data-ocu-hub="last"]')?.textContent).toContain('probe alert');
-    expect(counts(host)).toEqual({ 'logs/alerts': '2', 'logs/messages': '0', 'logs/errors': '1', 'logs/audit': '1', 'logs/eventlog': '0' });
+    expect(counts(host)).toEqual({ 'logs/alerts': '2', 'logs/messages': '0', 'logs/errors': '1', 'logs/audit': '1', 'logs/xdbc': '0', 'logs/eventlog': '0' });
+    expect(sourceRow(host, 'logs/xdbc').querySelector('[data-ocu-hub="last"]')?.textContent).toContain('a quiet xDBC line');
     expect(sourceRow(host, 'logs/messages').querySelector('[data-ocu-hub="cap"]')?.textContent?.trim()).toBe(STRINGS.errorLogLevelCapNotice);
     expect(sourceRow(host, 'logs/messages').querySelector('[data-ocu-hub="last"]')?.textContent?.trim()).toBe(STRINGS.logViewerEmpty);
     expect(sourceRow(host, 'logs/alerts').querySelector('[data-ocu-hub="cap"]')).toBeNull();
@@ -200,7 +208,7 @@ describe('LogHubPage', () => {
 
     await choose(fixture, '[data-ocu-hub="source-filter"]', 'logs/alerts');
     expect(timeline(host)).toEqual(['probe alert', 'a warning']);
-    expect(counts(host)).toEqual({ 'logs/alerts': '2', 'logs/messages': '0', 'logs/errors': '0', 'logs/audit': '0', 'logs/eventlog': '0' });
+    expect(counts(host)).toEqual({ 'logs/alerts': '2', 'logs/messages': '0', 'logs/errors': '0', 'logs/audit': '0', 'logs/xdbc': '0', 'logs/eventlog': '0' });
 
     await choose(fixture, '[data-ocu-hub="severity-filter"]', 'severe');
     expect(timeline(host)).toEqual(['probe alert']);
@@ -219,7 +227,7 @@ describe('LogHubPage', () => {
     expect(counts(host)['logs/errors']).toBe('1');
   });
 
-  it('an entry with no severity matches only Any, and Debug covers both debug levels', async () => {
+  it('an entry with no severity matches only Any', async () => {
     const { fixture, host } = await mount();
     await choose(fixture, '[data-ocu-hub="severity-filter"]', 'debug');
     expect(timeline(host)).toHaveLength(0);
@@ -271,6 +279,12 @@ describe('LogHubPage', () => {
     (sourceRow(host, 'logs/audit').querySelector('[data-ocu-hub="source-explain"]') as HTMLElement).click();
     expect(entry.take()?.row).toEqual(ROWS[2]);
 
+    // A last entry older than the window, with a Source filter hiding its source, is still the one sent.
+    await choose(fixture, '[data-ocu-hub="source-filter"]', 'logs/alerts');
+    expect(sourceRow(host, 'logs/xdbc').querySelector('[data-ocu-hub="last"]')?.textContent).toContain('a quiet xDBC line');
+    (sourceRow(host, 'logs/xdbc').querySelector('[data-ocu-hub="source-explain"]') as HTMLElement).click();
+    expect(entry.take()?.row).toEqual(QUIET);
+
     const denied = sourceRow(host, 'logs/eventlog').querySelector('[data-ocu-hub="source-explain"]') as HTMLElement;
     expect(denied.getAttribute('aria-disabled')).toBe('true');
     expect(host.querySelector(`#${denied.getAttribute('aria-describedby')}`)?.textContent?.trim()).toBe('Requires %Ens_EventLog:USE');
@@ -281,6 +295,21 @@ describe('LogHubPage', () => {
     empty.click();
     await settle(fixture);
     expect(entry.take()).toBeNull();
+  });
+
+  it('a modified click on an entry or a source is left to the browser and hands nothing off', async () => {
+    const { fixture, host, router, arrivals } = await mount();
+    const prevented: boolean[] = [];
+    host.addEventListener('click', (event) => {
+      prevented.push(event.defaultPrevented);
+      event.preventDefault();
+    });
+    host.querySelectorAll<HTMLElement>('[data-ocu-hub="open"]')[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }));
+    sourceRow(host, 'logs/alerts').querySelector('[data-ocu-hub="source-link"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true }));
+    await settle(fixture);
+    expect(prevented).toEqual([false, false]);
+    expect(router.url).toBe('/logs/hub?ns=HSCUSTOM');
+    expect(arrivals.take('logs/alerts')).toBeNull();
   });
 
   it('publishes the rows the Source and Severity filters leave into the hub store, and registers Refresh and Download CSV', async () => {

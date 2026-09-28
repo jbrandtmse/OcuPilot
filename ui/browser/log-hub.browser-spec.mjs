@@ -1,8 +1,8 @@
 /**
  * The unified log hub in a real browser, against the throwaway instance (Story 16.9): the Sources
  * list with its counts and last entries (AC1), the timeline newest first (AC3), the three filters
- * with the counts following (AC7), a timeline entry opening its viewer at that line and an audit
- * entry opening its dialog (AC8), Explain sending one entry alone (AC8), a `%Manager` +
+ * with the counts following (AC7), an event log entry and a console line each opening its viewer at
+ * that line, an audit entry opening its dialog and an application error its detail (AC8), Explain sending one entry alone (AC8), a `%Manager` +
  * `%DB_HSCUSTOM` principal served the hub with the event log named as not shown (AC6), and the
  * DW-1337 walk of the hub at wide light, narrow light and wide dark (AC10).
  *
@@ -246,7 +246,10 @@ test('AC7: source, severity and text filters leave only matching entries, the co
 
     await page.type('#ocu-command-bar-filter', SECONDARY_MARKER);
     await page.waitForFunction(
-      (selector, wanted) => [...document.querySelectorAll(selector)].every((row) => row.textContent.includes(wanted)),
+      (selector, wanted) => {
+        const rows = [...document.querySelectorAll(selector)];
+        return rows.length > 0 && rows.every((row) => row.textContent.includes(wanted));
+      },
       { timeout: config.navigationTimeoutMs },
       TIMELINE_ROW,
       SECONDARY_MARKER
@@ -262,7 +265,7 @@ test('AC7: source, severity and text filters leave only matching entries, the co
 
 // Mutation (Rule 19): open the bare route with no arrival from `LogHubPage.onOpenEntry` -> the
 // aria-current assertion goes red, on a rebuilt and redeployed bundle.
-test('AC8: an event log entry opens its viewer at that line, an audit entry its dialog, and an application error its detail', async () => {
+test('AC8: an event log entry and a console line open their viewers at that line, an audit entry its dialog, and an application error its detail', async () => {
   const { context, page } = await openHub();
   try {
     const wanted = `${SECONDARY_MARKER} eventlog entry`;
@@ -320,6 +323,30 @@ test('AC8: an event log entry opens its viewer at that line, an audit entry its 
     await third.page.waitForSelector('[data-ocu-level="detail"]', { timeout: config.navigationTimeoutMs });
   } finally {
     await third.context.close();
+  }
+
+  // messages.log: the hub's time and text come from the server's parse of the tail, the viewer's
+  // stamp and raw line from the client's, so this leg holds the two parsers to one line.
+  const fourth = await openHub();
+  try {
+    await waitForTimelineText(fourth.page, CONSOLE_MARKER);
+    const consoleRows = await fourth.page.$$(`${TIMELINE_ROW}[data-ocu-source="logs/messages"]`);
+    let opened = false;
+    for (const row of consoleRows) {
+      if (!(await row.evaluate((node, text) => node.textContent.includes(text), CONSOLE_MARKER))) continue;
+      await Promise.all([
+        fourth.page.waitForFunction(() => location.pathname.endsWith('/logs/messages'), { timeout: config.navigationTimeoutMs }),
+        (await row.$('[data-ocu-hub="open"]')).click(),
+      ]);
+      opened = true;
+      break;
+    }
+    assert.ok(opened, 'the seeded console line was on the timeline as a messages.log entry');
+    await fourth.page.waitForSelector('.ocu-log-row[aria-current="true"]', { timeout: config.navigationTimeoutMs });
+    assert.ok((await fourth.page.$eval('.ocu-log-row[aria-current="true"]', (node) => node.textContent)).includes(CONSOLE_MARKER), 'the messages.log viewer marks that line');
+    assert.equal(await fourth.page.$('[data-ocu-log="entry-gone"]'), null, 'with no gone sentence');
+  } finally {
+    await fourth.context.close();
   }
 });
 

@@ -186,8 +186,9 @@ export class AuditSearch {
   }
 
   /**
-   * Run an agent arrival's search, exactly (Story 11.11, AD-11): the criteria it carries and nothing
-   * else, so a criterion it omits takes its default as the agent's own read did. The form shows those
+   * Run an arrival's search, exactly -- an agent's (Story 11.11, AD-11) or the log hub's (Story
+   * 16.9): the criteria it carries and nothing else, so a criterion it omits takes its default as
+   * the agent's own read did. The form shows those
    * values, and the fields the arrival left absent are filled from the answer.
    *
    * **The marker reads ticked when the search is the marker's.** A flag criterion naming it, or an
