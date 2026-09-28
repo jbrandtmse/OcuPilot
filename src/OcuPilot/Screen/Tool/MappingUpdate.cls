@@ -71,10 +71,11 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit $ClassMethod(..CreateTool(), "Described", tSchema, 0)
 }
 
-/// <p>The kind's create tool, whose schema description and rule helper this tool shares.</p>
+/// <p>The kind's create tool, whose schema description and rule helper this tool shares, named by
+/// <parameter>MAPPINGKIND</parameter> so a subclass under another name resolves it too.</p>
 ClassMethod CreateTool() As %String
 {
-    Quit $Replace($ClassName(), "MappingUpdate", "MappingCreate")
+    Quit ##class(OcuPilot.Area.OsMgmt.MappingRules).ToolClass(..#MAPPINGKIND, "Create")
 }
 
 /// <p>The editor's own rules over the fields the agent's arguments change, read against this tool's

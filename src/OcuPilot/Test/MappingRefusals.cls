@@ -1,7 +1,8 @@
 /// <p>Pins Story 18.14's mapping refusals on the screen's and the agent's callers: an edit of a mapping
 /// deleted since its read, a key outside the template, the routine type suffix, a global's base
 /// mapping deleted while a subscript-level mapping exists, a name the instance refuses, an absent
-/// namespace, a collation that is not a whole number, the form read of what is absent,
+/// namespace, a collation that is not a whole number, a create with no database or no name, the form
+/// read of what is absent,
 /// <class>OcuPilot.Port.NamespacePort</class>'s malformed composite id, and a lower-cased namespace
 /// part reaching the vendor upper-cased.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, the <code>USER</code>
@@ -107,7 +108,8 @@ Method TestARoutineSuffixIsWrittenInCapitals()
 
 /// <p>A global's base mapping deleted while a subscript-level mapping of it exists: the vendor refuses
 /// it with nothing changed, and both callers answer 422 <code>MAPPING.VALIDATION</code>, the screen's
-/// naming <code>MAPPING.NAME.SUBSCRIPTS</code> on Name; both mappings survive.</p>
+/// naming <code>MAPPING.NAME.SUBSCRIPTS</code> on Name with that code's sentence as its reason, which
+/// is what the list shows; both mappings survive.</p>
 /// <p>Mutation (Rule 19): drop the <code>Namespace.GlobalMappings:451</code> entry from
 /// <parameter>OcuPilot.Port.AdminPort.PROPERTYFAULTS</parameter> -> the refusal names no field and
 /// answers as an internal error, and this goes red.</p>
@@ -124,6 +126,7 @@ Method TestABaseMappingWithSubscriptMappingsIsRefusedOnName()
     Set tEnvelope = ""
     Try { Set tEnvelope = ##class(%DynamicObject).%FromJSON(tAnswer) } Catch {}
     Do $$$AssertEquals(tStatus _ " " _ ..Named(tEnvelope), "422 MAPPING.VALIDATION Name:MAPPING.NAME.SUBSCRIPTS", "the screen's delete is refused on Name: " _ tAnswer)
+    Do $$$AssertEquals($Select($IsObject(tEnvelope): tEnvelope.%Get("reason"), 1: ""), ##class(OcuPilot.Api.Error).#REASONMAPPINGNAMESUBSCRIPTS, "and its reason says what to do, since the list has no field to show it on")
     Set tSC = $ClassMethod(..#WRITE, "Mint", ..Tool("Delete"), {"Namespace": (..#NS), "Name": "OcuProbe1814S"}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "the agent's delete is minted " _ tProblem)
     If $IsObject(tProposal) {
@@ -203,6 +206,27 @@ Method TestAnAbsentNamespaceAndABadCollationAreRefused()
         Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ $List(tCase, 1), tUser, tPassword, .tStatus, .tBody, .tHeaders)
         Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody), "404 " _ $List(tCase, 2), "the form read " _ $List(tCase, 1) _ " answers 404 naming what is absent: " _ $Extract(tBody, 1, 200))
     }
+}
+
+/// <p>A create's required fields: a Save with no database, or an empty one, is refused 422 on Database
+/// with <code>MAPPING.DATABASE.REQUIRED</code>, and one with no name 422 on Name with
+/// <code>MAPPING.NAME.REQUIRED</code>, each with no write reaching the port
+/// (<class>OcuPilot.Test.MappingAcceptPort</class>).</p>
+/// <p>Mutation (Rule 19): drop the absent-database arm of
+/// <method>OcuPilot.Area.OsMgmt.MappingRules.Validate</method> -> the Save with no database reaches the
+/// port, and this goes red.</p>
+Method TestADatabaseAndANameAreRequiredOnACreate()
+{
+    Set tAccept = "OcuPilot.Test.MappingAcceptPort"
+    Set ^||OcuPilotNamespaceWritePort = tAccept
+    Do $ClassMethod(tAccept, "Clear")
+    For tJson = "{}", "{""Database"": """"}" {
+        Set tSC = $ClassMethod(..#WRITE, "Save", "global", "create", ..#NS, "OcuProbe1814DR", ##class(%DynamicObject).%FromJSON(tJson), .tHttp, .tCode, .tFields)
+        Do $$$AssertEquals(tHttp _ " " _ tFields, "422 Database:" _ ##class(OcuPilot.Api.Error).#MAPPINGDATABASEREQUIRED, tJson _ ": a create with no database is refused on Database")
+    }
+    Set tSC = $ClassMethod(..#WRITE, "Save", "global", "create", ..#NS, "", {"Database": "USER"}, .tHttp, .tCode, .tFields)
+    Do $$$AssertEquals(tHttp _ " " _ tFields, "422 Name:" _ ##class(OcuPilot.Api.Error).#MAPPINGNAMEREQUIRED, "a create with no name is refused on Name")
+    Do $$$AssertEquals($ClassMethod(tAccept, "Writes"), "", "and no write reached the port")
 }
 
 /// <p><var>pBody</var>'s envelope code, or <code>""</code>.</p>

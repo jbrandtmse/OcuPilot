@@ -129,19 +129,23 @@ Method TestACopyRoundTripsOnBothCallers()
 
 /// <p>A bad source is refused before any task is queued, on both callers: an absent one with the
 /// namespace-absent reason, and the destination itself, in another case, with
-/// <code>NAMESPACE.SOURCE.SAME</code>'s.</p>
+/// <code>NAMESPACE.SOURCE.SAME</code>'s, each compared with the published sentence itself.</p>
+/// <p>Mutation (Rule 19): drop the <code>NAMESPACE.SOURCE.SAME</code> arm of
+/// <method>OcuPilot.Api.Error.ReasonForViolation</method> -> the refusal names no reason, and this
+/// goes red.</p>
 Method TestABadSourceIsRefusedBeforeAnyTaskIsQueued()
 {
     Set ^||OcuPilotNamespaceWritePort = ..#RECORD
-    For tCase = $ListBuild("OCUPROBE1814NONE", ##class(OcuPilot.Api.Error).ReasonForViolation(##class(OcuPilot.Api.Error).#NAMESPACESOURCEABSENT)), $ListBuild($ZConvert(..#DESTINATION, "L"), ##class(OcuPilot.Api.Error).ReasonForViolation(##class(OcuPilot.Api.Error).#NAMESPACESOURCESAME)) {
+    For tCase = $ListBuild("OCUPROBE1814NONE", ##class(OcuPilot.Api.Error).#NAMESPACESOURCEABSENT, ##class(OcuPilot.Api.Error).#REASONNAMESPACENAMEABSENT), $ListBuild($ZConvert(..#DESTINATION, "L"), ##class(OcuPilot.Api.Error).#NAMESPACESOURCESAME, ##class(OcuPilot.Api.Error).#REASONNAMESPACESOURCESAME) {
         Set tSource = $List(tCase, 1)
+        Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForViolation($List(tCase, 2)), $List(tCase, 3), $List(tCase, 2) _ ": carries its published sentence")
         Set tSC = ##class(OcuPilot.Test.MappingActionFixture).Act("osmgmt.namespaces", ..Body(..#DESTINATION, tSource), .tAnswer, .tStatus)
         Set tProblem = ""
         Try { Set tProblem = ##class(%DynamicObject).%FromJSON(tAnswer).detail.problem } Catch {}
         Do $$$AssertEquals(tStatus, 400, tSource _ ": the screen's copy is refused 400")
-        Do $$$AssertTrue(tProblem [ $List(tCase, 2), tSource _ ": naming the reason: " _ tProblem)
+        Do $$$AssertTrue(tProblem [ $List(tCase, 3), tSource _ ": naming the reason: " _ tProblem)
         Set tSC = $ClassMethod(..#WRITE, "Mint", ..#TOOLCLASS, {"Name": (..#DESTINATION), "SourceNamespace": (tSource)}, .tProposal, .tHttp, .tProblem)
-        Do $$$AssertTrue('$IsObject(tProposal) && (tHttp = 400) && (tProblem [ $List(tCase, 2)), tSource _ ": the agent's copy is refused at the mint: " _ tProblem)
+        Do $$$AssertTrue('$IsObject(tProposal) && (tHttp = 400) && (tProblem [ $List(tCase, 3)), tSource _ ": the agent's copy is refused at the mint: " _ tProblem)
     }
     Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, "no copy was queued")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Names", "global", ..#DESTINATION), "OcuProbe1814CG,OcuProbe1814Keep", "and the destination is unchanged")

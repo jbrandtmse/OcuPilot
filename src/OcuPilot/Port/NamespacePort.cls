@@ -121,21 +121,27 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 /// (<parameter>OcuPilot.Port.AdminPort.PROPERTYFAULTS</parameter>) into the 422
 /// <code>MAPPING.VALIDATION</code> refusal it is, keeping its <code>detail.violations</code>: the
 /// vendor refused the name and changed nothing (measured on <code>ocupilot-b-ci</code>), so each
-/// caller answers it on the field rather than as an internal error. Any other fault is left as it
-/// is.</p>
+/// caller answers it on the field rather than as an internal error. When one such row is the whole
+/// refusal, its sentence is the envelope's reason too, so a row action on a list, which has no field
+/// to show it on, says what to do. Any other fault is left as it is.</p>
 ClassMethod Refused(ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject) [ Private ]
 {
     If '$IsObject($Get(pFault)) || (pFault.%GetTypeOf("detail") '= "object") Quit
     Set tRows = pFault.%Get("detail").%Get("violations")
     If '$IsObject(tRows) Quit
     Set tNamed = 0
+    Set tReason = ""
     Set tIterator = tRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
-        If $IsObject(tRow) && ($Piece(tRow.%Get("code"), ".", 1) = "MAPPING") Set tNamed = 1
+        If $IsObject(tRow) && ($Piece(tRow.%Get("code"), ".", 1) = "MAPPING") {
+            Set tNamed = tNamed + 1
+            Set tReason = tRow.%Get("reason")
+        }
     }
     If 'tNamed Quit
+    If (tNamed '= 1) || (tRows.%Size() '= 1) || (tReason = "") Set tReason = ##class(OcuPilot.Api.Error).#REASONMAPPINGVALIDATION
     Set tDetail = pFault.%Get("detail")
-    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.Error).#MAPPINGVALIDATION, ##class(OcuPilot.Api.Error).#REASONMAPPINGVALIDATION)
+    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.Error).#MAPPINGVALIDATION, tReason)
     Do pFault.%Set("detail", tDetail)
     Set pHttpStatus = 422
 }

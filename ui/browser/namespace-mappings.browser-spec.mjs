@@ -405,6 +405,8 @@ test('AC2, AC3: a global mapping is created from the list, edited from its name 
 
 // AC6. Mutation (Rule 19): drop the `continued()` branch from `NamespaceListPage.onCopy`, or read the
 // done line before the request answers, rebuild and redeploy -> the running-line assertion goes red.
+// AC8 over the status line while it holds text: draw `.ocu-namespace-copy-status` in `--ocu-surface`,
+// rebuild and redeploy -> the walk below goes red.
 test('AC6: Copy mappings copies the source\u2019s mappings into the destination behind its dialog, with a running line then the done line', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
   const writes = [];
@@ -439,6 +441,7 @@ test('AC6: Copy mappings copies the source\u2019s mappings into the destination 
     const running = STRINGS.namespaceCopyMappingsRunning.split('<source>').join(SOURCE).split('<namespace>').join(DESTINATION).split('<time>')[0];
     assert.ok(lines.some((line) => line.startsWith(running)), `the line read running on the instance first: ${JSON.stringify(lines)}`);
     assert.equal(lines.at(-1), done, `and then done, the copy finishing within the port's wait: ${JSON.stringify(lines)}`);
+    await assertStructure(page, LIST_ROUTE);
     assert.deepEqual(writes.map((body) => JSON.parse(body)), [{ action: 'copy-mappings', id: DESTINATION, values: { SourceNamespace: SOURCE } }], 'exactly one request, naming the source');
     for (const { config: cls, kind } of KINDS) {
       assert.equal(mappedDatabase(cls, DESTINATION, SEEDED[kind]), 'USER', `the destination holds the source's ${kind} mapping`);
@@ -449,8 +452,9 @@ test('AC6: Copy mappings copies the source\u2019s mappings into the destination 
   }
 });
 
-// AC8. Mutation (Rule 19), over a rebuilt and redeployed bundle: draw `.ocu-namespace-copy-status`
-// or `.ocu-field-label` in `--ocu-surface` -> the contrast legs go red in both themes.
+// AC8. Mutation (Rule 19), over a rebuilt and redeployed bundle: draw `.ocu-field-label` in
+// `--ocu-surface` -> the contrast legs go red in both themes. The copy status line is empty here, so
+// the AC6 leg walks it once it holds its done line.
 test('AC8 (DW-1337): a mapping list, the mapping form and the copy dialog pass the structural walk at wide light, narrow light and wide dark', async () => {
   for (const [url, route, ready] of [
     [`/ocupilot/${GLOBAL_LIST_ROUTE}/${encodeEntityId(SOURCE)}?ns=HSCUSTOM`, GLOBAL_LIST_ROUTE, ROW_SELECTOR],

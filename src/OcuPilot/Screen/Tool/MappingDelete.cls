@@ -71,7 +71,7 @@ ClassMethod MintClass() As %String
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Set tSchema = ##super(pDescriptor)
-    Set tSchema = $ClassMethod($Replace($ClassName(), "MappingDelete", "MappingCreate"), "Described", tSchema, 0)
+    Set tSchema = $ClassMethod(##class(OcuPilot.Area.OsMgmt.MappingRules).ToolClass(..#MAPPINGKIND, "Create"), "Described", tSchema, 0)
     If $IsObject(tSchema) && (tSchema.%GetTypeOf("properties") = "object") && (tSchema.%Get("properties").%GetTypeOf("Name") = "object") {
         Do tSchema.%Get("properties").%Get("Name").%Set("description", "The mapping to delete, exactly as this namespace's mapping list reports it. A mapping this namespace does not hold is refused.", "string")
     }

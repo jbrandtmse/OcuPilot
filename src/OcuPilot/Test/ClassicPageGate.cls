@@ -120,7 +120,9 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
     Do $$$AssertEquals($ListLength(tTools), 10, "ten tools declare a replaced classic page")
     For tI = 1:1:$ListLength(tTools) {
         Set tName = $List(tTools, tI)
+        Kill tTool
         Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(tName, .tTool, 1)
+        Do $$$AssertStatusOK(tSC, tName _ ": resolves in the registry")
         If '$IsObject($Get(tTool)) Continue
         Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tTool, .tResolved)
         Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tDeclaredResolved)
@@ -196,41 +198,43 @@ Method TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller()
     }
 }
 
-/// <p>With the probe resource assigned to every declared page, the namespace create's Save, the
-/// namespace delete's row action and the global mapping create's Save are refused 403
+/// <p>With the probe resource assigned to the one page each tool declares, the namespace create's
+/// Save, the namespace delete's row action and the global mapping create's Save are refused 403
 /// <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code> for the lacking principal
-/// with no port call; for the holding principal each is admitted and its write reaches the port.</p>
-/// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Screen.Tool.NamespaceDelete.CLASSICPAGES</parameter>
-/// -> the lacking principal's delete is admitted and this goes red on the delete legs alone.</p>
+/// with no port call; for the holding principal each is admitted and its write reaches the port. One
+/// page at a time, so the form's own classic page stays unassigned and the refusal is the tool's.</p>
+/// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Screen.Tool.NamespaceCreate.CLASSICPAGES</parameter>
+/// -> the lacking principal's create Save is admitted and this goes red on that leg.</p>
 Method TestAnAssignedPageGatesTheScreensCaller()
 {
-    Set tSC = ..Roster(.tRoster)
-    Do $$$AssertStatusOK(..Assign(.tRoster), "the probe resource is assigned to every declared page")
     Do $$$AssertStatusOK($ClassMethod(..#MAPPINGPROBE, "Add", "OCUPROBE1814A"), "a probe namespace for the mapping is created")
+    Set tLegs = $ListBuild($ListBuild("the namespace create's Save", "%CSP.UI.Portal.Namespace", 201, "PUT"), $ListBuild("the namespace delete's row action", "%CSP.UI.Portal.Dialog.NamespaceDelete", 200, "DELETE"), $ListBuild("the global mapping create's Save", "%CSP.UI.Portal.Mappings.Global", 201, "PUT"))
     For tCase = $ListBuild(..#LACKINGUSER, "L"), $ListBuild(..#HOLDINGUSER, "H") {
         Set tUser = $List(tCase, 1)
         Set tSuffix = $List(tCase, 2)
         Set tDelete = "OCUPROBE182CPD" _ tSuffix
         Do $$$AssertStatusOK($ClassMethod(..#NSPROBE, "Add", tDelete), tUser _ ": a namespace to delete is created")
-        Set tPlan = []
-        Do tPlan.%Push({"kind": "create", "name": ("OCUPROBE182CPS" _ tSuffix), "body": {"Name": ("OCUPROBE182CPS" _ tSuffix), "Globals": "USER", "Routines": "USER"}})
-        Do tPlan.%Push({"kind": "delete", "name": (tDelete)})
-        Set tNsRun = ##class(OcuPilot.Test.NamespaceWriteGate).RunAs(tUser, tPlan)
-        Do $$$AssertEquals(##class(OcuPilot.Test.NamespaceWriteGate).Ran(tNsRun), tUser _ " 1", tUser _ ": the child process ran as the principal")
-        Set tMapRun = ##class(OcuPilot.Test.MappingWriteGate).RunAs(tUser, [{"kind": "create", "mappingKind": "global", "body": {"Namespace": "OCUPROBE1814A", "Name": ("OcuProbe1814CP" _ tSuffix), "Database": "USER"}}])
-        ; The runs are objects, so they are held in a local array rather than in a list.
-        Set tRuns(1) = tNsRun
-        Set tRuns(2) = tMapRun
-        Set tLegs = $ListBuild($ListBuild("the namespace create's Save", 1, 1, 201, "PUT"), $ListBuild("the namespace delete's row action", 1, 2, 200, "DELETE"), $ListBuild("the global mapping create's Save", 2, 1, 201, "PUT"))
         For tI = 1:1:$ListLength(tLegs) {
             Set tLegCase = $List(tLegs, tI)
-            Set tText = ##class(OcuPilot.Test.NamespaceWriteGate).LegText(tRuns($List(tLegCase, 2)), $List(tLegCase, 3))
+            Kill tOne
+            Set tOne($List(tLegCase, 2)) = ""
+            Do $$$AssertStatusOK(..RestorePages(), $List(tLegCase, 1) _ ": every page reads its recorded resource first")
+            Do $$$AssertStatusOK(..Assign(.tOne), $List(tLegCase, 1) _ ": the probe resource is assigned to " _ $List(tLegCase, 2) _ " alone")
+            If tI = 1 {
+                Set tRun = ##class(OcuPilot.Test.NamespaceWriteGate).RunAs(tUser, [{"kind": "create", "name": ("OCUPROBE182CPS" _ tSuffix), "body": {"Name": ("OCUPROBE182CPS" _ tSuffix), "Globals": "USER", "Routines": "USER"}}])
+            } ElseIf tI = 2 {
+                Set tRun = ##class(OcuPilot.Test.NamespaceWriteGate).RunAs(tUser, [{"kind": "delete", "name": (tDelete)}])
+            } Else {
+                Set tRun = ##class(OcuPilot.Test.MappingWriteGate).RunAs(tUser, [{"kind": "create", "mappingKind": "global", "body": {"Namespace": "OCUPROBE1814A", "Name": ("OcuProbe1814CP" _ tSuffix), "Database": "USER"}}])
+            }
+            Do $$$AssertEquals(##class(OcuPilot.Test.NamespaceWriteGate).Ran(tRun), tUser _ " 1", tUser _ ": " _ $List(tLegCase, 1) _ " ran as the principal")
+            Set tText = ##class(OcuPilot.Test.NamespaceWriteGate).LegText(tRun, 1)
             If tUser = ..#LACKINGUSER {
                 Do $$$AssertEquals(tText, "403 AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE calls=0 types=", tUser _ ": " _ $List(tLegCase, 1) _ " is refused naming the page's resource, the port asked nothing")
             } Else {
-                Set tLeg = ##class(OcuPilot.Test.NamespaceWriteGate).Leg(tRuns($List(tLegCase, 2)), $List(tLegCase, 3))
-                Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http"), 1: ""), $List(tLegCase, 4), tUser _ ": " _ $List(tLegCase, 1) _ " is admitted (" _ tText _ ")")
-                Do $$$AssertTrue($IsObject(tLeg) && $ListFind($ListFromString(tLeg.%Get("types")), $List(tLegCase, 5)), tUser _ ": and its write reaches the port")
+                Set tLeg = ##class(OcuPilot.Test.NamespaceWriteGate).Leg(tRun, 1)
+                Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http"), 1: ""), $List(tLegCase, 3), tUser _ ": " _ $List(tLegCase, 1) _ " is admitted (" _ tText _ ")")
+                Do $$$AssertTrue($IsObject(tLeg) && $ListFind($ListFromString(tLeg.%Get("types")), $List(tLegCase, 4)), tUser _ ": and its write reaches the port")
             }
         }
         Do $$$AssertEquals($ClassMethod(..#NSPROBE, "Holds", tDelete), (tUser = ..#LACKINGUSER), tUser _ ": the namespace to delete " _ $Select(tUser = ..#LACKINGUSER: "survives", 1: "is gone"))

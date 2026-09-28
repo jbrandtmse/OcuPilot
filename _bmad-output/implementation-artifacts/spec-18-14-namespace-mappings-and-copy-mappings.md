@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-28'
 baseline_revision: '57c4a1d797567e26000d343ecd7d41069457f4a7'
 baseline_commit: 'c267f6da5e9ababff6ea59664edcb9f4050afcc7'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -505,6 +505,65 @@ The work has two parts, built in order:
   - The pages are the New Namespace page, the Edit Namespace page, the Delete Namespace dialog, and each mapping kind's dialog.
 - **AC8:** Given the new screens and the copy dialog, when the DW-1337 structural walk runs in both themes, then no violation outside the baseline appears. The production build stays below 3800 kB. If it passes `maximumWarning` (2107 kB), the warning is re-based under DW-1166 together with the literal at `angular-json.test.mjs:384`.
 
+### Review Findings
+
+Code review 2026-09-28 (`review_tier: full-opus`; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor).
+
+- [x] [Review][Defer] The own-mapping predicate matches only names that begin with `OcuPilot`, so a wildcard covering them (`Ocu*`, `O*`) in the install namespace or `%ALL` is permitted and would redirect OcuPilot's class routines (inference) [src/OcuPilot/Kernel/Proposal/Prohibited.cls:1783] — deferred: DW-1803 `decision-pending`, widening AD-10's rule is the owner's call.
+- [x] [Review][Patch] A refused list delete shows only "The mapping was refused."; the one field sentence (#451's "Delete this global's subscript-level mappings first.") never reaches the list [src/OcuPilot/Port/NamespacePort.cls:126]
+- [x] [Review][Patch] `ClassicPageGate`'s screen-caller legs assign every page at once, so the create Saves are refused by the form's own classic page and never prove the create tool's `CLASSICPAGES` union [src/OcuPilot/Test/ClassicPageGate.cls:196]
+- [x] [Review][Patch] The DW-1337 walk never measures the copy status line while it holds text, and its comment claims a mutation that cannot redden [ui/browser/namespace-mappings.browser-spec.mjs:450]
+- [x] [Review][Patch] `MAPPING.DATABASE.REQUIRED` and `MAPPING.NAME.REQUIRED` are raised by no test [src/OcuPilot/Test/MappingRefusals.cls:181]
+- [x] [Review][Patch] The bad-source test compares against `ReasonForViolation`, so a missing sentence arm reads `""` and `[ ""` always passes [src/OcuPilot/Test/NamespaceCopy.cls:136]
+- [x] [Review][Patch] `MappingUpdate.CreateTool` and `MappingDelete.InputSchema` find the create class by editing `$ClassName()`, which names no class for a subclass such as `Test.SeamGlobalMappingDelete` [src/OcuPilot/Screen/Tool/MappingUpdate.cls:75]
+- [x] [Review][Patch] `ClassicPageGate.TestWithNoAssignment...` skips a tool that fails to resolve, silently and with the previous tool still in `tTool` [src/OcuPilot/Test/ClassicPageGate.cls:117]
+- [x] [Review][Patch] EXPERIENCE.md's kernel-refusals row says the namespace Delete advisory "states the last", which now names the mapping sentence [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:481]
+- [x] [Review][Patch] `MappingWriteGate`'s header says four users and four roles; it creates three of each [src/OcuPilot/Test/MappingWriteGate.cls:12]
+- [x] [Review][Patch] The Verification line for `NamespacePort.Refused` says "alone red", which predates `TestANameTheInstanceRefusesAnswersOnName` [spec ## Verification]
+- [x] [Review][Defer] The form read and name check are never called by a principal lacking the screen's pairs [src/OcuPilot/Area/OsMgmt/MappingRules.cls:217] — deferred: DW-1804 `wontfix-accepted`; the gate is the shared `Screen.Gate.Evaluate`, and 18.2's `/namespace/form` has the same untested denial.
+
+Verified on the recreated `ocupilot-b-ci` after the patches:
+
+- ObjectScript: `MappingRefusals` 8/8 (run 11), `ClassicPageGate` 3/3 (run 16), `NamespaceCopy` 7/7 (run 17), `MappingDescriptor` 6/6 (run 18) and `MappingWrite` 9/9 (run 19).
+- Client: `namespace-mappings.browser-spec` 4/4 on the rebuilt bundle, and `npm run test:tools` 1688/1688.
+- `check-objectscript` and `lint-docs` clean, with EXPERIENCE.md still 993 lines.
+
+Lead action, not a code finding: AD-8's Story 18.14 paragraph in the spine still lacks the copy's `%DB_IRISSYS:WRITE` sentence from the Spec Change Log (Rule 20).
+
+Ledger adjudication of this story's in-story LOWs: DW-1799 `wontfix-accepted` (the vendor's Collation is a number with no empty form); DW-1800 `wontfix-accepted` (every form's locator segment opens its own route; this one lacks its namespace); DW-1801 `by-design` (the form takes its namespace from the route and draws no Namespace control, so its summary shows the sentence).
+
+Rejected:
+
+- `false`: the global list keys subscript mappings apart. The vendor LIST's `Name` is the whole mapping name; the endpoint drops only `Global`.
+- `false`: the copy's status line does not stick on a network fault. `requestJson` answers a `kind` and never rejects.
+- `false`: `READANSWERS` and `FINGERPRINTSUBJECT` carry `SourceNamespace`. The port reads it empty, and the stored source is fingerprinted by design.
+- `false`: the `ci-throwaway.sh` comment's scope is right. Every mapping written, `%` and `OcuPilot` names included, is in an `OCUPROBE1814*` namespace.
+- `low`, spec-bound:
+  - `MAPPING.NAME.SHAPE`'s routine-suffix sentence on every kind;
+  - no effect for `%` routine or package mappings (AC3);
+  - no own-mapping refusal in `%SYS`, since the spec and AD-10 name the install namespace and `%ALL`;
+  - the fail-closed copy refusal's sentence;
+  - the copy card stating no system-global effect;
+  - AC6's "dialog shows" wording;
+  - the spec's "20 new classes" count.
+- `low`, not worth the added branch:
+  - `$Char(1)` in a Save's name, which the form cannot type;
+  - a source deleted between mint and confirm, where the task fails and copies nothing;
+  - the fresh-read-to-PUT and Taken-to-PUT windows, milliseconds inside one request, which AD-4 and AD-54 accept;
+  - an empty-diff Save from a direct API caller;
+  - a boolean `Collation`;
+  - `Update` asking the rules before the prohibited set, which is still refused with nothing sent;
+  - `Snippet` not mirroring the caller-body refusal, as in `AuditPort`, since a stored bodyless proposal has no body;
+  - a principal without write on the destination's globals database copying package mappings, which logs the vendor's severity-2 extent-index line and still applies;
+  - the copy outrunning the 30 s bound on a loaded shard, where the measured copy took 2 s;
+  - AC8's 3800 kB, the implement stage's stop-and-ask rule, measured at 2,110,488 B under the enforced 4000 kB.
+- `low`, vacuous if fixed: "zero port calls" on `ClassicPageGate`'s mint legs. The dispatch path never reaches the recording port.
+
+### Rework iteration 1 (DW-1803, DW-1798, orchestrator decisions)
+
+- [ ] [Decision] DW-1803 (owner, by=merge_gate 2026-09-28; AD-10's own-mappings bullet as amended): `PROHIBITED.OCUPILOTMAPPING` refuses, in the install namespace (the evaluating process's `$NAMESPACE`) or `%ALL`, any global, routine or package mapping whose name pattern or range overlaps an OcuPilot package, routine or global name -- `O*`, `Ocu*`, `*`, a subscript range or routine range spanning an `OcuPilot` name -- not only a name beginning with `OcuPilot`; a copy into either namespace from a source holding such a mapping is refused the same way. Read OcuPilot's names from the instance (its package mapping and state-database mapping, `Kernel/State/Base` `MAPPINGPATTERN`), never a second literal. Pin the overlap cases (`O*`, `Ocu*`, `*`, a range) with tests on both callers through the recording/accepting port, plus a permitting leg (`Q*`, `Zz*` in the install namespace, and any pattern in another namespace), and a Rule 19 mutation that puts the prefix match back.
+- [ ] [Decision] DW-1798 (owner, by=merge_gate 2026-09-28; AD-21's sixth case as amended): `PathPort.Resolve` refuses an overwriting consumer (`file` with `pOverwrite` 1) any existing file in OcuPilot's own served files -- the static application's directory (`csp/ocupilot/`, read from the instance's own application definition or the installer's roster at call time, never a literal path) and whatever the installer deploys there -- with `PATH.INSTANCE`; a new name elsewhere is unaffected. Pin it with a `PathPortInstance` leg and a Rule 19 mutation.
+
 ## Spec Change Log
 
 - 2026-09-28, spec gate (runner): the orchestrator split the story for risk (Rule 5, by=merge_gate): Part C, SA-13's enable-interop with its Task 0 observation (DW-1776), moved to Story 18.15, which runs after 18.4; the intent block was cut to Parts A and B. The owner's DW-1784 decision (AD-44 amended: a screen replacing several classic pages unions each replaced page's custom resource into its write tools' pairs) joined the scope, routed here, with the namespace tools 18.2 shipped included. The orchestrator's 18.4 note applies to the copy: read a finished async task's result exactly once, one poller per task. The spec is `draft` for a re-plan; the first plan's Part C stays in this file's history at commit `4b73be11`.
@@ -513,6 +572,7 @@ The work has two parts, built in order:
 
 - 2026-09-28, implement (Task 0), for the runner (Rule 20): AD-8's Story 18.14 paragraph gains the sentence "`osmgmt.namespaces.copymappings` also declares `%DB_IRISSYS:WRITE`: a principal holding the Namespaces screens' pairs and `%Admin_Operate:USE` was answered 500, its queued copy failing `<PROTECT>` in `Config.Namespaces.CopyMaps` with the destination unchanged (measured on `ocupilot-b-ci`, 2026-09-28)."
 - 2026-09-28, runner: the implement commit (first 12a936cc) was moved by cherry-pick to 35f085bc on top of 18.1's DW-1790 fix, which the orchestrator ordered first; the code is byte-identical, and the review baseline is `c267f6da`, the cherry-pick's parent (`baseline_commit`), since `baseline_revision` 57c4a1d7 now also spans the DW-1790 commits.
+- 2026-09-28, rework iteration 1 (runner): re-opened after the first code review (no HIGH) on two owner decisions the orchestrator directed into this story: DW-1803 (the own-mappings refusal by overlap) and DW-1798 (PathPort refuses an overwrite of OcuPilot's served files, folded here instead of a separate commit). AD-10 and AD-21 carry both rules.
 
 ## Review Triage Log
 
@@ -708,7 +768,7 @@ Demonstrated on `ocupilot-b-ci`, each ObjectScript mutation loaded with its subc
 - mutation: `NamespacePort`'s started conversion removed → `NamespaceCopy`'s two zero-bound tests alone red, 503 `PORT.TIMEOUT` on both callers, each task still read once by `Settle` and deleted (run 439).
 - mutation: `Screen.Gate.WithClassicPages` answers `pPairs` → `ClassicPageGate`'s two assigned-page tests red, all ten declaring tools admitted; its no-assignment test green (run 440).
 - mutation: `NamespaceDelete` `CLASSICPAGES` "" → `ClassicPageGate.TestAnAssignedPageGatesTheScreensCaller` and `TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet` red (run 441), `MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools` red (run 442).
-- mutation: `NamespacePort.Refused` converts nothing → `MappingRefusals.TestABaseMappingWithSubscriptMappingsIsRefusedOnName` alone red, the Save answering 500 `INTERNAL` (run 443).
+- mutation: `NamespacePort.Refused` converts nothing → `MappingRefusals.TestABaseMappingWithSubscriptMappingsIsRefusedOnName` red, the screen's delete answering 500 `INTERNAL`, and `TestANameTheInstanceRefusesAnswersOnName` red on each kind's confirm (code review, run 9 on the recreated throwaway).
 - mutation: `.ocu-field-label` drawn in `--ocu-surface` → `namespace-mappings.browser-spec`'s AC8 leg red at 1.04:1 light and 1.08:1 dark. An inline `style` on the form's label left it green and is not counted (inference: the served CSP drops inline styles).
 - mutation: `EndpointCoverage`'s `GET /mapping/:kind/name` row deleted → `TestEveryRouteHasAProbeAndEveryProbeHasARoute` red (run 446); `SurfaceCoverage`'s `osmgmt.namespaces.copymappings` row deleted → `TestEveryWriteToolHasACoverageRowAndBack` red (run 447).
 - mutation: `navigation.ts` `parentListFor` as the first-child inverse → `navigation.test.mjs`'s mapping-parent test red (routine leg); `routeIdFor` returns the id unchanged → its mapping-change test red; `builtScreensForArea` descending → `app.routes.spec`'s route-order test red.
@@ -723,6 +783,11 @@ Demonstrated on `ocupilot-b-ci`, each ObjectScript mutation loaded with its subc
 - mutation (review pass): `NamespaceCopy.TaskCount` answers -1 → `NamespaceCopy.TestACopyRoundTripsOnBothCallers` red on its readable-list floor (run 814).
 - mutation (review pass): `Prohibited.CopiesOwnMapping` permits every destination → `NamespaceCopy.TestACopyIntoTheInstallNamespaceOfAnOcuPilotMappingIsRefused` and `TestACutSourceListIsRefused` red, each copy accepted by `MappingAcceptPort` and `HSCUSTOM`'s mappings unchanged (run 819).
 - mutation (review pass): `locator-bar.ts` `entityLabel` answers the raw id → `locator-bar.spec`'s Story 18.14 composite-id test red.
+- mutation (code review): `NamespacePort.Refused` keeps the generic reason for a single field refusal → `MappingRefusals.TestABaseMappingWithSubscriptMappingsIsRefusedOnName` alone red, on its reason (run 8).
+- mutation (code review): `MappingRules.Validate`'s absent-database arm removed → `MappingRefusals.TestADatabaseAndANameAreRequiredOnACreate` alone red, the Save reaching the port (run 10).
+- mutation (code review): `Error.ReasonForNamespace`'s `NAMESPACE.SOURCE.SAME` arm removed → `NamespaceCopy.TestABadSourceIsRefusedBeforeAnyTaskIsQueued` alone red (run 13).
+- mutation (code review): `NamespaceCreate` `CLASSICPAGES` "" → `ClassicPageGate.TestAnAssignedPageGatesTheScreensCaller` red on the namespace create's Save leg alone, beside the agent test's confirm leg and the roster count (run 15).
+- mutation (code review): `.ocu-namespace-copy-status` drawn in `--ocu-surface`, rebuilt and redeployed → `namespace-mappings.browser-spec`'s AC6 leg red at 1:1 in both themes, its AC8 leg green.
 
 ## Auto Run Result
 

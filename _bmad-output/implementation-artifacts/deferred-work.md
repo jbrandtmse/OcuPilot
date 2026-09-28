@@ -7907,6 +7907,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: NamespaceForm declares only %CSP.UI.Portal.NamespaceEdit and NamespaceList only %CSP.UI.Portal.Namespaces; %CSP.UI.Portal.Namespace and Dialog.NamespaceDelete are separate Zen pages whose custom resource Screen.Gate.RequiredPairs never reads. The spec names the gap in Design Notes; the spine does not. Dialog.Resource, Dialog.ProcessTerminate and the RoleResource dialogs share it; 18.3's Dialog.DatabaseDelete will.
 - 2026-09-28T14:20:12Z status=decision-pending owner=burndown by=cr note=owner call: union each replaced page's key into its write tool's pairs, or name the gap in AD-44; mirror in spine Deferred
 - 2026-09-28T15:06:10Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=owner decision: a screen replacing more than one classic page unions every replaced page's custom resource into its write tools' pairs; AD-44
+- 2026-09-28T23:19:24Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings by=adjudication note=35f085bc plus review: Write.CLASSICPAGES and Screen.Gate.WithClassicPages; namespace and mapping tools declare their pages; ClassicPageGate isolates each page
 
 ### DW-1785: NamespaceRules.Taken's fail-closed branch (a name read failing with anything but 404) is pinned by no test; the tool's own reads have no port seam
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: med | footprint: in-story
@@ -7985,18 +7986,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: InstanceFile answers 0 for /durable/iris/csp/ocupilot/index.html on ocupilot-b-ci (read-only, blind-hunter layer); DW-1790's 17:21:25Z trailer lists the bundle, and its merge_gate decision names database and journal directories only; no overwriting consumer exists yet.
 - 2026-09-28T22:34:01Z status=decision-pending owner=burndown by=cr note=owner: should an overwriting consumer also be refused OcuPilot's own served files, as self-protection?
+- 2026-09-28T23:19:46Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: refuse an overwriting consumer OcuPilot's own served files (csp/ocupilot/ and what the installer deploys); folded into 18.14's rework
 
 ### DW-1799: A global mapping's Collation cannot be cleared from the edit form
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: reported by the implement stage's client work (mapping-form)
 - 2026-09-28T22:38:33Z status=open owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=in-story LOW, adjudicated at 18.14's gate
+- 2026-09-28T23:17:52Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=cr note=vendor Collation is a number (template 0), no empty form; field refusal names it. reopen_if=a PUT omitting Collation is measured to reset it
 
 ### DW-1800: The mapping form's locator screen segment opens the create route without its namespace, which shows the namespace-absent message
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: reported by the implement stage's client work (locator segment of the mapping form)
 - 2026-09-28T22:38:33Z status=open owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=in-story LOW, adjudicated at 18.14's gate
+- 2026-09-28T23:17:52Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=cr note=every form's locator segment opens its own route; reopen_if=a parent-scoped form gains a locator link to its list
 
 ### DW-1801: A mapping create refused on Namespace shows its sentence only in the form's summary, on no field
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: the form draws no Namespace control, so a MAPPING.NAMESPACE.ABSENT violation has no field to attach to
 - 2026-09-28T22:38:33Z status=open owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=in-story LOW, adjudicated at 18.14's gate
+- 2026-09-28T23:17:52Z status=by-design owner=18-14-namespace-mappings-and-copy-mappings by=cr note=the form takes its namespace from the route and draws no Namespace control (spec fields); its summary shows the sentence
+
+### DW-1803: AD-10's own-mapping predicate matches only names beginning OcuPilot, so a wildcard covering them (Ocu*, O*) in the install namespace or %ALL is permitted
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Prohibited.IsOwnMappingName compares the name's first 8 characters with ocupilot, so a routine mapping Ocu* or O* in the install namespace is minted and applied; it would redirect OcuPilot's compiled class routines to another database (inference, vendor wildcard resolution not measured). AD-10's text names only the prefix, so widening it is a spine change.
+- 2026-09-28T23:17:46Z status=decision-pending owner=burndown by=cr note=owner call: widen AD-10 to wildcard stems that cover OcuPilot (recommended); fix is IsOwnMappingName plus a MappingWrite leg
+- 2026-09-28T23:19:46Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: widen AD-10 to pattern overlap (O*, Ocu*, *, ranges) with OcuPilot package, routine or global names; fix in 18.14's rework
+
+### DW-1804: The mapping form read and name check are never called by a principal lacking the screen's pairs
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: MappingRules.HandleForm and HandleName gate through Screen.Gate.Evaluate; MappingWriteGate calls them only as a reader holding the pairs, and 18.2's /namespace/form has the same untested denial.
+- 2026-09-28T23:17:46Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=cr note=reopen_if=GET /mapping/global/form answers other than 403 AUTH.NOPRIVILEGE naming %Admin_Manage:USE for a principal without it

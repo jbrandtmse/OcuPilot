@@ -9,7 +9,7 @@
 /// <class>OcuPilot.Test.MappingRecordPort</class> was asked; the read legs run over the wire.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>NAMESPACEVARIABLE</parameter> reading
-/// <code>1</code>, because the class creates and deletes four users, four roles, probe namespaces
+/// <code>1</code>, because the class creates and deletes three users, three roles, probe namespaces
 /// and their mappings. <method>OnBeforeAllTests</method> refuses anywhere either does not; every probe
 /// object is removed by exact name.</p>
 Class OcuPilot.Test.MappingWriteGate Extends %UnitTest.TestCase

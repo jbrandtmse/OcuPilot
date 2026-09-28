@@ -7331,6 +7331,8 @@ So that the namespace configuration task the contest deferred is complete. [AMEN
 
 - DW-1784: A screen that replaces more than one classic page unions only the one it declares (AD-44), so the New Namespace page's and the Delete Namespace dialog's custom resources never reach the namespace create and delete (ledger; routed by merge_gate 2026-09-28)
 - Enable-interop moved to Story 18.15 [AMENDED 2026-09-28, orchestrator merge gate: split from 18.14 for risk, Rule 5].
+- DW-1803: PROHIBITED.OCUPILOTMAPPING matches only names beginning with OcuPilot, so a routine mapping such as Ocu* or O* in the install namespace would redirect OcuPilot's own code; match by pattern overlap (ledger; routed by merge_gate 2026-09-28)
+- DW-1798: PATH.INSTANCE does not cover OcuPilot's own served files (csp/ocupilot/) for an overwriting consumer (ledger; routed by merge_gate 2026-09-28)
 
 ### Story 18.15: Enable interoperability on a namespace
 
