@@ -86,3 +86,13 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-20T11:47:49Z	Epic 13	ledger_burndown_complete	open_before=2 resolved=0 terminal=0 chartered=0 chartered_size=0 overflow=2 reowned=2 to_decision_sheet=0 open_after=0 cap=8 story_max=12 note=second_pass_DW-1336_and_DW-1337_arrived_by_integrate-forward_after_the_first_gate;DW-1337_is_HIGH_and_out-of-footprint_and_is_surfaced_for_the_orchestrator_rather_than_silently_downgraded
 2026-09-20T11:47:49Z	Epic 13	epic_runner_complete	stories=3 head=f11ffcc
 2026-09-20T12:15:06Z	Epic 13	ci_green_verified	run=35508824724 head=365a7f0 note=all_seven_jobs_success_gates_3of3_images_2of2_instance_package;browser_spec_186_tests_186_pass_0_fail
+2026-09-28T01:31:12Z	Epic 13	runner_resumed	reason=story_13-5_dispatched_after_release_1.0.2 slot=b worktree=fresh head=ce18e001 branch=OCU-1-epic13 model=claude-opus-5-5[1m]
+2026-09-28T01:31:12Z	Epic 13	lead_model_gate	model=claude-opus-5-5[1m] action=proceed
+2026-09-28T01:31:12Z	Epic 13	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-09-28T01:31:12Z	Epic 13	telemetry_gate	pending=0 action=none
+2026-09-28T01:31:12Z	Epic 13	epic_branch_checked_out	repos=. head=ce18e001 note=runner_mode_preprovisioned_rule_25_verified_node_modules_and_irislib
+2026-09-28T01:31:12Z	Epic 13	slot_binding_verified	slot=b docker_port=52775 mcp_profile=ocupilot-slot-b baseUrl=http://localhost:52775
+2026-09-28T01:31:12Z	Epic 13	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=60 status=final
+2026-09-28T01:31:12Z	Epic 13	ledger_load	total=1225 open=4 routed=106 escalated=0 decision_pending=0 terminal=1115 owner_unknown=0 burndown=25 reowned_none=0 slice_13-5=0
+2026-09-28T01:31:12Z	Epic 13	sprint_planning_skipped	reason=orchestrator_instruction_do_not_repeat_epic-start_gates story_key_present=13-5-ci-in-parallel-the-two-long-suites-split-across-containers:backlog
+2026-09-28T01:31:12Z	Epic 13	retro_review_skipped	reason=orchestrator_instruction_no_13.0_rule_27 retro_review=skip
