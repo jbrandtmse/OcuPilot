@@ -7772,3 +7772,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: feature CI run 36359053662 attempt 1 on c46cafa9 (orchestrator), 2026-09-27 | severity: medium | fix-risk: low | footprint: ui/browser/home-findings.browser-spec.mjs, src/OcuPilot/Kernel/Shell/Findings.cls
 - evidence: attempt 1 red 500/501, attempt 2 green on the same head; the same code passed on staging runs 36352462516 and 36355806784 (inference: a stock task suspended with a non-empty last-run Error on that container)
 - 2026-09-28T01:18:59Z status=routed owner=range-end-cleanup by=orchestrator note=make the assertion print the operations lines, then pin the cause; if the product reports a person-suspended task as an error, fix TaskErrors
+- 2026-09-28T04:41:12Z status=open owner=16-9-the-unified-log-hub by=orchestrator note=re-owned for the priority fix 60da472b (Findings.TaskErrors requires a recorded run); resolve on green CI
