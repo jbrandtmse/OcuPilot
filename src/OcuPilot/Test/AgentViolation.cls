@@ -44,8 +44,8 @@ ClassMethod Call(pMethod As %String, pSuffix As %String, pBody As %String, Outpu
 Method TestEveryViolationCodeHasAPublishedSentence()
 {
     Set tCodes = ##class(OcuPilot.Api.Error).ViolationCodes()
-    ; 32 since Story 8.9 added AGENT.CREDTYPE.UNAVAILABLE to OcuPilot.Api.Error.
-    Do $$$AssertEquals($ListLength(tCodes), 32, "the vocabulary holds thirty-two field-level codes; adding one is a deliberate edit in OcuPilot.Api.Error")
+    ; 34 since Story 14.6 added AGENT.SWITCH.TURNSPERHOUR and AGENT.SWITCH.CONCURRENTTURNS.
+    Do $$$AssertEquals($ListLength(tCodes), 34, "the vocabulary holds thirty-four field-level codes; adding one is a deliberate edit in OcuPilot.Api.Error")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation(tCode)
@@ -56,8 +56,8 @@ Method TestEveryViolationCodeHasAPublishedSentence()
     Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForViolation("AGENT.NO.SUCH.CODE"), "", "and a code the vocabulary does not hold carries none, which is how a caller tells 'no sentence' from 'an empty one'")
 }
 
-/// <p><b>The vocabulary is every <code>AGENT*</code> code the class declares</b>, less the four
-/// that are envelope-level and the four restraint codes
+/// <p><b>The vocabulary is every <code>AGENT*</code> code the class declares</b>, less those
+/// that are envelope-level and the five restraint codes
 /// <method>OcuPilot.Kernel.Restraint.Verdict</method> answers with, and
 /// <method>OcuPilot.Api.Error.ViolationCodes</method> holds exactly that set.</p>
 /// <p>Without this, the sentence check above is a roster checking itself: its population is
@@ -71,11 +71,11 @@ Method TestEveryViolationCodeHasAPublishedSentence()
 /// sentence check above stays green.</p>
 Method TestViolationCodesHoldsEveryDeclaredFieldLevelCode()
 {
-    ; The AGENT codes that do not land on a field: four that ride on the envelope, and the four
+    ; The AGENT codes that do not land on a field: those that ride on the envelope, and the five
     ; restraint codes, whose sentences live in ReasonForRestraint and are asserted by
     ; OcuPilot.Test.Restraint. Named here, because "which codes are field-level" is the one fact
     ; this check cannot derive.
-    Set tEnvelope = $ListBuild("AGENTVALIDATION", "AGENTNOTFOUND", "AGENTBADBODY", "AGENTHOLDNOTFOUND", "AGENTREADONLYENFORCED", "AGENTREADONLYDEFINITION", "AGENTKILLSWITCHGLOBAL", "AGENTKILLSWITCHUSER", "AGENTCONTEXTSHARE")
+    Set tEnvelope = $ListBuild("AGENTVALIDATION", "AGENTNOTFOUND", "AGENTBADBODY", "AGENTHOLDNOTFOUND", "AGENTREADONLYENFORCED", "AGENTREADONLYDEFINITION", "AGENTREADONLYUSER", "AGENTKILLSWITCHGLOBAL", "AGENTKILLSWITCHUSER", "AGENTCONTEXTSHARE", "AGENTRESTRAINTBODY")
     Set tDeclared = ##class(OcuPilot.Api.Error).ViolationCodes()
     Set tFound = 0
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.CompiledParameter WHERE parent = ?", "OcuPilot.Api.Error")

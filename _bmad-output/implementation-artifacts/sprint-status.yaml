@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-27-2026 20:28'
+last_updated: '09-27-2026 23:59'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -209,16 +209,17 @@ development_status:
   13-1-the-uninstall-hook: done
   13-2-the-test-suite-grows-in-ci-against-a-stock-image: done
   13-3-publish-the-package-to-the-community-registry: done
+  13-5-ci-in-parallel-the-two-long-suites-split-across-containers: backlog
   epic-13-retrospective: optional
 
-  epic-14: backlog
-  14-1-the-copy-out-draft: backlog
-  14-2-the-tool-governance-policy: backlog
-  14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model: backlog
-  14-4-transcripts-retention-and-administrator-access: backlog
-  14-5-the-per-user-read-only-toggle: backlog
-  14-6-per-user-turn-limits-and-the-banner-they-need: backlog
-  14-8-the-seeded-injection-test: backlog
+  epic-14: done
+  14-1-the-copy-out-draft: done
+  14-2-the-tool-governance-policy: done
+  14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model: done
+  14-4-transcripts-retention-and-administrator-access: done
+  14-5-the-per-user-read-only-toggle: done
+  14-6-per-user-turn-limits-and-the-banner-they-need: done
+  14-8-the-seeded-injection-test: done
   epic-14-retrospective: optional
 
   epic-15: done
@@ -242,7 +243,7 @@ development_status:
   16-5-background-tasks: backlog
   16-6-broadcast-a-message-to-processes: backlog
   16-7-license-usage-and-the-full-dashboard: backlog
-  16-8-the-six-secondary-log-viewers: review
+  16-8-the-six-secondary-log-viewers: done
   16-9-the-unified-log-hub: backlog
   16-10-external-language-servers: backlog
   16-11-start-suspend-and-resume-the-task-manager: backlog
@@ -258,6 +259,7 @@ development_status:
   16-21-security-findings-with-a-fix-you-confirm: done
   16-22-the-guardrails-page: done
   16-23-any-table-downloaded-as-csv: done
+  16-24-a-try-it-request-copied-as-curl: backlog
   epic-16-retrospective: optional
 
   epic-17: backlog

@@ -68,6 +68,7 @@ XData ReadShapes
 {
 <shapes>
 <screen name="AgentDefinitionList" filter="name,provider,model" sort="name,provider,model" kinds="name:name,provider:text,model:text,enabled:status,default:status"/>
+<screen name="AgentTranscripts" filter="user,started,lastActivity,title" sort="user,started,lastActivity,turns,title" kinds="started:name,user:text,turns:number,lastActivity:text,title:text"/>
 <screen name="AuditList" filter="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" sort="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" kinds="TimeStamp:text,EventSource:text,EventType:text,Event:name,Username:text,Pid:identifier,Namespace:text,Description:text"/>
 <screen name="AuditSystemEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
 <screen name="AuditUserEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
@@ -1604,7 +1605,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 30, "the closed vocabulary holds thirty values -- audit-user-event joined in Story 7.11; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 31, "the closed vocabulary holds thirty-one values -- agent-policy joined in Story 14.2; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }

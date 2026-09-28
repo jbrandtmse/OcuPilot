@@ -17,8 +17,9 @@ Parameter DESCRIPTOR = "OcuPilot.Screen.Descriptor.AgentGuardrails";
 
 Parameter PROHIBITED = "OcuPilot.Kernel.Proposal.Prohibited";
 
-/// <p>The one unadvertised write tool (AD-53).</p>
-Parameter UNADVERTISED = "security.auditing.purge";
+/// <p>The write tool whose governance key the baseline lists disabled (AD-22, AD-53): advertised,
+/// so it is listed, and refused to the agent until an administrator enables it.</p>
+Parameter PURGE = "security.auditing.purge";
 
 Method OnAfterOneTest() As %Status
 {
@@ -68,7 +69,8 @@ Method TestACodeAddedToTheSetAppearsLastWithItsSentence()
 }
 
 /// <p>(c) The tools that need a Confirm are the registry's advertised write tools in name order,
-/// each naming a registered descriptor, and the unadvertised purge is not among them.</p>
+/// each naming a registered descriptor. The purge is among them: it is advertised, and its
+/// governance key is disabled by default.</p>
 /// <p>Mutation: drop the <code>advertised</code> filter in
 /// <method>OcuPilot.Kernel.Shell.Guardrails.Read</method> -&gt; this goes red.</p>
 Method TestConfirmToolsAreTheAdvertisedWriteTools()
@@ -96,7 +98,8 @@ Method TestConfirmToolsAreTheAdvertisedWriteTools()
         Do $$$AssertTrue($ListFind(tDescriptors, tRow.%Get("descriptor")) > 0, tRow.%Get("name") _ " names a registered descriptor: " _ tRow.%Get("descriptor"))
     }
     Do $$$AssertEquals($ListToString(tActual), $ListToString(tExpected), "the advertised write tools, in name order")
-    Do $$$AssertEquals($ListFind(tActual, ..#UNADVERTISED), 0, ..#UNADVERTISED _ " is not listed")
+    Do $$$AssertTrue($ListFind(tActual, ..#PURGE) > 0, ..#PURGE _ " is listed, since it is advertised")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Governance.Baseline).Seed(..#PURGE, .tListed) _ "|" _ tListed, "0|1", "and its governance key is listed disabled by default")
 }
 
 /// <p>(d) The secret list is each advertised write tool's declared secret arguments, listing only a

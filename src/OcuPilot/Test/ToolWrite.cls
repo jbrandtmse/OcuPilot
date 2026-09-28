@@ -92,6 +92,8 @@ Method OnBeforeOneTest() As %Status
 {
     Do $ClassMethod(..#PROBE, "Reset")
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    ; A read-only choice an interrupted browser run left on for this account would refuse every mint.
+    Do ##class(OcuPilot.Kernel.State.Pref).GuardedRemove($Username, ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY)
     Quit $$$OK
 }
 
@@ -102,6 +104,9 @@ Method OnAfterOneTest() As %Status
     Set tSC = ##class(OcuPilot.Test.SwitchFixture).Reset(.tHolds)
     Do $$$AssertStatusOK(tSC, "every switch row and hold this class wrote is removed")
     Do $$$AssertEquals(tHolds, 0, "and none survives")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedRemove($Username, ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY), "the calling account's read-only choice is removed")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedValue($Username, ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY, .tForYou), "and read back")
+    Do $$$AssertEquals(tForYou, "", "so none survives")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForTurn(..#PROBETURN), "the probe turn's proposals are removed")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(..#PROBETURN), "and its ledger rows")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(..#PROBETURN, .tLeft), "the remainder is counted")
@@ -363,6 +368,24 @@ Method TestAHeldUserIsDroppedByTheRealRestraintVerdict()
     Do $$$AssertStatusOK(tSC, "the dispatcher answers")
     Do $$$AssertEquals(tIsError, 1, "the call is an error result")
     Do $$$AssertEquals(tContent.%Get("code"), ##class(OcuPilot.Api.Error).#AGENTKILLSWITCHUSER, "carrying the verdict's own code")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Count", "restraint"), 1, "the restraint was asked exactly once")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(..#PROBETURN, .tCount), "the turn's proposals are counted")
+    Do $$$AssertEquals(tCount, 0, "and nothing was minted")
+}
+
+/// <p>Story 14.5 (AC1, Integration): a user who turned read-only on for themselves is dropped by the
+/// <b>real</b> verdict before any mint, with the per-user read-only code as the tool result.</p>
+/// <p>Mutation: delete the for-you branch in <method>OcuPilot.Kernel.Restraint.Verdict</method> --
+/// the call mints and this goes red.</p>
+Method TestAUserWithReadOnlyForThemselvesIsDroppedByTheRealVerdict()
+{
+    Do $ClassMethod(..#PROBE, "SetRegistryClass", ..#REGISTRY)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedSetValue($Username, ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY, "1"), "the calling account turns read-only on for itself")
+
+    Set tSC = ..Dispatch({"Name": (..#LIVETARGET), "Description": "probe"}, .tIsError, .tContent)
+    Do $$$AssertStatusOK(tSC, "the dispatcher answers")
+    Do $$$AssertEquals(tIsError, 1, "the call is an error result")
+    Do $$$AssertEquals(tContent.%Get("code"), ##class(OcuPilot.Api.Error).#AGENTREADONLYUSER, "carrying the per-user read-only code")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Count", "restraint"), 1, "the restraint was asked exactly once")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(..#PROBETURN, .tCount), "the turn's proposals are counted")
     Do $$$AssertEquals(tCount, 0, "and nothing was minted")
@@ -1335,6 +1358,33 @@ Method Dispatch(pArgs As %DynamicObject, Output pIsError As %Boolean, Output pCo
     Set pIsError = ''tResult.%Get("is_error")
     Set pContent = ##class(%DynamicAbstractObject).%FromJSON(tResult.%Get("content"))
     Quit $$$OK
+}
+
+/// <p>Story 14.4 (AD-37, AD-53): once a delete of an account reads OK, the operation both callers
+/// share asks every turn that account has queued or running to abandon, through
+/// <method>OcuPilot.Screen.Tool.UserDelete.AfterWrite</method>. The write goes to
+/// <class>OcuPilot.Test.AcceptPort</class>, which accepts it and changes nothing, so no account is
+/// deleted; the probe user names no account. The id is the canonical lower-case spelling the
+/// agent's confirm passes (AD-13), while the turn records the name as typed.</p>
+/// <p>Mutation (Rule 19): remove <code>AfterWrite</code> from
+/// <class>OcuPilot.Screen.Tool.UserDelete</class> -- the turn is not asked to abandon and this goes
+/// red. Mutation: pass <var>pIdValue</var> to <code>GuardedAbandonForUser</code> as given -- the
+/// lower-case id matches no turn and this goes red.</p>
+Method TestADeletedAccountsTurnsAreAbandonedByTheDelete()
+{
+    Set tUser = "OcuPilotProbeToolWriteDeleted"
+    Set tTool = "OcuPilot.Screen.Tool.UserDelete"
+    Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "", "TURN.UNAVAILABLE", ..#LIMITS, .tTurn, .tBusy, .tSweep)
+    Do $$$AssertStatusOK(tSC, "the probe user has a queued turn")
+    Do ##class(OcuPilot.Test.AcceptPort).Clear()
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tTool, "OcuPilot.Test.AcceptPort", $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), $ZConvert(tUser, "L"), "", "", .tWritten, .tHttp, .tFault, {"Enabled": true}, .tApplied)
+    Do $$$AssertStatusOK(tSC, "the delete applies")
+    Do $$$AssertEquals(tApplied, 1, "and reads as applied")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AcceptPort).CallTypes(), "DELETE", "through one DELETE and nothing else")
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedSignals(tTurn, .tStop, .tAbandon, .tRenewed)
+    Do $$$AssertEquals(tAbandon, 1, "and the account's queued turn is asked to abandon")
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tTurn)
+    Do ##class(OcuPilot.Test.AcceptPort).Clear()
 }
 
 }

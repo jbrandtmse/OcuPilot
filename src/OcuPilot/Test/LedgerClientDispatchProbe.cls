@@ -14,9 +14,9 @@ ClassMethod RegistryClass() As %String
 /// <p>DW-1381: the governance gate, answerable from this class so the two refusals
 /// <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method> returns before it reads a
 /// privilege pair -- a gate that could not decide and a gate that denied -- can be driven without
-/// touching the instance's own governance policy. Unarmed, it is the shipped gate (Release 1
-/// allows every registered tool), so a test that names neither <method>FailGate</method> nor
-/// <method>DenyGate</method> behaves exactly as production.</p>
+/// touching the instance's own governance policy. Unarmed, it allows a tool only its fixture
+/// registry lists and asks the shipped gate for every production tool, so a test that names neither
+/// <method>FailGate</method> nor <method>DenyGate</method> behaves as production.</p>
 ClassMethod GateClass() As %String
 {
     Quit "OcuPilot.Test.LedgerClientDispatchProbe"
@@ -37,8 +37,7 @@ ClassMethod DenyGate(pCode As %String = "")
     Set ^||OcuPilotLedgerClientGate("deny") = pCode
 }
 
-/// <p>Forget every armed gate answer, restoring the shipped gate's own allow-everything
-/// decision.</p>
+/// <p>Forget every armed gate answer, restoring the unarmed decision.</p>
 ClassMethod ClearGate()
 {
     Kill ^||OcuPilotLedgerClientGate
@@ -53,6 +52,12 @@ ClassMethod Decide(pTool As %String, pKind As %String, pUser As %String, pArgs A
         Kill pDecision
         Set pDecision("allowed") = 0
         Set pDecision("code") = ^||OcuPilotLedgerClientGate("deny")
+        Quit $$$OK
+    }
+    If ##class(OcuPilot.Test.GovernanceFixture).FixtureOnly(..RegistryClass(), pTool) {
+        Kill pDecision
+        Set pDecision("allowed") = 1
+        Set pDecision("code") = ""
         Quit $$$OK
     }
     Quit ##class(OcuPilot.Kernel.Governance.Gate).Decide(pTool, pKind, pUser, pArgs, .pDecision)

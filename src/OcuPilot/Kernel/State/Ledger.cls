@@ -6,8 +6,10 @@
 /// <method>OcuPilot.Kernel.State.Turn.GuardedDelete</method>'s cascade and nothing here is swept by
 /// <method>OcuPilot.Kernel.State.Turn.GuardedSweep</method>: the turn, its steps and its signals go
 /// at retention and these rows stay, because a ledger row is the audit record of what the agent did
-/// (AD-37). Retention over these rows is Story 14.4's, and <method>GuardedDeleteForTurn</method> and
-/// <method>GuardedDeleteForUser</method> exist for a test's own cleanup, not for a sweep.</p>
+/// (AD-37). Retention removes them by age alone, through <method>GuardedPurgeBefore</method>, which
+/// <class>OcuPilot.Kernel.Retention</class> calls with the longest retention any definition holds,
+/// so the per-row gate outlives every transcript it gates; <method>GuardedDeleteForTurn</method>
+/// and <method>GuardedDeleteForUser</method> exist for a test's own cleanup, not for a sweep.</p>
 /// <p><b>Bounded per turn</b> (AD-41): <method>GuardedAppend</method> stores at most
 /// <code>LEDGERMAXROWS</code> rows for one turn and counts the rest on a single
 /// <code>overflow</code> row, which takes <property>Seq</property> 0 so the sequence of stored calls
@@ -34,6 +36,10 @@ Parameter KINDOVERFLOW = "overflow";
 /// on the proposal's turn key, opened <parameter>STATUSPENDING</parameter> before the port call
 /// and finalized after it.</p>
 Parameter KINDWRITE = "write";
+
+/// <p>The kind an administrator's read of another user's transcript carries (Story 14.4, AD-46):
+/// one per read, under the reader's own name, keyed by the conversation rather than a turn.</p>
+Parameter KINDACCESS = "access";
 
 /// <p>The <property>Status</property> a row carries between its open and its finalize. <b>The one
 /// status a reader must not read as an outcome</b>: a row still holding it records a write that
@@ -82,8 +88,9 @@ Property TurnKey As %String(MAXLEN = 64);
 /// overflow row.</p>
 Property Seq As %Integer;
 
-/// <p><parameter>KINDLLM</parameter>, <parameter>KINDTOOL</parameter> or
-/// <parameter>KINDOVERFLOW</parameter>.</p>
+/// <p><parameter>KINDLLM</parameter>, <parameter>KINDTOOL</parameter>,
+/// <parameter>KINDOVERFLOW</parameter>, <parameter>KINDWRITE</parameter> or
+/// <parameter>KINDACCESS</parameter>.</p>
 Property Kind As %String(MAXLEN = 16);
 
 /// <p>The canonical tool name on a <parameter>KINDTOOL</parameter> row, the provider key on a
@@ -455,6 +462,17 @@ ClassMethod GuardedDeleteForTurn(pTurnKey As %String) As %Status
 ClassMethod GuardedDeleteForUser(pUser As %String) As %Status
 {
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(UserName) = ?", pUser)
+}
+
+/// <p>Delete every row logged before <var>pIso</var> (ISO-8601 UTC, the form
+/// <property>LoggedAt</property> stores), whatever its kind or user. <var>pRemoved</var> is how many
+/// went. The retention sweep's alone.</p>
+ClassMethod GuardedPurgeBefore(pIso As %String, Output pRemoved As %Integer) As %Status
+{
+    Set pRemoved = 0
+    Set tParams = []
+    Do tParams.%Push(pIso, "string")
+    Quit ..GuardedExecuteRows("DELETE FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(LoggedAt) < ?", .tParams, .pRemoved)
 }
 
 /// <p>How many rows turn <var>pTurnKey</var> holds, the overflow row included.</p>

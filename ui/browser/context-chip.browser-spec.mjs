@@ -39,6 +39,7 @@ import {
   escapeOs,
   forgetTag as sharedForgetTag,
   markerValue,
+  resultPayload,
   nextTag as sharedNextTag,
   runIris as sharedRunIris,
   scriptReply as sharedScriptReply,
@@ -190,7 +191,7 @@ function screenContextPayload(messages) {
   if (resultEntry?.role !== 'user' || !Array.isArray(resultEntry.content)) return null;
   const resultBlock = resultEntry.content.find((block) => block.type === 'tool_result');
   if (!resultBlock) return null;
-  return JSON.parse(resultBlock.content);
+  return resultPayload(resultBlock);
 }
 
 function authHeader() {

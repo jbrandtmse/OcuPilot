@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "82d9ffa7374f74f036c3130d2ad549558d696f3fa819c17df42ebe45f89ec009"
+epics_md_hash: "8c31cb7e9153004431471844e64dcdcc07602da44dad60cd076456ce8c4c9342"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -171,6 +171,14 @@ epics:
     depends_on: [epic-1]
     submodules: []
     hold_stories: ["13-3-publish-the-package-to-the-community-registry"]
+    deferred_stories:   # owner decision 2026-09-27, HIGH PRIORITY
+      - story: "13-5-ci-in-parallel-the-two-long-suites-split-across-containers"
+        after: epic-1        # released now; runs FIRST after release/1.0.2 is cut, on the first slot to free, ahead of the rest of Epics 16 and 18
+        reason: >-
+          CI takes ~52 min: the instance job's ObjectScript step 52.2 min (327 classes one at a time on one container,
+          limit 60) and the browser job's spec step 48.3 min (100 files one at a time, limit 50 on feature). Three
+          duration-balanced shards per suite, each on its own throwaway; roll-up jobs keep the names instance and
+          browser and prove every class and spec ran exactly once. Target 25 min or less per run.
     # HARD HOLD, strengthened 2026-09-19 on the owner's instruction. Plan and implement everything up
     # to the publish; do NOT publish. The owner releases by hand. Story 13.3's acceptance criteria in
     # epics.md were rewritten so none of them can be closed by publishing (the archive is proven by a
@@ -181,7 +189,7 @@ epics:
     # dry-run or local form; no registry credential or token may be read, configured, requested or
     # used; 13.3 may not be reported done by having published; and a gate closable only by publishing
     # is an UNMET gate, to be escalated as a Clarification rather than closed.
-    paths_hint: ["src/OcuPilot/Install/**", ".github/workflows/ci.yml", "scripts/ci-*.sh", "scripts/smoke.sh", "ui/tools/ci*.mjs", "ui/tools/client-lint.mjs", "ui/browser.config.mjs", "src/OcuPilot/Test/**", "module.xml", "spec/**"]
+    paths_hint: ["src/OcuPilot/Install/**", ".github/workflows/ci.yml", "scripts/ci-*.sh", "scripts/smoke.sh", "ui/tools/ci*.mjs", "ui/tools/client-lint.mjs", "ui/browser.config.mjs", "ui/package.json", "src/OcuPilot/Test/**", "module.xml", "spec/**"]
   epic-15:
     depends_on: [epic-1]
     submodules: []
@@ -233,7 +241,7 @@ epics:
   epic-16:
     depends_on: [epic-6, epic-11, epic-12]
     submodules: []
-    story_order: ["16-1", "16-17", "16-18", "16-19", "16-20", "16-21 (owner 2026-09-26, 3b0dfe7e: Operations findings group folded in at planning)", "16-22", "16-23 (owner 2026-09-26: after 16-22, before 16-8)", "16-8 BEFORE 16-9 (16.9 lists 16.8's sources, epics.md:6265)", "16-9", "16-3", "16-16", "rest of 16", "16-4 AFTER Story 18.1 merges (owner 2026-09-26: 18.1 brought into the voting week ahead of 16.4; epics.md:6175)"]
+    story_order: ["16-1", "16-17", "16-18", "16-19", "16-20", "16-21 (owner 2026-09-26, 3b0dfe7e: Operations findings group folded in at planning)", "16-22", "16-23 (owner 2026-09-26: after 16-22, before 16-8)", "16-8 BEFORE 16-9 (16.9 lists 16.8's sources, epics.md:6265)", "16-9 (owner 2026-09-27, 4433c163: merged log timeline added before it starts)", "16-24 (owner 2026-09-27: right after 16-9; builds on 16.1 console)", "16-3", "16-16", "rest of 16", "16-4 AFTER Story 18.1 merges (owner 2026-09-26: 18.1 brought into the voting week ahead of 16.4; epics.md:6175)"]
     paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Tool/**", "src/OcuPilot/Screen/Read.cls", "src/OcuPilot/Screen/Registry.cls", "src/OcuPilot/Port/**", "src/OcuPilot/Api/**", "src/OcuPilot/Kernel/Proposal/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
     note: >-
       Measured 2026-09-26 (orchestrator subagent, read-only): no Epic 16 write needs 14.2 first - Kernel/Governance/Gate.cls

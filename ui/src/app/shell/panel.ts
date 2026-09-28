@@ -21,6 +21,7 @@ import {
 } from '../core/agent-status';
 import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
 import { type Citation, formatCitationAbsent } from '../core/citations';
+import type { ProposalDraft } from '../core/draft';
 import { decodeEntityId } from '../core/entity-id';
 import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../core/explain-entry';
 import { classifyFault, isBannerFault } from '../core/fault';
@@ -72,13 +73,16 @@ import {
   streamedText,
   turnErrorBanner,
 } from '../core/turn';
+import { turnLimitBanner } from '../core/turn-limit';
 import { isApplePlatform } from './command-box';
 import { CitationNavigator } from './citation-navigator';
+import { CodeBlock } from './code-block';
 import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { TranscriptFollow } from './panel-follow';
 import { PanelResizeHandle } from './panel-resize-handle';
 import { ProposalCard, type ProposalConfirmRequest } from './proposal-card';
+import { ReadOnlyToggle } from './read-only-toggle';
 import { Reply } from './reply';
 import { ToolCallCard } from './tool-call-card';
 
@@ -87,6 +91,9 @@ export const COMPOSER_ID = 'ocu-panel-composer';
 
 /** The id of whichever gate sentence the panel is showing, which is also the controls' reason. */
 const REASON_ID = 'ocu-panel-reason';
+
+/** The footer's read-only line's id, which describes the "Read-only for me" switch beside it. */
+const READ_ONLY_LINE_ID = 'ocu-panel-read-only-line';
 
 /** The not-marked banner's id, in the slot EXPERIENCE.md's banner order already reserves for it. */
 const NOT_MARKED_ID = 'ocu-panel-not-marked';
@@ -236,7 +243,7 @@ interface PanelTurnView {
 @Component({
   selector: 'app-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip, Reply],
+  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip, Reply, CodeBlock, ReadOnlyToggle],
   template: `<aside class="ocu-panel" [class.ocu-panel-full-screen]="fullScreen" [attr.aria-label]="panelName">
     @if (docked) {
       <app-panel-resize-handle />
@@ -321,6 +328,12 @@ interface PanelTurnView {
           <p class="ocu-banner ocu-banner-warning ocu-panel-banner" role="alert" data-slot="send-error">
             <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
             <span class="ocu-banner-message">{{ sendErrorText }}</span>
+          </p>
+        }
+        @if (turnLimitText !== null) {
+          <p class="ocu-banner ocu-banner-warning ocu-panel-banner" role="alert" data-slot="turn-limit">
+            <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+            <span class="ocu-banner-message">{{ turnLimitText }}</span>
           </p>
         }
       </div>
@@ -473,7 +486,15 @@ interface PanelTurnView {
                   (confirm)="onCardConfirm($event)"
                   (cancel)="onCardCancel($event)"
                   (repropose)="onCardRepropose($event)"
-                />
+                  (draft)="onCardDraft($event)"
+                >
+                  @if (drafts[proposal.proposalId]; as draft) {
+                    <div card-footer class="ocu-proposal-card-draft">
+                      <p class="ocu-proposal-card-draft-caption">{{ STRINGS.proposalDraftCaption }}</p>
+                      <app-code-block [steps]="draft.steps" />
+                    </div>
+                  }
+                </app-proposal-card>
               }
               @if (turn.reply !== null) {
                 <div class="ocu-panel-message-agent">
@@ -516,7 +537,10 @@ interface PanelTurnView {
     </div>
 
     <div class="ocu-panel-footer">
-      <p class="ocu-panel-read-only" [class.ocu-panel-read-only-on]="readOnlyOn">{{ readOnlyLine }}</p>
+      <div class="ocu-panel-read-only-row">
+        <p class="ocu-panel-read-only" [id]="readOnlyLineId" [class.ocu-panel-read-only-on]="readOnlyOn">{{ readOnlyLine }}</p>
+        <app-read-only-toggle [describedBy]="readOnlyLineId" />
+      </div>
       <div class="ocu-panel-warning-slot">
         @if (secretWarningVisible) {
           <p class="ocu-banner ocu-banner-warning ocu-panel-warning" role="status">
@@ -685,6 +709,17 @@ export class Panel {
    */
   private readonly writeCards = signal<ReadonlyMap<string, PanelWriteCard>>(new Map());
 
+  /**
+   * Each taken script, by proposal id (Story 14.1, AD-59): the instance's answer to "Give me the
+   * script instead", kept for this session only. It is never persisted, so a reloaded transcript
+   * shows the card's status line and no script. A null-prototype record, so the template's index
+   * can never land on an inherited member.
+   */
+  private readonly draftsById = signal<Readonly<Record<string, ProposalDraft>>>(Object.create(null));
+
+  /** The proposals whose draft request is out, so a second press does not send a second one. */
+  private readonly drafting = new Set<string>();
+
   constructor() {
     this.lastConversationId = this.turn.conversationId();
     const stops = [
@@ -822,6 +857,9 @@ export class Panel {
     return readOnlyFooterLine(this.agentStatus.restraint());
   }
 
+  /** The footer line's id, which the "Read-only for me" switch beside it is described by. */
+  protected readonly readOnlyLineId = READ_ONLY_LINE_ID;
+
   /** Whether a read-only state applies, which turns the footer line restrained. */
   protected get readOnlyOn(): boolean {
     this.generation();
@@ -893,6 +931,17 @@ export class Panel {
     );
     if (isBannerFault(fault)) return null;
     return STRINGS.connectivityServerFault;
+  }
+
+  /**
+   * The turns-an-hour banner's sentence (Story 14.6), or `null` when the last Send was not refused
+   * for that limit: the published banner, with the limit and the instance's `retryAt` in this
+   * browser's local time.
+   */
+  protected get turnLimitText(): string | null {
+    this.generation();
+    const limit = this.turn.turnLimit();
+    return limit === null ? null : turnLimitBanner(limit.limit, limit.retryAt);
   }
 
   protected get sendLabel(): string {
@@ -1294,6 +1343,42 @@ export class Panel {
     if (proposalId === '') return;
     this.setCardPhase(proposalId, 'canceled-by-you');
     await this.turn.cancelProposal(proposalId);
+  }
+
+  /** The scripts taken so far, by proposal id, for the card each one is projected into. */
+  protected get drafts(): Readonly<Record<string, ProposalDraft>> {
+    return this.draftsById();
+  }
+
+  /**
+   * "Give me the script instead" was pressed on one card (Story 14.1, AD-59).
+   *
+   * **Unlike Cancel, nothing is drawn before the answer.** The instance may refuse -- a prohibited
+   * effect leaves the row live (AD-10) -- and a card that had already drawn itself closed would
+   * then be wrong. So the card stays live while the request is out, and afterwards:
+   *
+   * - the instance took it: the script is kept for this session and projected into the card, and
+   *   the card takes the `canceled-by-draft` phase, whose status line takes focus from the button;
+   * - the instance refused it: the store has recorded the envelope's own `reason`, which the card
+   *   draws in its refusal slot beside the buttons it still offers, exactly as a Confirm refusal
+   *   that left the row live is drawn -- and a refusal whose `detail` names a closed state is drawn
+   *   as that state.
+   */
+  protected async onCardDraft(proposalId: string): Promise<void> {
+    if (proposalId === '' || this.drafting.has(proposalId)) return;
+    this.drafting.add(proposalId);
+    try {
+      const outcome = await this.turn.draftProposal(proposalId);
+      if (!outcome.ok) return;
+      if (outcome.draft !== null) {
+        const next: Record<string, ProposalDraft> = Object.assign(Object.create(null), this.draftsById());
+        next[proposalId] = outcome.draft;
+        this.draftsById.set(next);
+      }
+      this.setCardPhase(proposalId, 'canceled-by-draft');
+    } finally {
+      this.drafting.delete(proposalId);
+    }
   }
 
   /**
@@ -1891,6 +1976,7 @@ export class Panel {
       // are gone with the transcript, and a map that outlived it would append a phantom card to a
       // later conversation that reused a proposal id.
       this.writeCards.set(new Map());
+      this.draftsById.set(Object.create(null));
       this.acknowledgedSecretText.set(null);
       this.secretWarningVisibleSignal.set(false);
     }

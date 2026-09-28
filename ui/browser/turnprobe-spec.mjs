@@ -69,6 +69,18 @@ export function markerValue(output, marker) {
   return re.exec(output)?.[1] ?? null;
 }
 
+/**
+ * The parsed payload of a recorded `tool_result` block. Asserts `OcuPilot.Kernel.Agent.Sanitize`'s
+ * frame first -- the opening line (`<ocupilot-data>`, or its cut form), a line feed, the body, a
+ * line feed, `</ocupilot-data>` -- so a spec reading an unframed block fails rather than parses.
+ */
+export function resultPayload(block) {
+  const content = String(block?.content);
+  const framed = /^<ocupilot-data(?: truncated="true")?>\n([\s\S]*)\n<\/ocupilot-data>$/.exec(content);
+  assert.ok(framed, `the tool_result is framed as data: ${content.slice(0, 80)}`);
+  return JSON.parse(framed[1]);
+}
+
 const tagCounters = new Map();
 
 /** One `turnprobe` tag per test, so a stale script from an earlier test cannot answer a later one.

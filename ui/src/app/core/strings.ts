@@ -163,6 +163,18 @@ export const STRINGS = {
   proposalStatusExpired: 'Expired',
   /** EXPERIENCE.md:275 */
   proposalStatusAgentSwitchedOff: 'The agent is switched off',
+  /** EXPERIENCE.md:275 */
+  proposalStatusCanceledByDraft: 'Canceled \u2014 you took the script instead',
+  /** EXPERIENCE.md:269 */
+  actionTakeScript: 'Give me the script instead',
+  /** EXPERIENCE.md:269 */
+  actionCopyToClipboard: 'Copy to clipboard',
+  /** EXPERIENCE.md:269 */
+  copyAnnouncementCopied: 'Copied',
+  /** EXPERIENCE.md:269 */
+  copyAnnouncementUnavailable: 'The clipboard is not available here. Select the text and copy it yourself.',
+  /** EXPERIENCE.md:273 */
+  proposalDraftCaption: 'Nothing was changed. Fill in each value in angle brackets before you run this.',
   /** EXPERIENCE.md:276 */
   proposalUnchangedFieldsDisclosure: 'N unchanged fields',
   /** EXPERIENCE.md:277 */
@@ -179,6 +191,11 @@ export const STRINGS = {
   agentTurnStoppedNoStepBanner: 'The turn stopped: <reason>.',
   /** EXPERIENCE.md:281 */
   agentTurnLockBanner: 'A turn is in progress. Wait for it to finish before sending another message.',
+  /** EXPERIENCE.md:281 */
+  agentTurnLimitBanner:
+    'You have reached this instance\'s limit of <n> agent turns an hour. You can send again at <hh:mm>.',
+  /** EXPERIENCE.md:281 */
+  agentTurnLimitLine: 'This turn was not started: you have used your <n> turns for this hour.',
   /** EXPERIENCE.md:500 */
   agentJumpToLatest: 'Jump to latest',
   // Story 4.5's four: from the tool-call-card Component Patterns row (:378) and the panel's
@@ -216,6 +233,8 @@ export const STRINGS = {
   statusReadOnlyForYou: 'Read-only: on \u2014 for you',
   /** EXPERIENCE.md:289 */
   statusReadOnlyByDefinition: 'Read-only: on \u2014 by the definition',
+  /** EXPERIENCE.md:289 */
+  agentReadOnlyForYouLabel: 'Read-only for me',
   /** EXPERIENCE.md:290 */
   tableChangeToastLink: 'Open in <screen>',
   /** EXPERIENCE.md:291 */
@@ -552,12 +571,40 @@ export const STRINGS = {
   agentDefinitionFieldRetention: 'Retention',
   /** EXPERIENCE.md:335 */
   actionCreate: 'Create',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionFieldReadOnly: 'Read-only',
   /** EXPERIENCE.md:336 */
   agentDefinitionShowKey: 'Show key',
   /** EXPERIENCE.md:336 */
   agentDefinitionHideKey: 'Hide key',
   /** EXPERIENCE.md:336 */
   agentDefinitionRetentionCaption: 'Transcripts are kept for <n> days.',
+  // Story 14.4: the Transcripts list, its columns, empty state and prompts, and the transcript
+  // page's screen-context disclosure and its withheld sentence's action slot.
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsLabel: 'Transcripts',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptLabel: 'Transcript',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsColumnTurns: 'Turns',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsColumnLastActivity: 'Last activity',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsColumnTitle: 'First message',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsEmpty: 'No conversations are kept for you yet.',
+  /** EXPERIENCE.md:336 */
+  transcriptScreenContext: 'Screen context',
+  /** EXPERIENCE.md:336 */
+  transcriptNoContext: 'No screen context was sent with this turn.',
+  /** EXPERIENCE.md:336 */
+  transcriptRefusedAction: 'see this transcript\'s tool results and screen context',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsPrompt1: 'Which conversations did I have today?',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsPrompt2: 'Which of my conversations ran the most turns?',
+  /** EXPERIENCE.md:336 */
+  agentTranscriptsPrompt3: 'When did I last talk to the agent?',
   /** EXPERIENCE.md:337 */
   proposalCardTitle: 'Proposal \u00b7 <entity type> <name>',
   /** EXPERIENCE.md:338 */
@@ -594,8 +641,59 @@ export const STRINGS = {
   agentSwitchesShareContext: 'Screen context is shared by default',
   /** EXPERIENCE.md:349 */
   agentSwitchesContextRowCap: 'Context rows sent with a turn',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesTurnsPerHour: 'Agent turns per user an hour',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesTurnsPerHourHint: '0 means no limit.',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesConcurrentTurns: 'Agent turns running at once per user',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesConcurrentTurnsReason:
+    'Fixed at 1: the conversation lock and the panel\'s single transcript assume one turn at a time per user.',
   /** EXPERIENCE.md:344 */
   agentSwitchesRefusedAction: 'change the switches',
+  // Story 14.2: the Governance policy screen, its refusal action, the governance tool refusal, the
+  // purge card's consequence and the screen's prompts. "None", "Read-only" and "Enabled" reuse
+  // `sslVerifyPeerNone`, `agentDefinitionFieldReadOnly` and `tableColumnEnabled`.
+  /** EXPERIENCE.md:342 */
+  agentGovernanceLabel: 'Governance policy',
+  /** EXPERIENCE.md:342 */
+  agentGovernancePreset: 'Preset',
+  /** EXPERIENCE.md:342 */
+  agentGovernancePresetFull: 'Full',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceColumnTool: 'Write tool',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceColumnBaseline: 'Baseline',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceColumnSetting: 'Setting',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceColumnEffect: 'In effect',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceSettingInherit: 'Inherit',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceDisabled: 'Disabled',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceSourceSetting: 'by this setting',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceSourcePreset: 'by the preset',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceSourceBaseline: 'by the baseline',
+  /** EXPERIENCE.md:342 */
+  agentGovernanceBaselineAbsent: 'not in the baseline',
+  /** EXPERIENCE.md:344 */
+  agentGovernanceRefusedAction: 'change the governance policy',
+  /** EXPERIENCE.md:257 */
+  governanceToolDisabled: 'This tool is disabled by policy.',
+  /** EXPERIENCE.md:516 */
+  auditPurgeMarkersEffect:
+    'This removes audit records, including the markers that record the agent\'s own writes. It cannot be undone.',
+  /** EXPERIENCE.md:526 */
+  agentGovernancePrompt1: 'What does the read-only preset change?',
+  /** EXPERIENCE.md:526 */
+  agentGovernancePrompt2: 'What happens when the agent calls a tool the policy disables?',
+  /** EXPERIENCE.md:526 */
+  agentGovernancePrompt3: 'Why is the audit purge disabled by default?',
   /** EXPERIENCE.md:345 */
   formStaleSave:
     'Someone else changed this while you were here. Reload to see the current values, then save again.',
@@ -3088,8 +3186,6 @@ export const STRINGS = {
   agentGuardrailsNeverErrorVariables: 'An application error reaches the agent as its summary only, never the variables captured with it.',
   /** EXPERIENCE.md:583 */
   agentGuardrailsNeverDeclared: 'The fields each tool declares secret, which the agent never sees:',
-  /** EXPERIENCE.md:583 */
-  agentGuardrailsContextHeading: 'Screen context',
   /** EXPERIENCE.md:583 */
   agentGuardrailsContextLimits: 'Each turn carries at most <rows> rows of the screen you are on, <total> characters in all and <field> characters a field.',
   /** EXPERIENCE.md:583 */

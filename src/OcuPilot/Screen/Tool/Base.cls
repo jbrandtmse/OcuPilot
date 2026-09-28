@@ -49,6 +49,14 @@ Parameter DESCRIPTION = "";
 /// and the screen context's <code>tools</code> leave it out.</p>
 Parameter ADVERTISED As BOOLEAN = 1;
 
+/// <p>The name of the one argument whose value selects the action a call takes, or
+/// <code>""</code> (AD-22). A tool declaring it is governed per action: each call's key is
+/// <code>&lt;TOOLNAME&gt;:&lt;value&gt;</code>, and the argument must declare an <code>enum</code>,
+/// whose members are the keys the tool yields
+/// (<method>OcuPilot.Kernel.Governance.Policy.KeysOf</method>). <code>""</code> here, so a tool is
+/// governed by its name alone.</p>
+Parameter GOVERNANCEACTION = "";
+
 /// <p>The tool's input schema, in the subset
 /// <method>OcuPilot.Screen.Tool.Registry.ValidateArguments</method> admits.</p>
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject [ Abstract ]

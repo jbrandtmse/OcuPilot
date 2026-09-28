@@ -32,6 +32,13 @@ Parameter READVERB = "read";
 /// the row's id (AD-13).</p>
 Parameter READENTITYTYPE = "user";
 
+/// <p>The <property>OcuPilot.Kernel.State.Ledger.Name</property> a transcript read's access row
+/// carries.</p>
+Parameter ACCESSNAME = "transcript";
+
+/// <p>The bounds a transcript read's rows are cut and capped by.</p>
+Parameter LIMITSCLASS = "OcuPilot.Kernel.Agent.Limits";
+
 /// <p>The store every row is written to and read from.</p>
 ClassMethod StoreClass() As %String
 {
@@ -620,32 +627,7 @@ ClassMethod ViewForUser(pCaller As %String, pSubject As %String, pWindowHours As
                 Do tRows.%Push(tOwnRow)
                 Continue
             }
-            If ''$Get(tValues(tI, "requiredPairsTruncated")) {
-                ; A cut pair set records fewer pairs than the call required, so evaluating it
-                ; would release the row on a requirement nobody named. Fails closed, with the
-                ; ledger (AD-46), and is counted like any other withheld row.
-                Set tWithheld = tWithheld + 1
-                Continue
-            }
-            Set tPairsText = $Get(tValues(tI, "requiredPairs"))
-            Set tPairs = ..StringToPairs(tPairsText)
-            If (tPairsText '= "") && (tPairs = "") {
-                Set tWithheld = tWithheld + 1
-                Continue
-            }
-            ; An empty set is two different facts, told apart by the sense the writer recorded
-            ; (DW-1305, DW-1321). "none" is "the writer resolved the pairs and there were none",
-            ; so the row requires nothing and is readable. Every other sense with an empty set --
-            ; and every legacy row, whose sense is "" -- is a requirement nobody read, and stays
-            ; withheld exactly as it was.
-            If (tPairs = "") && ($Get(tValues(tI, "pairsSense")) = ..SenseNone()) {
-                Do tRows.%Push(..RowObject(.tValues, tI))
-                Continue
-            }
-            ; EvaluateRequired, not EvaluatePairs: a row whose recorded requirement is empty
-            ; names no check anybody made, so releasing on it would release on a requirement
-            ; nobody named (DW-1120).
-            If '$ClassMethod(..GateClass(), "EvaluateRequired", tPairs, .tFailedPair) {
+            If '..ReleasesRow(.tValues, tI, .tFailedPair) {
                 Set tWithheld = tWithheld + 1
                 Continue
             }
@@ -667,6 +649,142 @@ ClassMethod ViewForUser(pCaller As %String, pSubject As %String, pWindowHours As
         Set pView = ""
         Set pFault = ..Unavailable(ex.AsStatus(), "the agent ledger read failed")
     }
+    Quit tSC
+}
+
+/// <p>Whether row <var>pIndex</var> of <var>pValues</var> (<method>OcuPilot.Kernel.State.Ledger.GuardedRow</method>'s
+/// values, merged under the index) is released to a caller reading another user's rows (AD-46):
+/// the one per-row decision <method>ViewForUser</method> and <method>GateTurns</method> share.
+/// <var>pFailedPair</var> names the recorded pair the caller does not hold, and is <code>""</code>
+/// when the row is withheld for its shape rather than for a pair.</p>
+/// <p>Withheld, in this order: a pair set the writer cut, which records fewer pairs than the call
+/// required; a non-empty requirement that parses to no pair; an empty set under any sense but
+/// <method>SenseNone</method>, which is a requirement nobody read (DW-1305, DW-1321, and every
+/// legacy row); and a set the caller does not hold, evaluated through
+/// <method>OcuPilot.Screen.Gate.EvaluateRequired</method> in the calling process, never inside an
+/// escalated frame (AD-9). An empty set under <method>SenseNone</method> is released: the writer
+/// resolved the pairs and there were none.</p>
+ClassMethod ReleasesRow(ByRef pValues, pIndex As %Integer, Output pFailedPair As %String) As %Boolean [ Private ]
+{
+    Set pFailedPair = ""
+    If ''$Get(pValues(pIndex, "requiredPairsTruncated")) Quit 0
+    Set tPairsText = $Get(pValues(pIndex, "requiredPairs"))
+    Set tPairs = ..StringToPairs(tPairsText)
+    If (tPairsText '= "") && (tPairs = "") Quit 0
+    If tPairs = "" Quit ($Get(pValues(pIndex, "pairsSense")) = ..SenseNone())
+    Quit ''$ClassMethod(..GateClass(), "EvaluateRequired", tPairs, .pFailedPair)
+}
+
+/// <p>Whether <var>pCaller</var> may see the tool results and screen context of
+/// <var>pSubject</var>'s conversation <var>pConvKey</var>, whose turns are <var>pTurnKeys</var> (a
+/// <class>%List</class>, one key per entry): the transcript half of AD-46's gate, which lives here
+/// beside the ledger's own rather than in a screen or a route.</p>
+/// <p><b>It requires <method>AdminPair</method></b>, evaluated in the calling process at the moment
+/// of the call (AD-8): a caller without it gets <var>pFault</var> <code>AUTH.NOPRIVILEGE</code>,
+/// nothing is read and no row is written. Each turn's own ledger rows are then read through the
+/// store, every guarded read first and outside every escalated frame (AD-9), and
+/// <var>pReleased</var> is 1 only when every row of every turn passes <method>ReleasesRow</method>.
+/// It <b>fails closed</b>: no turn at all, a turn key of <code>""</code> (an entry older than the
+/// column), a turn with no stored row, a read the row cap truncated, a row that could not be read
+/// back, or any call counted and not stored withholds the whole transcript. <var>pFailedPair</var>
+/// is the first pair a withheld row names, or <code>""</code>.</p>
+/// <p><b>A cross-user call that reaches a decision records itself</b>, released or not, through
+/// <method>RecordTranscriptAccess</method>; a caller asking about its own conversation is answered
+/// released and records nothing. An unreadable store answers <var>pFault</var>
+/// <code>LEDGER.UNAVAILABLE</code>, releases nothing and records nothing.</p>
+ClassMethod GateTurns(pCaller As %String, pSubject As %String, pConvKey As %String, pTurnKeys As %List, Output pReleased As %Boolean, Output pFailedPair As %String, Output pFault As %DynamicObject) As %Status
+{
+    Set pReleased = 0
+    Set pFailedPair = ""
+    Set pFault = ""
+    Try {
+        If $ZConvert(pSubject, "U") = $ZConvert(pCaller, "U") {
+            Set pReleased = 1
+            Quit
+        }
+        If '$ClassMethod(..GateClass(), "HoldsPrivilege", ..AdminResource(), ..#ADMINPERMISSION) {
+            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, ##class(OcuPilot.Api.Error).#REASONAUTHNOPRIVILEGE)
+            Set tDetail = {}
+            Do tDetail.%Set("failedPair", ..AdminPair(), "string")
+            Do pFault.%Set("detail", tDetail)
+            Quit
+        }
+
+        Set tStore = ..StoreClass()
+        Set tCap = +$Parameter(..#LIMITSCLASS, "LEDGERMAXROWS")
+        Set tClosed = ($ListLength(pTurnKeys) = 0)
+        Kill tValues
+        Set tRead = 0
+        Set tReadSC = $$$OK
+        ; Every guarded read first, so nothing below runs inside an escalated frame (AD-9).
+        For tT = 1:1:$ListLength(pTurnKeys) {
+            Set tTurnKey = $ListGet(pTurnKeys, tT)
+            If tTurnKey = "" {
+                Set tClosed = 1
+                Continue
+            }
+            Kill tIds
+            Set tReadSC = $ClassMethod(tStore, "GuardedIdsForWindow", pSubject, 0, tTurnKey, tCap + 1, .tIds, .tProblem)
+            If $$$ISERR(tReadSC) Quit
+            Set tFound = +$Get(tIds)
+            If (tFound = 0) || (tFound > tCap) Set tClosed = 1
+            For tI = 1:1:$Select(tFound > tCap: tCap, 1: tFound) {
+                Kill tRow
+                Set tReadSC = $ClassMethod(tStore, "GuardedRow", tIds(tI), .tRow)
+                If $$$ISERR(tReadSC) Quit
+                If '$Data(tRow) {
+                    Set tClosed = 1
+                    Continue
+                }
+                Set tRead = tRead + 1
+                Merge tValues(tRead) = tRow
+            }
+            If $$$ISERR(tReadSC) Quit
+            Set tReadSC = $ClassMethod(tStore, "GuardedDroppedFor", pSubject, 0, tTurnKey, .tDropped)
+            If $$$ISERR(tReadSC) Quit
+            If +$Get(tDropped) > 0 Set tClosed = 1
+        }
+        If $$$ISERR(tReadSC) {
+            Set pFault = ..Unavailable(tReadSC, "a transcript's ledger rows could not be read")
+            Quit
+        }
+
+        Set tReleased = 'tClosed
+        For tI = 1:1:tRead {
+            If ..ReleasesRow(.tValues, tI, .tFailedPair) Continue
+            Set tReleased = 0
+            If (pFailedPair = "") && (tFailedPair '= "") Set pFailedPair = tFailedPair
+        }
+        Set pReleased = tReleased
+        Do ..RecordTranscriptAccess(pCaller, pSubject, pConvKey, pReleased)
+    } Catch ex {
+        Set pReleased = 0
+        Set pFault = ..Unavailable(ex.AsStatus(), "the transcript gate failed")
+    }
+    Quit $$$OK
+}
+
+/// <p>Record one cross-user transcript read (Story 14.4, AD-46): a
+/// <parameter>OcuPilot.Kernel.State.Ledger.KINDACCESS</parameter> row under <var>pCaller</var>'s
+/// name, keyed by conversation <var>pConvKey</var> -- so the per-turn row cap bounds the reads of
+/// one conversation (AD-41) -- naming <var>pSubject</var> as its target, carrying
+/// <code>{conversationId, released}</code>, and recording <method>AdminPair</method> as the pair
+/// the read required, checked. The status is logged on failure and never fails the read
+/// (AD-15's failure posture).</p>
+ClassMethod RecordTranscriptAccess(pCaller As %String, pSubject As %String, pConvKey As %String, pReleased As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tArguments = {}
+        Do tArguments.%Set("conversationId", pConvKey, "string")
+        Do tArguments.%Set("released", ''pReleased, "boolean")
+        Set tPairs = ..PairsToString($ListBuild($ListBuild(..AdminResource(), ..#ADMINPERMISSION)), .tPairsCut)
+        Set tStore = ..StoreClass()
+        Set tSC = $ClassMethod(tStore, "GuardedAppend", pConvKey, pCaller, "", $Parameter(tStore, "KINDACCESS"), ..#ACCESSNAME, "", pSubject, tArguments.%ToJSON(), 0, "ok", "", 0, 0, tPairs, ..#LIMITSCLASS, .tSeq, .tStored, tPairsCut, ..SenseChecked())
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Do ..LogFailure("a transcript read could not be recorded in the agent ledger", tSC)
     Quit tSC
 }
 

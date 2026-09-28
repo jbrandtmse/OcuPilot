@@ -111,7 +111,7 @@ function screenLabel(descriptor: string): string | null {
       </section>
 
       <section class="ocu-guardrails-section" aria-labelledby="ocu-guardrails-context">
-        <h2 class="ocu-guardrails-heading" id="ocu-guardrails-context">{{ STRINGS.agentGuardrailsContextHeading }}</h2>
+        <h2 class="ocu-guardrails-heading" id="ocu-guardrails-context">{{ STRINGS.transcriptScreenContext }}</h2>
         <p class="ocu-guardrails-line ocu-guardrails-limits">{{ limits }}</p>
       </section>
     }

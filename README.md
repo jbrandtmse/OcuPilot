@@ -32,6 +32,14 @@ a proposal you confirm; nothing changes until you press Confirm.** The change th
 privileges, is marked in the IRIS audit database as an agent write, and the screen refreshes and
 marks the row that changed.
 
+> **Requires InterSystems IRIS or IRIS for Health 2026.2 or later.** OcuPilot is built on version 2
+> of the IRIS admin API, which first shipped in 2026.2, so it does not run on earlier versions. The
+> Docker quick start below already uses 2026.2. If you install with IPM, check your instance first:
+> the `intersystemsdc/iris-community:latest` and `intersystemsdc/irishealth-community:latest` images
+> are currently 2026.1, so use their `2026.2` tags instead (for example
+> `intersystemsdc/irishealth-community:2026.2-zpm`). IPM refuses to install OcuPilot on an older
+> version.
+
 ## Try it without installing
 
 **[ocupilot.org](https://ocupilot.org)** runs the current release on a real IRIS for Health
@@ -166,6 +174,21 @@ and the agent has something to fix. The IPM install never creates them.
 
 To install without them, remove `OCUPILOT_DEMO: "1"` from `docker-compose.yml` before the first
 start.
+
+### Update to a new release
+
+Your agent definitions, keys, conversations, settings and audit records live in `./iris-data` and
+carry over.
+
+```bash
+git pull
+docker compose restart iris
+docker compose up -d --wait
+```
+
+`docker compose up` on its own does not update: the running container keeps the release it started
+with. The restart installs the new release over the same data, and `--wait` returns once the health
+check reports it installed.
 
 ## Get a model key in two minutes
 

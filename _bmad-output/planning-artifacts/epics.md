@@ -872,7 +872,7 @@ A user completes the area the contest names most specifically: five OAuth 2.0 ed
 
 ### Epic 13: Bonus deliverables and engineering hygiene
 
-The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline.
+The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline. Story 13.5, added after the submission, splits CI's two long suites across parallel jobs; the owner ranked it the first story after release 1.0.2. [AMENDED 2026-09-27, owner: Story 13.5 added]
 
 **FRs covered:** FR-79
 
@@ -896,7 +896,7 @@ A user makes the portal their own - own password, favorites, recents, menu searc
 
 ### Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22). The owner's surveys of the late entries add a CSV download on every table (16.23), a merged timeline in the log hub (16.9) and a try-it request copied as curl (16.24, run right after 16.9). [AMENDED 2026-09-27, owner: 16.9's timeline and Story 16.24 added]
 
 **FRs covered:** FR-74, FR-76, FR-77, FR-78
 
@@ -5554,7 +5554,7 @@ So that the area the task statement names reads as rebuilt.
 
 ## Epic 13: Bonus deliverables and engineering hygiene
 
-The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline.
+The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline. Story 13.5, added after the submission, splits CI's two long suites across parallel jobs; the owner ranked it the first story after release 1.0.2. [AMENDED 2026-09-27, owner: Story 13.5 added]
 
 ### Story 13.1: The uninstall hook
 
@@ -5652,6 +5652,66 @@ which is a public, irreversible act that ships whatever the build is at that mom
   and the story is **not** reported done by having published. A gate that can only be closed by
   publishing is an unmet gate, to be escalated rather than closed - the release is the owner's alone.
 
+### Story 13.5: CI in parallel - the two long suites split across containers
+
+As the owner, waiting on CI at every story boundary and every release,
+I want the ObjectScript suite and the browser specs split across parallel jobs,
+So that a run takes about 20 minutes instead of about 50, and stays inside its time limits as the suites grow.
+
+**Owner decision 2026-09-27, HIGH: the first story after release/1.0.2 is cut, on the first slot to free.** Run
+36347461573 took 55 minutes. Its `instance` job spent 52.2 of its 54.6 minutes running 327 test classes one at a time
+against one container (limit 60); its `browser` job spent 48.3 of 50.8 minutes running 100 spec files one at a time
+against one container (limit 50 on feature, 75 on the 1.0.2 staging branch). Every other job finished within 5
+minutes. One class at a time is a rule per instance, because classes share one instance's fixtures; nothing requires
+one instance per run.
+
+**Acceptance Criteria:**
+
+- **Given** a CI run
+- **When** the ObjectScript suite runs
+- **Then** it runs as **three parallel shard jobs**, each bringing up its own throwaway container and running its share
+  of the test classes **one class at a time**, exactly as the single job does today.
+
+- **Given** a CI run
+- **When** the browser specs run
+- **Then** they run as **three parallel shard jobs**, each with its own throwaway container, running its share of the
+  spec files one file at a time against its own instance.
+
+- **Given** the classes and spec files to share out
+- **When** the shards are assigned
+- **Then** the assignment is deterministic and balanced by recorded duration, longest first, from a timings file
+  committed in the repository; a class or spec file with no recorded time is still assigned; and one documented command
+  refreshes the timings file from a run's output.
+
+- **Given** the shards of one run
+- **When** they have finished
+- **Then** a roll-up job for each suite, still named `instance` and `browser`, fails unless every test class the
+  instance offers and every spec file the checkout carries ran in exactly one shard and no shard executed zero tests -
+  so a class or spec cannot be dropped silently.
+
+- **Given** a failing class or spec file
+- **When** its shard fails
+- **Then** the failure names the shard and the class or spec as today, and that shard's capture-on-failure step still
+  collects its container's logs.
+
+- **Given** the steps that run once per suite today - the admin API drift check and the smoke script
+- **When** CI runs
+- **Then** each still runs, once per run, against a freshly installed instance.
+
+- **Given** a developer running `ci-runner.mjs` or `npm run test:browser` locally without a shard option
+- **When** it runs
+- **Then** it behaves exactly as it does today: the full suite, one class or file at a time.
+
+- **Given** the pinned workflow rosters in `ui/tools/ci.test.mjs`
+- **When** the workflow changes
+- **Then** they are updated in the same change, and removing a shard from either matrix turns a test red.
+
+- **Given** the story's own green CI run on GitHub-hosted runners
+- **When** it is measured
+- **Then** the run takes **25 minutes or less** from its first job's start to its last job's end, with about 20 the
+  target; the measured time is recorded in the story; and each shard job's `timeout-minutes` leaves at least half again
+  its measured share as margin.
+
 ---
 
 ## Epic 14: Governance, restraint and transcripts
@@ -5677,6 +5737,8 @@ So that I can take its work into a process it is not allowed to bypass.
 - **Given** the proposal
 - **When** the draft is taken
 - **Then** the proposal is resolved as a cancel rather than left live, and the panel says so.
+
+- DW-1081: DESIGN.md gives reply code blocks a copy icon button; Story 4.6 does not build one - build the copy control once, for reply code blocks too (ledger; routed by spec_gate 2026-09-26)
 
 ### Story 14.2: The tool governance policy
 
@@ -5743,6 +5805,8 @@ So that the invariants have a second layer behind them.
 - **When** it occurs
 - **Then** the truncation is marked, so the model is not silently given a partial record it may treat as complete.
 
+- DW-1722: DraftRoute.Counts reads %SYS.Audit in HSCUSTOM, where the audit global is unmapped, so its "no agent marker is written" comparison cannot fail - switch that query to %SYS and prove it with a mutation (ledger; routed by harvest 2026-09-27)
+
 ### Story 14.4: Transcripts, retention and administrator access
 
 As a developer-administrator,
@@ -5772,6 +5836,9 @@ So that the agent has memory of my work without keeping it forever.
 - **When** the retention task next sweeps
 - **Then** their transcripts survive as an audit record while their sessions are invalidated - stored references being weak by contract.
 
+- DW-1122: Nothing bounds the ledger table across turns until Story 14.4 - the retention purge also bounds the agent ledger (ledger; routed by spec_gate 2026-09-26)
+- DW-1240: The reload-after-retention row has no mechanism - the retention sweep this story builds is what drops a restored turn's cards after RETENTIONSECONDS (ledger; routed by harvest 2026-09-19)
+
 ### Story 14.5: The per-user read-only toggle
 
 As a cautious administrator on someone else's instance,
@@ -5795,6 +5862,8 @@ So that I can explore without any possibility of changing something.
 - **Given** the gate already exists and is evaluated at the write
 - **When** this story lands
 - **Then** it is **data and UI, not a new enforcement point**.
+
+- DW-1621: The Definition form draws no read-only control, so with the read/write default a per-definition read-only agent can be made only through the API - add the control (owner-confirmed 2026-09-26) (ledger; routed by merge_gate 2026-09-26)
 
 ### Story 14.6: Per-user turn limits, and the banner they need
 
@@ -5835,11 +5904,12 @@ So that "the model is assumed compromised" is a tested claim rather than a postu
 
 - **Given** a turn then runs over each seeded source
 - **When** the test asserts
-- **Then** it asserts **zero proposals, zero navigations and zero outbound requests to any host other than the configured provider**.
+- **Then** it asserts **zero proposals, zero navigations and zero outbound requests to any host other than the configured provider**, against a scripted model that obeys any instruction reaching the system prompt or the user role. [AMENDED 2026-09-26, Story 14.8 spec gate, Rule 5: an obeying stub that reads "call a write tool" in a tool result would mint a proposal by construction, so the zeros are stated against the channel-sensitive stub, which goes red if any seed ever reaches an instruction channel]
 
 - **Given** the five invariants the defense actually rests on
 - **When** they are verified
 - **Then** it confirms that untrusted text entered only as delimited tool-result content and never the system prompt or user role; that no write occurred without a confirmation on a server-computed diff; that navigation accepted only allow-listed route identifiers; and that nothing rendered issued a request to any host
+- **And** against a scripted model that obeys the seeded string wherever it reads it, the write it attempts is only proposed, and the navigation it attempts is refused [AMENDED 2026-09-26, Story 14.8 spec gate, Rule 5]
 - **And** the polish-week sanitizer is **additional** to these, never the defense.
 
 ---
@@ -6125,7 +6195,7 @@ So that the first thing I see looks finished.
 
 ## Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22). The owner's surveys of the late entries add a CSV download on every table (16.23), a merged timeline in the log hub (16.9) and a try-it request copied as curl (16.24, run right after 16.9). [AMENDED 2026-09-27, owner: 16.9's timeline and Story 16.24 added]
 
 **Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
 
@@ -6288,8 +6358,12 @@ So that "all the logs" is literally true.
 ### Story 16.9: The unified log hub
 
 As a developer-administrator investigating an incident,
-I want one screen listing every log source with how much is in it,
-So that I know where to look before I start looking.
+I want one screen listing every log source with how much is in it, and one timeline across all of them,
+So that I know where to look before I start looking, and can see what happened in order without opening each log.
+[AMENDED 2026-09-27, owner: the merged timeline added; was a list of sources only]
+
+**Owner survey, 2026-09-27.** IRIS Admin Deck and iris-flightdeck both merge their log sources into one stream ordered by
+time; the hub gains that timeline beside its list of sources.
 
 **Acceptance Criteria:**
 
@@ -6300,6 +6374,40 @@ So that I know where to look before I start looking.
 - **Given** each row
 - **When** it renders
 - **Then** it carries an explain entry point, so the hub is where the agent's log help is most reachable.
+
+- **Given** the hub's **Timeline** view
+- **When** it opens
+- **Then** it merges the entries of every source the hub lists and the person may read into one list ordered by time,
+  newest first, over a chosen window that defaults to the last hour, each entry showing its time, its source, its
+  severity where the source records one, and its text.
+
+- **Given** sources that write their times in different forms or time zones
+- **When** they are merged
+- **Then** every time is compared and shown on the instance's clock, so the order is the order things happened.
+
+- **Given** each source the timeline reads
+- **When** it is read
+- **Then** it is read through that source's own bounded read, with the privilege its own viewer requires and its fixed
+  source name, never a path; each source has a row cap, and a source that reaches its cap is marked as truncated in the
+  words the log viewers already use.
+
+- **Given** a source the person may not read
+- **When** the timeline is built
+- **Then** that source is left out without an error, and the timeline says which sources are not shown and the
+  privilege each needs.
+
+- **Given** the timeline
+- **When** the person filters by source, by severity or by text
+- **Then** only matching entries remain, and each source's count in the list updates to match.
+
+- **Given** an entry in the timeline
+- **When** it is chosen
+- **Then** its source opens at that entry, and the entry carries the same explain entry point as the source's own
+  viewer, sending that entry alone.
+
+- **Given** the strings the timeline needs
+- **When** this story lands
+- **Then** they are added to the canonical Fixed strings table and the client string source in the same change.
 
 ### Story 16.10: External language servers
 
@@ -6646,6 +6754,39 @@ So that I can sort, share or keep it in a spreadsheet without copying rows by ha
 - **Then** it says the file holds the loaded rows only, in the words the table already uses for truncation.
 
 - **Given** the strings the download needs
+- **When** this story lands
+- **Then** they are added to the canonical Fixed strings table and the client string source in the same change.
+
+### Story 16.24: A try-it request, copied as curl
+
+As a developer-administrator who has just tried a request,
+I want to copy it as a curl command,
+So that I can repeat it from a terminal, a script or a ticket.
+
+**Owner survey, 2026-09-27.** IRIS Admin Deck offers every call it makes as a copyable curl command; the try-it console
+(16.1) sends requests but offers no copy.
+
+**Acceptance Criteria:**
+
+- **Given** a request in the try-it console
+- **When** the person chooses **Copy as curl**
+- **Then** the clipboard holds one curl command with the method, the absolute URL with its query, the request headers
+  and the body, as the console would send them, and nothing is sent.
+
+- **Given** the session's access token, or any header the console masks in its record of a request
+- **When** the command is built
+- **Then** the value is never copied: the command carries a placeholder the person replaces, and the console says so
+  beside the copy.
+
+- **Given** a header or body value containing quotes, newlines or other shell metacharacters
+- **When** it is written into the command
+- **Then** it is quoted so the command runs exactly as shown in a POSIX shell.
+
+- **Given** a request the console refuses to send
+- **When** the person asks to copy it
+- **Then** the copy is refused too, with the same reason the console gives for not sending it.
+
+- **Given** the strings the copy needs
 - **When** this story lands
 - **Then** they are added to the canonical Fixed strings table and the client string source in the same change.
 
