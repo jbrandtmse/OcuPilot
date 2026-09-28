@@ -68,3 +68,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T11:24:13Z	Story 18.1	ledger_routed_planned	story=18-3-databases-configuration-creation-properties-and-volumes entries=1 excess=0 by=cr dw=DW-1779
 2026-09-28T11:24:13Z	Story 18.1	ledger_adjudicated	owned=1 resolved=1(DW-1770) reowned=0 terminal=0
 2026-09-28T11:24:13Z	Story 18.1	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=ocupilot-b-ci:docker_exec_PathPort.Resolve:IRIS.DAT_file->400_PATH.MANAGER;existing_file_ow0->400_PATH.EXISTS;ow1->200;new_file->200;directory->200;scratch_dir_removed model=claude-opus-5-5[1m] rework_iteration=2
+2026-09-28T11:25:19Z	Story 18.1	committed	sha=42a03792 submodules= ci=pending run=36415503054 head_confirmed_by=headSha rework_iteration=2 amendments=ARCHITECTURE-SPINE.md:AD-21_DW-1770_sentence,AD-21_example_list_corrected epics.md:DW-1777,DW-1778(18.7),DW-1779(18.3)_bullets footprint_extensions=none_new
