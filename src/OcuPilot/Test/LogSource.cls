@@ -864,11 +864,11 @@ Method TestAnEnumKeyWithNoFileIsRefused()
 Method TestTheSixSecondaryKeysDeclareTheirPairs()
 {
     Set tSources = ##class(OcuPilot.Port.LogSourcePort).Sources()
-    For tRow = "systemmonitor=%Admin_Operate:USE", "taskerrors=%Admin_Operate:USE", "xdbc=%Admin_Operate:USE", "sqldiagnostics=%Admin_Operate:USE", "eventlog=%Ens_EventLog:USE", "analytics=%DeepSee_Portal:USE" {
+    For tRow = "systemmonitor=%Admin_Operate:USE", "taskerrors=%Admin_Operate:USE,%DB_IRISSYS:READ", "xdbc=%Admin_Operate:USE", "sqldiagnostics=%Admin_Operate:USE", "eventlog=%Ens_EventLog:USE", "analytics=%DeepSee_Portal:USE" {
         Set tKey = $Piece(tRow, "=", 1)
         Do $$$AssertTrue($ListFind(tSources, tKey) > 0, tKey _ ": in the shipped enum")
         Set tPairs = ##class(OcuPilot.Port.LogSourcePort).PairsFor(tKey)
-        Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(tPairs, .tCut), $Piece(tRow, "=", 2), tKey _ ": declares its one pair")
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(tPairs, .tCut), $Piece(tRow, "=", 2), tKey _ ": declares its pair set")
         Do $$$AssertEquals(##class(OcuPilot.Port.LogSourcePort).FileFor(tKey), "", tKey _ ": and no page file")
         Set tSC = ##class(OcuPilot.Port.LogSourcePort).Recent(tKey, 5, .tResult, .tHttp, .tFault)
         Do $$$AssertEquals(tHttp, 200, tKey _ ": the production port answers it: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))

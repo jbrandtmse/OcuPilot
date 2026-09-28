@@ -3410,6 +3410,35 @@ export const STRINGS = {
   /** EXPERIENCE.md:357 */
   webSessionRefusalPreserved:
     'This session\'s own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session.',
+
+  // Story 16.5: Background tasks, the fifth Tasks entry. Its Source, Task, Status, Namespace and
+  // Start time column headers and its Resume row action reuse existing keys.
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListLabel: 'Background tasks',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskColumnDetails: 'Details',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskColumnErrorCount: 'Error count',
+  /** EXPERIENCE.md:371 */
+  actionPause: 'Pause',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskCancelAction: 'Cancel task',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListEmpty: 'No background tasks.',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListEmptyAgent: 'cancel, pause or resume a background task',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskCancelConsequence: 'Canceling stops this task where it is. What it has done stays done, and it cannot be resumed.',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskRefusalState: 'This background task\'s current state does not allow that.',
+  /** EXPERIENCE.md:371 */
+  proposalEntityBackgroundTask: 'Background task',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListPrompt1: 'Which background tasks are running, and since when?',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListPrompt2: 'Which background tasks ended with errors?',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListPrompt3: 'Is a database compact or defragment running?',
 } as const;
 
 /**

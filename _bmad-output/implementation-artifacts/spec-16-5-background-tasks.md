@@ -2,13 +2,23 @@
 title: 'Story 16.5: Background tasks'
 type: 'feature'
 created: '2026-09-28'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '317b4463df8d3bb82355eb905d287d5af2785420'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The live Background tasks tests could flake if a seeded compact finishes between a Resume and the next Pause or mint.
+    evidence: |-
+      Maybe-false. BackgroundTasksLive resumes a seeded compact (about 1.2 GB, about 2 s of work
+      measured locally) and then pauses it or mints a pause at once; a much faster host could finish
+      it first and answer 409. Settled by the CI shard timings of BackgroundTasksLive over several runs.
+    location: >-
+      src/OcuPilot/Test/BackgroundTasksLive.cls TestTheScreensActionsResumePauseAndCancelACompact, TestTheAgentsConfirmPausesACompact
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -276,6 +286,37 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-28 — Review pass
+
+- verdicts: 26 findings — high 0, medium 5, low 16, false 4, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` (verification-gap) No live test checks the listed `StartTime` and `ErrorCount` values, so a misread column ships green — `TestASeededPortalCompactIsListedPaused` now compares every listed field with the portal's own query row read in `%SYS` (the job's error count set to 2), and the admin leg asserts a start time; mutation run 18350.
+  - `[medium]` `[patch]` (verification-gap, Rule 19; grouped with the row above) The `%IsDefined` loop cannot fail, because `Read.Project` writes `null` for a missing key — replaced by the value comparison above.
+  - `[low]` `[patch]` (verification-gap) `BackgroundTaskMint`'s separator refusal has no test — `BackgroundTasks.TestTheMintRefusesTheSeparatorInAnArgument` pins its problem text, since the kernel's absent-target refusal is also 400 `TOOL.ARGUMENTS`; mutation run 18353.
+  - `[low]` `[patch]` (verification-gap, Rule 19) `AdminPortForget`'s "it is not a protect" assertion cannot fail for a `%All` caller — deleted; `SetHoldsPair(0)` kept with a comment, since it arms the recorded guard-restore mutation.
+  - `[low]` `[reject]` (verification-gap, Rule 19) No mutation line for the sweep's age and state legs or the browser Changed tag — Rule 19 asks one demonstrated mutation per AC, and AC2 and AC4 each carry several.
+  - `[medium]` `[patch]` (verification-gap) A `background` read's shape is unchecked, so a later descriptor could send any admin endpoint through it past the admin-read pair rules — `Registry.ReadProblem` and `screen-mirror.mjs` `readProblem` now require the port's endpoint, `LIST` and no `rowGet`/`forEach`/`query`/`parts`, with four `AdminPairCorpus` cases; mutations run 18356 and the client test.
+  - `[maybe-false]` `[defer]` (verification-gap) A compact could finish between Resume and the next Pause on a faster CI host — deferred as medium (unverified).
+  - `[low]` `[reject]` (intent-alignment) The admin half is cut at the cap in the vendor's newest-queued order before the merge by start — it differs only for a caller with more admin tasks than the cap whose queue and start orders disagree.
+  - `[false]` `[reject]` (intent-alignment) Any admin 409, and a `SysBGTaskId` that no longer opens, map to the published refusal — `AsyncResult` control's 409s are `AsyncTask`'s state refusals, and the vendor query itself blanks an id that does not open (`BackgroundTask.cls:1218-1220`).
+  - `[false]` `[reject]` (intent-alignment) An admin cancel of a paused task is refused — the vendor cancels an async task only while it is `Queued`, a state refusal the intent covers.
+  - `[low]` `[reject]` (intent-alignment) The sweep matches the label by "contains" — vendor task names are `<verb> <path>`, and no route the vendor queues carries `/v2/ocupilot/` elsewhere.
+  - `[false]` `[reject]` (intent-alignment) The sweep's 24-hour cutoff might use another clock than the vendor's — `AsyncTask` stamps `TimeQueued` with `$ZDATETIME($H, 3)`, the clock `SweepOwnTasks` uses.
+  - `[low]` `[reject]` (intent-alignment) The Changed tag after Pause and Resume is not rendered in a browser test — the change-event path is shared, and the browser Cancel leg pins it.
+  - `[low]` `[reject]` (intent-alignment) A Cancel card predicts `Cancelled` where a caller without `%DB_IRISSYS:WRITE` re-reads `Exited` — spec-bound `StateDiff` spelling; AD-58 computes no compare for an action-style write.
+  - `[low]` `[reject]` (intent-alignment) A successful admin cancel is never exercised live — same `AdminControl` path as the live admin Pause and Resume, and the vendor's cancel window (`Queued`) cannot be held by a test.
+  - `[medium]` `[patch]` (intent-alignment) No not-allowed case reaches the real vendor — a live Pause of the canceled compact now asserts vendor 9503 answered as 409 `TASK.BACKGROUND.STATE` with the published sentence; mutation run 18354 (500 without the mapping).
+  - `[low]` `[reject]` (intent-alignment) A finished portal job's stored status is not tested against the vendor — the vendor query computes it, and the listed status is now compared with the query's own on a live row.
+  - `[low]` `[reject]` (intent-alignment) The "(none)" placeholder is not asserted for this screen — shared table rendering of an empty cell.
+  - `[low]` `[reject]` (intent-alignment) The Tasks-only holder's rendered text and client route refusal are not asserted — shared shell rendering of a server verdict pinned live by `TestATasksHolderKeepsTheAreaAndIsRefusedBackgroundTasks`.
+  - `[medium]` `[patch]` (intent-alignment) The port's own `%Admin_Operate:USE` check is unexercised — the fixture deny leg now covers both `PAIRS` members; mutation run 18355.
+  - `[low]` `[reject]` (intent-alignment) Cross-half order and `truncated` are not asserted live — the fixture pins the merge order and cap; truncation is the executor's shared N+1 path.
+  - `[low]` `[reject]` (intent-alignment) The agent's dispatch path and admin half are unexercised — dispatch reaches the same mint and confirm the live test calls, and `ToolRoundTrip` covers the schema.
+  - `[low]` `[reject]` (intent-alignment) No confirm or action after a purge — both callers reach the fresh read through `Operation.ReadTarget`, pinned to 404.
+  - `[low]` `[reject]` (intent-alignment) "Row left" is asserted on the direct `ForgetTask` call, not the async-read path — the async path calls the same method.
+  - `[low]` `[reject]` (intent-alignment) A failed sweep step's logged status is untested — `Retention.Step` is the existing shared step logger.
+  - `[false]` `[reject]` (intent-alignment) The portal script reads `^IRIS.Temp.MgtPortalTask` rather than the query — the query reads the same node and blanks an id that does not open, which the script refuses the same way.
+
 ## Design Notes
 
 **Ruling (lead, spec gate 2026-09-28): Q1 (A), Q2 the appended step.** AC3 itself requires the custom half, and AD-27's conditions hold (the admin API has no such operation), so `BackgroundTaskPort` is recorded as AD-27's Story 16.5 case, with AD-8, AD-15, AD-53 and AD-37 amended in the same commit. `Kernel/Retention.cls` is not on the orchestrator's contended list and Epic 18 has not touched it, so the one appended step is taken and reported as a footprint extension. The plan's options, for the record:
@@ -348,9 +389,73 @@ deferred: []
 - `cd ui && npm test` (once, before dev_complete). Expected: green, with the bundle under `maximumWarning` 2107kB.
 - The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before dev_complete). Expected: green apart from the known residue. The full browser suite is CI's.
 
+**Mutations observed (implement pass).** Each ran on `ocupilot-ci` after rsync and a recompile of the class and its descendants. Each was then reverted and recompiled, and `git status --short` and `git diff --stat` were unchanged.
+
+- mutation (AC1, AC3, portal half): drop `tPortal` from `BackgroundTaskPort.Rows`'s merge -> `BackgroundTasksLive.TestASeededPortalCompactIsListedPaused` "the screen's read lists it" went red (run 18320).
+- mutation (AC1, AC3, admin half): drop `tAdmin` from the merge -> `BackgroundTasksLive.TestAnAdminApiCompactIsListedAndPausedThroughAsyncResult` (run 18321) and `BackgroundTasks.TestTheListMergesBothHalvesNewestFirst` (run 18329) went red.
+- mutation (AC1, the caller's own admin tasks): `AdminPort`'s stub `%session` carries `"_SYSTEM"` in place of `$USERNAME` -> `BackgroundTasksLive.TestAnotherCallersAdminTaskIsNotListed` went red (run 18345; green on the restored tree, run 18344).
+- mutation (AC2): answer `$$$OK` in place of the vendor call in `PortalControl` -> the resume and cancel legs of `BackgroundTasksLive.TestTheScreensActionsResumePauseAndCancelACompact`, and `TestTheAgentsConfirmPausesACompact`, went red (run 18322).
+- mutation (AC2, client): empty `WARNING_CONSEQUENCES`'s `BackgroundTaskList` entry -> the Story 16.5 warning cases in `screen-action-handler.spec.ts` and `list-page.spec.ts` went red. After a rebuild and redeploy, the AC2 test in `background-tasks.browser-spec.mjs` went red as well.
+- mutation (AC4, the delete): `If 1 Quit` before `ForgetTask`'s delete -> `AdminPortAsync` "the queued row is gone" went red in two tests (run 18323). The runner holds `%All`, so a guard on a real pair would pass for it. The `HoldsPair("%DB_IRISLOCALDATA:WRITE")` guard -> `AdminPortForget.TestTheDeleteIsAlwaysAttemptedAndAnotherFailureIsLogged` went red (run 18338).
+- mutation (AC4, logs nothing): `If 0` for `ForgetTask`'s `<PROTECT>` test -> `AdminPortForget.TestAnUnprivilegedCallersDeleteLeavesTheRowAndLogsNothing` went red (run 18339).
+- mutation (AC4, only OcuPilot's rows): drop the label condition from `SweepOwnTasks` -> `AdminPortForget.TestTheSweepTakesOnlyOcuPilotsTerminalRowsADayOld` "the Unlabeled row is left" went red (run 18324).
+- mutation (AC4, daily): the Retention step answers `$$$OK` without calling `SweepOwnTasks` -> `AdminPortForget.TestTheRetentionSweepDeletesOcuPilotsOldRows` went red (run 18326).
+- mutation (task error log):
+  - read `FetchTasks` outside `%SYS` -> the task-error-log leg of `TestASeededPortalCompactIsListedPaused` went red (run 18327);
+  - drop `%DB_IRISSYS:READ` from `TASKERRORSPAIRS` -> `TestTheTaskErrorLogRequiresTheSystemRead` went red (run 18337).
+- mutation (AD-8 own pair):
+  - drop `ownPrivileges` -> `BackgroundTasks.TestTheDescriptorDeclaresTheListItsPairsAndItsActions` went red (run 18328);
+  - move `%Admin_Operate:USE` from `ownPrivileges` into the Tasks area's pairs -> `BackgroundTasksLive.TestATasksHolderKeepsTheAreaAndIsRefusedBackgroundTasks` went red (run 18336).
+- mutation (`BackgroundTasks`), applied one at a time:
+
+  | Mutation | Red test | Run |
+  |---|---|---|
+  | compare ids numerically in `Find` | `TestTheFreshReadComparesTheCompositeIdExactly` | 18330 |
+  | add `Details` to `FINGERPRINTSUBJECT` | `TestTheFingerprintRefusesAMovedStatus` and `TestTheToolsAreActionWritesOverTheScreensOwnPairs` | 18331 |
+  | drop the no-`SysBGTaskId` refusal | `TestAPortalJobWithNoBackgroundTaskSendsNothing` | 18333 |
+  | drop the `PORTALSTATECODE` mapping | `TestEveryVendorStateRefusalIsTheOnePublishedCode` | 18334 |
+  | send every control row through `Snippet`'s admin branch | `TestTheScriptRendersBothBranches` | 18335 |
+
+- After the pass, every changed class was recompiled from the tree. Then these ran green:
+  - `BackgroundTasks` (run 18340), `BackgroundTasksLive` (18341), `AdminPortForget` (18342) and `AdminPortAsync` (18343);
+  - on the rebuilt, redeployed bundle, the browser spec (2/2) and the two component specs (82/82).
+
+**Mutations observed (review pass).** Applied one at a time on `ocupilot-ci` with the mutated class and its descendants recompiled, then reverted and recompiled; the tree was byte-identical after each.
+
+| Mutation | Red test | Run |
+|---|---|---|
+| read the portal `StartTime` column as `Started` in `PortalRows` | `BackgroundTasksLive.TestASeededPortalCompactIsListedPaused` "the listed StartTime is the portal's own" | 18350 |
+| delete `BackgroundTaskMint`'s separator refusal | `BackgroundTasks.TestTheMintRefusesTheSeparatorInAnArgument` | 18353 |
+| drop the `PORTALSTATECODE` mapping, live | `BackgroundTasksLive.TestTheScreensActionsResumePauseAndCancelACompact` (a Pause of the canceled compact answered 500) | 18354 |
+| drop `%Admin_Operate:USE` from the port's `PAIRS` | `BackgroundTasks.TestTheListMergesBothHalvesNewestFirst` | 18355 |
+| drop the `background` read-shape rule from `Registry.ReadProblem` | `ReadTool.TestEveryAdminPairCorpusCaseGetsItsSentence`, the three background cases | 18356 |
+| drop the `background` read-shape rule from `screen-mirror.mjs` `readProblem` | `screen-mirror.test.mjs` "readProblem returns every admin-privilege sentence" | client |
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none -- resolved at the spec gate by the lead's ruling (Spec Change Log). The plan's halt read: intent gap -- AC3's second half needs a new port and a new AD-27 named case, which the dispatch reserves for the lead. Q1: (A) recommended, a new `Port/BackgroundTaskPort` extending AdminPort as an AD-27 case, merging the caller's `AsyncResult` `LIST` with the portal's `EnumerateTasks` read in `%SYS`, and controlling portal rows through `%SYS.BackgroundTask` `Cancel`/`Pause`/`Resume` after its `%Admin_Operate:USE` guard; (B) the portal half inside `LogSourcePort`; (C) the admin half only, as stated partial parity (owner). Q2: DW-1136's daily sweep step lives in `Kernel/Retention.cls`, contended with Epic 18 (recommended: one appended step; fallback: the installer start path).
+Status: done
+Blocking condition: none
 
-Planned (plan stage, 2026-09-28): the full spec for option A and Q2's recommendation. It was built from two code maps and one instance-measurement pass on `ocupilot-ci`, which measured the classic rows, least-privilege pairs, admin API routes and control, a seeded pausable compact, audit, and purge scheduling; everything created there was removed. The pass also found that the shipped task error log reader rewrites live jobs to `Exited` for a caller without `%DB_IRISSYS:READ`, which this spec fixes. `DW-1080`'s section and `DW-1638` are declined with named owners. `DW-1101`, `DW-1136` and `DW-1137` are addressed.
+**Implemented.** Background tasks is the fifth Tasks entry: `Port/BackgroundTaskPort` (AD-27's 16.5 case) merges the caller's `AsyncResult` `LIST` with the portal's `EnumerateTasks` read in `%SYS`, behind its own `%Admin_Operate:USE` and `%DB_IRISSYS:READ` gate, and carries cancel, pause and resume to `AsyncResult` or `%SYS.BackgroundTask`, mapping vendor state refusals to `TASK.BACKGROUND.STATE`. Three action-style tools (fingerprint `Status`, governance keys enabled), the list descriptor with `ownPrivileges`, the `background` read source in both engines (with a shape rule), the Cancel warning, strings and EXPERIENCE.md (993 lines). `AdminPort.ForgetTask` always deletes and stays silent only on `<PROTECT>`; `SweepOwnTasks` is the retention sweep's new last step; the task error log reads in `%SYS` and requires `%DB_IRISSYS:READ`. Plan stage: see the Spec Change Log.
+
+**Files.**
+
+- New server: `Port/BackgroundTaskPort.cls`; `Screen/Descriptor/BackgroundTaskList.cls`; `Screen/Tool/BackgroundTaskCancel.cls`, `Pause`, `Resume`, and `BackgroundTaskMint.cls` (joins `source` and `id`).
+- Changed server: `Port/AdminPort.cls` (type lists, `ForgetTask`, `SweepOwnTasks`, `ASYNCTASKPAIR` removed); `Port/LogSourcePort.cls` and `Screen/Descriptor/LogTaskErrorViewer.cls` (task error log); `Screen/Read.cls` and `Screen/Registry.cls` (the `background` source and its shape rule); `Kernel/Retention.cls` (the sweep step); `Kernel/EntityType.cls`, `Kernel/Proposal/Prohibited.cls`, `Kernel/Governance/Baseline.cls`, `Api/Error.cls` (appended entries).
+- New tests: `Test/BackgroundTasks.cls`, `Test/BackgroundTasksLive.cls`, `Test/BackgroundSeed.cls`, `Test/BackgroundTaskFixture.cls`, `Test/BackgroundTaskConfirm.cls`, `Test/BackgroundTaskMintFixture.cls`, `ui/browser/background-tasks.browser-spec.mjs`.
+- Changed tests and rosters: `AdminPortForget`, `PortFixture`, `AdminPairCorpus`, `Descriptor`, `LogPairs`, `LogSecondary`, `LogSecondaryWire`, `LogSource`, `LogSourceDenial`, `PortGate`, `Prohibited`, `ProposalConfirm`, `ReadTool`, `SurfaceCoverage`, `ToolRoundTrip`, `Wire`, `WireSecurityRead`; `scripts/ci-throwaway.sh` (arming comment).
+- Client: `ui/src/app/core/strings.ts`, `screen-actions.ts`, `screens.generated.ts` (regenerated), `ui/src/app/shell/screen-action-handler.ts` and its spec, `list-page.spec.ts`, `rail-wire.spec.ts`; `ui/tools/screen-mirror.mjs` and the tool tests; EXPERIENCE.md `:173` and `:371`.
+
+**Review.** 26 findings (high 0, medium 5, low 16, false 4, maybe-false 1): 7 patched (four medium entries, two low, one deletion), 1 deferred (the maybe-false compact-timing flake), 18 rejected with reasons in the Review Triage Log. Follow-up review recommended: false — the four patched medium entries are each pinned by a demonstrated mutation (runs 18350 to 18356), so no unverified risk remains to name. Before review, the Matrix Test Audit found the "Others' admin tasks" row uncovered; `TestAnotherCallersAdminTaskIsNotListed` was added (mutation run 18345).
+
+**Verification.**
+
+- Targeted classes on `ocupilot-ci`, one per call, green after the last patch: `BackgroundTasks` 10/10 (18705), `BackgroundTasksLive` 7/7 (18706), `AdminPortForget` 4/4, `ReadTool` 27/27, `LogSecondary`, `LogSource`, `LogSourceDenial`, `PortGate`, `ProposalConfirm`, `ToolEmit` (18680).
+- Full ObjectScript sweep (once, `--shard k/16` over the 342 classes the instance offers, one class at a time): 2,672 tests, 12 failed on the first pass. Six classes failed on this story's own changes, were fixed and re-ran green: `LogSecondary`, `LogSource` and `LogSourceDenial` (the task error log's new pair), `PortGate` (roster row), `ProposalConfirm` (`tasks.background.cancel` matched its "cancel" name check) and `ToolEmit` (the tools now declare `WRITERESOURCE`). Residue, all known: `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal`, `TaskHistory`'s three demo-task tests, `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` (other suites' expired rows on the long-lived throwaway; red in runs 16919, 17323 and 17724 before this story), and 19 classes refusing on older arming variables (`AuditPurge`, `AuditingUpdate`, `DemoErrorSeed`, `DraftExecute`, `ErrorDelete`, `InjectionChannels`, `InjectionCompromised`, `LdapEdit`, `LdapUpdate`, `PreferencesWire`, `ProcessControl`, `ServiceEdit`, `TaskCreate`, `TaskEdit`, `TaskResume`, `TaskRules`, `TaskSave`, `TaskUpdate`, `TaskWire`).
+- `npm run build`: green; bundle initial total 2.06 MB (main 1.88 MB, styles 172.99 kB), under the 2107kB warning. Deployed to `ocupilot-ci`; `background-tasks.browser-spec.mjs` 2/2, DW-1337 walk included.
+- `npm test`: tools 1,687/1,687; components 126 files passed.
+- `check-objectscript.py` 0 problems; `lint-docs.sh` clean. `ocupilot-ci` left with no seed database, resource, test principal or seeded async row.
+
+**Residual risks.** The compact-timing flake (deferred). An admin row older than the 1,000 newest async rows a caller owns cannot be acted on (the fresh read lists that many), unlikely now that the await and the daily sweep delete them (inference). `AdminPortForget`'s retention leg runs the whole sweep, so on a long-lived throwaway it also deletes other suites' expired rows.
+
+**Footprint extensions:** `src/OcuPilot/Kernel/Retention.cls`, `src/OcuPilot/Kernel/EntityType.cls`, `src/OcuPilot/Kernel/Governance/Baseline.cls`, `scripts/ci-throwaway.sh`, `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`.

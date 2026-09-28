@@ -46,7 +46,8 @@ export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
  * (Story 9.5), whose Delete types the name, and the OAuth 2.0 Resource servers tab (Story 12.6), whose
  * Delete types the name, and the Authorization server tab (Story 12.7), whose Delete types the issuer
  * and whose Rotate Keys is sent at once, and the Web sessions list (Story 16.2), whose End session
- * types the session id.
+ * types the session id, and the Background tasks list (Story 16.5), whose Pause and Resume are sent
+ * at once and whose Cancel task warns first.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -70,6 +71,7 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.OAuthResourceServerTab',
   'OcuPilot.Screen.Descriptor.OAuthServerTab',
   'OcuPilot.Screen.Descriptor.WebSessionList',
+  'OcuPilot.Screen.Descriptor.BackgroundTaskList',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -272,6 +274,8 @@ const TYPED_NAME_ROWS: Readonly<
  */
 const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   'OcuPilot.Screen.Descriptor.AuditingConfig': { disable: STRINGS.proposalAuditWarning },
+  // Story 16.5: a canceled background task cannot be resumed.
+  'OcuPilot.Screen.Descriptor.BackgroundTaskList': { cancel: STRINGS.backgroundTaskCancelConsequence },
 };
 
 /**

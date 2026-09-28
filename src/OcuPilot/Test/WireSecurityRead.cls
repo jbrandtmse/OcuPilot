@@ -385,11 +385,11 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the fourteen principals' pairs")
 
-    Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "tasks"), "[{""route"":""tasks/schedule/details"",""labelKey"":""taskDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/schedule/edit"",""labelKey"":""proposalEntityTask"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/schedule/history"",""labelKey"":""taskRunsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/history"",""labelKey"":""taskHistoryLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "%Admin_Task alone: the seven task screens (the unlisted task details, the New Task wizard and per-task history first) are denied on %DB_IRISSYS:READ")
+    Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "tasks"), "[{""route"":""tasks/schedule/details"",""labelKey"":""taskDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/schedule/edit"",""labelKey"":""proposalEntityTask"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/schedule/history"",""labelKey"":""taskRunsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/history"",""labelKey"":""taskHistoryLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/background"",""labelKey"":""backgroundTaskListLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%Admin_Operate:USE""}]", "%Admin_Task alone: the seven task screens (the unlisted task details, the New Task wizard and per-task history first) are denied on %DB_IRISSYS:READ, and Background tasks on its own %Admin_Operate:USE")
     Do $$$AssertEquals(..AreaVerdictFor(..#TASKUSER, "tasks"), "false:%DB_IRISSYS:READ", "and so is the Tasks area")
     Do ..AssertReadRefused(..#TASKUSER, "tasks.schedule", "%DB_IRISSYS:READ")
 
-    Do $$$AssertEquals(..ScreensFor(..#TASKBOTHUSER, "tasks"), "[{""route"":""tasks/schedule/details"",""labelKey"":""taskDetailsLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""tasks/schedule/edit"",""labelKey"":""proposalEntityTask"",""sideBarPosition"":0,""allowed"":true},{""route"":""tasks/schedule/history"",""labelKey"":""taskRunsLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":true},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""tasks/history"",""labelKey"":""taskHistoryLabel"",""sideBarPosition"":4,""allowed"":true}]", "both pairs: the seven task screens (the unlisted task details, the New Task wizard and per-task history first) are listed allowed")
+    Do $$$AssertEquals(..ScreensFor(..#TASKBOTHUSER, "tasks"), "[{""route"":""tasks/schedule/details"",""labelKey"":""taskDetailsLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""tasks/schedule/edit"",""labelKey"":""proposalEntityTask"",""sideBarPosition"":0,""allowed"":true},{""route"":""tasks/schedule/history"",""labelKey"":""taskRunsLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":true},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""tasks/history"",""labelKey"":""taskHistoryLabel"",""sideBarPosition"":4,""allowed"":true},{""route"":""tasks/background"",""labelKey"":""backgroundTaskListLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%Admin_Operate:USE""}]", "both pairs: the seven task screens (the unlisted task details, the New Task wizard and per-task history first) are listed allowed, and Background tasks is denied on its own %Admin_Operate:USE")
     Do $$$AssertEquals(..AreaVerdictFor(..#TASKBOTHUSER, "tasks"), "true", "and so is the Tasks area")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/tasks.schedule/read?maxRows=1000", ..#TASKBOTHUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
@@ -1224,23 +1224,21 @@ Method TestTheLogsAreaStaysOpenWithoutTheEventLogsPair()
 /// <code>&lt;PROTECT&gt;</code> in the file the console-log screen displays.</p>
 /// <p><b>The principal is the measurement.</b> <parameter>AUDITUSER</parameter> is served the audit
 /// read, which the admin port runs through its own queued path (AD-26), and it does <b>not</b> hold
-/// the pair <method>OcuPilot.Port.AdminPort.ForgetTask</method>'s delete needs -- read back here
-/// rather than assumed, because the whole finding is that the delete runs as the caller. The
-/// suite's own account holds <code>%All</code>, so this refusal is observable on a real principal
-/// and nowhere else.</p>
+/// write on the database the async task rows live in -- read back here rather than assumed, because
+/// the whole finding is that <method>OcuPilot.Port.AdminPort.ForgetTask</method>'s delete runs as the
+/// caller. The suite's own account holds <code>%All</code>, so this refusal is observable on a real
+/// principal and nowhere else.</p>
 /// <p>The sweep reads only the bytes <file>messages.log</file> grew by across the call, so an
 /// earlier run's line cannot make it pass or fail.</p>
-/// <p>Mutation: remove <method>OcuPilot.Port.AdminPort.ForgetTask</method>'s privilege guard and
-/// recompile the package -&gt; the read still answers 200 and the appended bytes carry the vendor's
-/// protect text, so both sweep assertions go red.</p>
+/// <p>Mutation: log every failure in <method>OcuPilot.Port.AdminPort.ForgetTask</method>, the
+/// <code>&lt;PROTECT&gt;</code> included, and recompile the package -&gt; the read still answers 200
+/// and the appended bytes carry the vendor's protect text, so both sweep assertions go red.</p>
 Method TestAnUnprivilegedAsyncReadLeavesNoProtectInTheConsoleLog()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the fourteen principals' pairs")
-    Set tPair = $Parameter("OcuPilot.Port.AdminPort", "ASYNCTASKPAIR")
-    Set tResource = $Piece(tPair, ":", 1)
-    Set tPermission = $Piece(tPair, ":", 2)
-    Do $$$AssertTrue((tResource '= "") && (tPermission '= ""), "the port declares the pair its delete needs: " _ tPair)
-    Do $$$AssertNotEquals($SYSTEM.Security.CheckUserPermission(..#AUDITUSER, tResource, tPermission), 1, ..#AUDITUSER _ " does not hold " _ tPair _ ", so its async read is the unprivileged case")
+    Set tResource = ..RowsResource()
+    Do $$$AssertTrue(tResource '= "", "the database the async task rows live in names its resource: " _ tResource)
+    Do $$$AssertNotEquals($SYSTEM.Security.CheckUserPermission(..#AUDITUSER, tResource, "WRITE"), 1, ..#AUDITUSER _ " does not hold " _ tResource _ ":WRITE, so its async read is the unprivileged case")
 
     Set tPath = ##class(%File).NormalizeFilename(##class(OcuPilot.Port.LogSourcePort).FileFor("messages"), ##class(OcuPilot.Port.LogSourcePort).ManagerDirectory())
     Set tBeforeSize = ##class(%File).GetFileSize(tPath)
@@ -1283,6 +1281,24 @@ Method ConsoleLogSince(pPath As %String, pFrom As %Integer) As %String
         Set tText = "the console log could not be re-read: " _ ex.DisplayString()
     }
     Quit tText
+}
+
+/// <p>The resource of IRISLOCALDATA, the database the vendor's async task rows live in, read from
+/// the instance, or <code>""</code>.</p>
+Method RowsResource() As %String
+{
+    Set tResource = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tDatabase = ##class(Config.Databases).Open("IRISLOCALDATA")
+        If $IsObject(tDatabase) Set tResource = ##class(SYS.Database).%OpenId(tDatabase.Directory).ResourceName
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tResource = ""
+    }
+    Quit tResource
 }
 
 /// <p>How many queued async-task rows the instance holds, or <code>-1</code> when the list cannot

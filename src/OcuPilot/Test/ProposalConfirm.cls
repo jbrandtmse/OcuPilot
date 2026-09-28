@@ -30,6 +30,10 @@ Parameter SECRETSCREEN = "OcuPilot.Test.ProposalScreen";
 
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
+/// <p>Write tools whose verb is a screen's own Cancel row action on an instance object, comma-separated:
+/// Background tasks' cancel (Story 16.5).</p>
+Parameter CANCELROWACTIONS = "tasks.background.cancel";
+
 /// <p>The target the fixture answers for. Nothing on the instance carries this path, and nothing
 /// here would reach it if it did: the port is the fixture.</p>
 Parameter TARGET = "/csp/ocupilotprobeconfirm";
@@ -534,6 +538,9 @@ Method TestAFailedWriteLeavesTheProposalBurned()
 /// barrier in <method>OcuPilot.Kernel.Proposal.Confirm.Confirm</method> is the second line of
 /// defence and not the only one. The registry is enumerated rather than asserted about, because
 /// the property has to hold over whatever the discovery query returns.</p>
+/// <p>A tool in <parameter>CANCELROWACTIONS</parameter> is a screen's own Cancel row action on an
+/// instance object, not the proposal's cancel path, and is not counted by name; it is still
+/// counted if the confirm class fulfils it.</p>
 /// <p>Mutation: give a class under
 /// <method>OcuPilot.Screen.Tool.Registry.ToolPackage</method> a <code>TOOLNAME</code> naming the
 /// confirm path, or a class of <class>OcuPilot.Kernel.Proposal.Confirm</class> -- this goes red.</p>
@@ -550,7 +557,7 @@ Method TestTheConfirmPathIsNotInTheToolRegistry()
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tTool) {
         If $Find($ZConvert(tTool.%Get("name"), "L"), "confirm") Set tNamed = tNamed + 1
-        If $Find($ZConvert(tTool.%Get("name"), "L"), "cancel") Set tNamed = tNamed + 1
+        If $Find($ZConvert(tTool.%Get("name"), "L"), "cancel") && '$ListFind($ListFromString(..#CANCELROWACTIONS), tTool.%Get("name")) Set tNamed = tNamed + 1
         If tTool.%Get("class") = "OcuPilot.Kernel.Proposal.Confirm" Set tClassed = tClassed + 1
     }
     Do $$$AssertEquals(tNamed, 0, "no entry of the registry names the confirm or cancel path")
