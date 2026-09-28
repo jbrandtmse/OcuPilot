@@ -69,3 +69,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T11:24:13Z	Story 18.1	ledger_adjudicated	owned=1 resolved=1(DW-1770) reowned=0 terminal=0
 2026-09-28T11:24:13Z	Story 18.1	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=ocupilot-b-ci:docker_exec_PathPort.Resolve:IRIS.DAT_file->400_PATH.MANAGER;existing_file_ow0->400_PATH.EXISTS;ow1->200;new_file->200;directory->200;scratch_dir_removed model=claude-opus-5-5[1m] rework_iteration=2
 2026-09-28T11:25:19Z	Story 18.1	committed	sha=42a03792 submodules= ci=pending run=36415503054 head_confirmed_by=headSha rework_iteration=2 amendments=ARCHITECTURE-SPINE.md:AD-21_DW-1770_sentence,AD-21_example_list_corrected epics.md:DW-1777,DW-1778(18.7),DW-1779(18.3)_bullets footprint_extensions=none_new
+2026-09-28T11:30:03Z	Epic 18	epic_context_compiled	sha=pending reason=planning_artifact_newer(18.2_split,18.14,DW_bullets,AD-21_DW-1770) model=claude-opus-5-5[1m] lines=147
+2026-09-28T11:30:03Z	Story 18.2	plan_clarification_requested	resolved_by=orchestrator(split_A) redispatch=spec_path status=draft
+2026-09-28T11:30:03Z	Story 18.2	stage_spawned	stage=plan spawn_at=2026-09-28T11:30:03Z model=opus agent_name=18-2-namespaces-and-their-mappings-plan-2 cycle_iteration=2 dispatch=spec_path(draft)
