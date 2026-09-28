@@ -919,21 +919,58 @@ export const READ_TOOL_IDENTIFIER_RE = /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/;
 const ENDPOINT_RE = /^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
 
 /**
- * The four read sources, mirrored from `OcuPilot.Screen.Read`'s own parameters: `admin` is an
+ * The six read sources, mirrored from `OcuPilot.Screen.Read`'s own parameters: `admin` is an
  * instance endpoint reached through the admin port, `state` is OcuPilot's own protected state
  * resolved against a kernel store's guarded list (AD-9), `mgmnt` is the management API reached
- * through its own port, and `logsource` is one instance log file's bounded tail read through
- * `OcuPilot.Port.LogSourcePort`, its `endpoint` a source key from that port's fixed enum (AD-21).
- * Each changes where the rows come from and nothing else -- the same fields, filter, sort, paging
- * and row cap.
+ * through its own port, `logsource` is one instance log file's bounded tail read through
+ * `OcuPilot.Port.LogSourcePort`, its `endpoint` a source key from that port's fixed enum (AD-21),
+ * `path` is the instance's directory allow-list read through `OcuPilot.Port.PathPort`, and
+ * `timeline` composes an area's listed screens' own reads. The first five change where the rows
+ * come from and nothing else -- the same fields, filter, sort, paging and row cap; a `timeline`
+ * read's fields and its one `since` criterion are fixed (`timelineProblem`).
  */
 export const SOURCE_ADMIN = 'admin';
 export const SOURCE_STATE = 'state';
 export const SOURCE_MGMNT = 'mgmnt';
 export const SOURCE_LOGSOURCE = 'logsource';
+export const SOURCE_PATH = 'path';
+
 /** The log hub's composition of its area's listed screens' reads (AD-36 as amended, Story 16.9). */
 export const SOURCE_TIMELINE = 'timeline';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_TIMELINE];
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE];
+
+/** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
+export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
+
+const PATH_SOURCES_PARAM_RE = /^Parameter\s+SOURCES\s*=\s*"([^"]*)"\s*;/m;
+
+/**
+ * The source keys `OcuPilot.Port.PathPort`'s `SOURCES` parameter declares, read from its own
+ * class rather than restated here, or `null` when the parameter is missing -- reported, never read
+ * as an empty list that would refuse every `path` read, the discipline `parseEntityTypes` follows.
+ */
+export function parsePathSources(text) {
+  const match = PATH_SOURCES_PARAM_RE.exec(text);
+  if (match === null) return null;
+  return match[1]
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value !== '');
+}
+
+let pathSourcesCache;
+
+/** `parsePathSources` over the class on disk, read once. */
+export function pathSources() {
+  if (pathSourcesCache === undefined) pathSourcesCache = parsePathSources(readFileSync(PATH_PORT_SOURCE, 'utf8'));
+  return pathSourcesCache;
+}
+
+/** The one request type a `path` source declares. */
+export const PATH_READ_TYPE = 'LIST';
+
+/** The source keys a `path` source declares none of, in the order they are reported. */
+const PATH_REFUSED_SOURCE_KEYS = ['rowGet', 'forEach', 'query', 'parts'];
 
 /** The package a `state` source's `endpoint` names a store inside, trailing dot included. */
 export const STATE_PACKAGE = 'OcuPilot.Kernel.State.';
@@ -1116,7 +1153,7 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}' or '${SOURCE_TIMELINE}', the five sources a declared read names (AD-36)`
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}' or '${SOURCE_TIMELINE}', the six sources a declared read names (AD-36)`
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1130,6 +1167,23 @@ export function readProblem(declaration) {
   }
   if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
     return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'`;
+  }
+  // A path source lists the instance's allowed directories through `OcuPilot.Port.PathPort`, which
+  // computes them whole on every call (AD-21): one of that port's source keys, a LIST, and nothing
+  // the port would have to issue per row, per parent, under a fixed query or in parts.
+  if (source.port === SOURCE_PATH) {
+    const sources = pathSources();
+    if (sources === null) return `${PATH_PORT_SOURCE} declares no 'Parameter SOURCES'`;
+    if (!sources.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the path port's sources ('${sources.join("', '")}') (AD-21)`;
+    }
+    if (source.type !== PATH_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a path source, which lists the allowed directories (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a path source, which answers the allowed directories whole (AD-36)`;
+    }
   }
   // AD-36 as amended (Story 16.9): a timeline composes its area's listed screens' own reads, so its
   // shape is fixed rather than declared piecemeal.
@@ -1315,6 +1369,12 @@ export function readProblem(declaration) {
     return (
       "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, " +
       'because the port runs every endpoint in %SYS (AD-2, AD-8)'
+    );
+  }
+  if (source.port === SOURCE_PATH && !declaresSystemRead(declaration.privileges)) {
+    return (
+      "read.source.port 'path' requires the declared privileges to include %DB_IRISSYS:READ, " +
+      'because the port reads the allow-list through the admin API in %SYS (AD-2, AD-8, AD-21)'
     );
   }
   return null;
@@ -2867,10 +2927,12 @@ export interface ReadSourcePart {
 
 /**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
- * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, or one
- * instance log file's bounded tail. A \`state\` source names the store by its own name, declares no
- * \`rowGet\` and no \`criteria\`, and is bounded by the same row cap; a \`mgmnt\` or
- * \`logsource\` source declares no \`rowGet\`.
+ * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, one
+ * instance log file's bounded tail, the instance's allowed directories, or an area's listed screens'
+ * reads composed into one timeline. A \`state\` source names the store by its own name, declares no
+ * \`rowGet\` and no \`criteria\`, and is bounded by the same row cap; a \`mgmnt\` or \`logsource\`
+ * source declares no \`rowGet\`, a \`path\` source is a \`LIST\` of one of its port's sources, and a
+ * \`timeline\` source's fields and criterion are fixed.
  */
 export interface ReadSource {
   readonly port: ${READ_SOURCE_PORTS.map((value) => `'${value}'`).join(' | ')};

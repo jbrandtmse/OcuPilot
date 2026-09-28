@@ -368,9 +368,10 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // stop.
 // Story 16.24 re-based it to 2107kB, 5% above a measured 2,006,491 bytes, under the 4000kB hard
 // stop.
+// Story 18.1, merged beside it, measured 2,005,146 bytes on its own and stays under that figure.
 //
 // Mutations (Rule 19):
-// - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "2MB") -> the
+// - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
 //   "no other initial budget exists" and "warning under error" assertions still pass, but this
 //   test's own exact-string assertion goes red, which is the point: any edit to the literal is
 //   visible here.

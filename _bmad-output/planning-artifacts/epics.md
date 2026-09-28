@@ -7156,6 +7156,8 @@ So that key management is not a reason to keep the classic portal open.
 - **When** it is entered
 - **Then** it is write-only and returned by no read, like every other secret.
 
+- DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards (ledger; routed by cr 2026-09-28)
+
 ### Story 18.8: Superservers, authentication options and managed file transfer
 
 As an operator,

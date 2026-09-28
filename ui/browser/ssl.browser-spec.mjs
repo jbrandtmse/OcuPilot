@@ -225,8 +225,8 @@ test('AC4: the Security and secrets side bar lists SSL/TLS first among its entri
     assert.equal(sideBar.area, STRINGS.navAreaSecurity);
     assert.deepEqual(
       sideBar.entries,
-      [STRINGS.sslListLabel, STRINGS.x509ListLabel, STRINGS.ldapListLabel, STRINGS.walletListLabel, STRINGS.oauthLabel, STRINGS.auditingConfigurationLink],
-      'SSL/TLS, then X.509, LDAP / Kerberos, Wallet (Story 6.3), OAuth 2.0 (Story 6.4) and Auditing configuration (Story 7.4), and no dead entry beside them'
+      [STRINGS.sslListLabel, STRINGS.x509ListLabel, STRINGS.ldapListLabel, STRINGS.walletListLabel, STRINGS.oauthLabel, STRINGS.auditingConfigurationLink, STRINGS.allowedDirectoriesLabel],
+      'SSL/TLS, then X.509, LDAP / Kerberos, Wallet (Story 6.3), OAuth 2.0 (Story 6.4), Auditing configuration (Story 7.4) and Allowed directories (Story 18.1), and no dead entry beside them'
     );
     assert.equal(sideBar.current, STRINGS.sslListLabel, 'which is the current item');
   } finally {

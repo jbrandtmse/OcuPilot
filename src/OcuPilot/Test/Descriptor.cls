@@ -69,6 +69,7 @@ XData ReadShapes
 <shapes>
 <screen name="AgentDefinitionList" filter="name,provider,model" sort="name,provider,model" kinds="name:name,provider:text,model:text,enabled:status,default:status"/>
 <screen name="AgentTranscripts" filter="user,started,lastActivity,title" sort="user,started,lastActivity,turns,title" kinds="started:name,user:text,turns:number,lastActivity:text,title:text"/>
+<screen name="AllowedDirectoryList" filter="Directory,Restricted" sort="Directory,Restricted" kinds="Directory:name,Restricted:status"/>
 <screen name="AuditList" filter="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" sort="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" kinds="TimeStamp:text,EventSource:text,EventType:text,Event:name,Username:text,Pid:identifier,Namespace:text,Description:text"/>
 <screen name="AuditSystemEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
 <screen name="AuditUserEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
@@ -1035,6 +1036,63 @@ Method TestTheConsoleLogViewerDeclaresTheLogSourceTailAndItsOnePair()
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
 }
 
+/// <p>Story 18.1 -- the Allowed directories list declares the <code>path</code> source's one key, a
+/// <code>LIST</code>, the port's own two pairs in its order with the first declared its own, the
+/// <code>allowed-directory</code> type at instance scope, no classic page and no action, and takes the
+/// Security and secrets area's seventh side-bar position (AD-8, AD-21, AD-36, AD-44). The registry
+/// refuses the declaration once it carries a detail call, per-parent list, fixed query or parts, an
+/// endpoint the port does not serve, a request type other than <code>LIST</code>, or no
+/// <code>%DB_IRISSYS:READ</code>.</p>
+/// <p>Mutation (Rule 19): let a <code>path</code> source declare <code>rowGet</code> in
+/// <method>OcuPilot.Screen.Registry.ReadProblem</method> -&gt; the detail-call refusal goes red.</p>
+Method TestTheAllowedDirectoriesListDeclaresThePathSource()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.AllowedDirectoryList"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration), "", "and its own pair")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing")
+    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""path"",""endpoint"":""roots"",""type"":""LIST""}", "the allow-list's roots are the read's source (AD-21, AD-36)")
+    Do $$$AssertTrue($ListFind($ListFromString(##class(OcuPilot.Port.PathPort).#SOURCES), tDeclaration.read.source.endpoint) > 0, "and its endpoint is one of the port's sources")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_FileSystemAccess"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "the port's own two pairs, in its order")
+    Do $$$AssertTrue($ClassMethod(tClass, "PrivilegePairs") = $ListBuild($ListBuild("%Admin_FileSystemAccess", "USE"), $ListBuild("%DB_IRISSYS", "READ")), "which the gate reads")
+    Do $$$AssertEquals(##class(OcuPilot.Port.PathPort).#PAIRS, "%Admin_FileSystemAccess:USE,%DB_IRISSYS:READ", "and the port gates on the same set")
+    Do $$$AssertEquals(tDeclaration.ownPrivileges.%ToJSON(), "[{""resource"":""%Admin_FileSystemAccess"",""permission"":""USE""}]", "the file-system pair is the screen's own")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", "so the Security and secrets area covers the rest unchanged (AD-8)")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs")) '= "", "and would not cover it without the own pair")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType"), "allowed-directory", "one allowed directory per row (AD-14)")
+    Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", "at instance scope (AD-13)")
+    Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), "single", "keyed by its directory")
+    Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "", "no classic page exists (AD-44)")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "no primary action")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "and no row action")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "it does not refresh (AD-43)")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("security/allowed-directories"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("security.alloweddirectories"), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition"), "security:7", "the Security and secrets area's seventh entry")
+
+    Set tPathPairs = "[{""resource"":""%Admin_FileSystemAccess"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]"
+    For tCase = $ListBuild("rowGet", "{""key"":""Directory"",""param"":""name"",""fields"":[""Restricted""],""derived"":[]}"), $ListBuild("forEach", "{""endpoint"":""Security.SSLConfig"",""type"":""LIST"",""key"":""Name"",""param"":""name"",""as"":""Parent""}"), $ListBuild("query", "{""purpose"":""%GUIFileSelector""}"), $ListBuild("parts", "[{""type"":""GET"",""as"":""Purpose""}]") {
+        Set tBad = ##class(%DynamicObject).%FromJSON(tDeclaration.%ToJSON())
+        Do tBad.read.source.%Set($List(tCase, 1), ##class(%DynamicAbstractObject).%FromJSON($List(tCase, 2)))
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tBad), "read.source." _ $List(tCase, 1) _ " is declared on a path source, which answers the allowed directories whole (AD-36)", "a path source declaring " _ $List(tCase, 1) _ " is refused")
+    }
+    Set tBad = ##class(%DynamicObject).%FromJSON(tDeclaration.%ToJSON())
+    Do tBad.read.source.%Set("endpoint", "purposes")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tBad), "read.source.endpoint 'purposes' is not one of the path port's sources ('roots') (AD-21)", "an endpoint the port does not serve is refused")
+    Set tBad = ##class(%DynamicObject).%FromJSON(tDeclaration.%ToJSON())
+    Do tBad.read.source.%Set("type", "HISTORY")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tBad), "read.source.type 'HISTORY' is declared on a path source, which lists the allowed directories (AD-36)", "a request type other than LIST is refused")
+    Set tBad = ##class(%DynamicObject).%FromJSON(tDeclaration.%ToJSON())
+    Do tBad.%Set("privileges", ##class(%DynamicArray).%FromJSON("[{""resource"":""%Admin_FileSystemAccess"",""permission"":""USE""}]"))
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tBad), "read.source.port 'path' requires the declared privileges to include %DB_IRISSYS:READ, because the port reads the allow-list through the admin API in %SYS (AD-2, AD-8, AD-21)", "a path read without the system read is refused")
+    Do $$$AssertEquals(tPathPairs, tDeclaration.privileges.%ToJSON(), "while the shipped pair set carries both")
+}
+
 /// <p>Story 16.8 -- the six secondary log viewers each declare their own source key, route, tool
 /// identifier and side-bar position 5 to 10 in order, the one pair the port declares for that key,
 /// their classic page, three Troubleshooting prompts, a <code>none</code> id, no action and no
@@ -1638,7 +1696,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 31, "the closed vocabulary holds thirty-one values -- agent-policy joined in Story 14.2; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 32, "the closed vocabulary holds thirty-two values -- allowed-directory joined in Story 18.1; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }
