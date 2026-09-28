@@ -8,6 +8,11 @@ import { PermissionCheck } from './permission-check';
 /** How many check dialogs have been constructed, which makes each one's field ids its own. */
 let dialogCount = 0;
 
+/** The longest name each type admits, and the longest resource: what `PermissionCheck.Check` accepts. */
+const NAME_MAX: Readonly<Record<CheckKind, number>> = { user: 160, role: 64 };
+
+const RESOURCE_MAX = 64;
+
 /** The published word for each permission, in the order the dialog offers them. */
 const PERMISSION_WORDS: Readonly<Record<CheckPermission, string>> = {
   READ: STRINGS.permissionRead,
@@ -52,6 +57,7 @@ const PERMISSION_WORDS: Readonly<Record<CheckPermission, string>> = {
           spellcheck="false"
           data-field="name"
           [id]="nameId"
+          [attr.maxlength]="nameMax"
           [value]="nameValue"
           (input)="onName($event)"
           (keydown.enter)="submit()"
@@ -66,6 +72,7 @@ const PERMISSION_WORDS: Readonly<Record<CheckPermission, string>> = {
           spellcheck="false"
           data-field="resource"
           [id]="resourceId"
+          [attr.maxlength]="resourceMax"
           [value]="resourceValue"
           (input)="onResource($event)"
           (keydown.enter)="submit()"
@@ -147,6 +154,13 @@ export class PermissionCheckDialog implements OnInit {
   protected get nameValue(): string {
     return this.nameTyped();
   }
+
+  /** The name's bound for the chosen type, so no over-long value is sent to be refused. */
+  protected get nameMax(): number {
+    return NAME_MAX[this.kindChosen()];
+  }
+
+  protected readonly resourceMax = RESOURCE_MAX;
 
   protected get resourceValue(): string {
     return this.resourceTyped();

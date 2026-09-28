@@ -147,8 +147,8 @@ XData Probes
 <!-- /users/name carries no query string here, for /web-applications/name's reason: it draws the
      documented 422 USER.NAME.REQUIRED envelope. Its own answers are OcuPilot.Test.UserCreateWire's. -->
 <probe class="Api.Router" method="GET" url="/users/name" path="/api/ocupilot/users/name" disposition="envelope"/>
-<!-- /users/effective and /permissions/check carry no query string: each refuses the missing name
-     400 TOOL.ARGUMENTS before any read. Their own answers are OcuPilot.Test.EffectiveUser's and
+<!-- /users/effective and /permissions/check carry no query string: each refuses its first missing
+     argument (name, and kind) 400 TOOL.ARGUMENTS before any read. Their own answers are OcuPilot.Test.EffectiveUser's and
      OcuPilot.Test.PermissionCheck's. -->
 <probe class="Api.Router" method="GET" url="/users/effective" path="/api/ocupilot/users/effective" disposition="envelope" expect="code=TOOL.ARGUMENTS"/>
 <probe class="Api.Router" method="PUT" url="/users/:id" path="/api/ocupilot/users/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>

@@ -389,4 +389,17 @@ describe('Check permission on the role editor (Story 16.3)', () => {
     expect(actions.has(ROLE_FORM, PERMISSION_CHECK_ACTION_ID)).toBe(false);
     expect(TestBed.inject(PermissionCheck).pending()).toBeNull();
   });
+
+  it('closes the dialog on Cancel, through the page\u2019s own dialog host', async () => {
+    // Mutation (Rule 19): make `ScreenActionDialogs.onCheckClosed` a no-op -> the dialog stays drawn
+    // and both assertions go red.
+    const { fixture } = await mount();
+    TestBed.inject(ScreenActions).run(ROLE_FORM, PERMISSION_CHECK_ACTION_ID);
+    await settle(fixture);
+    const dialog = () => document.querySelector('app-screen-action-dialogs app-permission-check-dialog');
+    (dialog()?.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(dialog()).toBeNull();
+    expect(TestBed.inject(PermissionCheck).pending()).toBeNull();
+  });
 });

@@ -83,6 +83,9 @@ interface EffectiveView {
   readonly services: SectionView<{ readonly name: string }>;
 }
 
+/** The entity types whose change moves what the Effective privileges tab composes (Story 16.3, AD-14). */
+const EFFECTIVE_SOURCES: readonly string[] = ['role', 'resource', 'web-application', 'database', 'service'];
+
 /** One held letter as the Resources table draws it: its granting role, "Public", or nothing. */
 function letterCell(value: string | undefined): string {
   if (value === undefined) return '';
@@ -663,9 +666,15 @@ export class UserEditorPage {
       this.selectedTab.set(GENERAL_TAB);
       void this.store.open(id);
     });
-    // AD-14: a change to this account, from either caller, re-reads it; a delete is the list's.
+    // AD-14: a change to this account, from either caller, re-reads it; a delete is the list's. A
+    // change to anything the Effective privileges tab composes re-reads the tab while it shows.
     const stopChanges = this.injector.get(ChangeBus).subscribe((event) => {
-      if (event.kind !== 'changed' || event.type !== USER_ENTITY || event.action === 'deleted') return;
+      if (event.kind !== 'changed') return;
+      if (EFFECTIVE_SOURCES.includes(event.type)) {
+        if (this.selectedTab() === EFFECTIVE_TAB) void this.store.readEffective();
+        return;
+      }
+      if (event.type !== USER_ENTITY || event.action === 'deleted') return;
       if (this.store.is(event.id)) void this.store.refresh();
     });
     afterNextRender(() => this.focusRefusal(), { injector: this.injector });

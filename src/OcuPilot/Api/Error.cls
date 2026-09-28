@@ -3899,7 +3899,7 @@ ClassMethod AuditEventViolationCodes() As %List
 Parameter PROVIDERTOOLCALLFAILED = "PROVIDER.TOOLCALLFAILED";
 
 /// <p>Machine code (AD-12, AD-39, Story 16.3): a permission check whose composition read was cut at
-/// its cap, so the answer was not checked -- never an answer of no. Rendered on the
+/// its cap, so the answer was not checked -- never an answer of no. Answered on the
 /// <parameter>UNAVAILABLE</parameter> slug with 503 by
 /// <method>OcuPilot.Kernel.Shell.PermissionCheck.Check</method>.</p>
 Parameter PERMISSIONUNCHECKED = "PERMISSION.UNCHECKED";

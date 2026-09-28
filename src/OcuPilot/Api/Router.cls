@@ -382,7 +382,7 @@ ClassMethod WebAppUpdate(pId As %String) As %Status
 
 /// <p>Thin <code>Call=</code> target for <code>GET /users/form</code> (Story 8.2): delegates to
 /// <class>OcuPilot.Area.Permissions.UserCreateRules</class> and carries no logic of its own. The
-/// two sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
+/// three sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
 ClassMethod UserFormRules() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleForm()
@@ -412,9 +412,9 @@ ClassMethod PermissionCheck() As %Status
 }
 
 /// <p>Thin <code>Call=</code> target for <code>PUT /users/:id</code> (Story 9.1): the user editor's
-/// Save, resolved through the one tool the agent's confirm uses (AD-55). The two sub-resources are
-/// <code>GET</code> routes, so a <code>PUT</code> to either path is this route's, for the account
-/// of that name.</p>
+/// Save, resolved through the one tool the agent's confirm uses (AD-55). The three sub-resources are
+/// <code>GET</code> routes, so a <code>PUT</code> to any of those paths is this route's, for the
+/// account of that name.</p>
 ClassMethod UserUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserSave).HandleUpdate(pId)

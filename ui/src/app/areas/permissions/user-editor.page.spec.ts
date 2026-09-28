@@ -96,7 +96,9 @@ async function mount(
       calls.push({ path, method, body: init.body ?? '' });
       if (method === 'PUT') return save as JsonResult<T>;
       if (path.startsWith(`${USERS_EFFECTIVE_PATH}?name=`)) {
-        // A refused read is passed as the result itself; anything else is the 200 body.
+        // A function answers each read itself; a refused read is passed as the result itself;
+        // anything else is the 200 body.
+        if (typeof effective === 'function') return (effective as () => Promise<JsonResult<T>>)();
         const refused = (effective as { kind?: unknown } | null)?.kind === 'error';
         return (refused ? effective : { kind: 'ok', status: 200, body: effective }) as JsonResult<T>;
       }
@@ -403,6 +405,54 @@ describe('the Effective privileges tab (Story 16.3)', () => {
     bus.publish({ kind: 'changed', type: 'user', scope: 'instance', id: 'Dana', action: 'updated' });
     await settle(fixture);
     expect(calls.filter((call) => call.path.startsWith(USERS_EFFECTIVE_PATH)).length).toBe(2);
+  });
+
+  it('reads the tab again when a role, resource, web application, database or service changes while it shows', async () => {
+    // Mutation (Rule 19): drop the `EFFECTIVE_SOURCES` arm from the page's ChangeBus handler -> the
+    // second count goes red.
+    const { fixture, host, calls, bus } = await mount();
+    const reads = () => calls.filter((call) => call.path.startsWith(USERS_EFFECTIVE_PATH)).length;
+    tabs(host)[2].click();
+    await settle(fixture);
+    expect(reads()).toBe(1);
+    for (const type of ['role', 'resource', 'web-application', 'database', 'service']) {
+      bus.publish({ kind: 'changed', type, scope: 'instance', id: 'X', action: 'updated' });
+      await settle(fixture);
+    }
+    expect(reads()).toBe(6);
+    bus.publish({ kind: 'changed', type: 'task', scope: 'HSCUSTOM', id: '7', action: 'updated' });
+    await settle(fixture);
+    tabs(host)[0].click();
+    await settle(fixture);
+    bus.publish({ kind: 'changed', type: 'role', scope: 'instance', id: 'X', action: 'updated' });
+    await settle(fixture);
+    expect(reads()).toBe(6);
+  });
+
+  it('encodes the account name in the tab\u2019s read', async () => {
+    // Mutation (Rule 19): drop `encodeURIComponent` from the store's `readEffective` -> the path goes red.
+    const { fixture, host, calls } = await mount('Pat&Lee+1');
+    tabs(host)[2].click();
+    await settle(fixture);
+    expect(calls.filter((call) => call.path.startsWith(USERS_EFFECTIVE_PATH)).map((call) => call.path)).toEqual([`${USERS_EFFECTIVE_PATH}?name=Pat%26Lee%2B1`]);
+  });
+
+  it('drops an answer a later read has overtaken', async () => {
+    // Mutation (Rule 19): delete the generation guard in the store's `readEffective` -> the older
+    // answer lands last and the roles assertion goes red.
+    const pending: ((result: JsonResult<unknown>) => void)[] = [];
+    const deferred = () => new Promise<JsonResult<unknown>>((resolve) => pending.push(resolve));
+    const { fixture, host, bus } = await mount('Dana', undefined, {}, deferred);
+    tabs(host)[2].click();
+    await settle(fixture);
+    bus.publish({ kind: 'changed', type: 'role', scope: 'instance', id: 'X', action: 'updated' });
+    await settle(fixture);
+    expect(pending.length).toBe(2);
+    pending[1]({ kind: 'ok', status: 200, body: EFFECTIVE });
+    await settle(fixture);
+    pending[0]({ kind: 'ok', status: 200, body: { ...EFFECTIVE, roles: { rows: [{ name: 'Old', through: '' }], unchecked: '' } } });
+    await settle(fixture);
+    expect(effectiveText(host).rows('roles')).toEqual([['A'], ['B (through A)']]);
   });
 
   it('registers Check permission for the editor, prefilled with the account it has open', async () => {

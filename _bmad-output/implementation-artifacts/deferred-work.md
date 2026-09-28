@@ -3916,6 +3916,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T00:18:27Z occurrence=6-4-the-oauth-2-0-screen note=Story 6.4 appends %Admin_OAuth2_Client, %Admin_OAuth2_Server and %Admin_OAuth2_Registration (USE) to the security area: a holder of the Secure, IRISSYS and Wallet pairs without any OAuth resource sees the Security rail gated though 6 of its 10 built screens would serve them; %Manager and %SecurityAdministrator hold all three OAuth resources (observed on slot B by the 6.4 plan)
 - 2026-09-18T19:44:55Z status=routed owner=16-3-effective-privileges-and-the-permission-check-tool by=merge_gate note=decided: a rail item is allowed when ANY of its screens is; each screen keeps its own gate
 - 2026-09-28T06:34:37Z status=routed owner=16-3-effective-privileges-and-the-permission-check-tool by=merge_gate note=Option A decided 2026-09-28: Security set Secure+IRISSYS, wallet/OAuth screens ownPrivileges; AD-8 amended; residual filed separately
+- 2026-09-28T11:23:43Z status=resolved-by:16-3-effective-privileges-and-the-permission-check-tool by=adjudication note=Security case (Option A): dd028650 Area.cls set Secure+IRISSYS, 13 wallet/OAuth ownPrivileges; WireSecurityRead TestBothPairsReadEveryList (mutation run 17439); residual DW-1768
 
 ### DW-1019: Demo-fixture counts and the inventory kind vocabulary are stale outside Fixture.cls after the wallet fixture landed
 - source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: low | footprint: in-epic
@@ -7818,6 +7819,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-3-effective-privileges-and-the-permission-check-tool.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: AD-8's area AND pair set cannot express 'any of its screens'; measured on ocupilot-ci at 16.3 plan: %Operator holds %Admin_Operate:U and %DB_IRISSYS:RW only; 11 of 22 Security screens lack %Admin_Secure
 - 2026-09-28T06:34:37Z status=decision-pending owner=range-end-cleanup by=merge_gate note=owner decision after the voting week: keep AD-8's area set, or Option B (AD-8 any-screen rail: rail/Home tile/side bar open when any listed screen is allowed)
+- 2026-09-28T11:20:47Z occurrence=16-3-effective-privileges-and-the-permission-check-tool
 
 ### DW-1769: Copy as curl's note and AD-57 (5) promise every secret value is left out, but only names the credential pattern matches are masked
 - source: spec-16-24-a-try-it-request-copied-as-curl.md | severity: med | fix-risk: low | footprint: in-story

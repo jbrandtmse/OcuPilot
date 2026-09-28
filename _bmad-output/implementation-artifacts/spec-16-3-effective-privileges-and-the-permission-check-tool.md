@@ -326,6 +326,41 @@ Docs:
 
   The bundle stays under the warning or is re-based under DW-1166.
 
+### Review Findings
+
+Code review 2026-09-28, `review_tier: full-opus`, four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 38 raw findings in 34 entries: 0 decision-needed, 10 patch, 1 defer, 23 rejected. No high; the acceptance auditor passed all nine Rule 6 checks.
+
+- [x] [Review][Patch] (medium) The Effective tab kept a stale composition after a role, resource, web-application, database or service change while it showed [ui/src/app/areas/permissions/user-editor.page.ts:667]
+- [x] [Review][Patch] (medium) Check permission ran in a real browser only from the Users list as a user check: no editor entry point, no role check (AC5) and no dismissal [ui/browser/permissions-effective.browser-spec.mjs]
+- [x] [Review][Patch] (low) An over-long name or resource reached the route and showed a person the tool-call sentence [ui/src/app/shell/permission-check-dialog.ts:45]
+- [x] [Review][Patch] (low) Dismissing the dialog through its real host was untested [ui/src/app/areas/permissions/role-editor.page.spec.ts]
+- [x] [Review][Patch] (low) Neither store's overtaken-answer guard was tested [ui/src/app/areas/permissions/user-editor.store.ts:438, ui/src/app/shell/permission-check.ts:93]
+- [x] [Review][Patch] (low) The Effective read's name encoding was untested [ui/src/app/areas/permissions/user-editor.store.ts:437]
+- [x] [Review][Patch] (low) The AC4/AC9 browser leg read the route's answer without waiting for its response listener [ui/browser/permissions-effective.browser-spec.mjs:328]
+- [x] [Review][Patch] (low) The browser spec's cleanup check named 4 of its 11 probes [ui/browser/permissions-effective.browser-spec.mjs:229]
+- [x] [Review][Patch] (low) Two Router docs still said "two sub-resources" beside `/users/effective` [src/OcuPilot/Api/Router.cls:385, src/OcuPilot/Api/Router.cls:415]
+- [x] [Review][Patch] (low) The EndpointCoverage comment said `/permissions/check` refuses the missing name, and `PERMISSIONUNCHECKED`'s doc said `Check` renders it [src/OcuPilot/Test/EndpointCoverage.cls:150, src/OcuPilot/Api/Error.cls:3901]
+- [x] [Review][Defer] The OAuth 2.0 side-bar entry follows its first tab's own pair, so a holder of only the authorization-server or registration resource sees OAuth 2.0 unavailable [src/OcuPilot/Screen/Descriptor/OAuthServerDescriptionTab.cls:33] — deferred: an occurrence of DW-1768 (the any-member rule is the owner's decision; no regression, since such a holder could not open Security before this story)
+
+Rejected:
+
+- `low` 503 `PERMISSION.UNCHECKED` raises the shell's connectivity banner: the status and slug are the spec's, and the read cap is rarely reached.
+- `low` the tab does not say it reflects saved roles only, and has no loading state: each fix is new copy, and the read is one round trip.
+- `low` one section's port fault fails the whole view as 500: `Impact.ListRows`, the spec's named pattern, does the same, a caller who passes a measured gate does not reach it (AD-29), and the failure is loud, not empty.
+- `low` web applications without a resource, disabled services and `%Service_Bindings` are not listed, databases show their directory, a letter not held is a blank cell, and "Public" reuses `oauthClientTypePublic`: each is the spec's own rule or reused key.
+- `false` the dialog keeps its last answer after a field changes: the sentence names the principal and pair it answered, and the dialog stays open for the next question by design.
+- `low` Check is `aria-disabled` without a reason while a check is in flight: one round trip, and a reason would be new copy.
+- `low` the answer echoes the caller's spelling: `ResultSchema` says "as asked".
+- `low` the spec's Residual still names `%Service_SQL`, and its sweep line does not show the armed runs: a fix edits the spec under review.
+- `low` `EffectiveUser` and `PermissionCheck` repeat constants and the client repeats a refusal helper: every copy holds the same literal today, so no caller diverges.
+- `low` the Check dialog is not in the DW-1337 walk: the spec names the tab's walk.
+- `false` an empty web-application name or database directory raises `<SUBSCRIPT>`: both are vendor identifiers that are never empty.
+- `low` a role check's route gate (RoleList) and the tool's (UserList) differ when an operator assigns a custom resource to one classic page: the spec names both gates.
+- `low` a pasted name with outer whitespace answers 404: the answer is truthful, and trimming would change what is checked.
+- `low` an `%All` account's four other sections answer empty: the spec says they are not read and answer empty.
+- `low` the Users list's screen context now lists `permissions.privileges.check`: `Screen.Context.ScreenTools` lists every read tool bound to a screen, and the spec binds the tool to `UserList`.
+- `low` EXPERIENCE.md `:468`'s Where cell rewords `<READ|WRITE|USE>`: the pipes would split the table row; the quoted strings are verbatim.
+
 ## Spec Change Log
 
 - 2026-09-28T10:50Z, lead (Rule 5, apply and report): the I/O matrix's Services row named `%Service_SQL`, which on this instance is a resource and not a service; corrected in place to `%Service_Terminal`, one of the five services whose own resource is public at USE, as the implement stage's test pins.
@@ -468,6 +503,10 @@ Docs:
 - mutation: `RoleActions` opens as a user → `permission-check-actions.spec.ts` Roles case red; the role editor's registration opens as a user → `role-editor.page.spec.ts` Story 16.3 case red; the dialog's `submit` sends a constant `user` → `permission-check-dialog.spec.ts` role case red (AC5).
 - mutation: `hasPermissionCheckAction` leaves `hasContent` → `command-bar.spec.ts` read-less editor case red.
 - mutation: the Effective tab's refusal banner is dropped → `user-editor.page.spec.ts` refusal case red (AC6).
+- mutation: the user editor's ChangeBus handler drops its Effective-sources arm → `user-editor.page.spec.ts` role, resource, web-application, database and service re-read case red (code review).
+- mutation: `readEffective` drops `encodeURIComponent`, or loses its generation guard → `user-editor.page.spec.ts` encoding case, or overtaken-answer case, red (code review).
+- mutation: the dialog's name loses `maxlength` → `permission-check-dialog.spec.ts` bounds case red; `PermissionCheck.check` loses its generation guard → its reopened-dialog case red; `ScreenActionDialogs.onCheckClosed` is a no-op → `role-editor.page.spec.ts` Cancel case red (code review).
+- mutation: `PermissionCheck.Check` drops `tIsUser &&` from its through rule, loaded into `ocupilot-ci` → the `permissions-effective` AC5 role-editor leg red (AC5, code review).
 
 ## Auto Run Result
 

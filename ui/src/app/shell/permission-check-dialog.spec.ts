@@ -35,13 +35,16 @@ async function settle(fixture: ReturnType<typeof TestBed.createComponent<Host>>)
   }
 }
 
-/** Mount the dialog prefilled with `kind` and `name`; the instance answers `answer` to every check. */
-async function mount(kind: CheckKind, name: string, answer: JsonResult<unknown>) {
+/**
+ * Mount the dialog prefilled with `kind` and `name`; the instance answers `answer` to every check, or
+ * `answer()` when it is a function.
+ */
+async function mount(kind: CheckKind, name: string, answer: JsonResult<unknown> | (() => Promise<JsonResult<unknown>>)) {
   const calls: string[] = [];
   const api = {
     requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       calls.push(`${init.method ?? 'GET'} ${path}`);
-      return answer as JsonResult<T>;
+      return (typeof answer === 'function' ? await answer() : answer) as JsonResult<T>;
     },
   };
   TestBed.configureTestingModule({
@@ -206,5 +209,34 @@ describe('the Check permission dialog (Story 16.3)', () => {
     (host.querySelector('.ocu-button-secondary') as HTMLButtonElement).click();
     await settle(fixture);
     expect(fixture.componentInstance.closes()).toBe(1);
+  });
+
+  it('bounds the name by its type and the resource, as the instance does', async () => {
+    // Mutation (Rule 19): drop the name input's `maxlength` binding -> the first assertion goes red.
+    const { fixture, host } = await mount('user', 'Dana', answer());
+    expect(field(host, 'name').getAttribute('maxlength')).toBe('160');
+    expect(field(host, 'resource').getAttribute('maxlength')).toBe('64');
+    type(host, 'kind', 'role');
+    await settle(fixture);
+    expect(field(host, 'name').getAttribute('maxlength')).toBe('64');
+  });
+
+  it('drops a check that lands after the dialog was closed and opened again', async () => {
+    // Mutation (Rule 19): delete the generation guard in `PermissionCheck.check` -> the old answer is
+    // shown in the reopened dialog and the line assertion goes red.
+    const pending: ((result: JsonResult<unknown>) => void)[] = [];
+    const { fixture, host } = await mount('user', 'Dana', () => new Promise<JsonResult<unknown>>((resolve) => pending.push(resolve)));
+    type(host, 'resource', '%DB_USER');
+    await settle(fixture);
+    check(host).click();
+    await settle(fixture);
+    expect(pending.length).toBe(1);
+    const store = TestBed.inject(PermissionCheck);
+    store.close();
+    store.open('OcuPilot.Screen.Descriptor.UserList', 'user', 'Dana');
+    pending[0](answer());
+    await settle(fixture);
+    expect(store.answer()).toBeNull();
+    expect(line(host)).toBe('');
   });
 });

@@ -10,7 +10,8 @@
  * The Users list's Check permission opens its dialog on the selected row and answers from
  * `GET /api/ocupilot/permissions/check`; a scripted turn asks `permissions.privileges.check` the same
  * question, and its recorded `tool_result`, read through `resultPayload`, answers the same object
- * (AC4, AC9). A principal holding only `%Admin_Secure:USE` and `%DB_IRISSYS:READ` is offered the
+ * (AC4, AC9). The role editor's Check permission asks the same route as a role and names the
+ * granting role with no through, and its Cancel closes the dialog (AC5). A principal holding only `%Admin_Secure:USE` and `%DB_IRISSYS:READ` is offered the
  * Security rail item with SSL/TLS, X.509, LDAP and Auditing available and Wallet and OAuth 2.0 naming
  * their pair (AC7, DW-1018), and reads the tab with Databases not checked (AC3).
  *
@@ -155,23 +156,24 @@ function railOf(page) {
   }, STRINGS.navAreaSecurity);
 }
 
-/** Record every read of `path` the page makes, and each JSON answer. */
+/**
+ * Record every read of `path` the page makes, and each JSON answer in response order. An answer's
+ * body is fetched after its response event, so await `settled` before reading `answers`.
+ */
 function watch(page, path) {
   const reads = [];
   const answers = [];
+  const settled = [];
   page.on('request', (request) => {
     const url = new URL(request.url());
     if (url.pathname === path) reads.push(`${request.method()} ${url.pathname}${url.search}`);
   });
-  page.on('response', async (response) => {
+  page.on('response', (response) => {
     if (new URL(response.url()).pathname !== path) return;
-    try {
-      answers.push(await response.json());
-    } catch {
-      answers.push(null);
-    }
+    const index = answers.push(null) - 1;
+    settled.push(response.json().then((body) => { answers[index] = body; }, () => {}));
   });
-  return { reads, answers };
+  return { reads, answers, settled };
 }
 
 /** Open `user`'s editor as `who` and select its Effective privileges tab, answering the rendered sections. */
@@ -226,7 +228,15 @@ after(async () => {
   const { values, output } = irisSys(
     [
       ...removeLines(),
-      mark('CLEAN', `('##class(Security.Users).Exists("${USER_CHAINED}"))&&('##class(Security.Roles).Exists("${ROLE_A}"))&&('##class(Security.Resources).Exists("${RES}"))&&('##class(Security.Applications).Exists("${APP}"))`),
+      mark(
+        'CLEAN',
+        [
+          ...[USER_CHAINED, USER_ALL, USER_SECURE].map((name) => `('##class(Security.Users).Exists("${name}"))`),
+          ...[ROLE_A, ROLE_B, ROLE_E, ROLE_ALL, ROLE_SECURE].map((name) => `('##class(Security.Roles).Exists("${name}"))`),
+          ...[RES, PUB].map((name) => `('##class(Security.Resources).Exists("${name}"))`),
+          `('##class(Security.Applications).Exists("${APP}"))`,
+        ].join('&&')
+      ),
     ],
     ['CLEAN']
   );
@@ -325,6 +335,7 @@ test('AC4, AC9: the Users list\u2019s Check permission answers from the route, a
         [`GET ${CHECK_PATH}?kind=user&name=${USER_CHAINED}&resource=${RES}&permission=READ&ns=HSCUSTOM`],
         'asked of the check route once'
       );
+      await Promise.all(traffic.settled);
       dialogAnswer = traffic.answers[0];
       assert.equal(dialogAnswer?.held, true, `the route answered held: ${JSON.stringify(dialogAnswer)}`);
     } finally {
@@ -365,6 +376,33 @@ test('AC4, AC9: the Users list\u2019s Check permission answers from the route, a
   } finally {
     await context.close();
     forgetTag(probe, tag);
+  }
+});
+
+test('AC5: the role editor\u2019s Check permission asks as a role, names the granting role with no through, and Cancel closes it', async () => {
+  // Mutation (Rule 19): drop `tIsUser &&` from `OcuPilot.Kernel.Shell.PermissionCheck.Check`'s through
+  // rule, recompile on the throwaway -> the sentence gains " (through A)" and the line assertion goes red.
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/permissions/roles/edit/${encodeURIComponent(ROLE_A)}?ns=HSCUSTOM`, VIEWPORTS.wide);
+  const traffic = watch(page, CHECK_PATH);
+  try {
+    await (await page.waitForSelector('.ocu-command-bar-permission-check', { visible: true, timeout: config.navigationTimeoutMs })).click();
+    await page.waitForSelector('app-permission-check-dialog [data-field="name"]', { visible: true, timeout: config.navigationTimeoutMs });
+    const prefilled = await page.evaluate(() => ({
+      kind: document.querySelector('app-permission-check-dialog [data-field="kind"]').value,
+      name: document.querySelector('app-permission-check-dialog [data-field="name"]').value,
+    }));
+    assert.deepEqual(prefilled, { kind: 'role', name: ROLE_A }, 'the dialog opens as a role check on the role the editor has open');
+    await page.type('app-permission-check-dialog [data-field="resource"]', RES);
+    await page.click('app-permission-check-dialog [data-action="check"]');
+    await page.waitForSelector('app-permission-check-dialog .ocu-permission-check-line[data-slot]', { timeout: config.navigationTimeoutMs });
+    const text = await page.$eval('app-permission-check-dialog .ocu-permission-check-line', (node) => node.textContent.trim());
+    const expected = STRINGS.permissionCheckYes.replace('<name>', ROLE_A).replace('<pair>', `${RES}:READ`).replace('<role>', ROLE_B);
+    assert.equal(text, expected, 'a role check names the role whose own grant it is, with no through');
+    assert.deepEqual(traffic.reads, [`GET ${CHECK_PATH}?kind=role&name=${ROLE_A}&resource=${RES}&permission=READ&ns=HSCUSTOM`], 'asked of the check route as a role, once');
+    await page.click('app-permission-check-dialog .ocu-dialog-actions .ocu-button-secondary');
+    await page.waitForFunction(() => document.querySelector('app-permission-check-dialog') === null, { timeout: config.navigationTimeoutMs });
+  } finally {
+    await context.close();
   }
 });
 
