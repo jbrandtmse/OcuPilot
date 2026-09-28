@@ -4979,6 +4979,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: context-chip and the other turn-driving specs call requireFreeSlot first; this one does not, so it can collide with AD-41's one-turn bound. Location: ui/browser/refused-tool.browser-spec.mjs
 - 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns suite hygiene; an unguarded turn is a flake source of exactly the class this epic has already paid for twice
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-28T11:46:09Z occurrence=16-3-effective-privileges-and-the-permission-check-tool note=recurred on sharded CI run 36411822579 shard 1 (30s wait for the refused card); green next run
 
 ### DW-1315: The IsEnabled-before-HoldsAdminResource ordering in OnPreDispatch is unexercised
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -7826,3 +7827,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: isSecretName is false for api_key, X-API-Key, Cookie, Proxy-Authorization; those headers/params and nested body members copy verbatim (cr probes 2026-09-28). tryItCurlNote says 'every secret value'; AD-57 (5) says 'no secret value reaches the clipboard'. Use case is pasting into a ticket.
 - 2026-09-28T08:04:13Z status=decision-pending owner=burndown by=cr note=copy call: reword note (EXPERIENCE :574, strings) and AD-57 (5) to the pattern's reach (recommended), or widen the pattern
 - 2026-09-28T08:40:12Z status=resolved-by:16-24-a-try-it-request-copied-as-curl by=merge_gate note=decided: reword the note, leave the pattern; fixed in 20d4a106 (strings.ts, EXPERIENCE :574, AD-57 item 5); CI run 36398685106
+
+### DW-1780: Two browser specs failed once on the sharded CI and passed on the next run of the same shard plan: audit AC1 showed default-read rows instead of the Source criterion's, and refused-tool AC2 timed out waiting for the refused card
+- source: CI run 36411822579 (dd028650) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: audit.browser-spec.mjs:478 rows Source [%System,OcuPilot] vs [OcuPilotSeed] (shard 3); refused-tool.browser-spec.mjs:140 30s wait (shard 1); next run 36415467999 green; both green locally on ocupilot-ci
+- 2026-09-28T11:46:03Z status=routed owner=range-end-cleanup by=harvest note=likely a race between the default read and the Search answer (audit) and a slow first turn (refused-tool); make each wait on the answer it asserts
+- 2026-09-28T11:46:09Z status=routed owner=range-end-cleanup by=harvest note=refused-tool half is DW-1314's root cause (occurrence appended); this entry keeps the audit AC1 half
