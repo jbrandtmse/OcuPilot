@@ -16,12 +16,14 @@ import { tabErrorCounts, tabToOpen } from '../../core/form-tabs';
 import { FormDirty } from '../../core/form-dirty';
 import { formatRequires, ownIdSegment, screenForDescriptor, withQuery } from '../../core/navigation';
 import { savedLine } from '../../core/read-back';
+import { PERMISSION_CHECK_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { selfProtectionReason } from '../../core/self-protection';
 import { Session } from '../../core/session';
 import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
 import { FormTabBody, FormTabs, type FormTabView } from '../../shell/form-tabs';
+import { PermissionCheck } from '../../shell/permission-check';
 import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
 import {
   ADD_GRANTED_ROLE,
@@ -120,7 +122,8 @@ function memberTypeWord(type: string): string {
  * `add-role`/`remove-role`; a role member is `add-granted-role`/`remove-granted-role` on the member;
  * an assigned role is the same pair on this role. Delete is the Roles list's own, typed-name
  * confirmed with the number of accounts that hold the role. A self-protection rule's sentence is
- * drawn before a click; the instance refuses either way.
+ * drawn before a click; the instance refuses either way. Check permission (Story 16.3) is registered
+ * for this screen, prefilled with the role.
  *
  * **A role or user change event re-reads the role** (AD-14): in place while the form is clean, the
  * grants and members alone while it holds unsaved work. Every control-flow condition is a paren-free
@@ -396,6 +399,8 @@ export class RoleEditorPage {
   private readonly injector = inject(Injector);
   private readonly actions = inject(ScreenActionHandler);
   private readonly session = inject(Session, { optional: true });
+  private readonly screenActions = inject(ScreenActions);
+  private readonly check = inject(PermissionCheck);
 
   protected readonly STRINGS = STRINGS;
 
@@ -466,11 +471,15 @@ export class RoleEditorPage {
       void this.store.refresh();
     });
     afterNextRender(() => this.focusRefusal(), { injector: this.injector });
+    // Story 16.3: Check permission, prefilled with the role the editor has open; its dialog renders
+    // in this page's `app-screen-action-dialogs`.
+    const stopCheck = this.screenActions.register(ROLE_FORM, PERMISSION_CHECK_ACTION_ID, () => this.check.open(ROLE_LIST, 'role', this.store.name()));
     inject(DestroyRef).onDestroy(() => {
       stopStore();
       stopDirty();
       stopIdChange.unsubscribe();
       stopChanges();
+      stopCheck();
       if (this.actions.pending()?.descriptor === ROLE_LIST) this.actions.cancelPending();
       this.store.reset();
     });

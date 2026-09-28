@@ -7228,3 +7228,71 @@ app-log-hub-page {
 .ocu-try-it-copy[aria-disabled='true']:active {
   background: transparent;
 }
+
+// --- Effective privileges tab and Check permission (Story 16.3) ------------------------------
+//
+// The user editor's third tab reads the instance's composition of an account's roles: sections in a
+// column, each a label-type heading over its rows. The Resources and Web applications sections are
+// plain tables whose cells wrap rather than overflow the form column; the other sections reuse the
+// Roles tab's list. The Check permission dialog's answer is one polite status line under its fields.
+
+.ocu-effective {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  max-width: 720px;
+  min-width: 0;
+}
+
+.ocu-effective-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+}
+
+.ocu-effective-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.ocu-effective-table th,
+.ocu-effective-table td {
+  @include typo.ocu-type('body');
+
+  padding: var(--ocu-space-1) var(--ocu-space-3) var(--ocu-space-1) 0;
+  color: var(--ocu-on-surface);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.ocu-effective-table th {
+  @include typo.ocu-type('label');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-effective-note {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-permission-check-line {
+  @include typo.ocu-type('body');
+
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-permission-check-line:empty {
+  margin: 0;
+}
+
+.ocu-permission-check-line[data-slot='refusal'] {
+  color: var(--ocu-destructive);
+}

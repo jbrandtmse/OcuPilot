@@ -6,8 +6,8 @@
 /// included, through <class>OcuPilot.Test.PathPortFixture</class>; on a fresh instance the purpose is
 /// absent, so restoring clears it. Changing the instance's own allow-list is why
 /// <method>OnBeforeAllTests</method> refuses unless <parameter>ARMINGVARIABLE</parameter> arms it.
-/// Needs <parameter>TMPROOT</parameter> and the install directory to exist, a process holding
-/// <code>%All</code>, and OcuPilot installed in the namespace it runs in.</p>
+/// Needs <parameter>TMPROOT</parameter> to exist and be writable, the install directory to exist,
+/// a process holding <code>%All</code>, and OcuPilot installed in the namespace it runs in.</p>
 Class OcuPilot.Test.PathPort Extends %UnitTest.TestCase
 {
 
@@ -87,10 +87,16 @@ ClassMethod RootsOf(pPort As %String = {..#PORT}, pMaxRows As %Integer = 1000) A
     Quit tHttp _ "|" _ tRows.%ToJSON()
 }
 
-/// <p>One resolution, as <code>&lt;status&gt;|&lt;resolved path or fault as JSON&gt;</code>.</p>
-ClassMethod ResolveOf(pRoot As %String, pPath As %String, pKind As %String, pRootField As %String = "root", pPathField As %String = "path", pPort As %String = {..#PORT}) As %String
+/// <p>One resolution, as <code>&lt;status&gt;|&lt;resolved path or fault as JSON&gt;</code>.
+/// <var>pOverwrite</var> is passed on only when given, so otherwise the resolver's own default
+/// answers.</p>
+ClassMethod ResolveOf(pRoot As %String, pPath As %String, pKind As %String, pRootField As %String = "root", pPathField As %String = "path", pPort As %String = {..#PORT}, pOverwrite As %String = "") As %String
 {
-    Set tSC = $ClassMethod(pPort, "Resolve", pRoot, pPath, pKind, pRootField, pPathField, .tResolved, .tHttp, .tFault)
+    If pOverwrite = "" {
+        Set tSC = $ClassMethod(pPort, "Resolve", pRoot, pPath, pKind, pRootField, pPathField, .tResolved, .tHttp, .tFault)
+    } Else {
+        Set tSC = $ClassMethod(pPort, "Resolve", pRoot, pPath, pKind, pRootField, pPathField, .tResolved, .tHttp, .tFault, pOverwrite)
+    }
     If $$$ISERR(tSC) Quit tHttp _ "|" _ $Select($IsObject(tFault): tFault.%ToJSON(), 1: "")
     Quit tHttp _ "|" _ tResolved
 }
@@ -250,6 +256,78 @@ Method TestResolveRefusesANameThatLeavesItsRoot()
     Do $$$AssertEquals(..ResolveOf(..#TMPROOT, "a", "directory", , , tPort), "200|/tmp/a/", "a name under the root resolves through the seam")
     Do $$$AssertEquals(..ResolveOf(..#TMPROOT, "../etc", "directory", , , tPort), tRefused, "a directory that normalizes outside the root is refused on the name's field")
     Do $$$AssertEquals(..ResolveOf(..#TMPROOT, "../etc/x.txt", "file", , , tPort), tRefused, "and so is such a file")
+}
+
+/// <p>AD-21's sixth case, an existing name -- a file named where a file or directory already
+/// exists is refused 400 <code>PATH.EXISTS</code> on the name's field, echoing nothing, unless the
+/// caller passes <var>pOverwrite</var>, which resolves an existing file but never a directory
+/// standing at that name; a name not taken resolves without it; and a directory is never refused
+/// for existing. Works in a scratch directory under <parameter>TMPROOT</parameter> that it
+/// creates and removes.</p>
+/// <p>Mutation (Rule 19): drop the existence test from
+/// <method>OcuPilot.Port.PathPort.Resolve</method> -&gt; the existing file resolves; ignore
+/// <var>pOverwrite</var> there -&gt; the overwrite leg is refused; drop its directory test -&gt;
+/// the directory resolves to a caller that overwrites.</p>
+Method TestAnExistingNameIsRefusedUnlessTheCallerOverwrites()
+{
+    Set tScratch = "ocupilot-pathport-" _ $Job
+    Set tDirectory = ..#TMPROOT _ tScratch _ "/"
+    Set tFile = tDirectory _ "existing.xml"
+    Try {
+        Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(..#TMPROOT)), "the purpose is restricted to /tmp/")
+        Do $$$AssertTrue(##class(%File).CreateDirectoryChain(tDirectory _ "taken"), "a scratch directory holding a directory")
+        Set tStream = ##class(%Stream.FileCharacter).%New()
+        Do $$$AssertStatusOK(tStream.LinkToFile(tFile), "and a file")
+        Do tStream.Write("x")
+        Do $$$AssertStatusOK(tStream.%Save(), "written to disk")
+        Set tStream = ""
+
+        Set tRefused = ..Refusal(##class(OcuPilot.Api.Error).#PATHEXISTS, "path")
+        Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/existing.xml", "file"), tRefused, "an existing file is refused to a caller that does not overwrite")
+        Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/existing.xml", "file", "Dir", "Name"), ..Refusal(##class(OcuPilot.Api.Error).#PATHEXISTS, "Name"), "the refusal lands on the field the caller named")
+        Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/taken", "file"), tRefused, "and a directory standing where the file would go is refused too")
+        Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/existing.xml", "file", , , , 0), tRefused, "as it is when the caller says it does not overwrite")
+        Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/existing.xml", "file", , , , 1), "200|" _ tFile, "a caller that overwrites resolves the existing file")
+        Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/taken", "file", , , , 1), tRefused, "but not a directory standing where the file would go")
+        Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/new.xml", "file"), "200|" _ tDirectory _ "new.xml", "a name not taken resolves without overwriting")
+        Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/taken", "directory"), "200|" _ tDirectory _ "taken/", "an existing directory is never refused for existing")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the existing-name legs ran to the end")
+    }
+    Do ##class(%File).Delete(tFile)
+    Do ##class(%File).RemoveDirectory(tDirectory _ "taken")
+    Do ##class(%File).RemoveDirectory(tDirectory)
+    Do $$$AssertTrue('##class(%File).Exists(tDirectory), "the scratch directory is removed")
+}
+
+/// <p>AD-21's sixth case, the manager directory -- a file named directly in it, where the
+/// instance keeps its own files, is refused 400 <code>PATH.MANAGER</code> on the name's field,
+/// echoing nothing: one name under the unrestricted root, an instance file even to a caller that
+/// overwrites, one name under a restricted root that is the manager directory, and a name reaching
+/// it from a root above. A file in a subdirectory of it resolves, and a directory is not refused.
+/// Creates no file.</p>
+/// <p>Mutation (Rule 19): drop the manager-directory test from
+/// <method>OcuPilot.Port.PathPort.Resolve</method> -&gt; each refused leg resolves, except the existing
+/// instance file, which is refused as a taken name; test the existing name before it -&gt; that
+/// file is refused as a taken name.</p>
+Method TestAFileDirectlyInTheManagerDirectoryIsRefused()
+{
+    Set tManager = $System.Util.ManagerDirectory()
+    Set tRefused = ..Refusal(##class(OcuPilot.Api.Error).#PATHMANAGER, "path")
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "Clear"), "the purpose is absent, so the manager directory is the one root")
+    Do $$$AssertEquals(..ResolveOf(tManager, "ocupilot-pathport-none.xml", "file"), tRefused, "a new file directly in it is refused")
+    Do $$$AssertEquals(..ResolveOf(tManager, "IRIS.DAT", "file", , , , 1), tRefused, "and so is an instance file, even to a caller that overwrites")
+    Do $$$AssertEquals(..ResolveOf(tManager, "IRIS.DAT", "file"), tRefused, "and to a caller that does not, an instance file is refused as the manager directory's, not as a taken name")
+    Do $$$AssertEquals(..ResolveOf(tManager, "ocupilot-pathport-none.xml", "file", "Dir", "Name"), ..Refusal(##class(OcuPilot.Api.Error).#PATHMANAGER, "Name"), "the refusal lands on the field the caller named")
+    Do $$$AssertEquals(..ResolveOf(tManager, "exports/t.xml", "file"), "200|" _ tManager _ "exports/t.xml", "a file in a subdirectory of it resolves")
+    Do $$$AssertEquals(..ResolveOf(tManager, "", "directory"), "200|" _ tManager, "and the directory itself is not refused")
+
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(tManager)), "the purpose is restricted to the manager directory")
+    Do $$$AssertEquals(..ResolveOf(tManager, "t.xml", "file"), tRefused, "one name under a restricted root that is the manager directory is refused")
+
+    Set tParent = ##class(%File).ParentDirectoryName(tManager)
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(tParent)), "the purpose is restricted to the directory above it")
+    Do $$$AssertEquals(..ResolveOf(tParent, $Piece(tManager, "/", *-1) _ "/t.xml", "file"), tRefused, "and so is a file reaching it from a root above")
 }
 
 /// <p>Matrix "Not cached" -- a root removed between two resolutions refuses the second.</p>

@@ -400,6 +400,26 @@ Parameter PATHNAME = "PATH.NAME";
 /// <p>The sentence <parameter>PATHNAME</parameter> carries.</p>
 Parameter REASONPATHNAME = "Name a directory or file under it with letters, digits, '.', '_' or '-', at most eight names separated by '/', and no '..'.";
 
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a file where a directory
+/// already exists, or where a file does and the consuming tool does not declare that it
+/// overwrites. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Port.PathPort</class> with one <code>detail.violations</code> entry on the
+/// name's field, and never with the value or a path.</p>
+Parameter PATHEXISTS = "PATH.EXISTS";
+
+/// <p>The sentence <parameter>PATHEXISTS</parameter> carries.</p>
+Parameter REASONPATHEXISTS = "A file or directory of that name already exists. Choose a name that is not taken.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a file directly in the manager
+/// directory, which holds the instance's own files, under whatever root and whether or not the
+/// consuming tool overwrites. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Port.PathPort</class> with one <code>detail.violations</code> entry on the
+/// name's field, and never with the value or a path.</p>
+Parameter PATHMANAGER = "PATH.MANAGER";
+
+/// <p>The sentence <parameter>PATHMANAGER</parameter> carries.</p>
+Parameter REASONPATHMANAGER = "A file cannot go directly in the manager directory, which holds the instance's own files. Name a subdirectory for it.";
+
 /// <p>Machine code (AD-12, AD-39): the agent configuration the request submitted broke one or more
 /// of the rules <class>OcuPilot.Kernel.AgentRules</class> (a definition) or
 /// <class>OcuPilot.Kernel.SwitchRules</class> (the switches and the per-user holds) applies.
@@ -3918,5 +3938,13 @@ ClassMethod AuditEventViolationCodes() As %List
 /// <class>OcuPilot.Kernel.Agent.Loop</class> on the <parameter>UNAVAILABLE</parameter> slug, with
 /// its sentence in <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method>.</p>
 Parameter PROVIDERTOOLCALLFAILED = "PROVIDER.TOOLCALLFAILED";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.3): a permission check whose composition read was cut at
+/// its cap, so the answer was not checked -- never an answer of no. Answered on the
+/// <parameter>UNAVAILABLE</parameter> slug with 503 by
+/// <method>OcuPilot.Kernel.Shell.PermissionCheck.Check</method>.</p>
+Parameter PERMISSIONUNCHECKED = "PERMISSION.UNCHECKED";
+
+Parameter REASONPERMISSIONUNCHECKED = "There are too many roles or resources to read, so this was not checked.";
 
 }

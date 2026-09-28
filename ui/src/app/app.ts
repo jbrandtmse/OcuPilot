@@ -72,6 +72,7 @@ import { Header } from './shell/header';
 import { InstanceNotice } from './shell/instance-notice';
 import { LocatorBar } from './shell/locator-bar';
 import { COMPOSER_ID, Panel } from './shell/panel';
+import { PermissionCheck } from './shell/permission-check';
 import { Rail } from './shell/rail';
 import { SIDE_BAR_OVERLAY_ID, SideBar } from './shell/side-bar';
 import { SignIn } from './shell/sign-in';
@@ -237,6 +238,7 @@ export class App {
   private readonly findings = inject(Findings);
   private readonly fixFinding = inject(FixFinding);
   private readonly guardrails = inject(Guardrails);
+  private readonly permissionCheck = inject(PermissionCheck);
   private readonly performanceRow = inject(PerformanceRow);
   private readonly suggested = inject(SuggestedView);
   private readonly scope = inject(ScopeService);
@@ -657,6 +659,9 @@ export class App {
       // The twenty-first: the Guardrails page's answer, whose switches are this caller's own verdict
       // (Story 16.22, AD-8).
       this.guardrails.reset();
+      // The twenty-second: an open Check permission dialog and the instance's answer to this
+      // caller's last check (Story 16.3, AD-8).
+      this.permissionCheck.reset();
       return;
     }
     void this.instance.verify();

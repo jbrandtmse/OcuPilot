@@ -30,6 +30,7 @@ XData Declaration
   "refreshes": false,
   "refreshRates": [],
   "privileges": [{"resource": "%Admin_OAuth2_Client", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
+  "ownPrivileges": [{"resource": "%Admin_OAuth2_Client", "permission": "USE"}],
   "entityType": "oauth2-server-definition",
   "secondaryEntityTypes": [],
   "scope": "instance",

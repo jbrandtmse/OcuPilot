@@ -8,7 +8,7 @@ import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { DOWNLOAD_CSV_ACTION_ID, REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
+import { DOWNLOAD_CSV_ACTION_ID, PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -1163,6 +1163,46 @@ describe('the command bar', () => {
     expect(refreshButton()).toBeNull();
   });
 
+  it('Story 16.3: the bar draws Check permission after Refresh only where registered, never held back for want of a selection', () => {
+    // Mutation (Rule 19): drop `hasPermissionCheckAction` from the template -> the drawn assertion
+    // goes red.
+    const declared = screenDeclaration({ rowActions: [{ id: 'delete', selfProtection: '' }] });
+    build(declared);
+    actions.register(declared.descriptor, 'delete', () => {});
+    actions.register(declared.descriptor, REFRESH_ACTION_ID, () => {});
+    fixture.detectChanges();
+    const check = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-command-bar-permission-check');
+    expect(check()).toBeNull();
+
+    let ran = 0;
+    const stop = actions.register(declared.descriptor, PERMISSION_CHECK_ACTION_ID, () => {
+      ran += 1;
+    });
+    fixture.detectChanges();
+    expect(check()?.textContent?.trim()).toBe(STRINGS.permissionCheckAction);
+    expect(check()?.getAttribute('aria-disabled')).toBeNull();
+    const order = Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')).map((node) => (node as HTMLElement).textContent?.trim());
+    expect(order.slice(-2)).toEqual([STRINGS.actionRefresh, STRINGS.permissionCheckAction]);
+    check()?.click();
+    expect(ran).toBe(1);
+
+    stop();
+    fixture.detectChanges();
+    expect(check()).toBeNull();
+  });
+
+  it('Story 16.3: on a read-less editor whose only content is Check permission, the bar is drawn to hold it', () => {
+    // Mutation (Rule 19): drop `hasPermissionCheckAction` from `hasContent` -> the bar assertion goes
+    // red, as it would on the user and role editors.
+    const declared = screenDeclaration({ read: null, refreshes: false });
+    build(declared);
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar')).toBeNull();
+    actions.register(declared.descriptor, PERMISSION_CHECK_ACTION_ID, () => {});
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-permission-check')?.textContent?.trim()).toBe(STRINGS.permissionCheckAction);
+  });
+
   // --- Story 16.23: Download CSV --------------------------------------------------------------
 
   const download = (): HTMLButtonElement | null => fixture.nativeElement.querySelector('.ocu-command-bar-download');
@@ -1227,6 +1267,8 @@ describe('the command bar', () => {
     // Refresh is a command-bar action too (DW-260), so the reachability invariant covers it: a
     // control the bar draws and the box does not offer is a surface a keyboard user cannot reach.
     actions.register(declared.descriptor, REFRESH_ACTION_ID, () => {});
+    // Story 16.3: Check permission too, a screen-level action like Refresh.
+    actions.register(declared.descriptor, PERMISSION_CHECK_ACTION_ID, () => {});
     // DW-389: and the row actions, which neither surface draws without one.
     actions.register(declared.descriptor, 'delete', () => {});
     actions.register(declared.descriptor, 'disable', () => {});
@@ -1257,6 +1299,7 @@ describe('the command bar', () => {
       STRINGS.actionDelete,
       STRINGS.agentDefinitionDisable,
       STRINGS.actionRefresh,
+      STRINGS.permissionCheckAction,
     ]);
     expect([...boxActions].sort()).toEqual([...barActions].sort());
 
@@ -1270,6 +1313,7 @@ describe('the command bar', () => {
     );
     expect(byLabel.get(STRINGS.actionCreate)?.getAttribute('aria-disabled')).toBeNull();
     expect(byLabel.get(STRINGS.actionRefresh)?.getAttribute('aria-disabled')).toBeNull();
+    expect(byLabel.get(STRINGS.permissionCheckAction)?.getAttribute('aria-disabled')).toBeNull();
     for (const rowAction of [STRINGS.actionDelete, STRINGS.agentDefinitionDisable]) {
       const option = byLabel.get(rowAction);
       expect(option?.getAttribute('aria-disabled')).toBe('true');

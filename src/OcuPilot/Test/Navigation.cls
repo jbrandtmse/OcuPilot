@@ -214,7 +214,8 @@ Method TestAMalformedPrivilegePairIsRefused()
 /// <code>%Admin_Manage:USE</code> from <code>os-management</code> -> the "%Admin_Operate alone"
 /// assertion goes red naming the database read instead, while the <code>logs</code> one keeps
 /// naming <code>%Admin_Secure:USE</code>, which is what separates the two areas on the resource
-/// they share.</p>
+/// they share; put <code>%Admin_Wallet:USE</code> back on <code>security</code> -> the security
+/// admission assertion goes red.</p>
 Method TestAnAreaGatesOnItsOwnDeclaredSet()
 {
     Set tFailed = "unset"
@@ -271,6 +272,8 @@ Method TestAnAreaGatesOnItsOwnDeclaredSet()
     Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("os-management", .tFailed), "and so is the os-management area")
     Set tFailed = "unset"
     Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("permissions", .tFailed), "and admitted once both are held")
+    Set tFailed = "unset"
+    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("security", .tFailed), "and the security area is admitted on %Admin_Secure:USE and %DB_IRISSYS:READ with no wallet or OAuth 2.0 resource held, its wallet and OAuth 2.0 screens owning their pair (DW-1018): " _ tFailed)
 
     Set tFailed = "unset"
     Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("home", .tFailed), "while Home never gates")

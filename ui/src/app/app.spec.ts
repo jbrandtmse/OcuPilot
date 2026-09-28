@@ -67,6 +67,7 @@ import { PerformanceRow } from './core/performance';
 import { stubPerformanceRow, type StubbedPerformanceRow } from './testing/performance';
 import { Findings } from './core/findings';
 import { Guardrails } from './core/guardrails';
+import { PermissionCheck } from './shell/permission-check';
 import { FixFinding } from './core/fix-finding';
 import { stubFindings, stubFixFinding, type StubbedFindings } from './testing/findings';
 import { stubGuardrails, type StubbedGuardrails } from './testing/guardrails';
@@ -821,6 +822,10 @@ describe('the shell frame', () => {
     await performanceRow.read();
     await findings.load();
     await guardrails.load();
+    // Story 16.3: an open Check permission dialog, so its reset below is observable.
+    const permissionCheck = TestBed.inject(PermissionCheck);
+    permissionCheck.open('OcuPilot.Screen.Descriptor.UserList', 'user', 'U');
+    expect(permissionCheck.pending()).not.toBeNull();
     expect(about.answered()).toBe(true);
     expect(guardrails.data()).not.toBeNull();
     expect(findings.answered()).toBe(true);
@@ -886,6 +891,10 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.guardrails.reset()` from the same branch -> this goes red,
     // and the Guardrails page would open on the departed principal's verdict (Story 16.22, AD-8).
     expect(guardrails.data()).toBeNull();
+    // Mutation (Rule 19): delete `this.permissionCheck.reset()` from the same branch -> this goes
+    // red, and a Check permission dialog and the departed principal's answer would open for the
+    // next one (Story 16.3, AD-8).
+    expect(permissionCheck.pending()).toBeNull();
 
     // Mutation (Rule 19): delete `this.recentsRecorder.reset()` from the same branch -> this goes
     // red, answering []. The next principal resumes on the screen this tab is already on, and a

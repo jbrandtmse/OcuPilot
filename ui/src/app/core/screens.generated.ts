@@ -602,22 +602,6 @@ export const AREAS: readonly AreaDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
-      },
-      {
-        "resource": "%Admin_Wallet",
-        "permission": "USE"
-      },
-      {
-        "resource": "%Admin_OAuth2_Client",
-        "permission": "USE"
-      },
-      {
-        "resource": "%Admin_OAuth2_Server",
-        "permission": "USE"
-      },
-      {
-        "resource": "%Admin_OAuth2_Registration",
-        "permission": "USE"
       }
     ]
   },
@@ -4700,6 +4684,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "READ"
       }
     ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
+      }
+    ],
     "entityType": "oauth2-client-configuration",
     "secondaryEntityTypes": [],
     "scope": "instance",
@@ -4774,6 +4764,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-client-configuration",
@@ -4950,6 +4946,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "USE"
       }
     ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
+      }
+    ],
     "entityType": "oauth2-resource-server",
     "secondaryEntityTypes": [],
     "scope": "instance",
@@ -5022,6 +5024,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "resource": "%DB_IRISSYS",
         "permission": "READ"
       },
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
       {
         "resource": "%Admin_OAuth2_Client",
         "permission": "USE"
@@ -5152,6 +5160,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "READ"
       }
     ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Registration",
+        "permission": "USE"
+      }
+    ],
     "entityType": "oauth2-server-client",
     "secondaryEntityTypes": [],
     "scope": "instance",
@@ -5223,6 +5237,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Registration",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-server-client",
@@ -5383,6 +5403,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "READ"
       }
     ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
+      }
+    ],
     "entityType": "oauth2-server-definition",
     "secondaryEntityTypes": [],
     "scope": "instance",
@@ -5454,6 +5480,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-server-definition",
@@ -5597,6 +5629,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "READ"
       }
     ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Server",
+        "permission": "USE"
+      }
+    ],
     "entityType": "oauth2-server",
     "secondaryEntityTypes": [],
     "scope": "instance",
@@ -5668,6 +5706,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Server",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-server",
@@ -9280,6 +9324,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "READ"
       }
     ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Wallet",
+        "permission": "USE"
+      }
+    ],
     "entityType": "wallet-collection",
     "secondaryEntityTypes": [],
     "scope": "instance",
@@ -9403,6 +9453,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "READ"
       }
     ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Wallet",
+        "permission": "USE"
+      }
+    ],
     "entityType": "wallet-secret",
     "secondaryEntityTypes": [],
     "scope": "instance",
@@ -9474,6 +9530,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Wallet",
+        "permission": "USE"
       }
     ],
     "entityType": "wallet-secret",
