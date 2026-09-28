@@ -96,3 +96,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T01:31:12Z	Epic 13	ledger_load	total=1225 open=4 routed=106 escalated=0 decision_pending=0 terminal=1115 owner_unknown=0 burndown=25 reowned_none=0 slice_13-5=0
 2026-09-28T01:31:12Z	Epic 13	sprint_planning_skipped	reason=orchestrator_instruction_do_not_repeat_epic-start_gates story_key_present=13-5-ci-in-parallel-the-two-long-suites-split-across-containers:backlog
 2026-09-28T01:31:12Z	Epic 13	retro_review_skipped	reason=orchestrator_instruction_no_13.0_rule_27 retro_review=skip
+2026-09-28T01:34:14Z	Epic 13	epic_context_compiled	sha=dea9cdfb reason=planning_artifact_newer_13.5_added model=claude-opus-5-5[1m]
+2026-09-28T01:34:14Z	Story 13.5	stage_spawned	stage=plan spawn_at=2026-09-28T01:34:14Z model=opus agent_name=13-5-ci-in-parallel-plan-1 cycle_iteration=1
