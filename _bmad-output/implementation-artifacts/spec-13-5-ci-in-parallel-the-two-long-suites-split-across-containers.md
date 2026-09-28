@@ -2,11 +2,11 @@
 title: 'Story 13.5: CI in parallel - the two long suites split across containers'
 type: 'feature'
 created: '2026-09-27'
-status: 'in-progress'
-baseline_revision: 'f4ab7c49f1e66ef7e1850563f20654fcc0e24784'
+status: 'done'
+baseline_revision: 'fc846927fb1a4be8d5caee9a2e33805548e550a1'
 baseline_commit: 'f4ab7c49f1e66ef7e1850563f20654fcc0e24784'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context: []
 warnings: ['oversized']
 deferred:
@@ -24,6 +24,14 @@ deferred:
     location: >-
       _bmad/custom/skill-rules.md:270
     severity: low
+  - summary: >-
+      That audit-index lag caused the two "records to copy (0)" reds is shown only in a simulated state, with the index emptied under its lock.
+    evidence: |-
+      The old count read index map %SYS.Audit.SystemID (Explain), which WorkQueueMgr updates every 60 s. CI read 0 about 81 s after container start, though the image ships about 30k audit records.
+      Settled when the lead's measured run shows AuditStarted and audit-copy-purge green on their shards.
+    location: >-
+      src/OcuPilot/Test/AuditCopy.cls:101
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -110,11 +118,11 @@ deferred:
 
 **Rework iteration 1 (trigger: CI run 36372545149 on `8cd58d28`, 21.5 min, three reds that the regrouped shards exposed; the roll-ups named each):**
 
-- [ ] [CI] instance shard 3/3: `OcuPilot.Test.AuditStarted` `TestAnAgentCopyStillRunningAtTheBoundIsAppliedAndMarked` -- "the instance's audit database holds records to copy (0)" (`src/OcuPilot/Test/AuditStarted.cls:86`, run 14 of the shard, about two minutes after install). `OcuPilot.Test.AuditCopy.Count` is `SELECT COUNT(*) FROM %SYS.Audit`, and the audit indexes lag about 60 s (DW-85, `AuditRecord.cls` header), so on a young instance it reads 0 (inference). Fix: the precondition must hold on a freshly installed instance at any position in a shard -- count through the master map (`%NOINDEX`, as `OcuPilot.Test.AuditEvent.RowsCarrying` reads) or wait, bounded, for a record; never by moving the class. Same for `:108` and any other `Count("%SYS")` precondition in the audit test classes.
-- [ ] [CI] browser shard 2/3: `ui/browser/audit-copy-purge.browser-spec.mjs:176` AC1 -- "the instance holds records to copy (0)", second file on its shard's fresh instance (the first was `account-and-filter`). It passed locally on a fresh instance a few minutes after install, so the likely cause is the same index lag (inference). Fix in the spec: its precondition must hold on a young instance.
-- [ ] [CI] browser shard 2/3: `ui/browser/oauth-server-editor.browser-spec.mjs:92` (`removeAll`, before hook at `:215`) -- "/oauth2 is left in place" `'0' !== '1'`; every test fails in the hook. `/oauth2` exists only after an earlier OAuth spec created it; reproduced red on a fresh `ocupilot-b-ci` with no OAuth spec before it. Fix: the hook must not require `/oauth2` to pre-exist (assert it is left as found, or establish it), keeping what the assertion protects.
-- [ ] [CI] Search `ui/browser/` and `src/OcuPilot/Test/` for other preconditions with either root cause (an audit count or audit read that assumes an indexed record on a young instance; `/oauth2` or another object a sibling creates) and fix each the same way; list what was searched and found in `## Auto Run Result`.
-- [ ] Refresh the timings from the run's real records: `cd ui && node tools/ci-shards.mjs refresh --run 36372545149` (the browser half becomes measured per file); keep `ci.test.mjs` and `ci-shards.test.mjs` green over the refreshed file.
+- [x] [CI] instance shard 3/3: `OcuPilot.Test.AuditStarted` `TestAnAgentCopyStillRunningAtTheBoundIsAppliedAndMarked` -- "the instance's audit database holds records to copy (0)" (`src/OcuPilot/Test/AuditStarted.cls:86`, run 14 of the shard, about two minutes after install). `OcuPilot.Test.AuditCopy.Count` is `SELECT COUNT(*) FROM %SYS.Audit`, and the audit indexes lag about 60 s (DW-85, `AuditRecord.cls` header), so on a young instance it reads 0 (inference). Fix: the precondition must hold on a freshly installed instance at any position in a shard -- count through the master map (`%NOINDEX`, as `OcuPilot.Test.AuditEvent.RowsCarrying` reads) or wait, bounded, for a record; never by moving the class. Same for `:108` and any other `Count("%SYS")` precondition in the audit test classes.
+- [x] [CI] browser shard 2/3: `ui/browser/audit-copy-purge.browser-spec.mjs:176` AC1 -- "the instance holds records to copy (0)", second file on its shard's fresh instance (the first was `account-and-filter`). It passed locally on a fresh instance a few minutes after install, so the likely cause is the same index lag (inference). Fix in the spec: its precondition must hold on a young instance.
+- [x] [CI] browser shard 2/3: `ui/browser/oauth-server-editor.browser-spec.mjs:92` (`removeAll`, before hook at `:215`) -- "/oauth2 is left in place" `'0' !== '1'`; every test fails in the hook. `/oauth2` exists only after an earlier OAuth spec created it; reproduced red on a fresh `ocupilot-b-ci` with no OAuth spec before it. Fix: the hook must not require `/oauth2` to pre-exist (assert it is left as found, or establish it), keeping what the assertion protects.
+- [x] [CI] Search `ui/browser/` and `src/OcuPilot/Test/` for other preconditions with either root cause (an audit count or audit read that assumes an indexed record on a young instance; `/oauth2` or another object a sibling creates) and fix each the same way; list what was searched and found in `## Auto Run Result`.
+- [x] Refresh the timings from the run's real records: `cd ui && node tools/ci-shards.mjs refresh --run 36372545149` (the browser half becomes measured per file); keep `ci.test.mjs` and `ci-shards.test.mjs` green over the refreshed file.
 
 **Acceptance Criteria:**
 
@@ -158,6 +166,25 @@ deferred:
   - `[false]` `[reject]` The median is over offered items' times, not the whole suite table — consistent with the matrix row that ignores stale entries; the split stays a pure function of the offered set and the file.
   - `[low]` `[reject]` `--record` and `--timings` are accepted without `--shard`, and `--timings` alone is ignored — the spec prescribes `--record` without `--shard`; refusing `--timings` would add a guard for a flag nobody passes alone.
   - `[medium]` `[patch]` The timings-file test required the browser `source` to say "estimated", so the lead's mandated `refresh` would turn `test:tools` red — the test now requires only that each half names its run.
+
+### 2026-09-28 — Review pass (rework iteration 1, follow-up)
+
+- verdicts: 14 findings — high 0, medium 0, low 8, false 5, maybe-false 1
+- findings:
+  - `[low]` `[reject]` `AuditCopy.Count`'s master-map read is pinned only in a hand-built state (index emptied under its lock); no test builds that state — a deterministic pin needs wiping the vendor's index under its lock or a plan-shape test on an implementation detail; the `Count` doc comment says why the hint is there. Reopen if a `Count` precondition reddens in CI again.
+  - `[low]` `[reject]` Task 4 is ticked but `## Auto Run Result` lacks the search list and still describes the first pass — a spec edit; finalize writes the search list and this pass's account.
+  - `[false]` `[reject]` Task 5 has no recorded run — the stage's verification ran `npm run test:tools` 1645/1645 over the refreshed file (it includes `ci-shards.test.mjs` and `ci.test.mjs`).
+  - `[low]` `[patch]` A Create-test failure between the save and the re-read of `/oauth2` made the `after` hook fail too, blaming the removal — the re-read now follows `saveAndSettle` directly; the spec ran green 4/4.
+  - `[maybe-false]` `[defer]` The audit fix was shown only with the index emptied, so index lag as the CI reds' cause stays an inference — medium if false; settled by the lead's measured run (frontmatter `deferred`).
+  - `[false]` `[reject]` Nothing in the diff shows all six shard jobs green or AC9 — the spec's "Lead, on push" owns that measurement.
+  - `[low]` `[reject]` Measured shard durations diverged (ObjectScript 15.6/12.6/18.7 min, more than one largest item) and item times move between runs — the Assignment row bounds estimates from the timings file; refreshing from measured seconds is the spec's convergence path, and AC9 is measured on push. A different balancer is more than a correction.
+  - `[low]` `[reject]` The refresh from red run 36372545149 kept the three red items' cut-short times (0.7 s, 6.1 s, 10.2 s) — the balance effect is seconds (spreads 0.0 s and 2.3 s), the lead's post-push refresh rewrites them, and skipping failed outcomes would change the Refresh row.
+  - `[low]` `[reject]` The refreshed `source` strings do not say the run was red — same root cause as the row above; the next refresh replaces them.
+  - `[false]` `[reject]` The `/oauth2` a save creates is left as residue a later item may depend on — removing it is what AD-27's Story 12.7 case forbids, and every class or spec needing `/oauth2` seeds its own configuration (`OAuthRegisteredClientJwks.SeedClient`, `oauth-registered-client-editor` `:215`).
+  - `[low]` `[reject]` `## Auto Run Result` reads `Status: done` while the frontmatter reads `in-review` — a spec edit; finalize rewrites both.
+  - `[false]` `[reject]` An `Observed` block was appended to an `oversized` spec — Rule 19 and the dispatch's pre-answer (c) require this pass's `mutation:` lines.
+  - `[false]` `[reject]` `audit-copy-purge` was fixed through the helper, not in the spec — its precondition counts through `AuditCopy.Count` (`copyCounts`, `:69-72`), and the recorded mutation turns its AC1 red without the hint.
+  - `[low]` `[patch]` The `oauth-server-editor` header says `/oauth2` is "left as found" while the spec re-reads it after the create's save — the header now says so.
 
 ## Design Notes
 
@@ -270,29 +297,33 @@ untimed, so the third leg gets none). `npm run test:tools` 1645/1645.
   zero-tests message (`share.length === 0` → `false`) → the new test red (1 of 1 failed), applied
   to the tracked `ci-browser.mjs` by the lead and reverted; `git status --short` unchanged.
 
+**Observed (rework iteration 1, 2026-09-28):**
+
+- mutation: `OcuPilot.Test.AuditCopy.Count` without `%IGNOREINDEX *` (the index read), on `ocupilot-b-ci` with `^IRIS.AuditI` emptied and its lock held → `OcuPilot.Test.AuditStarted` red (2 of 3, "records to copy (0)"), `OcuPilot.Test.AuditCopy` red (3 of 6, the same precondition), `audit-copy-purge` AC1 red at `:176`; with the hint, all three green in that state.
+- mutation: `OcuPilot.Test.OAuthAuthorizationServerProbe.RemoveAll` also deletes `/oauth2` → `oauth-server-editor` red on "and /oauth2 is left as found": in `before` with `/oauth2` present, and in `after` from an instance without it (its four tests green).
+
 ## Auto Run Result
 
-**Summary.** Both long suites run as three-leg matrix jobs (`instance-shard`, `browser-shard`), each leg on its own fresh throwaway, one item at a time, its share assigned longest-first from `ui/tools/ci-timings.json`. Each leg uploads a record; the roll-ups `instance` and `browser` fail unless every item ran in exactly one leg, every leg executed a test, and the legs succeeded. Unsharded local paths are unchanged.
+**Summary (rework iteration 1).** The three reds of CI run 36372545149 are fixed in the tests, never by placement. `OcuPilot.Test.AuditCopy.Count` counted through the audit index map `%SYS.Audit.SystemID`, which the vendor brings up to date about every 60 s, so on a young instance it could read 0. It now reads the master map (`%IGNOREINDEX *`). That one helper feeds `AuditStarted` `:86` and `:108`, `AuditCopy`'s three preconditions and `audit-copy-purge` AC1. `oauth-server-editor` no longer requires `/oauth2` before it runs: it records `/oauth2` as found, re-reads it after its create's save (which creates it), and asserts the removals leave it so. The timings are refreshed from the run's records. The first pass is `8cd58d28`.
 
 **Files.**
 
-- `.github/workflows/ci.yml` -- seven jobs; shard matrices, record uploads (`overwrite: true`), roll-ups; header and timeout comments rewritten.
-- `ui/tools/ci-shards.mjs` -- new: assignment, record check, `assign`/`check`/`refresh` CLI.
-- `ui/tools/ci-browser.mjs` -- new: browser shard runner, one `node --test` per file.
-- `ui/tools/ci-runner.mjs` -- `--shard`, `--timings`, `--record`; no-shard output unchanged.
-- `ui/tools/ci-timings.json` -- new: seeded from run 36359053662 (browser half estimated).
-- `ui/tools/ci-shards.test.mjs` -- new: 29 tests over every I/O-matrix row.
-- `ui/tools/ci.test.mjs` -- existing lines changed: the runner and browser `DECLARED_GATES` entries (plus two `check` entries), `PINNED_ACTIONS`, the capture test's job list, the jobs/readiness test (now seven jobs, per shard job), the literal-Node pinner list, the reservation loop; new shard-matrix, roll-up, AC6 and AC9-margin tests.
-- `ui/package.json` -- `test:browser:shard` and `pretest:browser:shard` added only.
-- `docs/DEVELOPMENT.md` -- CI table and shard paragraph (footprint extension).
+- `src/OcuPilot/Test/AuditCopy.cls` -- `Count` reads the master map; its doc comment says why.
+- `ui/browser/oauth-server-editor.browser-spec.mjs` -- `/oauth2` is asserted left as found, or as the create's save left it; the header says the same.
+- `ui/tools/ci-timings.json` -- `refresh --run 36372545149`: 329 classes and 115 spec files, both halves measured.
+- This spec -- rework boxes ticked, two `mutation:` lines, a triage-log entry, one `deferred` item.
 
-**Review.** 19 findings: 11 patched (4 medium, 7 low), 2 deferred (1 medium unverified, 1 low), 6 rejected (4 false, 2 low) -- reasons in the Review Triage Log.
+**Search (task 4).** Every `%SYS.Audit` SQL read, `%SYS.Audit_List` use and `%SYS.Audit` call in `src/OcuPilot/Test/` (plus `Install/Smoke.cls`), and every audit read and `Exists(` check in `ui/browser/*.mjs`. The 13 distinct audit SQL shapes were explained on the throwaway: each reads the master map except `Count` (fixed) and `Installer.cls:451`, which logs and asserts nothing. The `%SYS.Audit_List` readers (`AuditRead.cls:70`, `audit.browser-spec.mjs`) are safe, because the vendor's list query updates the index first. The only precondition on an object a sibling creates was `/oauth2`; the other OAuth classes and specs seed their own configuration.
 
-**Follow-up review recommended: true** (4 medium patched). The unverified risk is the Actions-runtime wiring: `overwrite: true` on a re-run leg, `download-artifact` `merge-multiple` layout, and `needs.<matrix job>.result` are proven only by the lead's push.
+**Order on `ocupilot-b-ci` (fresh at 03:42:56Z):** `AuditStarted` unfixed first at +108 s, green 3/3 (the index had caught up); then, with the index emptied under its lock, `AuditStarted` unfixed red 2/3, `audit-copy-purge` unfixed red at AC1, `AuditStarted` fixed 3/3, `AuditCopy` fixed 6/6, `audit-copy-purge` fixed 2/2, `AuditCopy` unfixed red 3/6; index rebuilt; `oauth-server-editor` fixed 4/4 from no `/oauth2`, its two `RemoveAll` mutations red, reverted 4/4, and 4/4 after the review patch.
 
-**Verification.** `npm run build` and `npm test` green once (1642 tools, 120 component files); after patches `npm run test:tools` 1644/1644 and `lint-docs.sh` 0 problems. `assign`: 327 classes at 16.1/16.1/16.1 min, 115 specs at 17.2/17.1/17.1 min, each listed once. Real runs on `ocupilot-b-ci`, sequential: `ci-runner --shard 40/40` 10 of 329 classes, 78 tests, green, record written; `test:browser:shard -- --shard 40/40` 4 of 115 files, 11 tests, green, record written. Workflow parses as YAML with the seven jobs. All Rule 19 mutations in `## Verification` observed red and reverted byte-identical.
+**Review.** 14 findings: 2 patched (2 low), 1 deferred (medium, unverified), 11 rejected (6 low, 5 false). Reasons are in the Review Triage Log.
 
-**Residual risks.** Timeouts (40 min) rest on estimates until the lead measures; `actions: read` not added (same-run artifacts use the runtime token, inference); Node 22/24 run the two-reporter form first in the `gates` legs. `home-findings.browser-spec.mjs` was not in the 40/40 share, so nothing was observed about it. `CLAUDE.md`'s "five jobs" line is left for the lead.
+**Follow-up review recommended: false.** This is a follow-up pass and no high was patched (patched: 0 high, 0 medium, 2 low).
+
+**Verification.** `npm run test:tools` 1645/1645, before and after the patch. `assign`: 327 classes at 15.7/15.7/15.7 min and 115 specs at 16.5/16.5/16.5 min, each listed once. `check-objectscript.py` 0 problems; `client-lint` and `browser-reset` clean; `lint-docs.sh` 0 problems; `ui/package.json` unchanged. Targeted runs are in the order line. The 40/40 instance runs were not repeated, since no runner or workflow file changed.
+
+**Residual risks.** That index lag caused the reds is shown only in a simulated state (deferred; the lead's measured run settles it). The refreshed timings keep the three red items' cut-short times until the next refresh. The throwaway serves a snapshot of `src/` taken at its bring-up (`/tmp/ocupilot-b-ci/src`), not this worktree: the fixed `AuditCopy` was copied in and compiled there, but the snapshot file is still the old one. `audit-copy-purge` AC2 purged the throwaway's older audit records, and `/oauth2` now exists there.
 
 Status: done
 Blocking condition: none
