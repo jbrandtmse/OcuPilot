@@ -8,7 +8,7 @@
 /// <p><b>It is action-style</b> (AD-51): the vendor's <code>DELETE</code> takes the id as its query
 /// and reads no body, so the tool admits no settable field and its field list is empty by
 /// derivation (AD-3).</p>
-/// <p><b>Its fingerprint covers what the user reviewed</b>: this session, for this user and this
+/// <p><b>Its fingerprint covers the session's own state</b>: this session, for this user and this
 /// application, in this preserve mode, served by this process. <code>Timeout</code> is left out
 /// because every request the session serves moves it. <code>Application</code> is the
 /// precondition, the field the kernel's own-session arm reads

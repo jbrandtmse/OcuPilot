@@ -2,7 +2,7 @@
 title: 'Story 16.2: Web sessions, listed and ended'
 type: 'feature'
 created: '2026-09-28'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '5bd3404921b58f23316d46ecb735f3ba2746b94e'
 baseline_commit: 'c4a871c902c669ef06ac3663f33c169f38de1411'
 review_loop_iteration: 0
@@ -199,7 +199,44 @@ deferred: []
 - Given a session OcuPilot is itself running in (option A), when an end is attempted, then the row action is drawn disabled with the published sentence. The instance also refuses a screen action or a confirm with `PROHIBITED.OCUPILOTSESSION`, the kernel's reason is pinned equal to the sentence, and the Guardrails page lists the new code.
 - Given a caller holding the screen's pairs but not `%DB_IRISSYS:WRITE`, when they end a session, then the refusal names that pair and the session is still listed.
 
+### Review Findings
+
+Code review 2026-09-28 (`full-opus`; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; 31 rows, 8 entries). Each entry: severity / fix-risk / footprint / disposition.
+
+- [x] [Review][Decision] (decided (a) by the orchestrator at the merge gate, 2026-09-28; the work is the [Review] task below) Ending a preserve-mode session hangs and never ends it (DW-1792) — med / med / in-story / `decision-pending`. Measured on `ocupilot-ci`: the admin `DELETE` of a `Preserve` 1 session waits on the session lock its own process holds (`SessionLockTimeout` 240 s) and answers 504 at the gateway's 60 s, and the row stays listed. Only such rows carry a process, so every row with a Process link is one End cannot end. AC2 fails for them. The Design Notes' "(measured: 200)" held for `/csp/sys/` only. Refusing them contradicts Never's "No `AllowEndSession` refusal", and AD-10 says every other session may be ended. So this is a spec contradiction, for the lead.
+- [x] [Review][Patch] Stale roster message: seventy-six/eighty-two → seventy-seven/eighty-three [src/OcuPilot/Test/ReadTool.cls:94] — low / low / in-story / patched; ReadTool 27/27, run 18256.
+- [x] [Review][Patch] `%session` comment claimed "read here or not at all" (the port `New`s it) [src/OcuPilot/Kernel/Proposal/Prohibited.cls:816] — low / low / in-story / patched.
+- [x] [Review][Patch] The end tool's doc said the fingerprint covers "what the user reviewed", but no card row shows `Preserve` [src/OcuPilot/Screen/Tool/WebSessionEnd.cls:11] — low / low / in-story / patched.
+- [x] [Review][Patch] Teardown discarded `RemoveSeeded`'s status [src/OcuPilot/Test/WebSessionsLive.cls:110] — low / low / in-story / patched, asserted as `WebSessions` does; WebSessionsLive 6/6, run 18257; WebSessions 8/8, run 18258.
+- [x] [Review][Patch] Rule 19: an "AC1" mutation line pinned AD-8's own pair, not AC1 — low / low / in-story / relabelled "Area holder only (matrix, AD-8)" under `## Verification`. AC1 keeps its `rowTarget` line.
+- [x] [Review][Defer] A holder of the screen's pairs without `%Admin_Secure` can open Web sessions but has no rail path to it [src/OcuPilot/Screen/Descriptor/WebSessionList.cls:38] — deferred: med, occurrence on DW-1768 (decision-pending, rail any-screen).
+- [x] [Review][Defer] AD-26 is silent on the port's bounded post-2xx waits [src/OcuPilot/Port/AdminPort.cls:368] — deferred: DW-1793 low, `wontfix-accepted`, reopen_if a second `AWAITEDDELETES` pair lands or the bound exceeds 10 s.
+
+- [ ] [Review] DW-1792, decided (a): refuse ending a preserve-mode session by name, on both callers, before any `DELETE` is sent -- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` (`WebSession` branch, after the OcuPilot check), `ui/src/app/core/self-protection.ts` (the `end` row action's rule), EXPERIENCE.md + `strings.ts` -- A fresh read with `Preserve` 1 is refused with a new code (`PROHIBITED.PRESERVEDSESSION`) and one published sentence that says why (the session's own process holds its lock) and points to that process in Process details, where it can be terminated (proposed: "This session's own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session."). The kernel's reason is pinned equal to the sentence (`RefusalCopy`), Guardrails lists the code, the code counts move 19 to 20 (`Test/Prohibited.cls`, `Test/AuditingUpdate.cls`), and the row action is drawn refused with the same sentence for a `Preserve` 1 row, the OcuPilot check first. Tests: `WebSessions` -- both callers refused for a `Preserve` 1 row with nothing sent, a `Preserve` 0 row under `/csp/sys/` still ends -- with a Rule 19 mutation; `self-protection.test.mjs` and a component case; and a browser check that a preserve-mode row's End is drawn refused with the pointer, seeded as a real preserve-mode session on the throwaway if the reviewer's method (DW-1792's evidence) is repeatable in a spec, removed in `after` by terminating its process and then ending it; otherwise the browser check drives an intercepted read row and says so in `## Verification`. EXPERIENCE.md stays 993 lines, citations updated.
+
+Rejected:
+
+- `false`: the verification gap is empty; each pin reddens under its mutation (layer's own evidence).
+- spec-bound: the fail-closed arms (no object, no `Application`, a roster fault) answer the `OCUPILOTSESSION` sentence. The spec says they fail closed as that arm.
+- spec-bound: the log masks the session id (`UNLOGGEDQUERY`). Never keeps the id out of every log line.
+- spec-bound: the empty state carries the agent invitation. The Tasks and the Empty matrix row name it.
+- spec-bound: Web sessions' strings sit in EXPERIENCE.md row 357, as the Tasks direct.
+- spec-bound: the Application header reuses the one "Application" key. The spec says reuse, and `strings.test.mjs` keeps values unique.
+- spec-bound: the 250 ms / 10 s poll cost is set by the Boundaries.
+- spec-bound: the card shows `SesProcessId` and `Timeout` by name. `REMOVALROWS` is spec'd and raw names are the card's convention.
+- spec-bound: the client rule reads only `OCUPILOT_APPLICATION_PATHS`. The Boundaries say so, and the instance stays the verdict.
+- low: the seed records every new matching session before its one-session check. It needs a same-account `/api/atelier/` request on the throwaway mid-seed, and moving the record after the check would leak the test's own session.
+- low: `caseTwin` equals the id when the id has no letter. For a 10-character random id that is about 1e-8.
+- low: `$IsObject` is unchecked before `%Get` in the live test. That fault still reads red.
+- low, theoretical: `Unlogged` re-wraps as `GeneralError`. Only the 404 `#5907` quotes the id, and the 404 maps from HTTP.
+- low: the timeout log may say "still listed" after an unreadable last read. It needs a failing `LIST` past the deadline, and the fix adds a guard.
+- low, theoretical: `WebSession` kills `pChanged` for any type. The only web-session tool is a bodyless `DELETE`.
+- low: `PrivilegePairs`, `StateDiff` and the client path compare are copies. That follows the per-tool convention, with no named divergence.
+- low: the fresh read and the wait send no `maxRows` (the vendor default is 1000). The screen reads at most the cap + 1 ≤ 1001 in the same order, so it bites only with more than 1000 sessions and churn.
+
 ## Spec Change Log
+
+- 2026-09-28, rework iteration 1 (lead): the code review's DW-1792 (a preserve-mode session cannot be ended: its own process holds its lock, the vendor `DELETE` waits out 240 s and the gateway answers 504 at 60 s) was decided (a) by the orchestrator at the merge gate: refuse it by name on both callers. epics.md 16.2's AC2 and AD-10's session arm are amended at origin. This supersedes Boundaries' Never bullet "No `AllowEndSession` refusal" for `Preserve` 1 rows only (the frozen intent block is left as written); `/csp/sys/` rows, which the admin API ends, stay endable.
 
 - 2026-09-28, spec gate (lead): AC3 amended in epics.md from "the user's **own** session" to "a session **OcuPilot is itself running in**" (Rule 5, apply-and-report: the AC's own reference is the process arm's shape, and the literal reading has no subject on this build). Option A taken; AD-8, AD-10, AD-15 and AD-53 amended in the spine; status reset `blocked` to `ready-for-dev`.
 
@@ -293,7 +330,7 @@ No AD-27 case is needed. The `AdminPort` wait is `DELETE` verification on AD-26'
 **Mutations (Rule 19, each observed red and reverted with the tree byte-identical):**
 
 - AC1: mutation: drop `rowTarget` from `WebSessionList.cls` and regenerate the mirror → `list-page.spec.ts` "links the Process cell of a row carrying a process to Process details" red (the href named the session's own route).
-- AC1: mutation: drop `ownPrivileges` from `WebSessionList.cls` → `WebSessions.TestTheDescriptorDeclaresTheListItsPairsAndItsRowAction` red.
+- Area holder only (matrix, AD-8): mutation: drop `ownPrivileges` from `WebSessionList.cls` → `WebSessions.TestTheDescriptorDeclaresTheListItsPairsAndItsRowAction` red.
 - AC2: mutation: skip `AwaitGone` in `AdminPort.InvokeLocated` → `WebSessionsLive.TestThePortReturnsOnceTheSessionIsGone` red ("the list no longer carries it"), with the screen-action and agent-confirm legs, and `web-sessions.browser-spec.mjs` AC2's row-leaves wait timed out.
 - AC2: mutation: remove `end` from `DESTRUCTIVE_ACTIONS` → `screen-action-handler.spec.ts` "registers End session, opening the typed-name dialog" and the `list-page.spec.ts` End session case red.
 - AC2: mutation: set `WebSessionEnd.READROWKEYEXACT` to 0 → `WebSessions.TestTheFreshReadComparesTheIdExactly` red (case twin found; of two twins the first row read).

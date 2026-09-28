@@ -108,6 +108,7 @@ Method OnAfterOneTest() As %Status
     }
     Set ..PreparedSeeded = ""
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
+    Do $$$AssertStatusOK(tSC, "the probe proposals and turns are removed")
     Quit $$$OK
 }
 

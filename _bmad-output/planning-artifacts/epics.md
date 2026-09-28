@@ -6233,11 +6233,12 @@ So that I can clear a stuck or unwanted session from here.
 
 - **Given** a session
 - **When** the user ends it
-- **Then** it ends, confirming by naming the session, and the row leaves the list.
+- **Then** it ends, confirming by naming the session, and the row leaves the list; a preserve-mode session, whose own process holds its lock, is instead refused by name on both callers, saying why and pointing to that process in Process details, where it can be terminated [AMENDED 2026-09-28, orchestrator merge gate, Rule 5, DW-1792].
 
 - **Given** a session **OcuPilot is itself running in** [AMENDED 2026-09-28 — see the story change log]
 - **When** an end is attempted
 - **Then** it is refused with an explanation, in the UI and on the instance - the same self-protection shape as a process OcuPilot is itself running in.
+- DW-1792: Ending a preserve-mode web session hangs until the gateway answers 504 and never ends it: the vendor DELETE waits on the session lock the session's own process holds (ledger; routed by merge_gate 2026-09-28)
 
 ### Story 16.3: Effective privileges and the permission-check tool
 

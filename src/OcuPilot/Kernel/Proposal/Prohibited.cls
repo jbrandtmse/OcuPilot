@@ -813,8 +813,8 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Quit
         }
 
-        ; The session the serving request runs in, read before any port call: the port stubs
-        ; %session while it runs (AD-2), so it is read here or not at all.
+        ; The session the serving request runs in, read before any port call, since the port
+        ; stubs %session while it runs (AD-2).
         Set tOwnSession = ""
         If tType = ..#TYPEWEBSESSION Set tOwnSession = ..ServingSessionId()
 
