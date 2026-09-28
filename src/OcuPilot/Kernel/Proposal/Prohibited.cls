@@ -362,6 +362,20 @@ Parameter FIELDAPPLICATION = "Application";
 /// <p>A web session's id field, compared exactly with the serving request's own session id.</p>
 Parameter FIELDSESSIONID = "ID";
 
+/// <p>The write would end a preserve-mode web session (<method>IsPreservedSession</method>): the
+/// session's own process holds its lock, so the vendor's end waits out the lock timeout and the
+/// session stays listed (AD-10 as amended 2026-09-28). Refused whatever the caller, before any
+/// <code>DELETE</code> is sent.</p>
+Parameter PRESERVEDSESSION = "PROHIBITED.PRESERVEDSESSION";
+
+/// <p>The one sentence <parameter>PRESERVEDSESSION</parameter> carries, caller-neutral, published
+/// in EXPERIENCE.md's Fixed strings and pinned equal to <code>webSessionRefusalPreserved</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter PRESERVEDSESSIONREASON = "This session's own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session.";
+
+/// <p>A web session's preserve-mode field, which the vendor's list answers as a number.</p>
+Parameter FIELDPRESERVE = "Preserve";
+
 /// <p>The write would turn off the service OcuPilot is served through
 /// (<parameter>SERVINGSERVICENAME</parameter>): every request to OcuPilot arrives through it (AD-10 as
 /// amended 2026-09-24).</p>
@@ -486,11 +500,11 @@ Parameter READTYPE = "GET";
 /// only a web application reaches, then the two <method>Process</method> adds, then the one every
 /// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
 /// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
-/// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the one
-/// <method>WebSession</method> adds last -- nineteen in all.</p>
+/// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the two
+/// <method>WebSession</method> adds last -- twenty in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTSESSION)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -521,6 +535,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTSSL Quit ..#OCUPILOTSSLREASON
     If pCode = ..#SERVINGSERVICE Quit ..#SERVINGSERVICEREASON
     If pCode = ..#OCUPILOTSESSION Quit ..#OCUPILOTSESSIONREASON
+    If pCode = ..#PRESERVEDSESSION Quit ..#PRESERVEDSESSIONREASON
     Quit ""
 }
 
@@ -3230,8 +3245,9 @@ ClassMethod LdapFields() As %List
 }
 
 /// <p>The web session predicates (Story 16.2): a session OcuPilot is itself running in is refused
-/// <parameter>OCUPILOTSESSION</parameter> (<method>IsOcuPilotSession</method>), and every other
-/// session may be ended. <var>pTarget</var> is the fresh list row and <var>pOwnSession</var> the
+/// <parameter>OCUPILOTSESSION</parameter> (<method>IsOcuPilotSession</method>), then a preserve-mode
+/// session <parameter>PRESERVEDSESSION</parameter> (<method>IsPreservedSession</method>), and every
+/// other session may be ended. <var>pTarget</var> is the fresh list row and <var>pOwnSession</var> the
 /// serving request's own session id, <code>""</code> when it runs in none.</p>
 /// <p>The end sends no body (AD-51), and its card rows are removals read from the fresh read, so it
 /// reaches the reviewed-few sweep with nothing changed, as <method>Device</method> reasons.</p>
@@ -3243,6 +3259,10 @@ ClassMethod WebSession(pTarget As %DynamicObject, pOwnSession As %String, ByRef 
     Try {
         If ..IsOcuPilotSession(pTarget, pOwnSession) {
             Do ..Refuse(..#OCUPILOTSESSION, .pProhibits, .pCode)
+            Quit
+        }
+        If ..IsPreservedSession(pTarget) {
+            Do ..Refuse(..#PRESERVEDSESSION, .pProhibits, .pCode)
             Quit
         }
         Kill pChanged
@@ -3271,6 +3291,15 @@ ClassMethod IsOcuPilotSession(pTarget As %DynamicObject, pOwnSession As %String 
     Set tSC = ..ServesOcuPilot(tApplication, .tServes)
     If $$$ISERR(tSC) Quit 1
     Quit ''tServes
+}
+
+/// <p>Whether <var>pTarget</var>, a web session's list row, is in preserve mode: its
+/// <code>Preserve</code> reads 1, as the vendor's number or as a boolean true. A row that carries
+/// no <code>Preserve</code> is not one.</p>
+ClassMethod IsPreservedSession(pTarget As %DynamicObject) As %Boolean
+{
+    Set tPreserve = ..Rendered(pTarget, ..#FIELDPRESERVE)
+    Quit (tPreserve = 1) || (tPreserve = "true")
 }
 
 /// <p>The session id of the CSP session the serving request runs in, or <code>""</code> when

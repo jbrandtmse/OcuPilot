@@ -17,8 +17,8 @@
 /// applications and the REST API explorer open to a holder of the area's two pairs alone.</p>
 /// <p>It declares one row action, <code>end</code>, carried out by
 /// <class>OcuPilot.Screen.Tool.WebSessionEnd</class>, and its self-protection rule
-/// <code>ocupilot-session</code> explains the refusal the kernel makes for a session OcuPilot is
-/// itself running in (AD-10). It declares no refresh (AD-43).</p>
+/// <code>ocupilot-session</code> explains the refusals the kernel makes for a session OcuPilot is
+/// itself running in and for a preserve-mode session (AD-10). It declares no refresh (AD-43).</p>
 /// <p>The classic page is <code>%CSP.UI.Portal.CSPSessions</code>. As a list archetype it links
 /// out to nothing.</p>
 Class OcuPilot.Screen.Descriptor.WebSessionList Extends OcuPilot.Screen.Descriptor.Base

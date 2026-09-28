@@ -747,7 +747,7 @@ describe('the list page', () => {
       Timeout: '2026-09-28 16:00:00',
       Preserve: pid === '' ? 0 : 1,
     });
-    const listed = [session('ownSess001', '/api/ocupilot/', ''), session('prsvSess02', '/csp/sys/', '4711')];
+    const listed = [session('ownSess001', '/api/ocupilot/', ''), session('prsvSess02', '/csp/sys/', '4711'), session('endSess003', '/api/atelier/', '')];
     const rowFor = (host: HTMLElement, id: string) =>
       Array.from(host.querySelectorAll('.ocu-data-table-body [role="row"]')).find((row) => row.textContent?.includes(id)) as HTMLElement;
 
@@ -790,7 +790,7 @@ describe('the list page', () => {
       expect(page.host().querySelector('[role="dialog"]')).toBeNull();
       expect(page.bodies).toEqual([]);
 
-      (rowFor(page.host(), 'prsvSess02').querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
+      (rowFor(page.host(), 'endSess003').querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
       await settle(page.fixture);
       const offered = page.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
       expect(offered.hasAttribute('aria-disabled')).toBe(false);
@@ -798,8 +798,25 @@ describe('the list page', () => {
       await settle(page.fixture);
       const dialog = page.host().querySelector('[role="dialog"]') as HTMLElement;
       expect(dialog).not.toBeNull();
-      expect(dialog.textContent).toContain(`${STRINGS.webSessionEndAction} prsvSess02`);
+      expect(dialog.textContent).toContain(`${STRINGS.webSessionEndAction} endSess003`);
       expect(dialog.textContent).toContain(STRINGS.webSessionEndConsequence);
+      expect(page.bodies).toEqual([]);
+    });
+
+    it('draws End session refused on a preserve-mode session with the sentence pointing to its process, sending nothing', async () => {
+      // Through the real handler, page and table; only the transport is stubbed.
+      // Mutation (Rule 19): answer '' for a `Preserve` 1 row in `ocupilot-session` -> the entry is
+      // offered and its click opens the dialog, red.
+      const page = await mount(SESSIONS, listed, true, '/web-applications/sessions?ns=HSCUSTOM');
+      (rowFor(page.host(), 'prsvSess02').querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
+      await settle(page.fixture);
+      const refused = page.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+      expect(refused.querySelector('.ocu-data-table-menu-label')?.textContent?.trim()).toBe(STRINGS.webSessionEndAction);
+      expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.webSessionRefusalPreserved);
+      expect(refused.getAttribute('aria-disabled')).toBe('true');
+      refused.click();
+      await settle(page.fixture);
+      expect(page.host().querySelector('[role="dialog"]')).toBeNull();
       expect(page.bodies).toEqual([]);
     });
   });

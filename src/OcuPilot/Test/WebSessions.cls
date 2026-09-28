@@ -1,8 +1,8 @@
 /// <p>Pins Story 16.2's Web sessions list and its end tool over canned reads (AD-5, AD-6, AD-8,
 /// AD-10, AD-51, AD-53): what <class>OcuPilot.Screen.Descriptor.WebSessionList</class> and
 /// <class>OcuPilot.Screen.Tool.WebSessionEnd</class> declare, the card's removal rows, the fresh
-/// read's exact-case compare, the fingerprint's subject, and the prohibited set's own-session arm
-/// on both callers.</p>
+/// read's exact-case compare, the fingerprint's subject, and the prohibited set's own-session and
+/// preserve-mode arms on both callers.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and a caller holding
 /// <code>%All</code>. Every read and write goes through <class>OcuPilot.Test.ProposalFixture</class>'s
 /// port, and the daemon wait through <class>OcuPilot.Test.AwaitPort</class>, so no session on the
@@ -285,6 +285,72 @@ Method TestBothCallersAreRefusedForOcuPilotsOwnSession()
     Do $$$AssertEquals(tVerdict, $Parameter("OcuPilot.Kernel.Proposal.ReadBack", "PRESENT"), "and a session still listed after the write reads back present, the write standing as made")
 }
 
+/// <p>AD-10 as amended 2026-09-28, AD-53: a preserve-mode session, whose own process holds its
+/// lock, is refused <code>PROHIBITED.PRESERVEDSESSION</code> on both callers with nothing sent --
+/// after the own-session arm, whose code a preserve-mode session under OcuPilot's own application
+/// still earns -- while a session under <code>/csp/sys/</code> with <code>Preserve</code> 0 is
+/// still ended, the vendor's <code>AllowEndSession</code> false notwithstanding. The reason is the
+/// published sentence, and the Guardrails page lists the code with it.</p>
+/// <p>Mutation (Rule 19): drop the <code>WebSession</code> branch's
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsPreservedSession</method> refusal -- the set, route
+/// and confirm legs go red.</p>
+Method TestBothCallersAreRefusedForAPreserveModeSession()
+{
+    Set tCode = $Parameter(..#SET, "PRESERVEDSESSION")
+    Set tReason = $Parameter(..#SET, "PRESERVEDSESSIONREASON")
+    For tForm = "number", "boolean" {
+        Set tRow = ..Preserved(..#SESSION, "/api/atelier/")
+        Do tRow.%Set("Preserve", 1, tForm)
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(tRow))
+        Set tSC = ..Ask(..#SESSION, .tProhibits, .tAnswered)
+        Do $$$AssertEquals(tProhibits _ " " _ tAnswered, "1 " _ tCode, "a session whose Preserve reads 1 as a " _ tForm _ " is refused as preserve-mode")
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(..Preserved(..#SESSION, "/api/ocupilot/")))
+    Set tSC = ..Ask(..#SESSION, .tProhibits, .tAnswered)
+    Do $$$AssertEquals(tProhibits _ " " _ tAnswered, "1 " _ $Parameter(..#SET, "OCUPILOTSESSION"), "and one under OcuPilot's own application is refused as OcuPilot's own first")
+
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(..Preserved(..#SESSION, "/api/atelier/")))
+    Set tSC = $ClassMethod(..#ACTION, "Act", "webapp.sessions", {"action": "end", "id": (..#SESSION)}, .tAnswer, .tStatus)
+    Do $$$AssertStatusOK(tSC, "the route answers")
+    Set tEnvelope = ..Parsed(tAnswer)
+    Do $$$AssertEquals(tStatus _ " " _ tEnvelope.%Get("code"), "403 " _ tCode, "the screen's End session is refused as preserve-mode: " _ tAnswer)
+    Do $$$AssertEquals(tEnvelope.%Get("reason"), tReason, "with the published sentence")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing is sent")
+
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited(..#FIXTURESET)
+    Set tSC = ..MintFor(..#SESSION, .tProposal, .tHttp, .tFault, tTurn)
+    Do $$$AssertStatusOK(tSC, "the agent's end mints")
+    If $$$ISOK(tSC) {
+        Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tConfirmCode, .tDetail)
+        Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Get(tConfirmCode), "403 " _ tCode, "and its confirm is refused as preserve-mode")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "with nothing sent")
+    }
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+
+    Set tRow = ..Row(..#SESSION, "/csp/sys/")
+    Do tRow.%Set("AllowEndSession", 0, "boolean")
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(tRow))
+    Set tSC = $ClassMethod(..#ACTION, "Act", "webapp.sessions", {"action": "end", "id": (..#SESSION)}, .tAnswer, .tStatus)
+    Set tEnvelope = ..Parsed(tAnswer)
+    Do $$$AssertEquals(tStatus _ " " _ tEnvelope.%Get("action"), "200 deleted", "a /csp/sys/ session with Preserve 0 is still ended: " _ tAnswer)
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount() _ " " _ ##class(OcuPilot.Test.ProposalFixture).LastType() _ " " _ ##class(OcuPilot.Test.ProposalFixture).LastQuery("id"), "1 DELETE " _ ..#SESSION, "by one DELETE naming it")
+
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode), tReason, "the reason is the published sentence")
+    Set tSC = ##class(OcuPilot.Kernel.Shell.Guardrails).Read(.tAnswer)
+    Do $$$AssertStatusOK(tSC, "the Guardrails page reads")
+    Set tListed = 0
+    If $IsObject($Get(tAnswer)) {
+        Set tIterator = tAnswer.%Get("prohibited").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If (tEntry.code = tCode) && (tEntry.reason = tReason) Set tListed = 1
+        }
+    }
+    Do $$$AssertEquals(tListed, 1, "and lists the code with that sentence")
+}
+
 /// <p>AD-26, AD-58: the port's wait for the daemon never fails the write. A row still listed is
 /// re-read until the bound passes and then left, the fact logged without the session id; a row
 /// already gone, or a list that cannot be read, ends the wait at the first read.</p>
@@ -341,6 +407,17 @@ ClassMethod Row(pId As %String, pApplication As %String, pTimeout As %String = "
     Do tRow.%Set("ID", pId, "string")
     Do tRow.%Set("Application", pApplication, "string")
     Do tRow.%Set("Timeout", pTimeout, "string")
+    Quit tRow
+}
+
+/// <p>One preserve-mode session row as the vendor's <code>LIST</code> answers it: its own process
+/// named, and <code>AllowEndSession</code> false.</p>
+ClassMethod Preserved(pId As %String, pApplication As %String) As %DynamicObject
+{
+    Set tRow = ..Row(pId, pApplication)
+    Do tRow.%Set("Preserve", 1, "number")
+    Do tRow.%Set("SesProcessId", "4242", "string")
+    Do tRow.%Set("AllowEndSession", 0, "boolean")
     Quit tRow
 }
 

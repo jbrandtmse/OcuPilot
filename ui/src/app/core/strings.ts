@@ -3407,6 +3407,9 @@ export const STRINGS = {
   webSessionListPrompt2: 'Which users have more than one web session open?',
   /** EXPERIENCE.md:357 */
   webSessionListPrompt3: 'Which web sessions expire soonest?',
+  /** EXPERIENCE.md:357 */
+  webSessionRefusalPreserved:
+    'This session\'s own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session.',
 } as const;
 
 /**

@@ -7925,6 +7925,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci 2026-09-28: admin DELETE of a Preserve=1 session sat in LOCKW at +69^%CSP.Session.1 (SessionLockTimeout 240 s; lock held by its own SesProcessId) and answered 504 at 60 s, twice; the row stayed listed. With that process terminated, DELETE answered 200 and the row left in about 5 s.
 - 2026-09-28T18:07:16Z status=decision-pending owner=burndown by=cr note=product call asked at cr: refuse Preserve=1 by name (amends Never + AD-10) or publish it as a named gap
 - 2026-09-28T18:11:00Z status=routed owner=16-2-web-sessions-listed-and-ended by=merge_gate note=decided (a), orchestrator: refuse ending a Preserve=1 session by name on both callers before the DELETE; sentence says why and points to Process details
+- 2026-09-28T19:04:41Z status=routed owner=16-2-web-sessions-listed-and-ended by=merge_gate note=refined K: refuse only while the session's own process runs; End stays drawn; test page gated by arming or made at test time
 
 ### DW-1793: AD-26 names only the synchronous and async port paths, and says nothing of AdminPort's bounded post-2xx waits (AWAITEDDELETES, like VERIFIEDDELETES)
 - source: spec-16-2-web-sessions-listed-and-ended.md | severity: low | fix-risk: low | footprint: out-of-footprint

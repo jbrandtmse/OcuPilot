@@ -1,13 +1,15 @@
-/// <p>Pins Story 16.2 against live web sessions (AD-2, AD-8, AD-26, AD-53, AD-58): the declared
-/// read fields held to a live row, <class>OcuPilot.Port.AdminPort</class>'s wait for the daemon, the
-/// screen's End session and the agent's confirm each ending a real session, a principal without
-/// <code>%DB_IRISSYS:WRITE</code> refused by name, and a holder of the area's pairs alone keeping
-/// Web applications while Web sessions is refused.</p>
-/// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as
-/// <class>OcuPilot.Test.Http</class>'s test account, <code>/api/atelier/</code> answering that
-/// account, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class
-/// creates and deletes two users and two roles. Each test seeds its own <code>/api/atelier/</code>
-/// session and ends every one it seeded.</p>
+/// <p>Pins Story 16.2 against live web sessions (AD-2, AD-8, AD-10, AD-26, AD-53, AD-58): the
+/// declared read fields held to a live row, <class>OcuPilot.Port.AdminPort</class>'s wait for the
+/// daemon, the screen's End session and the agent's confirm each ending a real session and each
+/// refused for a preserve-mode one, a principal without <code>%DB_IRISSYS:WRITE</code> refused by
+/// name, and a holder of the area's pairs alone keeping Web applications while Web sessions is
+/// refused.</p>
+/// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and
+/// serving over HTTP as <class>OcuPilot.Test.Http</class>'s test account, <code>/api/atelier/</code>
+/// and <parameter>PRESERVEDPAGE</parameter> answering that account, and
+/// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class creates and
+/// deletes two users and two roles and terminates the process of a preserve-mode session it seeded.
+/// Each test seeds its own sessions and ends every one it seeded.</p>
 Class OcuPilot.Test.WebSessionsLive Extends %UnitTest.TestCase
 {
 
@@ -23,6 +25,10 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
 /// <p>The application whose request leaves a session behind.</p>
 Parameter SEEDPATH = "/api/atelier/";
+
+/// <p>The page whose request leaves a preserve-mode session behind, under the install namespace's
+/// default CSP application (<class>OcuPilot.Test.PreservedSession</class>).</p>
+Parameter PRESERVEDPAGE = "/csp/hscustom/OcuPilot.Test.PreservedSession.cls";
 
 /// <p>A session id no session carries.</p>
 Parameter ABSENT = "OcuNoSessn";
@@ -94,13 +100,16 @@ Method OnBeforeOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>End every session this test seeded that is still listed, and assert none is.</p>
+/// <p>End every session this test seeded that is still listed, and assert none is. A preserve-mode
+/// session's own process holds its lock, so that process is terminated first.</p>
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     For tI = 1:1:$ListLength(..PreparedSeeded) {
         Set tId = $List(..PreparedSeeded, tI)
-        If '..Listed(tId) Continue
+        Set tRow = ..LiveRow(tId)
+        If '$IsObject(tRow) Continue
+        If (tRow.%Get("Preserve") = 1) && (tRow.%Get("SesProcessId") '= "") Do $SYSTEM.Process.Terminate(tRow.%Get("SesProcessId"))
         Kill tQuery
         Set tQuery("id") = tId
         Do ##class(OcuPilot.Port.AdminPort).Invoke("WebSession", "DELETE", .tQuery, "", .tAnswer, .tHttp, .tFault)
@@ -285,24 +294,63 @@ Method TestAnAreaHolderKeepsTheAreaAndIsRefusedWebSessions()
     Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody) _ " " _ ..FailedPair(tBody), "403 AUTH.NOPRIVILEGE %Admin_Operate:USE", "and its read is refused naming that pair")
 }
 
-/// <p>Seed one <parameter>SEEDPATH</parameter> session as the test account, answering its id: the
-/// one row with that user and application the list did not carry before the request.</p>
-Method Seed(Output pId As %String) As %Status
+/// <p>AD-10 as amended 2026-09-28, AD-53: a real preserve-mode session lists with <code>Preserve</code>
+/// the number 1 and its own process, and both callers are refused
+/// <code>PROHIBITED.PRESERVEDSESSION</code> at once, the session still listed: no <code>DELETE</code>
+/// was sent to wait on the lock its process holds.</p>
+/// <p>Mutation (Rule 19): drop the <code>WebSession</code> branch's
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsPreservedSession</method> refusal -- the route's
+/// <code>DELETE</code> waits on the lock and the refused legs go red.</p>
+Method TestAPreserveModeSessionIsRefusedOnBothCallers()
+{
+    Set tCode = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "PRESERVEDSESSION")
+    Set tSC = ..Seed(.tId, ..#PRESERVEDPAGE)
+    Do $$$AssertStatusOK(tSC, "a preserve-mode session is seeded: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tRow = ..LiveRow(tId)
+    Do $$$AssertTrue($IsObject(tRow) && (tRow.%GetTypeOf("Preserve") = "number") && (tRow.%Get("Preserve") = 1) && (tRow.%Get("SesProcessId") '= ""), "the list answers it in preserve mode, as a number, with its own process: " _ $Select($IsObject(tRow): tRow.%ToJSON(), 1: ""))
+    Set tStart = $ZHorolog
+    Set tSC = ..Act(tId, "", "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody), "403 " _ tCode, "the screen's End session is refused as preserve-mode")
+    Do $$$AssertTrue(($ZHorolog - tStart) < 10, "at once: " _ ($ZHorolog - tStart) _ " s")
+    Do $$$AssertEquals(..Listed(tId), 1, "and the session is still listed")
+
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "a turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tArgs = {}
+    Do tArgs.%Set("ID", tId, "string")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint(..#SCREEN, $Parameter(..#TOOL, "TOOLNAME"), $Username, "", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(..#TOOL, "Endpoint"), $ClassMethod(..#TOOL, "IdParam"), tId, $ClassMethod(..#TOOL, "IdArgument"), $ClassMethod(..#TOOL, "SettableFields"), ..#TOOL)
+    Do $$$AssertStatusOK(tSC, "the agent's end mints: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISOK(tSC) {
+        Set tStart = $ZHorolog
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tConfirmCode, .tDetail)
+        Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Get(tConfirmCode), "403 " _ tCode, "and its confirm is refused as preserve-mode")
+        Do $$$AssertTrue(($ZHorolog - tStart) < 10, "at once: " _ ($ZHorolog - tStart) _ " s")
+    }
+    Do $$$AssertEquals(..Listed(tId), 1, "and the session is still listed")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>Seed one session as the test account through <var>pPath</var>, answering its id: the one row
+/// with that user and the path's application the list did not carry before the request.</p>
+Method Seed(Output pId As %String, pPath As %String = {..#SEEDPATH}) As %Status
 {
     Set pId = ""
     Set tSC = ..Ids(.tBefore)
     If $$$ISERR(tSC) Quit tSC
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
-    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#SEEDPATH, tUser, ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", pPath, tUser, ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
     If $$$ISERR(tSC) Quit tSC
-    If tStatus '= 200 Quit $$$ERROR($$$GeneralError, ..#SEEDPATH _ " answered " _ tStatus)
+    If tStatus '= 200 Quit $$$ERROR($$$GeneralError, pPath _ " answered " _ tStatus)
+    Set tApplication = $Piece(pPath, "/", 1, $Length(pPath, "/") - 1) _ "/"
     Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebSession", "LIST", .tNoQuery, "", .tRows, .tHttp, .tFault)
     If $$$ISERR(tSC) Quit tSC
     Set tNew = ""
     Set tIterator = tRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
         If $ListFind(tBefore, tRow.%Get("ID")) Continue
-        If (tRow.%Get("Application") '= ..#SEEDPATH) || (tRow.%Get("Username") '= tUser) Continue
+        If (tRow.%Get("Application") '= tApplication) || (tRow.%Get("Username") '= tUser) Continue
         Set tNew = tNew _ $ListBuild(tRow.%Get("ID"))
     }
     Set ..PreparedSeeded = ..PreparedSeeded _ tNew

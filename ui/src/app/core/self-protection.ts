@@ -78,7 +78,9 @@ export const OCUPILOT_SSL_CONFIGURATION = 'OcuPilotProvider';
  * The rule that protects a web session OcuPilot is itself running in (Story 16.2, AD-10): the
  * instance refuses ending one under an application OcuPilot is served through, or the serving
  * request's own session, whoever asks. The client reads the row's `Application`; the serving
- * request's own session is the instance's alone to know.
+ * request's own session is the instance's alone to know. The same rule then answers a
+ * preserve-mode session (`Preserve` 1), which the instance refuses because its own process holds
+ * its lock.
  */
 export const OCUPILOT_SESSION_RULE = 'ocupilot-session';
 
@@ -125,7 +127,8 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
  * `row` is the row's own fields where the caller holds them. `system-role` reads the key alone;
  * `system-resource` reads the row's `AllowDelete` and answers `''` with no row, where the instance
  * still refuses the write. `ocupilot-session` reads the row's `Application` under the web
- * application's canonical rule, and answers `''` with no row.
+ * application's canonical rule, then its `Preserve` (the list's number 1), and answers `''` with
+ * no row.
  */
 export function selfProtectionReason(
   rule: string,
@@ -145,7 +148,9 @@ export function selfProtectionReason(
     if (typeof application !== 'string' || application === '') return '';
     const canonical = normalizeEntityId(WEB_APPLICATION, application);
     const own = OCUPILOT_APPLICATION_PATHS.some((path) => normalizeEntityId(WEB_APPLICATION, path) === canonical);
-    return own ? STRINGS.webSessionRefusalOcuPilot : '';
+    if (own) return STRINGS.webSessionRefusalOcuPilot;
+    const preserve = row?.['Preserve'];
+    return preserve === 1 || preserve === '1' || preserve === true ? STRINGS.webSessionRefusalPreserved : '';
   }
   if (rule === PROTECTED_ACCOUNT_RULE) {
     const account = normalizeEntityId(USER, rowKey);

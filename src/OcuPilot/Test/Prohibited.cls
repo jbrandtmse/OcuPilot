@@ -669,7 +669,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 19, "the set declares nineteen codes")
+    Do $$$AssertEquals($ListLength(tCodes), 20, "the set declares twenty codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")

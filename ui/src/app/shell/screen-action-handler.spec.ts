@@ -1157,4 +1157,14 @@ describe('the Web sessions list\u2019s End session (Story 16.2)', () => {
     expect(handler.pending()).toBeNull();
     expect(calls).toHaveLength(0);
   });
+
+  it('draws a preserve-mode session refused with the sentence pointing to its process before anything is sent', () => {
+    // Mutation (Rule 19): answer '' for a `Preserve` 1 row in `selfProtectionReason` -> the
+    // dialog opens and the refusal assertion goes red.
+    const { handler, store, calls } = mount(undefined, SESSIONS);
+    handler.startFor(SESSIONS, 'end', ID, { ID, Application: '/csp/hscustom/', Preserve: 1, SesProcessId: '4242' }, store);
+    expect(store.refusal()).toBe(STRINGS.webSessionRefusalPreserved);
+    expect(handler.pending()).toBeNull();
+    expect(calls).toHaveLength(0);
+  });
 });

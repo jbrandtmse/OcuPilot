@@ -2528,7 +2528,9 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// by <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSSLREASON</parameter> and refused by
 /// the kernel whatever the caller. <code>ocupilot-session</code> is a web session OcuPilot is itself
 /// running in (Story 16.2), explained by
-/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSESSIONREASON</parameter> and refused by
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSESSIONREASON</parameter>, and then a
+/// preserve-mode session, explained by
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.PRESERVEDSESSIONREASON</parameter>, each refused by
 /// the kernel whatever the caller.</p>
 Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session";
 

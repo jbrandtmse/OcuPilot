@@ -6233,7 +6233,7 @@ So that I can clear a stuck or unwanted session from here.
 
 - **Given** a session
 - **When** the user ends it
-- **Then** it ends, confirming by naming the session, and the row leaves the list; a preserve-mode session, whose own process holds its lock, is instead refused by name on both callers, saying why and pointing to that process in Process details, where it can be terminated [AMENDED 2026-09-28, orchestrator merge gate, Rule 5, DW-1792].
+- **Then** it ends, confirming by naming the session, and the row leaves the list; a preserve-mode session is instead refused by name on both callers while its own process runs, saying why (that process holds its lock) and pointing to the process in Process details; once the process is terminated, the session ends [AMENDED 2026-09-28, orchestrator merge gate, Rule 5, DW-1792].
 
 - **Given** a session **OcuPilot is itself running in** [AMENDED 2026-09-28 — see the story change log]
 - **When** an end is attempted

@@ -263,6 +263,9 @@ const KERNEL_REFUSALS = [
   // Story 16.2: a web session OcuPilot is itself running in, whose End session the Web sessions
   // list draws refused before a click with this same sentence.
   ['OCUPILOTSESSION', 'webSessionRefusalOcuPilot'],
+  // Story 16.2 (DW-1792): a preserve-mode web session, whose own process holds its lock, whose End
+  // session the Web sessions list draws refused before a click with this same sentence.
+  ['PRESERVEDSESSION', 'webSessionRefusalPreserved'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -323,4 +326,30 @@ test("Story 16.2: ocupilot-session answers a row under one of OcuPilot's own app
   }
   assert.equal(selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId'), '', 'with no row the instance alone refuses');
   assert.equal(selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId' }), '', 'and a row with no application is the instance\'s to refuse');
+});
+
+test('Story 16.2 (DW-1792): ocupilot-session answers a preserve-mode row, in the form the list answers, after the OcuPilot check', async () => {
+  // Mutation (Rule 19): answer '' for a `Preserve` 1 row in `ocupilot-session` -> the preserve-mode
+  // legs go red; check `Preserve` before the application -> the OcuPilot-first leg goes red.
+  const { selfProtectionReason, OCUPILOT_SESSION_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  for (const preserve of [1, '1', true]) {
+    assert.equal(
+      selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId', Application: '/csp/hscustom/', Preserve: preserve, SesProcessId: '4242' }),
+      STRINGS.webSessionRefusalPreserved,
+      `a session whose Preserve reads ${JSON.stringify(preserve)} is refused as preserve-mode`
+    );
+  }
+  assert.equal(
+    selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId', Application: '/api/ocupilot/', Preserve: 1 }),
+    STRINGS.webSessionRefusalOcuPilot,
+    'a preserve-mode session under OcuPilot\'s own application answers the OcuPilot sentence first'
+  );
+  for (const preserve of [0, '0', false, undefined]) {
+    assert.equal(
+      selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId', Application: '/csp/sys/', Preserve: preserve }),
+      '',
+      `a /csp/sys/ session whose Preserve reads ${JSON.stringify(preserve)} may be ended`
+    );
+  }
 });

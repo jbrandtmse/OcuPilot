@@ -8,11 +8,16 @@
  * with the verb and the session id and stating the published consequence; a case twin of the id
  * sends nothing, the exact id sends one request, and the row leaves on the re-read that follows.
  * With the dialog open, the screen passes the structural and contrast checks at 1280 light, 720
- * light and 1280 dark, with no entry beyond the baseline (DW-1337).
+ * light and 1280 dark, with no entry beyond the baseline (DW-1337). A real preserve-mode session,
+ * opened through `OcuPilot.Test.PreservedSession` under `/csp/hscustom/`, lists with its process
+ * linked to Process details, and its End session is drawn refused with the published sentence that
+ * points to that process, sending nothing.
  *
- * **It ends web sessions**, so it runs on a throwaway only. It seeds each session itself as the
- * configured account over HTTP, reads its id from the admin API's `WebSession` `LIST` through
- * `docker exec`, and its `after` hook ends every session it seeded that is still listed.
+ * **It ends web sessions and terminates processes**, so it runs on a throwaway only. It seeds each
+ * session itself as the configured account over HTTP, reads its id from the admin API's
+ * `WebSession` `LIST` through `docker exec`, and its `after` hook ends every session it seeded that
+ * is still listed, terminating a preserve-mode session's own process first, since that process
+ * holds the session's lock.
  *
  * Run: `node --test --test-concurrency=1 browser/web-sessions.browser-spec.mjs` (after
  * `npm run build`, the bundle copied into the throwaway, and `sh scripts/ci-throwaway.sh up`).
@@ -35,39 +40,50 @@ const ROUTE = 'web-applications/sessions';
 const LIST_URL = `/ocupilot/${ROUTE}?ns=HSCUSTOM`;
 const ACTION_PATH = '/api/ocupilot/screens/webapp.sessions/action';
 const SEED_PATH = '/api/atelier/';
+const PRESERVED_PATH = '/csp/hscustom/OcuPilot.Test.PreservedSession.cls';
 
 let browser = null;
 const seeded = [];
 
-/** The session ids the admin API's `WebSession` `LIST` carries now, with each row's user and application. */
+/**
+ * The session ids the admin API's `WebSession` `LIST` carries now, with each row's user, application,
+ * `Preserve` and process.
+ */
 function listed() {
   const output = runIris(config.container, [
     'Kill q Set sc=##class(OcuPilot.Port.AdminPort).Invoke("WebSession","LIST",.q,"",.rows,.http,.fault)',
-    'Set out="" If $System.Status.IsOK(sc) { Set it=rows.%GetIterator() While it.%GetNext(.i,.row) { Set out=out_$Select(out="":"",1:";")_row.ID_"|"_row.Username_"|"_row.Application } }',
+    'Set out="" If $System.Status.IsOK(sc) { Set it=rows.%GetIterator() While it.%GetNext(.i,.row) { Set out=out_$Select(out="":"",1:";")_row.ID_"|"_row.Username_"|"_row.Application_"|"_row.Preserve_"|"_row.SesProcessId } }',
     'Write "OCU-WSLIST-START:"_$Select($System.Status.IsOK(sc):"ok",1:"fail")_"#"_out_":OCU-WSLIST-END",!',
   ]);
   const value = markerValue(output, 'WSLIST');
   assert.ok(value !== null && value.startsWith('ok#'), `the admin list answers: ${output}`);
   const body = value.slice(3);
   return body === '' ? [] : body.split(';').map((entry) => {
-    const [id, user, application] = entry.split('|');
-    return { id, user, application };
+    const [id, user, application, preserve, pid] = entry.split('|');
+    return { id, user, application, preserve, pid };
   });
 }
 
-/** Seed one `/api/atelier/` session as the configured account, answering its id. */
-async function seed() {
+/** Seed one session as the configured account by requesting `path`, answering its id. */
+async function seed(path = SEED_PATH) {
+  const application = path.slice(0, path.lastIndexOf('/') + 1);
   const before = new Set(listed().map((row) => row.id));
-  const answer = await fetch(`${config.origin}${SEED_PATH}`, { headers: { Authorization: authHeader(config) } });
-  assert.equal(answer.status, 200, `${SEED_PATH} answers the configured account (HTTP ${answer.status})`);
-  const fresh = listed().filter((row) => !before.has(row.id) && row.application === SEED_PATH && row.user === config.username);
+  const answer = await fetch(`${config.origin}${path}`, { headers: { Authorization: authHeader(config) } });
+  assert.equal(answer.status, 200, `${path} answers the configured account (HTTP ${answer.status})`);
+  const fresh = listed().filter((row) => !before.has(row.id) && row.application === application && row.user === config.username);
   seeded.push(...fresh.map((row) => row.id));
   assert.equal(fresh.length, 1, `the request left one new session: ${JSON.stringify(fresh)}`);
   return fresh[0].id;
 }
 
-/** End session `id` through the admin API, as a teardown step. */
+/**
+ * End session `id` through the admin API, as a teardown step. A preserve-mode session's own process
+ * holds its lock, so that process is terminated first.
+ */
 function endSession(id) {
+  const row = listed().find((candidate) => candidate.id === id);
+  if (row === undefined) return;
+  if (row.preserve === '1' && /^\d+$/.test(row.pid)) runIris(config.container, [`Do $SYSTEM.Process.Terminate(${row.pid})`]);
   runIris(config.container, [`Kill q Set q("id")="${escapeOs(id)}" Set sc=##class(OcuPilot.Port.AdminPort).Invoke("WebSession","DELETE",.q,"",.r,.h,.f)`]);
 }
 
@@ -262,6 +278,45 @@ test('AC2: End session types the session id, sends one request on the exact id, 
     assert.equal(posts[0].method, 'POST');
     assert.deepEqual(JSON.parse(posts[0].body), { action: 'end', id });
     assert.equal(listed().some((row) => row.id === id), false, 'and the instance no longer carries the session');
+  } finally {
+    await context.close();
+  }
+});
+
+// DW-1792. Mutation (Rule 19): answer '' for a `Preserve` 1 row in `selfProtectionReason`'s
+// `ocupilot-session` branch, then rebuild and redeploy -> the entry is offered and the refusal
+// assertions go red.
+test('DW-1792: a real preserve-mode session lists with its process linked, and its End session is drawn refused with the sentence pointing to that process', async () => {
+  const id = await seed(PRESERVED_PATH);
+  const session = listed().find((row) => row.id === id);
+  assert.equal(session?.preserve, '1', `the page left a preserve-mode session: ${JSON.stringify(session)}`);
+  assert.match(session.pid, /^\d+$/, 'with its own process');
+  const { context, page, posts } = await atList();
+  try {
+    await selectSession(page, id);
+    const cell = await page.evaluate((rowSelector) => {
+      const link = document.querySelector(`${rowSelector}[aria-selected="true"] [role="gridcell"] .ocu-data-table-link`);
+      return link === null ? null : { text: link.textContent.trim(), href: link.getAttribute('href') };
+    }, ROW_SELECTOR);
+    assert.equal(cell?.text, session.pid, 'the Process cell carries the session\'s own process');
+    assert.ok(cell.href.includes(`/os-management/processes/details/${session.pid}`), `and links to its Process details: ${cell.href}`);
+
+    await page.click(`${ROW_SELECTOR}[aria-selected="true"] .ocu-data-table-trigger`);
+    await page.waitForSelector('[role="menu"]', { timeout: config.navigationTimeoutMs });
+    const entry = await page.evaluate((label) => {
+      const item = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]')).find(
+        (candidate) => candidate.querySelector('.ocu-data-table-menu-label')?.textContent.trim() === label
+      );
+      if (item === undefined) return null;
+      const refused = { disabled: item.getAttribute('aria-disabled'), reason: item.querySelector('.ocu-data-table-menu-reason')?.textContent.trim() ?? '' };
+      item.click();
+      return refused;
+    }, STRINGS.webSessionEndAction);
+    assert.deepEqual(entry, { disabled: 'true', reason: STRINGS.webSessionRefusalPreserved }, 'End session is drawn refused with the sentence pointing to the process');
+    await frames(page);
+    assert.equal(await page.$('app-typed-name-dialog'), null, 'and its click opens no dialog');
+    assert.equal(posts.length, 0, 'and sends nothing');
+    assert.equal(listed().some((row) => row.id === id), true, 'the session is still listed');
   } finally {
     await context.close();
   }
