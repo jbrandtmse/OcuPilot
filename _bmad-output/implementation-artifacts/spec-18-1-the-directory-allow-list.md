@@ -5,7 +5,7 @@ created: '2026-09-27'
 status: 'done'
 review_loop_iteration: 0
 baseline_revision: '42b525899b46d1509fcb9412c28f32e286c6a538'
-baseline_commit: 'b41037bc6932e90e5719c13f9bdee045b96af678'
+baseline_commit: '42b525899b46d1509fcb9412c28f32e286c6a538'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
