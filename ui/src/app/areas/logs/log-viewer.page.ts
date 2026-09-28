@@ -5,6 +5,7 @@ import { ExplainEntry } from '../../core/explain-entry';
 import { isBannerFault } from '../../core/fault';
 import { formatDeniedAction, NavigationService } from '../../core/navigation';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { ScreenArrivals, type ArrivalEntry } from '../../core/screen-arrival';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
@@ -43,6 +44,20 @@ interface RowView {
   readonly match: boolean;
   /** The entry as its screen's context declares it, which "Explain this entry" sends (Story 11.2). */
   readonly entry: { readonly time: string; readonly severity: string; readonly text: string };
+  /** Whether this is the entry the log hub opened the viewer at (Story 16.9). */
+  readonly current: boolean;
+}
+
+/** U+2026, the mark a cut text ends with, as an escape (Rule 14). */
+const ELLIPSIS = '\u2026';
+
+/**
+ * The first of `lines` that is `entry`: the same stamp, and a raw line holding its text, less a
+ * trailing U+2026 where the text was cut. `null` when none is (Story 16.9).
+ */
+export function arrivalLine(lines: readonly LogLine[], entry: ArrivalEntry): LogLine | null {
+  const text = entry.text.endsWith(ELLIPSIS) ? entry.text.slice(0, -ELLIPSIS.length) : entry.text;
+  return lines.find((line) => line.stamp === entry.time && line.raw.includes(text)) ?? null;
 }
 
 /** One option of the file choice: `value` is `''` for the source's own file (Story 16.20). */
@@ -187,6 +202,12 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
       }
     </div>
 
+    @if (showEntryGone) {
+      <p class="ocu-banner ocu-banner-info ocu-log-viewer-entry-gone" role="status" data-ocu-log="entry-gone">
+        {{ STRINGS.logViewerEntryGone }}
+      </p>
+    }
+
     @if (showRefusal) {
       <div class="ocu-data-table-refusal" role="alert" data-ocu-log="refusal">
         <span class="ocu-data-table-refusal-message">{{ refusalMessage }}</span>
@@ -215,7 +236,10 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
                 class="ocu-log-row"
                 role="listitem"
                 [class.ocu-log-row-match]="row.match"
+                [class.ocu-log-row-current]="row.current"
                 [class.ocu-log-row-explain]="explainShown"
+                [attr.aria-current]="row.current ? 'true' : null"
+                [attr.tabindex]="row.current ? -1 : null"
                 [attr.data-ocu-row]="row.key"
                 [attr.data-ocu-severity]="row.chip"
               >
@@ -272,6 +296,15 @@ export class LogViewerPage {
 
   /** The "Explain this entry" hand-off (Story 11.2). Optional, so a spec that needs none provides none. */
   private readonly explainEntry = inject(ExplainEntry, { optional: true });
+
+  /** The log hub's hand-off of the entry to open at (Story 16.9). Optional, so a spec that needs none provides none. */
+  private readonly arrivals = inject(ScreenArrivals, { optional: true });
+
+  /** The line the log hub opened this viewer at, or `null`. */
+  private currentLine: LogLine | null = null;
+
+  /** Whether the entry the log hub opened this viewer at was not in the window it read. */
+  private entryGoneValue = false;
 
   /** The screen this page renders, which an explained entry is sent as. */
   private readonly screen: ScreenDeclaration | null;
@@ -340,9 +373,55 @@ export class LogViewerPage {
       stopRefreshAction?.();
       stopAddress.unsubscribe();
     });
-    if (!this.store.loaded() && !this.store.loading()) void this.store.open();
+    // Story 16.9: an entry the log hub's timeline was opened at reads the newest window afresh and
+    // marks that entry, or says it has left the window. A person's click, so nothing is announced.
+    const arrival = screen === null ? null : (this.arrivals?.take(screen.route) ?? null);
+    const stopArrivals =
+      screen === null
+        ? null
+        : (this.arrivals?.subscribe(() => {
+            const next = this.arrivals?.take(screen.route) ?? null;
+            if (next?.entry !== undefined) this.openAt(next.entry);
+          }) ?? null);
+    inject(DestroyRef).onDestroy(() => stopArrivals?.());
+    if (arrival?.entry !== undefined) this.openAt(arrival.entry);
+    else if (!this.store.loaded() && !this.store.loading()) void this.store.open();
     if (source.filesPath !== undefined && !this.store.filesLoaded()) void this.store.loadFiles();
     this.publishRows();
+  }
+
+  /**
+   * Read the newest window and mark `entry` in it: `aria-current`, highlighted, scrolled into view
+   * and focused. An entry the window no longer holds leaves the info sentence instead; a refused
+   * read leaves its own refusal.
+   */
+  private openAt(entry: ArrivalEntry): void {
+    this.chipValue = '';
+    this.currentLine = null;
+    this.entryGoneValue = false;
+    this.generation.update((value) => value + 1);
+    void this.store.open().then(() => {
+      if (!this.store.loaded() || this.store.fault() !== null) return;
+      this.currentLine = arrivalLine(this.store.lines(), entry);
+      this.entryGoneValue = this.currentLine === null;
+      this.generation.update((value) => value + 1);
+      if (this.currentLine === null) return;
+      afterNextRender(
+        () => {
+          const row = this.viewport()?.nativeElement.querySelector<HTMLElement>('[aria-current="true"]') ?? null;
+          if (row === null) return;
+          if (typeof row.scrollIntoView === 'function') row.scrollIntoView({ block: 'center' });
+          row.focus();
+        },
+        { injector: this.injector }
+      );
+    });
+  }
+
+  /** Whether the entry the log hub opened this viewer at has left the window it read. */
+  protected get showEntryGone(): boolean {
+    this.generation();
+    return this.entryGoneValue;
   }
 
   /** The rotated file the address names, `''` for none or for a source that lists no files. */
@@ -436,6 +515,7 @@ export class LogViewerPage {
       raw: line.raw,
       match: matchesSearch(line, needle),
       entry: { time: line.stamp, severity: line.severity, text: line.text },
+      current: line === this.currentLine,
     }));
   }
 

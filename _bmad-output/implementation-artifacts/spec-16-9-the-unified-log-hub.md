@@ -2,9 +2,10 @@
 title: 'Story 16.9: The unified log hub'
 type: 'feature'
 created: '2026-09-27'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+baseline_revision: '7ed5b617ac47e64b714b6b83e503264198fe81b7'
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
 warnings: ['oversized']
@@ -277,6 +278,34 @@ Client (`ui/src/app/`):
 
 ## Review Triage Log
 
+### 2026-09-28 — Review pass
+
+- verdicts: 22 findings — high 0, medium 10, low 10, false 2, maybe-false 0 (plus one stage-agent finding, medium)
+- findings:
+  - `[medium]` `[patch]` VG: `Read.Execute` carrying the port's cut into `truncated` had no test — added `Test/LogSourceReadFixture.cls` and a declared-read leg in `LogSource` (long file: fewer rows than the cap, truncated 1; short file 0).
+  - `[medium]` `[patch]` VG: AC4's UTC→local leg could not fail on a UTC instance and was clock-bound — `Timeline.LocalTime` seam; `LogHubFixture.Offset` runs the fixture clock +2h; the leg asserts the shifted times and the merge on them.
+  - `[medium]` `[patch]` VG: `RecentErrors`' cap and `truncated` untested — `LogHubErrors` seeds a second error and pins cap 1 (newest row, cut) and an uncut read.
+  - `[medium]` `[patch]` VG: the hub's Download CSV never ran — `log-hub.page.spec.ts` captures the Blob under Source + text filters.
+  - `[low]` `[patch]` VG: `ScreenRead` timeline row-shape loop could run zero times — an unbounded (`since` "") read with a rows floor.
+  - `[low]` `[patch]` VG: `LogHub` 403 leg guarded by `If $IsObject` — presence asserted first.
+  - `[medium]` `[patch]` VG: CSV registration-only check (grouped with the CSV entry above).
+  - `[low]` `[patch]` VG: AC1 and AC9 had no `mutation:` line — mutations applied, observed red, reverted, recorded in `## Verification`.
+  - `[low]` `[reject]` VG: NFR-1 timing not recorded — it belongs in `## Auto Run Result`, which finalize writes; measured and recorded there.
+  - `[low]` `[reject]` IA: Sources and Timeline stacked, not side by side — Design Note 1 reads "beside" as both sections on one page; side by side would force the 40rem table and 48rem rows into sideways scroll at the wide viewport. Not a direct correction.
+  - `[medium]` `[patch]` IA: the instance-clock conversion is not observable on UTC instances (grouped with the AC4 entry above).
+  - `[low]` `[patch]` IA: the tool schema said `sources` counts "these rows", but the count precedes the tool's own filter and cap — description corrected in `Tool/Read.cls`.
+  - `[medium]` `[patch]` IA: Download CSV via a page action, untested (grouped with the CSV entry). `visible()` is the store's own view, so the file follows the screen.
+  - `[false]` `[reject]` IA: an explicit empty `since` means no bound — the Tasks seed `since` "as any declared datetime criterion", whose convention is an empty string for an unset bound.
+  - `[medium]` `[patch]` IA: nothing pinned that the real member read gives audit `beginDateTime` — extracted `Timeline.MemberCriteria`, pinned by a `LogHub` leg.
+  - `[medium]` `[patch]` IA: no test combined a real member with truncation (grouped with the `Execute` port-cut entry).
+  - `[low]` `[reject]` IA: the one-hour default is indistinguishable from UTC on a UTC instance — `HoursAgo` is pre-existing and unchanged. A clock seam in that shared method is not a direct correction.
+  - `[low]` `[reject]` IA: "scrolled into view" not asserted, and focus moves — `focus()` scrolls the row into view itself, so a position check cannot discriminate, and the Tasks line says "focus it".
+  - `[low]` `[patch]` IA: the audit browser leg waited for any dialog — it now asserts the Begin/End criteria read the entry's second and the next.
+  - `[medium]` `[patch]` IA: hub → application error detail untested end to end — the browser spec seeds one USER error and walks a timeline error row to `[data-ocu-level="detail"]`.
+  - `[low]` `[patch]` IA: the seeded browser row checked only "a last entry exists" — counts now include errors and audit, and eventlog/xdbc's last entry is the seed.
+  - `[false]` `[reject]` IA: `Test/ErrorLog.cls` change outside the intent — a test adaptation that still asserts a cap-of-one cut, on a date holding two or more errors.
+  - `[medium]` `[patch]` stage agent: the application error log's `last` was null when it had no error on or after the bound's date, against the intent's "whether or not it is inside the window". Fixed: `RecentErrorsRead` reads a namespace's newest date when none is on or after the bound (still bounded at `maxRows`+1 per namespace). `LogHubErrors` pins it with a bound of tomorrow. The Tasks line "dates on or after `since`'s date" now also reads that one date.
+
 ## Design Notes
 
 **Members and projection** (this is the order of the side bar, and so of `sources` and of merge ties):
@@ -361,7 +390,56 @@ Client (`ui/src/app/`):
 - `cd ui && npm test`, `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh` (once, before dev_complete). Expect green, and the bundle under 2004 kB. Record the hub read time for NFR-1.
 - The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before dev_complete). Expect green. The full browser suite runs in CI, not locally (Rule 29).
 
+**Mutations observed (Rule 19, each reverted byte-identical; ObjectScript on `ocupilot-ci` with subclasses recompiled, the browser one on a rebuilt, redeployed bundle):**
+
+- mutation: `screen-mirror.mjs` `timelineProblem` accepts a timeline outside `logs` → `screen-mirror.test.mjs` ReadSourceCorpus case red.
+- mutation: `timelineMemberProblem` drops its listed-member test → `screen-mirror.test.mjs` timeline-member case red.
+- mutation: Sources counts from unfiltered rows → `log-hub.page.spec.ts` AC7 case red.
+- mutation: a Sources row's Explain sends every row → `log-hub.page.spec.ts` AC2/AC8 case red.
+- mutation: `LogViewerPage` ignores the arrival → `log-viewer.spec.ts` two Story 16.9 cases red.
+- mutation: `ErrorLogPage` ignores its id route → `error-log.page.spec.ts` id-route drill red.
+- mutation: `app.ts` drops `logHub.reset()` → `app.spec.ts` sign-out case red.
+- mutation: `Timeline.Compose` reads a refused member → `LogHub` zero-read leg red.
+- mutation: `Timeline.Compose` ignores a member's cut → `LogHub` truncation leg red.
+- mutation: `Timeline.Project` projects the audit stamp with `ClockStamp` instead of `LocalTime`, under the fixture's +2h clock → `LogHub` projection leg red.
+- mutation: `Timeline.Compose` merges ascending → `LogHub` merge, window, cut and projection legs red.
+- mutation: `Read.Execute` timeline branch skips the bound refusal → `LogHub` bad-bound leg red.
+- mutation: `Registry.TimelineProblem` accepts any area → `ReadTool` ReadSourceCorpus leg red.
+- mutation: `%Ens_EventLog:USE` added to `LogHub`'s privileges → `LogHubWire` principal leg red, the hub answering 403 naming that pair.
+- mutation: `Tool.Read.View` drops `sources` → `LogHubWire` route/tool leg red.
+- mutation: `Read.Execute` drops `sources` → `ScreenRead` timeline executor leg red.
+- mutation: `LogSourcePort.Rows` drops the tail's size cut → `LogSource` tail-cut leg red; drops `Recent`'s cut → `LogSecondary` merge leg red.
+- mutation: `RecentErrors` drops the `[NS] ` prefix → `LogHubErrors` red.
+- mutation: `LogHubPage.onOpenEntry` sets no arrival → `log-hub.browser-spec.mjs` AC8 viewer leg red.
+- mutation (AC1): `Timeline.Members` keeps a timeline, so the hub joins its own roster → `LogHub` roster leg red; `Compose` takes `last` from window rows only → `LogHub` last-entry leg red; `RecentErrorsRead` reads no date before the bound → `LogHubErrors` last-entry legs red.
+- mutation (AC9): `strings.ts` `logHubLabel` reads 'Unified log hubs' → three `tools/strings.test.mjs` parity cases red.
+- mutation: `Read.Execute` drops the port's cut → `LogSource` declared-read leg red; `Timeline.MemberCriteria` gives audit no begin → `LogHub` begin leg red.
+- mutation: `RecentErrors` answers `truncated` 0 → `LogHubErrors` cap leg red; skips the per-namespace gate → `LogHubErrors` namespace leg red.
+- mutation: `LogHubPage.downloadCsv` writes `hub.rows()` → `log-hub.page.spec.ts` CSV case red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** `logs/hub` ("Unified log hub"): the `timeline` read kind (`Screen/Timeline.cls`) gates and reads each listed Logs screen through its own gate and read. The application error log is read through `LogSourcePort.RecentErrors`. Rows are projected to the instance clock, windowed by `since`, merged newest first, and answered with `sources`. `LogHubStore` and `LogHubPage` (Sources and Timeline, three filters, open-at-entry, Explain) sit on the client; the log viewer marks an arrival entry, the error log drills its id route, and `Rows` reports the port's own cut.
+
+**Files.**
+
+- Server: `Screen/Timeline.cls`, `Screen/Descriptor/LogHub.cls` (new); `Port/LogSourcePort.cls` (`RecentErrors`, the `Rows` cut), `Screen/Read.cls` (timeline branch), `Screen/Registry.cls` (`TimelineProblem`, `TimelineMemberProblem`), `Screen/Tool/Read.cls` (`sources`), `Api/ScreenRead.cls` (doc).
+- Server tests: `LogHub`, `LogHubWire`, `LogHubErrors`, `LogHubFixture`, `LogHubReadFixture`, `LogSourceReadFixture` (new); legs or rows in `Descriptor`, `Navigation`, `ReadTool`, `ScreenRead`, `LogSource`, `LogSecondary`, `WireSecurityRead`, `SurfaceCoverage`, `ErrorLog`, `ReadSourceCorpus`, `CriteriaCorpus`, `AdminPairCorpus`.
+- Client: `log-hub.store.ts`, `log-hub.page.ts` (new); `log-viewer.page.ts`, `error-log.page.ts`, `error-log.store.ts`, `screen-arrival.ts`, `csv.ts` (`saveCsv`), `screen-outlet.ts`, `app.ts`, `strings.ts`, `_components.scss`, `screens.generated.ts`, `tools/screen-mirror.mjs`.
+- Client tests: `log-hub.page.spec.ts`, `browser/log-hub.browser-spec.mjs` (new); cases in `log-viewer.spec.ts`, `error-log.page.spec.ts`, `explain-roster.spec.ts`, `app.spec.ts`, `tools/navigation.test.mjs`, `tools/screen-arrival.test.mjs`, `tools/screen-mirror.test.mjs`.
+- Docs and rosters: EXPERIENCE.md in place (993 lines; `:627` cited for the log viewer where the Design Notes quote `:629`); `scripts/ci-throwaway.sh` roster comments (add-only).
+
+**Review.** 22 layer findings plus one stage finding (triage log). 17 were patched, as 7 medium entries and 6 low. None was deferred. Rejected: NFR-1 not recorded (recorded here), the stacked layout (Design Note 1), the UTC default hour (pre-existing `HoursAgo`), and scroll-into-view (`focus()` scrolls). False: the empty `since` and the `ErrorLog` test adaptation. Follow-up review recommended: 7 medium entries patched. The named risk: `RecentErrorsRead` now reads each namespace's newest pre-window date on most hub reads, bounded at `maxRows`+1 per namespace. It was timed only on `ocupilot-ci`'s few namespaces and is unmeasured with many namespaces holding large error dates.
+
+**Verification.**
+
+- `npm run test:tools`: 1,613 green. `npm test`: 1,613 tools and 1,615 component tests green. `check-objectscript`: 0 problems. `lint-docs`: 0 issues.
+- Targeted classes on `ocupilot-ci`: green. The Matrix audit added legs for the fresh default, the namespace skip, the member fault and a caller naming a source. Every mutation line in `## Verification` was observed red and reverted byte-identical.
+- Browser: `log-hub` 6/6. The spec's other loop files: 58/60. The 2 `alerts-log` failures are throwaway residue: its seeded 1970 lines, written once, now sit outside the 64 KB tail of a 169 KB `alerts.log`.
+- Full ObjectScript sweep on `ocupilot-ci`: 332 classes, 2,587 tests, 5 failed, plus 19 classes refused at `OnBeforeAllTests`. All of it is residue: arming variables this throwaway lacks (`TASK_CONTROL`, `ERROR_DELETE`, `AUDIT_PURGE`, `AUDIT_TOGGLE`, `ACCOUNT_PREFERENCES`, `PROCESS_CONTROL`, `SERVICE_CONFIG`); `WireSecurityRead`'s task-history leg (DW-1425/DW-1468); three `TaskHistory` demo-run legs, likely the same old-row residue (inference); and `Retention` finding expired rows from older suites. Every Logs and story class is green.
+- NFR-1: the hub read over HTTP at 1,000 rows takes 0.19–0.21 s. Bundle: 2,002,678 bytes (main 1,831,897 + styles 170,781), under the 2004 kB warning with no budget message.
+
+**Residual risk.** The handoff subagent loaded ten classes into the dev instance `ocupilot`, which holds an older tree, and then restored eight from `d757343a` and deleted `LogHub`/`Timeline`. Registry `Validate` passes and the audit read answers 200 there, but `Screen/Registry.cls` may not be byte-identical to what it held.

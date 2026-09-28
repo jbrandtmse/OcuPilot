@@ -7,6 +7,7 @@ import { ApiService, type JsonResult } from '../../core/api';
 import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../../core/explain-entry';
 import { NavigationService } from '../../core/navigation';
 import { ScreenActions } from '../../core/screen-actions';
+import { ScreenArrivals } from '../../core/screen-arrival';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
@@ -132,7 +133,8 @@ describe('LogViewerPage', () => {
    */
   async function mount(
     screen = ALERTS_SCREEN,
-    address = ''
+    address = '',
+    arrivals: ScreenArrivals | null = null
   ): Promise<{ fixture: ComponentFixture<LogViewerPage>; store: LogViewerStore }> {
     TestBed.configureTestingModule({
       providers: [
@@ -144,6 +146,7 @@ describe('LogViewerPage', () => {
         },
         { provide: ScreenActions, useValue: new ScreenActions() },
         { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
+        ...(arrivals === null ? [] : [{ provide: ScreenArrivals, useValue: arrivals }]),
       ],
     });
     if (address !== '') await TestBed.inject(Router).navigateByUrl(address);
@@ -195,6 +198,41 @@ describe('LogViewerPage', () => {
     expect(rendered[0][1]).toBe(STRINGS.tableEmptyValue);
     expect(rendered[0][2]).toBe(STRINGS.tableEmptyValue);
     expect(rendered[0][3]).toContain('a fragment of the line above the window');
+  });
+
+  // Story 16.9, AC8. Mutation (Rule 19): ignore the arrival in the page's constructor -> the mark
+  // assertions go red.
+  it('Story 16.9: an arrival from the log hub marks the chosen line, current and focusable', async () => {
+    const arrivals = new ScreenArrivals();
+    arrivals.set({ route: 'logs/alerts', criterion: '', criteria: {}, entry: { time: '2026-09-18T07:33:56.057', text: 'an informational entry' } });
+    const { fixture } = await mount(ALERTS_SCREEN, '', arrivals);
+    await settle();
+    fixture.detectChanges();
+    const current = fixture.nativeElement.querySelectorAll('[aria-current="true"]');
+    expect(current).toHaveLength(1);
+    expect((current[0] as HTMLElement).classList.contains('ocu-log-row-current')).toBe(true);
+    expect((current[0] as HTMLElement).getAttribute('tabindex')).toBe('-1');
+    expect((current[0] as HTMLElement).textContent).toContain('an informational entry');
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="entry-gone"]')).toBeNull();
+    expect(arrivals.take('logs/alerts')).toBeNull();
+  });
+
+  it('Story 16.9: a text cut at U+2026 still finds its line, and an entry no longer in the window says so', async () => {
+    const arrivals = new ScreenArrivals();
+    arrivals.set({ route: 'logs/alerts', criterion: '', criteria: {}, entry: { time: '2026-09-18T07:33:42.173', text: '[OcuPilot] a sev\u2026' } });
+    const { fixture } = await mount(ALERTS_SCREEN, '', arrivals);
+    await settle();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[aria-current="true"]')?.textContent).toContain('a severe entry');
+
+    TestBed.resetTestingModule();
+    const gone = new ScreenArrivals();
+    gone.set({ route: 'logs/alerts', criterion: '', criteria: {}, entry: { time: '2026-09-17T00:00:00.000', text: 'long gone' } });
+    const second = await mount(ALERTS_SCREEN, '', gone);
+    await settle();
+    second.fixture.detectChanges();
+    expect(second.fixture.nativeElement.querySelector('[aria-current="true"]')).toBeNull();
+    expect(textOf(second.fixture, '[data-ocu-log="entry-gone"]')).toBe(STRINGS.logViewerEntryGone);
   });
 
   it('AC5: Load newer asks for one page from the held offset and identity', async () => {

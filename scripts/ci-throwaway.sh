@@ -228,6 +228,7 @@ services:
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
+      # classes: LogHubWire
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -237,6 +238,7 @@ services:
       # classes: SecretLeak, SecretStoreProbe
       # It also covers the seeded injection's append-only messages.log line and failed-login audit row.
       # classes: InjectionChannels, InjectionCompromised, InjectionSeed
+      # classes: LogHubErrors
       OCUPILOT_ALLOW_ERROR_SEED: "1"
       # Deletes OcuPilot's own audit event registrations to prove an unregistered triple drops
       # its row, then reinstalls to put them back -- the configuration triple, and the BASELINE

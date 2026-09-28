@@ -1,7 +1,7 @@
 /**
  * A data table's view as a CSV file (Story 16.23): the field encoder, the file text and its name.
  * `shell/data-table.ts` decides which rows and columns go in and saves the result; nothing here
- * reads a store or touches the page.
+ * reads a store, and only `saveCsv` touches a page, the one it is handed.
  *
  * Framework-free, like the rest of `core/`, so `ui/tools/csv.test.mjs` executes it under
  * `node --test`.
@@ -65,4 +65,22 @@ export function csvFileName(label: string, date: Date): string {
   const day = `${date.getFullYear()}${two(date.getMonth() + 1)}${two(date.getDate())}`;
   const time = `${two(date.getHours())}${two(date.getMinutes())}${two(date.getSeconds())}`;
   return `${slug}-${day}-${time}.csv`;
+}
+
+/**
+ * Save `text` as the CSV file `fileName`: an in-document anchor over an object URL, clicked and
+ * removed, the URL revoked on a later task. No request leaves the page and nothing navigates
+ * (AD-20, AD-47). The log hub saves its timeline through it (Story 16.9); `doc` is the page's
+ * document.
+ */
+export function saveCsv(doc: Document, text: string, fileName: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+  const anchor = doc.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.hidden = true;
+  doc.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

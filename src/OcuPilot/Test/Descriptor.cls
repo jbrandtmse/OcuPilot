@@ -83,6 +83,7 @@ XData ReadShapes
 <screen name="LogAlertViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="LogAnalyticsViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="LogEventViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
+<screen name="LogHub" filter="time,source,severity,text" sort="time" kinds="time:name,source:text,severity:status,text:text"/>
 <screen name="LogMessageViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="LogSqlDiagnosticsViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="LogSystemMonitorViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
@@ -1073,6 +1074,38 @@ Method TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair()
     }
 }
 
+
+/// <p>Story 16.9 -- the unified log hub declares its composed read (AD-36 as amended): the
+/// <code>timeline</code> source over the <code>logs</code> area, the five projected fields and the
+/// one <code>since</code> bound an hour back; the messages.log viewer's one pair and no pair of its
+/// own, which the logs area covers (AD-8 as amended for DW-1755); the eleventh side-bar entry in the
+/// <code>list</code> archetype, a <code>none</code> id, no classic page, no action, no refresh and
+/// three Troubleshooting prompts.</p>
+/// <p>Mutation (Rule 19): add <code>%Ens_EventLog:USE</code> to the hub's privileges -&gt; the pair
+/// and coverage assertions go red.</p>
+Method TestTheLogHubDeclaresItsComposedRead()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.LogHub"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "it validates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "and its one criterion")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and links out to nothing")
+    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""timeline"",""endpoint"":""logs"",""type"":""LIST""}", "the logs area's composed read is its source")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""time"",""source"",""severity"",""text"",""id""]", "projecting the five fields every member is read into")
+    Do $$$AssertEquals(tDeclaration.read.criteria.%ToJSON(), "{""fields"":[{""param"":""since"",""labelKey"":""auditCriteriaBegin"",""kind"":""datetime"",""maxLength"":50,""defaultHoursAgo"":1}]}", "windowed by one bound, an hour back by default")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("logs/hub"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("logs.hub"), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition") _ "|" _ $ClassMethod(tClass, "Archetype"), "11|list", "the eleventh Logs entry, a list")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString($ClassMethod(tClass, "PrivilegePairs"), .tCut), "%Admin_Operate:USE", "the messages.log viewer's one pair")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString($ClassMethod(tClass, "OwnPrivilegePairs"), .tCut), "", "and no pair of its own")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", "which the logs area covers")
+    Do $$$AssertEquals(tDeclaration.id.%ToJSON() _ "|" _ tDeclaration.classicPage, "{""kind"":""none"",""parts"":[]}|", "a log entry has no id, and no classic page")
+    Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, "three suggested prompts")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes") _ "|" _ $ListLength($ClassMethod(tClass, "RowActionIds")) _ "|" _ $ClassMethod(tClass, "PrimaryActionId"), "0|0|", "no refresh and no action")
+}
 
 /// <p>Story 2.7 AC7 (DW-266) -- a screen declaring a pair its area does not is refused by
 /// <method>OcuPilot.Screen.Registry.Validate</method> naming the class, the area and the pair;

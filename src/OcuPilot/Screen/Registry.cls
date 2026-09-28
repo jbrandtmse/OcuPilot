@@ -338,6 +338,9 @@ ClassMethod Validate(Output pProblem As %String) As %Status
         ; AD-5, Story 6.10: a declared rowTarget's route has to resolve to a built, id-keyed
         ; screen that does not already pair its own surface, which only the whole roster can say.
         If (pProblem = "") && $$$ISOK(tSC) Set pProblem = ..RowTargetResolutionProblem(tRoster)
+        ; AD-36 as amended (Story 16.9): a timeline's members are the other listed screens of its
+        ; area, which only the whole roster can say.
+        If (pProblem = "") && $$$ISOK(tSC) Set pProblem = ..TimelineMemberProblem(tRoster)
     } Catch ex {
         Set pProblem = "the descriptor roster could not be validated: " _ ex.DisplayString()
         Set tSC = ex.AsStatus()
@@ -1026,8 +1029,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', the four sources a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', the five sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -1041,6 +1044,12 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         If (tSource.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#READSOURCETYPES), tSource.%Get("type")) {
             Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'"
             Quit
+        }
+        ; AD-36 as amended (Story 16.9): a timeline composes its area's listed screens' own reads,
+        ; so its shape is fixed rather than declared piecemeal.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCETIMELINE {
+            Set tProblem = ..TimelineProblem(pDeclaration)
+            If tProblem '= "" Quit
         }
         ; A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so
         ; it has no row list to issue a detail call for, no parents to list and no server search.
@@ -1363,8 +1372,8 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
 
         Set tPort = ""
         If tRead.%GetTypeOf("source") = "object" Set tPort = tRead.%Get("source").%Get("port")
-        If (tPort '= "admin") && (tPort '= "mgmnt") {
-            Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin and mgmnt ports alone (AD-21)"
+        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) {
+            Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt and timeline ports alone (AD-21)"
             Quit
         }
 
@@ -1629,6 +1638,122 @@ ClassMethod CriteriaMarkerProblem(pCriteria As %DynamicObject, pParams As %List)
         Quit "read.criteria.marker.labelKey is empty, and the marker filter names a string key"
     }
     Quit ""
+}
+
+/// <p>The areas a <code>timeline</code> read may compose (AD-36 as amended, Story 16.9).</p>
+Parameter TIMELINEAREAS = "logs";
+
+/// <p>The fields a <code>timeline</code> read declares, in order: the row every member is projected
+/// to (AD-36 as amended).</p>
+Parameter TIMELINEFIELDS = "time,source,severity,text,id";
+
+/// <p>The one criterion a <code>timeline</code> read declares: its window's bound.</p>
+Parameter TIMELINEBOUND = "since";
+
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>timeline</code> read, or <code>""</code>
+/// (AD-36 as amended, Story 16.9): it is declared in one of <parameter>TIMELINEAREAS</parameter>,
+/// its <code>endpoint</code> is that area's key, its <code>type</code> is <code>LIST</code>, its
+/// source declares no <code>rowGet</code>, <code>forEach</code>, <code>query</code> or
+/// <code>parts</code>, its <code>fields</code> are exactly <parameter>TIMELINEFIELDS</parameter>,
+/// and its <code>criteria</code> is exactly one <code>datetime</code> criterion
+/// <parameter>TIMELINEBOUND</parameter> carrying <code>defaultHoursAgo</code> and no
+/// <code>atOrAfterField</code>, with no marker. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>timelineProblem</code> returns the same sentences, and
+/// <class>OcuPilot.Test.ReadSourceCorpus</class> is the corpus both engines run.</p>
+ClassMethod TimelineProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tRead = pDeclaration.%Get("read")
+        Set tSource = tRead.%Get("source")
+        Set tArea = pDeclaration.%Get("area")
+        If '$ListFind($ListFromString(..#TIMELINEAREAS), tArea) {
+            Set tProblem = "read.source.port 'timeline' is declared in the '" _ tArea _ "' area, and a timeline composes the Logs area's own screens alone (AD-36)"
+            Quit
+        }
+        If tSource.%Get("endpoint") '= tArea {
+            Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not the screen's own area '" _ tArea _ "', which a timeline source names (AD-36)"
+            Quit
+        }
+        If tSource.%Get("type") '= "LIST" {
+            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a timeline source, which composes lists (AD-36)"
+            Quit
+        }
+        For tKey = "rowGet", "forEach", "query", "parts" {
+            Set tKeyType = tSource.%GetTypeOf(tKey)
+            If (tKeyType '= "unassigned") && (tKeyType '= "null") {
+                Set tProblem = "read.source." _ tKey _ " is declared on a timeline source, which composes its members' own reads and issues none of its own (AD-36)"
+                Quit
+            }
+        }
+        If tProblem '= "" Quit
+        Set tFields = ""
+        If tRead.%GetTypeOf("fields") = "array" {
+            Set tIterator = tRead.%Get("fields").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tField) {
+                Set tFields = tFields _ $Select(tIndex = 0: "", 1: ",") _ tField
+            }
+        }
+        If tFields '= ..#TIMELINEFIELDS {
+            Set tProblem = "read.fields on a timeline source are not exactly time, source, severity, text and id, the row every member is projected to (AD-36)"
+            Quit
+        }
+        Set tBoundOk = 0
+        If tRead.%GetTypeOf("criteria") = "object" {
+            Set tCriteria = tRead.%Get("criteria")
+            Set tMarkerType = tCriteria.%GetTypeOf("marker")
+            If (tCriteria.%GetTypeOf("fields") = "array") && (tCriteria.%Get("fields").%Size() = 1) && ((tMarkerType = "unassigned") || (tMarkerType = "null")) {
+                Set tBound = tCriteria.%Get("fields").%Get(0)
+                If $IsObject(tBound) && (tBound.%Get("param") = ..#TIMELINEBOUND) && (tBound.%Get("kind") = "datetime") && (tBound.%GetTypeOf("defaultHoursAgo") '= "unassigned") && (tBound.%GetTypeOf("atOrAfterField") = "unassigned") Set tBoundOk = 1
+            }
+        }
+        If 'tBoundOk {
+            Set tProblem = "read.criteria on a timeline source is not exactly one datetime criterion 'since' carrying defaultHoursAgo and no atOrAfterField (AD-36)"
+            Quit
+        }
+    } Catch ex {
+        Set tProblem = "the timeline declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>What is wrong with <var>pRoster</var>'s timelines taken together, or <code>""</code> (AD-36
+/// as amended): a timeline's members are its area's listed built screens other than itself, and a
+/// member that declares a timeline read itself is refused, since a timeline composes its members'
+/// own reads. <file>ui/tools/screen-mirror.mjs</file>'s <code>timelineMemberProblem</code> returns
+/// the same sentence.</p>
+ClassMethod TimelineMemberProblem(pRoster As %DynamicArray) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tOuter = pRoster.%GetIterator()
+        While tOuter.%GetNext(.tOuterIndex, .tEntry) {
+            Set tDeclaration = tEntry.%Get("declaration")
+            If '..DeclaresTimeline(tDeclaration) Continue
+            Set tInner = pRoster.%GetIterator()
+            While tInner.%GetNext(.tInnerIndex, .tMemberEntry) {
+                If tInnerIndex = tOuterIndex Continue
+                Set tMember = tMemberEntry.%Get("declaration")
+                If tMember.%Get("area") '= tDeclaration.%Get("area") Continue
+                If 'tMember.%Get("built") || (+tMember.%Get("sideBarPosition") < 1) Continue
+                If '..DeclaresTimeline(tMember) Continue
+                Set tProblem = tEntry.%Get("descriptor") _ ": timeline member '" _ tMember.%Get("route") _ "' declares a timeline read itself, and a timeline composes its members' own reads (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+    } Catch ex {
+        Set tProblem = "the timeline roster could not be validated: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>Whether <var>pDeclaration</var> declares a <code>timeline</code> read.</p>
+ClassMethod DeclaresTimeline(pDeclaration As %DynamicObject) As %Boolean [ Private ]
+{
+    If pDeclaration.%GetTypeOf("read") '= "object" Quit 0
+    If pDeclaration.%Get("read").%GetTypeOf("source") '= "object" Quit 0
+    Quit pDeclaration.%Get("read").%Get("source").%Get("port") = ##class(OcuPilot.Screen.Read).#SOURCETIMELINE
 }
 
 /// <p>The request types a <code>read.source</code> may issue (AD-36): <code>LIST</code>, a list of

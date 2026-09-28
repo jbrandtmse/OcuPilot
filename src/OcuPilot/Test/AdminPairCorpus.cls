@@ -53,7 +53,7 @@ XData Cases
     {"name": "a logsource read carrying one pair is sound", "readless": false, "port": "logsource", "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}], "expected": null},
     {"name": "the system-read rule names admin reads alone, so a logsource read with no privileges at all is outside it -- it reads a file off disk and never enters %SYS", "readless": false, "port": "logsource", "privileges": [], "expected": null},
     {"name": "a logsource read declares no per-row detail call", "readless": false, "port": "logsource", "rowGet": {"key": "Name", "param": "name", "fields": ["Description"], "derived": []}, "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}], "expected": "read.source.rowGet is declared on a logsource source, which reads whole rows from a log file's bounded tail and has no per-row detail call (AD-36)"},
-    {"name": "a port outside the four sources is refused", "readless": false, "port": "metrics", "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}], "expected": "read.source.port 'metrics' is not one of 'admin', 'state', 'mgmnt' or 'logsource', the four sources a declared read names (AD-36)"}
+    {"name": "a port outside the five sources is refused", "readless": false, "port": "metrics", "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}], "expected": "read.source.port 'metrics' is not one of 'admin', 'state', 'mgmnt', 'logsource' or 'timeline', the five sources a declared read names (AD-36)"}
   ]
 }
 }

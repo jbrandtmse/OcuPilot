@@ -44,3 +44,20 @@ test('the same-route case: a page already mounted is told, and takes the arrival
   arrivals.set(ARRIVAL);
   assert.equal(taken.length, 1, 'an unsubscribed page is not told again');
 });
+
+// Story 16.9: an arrival may carry the log entry a person chose in the log hub's timeline, and it
+// is taken exactly as it was set, entry and all.
+test('an arrival carrying an entry is taken with that entry, once', () => {
+  const arrivals = new ScreenArrivals();
+  const withEntry = {
+    route: 'logs/eventlog',
+    criterion: '',
+    criteria: {},
+    entry: { time: '2026-09-27T10:20:00.000', text: '[HSCUSTOM] Seed: an error' },
+  };
+  arrivals.set(withEntry);
+  const taken = arrivals.take('logs/eventlog');
+  assert.deepEqual(taken, withEntry, 'the entry travels with the arrival');
+  assert.deepEqual(taken?.entry, withEntry.entry, 'its time and text intact');
+  assert.equal(arrivals.take('logs/eventlog'), null, 'and only once');
+});

@@ -385,6 +385,51 @@ Method TestEveryDeclaredLogSourceReadFieldIsAKeyOfTheLiveRow()
     Do $$$AssertEquals(tChecked, 8, "all eight production logsource reads are checked, Story 16.8's six included: " _ tChecked)
 }
 
+/// <p>Story 16.9 -- every production <code>timeline</code> read answers through the executor on the
+/// live instance: 200, its declared fields, at most the cap's rows, each row carrying exactly those
+/// fields, the bound it applied, and one summary per member.</p>
+/// <p>Mutation (Rule 19): drop <code>sources</code> from
+/// <method>OcuPilot.Screen.Read.Execute</method>'s answer -&gt; the summary assertion goes red.</p>
+Method TestEveryTimelineReadAnswersThroughTheExecutor()
+{
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
+    Do $$$AssertStatusOK(tSC, "the production descriptors list")
+    Set tChecked = 0
+    For tI = 1:1:$ListLength(tList) {
+        Set tClass = $List(tList, tI)
+        If '##class(OcuPilot.Screen.Timeline).IsTimeline(tClass) Continue
+        Set tChecked = tChecked + 1
+        Set tRead = $ClassMethod(tClass, "Read")
+        Kill tCriteria
+        Set tExecSC = ##class(OcuPilot.Screen.Read).Execute(tClass, 5, .tResult, .tHttp, .tFault, .tCriteria)
+        Do $$$AssertStatusOK(tExecSC, tClass _ ": the composed read answers through the executor")
+        If $$$ISERR(tExecSC) Continue
+        Do $$$AssertEquals(tHttp, 200, tClass _ ": with 200")
+        Do $$$AssertEquals(tResult.fields.%ToJSON(), tRead.%Get("fields").%ToJSON(), tClass _ ": its declared fields")
+        Do $$$AssertTrue(tResult.rows.%Size() <= 5, tClass _ ": at most the cap's rows: " _ tResult.rows.%Size())
+        Do $$$AssertTrue(tResult.criteria.since '= "", tClass _ ": the bound it applied: " _ tResult.criteria.since)
+        Set tSC = ##class(OcuPilot.Screen.Timeline).Members(tRead.source.endpoint, .tMembers)
+        Do $$$AssertEquals($Select($IsObject(tResult.%Get("sources")): tResult.sources.%Size(), 1: -1), $ListLength(tMembers), tClass _ ": one summary per member")
+        ; The row shape is read over an unbounded window, which the instance's own console log fills.
+        Kill tCriteria
+        Set tCriteria("since") = ""
+        Set tExecSC = ##class(OcuPilot.Screen.Read).Execute(tClass, 5, .tResult, .tHttp, .tFault, .tCriteria)
+        Do $$$AssertStatusOK(tExecSC, tClass _ ": the composed read answers with no bound")
+        If $$$ISERR(tExecSC) Continue
+        Do $$$AssertTrue(tResult.rows.%Size() > 0, tClass _ ": and holds rows to check: " _ tResult.rows.%Size())
+        Set tIterator = tResult.rows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            Set tKeys = ""
+            Set tKeyIterator = tRow.%GetIterator()
+            While tKeyIterator.%GetNext(.tKey, .tValue) {
+                Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
+            }
+            Do $$$AssertEquals(tKeys, "time,source,severity,text,id", tClass _ ": row " _ tIndex _ " carries exactly the declared fields")
+        }
+    }
+    Do $$$AssertEquals(tChecked, 1, "the one production timeline read, the log hub's, is checked: " _ tChecked)
+}
+
 /// <p>Story 2.8 -- the declared banner is evaluated inside the read, against the real port, and it
 /// is chrome rather than rows: a matching value answers its <code>messageKey</code>, a value the
 /// declaration does not name answers <code>""</code>, and a banner whose endpoint no compiled class

@@ -450,6 +450,22 @@ export class ErrorLogDrill {
     }
   }
 
+  /**
+   * Drill to one error's detail from the top (Story 16.9): namespaces, then the namespace's dates,
+   * then the date's errors, then the error, each through the same `open*` a click takes, so every
+   * level is the instance's own answer. A level that is refused stops the drill there, its refusal
+   * on screen.
+   */
+  async drillTo(namespace: string, date: string, errorNumber: number): Promise<void> {
+    await this.openNamespaces();
+    if (this.faultValue !== null) return;
+    await this.openDates(namespace);
+    if (this.faultValue !== null) return;
+    await this.openList(date);
+    if (this.faultValue !== null) return;
+    await this.openDetail(errorNumber);
+  }
+
   /** Back one level, which is where the drill's own affordance goes. */
   back(): Promise<void> {
     if (this.levelValue === 'detail') return this.openList(this.dateValue);

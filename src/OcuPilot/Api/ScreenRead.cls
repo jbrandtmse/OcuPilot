@@ -40,8 +40,9 @@ ClassMethod ReadClass() As %String
 }
 
 /// <p>Answer the request for <var>pScreen</var>, a <code>toolIdentifier</code>: one success
-/// envelope carrying <code>{fields, rows, truncated}</code> (and <code>criteria</code> for a read
-/// that declares them), or one error envelope.</p>
+/// envelope carrying the executor's whole answer -- <code>{fields, rows, truncated}</code>, and
+/// <code>criteria</code>, <code>sources</code> and the other members where the read answers them --
+/// or one error envelope.</p>
 ClassMethod Handle(pScreen As %String) As %Status
 {
     Set tSC = $$$OK
