@@ -17,10 +17,14 @@
 /// <code>PORT.ACCESSDENIED</code> with <code>detail.failedPair</code> naming it.</p>
 /// <p><b>Containment is textual</b>, as the vendor's own directory check is, so a symbolic link
 /// inside a root is followed. No refusal carries a path or the caller's text.</p>
-/// <p>Nothing here switches namespace, escalates, spawns or writes to the response device; the
-/// switch to <code>%SYS</code> is <class>OcuPilot.Port.AdminPort</class>'s (AD-16). Seams a test
-/// subclass may override: <method>AdminPortClass</method>, <method>ManagerDirectory</method>,
-/// <method>ConfigurationFile</method>, <method>HoldsPrivilege</method> and
+/// <p>Nothing here escalates, spawns or writes to the response device. The allow-list's switch to
+/// <code>%SYS</code> is <class>OcuPilot.Port.AdminPort</class>'s; the port switches there itself,
+/// by explicit save and restore (AD-16), only to read the configured databases an overwrite may
+/// not reach, from <code>Config.Databases</code>' <code>List</code> query, and reads the journal
+/// directories from <class>%SYS.Journal.System</class>, both on every call. Seams a test subclass
+/// may override: <method>AdminPortClass</method>, <method>ManagerDirectory</method>,
+/// <method>ConfigurationFile</method>, <method>DatabaseDirectories</method>,
+/// <method>JournalDirectories</method>, <method>JournalSources</method>, <method>HoldsPrivilege</method> and
 /// <method>NameAdmitted</method>. Production overrides none of them.</p>
 Class OcuPilot.Port.PathPort Extends %RegisteredObject
 {
@@ -62,6 +66,11 @@ Parameter KINDSOURCE = "source";
 
 /// <p>The name of a database's file in its directory.</p>
 Parameter DATABASEFILE = "IRIS.DAT";
+
+/// <p>The subdirectory of a database's directory its streams go in when the database names no
+/// stream location of its own, as <code>Config.Databases</code>' <code>StreamLocation</code>
+/// documents.</p>
+Parameter STREAMDIRECTORY = "stream";
 
 /// <p>The log subsystem a raw fault is written under.</p>
 Parameter LOGSUBSYSTEM = "pathport";
@@ -380,25 +389,26 @@ ClassMethod IsManagerDirectory(pDirectory As %String) As %Boolean
 }
 
 /// <p>Whether normalized file path <var>pFile</var> is one of the instance's own files an
-/// overwrite must not reach: <method>DirectlyInConfigurationDirectory</method> or
-/// <method>DatabaseFileBelowManagerDirectory</method>. It says nothing about whether the file
-/// exists.</p>
+/// overwrite must not reach: <method>DirectlyInConfigurationDirectory</method>,
+/// <method>DatabaseFileBelowManagerDirectory</method>, <method>InDatabaseDirectory</method> or
+/// <method>InJournalDirectory</method>. It says nothing about whether the file exists.</p>
 ClassMethod InstanceFile(pFile As %String) As %Boolean
 {
-    Quit ..DirectlyInConfigurationDirectory(pFile) || ..DatabaseFileBelowManagerDirectory(pFile)
+    Quit ..DirectlyInConfigurationDirectory(pFile) || ..DatabaseFileBelowManagerDirectory(pFile) || ..InDatabaseDirectory(pFile) || ..InJournalDirectory(pFile)
 }
 
 /// <p>Whether normalized file path <var>pFile</var> sits directly in the directory of
 /// <method>ConfigurationFile</method>, beside the instance's configuration file and its saved
-/// copies. Textual; a configuration file that is empty, or whose directory is empty or does not
-/// normalize, answers true, so the refusal it guards fails closed.</p>
+/// copies. Textual and ignoring case, so on a filesystem that ignores case another spelling of the
+/// same file is refused too; a configuration file that is empty, or whose directory is empty or
+/// does not normalize, answers true, so the refusal it guards fails closed.</p>
 ClassMethod DirectlyInConfigurationDirectory(pFile As %String) As %Boolean
 {
     Set tDirectory = ..ConfigurationFile()
     If tDirectory '= "" Set tDirectory = ##class(%File).GetDirectory(tDirectory)
     If tDirectory '= "" Set tDirectory = ##class(%File).NormalizeDirectory(tDirectory)
     If tDirectory = "" Quit 1
-    Quit (pFile = (tDirectory _ ##class(%File).GetFilename(pFile)))
+    Quit ($ZConvert(pFile, "L") = $ZConvert(tDirectory _ ##class(%File).GetFilename(pFile), "L"))
 }
 
 /// <p>Whether normalized file path <var>pFile</var> is a database file one directory below the
@@ -413,6 +423,149 @@ ClassMethod DatabaseFileBelowManagerDirectory(pFile As %String) As %Boolean
     Set tDirectory = ##class(%File).GetDirectory(pFile)
     If tDirectory = "" Quit 0
     Quit (##class(%File).ParentDirectoryName(tDirectory) = tManager)
+}
+
+/// <p>Whether normalized file path <var>pFile</var> is a configured database's own: it sits
+/// directly in a database's directory, as the database file, its lock file and the volume files
+/// kept beside it do, or anywhere under that database's stream location, as
+/// <method>DatabaseDirectories</method> answers them at this call. A file in any other
+/// subdirectory of a database's directory is not the database's. Textual and ignoring case, so on
+/// a filesystem that ignores case another spelling of the same file is refused too; a read that
+/// fails answers true, so the refusal it guards fails closed.</p>
+ClassMethod InDatabaseDirectory(pFile As %String) As %Boolean
+{
+    If $$$ISERR(..DatabaseDirectories(.tDirectories, .tStreams)) Quit 1
+    Set tFile = $ZConvert(pFile, "L")
+    Set tName = $ZConvert(##class(%File).GetFilename(pFile), "L")
+    Set tIn = 0
+    For tI = 1:1:$ListLength(tDirectories) {
+        If tFile = ($ZConvert($List(tDirectories, tI), "L") _ tName) {
+            Set tIn = 1
+            Quit
+        }
+    }
+    If tIn Quit 1
+    For tI = 1:1:$ListLength(tStreams) {
+        Set tStream = $ZConvert($List(tStreams, tI), "L")
+        If (tStream '= "") && ($Extract(tFile, 1, $Length(tStream)) = tStream) {
+            Set tIn = 1
+            Quit
+        }
+    }
+    Quit tIn
+}
+
+/// <p>Whether normalized file path <var>pFile</var> sits directly in one of the instance's journal
+/// directories, as <method>JournalDirectories</method> answers them at this call. Textual and
+/// ignoring case, as <method>InDatabaseDirectory</method> is; a read that fails answers true, so
+/// the refusal it guards fails closed.</p>
+ClassMethod InJournalDirectory(pFile As %String) As %Boolean
+{
+    If $$$ISERR(..JournalDirectories(.tDirectories)) Quit 1
+    Set tFile = $ZConvert(pFile, "L")
+    Set tName = $ZConvert(##class(%File).GetFilename(pFile), "L")
+    Set tIn = 0
+    For tI = 1:1:$ListLength(tDirectories) {
+        If tFile = ($ZConvert($List(tDirectories, tI), "L") _ tName) {
+            Set tIn = 1
+            Quit
+        }
+    }
+    Quit tIn
+}
+
+/// <p>The configured local databases' directories in <var>pDirectories</var> and their stream
+/// locations in <var>pStreams</var>, each normalized with its trailing separator, read on every
+/// call from <code>Config.Databases</code>' <code>List</code> query in <code>%SYS</code>, reached by
+/// explicit save and restore (AD-16). A database that names no stream location keeps its streams in
+/// <parameter>STREAMDIRECTORY</parameter> under its directory. A directory in the mirror or
+/// data-server form names no local path and is left out. On failure both lists are empty and the
+/// status says why. Overridable so a fixture can name others or fail the read; production never
+/// overrides it.</p>
+ClassMethod DatabaseDirectories(Output pDirectories As %List, Output pStreams As %List) As %Status
+{
+    Set tSC = $$$OK
+    Set pDirectories = ""
+    Set pStreams = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%ResultSet).%New("Config.Databases:List")
+        Set tSC = tRS.Execute("*", "", 1)
+        While $$$ISOK(tSC) && tRS.Next(.tSC) {
+            Set tDirectory = tRS.Get("Directory")
+            If (tDirectory = "") || ($Extract(tDirectory) = ":") Continue
+            Set tStream = tRS.Get("StreamLocation")
+            If tStream = "" Set tStream = ##class(%File).NormalizeDirectory(tDirectory) _ ..#STREAMDIRECTORY
+            Set tDirectory = ##class(%File).NormalizeDirectory(tDirectory)
+            Set tStream = ##class(%File).NormalizeDirectory(tStream)
+            If (tDirectory = "") || (tStream = "") {
+                Set tSC = $$$ERROR($$$GeneralError, "a configured database's directory did not normalize")
+                Quit
+            }
+            Set pDirectories = pDirectories _ $ListBuild(tDirectory)
+            Set pStreams = pStreams _ $ListBuild(tStream)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) {
+        Set pDirectories = ""
+        Set pStreams = ""
+    }
+    Quit tSC
+}
+
+/// <p>The instance's journal directories in <var>pDirectories</var>, each normalized with its
+/// trailing separator and named once, read on every call through <method>JournalSources</method>:
+/// the primary directory, the alternate directory, and the directory of the file journaling writes
+/// now. One the instance answers empty is left out. On failure the list is empty and the status
+/// says why. Overridable so a fixture can name others or fail the read; production never overrides
+/// it.</p>
+ClassMethod JournalDirectories(Output pDirectories As %List) As %Status
+{
+    Set tSC = $$$OK
+    Set pDirectories = ""
+    Try {
+        Set tSC = ..JournalSources(.tPrimary, .tAlternate, .tCurrent)
+        If $$$ISERR(tSC) Quit
+        If tCurrent '= "" Set tCurrent = ##class(%File).GetDirectory(tCurrent)
+        For tDirectory = tPrimary, tAlternate, tCurrent {
+            If tDirectory = "" Continue
+            Set tDirectory = ##class(%File).NormalizeDirectory(tDirectory)
+            If tDirectory = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "a journal directory did not normalize")
+                Quit
+            }
+            If '$ListFind(pDirectories, tDirectory) Set pDirectories = pDirectories _ $ListBuild(tDirectory)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pDirectories = ""
+    Quit tSC
+}
+
+/// <p>The primary journal directory in <var>pPrimary</var>, the alternate in <var>pAlternate</var>
+/// and the file journaling writes now in <var>pCurrentFile</var>, as
+/// <class>%SYS.Journal.System</class> answers them at this call, each as the instance spells it.
+/// Overridable so a fixture can name three distinct ones; production never overrides it.</p>
+ClassMethod JournalSources(Output pPrimary As %String, Output pAlternate As %String, Output pCurrentFile As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set pPrimary = ""
+    Set pAlternate = ""
+    Set pCurrentFile = ""
+    Try {
+        Set pPrimary = ##class(%SYS.Journal.System).GetPrimaryDirectory()
+        Set pAlternate = ##class(%SYS.Journal.System).GetAlternateDirectory()
+        Set pCurrentFile = ##class(%SYS.Journal.System).GetCurrentFileName()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>The manager directory, normalized, or <code>""</code> when it is empty or does not

@@ -230,7 +230,7 @@ services:
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
-      # classes: LogHubWire, PathPort, PathPortPrivilege
+      # classes: LogHubWire, PathPort, PathPortInstance, PathPortPrivilege
       # classes: PermissionCheck, EffectiveUser
       # classes: LedgerSearchWire
       # classes: NamespaceWriteGate

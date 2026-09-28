@@ -394,7 +394,8 @@ Method TestASourceMustBeAnExistingFile()
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.PathPort.DirectlyInConfigurationDirectory</method>
 /// answers false -&gt; the configuration legs resolve;
 /// <method>OcuPilot.Port.PathPort.DatabaseFileBelowManagerDirectory</method> answers false -&gt; the
-/// database legs resolve; the configuration directory is taken as the manager directory's parent
+/// lower-case name is not the instance's, while the database legs stay refused as configured
+/// databases' files; the configuration directory is taken as the manager directory's parent
 /// -&gt; the seam leg resolves; the existence test in front of the instance's files dropped -&gt;
 /// the new names are refused; the database file's name compared with its case -&gt; the lower-case
 /// name is not the instance's; its name test dropped, or the configuration directory tested as a
