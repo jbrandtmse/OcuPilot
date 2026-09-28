@@ -9,12 +9,13 @@
  * treated as markup: it renders as a plain text node, character for character.
  *
  * **Framework-free and DOM-free** (AD-19): no `@angular/core` import, no `document`, no
- * `location`. The origin a link or image is judged against arrives as `options.origin`.
+ * `location`. The origin a link is judged against arrives as `options.origin`.
  *
- * **Nothing rendered here may cause a request to any host.** An image node is produced only for
- * a same-origin `src`; anything else renders as its alt text, or its literal source when the alt
- * text is empty. A link node is produced only for an `http:`/`https:` `href`; anything else
- * renders as its label text, as if the link markup were never there. Nothing here fetches
+ * **Nothing rendered here may cause a request to any host, the instance's own origin included**
+ * (AD-11 rule 4). No image node exists: every Markdown image renders as its alt text, or its
+ * literal source when the alt text is empty. A link node is produced only for an `http:`/`https:`
+ * `href`; anything else renders as its label text, as if the link markup were never there. A link
+ * sends nothing until a person clicks it. Nothing here fetches
  * anything itself -- this module only decides what `shell/reply.ts` is allowed to build.
  *
  * **Nothing is silently dropped.** A block or inline construct this module does not model (a GFM
@@ -51,7 +52,6 @@ export type ReplyTag =
   | 'code'
   | 'pre'
   | 'a'
-  | 'img'
   | 'span'
   | 'button';
 
@@ -71,7 +71,6 @@ export const REPLY_TAGS: readonly string[] = [
   'code',
   'pre',
   'a',
-  'img',
   'span',
   'button',
   'br',
@@ -86,8 +85,6 @@ export type ReplyNode =
       readonly tag: ReplyTag;
       readonly classes: readonly string[];
       readonly href?: string;
-      readonly src?: string;
-      readonly alt?: string;
       readonly children: readonly ReplyNode[];
     }
   | {
@@ -101,7 +98,7 @@ export type ReplyNode =
     };
 
 export interface ParseReplyOptions {
-  /** The instance's own origin (e.g. `location.origin`), judged against every link and image. */
+  /** The instance's own origin (e.g. `location.origin`), judged against every link. */
   readonly origin: string;
   /**
    * The reply's citations (Story 11.4). A code span whose text equals one's `label`, and that is
@@ -151,7 +148,7 @@ function elementNode(
   tag: ReplyTag,
   classes: readonly string[],
   children: readonly ReplyNode[],
-  extra: { href?: string; src?: string; alt?: string } = {}
+  extra: { href?: string } = {}
 ): ReplyNode {
   return { kind: 'element', tag, classes: filterClasses(classes), children, ...extra };
 }
@@ -187,7 +184,7 @@ function isAllowedLinkUrl(href: string, origin: string): boolean {
   return url !== null && (url.protocol === 'http:' || url.protocol === 'https:');
 }
 
-/** An image renders only from the instance's own origin -- never a third party. */
+/** Whether a link targets the instance's own origin, which needs no external-host caption. */
 function isSameOriginUrl(href: string, origin: string): boolean {
   const url = resolveUrl(href, origin);
   return url !== null && url.origin === origin;
@@ -216,7 +213,7 @@ function inlineTokenToNodes(token: Token, ctx: ParseContext): readonly ReplyNode
     case 'link':
       return linkNodes(token as Tokens.Link, ctx);
     case 'image':
-      return [imageNode(token as Tokens.Image, ctx)];
+      return [imageNode(token as Tokens.Image)];
     case 'html':
       return [textNode((token as Tokens.Tag).raw)];
     default:
@@ -269,13 +266,11 @@ function linkNodes(token: Tokens.Link, ctx: ParseContext): readonly ReplyNode[] 
   return [elementNode('a', [], label, { href: token.href }), caption];
 }
 
-function imageNode(token: Tokens.Image, ctx: ParseContext): ReplyNode {
-  if (isSameOriginUrl(token.href, ctx.origin)) {
-    return elementNode('img', [], [], { src: token.href, alt: token.text });
-  }
-  // A remote image never becomes an <img> -- rendering strictly fewer things needs no CSP
-  // widening (Design Notes D4). Its alt text renders instead; an empty alt falls back to the
-  // image's own literal source, per the I/O matrix, so nothing is silently dropped either way.
+function imageNode(token: Tokens.Image): ReplyNode {
+  // No image ever becomes an <img>, same-origin included: an <img> fetches its `src`, so a reply
+  // could make the browser send a GET to the instance itself (AD-11 rule 4). Its alt text renders
+  // instead; an empty alt falls back to the image's own literal source, so nothing is silently
+  // dropped.
   return textNode(token.text !== '' ? token.text : token.raw);
 }
 

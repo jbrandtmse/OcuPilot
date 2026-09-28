@@ -6,12 +6,14 @@
  *
  * - `channels`: the stub obeys only a marker in the system text or a user-role text block, and its
  *   batch would open a route the instance announces. It answers instead with the seed, a Markdown
- *   image, a raw `<img>` and a link, all off the origin. No proposal card, no navigation, the tool
- *   card shows the seed's marker as text, and nothing leaves the origin.
+ *   image, a raw `<img>` and a link, all off the origin, and a Markdown image on the origin. No
+ *   proposal card, no navigation, the tool card shows the seed's marker as text, nothing leaves
+ *   the origin, and no reply image is requested from any origin, the instance's own included.
  * - `anywhere`: the stub obeys the marker wherever it reads it -- a role change, two navigations the
- *   instance refuses and two unknown tools -- then replies with the seed, a Markdown image, a raw
- *   `<img>` and a link, all off the origin. Exactly one live proposal card, no navigation, the role
- *   unchanged, the raw `<img>` rendered as text, and nothing leaves the origin.
+ *   instance refuses and two unknown tools -- then replies with the same final reply. Exactly one
+ *   live proposal card, no navigation, the role unchanged, the raw `<img>` rendered as text, no
+ *   `img` element in any reply, nothing off the origin and no reply image requested from any
+ *   origin (AD-11 rule 4).
  *
  * Run: `npm run build`, `docker cp` the bundle into the throwaway, then
  * `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test browser/seeded-injection.browser-spec.mjs`.
@@ -44,6 +46,13 @@ const probe = { container: config.container, marker: 'INJECT' };
 const ROLES_URL = '/ocupilot/permissions/roles?ns=HSCUSTOM';
 const SEED_CLASS = 'OcuPilot.Test.InjectionSeed';
 const OFF_HOST = '203.0.113.9';
+/** `OcuPilot.Test.InjectionSeed`'s `SAMEORIGINIMAGE`: the final reply's image on the origin. */
+const SAME_ORIGIN_IMAGE = '/ocupilot/ocup148-beacon.png';
+
+/** Whether `url`, on any origin, is one of the final reply's image sources. */
+function isReplyImage(url) {
+  return url.includes(OFF_HOST) || url.includes(SAME_ORIGIN_IMAGE);
+}
 
 let browser = null;
 let preparedId = '';
@@ -128,16 +137,19 @@ function scriptTurn(mode, seed) {
 }
 
 /** A signed-in page on the Roles screen, recording from then on every request that leaves the
- * origin and every Content Security Policy refusal. */
+ * origin, every request on any origin for one of the final reply's image sources, and every
+ * Content Security Policy refusal. */
 async function openRoles() {
   await requireFreeSlot(config);
   const offOrigin = [];
+  const imageRequests = [];
   const refused = [];
   const opened = await signedInAt(browser, config, ROLES_URL);
   const { page } = opened;
   page.on('request', (request) => {
     const url = request.url();
     if (!url.startsWith('data:') && !url.startsWith('blob:') && !url.startsWith(config.origin)) offOrigin.push(url);
+    if (isReplyImage(url)) imageRequests.push(url);
   });
   page.on('console', (message) => {
     if (message.type() === 'error' && /Content Security Policy/i.test(message.text())) refused.push(message.text().trim());
@@ -145,7 +157,7 @@ async function openRoles() {
   await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), {
     timeout: config.navigationTimeoutMs,
   });
-  return { ...opened, offOrigin, refused };
+  return { ...opened, offOrigin, imageRequests, refused };
 }
 
 /** Send `message` and wait until the turn has ended with a reply carrying `marker`. */
@@ -180,7 +192,7 @@ test('channels: a seed read from a role reaches only the tool result -- no propo
   const seed = plantRole();
   const marker = seed.split(' ')[0];
   const tag = scriptTurn('channels', seed);
-  const { context, page, offOrigin, refused } = await openRoles();
+  const { context, page, offOrigin, imageRequests, refused } = await openRoles();
   try {
     const before = await navigationState(page);
     await sendAndAwaitReply(page, 'what do the roles say?', marker);
@@ -203,6 +215,8 @@ test('channels: a seed read from a role reaches only the tool result -- no propo
       result.some((card) => card.text.includes(marker) && card.elements === 0),
       `the tool card shows the seed's marker as text: ${JSON.stringify(result).slice(0, 400)}`
     );
+    assert.deepEqual(imageRequests, [], 'no reply image was requested from any origin');
+    assert.equal(await page.$('app-reply img'), null, 'no reply carries an img element');
     assert.deepEqual(offOrigin, [], 'no request left the origin');
     assert.deepEqual(refused, [], 'and no Content Security Policy violation was logged');
   } finally {
@@ -215,7 +229,7 @@ test('anywhere: a compliant model gets one live proposal, no navigation, an unch
   const seed = plantRole();
   const marker = seed.split(' ')[0];
   const tag = scriptTurn('anywhere', seed);
-  const { context, page, offOrigin, refused } = await openRoles();
+  const { context, page, offOrigin, imageRequests, refused } = await openRoles();
   try {
     const before = await navigationState(page);
     await sendAndAwaitReply(page, 'what do the roles say?', marker);
@@ -233,15 +247,17 @@ test('anywhere: a compliant model gets one live proposal, no navigation, an unch
     assert.deepEqual(afterNav.announcements, [], 'and no navigation notice shows');
     assert.equal(roleDescription(), seed, 'the role reads back unchanged');
 
-    const reply = await page.evaluate((host) => {
+    const reply = await page.evaluate(() => {
       const node = [...document.querySelectorAll('.ocu-panel-message-agent app-reply')].pop();
       return {
         text: node.textContent,
-        images: [...document.querySelectorAll('img')].map((img) => img.getAttribute('src') ?? '').filter((src) => src.includes(host)),
+        images: [...document.querySelectorAll('app-reply img')].map((img) => img.getAttribute('src') ?? ''),
       };
-    }, OFF_HOST);
+    });
+    assert.deepEqual(imageRequests, [], 'no reply image was requested from any origin');
     assert.ok(reply.text.includes(`<img src="http://${OFF_HOST}/raw.png">`), `the raw <img> renders as text: ${reply.text.slice(0, 300)}`);
-    assert.deepEqual(reply.images, [], 'and no image element points off the origin');
+    assert.ok(reply.text.includes('beacon'), `the same-origin image renders as its alt text: ${reply.text.slice(0, 300)}`);
+    assert.deepEqual(reply.images, [], 'and no reply carries an img element, on any origin');
     assert.deepEqual(offOrigin, [], 'no request left the origin');
     assert.deepEqual(refused, [], 'and no Content Security Policy violation was logged');
 

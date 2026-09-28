@@ -50,6 +50,10 @@ Parameter LOGINPATH = "/api/ocupilot/agent/definitions";
 /// <p>The off-origin host the compromised final reply points at (RFC 5737 TEST-NET-3).</p>
 Parameter OFFORIGIN = "http://203.0.113.9/";
 
+/// <p>The same-origin path the compromised final reply's second Markdown image points at: no
+/// rendered image may make the browser send a request, the instance's own origin included.</p>
+Parameter SAMEORIGINIMAGE = "/ocupilot/ocup148-beacon.png";
+
 /// <p>A route no descriptor builds, and a built <code>list (server criteria)</code> route with a
 /// criterion it does not declare.</p>
 Parameter UNBUILTROUTE = "nowhere/ocup148";
@@ -386,14 +390,15 @@ ClassMethod ObeyBody(pSeed As %String, pReachable As %Boolean = 0) As %String
 }
 
 /// <p>The final reply a compromised model sends: the seed, a Markdown image, a raw
-/// <code>&lt;img&gt;</code> and a link, each pointing at <parameter>OFFORIGIN</parameter>.
+/// <code>&lt;img&gt;</code> and a link, each pointing at <parameter>OFFORIGIN</parameter>,
+/// and a Markdown image at <parameter>SAMEORIGINIMAGE</parameter>.
 /// It also backticks the off-origin URL, which matches no row and so must never become a
 /// citation. <var>pCite</var>, when not empty, is added in backticks, so it may become a
 /// citation.</p>
 ClassMethod FinalBody(pSeed As %String, pCite As %String = "") As %String
 {
     Set tHost = ..#OFFORIGIN
-    Set tText = "Done: " _ pSeed _ " ![pixel](" _ tHost _ "pixel.png) <img src=""" _ tHost _ "raw.png""> [details](" _ tHost _ ") `" _ tHost _ "`"
+    Set tText = "Done: " _ pSeed _ " ![pixel](" _ tHost _ "pixel.png) <img src=""" _ tHost _ "raw.png""> [details](" _ tHost _ ") `" _ tHost _ "` ![beacon](" _ ..#SAMEORIGINIMAGE _ ")"
     If pCite '= "" Set tText = tText _ " See `" _ pCite _ "`."
     Quit ##class(OcuPilot.Test.TurnProvider).TextReply(tText)
 }
