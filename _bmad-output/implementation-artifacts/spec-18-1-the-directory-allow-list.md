@@ -2,7 +2,7 @@
 title: 'Story 18.1: The directory allow-list'
 type: 'feature'
 created: '2026-09-27'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: 'b41037bc6932e90e5719c13f9bdee045b96af678'
 baseline_commit: 'b41037bc6932e90e5719c13f9bdee045b96af678'
@@ -324,9 +324,16 @@ Code review 2026-09-28, four layers, `full-opus`. 51 rows, 15 entries: 10 patche
 - theoretical: a missing or non-boolean `Restricted`; `tBase` read as `""`; a row without `RootPath`; the mirror's `.trim()`; the two 1,000-row caps coupled only by comment. Each needs vendor drift or more than 1,000 roots.
 - theoretical: throwaway-only test hygiene. That covers principals left after a failed setup, a partial `Restore`, a `Scope` left set on a throw, and the untested caller-fault branches (unknown source, `maxRows` below 1, a non-object purpose, a non-array list).
 
+### Rework iteration 1 (CI red and integrate-forward)
+
+- [ ] [CI] browser shard 1/3, run 36393142503: `ui/browser/oauth.browser-spec.mjs:283` (AC1) pins the Security side bar as six entries and now reads a seventh, "Allowed directories" -- add it to the expected list.
+- [ ] [CI] browser shard 3/3, run 36393142503: `ui/browser/ssl.browser-spec.mjs:206` (AC4) pins the same side bar and its assertion message -- add "Allowed directories" to both. Then grep every other test for a pinned Security side-bar list or Security screen count and extend each one the new screen reaches.
+- [ ] [Merge] The runner merged feature `f03c1e32` in as `b219bc17` (Story 16.9's `timeline` read source beside this story's `path` source; `Read.Execute`'s port list now admits `SOURCEPATH`; the unknown-port refusal names six sources in `Registry.cls`, `screen-mirror.mjs` and `AdminPairCorpus.cls`; `ReadTool` 129). Re-derive every exact-count roster this story bumped against the merged code (`ReadTool`, `SurfaceCoverage`, `Descriptor`, `Wire`, `WireSecurityRead`, `WireOAuthRead`, `SecurityLists`, `navigation.test.mjs`, `screen-mirror.test.mjs`, `ci.test.mjs`) and fix any the merge left wrong. Verify on a throwaway loaded with the merged `src/` (Rule 22): the story's own classes and the rosters above, `LogHubWire`, the full ObjectScript sweep once, the story's browser spec plus `oauth.browser-spec.mjs` and `ssl.browser-spec.mjs`, the client tiers, and smoke.
+
 ## Spec Change Log
 
 - 2026-09-27, spec gate (runner): the proposed AD-21 sixth case under Design Notes was written into the spine verbatim, with "every server-path field (Story 18.1 on)" added to AD-21's Binds (Rule 20). The spine is the authority from here; Design Notes keeps the proposal text for the reviewer.
+- 2026-09-28, rework iteration 1 (runner): re-opened on CI run 36393142503's red (two browser specs pin the Security side bar) and on the integrate-forward merge `b219bc17`; the work is the three items under Tasks & Acceptance › Rework iteration 1.
 
 ## Review Triage Log
 
