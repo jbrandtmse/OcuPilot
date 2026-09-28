@@ -2,7 +2,8 @@
 title: 'Story 16.3: Effective privileges and the permission-check tool'
 type: 'feature'
 created: '2026-09-27'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '57f5989156132d7bc0e6c54b5392a9a5e5950240'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -330,6 +331,29 @@ Docs:
 
 ## Review Triage Log
 
+### 2026-09-28 — Review pass
+
+- verdicts: 18 findings — high 0, medium 6, low 8, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Check permission on the Roles list and role editor, and a role check sent from the dialog, had no test — added `permission-check-actions.spec.ts` (both lists, kind and prefill), a role-editor registration case and a dialog role-send case; each mutation red.
+  - `[medium]` `[patch]` the command bar's new `hasContent` term was unpinned on the read-less editors — added a command-bar case where Check permission is the bar's only content; dropping the term goes red.
+  - `[medium]` `[patch]` the view's application and database filters were pinned only positively, and `RW` never — `TestTheChainedAccountsSections` now asserts IRISTEMP `RW`, IRISSYS absent and no `%Development` application; dropping the database filter goes red.
+  - `[medium]` `[patch]` 503 `PERMISSION.UNCHECKED` was pinned only in the kernel — `Api.Privileges.CheckClass` seam (the `Api.Ledger.LedgerClass` precedent), `Test.PrivilegesCut`, and route and tool legs in `TestACutReadIsRefusedRatherThanAnsweredNo`; rendering every 5xx as internal goes red.
+  - `[low]` `[patch]` the Effective tab's refusal path was untested — page spec case for a 403 pair, a 404 reason and a malformed body; dropping the banner goes red.
+  - `[low]` `[reject]` a single section's cap in `EffectiveUser.ListRows` is unpinned — reaching it needs more web applications, databases or services than `Screen.Read`'s default cap, and pinning it needs a new seam in `Screen.Read`; the mapping is `Impact.ListRows`'s.
+  - `[low]` `[patch]` clauses of AC1, AC6 and AC9 had no `mutation:` line — lines added for the new AC1 filter and AC6 route legs; AC9 keeps its AC-level line (Rule 19 is per AC).
+  - `[low]` `[patch]` the route/tool parity test asserted only equality — its chained case is anchored to `1|B|A`.
+  - `[low]` `[patch]` the dialog spec's mutation comment named the wrong assertion — corrected; the store's own blank guard, masked by the dialog's, stays as defense in depth for its one caller.
+  - `[false]` `[reject]` the gate-before-arguments order differs from the intent's bullet order — arguments-first would answer 400 on the route where the dispatcher answers the tool 403 for the same arguments, against "both give the same answer object"; a low-privilege bad-arguments row pins it.
+  - `[low]` `[reject]` 400s come from two validators with different `detail.problem` text — code and status agree on both callers (AC6), and the dialog cannot send malformed arguments.
+  - `[medium]` `[patch]` a cut read was never exercised at the route — same root cause as the 503 row above.
+  - `[low]` `[patch]` the refusal reasons were not asserted — each route refusal row now asserts its `Error.cls` sentence.
+  - `[medium]` `[patch]` Roles screens and the editors' bar untested — same root cause as the first two rows.
+  - `[low]` `[patch]` the tab's 403 banner untested — same root cause as the refusal-path row.
+  - `[false]` `[reject]` the oracle runs only as the `%All` test account — `CheckUserPermission` does not depend on the caller, and a limited caller's composition runs in `EffectiveUser`'s AC3 leg and the browser AC7 leg.
+  - `[false]` `[reject]` DW-1018 principals also hold the code database, and stock `%SecurityAdministrator` is untested — the code database is needed to reach OcuPilot at all (AD-9, AD-21), and that role holds both area pairs, so it is admitted by the pinned area set.
+  - `[false]` `[reject]` the tool's gate is `RequiredPairs(UserList)` — the spec's Tasks name exactly that, and `ToolEmit` pins it.
+
 ## Design Notes
 
 **Decisions.**
@@ -414,9 +438,69 @@ Docs:
 - `cd ui && npm run build` (once, before `dev_complete`): report the initial total, and re-base per DW-1166 if needed. Then `npm test`, `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh`, and `wc -l` on EXPERIENCE.md, which must read 993. Expected green.
 - The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before `dev_complete`). Expected green. The full browser suite runs in CI (Rule 29).
 
+**Mutations observed** (Rule 19, on `ocupilot-ci` with the mutated class and its subclasses recompiled; each reverted, and the tree read byte-identical afterwards):
+
+- mutation: `Effective.Compose` records the root as the source → `Test.Effective` `TestTheClosureAndTheGrantingRoleAreNamed` and `TestHoldsAnswersAGrantAPublicLetterAndNone` red (AC4).
+- mutation: `Effective.Holds` loses its `all` branch → `Test.Effective` `TestHoldsAnswersAllBeforeAnyResource` and `Test.PermissionCheck` `TestAYesNamesTheGrantingRoleAndTheRoleItIsReachedThrough` and the oracle leg red (AC5).
+- mutation: `PermissionCheck.Check` composes the account's `EscalationRoles` too → `Test.PermissionCheck` oracle leg (`OcuPermCheckU` WRITE and `%Admin_Secure:USE`) red (AC4).
+- mutation: `Check` skips the resource read → `Test.PermissionCheck` `TestAMissingResourceIsRefusedEvenForAnAllHolder` and the 404 row of `TestEachRefusalCarriesItsCodeAndStatus` red (AC5).
+- mutation: `Check` answers a truncated read as held false → `Test.PermissionCheck` `TestACutReadIsRefusedRatherThanAnsweredNo` red (AC6).
+- mutation: the tool's `View` answers a constant → `Test.PermissionCheck` `TestTheRouteAndTheToolAnswerTheSameObject` red, and the `permissions-effective` AC4/AC9 browser leg red (AC9).
+- mutation: `EffectiveUser.ListRows` skips the pair gate → `Test.EffectiveUser` `TestAPartTheCallerCannotReadIsUncheckedNamingThePair` red (AC3).
+- mutation: `EffectiveUser.Of` composes the escalation roles → `Test.EffectiveUser` `TestTheChainedAccountsSections` red (AC1).
+- mutation: `EffectiveUser.Of` ignores `all` → `Test.EffectiveUser` `TestAnAllHolderListsItsRolesOnly` red (AC2).
+- mutation: `%Admin_Wallet:USE` back on the security area → `Test.WireSecurityRead` `TestBothPairsReadEveryList`, `Test.Navigation` `TestAnAreaGatesOnItsOwnDeclaredSet`, `Test.Descriptor` area and own-pair rows, and the `permissions-effective` AC7 browser leg red (AC7).
+- mutation: `OAuthServerTab` loses its `ownPrivileges` → `Test.Descriptor` red (the roster no longer validates) (AC7).
+- mutation: `checkSentence` drops the through suffix → `privileges.test.mjs` through case red (AC4).
+- mutation: the Fixed strings row loses "Check" → `strings.test.mjs` authorization and citation cases red (AC8).
+- mutation: the tab draws a public letter blank → `user-editor.page.spec.ts` AC1 case red (AC1).
+- mutation: Check ignores a blank resource → `permission-check-dialog.spec.ts` disabled-reason case red (AC6).
+- mutation: the sign-out reset is dropped → `app.spec.ts` sign-out case red.
+- mutation: the bar never draws Check permission → `command-bar.spec.ts` Story 16.3 and reachability cases red; the box never lists it, or lists it row-scoped → `command-box.spec.ts` Story 16.3 case red.
+- mutation: `WalletSecretList` loses its `ownPrivileges` → `screen-mirror.test.mjs` owner roster red (AC7).
+- mutation: the store's re-read drops the Effective re-read → `user-editor.page.spec.ts` re-read case red.
+- mutation: `Check` validates its arguments before its pair gate → `Test.PermissionCheck` `TestEachRefusalCarriesItsCodeAndStatus` red on the low-privilege bad-arguments row (AC6).
+- mutation: `Api.Privileges.Refusal` renders every 5xx as internal → `Test.PermissionCheck` `TestACutReadIsRefusedRatherThanAnsweredNo` red on the route leg (AC6).
+- mutation: `EffectiveUser.Guarded` drops the database `Holds` filter → `Test.EffectiveUser` `TestTheChainedAccountsSections` red (AC1).
+- mutation: `RoleActions` opens as a user → `permission-check-actions.spec.ts` Roles case red; the role editor's registration opens as a user → `role-editor.page.spec.ts` Story 16.3 case red; the dialog's `submit` sends a constant `user` → `permission-check-dialog.spec.ts` role case red (AC5).
+- mutation: `hasPermissionCheckAction` leaves `hasContent` → `command-bar.spec.ts` read-less editor case red.
+- mutation: the Effective tab's refusal banner is dropped → `user-editor.page.spec.ts` refusal case red (AC6).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Plan pass 2026-09-27 halted `blocked` on the DW-1018 intent gap (AD-8). The owner decided Option A at the merge gate (2026-09-28, relayed by the orchestrator): Security's set becomes `%Admin_Secure:USE` + `%DB_IRISSYS:READ` and the 13 wallet and OAuth screens declare their pair as `ownPrivileges`; an own pair is never one the area already declares (DW-1760's direction). The residual rail cases (a wallet-only or OAuth-only holder at Security; `%Operator` at Logs and OS management) are a separate ledger entry for an owner decision after the voting week, with Option B (AD-8's any-screen rail) as the named alternative. The lead wrote spine changes (a) and (b) and accepted the spec as written at the spec gate.
+**Implement pass 2026-09-28** (the plan pass and the DW-1018 Option A decision are in the Spec Change Log).
+
+**Change.** `Effective.Compose` also answers `roles` and `sources`, and a pure `Effective.Holds` answers one letter. New `Kernel/Shell/EffectiveUser` (the tab's view) and `Kernel/Shell/PermissionCheck` (the read tool `permissions.privileges.check` and the one `Check`) sit behind `GET /users/effective` and `GET /permissions/check` (`Api/Privileges`, two thin routes). The User editor gains the Effective privileges tab. Check permission is registered on the Users and Roles lists and both editors, drawn and listed after Refresh, with its dialog in `app-screen-action-dialogs` and a sign-out reset. DW-1018 Option A: the Security area set is `%Admin_Secure:USE` + `%DB_IRISSYS:READ`, and the 13 wallet and OAuth descriptors declare `ownPrivileges`. The 12 Fixed strings are in EXPERIENCE.md `:468` and `strings.ts`, with in-place edits at `:114`, `:127`, `:166`, `:173` and `:603` (993 lines).
+
+**Files.**
+
+- Server: `Kernel/Shell/Effective.cls`, `EffectiveUser.cls` (new), `PermissionCheck.cls` (new); `Api/Privileges.cls` (new), `Router.cls` (2 routes), `Error.cls` (`PERMISSION.UNCHECKED`, appended); `Screen/Area.cls`; 13 `Screen/Descriptor` wallet and OAuth classes (`ownPrivileges`).
+- Server tests: new `Test/PermissionCheck`, `EffectiveUser`, `PermissionFixture`, `PermissionCheckCut`, `EffectiveUserCut`, `PrivilegesCut`; updated `Effective`, `ReadTool` (129), `ToolRoundTrip`, `ToolEmit`, `EndpointCoverage`, `Descriptor`, `Navigation`, `SecurityLists`, `OAuthTabs`, `WireSecurityRead`, `WireOAuthRead`.
+- Client: new `core/privileges.ts`, `shell/permission-check.ts`, `shell/permission-check-dialog.ts`; `user-editor.store.ts`/`.page.ts`, `role-editor.page.ts`, `user-actions.ts`, `role-actions.ts`, `command-bar.ts`, `command-box.ts`, `screen-action-dialogs.ts`, `screen-actions.ts`, `impact.ts` (`whyUnchecked` exported), `strings.ts`, `screens.generated.ts`, `_components.scss`, `app.ts`.
+- Client tests: new `tools/privileges.test.mjs`, `permission-check-dialog.spec.ts`, `permission-check-actions.spec.ts`; updated user and role editor, command bar and box, `app.spec.ts`, `screen-mirror.test.mjs`. Browser: new `permissions-effective.browser-spec.mjs`; `security`, `oauth`, `users-editor` updated.
+- Other: `scripts/ci-throwaway.sh` (one add-only arming comment line); EXPERIENCE.md (in place).
+- Outside Epic 16's paths: `Kernel/Shell/Effective.cls`, `Screen/Area.cls`, `app.ts` and the 13 descriptors (accepted); `Kernel/Shell/EffectiveUser.cls` and `PermissionCheck.cls` (new, named by the spec).
+
+**Review.** 18 findings (Review Triage Log): 12 patched as 9 entries (4 medium, 5 low), 6 rejected (4 false, 2 low), none deferred. Before review the stage also made `Check` gate before validating arguments, the dispatcher's order (mutation observed), and made `checkSentence` substitute in one pass so a name holding a placeholder is shown as written. Follow-up review recommended: false. Four medium entries were patched, but each is a test gap, now closed by a test whose mutation was observed red; no unverified risk can be named. Patched counts by verdict: high 0, medium 4, low 5.
+
+**Verification.**
+
+- Client: `npm run test:tools` 1674/1674; `npm test` 1674 tool tests and 1644 component tests green; `npm run build` initial total 2.03 MB (355.45 kB transfer), under `maximumWarning` 2107kB, so no re-base.
+- Browser, on a redeployed bundle: `permissions-effective`, `security`, `oauth`, `users-editor`, `users`, `roles-editor`, `impact`, `a11y-structural-invariants` 50/50; `permissions-effective` 4/4 again on the final bundle.
+- Checkers: `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues; EXPERIENCE.md 993 lines.
+- Full ObjectScript sweep on `ocupilot-ci`, once, one class at a time: 334 classes, 2607 tests, 5 failed. Every failure is the known `ocupilot-ci` residue, identical to the 16.9 sweep:
+  - 19 classes refuse for unset arming variables;
+  - `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (DW-1425/DW-1468);
+  - 3 `TaskHistory` legs and 1 `Retention` leg, on old rows.
+
+  Every class this story adds or touches is green. The full browser suite runs in CI (Rule 29).
+
+**Residual.**
+
+- The matrix's Services row cites `%Service_SQL`. On this instance that is a resource, not a service (`Security.Services:List` has 15, none of that name). The test pins the row's rule on the five services whose own resource is public at USE, and `%Service_Bindings` never listed. Recommended correction at the origin (Rule 5, apply and report): `%Service_Terminal`.
+- EXPERIENCE.md `:468`'s Where cell writes `<resource>:<permission>` with "the permission READ, WRITE or USE" where Design Notes had `<READ|WRITE|USE>`, whose pipes would split the table row. The quoted strings are verbatim.
+- One section's own read cut at its cap (`EffectiveUser.ListRows`) is unpinned (rejected low, see the Triage Log).
+- DW-1768's residual rail cases were not attempted.

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { ScreenActions } from '../core/screen-actions';
+import { PERMISSION_CHECK_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -545,6 +545,26 @@ describe('the command box', () => {
     fixture.detectChanges();
     expect(create()).toBeNull();
     expect(creates).toBe(1);
+  });
+
+  it('Story 16.3: Check permission is listed only where registered, never held back for want of a selection, and runs once', () => {
+    // Mutation (Rule 19): drop the Check permission branch from `actionCandidates` -> the listed
+    // assertion goes red.
+    const option = (): HTMLElement | null => fixture.nativeElement.querySelector(`#ocu-command-box-action-${PERMISSION_CHECK_ACTION_ID}`);
+    chord();
+    expect(option()).toBeNull();
+    let ran = 0;
+    const stop = actions.register(USERS.descriptor, PERMISSION_CHECK_ACTION_ID, () => (ran += 1));
+    fixture.detectChanges();
+    expect(option()?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.permissionCheckAction);
+    expect(option()?.getAttribute('aria-disabled')).toBeNull();
+    expect(option()?.textContent).not.toContain(STRINGS.privilegeSelectRowFirst);
+    option()?.click();
+    fixture.detectChanges();
+    expect(ran).toBe(1);
+    stop();
+    chord();
+    expect(option()).toBeNull();
   });
 
   it('Integration AC: Escape closes the box, restores focus, and leaves the side bar alone', () => {

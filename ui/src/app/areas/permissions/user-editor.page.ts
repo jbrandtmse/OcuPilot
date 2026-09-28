@@ -15,17 +15,22 @@ import { ChangeBus } from '../../core/change-bus';
 import { tabErrorCounts, tabToOpen } from '../../core/form-tabs';
 import { FormDirty } from '../../core/form-dirty';
 import { formatRequires, ownIdSegment, screenForDescriptor, withQuery } from '../../core/navigation';
+import { effectiveAllLine, throughSuffix, uncheckedLine } from '../../core/privileges';
 import { savedLine } from '../../core/read-back';
+import { PERMISSION_CHECK_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { selfProtectionReason } from '../../core/self-protection';
 import { Session } from '../../core/session';
 import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
 import { FormTabBody, FormTabs, type FormTabView } from '../../shell/form-tabs';
+import { PermissionCheck } from '../../shell/permission-check';
 import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
 import { ADD_ROLE, type ActionSink, REMOVE_ROLE, SET_PASSWORD, ScreenActionHandler } from '../../shell/screen-action-handler';
+import { grantLine } from './role-grant-dialog';
 import {
   AUTHE_FIELD,
+  EFFECTIVE_TAB,
   GENERAL_FIELDS,
   GENERAL_TAB,
   ROLES_FIELD,
@@ -58,6 +63,39 @@ interface FieldView {
   readonly describedBy: string | null;
 }
 
+/** One Effective privileges section as drawn: its rows, or the line that stands for none. */
+interface SectionView<T> {
+  readonly rows: readonly T[];
+  /** "(none)" for a section read and empty, "Not checked ..." for one not read, else `''`. */
+  readonly note: string;
+}
+
+/** The Effective privileges tab as drawn (Story 16.3). */
+interface EffectiveView {
+  /** The intro sentence, or the `%All` statement. */
+  readonly lead: string;
+  /** Whether the account holds every privilege, when only its roles are listed. */
+  readonly all: boolean;
+  readonly roles: SectionView<{ readonly name: string; readonly suffix: string }>;
+  readonly resources: SectionView<{ readonly name: string; readonly read: string; readonly write: string; readonly use: string }>;
+  readonly applications: SectionView<{ readonly name: string; readonly resource: string }>;
+  readonly databases: SectionView<{ readonly key: string; readonly line: string }>;
+  readonly services: SectionView<{ readonly name: string }>;
+}
+
+/** One held letter as the Resources table draws it: its granting role, "Public", or nothing. */
+function letterCell(value: string | undefined): string {
+  if (value === undefined) return '';
+  return value === '' ? STRINGS.oauthClientTypePublic : value;
+}
+
+/** A section's rows mapped by `row`, or the line that stands for none. */
+function sectionView<S, T>(section: { readonly rows: readonly S[]; readonly unchecked: string }, row: (source: S) => T): SectionView<T> {
+  if (section.unchecked !== '') return { rows: [], note: uncheckedLine(section.unchecked) };
+  if (section.rows.length === 0) return { rows: [], note: STRINGS.tableEmptyValue };
+  return { rows: section.rows.map(row), note: '' };
+}
+
 /** One header action: whether it is drawn refused, and why. */
 interface ActionView {
   readonly reason: string;
@@ -72,7 +110,10 @@ interface ActionView {
  * unsaved-changes guard.
  *
  * **Its tabs are the classic editor's first two** (`%CSP.UI.Portal.User`): General, with every
- * account setting in the classic order, and Roles. One form spans both, and Save sends the fields
+ * account setting in the classic order, and Roles; then Effective privileges (Story 16.3), read-only,
+ * which renders the instance's composition of the account's roles and what they guard, read when the
+ * tab is selected. Check permission is registered for this screen, prefilled with the account. One
+ * form spans the first two, and Save sends the fields
  * changed since the account's read; a refused Save opens the tab that holds its first refused
  * field, whose accessible name then counts them (`shell/form-tabs.ts`), and focuses the error
  * summary, then that field.
@@ -444,6 +485,104 @@ interface ActionView {
           {{ STRINGS.userActionAddRole }}
         </button>
       </ng-template>
+      <ng-template ocuFormTab="effective">
+        @if (hasEffectiveRefusal) {
+          <p class="ocu-banner ocu-banner-warning" role="alert" data-ocu-effective="refusal">{{ effectiveRefusal }}</p>
+        }
+        @if (effectiveView; as view) {
+          <div class="ocu-effective" data-ocu-effective="tab">
+            <p class="ocu-form-legend" data-ocu-effective="lead">{{ view.lead }}</p>
+            <div class="ocu-effective-section" data-ocu-effective="roles">
+              <h3 class="ocu-details-heading" id="ocu-user-effective-roles">{{ STRINGS.userColumnRoles }}</h3>
+              @if (view.roles.note) {
+                <p class="ocu-effective-note">{{ view.roles.note }}</p>
+              } @else {
+                <ul class="ocu-form-roles" aria-labelledby="ocu-user-effective-roles">
+                  @for (role of view.roles.rows; track role.name) {
+                    <li class="ocu-form-role"><span class="ocu-form-role-name">{{ role.name }}{{ role.suffix }}</span></li>
+                  }
+                </ul>
+              }
+            </div>
+            @if (effectiveDetail) {
+              <div class="ocu-effective-section" data-ocu-effective="resources">
+                <h3 class="ocu-details-heading" id="ocu-user-effective-resources">{{ STRINGS.resourceListLabel }}</h3>
+                @if (view.resources.note) {
+                  <p class="ocu-effective-note">{{ view.resources.note }}</p>
+                } @else {
+                  <table class="ocu-effective-table" aria-labelledby="ocu-user-effective-resources">
+                    <thead>
+                      <tr>
+                        <th scope="col">{{ STRINGS.webAppColumnResource }}</th>
+                        <th scope="col">{{ STRINGS.permissionRead }}</th>
+                        <th scope="col">{{ STRINGS.permissionWrite }}</th>
+                        <th scope="col">{{ STRINGS.permissionUse }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of view.resources.rows; track row.name) {
+                        <tr>
+                          <td>{{ row.name }}</td>
+                          <td>{{ row.read }}</td>
+                          <td>{{ row.write }}</td>
+                          <td>{{ row.use }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+              </div>
+              <div class="ocu-effective-section" data-ocu-effective="applications">
+                <h3 class="ocu-details-heading" id="ocu-user-effective-applications">{{ STRINGS.webAppListLabel }}</h3>
+                @if (view.applications.note) {
+                  <p class="ocu-effective-note">{{ view.applications.note }}</p>
+                } @else {
+                  <table class="ocu-effective-table" aria-labelledby="ocu-user-effective-applications">
+                    <thead>
+                      <tr>
+                        <th scope="col">{{ STRINGS.tableColumnName }}</th>
+                        <th scope="col">{{ STRINGS.webAppColumnResource }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of view.applications.rows; track row.name) {
+                        <tr>
+                          <td>{{ row.name }}</td>
+                          <td>{{ row.resource }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+              </div>
+              <div class="ocu-effective-section" data-ocu-effective="databases">
+                <h3 class="ocu-details-heading" id="ocu-user-effective-databases">{{ STRINGS.databaseListLabel }}</h3>
+                @if (view.databases.note) {
+                  <p class="ocu-effective-note">{{ view.databases.note }}</p>
+                } @else {
+                  <ul class="ocu-form-roles" aria-labelledby="ocu-user-effective-databases">
+                    @for (row of view.databases.rows; track row.key) {
+                      <li class="ocu-form-role"><span class="ocu-form-role-name">{{ row.line }}</span></li>
+                    }
+                  </ul>
+                }
+              </div>
+              <div class="ocu-effective-section" data-ocu-effective="services">
+                <h3 class="ocu-details-heading" id="ocu-user-effective-services">{{ STRINGS.serviceListLabel }}</h3>
+                @if (view.services.note) {
+                  <p class="ocu-effective-note">{{ view.services.note }}</p>
+                } @else {
+                  <ul class="ocu-form-roles" aria-labelledby="ocu-user-effective-services">
+                    @for (row of view.services.rows; track row.name) {
+                      <li class="ocu-form-role"><span class="ocu-form-role-name">{{ row.name }}</span></li>
+                    }
+                  </ul>
+                }
+              </div>
+            }
+          </div>
+        }
+      </ng-template>
     </app-form-tabs>
 
     <div class="ocu-form-bar">
@@ -484,6 +623,8 @@ export class UserEditorPage {
   private readonly injector = inject(Injector);
   private readonly actions = inject(ScreenActionHandler);
   private readonly session = inject(Session, { optional: true });
+  private readonly screenActions = inject(ScreenActions);
+  private readonly check = inject(PermissionCheck);
 
   protected readonly STRINGS = STRINGS;
 
@@ -528,11 +669,15 @@ export class UserEditorPage {
       if (this.store.is(event.id)) void this.store.refresh();
     });
     afterNextRender(() => this.focusRefusal(), { injector: this.injector });
+    // Story 16.3: Check permission, prefilled with the account the editor has open; its dialog
+    // renders in this page's `app-screen-action-dialogs`.
+    const stopCheck = this.screenActions.register(USER_FORM, PERMISSION_CHECK_ACTION_ID, () => this.check.open(USER_LIST, 'user', this.store.name()));
     inject(DestroyRef).onDestroy(() => {
       stopStore();
       stopDirty();
       stopIdChange.unsubscribe();
       stopChanges();
+      stopCheck();
       if (this.actions.pending()?.descriptor === USER_LIST) this.actions.cancelPending();
       this.store.reset();
     });
@@ -566,7 +711,38 @@ export class UserEditorPage {
     return [
       { key: GENERAL_TAB, label: STRINGS.processDetailsGroupGeneral, count: counts[GENERAL_TAB] ?? 0 },
       { key: ROLES_TAB, label: STRINGS.userColumnRoles, count: counts[ROLES_TAB] ?? 0 },
+      { key: EFFECTIVE_TAB, label: STRINGS.userEffectiveTab, count: 0 },
     ];
+  }
+
+  /** The Effective privileges tab as drawn (Story 16.3), or `null` before its read lands. */
+  protected get effectiveView(): EffectiveView | null {
+    this.generation();
+    const effective = this.store.effective();
+    if (effective === null) return null;
+    return {
+      lead: effective.all ? effectiveAllLine(effective.allVia) : STRINGS.userEffectiveIntro,
+      all: effective.all,
+      roles: sectionView(effective.roles, (role) => ({ name: role.name, suffix: role.through === '' ? '' : throughSuffix(role.through) })),
+      resources: sectionView(effective.resources, (row) => ({ name: row.name, read: letterCell(row.R), write: letterCell(row.W), use: letterCell(row.U) })),
+      applications: sectionView(effective.applications, (row) => ({ name: row.name, resource: row.resource })),
+      databases: sectionView(effective.databases, (row) => ({ key: row.directory, line: grantLine(row.directory, row.permissions) })),
+      services: sectionView(effective.services, (row) => ({ name: row.name })),
+    };
+  }
+
+  /** Whether the sections beyond Roles are drawn: not for an account that holds every privilege. */
+  protected get effectiveDetail(): boolean {
+    return this.effectiveView?.all === false;
+  }
+
+  protected get effectiveRefusal(): string {
+    this.generation();
+    return this.store.effectiveRefusal();
+  }
+
+  protected get hasEffectiveRefusal(): boolean {
+    return this.effectiveRefusal !== '';
   }
 
   protected get violations(): readonly Violation[] {
@@ -769,6 +945,7 @@ export class UserEditorPage {
 
   protected selectTab(key: string): void {
     this.selectedTab.set(key);
+    if (key === EFFECTIVE_TAB) void this.store.readEffective();
   }
 
   protected onText(field: string, event: Event): void {

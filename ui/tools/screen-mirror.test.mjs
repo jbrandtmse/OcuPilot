@@ -2112,10 +2112,28 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
     assert.equal(ownPrivilegesProblem(screen.declaration), null, `${screen.className}'s own pairs pass`);
   }
   const owners = screens.filter((screen) => Array.isArray(screen.declaration.ownPrivileges)).map((screen) => screen.className);
+  // Story 16.3, DW-1018 (Option A): the Logs area's two, and the thirteen wallet and OAuth 2.0
+  // screens, which own their pair so the Security area declares only %Admin_Secure and IRISSYS.
   assert.deepEqual(
     owners.sort(),
-    ['OcuPilot.Screen.Descriptor.LogAnalyticsViewer', 'OcuPilot.Screen.Descriptor.LogEventViewer'],
-    'the two screens AD-8 names are the ones declaring own pairs'
+    [
+      'OcuPilot.Screen.Descriptor.LogAnalyticsViewer',
+      'OcuPilot.Screen.Descriptor.LogEventViewer',
+      'OcuPilot.Screen.Descriptor.OAuthClientForm',
+      'OcuPilot.Screen.Descriptor.OAuthClientTab',
+      'OcuPilot.Screen.Descriptor.OAuthResourceServerForm',
+      'OcuPilot.Screen.Descriptor.OAuthResourceServerTab',
+      'OcuPilot.Screen.Descriptor.OAuthServerClientForm',
+      'OcuPilot.Screen.Descriptor.OAuthServerClientTab',
+      'OcuPilot.Screen.Descriptor.OAuthServerDescriptionForm',
+      'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab',
+      'OcuPilot.Screen.Descriptor.OAuthServerForm',
+      'OcuPilot.Screen.Descriptor.OAuthServerTab',
+      'OcuPilot.Screen.Descriptor.WalletCollectionList',
+      'OcuPilot.Screen.Descriptor.WalletSecretForm',
+      'OcuPilot.Screen.Descriptor.WalletSecretList',
+    ],
+    'the screens AD-8 names are the ones declaring own pairs'
   );
 
   const hostile = structuredClone(testCorpus(['Test', 'DeclarationCorpus.cls'], 'Cases').declaration);

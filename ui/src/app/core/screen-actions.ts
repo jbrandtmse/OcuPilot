@@ -32,6 +32,14 @@ export const REFRESH_ACTION_ID = 'refresh';
 export const DOWNLOAD_CSV_ACTION_ID = 'download-csv';
 
 /**
+ * Check permission (Story 16.3): like Refresh, a screen-level action rather than a declared one. It
+ * needs no row -- a selected row or the open user or role only prefills its dialog -- so it is never
+ * held back for want of a selection, and a descriptor declaring it would make the Users and Roles
+ * lists write-capable (`Registry.IsWriteCapable`).
+ */
+export const PERMISSION_CHECK_ACTION_ID = 'permission-check';
+
+/**
  * The label a surface draws for `actionId` on `descriptor`.
  *
  * A declared action's label is its own identifier until a screen carries published copy for it.
@@ -63,6 +71,7 @@ export function actionLabel(descriptor: string, actionId: string): string {
  */
 const ACTION_LABELS: Readonly<Record<string, string>> = {
   [REFRESH_ACTION_ID]: STRINGS.actionRefresh,
+  [PERMISSION_CHECK_ACTION_ID]: STRINGS.permissionCheckAction,
   create: STRINGS.actionCreate,
   enable: STRINGS.agentDefinitionEnable,
   disable: STRINGS.agentDefinitionDisable,

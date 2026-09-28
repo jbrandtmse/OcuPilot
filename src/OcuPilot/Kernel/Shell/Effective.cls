@@ -4,9 +4,11 @@
 /// permission is held by every user; an escalation role counts for nothing until the user
 /// escalates, so a caller never passes one in. This class is the one composition, and a later
 /// effective-privilege read uses it.</p>
-/// <p><method>Compose</method> and <method>Loss</method> are pure: they read nothing and are driven
-/// over literal rows. <method>Read</method> fetches what they need through the Roles and Resources
-/// screens' own reads, each after that screen's pair gate, with the caller's own privileges.</p>
+/// <p><method>Compose</method>, <method>Loss</method> and <method>Holds</method> are pure: they read
+/// nothing and are driven over literal rows. <method>Read</method> fetches what they need through the
+/// Roles and Resources screens' own reads, each after that screen's pair gate, with the caller's own
+/// privileges. The impact of a removal (Story 16.19), the user editor's Effective privileges tab and
+/// the permission check (Story 16.3) all compose here.</p>
 /// <p>Every name is compared without regard to case (inference: IRIS resolves role and resource
 /// names that way); an answer keeps the spelling first met.</p>
 Class OcuPilot.Kernel.Shell.Effective Extends %RegisteredObject
@@ -41,18 +43,26 @@ ClassMethod PortClass() As %String
 }
 
 /// <p>What the role names in <var>pRoles</var> hold together, as
-/// <code>{all, allVia, resources: {&lt;resource&gt;: {&lt;letter&gt;: &lt;granting role&gt;}}}</code>.</p>
-/// <p><var>pRoleRows</var> holds each role's own read (<code>GrantedRoles</code>,
-/// <code>Resources[{Name, Permissions}]</code>), keyed by role name; <var>pPublic</var> each
-/// resource's public permission letters, keyed by resource name. The closure follows
-/// <code>GrantedRoles</code> at every depth and visits each role once. The granting role recorded
-/// for a letter is the role in <var>pRoles</var> whose closure reaches it first; a letter held only
-/// publicly records <code>""</code>. <code>all</code> is true when <parameter>ALLROLE</parameter> is
-/// in the closure, and <code>allVia</code> names the role in <var>pRoles</var> it was reached
-/// through. A role with no row grants only itself.</p>
+/// <code>{all, allVia, resources, sources, roles}</code>:</p>
+/// <ul>
+/// <li><code>resources</code>: <code>{&lt;resource&gt;: {&lt;letter&gt;: &lt;role&gt;}}</code>, the role
+/// in <var>pRoles</var> whose closure reaches the letter first;</li>
+/// <li><code>sources</code>: the same shape, naming the role whose own <code>Resources</code> grant
+/// that letter;</li>
+/// <li><code>roles</code>: <code>[{name, through}]</code>, every role in the closure in the order it is
+/// reached, <code>through</code> naming the role in <var>pRoles</var> it was reached from, or
+/// <code>""</code> for a role of <var>pRoles</var> itself.</li>
+/// </ul>
+/// <p>A letter held only publicly records <code>""</code> in both maps. <var>pRoleRows</var> holds
+/// each role's own read (<code>GrantedRoles</code>, <code>Resources[{Name, Permissions}]</code>),
+/// keyed by role name; <var>pPublic</var> each resource's public permission letters, keyed by
+/// resource name. The closure follows <code>GrantedRoles</code> at every depth and visits each role
+/// once. <code>all</code> is true when <parameter>ALLROLE</parameter> is in the closure, and
+/// <code>allVia</code> names the role in <var>pRoles</var> it was reached through. A role with no row
+/// grants only itself.</p>
 ClassMethod Compose(pRoles As %DynamicArray, pRoleRows As %DynamicObject, pPublic As %DynamicObject) As %DynamicObject
 {
-    Set tOut = {"all": false, "allVia": "", "resources": {}}
+    Set tOut = {"all": false, "allVia": "", "resources": {}, "sources": {}, "roles": []}
     Kill tRows, tSeen, tQueue, tSpelled
     If $IsObject(pRoleRows) {
         Set tIterator = pRoleRows.%GetIterator()
@@ -69,16 +79,22 @@ ClassMethod Compose(pRoles As %DynamicArray, pRoleRows As %DynamicObject, pPubli
             If $Data(tSeen(tKey)) Continue
             Set tSeen(tKey) = ""
             Set tTail = tTail + 1
-            Set tQueue(tTail) = $ListBuild(tRole, tRole)
+            Set tQueue(tTail) = $ListBuild(tRole, tRole, 1)
         }
     }
     Set tResources = tOut.%Get("resources")
+    Set tSources = tOut.%Get("sources")
+    Set tClosure = tOut.%Get("roles")
     Set tHead = 0
     While tHead < tTail {
         Set tHead = tHead + 1
         Set tName = $List(tQueue(tHead), 1)
         Set tRoot = $List(tQueue(tHead), 2)
         Set tKey = $ZConvert(tName, "U")
+        Set tReached = {}
+        Do tReached.%Set("name", tName, "string")
+        Do tReached.%Set("through", $Select($List(tQueue(tHead), 3): "", 1: tRoot), "string")
+        Do tClosure.%Push(tReached)
         If (tKey = $ZConvert(..#ALLROLE, "U")) && 'tOut.%Get("all") {
             Do tOut.%Set("all", 1, "boolean")
             Do tOut.%Set("allVia", tRoot, "string")
@@ -89,7 +105,7 @@ ClassMethod Compose(pRoles As %DynamicArray, pRoleRows As %DynamicObject, pPubli
             Set tGrants = tRow.%Get("Resources").%GetIterator()
             While tGrants.%GetNext(.tGrantIndex, .tGrant) {
                 If '$IsObject(tGrant) Continue
-                Do ..Grant(tResources, .tSpelled, tGrant.%Get("Name"), tGrant.%Get("Permissions"), tRoot)
+                Do ..Grant(tResources, tSources, .tSpelled, tGrant.%Get("Name"), tGrant.%Get("Permissions"), tRoot, tName)
             }
         }
         If tRow.%GetTypeOf("GrantedRoles") = "array" {
@@ -100,7 +116,7 @@ ClassMethod Compose(pRoles As %DynamicArray, pRoleRows As %DynamicObject, pPubli
                 If $Data(tSeen(tOneKey)) Continue
                 Set tSeen(tOneKey) = ""
                 Set tTail = tTail + 1
-                Set tQueue(tTail) = $ListBuild(tOne, tRoot)
+                Set tQueue(tTail) = $ListBuild(tOne, tRoot, 0)
             }
         }
     }
@@ -108,7 +124,7 @@ ClassMethod Compose(pRoles As %DynamicArray, pRoleRows As %DynamicObject, pPubli
         Set tIterator = pPublic.%GetIterator()
         While tIterator.%GetNext(.tResource, .tLetters) {
             If $IsObject(tLetters) Continue
-            Do ..Grant(tResources, .tSpelled, tResource, tLetters, "")
+            Do ..Grant(tResources, tSources, .tSpelled, tResource, tLetters, "", "")
         }
     }
     Quit tOut
@@ -159,6 +175,55 @@ ClassMethod Loss(pBefore As %DynamicObject, pAfter As %DynamicObject, pPublic As
         Do tLoss.%Push(tSorted(tKey))
     }
     Quit tLoss
+}
+
+/// <p>Whether <var>pComposed</var>, a <method>Compose</method> answer, holds <var>pLetter</var>
+/// (<code>R</code>, <code>W</code> or <code>U</code>) on <var>pResource</var>, matched without
+/// regard to case, as <code>{held, all, public, grantedBy, root}</code>, filled by the first case
+/// that applies:</p>
+/// <ul>
+/// <li><parameter>ALLROLE</parameter> in the closure: held and <code>all</code>,
+/// <code>grantedBy</code> <parameter>ALLROLE</parameter>, <code>root</code> <code>allVia</code>;</li>
+/// <li>a role grants the letter: held, <code>grantedBy</code> the <code>sources</code> role,
+/// <code>root</code> the <code>resources</code> role;</li>
+/// <li>the letter is only public: held and <code>public</code>, both roles <code>""</code>;</li>
+/// <li>otherwise not held.</li>
+/// </ul>
+/// <p>It does not ask whether the resource exists; a caller that must refuse a missing one does so
+/// first.</p>
+ClassMethod Holds(pComposed As %DynamicObject, pResource As %String, pLetter As %String) As %DynamicObject
+{
+    Set tOut = {"held": false, "all": false, "public": false, "grantedBy": "", "root": ""}
+    If '$IsObject(pComposed) Quit tOut
+    If pComposed.%Get("all") {
+        Do tOut.%Set("held", 1, "boolean")
+        Do tOut.%Set("all", 1, "boolean")
+        Do tOut.%Set("grantedBy", ..#ALLROLE, "string")
+        Do tOut.%Set("root", pComposed.%Get("allVia"), "string")
+        Quit tOut
+    }
+    Set tLetter = $ZConvert(pLetter, "U")
+    Set tWanted = $ZConvert(pResource, "U")
+    Set tResources = pComposed.%Get("resources")
+    Set tSources = pComposed.%Get("sources")
+    If '$IsObject(tResources) Quit tOut
+    Set tIterator = tResources.%GetIterator()
+    While tIterator.%GetNext(.tResource, .tGranted) {
+        If $ZConvert(tResource, "U") '= tWanted Continue
+        If '$IsObject(tGranted) || (tGranted.%GetTypeOf(tLetter) = "unassigned") Quit
+        Set tRoot = tGranted.%Get(tLetter)
+        Set tBy = ""
+        If $IsObject(tSources) && $IsObject(tSources.%Get(tResource)) Set tBy = tSources.%Get(tResource).%Get(tLetter)
+        Do tOut.%Set("held", 1, "boolean")
+        If tRoot = "" {
+            Do tOut.%Set("public", 1, "boolean")
+            Quit
+        }
+        Do tOut.%Set("grantedBy", tBy, "string")
+        Do tOut.%Set("root", tRoot, "string")
+        Quit
+    }
+    Quit tOut
 }
 
 /// <p>Fetch what <method>Compose</method> needs for the roles <var>pRoots</var>, as the caller: each
@@ -260,24 +325,28 @@ ClassMethod Gate(pDescriptor As %String, Output pUnchecked As %String) As %Statu
     Quit $$$OK
 }
 
-/// <p>Record each letter of <var>pLetters</var> on <var>pResource</var> as granted by
-/// <var>pRole</var>, unless it is recorded already. <var>pSpelled</var> maps an upper-cased name to
-/// the spelling first met.</p>
-ClassMethod Grant(pResources As %DynamicObject, ByRef pSpelled, pResource As %String, pLetters As %String, pRole As %String) [ Private ]
+/// <p>Record each letter of <var>pLetters</var> on <var>pResource</var> as reached through
+/// <var>pRole</var> in <var>pResources</var> and granted by <var>pSource</var> in
+/// <var>pSources</var>, unless it is recorded already. <var>pSpelled</var> maps an upper-cased name
+/// to the spelling first met.</p>
+ClassMethod Grant(pResources As %DynamicObject, pSources As %DynamicObject, ByRef pSpelled, pResource As %String, pLetters As %String, pRole As %String, pSource As %String) [ Private ]
 {
     If pResource = "" Quit
     Set tKey = $ZConvert(pResource, "U")
     If '$Data(pSpelled(tKey)) {
         Set pSpelled(tKey) = pResource
         Do pResources.%Set(pResource, {})
+        Do pSources.%Set(pResource, {})
     }
     Set tGranted = pResources.%Get(pSpelled(tKey))
+    Set tGrantedBy = pSources.%Get(pSpelled(tKey))
     Set tUpper = $ZConvert(pLetters, "U")
     For tI = 1:1:$Length(..#LETTERS) {
         Set tLetter = $Extract(..#LETTERS, tI)
         If '(tUpper [ tLetter) Continue
         If tGranted.%GetTypeOf(tLetter) '= "unassigned" Continue
         Do tGranted.%Set(tLetter, pRole, "string")
+        Do tGrantedBy.%Set(tLetter, pSource, "string")
     }
 }
 

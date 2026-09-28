@@ -162,7 +162,7 @@ Method TestEachListIsDeclaredAsTheSecurityAreaEntryItReplaces()
         Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), $ListGet(tCase, 12), tClass _ ": and its row actions are the ones this class pins")
         Do $$$AssertEquals(tDeclaration.table.emptyNextKey, $Select(tAction = "": "tableReadOnlyEmptyNext", 1: ""), tClass _ ": its empty state names what to do next exactly when it declares no action")
         Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), $List(tCase, 8), tClass _ ": its pair set, in order")
-        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs")), "", tClass _ ": and the Security and secrets area covers it")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", tClass _ ": and the Security and secrets area covers it, less its own pairs (DW-1018)")
     }
 }
 

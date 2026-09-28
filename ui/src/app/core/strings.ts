@@ -3292,6 +3292,34 @@ export const STRINGS = {
   tryItCurlAccessToken: '<AccessToken>',
   /** EXPERIENCE.md:574 */
   tryItCurlNote: 'The command replaces your access token, and each value this console masks in its record of the request, with a name in angle brackets for you to fill in. Check the command for any other secret before you share it.',
+
+  // Story 16.3: the user editor's Effective privileges tab, and the permission check on the Users
+  // and Roles lists and both editors. An unread section's suffix is `impactRequires` or
+  // `impactTooMany`, and a yes's role may take `userEffectiveThrough`.
+  /** EXPERIENCE.md:468 */
+  userEffectiveTab: 'Effective privileges',
+  /** EXPERIENCE.md:468 */
+  userEffectiveIntro: 'What this account holds through its roles, the roles they grant, and public permissions. Escalation roles are not counted until used.',
+  /** EXPERIENCE.md:468 */
+  userEffectiveAll: 'Holds every privilege: <role> is or grants %All.',
+  /** EXPERIENCE.md:468 */
+  userEffectiveThrough: ' (through <role>)',
+  /** EXPERIENCE.md:468 */
+  userEffectiveUnchecked: 'Not checked',
+  /** EXPERIENCE.md:468 */
+  permissionCheckAction: 'Check permission',
+  /** EXPERIENCE.md:468 */
+  permissionCheckField: 'Permission',
+  /** EXPERIENCE.md:468 */
+  permissionCheckRun: 'Check',
+  /** EXPERIENCE.md:468 */
+  permissionCheckIncomplete: 'Enter a name and a resource first.',
+  /** EXPERIENCE.md:468 */
+  permissionCheckYes: 'Yes. <name> holds <pair>, granted by <role>.',
+  /** EXPERIENCE.md:468 */
+  permissionCheckPublic: 'Yes. Every account holds <pair> publicly.',
+  /** EXPERIENCE.md:468 */
+  permissionCheckNo: 'No. <name> does not hold <pair>.',
 } as const;
 
 /**

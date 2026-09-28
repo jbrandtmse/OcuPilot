@@ -6,13 +6,15 @@ import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api
 import { ChangeBus } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
 import { OverlayStack } from '../../core/overlay-stack';
-import { ScreenActions } from '../../core/screen-actions';
+import { PERMISSION_CHECK_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { Session } from '../../core/session';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
+import { PermissionCheck } from '../../shell/permission-check';
+import { ROLE_LIST } from '../../shell/screen-action-handler';
 import { ROLES_FORM_PATH, ROLES_PATH } from './role-create-form.store';
-import { RoleEditorPage } from './role-editor.page';
+import { ROLE_FORM, RoleEditorPage } from './role-editor.page';
 
 /**
  * The role editor over stubs of what an instance supplies -- the URL and the HTTP answers. The real
@@ -367,5 +369,24 @@ describe('the role editor (Story 9.3)', () => {
     await settle(plain.fixture);
     expect(plain.host.querySelector('#ocu-role-edit-member-effect')).toBeNull();
     expect(plain.host.querySelector('#ocu-role-edit-member-user')?.hasAttribute('aria-describedby')).toBe(false);
+  });
+});
+
+describe('Check permission on the role editor (Story 16.3)', () => {
+  it('registers Check permission for the editor, prefilled with the role it has open', async () => {
+    // Mutation (Rule 19): open the dialog with kind 'user' in the page's registration -> the pending
+    // assertion goes red.
+    const { fixture } = await mount();
+    const actions = TestBed.inject(ScreenActions);
+    expect(actions.has(ROLE_FORM, PERMISSION_CHECK_ACTION_ID)).toBe(true);
+    expect(actions.run(ROLE_FORM, PERMISSION_CHECK_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    expect(TestBed.inject(PermissionCheck).pending()).toEqual({ descriptor: ROLE_LIST, kind: 'role', name: 'Probe' });
+    const dialog = document.querySelector('app-screen-action-dialogs app-permission-check-dialog');
+    expect((dialog?.querySelector('[data-field="kind"]') as HTMLSelectElement | null)?.value).toBe('role');
+    expect((dialog?.querySelector('[data-field="name"]') as HTMLInputElement | null)?.value).toBe('Probe');
+    fixture.destroy();
+    expect(actions.has(ROLE_FORM, PERMISSION_CHECK_ACTION_ID)).toBe(false);
+    expect(TestBed.inject(PermissionCheck).pending()).toBeNull();
   });
 });
