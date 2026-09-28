@@ -158,8 +158,11 @@ const PHRASES: Readonly<
   },
 };
 
-/** Why a part was not read: the pair it requires, or that its read was too long to check. */
-function whyUnchecked(unchecked: string): string {
+/**
+ * Why a part was not read: " (requires <pair>)", or " (too many to check)" when its read was cut
+ * at its cap. The Effective privileges tab's unread sections take the same suffix.
+ */
+export function whyUnchecked(unchecked: string): string {
   return unchecked === IMPACT_TRUNCATED ? STRINGS.impactTooMany : STRINGS.impactRequires.replace('<pair>', () => unchecked);
 }
 

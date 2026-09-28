@@ -365,8 +365,10 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // Story 16.1 raised it to 1900kB against a measured 1,856,906 bytes: the policy's 5% (1950kB)
 // would pass the orchestrator's 1900kB stop line for the build, so the warning sits on that line.
 // Story 16.21 re-based it to 2004kB, 5% above a measured 1,908,082 bytes, under the 4000kB hard
-// stop. Story 18.1 re-based it to 2106kB, 5% above the 2,005,146 bytes measured once Story 16.9
-// merged beside it.
+// stop.
+// Story 16.24 re-based it to 2107kB, 5% above a measured 2,006,491 bytes, under the 4000kB hard
+// stop.
+// Story 18.1, merged beside it, measured 2,005,146 bytes on its own and stays under that figure.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -379,7 +381,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2106kB', 'DW-1166, Story 18.1: 5% above the measured 2,005,146 bytes, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2107kB', 'DW-1166, Story 16.24: 5% above the measured 2,006,491 bytes, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

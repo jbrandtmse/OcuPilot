@@ -19,7 +19,7 @@ import {
   withQuery,
 } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
+import { PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { selfProtectionReason } from '../core/self-protection';
@@ -490,6 +490,11 @@ export class CommandBox {
     // applies, so a screen that cannot re-read offers it on neither surface (DW-260).
     if (this.actions.has(screen.descriptor, REFRESH_ACTION_ID)) {
       declared.push({ id: REFRESH_ACTION_ID, rowScoped: false });
+    }
+    // Check permission (Story 16.3) after it, by the same test: screen-level, so never held back
+    // for want of a selection.
+    if (this.actions.has(screen.descriptor, PERMISSION_CHECK_ACTION_ID)) {
+      declared.push({ id: PERMISSION_CHECK_ACTION_ID, rowScoped: false });
     }
     if (this.actions.has(screen.descriptor, screen.primaryAction.id)) {
       declared.push({ id: screen.primaryAction.id, rowScoped: false });

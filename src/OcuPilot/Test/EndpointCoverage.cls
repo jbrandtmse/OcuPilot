@@ -147,6 +147,10 @@ XData Probes
 <!-- /users/name carries no query string here, for /web-applications/name's reason: it draws the
      documented 422 USER.NAME.REQUIRED envelope. Its own answers are OcuPilot.Test.UserCreateWire's. -->
 <probe class="Api.Router" method="GET" url="/users/name" path="/api/ocupilot/users/name" disposition="envelope"/>
+<!-- /users/effective and /permissions/check carry no query string: each refuses its first missing
+     argument (name, and kind) 400 TOOL.ARGUMENTS before any read. Their own answers are OcuPilot.Test.EffectiveUser's and
+     OcuPilot.Test.PermissionCheck's. -->
+<probe class="Api.Router" method="GET" url="/users/effective" path="/api/ocupilot/users/effective" disposition="envelope" expect="code=TOOL.ARGUMENTS"/>
 <probe class="Api.Router" method="PUT" url="/users/:id" path="/api/ocupilot/users/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/users" path="/api/ocupilot/users" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/roles/form" path="/api/ocupilot/roles/form" disposition="envelope"/>
@@ -205,6 +209,7 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/audit-events/form" path="/api/ocupilot/audit-events/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/audit-events/:id" path="/api/ocupilot/audit-events/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/audit-events" path="/api/ocupilot/audit-events" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/permissions/check" path="/api/ocupilot/permissions/check" disposition="envelope" expect="code=TOOL.ARGUMENTS"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>
 <probe class="Api.StaticHandler" method="HEAD" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

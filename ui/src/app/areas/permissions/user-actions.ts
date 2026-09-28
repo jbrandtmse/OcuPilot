@@ -1,8 +1,10 @@
 import { Injectable, Injector, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { createFormFor, screenForRoute, withQuery } from '../../core/navigation';
-import { ScreenActions } from '../../core/screen-actions';
+import { createFormFor, screenForDescriptor, screenForRoute, withQuery } from '../../core/navigation';
+import { PERMISSION_CHECK_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { ScreenStores } from '../../core/screen-store';
+import { PermissionCheck } from '../../shell/permission-check';
 
 /** The descriptor whose command bar this action appears on. */
 export const USER_LIST_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.UserList';
@@ -14,7 +16,8 @@ export const USER_LIST_ROUTE = 'permissions/users';
 export const CREATE_ACTION = 'create';
 
 /**
- * The handler behind the Users list's declared Create (AD-5, AD-19).
+ * The handlers behind the Users list's declared Create (AD-5, AD-19) and its Check permission (Story
+ * 16.3), which opens the dialog prefilled with the selected row.
  *
  * The Users list is served by the generic `ListPage`, so its action is registered here, once,
  * against the descriptor's class name -- the key `ScreenActions` is indexed by. It is tab-scoped
@@ -31,8 +34,19 @@ export class UserActions {
 
   private readonly actions = inject(ScreenActions);
 
+  private readonly check = inject(PermissionCheck);
+
   constructor() {
     this.actions.register(USER_LIST_DESCRIPTOR, CREATE_ACTION, () => this.openCreate());
+    // Story 16.3: screen-level, so it runs with or without a selection; a selected row prefills it.
+    this.actions.register(USER_LIST_DESCRIPTOR, PERMISSION_CHECK_ACTION_ID, () => this.check.open(USER_LIST_DESCRIPTOR, 'user', this.selected()));
+  }
+
+  /** The Users list's selected row, or `''`. */
+  private selected(): string {
+    const screen = screenForDescriptor(USER_LIST_DESCRIPTOR);
+    if (screen === null) return '';
+    return this.injector.get(ScreenStores).for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
   }
 
   private openCreate(): void {

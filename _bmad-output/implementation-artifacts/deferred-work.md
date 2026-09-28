@@ -3916,6 +3916,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T00:18:27Z occurrence=6-4-the-oauth-2-0-screen note=Story 6.4 appends %Admin_OAuth2_Client, %Admin_OAuth2_Server and %Admin_OAuth2_Registration (USE) to the security area: a holder of the Secure, IRISSYS and Wallet pairs without any OAuth resource sees the Security rail gated though 6 of its 10 built screens would serve them; %Manager and %SecurityAdministrator hold all three OAuth resources (observed on slot B by the 6.4 plan)
 - 2026-09-18T19:44:55Z status=routed owner=16-3-effective-privileges-and-the-permission-check-tool by=merge_gate note=decided: a rail item is allowed when ANY of its screens is; each screen keeps its own gate
 - 2026-09-28T06:34:37Z status=routed owner=16-3-effective-privileges-and-the-permission-check-tool by=merge_gate note=Option A decided 2026-09-28: Security set Secure+IRISSYS, wallet/OAuth screens ownPrivileges; AD-8 amended; residual filed separately
+- 2026-09-28T11:23:43Z status=resolved-by:16-3-effective-privileges-and-the-permission-check-tool by=adjudication note=Security case (Option A): dd028650 Area.cls set Secure+IRISSYS, 13 wallet/OAuth ownPrivileges; WireSecurityRead TestBothPairsReadEveryList (mutation run 17439); residual DW-1768
 
 ### DW-1019: Demo-fixture counts and the inventory kind vocabulary are stale outside Fixture.cls after the wallet fixture landed
 - source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: low | footprint: in-epic
@@ -7844,11 +7845,17 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-3-effective-privileges-and-the-permission-check-tool.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: AD-8's area AND pair set cannot express 'any of its screens'; measured on ocupilot-ci at 16.3 plan: %Operator holds %Admin_Operate:U and %DB_IRISSYS:RW only; 11 of 22 Security screens lack %Admin_Secure
 - 2026-09-28T06:34:37Z status=decision-pending owner=range-end-cleanup by=merge_gate note=owner decision after the voting week: keep AD-8's area set, or Option B (AD-8 any-screen rail: rail/Home tile/side bar open when any listed screen is allowed)
+- 2026-09-28T11:20:47Z occurrence=16-3-effective-privileges-and-the-permission-check-tool
 
+### DW-1769: Copy as curl's note and AD-57 (5) promise every secret value is left out, but only names the credential pattern matches are masked
+- source: spec-16-24-a-try-it-request-copied-as-curl.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: isSecretName is false for api_key, X-API-Key, Cookie, Proxy-Authorization; those headers/params and nested body members copy verbatim (cr probes 2026-09-28). tryItCurlNote says 'every secret value'; AD-57 (5) says 'no secret value reaches the clipboard'. Use case is pasting into a ticket.
+- 2026-09-28T08:04:13Z status=decision-pending owner=burndown by=cr note=copy call: reword note (EXPERIENCE :574, strings) and AD-57 (5) to the pattern's reach (recommended), or widen the pattern
 ### DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Security is pinned at oauth.browser-spec:283, ssl:228, security:242 and navigation.test.mjs:377; permissions:279 and tasks:1032 pin theirs. Rule 29 runs a story's own specs only, so 18.1 met it as CI run 36393142503's red and a rework.
 - 2026-09-28T09:44:59Z status=routed owner=18-7-encryption by=cr note=a screen-adding story extends every pinned list of its area (grep -l ocu-side-bar-label ui/browser); 18.8 and 18.9 meet it too
+- 2026-09-28T08:40:12Z status=resolved-by:16-24-a-try-it-request-copied-as-curl by=merge_gate note=decided: reword the note, leave the pattern; fixed in 20d4a106 (strings.ts, EXPERIENCE :574, AD-57 item 5); CI run 36398685106
 
 ### DW-1775: Eight candidate admin API defects observed probing namespaces and mappings on 2026.2 (delete without %Admin_Secure answers 500 after deleting; maxRows limits a namespace DELETE's app cascade; client-input errors as 500; v2 async Location points at /v1)
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: low | footprint: out-of-footprint

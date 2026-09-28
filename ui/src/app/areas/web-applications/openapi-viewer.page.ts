@@ -11,6 +11,7 @@ import { DEFAULT_MAX_ROWS } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { TokenStore } from '../../core/token-store';
+import { copyText } from '../../shell/copy-control';
 import { Dialog } from '../../shell/dialog';
 import { OpenApiViewerStore, verbLabel, type OpenApiOperation } from './openapi-viewer.store';
 import { FIELD_LOCATIONS, composeRequest, refuseRequest, takesBody, type Composition } from './try-it';
@@ -57,6 +58,19 @@ interface TryItView {
   readonly body: string;
   /** The refusal shown in place of Send, or `''` when Send is offered. */
   readonly refusal: string;
+  readonly refusalId: string;
+  /** Whether Send is drawn: there is no refusal. */
+  readonly offersSend: boolean;
+  /** Whether Copy as curl is refused: the console refuses the request, or a field is refused. */
+  readonly copyRefused: boolean;
+  /** What describes Copy as curl: the refusal, the refused field's error, or the note. */
+  readonly copyDescribedBy: string;
+  /** The note's id while the copy is offered, or `''`. */
+  readonly copyNoteId: string;
+  /** "Copied", the clipboard sentence, or `''`. */
+  readonly copyStatus: string;
+  /** The command, shown selectable when the clipboard took neither route, or `''`. */
+  readonly copyFallback: string;
   /** Whether Send is offered but cannot send now: a field is refused or a request is in flight. */
   readonly blocked: boolean;
   readonly sending: boolean;
@@ -117,6 +131,11 @@ interface PathView {
  * and the answer render as text on the code surface. A service listed by package name has no
  * address, so none of its operations has a console.
  *
+ * **Copy as curl (Story 16.24, AD-57 (5))** follows Send: the same request as one curl command on
+ * the clipboard, nothing sent. It is refused, `aria-disabled` and described by the reason, exactly
+ * when Send is refused or a field is; otherwise the note saying what the command leaves out
+ * describes it. When the clipboard takes neither route, the command shows on the code surface.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
@@ -130,7 +149,12 @@ interface PathView {
       provide: TryItStore,
       useFactory: () => {
         const tokens = inject(TokenStore, { optional: true });
-        return new TryItStore({ fetch: (url, init) => fetch(url, init), accessToken: () => tokens?.accessToken() ?? '' });
+        const doc = inject(DOCUMENT);
+        return new TryItStore({
+          fetch: (url, init) => fetch(url, init),
+          accessToken: () => tokens?.accessToken() ?? '',
+          copyText: (text) => copyText(doc, text),
+        });
       },
     },
   ],
@@ -271,9 +295,10 @@ interface PathView {
                               </div>
                             }
                             @if (tryIt.refusal) {
-                              <p class="ocu-try-it-refusal" data-ocu-try-it="refusal">{{ tryIt.refusal }}</p>
-                            } @else {
-                              <div class="ocu-try-it-actions">
+                              <p class="ocu-try-it-refusal" data-ocu-try-it="refusal" [id]="tryIt.refusalId">{{ tryIt.refusal }}</p>
+                            }
+                            <div class="ocu-try-it-actions">
+                              @if (tryIt.offersSend) {
                                 <button
                                   type="button"
                                   class="ocu-button-secondary ocu-try-it-send"
@@ -283,7 +308,24 @@ interface PathView {
                                 >
                                   {{ STRINGS.actionSend }}
                                 </button>
-                              </div>
+                              }
+                              <button
+                                type="button"
+                                class="ocu-button-text ocu-try-it-copy"
+                                data-ocu-try-it="copy"
+                                [attr.aria-disabled]="tryIt.copyRefused"
+                                [attr.aria-describedby]="tryIt.copyDescribedBy"
+                                (click)="onCopyCurl(tryIt)"
+                              >
+                                {{ STRINGS.tryItCopyCurl }}
+                              </button>
+                              <span class="ocu-try-it-note" role="status" data-ocu-try-it="copy-status">{{ tryIt.copyStatus }}</span>
+                              @if (tryIt.copyNoteId) {
+                                <p class="ocu-try-it-note" data-ocu-try-it="curl-note" [id]="tryIt.copyNoteId">{{ STRINGS.tryItCurlNote }}</p>
+                              }
+                            </div>
+                            @if (tryIt.copyFallback) {
+                              <pre class="ocu-try-it-code" tabindex="0" data-ocu-try-it="curl">{{ tryIt.copyFallback }}</pre>
                             }
                             @if (tryIt.record) {
                               <h3 class="ocu-openapi-heading">{{ STRINGS.sslVerifyPeerRequest }}</h3>
@@ -538,6 +580,13 @@ export class OpenApiViewerPage {
       if (verdict === 'admin-write') refused = STRINGS.tryItAdminWrite;
     }
     const traversalIndex = composition.kind === 'traversal' ? composition.index : -1;
+    const refusalId = `${prefix}-refusal`;
+    const copyRefused = composition.kind !== 'ok' || refused !== '';
+    const copyNoteId = copyRefused ? '' : `${prefix}-curl-note`;
+    let copyDescribedBy = copyNoteId;
+    if (refused !== '') copyDescribedBy = refusalId;
+    if (traversalIndex >= 0) copyDescribedBy = `${prefix}-field-${traversalIndex}-error`;
+    const copy = this.tryIt.copyOutcome(key);
     const sending = this.tryIt.sending(key);
     const record = this.tryIt.record(key);
     const answer = this.tryIt.answer(key);
@@ -572,6 +621,13 @@ export class OpenApiViewerPage {
       hasBody: takesBody(operation.verb) && !hasForm,
       body: this.tryIt.body(key),
       refusal: refused,
+      refusalId,
+      offersSend: refused === '',
+      copyRefused,
+      copyDescribedBy,
+      copyNoteId,
+      copyStatus: copy === null ? '' : copy.copied ? STRINGS.copyAnnouncementCopied : STRINGS.copyAnnouncementUnavailable,
+      copyFallback: copy === null || copy.copied ? '' : copy.command,
       blocked: composition.kind !== 'ok' || sending,
       sending,
       record: record === null ? '' : [record.line, ...record.headers, ...(record.body === null ? [] : ['', record.body])].join('\n'),
@@ -602,6 +658,16 @@ export class OpenApiViewerPage {
     const composition = this.compose(basePath, view.operation);
     if (composition.kind !== 'ok') return;
     void this.tryIt.send(view.key, composition.request);
+  }
+
+  /** Copy what the console's form composes now as curl: nothing when the copy is refused. */
+  protected onCopyCurl(view: TryItView): void {
+    if (view.copyRefused) return;
+    const basePath = this.basePath();
+    if (basePath === null) return;
+    const composition = this.compose(basePath, view.operation);
+    if (composition.kind !== 'ok') return;
+    void this.tryIt.copyCurl(view.key, composition.request);
   }
 
   protected onConfirmSend(): void {

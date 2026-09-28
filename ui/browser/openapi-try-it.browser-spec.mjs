@@ -1,6 +1,6 @@
 /**
- * Story 16.1 in a real browser, against the throwaway instance: the try-it console on the OpenAPI
- * document viewer (AD-57).
+ * Stories 16.1 and 16.24 in a real browser, against the throwaway instance: the try-it console on
+ * the OpenAPI document viewer and its Copy as curl (AD-57).
  *
  * What it pins, each on rendered DOM and on the wire the page itself produced:
  *
@@ -10,8 +10,14 @@
  * 2. `/api/mgmnt`'s `GET /v2/` is sent and its 401 is shown as the round trip's answer.
  * 3. A `DELETE` on `/api/mgmnt` opens the confirmation dialog, which passes DW-1337; Cancel sends
  *    nothing.
- * 4. A `DELETE` in `/api/admin`'s document offers no Send and shows the admin-write refusal.
+ * 4. A `DELETE` in `/api/admin`'s document offers no Send and shows the admin-write refusal; its Copy
+ *    as curl is `aria-disabled`, described by that refusal, and a press leaves the clipboard as it was.
  * 5. `/api/ocupilot`'s document offers no Send on any operation of the path opened.
+ * 6. Copy as curl on `/api/admin`'s `GET /v2/web-apps`, after a Send: the clipboard holds exactly the
+ *    command, with `<AccessToken>` and no token; the press issues no request but the session's own
+ *    refresh; the command, run by `/bin/sh` with real curl and the Send's Bearer in place of
+ *    `<AccessToken>`, answers the JSON the wire carried; and DW-1337 passes with "Copied" shown.
+ *    Needs `curl` on PATH. The token is never printed, logged or kept.
  *
  * **It sends reads only.** No mutating request is ever sent: the one write it composes is cancelled,
  * and the refused ones have no Send. Refuses the live container.
@@ -23,6 +29,7 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
@@ -39,6 +46,9 @@ const { MASKED_VALUE } = await import(join(uiRoot, 'src', 'app', 'core', 'propos
 const config = browserConfig();
 const VIEWER_PATH = '/ocupilot/web-applications/rest-apis/document/';
 const VIEWER_ROUTE = 'web-applications/rest-apis/document/:id';
+
+/** What the clipboard has to be allowed to do for a press to be read back. */
+const CLIPBOARD_PERMISSIONS = ['clipboard-read', 'clipboard-write', 'clipboard-sanitized-write'];
 
 let browser = null;
 
@@ -209,12 +219,88 @@ test('a DELETE on /api/mgmnt asks first in a dialog that passes DW-1337, and Can
   }
 });
 
-test('a DELETE in /api/admin\'s document offers no Send and shows the admin-write refusal', async () => {
+test('a DELETE in /api/admin\'s document offers no Send and shows the admin-write refusal, and Copy as curl is refused by it', async () => {
   const { context, page } = await atDocument('/api/admin');
   try {
+    await context.overridePermissions(config.origin, CLIPBOARD_PERMISSIONS);
     const operation = await openConsole(page, '/v2/web-app', 'Delete');
     assert.equal(await page.$(`${operation} [data-ocu-try-it="send"]`), null);
     assert.equal(await page.$eval(`${operation} [data-ocu-try-it="refusal"]`, (node) => node.textContent.trim()), STRINGS.tryItAdminWrite);
+
+    const copy = await page.$eval(`${operation} [data-ocu-try-it="copy"]`, (node) => ({
+      disabled: node.getAttribute('aria-disabled'),
+      description: document.getElementById(node.getAttribute('aria-describedby') ?? '')?.textContent.trim() ?? '',
+    }));
+    assert.deepEqual(copy, { disabled: 'true', description: STRINGS.tryItAdminWrite }, 'Copy as curl is refused by the same sentence');
+    const sentinel = `ocupilot-clipboard-sentinel-${Date.now()}`;
+    await page.evaluate((text) => navigator.clipboard.writeText(text), sentinel);
+    await page.click(`${operation} [data-ocu-try-it="copy"]`);
+    await frames(page);
+    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), sentinel, 'a refused press leaves the clipboard as it was');
+    assert.equal(await page.$eval(`${operation} [data-ocu-try-it="copy-status"]`, (node) => node.textContent.trim()), '');
+    await assertStructure(page);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Copy as curl on GET /v2/web-apps writes the exact command without the token, sends nothing, and the command answers the same JSON', async () => {
+  // Mutations (Rule 19): write the tab's token into the copied Authorization -> the no-token
+  // assertion goes red; unbind `onCopyCurl` and redeploy -> the wait for "Copied" times out; fill
+  // `<AccessToken>` with anything but the Send's token -> the JSON comparison goes red.
+  const { context, page, requests } = await atDocument('/api/admin');
+  try {
+    await context.overridePermissions(config.origin, CLIPBOARD_PERMISSIONS);
+    const operation = await openConsole(page, '/v2/web-apps', 'Get');
+    const answered = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/admin/v2/web-apps', { timeout: config.navigationTimeoutMs });
+    await page.click(`${operation} [data-ocu-try-it="send"]`);
+    const response = await answered;
+    assert.equal(response.status(), 200, 'the Send answered 200, so the JSON the command must match is the web-apps list');
+    const wire = await response.json();
+    const sent = requests.filter((request) => request.path === '/api/admin/v2/web-apps');
+    assert.equal(sent.length, 1);
+    const bearer = /^Bearer (\S+)$/.exec(sent[0].headers.authorization ?? '');
+    assert.notEqual(bearer, null, 'the Send carried the tab\'s token');
+    const token = bearer[1];
+    // Any Bearer value but the placeholder is a token (the tab may have refreshed since the Send), so
+    // none reaches an assertion message.
+    const redact = (text) => text.split(token).join('<redacted>').replace(/Bearer (?!<AccessToken>)[^'\s]+/g, 'Bearer <redacted>');
+
+    const note = await page.$eval(`${operation} [data-ocu-try-it="copy"]`, (node) => document.getElementById(node.getAttribute('aria-describedby') ?? '')?.textContent.trim() ?? '');
+    assert.equal(note, STRINGS.tryItCurlNote, 'the note describes the control');
+
+    const pressed = [];
+    const record = (request) => pressed.push(new URL(request.url()).pathname);
+    page.on('request', record);
+    await page.click(`${operation} [data-ocu-try-it="copy"]`);
+    await page.waitForFunction(
+      (selector, word) => document.querySelector(`${selector} [data-ocu-try-it="copy-status"]`)?.textContent.trim() === word,
+      { timeout: config.navigationTimeoutMs },
+      operation,
+      STRINGS.copyAnnouncementCopied
+    );
+    await frames(page);
+    page.off('request', record);
+    assert.deepEqual(pressed.filter((path) => path !== '/api/ocupilot/refresh'), [], 'the press issued no request');
+
+    const clipboard = await page.evaluate(() => navigator.clipboard.readText());
+    assert.equal(clipboard.includes(token), false, 'the clipboard holds no token');
+    assert.equal(
+      redact(clipboard),
+      `curl --request 'GET' '${config.origin}/api/admin/v2/web-apps' --header 'Authorization: Bearer ${STRINGS.tryItCurlAccessToken}'`
+    );
+
+    // The command as copied, with only the placeholder filled, run by a POSIX shell and real curl.
+    const run = spawnSync('/bin/sh', [], {
+      input: `${clipboard.replace(STRINGS.tryItCurlAccessToken, () => token)}\n`,
+      encoding: 'utf8',
+      timeout: config.navigationTimeoutMs,
+      env: { ...process.env, NO_PROXY: '*', no_proxy: '*' },
+    });
+    assert.equal(run.error, undefined, `/bin/sh and curl ran: ${run.error ? redact(String(run.error)) : ''}`);
+    assert.equal(run.status, 0, `curl on PATH answered: ${redact(run.stderr ?? '')}`);
+    assert.deepEqual(JSON.parse(run.stdout), wire, 'the command answers the JSON the console\'s own request carried');
+
     await assertStructure(page);
   } finally {
     await context.close();

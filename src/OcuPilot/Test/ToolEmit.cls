@@ -147,8 +147,8 @@ Method TestAToolTheProviderCannotTakeRefusesTheListing()
 }
 
 /// <p>Every live tool's privilege pairs are read, and are its screen's: a descriptor-derived read
-/// tool's are its descriptor's, the application error tool's are its screen descriptor's, and a shell
-/// read declares none (AD-8). The application error tool's arguments add the pairs its port requires
+/// tool's are its descriptor's, the application error tool's and the permission check's are their
+/// screen descriptor's, and a shell read declares none (AD-8). The application error tool's arguments add the pairs its port requires
 /// for the namespace they name, database pairs included -- this namespace's, and another namespace's
 /// when a call names that one; no other live tool's arguments add any (AD-48).</p>
 /// <p>Mutations: delete <method>OcuPilot.Screen.Tool.ErrorRead.PrivilegePairs</method> -> this goes
@@ -212,6 +212,11 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             If $Parameter(tTool.class, "APPLICATIONRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "APPLICATIONRESOURCE"), $Parameter(tTool.class, "APPLICATIONPERMISSION")))
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
+        } ElseIf tTool.class = "OcuPilot.Kernel.Shell.PermissionCheck" {
+            ; Story 16.3: a read with a class of its own, gated as the Users list is; its arguments
+            ; add no pair, and a role check asks the Roles list's set inside the operation.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
         } ElseIf tTool.class = "OcuPilot.Screen.Tool.Navigate" {
             ; Story 4.7: no static requirement of its own -- the target screen's own pairs are
             ; what gate it, resolved per call in ArgumentPairs from the (untested-here) route

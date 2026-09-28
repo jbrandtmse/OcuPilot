@@ -3,8 +3,8 @@
  *
  * What it pins, each on rendered DOM, on the real URL or on the instance itself:
  *
- * 1. **A row's name opens the editor** at `permissions/users/edit/<id>`, on the General and Roles
- *    tabs.
+ * 1. **A row's name opens the editor** at `permissions/users/edit/<id>`, on the General, Roles and
+ *    Effective privileges tabs.
  * 2. **A two-field Save reaches the instance and leaves every other setting as it was**, and the
  *    route stays open reading "Saved".
  * 3. **A refusal on the General tab while Roles is open** switches to General, whose tab carries the
@@ -189,7 +189,7 @@ async function save(page) {
   await page.click('.ocu-form-bar .ocu-button-primary');
 }
 
-test('a row\u2019s name opens the editor on the General and Roles tabs', async () => {
+test('a row\u2019s name opens the editor on the General, Roles and Effective privileges tabs', async () => {
   // Mutation (Rule 19): put UserForm back in `CREATE_ONLY_FORMS` and redeploy -> the name cell opens
   // no editor and the URL wait goes red.
   const { context, page } = await signedInAt(LIST_URL);
@@ -213,7 +213,8 @@ test('a row\u2019s name opens the editor on the General and Roles tabs', async (
     );
     await editorReady(page);
     const tabs = await tabState(page);
-    assert.deepEqual(tabs.map((tab) => tab.label), [STRINGS.processDetailsGroupGeneral, STRINGS.userColumnRoles]);
+    // Story 16.3 added the read-only Effective privileges tab third.
+    assert.deepEqual(tabs.map((tab) => tab.label), [STRINGS.processDetailsGroupGeneral, STRINGS.userColumnRoles, STRINGS.userEffectiveTab]);
     assert.equal(tabs[0].selected, true, 'General is open first');
   } finally {
     await context.close();

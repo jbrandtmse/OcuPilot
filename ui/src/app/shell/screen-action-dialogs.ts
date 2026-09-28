@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output } from '@angular/core';
 
+import { type PendingCheck, PermissionCheck } from './permission-check';
+import { PermissionCheckDialog } from './permission-check-dialog';
 import { RoleDialog } from './role-dialog';
 import { type PendingConfirm, ScreenActionHandler } from './screen-action-handler';
 import { SetPasswordDialog } from './set-password-dialog';
@@ -11,7 +13,9 @@ import { WarningDialog } from './warning-dialog';
  * the warning before a non-delete write, the set-password dialog and the role dialog -- the ones
  * `ScreenActionHandler` holds pending for `descriptor`, rendered wherever that screen's actions are
  * offered. A list page renders it under its table and the user editor under its form (DW-1501), so
- * the two surfaces show one dialog, not two copies of it.
+ * the two surfaces show one dialog, not two copies of it. The Check permission dialog (Story 16.3)
+ * renders here too, while `PermissionCheck` holds one open for `descriptor`, and is closed when the
+ * page that renders it goes.
  *
  * `acting` is emitted just before a dialog's confirming answer reaches the handler, so the page can
  * move focus off the dialog first (a list page's grid).
@@ -19,7 +23,7 @@ import { WarningDialog } from './warning-dialog';
 @Component({
   selector: 'app-screen-action-dialogs',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RoleDialog, SetPasswordDialog, TypedNameDialog, WarningDialog],
+  imports: [PermissionCheckDialog, RoleDialog, SetPasswordDialog, TypedNameDialog, WarningDialog],
   template: `@if (pendingTypedName; as pending) {
       <app-typed-name-dialog
         [verb]="pending.verb"
@@ -58,6 +62,9 @@ import { WarningDialog } from './warning-dialog';
         (confirmed)="onWarning()"
         (cancelled)="onCancel()"
       />
+    }
+    @if (pendingCheck; as check) {
+      <app-permission-check-dialog [kind]="check.kind" [name]="check.name" (closed)="onCheckClosed()" />
     }`,
 })
 export class ScreenActionDialogs {
@@ -68,6 +75,14 @@ export class ScreenActionDialogs {
   readonly acting = output<void>();
 
   private readonly handler = inject(ScreenActionHandler);
+
+  private readonly check = inject(PermissionCheck);
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      if (this.check.pending()?.descriptor === this.descriptor()) this.check.close();
+    });
+  }
 
   private readonly pending = computed<PendingConfirm | null>(() => {
     const pending = this.handler.pending();
@@ -88,6 +103,17 @@ export class ScreenActionDialogs {
 
   protected get pendingWarning(): PendingConfirm | null {
     return this.pendingOf('warning');
+  }
+
+  /** The Check permission dialog this screen has open (Story 16.3), or `null`. */
+  protected get pendingCheck(): PendingCheck | null {
+    const pending = this.check.pending();
+    return pending !== null && pending.descriptor === this.descriptor() ? pending : null;
+  }
+
+  /** Escape, Cancel or the scrim on the Check permission dialog. */
+  protected onCheckClosed(): void {
+    this.check.close();
   }
 
   /** The typed name matched: the handler sends the write it was standing in front of. */

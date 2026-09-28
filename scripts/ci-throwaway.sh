@@ -231,6 +231,7 @@ services:
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
       # classes: LogHubWire, PathPort, PathPortPrivilege
+      # classes: PermissionCheck, EffectiveUser
       # classes: NamespaceWriteGate
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one

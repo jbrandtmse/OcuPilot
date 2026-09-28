@@ -6,13 +6,14 @@ import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
 import { OverlayStack } from '../../core/overlay-stack';
-import { ScreenActions } from '../../core/screen-actions';
+import { PERMISSION_CHECK_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { Session } from '../../core/session';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
-import { UserEditorPage } from './user-editor.page';
-import { TWO_FACTOR_SMS_BIT, TWO_FACTOR_TOTP_BIT, USERS_FORM_PATH, USERS_PATH } from './user-editor.store';
+import { PermissionCheck } from '../../shell/permission-check';
+import { USER_FORM, USER_LIST, UserEditorPage } from './user-editor.page';
+import { TWO_FACTOR_SMS_BIT, TWO_FACTOR_TOTP_BIT, USERS_EFFECTIVE_PATH, USERS_FORM_PATH, USERS_PATH } from './user-editor.store';
 
 /**
  * The user editor over stubs of what an instance supplies -- the URL and the HTTP answers. The real
@@ -55,6 +56,18 @@ const COMMENT_REFUSED = {
   detail: { violations: [{ field: 'Comment', code: 'USER.COMMENT.LENGTH', reason: 'That comment is longer than this instance stores.' }] },
 };
 
+/** The chained account's Effective privileges, as `GET /users/effective` answers them (Story 16.3). */
+const EFFECTIVE = {
+  user: 'Dana',
+  all: false,
+  allVia: '',
+  roles: { rows: [{ name: 'A', through: '' }, { name: 'B', through: 'A' }], unchecked: '' },
+  resources: { rows: [{ name: '%DB_USER', R: 'B' }, { name: 'Pub', R: '', U: 'A' }], unchecked: '' },
+  applications: { rows: [{ name: '/csp/app', resource: 'Res' }], unchecked: '' },
+  databases: { rows: [], unchecked: '%Admin_Manage:USE' },
+  services: { rows: [], unchecked: '' },
+};
+
 const planted: HTMLElement[] = [];
 
 async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
@@ -72,7 +85,8 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 async function mount(
   name = 'Dana',
   save: JsonResult<unknown> = { kind: 'ok', status: 200, body: { name } },
-  served: Record<string, unknown> = {}
+  served: Record<string, unknown> = {},
+  effective: unknown = EFFECTIVE
 ) {
   TestBed.resetTestingModule();
   const calls: { path: string; method: string; body: string }[] = [];
@@ -81,6 +95,13 @@ async function mount(
       const method = init.method ?? 'GET';
       calls.push({ path, method, body: init.body ?? '' });
       if (method === 'PUT') return save as JsonResult<T>;
+      if (path.startsWith(`${USERS_EFFECTIVE_PATH}?name=`)) {
+        // A function answers each read itself; a refused read is passed as the result itself;
+        // anything else is the 200 body.
+        if (typeof effective === 'function') return (effective as () => Promise<JsonResult<T>>)();
+        const refused = (effective as { kind?: unknown } | null)?.kind === 'error';
+        return (refused ? effective : { kind: 'ok', status: 200, body: effective }) as JsonResult<T>;
+      }
       const body = path.startsWith(`${USERS_FORM_PATH}?name=`)
         ? { requiredFields: [], maxLengths: { Comment: 2048 }, rules: [], roles: ROLES, user: { ...account(name), ...served } }
         : { requiredFields: [], maxLengths: {}, rules: [], roles: ROLES };
@@ -124,12 +145,13 @@ afterEach(() => {
 });
 
 describe('the user editor (Story 9.1)', () => {
-  it('opens an account on the General and Roles tabs, its settings in the classic editor\u2019s order', async () => {
+  it('opens an account on the General, Roles and Effective privileges tabs, its settings in the classic editor\u2019s order', async () => {
     // Mutation (Rule 19): move the Comment block below the email field -> the order assertion goes red.
     const { host } = await mount();
     expect(tabs(host).map((tab) => tab.querySelector('.ocu-form-tab-label')?.textContent?.trim())).toEqual([
       STRINGS.processDetailsGroupGeneral,
       STRINGS.userColumnRoles,
+      STRINGS.userEffectiveTab,
     ]);
     const general = host.querySelector('.ocu-form-fields') as HTMLElement;
     const names = [...general.querySelectorAll('.ocu-field-label, .ocu-field-checkbox > span')].map((node) => node.textContent?.trim());
@@ -293,5 +315,157 @@ describe('the user editor (Story 9.1)', () => {
     expect(host.querySelector('app-screen-action-dialogs app-role-dialog')).toBeNull();
     const post = calls.find((call) => call.method === 'POST');
     expect(JSON.parse(post?.body ?? '{}')).toEqual({ action: 'remove-role', id: 'Dana', values: { Role: '%SQL' } });
+  });
+});
+
+/** The Effective privileges tab's rendered text, section by section. */
+function effectiveText(host: HTMLElement) {
+  const section = (key: string) => host.querySelector(`[data-ocu-effective="${key}"]`) as HTMLElement | null;
+  const rows = (key: string) => [...(section(key)?.querySelectorAll('li, tbody tr') ?? [])].map((row) => [...row.querySelectorAll('td')].length > 0
+    ? [...row.querySelectorAll('td')].map((cell) => cell.textContent?.trim() ?? '')
+    : [row.textContent?.trim() ?? '']);
+  const note = (key: string) => section(key)?.querySelector('.ocu-effective-note')?.textContent?.trim() ?? '';
+  return { section, rows, note, lead: host.querySelector('[data-ocu-effective="lead"]')?.textContent?.trim() ?? '' };
+}
+
+describe('the Effective privileges tab (Story 16.3)', () => {
+  it('AC1, AC3: reads the account\u2019s composition when selected and renders its sections', async () => {
+    // Mutation (Rule 19): render a public letter as blank in the page's `letterCell` -> the Public
+    // cell assertion goes red.
+    const { fixture, host, calls } = await mount();
+    expect(calls.some((call) => call.path.startsWith(USERS_EFFECTIVE_PATH))).toBe(false);
+    tabs(host)[2].click();
+    await settle(fixture);
+    expect(calls.filter((call) => call.path.startsWith(USERS_EFFECTIVE_PATH)).map((call) => `${call.method} ${call.path}`)).toEqual([`GET ${USERS_EFFECTIVE_PATH}?name=Dana`]);
+    const text = effectiveText(host);
+    expect(text.lead).toBe(STRINGS.userEffectiveIntro);
+    expect(text.rows('roles')).toEqual([['A'], ['B (through A)']]);
+    const heads = [...(text.section('resources')?.querySelectorAll('th') ?? [])].map((cell) => cell.textContent?.trim());
+    expect(heads).toEqual([STRINGS.webAppColumnResource, STRINGS.permissionRead, STRINGS.permissionWrite, STRINGS.permissionUse]);
+    expect(text.rows('resources')).toEqual([
+      ['%DB_USER', 'B', '', ''],
+      ['Pub', STRINGS.oauthClientTypePublic, '', 'A'],
+    ]);
+    expect(text.rows('applications')).toEqual([['/csp/app', 'Res']]);
+    expect(text.note('databases')).toBe('Not checked (requires %Admin_Manage:USE)');
+    expect(text.note('services')).toBe(STRINGS.tableEmptyValue);
+  });
+
+  it('lists a database as its directory and the letters held', async () => {
+    const { fixture, host } = await mount('Dana', undefined, {}, { ...EFFECTIVE, databases: { rows: [{ directory: '/db/user/', resource: '%DB_USER', permissions: 'RW' }], unchecked: '' } });
+    tabs(host)[2].click();
+    await settle(fixture);
+    expect(effectiveText(host).rows('databases')).toEqual([[`/db/user/: ${STRINGS.permissionRead}, ${STRINGS.permissionWrite}`]]);
+  });
+
+  it('AC2: an account holding every privilege reads the %All statement and lists its roles only', async () => {
+    const all = { ...EFFECTIVE, all: true, allVia: 'R', roles: { rows: [{ name: 'R', through: '' }, { name: '%All', through: 'R' }], unchecked: '' }, resources: { rows: [], unchecked: '' }, applications: { rows: [], unchecked: '' }, databases: { rows: [], unchecked: '' } };
+    const { fixture, host } = await mount('Dana', undefined, {}, all);
+    tabs(host)[2].click();
+    await settle(fixture);
+    const text = effectiveText(host);
+    expect(text.lead).toBe('Holds every privilege: R is or grants %All.');
+    expect(text.rows('roles')).toEqual([['R'], ['%All (through R)']]);
+    for (const key of ['resources', 'applications', 'databases', 'services']) expect(text.section(key)).toBeNull();
+  });
+
+  it('marks every section unchecked when the composition was too long to read', async () => {
+    const cut = { user: 'Dana', all: false, allVia: '', roles: { rows: [], unchecked: 'truncated' }, resources: { rows: [], unchecked: 'truncated' }, applications: { rows: [], unchecked: 'truncated' }, databases: { rows: [], unchecked: 'truncated' }, services: { rows: [], unchecked: 'truncated' } };
+    const { fixture, host } = await mount('Dana', undefined, {}, cut);
+    tabs(host)[2].click();
+    await settle(fixture);
+    const text = effectiveText(host);
+    for (const key of ['roles', 'resources', 'applications', 'databases', 'services']) expect(text.note(key)).toBe('Not checked (too many to check)');
+  });
+
+  it('shows a refused read\u2019s own reason in place of the tab, a privilege refusal naming its pair', async () => {
+    // Mutation (Rule 19): drop the refusal banner from the page's Effective tab -> each case goes red.
+    const cases: readonly (readonly [unknown, string])[] = [
+      [{ kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'Not allowed.', detail: { failedPair: '%Admin_Secure:USE' } }, 'Requires %Admin_Secure:USE'],
+      [{ kind: 'error', status: 404, code: 'USER.NAME.ABSENT', reason: 'This instance has no user with that name.', detail: null }, 'This instance has no user with that name.'],
+      [{ user: 'Dana' }, STRINGS.connectivityRequestRefused],
+    ];
+    for (const [result, expected] of cases) {
+      const { fixture, host } = await mount('Dana', undefined, {}, result);
+      tabs(host)[2].click();
+      await settle(fixture);
+      expect(host.querySelector('[data-ocu-effective="refusal"]')?.textContent?.trim()).toBe(expected);
+      expect(effectiveText(host).section('tab')).toBeNull();
+    }
+  });
+
+  it('reads the tab again whenever the editor re-reads the account, once it has been opened', async () => {
+    // Mutation (Rule 19): drop the Effective re-read from the store's `refresh` -> the count goes red.
+    const { fixture, host, calls, bus } = await mount();
+    bus.publish({ kind: 'changed', type: 'user', scope: 'instance', id: 'Dana', action: 'updated' });
+    await settle(fixture);
+    expect(calls.filter((call) => call.path.startsWith(USERS_EFFECTIVE_PATH)).length).toBe(0);
+    tabs(host)[2].click();
+    await settle(fixture);
+    bus.publish({ kind: 'changed', type: 'user', scope: 'instance', id: 'Dana', action: 'updated' });
+    await settle(fixture);
+    expect(calls.filter((call) => call.path.startsWith(USERS_EFFECTIVE_PATH)).length).toBe(2);
+  });
+
+  it('reads the tab again when a role, resource, web application, database or service changes while it shows', async () => {
+    // Mutation (Rule 19): drop the `EFFECTIVE_SOURCES` arm from the page's ChangeBus handler -> the
+    // second count goes red.
+    const { fixture, host, calls, bus } = await mount();
+    const reads = () => calls.filter((call) => call.path.startsWith(USERS_EFFECTIVE_PATH)).length;
+    tabs(host)[2].click();
+    await settle(fixture);
+    expect(reads()).toBe(1);
+    for (const type of ['role', 'resource', 'web-application', 'database', 'service']) {
+      bus.publish({ kind: 'changed', type, scope: 'instance', id: 'X', action: 'updated' });
+      await settle(fixture);
+    }
+    expect(reads()).toBe(6);
+    bus.publish({ kind: 'changed', type: 'task', scope: 'HSCUSTOM', id: '7', action: 'updated' });
+    await settle(fixture);
+    tabs(host)[0].click();
+    await settle(fixture);
+    bus.publish({ kind: 'changed', type: 'role', scope: 'instance', id: 'X', action: 'updated' });
+    await settle(fixture);
+    expect(reads()).toBe(6);
+  });
+
+  it('encodes the account name in the tab\u2019s read', async () => {
+    // Mutation (Rule 19): drop `encodeURIComponent` from the store's `readEffective` -> the path goes red.
+    const { fixture, host, calls } = await mount('Pat&Lee+1');
+    tabs(host)[2].click();
+    await settle(fixture);
+    expect(calls.filter((call) => call.path.startsWith(USERS_EFFECTIVE_PATH)).map((call) => call.path)).toEqual([`${USERS_EFFECTIVE_PATH}?name=Pat%26Lee%2B1`]);
+  });
+
+  it('drops an answer a later read has overtaken', async () => {
+    // Mutation (Rule 19): delete the generation guard in the store's `readEffective` -> the older
+    // answer lands last and the roles assertion goes red.
+    const pending: ((result: JsonResult<unknown>) => void)[] = [];
+    const deferred = () => new Promise<JsonResult<unknown>>((resolve) => pending.push(resolve));
+    const { fixture, host, bus } = await mount('Dana', undefined, {}, deferred);
+    tabs(host)[2].click();
+    await settle(fixture);
+    bus.publish({ kind: 'changed', type: 'role', scope: 'instance', id: 'X', action: 'updated' });
+    await settle(fixture);
+    expect(pending.length).toBe(2);
+    pending[1]({ kind: 'ok', status: 200, body: EFFECTIVE });
+    await settle(fixture);
+    pending[0]({ kind: 'ok', status: 200, body: { ...EFFECTIVE, roles: { rows: [{ name: 'Old', through: '' }], unchecked: '' } } });
+    await settle(fixture);
+    expect(effectiveText(host).rows('roles')).toEqual([['A'], ['B (through A)']]);
+  });
+
+  it('registers Check permission for the editor, prefilled with the account it has open', async () => {
+    const { fixture } = await mount();
+    const actions = TestBed.inject(ScreenActions);
+    expect(actions.has(USER_FORM, PERMISSION_CHECK_ACTION_ID)).toBe(true);
+    expect(actions.run(USER_FORM, PERMISSION_CHECK_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    expect(TestBed.inject(PermissionCheck).pending()).toEqual({ descriptor: USER_LIST, kind: 'user', name: 'Dana' });
+    const name = document.querySelector('app-screen-action-dialogs app-permission-check-dialog [data-field="name"]') as HTMLInputElement | null;
+    expect(name?.value).toBe('Dana');
+    fixture.destroy();
+    expect(actions.has(USER_FORM, PERMISSION_CHECK_ACTION_ID)).toBe(false);
+    expect(TestBed.inject(PermissionCheck).pending()).toBeNull();
   });
 });

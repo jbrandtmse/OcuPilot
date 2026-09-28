@@ -1839,7 +1839,7 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     Set tExpected = tExpected _ $ListBuild($ListBuild("tasks", "%Admin_Task:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("permissions", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("web-applications", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE, %DB_IRISSYS:READ, %Admin_Wallet:USE, %Admin_OAuth2_Client:USE, %Admin_OAuth2_Server:USE, %Admin_OAuth2_Registration:USE", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("agent", "", 0, 1))
     Do $$$AssertEquals($ListLength(tExpected), 8, "the expectation names all eight areas")
 
@@ -1857,6 +1857,45 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     }
 
     Do $$$AssertTrue('##class(OcuPilot.Screen.Area).Exists("no-such-area"), "and the vocabulary is closed")
+}
+
+/// <p>Story 16.3, DW-1018 (Option A) -- each of the thirteen wallet and OAuth 2.0 screens declares
+/// its wallet or OAuth resource as its own pair, and Story 18.1's Allowed directories its
+/// file-system pair, never one the Security and secrets area declares, and the area covers the rest
+/// of its pairs; every other Security and secrets screen owns no pair and is covered whole
+/// (AD-8).</p>
+/// <p>Mutation (Rule 19): drop <code>ownPrivileges</code> from
+/// <class>OcuPilot.Screen.Descriptor.OAuthServerTab</class> -&gt; its own-pair and coverage rows go
+/// red.</p>
+Method TestTheSecurityScreensOwnTheirWalletAndOAuthPairs()
+{
+    Set tOwned = "WalletCollectionList|%Admin_Wallet,WalletSecretList|%Admin_Wallet,WalletSecretForm|%Admin_Wallet,OAuthServerDescriptionTab|%Admin_OAuth2_Client,OAuthServerDescriptionForm|%Admin_OAuth2_Client,OAuthClientTab|%Admin_OAuth2_Client,OAuthClientForm|%Admin_OAuth2_Client,OAuthResourceServerTab|%Admin_OAuth2_Client,OAuthResourceServerForm|%Admin_OAuth2_Client,OAuthServerTab|%Admin_OAuth2_Server,OAuthServerForm|%Admin_OAuth2_Server,OAuthServerClientTab|%Admin_OAuth2_Registration,OAuthServerClientForm|%Admin_OAuth2_Registration,AllowedDirectoryList|%Admin_FileSystemAccess"
+    Kill tExpect
+    For tI = 1:1:$Length(tOwned, ",") {
+        Set tEntry = $Piece(tOwned, ",", tI)
+        Set tExpect("OcuPilot.Screen.Descriptor." _ $Piece(tEntry, "|", 1)) = $Piece(tEntry, "|", 2) _ ":USE"
+    }
+    Set tAreaPairs = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(##class(OcuPilot.Screen.Area).PrivilegePairs("security"), .tCut)
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tClasses)
+    Do $$$AssertStatusOK(tSC, "the descriptor roster reads")
+    Set tSeen = 0
+    Set tOthers = 0
+    For tI = 1:1:$ListLength(tClasses) {
+        Set tClass = $List(tClasses, tI)
+        If $ClassMethod(tClass, "AreaKey") '= "security" Continue
+        Set tOwn = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString($ClassMethod(tClass, "OwnPrivilegePairs"), .tCut)
+        Do $$$AssertEquals(tOwn, $Get(tExpect(tClass)), tClass _ ": owns exactly its wallet, OAuth 2.0 or file-system pair, or none")
+        If tOwn '= "" {
+            Set tSeen = tSeen + 1
+            Do $$$AssertTrue('(tAreaPairs [ tOwn), tClass _ ": an own pair the area does not declare (" _ tAreaPairs _ ")")
+            Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs")) '= "", tClass _ ": which the area alone would not cover")
+        } Else {
+            Set tOthers = tOthers + 1
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", tClass _ ": covered by the area, less its own pair")
+    }
+    Do $$$AssertEquals(tSeen, 14, "fourteen screens own a pair")
+    Do $$$AssertTrue(tOthers > 0, "and the rest own none: " _ tOthers)
 }
 
 /// <p>DW-275 -- the os-management area's union, and what it costs a narrower screen.</p>
