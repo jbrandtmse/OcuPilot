@@ -251,7 +251,7 @@ development_status:
   16-13-the-service-editor: backlog
   16-14-the-ldap-and-kerberos-editor: backlog
   16-15-the-data-egress-line: backlog
-  16-16-the-agent-audit-viewer: ready-for-dev
+  16-16-the-agent-audit-viewer: done
   16-17-the-read-back-line: done
   16-18-home-s-performance-row: done
   16-19-impact-lines-on-removals: done

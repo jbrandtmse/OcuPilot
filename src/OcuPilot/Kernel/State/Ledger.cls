@@ -365,7 +365,13 @@ ClassMethod GuardedCountOverflow(pTurnKey As %String, pUser As %String, pRoute A
 /// the cutoff by <method>BoundedWhere</method>, the row cap and the predicates by
 /// <method>OcuPilot.Kernel.State.Base.GuardedIdsBounded</method>, and the fragment holds only
 /// <code>?</code>.</p>
-ClassMethod GuardedIdsForWindow(pUser As %String, pWindowHours As %String, pTurnKey As %String, pMaxRows As %Integer, Output pIds, Output pProblem As %String) As %Status
+/// <p>A windowed read also takes four selections, each ignored by a keyed read:
+/// <var>pRoute</var> matches <property>Route</property> exactly, <var>pBeginUtc</var> and
+/// <var>pEndUtc</var> (<property>LoggedAt</property>'s own ISO UTC form) bound it at or after and
+/// at or before, and <var>pAllUsers</var> 1 leaves out the user predicate -- the only way to read
+/// more than one user's rows, which <class>OcuPilot.Kernel.Audit.Ledger</class> asks for only after
+/// its own privilege check.</p>
+ClassMethod GuardedIdsForWindow(pUser As %String, pWindowHours As %String, pTurnKey As %String, pMaxRows As %Integer, Output pIds, Output pProblem As %String, pRoute As %String = "", pBeginUtc As %String = "", pEndUtc As %String = "", pAllUsers As %Boolean = 0) As %Status
 {
     Kill pIds
     Set pProblem = ""
@@ -373,32 +379,62 @@ ClassMethod GuardedIdsForWindow(pUser As %String, pWindowHours As %String, pTurn
     If pTurnKey '= "" {
         Set tFragment = ..BoundedWhere(..#BOUNDEDKEYED, "", .tParams, .pProblem, "Seq > 0", "%EXACT(UserName) = ?", "%EXACT(TurnKey) = ?")
     } Else {
-        Set tFragment = ..BoundedWhere(pWindowHours, "LoggedAt", .tParams, .pProblem, "Seq > 0", "%EXACT(UserName) = ?")
+        Set tFragment = ..WindowWhere(pWindowHours, "Seq > 0", .tParams, .pProblem, pRoute, pBeginUtc, pEndUtc, pAllUsers)
     }
     If tFragment = "" Quit $$$ERROR($$$GeneralError, "the ledger read is not bounded: " _ pProblem)
-    Do tParams.%Push(pUser, "string")
-    If pTurnKey '= "" Do tParams.%Push(pTurnKey, "string")
+    If pTurnKey '= "" {
+        Do tParams.%Push(pUser, "string")
+        Do tParams.%Push(pTurnKey, "string")
+    } Else {
+        Do ..PushWindowValues(tParams, pUser, pRoute, pBeginUtc, pEndUtc, pAllUsers)
+    }
     Quit ..GuardedIdsBounded("SELECT TOP ? ID FROM OcuPilot_Kernel_State.Ledger", tFragment, "ORDER BY LoggedAt DESC, Seq DESC", pMaxRows, .tParams, .pIds)
 }
 
 /// <p>How many of <var>pUser</var>'s calls were counted and not stored over the same selection
-/// <method>GuardedIdsForWindow</method> makes, summed across that user's overflow rows.</p>
-ClassMethod GuardedDroppedFor(pUser As %String, pWindowHours As %String, pTurnKey As %String, Output pCount As %Integer) As %Status
+/// <method>GuardedIdsForWindow</method> makes, summed across that user's overflow rows -- or across
+/// every user's, with <var>pAllUsers</var> 1.</p>
+ClassMethod GuardedDroppedFor(pUser As %String, pWindowHours As %String, pTurnKey As %String, Output pCount As %Integer, pRoute As %String = "", pBeginUtc As %String = "", pEndUtc As %String = "", pAllUsers As %Boolean = 0) As %Status
 {
     Set pCount = 0
     Set tParams = []
     If pTurnKey '= "" {
         Set tFragment = ..BoundedWhere(..#BOUNDEDKEYED, "", .tParams, .tProblem, "Seq = 0", "%EXACT(UserName) = ?", "%EXACT(TurnKey) = ?")
     } Else {
-        Set tFragment = ..BoundedWhere(pWindowHours, "LoggedAt", .tParams, .tProblem, "Seq = 0", "%EXACT(UserName) = ?")
+        Set tFragment = ..WindowWhere(pWindowHours, "Seq = 0", .tParams, .tProblem, pRoute, pBeginUtc, pEndUtc, pAllUsers)
     }
     If tFragment = "" Quit $$$ERROR($$$GeneralError, "the ledger dropped count is not bounded: " _ tProblem)
-    Do tParams.%Push(pUser, "string")
-    If pTurnKey '= "" Do tParams.%Push(pTurnKey, "string")
+    If pTurnKey '= "" {
+        Do tParams.%Push(pUser, "string")
+        Do tParams.%Push(pTurnKey, "string")
+    } Else {
+        Do ..PushWindowValues(tParams, pUser, pRoute, pBeginUtc, pEndUtc, pAllUsers)
+    }
     Set tSC = ..GuardedIdsBounded("SELECT TOP ? COALESCE(SUM(Dropped), 0) FROM OcuPilot_Kernel_State.Ledger", tFragment, "", 1, .tParams, .tRows)
     If $$$ISERR(tSC) Quit tSC
     Set pCount = +$Get(tRows(1))
     Quit $$$OK
+}
+
+/// <p>The windowed fragment both reads share: <var>pSeqPredicate</var> (a literal the caller
+/// wrote), then each selection that applies, as a literal with one <code>?</code>. The values go on
+/// through <method>PushWindowValues</method>, in the same order.</p>
+ClassMethod WindowWhere(pWindowHours As %String, pSeqPredicate As %String, ByRef pParams As %DynamicArray, Output pProblem As %String, pRoute As %String, pBeginUtc As %String, pEndUtc As %String, pAllUsers As %Boolean) As %String [ Private ]
+{
+    Set tUser = $Select(''pAllUsers: "", 1: "%EXACT(UserName) = ?")
+    Set tRoute = $Select(pRoute '= "": "%EXACT(Route) = ?", 1: "")
+    Set tBegin = $Select(pBeginUtc '= "": "LoggedAt >= ?", 1: "")
+    Set tEnd = $Select(pEndUtc '= "": "LoggedAt <= ?", 1: "")
+    Quit ..BoundedWhere(pWindowHours, "LoggedAt", .pParams, .pProblem, pSeqPredicate, tUser, tRoute, tBegin, tEnd)
+}
+
+/// <p>The values <method>WindowWhere</method>'s fragment names, pushed after its cutoff.</p>
+ClassMethod PushWindowValues(pParams As %DynamicArray, pUser As %String, pRoute As %String, pBeginUtc As %String, pEndUtc As %String, pAllUsers As %Boolean) [ Private ]
+{
+    If 'pAllUsers Do pParams.%Push(pUser, "string")
+    If pRoute '= "" Do pParams.%Push(pRoute, "string")
+    If pBeginUtc '= "" Do pParams.%Push(pBeginUtc, "string")
+    If pEndUtc '= "" Do pParams.%Push(pEndUtc, "string")
 }
 
 /// <p>Row <var>pId</var>'s columns as data, subscripted by wire name -- <code>ledgerId</code>,

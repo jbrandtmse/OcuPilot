@@ -7296,3 +7296,11 @@ app-log-hub-page {
 .ocu-permission-check-line[data-slot='refusal'] {
   color: var(--ocu-destructive);
 }
+
+// The Agent audit ledger's criteria form (Story 16.16): the field a refused criterion names takes
+// the form error treatment, and the refusal beneath the form describes it.
+.ocu-criteria-input[aria-invalid='true'],
+.ocu-criteria-select[aria-invalid='true'] {
+  border-width: 2px;
+  border-color: var(--ocu-destructive);
+}

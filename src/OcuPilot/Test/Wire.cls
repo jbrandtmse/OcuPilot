@@ -434,8 +434,9 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
 /// <p>The form's entry is asserted too, and its <code>sideBarPosition</code> 0 with it: the map is
 /// where the client learns which screens an area lists, so the sentinel has to survive the wire
 /// as a declared 0 rather than as an absent key. Switches, the area's second listed screen, gates
-/// on the same resource (FR-29). Guardrails, the third, declares no pair and is allowed, and so is
-/// Transcripts, the fifth; Governance policy, the fourth, gates on the same resource.</p>
+/// on the same resource (FR-29). Guardrails, the third, declares no pair and is allowed, and so are
+/// the Agent audit ledger, the fifth, and Transcripts, the sixth; Governance policy, the fourth,
+/// gates on the same resource.</p>
 /// <p>Mutation: declare <code>"privileges": []</code> in
 /// <class>OcuPilot.Screen.Descriptor.AgentDefinitionList</class> -> its entry reads allowed and
 /// the denial assertion goes red. Give the <code>agent</code> area a pair in
@@ -461,7 +462,7 @@ Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
     Do $$$AssertEquals(''tAgent.allowed, 1, "the rail item never gates, whatever the caller holds")
     Do $$$AssertEquals(''tAgent.%IsDefined("failedPair"), 0, "so it carries no failed pair")
 
-    Do $$$AssertEquals(tAgent.screens.%Size(), 7, "and lists all seven built screens, the form and the transcript page included: " _ tAgent.screens.%ToJSON())
+    Do $$$AssertEquals(tAgent.screens.%Size(), 8, "and lists all eight built screens, the form and the transcript page included: " _ tAgent.screens.%ToJSON())
     Kill tPosition, tAllowed, tFailed
     Set tScreenIterator = tAgent.screens.%GetIterator()
     While tScreenIterator.%GetNext(.tScreenIndex, .tScreen) {
@@ -484,7 +485,9 @@ Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
     Do $$$AssertEquals($Get(tPosition("agent/governance")), 4, "Governance policy takes the fourth position (Story 14.2)")
     Do $$$AssertEquals($Get(tAllowed("agent/governance")), 0, "Governance policy is denied to a principal holding nothing of OcuPilot's")
     Do $$$AssertEquals($Get(tFailed("agent/governance")), "OcuPilotAdmin:USE", "and gates on OcuPilot's own administrative pair")
-    Do $$$AssertEquals($Get(tPosition("agent/transcripts")), 5, "Transcripts takes the fifth")
+    Do $$$AssertEquals($Get(tPosition("agent/ledger")), 5, "the Agent audit ledger takes the fifth (Story 16.16)")
+    Do $$$AssertEquals($Get(tAllowed("agent/ledger")), 1, "and is open to a principal holding nothing of OcuPilot's, whose own rows it lists")
+    Do $$$AssertEquals($Get(tPosition("agent/transcripts")), 6, "Transcripts takes the sixth")
     Do $$$AssertEquals($Get(tAllowed("agent/transcripts")), 1, "and is open to a principal holding nothing of OcuPilot's, whose own history it lists")
     Do $$$AssertEquals($Get(tPosition("agent/transcripts/details")), 0, "and the transcript page is routable but not listed")
     Do $$$AssertEquals($Get(tAllowed("agent/transcripts/details")), 1, "and open the same way, its route answering through the ledger's gate")
