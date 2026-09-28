@@ -258,24 +258,60 @@ ClassMethod RecordProviderCall(pTurnKey As %String, pUser As %String, pRoute As 
 /// (<property>OcuPilot.Kernel.State.Ledger.PairsSense</property>), resolved by the caller through
 /// <method>SenseFor</method>. It is trailing and defaults to <code>""</code>, the legacy sense,
 /// so a caller that does not answer leaves its row withheld from every cross-user reader.</p>
+/// <p><b>A declared secret's value is kept out of the target at write time</b> (AD-41): where
+/// <var>pTarget</var> contains the string value of a name in <var>pSecretNames</var> that
+/// <var>pInput</var> carries, the row stores the redaction mark as its target. Where
+/// <method>RedactArguments</method> refuses to store an argument string for an object it was
+/// given, the row stores the mark there too, the "sent and withheld" state above.</p>
 ClassMethod RecordToolCall(pTurnKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pDeclaredPairs As %List, pArgumentPairs As %List, pSecretNames As %List, pStatus As %String, pCode As %String, pLimitsClass As %String, pClassified As %Boolean = 0, pPairsSense As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
         Set tTruncated = 0
+        Set tIsObject = $IsObject(pInput) && pInput.%IsA("%Library.DynamicObject")
         If pClassified {
             Set tArguments = ..RedactArguments(pInput, pSecretNames, +$Parameter(pLimitsClass, "LEDGERROWMAXLENGTH"), .tTruncated, .tRedactedNames)
+            If (tArguments = "") && tIsObject Set tArguments = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED
         } Else {
             Set tArguments = ""
-            If $IsObject(pInput) && pInput.%IsA("%Library.DynamicObject") Set tArguments = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED
+            If tIsObject Set tArguments = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED
         }
+        Set tTarget = pTarget
+        If ..CarriesSecretValue(pTarget, pInput, pSecretNames) Set tTarget = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED
         Set tPairs = ..PairsToString(pDeclaredPairs _ pArgumentPairs, .tPairsCut)
-        Set tSC = $ClassMethod(..StoreClass(), "GuardedAppend", pTurnKey, pUser, pRoute, $Parameter(..StoreClass(), "KINDTOOL"), pName, "", pTarget, tArguments, tTruncated, pStatus, pCode, 0, 0, tPairs, pLimitsClass, .tSeq, .tStored, tPairsCut, pPairsSense)
+        Set tSC = $ClassMethod(..StoreClass(), "GuardedAppend", pTurnKey, pUser, pRoute, $Parameter(..StoreClass(), "KINDTOOL"), pName, "", tTarget, tArguments, tTruncated, pStatus, pCode, 0, 0, tPairs, pLimitsClass, .tSeq, .tStored, tPairsCut, pPairsSense)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     If $$$ISERR(tSC) Do ..LogFailure("a tool answer could not be recorded in the agent ledger", tSC)
     Quit tSC
+}
+
+/// <p>Whether <var>pTarget</var> contains the value of a declared secret argument: a name in
+/// <var>pSecretNames</var> that <var>pInput</var> carries at the top level as a non-empty string
+/// other than the redaction mark. A value that cannot be read answers 1, so a doubtful target is
+/// withheld rather than stored.</p>
+ClassMethod CarriesSecretValue(pTarget As %String, pInput As %DynamicAbstractObject, pSecretNames As %List) As %Boolean
+{
+    Set tCarries = 0
+    Try {
+        If pTarget = "" Quit
+        If '$IsObject(pInput) || 'pInput.%IsA("%Library.DynamicObject") Quit
+        For tI = 1:1:$ListLength(pSecretNames) {
+            Set tName = $ListGet(pSecretNames, tI)
+            If tName = "" Continue
+            If pInput.%GetTypeOf(tName) '= "string" Continue
+            Set tValue = pInput.%Get(tName)
+            If (tValue = "") || (tValue = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED) Continue
+            If pTarget [ tValue {
+                Set tCarries = 1
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tCarries = 1
+    }
+    Quit tCarries
 }
 
 /// <p>Open the ledger row for one confirmed write, <b>before</b> the port call (AD-41): a
@@ -293,9 +329,12 @@ ClassMethod RecordToolCall(pTurnKey As %String, pUser As %String, pRoute As %Str
 /// <code>pending</code> is gated cross-user on what the write actually required (AD-46) instead of
 /// being withheld from every reader by an empty legacy sense. A trace only its own author can read
 /// is not the trace AD-41 asks for.</p>
+/// <p><var>pRoute</var> is the screen route the proposal's turn ran from
+/// (<property>OcuPilot.Kernel.State.Turn.ContextRoute</property>), so a search by screen finds the
+/// write; <code>""</code> when the caller could not read it.</p>
 /// <p><b>Never fails the confirm</b> (AD-15): the status is logged by this class and the caller
 /// does not propagate it.</p>
-ClassMethod OpenConfirmedWrite(pTurnKey As %String, pUser As %String, pToolName As %String, pTargetRef As %String, pLimitsClass As %String, Output pLedgerKey As %String, pPairs As %List = "") As %Status
+ClassMethod OpenConfirmedWrite(pTurnKey As %String, pUser As %String, pToolName As %String, pTargetRef As %String, pLimitsClass As %String, Output pLedgerKey As %String, pPairs As %List = "", pRoute As %String = "") As %Status
 {
     Set pLedgerKey = ""
     Set tSC = $$$OK
@@ -303,7 +342,7 @@ ClassMethod OpenConfirmedWrite(pTurnKey As %String, pUser As %String, pToolName 
         Set tStore = ..StoreClass()
         Set tPairs = ..PairsToString(pPairs, .tPairsCut)
         Set tSense = ..SenseFor(..SenseChecked(), pPairs, 1)
-        Set tSC = $ClassMethod(tStore, "GuardedAppend", pTurnKey, pUser, "", $Parameter(tStore, "KINDWRITE"), pToolName, "", pTargetRef, "", 0, $Parameter(tStore, "STATUSPENDING"), "", 0, 0, tPairs, pLimitsClass, .tSeq, .tStored, tPairsCut, tSense, .pLedgerKey)
+        Set tSC = $ClassMethod(tStore, "GuardedAppend", pTurnKey, pUser, pRoute, $Parameter(tStore, "KINDWRITE"), pToolName, "", pTargetRef, "", 0, $Parameter(tStore, "STATUSPENDING"), "", 0, 0, tPairs, pLimitsClass, .tSeq, .tStored, tPairsCut, tSense, .pLedgerKey)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -557,7 +596,26 @@ ClassMethod StringToPairs(pText As %String) As %List
 /// <p>A cross-user read emits one <parameter>OcuPilot.Kernel.Audit.Event.EVENTLEDGERREAD</parameter>
 /// row after the read has resolved, and its status is ignored -- registration is what makes it land
 /// and emission never fails the read (AD-15).</p>
-ClassMethod ViewForUser(pCaller As %String, pSubject As %String, pWindowHours As %String, pTurnKey As %String, pMaxRows As %Integer, Output pView As %DynamicObject, Output pFault As %DynamicObject) As %Status
+/// <p><b>Four trailing criteria</b>, each ignored by a <var>pTurnKey</var> read, and all four
+/// defaulted leaving the answer as it was:</p>
+/// <ul>
+/// <li><var>pAllUsers</var> 1 with no <var>pSubject</var> reads every user's rows for a caller
+/// holding <method>AdminPair</method>, and the caller's own rows for anyone else, who is not
+/// refused. Across users the caller's own rows (user equal, ignoring case) are released and every
+/// other row passes <method>ReleasesRow</method> or is withheld; the read records its event with
+/// the subject <code>*</code>.</li>
+/// <li><var>pRoute</var> matches the row's screen route exactly.</li>
+/// <li><var>pBegin</var> and <var>pEnd</var> are instance local time in
+/// <parameter>OcuPilot.Screen.Read.DATETIMEFORM</parameter>, converted by
+/// <method>LocalToUtc</method>. The window then runs from <var>pBegin</var>
+/// (<method>WindowFromBegin</method>), which may be at most
+/// <parameter>OcuPilot.Kernel.State.Base.BOUNDEDMAXHOURS</parameter> hours ago.</li>
+/// </ul>
+/// <p><b>Caller contract:</b> the criteria are validated first (<class>OcuPilot.Api.Ledger</class>
+/// does); a value this cannot convert, or a begin past the bound, answers an error status and no
+/// view. The view adds <code>criteria {user, route, begin, end, allUsers}</code>, the values it
+/// applied, times in local time.</p>
+ClassMethod ViewForUser(pCaller As %String, pSubject As %String, pWindowHours As %String, pTurnKey As %String, pMaxRows As %Integer, Output pView As %DynamicObject, Output pFault As %DynamicObject, pAllUsers As %Boolean = 0, pRoute As %String = "", pBegin As %String = "", pEnd As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set pView = ""
@@ -577,9 +635,36 @@ ClassMethod ViewForUser(pCaller As %String, pSubject As %String, pWindowHours As
             Quit
         }
 
+        ; The criteria. A keyed read ignores all four.
+        Set tKeyed = (pTurnKey '= "")
+        Set tRoute = $Select(tKeyed: "", 1: pRoute)
+        Set tBeginUtc = ""
+        Set tEndUtc = ""
+        Set tWindow = pWindowHours
+        If 'tKeyed && (pBegin '= "") {
+            Set tBeginUtc = ..LocalToUtc(pBegin)
+            If (tBeginUtc = "") || '..WindowFromBegin(tBeginUtc, .tWindow) {
+                Set tSC = $$$ERROR($$$GeneralError, "the ledger read's begin is not a local time within the bounded window")
+                Quit
+            }
+        }
+        If 'tKeyed && (pEnd '= "") {
+            Set tEndUtc = ..LocalToUtc(pEnd)
+            If tEndUtc = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "the ledger read's end is not a local time")
+                Quit
+            }
+        }
+        ; Every user's rows, only for a caller holding the administrative pair; anyone else asking
+        ; is answered their own rows (AD-46, AD-36 as amended by 14.4).
+        Set tEvery = 0
+        If 'tKeyed && ''pAllUsers && (pSubject = "") {
+            Set tEvery = ''$ClassMethod(..GateClass(), "HoldsPrivilege", ..AdminResource(), ..#ADMINPERMISSION)
+        }
+
         Set tStore = ..StoreClass()
         Set tCap = +pMaxRows
-        Set tIdsSC = $ClassMethod(tStore, "GuardedIdsForWindow", tSubject, pWindowHours, pTurnKey, tCap + 1, .tIds, .tProblem)
+        Set tIdsSC = $ClassMethod(tStore, "GuardedIdsForWindow", tSubject, tWindow, pTurnKey, tCap + 1, .tIds, .tProblem, tRoute, tBeginUtc, tEndUtc, tEvery)
         If $$$ISERR(tIdsSC) {
             Set pFault = ..Unavailable(tIdsSC, "the agent ledger's rows could not be read")
             Quit
@@ -610,7 +695,7 @@ ClassMethod ViewForUser(pCaller As %String, pSubject As %String, pWindowHours As
             Set pFault = ..Unavailable(tReadSC, "an agent ledger row could not be read")
             Quit
         }
-        Set tDroppedSC = $ClassMethod(tStore, "GuardedDroppedFor", tSubject, pWindowHours, pTurnKey, .tDropped)
+        Set tDroppedSC = $ClassMethod(tStore, "GuardedDroppedFor", tSubject, tWindow, pTurnKey, .tDropped, tRoute, tBeginUtc, tEndUtc, tEvery)
         If $$$ISERR(tDroppedSC) {
             Set pFault = ..Unavailable(tDroppedSC, "the agent ledger's dropped count could not be read")
             Quit
@@ -618,16 +703,14 @@ ClassMethod ViewForUser(pCaller As %String, pSubject As %String, pWindowHours As
 
         Set tRows = []
         Set tWithheld = 0
+        Set tCallerKey = $ZConvert(pCaller, "U")
         For tI = 1:1:tKept {
-            If 'tCrossUser {
-                ; A user sees their own rows (AD-46). The per-row requirement records what that
-                ; user's own call needed, so gating it would hide a person's history from them the
-                ; moment a privilege was revoked, and would protect nothing.
-                Set tOwnRow = ..RowObject(.tValues, tI)
-                Do tRows.%Push(tOwnRow)
-                Continue
-            }
-            If '..ReleasesRow(.tValues, tI, .tFailedPair) {
+            ; A user sees their own rows (AD-46). The per-row requirement records what that user's
+            ; own call needed, so gating it would hide a person's history from them the moment a
+            ; privilege was revoked, and would protect nothing. Across every user, the caller's own
+            ; rows are theirs in the same way.
+            Set tOwn = 'tCrossUser && ('tEvery || ($ZConvert($Get(tValues(tI, "user")), "U") = tCallerKey))
+            If 'tOwn && '..ReleasesRow(.tValues, tI, .tFailedPair) {
                 Set tWithheld = tWithheld + 1
                 Continue
             }
@@ -641,10 +724,12 @@ ClassMethod ViewForUser(pCaller As %String, pSubject As %String, pWindowHours As
         Do tView.%Set("truncated", ''tTruncated, "boolean")
         Do tView.%Set("rowsWithheld", tWithheld, "number")
         Do tView.%Set("rowsDropped", +tDropped, "number")
-        Do tView.%Set("windowHours", ..AppliedWindow(pWindowHours, pTurnKey), "number")
+        Do tView.%Set("windowHours", ..AppliedWindow(tWindow, pTurnKey), "number")
+        Do tView.%Set("criteria", ..AppliedCriteria(tSubject, tEvery, tRoute, tBeginUtc, tEndUtc, ..AppliedWindow(tWindow, pTurnKey), tKeyed))
         Set pView = tView
 
         If tCrossUser Do ..RecordRead(tSubject, tRows.%Size(), tWithheld)
+        If tEvery Do ..RecordRead(..#EVERYUSER, tRows.%Size(), tWithheld)
     } Catch ex {
         Set pView = ""
         Set pFault = ..Unavailable(ex.AsStatus(), "the agent ledger read failed")
@@ -800,17 +885,107 @@ ClassMethod AppliedWindow(pWindowHours As %String, pTurnKey As %String) As %Inte
     Quit +$Parameter("OcuPilot.Kernel.State.Base", "BOUNDEDDEFAULTHOURS")
 }
 
+/// <p>The subject an every-user read's audit event names.</p>
+Parameter EVERYUSER = "*";
+
+/// <p>The criteria a view applied, <code>{user, route, begin, end, allUsers}</code>, in the local
+/// time the viewer's form takes: <code>user</code> is <code>""</code> for an every-user read, and
+/// <code>begin</code> is the window's own start where no begin was given (<var>pHours</var> before
+/// now). A keyed read applied none of them.</p>
+ClassMethod AppliedCriteria(pSubject As %String, pEvery As %Boolean, pRoute As %String, pBeginUtc As %String, pEndUtc As %String, pHours As %Integer, pKeyed As %Boolean) As %DynamicObject [ Private ]
+{
+    Set tBegin = ""
+    If pBeginUtc '= "" {
+        Set tBegin = ..LocalFromUtc(pBeginUtc)
+    } ElseIf 'pKeyed {
+        Set tNow = $ZTimeStamp
+        Set tSeconds = ((+$Piece(tNow, ",", 1)) * 86400) + ($Piece(tNow, ",", 2) \ 1) - (+pHours * 3600)
+        Set tBegin = ..LocalFromUtc(##class(OcuPilot.Kernel.State.Turn).Timestamp((tSeconds \ 86400) _ "," _ (tSeconds # 86400)))
+    }
+    Set tCriteria = {}
+    Do tCriteria.%Set("user", $Select(''pEvery: "", 1: pSubject), "string")
+    Do tCriteria.%Set("route", pRoute, "string")
+    Do tCriteria.%Set("begin", tBegin, "string")
+    Do tCriteria.%Set("end", $Select(pEndUtc '= "": ..LocalFromUtc(pEndUtc), 1: ""), "string")
+    Do tCriteria.%Set("allUsers", ''pEvery, "boolean")
+    Quit tCriteria
+}
+
+/// <p>An instance local time, <parameter>OcuPilot.Screen.Read.DATETIMEFORM</parameter>, as the
+/// ledger's own UTC form <code>YYYY-MM-DDTHH:MM:SSZ</code>, a fractional second dropped; or
+/// <code>""</code> when <var>pLocal</var> is not that form or names no calendar instant. Pure: it
+/// reads no state and writes nothing. The one conversion the route's validation and
+/// <method>ViewForUser</method> both use.</p>
+ClassMethod LocalToUtc(pLocal As %String) As %String
+{
+    Set tUtc = ""
+    Try {
+        If '$Match(pLocal, $Parameter("OcuPilot.Screen.Read", "DATETIMEFORM")) Quit
+        ; $ZDateTimeH raises on a value that names no calendar instant (2026-02-30, 24:00:00).
+        Set tLocalH = $ZDateTimeH($Extract(pLocal, 1, 19), 3)
+        Set tUtc = ##class(OcuPilot.Kernel.State.Turn).Timestamp($ZDateTime(tLocalH, -3))
+    } Catch ex {
+        Set tUtc = ""
+    }
+    Quit tUtc
+}
+
+/// <p>The ledger's UTC form <var>pIso</var> (<code>YYYY-MM-DDTHH:MM:SSZ</code>) as the instance's
+/// local <code>YYYY-MM-DD HH:MM:SS</code>, or <code>""</code> for a value that is not that
+/// form.</p>
+ClassMethod LocalFromUtc(pIso As %String) As %String
+{
+    Set tLocal = ""
+    Try {
+        If '$Match(pIso, "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?Z$") Quit
+        Set tUtcH = $ZDateTimeH($Translate($Extract(pIso, 1, 19), "T", " "), 3)
+        Set tLocal = $ZDateTime($ZDateTimeH(tUtcH, -3), 3, 1)
+    } Catch ex {
+        Set tLocal = ""
+    }
+    Quit tLocal
+}
+
+/// <p>The window, in whole hours, a read beginning at <var>pBeginUtc</var> runs over: the hours
+/// from then to now rounded up, at least 1. Answers 0, and <var>pHours</var> 0, when
+/// <var>pBeginUtc</var> is more than <parameter>OcuPilot.Kernel.State.Base.BOUNDEDMAXHOURS</parameter>
+/// hours ago or is not the ledger's UTC form.</p>
+ClassMethod WindowFromBegin(pBeginUtc As %String, Output pHours As %Integer) As %Boolean
+{
+    Set pHours = 0
+    Set tOk = 0
+    Try {
+        If '$Match(pBeginUtc, "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$") Quit
+        Set tBegin = ##class(OcuPilot.Kernel.State.Turn).NowSeconds($ZDateTimeH($Translate($Extract(pBeginUtc, 1, 19), "T", " "), 3))
+        Set tSince = ##class(OcuPilot.Kernel.State.Turn).NowSeconds() - tBegin
+        Set tMax = +$Parameter("OcuPilot.Kernel.State.Base", "BOUNDEDMAXHOURS")
+        If tSince > (tMax * 3600) Quit
+        Set tHours = (tSince + 3599) \ 3600
+        If tHours < 1 Set tHours = 1
+        If tHours > tMax Set tHours = tMax
+        Set pHours = tHours
+        Set tOk = 1
+    } Catch ex {
+        Set pHours = 0
+        Set tOk = 0
+    }
+    Quit tOk
+}
+
 /// <p>One row of <var>pValues</var> as the wire object a view carries. <code>requiredPairs</code>
 /// travels as the canonical string the row stores, so a reader sees what the row was gated on, and
 /// <code>pairsSense</code> beside it says what claim that string makes (DW-1321).
 /// <code>auditMarked</code> is a confirmed write's own marker outcome (AD-15) and <code>""</code>
-/// on every other kind.</p>
+/// on every other kind. <code>time</code> is <code>loggedAt</code> in the instance's local time,
+/// and <code>fields</code> the names a confirmed write sent, secret-declared names excluded when
+/// it was written (AD-3).</p>
 ClassMethod RowObject(ByRef pValues, pIndex As %Integer) As %DynamicObject [ Private ]
 {
     Set tRow = {}
     Do tRow.%Set("ledgerId", $Get(pValues(pIndex, "ledgerId")), "string")
     Do tRow.%Set("user", $Get(pValues(pIndex, "user")), "string")
     Do tRow.%Set("loggedAt", $Get(pValues(pIndex, "loggedAt")), "string")
+    Do tRow.%Set("time", ..LocalFromUtc($Get(pValues(pIndex, "loggedAt"))), "string")
     Do tRow.%Set("turnKey", $Get(pValues(pIndex, "turnKey")), "string")
     Do tRow.%Set("seq", +$Get(pValues(pIndex, "seq")), "number")
     Do tRow.%Set("kind", $Get(pValues(pIndex, "kind")), "string")
@@ -828,6 +1003,8 @@ ClassMethod RowObject(ByRef pValues, pIndex As %Integer) As %DynamicObject [ Pri
     Do tRow.%Set("requiredPairsTruncated", ''$Get(pValues(pIndex, "requiredPairsTruncated")), "boolean")
     Do tRow.%Set("pairsSense", $Get(pValues(pIndex, "pairsSense")), "string")
     Do tRow.%Set("auditMarked", $Get(pValues(pIndex, "auditMarked")), "string")
+    Do tRow.%Set("fields", $Get(pValues(pIndex, "fields")), "string")
+    Do tRow.%Set("fieldsTruncated", ''$Get(pValues(pIndex, "fieldsTruncated")), "boolean")
     Quit tRow
 }
 

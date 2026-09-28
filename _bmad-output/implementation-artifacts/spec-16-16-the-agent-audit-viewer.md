@@ -2,9 +2,10 @@
 title: 'Story 16.16: The agent audit viewer'
 type: 'feature'
 created: '2026-09-28'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '7c224fc548c3c3f4eed711b9461f93b50759cfba'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
 warnings: ['oversized']
@@ -16,6 +17,27 @@ deferred:
     location: >-
       src/OcuPilot/Kernel/Audit/Ledger.cls RedactArguments
     severity: low
+  - summary: >-
+      A tool step's target, in the turn's progress and its stored transcript, keeps a declared secret's value the model sent as `id`. The ledger row's target stores the mark (this story); the step's does not.
+    evidence: |-
+      Implement on ocupilot-ci (2026-09-28): OcuPilot_Kernel_State.Step.Target held the probe value for each permissions.users.password step agent-ledger.browser-spec.mjs ran, while the ledger rows read [redacted].
+    location: >-
+      src/OcuPilot/Kernel/Agent/Loop.cls AnswerTools (Dispatch.TargetOf into Step.GuardedAppend)
+    severity: medium
+  - summary: >-
+      The local-to-UTC conversion's direction cannot be falsified on this project's test instances: ocupilot-ci and CI's throwaways run Etc/UTC, so local and UTC coincide and a swapped or missing conversion keeps every begin, end, time and echo assertion green.
+    evidence: |-
+      Review probe on ocupilot-ci: /etc/localtime is Etc/UTC, $ZTIMEZONE 0, $H equals $ZTS; a process-level $ZTIMEZONE change does not move $ZDATETIME(h,-3). Settling it needs one test run on a throwaway started with a non-UTC TZ.
+    location: >-
+      src/OcuPilot/Kernel/Audit/Ledger.cls LocalToUtc, LocalFromUtc
+    severity: medium
+  - summary: >-
+      A declared secret the model sent as id can show in the agent panel's tool-call card on the same page as the ledger, because the step's target keeps it (same root cause as the step-target entry above).
+    evidence: |-
+      Review inference, not reproduced: tool-call-card.ts renders a step's target; the browser spec reads only app-ledger-page.
+    location: >-
+      ui/src/app/shell tool-call card; src/OcuPilot/Kernel/Agent/Loop.cls AnswerTools
+    severity: medium
 ---
 
 <intent-contract>
@@ -219,6 +241,40 @@ deferred:
 
 ## Review Triage Log
 
+### 2026-09-28 — Review pass
+
+- verdicts: 29 findings — high 0, medium 13, low 12, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` VG: the browser spec could not tell the Screen search's answer from the open search's — now waits for the `route=` response and asserts its `criteria.route` and rows; mutation re-observed red.
+  - `[medium]` `[patch]` VG: sign-out reset of `LedgerSearch` unpinned — `app.spec.ts` AD-8 leg added with its mutation.
+  - `[medium]` `[patch]` VG: the store's late-answer guard untested — store-spec test (replaced search, reset while in flight) added with its mutation.
+  - `[medium]` `[defer]` VG: local↔UTC direction is unobservable on UTC-only instances (`ocupilot-ci` and CI run `Etc/UTC`) — needs a non-UTC throwaway; out of footprint (compose/CI config). Code follows `$ZDATETIME`/`$ZDATETIMEH` dformat -3 as documented.
+  - `[medium]` `[patch]` VG: the begin predicate could not redden — begin moved to 39.5 h with a row at 39.75 h inside the cutoff slack; mutation observed red.
+  - `[medium]` `[patch]` VG: default `criteria.begin` checked for shape only — value asserted as 24 h before now; mutation observed red.
+  - `[medium]` `[patch]` VG: no leg showed a target without the value survives — AC4 test gains the other-account leg; over-mask mutation observed red.
+  - `[medium]` `[patch]` VG: `rowsDropped` under route and every-user untested — `TestTheDroppedCountFollowsTheCriteria` added; mutation observed red.
+  - `[medium]` `[patch]` VG: `windowHours = 40` could read 41 across a second boundary — begin at 39.5 h makes the ceiling a steady 40.
+  - `[low]` `[patch]` VG: browser `args.length > 0` could not fail — now parses the stored arguments as a JSON object.
+  - `[low]` `[patch]` VG: "was seeded" assertions could not fail — now `TurnRowCount(key) = 1` in both classes.
+  - `[medium]` `[defer]` VG: round-trip and drift assertions hold whatever the conversion direction on a UTC instance — same root cause and entry as the UTC item above.
+  - `[low]` `[reject]` VG: sub-behaviours of AC1, AC2, AC4, AC5 lack their own mutation lines — Rule 19 asks one demonstrated mutation per AC; every AC has one, and this pass adds eight.
+  - `[low]` `[reject]` IA: the `*` event is recorded on every administrator every-user read, not only when another user's row was met — auditing a read across users by its scope is the conservative reading; counting first adds a branch for no user-visible gain.
+  - `[low]` `[reject]` IA: the route validates the criteria even beside a `turnKey` — no caller sends both; AD-12's thin route refuses a malformed value wherever it arrives.
+  - `[medium]` `[patch]` IA: the page showed the generic reason without naming the refused criterion — the store keeps `detail.criterion` (a window refusal maps to Begin), the named field takes `aria-invalid` and `aria-describedby` to the refusal, and a tail style marks it; page and store specs added with a mutation.
+  - `[false]` `[reject]` IA: the whole-mark arguments change is not in the contract — the Matrix's declared-secret row requires arguments to read `[redacted]`, which the fail-closed `""` did not.
+  - `[medium]` `[defer]` IA: V may show in the panel's tool-call card outside the ledger page — pre-existing; the step target is the Loop's (Story 4.x), the same root cause as the implement-stage deferred entry.
+  - `[false]` `[reject]` IA: a default `GET /agent/ledger` answers new members — the Always block adds `criteria`, `time`, `fields` and `fieldsTruncated`; rows and gating are unchanged.
+  - `[false]` `[reject]` IA: ":152's Where cell" has no literal column — the note sits in the Purpose cell beside 16.22's, as written.
+  - `[false]` `[reject]` IA: an ordinary user's echoed User sends `user=<self>` next — it reads the same own rows as `all=1`.
+  - `[low]` `[reject]` IA: `rowsDropped` sums other users' overflow rows without the per-row gate — a count carries no row content, and the named-user read already counts ungated.
+  - `[low]` `[reject]` IA: AC1b sets `ContextRoute` by SQL rather than from a turn begun on a screen — the Job→`ContextRoute` leg is 11.9's and pinned there; this pins Confirm→`OpenConfirmedWrite`.
+  - `[low]` `[reject]` IA: AC4's write-row half runs in process through `FieldNamesFor`, not `Confirm.Transition` — the exclusion is `Confirm.FieldNames`, pinned since 5.6 through `MarkerConfirm`.
+  - `[low]` `[reject]` IA: the withheld, denied, dropped, stale and 503 lines are pinned on stubs — each has its wire test and the browser spec is the real-runtime leg (Rule 3).
+  - `[medium]` `[patch]` IA: `rowsDropped` under the new selections has no test — same root cause and fix as the VG dropped-count row.
+  - `[low]` `[reject]` IA: a begin within a second of the 720 h bound can pass the route and fail in `ViewForUser` (500) — reachable only at that second; the status is logged and nothing leaks.
+  - `[low]` `[patch]` IA: `Api.Ledger.Handle`'s doc omitted `criteria` and `all` — corrected.
+  - `[low]` `[reject]` IA: nothing asserts an ordinary `all=1` records no event — `tEvery` is 0 on that path by the same line the AC2 mutation pins.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -302,10 +358,42 @@ Slot A. Load every changed `.cls` into `ocupilot-ci` only, never `ocupilot`, and
 - AC4: drop the target check in `RecordToolCall` → the `LedgerSearch` secret leg red, and, on the `ocupilot-ci` copy, the browser AC4 leg red (V appears in the Target cell); recompile it back afterwards. `Password` alone cannot redden the arguments leg: the name-pattern backstop still masks it.
 - AC5: give `AgentLedger` a `read` → `ReadTool` red.
 
+Applied at implement on `ocupilot-ci` (each reverted, recompiled with subclasses or rebuilt and redeployed, tree byte-identical):
+
+- mutation: `ledgerPath` loops over `begin`, `end` only → `ledger.page.spec.ts` "Search sends User, Screen, Begin and End" and `ledger.store.spec.ts` "sends user, and never all" red; bundle redeployed → `agent-ledger.browser-spec.mjs` red (every listed row never reads Processes).
+- mutation: `GuardedIdsForWindow` passes `""` for the route → `LedgerSearch.TestTheCriteriaSelectRowsAndEchoWhatTheyApplied` red (with the write-route and every-user legs).
+- mutation: `Confirm` passes `""` to `OpenConfirmedWrite` → `LedgerSearch.TestAConfirmedWriteRecordsTheScreenItsTurnRanFrom` red alone.
+- mutation: every-user branch sets `tEvery = 1` without `HoldsPrivilege` → `LedgerSearchWire.TestAnOrdinaryUserReadsTheirOwnRowsAndIsRefusedAnothers` and `LedgerSearch.TestAnOrdinaryUserAskingForEveryUserReadsTheirOwnRows` red.
+- mutation: every-user rows skip `ReleasesRow` → `LedgerSearch.TestAnEveryUserReadReleasesOwnRowsAndGatesTheRest` and `LedgerSearchWire.TestAnAdministratorReadsEveryUserThroughThePerRowGate` red.
+- mutation: `RecordToolCall` drops the `CarriesSecretValue` line → `LedgerSearch.TestADeclaredSecretReachesNoTargetNoArgumentsAndNoFields` red; browser spec red ("the password call's target is the redaction mark").
+- mutation: `AgentLedger` declares a valid `read` and `table` → `ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` red (131, not 130) and `LedgerSearch.TestTheLedgerScreenDeclaresNoReadAndNoContextFields` red.
+- mutation: `Api.Ledger.Handle` drops the route shape check → `LedgerSearchWire.TestEachMalformedCriterionIsRefusedByName` red.
+- mutation: `LocalToUtc` drops the `DATETIMEFORM` match → `LedgerSearch.TestTheLocalConversionRoundTripsAndRefusesANonInstant` red.
+
+Applied at review on `ocupilot-ci` (same discipline):
+
+- mutation: `ledgerPath` loops over `begin`, `end` only; bundle rebuilt and redeployed → `agent-ledger.browser-spec.mjs` red (the wait for the Search's `route=` response times out), independent of other screens' rows.
+- mutation: `ViewForUser` passes `""` as the begin to `GuardedIdsForWindow` → `LedgerSearch.TestTheCriteriaSelectRowsAndEchoWhatTheyApplied` red (the row inside the whole-hour cutoff's slack is listed).
+- mutation: `AppliedCriteria` adds the window instead of subtracting it → the same test red (the echoed begin reads -86400 s ago).
+- mutation: `CarriesSecretValue` answers 1 whenever a declared value is present → `LedgerSearch.TestADeclaredSecretReachesNoTargetNoArgumentsAndNoFields` red (the other account's target reads the mark).
+- mutation: `ViewForUser` passes `GuardedDroppedFor` only its four leading arguments → `LedgerSearch.TestTheDroppedCountFollowsTheCriteria` red on both counts.
+- mutation: `LedgerSearch.search()` loses its generation check → `ledger.store.spec.ts` "drops a late answer…" red.
+- mutation: the End field loses `[attr.aria-invalid]` → `ledger.page.spec.ts` "a refused criterion marks the field it names…" red.
+- mutation: `App.verifyWhenSignedIn` loses `this.ledgerSearch.reset()` → `app.spec.ts` "AD-8: leaving the signed-in state…" red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Implement (2026-09-28).**
+
+- **Change:** `GET /agent/ledger` takes `all`, `route`, `begin` and `end`, validated in `Api/Ledger.cls` (400 `LEDGER.CRITERION.INVALID` naming the criterion; a begin past 720 h is `LEDGER.WINDOW.INVALID`). `ViewForUser` reads every user for an `OcuPilotAdmin:USE` holder through the per-row gate, records `LedgerRead` with `*`, and echoes `criteria`; rows carry `time`, `fields` and `fieldsTruncated`. Confirmed writes record their turn's screen. `RecordToolCall` stores the mark as the target when it carries a declared value, and as the arguments when the redaction fails closed for an object (the Matrix's declared-secret row). New `AgentLedger` descriptor (no read, no table, no context field; Transcripts to 6) and `LedgerPage` with its root store, reset at sign-out; a refused criterion marks its field.
+- **Files:** kernel `Kernel/Audit/Ledger.cls`, `Kernel/State/Ledger.cls`, `Kernel/State/Turn.cls`, `Kernel/Proposal/Confirm.cls`; route `Api/Ledger.cls`, `Api/Error.cls`; descriptors `AgentLedger.cls` (new), `AgentTranscripts.cls`; client `areas/agent/ledger.store.ts`, `ledger.page.ts` (new), `shell/screen-outlet.ts`, `app.ts`, `core/strings.ts`, `core/screens.generated.ts`, `styles/_components.scss` (tail rule); docs EXPERIENCE.md :152 and :336 in place (993 lines); tests `LedgerSearch.cls`, `LedgerSearchWire.cls`, `ledger.store.spec.ts`, `ledger.page.spec.ts`, `agent-ledger.browser-spec.mjs` (new), and rosters `Wire`, `SurfaceCoverage`, `LedgerWire`, `TranscriptStore`, `LedgerFaultProbe`, `AuditMarker` (comment), `navigation.test.mjs`, `definitions.browser-spec.mjs`, `app.spec.ts`, `scripts/ci-throwaway.sh` (one roster line).
+- **Counts re-derived from the merged tree:** `ReadTool` stays 130 (the spec text's 128 predates 18.1); 71 descriptors; the agent area builds 8 and lists 6.
+- **Review:** 29 findings — 13 patched (10 medium, 3 low), 3 deferred (to frontmatter), 13 rejected with reasons (Review Triage Log). Follow-up review recommended: the review-added invalid-field marking is pinned in jsdom only, and the local/UTC direction is unverifiable on UTC-only instances (deferred).
+- **Verification:** targeted classes green, including `LedgerSearch` 9/9 and `LedgerSearchWire` 3/3 after review. `npm test`: tools 1681/1681, components 1687/1687. Browser specs `agent-ledger`, `a11y-structural-invariants` (12/12) green after review; `transcripts`, `suggested-prompts` and `definitions` green at implement. `check-objectscript` and `lint-docs` clean. Build initial total 2.05 MB, under 2107 kB. Full ObjectScript sweep on `ocupilot-ci`: 338 classes, 2634 tests, 5 failed, all known residue (`Retention` 1, `TaskHistory` 3, `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal`); 19 classes refused for arming variables. Smoke on `ocupilot-ci`: 49/49. No probe ledger row left.
+- **Footprint extensions:** `Kernel/Audit/Ledger.cls`, `Kernel/State/Ledger.cls`, `Kernel/State/Turn.cls`, `ui/src/app/app.ts`, `ui/src/app/app.spec.ts` (add-only leg).
 
 **Plan (2026-09-28).** Planned only; halted after planning as directed.
 

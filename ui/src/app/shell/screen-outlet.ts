@@ -15,6 +15,7 @@ import { DefinitionFormPage } from '../areas/agent/definition-form.page';
 import { SwitchesPage } from '../areas/agent/switches.page';
 import { GuardrailsPage } from '../areas/agent/guardrails.page';
 import { TranscriptPage } from '../areas/agent/transcript.page';
+import { LedgerPage } from '../areas/agent/ledger.page';
 import { DatabaseDetailsPage } from '../areas/os-management/database-details.page';
 import { DatabasesPage } from '../areas/os-management/databases.page';
 import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
@@ -139,6 +140,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AuditUserEventList': AuditUserEventListPage,
   'OcuPilot.Screen.Descriptor.AgentGovernance': GovernancePage,
   'OcuPilot.Screen.Descriptor.LogHub': LogHubPage,
+  'OcuPilot.Screen.Descriptor.AgentLedger': LedgerPage,
 };
 
 /**

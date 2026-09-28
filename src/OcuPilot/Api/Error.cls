@@ -1033,12 +1033,21 @@ Parameter REASONLEDGERUSERINVALID = "That is not the shape of an account name on
 /// <p>Written sentence for <parameter>LEDGERUNAVAILABLE</parameter>.</p>
 Parameter REASONLEDGERUNAVAILABLE = "The agent ledger could not be read on this instance.";
 
+/// <p>Machine code (Story 16.16, AD-21): one of <code>GET /agent/ledger</code>'s search criteria
+/// -- <code>all</code>, <code>route</code>, <code>begin</code> or <code>end</code> -- is not a value
+/// the ledger's search takes, named in <code>detail.criterion</code>. Rendered the way
+/// <parameter>LEDGERWINDOWINVALID</parameter> is.</p>
+Parameter LEDGERCRITERIONINVALID = "LEDGER.CRITERION.INVALID";
+
+/// <p>Written sentence for <parameter>LEDGERCRITERIONINVALID</parameter>.</p>
+Parameter REASONLEDGERCRITERIONINVALID = "That value is not one the agent ledger's search accepts.";
+
 /// <p>Every <code>LEDGER.*</code> code, as a <class>%List</class>, so a test can hold
 /// <method>ReasonForLedger</method> to the vocabulary -- the model
 /// <method>TurnCodes</method>/<method>ReasonForTurn</method> set.</p>
 ClassMethod LedgerCodes() As %List
 {
-    Quit $ListBuild(..#LEDGERWINDOWINVALID, ..#LEDGERMAXROWSINVALID, ..#LEDGERUSERINVALID, ..#LEDGERUNAVAILABLE)
+    Quit $ListBuild(..#LEDGERWINDOWINVALID, ..#LEDGERMAXROWSINVALID, ..#LEDGERUSERINVALID, ..#LEDGERUNAVAILABLE, ..#LEDGERCRITERIONINVALID)
 }
 
 /// <p>The written sentence a <code>LEDGER.*</code> code carries, or <code>""</code> for any other
@@ -1049,6 +1058,7 @@ ClassMethod ReasonForLedger(pCode As %String) As %String
     If pCode = ..#LEDGERMAXROWSINVALID Quit ..#REASONLEDGERMAXROWSINVALID
     If pCode = ..#LEDGERUSERINVALID Quit ..#REASONLEDGERUSERINVALID
     If pCode = ..#LEDGERUNAVAILABLE Quit ..#REASONLEDGERUNAVAILABLE
+    If pCode = ..#LEDGERCRITERIONINVALID Quit ..#REASONLEDGERCRITERIONINVALID
     Quit ""
 }
 

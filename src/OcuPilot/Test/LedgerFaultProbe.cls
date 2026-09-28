@@ -13,7 +13,7 @@ ClassMethod StoreClass() As %String
 
 /// <p>The failure a store that cannot be read answers. Its text carries a marker no wire envelope
 /// may repeat, so a test can assert the raw status reached the log alone (AD-39).</p>
-ClassMethod GuardedIdsForWindow(pUser As %String, pWindowHours As %String, pTurnKey As %String, pMaxRows As %Integer, Output pIds, Output pProblem As %String) As %Status
+ClassMethod GuardedIdsForWindow(pUser As %String, pWindowHours As %String, pTurnKey As %String, pMaxRows As %Integer, Output pIds, Output pProblem As %String, pRoute As %String = "", pBeginUtc As %String = "", pEndUtc As %String = "", pAllUsers As %Boolean = 0) As %Status
 {
     Kill pIds
     Set pProblem = ""
