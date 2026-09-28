@@ -287,3 +287,5 @@
 2026-09-28T08:07:13Z	Story 16.24	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=DW-1769_decision-pending_owner_burndown_for_the_sheet model=claude-opus-5-5
 2026-09-28T08:07:13Z	Story 16.24	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci_bundle_redeployed_by_cr(2006688B);openapi-try-it.browser-spec_6/6(Copy_as_curl_exact_command,no_token,sends_nothing,same_JSON;refusal_parity);no_JWT-shaped_string_in_output model=claude-opus-5-5
 2026-09-28T08:08:21Z	Story 16.24	committed	sha=2918d764 submodules= ci=pending run=36395523626 amendments=ARCHITECTURE-SPINE.md:AD-57_item5(+Binds),AD-57_item5_corrected,Deferred_DW-1769;EXPERIENCE.md:574_in_place(993) footprint_extensions=ui/angular.json(maximumWarning_2107kB,DW-1166)
+2026-09-28T08:11:37Z	Epic 16	epic_context_compiled	reason=planning_artifact_newer(AD-8_Security,AD-57_item5,Deferred) model=opus
+2026-09-28T08:11:37Z	Story 16.16	stage_spawned	stage=plan spawn_at=2026-09-28T08:11:37Z model=opus agent_name=16-16-the-agent-audit-viewer-plan-1 cycle_iteration=1 note=planned_ahead_while_16.24_CI_runs(Rule_28)
