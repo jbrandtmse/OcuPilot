@@ -7765,6 +7765,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-27T18:31:11Z status=decision-pending owner=burndown by=harvest note=product call: keep; or gate the event-log screen alone (amend AD-8's area rule); or drop the screen to Stage 2
 - 2026-09-27T20:03:07Z status=open owner=16-8-the-six-secondary-log-viewers by=merge_gate note=decided option B: gate only the event-log screen; Logs keeps its Release 1 set; AD-8 amended; fixed in a 16.8 rework
 - 2026-09-28T01:18:58Z status=resolved-by:16-8-the-six-secondary-log-viewers by=merge_gate note=rework d4db0663 (CI 36348144770), independent review 0 high 0 med; released in 1.0.2 (c46cafa9)
+- 2026-09-28T01:31:58Z status=resolved-by:16-8-the-six-secondary-log-viewers by=adjudication note=d4db0663: event-log screen owns %Ens_EventLog:USE alone; Logs keeps Release 1 pairs; WireSecurityRead AUDITUSER leg
 
 ### DW-1760: Own-pair screens (AD-8 as amended for DW-1755) accept an own pair the area already declares, or an ownPrivileges equal to all of privileges, so a screen can leave the area-coverage check entirely
 - source: 16.8 rework independent review (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
@@ -7809,3 +7810,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-5-ci-in-parallel-the-two-long-suites-split-across-containers.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: scripts/wait-readiness.sh:5, ci-durable-ownership.sh:3 and ci-throwaway.sh:2 say CI's instance job runs them, and ci.test.mjs:1571 says the instance and browser jobs; since 13.5 the instance-shard and browser-shard legs do. scripts/** is contended with Epic 16, ci-throwaway.sh is off-limits to 13.5, and ci.test.mjs:1571 is add-only for 13.5
 - 2026-09-28T04:38:49Z status=wontfix-accepted owner=13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=cr note=reopen_if=grep -n 'instance job' scripts/*.sh still matches when a later story next edits any of these files
+- 2026-09-28T04:41:12Z status=open owner=16-9-the-unified-log-hub by=orchestrator note=re-owned for the priority fix 60da472b (Findings.TaskErrors requires a recorded run); resolve on green CI

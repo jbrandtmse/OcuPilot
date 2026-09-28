@@ -4,7 +4,7 @@
 
 ## Goal
 
-This is voting-week work, done after the submission cut. It adds the second-tier screens and actions a judge sees when comparing entries: a try-it console, web sessions, effective privileges, task export and import, background tasks, broadcast, license usage and the full dashboard, six secondary log viewers with a hub, and external language servers. It also carries six stories deferred from the contest build (16.11 to 16.16), and survey-driven stories: read-back, Home's performance row, impact lines, older messages.log files (Community Idea DPI-I-966), a security and operations findings panel whose fixes are agent proposals, a Guardrails page, and a CSV download on every table. **This run's order:** 16.1, 16.17, 16.18, 16.19 and 16.20 (all done), then 16.21, 16.22, 16.23, then 16.8, then 16.9. The other stories stay backlog. Everything merges to the feature branch; `main` moves only at owner-approved releases (Release 1.0.2 is cut 2026-09-27 21:00 UTC and takes only stories done at a green story boundary). **Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
+This is voting-week work. It adds the second-tier screens and actions a judge sees when comparing entries: a try-it console, web sessions, effective privileges and a permission check, task export and import, background tasks, broadcast, license usage and the full dashboard, six secondary log viewers, and a log hub with a merged timeline. It also covers external language servers, six stories deferred from the contest build (16.11 to 16.16), and stories that came out of the contest surveys (16.17 to 16.24). Stories 16.1, 16.8 and 16.17 to 16.23 are done and shipped in release 1.0.2. **This run's order:** 16.9 (amended: merged timeline), then 16.24, then 16.3 and 16.16. 16.4 waits for Story 18.1, and the rest stay in the backlog. **Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
 
 ## Stories
 
@@ -31,85 +31,135 @@ This is voting-week work, done after the submission cut. It adds the second-tier
 - Story 16.21: Security findings, with a fix you confirm
 - Story 16.22: The Guardrails page
 - Story 16.23: Any table, downloaded as CSV
+- Story 16.24: A try-it request, copied as curl
 
 ## Requirements & Constraints
 
-- **Every story.** Each screen is one descriptor with its derived read tool. Each action ships with its confirmed write tool.
-- **Governance baseline (Story 14.2, released, on slot B).** Until 14.2 merges into the feature branch, nothing here touches governance and the gate point keeps returning "allowed" for everything not prohibited. Once it has merged, every new write key an Epic 16 story ships joins the baseline in that same story, enabled unless the story's criteria say disabled (through 2026-10-04).
-- **Bundle budget.** The hard stop is 4000kB with a 3800kB ask line; still no lazy routes or `@defer`.
-- **Home performance row (16.18, done).** Cache efficiency, global references and updates per second, and disk reads and writes per second, with a ten-minute sparkline that starts empty. The row is absent, not zeros, for a caller who may not read the metrics, and Home's agent context carries the same values. Later Home work must leave it intact.
-- **Impact lines (16.19, done).** Role delete, role removed from a user, and resource delete carry an impact line; later work touching those writes keeps it.
-- **Older messages files (16.20, done).** The messages.log viewer offers a file choice (`messages.log`, then rotated `messages.old_*` files newest first, with size and time); paging, search, filter, screen context and explain behave as on `messages.log`, and the address names the file. Later log work (16.8, 16.9) must leave it intact.
-- **Security findings (16.21).**
-  - A panel on Home checks at least: unauthenticated web applications holding database or administrative roles, the monitoring API open without authentication, accounts holding `%All`, X.509 certificates expired or expiring within 30 days, and auditing off. Each finding names the object and why it matters, and the panel says plainly when there is nothing to report.
-  - **Fix it** has the agent open the affected screen and propose the change as an ordinary proposal (comparison, privilege line, Confirm). Nothing changes until it is confirmed. A finding with no automatic fix, such as a certificate, links to its screen instead.
-  - **Operations group (owner amendment).** A second group checks at least: a dismounted database, a database near its maximum size, the Task Manager suspended or stopped, and a task suspended after an error, each naming the object, why it matters and what to do. Fix it exists only where a write tool does: resuming a task suspended after an error today; mounting a database waits for Story 18.4 and resuming the Task Manager for Story 16.11. Until then those findings link to the screen that handles them.
-  - A finding whose fix the prohibited set refuses (the last `%All` holder, say) offers no Fix it and gives the reason in the prohibited set's own words. A finding the caller may not read is left out, never reported as clean.
-  - DW-1400: the shell-chrome read seam has three verbatim copies (About, Instance, SystemInfo). Extract a shared base before the panel adds a fourth reader.
-- **Guardrails page (16.22).**
-  - A read-only page in the Agent co-pilot area lists every action the agent refuses outright, each with its refusal reason. It is generated from the same prohibited set the server enforces, never written separately.
-  - It shows the kill switch and enforced read-only state, which tools change the instance and therefore always need a Confirm, what the agent never sees (stored secrets, the variables captured with application errors), and the screen-context row limit.
-  - A changed rule changes the page with no second edit, and a test fails when a prohibited action has no reason text.
-- **CSV download (16.23).**
-  - Every screen built on the data table gets **Download CSV** in its toolbar. The file holds the rows the table holds, after its filter and in its sort order, with the visible columns in order and a header row of their labels, UTF-8, named after the screen and the time.
-  - It is built in the browser from rows already read. There is no new server route.
-  - A cell starting with `=`, `+`, `-`, `@`, a tab or a carriage return is prefixed so a spreadsheet shows it as text.
-  - The file holds only what the table shows, never a withheld field (secrets, application-error variables).
-  - After a truncated read, it says the file holds the loaded rows only, in the table's existing truncation words.
-- **Log viewers (16.8).** All six sources render in the shared log viewer: search with highlight and "n of N", jump to top and bottom, Load newer, a Raw toggle, and a per-row explain entry point that sends that entry alone. File-backed sources are named from a fixed enum.
-  - DW-1102: add "Next match" and "Previous match" (approved copy) as accessible names, with their strings rows.
-  - DW-1110: add `LogViewerStore` to sign-out teardown.
-- **Hub (16.9).** Lists every source with a count and its last entry. Each row opens that source and carries an explain entry point.
-- **Routed ledger entries for backlog stories** (address or decline with a reason when each is built): DW-1018 (16.3), DW-1080, DW-1101, DW-1137 (16.5), DW-1116 (16.7), DW-253 (16.10), DW-1073, DW-1074 (16.12), DW-1016 (16.13), DW-1639 (16.14), DW-1192 (16.15). DW-118 is already resolved by Story 15.6.
+- **Every story.**
+  - Each screen is one descriptor with its derived read tool, and each action ships with its confirmed write tool.
+  - A new write key joins `Kernel/Governance/Baseline.cls` in the same story, enabled unless the story's criteria say disabled (through 2026-10-04). A test fails naming any registered write key missing from it.
+  - A new write tool also needs its script form: a `Snippet` branch in its port for every `Invoke` branch. Without it, a registry test fails.
+- **Copy.** Every new user-facing string goes into EXPERIENCE.md's Fixed strings and `strings.ts` in the same change. Runners never invent copy. The hub, the timeline and the curl copy have no strings yet. Existing strings that can be reused: "Explain this entry", the log viewer's words and truncation notices, "Copied", and the sentence shown when the clipboard is unavailable.
+- **Bundle.** `maximumWarning` is 2004kB and the hard stop is 4000kB. Stop and ask above 3800kB. No lazy routes and no `@defer`. The bundle is about 1.98 MB now.
+- **Hub (16.9).**
+  - Lists every log source with a count and its last entry. Each row opens that source and carries an explain entry point.
+  - **Timeline view:**
+    - Merges the entries of every listed source the person may read, newest first, over a chosen window that defaults to the last hour. Each entry shows its time, source, severity (where the source records one) and text.
+    - Times are compared and shown on the instance's clock, whatever form or time zone each source writes.
+    - Each source is read through its own bounded read, with its own viewer's privilege and fixed source name, never a path. A source has a row cap, and hitting it is marked in the viewers' existing truncation words.
+    - A source the person may not read is left out without an error. The timeline names each such source and the privilege it needs.
+    - Filters by source, severity or text leave only matching entries, and each source's count in the list updates to match.
+    - Choosing an entry opens its source at that entry. The entry's explain entry point sends that entry alone.
+- **Curl copy (16.24).**
+  - **Copy as curl** puts one command on the clipboard and sends nothing: the method, the absolute URL with its query, the headers and the body, as the console would send them.
+  - The access token, and any header the console masks, is never copied. The command carries a placeholder instead, and the console says so beside the copy.
+  - Values are quoted so the command runs exactly as shown in a POSIX shell.
+  - A request the console refuses to send is refused for copy too, with the same reason.
+- **16.3.** A user's effective roles, resources, applications, databases and services render, composed from reads the area already makes. The permission-check tool answers yes or no and names the granting role, short-circuiting on `%All`.
+- **16.16.** Lists ledger rows with filters by user, screen and date, and opens a row's arguments and result. A user sees their own rows. An OcuPilot administrator's view of another user's rows is gated by the resources recorded on each row. Secrets are absent because they were excluded at write time.
+- **Done work that later stories keep intact:**
+  - 16.17: the read-back line on every confirmed write.
+  - 16.18: Home's performance row, absent rather than zeros for a caller who may not read the metrics.
+  - 16.19: impact lines on role delete, role removal from a user and resource delete.
+  - 16.20: the messages.log file choice, with the file named in the address.
+  - 16.21: Home's findings panel, both groups.
+  - 16.22: the Guardrails page, generated from the enforced rules.
+  - 16.23: Download CSV on every data table. A new table screen gets it automatically.
+  - 16.8: the six secondary viewers.
+- **Routed ledger entries for backlog stories.** Each is addressed, or declined with a reason, when its story is built:
+  - DW-1018 (16.3)
+  - DW-1080, DW-1101, DW-1137 (16.5)
+  - DW-1116 (16.7)
+  - DW-253 (16.10)
+  - DW-1073, DW-1074 (16.12)
+  - DW-1016 (16.13)
+  - DW-1639 (16.14)
+  - DW-1076, DW-1192 (16.15)
 
 ## Technical Decisions
 
-- **Descriptors (AD-5, AD-36).**
-  - A screen is a hand-written descriptor; `screen-mirror.mjs` generates the mirror, and `Screen/Registry.cls` and the mirror refuse identically. Each built screen has at least three suggested prompts from the closed group vocabulary.
-  - The screen and its tool share one read, bounded, reporting truncation, and capped for context (AD-24: row cap 1 to 1,000 set on Switches, default 200; 65,536 characters total; 1,000 a field).
-  - A `datetime` criterion may declare `defaultHoursAgo` or `atOrAfterField`, and the answer reports every applied criterion as `criteria`. Screen and tool apply the same default.
-- **Navigation (AD-11).** `shell.screen.open` may carry `criteria` keyed by the target's declared criteria fields, on a `list (server criteria)` screen only. Values are validated on the instance before any announcement, travel on the directive and never in a URL. A navigation the user did not start is announced, and the departing screen may refuse it. A citation chip is a reference, not a navigation proposal. This is the path 16.21's Fix it takes to the affected screen (inference).
-- **Prohibited set (AD-10).** It has exactly one home: kernel predicates evaluated against the resolved target inside the atomic transition (AD-34), whichever caller wrote. Each refusal has a `PROHIBITED.*` code. Other privilege grants, including `%All`, are permitted at the strongest confirmation. 16.21's refusal wording and 16.22's list must come from this one declaration.
-- **Dependency direction.** The registry never depends on kernel behavior (the turn, the provider, governance). It may name kernel value types, constants, pure helpers, stores and the error vocabulary, and a write tool calls the proposal kernel's mint, prohibited-set and operation entry points.
-- **Switches and classification (AD-22, AD-30).** Every tool declares `read` or `write`. Read-only and the kill switch are instance state evaluated at the point of effect; `Kernel.Restraint.Verdict` gives the `blocked` answer, and every screen-context payload carries `tools` and `readOnly` (AD-24).
-- **What the agent never sees (AD-35, AD-48).** Secret-typed fields are schema-driven, never sent. Error-log detail (captured variables) is secret by default: summary fields only reach the model.
+- **Descriptors and reads (AD-5, AD-24, AD-36).**
+  - A screen is a hand-written descriptor with at least three suggested prompts. `Screen/Registry.cls` and `screen-mirror.mjs` refuse identically.
+  - The screen and its tool share one bounded read that reports truncation.
+  - Context caps: rows 1 to 1,000 (default 200), 65,536 characters in total, 1,000 characters per field.
+  - A `datetime` criterion may declare `defaultHoursAgo` or `atOrAfterField`, and the answer reports `criteria`.
+- **Log sources.**
+  - `LogSourcePort` reads every log the admin API does not back. Of the six secondary logs, four are read per namespace, over the set the caller can read, through the vendor's own readers. The event log and SQL diagnostics are read with `%ExecDirectNoPriv`, behind the source's own gate (AD-29).
+  - AD-21: no endpoint accepts a path, and files are named from a fixed enum. AD-21 names exactly five pattern cases: the static handler, the WSGI directory, a task output file, rotated `messages.old_*` and `DeepSeeTasks_<NS>.log`. Any other pattern-named file needs an AD-21 amendment first.
+  - The application error log goes through `SYS.ApplicationError`. Its detail is secret by default, and only summary fields reach the model (AD-48).
+  - The audit record LIST is async (AD-26), and its `EventData` is masked per declared event (AD-35).
+  - Log text and tool results reach the model through one sanitizer (AD-60). A new read tool needs no change, and nothing may rely on the sanitizer as the defense.
 - **Privilege (AD-8, AD-29).**
-  - **A removal names its impact.** Computed on the instance, once at mint (kept on the proposal row) and again when the screen dialog opens, with the caller's own privileges through the owning screen's read and pair set. A part the caller cannot read is reported unchecked, naming the pair. A target the prohibited set refuses shows that refusal's reason instead. The impact is names only and never enters screen context or a tool result.
-  - **`Kernel.Shell.Effective` is the one effective-privilege composition,** and any later effective-privilege read (16.3's screen and permission-check tool) uses it rather than re-deriving. It composes as the instance does: the union over the user's roles and, transitively, every role they grant; `%All` anywhere in that closure holds everything; a resource's public permission is held by every user; an escalation role counts for nothing until the user escalates.
-  - A pair set is `(resource, permission)` pairs; `%Admin_*` and `%Service_*` are required at `USE`, never `WRITE`.
-  - Every non-admin port declares and checks its own gate. Establish each set from the backing class's own check, then by a real least-privileged run on a throwaway.
-  - There is no elevation. What a caller cannot read is reported as such, never inferred.
-- **Paths and files (AD-21).** No endpoint accepts a filesystem path. A file source is named from a fixed enum, its directory is `$System.Util.ManagerDirectory()` resolved on every call, and paging validates the file's identity. AD-21 names exactly four exceptions, each a single validated segment under a call-time directory: the static handler, a WSGI/ASGI directory, a task output file, and (16.20) a rotated console log matching `^messages\.old_[0-9]{8}(_[0-9]{1,6})?$`, read through `LogSourcePort`'s `messages` source under its own gate and refused `LOG.FILE` otherwise. 16.8's file-backed sources use the fixed enum; any new pattern-named file is a fifth case and needs an AD-21 amendment first (inference).
-- **Writes (AD-53, AD-55, AD-10).** A screen action and the agent's write are two callers of one tool, sharing target resolution through the declared port, the fresh read, the prohibited-set predicates, the caller's privileges, the change event, the read-back, a removal's impact and the vendor audit record. Kinds are merge (AD-4), action-style (AD-51), create (AD-54) and secret-only (AD-56); the port is declared per tool (AD-52).
-- **Read-back (AD-58, done in 16.17).** Every confirmed write, from either caller, re-reads its target through the tool's declared port with the caller's own privileges, after the ledger row and outside any transaction, and answers `readBack {verdict, fields, written, reason?}` without failing or altering the write's answer. A write tool touched or added later inherits it. A field the instance normalizes on save declares `compare` in its reviewed Classification entry; a secret is reported written, never read back. Only names and a verdict leave the instance, riding the change event as an annotation, never as row data.
-- **Open decision DW-1710.** Whether a list-row create (`TaskCreate`, `OAuthRegisteredClientCreate`) reads back over only its list row's fields (8 of the task create's 34 keys) or re-reads by `createdId`. It is on the Epic 16 merge-gate decision sheet; either answer amends AD-58.
-- **Try-it console (AD-57, done in 16.1).** A browser request under the tab's own Bearer token, never a tool or OcuPilot's write path. Targets under OcuPilot's own applications and `/api/admin` writes are refused before sending; other mutating verbs need a confirmation dialog. The response reaches the screen only, as data.
-- **Refresh (AD-14, AD-43).** A confirmed write publishes the scoped triple; screens re-fetch and highlight, never patch. Auto-refresh has one framework, and EXPERIENCE.md's roster names the eight screens in it, Home included. A screen joins by its descriptor and the roster together. A screen may declare its default rate: every default is off except Home's, every 10 s, and a tick re-reads only Home's performance row.
-- **Metrics (AD-29, AD-1).** `MonitorPort` reads the dashboard sensors in-process (`SYS.Monitor.SAM.Sensors`, what `/api/monitor/metrics` serves) and is the only class that names them. Its pair set is `%Admin_Operate:USE` plus `%DB_IRISSYS:READ`; without the latter the switch to `%SYS` raises `<PROTECT>`.
-- **Client (AD-19, AD-20).** Zoneless, `OnPush`, framework-free stores in `core/` mirrored into signals. Every root store resets at sign-out. Every API URL is absolute through the one API service.
-- **Server conventions.** One error envelope `{error, reason, code, detail}` (AD-12, AD-39). Ids are encoded twice and decoded once (AD-13). Tools are named `<area>.<screen>.<verb>`. User-facing strings come only from EXPERIENCE.md's Fixed strings and `strings.ts`; runners never invent copy.
+  - Gates are pair sets checked at call time, with no elevation. What a caller cannot read is reported as such, never inferred.
+  - An area's pair set covers its screens' pairs, except pairs a screen declares as `ownPrivileges`. Today those are the event log's `%Ens_EventLog:USE` and the analytics log's `%DeepSee_Portal:USE`. The hub and timeline must honor each source's own gate (inference).
+  - DW-1018's decision (a rail item is allowed when any of its screens is) must be reconciled with this coverage rule when 16.3 takes it up (inference).
+  - `Kernel.Shell.Effective` is the one effective-privilege composition, and 16.3 uses it: the union over roles, transitively; `%All` holds everything; public permissions are held by every user; escalation roles count for nothing until used.
+- **Dates.** Emitted timestamps are ISO-8601 UTC, and instance-local calendar comparisons use `+$Horolog`. The timeline's "instance's clock" rule must be squared with this at the spec gate, and may need a spine note (inference).
+- **Navigation (AD-11).**
+  - `shell.screen.open` accepts only registry routes.
+  - `criteria` works on `list (server criteria)` screens only, and is validated on the instance and carried on the directive, never in a URL.
+  - An unstarted navigation is announced, and a citation chip is a reference.
+  - Opening a source "at that entry" has no existing mechanism in the viewers (inference).
+- **Try-it console (AD-57).**
+  - It is a browser request under the tab's Bearer token. It is not a tool and not the write path.
+  - Before any spelling is compared, the target is resolved the way the browser resolves it. OcuPilot's own applications are refused, and so are `/api/admin` writes.
+  - Other writes are confirmed in a dialog first.
+  - The record of a request masks secret-named headers, query parameters and body members.
+  - The curl copy is a new surface for the same request, so these masking and refusal rules bind it (inference: may warrant an AD-57 line).
+- **Ledger viewer (16.16).**
+  - The ledger is per user. An administrator's view of another user's rows is gated by each row's recorded resources, and that gate lives with the ledger (AD-46).
+  - A `state` store may release only the caller's rows, or every row to an `OcuPilotAdmin:USE` holder, decided before any escalation (AD-36, first used by 14.4's Transcripts).
+  - Ledger rows record what was executed, with secrets excluded at write time (AD-41).
+- **Writes, for later stories.**
+  - A screen action and the agent are two callers of one tool (AD-53, AD-55).
+  - Write kinds are merge (AD-4), action-style (AD-51), create (AD-54) and secret-only (AD-56). `Task.Manager`, `Lock` and `Process` are action-style and need no template (16.11, 16.12).
+  - The port is declared per tool (AD-52).
+  - Read-back follows AD-58. Per DW-1710, a create re-reads by `createdId`; that fix belongs to the range-end cleanup.
+  - Copy-out follows AD-59. Governance as shipped: stored setting, then preset, then baseline, checked at dispatch and again at Confirm (AD-22).
+  - AD-10 refuses disabling `%Service_WebGateway` from either caller (16.13).
+  - LDAP test connection uses AdminPort's async path, and list, get and put stay synchronous (AD-26, 16.14).
+  - Background tasks need an admin-API half and a custom-endpoint half (16.5).
+  - The egress line is computed from the same configuration the request uses (AD-42, 16.15).
+- **Refresh (AD-14, AD-43).**
+  - A confirmed write publishes the scoped triple, and screens re-fetch rather than patch.
+  - Auto-refresh has one framework over EXPERIENCE.md's roster of eight. A screen joins through its descriptor and the roster together.
+- **Client and server conventions.**
+  - Client (AD-19, AD-20): zoneless, `OnPush`, framework-free stores in `core/` mirrored into signals. Every root store resets at sign-out, and every API URL is absolute.
+  - Server: one envelope `{error, reason, code, detail}`, ids encoded twice and decoded once, and tools named `<area>.<screen>.<verb>`.
 
 ## UX & Interaction Patterns
 
-- **Log viewer.** Rows show time, pid, a severity chip (with its word) and text. The sticky search shows a polite "n of N". Raw is a bounded monospace view on `code-surface`. It is a tail, not live, and never loads the whole file.
-- **Meters (16.7).** Each meter shows its state as a word as well as a colour, as 16.18's row already does.
-- **Proposal card.** Diff rows, "N unchanged fields", "Agent's rationale", "Expected impact", 11.8's privilege line ("Requires ...") and a focus-taking status line, with the read-back line under it once confirmed. 16.19's "Impact: ..." line is 11.8's sibling.
-- **Read-back copy.** The "Read back: ..." lines are Fixed strings. They follow the "Changed" tag on the marked row, join its announcement with " · ", and read "Saved · <line>" on a form.
-- **Destructive confirmations.** A screen's destructive dialog asks for the target's typed name, and its destructive button is labeled with the verb. A destructive agent proposal takes the destructive bar and a destructive Confirm, with no typed name.
-- **Gated controls.** They use `aria-disabled`, never `disabled`, and name their reason ("Requires <resource>").
-- **New copy.** 16.18's row, 16.19's impact line and 16.20's file choice have their Fixed strings. 16.21's panel (both groups), 16.22's page and 16.23's download do not yet, so their copy must be added to EXPERIENCE.md's Fixed strings and `strings.ts` in the same change before a runner uses it.
+- **Log viewer.**
+  - Rows show time, pid, a severity chip with its word, and text. A per-row explain entry point sends that entry alone.
+  - The sticky search shows a polite "n of N", with "Next match" and "Previous match" beside it. Jump to top and bottom, "Load newer" and a Raw toggle on `code-surface` complete the bar.
+  - Secondary logs show a bounded newest window, and per-namespace entries lead with `[<namespace>]`. It is a tail, not live.
+- **Placement.**
+  - "Unified log hub" is the last polish-week entry in the Logs side bar (log-viewer · list).
+  - Effective privileges is a view in the User editor. Permission check is a command-bar action.
+  - Agent audit ledger is a polish-week entry in the Agent co-pilot area (list, server criteria).
+- **Try-it console.** The request and response appear under their headings on the code surface, as data. A copy control follows the code-block pattern: it announces "Copied" politely, and if the clipboard fails it shows the fallback sentence and leaves the text selectable.
+- **Gated controls.** They use `aria-disabled`, never `disabled`, and name their reason ("Requires <resource>"). A screen's destructive dialog asks for the typed name, while a destructive agent proposal takes the destructive bar with no typed name.
+- **Meters (16.7).** Each state is shown as a word as well as a colour.
 
 ## Cross-Story Dependencies
 
-- **Slot.** This run is on slot A: profile `ocupilot-slot-a`, throwaway `ocupilot-ci` on 52776/1975.
-- **Process rules.** After an integrate forward, load the merged ObjectScript into the throwaway before testing (Rule 22). Push a code commit alone and confirm its CI run before pushing a skip-tagged commit (Rule 28).
-- **Epic 14 runs concurrently on slot B,** including 14.2's governance baseline. Story 14.1 adds a "script instead" snippet to every write tool with a registry check, and Story 14.3 adds a sanitizer. A write tool or a registry change landing here must still satisfy them once they merge (inference).
-- **Home.** 16.21 extends Home (15.4's System Information panel and 16.18's performance row), after 16.21's own DW-1400 seam extraction.
-- **16.21 on 16.17 and 16.19.** Fix it proposals go through the ordinary proposal path, which carries the read-back line and, for a removal (taking `%All` from an account, say), 16.19's impact line (inference).
-- **16.21's Operations fixes.** Task resume uses the existing write tool. Database mount (Story 18.4) and Task Manager resume (Story 16.11) are not built, so those findings link out until they ship. Adding Fix it later is the shipping story's job (inference).
-- **16.23.** Client-only on the shared data table, so it reaches every table screen at once, 16.8's and 16.9's included.
-- **16.22.** It reads the kernel's prohibited set, tool classification, switches and context cap. It adds no new enforcement.
-- **16.9 after 16.8,** because the hub lists 16.8's sources.
-- **Held.** 16.4 needs Story 18.1's directory allow-list. Epic 18 joins the voting-week run on slot B after Epic 14, in story order; 18.1 runs on slot A after this group, ahead of 16.4, unless slot B reaches it first. Epic 18's destructive keys default to disabled under 14.2's baseline rule.
-- **16.3 on 16.19.** Its effective privileges and permission-check tool use `Kernel.Shell.Effective`.
-- **Backlog notes.** 16.6 is the first screen to need multi-select. 16.13 and 16.14 each remove a classic-link exemption (AD-44) and replace Story 9.9's reduced forms; 16.13 draws the `%Service_WebGateway` disable as disabled with the published sentence, because AD-10 refuses it from any caller.
+- **Slot and process.**
+  - This run uses slot A: profile `ocupilot-slot-a`, throwaway `ocupilot-ci` on 52776/1975.
+  - After an integrate forward, load the merged ObjectScript into the throwaway (Rule 22).
+  - Push a code commit alone and confirm its CI before pushing a skip-tagged commit (Rule 28).
+  - `main` and release branches move only at owner-planned releases, and a cut release branch is never touched.
+- **Story 13.5 runs on slot B at the same time.**
+  - Do not edit `.github/workflows/ci.yml`, `ui/tools/ci-runner.mjs` or `ui/browser.config.mjs` while it runs.
+  - Changes to `ui/tools/ci.test.mjs` and `scripts/ci-throwaway.sh` roster lines are add-only.
+  - New browser specs and test classes land unassigned in 13.5's timings file.
+- **Epic 14 is complete on the feature branch.** Its governance baseline, copy-out drafts, sanitizer, per-user read-only, transcripts and turns-per-hour all bind new work.
+- **Within this epic.**
+  - 16.9 builds on 16.8's sources through `LogSourcePort`.
+  - 16.24 depends only on 16.1 and runs right after 16.9.
+  - 16.3 uses `Kernel.Shell.Effective` (from 16.19).
+  - 16.16 can follow 14.4's caller-scoped store pattern (inference).
+- **Held and backlog.**
+  - 16.4 needs Story 18.1's directory allow-list. Epic 18 follows 13.5 on slot B, and its destructive keys default to disabled.
+  - 16.11 ships the Task Manager resume, and Story 18.4 the database mount, that 16.21's Operations findings link out to until then. Adding Fix it is the shipping story's job (inference).
+  - 16.13 and 16.14 each remove a classic-link exemption (AD-44) and replace Story 9.9's reduced forms.
+  - 16.6 is the first screen needing multi-select.
