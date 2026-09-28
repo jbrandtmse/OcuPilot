@@ -299,7 +299,13 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// true, so each is queued (<parameter>QUEUEDWRITES</parameter>); <code>RunCopy</code> calls
 /// <code>%SYS.Audit.Copy</code> and <code>RunPurge</code> <code>%SYS.Audit.Delete</code>, each
 /// discarding its count; <code>ResourcesOR()</code> is <code>%Admin_Secure</code>.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS";
+/// <p><code>WebSession/DELETE</code> is Story 16.2's session end
+/// (<class>OcuPilot.Screen.Tool.WebSessionEnd</class>, AD-51). Measured on this build: it takes the
+/// session as its <code>id</code> query parameter and reads no body, answers 404 for an unknown id,
+/// and otherwise calls <code>$$DeleteSession^%SYS.cspServer</code>, which marks the session for the
+/// instance's own daemon to remove (<parameter>AWAITEDDELETES</parameter>); it records no audit
+/// event.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,WebSession/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -315,7 +321,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,WebSession/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -346,6 +352,33 @@ Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Secur
 Parameter CONNECTIONTESTTYPES = "Security.SSLConfig/TEST";
 
 Parameter VERIFIEDDELETES = "Security.Role/DELETE,Device.Standard/DELETE";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> deletes the vendor carries out by marking the object
+/// for a daemon of its own to remove later, as comma-separated
+/// <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;query parameter&gt;:&lt;row key&gt;</code> entries. After
+/// a 2xx for a listed pair, <method>Invoke</method> re-reads the endpoint's <code>LIST</code> every
+/// <parameter>AWAITEDDELETEPOLLMS</parameter> milliseconds, for at most
+/// <parameter>AWAITEDDELETEMS</parameter>, until no row's row key equals the query parameter's value
+/// exactly (<method>AwaitGone</method>). The wait never turns the vendor's answer into a failure: a
+/// write it reported made stays made (AD-26), and the caller's read-back says what the instance
+/// holds (AD-58).</p>
+/// <p><code>WebSession/DELETE</code> is listed because <code>$$DeleteSession^%SYS.cspServer</code>
+/// only marks the session: measured on this build, the row stayed listed 1.65 to 4.09 seconds after
+/// the 200 over five trials.</p>
+Parameter AWAITEDDELETES = "WebSession/DELETE=id:ID";
+
+/// <p>The longest <method>AwaitGone</method> waits, in milliseconds.</p>
+Parameter AWAITEDDELETEMS As INTEGER = 10000;
+
+/// <p>How long <method>AwaitGone</method> waits between two reads, in milliseconds.</p>
+Parameter AWAITEDDELETEPOLLMS As INTEGER = 250;
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> entries whose query parameter's value must never
+/// reach the log, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;query
+/// parameter&gt;</code> entries. A vendor refusal for a listed pair that quotes the value is logged
+/// with it masked (<method>Unlogged</method>): <code>WebSession</code>'s 404 names the session id it
+/// was sent.</p>
+Parameter UNLOGGEDQUERY = "WebSession/DELETE=id";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> writes whose vendor answer does not say whether the
 /// sent values were stored, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries.
@@ -857,6 +890,9 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
                 Set tSC = ..VerifyGone(pEndpoint, .pQuery, .pHttpStatus, .pFault)
                 If $$$ISERR(tSC) Quit
             }
+            ; AWAITEDDELETES: a delete the vendor only marks is reported once the daemon has removed
+            ; the object, or once the bound has passed; either way the write stands as made.
+            If ..AwaitedDeleteKey(pEndpoint, pType) '= "" Do ..AwaitGone(pEndpoint, pType, .pQuery)
             ; TYPEKEPTTYPES: the vendor call reset the application type, so the one it held is put
             ; back before the write is reported as made.
             If tKept '= "" {
@@ -889,6 +925,8 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
             Set tSC = ..Denied(pEndpoint, tFailedPair, tSeqSC, .pHttpStatus, .pFault, pBody)
             Quit
         }
+        ; UNLOGGEDQUERY: a refusal quoting a value that must not reach the log is masked first.
+        If $$$ISERR(tSeqSC) Set tSeqSC = ..Unlogged(pEndpoint, pType, .pQuery, tSeqSC)
         Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType), pBody)
     } Catch ex {
         Set pResult = ""
@@ -1219,6 +1257,95 @@ ClassMethod VerifyGone(pEndpoint As %String, ByRef pQuery, Output pHttpStatus As
     Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#PORTNOTAPPLIED, ##class(OcuPilot.Api.Error).#REASONPORTNOTAPPLIED, .pHttpStatus, .pFault)
     Do ..LogFault(pEndpoint _ " answered a delete as made and a re-read answered HTTP " _ +$Get(tReadHttp), $Select($$$ISERR(tReadSC): tReadSC, 1: $$$ERROR($$$GeneralError, "the object is still present")), pFault.code)
     Quit tSC
+}
+
+/// <p>The <code>&lt;query parameter&gt;:&lt;row key&gt;</code> <parameter>AWAITEDDELETES</parameter>
+/// lists for <var>pEndpoint</var>'s request type <var>pSuffix</var>, or <code>""</code> for a pair
+/// it does not list.</p>
+ClassMethod AwaitedDeleteKey(pEndpoint As %String, pSuffix As %String) As %String
+{
+    Set tEntries = ..#AWAITEDDELETES
+    For tI = 1:1:$Length(tEntries, ",") {
+        Set tEntry = $Piece(tEntries, ",", tI)
+        If $Piece(tEntry, "=", 1) = (pEndpoint _ "/" _ pSuffix) Quit
+        Set tEntry = ""
+    }
+    Quit $Piece($Get(tEntry), "=", 2)
+}
+
+/// <p>Wait until <var>pEndpoint</var>'s <code>LIST</code> no longer holds the row a marked delete
+/// of type <var>pSuffix</var> removed, whose key is <var>pQuery</var>'s value for the pair's query
+/// parameter (<parameter>AWAITEDDELETES</parameter>). The list is read at once and then every
+/// <parameter>AWAITEDDELETEPOLLMS</parameter> milliseconds, the row key compared exactly, for at
+/// most <parameter>AWAITEDDELETEMS</parameter>.</p>
+/// <p><b>Caller contract:</b> called by <method>Invoke</method> alone, after the vendor answered the
+/// delete 2xx, and it never fails the write: gone, past the bound and a list that could not be read
+/// all return, and only the bound is logged -- without the removed key, which may be a session id.
+/// A pair with no row key, or a query with no value for it, is not waited on.</p>
+ClassMethod AwaitGone(pEndpoint As %String, pSuffix As %String, ByRef pQuery) [ Private ]
+{
+    Try {
+        Set tKey = ..AwaitedDeleteKey(pEndpoint, pSuffix)
+        Set tParam = $Piece(tKey, ":", 1)
+        Set tRowKey = $Piece(tKey, ":", 2)
+        If (tParam = "") || (tRowKey = "") Quit
+        Set tWanted = $Get(pQuery(tParam))
+        If tWanted = "" Quit
+        Set tDeadline = $ZHorolog + (..#AWAITEDDELETEMS / 1000)
+        Set tGone = 0
+        For {
+            Kill tListQuery
+            Set tListSC = ..Invoke(pEndpoint, "LIST", .tListQuery, "", .tRows, .tHttp, .tFault)
+            ; A list that cannot be read leaves the vendor's own answer standing.
+            If $$$ISERR(tListSC) || '$IsObject($Get(tRows)) || 'tRows.%IsA("%Library.DynamicArray") Quit
+            Set tListed = 0
+            Set tIterator = tRows.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tRow) {
+                If '$IsObject(tRow) || 'tRow.%IsA("%Library.DynamicObject") Continue
+                If tRow.%Get(tRowKey) = tWanted {
+                    Set tListed = 1
+                    Quit
+                }
+            }
+            Set tRows = ""
+            If 'tListed {
+                Set tGone = 1
+                Quit
+            }
+            If $ZHorolog >= tDeadline Quit
+            Hang ..#AWAITEDDELETEPOLLMS / 1000
+        }
+        If 'tGone && ($ZHorolog >= tDeadline) {
+            Do ..LogFault(pEndpoint _ " " _ pSuffix _ " was answered as made and its row was still listed " _ (..#AWAITEDDELETEMS / 1000) _ " seconds later", $$$ERROR($$$GeneralError, "the marked row was not yet removed"))
+        }
+    } Catch ex {
+        Do ..LogFault(pEndpoint _ " " _ pSuffix _ " could not be awaited", ex.AsStatus())
+    }
+}
+
+/// <p><var>pStatus</var> with the value <var>pQuery</var> carries under <var>pEndpoint</var>
+/// <var>pSuffix</var>'s <parameter>UNLOGGEDQUERY</parameter> parameter replaced by the log's mask;
+/// <var>pStatus</var> itself for a pair that parameter does not list, or a text that does not quote
+/// the value. The HTTP status, not this text, decides the fault a caller is answered.</p>
+ClassMethod Unlogged(pEndpoint As %String, pSuffix As %String, ByRef pQuery, pStatus As %Status) As %Status [ Private ]
+{
+    Set tMasked = pStatus
+    Try {
+        Set tParam = ""
+        For tI = 1:1:$Length(..#UNLOGGEDQUERY, ",") {
+            Set tEntry = $Piece(..#UNLOGGEDQUERY, ",", tI)
+            If $Piece(tEntry, "=", 1) = (pEndpoint _ "/" _ pSuffix) Set tParam = $Piece(tEntry, "=", 2)
+        }
+        If tParam = "" Quit
+        Set tValue = $Get(pQuery(tParam))
+        If tValue = "" Quit
+        Set tText = $System.Status.GetErrorText(pStatus)
+        If '(tText [ tValue) Quit
+        Set tMasked = $$$ERROR($$$GeneralError, $Replace(tText, tValue, $Parameter("OcuPilot.Kernel.Audit.Log", "REDACTED")))
+    } Catch {
+        Set tMasked = $$$ERROR($$$GeneralError, "the vendor's status could not be screened for the value its request named, so its text is not logged")
+    }
+    Quit tMasked
 }
 
 /// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one

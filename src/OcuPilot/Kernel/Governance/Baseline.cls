@@ -92,7 +92,8 @@ XData Keys [ MimeType = application/json ]
   "tasks.schedule.update": true,
   "webapp.list.create": true,
   "webapp.list.delete": true,
-  "webapp.list.update": true
+  "webapp.list.update": true,
+  "webapp.sessions.end": true
 }
 }
 

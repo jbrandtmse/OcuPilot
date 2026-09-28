@@ -958,7 +958,7 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(declarationProblem(''), 'the declaration is not an object', 'and neither is a string');
 
   const { screens } = readSources();
-  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer', 'RoleList', 'ResourceList', 'ServiceList', 'X509CredentialList', 'LdapConfigList', 'WalletCollectionList', 'WalletSecretList', 'OAuthServerDescriptionTab', 'OAuthClientTab', 'OAuthResourceServerTab', 'OAuthServerTab', 'OAuthServerClientTab', 'TaskOnDemandList', 'TaskUpcomingList']) {
+  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer', 'RoleList', 'ResourceList', 'ServiceList', 'X509CredentialList', 'LdapConfigList', 'WalletCollectionList', 'WalletSecretList', 'OAuthServerDescriptionTab', 'OAuthClientTab', 'OAuthResourceServerTab', 'OAuthServerTab', 'OAuthServerClientTab', 'TaskOnDemandList', 'TaskUpcomingList', 'WebSessionList']) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.ok(screen !== undefined, `${name} is declared`);
     assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
@@ -2125,7 +2125,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   const owners = screens.filter((screen) => Array.isArray(screen.declaration.ownPrivileges)).map((screen) => screen.className);
   // Story 16.3, DW-1018 (Option A): the Logs area's two, and the thirteen wallet and OAuth 2.0
   // screens, which own their pair so the Security area declares only %Admin_Secure and IRISSYS;
-  // Story 18.1's Allowed directories owns %Admin_FileSystemAccess the same way.
+  // Story 18.1's Allowed directories owns %Admin_FileSystemAccess the same way, and Story 16.2's
+  // Web sessions owns %Admin_Operate beside the Web applications area's two pairs.
   assert.deepEqual(
     owners.sort(),
     [
@@ -2145,6 +2146,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.WalletCollectionList',
       'OcuPilot.Screen.Descriptor.WalletSecretForm',
       'OcuPilot.Screen.Descriptor.WalletSecretList',
+      'OcuPilot.Screen.Descriptor.WebSessionList',
     ],
     "the screens AD-8 names and Story 18.1's Allowed directories are the ones declaring own pairs"
   );

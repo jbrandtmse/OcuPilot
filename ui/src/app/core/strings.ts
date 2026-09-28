@@ -3379,6 +3379,34 @@ export const STRINGS = {
   agentLedgerPrompt2: 'Which web applications did the agent change this week?',
   /** EXPERIENCE.md:336 */
   agentLedgerPrompt3: 'Did the agent change any user or role today?',
+
+  // Story 16.2: Web sessions, the third Web applications entry. Its Process ID, User and
+  // Application column headers reuse existing keys.
+  /** EXPERIENCE.md:357 */
+  webSessionListLabel: 'Web sessions',
+  /** EXPERIENCE.md:357 */
+  webSessionColumnSession: 'Session',
+  /** EXPERIENCE.md:357 */
+  webSessionColumnExpires: 'Expires (UTC)',
+  /** EXPERIENCE.md:357 */
+  webSessionListEmpty: 'No web sessions on this instance.',
+  /** EXPERIENCE.md:357 */
+  webSessionListEmptyAgent: 'end a web session that is stuck or unwanted',
+  /** EXPERIENCE.md:357 */
+  webSessionEndAction: 'End session',
+  /** EXPERIENCE.md:357 */
+  webSessionEndConsequence:
+    'Ending this session discards what its application kept for it, and its next request starts a new session. This cannot be undone.',
+  /** EXPERIENCE.md:357 */
+  webSessionRefusalOcuPilot: 'OcuPilot itself is running in this session. It cannot be ended from OcuPilot.',
+  /** EXPERIENCE.md:357 */
+  proposalEntityWebSession: 'Web session',
+  /** EXPERIENCE.md:357 */
+  webSessionListPrompt1: 'Which web sessions are open on this instance, and for which applications?',
+  /** EXPERIENCE.md:357 */
+  webSessionListPrompt2: 'Which users have more than one web session open?',
+  /** EXPERIENCE.md:357 */
+  webSessionListPrompt3: 'Which web sessions expire soonest?',
 } as const;
 
 /**

@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,web-session";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -341,6 +341,26 @@ Parameter TYPESSL = "ssl-configuration";
 Parameter TYPESERVICE = "service";
 
 Parameter TYPELDAP = "ldap-configuration";
+
+/// <p>A web session (Story 16.2, <method>WebSession</method>).</p>
+Parameter TYPEWEBSESSION = "web-session";
+
+/// <p>The write would end a web session OcuPilot is itself running in
+/// (<method>IsOcuPilotSession</method>): one under an application OcuPilot is served through, or
+/// the session the serving request itself runs in (AD-10 as amended 2026-09-28). The web-session
+/// twin of <parameter>OCUPILOTPROCESS</parameter>, refused whatever the caller.</p>
+Parameter OCUPILOTSESSION = "PROHIBITED.OCUPILOTSESSION";
+
+/// <p>The one sentence <parameter>OCUPILOTSESSION</parameter> carries, caller-neutral, published
+/// in EXPERIENCE.md's Fixed strings and pinned equal to <code>webSessionRefusalOcuPilot</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTSESSIONREASON = "OcuPilot itself is running in this session. It cannot be ended from OcuPilot.";
+
+/// <p>A web session's field the own-session arm reads.</p>
+Parameter FIELDAPPLICATION = "Application";
+
+/// <p>A web session's id field, compared exactly with the serving request's own session id.</p>
+Parameter FIELDSESSIONID = "ID";
 
 /// <p>The write would turn off the service OcuPilot is served through
 /// (<parameter>SERVINGSERVICENAME</parameter>): every request to OcuPilot arrives through it (AD-10 as
@@ -466,10 +486,11 @@ Parameter READTYPE = "GET";
 /// only a web application reaches, then the two <method>Process</method> adds, then the one every
 /// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
 /// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
-/// <method>Ssl</method> adds, and the one <method>Service</method> adds last -- eighteen in all.</p>
+/// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the one
+/// <method>WebSession</method> adds last -- nineteen in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTSESSION)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -499,6 +520,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTRESOURCE Quit ..#OCUPILOTRESOURCEREASON
     If pCode = ..#OCUPILOTSSL Quit ..#OCUPILOTSSLREASON
     If pCode = ..#SERVINGSERVICE Quit ..#SERVINGSERVICEREASON
+    If pCode = ..#OCUPILOTSESSION Quit ..#OCUPILOTSESSIONREASON
     Quit ""
 }
 
@@ -785,11 +807,16 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPEWEBSESSION) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
+
+        ; The session the serving request runs in, read before any port call: the port stubs
+        ; %session while it runs (AD-2), so it is read here or not at all.
+        Set tOwnSession = ""
+        If tType = ..#TYPEWEBSESSION Set tOwnSession = ..ServingSessionId()
 
         Set tServes = 0
         If tType = ..#TYPEWEBAPPLICATION {
@@ -891,6 +918,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If (tType = ..#TYPEAUDITEVENT) || (tType = ..#TYPEAUDITUSEREVENT) {
             Set tSC = ..AuditEvent(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEWEBSESSION {
+            Set tSC = ..WebSession(tTarget, tOwnSession, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -3196,6 +3227,64 @@ ClassMethod AddressGrantsPrivilege(pPayload As %DynamicObject, pTarget As %Dynam
 ClassMethod LdapFields() As %List
 {
     Quit $ListFromString("Description,LDAPAttributes,LDAPAttributeComment,LDAPAttributeFullName,LDAPAttributeMail,LDAPAttributeMobile,LDAPAttributeMobileProvider,LDAPAttributeNameSpace,LDAPAttributeRoutine,LDAPAttributeRoles,LDAPAttributeEscalationRoles,LDAPBaseDN,LDAPBaseDNForGroups,LDAPClientTimeout,LDAPFlags,LDAPGroupId,LDAPHostNames,LDAPInstanceId,OrganizationId,GroupId,InstanceId,RoleId,EscalationRoleId,RoutineId,NamespaceId,DelimiterId,LDAPSearchUsername,LDAPServerTimeout,LDAPUniqueDNIdentifier")
+}
+
+/// <p>The web session predicates (Story 16.2): a session OcuPilot is itself running in is refused
+/// <parameter>OCUPILOTSESSION</parameter> (<method>IsOcuPilotSession</method>), and every other
+/// session may be ended. <var>pTarget</var> is the fresh list row and <var>pOwnSession</var> the
+/// serving request's own session id, <code>""</code> when it runs in none.</p>
+/// <p>The end sends no body (AD-51), and its card rows are removals read from the fresh read, so it
+/// reaches the reviewed-few sweep with nothing changed, as <method>Device</method> reasons.</p>
+ClassMethod WebSession(pTarget As %DynamicObject, pOwnSession As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If ..IsOcuPilotSession(pTarget, pOwnSession) {
+            Do ..Refuse(..#OCUPILOTSESSION, .pProhibits, .pCode)
+            Quit
+        }
+        Kill pChanged
+        Set tSC = ..ReviewedFewOnly(..#TYPEWEBSESSION, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pTarget</var>, a web session's list row, is a session OcuPilot is itself running
+/// in: its <code>Application</code> is one <method>ServesOcuPilot</method> names, under the web
+/// application's canonical spelling, or its <code>ID</code> equals <var>pOwnSession</var>, the
+/// serving request's own session id, exactly.</p>
+/// <p><b>It fails closed</b>: a row that is not an object or carries no <code>Application</code>,
+/// and a roster or install record that cannot be read, are all a session OcuPilot may be running
+/// in.</p>
+ClassMethod IsOcuPilotSession(pTarget As %DynamicObject, pOwnSession As %String = "") As %Boolean
+{
+    If '$IsObject(pTarget) Quit 1
+    Set tApplication = ..Rendered(pTarget, ..#FIELDAPPLICATION)
+    If tApplication = "" Quit 1
+    If (pOwnSession '= "") && (..Rendered(pTarget, ..#FIELDSESSIONID) = pOwnSession) Quit 1
+    Set tSC = ..ServesOcuPilot(tApplication, .tServes)
+    If $$$ISERR(tSC) Quit 1
+    Quit ''tServes
+}
+
+/// <p>The session id of the CSP session the serving request runs in, or <code>""</code> when
+/// <code>%session</code> is not an object -- a request served with no session, a background job, a
+/// test.</p>
+ClassMethod ServingSessionId() As %String
+{
+    Set tId = ""
+    Try {
+        If $IsObject($Get(%session)) Set tId = %session.SessionId
+    } Catch {
+        Set tId = ""
+    }
+    Quit tId
 }
 
 }

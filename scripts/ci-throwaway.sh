@@ -233,6 +233,7 @@ services:
       # classes: LogHubWire, PathPort, PathPortPrivilege
       # classes: PermissionCheck, EffectiveUser
       # classes: LedgerSearchWire
+      # classes: WebSessionsLive
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

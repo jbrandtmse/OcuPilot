@@ -2,7 +2,8 @@
 title: 'Story 16.2: Web sessions, listed and ended'
 type: 'feature'
 created: '2026-09-28'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '5bd3404921b58f23316d46ecb735f3ba2746b94e'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -203,6 +204,26 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-28 — Review pass
+
+- verdicts: 15 findings — high 0, medium 0, low 10, false 5, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `AwaitPort.LogFault` recorded the message and dropped the status text, so the no-session-id assertion saw half the logged line — it now records both, and the assertion covers the whole line.
+  - `[low]` `[patch]` `IsOcuPilotSession`'s fail-closed branch on a roster fault was never exercised — added `Test/RosterFaultSet.cls` (one replaced seam, `ServesOcuPilot` failing) and a roster leg in `WebSessions`; mutation red in run 18246.
+  - `[false]` `[reject]` `list-page.spec.ts`'s `page.bodies` check after the refused click cannot tell refused from offered — the refusal is pinned by the dialog-null, `aria-disabled` and reason assertions beside it; the bodies check is not the pin.
+  - `[low]` `[reject]` two AC3 clauses (reason pinned to the sentence, Guardrails lists the code) have no `mutation:` line of their own — Rule 19 asks one per AC and AC3 carries them; the reviewer confirmed both tests redden when the code leaves `Codes()`/`ReasonFor`, and the fix is a spec edit only.
+  - `[false]` `[reject]` the own-session refusal is proven only over canned rows — the intent's option A is defensive by ruling: no session under an OcuPilot application can be seeded, so canned rows and the synthetic client row are the intended surface.
+  - `[low]` `[reject]` the slow-daemon row is tested in two pieces (the bounded wait, the present read-back), not one live 10 s path — a daemon slower than 10 s cannot be produced; each piece is pinned and the composition adds no new code.
+  - `[low]` `[patch]` the session id reached a log line: a vendor 404 logs `ERROR #5907: Session ID '<id>' does not exist` (confirmed on `ocupilot-ci`), reachable when a session ends between the fresh read and the `DELETE` — added `AdminPort.UNLOGGEDQUERY` and `Unlogged`, masking the value before `Fail` logs; pinned in `WebSessionsLive`, mutation red in run 18247.
+  - `[false]` `[reject]` no test reads the ledger `detail` of this tool's row — `Kernel.State.Ledger` has no `detail` property, and a failed write's logged reason is the normalized envelope text, which names no id.
+  - `[false]` `[reject]` the typed-name dialog puts the id in its label and button as well as its title — the diff adds no DOM site: the shared dialog is unchanged, and the intent itself puts the id in the title and in the list's Session column.
+  - `[low]` `[reject]` the no-write-pair refusal is not shown to precede the fresh read, and the agent path is not tested for a principal lacking the pair — the code checks pairs before the read (`ScreenAction.cls:245` vs `:255`) and the mint refuses through the same gate `DeviceDelete` pins; showing the order needs a port spy.
+  - `[low]` `[reject]` "Moved" exercises only `Application` (409) and `Timeout` (allowed) — the subject is pinned exactly by the declaration test and `FingerprintSubjectProblem`, over the shared digest; per-field legs add no discriminating power.
+  - `[false]` `[reject]` the Process link is tested only in jsdom — no preserve-mode session can be produced on the throwaway (Residuals); the link is the shared `rowTarget` path, clicked live by `locks.browser-spec.mjs`.
+  - `[low]` `[patch]` "No `AllowEndSession` refusal" was held by absent code, every canned row carrying `true` — the `/csp/sys/` leg now carries `false`, as the vendor answers, and stays permitted.
+  - `[low]` `[reject]` the area holder's rendered "Requires %Admin_Operate" is not tested for this screen — that rendering is the shared per-screen gate; this screen's navigation verdict and read refusal are pinned live.
+  - `[low]` `[reject]` the agent end is tested in-process, not over the tool-call wire — the wire is shared dispatch, and `ToolRoundTrip` pins this tool's schema refusal.
+
 ## Design Notes
 
 **Ruling (lead, spec gate 2026-09-28): option A.** AC3 now reads "a session OcuPilot is itself running in" (epics.md, Rule 5 apply-and-report), and AD-10 carries the arm. The plan halted because "the user's **own** session" has no subject on this build:
@@ -268,9 +289,54 @@ No AD-27 case is needed. The `AdminPort` wait is `DELETE` verification on AD-26'
 - `cd ui && npm test` (once, before dev_complete) -- expected: green, with the bundle under `maximumWarning` 2107kB.
 - The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before dev_complete) -- expected: green apart from the known residue (13 arming refusals, `WireSecurityRead`'s task history, DW-1759's 29). The full browser suite is CI's.
 
+**Mutations (Rule 19, each observed red and reverted with the tree byte-identical):**
+
+- AC1: mutation: drop `rowTarget` from `WebSessionList.cls` and regenerate the mirror → `list-page.spec.ts` "links the Process cell of a row carrying a process to Process details" red (the href named the session's own route).
+- AC1: mutation: drop `ownPrivileges` from `WebSessionList.cls` → `WebSessions.TestTheDescriptorDeclaresTheListItsPairsAndItsRowAction` red.
+- AC2: mutation: skip `AwaitGone` in `AdminPort.InvokeLocated` → `WebSessionsLive.TestThePortReturnsOnceTheSessionIsGone` red ("the list no longer carries it"), with the screen-action and agent-confirm legs, and `web-sessions.browser-spec.mjs` AC2's row-leaves wait timed out.
+- AC2: mutation: remove `end` from `DESTRUCTIVE_ACTIONS` → `screen-action-handler.spec.ts` "registers End session, opening the typed-name dialog" and the `list-page.spec.ts` End session case red.
+- AC2: mutation: set `WebSessionEnd.READROWKEYEXACT` to 0 → `WebSessions.TestTheFreshReadComparesTheIdExactly` red (case twin found; of two twins the first row read).
+- AC2: mutation: add `Timeout` to `WebSessionEnd.FINGERPRINTSUBJECT` → `WebSessions.TestTheFingerprintCoversTheApplicationAndNotTheExpiry` red (409 on a moved expiry).
+- AC3: mutation: make `Prohibited.WebSession` skip `IsOcuPilotSession` → `WebSessions.TestTheSetRefusesASessionOcuPilotIsRunningIn` and `TestBothCallersAreRefusedForOcuPilotsOwnSession` red (route 200, confirm applied).
+- AC3: mutation: answer `''` from the `ocupilot-session` branch of `selfProtectionReason` → `self-protection.test.mjs` Story 16.2 case, `screen-action-handler.spec.ts` "draws a session under OcuPilot's own application refused" and the `list-page.spec.ts` refused-entry case red.
+- AC4: mutation: make `WebSessionEnd.PrivilegePairs` answer the list's pairs alone → `WebSessionsLive.TestAPrincipalWithoutTheWritePairIsRefusedByName` red (the vendor refused inside the port, not by the named pair).
+- Label: mutation: drop the `WebSessionList` entry from `DESCRIPTOR_ACTION_LABELS` → `screen-actions.test.mjs` "a screen's row action draws its own published words" red.
+- Slow daemon (matrix): mutation: make `AdminPort.AwaitGone` read the list once and return (its deadline check replaced by `Quit`), recompiled with `Test/AwaitPort.cls` → `WebSessions.TestTheWaitForTheDaemonIsBoundedAndNeverFailsTheWrite` red (run 18223).
+- AC3 (fails closed): mutation: `IsOcuPilotSession` answers 0 on a roster fault → `WebSessions.TestTheSetRefusesASessionOcuPilotIsRunningIn` roster leg red through `Test/RosterFaultSet.cls` (run 18246).
+- Never (no id in a log line): mutation: empty `AdminPort.UNLOGGEDQUERY` → `WebSessionsLive.TestThePortReturnsOnceTheSessionIsGone` log leg red, the line quoting `ERROR #5907: Session ID 'OcuNoSessn'` (run 18247).
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none -- resolved at the spec gate by the lead's ruling A (Spec Change Log). The plan's halt read: intent gap -- AC3 ("the user's own session ... the same self-protection shape as a process OcuPilot is itself running in") has no subject on this build: OcuPilot's three web applications are UseSession 0 with JWT, so its sign-in and every API request leave no row in %CSP.Session:SessionInfo (measured on ocupilot-ci), and no row under an OcuPilot application can be seeded through %CSP.Session's API (SetContext and the Application setter are private). Readings with observably different outcomes: (A, recommended, the one this spec is written to) refuse a session OcuPilot is itself running in -- Application one ServesOcuPilot names, or ID the serving request's %session.SessionId -- as PROHIBITED.OCUPILOTSESSION, drawn disabled from the row's Application, defensive and proven over canned reads and a synthetic client row, never a live row; (B) refuse every session whose Username is the signed-in user -- live-testable, but it refuses every End on a single-administrator instance and contradicts the process arm's 2026-09-22 narrowing; (C) A plus the vendor's AllowEndSession=false rows (/csp/sys/ and preserve-mode sessions), which the classic page enforces in its UI only while the admin API ends them (measured 200; the portal browser stayed signed in). Needed: a ruling A, B or C; on A, AC3 reworded to "a session OcuPilot is itself running in" and AD-10's arm added (Rule 20), then status reset to ready-for-dev.
+Status: done
+Blocking condition: none
+
+Implemented (implement stage, 2026-09-28): the Web sessions list (third Web applications entry, `WebSession` `LIST`, Process cell linked to Process details) and `webapp.sessions.end` (bodyless `DELETE`, exact-case fresh read through the new `READROWKEYEXACT`, `%DB_IRISSYS:WRITE` declared, destructive typed-name confirm), `AdminPort`'s bounded wait for the vendor's daemon (`AWAITEDDELETES`, `AwaitGone`), the `PROHIBITED.OCUPILOTSESSION` arm and its client rule `ocupilot-session`, the governance key, and the copy. The plan's option-A ruling is in the Spec Change Log.
+
+Files:
+
+- `src/OcuPilot/Screen/Descriptor/WebSessionList.cls`, `Screen/Tool/WebSessionEnd.cls` -- the new descriptor and end tool.
+- `Kernel/EntityType.cls`, `Kernel/Governance/Baseline.cls`, `Screen/Registry.cls` -- `web-session`, the enabled key, the `ocupilot-session` rule (each appended).
+- `Screen/Tool/Write.cls`, `Kernel/Proposal/Operation.cls` -- `READROWKEYEXACT` and `ReadRowKeyExactOf`; every other tool still folds case.
+- `Port/AdminPort.cls` -- `WebSession/DELETE` appended to `MUTATINGTYPES`/`BODYLESSTYPES`; `AWAITEDDELETES`, `AwaitGone`; `UNLOGGEDQUERY`, `Unlogged` (review patch: a vendor 404 quoted the session id into the log).
+- `Kernel/Proposal/Prohibited.cls` -- the code, its sentence, the covered type, the `WebSession` branch, `IsOcuPilotSession`, `ServingSessionId`.
+- Tests: new `Test/WebSessions.cls`, `WebSessionsLive.cls`, `WebSessionActionFixture.cls`, `AwaitPort.cls`, `RosterFaultSet.cls`; roster bumps in `AuditingUpdate`, `Descriptor`, `PortFixture`, `Prohibited`, `ReadTool`, `RefusalCopy`, `ScreenRead`, `SurfaceCoverage`, `ToolRoundTrip`, `Wire`, `WireSecurityRead`.
+- Client: `core/self-protection.ts`, `screen-actions.ts`, `strings.ts`, regenerated `screens.generated.ts`; `shell/screen-action-handler.ts`; specs `list-page`, `rail-wire`, `screen-action-handler`; tools `navigation`, `navigation-wire`, `screen-actions`, `screen-mirror` (+ test), `self-protection` test; new `ui/browser/web-sessions.browser-spec.mjs`.
+- `EXPERIENCE.md` rows 173, 220, 357 in place (993 lines); `scripts/ci-throwaway.sh` one `# classes:` comment under the existing `OCUPILOT_ALLOW_PRINCIPALS`.
+
+Review: 15 findings (two layers) -- 4 low patched (the await fixture's log stub, the roster-fault leg, the session id masked in the port's vendor-fault log, a realistic `AllowEndSession` false row), 6 low rejected and 5 false, each with its reason in the Review Triage Log; nothing deferred. Follow-up review: not recommended (patched: high 0, medium 0, low 4).
+
+Verification:
+
+- Matrix audit: two rows lacked a covering test and gained one -- Empty (`list-page.spec.ts`) and Slow daemon (`WebSessions.TestTheWaitForTheDaemonIsBoundedAndNeverFailsTheWrite` over `Test/AwaitPort.cls`, plus the present read-back leg). Every row now has a test that ran green.
+- ObjectScript on `ocupilot-ci`, one class at a time, after the review patches: `WebSessions` 8/8, `WebSessionsLive` 6/6, `Prohibited`, `RefusalCopy`, `ReadTool`, `SurfaceCoverage`, `Descriptor`, `Wire`, `ToolWrite`, `ToolRoundTrip`, `ScreenRead`, `GovernanceBaseline`, `Guardrails`, `AdminPortFault`, `AdminPortSync`, `X509Import` green; `WireSecurityRead` fails only its task-history test (residue); `AuditingUpdate` refuses on `OCUPILOT_ALLOW_AUDIT_TOGGLE` (residue), so its 18-to-19 bump is CI's to prove.
+- Full ObjectScript sweep (once, handoff stage, before the review patches): 340 classes offered (338 in the checkout), 2,650 tests. Residue named: 19 classes refused on arming variables (`InjectionCompromised` among them; the lead's list says 13 -- this story adds no variable); `WireSecurityRead`'s task-history test (DW-1425/DW-1468); `TaskHistory` 3 tests on the demo task having no recorded runs (not on the lead's list; the diff touches no task code, so throwaway state (inference)); DW-1759's 29 did not appear. The sweep's three `WireSecurityRead` Web applications roster failures were this story's and were fixed and re-run green.
+- Client: `npm run test:tools` 1684/1684; `screen-action-handler.spec.ts` + `list-page.spec.ts` 75/75; `npm test` green at the handoff (1,684 tool + 1,697 component tests).
+- Browser: `web-sessions.browser-spec.mjs` 2/2 on the rebuilt, redeployed bundle, after the patches, with the DW-1337 walk in both themes and the dialog open, no new allowance.
+- Bundle (last `npm run build`): initial total 2.05 MB (359.15 kB transfer), under `maximumWarning` 2107kB.
+- Mutations: the handoff reports each of its lines in `## Verification` observed red and reverted byte-identical; this stage observed its three added lines red (runs 18223, 18246, 18247) and reverted byte-identical.
+
+Footprint extensions (outside the listed trees): `src/OcuPilot/Kernel/EntityType.cls`, `src/OcuPilot/Kernel/Governance/Baseline.cls`, `scripts/ci-throwaway.sh`, `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`.
+
+Residual risks: the own-session arm has no live subject on this build (option A, proven over canned rows); a daemon slower than 10 s leaves the ended row listed until the next read; the Process link is pinned at the component tier only.
 
 Planned (plan stage, 2026-09-28): the full spec for option A, from three investigations (server conventions, client conventions, instance measurement on ocupilot-ci) and four direct probes (the WebSession class source, a LIST with unknown query parameters, the vendor audit trail after an end, seeding a synthetic session). Everything created on ocupilot-ci was removed; the one extra /api/atelier/ session this stage opened was ended by its own probe.

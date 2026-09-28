@@ -273,6 +273,15 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Secure:USE',
         },
+        // Story 16.2: Web sessions, whose own %Admin_Operate:USE this principal holds, so it is
+        // denied on its database read, as OcuPilot.Test.Wire compares the live entry.
+        {
+          route: 'web-applications/sessions',
+          labelKey: 'webSessionListLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
       ],
     },
     {

@@ -260,6 +260,9 @@ const KERNEL_REFUSALS = [
   // Story 9.9: the service OcuPilot is served through, whose Enabled the service form draws
   // unavailable before a click with this same sentence.
   ['SERVINGSERVICE', 'serviceRefusalServing'],
+  // Story 16.2: a web session OcuPilot is itself running in, whose End session the Web sessions
+  // list draws refused before a click with this same sentence.
+  ['OCUPILOTSESSION', 'webSessionRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -301,4 +304,23 @@ test("Story 9.5: ocupilot-ssl answers OcuPilot's own provider configuration alon
   assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, OCUPILOT_SSL_CONFIGURATION), STRINGS.sslRefusalOcuPilot, 'its own configuration is refused');
   assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, OCUPILOT_SSL_CONFIGURATION.toLowerCase()), '', 'compared exactly, as the instance resolves a name');
   assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, 'ISC.FeatureTracker.SSL.Config'), '', 'and any other configuration is not');
+});
+
+test("Story 16.2: ocupilot-session answers a row under one of OcuPilot's own applications, in every spelling the instance resolves", async () => {
+  // Mutation (Rule 19): answer '' for `ocupilot-session` -> the four own-application legs go red;
+  // compare the Application without normalizeEntityId -> the re-cased and slash-suffixed legs go red.
+  const { selfProtectionReason, OCUPILOT_SESSION_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  for (const application of ['/api/ocupilot/', '/API/OcuPilot', '/ocupilot/', '/api/ocupilot/readiness']) {
+    assert.equal(
+      selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId', Application: application }),
+      STRINGS.webSessionRefusalOcuPilot,
+      `a session under ${application} is OcuPilot's own`
+    );
+  }
+  for (const application of ['/api/atelier/', '/csp/sys/', '/api/ocupilotx/']) {
+    assert.equal(selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId', Application: application }), '', `a session under ${application} is not`);
+  }
+  assert.equal(selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId'), '', 'with no row the instance alone refuses');
+  assert.equal(selfProtectionReason(OCUPILOT_SESSION_RULE, 'wSeS5iOnId', '', { ID: 'wSeS5iOnId' }), '', 'and a row with no application is the instance\'s to refuse');
 });
