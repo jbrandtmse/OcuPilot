@@ -2,7 +2,7 @@
 /// server-path field takes. A caller names an allowed <b>root</b> and a <b>relative name</b> under
 /// it, never a path. <method>Rows</method> answers the roots a declared read shows (source
 /// <code>path</code>, AD-36), and <method>Resolve</method> turns a root and a name into one
-/// contained path for the write that consumes it.</p>
+/// contained path for the tool that writes or reads it.</p>
 /// <p><b>The roots are computed on every call and never cached.</b> They are the purpose
 /// <parameter>PURPOSE</parameter>'s, the list the instance's own file dialogs read, reached through
 /// <class>OcuPilot.Port.AdminPort</class> alone (AD-2, AD-27): <parameter>PURPOSEENDPOINT</parameter>
@@ -19,8 +19,9 @@
 /// inside a root is followed. No refusal carries a path or the caller's text.</p>
 /// <p>Nothing here switches namespace, escalates, spawns or writes to the response device; the
 /// switch to <code>%SYS</code> is <class>OcuPilot.Port.AdminPort</class>'s (AD-16). Seams a test
-/// subclass overrides: <method>AdminPortClass</method>, <method>ManagerDirectory</method> and
-/// <method>HoldsPrivilege</method>. Production overrides none of them.</p>
+/// subclass overrides: <method>AdminPortClass</method>, <method>ManagerDirectory</method>,
+/// <method>ConfigurationFile</method> and <method>HoldsPrivilege</method>. Production overrides
+/// none of them.</p>
 Class OcuPilot.Port.PathPort Extends %RegisteredObject
 {
 
@@ -55,6 +56,13 @@ Parameter KINDDIRECTORY = "directory";
 /// <p>The kind of location that names a file; its relative name carries at least one name.</p>
 Parameter KINDFILE = "file";
 
+/// <p>The kind of location that names a file the consumer reads: it must already exist, and its
+/// relative name carries at least one name.</p>
+Parameter KINDSOURCE = "source";
+
+/// <p>The name of a database's file in its directory.</p>
+Parameter DATABASEFILE = "IRIS.DAT";
+
 /// <p>The log subsystem a raw fault is written under.</p>
 Parameter LOGSUBSYSTEM = "pathport";
 
@@ -66,11 +74,20 @@ ClassMethod AdminPortClass() As %String
 }
 
 /// <p>The manager directory, with its trailing separator: the one root of an unrestricted
-/// instance, and the directory no file may sit directly in. Read on every call, because it is the
-/// instance's and not a constant.</p>
+/// instance, the directory no file may sit directly in, and the parent of the database
+/// directories an overwrite may not reach. Read on every call, because it is the instance's and
+/// not a constant.</p>
 ClassMethod ManagerDirectory() As %String
 {
     Quit $System.Util.ManagerDirectory()
+}
+
+/// <p>The instance's active configuration file, its full path: the directory it sits in holds
+/// the instance's configuration files. Read on every call, never a constant. Overridable so a
+/// fixture can name another; production never overrides it.</p>
+ClassMethod ConfigurationFile() As %String
+{
+    Quit ##class(%SYS.System).GetCPFFileName()
 }
 
 /// <p>Whether the calling process holds <var>pResource</var> at <var>pPermission</var>, asked at
@@ -201,9 +218,10 @@ ClassMethod Row(pDirectory As %String, pRestricted As %Boolean) As %DynamicObjec
 }
 
 /// <p>Resolve allowed root <var>pRoot</var> and relative name <var>pPath</var> to one location of
-/// kind <var>pKind</var> (<parameter>KINDDIRECTORY</parameter> or <parameter>KINDFILE</parameter>):
-/// on success <var>pResolved</var> is the normalized path, a directory with its trailing
-/// separator, and <var>pHttpStatus</var> is 200.</p>
+/// kind <var>pKind</var>: <parameter>KINDDIRECTORY</parameter>, <parameter>KINDFILE</parameter> (a
+/// file the consumer writes) or <parameter>KINDSOURCE</parameter> (a file it reads). On success
+/// <var>pResolved</var> is the normalized path, a directory with its trailing separator, and
+/// <var>pHttpStatus</var> is 200.</p>
 /// <p>The gate runs first. Then <var>pPath</var> is refused 400 <code>PATH.NAME</code> unless
 /// <method>NameAdmitted</method> admits it; the roots are read again under
 /// <parameter>RESOLVEMAXROWS</parameter>, and <var>pRoot</var> is refused 400
@@ -211,17 +229,23 @@ ClassMethod Row(pDirectory As %String, pRestricted As %Boolean) As %DynamicObjec
 /// path, normalized with the one-argument <class>%File</class> form, is refused
 /// <code>PATH.NAME</code> unless <method>Contains</method> puts it under that root. A directory
 /// may be the root itself.</p>
-/// <p>A file is refused twice more on the name's field. <code>PATH.MANAGER</code> when
+/// <p>A file or a source is refused <code>PATH.MANAGER</code> when
 /// <method>DirectlyInManagerDirectory</method> places it directly in the manager directory, which
-/// holds the instance's own files, whatever the root and whatever <var>pOverwrite</var> says; and
-/// <code>PATH.EXISTS</code> when a directory stands at that name, or a file does and
-/// <var>pOverwrite</var> is false. Only a consuming tool that declares it overwrites passes
-/// <var>pOverwrite</var>. A directory is refused on neither.</p>
+/// holds the instance's own files. Then a file is refused <code>PATH.EXISTS</code> when a
+/// directory stands at that name, or a file does and <var>pOverwrite</var> is false; and, when
+/// <var>pOverwrite</var> is true, <code>PATH.INSTANCE</code> when the file standing at that name is
+/// one <method>InstanceFile</method> names. A source is refused <code>PATH.NOFILE</code> unless a file,
+/// not a directory, stands at that name; it is never refused for existing, and
+/// <var>pOverwrite</var> means nothing to it. A directory is refused
+/// <code>PATH.MANAGERDIR</code> when it is the manager directory itself and
+/// <var>pVendorWrites</var> is true. Only a consuming tool that declares it overwrites passes
+/// <var>pOverwrite</var>, and only one whose vendor writes its own files into the directory it
+/// names (a database, a journal, a backup) passes <var>pVendorWrites</var>.</p>
 /// <p>Each refusal carries <code>detail.violations</code>, one <code>{field, code, reason}</code>
 /// on <var>pRootField</var> or <var>pPathField</var>, the names the caller's own form uses. A kind
-/// outside the two is a caller fault and a 500. A consumer calls this at the mint and again at
+/// outside the three is a caller fault and a 500. A consumer calls this at the mint and again at
 /// the write, and sends <var>pResolved</var> under the vendor's own field.</p>
-ClassMethod Resolve(pRoot As %String = "", pPath As %String = "", pKind As %String = "", pRootField As %String = "root", pPathField As %String = "path", Output pResolved As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pOverwrite As %Boolean = 0) As %Status
+ClassMethod Resolve(pRoot As %String = "", pPath As %String = "", pKind As %String = "", pRootField As %String = "root", pPathField As %String = "path", Output pResolved As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pOverwrite As %Boolean = 0, pVendorWrites As %Boolean = 0) As %Status
 {
     Set tSC = $$$OK
     Set pResolved = ""
@@ -232,7 +256,7 @@ ClassMethod Resolve(pRoot As %String = "", pPath As %String = "", pKind As %Stri
             Set tSC = ..Denied(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
-        If (pKind '= ..#KINDDIRECTORY) && (pKind '= ..#KINDFILE) {
+        If (pKind '= ..#KINDDIRECTORY) && (pKind '= ..#KINDFILE) && (pKind '= ..#KINDSOURCE) {
             Set tSC = ..Fail("a path was resolved for a kind this port does not know", $$$ERROR($$$GeneralError, "unknown kind"), .pHttpStatus, .pFault)
             Quit
         }
@@ -268,14 +292,30 @@ ClassMethod Resolve(pRoot As %String = "", pPath As %String = "", pKind As %Stri
             Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHNAME, ##class(OcuPilot.Api.Error).#REASONPATHNAME, pPathField, .pHttpStatus, .pFault)
             Quit
         }
-        If pKind = ..#KINDFILE {
+        If pKind = ..#KINDDIRECTORY {
+            If pVendorWrites && ..IsManagerDirectory(tCandidate) {
+                Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHMANAGERDIR, ##class(OcuPilot.Api.Error).#REASONPATHMANAGERDIR, pPathField, .pHttpStatus, .pFault)
+                Quit
+            }
+        } Else {
             If ..DirectlyInManagerDirectory(tCandidate) {
                 Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHMANAGER, ##class(OcuPilot.Api.Error).#REASONPATHMANAGER, pPathField, .pHttpStatus, .pFault)
                 Quit
             }
-            If ##class(%File).DirectoryExists(tCandidate) || ('pOverwrite && ##class(%File).Exists(tCandidate)) {
-                Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHEXISTS, ##class(OcuPilot.Api.Error).#REASONPATHEXISTS, pPathField, .pHttpStatus, .pFault)
-                Quit
+            If pKind = ..#KINDSOURCE {
+                If ##class(%File).DirectoryExists(tCandidate) || '##class(%File).Exists(tCandidate) {
+                    Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHNOFILE, ##class(OcuPilot.Api.Error).#REASONPATHNOFILE, pPathField, .pHttpStatus, .pFault)
+                    Quit
+                }
+            } Else {
+                If ##class(%File).DirectoryExists(tCandidate) || ('pOverwrite && ##class(%File).Exists(tCandidate)) {
+                    Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHEXISTS, ##class(OcuPilot.Api.Error).#REASONPATHEXISTS, pPathField, .pHttpStatus, .pFault)
+                    Quit
+                }
+                If pOverwrite && ##class(%File).Exists(tCandidate) && ..InstanceFile(tCandidate) {
+                    Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHINSTANCE, ##class(OcuPilot.Api.Error).#REASONPATHINSTANCE, pPathField, .pHttpStatus, .pFault)
+                    Quit
+                }
             }
         }
         Set pResolved = tCandidate
@@ -324,10 +364,64 @@ ClassMethod Contains(pRoot As %String, pCandidate As %String) As %Boolean
 /// normalize answers true, so the refusal it guards fails closed.</p>
 ClassMethod DirectlyInManagerDirectory(pFile As %String) As %Boolean
 {
-    Set tManager = ..ManagerDirectory()
-    If tManager '= "" Set tManager = ##class(%File).NormalizeDirectory(tManager)
+    Set tManager = ..ManagerDirectoryNormalized()
     If tManager = "" Quit 1
     Quit (pFile = (tManager _ ##class(%File).GetFilename(pFile)))
+}
+
+/// <p>Whether normalized directory path <var>pDirectory</var> is the manager directory itself.
+/// Textual; a manager directory that is empty or does not normalize answers true, so the refusal
+/// it guards fails closed.</p>
+ClassMethod IsManagerDirectory(pDirectory As %String) As %Boolean
+{
+    Set tManager = ..ManagerDirectoryNormalized()
+    If tManager = "" Quit 1
+    Quit (pDirectory = tManager)
+}
+
+/// <p>Whether normalized file path <var>pFile</var> is one of the instance's own files an
+/// overwrite must not reach: <method>DirectlyInConfigurationDirectory</method> or
+/// <method>DatabaseFileBelowManagerDirectory</method>. It says nothing about whether the file
+/// exists.</p>
+ClassMethod InstanceFile(pFile As %String) As %Boolean
+{
+    Quit ..DirectlyInConfigurationDirectory(pFile) || ..DatabaseFileBelowManagerDirectory(pFile)
+}
+
+/// <p>Whether normalized file path <var>pFile</var> sits directly in the directory of
+/// <method>ConfigurationFile</method>, beside the instance's configuration file and its saved
+/// copies. Textual; a configuration file that is empty, or whose directory is empty or does not
+/// normalize, answers true, so the refusal it guards fails closed.</p>
+ClassMethod DirectlyInConfigurationDirectory(pFile As %String) As %Boolean
+{
+    Set tDirectory = ..ConfigurationFile()
+    If tDirectory '= "" Set tDirectory = ##class(%File).GetDirectory(tDirectory)
+    If tDirectory '= "" Set tDirectory = ##class(%File).NormalizeDirectory(tDirectory)
+    If tDirectory = "" Quit 1
+    Quit (pFile = (tDirectory _ ##class(%File).GetFilename(pFile)))
+}
+
+/// <p>Whether normalized file path <var>pFile</var> is a database file one directory below the
+/// manager directory: its name is <parameter>DATABASEFILE</parameter>, ignoring case, and its
+/// directory's parent is the manager directory. Textual; a manager directory that is empty or does
+/// not normalize answers true, so the refusal it guards fails closed.</p>
+ClassMethod DatabaseFileBelowManagerDirectory(pFile As %String) As %Boolean
+{
+    Set tManager = ..ManagerDirectoryNormalized()
+    If tManager = "" Quit 1
+    If $ZConvert(##class(%File).GetFilename(pFile), "U") '= ..#DATABASEFILE Quit 0
+    Set tDirectory = ##class(%File).GetDirectory(pFile)
+    If tDirectory = "" Quit 0
+    Quit (##class(%File).ParentDirectoryName(tDirectory) = tManager)
+}
+
+/// <p>The manager directory, normalized, or <code>""</code> when it is empty or does not
+/// normalize.</p>
+ClassMethod ManagerDirectoryNormalized() As %String [ Private ]
+{
+    Set tManager = ..ManagerDirectory()
+    If tManager '= "" Set tManager = ##class(%File).NormalizeDirectory(tManager)
+    Quit tManager
 }
 
 /// <p>The 403 the gate answers: <code>PORT.ACCESSDENIED</code> on its written sentence, with

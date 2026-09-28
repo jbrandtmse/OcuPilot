@@ -1,7 +1,8 @@
 /// <p>A seam subclass of <class>OcuPilot.Port.PathPort</class> and the allow-list helpers its two
 /// test classes share. As a port it denies the pairs <method>Deny</method> names, admits any name
-/// after <method>AdmitAnyName</method>, and counts every admin port call it forwards, so a test can
-/// show the gate refusing with none made (AD-29). The
+/// after <method>AdmitAnyName</method>, answers the configuration file
+/// <method>UseConfigurationFile</method> names, and counts every admin port call it forwards, so a
+/// test can show the gate refusing with none made (AD-29). The
 /// helpers record, set and restore the instance's <parameter>PURPOSE</parameter> allow-list through
 /// <code>%SYS.FileSystemAccess</code> in <code>%SYS</code>.</p>
 /// <p><b>Caller contract:</b> the helpers change the instance's own file-dialog allow-list, so only
@@ -46,6 +47,19 @@ ClassMethod NameAdmitted(pPath As %String, pKind As %String) As %Boolean
 {
     If $Get(^||OcuPilotPathPortFixture("admitany")) Quit 1
     Quit ##super(pPath, pKind)
+}
+
+/// <p>Answer <var>pFile</var> as the instance's configuration file until <method>Reset</method>,
+/// so a test can show the port reads its location rather than assuming one.</p>
+ClassMethod UseConfigurationFile(pFile As %String)
+{
+    Set ^||OcuPilotPathPortFixture("cpf") = pFile
+}
+
+ClassMethod ConfigurationFile() As %String
+{
+    If $Data(^||OcuPilotPathPortFixture("cpf")) Quit ^||OcuPilotPathPortFixture("cpf")
+    Quit ##super()
 }
 
 ClassMethod AdminPortClass() As %String

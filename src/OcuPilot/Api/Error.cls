@@ -420,6 +420,37 @@ Parameter PATHMANAGER = "PATH.MANAGER";
 /// <p>The sentence <parameter>PATHMANAGER</parameter> carries.</p>
 Parameter REASONPATHMANAGER = "A file cannot go directly in the manager directory, which holds the instance's own files. Name a subdirectory for it.";
 
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a file for the consuming tool
+/// to read where no file stands, or where a directory does. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug by <class>OcuPilot.Port.PathPort</class> with one
+/// <code>detail.violations</code> entry on the name's field, and never with the value or a
+/// path.</p>
+Parameter PATHNOFILE = "PATH.NOFILE";
+
+/// <p>The sentence <parameter>PATHNOFILE</parameter> carries.</p>
+Parameter REASONPATHNOFILE = "No file of that name exists to read. Name a file that is already there, not a directory.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named, for a consuming tool that
+/// overwrites, an existing file of the instance's own: one beside its configuration file, or a
+/// database file one directory below the manager directory. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug by <class>OcuPilot.Port.PathPort</class> with one
+/// <code>detail.violations</code> entry on the name's field, and never with the value or a
+/// path.</p>
+Parameter PATHINSTANCE = "PATH.INSTANCE";
+
+/// <p>The sentence <parameter>PATHINSTANCE</parameter> carries.</p>
+Parameter REASONPATHINSTANCE = "That file belongs to the instance itself and cannot be overwritten. Choose another name.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named the manager directory itself
+/// as the directory a consuming tool's vendor writes its own files into. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug by <class>OcuPilot.Port.PathPort</class> with one
+/// <code>detail.violations</code> entry on the name's field, and never with the value or a
+/// path.</p>
+Parameter PATHMANAGERDIR = "PATH.MANAGERDIR";
+
+/// <p>The sentence <parameter>PATHMANAGERDIR</parameter> carries.</p>
+Parameter REASONPATHMANAGERDIR = "The manager directory holds the instance's own files, so these files cannot go in it. Name a subdirectory of it.";
+
 /// <p>Machine code (AD-12, AD-39): the agent configuration the request submitted broke one or more
 /// of the rules <class>OcuPilot.Kernel.AgentRules</class> (a definition) or
 /// <class>OcuPilot.Kernel.SwitchRules</class> (the switches and the per-user holds) applies.
