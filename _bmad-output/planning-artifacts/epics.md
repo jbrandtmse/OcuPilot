@@ -6235,7 +6235,7 @@ So that I can clear a stuck or unwanted session from here.
 - **When** the user ends it
 - **Then** it ends, confirming by naming the session, and the row leaves the list.
 
-- **Given** the user's **own** session
+- **Given** a session **OcuPilot is itself running in** [AMENDED 2026-09-28 — see the story change log]
 - **When** an end is attempted
 - **Then** it is refused with an explanation, in the UI and on the instance - the same self-protection shape as a process OcuPilot is itself running in.
 
