@@ -19,9 +19,9 @@
 /// inside a root is followed. No refusal carries a path or the caller's text.</p>
 /// <p>Nothing here switches namespace, escalates, spawns or writes to the response device; the
 /// switch to <code>%SYS</code> is <class>OcuPilot.Port.AdminPort</class>'s (AD-16). Seams a test
-/// subclass overrides: <method>AdminPortClass</method>, <method>ManagerDirectory</method>,
-/// <method>ConfigurationFile</method> and <method>HoldsPrivilege</method>. Production overrides
-/// none of them.</p>
+/// subclass may override: <method>AdminPortClass</method>, <method>ManagerDirectory</method>,
+/// <method>ConfigurationFile</method>, <method>HoldsPrivilege</method> and
+/// <method>NameAdmitted</method>. Production overrides none of them.</p>
 Class OcuPilot.Port.PathPort Extends %RegisteredObject
 {
 

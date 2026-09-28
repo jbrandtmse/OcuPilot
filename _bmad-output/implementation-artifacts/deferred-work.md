@@ -7893,12 +7893,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: PathPort.cls:276 refuses an existing file unless pOverwrite; AD-21's sixth case binds every server-path field, and 16.4 and 19.2 (import), 18.7 (activate or manage a key file) name existing files to read. pOverwrite is a bare runtime boolean. (inference) on consumer impact; no consumer calls Resolve yet.
 - 2026-09-28T11:21:00Z status=routed owner=18-7-encryption by=cr note=decide Resolve's file mode (new, overwrite, must exist) and how a tool declares it; amend AD-21; 16.4's import too
 - 2026-09-28T14:34:22Z status=routed owner=18-1-the-directory-allow-list by=merge_gate note=orchestrator 2026-09-28: fix before Epic 16's 16.4, own commit after 18.2's boundary, under 18.1 rework iteration 3
+- 2026-09-28T17:27:10Z status=resolved-by:18-1-the-directory-allow-list by=adjudication note=67790caa: kind source requires an existing file, PATH.NOFILE, never overwrites; Test/PathPort legs with mutations
 
 ### DW-1779: A directory-kind location may be the manager directory itself (the unrestricted root, empty name), so a consumer whose vendor writes its own files into the chosen directory (a database's IRIS.DAT, journals, a backup) lands among the instance's own files
 - source: spec-18-1-the-directory-allow-list.md (code review 3) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: PATH.MANAGER applies to kind file only (PathPort.cls:270); ResolveOf(<ManagerDirectory>, "", "directory") answers 200 (Test/PathPort.cls), and IRISSYS's IRIS.DAT sits there. Severity unverified: whether the admin API's database create accepts a directory already holding an IRIS.DAT is (inference); settle with a create probe on the slot throwaway.
 - 2026-09-28T11:21:00Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=18.3's database directory must refuse the manager directory itself, or any directory holding an IRIS.DAT; probe first
 - 2026-09-28T14:34:22Z status=routed owner=18-1-the-directory-allow-list by=merge_gate note=orchestrator 2026-09-28: fix before Epic 16's 16.4, own commit after 18.2's boundary, under 18.1 rework iteration 3
+- 2026-09-28T17:27:10Z status=resolved-by:18-1-the-directory-allow-list by=adjudication note=67790caa: pVendorWrites refuses the manager directory itself, PATH.MANAGERDIR; another db's dir is DW-1791 (18.3)
 
 ### DW-1784: A screen that replaces more than one classic page unions only the one it declares (AD-44): the New Namespace page's and the Delete Namespace dialog's custom resources never reach the namespace create and delete
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -7954,3 +7956,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: InstanceFile answers 0 for /usr/irissys/mgr/irislib/IRIS.DAT (read-only, verification-gap layer, ocupilot-b-ci); journal files under <mgr>/journal/ are outside the rule; no overwriting consumer exists yet (inference on reach)
 - 2026-09-28T17:04:58Z status=escalated owner=burndown by=harvest note=policy call for the decision sheet: widen PATH.INSTANCE to every configured database directory and the journal directories, or accept the named set
+- 2026-09-28T17:21:24Z occurrence=18-1-the-directory-allow-list
+- 2026-09-28T17:21:25Z status=escalated owner=burndown by=cr note=also <mgr>/<db>/iris.lck and stream/ files, multi-volume IRIS-*.VOL (inference), and OcuPilot's own csp/ocupilot/ bundle
+
+### DW-1791: A directory a vendor writes into may be another database's own: pVendorWrites refuses only <ManagerDirectory> itself, as AD-21 says, so <mgr>/irissecurity/ (IRIS.DAT, iris.lck) resolves for a database create
+- source: spec-18-1-the-directory-allow-list.md (code review 4) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Executed on ocupilot-b-ci: Resolve(<mgr>, "irissecurity", "directory", pVendorWrites 1) answers 200 /durable/iris/mgr/irissecurity/. Whether the vendor's database create accepts a directory already holding an IRIS.DAT is unmeasured (severity unverified); epic-18-context.md:76 reads this half of DW-1779 as fixed under 18.1.
+- 2026-09-28T17:21:24Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=probe the create on the throwaway; refuse a directory holding an IRIS.DAT in 18.3's tool, or amend AD-21 if PathPort should

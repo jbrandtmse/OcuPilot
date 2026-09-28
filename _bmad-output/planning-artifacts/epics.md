@@ -7077,6 +7077,8 @@ So that database administration is complete rather than list-only.
 - **When** it runs
 - **Then** it lists dependent namespaces and applications first, and confirms by name.
 
+- DW-1791: A directory a vendor writes into may be another database's own: pVendorWrites refuses only <ManagerDirectory> itself, so <mgr>/irissecurity/ resolves for a database create (ledger; routed by cr 2026-09-28)
+
 **Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
 "checked" means seen on slot A that day, "reported" means the article's word only]

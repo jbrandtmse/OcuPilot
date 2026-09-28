@@ -418,7 +418,7 @@ Parameter REASONPATHEXISTS = "A file or directory of that name already exists. C
 Parameter PATHMANAGER = "PATH.MANAGER";
 
 /// <p>The sentence <parameter>PATHMANAGER</parameter> carries.</p>
-Parameter REASONPATHMANAGER = "A file cannot go directly in the manager directory, which holds the instance's own files. Name a subdirectory for it.";
+Parameter REASONPATHMANAGER = "The manager directory holds the instance's own files, so no file can be named directly in it. Name one in a subdirectory.";
 
 /// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a file for the consuming tool
 /// to read where no file stands, or where a directory does. Rendered on the
@@ -449,7 +449,7 @@ Parameter REASONPATHINSTANCE = "That file belongs to the instance itself and can
 Parameter PATHMANAGERDIR = "PATH.MANAGERDIR";
 
 /// <p>The sentence <parameter>PATHMANAGERDIR</parameter> carries.</p>
-Parameter REASONPATHMANAGERDIR = "The manager directory holds the instance's own files, so these files cannot go in it. Name a subdirectory of it.";
+Parameter REASONPATHMANAGERDIR = "The manager directory holds the instance's own files, so a database, journal or backup cannot be kept in it. Name a subdirectory of it.";
 
 /// <p>Machine code (AD-12, AD-39): the agent configuration the request submitted broke one or more
 /// of the rules <class>OcuPilot.Kernel.AgentRules</class> (a definition) or

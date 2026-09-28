@@ -12,7 +12,7 @@
 Class OcuPilot.Test.PathPortFixture Extends OcuPilot.Port.PathPort
 {
 
-/// <p>Forget every denied pair and the call count.</p>
+/// <p>Forget everything the seams were told, and the call count.</p>
 ClassMethod Reset()
 {
     Kill ^||OcuPilotPathPortFixture

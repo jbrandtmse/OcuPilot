@@ -399,6 +399,35 @@ Code review 2026-09-28, of rework 2 (`e3d44277..27246d90`): four layers, `full-o
   - AD-21's sixth case does not carry this rule yet. The sentence it needs: "A directory the consuming tool's vendor writes its own files into (a database, a journal, a backup) is refused when it is `<ManagerDirectory>` itself; the tool declares that its vendor writes there, and every other directory is unaffected."
 - Each refusal and the new mode is pinned by a `Test/PathPort.cls` leg with a Rule 19 mutation, recompiling `PathPort` and `PathPortFixture` on the throwaway.
 
+### Review Findings (round 4)
+
+Code review 2026-09-28, of rework 3 (`8eee0559..67790caa`): four layers, `full-opus`. 31 rows, 10 entries: 8 patched, 2 ledgered, 15 rows rejected. No high. DW-1778, DW-1777 and DW-1779 are done as AD-21's sixth case states them, each pinned by a leg with a recorded mutation.
+
+- [x] [Review][Patch] `[medium]` Only the refusing side of `PATH.INSTANCE` was pinned: an `InstanceFile` refusing every file one level below the manager directory, or every file under the data directory, stayed green [src/OcuPilot/Test/PathPort.cls:429]
+- [x] [Review][Patch] `[low]` `PATH.MANAGER`'s reason told a caller naming a `source` that a file "cannot go" there [src/OcuPilot/Api/Error.cls:421]
+- [x] [Review][Patch] `[low]` `PATH.MANAGERDIR`'s reason said "these files" without saying whose [src/OcuPilot/Api/Error.cls:452]
+- [x] [Review][Patch] `[low]` `DirectlyInConfigurationDirectory`'s fail-closed branch had no leg; the seam now names an empty configuration file [src/OcuPilot/Test/PathPort.cls:448]
+- [x] [Review][Patch] `[low]` DW-1779's "a subdirectory of it resolves" had no `mutation:` line; demonstrated below [src/OcuPilot/Test/PathPort.cls:475]
+- [x] [Review][Patch] `[low]` Three rework-2 `mutation:` lines said "alone", but the rework-3 methods go red too; re-run and corrected below, with the two configuration lines the new leg changes
+- [x] [Review][Patch] `[low]` The class doc named `ManagerDirectory` as a seam a test subclass overrides and left out `NameAdmitted` [src/OcuPilot/Port/PathPort.cls:22]
+- [x] [Review][Patch] `[low]` `Reset`'s doc named only the denied pairs and the call count [src/OcuPilot/Test/PathPortFixture.cls:15]
+- [x] [Review][Defer] `[med]` A vendor-writes directory may be another database's own: `<mgr>/irissecurity/` resolves under `pVendorWrites` (executed), and `epic-18-context.md:76` reads it as fixed here [src/OcuPilot/Port/PathPort.cls:296] — deferred: DW-1791 `routed` to 18-3, severity unverified until its create probe
+- [x] [Review][Defer] `[med]` `PATH.INSTANCE` also misses `<db>/iris.lck`, `stream/` files, multi-volume `IRIS-*.VOL` and OcuPilot's own `csp/ocupilot/` bundle [src/OcuPilot/Port/PathPort.cls:386] — deferred: occurrence on DW-1790
+
+**Rejected:**
+
+- spec edits (four rows): the rework item's "AD-21 does not carry this rule yet" and the Auto Run Result's "For the runner" line (AD-21 has carried it since `5208f1c0`), the stale first `deferred:` item (two rows; DW-1777's harvested record, closed at adjudication), and the Design Notes consumer list lacking `source`, `pVendorWrites` and the three codes. `epic-18-context.md` is recompiled before 18.3's plan, because the spine is newer.
+- `by-design`: `pVendorWrites` defaults to 0. AD-21 makes it the tool's declaration, as `pOverwrite` is.
+- `false`: DW-1778 and DW-1779 are not closed in the ledger. The runner closes this story's entries at `ledger_adjudicated`.
+- `false`: `Resolve`'s "at the mint and again at the write" is wrong for a `source`. A source's consumer is a write tool (an import, a key activation), and its confirm is the write (AD-21).
+- `false`: `NamesIn` discards `Execute`'s status. An empty list fails the non-empty assertions after it. `_LastGood_.cpf` is refused `PATH.NAME` before any file test, because it starts with `_`.
+- `false`: a `pVendorWrites` of `"true"`. It is a server-side `%Boolean` a tool passes as a constant, never a wire value.
+- `low`: a new file beside the CPF cannot be overwritten later. DW-1777 refuses the CPF's siblings, and a new name there resolves, by decision.
+- `low`: case (two rows). The folded `IRIS.DAT` name over-refuses only a user's `iris.dat`, and a case-variant manager directory is round 3's textual-containment row.
+- `low`: `Test/PathPort.cls` is over 500 lines. This is carried from round 3.
+- `by-design`: symbolic and hard links. AD-21 names textual containment.
+- theoretical: a FIFO or device as a source needs an allow-listed root over `/dev`; an unreadable source's vendor fault is normalized by its consumer's port (AD-39), and no consumer exists.
+
 ## Spec Change Log
 
 - 2026-09-27, spec gate (runner): the proposed AD-21 sixth case under Design Notes was written into the spine verbatim, with "every server-path field (Story 18.1 on)" added to AD-21's Binds (Rule 20). The spine is the authority from here; Design Notes keeps the proposal text for the reviewer.
@@ -642,18 +671,18 @@ Each consumer does the following:
 - mutation: the same entry dropped from `security.browser-spec.mjs`'s AC1 list → its AC1 test (rework 1)
 - mutation: `maximumWarning` put back at 2004kB → `build-output.test.mjs` DW-371 (2,005,146 bytes over 2,004,000) and `angular-json.test.mjs`'s pinned literal (rework 1)
 - mutation (AC1, the seventh entry): `AllowedDirectoryList`'s `sideBarPosition` 7 → 0, `screens.generated.ts` regenerated → `navigation.test.mjs` "a side bar lists only built screens, in side-bar order" and its Security side-bar assertion (code review 2)
-- mutation: `Resolve`'s existence test removed → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` (the four refused legs), alone (rework 2)
+- mutation: `Resolve`'s existence test removed → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` (its three refused legs) and `TestAnOverwriteNeverReachesTheInstancesOwnFiles` "and to one that does not, as a taken name" (both), run 377 (code review 4)
 - mutation: `Resolve`'s manager-directory test removed → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` (all six refused legs, both `IRIS.DAT` legs included) and `TestASourceMustBeAnExistingFile` "a source directly in the manager directory is refused", run 24 (rework 3 review)
-- mutation: `Resolve` ignores `pOverwrite` → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` "a caller that overwrites resolves the existing file", alone (rework 2)
+- mutation: `Resolve` ignores `pOverwrite` → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` "a caller that overwrites resolves the existing file" and every `PATH.INSTANCE` and seam leg of `TestAnOverwriteNeverReachesTheInstancesOwnFiles`, run 378 (code review 4)
 - mutation: `Resolve` tests the existing name before the manager directory → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` "and to a caller that does not, an instance file is refused as the manager directory's", alone, run 363 (rework 2 review)
 - mutation: `Resolve`'s directory test on a file's name dropped → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` "but not a directory standing where the file would go", alone, run 366 (code review 3)
 - mutation (a directory is unaffected): the existence test moved out of the file-only branch → "an existing directory is never refused for existing", "and the directory itself is not refused" and `TestResolveComposesUnderAnAllowedRoot` "an empty name is the root itself", run 367 (code review 3)
-- mutation (a directory is unaffected): the manager-directory test moved out of the file-only branch → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` "and the directory itself is not refused", alone, run 368 (code review 3)
+- mutation (a directory is unaffected): the manager-directory test moved out of the file-only branch → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` "and the directory itself is not refused" and four legs of `TestAVendorsDirectoryIsNeverTheManagerDirectory`, run 379 (code review 4)
 - mutation (a source must exist): the source's existence test dropped from `Resolve` → `PathPort.TestASourceMustBeAnExistingFile` "an absent name is refused", "and overwrite does not make it a new file" and its named-field leg, alone, run 2 (rework 3)
 - mutation (a source is never a directory): the source's directory test dropped → `PathPort.TestASourceMustBeAnExistingFile` "a directory at the name is refused", alone, run 3 (rework 3)
 - mutation (a source never implies an overwrite): a source passed `pOverwrite` resolved as a file → `PathPort.TestASourceMustBeAnExistingFile` "and overwrite does not make it a new file", alone, run 4 (rework 3)
-- mutation (the configuration files): `DirectlyInConfigurationDirectory` answers false → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles`, the legs for `iris.cpf`, `iris.cpf_20260928` and `irisinfo.txt`, its named-field leg and its seam leg, alone, run 5 (rework 3)
-- mutation (the configuration directory is read at call time): it is taken as the manager directory's parent instead → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles` "and refused once the configuration file is read there", alone, run 7 (rework 3)
+- mutation (the configuration files): `DirectlyInConfigurationDirectory` answers false → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles`, the legs for `iris.cpf`, `iris.cpf_20260928` and `irisinfo.txt`, its named-field leg and its two seam legs, alone, run 382 (code review 4)
+- mutation (the configuration directory is read at call time): it is taken as the manager directory's parent instead → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles` "and refused once the configuration file is read there" and "and refused while no configuration file can be read", alone, run 383 (code review 4)
 - mutation (a database file one level down): `DatabaseFileBelowManagerDirectory` answers false → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles`, all ten `<subdir>/IRIS.DAT` legs, the root-above leg and the ignoring-case assertion, alone, run 29 (rework 3 review)
 - mutation (DW-1779): the vendor-directory test dropped from `Resolve` → `PathPort.TestAVendorsDirectoryIsNeverTheManagerDirectory`, its three refused legs, alone, run 8 (rework 3)
 - mutation (a source in the manager directory): the manager-directory test limited to a `file` → `PathPort.TestASourceMustBeAnExistingFile` "a source directly in the manager directory is refused, though it exists", alone, run 23 (rework 3 review)
@@ -661,6 +690,10 @@ Each consumer does the following:
 - mutation (a new file is unaffected): the existence test in front of `InstanceFile` dropped → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles` "a new name there resolves" and "a new database file name resolves", alone, run 27 (rework 3 review)
 - mutation (DW-1779, only a declared vendor write): `pVendorWrites` dropped from the vendor-directory test → `PathPort.TestAVendorsDirectoryIsNeverTheManagerDirectory` "and without the declaration the manager directory resolves as any directory does" and `TestAFileDirectlyInTheManagerDirectoryIsRefused` "and the directory itself is not refused", run 28 (rework 3 review)
 - mutation (a database file's name ignoring case): `DatabaseFileBelowManagerDirectory` compares the name with its case → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles` "a database file's name is matched ignoring case", alone, run 25 (rework 3 review)
+- mutation (any other file below the manager directory is not the instance's): `DatabaseFileBelowManagerDirectory`'s name test dropped → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles` "but any other file one directory below the manager directory is not the instance's", alone, run 373 (code review 4)
+- mutation (only the configuration file's own directory): `DirectlyInConfigurationDirectory` tests that directory as a prefix → the same assertion, alone, run 374 (code review 4)
+- mutation (DW-1779, the manager directory only): `IsManagerDirectory` tests containment → `PathPort.TestAVendorsDirectoryIsNeverTheManagerDirectory` "a subdirectory of it resolves", alone, run 375 (code review 4)
+- mutation (an unreadable configuration file fails closed): `DirectlyInConfigurationDirectory`'s empty-directory test dropped → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles` "and refused while no configuration file can be read, which fails closed", alone, run 376 (code review 4)
 
 ## Auto Run Result
 

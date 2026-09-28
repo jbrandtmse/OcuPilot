@@ -386,17 +386,20 @@ Method TestASourceMustBeAnExistingFile()
 /// below the manager directory, from that directory as the root or from the one above it, is
 /// refused 400 <code>PATH.INSTANCE</code> on the name's field, echoing nothing; a caller that does
 /// not overwrite is refused them as taken names, and a new name in either place resolves. A
-/// database file's name is matched ignoring case. The configuration file's directory is the one
-/// the port reads, so a configuration file named through the seam moves the refusal with it. Its
-/// seam leg works in a scratch directory under <parameter>TMPROOT</parameter> that it creates and
-/// removes.</p>
+/// database file's name is matched ignoring case, and any other file below the manager directory
+/// is not the instance's. The configuration file's directory is the one the port reads, so a
+/// configuration file named through the seam moves the refusal with it, and one it cannot read
+/// refuses every file. Its seam leg works in a scratch directory under
+/// <parameter>TMPROOT</parameter> that it creates and removes.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.PathPort.DirectlyInConfigurationDirectory</method>
 /// answers false -&gt; the configuration legs resolve;
 /// <method>OcuPilot.Port.PathPort.DatabaseFileBelowManagerDirectory</method> answers false -&gt; the
 /// database legs resolve; the configuration directory is taken as the manager directory's parent
 /// -&gt; the seam leg resolves; the existence test in front of the instance's files dropped -&gt;
 /// the new names are refused; the database file's name compared with its case -&gt; the lower-case
-/// name is not the instance's.</p>
+/// name is not the instance's; its name test dropped, or the configuration directory tested as a
+/// prefix -&gt; the ordinary file is the instance's; an empty configuration file no longer failing
+/// closed -&gt; the file resolves while none can be read.</p>
 Method TestAnOverwriteNeverReachesTheInstancesOwnFiles()
 {
     Set tRefused = ..Refusal(##class(OcuPilot.Api.Error).#PATHINSTANCE, "path")
@@ -423,6 +426,7 @@ Method TestAnOverwriteNeverReachesTheInstancesOwnFiles()
     If $ListLength(tNames) Do $$$AssertEquals(..ResolveOf(tManager, $List(tNames, 1), "file"), tTaken, "and to one that does not, as a taken name")
     Do $$$AssertEquals(..ResolveOf(tManager, "ocupilot-pathport-none/IRIS.DAT", "file", , , , 1), "200|" _ tManager _ "ocupilot-pathport-none/IRIS.DAT", "a new database file name resolves")
     Do $$$AssertTrue(##class(OcuPilot.Port.PathPort).DatabaseFileBelowManagerDirectory(tManager _ "ocupilot-pathport-none/iris.dat"), "a database file's name is matched ignoring case")
+    Do $$$AssertTrue('##class(OcuPilot.Port.PathPort).InstanceFile(tManager _ "ocupilot-pathport-none/t.xml"), "but any other file one directory below the manager directory is not the instance's")
     Set tParent = ##class(%File).ParentDirectoryName(tManager)
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(tParent)), "the purpose is restricted to the directory above the manager directory")
     If $ListLength(tNames) Do $$$AssertEquals(..ResolveOf(tParent, $Piece(tManager, "/", *-1) _ "/" _ $List(tNames, 1), "file", , , , 1), tRefused, "and a database file reached from a root above is refused too")
@@ -440,6 +444,8 @@ Method TestAnOverwriteNeverReachesTheInstancesOwnFiles()
         Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/copy.cpf", "file", , , , 1), "200|" _ tFile, "it is overwritable while the configuration file is elsewhere")
         Do $ClassMethod(..#FIXTURE, "UseConfigurationFile", ..#TMPROOT _ tScratch _ "/iris.cpf")
         Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/copy.cpf", "file", , , ..#FIXTURE, 1), tRefused, "and refused once the configuration file is read there")
+        Do $ClassMethod(..#FIXTURE, "UseConfigurationFile", "")
+        Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/copy.cpf", "file", , , ..#FIXTURE, 1), tRefused, "and refused while no configuration file can be read, which fails closed")
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the seam legs ran to the end")
     }
@@ -456,7 +462,9 @@ Method TestAnOverwriteNeverReachesTheInstancesOwnFiles()
 /// Creates nothing.</p>
 /// <p>Mutation (Rule 19): drop the vendor-directory test from
 /// <method>OcuPilot.Port.PathPort.Resolve</method> -&gt; each refused leg resolves; drop its
-/// <var>pVendorWrites</var> condition -&gt; the undeclared leg is refused.</p>
+/// <var>pVendorWrites</var> condition -&gt; the undeclared leg is refused;
+/// <method>OcuPilot.Port.PathPort.IsManagerDirectory</method> tests containment -&gt; the
+/// subdirectory is refused.</p>
 Method TestAVendorsDirectoryIsNeverTheManagerDirectory()
 {
     Set tManager = $System.Util.ManagerDirectory()
