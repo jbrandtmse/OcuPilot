@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -145,13 +145,15 @@ export interface ReadSourcePart {
 
 /**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
- * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, or one
- * instance log file's bounded tail. A `state` source names the store by its own name, declares no
- * `rowGet` and no `criteria`, and is bounded by the same row cap; a `mgmnt` or
- * `logsource` source declares no `rowGet`.
+ * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, one
+ * instance log file's bounded tail, the instance's allowed directories, or an area's listed screens'
+ * reads composed into one timeline. A `state` source names the store by its own name, declares no
+ * `rowGet` and no `criteria`, and is bounded by the same row cap; a `mgmnt` or `logsource`
+ * source declares no `rowGet`, a `path` source is a `LIST` of one of its port's sources, and a
+ * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'timeline';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -441,7 +443,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "log-entry",
   "agent-definition",
   "agent-switch",
-  "agent-policy"
+  "agent-policy",
+  "allowed-directory"
 ];
 
 /**
@@ -1239,6 +1242,127 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "agent.transcripts",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AllowedDirectoryList",
+    "route": "security/allowed-directories",
+    "area": "security",
+    "labelKey": "allowedDirectoriesLabel",
+    "sideBarPosition": 7,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "allowed-directory",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Directory",
+        "Restricted"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "allowedDirectoriesEmpty",
+    "commandAliases": [
+      "allow-list",
+      "file access"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "allowedDirectoryListPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "allowedDirectoryListPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "allowedDirectoryListPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "path",
+        "endpoint": "roots",
+        "type": "LIST"
+      },
+      "fields": [
+        "Directory",
+        "Restricted"
+      ],
+      "filter": [
+        "Directory",
+        "Restricted"
+      ],
+      "sort": {
+        "fields": [
+          "Directory",
+          "Restricted"
+        ],
+        "default": "Directory",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Directory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "name"
+        },
+        {
+          "field": "Restricted",
+          "labelKey": "allowedDirectoriesColumnRestricted",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "security.alloweddirectories",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

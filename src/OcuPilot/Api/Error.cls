@@ -379,6 +379,27 @@ Parameter LOGMAXROWS = "LOG.MAXROWS";
 /// after the gate and before the filesystem is touched, and never with the value or a path.</p>
 Parameter LOGFILE = "LOG.FILE";
 
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a root that is not, character
+/// for character, one of the instance's allowed directories as
+/// <class>OcuPilot.Port.PathPort</class> reads them at the call. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug with one <code>detail.violations</code> entry on the
+/// root's field, and never with the value or a path.</p>
+Parameter PATHROOT = "PATH.ROOT";
+
+/// <p>The sentence <parameter>PATHROOT</parameter> carries.</p>
+Parameter REASONPATHROOT = "That directory is not one of the instance's allowed directories.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): the relative name under an allowed root is not empty or
+/// one to eight <code>/</code>-separated names of letters, digits, dots, underscores and dashes,
+/// carries a literal <code>..</code>, is empty where a file is named, or does not resolve inside
+/// its root. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Port.PathPort</class> with one <code>detail.violations</code> entry on the
+/// name's field, and never with the value or a path.</p>
+Parameter PATHNAME = "PATH.NAME";
+
+/// <p>The sentence <parameter>PATHNAME</parameter> carries.</p>
+Parameter REASONPATHNAME = "Name a directory or file under it with letters, digits, '.', '_' or '-', at most eight names separated by '/', and no '..'.";
+
 /// <p>Machine code (AD-12, AD-39): the agent configuration the request submitted broke one or more
 /// of the rules <class>OcuPilot.Kernel.AgentRules</class> (a definition) or
 /// <class>OcuPilot.Kernel.SwitchRules</class> (the switches and the per-user holds) applies.

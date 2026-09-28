@@ -6008,6 +6008,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T14:47:04Z occurrence=5-13-logs-delete-application-errors-by-namespace
 - 2026-09-22T15:30:14Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
 - 2026-09-26T09:53:53Z status=routed owner=burndown by=spec_gate note=needs a confirm-following (call-graph) checker; the limit is stated at check-objectscript.py:1287
+- 2026-09-28T08:16:00Z occurrence=18-1-the-directory-allow-list
 
 ### DW-1452: OcuPilot.Test.ProhibitedRoute is now armed class-wide, so on a throwaway predating OCUPILOT_ALLOW_AUDIT_TOGGLE its nine pre-existing least-privileged legs no longer run
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Test/ProhibitedRoute.cls
@@ -7727,6 +7728,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-14-5-the-per-user-read-only-toggle.md code-review | severity: low | fix-risk: low | footprint: in-epic
 - evidence: dry-run merge against the Epic 16 tip conflicts only in these two files among 14.5's; this branch measures 1,857,424 bytes
 - 2026-09-27T09:32:38Z status=by-design owner=14-5-the-per-user-read-only-toggle by=cr note=standing ruling: resolved at merge by taking Epic 16's side (DW-1166 re-base); not edited here
+- 2026-09-28T09:45:01Z occurrence=18-1-the-directory-allow-list
 
 ### DW-1750: The production Uninstall's call to Installer.RemoveRetentionTask is covered by no test
 - source: spec-14-4-transcripts-retention-and-administrator-access.md | severity: med | fix-risk: low | footprint: in-story
@@ -7816,6 +7818,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: scripts/wait-readiness.sh:5, ci-durable-ownership.sh:3 and ci-throwaway.sh:2 say CI's instance job runs them, and ci.test.mjs:1571 says the instance and browser jobs; since 13.5 the instance-shard and browser-shard legs do. scripts/** is contended with Epic 16, ci-throwaway.sh is off-limits to 13.5, and ci.test.mjs:1571 is add-only for 13.5
 - 2026-09-28T04:38:49Z status=wontfix-accepted owner=13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=cr note=reopen_if=grep -n 'instance job' scripts/*.sh still matches when a later story next edits any of these files
 
+### DW-1770: PathPort.Resolve admits any file name under the unrestricted default root (the manager directory), so a later file-writing consumer could target IRIS.DAT, messages.log or another instance file
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: NameAdmitted accepts IRIS.DAT and irisaudit/IRIS.DAT under $System.Util.ManagerDirectory() (Test/PathPort.cls resolves 1-8 names there); no consumer writes a file in 18.1, and the first file-kind consumers are 16.4, 19.2, 19.8 and 21.2. The earlier AD-21 cases narrowed names by pattern (.txt, messages.old_*). (inference) on consumer impact.
+- 2026-09-28T08:16:00Z status=decision-pending owner=burndown by=cr note=owner call: should AD-21's sixth case refuse an existing file or instance file for kind file, or leave it to each consumer
+
+### DW-1771: The server-path picker's refused line is empty when the store is refused without an envelope reason (transport status 0, an installing answer)
+- source: spec-18-1-the-directory-allow-list.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: server-path-picker.ts:52 draws {{ reason }}; AllowedDirectoriesStore.load sets reason '' when the answer is not an error envelope. The shell's unreachable and installing states show at the same time. No page embeds the picker until 18.3.
+- 2026-09-28T08:16:00Z status=wontfix-accepted owner=18-1-the-directory-allow-list by=cr note=reopen_if=a page embedding the picker shows an empty refused line while no shell banner explains it
+
+### DW-1772: PathPort.HoldsPrivilege's real $System.Security.Check is never exercised with a denial; the port gate's tests deny through the seam
+- source: spec-18-1-the-directory-allow-list.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: PathPortFixture.HoldsPrivilege returns 0 before ##super; every surface reaching the port (the screen gate, and AD-21's tool) declares the port's pairs and refuses first; a %All test process passes Check even for a nonexistent resource (probed on ocupilot-b-ci).
+- 2026-09-28T08:16:00Z status=wontfix-theoretical owner=18-1-the-directory-allow-list by=cr note=real once a surface reaches PathPort without a gate declaring %Admin_FileSystemAccess:USE and %DB_IRISSYS:READ
+
+### DW-1773: PATH.NAME's reason omits three name rules: a leading letter or digit, 100 characters a name, and no trailing '/'
+- source: spec-18-1-the-directory-allow-list.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Api/Error.cls REASONPATHNAME is the spec's verbatim sentence, and it reads as satisfied by '.hidden', '-x', 'a/' and a 101-character name, each of which PathPort refuses.
+- 2026-09-28T08:16:00Z status=by-design owner=18-1-the-directory-allow-list by=cr note=spec-bound: the Tasks fix the sentence verbatim; reopen via a spec amendment when a consumer renders it
+- 2026-09-28T04:41:12Z status=open owner=16-9-the-unified-log-hub by=orchestrator note=re-owned for the priority fix 60da472b (Findings.TaskErrors requires a recorded run); resolve on green CI
+
 ### DW-1768: Rail items stay gated for holders of only some of an area's screens: a wallet-only or OAuth-only holder at Security, and %Operator at Logs and OS management, although screens there would serve them
 - source: spec-16-3-effective-privileges-and-the-permission-check-tool.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: AD-8's area AND pair set cannot express 'any of its screens'; measured on ocupilot-ci at 16.3 plan: %Operator holds %Admin_Operate:U and %DB_IRISSYS:RW only; 11 of 22 Security screens lack %Admin_Secure
@@ -7833,3 +7856,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: audit.browser-spec.mjs:478 rows Source [%System,OcuPilot] vs [OcuPilotSeed] (shard 3); refused-tool.browser-spec.mjs:140 30s wait (shard 1); next run 36415467999 green; both green locally on ocupilot-ci
 - 2026-09-28T11:46:03Z status=routed owner=range-end-cleanup by=harvest note=likely a race between the default read and the Search answer (audit) and a slow first turn (refused-tool); make each wait on the answer it asserts
 - 2026-09-28T11:46:09Z status=routed owner=range-end-cleanup by=harvest note=refused-tool half is DW-1314's root cause (occurrence appended); this entry keeps the audit AC1 half
+### DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Security is pinned at oauth.browser-spec:283, ssl:228, security:242 and navigation.test.mjs:377; permissions:279 and tasks:1032 pin theirs. Rule 29 runs a story's own specs only, so 18.1 met it as CI run 36393142503's red and a rework.
+- 2026-09-28T09:44:59Z status=routed owner=18-7-encryption by=cr note=a screen-adding story extends every pinned list of its area (grep -l ocu-side-bar-label ui/browser); 18.8 and 18.9 meet it too

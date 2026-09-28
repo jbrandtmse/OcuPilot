@@ -31,6 +31,7 @@ import {
   IMPLEMENTED_ID_RULES,
   parseEntityTypes,
   parseIdRuleNames,
+  parsePathSources,
   parseIdRules,
   parseRefSeparator,
   parseScopeWords,
@@ -937,7 +938,11 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
     const declaration = structuredClone(corpus.declaration);
     declaration.privileges = structuredClone(testCase.privileges);
     if (typeof testCase.port === 'string') declaration.read.source.port = testCase.port;
-    if (testCase.rowGet !== null && typeof testCase.rowGet === 'object') declaration.read.source.rowGet = structuredClone(testCase.rowGet);
+    if (typeof testCase.endpoint === 'string') declaration.read.source.endpoint = testCase.endpoint;
+    if (typeof testCase.type === 'string') declaration.read.source.type = testCase.type;
+    for (const key of ['rowGet', 'forEach', 'query', 'parts']) {
+      if (testCase[key] !== null && typeof testCase[key] === 'object') declaration.read.source[key] = structuredClone(testCase[key]);
+    }
     if (testCase.readless) {
       declaration.read = null;
       declaration.table = null;
@@ -1730,6 +1735,12 @@ test('the vocabulary parser reads the kernel parameter, and reports a source tha
   assert.equal(parseEntityTypes('Parameter OTHER = "a";'), null, 'a missing parameter is not an empty vocabulary');
 });
 
+// Mutation (Rule 19): make parsePathSources answer [] for a missing parameter -> the null leg goes red.
+test('the path-source parser reads PathPort.SOURCES, and reports a source that has none', () => {
+  assert.deepEqual(parsePathSources('Parameter SOURCES = "roots, other";'), ['roots', 'other']);
+  assert.equal(parsePathSources('Parameter OTHER = "roots";'), null, 'a missing parameter is not an empty source list');
+});
+
 // A declared privilege pair missing either half is dropped by both readers rather than carried
 // (OcuPilot.Screen.Area.PairsFrom), so a declaration that misspells `permission` collapses to
 // an empty set -- which AD-8 holds is satisfied by everyone. The declaration reads as a gate and
@@ -2117,6 +2128,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   assert.deepEqual(
     owners.sort(),
     [
+      'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
       'OcuPilot.Screen.Descriptor.LogAnalyticsViewer',
       'OcuPilot.Screen.Descriptor.LogEventViewer',
       'OcuPilot.Screen.Descriptor.OAuthClientForm',
@@ -2133,7 +2145,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.WalletSecretForm',
       'OcuPilot.Screen.Descriptor.WalletSecretList',
     ],
-    'the screens AD-8 names are the ones declaring own pairs'
+    "the screens AD-8 names, Story 16.3's wallet and OAuth 2.0 screens and Story 18.1's Allowed directories are the ones declaring own pairs"
   );
 
   const hostile = structuredClone(testCorpus(['Test', 'DeclarationCorpus.cls'], 'Cases').declaration);
