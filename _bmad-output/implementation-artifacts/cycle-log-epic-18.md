@@ -63,3 +63,8 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T11:03:35Z	Story 18.2	spec_gate_resolved	spec_status=draft(re-plan_Part_A_only) intent_block_cut_to_Part_A amendments=epics.md:18.2_AC2_AC3_moved,18.14_added(Rule5_orchestrator)
 2026-09-28T11:03:35Z	Story 18.1	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none
 2026-09-28T11:03:35Z	Story 18.1	stage_spawned	stage=code-review spawn_at=2026-09-28T11:03:35Z model=opus agent_name=18-1-the-directory-allow-list-code-review-3 cycle_iteration=3 review_tier=full-opus scope=e3d44277..HEAD
+2026-09-28T11:24:13Z	Story 18.1	cr_complete	spawn_at=2026-09-28T11:03:35Z model=opus resolved=5 fixed_at_source=5 routed=2(DW-1778_to_18-7,DW-1779_to_18-3) occurrence=1(DW-1777) escalated=0 decision_pending=0 dismissed=15 high=0 med=3 low=5 rows=29 unresolved_high_med=0 clarifications=0 closing_sections_present=true review_tier=full-opus scope=e3d44277..27246d90 verdict=done cycle_iteration=3
+2026-09-28T11:24:13Z	Story 18.1	ledger_routed_planned	story=18-7-encryption entries=1 excess=0 by=cr dw=DW-1778
+2026-09-28T11:24:13Z	Story 18.1	ledger_routed_planned	story=18-3-databases-configuration-creation-properties-and-volumes entries=1 excess=0 by=cr dw=DW-1779
+2026-09-28T11:24:13Z	Story 18.1	ledger_adjudicated	owned=1 resolved=1(DW-1770) reowned=0 terminal=0
+2026-09-28T11:24:13Z	Story 18.1	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=ocupilot-b-ci:docker_exec_PathPort.Resolve:IRIS.DAT_file->400_PATH.MANAGER;existing_file_ow0->400_PATH.EXISTS;ow1->200;new_file->200;directory->200;scratch_dir_removed model=claude-opus-5-5[1m] rework_iteration=2

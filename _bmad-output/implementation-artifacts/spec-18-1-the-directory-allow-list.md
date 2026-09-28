@@ -361,6 +361,29 @@ Code review 2026-09-28, of rework 1 and merge `b219bc17`: four layers, `full-opu
 
 - [x] [Decision] DW-1770, decided by the orchestrator at the 18.1 boundary (2026-09-28) and written into AD-21's sixth case: for `kind` `file`, `PathPort.Resolve` also refuses (1) a name that already exists on disk, unless the caller declares that it overwrites (a new trailing `pOverwrite` argument, default 0, so no consumer overwrites by accident), and (2) a name directly in `<ManagerDirectory>` itself (one segment under an unrestricted root, or any root that normalizes to the manager directory), which holds the instance's own files. A `directory` kind is unaffected. Each refusal is a `detail.violations[]` entry on the `path` field with its own code and a server-written reason in `Api/Error.cls` (no path echoed, AD-39), refused before any vendor call. Pin each refusal with a `PathPort` test leg and a Rule 19 mutation (the existence check removed; the manager-directory check removed; overwrite ignored), and extend the `Test/PathPort.cls` matrix legs; the picker needs no change. Evaluated at every `Resolve`, so at the mint and again at the write.
 
+### Review Findings (round 3)
+
+Code review 2026-09-28, of rework 2 (`e3d44277..27246d90`): four layers, `full-opus`. 29 rows, 8 entries: 5 patched, 3 ledgered, 15 rows rejected. No high. DW-1770's two refusals and the overwrite switch are done, each pinned with a recorded mutation, and hold to AD-21's sixth case, AD-29 and AD-39.
+
+- [x] [Review][Patch] `[low]` With `pOverwrite` 1, a file resolved over an existing directory; a directory at the name is now refused `PATH.EXISTS` whatever `pOverwrite` says [src/OcuPilot/Port/PathPort.cls:276]
+- [x] [Review][Patch] `[low]` "A directory is unaffected" had no `mutation:` line; two are demonstrated below [src/OcuPilot/Test/PathPort.cls:323]
+- [x] [Review][Patch] `[low]` The manager-directory mutation line counted five refused legs and its test doc said each resolves; re-run on the final tree, six go red [src/OcuPilot/Test/PathPort.cls:309]
+- [x] [Review][Patch] `[low]` `DirectlyInManagerDirectory` normalized an empty manager directory to the current directory instead of failing closed [src/OcuPilot/Port/PathPort.cls:325]
+- [x] [Review][Patch] `[low]` The `ManagerDirectory()` seam doc named only the root, not the directory `PATH.MANAGER` guards [src/OcuPilot/Port/PathPort.cls:68]
+- [x] [Review][Defer] `[med]` The file kind offers only new-or-overwrite: an import or a key file to activate is refused `PATH.EXISTS` unless it passes `pOverwrite`, which no declaration governs [src/OcuPilot/Port/PathPort.cls:276] — deferred: DW-1778 `routed` to 18-7-encryption
+- [x] [Review][Defer] `[med]` Databases one level down (`irisaudit/`, `irissecurity/` `IRIS.DAT`) resolve to an overwriting consumer [src/OcuPilot/Port/PathPort.cls:325] — deferred: occurrence on DW-1777 (same root cause as the CPF)
+- [x] [Review][Defer] `[med]` A directory-kind location may be the manager directory itself, where a vendor-named file lands among the instance's own [src/OcuPilot/Port/PathPort.cls:271] — deferred: DW-1779 `routed` to 18-3, severity unverified
+
+**Rejected:**
+
+- `low`: no leg re-resolves a name after creating it. `Resolve` calls `%File.Exists` on every call, and Rule 19 asks one mutation per AC; the three the rework item names are recorded.
+- `low`: `PATH.MANAGER` compares text, so a case-variant, symlinked or re-mounted spelling of the manager directory escapes it (four rows). AD-21 names textual containment, and without `pOverwrite` `PATH.EXISTS` still refuses an existing instance file.
+- theoretical: a file created between the write-time `Resolve` and the vendor's write (two rows); `%File.Exists` answering 0 for an unreadable name or a dangling symlink.
+- `by-design`: an unrestricted instance's file needs a subdirectory. The orchestrator's decision refuses one name under the manager directory by design.
+- `false`: the class doc omits the two refusals. It enumerates none, and `Resolve`'s doc carries all four.
+- `false`: DW-1770 is not closed. The runner closes this story's entries at `ledger_adjudicated`.
+- `low`: the Auto Run Result's counts and caller list, the `deferred:` entry's wording, and a triage-log line number (four rows). Each fix edits this spec's implement-stage record; DW-1777 is the harvested record.
+
 ## Spec Change Log
 
 - 2026-09-27, spec gate (runner): the proposed AD-21 sixth case under Design Notes was written into the spine verbatim, with "every server-path field (Story 18.1 on)" added to AD-21's Binds (Rule 20). The spine is the authority from here; Design Notes keeps the proposal text for the reviewer.
@@ -582,9 +605,12 @@ Each consumer does the following:
 - mutation: `maximumWarning` put back at 2004kB → `build-output.test.mjs` DW-371 (2,005,146 bytes over 2,004,000) and `angular-json.test.mjs`'s pinned literal (rework 1)
 - mutation (AC1, the seventh entry): `AllowedDirectoryList`'s `sideBarPosition` 7 → 0, `screens.generated.ts` regenerated → `navigation.test.mjs` "a side bar lists only built screens, in side-bar order" and its Security side-bar assertion (code review 2)
 - mutation: `Resolve`'s existence test removed → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` (the four refused legs), alone (rework 2)
-- mutation: `Resolve`'s manager-directory test removed → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` (all five refused legs, the overwriting `IRIS.DAT` leg included), alone (rework 2)
+- mutation: `Resolve`'s manager-directory test removed → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` (all six refused legs, both `IRIS.DAT` legs included), alone (rework 2; re-run on the final tree, run 369, code review 3)
 - mutation: `Resolve` ignores `pOverwrite` → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` "a caller that overwrites resolves the existing file", alone (rework 2)
 - mutation: `Resolve` tests the existing name before the manager directory → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` "and to a caller that does not, an instance file is refused as the manager directory's", alone, run 363 (rework 2 review)
+- mutation: `Resolve`'s directory test on a file's name dropped → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` "but not a directory standing where the file would go", alone, run 366 (code review 3)
+- mutation (a directory is unaffected): the existence test moved out of the file-only branch → "an existing directory is never refused for existing", "and the directory itself is not refused" and `TestResolveComposesUnderAnAllowedRoot` "an empty name is the root itself", run 367 (code review 3)
+- mutation (a directory is unaffected): the manager-directory test moved out of the file-only branch → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` "and the directory itself is not refused", alone, run 368 (code review 3)
 
 ## Auto Run Result
 

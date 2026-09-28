@@ -260,12 +260,14 @@ Method TestResolveRefusesANameThatLeavesItsRoot()
 
 /// <p>AD-21's sixth case, an existing name -- a file named where a file or directory already
 /// exists is refused 400 <code>PATH.EXISTS</code> on the name's field, echoing nothing, unless the
-/// caller passes <var>pOverwrite</var>, which resolves it; a name not taken resolves without it;
-/// and a directory is never refused for existing. Works in a scratch directory under
-/// <parameter>TMPROOT</parameter> that it creates and removes.</p>
+/// caller passes <var>pOverwrite</var>, which resolves an existing file but never a directory
+/// standing at that name; a name not taken resolves without it; and a directory is never refused
+/// for existing. Works in a scratch directory under <parameter>TMPROOT</parameter> that it
+/// creates and removes.</p>
 /// <p>Mutation (Rule 19): drop the existence test from
 /// <method>OcuPilot.Port.PathPort.Resolve</method> -&gt; the existing file resolves; ignore
-/// <var>pOverwrite</var> there -&gt; the overwrite leg is refused.</p>
+/// <var>pOverwrite</var> there -&gt; the overwrite leg is refused; drop its directory test -&gt;
+/// the directory resolves to a caller that overwrites.</p>
 Method TestAnExistingNameIsRefusedUnlessTheCallerOverwrites()
 {
     Set tScratch = "ocupilot-pathport-" _ $Job
@@ -286,6 +288,7 @@ Method TestAnExistingNameIsRefusedUnlessTheCallerOverwrites()
         Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/taken", "file"), tRefused, "and a directory standing where the file would go is refused too")
         Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/existing.xml", "file", , , , 0), tRefused, "as it is when the caller says it does not overwrite")
         Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/existing.xml", "file", , , , 1), "200|" _ tFile, "a caller that overwrites resolves the existing file")
+        Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/taken", "file", , , , 1), tRefused, "but not a directory standing where the file would go")
         Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/new.xml", "file"), "200|" _ tDirectory _ "new.xml", "a name not taken resolves without overwriting")
         Do $$$AssertEquals(..ResolveOf(..#TMPROOT, tScratch _ "/taken", "directory"), "200|" _ tDirectory _ "taken/", "an existing directory is never refused for existing")
     } Catch ex {
@@ -304,8 +307,9 @@ Method TestAnExistingNameIsRefusedUnlessTheCallerOverwrites()
 /// it from a root above. A file in a subdirectory of it resolves, and a directory is not refused.
 /// Creates no file.</p>
 /// <p>Mutation (Rule 19): drop the manager-directory test from
-/// <method>OcuPilot.Port.PathPort.Resolve</method> -&gt; each refused leg resolves; test the
-/// existing name before it -&gt; the existing instance file is refused as a taken name.</p>
+/// <method>OcuPilot.Port.PathPort.Resolve</method> -&gt; each refused leg resolves, except the existing
+/// instance file, which is refused as a taken name; test the existing name before it -&gt; that
+/// file is refused as a taken name.</p>
 Method TestAFileDirectlyInTheManagerDirectoryIsRefused()
 {
     Set tManager = $System.Util.ManagerDirectory()

@@ -400,11 +400,11 @@ Parameter PATHNAME = "PATH.NAME";
 /// <p>The sentence <parameter>PATHNAME</parameter> carries.</p>
 Parameter REASONPATHNAME = "Name a directory or file under it with letters, digits, '.', '_' or '-', at most eight names separated by '/', and no '..'.";
 
-/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a file where a file or
-/// directory already exists, and the consuming tool does not declare that it overwrites. Rendered
-/// on the <parameter>BADREQUEST</parameter> slug by <class>OcuPilot.Port.PathPort</class> with one
-/// <code>detail.violations</code> entry on the name's field, and never with the value or a
-/// path.</p>
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a file where a directory
+/// already exists, or where a file does and the consuming tool does not declare that it
+/// overwrites. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Port.PathPort</class> with one <code>detail.violations</code> entry on the
+/// name's field, and never with the value or a path.</p>
 Parameter PATHEXISTS = "PATH.EXISTS";
 
 /// <p>The sentence <parameter>PATHEXISTS</parameter> carries.</p>

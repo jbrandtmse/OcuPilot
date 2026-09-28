@@ -65,8 +65,9 @@ ClassMethod AdminPortClass() As %String
     Quit "OcuPilot.Port.AdminPort"
 }
 
-/// <p>The manager directory, the one root of an unrestricted instance, with its trailing
-/// separator. Read on every call, because it is the instance's and not a constant.</p>
+/// <p>The manager directory, with its trailing separator: the one root of an unrestricted
+/// instance, and the directory no file may sit directly in. Read on every call, because it is the
+/// instance's and not a constant.</p>
 ClassMethod ManagerDirectory() As %String
 {
     Quit $System.Util.ManagerDirectory()
@@ -213,9 +214,9 @@ ClassMethod Row(pDirectory As %String, pRestricted As %Boolean) As %DynamicObjec
 /// <p>A file is refused twice more on the name's field. <code>PATH.MANAGER</code> when
 /// <method>DirectlyInManagerDirectory</method> places it directly in the manager directory, which
 /// holds the instance's own files, whatever the root and whatever <var>pOverwrite</var> says; and
-/// <code>PATH.EXISTS</code> when something of that name already exists on disk, unless
-/// <var>pOverwrite</var> is true, which only a consuming tool that declares it overwrites passes.
-/// A directory is refused on neither.</p>
+/// <code>PATH.EXISTS</code> when a directory stands at that name, or a file does and
+/// <var>pOverwrite</var> is false. Only a consuming tool that declares it overwrites passes
+/// <var>pOverwrite</var>. A directory is refused on neither.</p>
 /// <p>Each refusal carries <code>detail.violations</code>, one <code>{field, code, reason}</code>
 /// on <var>pRootField</var> or <var>pPathField</var>, the names the caller's own form uses. A kind
 /// outside the two is a caller fault and a 500. A consumer calls this at the mint and again at
@@ -272,7 +273,7 @@ ClassMethod Resolve(pRoot As %String = "", pPath As %String = "", pKind As %Stri
                 Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHMANAGER, ##class(OcuPilot.Api.Error).#REASONPATHMANAGER, pPathField, .pHttpStatus, .pFault)
                 Quit
             }
-            If 'pOverwrite && ##class(%File).Exists(tCandidate) {
+            If ##class(%File).DirectoryExists(tCandidate) || ('pOverwrite && ##class(%File).Exists(tCandidate)) {
                 Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHEXISTS, ##class(OcuPilot.Api.Error).#REASONPATHEXISTS, pPathField, .pHttpStatus, .pFault)
                 Quit
             }
@@ -319,11 +320,12 @@ ClassMethod Contains(pRoot As %String, pCandidate As %String) As %Boolean
 
 /// <p>Whether normalized file path <var>pFile</var> sits directly in the manager directory: it is
 /// that directory, normalized, followed by its own last name. A file in a subdirectory of it is
-/// not. Textual, as <method>Contains</method> is; a manager directory that does not normalize
-/// answers true, so the refusal it guards fails closed.</p>
+/// not. Textual, as <method>Contains</method> is; a manager directory that is empty or does not
+/// normalize answers true, so the refusal it guards fails closed.</p>
 ClassMethod DirectlyInManagerDirectory(pFile As %String) As %Boolean
 {
-    Set tManager = ##class(%File).NormalizeDirectory(..ManagerDirectory())
+    Set tManager = ..ManagerDirectory()
+    If tManager '= "" Set tManager = ##class(%File).NormalizeDirectory(tManager)
     If tManager = "" Quit 1
     Quit (pFile = (tManager _ ##class(%File).GetFilename(pFile)))
 }
