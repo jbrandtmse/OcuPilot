@@ -5,6 +5,7 @@ created: '2026-09-27'
 status: 'done'
 review_loop_iteration: 0
 baseline_revision: '7ed5b617ac47e64b714b6b83e503264198fe81b7'
+baseline_commit: '53e78c20e20014cd1a58dc7d01684e71389ecf78'
 followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
@@ -275,6 +276,8 @@ Client (`ui/src/app/`):
 ## Spec Change Log
 
 - 2026-09-28T01:59Z, lead spec gate: (1) EXPERIENCE.md is edited in place with its line count unchanged (orchestrator's standing rule for shared-append files); the two new Fixed-strings rows are folded into the existing Story 16.8 lines `:584`/`:585` instead of added, so no citation shifts (Design Notes and Tasks updated). (2) The three spine changes under Design Notes are written into the spine by the lead in this gate's commit (AD-36 amended, Conventions › Dates, the Design Paradigm's `LogSourcePort` clause); the implement stage does not write them. (3) `src/OcuPilot/Screen/Timeline.cls`, `ui/src/app/app.ts` and `app.spec.ts` sit outside Epic 16's listed paths and are not contended; the lead reports them as footprint extensions.
+
+- 2026-09-28T04:45Z, lead: the implement commit `5a14da43` was parked and re-applied unchanged as `961a5eb0` on top of the orchestrator-priority DW-1764 fix (`60da472b`) and its bookkeeping, so `baseline_commit` is `53e78c20` (the re-applied commit's parent) and `53e78c20..HEAD` is exactly this story's diff.
 
 ## Review Triage Log
 
