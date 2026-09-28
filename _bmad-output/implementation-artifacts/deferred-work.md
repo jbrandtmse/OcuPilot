@@ -4059,6 +4059,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The tasks running against a database are answerable only through %SYS.BackgroundTask:RunningInDatabase (irissys/%SYS/BackgroundTask.cls:899), a Final Internal class query the classic page reads; no %Api.Admin.* class references it, Database.Actions is write-only, and AD-36's sources are admin, mgmnt and state. Two routes: a polish-week story, or a query-backed source added to AD-36
 - 2026-09-18T00:05:40Z status=decision-pending owner=burndown by=plan note=orchestrator-decided at the 6.11 spec gate (Q3 option a): epics.md 6.11 AC3 amended to properties and volume files; only the owner can charter a story outside this epic
 - 2026-09-18T19:44:55Z status=routed owner=16-5-background-tasks by=merge_gate note=FR-76 owns background tasks; take the port decision there, not by widening AD-36 now
+- 2026-09-28T20:51:24Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=spec_gate note=16.5 took the port decision (public %SYS.BackgroundTask:DatabaseList; no AD-36 widening); the section belongs to DatabaseDetails.cls, 18.3's
 
 ### DW-1090: A rowGet read's async bound is per row, so a staged read's wall clock is rows x ASYNCTIMEOUT with no read-wide deadline
 - source: spec-6-11-databases-with-free-space-arriving-as-it-lands.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -7160,6 +7161,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 9.8 review: TaskDelete/Suspend/Resume/Run/ScheduleRun call no CheckPermission; classic TaskInfo.cls disables Edit, Suspend and Delete when it fails; Ens.Util.Tasks.Purge declares %Ens_PurgeSchedule:USE (read on ocupilot-ci)
 - 2026-09-24T21:48:21Z status=routed owner=burndown by=cr note=judge TaskRules.Permitted in each tool's ArgumentProblem, as the 9.8 edit now does
 - 2026-09-25T03:28:21Z owner=16-5-background-tasks by=burndown note=overflow: not charterable in Epic 9 (1 entry, under cap, one occurrence); the task row actions' home is Story 16.5's task work - judge TaskRules.Permitted in TaskDelete/Suspend/Resume/Run/ScheduleRun ArgumentProblem as the 9.8 edit does
+- 2026-09-28T20:51:25Z status=routed owner=16-11-start-suspend-and-resume-the-task-manager by=spec_gate note=scheduled-task row tools, not background tasks; 16.11 builds the Task schedule's next actions
 
 ### DW-1639: The LDAP / Kerberos list's Enabled column reads No for an enabled LDAP configuration: the vendor's Security.LDAP LIST answers Enabled false where Security.LDAPConfigs:List reads Yes
 - source: spec-9-9-a-cut-editor-ships-reduced-never-half-working.md | severity: med | fix-risk: low | footprint: out-of-footprint
