@@ -115,6 +115,7 @@ XData ReadShapes
 <screen name="WalletCollectionList" filter="Name,UseResource,EditResource" sort="Name,UseResource,EditResource" kinds="Name:name,UseResource:text,EditResource:text"/>
 <screen name="WalletSecretList" filter="Name,Type" sort="Name,Type" kinds="Name:name,Type:text"/>
 <screen name="WebAppList" filter="Name,Namespace,Type,DispatchClass,Resource" sort="Name,Namespace,Type,DispatchClass,Resource" kinds="Name:name,Namespace:identifier,Type:text,Enabled:status,DispatchClass:identifier,Resource:identifier"/>
+<screen name="WebSessionList" filter="ID,Username,Application,SesProcessId" sort="ID,Username,Application,SesProcessId,Timeout" kinds="SesProcessId:name,ID:identifier,Username:text,Application:identifier,Timeout:text"/>
 <screen name="X509CredentialList" filter="Alias,SubjectDN,IssuerDN" sort="Alias,SubjectDN,IssuerDN,ValidityNotAfter" kinds="Alias:name,SubjectDN:text,IssuerDN:text,ValidityNotBefore:text,ValidityNotAfter:text"/>
 </shapes>
 }
@@ -1697,7 +1698,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 33, "the closed vocabulary holds thirty-three values -- namespace joined in Story 18.2; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 34, "the closed vocabulary holds thirty-four values -- allowed-directory joined in Story 18.1, web-session in Story 16.2 and namespace in Story 18.2; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }

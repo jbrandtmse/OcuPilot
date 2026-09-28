@@ -3428,6 +3428,36 @@ export const STRINGS = {
   impactDatabasesStay: 'it uses <n> databases, which stay: <names>',
   /** EXPERIENCE.md:577 */
   impactDatabasesStayOne: 'it uses 1 database, which stays: <names>',
+  // Story 16.2: Web sessions, the third Web applications entry. Its Process ID, User and
+  // Application column headers reuse existing keys.
+  /** EXPERIENCE.md:357 */
+  webSessionListLabel: 'Web sessions',
+  /** EXPERIENCE.md:357 */
+  webSessionColumnSession: 'Session',
+  /** EXPERIENCE.md:357 */
+  webSessionColumnExpires: 'Expires (UTC)',
+  /** EXPERIENCE.md:357 */
+  webSessionListEmpty: 'No web sessions on this instance.',
+  /** EXPERIENCE.md:357 */
+  webSessionListEmptyAgent: 'end a web session that is stuck or unwanted',
+  /** EXPERIENCE.md:357 */
+  webSessionEndAction: 'End session',
+  /** EXPERIENCE.md:357 */
+  webSessionEndConsequence:
+    'Ending this session discards what its application kept for it, and its next request starts a new session. This cannot be undone.',
+  /** EXPERIENCE.md:357 */
+  webSessionRefusalOcuPilot: 'OcuPilot itself is running in this session. It cannot be ended from OcuPilot.',
+  /** EXPERIENCE.md:357 */
+  proposalEntityWebSession: 'Web session',
+  /** EXPERIENCE.md:357 */
+  webSessionListPrompt1: 'Which web sessions are open on this instance, and for which applications?',
+  /** EXPERIENCE.md:357 */
+  webSessionListPrompt2: 'Which users have more than one web session open?',
+  /** EXPERIENCE.md:357 */
+  webSessionListPrompt3: 'Which web sessions expire soonest?',
+  /** EXPERIENCE.md:357 */
+  webSessionRefusalPreserved:
+    'This session\'s own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session.',
 } as const;
 
 /**

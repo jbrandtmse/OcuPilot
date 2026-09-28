@@ -108,6 +108,11 @@ test("a screen's row action draws its own published words", () => {
   assert.equal(actionLabel(DEFINITIONS, 'no-such-action'), 'no-such-action');
   // Story 7.8: Terminate carries the published verb on the process screens.
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.ProcessList', 'terminate'), STRINGS.actionTerminate);
+  // Story 16.2: the Web sessions list's End session is its own words, and the id means nothing
+  // on a screen that does not publish it.
+  // Mutation (Rule 19): drop the WebSessionList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.WebSessionList', 'end'), STRINGS.webSessionEndAction);
+  assert.equal(actionLabel(DEFINITIONS, 'end'), 'end');
 });
 
 test('an action that means the same thing everywhere falls back to the shared map', () => {

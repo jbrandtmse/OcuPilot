@@ -7851,6 +7851,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AD-8's area AND pair set cannot express 'any of its screens'; measured on ocupilot-ci at 16.3 plan: %Operator holds %Admin_Operate:U and %DB_IRISSYS:RW only; 11 of 22 Security screens lack %Admin_Secure
 - 2026-09-28T06:34:37Z status=decision-pending owner=range-end-cleanup by=merge_gate note=owner decision after the voting week: keep AD-8's area set, or Option B (AD-8 any-screen rail: rail/Home tile/side bar open when any listed screen is allowed)
 - 2026-09-28T11:20:47Z occurrence=16-3-effective-privileges-and-the-permission-check-tool
+- 2026-09-28T18:07:16Z occurrence=16-2-web-sessions-listed-and-ended
 
 ### DW-1769: Copy as curl's note and AD-57 (5) promise every secret value is left out, but only names the credential pattern matches are masked
 - source: spec-16-24-a-try-it-request-copied-as-curl.md | severity: med | fix-risk: low | footprint: in-story
@@ -7965,3 +7966,22 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md (code review 4) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Executed on ocupilot-b-ci: Resolve(<mgr>, "irissecurity", "directory", pVendorWrites 1) answers 200 /durable/iris/mgr/irissecurity/. Whether the vendor's database create accepts a directory already holding an IRIS.DAT is unmeasured (severity unverified); epic-18-context.md:76 reads this half of DW-1779 as fixed under 18.1.
 - 2026-09-28T17:21:24Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=probe the create on the throwaway; refuse a directory holding an IRIS.DAT in 18.3's tool, or amend AD-21 if PathPort should
+
+### DW-1792: Ending a preserve-mode web session hangs until the gateway answers 504 and never ends it: the vendor DELETE waits on the session lock the session's own process holds
+- source: spec-16-2-web-sessions-listed-and-ended.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-09-28: admin DELETE of a Preserve=1 session sat in LOCKW at +69^%CSP.Session.1 (SessionLockTimeout 240 s; lock held by its own SesProcessId) and answered 504 at 60 s, twice; the row stayed listed. With that process terminated, DELETE answered 200 and the row left in about 5 s.
+- 2026-09-28T18:07:16Z status=decision-pending owner=burndown by=cr note=product call asked at cr: refuse Preserve=1 by name (amends Never + AD-10) or publish it as a named gap
+- 2026-09-28T18:11:00Z status=routed owner=16-2-web-sessions-listed-and-ended by=merge_gate note=decided (a), orchestrator: refuse ending a Preserve=1 session by name on both callers before the DELETE; sentence says why and points to Process details
+- 2026-09-28T19:04:41Z status=routed owner=16-2-web-sessions-listed-and-ended by=merge_gate note=refined K: refuse only while the session's own process runs; End stays drawn; test page gated by arming or made at test time
+- 2026-09-28T20:09:28Z status=resolved-by:16-2-web-sessions-listed-and-ended by=adjudication note=b02da8af: refused only while its process runs; terminate-then-end live test (runs 18279,18291,18297); CI 36474469983 green
+
+### DW-1793: AD-26 names only the synchronous and async port paths, and says nothing of AdminPort's bounded post-2xx waits (AWAITEDDELETES, like VERIFIEDDELETES)
+- source: spec-16-2-web-sessions-listed-and-ended.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AwaitGone polls LIST every 250 ms for up to 10 s inside the confirm or screen-action request after a 2xx; AD-26 says only two port paths exist and AD-7 calls confirm a short request; the spec gate ruled it DELETE verification on the sync path.
+- 2026-09-28T18:07:21Z status=wontfix-accepted owner=16-2-web-sessions-listed-and-ended by=cr note=reopen_if=a second AWAITEDDELETES pair lands or AWAITEDDELETEMS exceeds 10 s
+
+### DW-1794: agent-ledger.browser-spec's readDialog took 'no dialog' for closed while the ledger page its close re-creates did not yet exist, so the next setCriterion found no #ocu-ledger-user (browser shard 3 flake)
+- source: orchestrator (feature run 36446073514, staging run 36447054439) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: 3 failures in 4 runs with 16.16 present: 'failed to find element matching selector app-ledger-page #ocu-ledger-user' at spec :142; reproduced on ocupilot-ci by deferring the page's form 1.5 s
+- 2026-09-28T18:09:36Z status=open owner=16-2-web-sessions-listed-and-ended by=lead note=flake in 16.16's spec; fixed ahead of 16.2 as its own commit
+- 2026-09-28T18:09:36Z status=resolved-by:16-2-web-sessions-listed-and-ended by=adjudication note=c4a871c9: readDialog waits for the re-created page's form, setCriterion for its field; CI run 36458908646 green

@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -445,7 +445,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "agent-switch",
   "agent-policy",
   "allowed-directory",
-  "namespace"
+  "namespace",
+  "web-session"
 ];
 
 /**
@@ -10173,6 +10174,164 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.WebSessionList",
+    "route": "web-applications/sessions",
+    "area": "web-applications",
+    "labelKey": "webSessionListLabel",
+    "sideBarPosition": 3,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "web-session",
+    "entityLabelKey": "proposalEntityWebSession",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "ID"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "end",
+        "selfProtection": "ocupilot-session"
+      }
+    ],
+    "context": {
+      "fields": [
+        "ID",
+        "Username",
+        "Application",
+        "SesProcessId",
+        "Timeout"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "webSessionListEmpty",
+    "commandAliases": [
+      "sessions",
+      "CSP sessions"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "webSessionListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "webSessionListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "webSessionListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.CSPSessions",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "WebSession",
+        "type": "LIST"
+      },
+      "fields": [
+        "ID",
+        "Username",
+        "Application",
+        "SesProcessId",
+        "Timeout",
+        "Preserve"
+      ],
+      "filter": [
+        "ID",
+        "Username",
+        "Application",
+        "SesProcessId"
+      ],
+      "sort": {
+        "fields": [
+          "ID",
+          "Username",
+          "Application",
+          "SesProcessId",
+          "Timeout"
+        ],
+        "default": "Application",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "SesProcessId",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "ID",
+          "labelKey": "webSessionColumnSession",
+          "kind": "identifier"
+        },
+        {
+          "field": "Username",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "Application",
+          "labelKey": "oauthResourceServerFieldApplication",
+          "kind": "identifier"
+        },
+        {
+          "field": "Timeout",
+          "labelKey": "webSessionColumnExpires",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "webSessionListEmptyAgent"
+    },
+    "rowTarget": {
+      "route": "os-management/processes/details",
+      "field": "SesProcessId"
+    },
+    "toolIdentifier": "webapp.sessions",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.X509CredentialList",

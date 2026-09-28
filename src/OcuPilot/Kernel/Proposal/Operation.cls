@@ -241,14 +241,29 @@ ClassMethod ReadRowKeyOf(pToolClass As %String) As %String
     Quit tKey
 }
 
+/// <p>Whether <var>pToolClass</var>'s list-type fresh read compares its row key with the id exactly
+/// (<method>OcuPilot.Screen.Tool.Write.ReadRowKeyExact</method>), or <code>0</code> for a class
+/// that declares none or cannot be asked.</p>
+ClassMethod ReadRowKeyExactOf(pToolClass As %String) As %Boolean
+{
+    Set tExact = 0
+    Try {
+        If (pToolClass '= "") && ##class(%Dictionary.CompiledMethod).%ExistsId(pToolClass _ "||ReadRowKeyExact") Set tExact = ''$ClassMethod(pToolClass, "ReadRowKeyExact")
+    } Catch {
+        Set tExact = 0
+    }
+    Quit tExact
+}
+
 /// <p>The one fresh read the operation's callers make -- the mint, the confirm's re-read, the
 /// prohibited set and a screen action (AD-51, AD-52): <var>pToolClass</var>'s read type against
 /// <var>pEndpoint</var> through <var>pPort</var> with the query <var>pQuery</var>, answering the
 /// target in <var>pFresh</var>.</p>
 /// <p>For a tool that declares a row key the read answers an array, and <var>pFresh</var> is the
-/// one row whose key equals <var>pIdValue</var> without regard to case; an array holding no such
-/// row, and an answer that is not an array, are 404 <code>PORT.NOTFOUND</code>, so every caller
-/// reads absence exactly as a one-object read's 404.</p>
+/// one row whose key equals <var>pIdValue</var> without regard to case, or exactly where the tool
+/// declares <parameter>OcuPilot.Screen.Tool.Write.READROWKEYEXACT</parameter>; an array holding no
+/// such row, and an answer that is not an array, are 404 <code>PORT.NOTFOUND</code>, so every
+/// caller reads absence exactly as a one-object read's 404.</p>
 ClassMethod ReadTarget(pToolClass As %String, pPort As %String, pEndpoint As %String, ByRef pQuery, pIdValue As %String, Output pFresh As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set pFresh = ""
@@ -261,12 +276,13 @@ ClassMethod ReadTarget(pToolClass As %String, pPort As %String, pEndpoint As %St
         Set pFresh = $Get(tAnswer)
         Quit tSC
     }
-    Set tWanted = $ZConvert(pIdValue, "U")
+    Set tExact = ..ReadRowKeyExactOf(pToolClass)
+    Set tWanted = $Select(tExact: pIdValue, 1: $ZConvert(pIdValue, "U"))
     If $IsObject($Get(tAnswer)) && tAnswer.%IsA("%Library.DynamicArray") {
         Set tIterator = tAnswer.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tRow) {
             If '$IsObject(tRow) || 'tRow.%IsA("%Library.DynamicObject") Continue
-            If $ZConvert(tRow.%Get(tRowKey), "U") '= tWanted Continue
+            If $Select(tExact: tRow.%Get(tRowKey), 1: $ZConvert(tRow.%Get(tRowKey), "U")) '= tWanted Continue
             Set pFresh = tRow
             Quit
         }
