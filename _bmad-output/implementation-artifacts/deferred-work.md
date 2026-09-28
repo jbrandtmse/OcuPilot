@@ -7778,8 +7778,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T03:09:14Z status=open owner=13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=harvest note=settled by the measured CI run; a composition-dependent red is fixed in the test
 - 2026-09-28T04:14:56Z occurrence=13-5-ci-in-parallel-the-two-long-suites-split-across-containers
 - 2026-09-28T04:14:57Z status=open owner=13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=harvest note=rework1_deferred_audit-index-lag_cause_shown_only_in_simulation_settled_by_run_36376868939
+- 2026-09-28T04:42:16Z status=resolved-by:13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=adjudication note=run 36376868939 green on all six regrouped legs; the 3 composition reds fixed in the tests at 673ce8f7
 
 ### DW-1766: skill-rules.md Rule 29 still says CI runs the browser suite in its own browser job, now the roll-up over three browser-shard legs
 - source: _bmad-output/implementation-artifacts/spec-13-5-ci-in-parallel-the-two-long-suites-split-across-containers.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: _bmad/custom/skill-rules.md:270 names one browser job against a fresh throwaway; after 13.5 each browser-shard leg has its own fresh throwaway
 - 2026-09-28T03:09:14Z status=open owner=13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=harvest note=lead corrects it with CLAUDE.md's job list
+- 2026-09-28T04:42:17Z status=resolved-by:13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=adjudication note=skill-rules.md:270 now names the three browser-shard legs and the browser roll-up
+
+### DW-1767: Header comments in files 13.5 could not edit still name CI's pre-split instance and browser jobs
+- source: spec-13-5-ci-in-parallel-the-two-long-suites-split-across-containers.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: scripts/wait-readiness.sh:5, ci-durable-ownership.sh:3 and ci-throwaway.sh:2 say CI's instance job runs them, and ci.test.mjs:1571 says the instance and browser jobs; since 13.5 the instance-shard and browser-shard legs do. scripts/** is contended with Epic 16, ci-throwaway.sh is off-limits to 13.5, and ci.test.mjs:1571 is add-only for 13.5
+- 2026-09-28T04:38:49Z status=wontfix-accepted owner=13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=cr note=reopen_if=grep -n 'instance job' scripts/*.sh still matches when a later story next edits any of these files

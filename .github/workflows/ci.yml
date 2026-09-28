@@ -33,7 +33,8 @@
 # `ui/tools/ci-shards.mjs` gives each leg its share, longest first from `ui/tools/ci-timings.json`,
 # and every leg derives the same split. `node tools/ci-shards.mjs refresh --run <id>`, run from
 # `ui/`, rewrites that file from a finished run's records. The records pass between jobs as this
-# run's own artifacts, which publishes nothing.
+# run's own artifacts: item names, test counts and seconds, visible on the run page as its logs are,
+# and pushed to no registry.
 #
 # NOTHING HERE PUBLISHES, LISTS, RELEASES OR PUSHES TO ANY REGISTRY. No Open Exchange step, no
 # `npm publish`, no container push, no GitHub release, no `secrets.` reference of any kind
@@ -130,8 +131,8 @@ jobs:
   instance-shard:
     name: instance shard ${{ matrix.shard }}/3
     runs-on: ubuntu-24.04
-    # At least 1.5 times the largest leg's estimate from ui/tools/ci-timings.json plus 3 minutes of
-    # setup, a margin ui/tools/ci.test.mjs holds.
+    # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
+    # minutes of setup, a margin ui/tools/ci.test.mjs holds.
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -233,8 +234,8 @@ jobs:
   browser-shard:
     name: browser shard ${{ matrix.shard }}/3
     runs-on: ubuntu-24.04
-    # At least 1.5 times the largest leg's estimate from ui/tools/ci-timings.json plus 3 minutes of
-    # setup, a margin ui/tools/ci.test.mjs holds.
+    # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
+    # minutes of setup, a margin ui/tools/ci.test.mjs holds.
     timeout-minutes: 40
     strategy:
       fail-fast: false

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The serialized ObjectScript test runner CI's instance job calls (Story 1.17, DW-54).
+ * The serialized ObjectScript test runner CI's instance shard jobs call (Story 1.17, DW-54).
  *
  * **One test class at a time, and the next starts only once the last has landed.** The suite's
  * classes share one instance and one set of fixtures: several install and uninstall the same

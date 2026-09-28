@@ -56,10 +56,13 @@ test('equal weights go by name in code-unit order, to the lowest shard index on 
   assert.deepEqual(tied.shares.map((share) => share.items), [['x'], ['y'], ['z']], 'each tie opens the lowest empty shard');
 });
 
+// Mutation (Rule 19): drop the by-name tie-break from assignShards' sort -> this goes red.
 test('a share keeps the order its items were offered in, and the split does not depend on that order', () => {
-  const timings = { w: 1, x: 10, y: 1, z: 1 };
+  // The three ties straddle both shards (x 10; then w, y, z at 5, the last tie to the lower index),
+  // so an order-dependent tie-break moves an item between shards.
+  const timings = { w: 5, x: 10, y: 5, z: 5 };
   const { shares } = assignShards(['z', 'y', 'x', 'w'], timings, 2);
-  assert.deepEqual(shares.map((share) => share.items), [['x'], ['z', 'y', 'w']], 'offered order, not weight or name order');
+  assert.deepEqual(shares.map((share) => share.items), [['z', 'x'], ['y', 'w']], 'offered order, not weight or name order');
   const reordered = assignShards(['w', 'x', 'y', 'z'], timings, 2);
   assert.deepEqual(
     reordered.shares.map((share) => [...share.items].sort()),
@@ -120,6 +123,18 @@ test('the browser spec files are the *.browser-spec.mjs files, in code-unit orde
   assert.deepEqual(specs, [...specs].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
 });
 
+// Mutation (Rule 19): make browserSpecsOnDisk skip any file whose name starts with `users` -> this
+// goes red. The legs and the `browser` roll-up both read that one function, so only an independent
+// definition of a spec file can see it narrow.
+test("the browser spec list is every browser/ module that registers tests, DW-159's definition of a spec", () => {
+  const dir = join(here, '..', 'browser');
+  const registers = readdirSync(dir)
+    .filter((name) => name.endsWith('.mjs') && /\bfrom\s+['"]node:test['"]/.test(readFileSync(join(dir, name), 'utf8')))
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  assert.ok(registers.length > 20, `browser/ holds ${registers.length} module(s) that register tests`);
+  assert.deepEqual(browserSpecsOnDisk(), registers);
+});
+
 // --- The roll-up check, over records built here ------------------------------------------------
 
 const OFFERED = ['A', 'B', 'C', 'D'];
@@ -159,7 +174,7 @@ test('the check names a dropped item, a duplicate with both shards, a missing re
 
   const missing = completeRecords().slice(0, 2);
   assert.deepEqual(check(missing).problems, [
-    'shard 3/3 left no record: it did not finish, or its record was not uploaded',
+    'shard 3/3 left no record: it refused before running its share, did not finish, or did not upload its record -- its own log says which',
     '1 of 4 class(es) ran in no shard: C',
   ]);
 
@@ -420,6 +435,42 @@ test('without --shard the runner lists, floor-checks and runs every class with i
   }
 });
 
+// Mutation (Rule 19): write the record only when --shard is given -> this goes red.
+test('--record without --shard writes every class the whole run ran, as shard 1 of 1, with no shard label', () => {
+  const tree = runnerTree();
+  try {
+    const recordPath = join(tree.records, 'objectscript-whole.json');
+    const result = tree.run(['--record', recordPath]);
+    assert.equal(result.status, 0, result.output);
+    assert.doesNotMatch(result.output, /shard/, 'the output is the unsharded run');
+    const record = JSON.parse(readFileSync(recordPath, 'utf8'));
+    assert.deepEqual(
+      { suite: record.suite, shard: record.shard, shards: record.shards, offered: record.offered, assigned: record.assigned },
+      { suite: 'objectscript', shard: 1, shards: 1, offered: CLASSES, assigned: CLASSES }
+    );
+    assert.deepEqual(record.ran.map((item) => item.name), CLASSES, 'every class, in the order the instance offered them');
+  } finally {
+    rmSync(tree.root, { recursive: true, force: true });
+  }
+});
+
+// Mutation (Rule 19): skip the on-disk floor check when --shard is given -> this goes red.
+test('a shard still refuses when the instance offers fewer classes than the checkout carries, naming the class', () => {
+  // The `instance` roll-up holds the legs only to the list they were offered, so a class that did
+  // not compile, and so was never offered, is caught by each leg's floor or by nothing.
+  const tree = runnerTree();
+  try {
+    const offered = CLASSES.filter((name) => name !== 'OcuPilot.Test.Echo');
+    const result = tree.run(['--shard', '1/3'], { OCUPILOT_STUB_CLASSES: offered.join(',') });
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.stdout, /^ci-runner: the checkout carries 7 test class\(es\); the instance offered 6$/m);
+    assert.match(result.stderr, /the instance did not offer 1 test class\(es\) the checkout carries -- OcuPilot\.Test\.Echo\. A suite that ran a subset is a failure, never a pass/);
+    assert.deepEqual(reported(result.stdout), [], 'and no class ran');
+  } finally {
+    rmSync(tree.root, { recursive: true, force: true });
+  }
+});
+
 // Mutations (Rule 19): drop the coverage check, or the zero-tests check, from checkRecords -> this
 // goes red.
 test('three shards run disjoint shares in the instance order, and their records pass the roll-up until a class goes missing', () => {
@@ -615,9 +666,8 @@ test('a browser shard whose every test skipped executed nothing, and fails namin
   }
 });
 
-// Mutation (Rule 19): collapse ci-browser's share.length === 0 branch into the general
-// zero-tests message -> this goes red (see the story's ## Verification for the demonstration,
-// run against a scratch copy since ci-browser.mjs is not edited in this stage).
+// Mutation (Rule 19): collapse ci-browser's share.length === 0 branch into the general zero-tests
+// message -> this goes red.
 test('a browser shard assigned no spec file names itself distinctly from a skipped-all shard, and its record says it ran nothing', () => {
   const fixture = specFixture({ 'alpha.browser-spec.mjs': PASSING, 'bravo.browser-spec.mjs': PASSING }, {});
   try {

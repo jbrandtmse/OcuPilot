@@ -21,6 +21,11 @@
  *   node tools/ci-shards.mjs check --suite S --shards N --records DIR --result R [--dir DIR]
  *   node tools/ci-shards.mjs refresh (--run ID | --records DIR) [--timings PATH]
  *
+ * `assign` splits the checkout's lists. The ObjectScript one is `testClassesOnDisk`'s floor, which
+ * misses a class that reaches `TestCase` through a base class, while a CI leg splits the list the
+ * instance offers, so the two splits can differ; the share a leg actually ran is its record's
+ * `assigned`.
+ *
  * `refresh --run ID` downloads that run's `ci-record-*` artifacts with `gh run download` and
  * rewrites `ci-timings.json` from the seconds each shard recorded. Every suite present in the
  * records is replaced whole, keys sorted, so an entry for a removed item goes; a suite absent from
@@ -233,7 +238,7 @@ export function checkRecords({ suite, shards, result, records, expected = null }
     byShard.set(record.shard, entry);
   }
   for (let k = 1; k <= shards; k += 1) {
-    if (!byShard.has(k)) problems.push(`${label(k)} left no record: it did not finish, or its record was not uploaded`);
+    if (!byShard.has(k)) problems.push(`${label(k)} left no record: it refused before running its share, did not finish, or did not upload its record -- its own log says which`);
   }
 
   const present = [...byShard.keys()].sort((a, b) => a - b);

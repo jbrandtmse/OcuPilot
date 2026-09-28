@@ -136,6 +136,39 @@ deferred:
 - **AC8.** Given `ui/tools/ci.test.mjs`, when the workflow changes, then its rosters change in the same diff, and removing a shard from either matrix turns a test red.
 - **AC9.** Given the story's own green run on GitHub-hosted runners, when it is measured, then the time from its first job's start to its last job's end is 25 minutes or less, with about 20 the target. The measured time is recorded here, and each shard job's `timeout-minutes` is at least 1.5 times its measured duration.
 
+### Review Findings
+
+Code review 2026-09-28 (`bmad-code-review`, full-opus, four layers; diff `f4ab7c49..HEAD`). 0 decision-needed, 10 patch (all applied), 0 defer, 15 rejected. Rule 3: exempt (build pipeline); its runtime evidence is CI run 36376868939 on `673ce8f7`, green in 20.9 min.
+
+- [x] [Review][Patch] (medium) The browser spec list had no independent oracle; the legs and the `browser` roll-up read the same `browserSpecsOnDisk`, so a narrowed predicate dropped files with every gate green (AC4) [ui/tools/ci-shards.test.mjs:129]
+- [x] [Review][Patch] (medium) Under `--shard` no test drove the on-disk floor, the only check that a class the instance never offered fails the `instance` roll-up (AC1) [ui/tools/ci-runner.mjs:460]
+- [x] [Review][Patch] `--record` without `--shard` was never executed [ui/tools/ci-runner.mjs:582]
+- [x] [Review][Patch] The order-independence fixture put every tie in one shard, so dropping the name tie-break left it green (AC3) [ui/tools/ci-shards.test.mjs:60]
+- [x] [Review][Patch] A leg that refuses before its share writes no record, and the roll-up blamed only "did not finish or not uploaded"; the message now names the refusal and the leg's log [ui/tools/ci-shards.mjs:241]
+- [x] [Review][Patch] `assign` splits the checkout's floor list, not the instance's (40 of 327 classes land elsewhere than in CI); the header says so and names the record's `assigned` as the real share [ui/tools/ci-shards.mjs:24]
+- [x] [Review][Patch] A test comment narrated the stage and contradicted the QA record [ui/tools/ci-shards.test.mjs:669]
+- [x] [Review][Patch] The header said the record artifacts publish nothing; they show on the run page [.github/workflows/ci.yml:36]
+- [x] [Review][Patch] The timeout comment read as 1.5 x estimate + 3, not 1.5 x (estimate + 3) [.github/workflows/ci.yml:134]
+- [x] [Review][Patch] `ci-runner.mjs`'s header named CI's instance job; the same text in files 13.5 may not edit is DW-1767 (`wontfix-accepted`) [ui/tools/ci-runner.mjs:3]
+
+Rejected:
+
+- low: adding one item reshuffles about a third of each suite. Spec-bound: the Always rule's greedy split, and the spine's Conventions `Tests` row accepts regrouping.
+- low: a browser file whose every test skips records `passed`. No spec skips every test (all 115 ran at least one in run 36372545149), the unsharded run behaved the same, and the guard is a new branch.
+- low: `refresh` keeps failed items' cut-short seconds from a red run. Adjudicated 2026-09-28; the lead's refresh from a green run replaces them.
+- false: the cost comment omits GitHub's concurrent-job cap. It states cost, which is accurate, and AC9 already excludes overlapping runs.
+- low: the circular import is guarded on one side. A top-level read would fail at load in `ci-shards.test.mjs`, which runs both CLIs.
+- low: the durable-ownership check runs in all three legs. Spec-bound (legs take today's steps), and costs no wall clock.
+- false: two tests assert the same step order. No named harm; the spec keeps the readiness test per shard slice.
+- low: defensive branches untested (bad timings, unknown suite, missing directory, unreadable counts, unwritable record). Each fails loudly, and every AC has a recorded mutation.
+- low: a usage error pays the harness build first. Spec-bound (`pretest:browser:shard`).
+- low: the `oauth-server-editor` after hook can add a second failure on a run already red before `/oauth2` was recorded. The first failure reports first, and the fix restructures the hook.
+- low: a record can carry negative seconds. Theoretical: it needs a backwards clock step mid-item.
+- low: a hung class or spec leaves no record. By design (Design Notes); the leg's live log names the item.
+- low: `--timings` is ignored without `--shard`. Adjudicated 2026-09-27.
+- false: the timeout-margin test misses two classes and leg 1's smoke. The two classes weigh 0.3 s, and leg 1 was not the longest leg.
+- low: smoke follows only leg 1's share. By design (Design Notes); adjudicated 2026-09-27.
+
 ## Spec Change Log
 
 - 2026-09-27, lead at the spec gate (Rule 20): the spine's Stack `CI` row, Operational Envelope `Build and CI` row and Conventions `Tests` row now state the shard layout and that a test depends on nothing its shard neighbours left; no new AD. The roll-up jobs keep both their job keys and their `name:` values, `instance` and `browser`.
@@ -248,6 +281,13 @@ No new AD is needed (inference). One convention may be: a class or spec must not
 - Mutate one downloaded record: dropping a class turns `check` red, naming it.
 - Report `home-findings`.
 
+**Measured (lead):**
+
+- AC9: run 36376868939 on `673ce8f7`, attempt 1, green: 04:14:37Z to 04:35:32Z, **20.9 min**; every job started within 2 s, so no queueing and no overlapping run. Shard jobs: instance 19.7/19.6/20.6 min, browser 18.1/18.5/17.2 min; 1.5 x 20.6 = 30.9, under `timeout-minutes` 40. The red first run 36372545149 took 21.5 min.
+- AC4: dropping `OcuPilot.Test.AuditEventTools` from a real downloaded record of run 36372545149 made `check` report "1 of 329 class(es) ran in no shard: OcuPilot.Test.AuditEventTools", exit 1.
+- AC6: in run 36372545149 the drift check and smoke ran once, in `instance shard 1/3` (smoke executed=49 passed=49); no other leg ran either.
+- `ci-timings.json` refreshed from run 36376868939. `home-findings.browser-spec.mjs` passed in both runs; no shard layout made it deterministic.
+
 **Mutations (Rule 19; each one planned, then observed and recorded):**
 
 - AC1/AC2/AC8: delete `3` from either shard matrix -> the matrix-roster test goes red.
@@ -301,6 +341,13 @@ untimed, so the third leg gets none). `npm run test:tools` 1645/1645.
 
 - mutation: `OcuPilot.Test.AuditCopy.Count` without `%IGNOREINDEX *` (the index read), on `ocupilot-b-ci` with `^IRIS.AuditI` emptied and its lock held → `OcuPilot.Test.AuditStarted` red (2 of 3, "records to copy (0)"), `OcuPilot.Test.AuditCopy` red (3 of 6, the same precondition), `audit-copy-purge` AC1 red at `:176`; with the hint, all three green in that state.
 - mutation: `OcuPilot.Test.OAuthAuthorizationServerProbe.RemoveAll` also deletes `/oauth2` → `oauth-server-editor` red on "and /oauth2 is left as found": in `before` with `/oauth2` present, and in `after` from an instance without it (its four tests green).
+
+**Observed (code review, 2026-09-28):** `npm run test:tools` 1648/1648 (`ci-shards.test.mjs` 33). Each mutation below was applied to the tracked file, went red, and was reverted; `git status --short` and `git diff --stat` are unchanged.
+
+- mutation: `browserSpecsOnDisk` also skips names starting `users` → the DW-159 spec-list test red, alone (AC4, browser clause).
+- mutation: `ci-runner.mjs`'s on-disk floor gated on `options.shard === null` → the shard-floor test red, alone (AC1).
+- mutation: `ci-runner.mjs` writes `--record` only with `--shard` → the unsharded `--record` test red, alone.
+- mutation: `assignShards` sorts by weight alone, with no name tie-break → the offered-order test red, with the code-unit tie test (AC3).
 
 ## Auto Run Result
 
