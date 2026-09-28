@@ -195,8 +195,8 @@ Method Seed(pFresh As %DynamicObject, Output pTurnKey As %String) As %String
 }
 
 /// <p>The one <code>write</code>-kind row turn <var>pTurnKey</var> holds, subscripted by column
-/// name, with how many such rows there are as the answer. Read by SQL because the view's row
-/// object deliberately does not carry <code>Fields</code>.</p>
+/// name, with how many such rows there are as the answer. Read by SQL, so it covers every column
+/// the row stores rather than what the view projects.</p>
 ClassMethod WriteRow(pTurnKey As %String, Output pValues) As %Integer
 {
     Kill pValues

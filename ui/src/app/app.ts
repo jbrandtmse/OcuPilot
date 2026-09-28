@@ -39,6 +39,7 @@ import { OAuthServerForm } from './areas/security/oauth-server-form.store';
 import { OAuthRegisteredClientForm } from './areas/security/oauth-registered-client-form.store';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
+import { LedgerSearch } from './areas/agent/ledger.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { LogHubStore } from './areas/logs/log-hub.store';
 import { LogViewerStore } from './areas/logs/log-viewer.store';
@@ -251,6 +252,7 @@ export class App {
   private readonly theme = inject(ThemeState);
 
   private readonly auditSearch = inject(AuditSearch);
+  private readonly ledgerSearch = inject(LedgerSearch);
   private readonly errorLogDrill = inject(ErrorLogDrill);
   private readonly logViewer = inject(LogViewerStore);
   private readonly logHub = inject(LogHubStore);
@@ -566,6 +568,8 @@ export class App {
       // The sixth: the server-criteria archetype's form holds what THIS principal typed, and its
       // "has searched" flag decides whether the next visit re-runs that search or the default.
       this.auditSearch.reset();
+      // The Agent audit ledger's search holds what THIS principal typed and the rows it answered.
+      this.ledgerSearch.reset();
       // The seventh: the application error log's drill holds which namespace THIS principal was
       // reading and the captured detail of one entry -- every local at every stack level plus
       // $ROLES and $USERNAME, which on an IRIS for Health instance can hold patient data (AD-48).

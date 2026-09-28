@@ -3344,6 +3344,42 @@ export const STRINGS = {
   permissionCheckPublic: 'Yes. Every account holds <pair> publicly.',
   /** EXPERIENCE.md:468 */
   permissionCheckNo: 'No. <name> does not hold <pair>.',
+
+  // Story 16.16: the Agent audit ledger. Its Time, User, Name and Status columns, the dialog's
+  // Result label and the criteria form's Begin, End, hint, Search and Any reuse existing keys.
+  /** EXPERIENCE.md:336 */
+  agentLedgerLabel: 'Agent audit ledger',
+  /** EXPERIENCE.md:336 */
+  agentLedgerEmpty: 'No agent activity matches.',
+  /** EXPERIENCE.md:336 */
+  agentLedgerColumnKind: 'Kind',
+  /** EXPERIENCE.md:336 */
+  agentLedgerColumnScreen: 'Screen',
+  /** EXPERIENCE.md:336 */
+  agentLedgerColumnTarget: 'Target',
+  /** EXPERIENCE.md:336 */
+  agentLedgerArguments: 'Arguments',
+  /** EXPERIENCE.md:336 */
+  agentLedgerKindModel: 'Model call',
+  /** EXPERIENCE.md:336 */
+  agentLedgerKindTool: 'Tool call',
+  /** EXPERIENCE.md:336 */
+  agentLedgerKindWrite: 'Confirmed write',
+  /** EXPERIENCE.md:336 */
+  agentLedgerKindAccess: 'Transcript read',
+  /** EXPERIENCE.md:336 */
+  agentLedgerWithheld: '<n> rows withheld: each records a privilege you do not hold.',
+  /** EXPERIENCE.md:336 */
+  agentLedgerDropped: '<n> calls were counted and not stored.',
+  /** EXPERIENCE.md:336 */
+  agentLedgerDeniedAction: 'see another user\'s agent activity',
+  /** EXPERIENCE.md:336 */
+  agentLedgerPrompt1: 'Who used the agent to change anything this week?',
+  /** EXPERIENCE.md:336 */
+  agentLedgerPrompt2: 'Which web applications did the agent change this week?',
+  /** EXPERIENCE.md:336 */
+  agentLedgerPrompt3: 'Did the agent change any user or role today?',
+
   // Story 18.2: the Namespaces list and its form -- the list's title, its three database column
   // headers (the form's select labels), its empty state and agent invitation, the edit's refused
   // action and six suggested prompts; the Delete dialog's consequence; the kernel's install-namespace

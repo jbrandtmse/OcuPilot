@@ -398,7 +398,7 @@ that carry Community Opportunity status:
   local model. A turn that makes a change can take up to a minute, and a small local model may
   propose changes that need correcting.
 - **IRIS 2026.2 or later.** OcuPilot relies on the admin API that version introduced.
-- **Where the admin API's specification and 2026.2 disagree.** We found five places, listed in
+- **Where the admin API's specification and 2026.2 disagree.** We found seven places, listed in
   [docs/api-gaps.md](docs/api-gaps.md), and OcuPilot follows the instance in each. The one you might
   notice: on 2026.2 the task list reports every task as not suspended
   ([issue #1](https://github.com/intersystems-community/sysadmin-api-specification/issues/1)), so

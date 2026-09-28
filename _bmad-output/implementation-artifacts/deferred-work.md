@@ -4979,6 +4979,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: context-chip and the other turn-driving specs call requireFreeSlot first; this one does not, so it can collide with AD-41's one-turn bound. Location: ui/browser/refused-tool.browser-spec.mjs
 - 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns suite hygiene; an unguarded turn is a flake source of exactly the class this epic has already paid for twice
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-28T11:46:09Z occurrence=16-3-effective-privileges-and-the-permission-check-tool note=recurred on sharded CI run 36411822579 shard 1 (30s wait for the refused card); green next run
 
 ### DW-1315: The IsEnabled-before-HoldsAdminResource ordering in OnPreDispatch is unexercised
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -7840,6 +7841,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Api/Error.cls REASONPATHNAME is the spec's verbatim sentence, and it reads as satisfied by '.hidden', '-x', 'a/' and a 101-character name, each of which PathPort refuses.
 - 2026-09-28T08:16:00Z status=by-design owner=18-1-the-directory-allow-list by=cr note=spec-bound: the Tasks fix the sentence verbatim; reopen via a spec amendment when a consumer renders it
 - 2026-09-28T04:41:12Z status=open owner=16-9-the-unified-log-hub by=orchestrator note=re-owned for the priority fix 60da472b (Findings.TaskErrors requires a recorded run); resolve on green CI
+- 2026-09-28T14:26:02Z status=by-design owner=18-1-the-directory-allow-list by=adjudication note=restores the 08:16 cr disposition; the 04:41 line above is DW-1764's trailer, misplaced here by a union merge
 
 ### DW-1768: Rail items stay gated for holders of only some of an area's screens: a wallet-only or OAuth-only holder at Security, and %Operator at Logs and OS management, although screens there would serve them
 - source: spec-16-3-effective-privileges-and-the-permission-check-tool.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -7851,11 +7853,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-24-a-try-it-request-copied-as-curl.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: isSecretName is false for api_key, X-API-Key, Cookie, Proxy-Authorization; those headers/params and nested body members copy verbatim (cr probes 2026-09-28). tryItCurlNote says 'every secret value'; AD-57 (5) says 'no secret value reaches the clipboard'. Use case is pasting into a ticket.
 - 2026-09-28T08:04:13Z status=decision-pending owner=burndown by=cr note=copy call: reword note (EXPERIENCE :574, strings) and AD-57 (5) to the pattern's reach (recommended), or widen the pattern
+- 2026-09-28T08:40:12Z status=resolved-by:16-24-a-try-it-request-copied-as-curl by=merge_gate note=decided: reword the note, leave the pattern; fixed in 20d4a106 (strings.ts, EXPERIENCE :574, AD-57 item 5); CI run 36398685106
+
+### DW-1780: Two browser specs failed once on the sharded CI and passed on the next run of the same shard plan: audit AC1 showed default-read rows instead of the Source criterion's, and refused-tool AC2 timed out waiting for the refused card
+- source: CI run 36411822579 (dd028650) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: audit.browser-spec.mjs:478 rows Source [%System,OcuPilot] vs [OcuPilotSeed] (shard 3); refused-tool.browser-spec.mjs:140 30s wait (shard 1); next run 36415467999 green; both green locally on ocupilot-ci
+- 2026-09-28T11:46:03Z status=routed owner=range-end-cleanup by=harvest note=likely a race between the default read and the Search answer (audit) and a slow first turn (refused-tool); make each wait on the answer it asserts
+- 2026-09-28T11:46:09Z status=routed owner=range-end-cleanup by=harvest note=refused-tool half is DW-1314's root cause (occurrence appended); this entry keeps the audit AC1 half
 ### DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Security is pinned at oauth.browser-spec:283, ssl:228, security:242 and navigation.test.mjs:377; permissions:279 and tasks:1032 pin theirs. Rule 29 runs a story's own specs only, so 18.1 met it as CI run 36393142503's red and a rework.
 - 2026-09-28T09:44:59Z status=routed owner=18-7-encryption by=cr note=a screen-adding story extends every pinned list of its area (grep -l ocu-side-bar-label ui/browser); 18.8 and 18.9 meet it too
 - 2026-09-28T08:40:12Z status=resolved-by:16-24-a-try-it-request-copied-as-curl by=merge_gate note=decided: reword the note, leave the pattern; fixed in 20d4a106 (strings.ts, EXPERIENCE :574, AD-57 item 5); CI run 36398685106
+- 2026-09-28T14:26:03Z status=routed owner=18-7-encryption by=adjudication note=restores the 09:44 cr routing; the 08:40 line above is DW-1769's trailer, misplaced here by a union merge
 
 ### DW-1775: Eight candidate admin API defects observed probing namespaces and mappings on 2026.2 (delete without %Admin_Secure answers 500 after deleting; maxRows limits a namespace DELETE's app cascade; client-input errors as 500; v2 async Location points at /v1)
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -7911,3 +7921,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Prohibited.IsOwnNamespace reads no application binding; the installer binds all three of OcuPilot's applications to the install namespace and PROHIBITED.DISPATCH refuses repointing one, so only an out-of-band repoint, undone at the next start, reaches it. The dialog's impact would name the application.
 - 2026-09-28T14:20:24Z status=wontfix-theoretical owner=18-13-multi-namespace-install by=cr note=real if 18.13 lets OcuPilot's applications span namespaces: then refuse a delete whose bound apps include one of its own
+
+### DW-1781: A ledger tool row keeps an argument as the model typed it when its tool does not declare it secret, when it is a nested or case-variant spelling of a declared name, or when the call resolved no tool; the credential-name pattern still masks what it matches
+- source: spec-16-16-the-agent-audit-viewer.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: plan probe on ocupilot-ci 2026-09-28: RecordToolCall stored certificate, nested Certificate, Value and a PEM block under Notes verbatim; declared names at their spelling read [redacted]; x509 import's Certificate is the only declared name the pattern misses
+- 2026-09-28T13:44:39Z status=wontfix-accepted owner=16-16-the-agent-audit-viewer by=harvest note=reopen_if=a declared secret under its own tool's declared name is found verbatim in a ledger row, or a new tool declares a secret the pattern misses
+- 2026-09-28T14:20:32Z occurrence=16-16-the-agent-audit-viewer by=cr note=target half: a case-variant or undeclared secret the model also sends as id stays in Target, which has no pattern backstop
+
+### DW-1782: A tool step's target in the turn's progress and stored transcript keeps a declared secret's value the model sent as id, and can show in the agent panel's tool-call card; the ledger row stores the mark since Story 16.16, the step does not
+- source: spec-16-16-the-agent-audit-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: implement on ocupilot-ci 2026-09-28: OcuPilot_Kernel_State.Step.Target held the probe value for each permissions.users.password step agent-ledger.browser-spec ran while ledger rows read [redacted]; tool-call-card.ts renders the step target (inference for the card)
+- 2026-09-28T13:44:39Z status=escalated owner=burndown by=harvest note=for the decision sheet: recommended route to range-end-cleanup, store the redaction mark in Step.Target at write time as the ledger does (AD-35, AD-41)
+- 2026-09-28T13:44:39Z occurrence=16-16-the-agent-audit-viewer note=the agent panel's tool-call card can show the same step target (review inference)
+- 2026-09-28T14:49:57Z status=routed owner=range-end-cleanup by=merge_gate note=recommended: store the redaction mark on the progress step's target when written, as the ledger does
+
+### DW-1783: The agent ledger's local-to-UTC conversion direction cannot be falsified on the project's UTC test instances (ocupilot-ci and CI throwaways run Etc/UTC), so a swapped conversion keeps every begin, end, time and echo assertion green
+- source: spec-16-16-the-agent-audit-viewer.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: review probe on ocupilot-ci: /etc/localtime Etc/UTC, $ZTIMEZONE 0, $H equals $ZTS; a process-level $ZTIMEZONE change does not move $ZDATETIME(h,-3)
+- 2026-09-28T13:44:39Z status=escalated owner=burndown by=harvest note=for the decision sheet: needs one run on a throwaway started with a non-UTC TZ (CI or ci-throwaway.sh change); recommended route to range-end-cleanup
+- 2026-09-28T14:49:57Z status=routed owner=range-end-cleanup by=merge_gate note=recommended: one run on a throwaway started in a non-UTC time zone
+
+### DW-1789: A user named in the agent audit viewer in another letter case than the stored account name reads an empty list with no refusal, because a named ledger read matches UserName exactly
+- source: spec-16-16-the-agent-audit-viewer.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Code review: Kernel.State.Ledger.WindowWhere binds %EXACT(UserName) = ? for a named read, the semantics the spec keeps (a named user behaves as it does today), and the page's User field now reaches it (inference: not reproduced).
+- 2026-09-28T14:20:32Z status=wontfix-accepted owner=16-16-the-agent-audit-viewer by=cr note=reopen_if=a named ledger search reads empty for a user whose rows the every-user view lists

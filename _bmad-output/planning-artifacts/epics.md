@@ -7077,6 +7077,13 @@ So that database administration is complete rather than list-only.
 - **When** it runs
 - **Then** it lists dependent namespaces and applications first, and confirms by name.
 
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- `GET /v2/database-dirs` answers a plain list of directory objects, not the object the schema `LocalDatabaseList` declares (checked: 14 entries).
+- Take the privileges from the instance, not the specification: `%Operator` holds `%Admin_Operate:USE`, which the specification accepts for `GET /v2/databases` and `GET /v2/database-dirs`, yet both answer it 403 with an empty error list (reported).
+
 ### Story 18.4: The deferred disk operations
 
 As an operator,
@@ -7097,6 +7104,13 @@ So that "disks" means operating on them rather than only reading them.
 - **When** the governance baseline is computed
 - **Then** each key defaults to **disabled**.
 
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- Read a finished asynchronous task exactly once. A second read of an ended task through `async-result` logs a severity-2 alert (`ERROR #7846` from `TryToKillQueue^%Api.Admin.Util.AsyncTask`) and turns the instance's state to Warning (reported). `OcuPilot.Port.AdminPort` reads the end once and deletes the row, which adds no alert (checked); a progress view must stop polling at the end, and two views of one task must share one poller.
+- The integrity check takes its databases in the body (`Databases[]`, each with `Directory`), while compact, defragment and the other operations take the `dir` query parameter. The specification agrees; the family is uneven.
+
 ### Story 18.5: Journals
 
 As an operator,
@@ -7112,6 +7126,13 @@ So that the transaction record is inspectable from the portal.
 - **Given** the journal is a transaction record rather than an operator log
 - **When** it is placed
 - **Then** it stays in System Operation rather than joining the Logs area - a deliberate judgment carried from the catalog.
+
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- `POST /v2/journal/file/records` returns half its `maxRows`: 10 gave 5 and 40 gave 20 (checked); the article reports they are the file's first records, contiguous. Ask for twice the page and mark the list when the limit is reached. It answers 202, so it runs through the port's async path.
+- `POST /v2/journal/switch-dir` takes no body, so it switches only to the alternate directory already configured. The specification agrees.
 
 ### Story 18.6: Licensing and ECP
 
@@ -7192,6 +7213,13 @@ So that the Permissions area reaches parity.
 - **When** it is proposed by the agent
 - **Then** the Release 1 prohibition on privilege escalation still applies - a grant that would confer `%All` or an `%Admin_*` role remains refused.
 
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- `GET /v2/security/sql-privileges` names a row's object and action `Object` and `Action`, not the schema's `Name` and `Privilege` (checked); a revoke is built from those.
+- A role owner's `AdminOption` arrives as the string `"0"` or `"1"`, not a boolean (reported). `"0"` is truthy in TypeScript, so compare the value.
+
 ### Story 18.10: Web application extras and spec-based REST services
 
 As a developer-administrator,
@@ -7223,6 +7251,12 @@ So that monitoring is continuous rather than sampled.
 - **Given** the live tail
 - **When** it is enabled on a text log
 - **Then** it long-polls with a heartbeat, and the Release 1 rule that log viewers load bounded pages is superseded **only** for the sources that opt into it.
+
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- `SystemUsage.BusyProcesses` in `GET /v2/monitor/dashboard/main` always has ten rows; unused ones are `{"Process": "", "Commands": 0}` (checked: 8 of 10 on slot A). Drop them before showing a top ten.
 
 ### Story 18.12: The agent grows with the stage
 

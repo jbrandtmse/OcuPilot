@@ -26,6 +26,7 @@ import { DeviceForm } from './areas/os-management/device-form.store';
 import { NamespaceForm } from './areas/os-management/namespace-form.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
+import { LedgerSearch } from './areas/agent/ledger.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
@@ -1095,6 +1096,13 @@ describe('the shell frame', () => {
     auditSearch.setMarker(true);
     auditSearch.noteSearched();
 
+    // The Agent audit ledger's search (Story 16.16) holds what THIS principal typed and the rows
+    // it answered, which for an administrator include other users' agent activity (AD-8).
+    const ledgerSearch = TestBed.inject(LedgerSearch);
+    ledgerSearch.setValue('user', 'irisowner');
+    ledgerSearch.setValue('route', 'agent/ledger');
+    ledgerSearch.noteSearched();
+
     // The seventh answer of the same kind (Story 2.12). The application error log's drill holds
     // which namespace and date THIS principal was reading -- and, one level deeper, a captured
     // variable table carrying $ROLES, $USERNAME and every local at every stack level (AD-48).
@@ -1235,6 +1243,11 @@ describe('the shell frame', () => {
     expect(auditSearch.value('usernames')).toBe('');
     expect(auditSearch.marker()).toBe(false);
     expect(auditSearch.searched()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.ledgerSearch.reset()` from `App.verifyWhenSignedIn` -> these
+    // go red, and the next principal opens the ledger on the previous one's search.
+    expect(ledgerSearch.value('user')).toBe('');
+    expect(ledgerSearch.value('route')).toBe('');
 
     // Mutation (Rule 19): delete `this.errorLogDrill.reset()` from `App.verifyWhenSignedIn` ->
     // these three go red, and the shipped shell shows the next principal the previous one's drill.

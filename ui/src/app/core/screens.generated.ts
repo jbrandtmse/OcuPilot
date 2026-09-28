@@ -977,6 +977,74 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentLedger",
+    "route": "agent/ledger",
+    "area": "agent",
+    "labelKey": "agentLedgerLabel",
+    "sideBarPosition": 5,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "ledgerId"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "agentLedgerEmpty",
+    "commandAliases": [
+      "agent audit ledger",
+      "ledger",
+      "agent activity"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "agentLedgerPrompt1"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "agentLedgerPrompt2"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "agentLedgerPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "agent.ledger",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.AgentSwitches",
     "route": "agent/switches",
     "area": "agent",
@@ -1121,7 +1189,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "route": "agent/transcripts",
     "area": "agent",
     "labelKey": "agentTranscriptsLabel",
-    "sideBarPosition": 5,
+    "sideBarPosition": 6,
     "archetype": "list",
     "built": true,
     "refreshes": false,
