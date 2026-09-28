@@ -7046,7 +7046,7 @@ So that no later screen has to invent its own answer to "which directories may I
 ### Story 18.2: Namespaces and their mappings
 
 As an operator,
-I want to create, edit and delete namespaces and manage their mappings,
+I want to create, edit and delete namespaces,
 So that the most common configuration task the contest deferred is available.
 
 **Acceptance Criteria:**
@@ -7055,13 +7055,7 @@ So that the most common configuration task the contest deferred is available.
 - **When** each runs
 - **Then** it round-trips through the admin API, the delete wizard listing dependent databases and web applications before removing anything.
 
-- **Given** global, routine and package mappings
-- **When** they are listed, created, edited and deleted
-- **Then** the `%`-global guard harvested from the sibling's mapping manager applies.
-
-- **Given** copy-mappings, which is asynchronous
-- **When** it runs
-- **Then** it goes through the async path with progress.
+- Mappings and copy-mappings moved to Story 18.14 [AMENDED 2026-09-28, orchestrator merge gate: split from 18.2 for size, Rule 5].
 
 ### Story 18.3: Databases - configuration, creation, properties and volumes
 
@@ -7078,6 +7072,8 @@ So that database administration is complete rather than list-only.
 - **Given** the delete wizard
 - **When** it runs
 - **Then** it lists dependent namespaces and applications first, and confirms by name.
+
+- DW-1779: A directory-kind location may be the manager directory itself (the unrestricted root, empty name), so a consumer whose vendor writes its own files into the chosen directory (a database's IRIS.DAT) lands among the instance's own (ledger; routed by cr 2026-09-28)
 
 ### Story 18.4: The deferred disk operations
 
@@ -7157,6 +7153,8 @@ So that key management is not a reason to keep the classic portal open.
 - **Then** it is write-only and returned by no read, like every other secret.
 
 - DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards (ledger; routed by cr 2026-09-28)
+- DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file (iris.cpf sits in the manager directory's parent), so an overwriting file consumer under an allowed data-directory root could resolve it (ledger; routed by harvest 2026-09-28)
+- DW-1778: PathPort.Resolve's file kind offers only new-or-overwrite, so a consumer that reads an existing file (an import, a key file to activate) is refused PATH.EXISTS unless it passes pOverwrite, which no tool declaration ties it to (ledger; routed by cr 2026-09-28)
 
 ### Story 18.8: Superservers, authentication options and managed file transfer
 
@@ -7273,6 +7271,24 @@ So that it is not confined to the one the installer picks.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths (ledger; routed by merge_gate 2026-09-13)
+
+### Story 18.14: Namespace mappings and copy-mappings
+
+As an operator,
+I want to manage a namespace's global, routine and package mappings and copy mappings from another namespace,
+So that the namespace configuration task the contest deferred is complete. [AMENDED 2026-09-28, orchestrator merge gate: split from 18.2 for size, Rule 5]
+
+**Acceptance Criteria:**
+
+- **Given** global, routine and package mappings
+- **When** they are listed, created, edited and deleted
+- **Then** the `%`-global guard harvested from the sibling's mapping manager applies.
+
+- **Given** copy-mappings, which is asynchronous
+- **When** it runs
+- **Then** it goes through the async path with progress.
+
+- DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan (ledger; routed by merge_gate 2026-09-28)
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
