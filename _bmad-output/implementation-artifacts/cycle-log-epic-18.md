@@ -155,3 +155,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T22:38:43Z	Epic 18	throwaway_up	container=ocupilot-b-ci reason=recreated_from_35f085bc_tree_with_18.14 started_by=epic-18-runner
 2026-09-28T22:38:43Z	Story 18.14	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none
 2026-09-28T22:38:43Z	Story 18.14	stage_spawned	stage=qa spawn_at=2026-09-28T22:38:43Z model=sonnet agent_name=18-14-mappings-qa-1 cycle_iteration=1 note=local_only_until_DW-1790_run_36493475067_green
+2026-09-28T22:45:07Z	Story 18.14	qa_complete	spawn_at=2026-09-28T22:38:43Z model=sonnet tests_added=0 mutations_demonstrated=0 first_run_failures=0 clarifications=0 closing_sections_present=true note=no_gaps;reran_MappingWrite_9/9,NamespaceCopy_7/7,ClassicPageGate_3/3,MappingRefusals_7/7,MappingWriteGate_4/4,MappingDescriptor_6/6;tools_1688,components_1750
+2026-09-28T22:45:07Z	Story 18.14	stage_spawned	stage=code-review spawn_at=2026-09-28T22:45:07Z model=opus agent_name=18-14-mappings-code-review-1 cycle_iteration=1 review_tier=full-opus scope=c267f6da..35f085bc
