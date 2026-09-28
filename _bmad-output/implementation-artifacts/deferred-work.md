@@ -3915,6 +3915,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T23:34:21Z by=cr note=observed slot B: %SecurityAdministrator holds %Admin_Secure:U and %DB_IRISSYS:RW but no %Admin_Wallet; rail gates it
 - 2026-09-17T00:18:27Z occurrence=6-4-the-oauth-2-0-screen note=Story 6.4 appends %Admin_OAuth2_Client, %Admin_OAuth2_Server and %Admin_OAuth2_Registration (USE) to the security area: a holder of the Secure, IRISSYS and Wallet pairs without any OAuth resource sees the Security rail gated though 6 of its 10 built screens would serve them; %Manager and %SecurityAdministrator hold all three OAuth resources (observed on slot B by the 6.4 plan)
 - 2026-09-18T19:44:55Z status=routed owner=16-3-effective-privileges-and-the-permission-check-tool by=merge_gate note=decided: a rail item is allowed when ANY of its screens is; each screen keeps its own gate
+- 2026-09-28T06:34:37Z status=routed owner=16-3-effective-privileges-and-the-permission-check-tool by=merge_gate note=Option A decided 2026-09-28: Security set Secure+IRISSYS, wallet/OAuth screens ownPrivileges; AD-8 amended; residual filed separately
 
 ### DW-1019: Demo-fixture counts and the inventory kind vocabulary are stale outside Fixture.cls after the wallet fixture landed
 - source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: low | footprint: in-epic
@@ -7766,6 +7767,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-27T18:31:11Z status=decision-pending owner=burndown by=harvest note=product call: keep; or gate the event-log screen alone (amend AD-8's area rule); or drop the screen to Stage 2
 - 2026-09-27T20:03:07Z status=open owner=16-8-the-six-secondary-log-viewers by=merge_gate note=decided option B: gate only the event-log screen; Logs keeps its Release 1 set; AD-8 amended; fixed in a 16.8 rework
 - 2026-09-28T01:18:58Z status=resolved-by:16-8-the-six-secondary-log-viewers by=merge_gate note=rework d4db0663 (CI 36348144770), independent review 0 high 0 med; released in 1.0.2 (c46cafa9)
+- 2026-09-28T01:31:58Z status=resolved-by:16-8-the-six-secondary-log-viewers by=adjudication note=d4db0663: event-log screen owns %Ens_EventLog:USE alone; Logs keeps Release 1 pairs; WireSecurityRead AUDITUSER leg
 
 ### DW-1760: Own-pair screens (AD-8 as amended for DW-1755) accept an own pair the area already declares, or an ownPrivileges equal to all of privileges, so a screen can leave the area-coverage check entirely
 - source: 16.8 rework independent review (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
@@ -7791,6 +7793,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: feature CI run 36359053662 attempt 1 on c46cafa9 (orchestrator), 2026-09-27 | severity: medium | fix-risk: low | footprint: ui/browser/home-findings.browser-spec.mjs, src/OcuPilot/Kernel/Shell/Findings.cls
 - evidence: attempt 1 red 500/501, attempt 2 green on the same head; the same code passed on staging runs 36352462516 and 36355806784 (inference: a stock task suspended with a non-empty last-run Error on that container)
 - 2026-09-28T01:18:59Z status=routed owner=range-end-cleanup by=orchestrator note=make the assertion print the operations lines, then pin the cause; if the product reports a person-suspended task as an error, fix TaskErrors
+- 2026-09-28T04:41:12Z status=open owner=16-9-the-unified-log-hub by=orchestrator note=re-owned for the priority fix 60da472b (Findings.TaskErrors requires a recorded run); resolve on green CI
+- 2026-09-28T05:29:35Z status=resolved-by:16-9-the-unified-log-hub by=adjudication note=60da472b: TaskErrors requires LastStarted or Status<0; Test.Findings 13/13 run 17040; spec prints INFO on failure; CI run 36378712464
 
 ### DW-1765: Whether a class or spec depends on residue from an item the shard split no longer runs before it is unverified until every CI leg is green
 - source: _bmad-output/implementation-artifacts/spec-13-5-ci-in-parallel-the-two-long-suites-split-across-containers.md | severity: med | fix-risk: low | footprint: in-story
@@ -7830,3 +7834,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Api/Error.cls REASONPATHNAME is the spec's verbatim sentence, and it reads as satisfied by '.hidden', '-x', 'a/' and a 101-character name, each of which PathPort refuses.
 - 2026-09-28T08:16:00Z status=by-design owner=18-1-the-directory-allow-list by=cr note=spec-bound: the Tasks fix the sentence verbatim; reopen via a spec amendment when a consumer renders it
+- 2026-09-28T04:41:12Z status=open owner=16-9-the-unified-log-hub by=orchestrator note=re-owned for the priority fix 60da472b (Findings.TaskErrors requires a recorded run); resolve on green CI
+
+### DW-1768: Rail items stay gated for holders of only some of an area's screens: a wallet-only or OAuth-only holder at Security, and %Operator at Logs and OS management, although screens there would serve them
+- source: spec-16-3-effective-privileges-and-the-permission-check-tool.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: AD-8's area AND pair set cannot express 'any of its screens'; measured on ocupilot-ci at 16.3 plan: %Operator holds %Admin_Operate:U and %DB_IRISSYS:RW only; 11 of 22 Security screens lack %Admin_Secure
+- 2026-09-28T06:34:37Z status=decision-pending owner=range-end-cleanup by=merge_gate note=owner decision after the voting week: keep AD-8's area set, or Option B (AD-8 any-screen rail: rail/Home tile/side bar open when any listed screen is allowed)

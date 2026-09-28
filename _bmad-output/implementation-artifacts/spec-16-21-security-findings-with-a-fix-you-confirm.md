@@ -45,8 +45,8 @@ deferred: []
   - `task-manager` (operations; `TaskScheduleList`'s declared `banner`, `Task.Manager` `GET`): the answer's `banner` is `taskManagerSuspendedBanner` or `taskManagerStoppedBanner`.
   - `task-error` (operations; the same read, whose `INFO` rowGet makes `Suspended` truthful):
     - For each suspended row, one `Task.CRUD` `INFO` through `AdminPort` reads `Error`.
-    - A finding when `Error` is non-empty and not the vendor's `Success`.
-    - A person's suspend leaves `Error` empty (measured), and so is not a finding.
+    - A finding when `Error` is non-empty and not the vendor's `Success`, and `INFO` records a run: `LastStarted` set, or `Status` below 0.
+    - A task that never ran is not a finding: the Task Manager also writes a missed-schedule notice (`Task Has Expired for ...`, `Status` 1) into a task it did not run.
 - **Answer shape.** `{checks: [{check, group, status}], findings: [{check, group, name, id, route, scope, detail?, fix, refused?}]}`.
   - `status` is `checked`, `unchecked` (with `pair`: the first pair the caller lacks on the owning screen, or the pair `Effective.Read` reports), `truncated` (the read hit its cap) or `failed` (the source threw or faulted; logged through the base's `LogSourceFailure`). Only `checked` may contribute "nothing to report".
   - `fix` is `agent` (a write tool fixes it), `link` or `refused`, and `refused` is `{code, reason}` with `reason` = `Prohibited.ReasonFor(code)`.
@@ -395,7 +395,7 @@ Where each row applies: Home's Findings panel (Story 16.21, AD-10, AD-11), under
 - **Unauthenticated applications with roles.** `/oauth2` holds `%All`, `/csp/user` holds `%DB_USER` RW, and `/csp/healthshare/hssys/app/api` holds four `%DB_*` RW, so all three are findings. `/api/monitor` holds `%DB_IRISSYS` RW, and an anonymous `/api/monitor/metrics` answers 200. `/ocupilot` and `/api/ocupilot/readiness` hold only `%DB_HSCUSTOM:R`, so they are not findings.
 - **The admin API.** The web application LIST carries no roles; its `GET` carries `AutheEnabled` (integer) and `MatchRoles`. The Users LIST carries no roles; its `GET` does.
 - **`%All` holders.** They are `SuperUser`, `_SYSTEM`, `_Ensemble` and `irisowner`. The expected verdicts for `_SYSTEM` and the two service accounts are refused, and SuperUser gets Fix it (inference from `Prohibited` :1228 and `SERVICEACCOUNTS` :387; `FindingsWire` pins it).
-- **Suspended tasks.** Tasks 4 and 21 are `Suspended` with an empty `Error`, so they are not findings. Demo task 1002 was suspended after an error, and is one. The task LIST answers `Suspended:false` for every row; `INFO` answers the truth.
+- **Suspended tasks.** Tasks 4 and 21 ship `Suspended` and never run; their `Error` is empty or the Task Manager's missed-schedule notice, so they are not findings. Demo task 1002 was suspended after an error, and is one. The task LIST answers `Suspended:false` for every row; `INFO` answers the truth.
 - **Cost.** A full pass over HTTP takes about 1.8 s, and more than half of that is `Task.Manager` `GET` at about 1 s.
 
 **Named gap.** The instance-wide authentication mask (`Security.System` `AutheEnabled`) also gates an application, and no admin endpoint reads it. The check therefore reads each application's own setting, as its editor does. Where the instance itself refuses unauthenticated access, the finding over-reports (inference).

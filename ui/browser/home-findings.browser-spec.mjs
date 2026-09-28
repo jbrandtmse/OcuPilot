@@ -5,8 +5,10 @@
  *   Security and Operations groups; it names a seeded unauthenticated application holding
  *   `%DB_USER`, the stock `/csp/user` and `/api/monitor`, every open application the instance's own
  *   answer lists, the demo fixture's task suspended after an error and the four `%All` accounts a
- *   stock install carries, and not `/ocupilot` or a task a person suspended. The panel passes the
- *   DW-1337 structural gate in light, narrow and dark with no new baseline entry.
+ *   stock install carries, and not `/ocupilot` or a suspended task that never ran, which the stock
+ *   Integrity Check and Automatic Table Statistic Collection are. A failure names every suspended
+ *   task with its `INFO` answer. The panel passes the DW-1337 structural gate in light, narrow and
+ *   dark with no new baseline entry.
  * - **AC2.** `_SYSTEM`'s line shows the prohibited set's sentence and no Fix it.
  * - **AC3.** Fix it on the demo task opens Task details on it; the scripted turn's user message is
  *   the fixed sentence, its screen context names the task and carries its row, and the proposal
@@ -149,6 +151,17 @@ async function findingsAnswer() {
   return answer.json();
 }
 
+/**
+ * Every task whose `Task.CRUD` `INFO` reads `Suspended` true, as that answer (`Error`, `Status`,
+ * `LastStarted`, `LastFinished`, ...) with its `Id` and `Name`.
+ */
+function suspendedTasks() {
+  const output = runIris(config.container, [`Write "OCU-FSUSPENDED-START:"_##class(OcuPilot.Test.FindingsWire).SuspendedTasks()_":OCU-FSUSPENDED-END",!`]);
+  const value = markerValue(output, 'FSUSPENDED');
+  assert.ok(value, `the suspended tasks were read: ${output}`);
+  return JSON.parse(value);
+}
+
 /** Each rendered group as its heading and its lines' sentences. */
 function renderedGroups(page) {
   return page.evaluate(() =>
@@ -207,8 +220,16 @@ test('AC1 and AC5: the panel follows the performance row, names what the instanc
       assert.ok(security.includes(fill(STRINGS.findingAllHolder, { name })), `${name} holds %All`);
     }
     assert.ok(!security.some((line) => line.startsWith('/ocupilot ')), 'OcuPilot\u2019s own applications are not findings');
-    assert.ok(operations.includes(fill(STRINGS.findingTaskError, { name: taskFinding.name })), 'the demo task is named');
-    assert.ok(!operations.some((line) => line.includes('Integrity Check') || line.includes('Automatic Table Statistic')), 'a task a person suspended is not');
+    const suspended = suspendedTasks();
+    const shown = `\nOperations: ${JSON.stringify(operations)}\nSuspended tasks, as INFO answers them: ${JSON.stringify(suspended)}`;
+    assert.ok(operations.includes(fill(STRINGS.findingTaskError, { name: taskFinding.name })), `the demo task is named${shown}`);
+    for (const task of suspended.filter((row) => row.LastStarted === '' && !(Number(row.Status) < 0))) {
+      assert.ok(!operations.includes(fill(STRINGS.findingTaskError, { name: task.Name })), `${task.Name} never ran, so it is not a finding${shown}`);
+    }
+    assert.ok(
+      !operations.some((line) => line.includes('Integrity Check') || line.includes('Automatic Table Statistic')),
+      `the stock tasks an instance ships suspended are not findings${shown}`
+    );
 
     const found = [];
     const passes = [

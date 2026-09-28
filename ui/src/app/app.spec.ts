@@ -29,6 +29,7 @@ import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
 import { ApiService } from './core/api';
+import { LogHubStore } from './areas/logs/log-hub.store';
 import { LogViewerStore, XDBC_SOURCE } from './areas/logs/log-viewer.store';
 import { ChangeBus } from './core/change-bus';
 import { ConnectivityService } from './core/connectivity';
@@ -42,6 +43,7 @@ import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/
 import { ScreenActions } from './core/screen-actions';
 import { ScreenStores } from './core/screen-store';
 import type { AreaDeclaration, ScreenDeclaration } from './core/screens.generated';
+import { SCREENS } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
 import { PanelState } from './core/panel-layout';
 import { TurnStore } from './core/turn';
@@ -525,7 +527,19 @@ describe('the shell frame', () => {
                       truncated: false,
                     },
                   }
-                : { kind: 'ok', status: 200, body: { rows: [] } },
+                : path.startsWith('/api/ocupilot/screens/logs.hub/read')
+                  ? {
+                      kind: 'ok',
+                      status: 200,
+                      body: {
+                        fields: ['time', 'source', 'severity', 'text', 'id'],
+                        rows: [{ time: '2026-09-27T10:00:00.000', source: 'logs/xdbc', severity: '2', text: '[HSCUSTOM] <-30>', id: '' }],
+                        truncated: false,
+                        criteria: { since: '2026-09-27 09:00:00' },
+                        sources: [{ source: 'logs/xdbc', shown: true, requires: '', count: 1, truncated: false, last: null }],
+                      },
+                    }
+                  : { kind: 'ok', status: 200, body: { rows: [] } },
           } as unknown as ApiService,
         },
       ],
@@ -1086,6 +1100,14 @@ describe('the shell frame', () => {
     await logViewer.open();
     expect(logViewer.lines()).toHaveLength(1);
 
+    // Story 16.9: the log hub holds the entries of every Logs source THIS principal read.
+    const logHub = TestBed.inject(LogHubStore);
+    const hubScreen = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.LogHub');
+    if (hubScreen === undefined) throw new Error('the mirror carries the log hub');
+    await logHub.read(hubScreen, 1000);
+    logHub.setSourceFilter('logs/xdbc');
+    expect(logHub.rows()).toHaveLength(1);
+
     // The eighth answer of the same kind (Story 3.5). The Definition form's buffer holds what THIS
     // principal typed, and `keyValue` holds a provider API key they pasted and have not yet
     // stored -- a secret, in a root-provided store, in the tab the next principal signs in to
@@ -1208,6 +1230,12 @@ describe('the shell frame', () => {
     // two go red, and the shipped shell shows the next principal the previous one's log entries.
     expect(logViewer.lines()).toHaveLength(0);
     expect(logViewer.loaded()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.logHub.reset()` from `App.verifyWhenSignedIn` -> these
+    // three go red, and the shipped shell shows the next principal the previous one's hub.
+    expect(logHub.rows()).toHaveLength(0);
+    expect(logHub.sources()).toHaveLength(0);
+    expect(logHub.sourceFilter()).toBe('');
 
     // Mutation (Rule 19): delete `this.refresh.reset()` from `App.verifyWhenSignedIn` -> these
     // two go red, and the shipped shell keeps ticking the previous principal's screen.

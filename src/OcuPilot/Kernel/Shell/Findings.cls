@@ -440,9 +440,13 @@ ClassMethod TaskManager(pOut As %DynamicObject, ByRef pContext) As %Status
 }
 
 /// <p><code>task-error</code>: a suspended task whose <code>Task.CRUD</code> <code>INFO</code>
-/// reads a non-empty <code>Error</code> other than <parameter>TASKSUCCESS</parameter>. A task a
-/// person suspended has an empty <code>Error</code> and is not a finding; a task gone between the
-/// two reads is skipped.</p>
+/// reads a non-empty <code>Error</code> other than <parameter>TASKSUCCESS</parameter> and records a
+/// run: <code>LastStarted</code> is set, or <code>Status</code> is below 0, a code the Task Manager
+/// records for a job it started or tried to start (<class>%SYS.TaskSuper</class>'s
+/// <code>Status</code>). A task that never ran is not a finding whatever its <code>Error</code>
+/// reads, because the Task Manager also writes a missed-schedule notice there ("Task Has Expired
+/// for ...", <code>Status</code> 1) on a task it did not run, the stock tasks an instance ships
+/// suspended among them. A task gone between the two reads is skipped.</p>
 ClassMethod TaskErrors(pOut As %DynamicObject, ByRef pContext) As %Status
 {
     Set tSC = ..Rows(..#TASKDESCRIPTOR, pOut, .pContext, .tResult)
@@ -461,6 +465,7 @@ ClassMethod TaskErrors(pOut As %DynamicObject, ByRef pContext) As %Status
         If '$IsObject($Get(tInfo)) Continue
         Set tError = tInfo.%Get("Error")
         If (tError = "") || (tError = ..#TASKSUCCESS) Continue
+        If (tInfo.%Get("LastStarted") = "") && (+tInfo.%Get("Status") >= 0) Continue
         Do ..Add(pOut, "task-error", tRow.%Get("Name"), tId, tRoute, ..#FIXAGENT)
     }
     Quit tSC

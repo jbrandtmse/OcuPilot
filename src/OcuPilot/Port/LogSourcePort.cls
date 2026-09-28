@@ -28,7 +28,9 @@
 /// exists only in <code>%SYS</code>, so the port enters that namespace <b>once per call</b> by
 /// explicit save and restore, never enters the namespace being read, and passes the target
 /// namespace as each query's own first parameter (AD-16). Its gate is a function of the selected
-/// namespace rather than a constant, which is why <method>PairsFor</method> takes one.</p>
+/// namespace rather than a constant, which is why <method>PairsFor</method> takes one.
+/// <method>RecentErrors</method> reads the same log newest first across the namespaces the caller
+/// can read, for the log hub (Story 16.9).</p>
 /// <p><b>Deletes have three scopes, and every one is a prefix of the error's composite id</b>
 /// (AD-13, AD-48): the namespace; the namespace and a date; the namespace, a date and an error
 /// number. <method>Invoke</method>'s enumeration lists the errors the scope holds, up to the row cap
@@ -784,12 +786,16 @@ ClassMethod Page(pSource As %String = "", pOffset As %String = "", pMaxBytes As 
 /// <p>A <parameter>RECENTSOURCES</parameter> key is answered by <method>Recent</method> under the
 /// same cap, each entry projected to <code>{time, severity, text}</code>: never its pid or its
 /// raw line.</p>
-ClassMethod Rows(pSource As %String = "", pMaxRows As %Integer = 0, Output pAnswer As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+/// <p><var>pTruncated</var> reports the port's own cut (AD-36): a tail window that started past the
+/// file's first byte, or <method>Recent</method>'s <code>truncated</code>. A cut by
+/// <var>pMaxRows</var> is the caller's to see, from the rows it asked one more of.</p>
+ClassMethod Rows(pSource As %String = "", pMaxRows As %Integer = 0, Output pAnswer As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pTruncated As %Boolean) As %Status
 {
     Set tSC = $$$OK
     Set pAnswer = ""
     Set pHttpStatus = 0
     Set pFault = ""
+    Set pTruncated = 0
     Try {
         If $ListFind($ListFromString(..#RECENTSOURCES), pSource) {
             Set tSC = ..Recent(pSource, pMaxRows, .tRecent, .pHttpStatus, .pFault)
@@ -799,6 +805,7 @@ ClassMethod Rows(pSource As %String = "", pMaxRows As %Integer = 0, Output pAnsw
             While tIterator.%GetNext(.tIndex, .tEntry) {
                 Do pAnswer.%Push({"time": (tEntry.time), "severity": (tEntry.severity), "text": (tEntry.text)})
             }
+            Set pTruncated = ''tRecent.truncated
             Quit
         }
         Set tSC = ..Page(pSource, "", "", "", .tPage, .pHttpStatus, .pFault)
@@ -811,9 +818,13 @@ ClassMethod Rows(pSource As %String = "", pMaxRows As %Integer = 0, Output pAnsw
             Quit
         }
         Set pAnswer = ..Entries(tPage.lines, pMaxRows)
+        ; The tail is the last DEFAULTMAXBYTES of the file, so a file longer than that was read from
+        ; past its first byte and holds older lines this answer does not.
+        Set pTruncated = ''tPage.truncated || (+tPage.size > ..#DEFAULTMAXBYTES)
         Set pHttpStatus = 200
     } Catch ex {
         Set pAnswer = ""
+        Set pTruncated = 0
         Set tSC = ..Fail(pSource _ " rows failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Quit tSC
@@ -1638,6 +1649,199 @@ ClassMethod Drain(ByRef pHeld, pCount As %Integer, pMax As %Integer, Output pEnt
         }
         If pEntries.%Size() >= pMax Quit
     }
+}
+
+/// <p>The newest application errors across the namespaces the caller can read, for the log hub
+/// (AD-36, AD-48): at most <var>pMaxRows</var> (<parameter>DEFAULTMAXROWS</parameter> when below
+/// one), newest first, from the dates on or after <var>pSince</var>'s date
+/// (<code>YYYY-MM-DD HH:MM:SS</code>, instance local; <code>""</code> reads every date) and, for a
+/// namespace with none of those, its newest date, so the newest error is answered whatever the
+/// window.</p>
+/// <p><b>The gate order is <method>Errors</method>'s</b> (AD-8, AD-29):
+/// <parameter>ERRORSINSTANCEPAIRS</parameter> first, refusing 403; then each readable namespace's
+/// <method>PairsFor</method> set, resolved and evaluated before the <code>%SYS</code> window opens,
+/// a namespace that fails being left out rather than refused. The window is entered once (AD-16),
+/// reads each gated namespace <code>NamespaceList</code> holds through <code>DateList</code> and
+/// <code>ErrorList</code> only, and stops a namespace at <var>pMaxRows</var> + 1 errors.</p>
+/// <p>On success <var>pAnswer</var> is <code>{rows, truncated}</code>, each row
+/// <code>{time, severity, text, namespace, date, errorNumber}</code>: <code>time</code> the date
+/// and <code>Time</code> as <code>YYYY-MM-DDTHH:MM:SS.000</code>, <code>severity</code>
+/// <code>"2"</code>, <code>text</code> <code>[NS] </code> and the summary error text alone (AD-48),
+/// <code>date</code> <code>DateList</code>'s own string and <code>namespace</code> its
+/// <code>NamespaceList</code> spelling. <code>truncated</code> is true when a namespace or the merge
+/// held more than the cap. A read that faults after its gate answers 500
+/// <code>LOG.UNREADABLE</code>, never a partial answer.</p>
+/// <p>Caller contract: no namespace is taken from a caller (AD-21). Must not be called from an
+/// escalated frame (AD-9); the caller's namespace is unchanged on return.</p>
+ClassMethod RecentErrors(pMaxRows As %Integer = 0, pSince As %String = "", Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        If '$ListFind(..Sources(), ..#ERRORSKEY) {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGSOURCE, "OcuPilot does not serve a log source by that name", .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tMax = $Select(+pMaxRows < 1: ..#DEFAULTMAXROWS, 1: +pMaxRows \ 1)
+        Set tFailedPair = ""
+        If '..Gate(..InstancePairs(), .tFailedPair) {
+            Set tSC = ..DeniedRefusal(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSinceDay = ""
+        If pSince '= "" Set tSinceDay = $ZDateH($Extract(pSince, 1, 10), 3, , , , , , , "")
+
+        Set tSC = ..ReadableNamespaces(.tNames)
+        If $$$ISERR(tSC) {
+            Set tSC = ..Fail("the application error log could not read the namespaces the caller can read", tSC, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tGated = ""
+        For tI = 1:1:$ListLength(tNames) {
+            Set tNamespace = $List(tNames, tI)
+            Set tPairs = ..PairsFor(..#ERRORSKEY, tNamespace)
+            If '$ListValid(tPairs) || ($ListLength(tPairs) = 0) Continue
+            If '..Gate(tPairs, .tNsFailed) Continue
+            Set tGated = tGated _ $ListBuild($ZConvert(tNamespace, "U"))
+        }
+
+        Set tReadSC = ..RecentErrorsRead(tGated, tMax + 1, tSinceDay, .tHeld, .tMore)
+        If $$$ISERR(tReadSC) {
+            Set tSC = ..ReadFault(..#ERRORSKEY, tReadSC, .pHttpStatus, .pFault)
+            Quit
+        }
+
+        Set tRows = []
+        Set tTime = ""
+        For {
+            Set tTime = $Order(tHeld(tTime), -1)
+            If tTime = "" Quit
+            Set tAt = ""
+            For {
+                Set tAt = $Order(tHeld(tTime, tAt), 1, tEntry)
+                If tAt = "" Quit
+                If tRows.%Size() >= tMax {
+                    Set tMore = 1
+                    Quit
+                }
+                Set tRow = {}
+                Do tRow.%Set("time", $List(tEntry, 1))
+                Do tRow.%Set("severity", "2")
+                Do tRow.%Set("text", ..Prefix($List(tEntry, 2)) _ $List(tEntry, 5))
+                Do tRow.%Set("namespace", $List(tEntry, 2))
+                Do tRow.%Set("date", $List(tEntry, 3))
+                Do tRow.%Set("errorNumber", +$List(tEntry, 4), "number")
+                Do tRows.%Push(tRow)
+            }
+            If tRows.%Size() >= tMax Quit
+        }
+        Set pAnswer = {}
+        Do pAnswer.%Set("rows", tRows)
+        Do pAnswer.%Set("truncated", ''tMore, "boolean")
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pAnswer = ""
+        Set tSC = ..Fail("the newest application errors failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p><method>RecentErrors</method>' one <code>%SYS</code> window (AD-16, AD-48): every
+/// <code>NamespaceList</code> namespace whose upper-cased name is in <var>pNamespaces</var>, its
+/// dates on or after <var>pSinceDay</var> (a <code>$Horolog</code> day, <code>""</code> for every
+/// date), or its newest date when it has none of those, and their errors, at most <var>pWant</var> per namespace. <var>pHeld</var> is subscripted
+/// by <code>" "</code> and the local <code>YYYY-MM-DDTHH:MM:SS.000</code> time, then by arrival,
+/// each <code>$ListBuild(time, namespace, date, errorNumber, errorText)</code>; <var>pMore</var> is
+/// 1 when a namespace held more. Nothing here dispatches an <code>OcuPilot.*</code> class other than
+/// this port's own members.</p>
+ClassMethod RecentErrorsRead(pNamespaces As %List, pWant As %Integer, pSinceDay As %String, Output pHeld, Output pMore As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pHeld
+    Set pMore = 0
+    Set tOrigNS = $NAMESPACE
+    Set tRS = ""
+    Kill tDays
+    Try {
+        Set $NAMESPACE = ..#ERRORSNAMESPACE
+        Set tSC = ..OpenQuery(..#NAMESPACELISTQUERY, .tRS)
+        If $$$ISERR(tSC) Quit
+        Set tSC = tRS.Execute(..#NAMESPACELISTALL)
+        If $$$ISERR(tSC) Quit
+        Set tSpellings = ""
+        While tRS.Next() {
+            Set tSpelling = tRS.Get("Namespace")
+            If $ListFind(pNamespaces, $ZConvert(tSpelling, "U")) Set tSpellings = tSpellings _ $ListBuild(tSpelling)
+        }
+        Do tRS.Close()
+        Set tRS = ""
+        Set tArrival = 0
+        For tI = 1:1:$ListLength(tSpellings) {
+            Set tNamespace = $List(tSpellings, tI)
+            Set tSC = ..OpenQuery(..#DATELISTQUERY, .tRS)
+            If $$$ISERR(tSC) Quit
+            Set tSC = tRS.Execute(tNamespace)
+            If $$$ISERR(tSC) Quit
+            Set tBeforeDay = ""
+            Set tBeforeDate = ""
+            While tRS.Next() {
+                Set tDate = tRS.Get("Date")
+                If tDate = "" Continue
+                Set tDay = $ZDateH(tDate, 1, , , , , , , "")
+                If tDay = "" Continue
+                If (pSinceDay '= "") && (tDay < pSinceDay) {
+                    If (tBeforeDay = "") || (tDay > tBeforeDay) Set tBeforeDay = tDay, tBeforeDate = tDate
+                    Continue
+                }
+                Set tDays(tNamespace, tDay, tDate) = ""
+            }
+            Do tRS.Close()
+            Set tRS = ""
+            ; A namespace with no date on or after the bound is still read at its newest date, so its
+            ; newest error is answered whatever the window -- the hub's last entry (AD-36 as amended).
+            If '$Data(tDays(tNamespace)) && (tBeforeDay '= "") Set tDays(tNamespace, tBeforeDay, tBeforeDate) = ""
+            Set tHere = 0
+            Set tDay = ""
+            For {
+                Set tDay = $Order(tDays(tNamespace, tDay), -1)
+                If (tDay = "") || (tHere >= pWant) Quit
+                Set tDate = ""
+                For {
+                    Set tDate = $Order(tDays(tNamespace, tDay, tDate))
+                    If (tDate = "") || (tHere >= pWant) Quit
+                    Set tSC = ..OpenQuery(..#ERRORLISTQUERY, .tRS)
+                    If $$$ISERR(tSC) Quit
+                    Set tSC = tRS.Execute(tNamespace, tDate)
+                    If $$$ISERR(tSC) Quit
+                    Set tStamp = $ZDate(tDay, 3)
+                    While tRS.Next() {
+                        If tHere >= pWant {
+                            Set pMore = 1
+                            Quit
+                        }
+                        Set tHere = tHere + 1
+                        Set tArrival = tArrival + 1
+                        Set tTime = tStamp _ "T" _ tRS.Get("Time") _ ".000"
+                        Set pHeld(" " _ tTime, tArrival) = $ListBuild(tTime, tNamespace, tDate, +tRS.Get("Error #"), tRS.Get("Error message"))
+                    }
+                    Do tRS.Close()
+                    Set tRS = ""
+                }
+                If $$$ISERR(tSC) Quit
+            }
+            If $$$ISERR(tSC) Quit
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Kill pHeld
+        Set tSC = ex.AsStatus()
+    }
+    If $IsObject(tRS) Do tRS.Close()
+    Set $NAMESPACE = tOrigNS
+    If $$$ISERR(tSC) Kill pHeld
+    Quit tSC
 }
 
 /// <p>Serve one level of the application error log (AD-48). <var>pLevel</var> is one of

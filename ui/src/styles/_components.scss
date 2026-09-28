@@ -7061,3 +7061,145 @@ app-data-table .ocu-data-table-header-cell {
   color: var(--ocu-on-surface);
   overflow-wrap: anywhere;
 }
+
+// --- Unified log hub (Story 16.9) -----------------------------------------------------------------
+//
+// Two sections over one composed read: the Sources table and the Timeline. The page scrolls as one
+// column, and each wide surface -- the table and the timeline's rows -- scrolls sideways in its own
+// frame rather than widening the page, so the 720px floor keeps every control on screen.
+
+app-log-hub-page {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ocu-log-hub {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--ocu-gutter) var(--ocu-gutter);
+}
+
+.ocu-log-hub-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+}
+
+.ocu-log-hub-heading {
+  @include typo.ocu-type('title');
+
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-log-hub-frame {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.ocu-log-hub-table {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-log-hub-th {
+  @include typo.ocu-type('label');
+
+  padding: var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  color: var(--ocu-on-surface-variant);
+  text-align: left;
+}
+
+.ocu-log-hub-td {
+  padding: var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.ocu-log-hub-last {
+  width: 50%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ocu-log-hub-last-time {
+  @include typo.ocu-type('code');
+
+  margin-right: var(--ocu-space-2);
+}
+
+.ocu-log-hub-last .ocu-log-chip {
+  margin-right: var(--ocu-space-2);
+}
+
+.ocu-log-hub-count {
+  margin-right: var(--ocu-space-2);
+}
+
+.ocu-log-hub-cap,
+.ocu-log-hub-reason,
+.ocu-log-hub-none {
+  @include typo.ocu-type('caption');
+
+  display: block;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-log-hub-denied {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-log-hub-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ocu-space-3);
+}
+
+.ocu-log-hub-notice-line {
+  margin: 0;
+}
+
+// The timeline's rows reuse the log viewer's fixed row, with a source column in place of the pid.
+.ocu-log-hub-rows {
+  min-width: 48rem;
+}
+
+.ocu-log-hub-row {
+  grid-template-columns: 190px 200px 110px minmax(0, 1fr);
+}
+
+.ocu-log-hub-row.ocu-log-hub-row-explain {
+  grid-template-columns: 190px 200px 110px minmax(0, 1fr) auto;
+}
+
+// The entry a log viewer was opened at from the hub's timeline (Story 16.9): marked by a leading
+// rule in the secondary role as well as a surface change, never by colour alone.
+.ocu-log-row-current {
+  background: var(--ocu-surface-container-high);
+  box-shadow: inset 3px 0 0 var(--ocu-secondary);
+}
+
+.ocu-log-row-current:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-log-viewer-entry-gone {
+  margin: var(--ocu-space-2) var(--ocu-space-4) 0;
+}

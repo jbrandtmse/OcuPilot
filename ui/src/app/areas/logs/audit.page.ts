@@ -49,7 +49,8 @@ interface AuditView {
  * until it answers"). One read runs at once with no criteria, so the instance applies the declared
  * default -- the last 24 hours, marker off (AD-36, AD-46) -- and the form then shows the values the
  * read applied. A return visit re-runs the person's last Search, or the default when there was
- * none. An agent arrival (`ScreenArrivals`) runs exactly the search it carries instead, once.
+ * none. An arrival (`ScreenArrivals`), from the agent or the log hub, runs exactly the search it
+ * carries instead, once.
  *
  * **Criteria travel on the declared read, never on the command bar** (AD-36). The form's values are
  * sent as the descriptor's own `read.criteria` parameters, so the read tool sends the same search;

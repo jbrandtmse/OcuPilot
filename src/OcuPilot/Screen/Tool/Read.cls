@@ -77,7 +77,8 @@ ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Bo
 }
 
 /// <p>The result <method>View</method> answers: <code>{fields, rows, truncated}</code>, plus
-/// <code>criteria</code> for a read that declares them.</p>
+/// <code>criteria</code> for a read that declares them and <code>sources</code> for a composed
+/// read (AD-36 as amended).</p>
 ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Quit {
@@ -89,7 +90,8 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
             "rowsSent": {"type": "integer", "description": "How many rows this result carries."},
             "rowsAvailable": {"type": "integer", "description": "How many rows the filtered view held before the row cap of this tool; the row cap of the read itself may already have limited it."},
             "truncatedFields": {"type": "array", "items": {"type": "string"}, "description": "Field names whose value was shortened in this result, if any."},
-            "criteria": {"type": "object", "description": "The value each server-search criterion of this read applied, keyed by criterion; an empty string is an unset bound. Present only on a read that declares criteria."}
+            "criteria": {"type": "object", "description": "The value each server-search criterion of this read applied, keyed by criterion; an empty string is an unset bound. Present only on a read that declares criteria."},
+            "sources": {"type": "array", "items": {"type": "object"}, "description": "One summary per source a composed read reads, in side-bar order: its route, whether it was shown, the privilege it requires when not, its entries in the composed read before this tool's own filter and row cap, whether it was cut, and its newest entry. Present only on a composed read."}
         },
         "required": ["fields", "rows", "truncated"],
         "additionalProperties": false
@@ -155,7 +157,7 @@ ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Pr
         If tMaxLength > 0 Do tProperty.%Set("maxLength", tMaxLength, "number")
         If tKind = "datetime" {
             Set tHours = tField.%Get("defaultHoursAgo")
-            Set tOmit = $Select(tHours > 0: "Omit to use the screen's default (" _ tHours _ " hours back); an empty string leaves the bound unset.", 1: "Omit it to leave that bound unset.")
+            Set tOmit = $Select(tHours > 0: "Omit to use the screen's default (" _ tHours _ $Select(tHours = 1: " hour", 1: " hours") _ " back); an empty string leaves the bound unset.", 1: "Omit it to leave that bound unset.")
             Do tProperty.%Set("description", "A server-search criterion, as instance local time in the form YYYY-MM-DD HH:MM:SS. The time part is required; a date alone is refused before the search runs. " _ tOmit)
         } ElseIf tKind = "choice" {
             Do tProperty.%Set("description", "A server-search criterion. One of the listed values, spelled exactly; any other value is refused before the search runs.")
@@ -238,6 +240,8 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
         ; The criteria the read applied, so the model can hand the same search to the screen it
         ; opens (AD-11, AD-36).
         If $IsObject(tFetched.%Get("criteria")) Do pResult.%Set("criteria", tFetched.%Get("criteria"))
+        ; A composed read's per-source summary rides beside its rows, as on the screen's route.
+        If $IsObject(tFetched.%Get("sources")) Do pResult.%Set("sources", tFetched.%Get("sources"))
         Set pHttpStatus = 200
         Set pFault = ""
     } Catch ex {

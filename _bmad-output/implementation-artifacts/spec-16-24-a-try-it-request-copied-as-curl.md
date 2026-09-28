@@ -1,0 +1,242 @@
+---
+title: 'Story 16.24: A try-it request, copied as curl'
+type: 'feature'
+created: '2026-09-27'
+status: 'ready-for-dev'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
+warnings: ['oversized']
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** The try-it console (Story 16.1) sends a request but gives no way to take it to a terminal, a script or a ticket (owner survey 2026-09-27: IRIS Admin Deck offers every call as curl).
+
+**Approach:** Beside Send, **Copy as curl** builds one POSIX curl command, in the browser, for the request the console's form composes. The command carries the method, the absolute URL with its query, the console's own headers and the body. It is written to the clipboard through the shell's one clipboard routine, and nothing is sent. The tab's access token and every value the record masks read as `<name>` placeholders, and a note beside the control says so. A request the console refuses to send is refused for copy by the same `refuseRequest`, with the same sentence.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- The command is built from the `ComposedRequest` that `composeRequest` answers for the form as it stands, the one Send uses. It is built in the browser and **sends nothing**: no `fetch`, no dialog, no `/api/ocupilot` call. The command never reaches screen context, a tool, the ledger or a log line (AD-57 (4)).
+- **Format, one line, one space between arguments:**
+  - `curl`;
+  - `--globoff` when the URL holds `[`, `]`, `{` or `}`;
+  - `--head` for HEAD, or `--request '<METHOD>'` for every other verb;
+  - `'<URL>'`;
+  - one `--header '<Name>: <value>'` per header, in the order the console sends them: the declared headers the form filled, then any `Content-Type` the console adds, then `Authorization` last;
+  - `--data-raw '<body>'` when a body is sent.
+- **Quoting.** Every argument that is not one of the option names above is single-quoted, with each `'` inside written `'\''`, so a POSIX shell hands curl each value byte for byte.
+- **URL** is `request.url`, the URL the console sends, except that each secret-named path or query value reads `<name>`. With no such value it equals `request.url` exactly.
+- **Body** is the body the console sends, byte for byte, with two exceptions:
+  - in a JSON-object body, each top-level member the credential pattern names reads `"<Name>"`, and such a body is re-serialized as the record's masking serializes it;
+  - in a form body, each secret-named value reads `<name>`.
+- **Masked positions are the record's (AD-57 (4)), with `<name>` where the record shows the mask.** `Authorization` is always `Bearer <AccessToken>`, and a declared header of that name is dropped, as Send drops it. Every other header, query parameter, path parameter, form value and top-level JSON member whose name `isSecretName` matches reads as its placeholder. As in the record, nested members and non-JSON bodies are not masked.
+- **Refused exactly when Send is**, with the same sentence:
+  - the cases are `refuseRequest` answering `own-application` or `admin-write`, the per-operation no-address refusal, and a traversal field;
+  - Copy is drawn `aria-disabled="true"`, `aria-describedby` the refusal line (or the traversal error), and a press writes nothing;
+  - `curlCommand` asks `refuseRequest` itself, the one function, never a second copy of the rule;
+  - a request in flight does not block the copy.
+- **Clipboard.** The copy writes through `copyText` (`shell/copy-control.ts`, Story 14.1). The polite status then reads "Copied". When neither route copies, it reads the clipboard sentence (EXPERIENCE.md :269), and the command is shown in a `pre` on the code surface so it can be selected. A form edit or another document clears both.
+- **Note.** `tryItCurlNote` is drawn beside the control while the copy is offered, and it describes the control.
+- **Strings.** Three new strings: "Copy as curl", "<AccessToken>" and the note. They are folded into EXPERIENCE.md :574 **in place** (993 lines before and after), and appended to `strings.ts` under `/** EXPERIENCE.md:574 */`. "Copied", the clipboard sentence and the four refusals are reused.
+
+**Never:**
+
+- No ObjectScript, route, port, tool, governance key, descriptor or suggested-prompt change. No new dependency, lazy route or `@defer`.
+- The copy never carries the access token, the refresh token or a secret-named value. It writes no browser-added header (`Accept`, `User-Agent`, `Origin`, `Sec-Fetch-*`), and it never opens the write confirmation, because nothing is sent.
+- `openapi-viewer.page.spec.ts` stays untouched, as in 16.1.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|--------------|---------------------------|----------------|
+| Admin read | `/api/admin`, `GET /v2/web-apps` | `curl --request 'GET' '<origin>/api/admin/v2/web-apps' --header 'Authorization: Bearer <AccessToken>'`; "Copied"; no request | none |
+| Write with body | `PUT` on a non-admin app, header `X-A: 1`, body `{"n":"it's"}` | `… --header 'X-A: 1' --header 'Content-Type: application/json' --header 'Authorization: Bearer <AccessToken>' --data-raw '{"n":"it'\''s"}'`; no dialog, nothing sent | none |
+| HEAD | any HEAD | `--head` in place of `--request` | none |
+| Secrets | query `apiKey`, header `X-Token`, path `{token}`, body `{"Password":"p","Name":"n"}`, form `password` | `apiKey=<apiKey>`, `X-Token: <X-Token>`, `/<token>`, body member `"Password": "<Password>"`, form `password=<password>`; neither the typed values nor the tab's token appear | none |
+| No secret in URL | path value `a'b`, query `O'Brien`, unicode, a `/x/../y` literal | URL argument equals `request.url` | none |
+| Hostile values | `'`, `''`, `"`, `$HOME`, `$(id)`, a backtick pair, `\`, trailing `\`, LF, CR, TAB, `;&|<>*?~!#`, U+00E9, U+1F600, empty, 100,000 characters (NUL-free) | through `/bin/sh` with a `curl` function, each argument arrives byte for byte, and nothing else runs | none |
+| `@` body | body `@/etc/passwd` | `--data-raw` sends it as text, never a file | none |
+| Glob characters | base path holding `[` or `{` | `--globoff` precedes the URL | none |
+| Refused | `/api/admin` DELETE; `/API/OcuPilot/x`; `..` path value; off-origin `basePath` | Copy `aria-disabled`, described by the same sentence as the refusal line or field error; clipboard untouched | none |
+| Clipboard fails | insecure context and `execCommand` false | status reads the clipboard sentence; `pre[data-ocu-try-it="curl"]` holds the command | a form edit clears both |
+
+</intent-contract>
+
+## Code Map
+
+- `ui/src/app/areas/web-applications/try-it.ts`:
+  - `ComposedRequest` :59-73;
+  - `composeRequest` :258-352: the segment `fill(masked)` :282-293, the query/header/form loop :307-321, `url` via `new URL` :323-331, `displayUrl` :332-333, the body :335-346;
+  - `maskBody` :233-247, `refuseRequest` :224, `maskedRecord` :360-366 (its `authorization` filter).
+- `ui/src/app/areas/web-applications/try-it.store.ts`:
+  - options :45-49; `send` :162-170 is the pattern for `copyCurl`; `reset` :188-194;
+  - `setValue`/`setBody` :119-132; the header loop in `dispatch` :211-217; `state()` :247-254.
+- `ui/src/app/areas/web-applications/openapi-viewer.page.ts`:
+  - the `TryItStore` provider :129-135 (`DOCUMENT` is already injected at :334);
+  - the refusal/Send template :273-287, record/answer :288-304;
+  - `tryItView` :529-583 (`refused` :533-539, `traversalIndex` :540, `errorId` :551); `onSend` :598-605 is the handler pattern;
+  - `@if` conditions stay paren-free member references (client-lint).
+- `ui/src/app/shell/copy-control.ts` :65-77 `copyText(doc, text)`: the one clipboard routine (secure-context API, then the selection route); never rejects.
+- `ui/src/app/core/secret-names.ts` `isSecretName`; `ui/src/app/core/proposal-view.ts:396` `MASKED_VALUE`.
+- `ui/src/app/core/strings.ts`:
+  - `:171-175` holds the copy words (`EXPERIENCE.md:269`);
+  - `:2950-2973` holds the `tryIt*` keys (`:574`);
+  - append after `logHubPrompt3`, before `} as const`.
+- EXPERIENCE.md (`_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`):
+  - :574 is the 16.1 console row;
+  - :269 is the copy-control row;
+  - `ui/tools/strings.test.mjs` :757 pins every citation; values must be unique, and angle brackets balanced.
+- `ui/src/styles/_components.scss` :6660-6724 holds the try-it rules; `.ocu-try-it-actions` :6684 has no gap. Append at the file's end (7197 lines). A control inside `[aria-disabled="true"]` is exempt from the DW-1337 contrast check (`browser/structural-walk.mjs:468`).
+- Tests to extend or copy from:
+  - `ui/src/app/areas/web-applications/openapi-try-it.page.spec.ts`: `mount`, `opened`, `type` and `stubFetch` :60-153;
+  - `ui/src/app/shell/code-block.spec.ts` :39-60: the `secureClipboard` and `execCommand` stubs;
+  - `ui/browser/openapi-try-it.browser-spec.mjs`: `atDocument` :61, `openConsole` :77, `assertStructure` :105;
+  - `ui/browser/copy-out-draft.browser-spec.mjs`: `CLIPBOARD_PERMISSIONS` :54, `overridePermissions` :181, `readText` :210.
+- `ui/angular.json:54` `maximumWarning: "2004kB"`: a kB is 1000 B here (`@angular/build` `BYTES_IN_KILOBYTE`), so the headroom is about 1,310 B. `ui/tools/angular-json.test.mjs` :367-381 pins the literal, and `build-output.test.mjs` :168 measures the emitted total against it.
+
+## Tasks & Acceptance
+
+**Execution:**
+
+- `ui/src/app/areas/web-applications/try-it.ts`:
+  - extract `sentHeaders(request)` (the declared headers minus any `Authorization`, in order), used by `maskedRecord`, the store's `dispatch` and the builder;
+  - `composeRequest` also answers `curlUrl` (built through the same `new URL`, each secret-named path or query value in place as `<name>`, the parser's encoding of each placeholder put back) and `curlBody` (per the Boundaries);
+  - add `shellQuote(value)` and `curlCommand(request): {kind:'ok', command} | {kind:'refused', refusal}`, which asks `refuseRequest(request.method, request.url)` first.
+- `ui/src/app/areas/web-applications/try-it.store.ts`:
+  - add the option `copyText: (text) => Promise<boolean>`;
+  - add `copyCurl(key, request)`: build, write, and record `{copied, command}` per console, dropping the outcome if the console was reset meanwhile; it never calls `fetch`;
+  - add `copyOutcome(key)`;
+  - `setValue`, `setBody` and `reset` clear the outcome;
+  - `dispatch` uses `sentHeaders`.
+- `ui/src/app/areas/web-applications/openapi-viewer.page.ts`:
+  - the provider passes `copyText: (text) => copyText(doc, text)`;
+  - the template: the refusal line gains an id and stays; Send is drawn only when there is no refusal; Copy as curl (`ocu-button-text ocu-try-it-copy`, `data-ocu-try-it="copy"`) always follows it in `.ocu-try-it-actions`, with an always-present `role="status"` span (`copy-status`); the note (`curl-note`) is drawn while the copy is offered; `pre.ocu-try-it-code[data-ocu-try-it="curl"]` is drawn on failure;
+  - `tryItView` gains `refusalId`, `offersSend`, `copyRefused` (`composition.kind !== 'ok' || refused !== ''`), `copyDescribedBy`, `copyNoteId`, `copyStatus` and `copyFallback`;
+  - add `onCopyCurl(view)`, mirroring `onSend`.
+- `ui/src/app/core/strings.ts`: append `tryItCopyCurl: 'Copy as curl'`, `tryItCurlAccessToken: '<AccessToken>'` and `tryItCurlNote: 'The command leaves out your access token and every secret value: each reads as a name in angle brackets for you to replace.'`, each under `/** EXPERIENCE.md:574 */`, with a one-line comment naming the reused keys.
+- EXPERIENCE.md :574 is edited in place. Its first cell gains ` · "Copy as curl" · "<AccessToken>" · "The command leaves out your access token and every secret value: each reads as a name in angle brackets for you to replace."`. Its second cell gains, before ` |`: `; and Copy as curl beside Send (Story 16.24, AD-57): one POSIX curl command for the request the form composes, put on the clipboard with nothing sent, `<AccessToken>` standing in for the tab's access token after `Bearer` and each value the record masks reading as its name in angle brackets, which the note beside the control says; it announces as the code block's copy control does (`:269`), shows the command selectable on the code surface when the clipboard fails, and for a request the console refuses is `aria-disabled` and described by the same refusal [AMENDED 2026-09-27 - Story 16.24]`. There is no double-quoted text in that cell, and `wc -l` stays 993.
+- `ui/src/styles/_components.scss`: append a Story 16.24 block with `.ocu-try-it-actions { flex-wrap: wrap; align-items: center; gap: var(--ocu-space-2); }` and `.ocu-try-it-copy[aria-disabled='true']` in the Send-disabled idiom (tokens only).
+- `ui/tools/try-it-curl.test.mjs` (new): cover every matrix row except the browser-only ones, including:
+  - AC3's `/bin/sh` round trip: `execFileSync('/bin/sh', [], {input})`, with the script on stdin (Linux caps one argument at 128 KiB); a `curl()` function printing each argument NUL-terminated; the hostile corpus in each of header, path, query and body;
+  - the mask-position parity with `maskedRecord`;
+  - the store: `fetch` is never called, the outcome is recorded, a refused copy never calls `copyText`, and an edit or a reset clears the outcome.
+- `ui/src/app/areas/web-applications/openapi-try-it.page.spec.ts`: add a `describe` for AC1 (exact written text, "Copied", zero fetches), AC2, AC4 (each refusal, described by the same element or sentence), AC5 and "a write opens no dialog".
+- `ui/browser/openapi-try-it.browser-spec.mjs`: extend the header list, and add the following:
+  - AC1 on `/api/admin` `GET /v2/web-apps`: Send, then Copy; the clipboard equals the exact command and holds no token; no request other than `/api/ocupilot/refresh` is issued by the press; the command, run by `/bin/sh` with real curl and `<AccessToken>` replaced by the Bearer captured from the Send, answers the JSON the wire carried (curl on PATH is required); `assertStructure` passes with "Copied" shown;
+  - in the existing admin-DELETE test: Copy is `aria-disabled` and described by `tryItAdminWrite`; with a sentinel in the clipboard, a press leaves it.
+- Only if `npm run build`'s initial total exceeds 2,004,000 B: `ui/angular.json` plus the `ui/tools/angular-json.test.mjs` literal and its comment line, re-based under DW-1166 to 5% above the measured total, rounded up to the next kB. Stop and ask above 3800kB.
+
+**Acceptance Criteria:**
+
+- Given `/api/admin`'s document on the throwaway with the `GET /v2/web-apps` console open, when the person presses Copy as curl, then:
+  - the clipboard holds exactly `curl --request 'GET' '<origin>/api/admin/v2/web-apps' --header 'Authorization: Bearer <AccessToken>'`;
+  - "Copied" is announced, and no request leaves the page;
+  - that command, run by `/bin/sh` with the token filled in, answers the JSON the console showed.
+- Given a request carrying a secret-named query value, header, path value and top-level body member, when it is copied, then:
+  - each position the record masks reads `<name>`, and the token reads `Bearer <AccessToken>`;
+  - the command holds neither the typed secrets nor the tab's token;
+  - the control is described by the note.
+- Given each hostile value in a header, a path parameter, a query parameter and the body, when the command runs in `/bin/sh` against a `curl` function, then every argument equals the one the console would send, byte for byte, and nothing else runs.
+- Given a request the console refuses (admin write, an own application by any spelling, a traversal field, no address), when Copy as curl is pressed, then the control is `aria-disabled`, it is described by the same sentence the console shows, the clipboard is unchanged, and nothing is sent.
+- Given a clipboard that refuses both routes, when Copy as curl is pressed, then the clipboard sentence shows with the command selectable on the code surface, and a form edit clears them.
+- Given this change, when `npm run test:tools` runs, then the three keys resolve to literals on EXPERIENCE.md :574, the file has 993 lines, and no citation moved.
+- Integration (Rule 1): Given the deployed bundle, when `OpenApiViewerPage` handles a Copy as curl press, then it reaches `curlCommand` through `TryItStore.copyCurl`, and the clipboard text of the first AC is its observable effect in a real browser.
+
+## Spec Change Log
+
+- 2026-09-28T06:00Z, lead spec gate: the masking decision is accepted as planned (the copy masks everything the request record masks, AD-57 item 4; safer than AC2's minimum and consistent with AD-59's `<Name>` convention). AD-57's Binds and item 5 are written into the spine by the lead in this gate's commit; the implement stage does not write them. `ui/angular.json` (and `ui/tools/angular-json.test.mjs`, in footprint) may change only for a DW-1166 re-base; the lead reports `ui/angular.json` as a footprint extension if touched.
+
+## Review Triage Log
+
+## Design Notes
+
+**Decision, flagged for the spec gate: what is masked.** AC2 names "the session's access token, or any header the console masks". The record also masks secret-named query, path, form and top-level body values (AD-57 (4)). The spec masks all of them. The reasons:
+
+- a command meant for "a ticket" must not carry a typed password;
+- the one existing copy-a-command surface puts `<Name>` at every name the credential pattern matches (AD-59);
+- Conventions › Secrets keeps secrets write-only.
+
+The other reading would copy body and query secrets verbatim. That reading is one line in `curlCommand` and a matrix row. The spine change below binds the choice.
+
+**Format choices.**
+
+- `--data-raw` rather than `--data-binary`, because the latter reads a leading `@` as a file.
+- `--head`, because `--request 'HEAD'` makes curl wait for a body.
+- `--globoff`, because curl would expand `[]{}`.
+- One line, because a trailing space after a line-continuation backslash breaks a pasted command.
+- Long option names, which read clearly in a ticket.
+- The refused control is `aria-disabled`, not hidden, so that "asks to copy" is possible and the reason is announced (the gated-control rule).
+
+**Named limits** (each `wontfix-theoretical` unless made real):
+
+- A raw U+0000 cannot travel in a POSIX argument. It can reach only a typed body, where it is invalid JSON.
+- A body above Linux's 128 KiB per-argument limit fails at exec there (inference).
+- A header value holding a line break, or a header the Fetch standard forbids a page to set (`Cookie`, `Host`, `Sec-*`), is written as typed. The console itself cannot send the first, and the browser drops the second (inference).
+- `--data-raw` needs curl 7.43.0 or later (inference).
+
+**Spine change for the lead (Rule 20).** It does not contradict AD-57's Rule. Add `Story 16.24` to AD-57's Binds, and append:
+
+> 5. **Copy as curl** [AMENDED 2026-09-27, Story 16.24 spec gate, Rule 20]. The console may put the request its form composes on the clipboard as one POSIX curl command, built in the browser and sending nothing. It is refused whenever Send is, by the same function and with the same reason (item 2). It masks what the record masks (item 4): the tab's access token reads `Bearer <AccessToken>`, and each header, query or path parameter, form value or top-level body member the Conventions › Secrets pattern names reads `<name>`, so no secret value reaches the clipboard. Every other value is written as sent, each argument single-quoted for a POSIX shell. The command never reaches the model, a tool result, screen context, the ledger or a log line.
+
+**Governing ADs:**
+
+- AD-57 (items 1, 2 and 4, with the proposed item 5); AD-10's pointer to AD-57;
+- AD-11 rule 4 and AD-47 (the copy issues no request, and evaluates nothing);
+- AD-19 (the outcome lives in the store), AD-20 (no API call), AD-28 (the token is never copied);
+- AD-24 and AD-36 (context unchanged), AD-39 (the reasons are reused), AD-1 and AD-22 (no tool, no key), AD-5 (no descriptor change; the viewer keeps its prompts);
+- Conventions › Secrets, › Client asset homes and Rule 14.
+- AD-59 binds write tools' drafts, not this surface. Its `<Name>` convention is followed.
+
+**Integration.**
+
+- **Consumes:**
+  - 16.1's `composeRequest`, `refuseRequest`, `maskedRecord` and `TryItStore`;
+  - 14.1's `copyText`;
+  - `isSecretName`.
+- **Consumed-by:** `OpenApiViewerPage` in this story. No later story is planned.
+
+**Bundle.** The headroom is about 1,310 B, so crossing the warning is likely. If it is crossed, the warning is re-based under DW-1166 (last task).
+
+**Footprint.**
+
+- All paths are Epic 16's, except `ui/angular.json`, which is uncontended; report it under `footprint_extensions` if it is touched.
+- Existing-line edits: `try-it.ts`, `try-it.store.ts`, the page, EXPERIENCE.md :574, and the `angular-json.test.mjs` literal (only on a re-base).
+- `strings.ts` and `_components.scss` are append-only.
+
+**Ledger.** The inbox is empty. There is no ObjectScript change, because the story is browser-only by AD-57.
+
+## Verification
+
+**Commands** (from `ui/`; browser runs export `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`):
+
+- (loop) `node --test tools/try-it-curl.test.mjs tools/try-it.test.mjs tools/credential-lists.test.mjs tools/strings.test.mjs` -- expected: green.
+- (loop) `npx ng test --include src/app/areas/web-applications/openapi-try-it.page.spec.ts` -- expected: green.
+- (loop) `npm run build` -- expected: every prebuild checker passes. Report the initial total, and re-base per the last task if it is over 2004kB.
+- (loop) `docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `node --test --test-concurrency=1 browser/openapi-try-it.browser-spec.mjs browser/a11y-structural-invariants.browser-spec.mjs` -- expected: green in both themes with no new baseline key.
+- (loop) `bash scripts/lint-docs.sh` and `wc -l` on EXPERIENCE.md -- expected: clean, and 993.
+- (once, before dev_complete) `npm test` -- expected: green, with the bundle at or under `maximumWarning`.
+- There is no ObjectScript sweep, because no ObjectScript changes. The full browser suite runs in CI.
+
+**Mutations to record** (Rule 19, one per AC, observed red and reverted byte-identical):
+
+- `copyCurl` calls `dispatch` → the store's "sends nothing" test.
+- The real token goes into the copied `Authorization` → the page AC2 case and browser AC1.
+- Double quotes replace single quotes → the `/bin/sh` corpus.
+- `refuseRequest` is dropped from `curlCommand` → the node refusal case. Copy is drawn without `aria-disabled` → the component AC4 case.
+- `copyFallback` is left empty → the component clipboard-failure case.
+- `tryItCurlNote` is reworded → `strings.test.mjs`.
+- `onCopyCurl` is unbound, then the bundle rebuilt and redeployed → browser AC1.
+
+## Auto Run Result
+
+Plan pass, 2026-09-27. Spec written and checked against the READY FOR DEVELOPMENT standard; halted after planning as directed. No code changed.
+
+Status: ready-for-dev
+Blocking condition: none

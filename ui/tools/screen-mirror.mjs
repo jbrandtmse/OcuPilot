@@ -933,7 +933,10 @@ export const SOURCE_STATE = 'state';
 export const SOURCE_MGMNT = 'mgmnt';
 export const SOURCE_LOGSOURCE = 'logsource';
 export const SOURCE_PATH = 'path';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH];
+
+/** The log hub's composition of its area's listed screens' reads (AD-36 as amended, Story 16.9). */
+export const SOURCE_TIMELINE = 'timeline';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1149,7 +1152,7 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}' or '${SOURCE_PATH}', the five sources a declared read names (AD-36)`
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}' or '${SOURCE_TIMELINE}', the six sources a declared read names (AD-36)`
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1180,6 +1183,12 @@ export function readProblem(declaration) {
     if (declared !== undefined) {
       return `read.source.${declared} is declared on a path source, which answers the allowed directories whole (AD-36)`;
     }
+  }
+  // AD-36 as amended (Story 16.9): a timeline composes its area's listed screens' own reads, so its
+  // shape is fixed rather than declared piecemeal.
+  if (source.port === SOURCE_TIMELINE) {
+    const timelineFault = timelineProblem(declaration);
+    if (timelineFault !== null) return timelineFault;
   }
   // A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so it
   // lists no parents. It may take its one criterion from the route id, and pair a rowGet keyed by
@@ -1370,6 +1379,83 @@ export function readProblem(declaration) {
   return null;
 }
 
+/** The areas a `timeline` read may compose, byte for byte `OcuPilot.Screen.Registry`'s `TIMELINEAREAS`. */
+export const TIMELINE_AREAS = ['logs'];
+
+/** The fields a `timeline` read declares, in order: the row every member is projected to. */
+export const TIMELINE_FIELDS = ['time', 'source', 'severity', 'text', 'id'];
+
+/**
+ * What is wrong with `declaration`'s `timeline` read, or `null` (AD-36 as amended, Story 16.9):
+ * it is declared in one of `TIMELINE_AREAS`, its `endpoint` is that area's key, its `type` is
+ * `LIST`, its source declares no `rowGet`, `forEach`, `query` or `parts`, its `fields` are exactly
+ * `TIMELINE_FIELDS`, and its `criteria` is exactly one `datetime` criterion `since` carrying
+ * `defaultHoursAgo` and no `atOrAfterField`, with no marker. `OcuPilot.Screen.Registry.TimelineProblem`
+ * returns the same sentences, and `OcuPilot.Test.ReadSourceCorpus` is the corpus both engines run.
+ */
+export function timelineProblem(declaration) {
+  const { read } = declaration;
+  const { source } = read;
+  const area = declaration.area;
+  if (!TIMELINE_AREAS.includes(area)) {
+    return `read.source.port 'timeline' is declared in the '${shown(area)}' area, and a timeline composes the Logs area's own screens alone (AD-36)`;
+  }
+  if (source.endpoint !== area) {
+    return `read.source.endpoint '${shown(source.endpoint)}' is not the screen's own area '${area}', which a timeline source names (AD-36)`;
+  }
+  if (source.type !== 'LIST') {
+    return `read.source.type '${shown(source.type)}' is declared on a timeline source, which composes lists (AD-36)`;
+  }
+  for (const key of ['rowGet', 'forEach', 'query', 'parts']) {
+    if (source[key] !== undefined && source[key] !== null) {
+      return `read.source.${key} is declared on a timeline source, which composes its members' own reads and issues none of its own (AD-36)`;
+    }
+  }
+  if (!Array.isArray(read.fields) || read.fields.join(',') !== TIMELINE_FIELDS.join(',')) {
+    return 'read.fields on a timeline source are not exactly time, source, severity, text and id, the row every member is projected to (AD-36)';
+  }
+  const criteria = read.criteria;
+  const bound = isObject(criteria) && Array.isArray(criteria.fields) && criteria.fields.length === 1 ? criteria.fields[0] : null;
+  const boundOk =
+    isObject(bound) &&
+    (criteria.marker === undefined || criteria.marker === null) &&
+    bound.param === 'since' &&
+    bound.kind === 'datetime' &&
+    bound.defaultHoursAgo !== undefined &&
+    bound.atOrAfterField === undefined;
+  if (!boundOk) {
+    return "read.criteria on a timeline source is not exactly one datetime criterion 'since' carrying defaultHoursAgo and no atOrAfterField (AD-36)";
+  }
+  return null;
+}
+
+/** Whether `declaration` declares a `timeline` read. */
+function declaresTimeline(declaration) {
+  return isObject(declaration.read) && isObject(declaration.read.source) && declaration.read.source.port === SOURCE_TIMELINE;
+}
+
+/**
+ * What is wrong with the roster's timelines taken together, or `null` (AD-36 as amended): a
+ * timeline's members are its area's listed built screens other than itself, and a member that
+ * declares a timeline read itself is refused. `screens` is `[{className, declaration}]` in roster
+ * order. `OcuPilot.Screen.Registry.TimelineMemberProblem` returns the same sentence.
+ */
+export function timelineMemberProblem(screens) {
+  for (let outer = 0; outer < screens.length; outer += 1) {
+    const declaration = screens[outer].declaration;
+    if (!declaresTimeline(declaration)) continue;
+    for (let inner = 0; inner < screens.length; inner += 1) {
+      if (inner === outer) continue;
+      const member = screens[inner].declaration;
+      if (member.area !== declaration.area) continue;
+      if (member.built !== true || !(Number(member.sideBarPosition) >= 1)) continue;
+      if (!declaresTimeline(member)) continue;
+      return `${screens[outer].className}: timeline member '${member.route}' declares a timeline read itself, and a timeline composes its members' own reads (AD-36)`;
+    }
+  }
+  return null;
+}
+
 /** Whether `privileges` declares the `%DB_IRISSYS` / `READ` pair. */
 function declaresSystemRead(privileges) {
   if (!Array.isArray(privileges)) return false;
@@ -1513,8 +1599,8 @@ export function criteriaProblem(declaration) {
   if (keysFault !== null) return keysFault;
 
   const port = isObject(read.source) ? read.source.port : undefined;
-  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT) {
-    return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin and mgmnt ports alone (AD-21)`;
+  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_TIMELINE) {
+    return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt and timeline ports alone (AD-21)`;
   }
 
   const params = [];
@@ -2677,6 +2763,9 @@ export function buildMirror({
   // does not already pair its own surface, which only the whole roster can say.
   const rowTargetResolutionFault = rowTargetResolutionProblem(screens);
   if (rowTargetResolutionFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${rowTargetResolutionFault}`);
+  // AD-36 as amended (Story 16.9): a timeline's members are the other listed screens of its area.
+  const timelineMemberFault = timelineMemberProblem(screens);
+  if (timelineMemberFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${timelineMemberFault}`);
 
   // `refreshes` / `refreshRates` are defaulted rather than spread verbatim, because `refreshProblem`
   // calls an omitted pair sound and `Base.Refreshes()` answers 0 for one: without these the mirror

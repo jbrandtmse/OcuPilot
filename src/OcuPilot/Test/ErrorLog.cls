@@ -480,7 +480,14 @@ Method TestABadMaxRowsIsRefusedNotDefaulted()
     Do $$$AssertEquals(tHugeStatus, 200, "and a value far above any plausible cap is honoured, because there is no ceiling")
     Do $$$AssertEquals(tHuge.rows.%ToJSON(), tDefault.rows.%ToJSON(), "answering the same rows the default did")
 
-    Set tSC = ..Read("list", ..PreparedNamespace, ..PreparedDate, "", "1", .tOne, .tOneStatus, .tFault)
+    ; A cap of one truncates only a date holding two or more errors, and the newest date need not.
+    Set tWide = ""
+    Set tIterator = tDefault.rows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tDateRow) {
+        If (tWide = "") && (tDateRow.count >= 2) Set tWide = tDateRow.date
+    }
+    Do $$$AssertTrue(tWide '= "", "a date holding two or more errors to cap")
+    Set tSC = ..Read("list", ..PreparedNamespace, tWide, "", "1", .tOne, .tOneStatus, .tFault)
     Do $$$AssertEquals(tOneStatus, 200, "a cap of one is served")
     Do $$$AssertEquals(tOne.rows.%Size(), 1, "one row")
     Do $$$AssertEquals(tOne.truncated, 1, "and reports that it truncated")

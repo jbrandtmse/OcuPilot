@@ -188,6 +188,7 @@ services:
       # discarded, and the test refuses to run anywhere the variable is absent rather than
       # trusting a doc comment to keep it off a development instance.
       # classes: LogOlderFilesWire, LogSecondarySeed, LogSecondaryWire, LogSourceRotation
+      # classes: LogHubWire
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
       # Every class that creates or deletes IRIS principals, or the OAuth 2.0 configuration
       # objects handled the same way, or the instance's file-system access allow-list. Same
@@ -229,7 +230,7 @@ services:
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
-      # classes: PathPort, PathPortPrivilege
+      # classes: LogHubWire, PathPort, PathPortPrivilege
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -239,6 +240,7 @@ services:
       # classes: SecretLeak, SecretStoreProbe
       # It also covers the seeded injection's append-only messages.log line and failed-login audit row.
       # classes: InjectionChannels, InjectionCompromised, InjectionSeed
+      # classes: LogHubErrors
       OCUPILOT_ALLOW_ERROR_SEED: "1"
       # Deletes OcuPilot's own audit event registrations to prove an unregistered triple drops
       # its row, then reinstalls to put them back -- the configuration triple, and the BASELINE

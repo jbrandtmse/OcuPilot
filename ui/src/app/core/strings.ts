@@ -3281,6 +3281,32 @@ export const STRINGS = {
   logAnalyticsViewerPrompt2: 'Summarize the recent analytics log entries by namespace.',
   /** EXPERIENCE.md:585 */
   logAnalyticsViewerPrompt3: 'Which analytics errors need attention?',
+
+  // Story 16.9: the unified log hub -- its label, its two sections, the Sources list's two column
+  // headers, the not-shown notice, and the sentence a log viewer shows when the hub's entry has
+  // left its loaded range.
+  /** EXPERIENCE.md:584 */
+  logHubLabel: 'Unified log hub',
+  /** EXPERIENCE.md:584 */
+  logHubSourcesHeading: 'Sources',
+  /** EXPERIENCE.md:584 */
+  logHubTimelineHeading: 'Timeline',
+  /** EXPERIENCE.md:584 */
+  logHubColumnEntries: 'Entries',
+  /** EXPERIENCE.md:584 */
+  logHubColumnLastEntry: 'Last entry',
+  /** EXPERIENCE.md:584 */
+  logHubNotShown: 'Not shown: <source> \u2014 requires <resource>.',
+  /** EXPERIENCE.md:584 */
+  logViewerEntryGone: 'That entry is no longer in the loaded range.',
+
+  // Story 16.9: the unified log hub's suggested prompts.
+  /** EXPERIENCE.md:585 */
+  logHubPrompt1: 'Which logs recorded errors in the last hour?',
+  /** EXPERIENCE.md:585 */
+  logHubPrompt2: 'What happened just before the most recent error, across every log?',
+  /** EXPERIENCE.md:585 */
+  logHubPrompt3: 'Which log should I open first to investigate, and why?',
 } as const;
 
 /**

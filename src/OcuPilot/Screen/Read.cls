@@ -23,7 +23,9 @@
 /// <file>ui/src/app/core/screen-read.ts</file>'s <code>applyView</code>, because the screen sorts
 /// and filters on the client and a tool runs in-process on the server; both are pinned by the one
 /// corpus in <class>OcuPilot.Test.ReadViewCorpus</class>.</p>
-/// <p><b>A declared read names one of two source kinds</b> (AD-36). An instance endpoint is reached
+/// <p><b>A declared read names one of three source kinds</b> (AD-36), the third being
+/// <code>port: "timeline"</code>, a composition of an area's listed screens' own reads through
+/// <method>TimelineClass</method>. An instance endpoint is reached
 /// through a port: <code>port: "admin"</code> through <method>PortClass</method>,
 /// <code>port: "mgmnt"</code>, the management API, through <method>MgmntPortClass</method>, which is
 /// handed the route's scope as its namespace, and <code>port: "logsource"</code>, an instance log
@@ -170,6 +172,18 @@ ClassMethod PathPortClass() As %String
     Quit "OcuPilot.Port.PathPort"
 }
 
+/// <p>The <code>read.source.port</code> value naming a composition of an area's listed screens'
+/// reads, the log hub's (AD-36 as amended, Story 16.9). Its <code>endpoint</code> is the area key;
+/// <method>TimelineClass</method> composes it.</p>
+Parameter SOURCETIMELINE = "timeline";
+
+/// <p>The class every <b>timeline</b> read is composed through. Overridable so a fixture can reach
+/// <class>OcuPilot.Test.LogHubFixture</class>; production never overrides it.</p>
+ClassMethod TimelineClass() As %String
+{
+    Quit "OcuPilot.Screen.Timeline"
+}
+
 /// <p>The package a <code>state</code> source's <code>endpoint</code> names a class in, trailing
 /// dot included. A source declares the class's short name -- <code>Agent</code> -- and never a
 /// package-qualified one, so no descriptor can point the read at a class outside the kernel's own
@@ -203,8 +217,10 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 
 /// <p>Run <var>pDescriptor</var>'s declared read, bounded by <var>pMaxRows</var>.</p>
 /// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner}</code>, plus
-/// <code>criteria</code> when the read declares criteria and <code>document</code> when a
-/// <code>mgmnt</code> source answered one:
+/// <code>criteria</code> when the read declares criteria, <code>document</code> when a
+/// <code>mgmnt</code> source answered one and <code>sources</code> when a <code>timeline</code> read
+/// composed its members (<method>OcuPilot.Screen.Timeline.Compose</method>, whose rows, cut and
+/// summary pass through unchanged):
 /// <code>fields</code>
 /// the declared field names without the descriptor's <code>context.secretFields</code>, each row an
 /// object carrying exactly those keys (an absent key is <code>null</code>), and at most the cap's
@@ -261,13 +277,14 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Set tRead = $ClassMethod(pDescriptor, "Read")
         Set tSource = $Select($IsObject(tRead): tRead.%Get("source"), 1: "")
         Set tSourceType = $Select($IsObject(tSource): tSource.%Get("type"), 1: "")
-        If '$IsObject(tSource) || ((tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE), tSource.%Get("port")) || ((tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
         Set tForEach = tSource.%Get("forEach")
         Set tTruncated = ""
         Set tApplied = ""
+        Set tSources = ""
         Kill tCutoffs
 
         If tSource.%Get("port") = ..#SOURCESTATE {
@@ -281,12 +298,16 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             }
         } ElseIf tSource.%Get("port") = ..#SOURCELOGSOURCE {
             ; A log file's bounded tail as rows, newest first. It takes no namespace -- the file is
-            ; the instance's, not a namespace's -- and no criteria, so the cap is the whole ask.
-            Set tPortSC = $ClassMethod(..LogSourcePortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            ; the instance's, not a namespace's -- and no criteria, so the cap is the whole ask. The
+            ; port's own cut (a tail that began past the file's first byte, or a merge cut) is a
+            ; truncation this read reports as well (AD-36).
+            Set tPortCut = 0
+            Set tPortSC = $ClassMethod(..LogSourcePortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault, .tPortCut)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit
             }
+            If tPortCut Set tTruncated = 1
         } ElseIf tSource.%Get("port") = ..#SOURCEPATH {
             ; The instance's allowed directories, computed by the port on this call: no namespace,
             ; since the allow-list is the instance's, and no criteria, so the cap is the whole ask.
@@ -295,6 +316,27 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tPortSC
                 Quit
             }
+        } ElseIf tSource.%Get("port") = ..#SOURCETIMELINE {
+            ; AD-36 as amended: the area's listed screens' own reads, composed. The one datetime
+            ; criterion is seeded and checked here, so a bad bound is refused before any member is
+            ; read; the composition's rows, cut and per-source summary are not cut again below.
+            Kill tQuery
+            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
+            If tCriterionProblem '= "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tBound = ""
+            Set tParam = $Order(tQuery(""))
+            If tParam '= "" Set tBound = tQuery(tParam)
+            Set tComposeSC = $ClassMethod(..TimelineClass(), "Compose", tMax, tBound, .tComposed, .pHttpStatus, .pFault, tSource.%Get("endpoint"))
+            If $$$ISERR(tComposeSC) {
+                Set tSC = tComposeSC
+                Quit
+            }
+            Set tAnswer = tComposed.rows
+            Set tTruncated = ''tComposed.truncated
+            Set tSources = tComposed.sources
         } ElseIf tSource.%Get("port") = ..#SOURCEMGMNT {
             ; The management API's rows: the route's own scope travels as the port's namespace,
             ; and a document read also answers the document itself, which rides beside the rows.
@@ -435,6 +477,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Do pResult.%Set("banner", ..BannerKey(pDescriptor))
         If $IsObject(tApplied) Do pResult.%Set("criteria", tApplied)
         If $IsObject($Get(tDocument)) Do pResult.%Set("document", tDocument)
+        If $IsObject(tSources) Do pResult.%Set("sources", tSources)
         Set pHttpStatus = 200
     } Catch ex {
         Set pResult = ""

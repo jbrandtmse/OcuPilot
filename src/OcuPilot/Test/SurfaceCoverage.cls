@@ -78,6 +78,7 @@ XData Coverage
 <screen name="LogAnalyticsViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
 <screen name="LogErrorList" class="OcuPilot.Test.Descriptor" method="TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs"/>
 <screen name="LogEventViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
+<screen name="LogHub" class="OcuPilot.Test.Descriptor" method="TestTheLogHubDeclaresItsComposedRead"/>
 <screen name="LogMessageViewer" class="OcuPilot.Test.Descriptor" method="TestTheConsoleLogViewerDeclaresTheLogSourceTailAndItsOnePair"/>
 <screen name="LogSqlDiagnosticsViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
 <screen name="LogSystemMonitorViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>

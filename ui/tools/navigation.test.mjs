@@ -145,6 +145,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'logs/sqldiagnostics',
       'logs/eventlog',
       'logs/analytics',
+      // Story 16.9: the unified log hub, position 11.
+      'logs/hub',
       'os-management/databases/details',
       'os-management/database-free-space',
       'os-management/databases/volumes',
