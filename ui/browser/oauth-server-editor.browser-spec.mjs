@@ -16,7 +16,7 @@
  *
  * **It refuses the live container.** The configuration, its clients and every probe credential are
  * removed before and after (`OcuPilot.Test.OAuthAuthorizationServerProbe`), and `/oauth2` is left as
- * found.
+ * found, or as the create's save left it (a save creates it where none was).
  *
  * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
  * then `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test
@@ -85,11 +85,20 @@ function clientCount() {
   return Number(irisSession([mark('COUNT', `##class(${PROBE}).ClientCount()`)], ['COUNT']).values.COUNT);
 }
 
+/** Whether the vendor's `/oauth2` web application exists, `'1'` or `'0'`. */
+function oauth2() {
+  const { values, output } = irisSession(['Set $NAMESPACE="%SYS"', mark('WEB', '##class(Security.Applications).Exists("/oauth2")')], ['WEB']);
+  assert.match(values.WEB ?? '', /^[01]$/, `whether /oauth2 exists reads back:\n${output}`);
+  return values.WEB;
+}
+
+/** `/oauth2` as this spec found it, and, once its create has saved a configuration, as that save left it. */
+let oauth2Found = null;
+
 function removeAll() {
   const { values, output } = irisSession([`Set tSC=##class(${PROBE}).RemoveAll(.tLeft)`, mark('LEFT', '$System.Status.IsOK(tSC)_"/"_tLeft')], ['LEFT']);
   assert.equal(values.LEFT, '1/0', `the configuration, its clients and every probe credential are removed:\n${output}`);
-  const web = irisSession(['Set $NAMESPACE="%SYS"', mark('WEB', '##class(Security.Applications).Exists("/oauth2")')], ['WEB']);
-  assert.equal(web.values.WEB, '1', 'and /oauth2 is left in place');
+  assert.equal(oauth2(), oauth2Found, 'and /oauth2 is left as found');
 }
 
 /** Two rendered frames, so a resize or a theme flip has landed before anything is measured. */
@@ -212,6 +221,7 @@ async function editLoaded(page) {
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec creates and deletes the authorization server configuration, so it never runs inside the live container');
   await assertThrowaway(config);
+  oauth2Found = oauth2();
   removeAll();
   browser = await puppeteer.launch(launchOptions(config));
 });
@@ -256,6 +266,8 @@ test('AC1, AC10: Create opens the editor in five tabs, each passes DW-1337, and 
     await fill(page, `${ID}-SupportedScopes-2`, 'profile');
     await check(page, `${ID}-CustomizationRoles--Manager`, false);
     await saveAndSettle(page, config);
+    // The save creates /oauth2 where none was (OcuPilot.Test.OAuthProbe); the delete and the removal leave it.
+    oauth2Found = oauth2();
     await statusLine(page, STRINGS.formSaved);
     await page.waitForFunction((suffix) => new URL(window.location.href).pathname.endsWith(suffix), { timeout: config.navigationTimeoutMs }, `/${EDITOR_ROUTE}/${encodeEntityId(ISSUER)}`);
     const held = stored();

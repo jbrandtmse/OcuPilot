@@ -6,23 +6,35 @@
 # and run by a human at most once; `/epic-cycle` recorded `ci=none` for all sixteen stories
 # before this one.
 #
-# Five jobs, and the split is by what each needs rather than by taste:
+# Seven jobs, and the split is by what each needs rather than by taste:
 #
-#   gates     nothing but a checkout, Node and uv. Every mechanical checker, and the build and
-#             the client suite they gate -- once per Node band `ui/package.json` declares, at
-#             each band's floor, because a suite that runs on one Node only proves one Node.
-#   instance  a throwaway container. The admin API drift check, the ObjectScript suite and the
-#             smoke script, none of which means anything without an installed instance.
-#   browser   a second throwaway container, and the real-browser suite against it, beside
-#             `instance` rather than after it.
-#   images    both stock Community editions at the pinned version: src/OcuPilot/ compiles and the
-#             admin API reports v2 through the port's own version read, then a throwaway on that
-#             edition installs, drift-checks /api/admin, smokes with no --namespace (HSCUSTOM, else
-#             USER) and reads the credentials rung as offered, so no HealthShare-only dependency
-#             can go unnoticed (NFR-13).
-#   package   two throwaway containers with NO NETWORK AT ALL: the distributable IPM archive is
-#             built on the first and loaded on the second, which smoke then reports on. It waits
-#             on nothing, so it runs beside `instance` rather than after it.
+#   gates           nothing but a checkout, Node and uv. Every mechanical checker, and the build
+#                   and the client suite they gate -- once per Node band `ui/package.json`
+#                   declares, at each band's floor, because a suite that runs on one Node only
+#                   proves one Node.
+#   instance-shard  three legs, each with its own throwaway container and its share of the
+#                   ObjectScript suite, run one class at a time. Leg 1 also runs the admin API drift
+#                   check before its share and the smoke script after it, so each runs once.
+#   instance        the roll-up. It reads the legs' records and fails unless every class the
+#                   instance offered ran in exactly one leg, every leg executed a test, and the
+#                   legs succeeded.
+#   browser-shard   three legs, each with its own throwaway container and its share of the
+#                   real-browser spec files, run one file at a time in sorted order.
+#   browser         the roll-up for the browser legs, over the spec files the checkout carries.
+#   images          both stock Community editions at the pinned version: src/OcuPilot/ compiles
+#                   and the admin API reports v2 through the port's own version read, then a
+#                   throwaway on that edition installs, drift-checks /api/admin, smokes with no
+#                   --namespace (HSCUSTOM, else USER) and reads the credentials rung as offered, so
+#                   no HealthShare-only dependency can go unnoticed (NFR-13).
+#   package         two throwaway containers with NO NETWORK AT ALL: the distributable IPM archive
+#                   is built on the first and loaded on the second, which smoke then reports on. It
+#                   waits on nothing, so it runs beside the shards rather than after them.
+#
+# `ui/tools/ci-shards.mjs` gives each leg its share, longest first from `ui/tools/ci-timings.json`,
+# and every leg derives the same split. `node tools/ci-shards.mjs refresh --run <id>`, run from
+# `ui/`, rewrites that file from a finished run's records. The records pass between jobs as this
+# run's own artifacts: item names, test counts and seconds, visible on the run page as its logs are,
+# and pushed to no registry.
 #
 # NOTHING HERE PUBLISHES, LISTS, RELEASES OR PUSHES TO ANY REGISTRY. No Open Exchange step, no
 # `npm publish`, no container push, no GitHub release, no `secrets.` reference of any kind
@@ -109,12 +121,23 @@ jobs:
       - name: document gates
         run: bash scripts/lint-docs.sh
 
-  instance:
-    name: instance
+  # Both long suites stay SERIALIZED inside an instance, for reasons that are not going away:
+  # `.claude/rules/objectscript-testing.md` forbids two test classes at once after the 2026-09-11
+  # race left a probe database mounted with no directory, and `browser.config.mjs` runs one spec file
+  # at a time because `unreadable.browser-spec.mjs` revokes and restores a grant the others depend
+  # on. Each took about 50 minutes on one container in run 36359053662, so the parallelism is across
+  # containers instead: each suite runs as three legs, each against its own fresh throwaway, and
+  # costs only runner-minutes -- free on a public repository.
+  instance-shard:
+    name: instance shard ${{ matrix.shard }}/3
     runs-on: ubuntu-24.04
-    # The instance job ran out its 45 minutes on 2026-09-25 (run 36188837788, 283 of 286 classes in
-    # 43 minutes of suite), so the limit is 60.
-    timeout-minutes: 60
+    # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
+    # minutes of setup, a margin ui/tools/ci.test.mjs holds.
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       # First, before anything else can mask it: the Linux ownership reproduction for the durable
@@ -148,17 +171,32 @@ jobs:
         run: sh scripts/ci-throwaway.sh up
       - name: wait for readiness to report installed
         run: sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/
-      # Before the long suite, so a vendor drift fails in seconds rather than fourteen minutes in:
+      # Leg 1 only, and before its share, so a vendor drift fails in seconds rather than minutes in:
       # the instance's own generated admin API spec against the derived path-and-method table
       # vendored at a named upstream commit (AD-27).
       - name: admin API drift against the vendored table
+        if: ${{ matrix.shard == 1 }}
         working-directory: ui
         run: node tools/admin-spec.mjs --origin http://localhost:52776
-      - name: objectscript suite, one class at a time
+      - name: objectscript suite, this leg's share, one class at a time
         working-directory: ui
-        run: node tools/ci-runner.mjs --container ocupilot-ci
+        run: node tools/ci-runner.mjs --container ocupilot-ci --shard ${{ matrix.shard }}/3 --record ${{ runner.temp }}/ci-records/objectscript-shard-${{ matrix.shard }}.json
+      # Leg 1 only, after its share, where the single job ran it after the whole suite: on an
+      # instance this run installed from this checkout on a scrubbed volume.
       - name: smoke
+        if: ${{ matrix.shard == 1 }}
         run: sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS
+      # Unless cancelled, so a failing leg's record still reaches the roll-up. A leg whose runner
+      # never wrote one fails here as well, and the roll-up names the shard as missing. Artifact names
+      # are per run, not per attempt, so a re-run leg overwrites the record its failed attempt left.
+      - name: upload this leg's record
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ci-record-objectscript-${{ matrix.shard }}
+          path: ${{ runner.temp }}/ci-records/objectscript-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          overwrite: true
       - name: capture the throwaway on failure
         if: ${{ failure() || cancelled() }}
         run: sh scripts/ci-throwaway.sh logs
@@ -166,31 +204,43 @@ jobs:
         if: always()
         run: sh scripts/ci-throwaway.sh down
 
-  # Split out of `instance` on 2026-09-22, measured rather than guessed. In runs 35713724680,
-  # 35724351761 and 35779249963 the instance job took 31-34 minutes and was the whole of CI's wall
-  # clock: `gates` x3, `images` x2 and `package` all finished in 0-4 minutes beside it. Inside it,
-  # the ObjectScript suite took 13.8m and the browser suite 15.9m -- 30 of the 31 -- and both are
-  # SERIALIZED for reasons that are not going away: `.claude/rules/objectscript-testing.md` forbids
-  # two test classes at once after the 2026-09-11 race left a probe database mounted with no
-  # directory, and `browser.config.mjs` runs one spec file at a time because
-  # `unreadable.browser-spec.mjs` revokes and restores a grant the others depend on.
-  #
-  # Neither suite can be made faster without taking a risk those two rules exist to refuse. But
-  # they need nothing from each other: one drives Chrome against its container, the other runs
-  # %UnitTest inside its own. So they run as two jobs against two throwaways, which halves the
-  # wall clock and costs only runner-minutes -- free on a public repository.
-  #
-  # The second throwaway is a full parameterisation of the same script, not a copy: `up` already
-  # takes --dir/--project/--web/--super because the parallel slots needed exactly that, and
-  # `container_name` follows `--project`, which is what OCUPILOT_BROWSER_CONTAINER names.
-  browser:
-    name: browser
+  # The roll-up keeps the name `instance`. Matrix legs cannot pass outputs without colliding, so each
+  # leg uploads its record as an artifact. This job runs unless the run was cancelled -- `always()`
+  # is reserved for teardowns -- and checks the legs' result itself, because a skipped roll-up does
+  # not read as a failure.
+  instance:
+    name: instance
+    needs: instance-shard
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
-    # The whole browser suite ran 29.5 minutes on 2026-09-24 and passed 30 once Story 11.10 joined
-    # Epic 9's editors (run 36041043146: 333 tests green, then the job limit), so the limit has room.
-    # Epics 14 and 16 merged for release 1.0.2 took it to 493 tests and the job past 50 minutes, its
-    # teardown cancelled by the limit after every spec passed (run 36341039223), so the limit is 75.
-    timeout-minutes: 75
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22.22.3
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: 'ci-record-objectscript-*'
+          merge-multiple: true
+          path: ${{ runner.temp }}/ci-records
+      - name: every class ran in exactly one leg
+        working-directory: ui
+        run: node tools/ci-shards.mjs check --suite objectscript --shards 3 --records ${{ runner.temp }}/ci-records --result ${{ needs.instance-shard.result }}
+
+  # Each leg's throwaway is a full parameterisation of the same script, not a copy: `up` takes
+  # --dir/--project/--web/--super because the parallel slots needed exactly that, and
+  # `container_name` follows `--project`, which is what OCUPILOT_BROWSER_CONTAINER names.
+  browser-shard:
+    name: browser shard ${{ matrix.shard }}/3
+    runs-on: ubuntu-24.04
+    # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
+    # minutes of setup, a margin ui/tools/ci.test.mjs holds.
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
@@ -224,18 +274,47 @@ jobs:
         run: sh scripts/wait-readiness.sh --url http://localhost:52780/api/ocupilot/readiness/
       # Both variables, never one: browser.config.mjs carries its own container default, so a run
       # that sets only the origin execs into the OTHER throwaway's container (2026-09-16).
-      - name: browser spec
+      - name: browser spec, this leg's share, one file at a time
         working-directory: ui
         env:
           OCUPILOT_BROWSER_ORIGIN: http://localhost:52780
           OCUPILOT_BROWSER_CONTAINER: ocupilot-browser-ci
-        run: npm run test:browser
+        run: npm run test:browser:shard -- --shard ${{ matrix.shard }}/3 --record ${{ runner.temp }}/ci-records/browser-shard-${{ matrix.shard }}.json
+      - name: upload this leg's record
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ci-record-browser-${{ matrix.shard }}
+          path: ${{ runner.temp }}/ci-records/browser-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          overwrite: true
       - name: capture the throwaway on failure
         if: ${{ failure() || cancelled() }}
         run: sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-browser-ci
       - name: tear the throwaway down
         if: always()
         run: sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci
+
+  # The roll-up keeps the name `browser`, and holds the legs to the spec files this checkout carries.
+  browser:
+    name: browser
+    needs: browser-shard
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22.22.3
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: 'ci-record-browser-*'
+          merge-multiple: true
+          path: ${{ runner.temp }}/ci-records
+      - name: every spec file ran in exactly one leg
+        working-directory: ui
+        run: node tools/ci-shards.mjs check --suite browser --shards 3 --records ${{ runner.temp }}/ci-records --result ${{ needs.browser-shard.result }}
 
   images:
     name: images

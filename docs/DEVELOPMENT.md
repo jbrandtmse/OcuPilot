@@ -438,15 +438,17 @@ indistinguishable from one that passed, and a smoke script is exactly the gate a
 ### What CI runs (Story 1.17)
 
 [.github/workflows/ci.yml](../.github/workflows/ci.yml) is the first place in this repository where a
-gate is run rather than described. Five jobs, split by what each needs:
+gate is run rather than described. Seven jobs, split by what each needs:
 
 | Job | Needs | Runs |
 | --- | --- | --- |
 | `gates` | a checkout, Node and uv | `npm ci`, `npm run build`, `npm test`, `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` — **once per Node band** `ui/package.json` declares (`22.22.3`, `24.15.0`, `26.0.0`, each band's floor), `fail-fast: false`. `ui/tools/ci.test.mjs` holds that list equal to `engines.node` in both directions, so a declared band CI never runs is red |
-| `instance` | a throwaway container | first `scripts/ci-durable-ownership.sh` (the Linux durable-directory reproduction, on named volumes), then the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `ui/tools/admin-spec.mjs`, `ui/tools/ci-runner.mjs`, `scripts/smoke.sh`, then — on failure only — `scripts/ci-throwaway.sh logs`, and always `scripts/ci-throwaway.sh down` |
-| `browser` | a second throwaway container, on 52780/1979 | the client build, the pinned headless Chrome, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `npm run test:browser`, then the same capture and teardown. Runs beside `instance` rather than after it |
+| `instance-shard` | three legs, `instance shard 1/3` to `3/3`, each with its own throwaway container | first `scripts/ci-durable-ownership.sh` (the Linux durable-directory reproduction, on named volumes), then the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, and `ui/tools/ci-runner.mjs --shard k/3` over the leg's share of the classes, whose record it uploads as an artifact. Leg 1 alone also runs `ui/tools/admin-spec.mjs` before its share and `scripts/smoke.sh` after it. On failure only, `scripts/ci-throwaway.sh logs`; always, `scripts/ci-throwaway.sh down` |
+| `instance` | the three legs' records | `ui/tools/ci-shards.mjs check`: red unless every class the instance offered ran in exactly one leg, every leg executed a test, and the legs succeeded |
+| `browser-shard` | three legs, each with its own throwaway container on 52780/1979 | the client build, the pinned headless Chrome, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, and `npm run test:browser:shard -- --shard k/3` over the leg's share of the spec files, one file at a time in sorted order, then the record upload and the same capture and teardown |
+| `browser` | the three legs' records | `ui/tools/ci-shards.mjs check`, holding the legs to the spec files the checkout carries |
 | `images` | both stock Community editions at the pinned `2026.2` | per edition, `scripts/ci-image-compile.sh` first: `src/OcuPilot/` compiles, and the admin API reports v2 through `AdminPort`'s own version read. Then the client build and a throwaway on that edition (52781/1980): `scripts/wait-readiness.sh`, `ui/tools/admin-spec.mjs` over HTTP, and `scripts/smoke.sh` with no `--namespace`, so plain IRIS Community installs, drift-checks and smokes in `USER` (NFR-13) |
-| `package` | two throwaway containers with **no network at all** | the client build, then `scripts/ci-ipm-archive.sh`: the distributable IPM archive is built on one fresh instance and loaded on a second, which `scripts/smoke.sh` then reports on. Runs beside `instance` rather than after it |
+| `package` | two throwaway containers with **no network at all** | the client build, then `scripts/ci-ipm-archive.sh`: the distributable IPM archive is built on one fresh instance and loaded on a second, which `scripts/smoke.sh` then reports on. Runs beside the shard jobs rather than after them |
 
 **The ObjectScript suite runs one class at a time.** `ui/tools/ci-runner.mjs` drives
 `scripts/ci-unit-test.sh` once per class and confirms each run landed — its index, its method
@@ -455,6 +457,15 @@ runs overlapped in wall-clock time. The suite's classes share one instance and o
 fixtures; on 2026-09-11 eighteen were started together, a probe uninstall raced a probe install,
 and the probe database was left mounted over a deleted directory until a human restarted the
 instance.
+
+**Each long suite is split across three containers, never run in parallel inside one.**
+`ui/tools/ci-shards.mjs` gives every leg its share from `ui/tools/ci-timings.json`, longest first,
+so the legs finish close together and each derives the same split; an item with no recorded time
+weighs the median. A test must not depend on what an earlier class or spec file left behind,
+because a leg's neighbours change whenever the split does. When the estimates drift, run
+`cd ui && node tools/ci-shards.mjs refresh --run <run-id>` against a green run and commit the
+rewritten file. Without a shard option, `ci-runner.mjs` and `npm run test:browser` still run the
+whole suite.
 
 **Every tool is pinned, and every script runs under its own shell.** Each action is pinned to the
 full commit SHA its tag resolved to, every job runs on `ubuntu-24.04`, `setup-uv` installs uv

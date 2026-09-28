@@ -4,42 +4,52 @@
 
 ## Goal
 
-The entry has to read as finished rather than as a demo: an operator who evaluates OcuPilot and decides against it can remove it and be left with the instance they started with, the test suite keeps pace with the code through the voting week so a polish-week change cannot silently break a Release 1 screen or a Release 1 agent write, and the package is installable from the community registry in one command against a source the operator already trusts. This is polish-week hygiene ranked after the OAuth editors, and it builds on install machinery that already exists — the installer, its generated roster, the smoke path and CI are all Release 1 work. The optional bonus items that once sat here (a Developer Community article, a video, a short, and re-planning against the technology-bonuses post) were scratched by the owner on 2026-09-19; nothing beyond the entry itself is produced before the deadline.
+The entry reads as finished rather than as a demo. OcuPilot can be removed leaving nothing behind, the test suite keeps pace with the code in CI against a stock image so a later change cannot silently break a Release 1 screen or agent write, and the package is ready for the community registry. Stories 13.1 to 13.3 are done; the registry publish itself stays with the owner. Story 13.4's bonus items were scratched on 2026-09-19. The remaining work is Story 13.5, added after the submission and ranked by the owner as the first story after release 1.0.2. A CI run currently takes about 55 minutes, because two suites each run one item at a time against a single container: the ObjectScript suite (327 classes, about 52 minutes against a 60-minute limit) and the browser specs (100 files, about 48 minutes). Splitting each suite across three parallel shards brings a run to about 20 minutes and keeps both suites inside their limits as they grow.
 
 ## Stories
 
-- Story 13.1: The uninstall hook (**done**)
-- Story 13.2: The test suite grows in CI against a stock image
-- Story 13.3: Publish the package to the community registry (**held by the owner**)
+- Story 13.1: The uninstall hook (done)
+- Story 13.2: The test suite grows in CI against a stock image (done)
+- Story 13.3: Publish the package to the community registry (done; the publish is held by the owner)
+- Story 13.5: CI in parallel - the two long suites split across containers
 
 ## Requirements & Constraints
 
-- **Uninstall removes everything install created, and nothing else** — the web applications, the administrative resource and its role, the audit event types, the scheduled tasks, the protected state database and its guarding resource, and a demo fixture only where install created it. Anything IRIS owns stays, in particular the audit database's rows including OcuPilot's own markers, because those are the instance's record. Guard-then-act in both directions: an already-absent target returns OK. Uninstall then install must reach a working OcuPilot again.
-- **CI runs against a stock image**, executing the ObjectScript unit and HTTP integration suites, the client unit tests, and the endpoint-inventory fixture.
-- **Coverage floor, then growth:** at least one test per OcuPilot API endpoint, the confirmation-binding tests, the state-protection test and the audit-marker round trip.
-- **Coverage is a both-directions check over two closed sets, not a claim about regressions.** The sets are every descriptor the screen registry declares built and every tool the tool registry classifies `write`. A derived-versus-declared check holds membership and test coverage equal in both directions on every push, so a member gained with no pinning test — *and* a pinning test deleted from a member that still exists — fails CI naming the member. "The suite proves nothing regressed" is a negative over an open set and is not implementable; this equality is its mechanical form.
-- **The upstream admin API specification is deliberately not vendored.** The upstream repository declares no license (`license: null`, no LICENSE file) and this repository is public, so copying `mainspec_v2.json` in would be a redistribution nobody has granted. What is vendored is the **derived v2 path-and-method table**, carrying the upstream commit SHA, produced by a checked-in derivation that regenerates it from the upstream document — a set of facts about an API rather than the document describing it. It is cited in `ATTRIBUTIONS.md` with repository, SHA and retrieval date, and that entry states the document itself is not vendored.
-- **Admin API drift is caught by a test, not by a user.** The test diffs the vendored table, pinned at that SHA, against the instance's generated spec (`GET /api/mgmnt/v1/%25SYS/spec/api/admin`), so a 2027.1 change fails naming its source. **The expected diff is not empty** and must be encoded as such: measured 2026-09-19, 185 upstream v2 paths, 185 on the instance, **184 common**, methods identical on all 184, the one difference being `/v2/security/oauth2/revoke` upstream against `/v2/security/oauth2/server/revoke` on the instance. A test written to expect exact equality is wrong the day it lands.
-- **The registry publish is held.** Every acceptance condition must be satisfiable without contacting the registry: the archive comes from the publish path's dry-run form and is proven by installing that local file on a fresh instance that has IPM. Nothing reads, configures, requests or uses a registry credential, and the story is never reported done by having published — a gate closable only by publishing is an **unmet gate, to be escalated rather than closed**. The release is the owner's alone.
-- The archive carries the built Angular bundle, so installing it needs no Node toolchain.
+Story 13.5:
+
+- Each suite runs as **three parallel shard jobs**, and each shard brings up its own throwaway container. Inside a shard, classes and spec files still run **one at a time**. Classes share one instance's fixtures, so one-at-a-time is a rule per instance, not per run.
+- Shard assignment is **deterministic** and balanced by recorded duration, longest first, from a **timings file committed to the repository**. A class or spec file with no recorded time is still assigned, and one documented command refreshes the timings file from a run's output.
+- Each suite has a **roll-up job, still named `instance` and `browser`**. It fails unless every test class the instance offers and every spec file the checkout carries ran in exactly one shard, and it also fails if any shard executed zero tests. Nothing may be dropped silently.
+- A failure names its shard and the failing class or spec. That shard's capture-on-failure step still collects its container's logs.
+- The **admin API drift check** and the **smoke script** each still run once per run, against a freshly installed instance. They run once, not once per shard, and neither is dropped.
+- Without a shard option, `ui/tools/ci-runner.mjs` and `npm run test:browser` behave exactly as they do today: the full suite, one class or file at a time.
+- The pinned workflow rosters in `ui/tools/ci.test.mjs` are updated in the same change. Removing a shard from either matrix must turn a test red.
+- The story's own green run on GitHub-hosted runners takes **25 minutes or less** from its first job's start to its last job's end, with about 20 as the target, and the story records the measured time. Each shard's `timeout-minutes` must be at least 1.5 times its measured share.
+
+These hold from 13.1 to 13.3 and must not regress:
+
+- Uninstall removes everything install created and nothing IRIS owns; the audit rows stay. A target that is already absent returns OK, and running uninstall then install reaches a working OcuPilot.
+- CI runs against a stock image and executes the ObjectScript unit and HTTP integration suites, the client unit tests and the endpoint-inventory fixture. Coverage of built screens and `write` tools is a derived-versus-declared equality in both directions, and a gap fails CI naming the member.
+- The drift check diffs a vendored v2 path-and-method table against the instance's generated spec. The table is derived from upstream and carries the upstream SHA; the upstream document itself is never vendored, because it has no license. **The expected diff is not empty**: one path differs, `/v2/security/oauth2/revoke` upstream against `/v2/security/oauth2/server/revoke` on the instance.
+- Nothing contacts the public registry or reads a registry credential. Publishing is the owner's act alone.
 
 ## Technical Decisions
 
-- **All install and uninstall logic lives in the one `Installer` class** reached from two entry points — the container start path and an IPM invoke. It is never split into a slice.
-- **The class roster the installer compiles and the IPM manifest's resource list are generated from one source**, so the manifest cannot have drifted from what actually installs; a story touching either edits the generator, not both lists.
-- **Both halves of the coverage check are derived.** Screen membership and a tool's read/write classification are read from the registries themselves, never from a hand-kept list beside them, and the covered side is read from the tests CI actually executes. That is what makes the deletion direction detectable.
-- **IPM is a distribution channel, never a runtime dependency.** The shipped image carries no loaded IPM and nothing in the install path may assume it, so anything proving the archive needs an instance where IPM is present — not the default container.
-- **The smoke script is the definition of "installed and working"**, and is also the container's health check and what CI runs. Extending coverage extends that one path rather than adding a parallel notion of "working".
-- **Code lives in the install namespace's normal database; only OcuPilot's globals live behind the guarding resource.** Uninstall tears down a data-only database, but the resource, the role and the privileged routine application reaching it come down with it, in an order that leaves nothing reachable or mounted-but-orphaned.
-- **The endpoint-inventory fixture re-derives itself from the running instance**, and the admin-API dependency is confined to one port file. Drift work extends that fixture rather than adding a second source of truth about the vendor API; the vendored table is the upstream side of one comparison, not a second inventory.
-- **Install is idempotent and upgrade is "install again"**, so any change here stays safe against a fully populated instance and fast enough for every container start.
-- Deleting OcuPilot's own web applications, resource, role or database is a **prohibited agent action** — uninstall is an operator act through the install path, never something the agent can be made to propose.
-- The container image is pinned to an explicit version tag rather than a floating alias; CI additionally runs the stock Community editions and pins every action to a full commit SHA.
+- **Install at container start (AD-17, AD-38).** A container compiles and installs OcuPilot when it starts, never when the image is built, and install is idempotent and fast. Health and readiness read healthy only once this start's install has recorded success, so a container that is up is not necessarily installed. Every shard must therefore wait for readiness to report `installed` before it runs anything, and every shard's install time counts against the time budget.
+- **One smoke path (AD-45).** The smoke script is the single definition of "installed and working". It is also the container health check and what CI runs. Its assertions live in `OcuPilot.Install.Smoke` inside the instance, and a run that executes zero checks is a failure. Readiness is an unauthenticated endpoint on its own web application, and it reports only installed, version and installing.
+- **Pinned image and inventory fixture (AD-27).** The image is an explicit 2026.2 tag, never `latest-cd`. The endpoint-inventory fixture re-derives the admin API inventory from the running instance and fails when the instance disagrees. It is one test class in the shared-out set, so it lands in exactly one shard.
+- **IPM is a distribution channel only (AD-18).** The runtime image has no loaded IPM, and nothing in CI's install path may assume it.
+- **Stack table, CI row:** GitHub Actions on `ubuntu-24.04`. `gates` runs once per `engines.node` band floor. `instance` and `browser` each run against their own throwaway. `images` compiles, installs, drift-checks `/api/admin` and smokes on both stock Community editions, where plain IRIS Community installs into `USER`. Every `uses:` action is pinned to a full commit SHA.
+- **Stack table, CI tool pins:** uv `0.12.9`, Python `3.12.14` (`.python-version`), `markdownlint-cli2@0.23.2` and puppeteer `24.24.0`. New shard jobs keep these pins and the SHA-pinned actions.
+- **The spine is a contract.** Its Stack CI row and CLAUDE.md's CI paragraph both describe a single `instance` job and a single `browser` job. A change to that layout amends both texts in the same change, so neither is left stale.
+- **Browser specs run against the deployed bundle, not the working tree.** Each browser shard's container must carry the bundle built from the same checkout.
 
 ## Cross-Story Dependencies
 
-- The epic depends on **Epic 1 alone** (the installer, the generated roster, the smoke path, the readiness endpoint, CI). It was joined to the parallel run on that basis.
-- Story 13.1 is done, written against the generated roster rather than a hand-kept list, so anything a later epic adds to install stays removable by the same hook.
-- Story 13.2's suite is what proves 13.1's install/uninstall symmetry, and both feed the smoke path CI already runs. Its closed-set check reaches across every epic that declares a screen or a write tool, so it fails on other epics' additions by design.
-- Story 13.3 is sequenced last and held: it consumes the same generated manifest as 13.1 and 13.2, and its dry-run archive is only meaningful once the install path it packages is green.
-- Two ledger items once routed here are **re-owned to Epic 5** and are not this epic's work: the browser spec that holds a detached element handle across a re-render, and the browser suite losing a different single test per CI run. Epic 5 owns `ui/browser/**`.
+- CI runs on every push through `.github/workflows/ci.yml`, which has five jobs: `gates`, `instance`, `browser`, `images` and `package`. `gates` runs once per Node band floor (22.22.3, 24.15.0 and 26.0.0), and `ui/tools/ci.test.mjs` holds that list equal to `engines.node`. CI is the gate over what was committed, where the pre-commit hook checks only the working tree.
+- `concurrency` is `cancel-in-progress`, so a second push cancels the first push's run. Measure the story's time on a run that nothing cancelled.
+- `ci.test.mjs` also pins the arming rosters in `scripts/ci-throwaway.sh`. When a pinned roster reddens, updating it falls to the story that changed it.
+- Locally, each slot has its own throwaway: `ocupilot-ci` on 52776/1975, `ocupilot-b-ci` on 52777/1976 and `ocupilot-c-ci` on 52779/1978. The script refuses the live and slot container names and ports. Tear down only a throwaway you brought up yourself.
+- Never run two test classes at once against one instance. On 2026-09-11 an overlapping run left a probe database mounted with no directory behind it and wedged seven classes. Sharding is safe only because each shard owns its own container.
+- The epic depends on Epic 1 alone: the installer, the generated roster, the smoke path, the readiness endpoint and CI.
+- 13.5 changes which classes and specs share an instance, and in what order. Earlier ledger items showed coupling between suites on a shared instance: a Wallet test deleted shared demo data, and the audit spec's thousand-row seed read 919 after a full sweep. A new grouping can therefore surface a red that depends on order (inference).
