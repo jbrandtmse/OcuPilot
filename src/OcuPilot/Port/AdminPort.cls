@@ -1200,20 +1200,23 @@ ClassMethod PollTask(pGuid As %String, Output pAnswer As %DynamicObject, Output 
 }
 
 /// <p>Delete the task row <var>pGuid</var> names, once it is terminal and no worker still owns
-/// it. Only the row this call queued is deleted. The delete is always attempted, as the caller, in
-/// <code>%SYS</code> (AD-16), and nothing is raised.</p>
-/// <p><b>A <code>&lt;PROTECT&gt;</code> is left alone, silently.</b> A caller who cannot write the
-/// row's database meets one, thrown or answered as error 5002 carrying it (measured on this build),
-/// and logging it would put the vendor's protect text into the log this instance's own console-log
-/// screen displays, once per async read, for a caller who had already been served. The row is left
-/// for <method>SweepOwnTasks</method>. Any other failure is logged.</p>
+/// it. Only the row this call queued is deleted, as the caller, in <code>%SYS</code> (AD-16), and
+/// nothing is raised.</p>
+/// <p><b>A row the caller cannot delete is left alone, silently, for
+/// <method>SweepOwnTasks</method>.</b> The delete is attempted only when
+/// <method>MayDeleteTask</method> answers that the caller may write the row, because a delete that
+/// meets <code>&lt;PROTECT&gt;</code> is recorded in the instance's audit log as an attempt on a
+/// protected global (measured on this build), once per async read, in the log this instance's own
+/// Audit screen displays. A <code>&lt;PROTECT&gt;</code> the delete meets all the same, thrown or
+/// answered as error 5002 carrying it, is not logged either, since the console-log screen displays
+/// that log. Any other failure is logged.</p>
 ClassMethod ForgetTask(pGuid As %String)
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        Set tSC = $ClassMethod(..#ASYNCTASKCLASS, "%DeleteId", pGuid)
+        If ..MayDeleteTask(pGuid) Set tSC = $ClassMethod(..#ASYNCTASKCLASS, "%DeleteId", pGuid)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -1222,6 +1225,35 @@ ClassMethod ForgetTask(pGuid As %String)
     If $$$ISOK(tSC) Quit
     If (("," _ $System.Status.GetErrorCodes(tSC) _ ",") [ ",5002,") && ($System.Status.GetErrorText(tSC) [ "<PROTECT>") Quit
     Do ..LogFault("an async task row could not be removed", tSC)
+}
+
+/// <p>Whether the calling process may write the task row <var>pGuid</var> names (DW-1137), as the
+/// instance answers it at call time: <code>$System.Security.GetGlobalPermission</code> on
+/// <parameter>ASYNCTASKCLASS</parameter>'s data global, whose location is read from that class's
+/// compiled storage rather than written here. Asking raises no <code>&lt;PROTECT&gt;</code>. When the
+/// location cannot be read, the answer is 1, so the delete is attempted as before.</p>
+ClassMethod MayDeleteTask(pGuid As %String) As %Boolean [ Private ]
+{
+    Set tMay = 1
+    Try {
+        Set tStorage = ##class(%Dictionary.CompiledStorage).%OpenId(..#ASYNCTASKCLASS _ "||Default")
+        If '$IsObject(tStorage) Quit
+        Set tLocation = tStorage.DataLocation
+        If $Extract(tLocation, 1, 2) = "^|" {
+            Set tNamespace = $Piece(tLocation, "|", 2)
+            Set tNamespace = $Extract(tNamespace, 2, *-1)
+            Set tGlobal = $Piece(tLocation, "|", 3)
+        } Else {
+            Set tNamespace = $NAMESPACE
+            Set tGlobal = $Extract(tLocation, 2, *)
+        }
+        If (tNamespace = "") || (tGlobal = "") Quit
+        Set tPermission = $System.Security.GetGlobalPermission(tNamespace, tGlobal, "(""" _ $Replace(pGuid, """", """""") _ """)")
+        Set tMay = (("," _ tPermission _ ",") [ ",WRITE,")
+    } Catch {
+        Set tMay = 1
+    }
+    Quit tMay
 }
 
 /// <p>Delete the async task rows this port queued once they are terminal and older than

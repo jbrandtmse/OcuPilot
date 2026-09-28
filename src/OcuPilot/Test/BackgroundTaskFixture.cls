@@ -74,7 +74,7 @@ ClassMethod HoldsPair(pPair As %String) As %Boolean
     Quit 1
 }
 
-ClassMethod PortalRows(Output pRows As %DynamicArray) As %Status
+ClassMethod PortalRows(Output pRows As %DynamicArray) As %Status [ Private ]
 {
     Do $Increment(^||OcuPilotBackgroundFixture("reads"))
     Set pRows = ##class(%DynamicArray).%FromJSON($Get(^||OcuPilotBackgroundFixture("portal"), "[]"))
@@ -106,7 +106,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, "This instance does not implement that operation", .pHttpStatus, .pFault)
 }
 
-ClassMethod PortalControl(pTaskId As %String, pType As %String, Output pAbsent As %Boolean, Output pVendorSC As %Status) As %Status
+ClassMethod PortalControl(pTaskId As %String, pType As %String, Output pAbsent As %Boolean, Output pVendorSC As %Status) As %Status [ Private ]
 {
     Set ^||OcuPilotBackgroundFixture("calls", $Increment(^||OcuPilotBackgroundFixture("calls"))) = "PORTAL " _ pType _ " " _ pTaskId
     Set pAbsent = 0

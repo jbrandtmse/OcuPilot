@@ -1230,7 +1230,8 @@ Method TestTheLogsAreaStaysOpenWithoutTheEventLogsPair()
 /// principal and nowhere else.</p>
 /// <p>The sweep reads only the bytes <file>messages.log</file> grew by across the call, so an
 /// earlier run's line cannot make it pass or fail.</p>
-/// <p>Mutation: log every failure in <method>OcuPilot.Port.AdminPort.ForgetTask</method>, the
+/// <p>Mutation: attempt <method>OcuPilot.Port.AdminPort.ForgetTask</method>'s delete without asking
+/// <method>OcuPilot.Port.AdminPort.MayDeleteTask</method> and log every failure, the
 /// <code>&lt;PROTECT&gt;</code> included, and recompile the package -&gt; the read still answers 200
 /// and the appended bytes carry the vendor's protect text, so both sweep assertions go red.</p>
 Method TestAnUnprivilegedAsyncReadLeavesNoProtectInTheConsoleLog()

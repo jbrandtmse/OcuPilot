@@ -281,7 +281,49 @@ deferred:
 - Given the admin API tracks only its own async tasks, when this screen is built, then both halves ship: `AsyncResult` for the admin tasks, and `BackgroundTaskPort` for the portal's jobs. The stated parity gaps are in Design Notes.
 - Given an async read by a caller who cannot delete its row, when it completes, then it answers normally and logs nothing. The daily sweep deletes OcuPilot's terminal rows once a day old, and never a row OcuPilot did not queue.
 
+### Review Findings
+
+Code review 2026-09-28, `full-opus`: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor ran, none failed. 2 `decision-needed` resolved by judgment (the `ForgetTask` guard below, and DW-1805), 10 `patch` (all applied), 2 `defer`, 20 rejected. Mutations: `## Verification`, code-review table.
+
+- [x] [Review][Patch] (high, Rule 6 AD-16) Two test helpers restored the namespace only after `Try`/`Catch`; each `Catch` now restores first (behavior-neutral) [src/OcuPilot/Test/AdminPortForget.cls:254, src/OcuPilot/Test/BackgroundTasksLive.cls:483]
+- [x] [Review][Patch] (medium) Portal 9502 (a defragment's pause or resume) and 9505 (no longer running) answered 500 and were logged; `PORTALSTATECODES` answers them as the published 409 [src/OcuPilot/Port/BackgroundTaskPort.cls:72]
+- [x] [Review][Patch] (medium) An unprivileged async read's delete met `<PROTECT>`, which IRIS audits (24 `Protect` rows on `ocupilot-ci`, visible about 57 s later) into the log Logs › Audit shows; `ForgetTask` now asks `MayDeleteTask` (`GetGlobalPermission` on the storage-derived global) first [src/OcuPilot/Port/AdminPort.cls:1219]. For the lead (Rule 5, apply and report): Boundaries' "always attempts the delete" now reads "attempts it when the instance answers the caller may write the row", DW-1137's first option.
+- [x] [Review][Patch] (medium) The sweep's 24 h cutoff was bracketed only by 0 h and 48 h rows; a kept 23 h and a deleted 25 h row were added [src/OcuPilot/Test/AdminPortForget.cls:131]
+- [x] [Review][Patch] (low) The port's vendor-reaching seams were public and ungated (AD-29; no caller); now `Private`, with the fixture's overrides [src/OcuPilot/Port/BackgroundTaskPort.cls:316]
+- [x] [Review][Patch] (low) The port's class doc named seams the fixture does not override [src/OcuPilot/Port/BackgroundTaskPort.cls:25]
+- [x] [Review][Patch] (low) No control write ran as a holder of the screen's pairs alone; the live Pause now runs as `READERUSER` [src/OcuPilot/Test/BackgroundTasksLive.cls:190]
+- [x] [Review][Patch] (low) Resume's change-event check was skipped when the body was not JSON [src/OcuPilot/Test/BackgroundTasksLive.cls:187]
+- [x] [Review][Patch] (low) The seed paused as soon as the task id existed, while the task could still read `Starting` (9503); it now waits that out [src/OcuPilot/Test/BackgroundSeed.cls:143]
+- [x] [Review][Patch] (low) Stale principal counts in comments [src/OcuPilot/Test/BackgroundTasksLive.cls:74]
+- [x] [Review][Defer] (maybe-false, medium) The admin compact is paused after several list reads, and a resumed compact can finish before the next Pause or mint [src/OcuPilot/Test/BackgroundTasksLive.cls:235] — deferred: DW-1802 occurrence; settled by CI shard timings
+- [x] [Review][Defer] (low) OcuPilot's own port-queued async tasks are listed with controls, and the await does not treat `Canceled` as terminal [src/OcuPilot/Port/BackgroundTaskPort.cls:361] — deferred: DW-1805 `wontfix-accepted`, `reopen_if` in the ledger; the rows are the caller's own (AC1)
+
+Rejected:
+
+- Cancel is `DESTRUCTIVE 0` — spec-bound (Boundaries; the warning is a primary-button dialog).
+- Actions offered whatever the row's state — spec-bound (empty `selfProtection`; the instance answers the click).
+- Cancel listed first — spec-bound order.
+- The vendor purge already runs daily — false: nothing schedules `PurgeAsyncQueue` (measured).
+- The sweep's dynamic SQL fails for a non-`%All` retention user — low: install needs `%All`-level administration.
+- The retention task's description omits the step — low: incomplete, not wrong; set only at creation.
+- Baseline keys out of name order — standing ruling: appended at the end of a contended list.
+- The registry does not require a `background` read's system pair — low: the shape rule pins the one read; the port refuses 403 by name.
+- A failed admin half fails the whole list — false: AD-36, never a partial list.
+- An admin 409 is logged by `AdminPort.Fail` — low: the port's existing contract for every admin refusal.
+- Portal after-states are English literals — low: localized sessions only.
+- Tests hard-code IRISLOCALDATA — low: a moved store reddens the row-left leg.
+- EXPERIENCE.md :112 and :155 carry no contents — low: the spec scoped copy to :173 and :371.
+- Strings folded into the Task history row — spec-bound (993 lines).
+- The spine's :46 port roster omits the port — low: every other port is recorded as an AD-27 case the same way.
+- The GUID is typed `%Integer` and loses digits — false: the in-process `LIST` answers it as a string on `ocupilot-ci`; the live admin Pause is green.
+- Two portal jobs started in one second show as one — low: the vendor query's own behavior (first id per `StartTime`), which AD-27's case names; an IRIS defect-report candidate.
+- A reused job number between mint and confirm — low: needs a new portal job with that pid and an equal `Status` within ten minutes.
+- The added rail verdict echoes itself — low: a roster row the spec lists; the verdict is pinned live by `Wire` and `WireSecurityRead`.
+- The spec says a 200 MB seed where the code fills 1.2 GB — the fix edits the spec; for the lead.
+
 ## Spec Change Log
+
+- 2026-09-28, after code review (lead): Boundaries' "`ForgetTask` always attempts the delete" is superseded by the review's patch -- it attempts the delete when the instance answers that the caller may write the row (`MayDeleteTask`), so an unprivileged read leaves no `<PROTECT>` audit row; the intent block is left as written. CI run 36496304575 on `73f7b3b8` was red on two tests this story reached: `tasks.browser-spec.mjs`'s Tasks side-bar roster (now five entries) and `BackgroundTasksLive`'s agent pause, which read the state before the vendor carried the pause out (now `BackgroundSeed.Settled`); both fixed by the lead, test-only.
 
 - 2026-09-28, spec gate (lead): the plan's intent gap answered -- Q1 (A), a new `BackgroundTaskPort` as AD-27's Story 16.5 case; Q2, one appended step in `Kernel/Retention.cls`. Spine amended (AD-8, AD-15, AD-27, AD-37, AD-53). DW-1080 re-owned to `18-3-databases-configuration-creation-properties-and-volumes` and DW-1638 to `16-11-start-suspend-and-resume-the-task-manager` (by=spec_gate). Status `blocked` to `ready-for-dev`.
 
@@ -397,8 +439,8 @@ deferred:
 - mutation (AC1, the caller's own admin tasks): `AdminPort`'s stub `%session` carries `"_SYSTEM"` in place of `$USERNAME` -> `BackgroundTasksLive.TestAnotherCallersAdminTaskIsNotListed` went red (run 18345; green on the restored tree, run 18344).
 - mutation (AC2): answer `$$$OK` in place of the vendor call in `PortalControl` -> the resume and cancel legs of `BackgroundTasksLive.TestTheScreensActionsResumePauseAndCancelACompact`, and `TestTheAgentsConfirmPausesACompact`, went red (run 18322).
 - mutation (AC2, client): empty `WARNING_CONSEQUENCES`'s `BackgroundTaskList` entry -> the Story 16.5 warning cases in `screen-action-handler.spec.ts` and `list-page.spec.ts` went red. After a rebuild and redeploy, the AC2 test in `background-tasks.browser-spec.mjs` went red as well.
-- mutation (AC4, the delete): `If 1 Quit` before `ForgetTask`'s delete -> `AdminPortAsync` "the queued row is gone" went red in two tests (run 18323). The runner holds `%All`, so a guard on a real pair would pass for it. The `HoldsPair("%DB_IRISLOCALDATA:WRITE")` guard -> `AdminPortForget.TestTheDeleteIsAlwaysAttemptedAndAnotherFailureIsLogged` went red (run 18338).
-- mutation (AC4, logs nothing): `If 0` for `ForgetTask`'s `<PROTECT>` test -> `AdminPortForget.TestAnUnprivilegedCallersDeleteLeavesTheRowAndLogsNothing` went red (run 18339).
+- mutation (AC4, the delete): `If 1 Quit` before `ForgetTask`'s delete -> `AdminPortAsync` "the queued row is gone" went red in two tests (run 18323). The runner holds `%All`, so a guard on a real pair would pass for it. The `HoldsPair("%DB_IRISLOCALDATA:WRITE")` guard -> `AdminPortForget.TestTheDeleteIsNotGatedOnAPairAndAnotherFailureIsLogged` went red (run 18338).
+- mutation (AC4, logs nothing): attempt `ForgetTask`'s delete without asking `MayDeleteTask` -> `AdminPortForget.TestAnUnprivilegedCallersDeleteLeavesTheRowAndLogsNothing` "the delete met no protect" went red (run 18715).
 - mutation (AC4, only OcuPilot's rows): drop the label condition from `SweepOwnTasks` -> `AdminPortForget.TestTheSweepTakesOnlyOcuPilotsTerminalRowsADayOld` "the Unlabeled row is left" went red (run 18324).
 - mutation (AC4, daily): the Retention step answers `$$$OK` without calling `SweepOwnTasks` -> `AdminPortForget.TestTheRetentionSweepDeletesOcuPilotsOldRows` went red (run 18326).
 - mutation (task error log):
@@ -414,7 +456,7 @@ deferred:
   | compare ids numerically in `Find` | `TestTheFreshReadComparesTheCompositeIdExactly` | 18330 |
   | add `Details` to `FINGERPRINTSUBJECT` | `TestTheFingerprintRefusesAMovedStatus` and `TestTheToolsAreActionWritesOverTheScreensOwnPairs` | 18331 |
   | drop the no-`SysBGTaskId` refusal | `TestAPortalJobWithNoBackgroundTaskSendsNothing` | 18333 |
-  | drop the `PORTALSTATECODE` mapping | `TestEveryVendorStateRefusalIsTheOnePublishedCode` | 18334 |
+  | drop the `PORTALSTATECODES` mapping | `TestEveryVendorStateRefusalIsTheOnePublishedCode` | 18334 |
   | send every control row through `Snippet`'s admin branch | `TestTheScriptRendersBothBranches` | 18335 |
 
 - After the pass, every changed class was recompiled from the tree. Then these ran green:
@@ -427,10 +469,21 @@ deferred:
 |---|---|---|
 | read the portal `StartTime` column as `Started` in `PortalRows` | `BackgroundTasksLive.TestASeededPortalCompactIsListedPaused` "the listed StartTime is the portal's own" | 18350 |
 | delete `BackgroundTaskMint`'s separator refusal | `BackgroundTasks.TestTheMintRefusesTheSeparatorInAnArgument` | 18353 |
-| drop the `PORTALSTATECODE` mapping, live | `BackgroundTasksLive.TestTheScreensActionsResumePauseAndCancelACompact` (a Pause of the canceled compact answered 500) | 18354 |
+| drop the `PORTALSTATECODES` mapping, live | `BackgroundTasksLive.TestTheScreensActionsResumePauseAndCancelACompact` (a Pause of the canceled compact answered 500) | 18354 |
 | drop `%Admin_Operate:USE` from the port's `PAIRS` | `BackgroundTasks.TestTheListMergesBothHalvesNewestFirst` | 18355 |
 | drop the `background` read-shape rule from `Registry.ReadProblem` | `ReadTool.TestEveryAdminPairCorpusCaseGetsItsSentence`, the three background cases | 18356 |
 | drop the `background` read-shape rule from `screen-mirror.mjs` `readProblem` | `screen-mirror.test.mjs` "readProblem returns every admin-privilege sentence" | client |
+
+**Mutations observed (code review).** Applied one at a time on `ocupilot-ci`, the mutated class compiled with its subclasses, then reverted and recompiled; the tree was byte-identical after each.
+
+| Mutation | Red test | Run |
+|---|---|---|
+| drop 9502 from `BackgroundTaskPort.PORTALSTATECODES` | `BackgroundTasks.TestEveryVendorStateRefusalIsTheOnePublishedCode` | 18712 |
+| attempt `ForgetTask`'s delete without asking `MayDeleteTask` | `AdminPortForget.TestAnUnprivilegedCallersDeleteLeavesTheRowAndLogsNothing` | 18715 |
+| halve `SweepOwnTasks`' cutoff hours | `AdminPortForget.TestTheSweepTakesOnlyOcuPilotsTerminalRowsADayOld` (the Day23 row) | 18717 |
+| add `%Admin_Secure:USE` to `BackgroundTaskPort.PAIRS` | `BackgroundTasksLive.TestTheScreensActionsResumePauseAndCancelACompact` (the least-privileged Pause) | 18721 |
+
+Green on the restored tree: `BackgroundTasks` 10/10 (18723), `AdminPortForget` 4/4 (18719), `AdminPortAsync` 4/4 (18718), `BackgroundTasksLive` 7/7 (18722); `WireSecurityRead` 23/24 (18724, the known task-history residue only).
 
 ## Auto Run Result
 

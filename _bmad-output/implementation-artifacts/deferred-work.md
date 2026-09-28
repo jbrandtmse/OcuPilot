@@ -4099,6 +4099,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T13:33:22Z by=plan note=slot B: 7 _SYSTEM/Finished rows, no fault logged; ForgetTask unreached - AdminPort.cls:361 awaits only on 202+Location
 - 2026-09-18T16:02:00Z status=routed owner=burndown by=cr note=re-owned off this story at code review: the DW-1025 guard shipped and reddens under mutation; the residual is the unawaited 202 at AdminPort.cls:361, which this story's shape does not reach
 - 2026-09-18T16:43:00Z status=routed owner=16-5-background-tasks by=burndown note=overflow re-owned to the story that is about background tasks: AdminPort.cls:361 enters the await only on a 202 AND a Location carrying ASYNCLOCATION, so ForgetTask is never reached for the surviving rows, and 7 such rows stand on ocupilot-slot-b
+- 2026-09-28T23:51:23Z status=resolved-by:16-5-background-tasks by=adjudication note=16.5: the retention step sweeps OcuPilot's own terminal async rows >24h (AdminPortForget sweep legs); ForgetTask deletes when the caller may write the row
 
 ### DW-1102: The log viewer's next/previous match controls have no published accessible name
 - source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4174,6 +4175,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T19:44:55Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=merge_gate note=ForgetTask leaks a vendor async-task row on every unprivileged async read; fix in AdminPort
 - 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: the fix rewrites AdminPort.ForgetTask, a method 7.1 did not add in a shared-append file contended with Epic 8; residual unchanged
 - 2026-09-23T20:58:41Z owner=16-5-background-tasks by=burndown note=Epic 7 burn-down overflow: vendor async-task rows are exactly what 16.5's Background tasks screen lists and purges; the fix rewrites AdminPort.ForgetTask, shared-append and contended with Epic 8
+- 2026-09-28T23:51:23Z status=resolved-by:16-5-background-tasks by=adjudication note=16.5: the retention step sweeps OcuPilot's own terminal async rows >24h (AdminPortForget sweep legs); ForgetTask deletes when the caller may write the row
 
 ### DW-1137: AdminPort.ASYNCTASKPAIR is a literal, so on an instance whose IRISLOCALDATA carries a non-default resource the guard denies every caller and ForgetTask silently stops deleting
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: high | footprint: in-epic
@@ -4182,6 +4184,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T19:44:55Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=merge_gate note=ASYNCTASKPAIR literal denies every caller where IRISLOCALDATA carries a non-default resource
 - 2026-09-23T02:50:47Z status=escalated owner=burndown by=adjudication note=MED with fix-risk high (a %SYS switch on the async path to resolve IRISLOCALDATA's resource at call time) in the shared-append AdminPort.cls; Rule 15 escalates it to the decision sheet
 - 2026-09-23T22:26:32Z status=routed owner=16-5-background-tasks by=merge_gate note=Epic 7 merge decision sheet, recommended disposition taken: fix together with DW-1136.
+- 2026-09-28T23:51:23Z status=resolved-by:16-5-background-tasks by=adjudication note=16.5: ASYNCTASKPAIR removed; ForgetTask asks the instance at call time whether the caller may write the row (MayDeleteTask)
 
 ### DW-1138: The planning artifacts still put the log viewer's Clear control in the shell command bar, and the new Fixed strings row cites two wrong lines
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -7945,3 +7948,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-5-background-tasks.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: BackgroundTasksLive resumes a ~1.2 GB seeded compact (~2 s locally) then pauses or mints a pause at once; a faster host could finish first and answer 409; settled by CI shard timings
 - 2026-09-28T23:07:48Z status=open owner=16-5-background-tasks by=harvest note=adjudicate at 16.5's gate against CI runs
+- 2026-09-28T23:43:52Z occurrence=16-5-background-tasks
+- 2026-09-28T23:51:23Z status=resolved-by:16-5-background-tasks by=adjudication note=CI 36496304575 red on the agent pause leg reading the state at once; Settled polls until it leaves Running (inference: async pause)
+
+### DW-1805: Background tasks lists OcuPilot's own port-queued async tasks under Admin API with Cancel, Pause and Resume, and AdminPort's await does not treat Canceled as terminal
+- source: spec-16-5-background-tasks.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: BackgroundTaskPort.AdminRows maps the caller's whole AsyncResult LIST, so rows labeled /v2/ocupilot/ (left for the sweep for a caller who cannot delete them) are listed and offered controls; AdminPort.AwaitTask treats only Finished and Failed as terminal, so an OcuPilot task canceled while Queued waits out PORT.TIMEOUT.
+- 2026-09-28T23:43:52Z status=wontfix-accepted owner=16-5-background-tasks by=cr note=reopen_if=a user reports /v2/ocupilot/ rows in Background tasks, or a canceled queued task holds a read to PORT.TIMEOUT

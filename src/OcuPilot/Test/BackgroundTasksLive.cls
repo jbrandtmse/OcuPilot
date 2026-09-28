@@ -71,7 +71,7 @@ Method OnBeforeAllTests() As %Status
     Quit ..EnsurePrincipals()
 }
 
-/// <p>Remove both principals and their roles; a failing status when any survives.</p>
+/// <p>Remove the three principals and their roles; a failing status when any survives.</p>
 Method OnAfterAllTests() As %Status
 {
     Set tSC = $$$OK
@@ -164,15 +164,18 @@ Method TestASeededPortalCompactIsListedPaused()
     Do $$$AssertEquals(tStatus, "Paused", "and reads the job's background task state, as the portal does in %SYS")
 }
 
-/// <p>AC2, AD-53: the screen's Resume, Pause and Cancel each act on a seeded compact -- 200, the
-/// updated change event's triple, and the row re-read in the state the action leaves; and a Pause of
-/// the canceled compact is the vendor's own state refusal, answered as the published
+/// <p>AC2, AD-8, AD-53: the screen's Resume, Pause and Cancel each act on a seeded compact -- 200,
+/// the updated change event's triple, and the row re-read in the state the action leaves, the Pause
+/// sent by <parameter>READERUSER</parameter>, who holds the screen's pairs and nothing more; and a
+/// Pause of the canceled compact is the vendor's own state refusal, answered as the published
 /// <code>TASK.BACKGROUND.STATE</code>.</p>
 /// <p>Mutation (Rule 19): skip the vendor call in
 /// <method>OcuPilot.Port.BackgroundTaskPort.PortalControl</method> -- the resume and cancel re-read
-/// legs go red; drop the <parameter>OcuPilot.Port.BackgroundTaskPort.PORTALSTATECODE</parameter>
+/// legs go red; drop the <parameter>OcuPilot.Port.BackgroundTaskPort.PORTALSTATECODES</parameter>
 /// test from <method>OcuPilot.Port.BackgroundTaskPort.Control</method> -- the refusal leg answers 500
-/// and goes red.</p>
+/// and goes red; add <code>%Admin_Secure:USE</code> to
+/// <parameter>OcuPilot.Port.BackgroundTaskPort.PAIRS</parameter> -- the least-privileged Pause is
+/// refused and goes red.</p>
 Method TestTheScreensActionsResumePauseAndCancelACompact()
 {
     Set tSC = $ClassMethod(..#SEED, "PausedCompact", .tJob, .tTaskId)
@@ -181,10 +184,11 @@ Method TestTheScreensActionsResumePauseAndCancelACompact()
     Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Management Portal", tJob))
     Set tSC = ..Act("resume", tId, "", "", .tStatus, .tBody)
     Do $$$AssertEquals(tStatus, 200, "the screen's Resume answers 200: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
-    If $IsObject(tBody) Do $$$AssertEquals(tBody.%Get("action") _ " " _ tBody.%Get("target").%Get("type") _ " " _ tBody.%Get("target").%Get("scope") _ " " _ (tBody.%Get("target").%Get("id") = tId), "updated background-task instance 1", "publishing the updated event for the row")
+    Do $$$AssertTrue($IsObject(tBody) && $IsObject(tBody.%Get("target")), "and answers the change event: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
+    If $IsObject(tBody) && $IsObject(tBody.%Get("target")) Do $$$AssertEquals(tBody.%Get("action") _ " " _ tBody.%Get("target").%Get("type") _ " " _ tBody.%Get("target").%Get("scope") _ " " _ (tBody.%Get("target").%Get("id") = tId), "updated background-task instance 1", "publishing the updated event for the row")
     Do $$$AssertTrue($ListFind($ListBuild("Running", "Done"), $ClassMethod(..#SEED, "State", tTaskId)), "and the compact runs again: " _ $ClassMethod(..#SEED, "State", tTaskId))
-    Set tSC = ..Act("pause", tId, "", "", .tStatus, .tBody)
-    Do $$$AssertEquals(tStatus, 200, "the screen's Pause answers 200: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
+    Set tSC = ..Act("pause", tId, ..#READERUSER, ..PreparedPassword, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "the screen's Pause answers 200 to a holder of the screen's pairs alone: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
     Do $$$AssertEquals(..StatusOf("Management Portal", tJob), "Paused", "and the row re-reads Paused")
     Set tSC = ..Act("cancel", tId, "", "", .tStatus, .tBody)
     Do $$$AssertEquals(tStatus, 200, "the screen's Cancel answers 200: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
@@ -294,7 +298,7 @@ Method TestTheAgentsConfirmPausesACompact()
     Do $$$AssertEquals(tProposal.%Get("changed").%ToJSON(), "[{""field"":""Status"",""before"":""Running"",""after"":""Paused""}]", "the card shows the status moving to Paused")
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Do $$$AssertStatusOK(tSC, "the confirm pauses it: " _ $Get(tCode))
-    Do $$$AssertEquals($ClassMethod(..#SEED, "State", tTaskId), "Paused", "and the compact is paused")
+    Do $$$AssertEquals($ClassMethod(..#SEED, "Settled", tTaskId), "Paused", "and the compact is paused")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tTurn, .tLedger), 1, "one write-kind ledger row")
     Do $$$AssertEquals($Get(tLedger("AuditMarked")), $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "and the agent marker landed on it")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
@@ -447,7 +451,7 @@ ClassMethod FailedPair(pBody) As %String
     Quit pBody.%Get("detail").%Get("failedPair")
 }
 
-/// <p>Create the two throwaway roles and the accounts that hold them, then read the grants back.</p>
+/// <p>Create the three throwaway roles and the accounts that hold them, then read the grants back.</p>
 Method EnsurePrincipals() As %Status
 {
     Set tSC = $$$OK
@@ -477,6 +481,7 @@ Method EnsurePrincipals() As %Status
             If $$$ISERR(tSC) Quit
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Set $NAMESPACE = tOrigNS

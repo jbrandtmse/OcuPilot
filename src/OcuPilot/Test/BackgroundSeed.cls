@@ -140,6 +140,14 @@ ClassMethod PausedCompact(Output pJob As %String, Output pTaskId As %String) As 
             Set tSC = $$$ERROR($$$GeneralError, "the compact registered no background task")
             Quit
         }
+        ; The id is recorded while the task is still Starting, and a pause is refused until it runs.
+        For tI = 1:1:400 {
+            Set tTask = ##class(%SYS.BackgroundTask).%OpenId(pTaskId)
+            Set tState = $Select($IsObject(tTask): tTask.RunningState, 1: "")
+            Set tTask = ""
+            If tState '= "Starting" Quit
+            Hang 0.005
+        }
         Set tTask = ##class(%SYS.BackgroundTask).%OpenId(pTaskId)
         Set tPauseSC = $Select($IsObject(tTask): tTask.Pause(), 1: $$$ERROR($$$GeneralError, "the background task did not open"))
         Set tTask = ""
@@ -162,6 +170,20 @@ ClassMethod PausedCompact(Output pJob As %String, Output pTaskId As %String) As 
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The state background task <var>pTaskId</var> reads once it has left <var>pFrom</var>, read
+/// every 10 ms for at most 2 s: a pause or resume the vendor accepted is carried out by the task at
+/// its next checkpoint, so the state read at once can still be the one it left.</p>
+ClassMethod Settled(pTaskId As %String, pFrom As %String = "Running") As %String
+{
+    Set tState = ..State(pTaskId)
+    For tI = 1:1:200 {
+        If tState '= pFrom Quit
+        Hang 0.01
+        Set tState = ..State(pTaskId)
+    }
+    Quit tState
 }
 
 /// <p>The state background task <var>pTaskId</var> reads now, opened afresh, or <code>""</code>.</p>

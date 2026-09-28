@@ -273,24 +273,27 @@ Method TestAPortalJobWithNoBackgroundTaskSendsNothing()
     Do $$$AssertEquals(tHttp _ " " _ tHttp2 _ " " _ ##class(OcuPilot.Test.BackgroundTaskFixture).Calls(), "200 404 PORTAL RESUME 7|ADMIN CANCEL " _ ..#GUID, "an admin cancel names the GUID, and a job number is read exactly")
 }
 
-/// <p>The one published refusal: the portal's error 9503 and the admin API's 409 both answer 409
-/// <code>TASK.BACKGROUND.STATE</code>, whose reason is the sentence EXPERIENCE.md publishes; any other
-/// vendor failure is the generic internal fault.</p>
-/// <p>Mutation (Rule 19): drop the <code>PORTALSTATECODE</code> test from
-/// <method>OcuPilot.Port.BackgroundTaskPort.Control</method> -- the 9503 leg answers 500 and goes
-/// red.</p>
+/// <p>The one published refusal: the portal's errors 9502 (a request the task takes none of, such as
+/// a defragment's pause), 9503 (its state) and 9505 (no longer running), and the admin API's 409, all
+/// answer 409 <code>TASK.BACKGROUND.STATE</code>, whose reason is the sentence EXPERIENCE.md
+/// publishes; any other vendor failure is the generic internal fault.</p>
+/// <p>Mutation (Rule 19): drop 9502 from
+/// <parameter>OcuPilot.Port.BackgroundTaskPort.PORTALSTATECODES</parameter> -- the 9502 leg answers
+/// 500 and goes red.</p>
 Method TestEveryVendorStateRefusalIsTheOnePublishedCode()
 {
     Do $$$AssertEquals(##class(OcuPilot.Api.Error).#REASONTASKBACKGROUNDSTATE, ..#PUBLISHED, "the kernel's reason is the published sentence")
     Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmPortal(..Rows(..PortalRow("4242", "Done", "7", "2026-09-28 12:00:05")))
     Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmAdmin(..Rows(..AdminRow(..#GUID, "Paused", "2026-09-28 12:30:00")))
-    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmPortalAnswer(9503)
-    Do ..Control("PAUSE", "Management Portal", "4242", .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code _ " " _ tFault.error _ " " _ tFault.reason, 1: ""), "409 TASK.BACKGROUND.STATE conflict " _ ..#PUBLISHED, "the portal's 9503 is the published refusal")
+    For tCode = 9502, 9503, 9505 {
+        Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmPortalAnswer(tCode)
+        Do ..Control("PAUSE", "Management Portal", "4242", .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code _ " " _ tFault.error _ " " _ tFault.reason, 1: ""), "409 TASK.BACKGROUND.STATE conflict " _ ..#PUBLISHED, "the portal's " _ tCode _ " is the published refusal")
+    }
     Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmAdminAnswer(409)
     Do ..Control("CANCEL", "Admin API", ..#GUID, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code _ " " _ tFault.reason, 1: ""), "409 TASK.BACKGROUND.STATE " _ ..#PUBLISHED, "and so is the admin API's 409")
-    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmPortalAnswer(9505)
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmPortalAnswer(9509)
     Do ..Control("PAUSE", "Management Portal", "4242", .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code, 1: ""), "500 " _ ##class(OcuPilot.Api.Error).#INTERNAL, "while any other vendor failure is the internal fault")
 }

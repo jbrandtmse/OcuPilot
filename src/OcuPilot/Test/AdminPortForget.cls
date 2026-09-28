@@ -1,6 +1,7 @@
 /// <p>Pins what becomes of the vendor's async task rows (DW-1101, DW-1136, DW-1137, AD-37):
-/// <method>OcuPilot.Port.AdminPort.ForgetTask</method> always attempts its delete, leaves a row a
-/// caller cannot delete silently and logs any other failure; and
+/// <method>OcuPilot.Port.AdminPort.ForgetTask</method> deletes a row the caller may write, leaves a
+/// row the caller cannot delete silently -- without meeting a <code>&lt;PROTECT&gt;</code> the
+/// instance would audit -- and logs any other failure; and
 /// <method>OcuPilot.Port.AdminPort.SweepOwnTasks</method>, a step of the daily retention sweep,
 /// deletes the terminal rows OcuPilot's port queued once a day old and nothing else.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and a caller holding
@@ -82,13 +83,14 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>DW-1136: the delete is always attempted, whatever the caller holds, and a failure other than
+/// <p>DW-1136, DW-1137: for a caller who may write the row, the delete is attempted whatever pair
+/// the port's own <code>HoldsPair</code> answers, and a failure other than
 /// <code>&lt;PROTECT&gt;</code> -- an id no row carries -- is logged.</p>
 /// <p>Mutation (Rule 19): restore the guard that skipped the delete for a caller the fixture answers
 /// holds no pair (<code>If '..HoldsPair("%DB_IRISLOCALDATA:WRITE") Quit</code>) -- this goes red,
 /// and so does <class>OcuPilot.Test.AdminPortAsync</class>'s "the queued row is gone" when the guard
 /// answers no.</p>
-Method TestTheDeleteIsAlwaysAttemptedAndAnotherFailureIsLogged()
+Method TestTheDeleteIsNotGatedOnAPairAndAnotherFailureIsLogged()
 {
     ; The fixture answers that no pair is held, so a pair guard in ForgetTask would skip the delete.
     Do ##class(OcuPilot.Test.PortFixture).SetHoldsPair(0)
@@ -97,11 +99,11 @@ Method TestTheDeleteIsAlwaysAttemptedAndAnotherFailureIsLogged()
 }
 
 /// <p>DW-1136, DW-1137: a caller who cannot write the database the rows live in -- a real
-/// least-privileged principal, in a child process -- meets <code>&lt;PROTECT&gt;</code>, which is left
-/// alone: nothing is logged, and the row stays for the sweep.</p>
-/// <p>Mutation (Rule 19): drop the <code>&lt;PROTECT&gt;</code> test from
-/// <method>OcuPilot.Port.AdminPort.ForgetTask</method> -- the child's log carries the protect and
-/// the nothing-logged leg goes red.</p>
+/// least-privileged principal, in a child process -- leaves the row alone: the delete meets no
+/// <code>&lt;PROTECT&gt;</code>, which the instance records in its audit log (measured), nothing is
+/// logged, and the row stays for the sweep.</p>
+/// <p>Mutation (Rule 19): attempt the delete without asking
+/// <method>OcuPilot.Port.AdminPort.MayDeleteTask</method> -- the no-protect leg goes red.</p>
 Method TestAnUnprivilegedCallersDeleteLeavesTheRowAndLogsNothing()
 {
     Set tGuid = ..#PROBEGUID _ "Protect"
@@ -110,28 +112,30 @@ Method TestAnUnprivilegedCallersDeleteLeavesTheRowAndLogsNothing()
     If $$$ISERR(tSC) Quit
     Set tRun = ..ForgetAs(..#PROBEUSER, tGuid)
     Do $$$AssertEquals(tRun.%Get("error") _ " " _ tRun.%Get("username"), " " _ ..#PROBEUSER, "the child ran the delete as the principal")
+    Do $$$AssertTrue(tRun.%IsDefined("zerror") && '(tRun.%Get("zerror") [ "<PROTECT>"), "the delete met no protect, which the instance would audit: " _ tRun.%ToJSON())
     Do $$$AssertEquals(tRun.%Get("message") _ "|" _ tRun.%Get("event"), "|", "and nothing was logged: " _ tRun.%ToJSON())
     Do $$$AssertEquals(##class(OcuPilot.Test.PortFixture).TaskRowExists(tGuid), 1, "and the row is left for the sweep")
 }
 
 /// <p>AD-37, DW-1101: the sweep deletes a row OcuPilot's port labeled, in a terminal state, queued
-/// more than the given hours ago -- finished, failed or canceled -- and leaves a labeled row queued
-/// now, a row another caller queued and a labeled row still running. An age that is not a whole
-/// number of hours above zero is refused.</p>
+/// more than the given hours ago -- finished, failed or canceled, and one queued 25 hours ago -- and
+/// leaves a labeled row queued now or 23 hours ago, a row another caller queued and a labeled row
+/// still running. An age that is not a whole number of hours above zero is refused.</p>
 /// <p>Mutation (Rule 19): drop the label condition from
-/// <method>OcuPilot.Port.AdminPort.SweepOwnTasks</method> -- the unlabeled leg goes red.</p>
+/// <method>OcuPilot.Port.AdminPort.SweepOwnTasks</method> -- the unlabeled leg goes red; halve the
+/// cutoff's hours -- the 23-hour leg goes red.</p>
 Method TestTheSweepTakesOnlyOcuPilotsTerminalRowsADayOld()
 {
     Set tOld = ..HoursAgo(48)
     Set tNew = ..HoursAgo(0)
-    For tCase = $ListBuild("Finished", "GET /v2/ocupilot/database/syscrud", "Finished", tOld, 0), $ListBuild("Failed", "GET /v2/ocupilot/security/audit/record", "Failed", tOld, 0), $ListBuild("Canceled", "GET /v2/ocupilot/database/syscrud", "Canceled", tOld, 0), $ListBuild("Recent", "GET /v2/ocupilot/database/syscrud", "Finished", tNew, 1), $ListBuild("Unlabeled", "POST /v2/database-dir/info", "Finished", tOld, 1), $ListBuild("Running", "GET /v2/ocupilot/database/syscrud", "Running", tOld, 1) {
+    For tCase = $ListBuild("Finished", "GET /v2/ocupilot/database/syscrud", "Finished", tOld, 0), $ListBuild("Failed", "GET /v2/ocupilot/security/audit/record", "Failed", tOld, 0), $ListBuild("Canceled", "GET /v2/ocupilot/database/syscrud", "Canceled", tOld, 0), $ListBuild("Recent", "GET /v2/ocupilot/database/syscrud", "Finished", tNew, 1), $ListBuild("Day23", "GET /v2/ocupilot/database/syscrud", "Finished", ..HoursAgo(23), 1), $ListBuild("Day25", "GET /v2/ocupilot/database/syscrud", "Finished", ..HoursAgo(25), 0), $ListBuild("Unlabeled", "POST /v2/database-dir/info", "Finished", tOld, 1), $ListBuild("Running", "GET /v2/ocupilot/database/syscrud", "Running", tOld, 1) {
         Set tSC = ##class(OcuPilot.Test.PortFixture).SeedTaskRow(..#PROBEGUID _ $List(tCase, 1), $List(tCase, 2), $List(tCase, 3), $List(tCase, 4))
         Do $$$AssertStatusOK(tSC, $List(tCase, 1) _ " is seeded")
     }
     Do $$$AssertStatusNotOK(##class(OcuPilot.Port.AdminPort).SweepOwnTasks(0), "an age of no hours is refused")
     Set tSC = ##class(OcuPilot.Port.AdminPort).SweepOwnTasks(24)
     Do $$$AssertStatusOK(tSC, "the sweep runs: " _ $System.Status.GetErrorText(tSC))
-    For tCase = $ListBuild("Finished", 0), $ListBuild("Failed", 0), $ListBuild("Canceled", 0), $ListBuild("Recent", 1), $ListBuild("Unlabeled", 1), $ListBuild("Running", 1) {
+    For tCase = $ListBuild("Finished", 0), $ListBuild("Failed", 0), $ListBuild("Canceled", 0), $ListBuild("Recent", 1), $ListBuild("Day23", 1), $ListBuild("Day25", 0), $ListBuild("Unlabeled", 1), $ListBuild("Running", 1) {
         Do $$$AssertEquals(##class(OcuPilot.Test.PortFixture).TaskRowExists(..#PROBEGUID _ $List(tCase, 1)), $List(tCase, 2), "the " _ $List(tCase, 1) _ " row is " _ $Select($List(tCase, 2): "left", 1: "deleted"))
     }
 }
@@ -163,7 +167,7 @@ ClassMethod HoursAgo(pHours As %Integer) As %String
 ClassMethod RemoveProbes() As %Status
 {
     Set tFirst = $$$OK
-    For tSuffix = "Protect", "Finished", "Failed", "Canceled", "Recent", "Unlabeled", "Running", "Retention" {
+    For tSuffix = "Protect", "Finished", "Failed", "Canceled", "Recent", "Day23", "Day25", "Unlabeled", "Running", "Retention" {
         Set tSC = ##class(OcuPilot.Test.PortFixture).RemoveTaskRow(..#PROBEGUID _ tSuffix)
         If $$$ISERR(tSC) && $$$ISOK(tFirst) Set tFirst = tSC
     }
@@ -197,7 +201,8 @@ ClassMethod ForgetAs(pUser As %String, pGuid As %String) As %DynamicObject
 
 /// <p>The child: log in as <var>pUser</var>, forget <var>pGuid</var> through
 /// <class>OcuPilot.Test.PortFixture</class>, whose log is captured rather than written, and signal
-/// <code>{error, username, message, event}</code> to process <var>pParent</var>.</p>
+/// <code>{error, username, zerror, message, event}</code> to process <var>pParent</var>, where
+/// <code>zerror</code> is the last error the forget met, trapped or not.</p>
 /// <p><b>Caller contract:</b> <code>JOB</code>ed by <method>ForgetAs</method> and by nothing else;
 /// <code>$System.Security.Login</code> switches this process's own user context.</p>
 ClassMethod Forget(pParent As %Integer, pUser As %String, pGuid As %String)
@@ -210,7 +215,9 @@ ClassMethod Forget(pParent As %Integer, pUser As %String, pGuid As %String)
         }
         Do tOut.%Set("username", $Username, "string")
         Do ##class(OcuPilot.Test.LogProbe).Clear()
+        Set $ZError = ""
         Do ##class(OcuPilot.Test.PortFixture).ForgetTask(pGuid)
+        Do tOut.%Set("zerror", $ZError, "string")
         Do tOut.%Set("message", ##class(OcuPilot.Test.LogProbe).Captured("message"), "string")
         Do tOut.%Set("event", ##class(OcuPilot.Test.LogProbe).Captured("event"), "string")
     } Catch ex {
@@ -245,6 +252,7 @@ Method EnsurePrincipal() As %Status
             Set tSC = $$$ERROR($$$GeneralError, "the throwaway principal's grants did not read back as declared")
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Set $NAMESPACE = tOrigNS

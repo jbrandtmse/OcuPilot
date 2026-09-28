@@ -19,13 +19,14 @@
 /// <method>OcuPilot.Kernel.EntityId.JoinComposite</method>. The GUID is compared as a string, since
 /// its leading zeros are significant.</p>
 /// <p><b>One refusal is published</b>: <code>TASK.BACKGROUND.STATE</code>, 409, for the vendor's own
-/// state refusal (the admin API's 409, <parameter>PORTALTASKCLASS</parameter>'s error
-/// <parameter>PORTALSTATECODE</parameter>) and, before any vendor call, for a portal row with no
+/// state refusal (the admin API's 409, <parameter>PORTALTASKCLASS</parameter>'s errors
+/// <parameter>PORTALSTATECODES</parameter>) and, before any vendor call, for a portal row with no
 /// background task to act on.</p>
 /// <p>Seams a test subclass overrides (<class>OcuPilot.Test.BackgroundTaskFixture</class>):
-/// <method>PortalRows</method>, <method>AdminRows</method>, <method>PortalControl</method> and
-/// <method>AdminControl</method>, with the admin port's own <method>HoldsPair</method>. Production
-/// overrides none of them.</p>
+/// <method>PortalRows</method> and <method>PortalControl</method>, with the admin port's own
+/// <method>Invoke</method>, <method>HoldsPair</method> and <method>LogFault</method>. Production
+/// overrides none of them. Every seam that reaches the vendor is private, so
+/// <method>Invoke</method>, behind the gate, is the only way in.</p>
 Class OcuPilot.Port.BackgroundTaskPort Extends OcuPilot.Port.AdminPort
 {
 
@@ -64,9 +65,11 @@ Parameter PORTALQUERY = "%CSP.UI.System.BackgroundTask:EnumerateTasks";
 /// <p>The documented class a portal job's background task is controlled through.</p>
 Parameter PORTALTASKCLASS = "%SYS.BackgroundTask";
 
-/// <p>The vendor error <parameter>PORTALTASKCLASS</parameter> answers for a request the task's
-/// current state does not allow (<code>BGTaskRequestNotAllowedState</code>).</p>
-Parameter PORTALSTATECODE As INTEGER = 9503;
+/// <p>The vendor errors <parameter>PORTALTASKCLASS</parameter> answers for a request the task does
+/// not allow, comma-separated: 9502 (<code>BGTaskRequestNotAllowed</code>, a task that takes no such
+/// request, such as a defragment's pause), 9503 (<code>BGTaskRequestNotAllowedState</code>, its
+/// current state) and 9505 (<code>BGTaskNotRunning</code>, a task that is no longer running).</p>
+Parameter PORTALSTATECODES = "9502,9503,9505";
 
 /// <p>The admin port's own write types this port issues for its control types (Story 12.6's
 /// grammar): an admin API row is controlled through <code>AsyncResult</code>.</p>
@@ -277,7 +280,12 @@ ClassMethod Control(pType As %String, pKey As %String, Output pResult, Output pH
     If $$$ISERR(tSC) Quit ..Fail(..#ENDPOINT, 500, tSC, .pHttpStatus, .pFault)
     If tAbsent Quit ..StateRefusal(.pHttpStatus, .pFault)
     If $$$ISERR(tVendorSC) {
-        If ("," _ $System.Status.GetErrorCodes(tVendorSC) _ ",") [ ("," _ ..#PORTALSTATECODE _ ",") Quit ..StateRefusal(.pHttpStatus, .pFault)
+        Set tCodes = "," _ $System.Status.GetErrorCodes(tVendorSC) _ ","
+        Set tRefused = 0
+        For tI = 1:1:$Length(..#PORTALSTATECODES, ",") {
+            If tCodes [ ("," _ $Piece(..#PORTALSTATECODES, ",", tI) _ ",") Set tRefused = 1
+        }
+        If tRefused Quit ..StateRefusal(.pHttpStatus, .pFault)
         Quit ..Fail(..#ENDPOINT, 500, tVendorSC, .pHttpStatus, .pFault)
     }
     Set pResult = {}
@@ -305,7 +313,7 @@ ClassMethod GateRefusal(pFailedPair As %String, Output pHttpStatus As %Integer, 
 /// <code>{Source, Id, Task, Namespace, Status, Details, ErrorCount, StartTime, SysBGTaskId}</code>,
 /// read in <code>%SYS</code> (AD-16). The query overlays a job's background task state on its
 /// stored status and blanks the id of a task it cannot open.</p>
-ClassMethod PortalRows(Output pRows As %DynamicArray) As %Status
+ClassMethod PortalRows(Output pRows As %DynamicArray) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pRows = []
@@ -350,7 +358,7 @@ ClassMethod PortalRows(Output pRows As %DynamicArray) As %Status
 /// <code>{Source, Id, Task, Namespace, Status, Details, ErrorCount, StartTime}</code>. The vendor
 /// answers no namespace or error count, so both are empty. A failed list passes its fault
 /// through.</p>
-ClassMethod AdminRows(pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod AdminRows(pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRows = []
     Kill tQuery
@@ -377,7 +385,7 @@ ClassMethod AdminRows(pMax As %Integer, Output pRows As %DynamicArray, Output pH
 
 /// <p>Control type <var>pType</var> on the caller's async task <var>pGuid</var>, through
 /// <code>AsyncResult</code>: its own answer, its HTTP status and its fault.</p>
-ClassMethod AdminControl(pType As %String, pGuid As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod AdminControl(pType As %String, pGuid As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Kill tQuery
     Set tQuery(..#IDPARAM) = pGuid
@@ -389,7 +397,7 @@ ClassMethod AdminControl(pType As %String, pGuid As %String, Output pResult, Out
 /// when no such task opens, and nothing is asked of it; <var>pVendorSC</var> is the vendor method's
 /// own status. The returned status is an error only when the call could not be made. No reference
 /// to the task survives the call.</p>
-ClassMethod PortalControl(pTaskId As %String, pType As %String, Output pAbsent As %Boolean, Output pVendorSC As %Status) As %Status
+ClassMethod PortalControl(pTaskId As %String, pType As %String, Output pAbsent As %Boolean, Output pVendorSC As %Status) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pAbsent = 0
