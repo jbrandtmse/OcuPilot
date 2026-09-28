@@ -7940,3 +7940,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 3 failures in 4 runs with 16.16 present: 'failed to find element matching selector app-ledger-page #ocu-ledger-user' at spec :142; reproduced on ocupilot-ci by deferring the page's form 1.5 s
 - 2026-09-28T18:09:36Z status=open owner=16-2-web-sessions-listed-and-ended by=lead note=flake in 16.16's spec; fixed ahead of 16.2 as its own commit
 - 2026-09-28T18:09:36Z status=resolved-by:16-2-web-sessions-listed-and-ended by=adjudication note=c4a871c9: readDialog waits for the re-created page's form, setCriterion for its field; CI run 36458908646 green
+
+### DW-1802: The live Background tasks tests could flake if a seeded compact finishes between a Resume and the next Pause or mint (maybe-false)
+- source: spec-16-5-background-tasks.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: BackgroundTasksLive resumes a ~1.2 GB seeded compact (~2 s locally) then pauses or mints a pause at once; a faster host could finish first and answer 409; settled by CI shard timings
+- 2026-09-28T23:07:48Z status=open owner=16-5-background-tasks by=harvest note=adjudicate at 16.5's gate against CI runs
