@@ -28,7 +28,8 @@
 /// <code>port: "mgmnt"</code>, the management API, through <method>MgmntPortClass</method>, which is
 /// handed the route's scope as its namespace, and <code>port: "logsource"</code>, an instance log
 /// file's bounded tail, through <method>LogSourcePortClass</method>, whose endpoint is a source key
-/// from that port's own fixed enum (AD-21). <code>port: "state"</code> is
+/// from that port's own fixed enum (AD-21), and <code>port: "path"</code>, the instance's allowed
+/// directories, through <method>PathPortClass</method>. <code>port: "state"</code> is
 /// OcuPilot's own protected state (AD-9), resolved against a kernel store's guarded list through
 /// <method>StateRows</method>. The second changes where the rows come from and nothing else: the
 /// same declared <code>fields</code>, the same secret strip, the same filter, sort and view rule,
@@ -157,6 +158,18 @@ ClassMethod LogSourcePortClass() As %String
     Quit "OcuPilot.Port.LogSourcePort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the instance's directory allow-list, read
+/// through <method>PathPortClass</method> (AD-21, AD-36). The source's <code>endpoint</code> is a key
+/// from that port's own <code>SOURCES</code>.</p>
+Parameter SOURCEPATH = "path";
+
+/// <p>The port class every <b>path</b> read is issued through. Overridable so a fixture can reach
+/// another; production never overrides it.</p>
+ClassMethod PathPortClass() As %String
+{
+    Quit "OcuPilot.Port.PathPort"
+}
+
 /// <p>The package a <code>state</code> source's <code>endpoint</code> names a class in, trailing
 /// dot included. A source declares the class's short name -- <code>Agent</code> -- and never a
 /// package-qualified one, so no descriptor can point the read at a class outside the kernel's own
@@ -270,6 +283,14 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             ; A log file's bounded tail as rows, newest first. It takes no namespace -- the file is
             ; the instance's, not a namespace's -- and no criteria, so the cap is the whole ask.
             Set tPortSC = $ClassMethod(..LogSourcePortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCEPATH {
+            ; The instance's allowed directories, computed by the port on this call: no namespace,
+            ; since the allow-list is the instance's, and no criteria, so the cap is the whole ask.
+            Set tPortSC = $ClassMethod(..PathPortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit

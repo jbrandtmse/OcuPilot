@@ -789,6 +789,30 @@ export const STRINGS = {
   walletColumnEditResource: 'Edit resource',
   /** EXPERIENCE.md:364 */
   walletListEmpty: 'No wallet collections on this instance.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoriesLabel: 'Allowed directories',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoriesColumnRestricted: 'Restricted',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoriesEmpty: 'The instance\'s allow-list names no directory.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryListPrompt1: 'Which server directories can a file or directory field choose from?',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryListPrompt2: 'Does this instance restrict the directories its file dialogs can reach?',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryListPrompt3: 'Is the manager directory one of the allowed directories?',
+  /** EXPERIENCE.md:364 */
+  pathPickerRootLabel: 'Allowed directory',
+  /** EXPERIENCE.md:364 */
+  pathPickerSubdirectoryLabel: 'Subdirectory',
+  /** EXPERIENCE.md:364 */
+  pathPickerFileLabel: 'File name',
+  /** EXPERIENCE.md:364 */
+  pathPickerResolvesTo: 'Resolves to <path>',
+  /** EXPERIENCE.md:364 */
+  pathPickerLoading: 'Reading the allowed directories\u2026',
+  /** EXPERIENCE.md:364 */
+  pathPickerTruncated: 'Only the first <n> allowed directories are listed.',
   /** EXPERIENCE.md:365 */
   walletSecretListLabel: 'Secrets',
   /** EXPERIENCE.md:365 */

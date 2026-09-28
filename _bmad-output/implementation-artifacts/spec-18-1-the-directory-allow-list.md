@@ -2,8 +2,9 @@
 title: 'Story 18.1: The directory allow-list'
 type: 'feature'
 created: '2026-09-27'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
+baseline_revision: 'b41037bc6932e90e5719c13f9bdee045b96af678'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
@@ -286,6 +287,28 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-28 — Review pass
+
+- verdicts: 17 findings — high 0, medium 3, low 7, false 7, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) A `path` read cut at its cap is never tested for `truncated` — added a cap-of-one read under two roots to `PathPort.TestTheScreenReadAndToolAnswerThePortsRows`, asserting one row and `truncated` 1; `tMax + 1` → `tMax` reddens it.
+  - `[medium]` `[patch]` (verification-gap) `Roots`' fail-closed pass-through and its list-404 fallback are unpinned — `PathPortFixture.Script` answers a named endpoint and type; `TestAVendorFaultPassesThroughAndARemovedPurposeFallsBack` pins 500 and 403 pass-through and the race fallback; both mutations redden it alone.
+  - `[low]` `[patch]` (verification-gap) `Resolve`'s own gate call is not load-bearing — a denied caller's `a..b` now asserts 403 per pair; removing the gate reddens it.
+  - `[low]` `[patch]` (verification-gap) `parsePathSources`' null branch has no test — two asserts beside `parseEntityTypes`'; answering `[]` reddens them.
+  - `[low]` `[patch]` (verification-gap) AC4 has no `mutation:` line — a header-label contrast mutation, rebuilt and redeployed, reddened the AC4 leg on this route's own keys; line added under Verification.
+  - `[low]` `[reject]` (verification-gap, other) `## Auto Run Result` says the browser spec passed 3 of 3 — the fix edits this spec; Finalize rewrites that section (4 of 4).
+  - `[low]` `[patch]` (verification-gap, other) `AdminPairCorpus` says the system-read rule names admin reads alone — corrected to admin and path reads at the doc comment and both case names.
+  - `[low]` `[reject]` (intent-alignment) Matrix "No privilege" reads `PORT.ACCESSDENIED` for the screen read, while the wire answers the screen gate's `AUTH.NOPRIVILEGE` — the screen's declared pairs equal the port's, so AD-8's screen gate always refuses first, naming the pair and before any `AdminPort` call; the port's code is pinned in process and by `PortGate`, and the picker renders any refusal's reason. No change satisfies both the literal code and the declared pairs.
+  - `[false]` `[reject]` (intent-alignment) `Resolve` checks the name before the roots, so a request with both faults answers `PATH.NAME` — the intent fixes no order; AD-21 asks both refusals to come before any vendor call, and a name refused first spares an admin read.
+  - `[false]` `[reject]` (intent-alignment) The picker takes reasons from its consumer and nothing maps `violations[].field` end to end — the picker renders each reason on the field it names, as the intent says; the mapping is the consumer's (Design Notes › Consumed-by), and no consumer exists in this story.
+  - `[false]` `[reject]` (intent-alignment) The tool and table show the roots in the declared sort, not the vendor's order — the route and port answer the vendor's order; AD-36 makes the tool's view the screen's view, and the test compares against `ApplyView` of the port's rows.
+  - `[low]` `[reject]` (intent-alignment) No principal-driven test calls the read tool without a pair — the tool's gate is the descriptor's by construction (`Screen/Tool/Read.PrivilegePairs` → `Screen.Gate.RequiredPairs`), shared by every derived read tool; a new principal fixture would add complexity for code this story does not touch.
+  - `[medium]` `[patch]` (intent-alignment) Truncation is not covered through the route or the tool for a `path` source — same root cause as the first row; closed by the same leg.
+  - `[false]` `[reject]` (intent-alignment) `PathPortFixture` calls `%SYS.FileSystemAccess` directly — the Never list governs the shipped port; the spec's Tasks require the fixture to record, set and restore the allow-list, and it is test-scoped and armed.
+  - `[false]` `[reject]` (intent-alignment) `strings.ts` keys are inserted beside `walletListEmpty`, not at the end — no existing key changed; they sit with the other `EXPERIENCE.md:364` citations, and nothing enforces position.
+  - `[false]` `[reject]` (intent-alignment) Roster counts, messages and one corpus case changed — each is forced by the added entry and named by the spec (127 → 128, 31 → 32, "five sources"); nothing was removed or reordered.
+  - `[false]` `[reject]` (intent-alignment) The "Resolves to" caption shows a path for a name the server would refuse — by design: the caption is display only and the Never list forbids a client copy of the segment rule; `PATH.NAME` arrives as `pathReason`.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -410,13 +433,70 @@ Each consumer does the following:
 | Matrix | `Contains` drops its trailing separator | The `/a/bc/` leg |
 | Matrix | The roots are cached in `^||` | The not-cached leg |
 
+**Demonstrated on `ocupilot-b-ci`, each reverted byte-identical (Rule 19):**
+
+- mutation: `PathPort.Roots`' unrestricted branch answers `[]` → `PathPort.TestUnrestrictedAnswersTheManagerDirectoryAlone` and `TestResolveComposesUnderAnAllowedRoot`, and the browser spec's fresh leg
+- mutation: `Roots` always appends the manager directory → `PathPort.TestRestrictedAnswersExactlyItsRoots`, `TestRestrictedWithNoRootsAnswersNone`, `TestAForeignRootIsRefused` and `TestUnrestrictedAnswersTheManagerDirectoryAlone`
+- mutation: `Registry.ReadProblem` admits `rowGet` on a `path` source → `Descriptor.TestTheAllowedDirectoriesListDeclaresThePathSource`; the same in `screen-mirror.mjs` → `screen-mirror.test.mjs`'s AdminPairCorpus test
+- mutation: the `Gate` call removed from `Roots` → `PathPort.TestTheGateRefusesBeforeAnyAdminPortCall`
+- mutation: `%DB_IRISSYS:READ` dropped from `AllowedDirectoryList` → `Registry.Validate` and `screen-mirror.mjs --check` both refuse it with the `path` sentence
+- mutation: `%Admin_FileSystemAccess:USE` dropped from the descriptor's pairs → `PathPortPrivilege.TestEitherPairMissingIsRefusedNamingIt` (the port refused the principal on `PORT.ACCESSDENIED`)
+- mutation: an unlisted `root` rendered as an option → `server-path-picker.spec.ts` "does not select, or offer, a root the store did not read"
+- mutation: a select rendered while refused → `server-path-picker.spec.ts` "draws the store's reason and no control"
+- mutation: `ALLOWED_DIRECTORIES_ROUTE` pointed at `security/wallet` → `allowed-directories.test.mjs`'s first test
+- mutation: membership made a prefix check → `PathPort.TestAForeignRootIsRefused`
+- mutation: the literal `..` refusal removed → `PathPort.TestABadNameIsRefused` (`a..b`)
+- mutation: `Contains` compares without the trailing separator → `PathPort.TestContainsKeepsTheTrailingSeparator` (`/a/bc/`)
+- mutation: `Roots` answers from a `^||` cache → `PathPort.TestTheRootsAreNotCached`, among six
+- mutation: `PathPort`'s row absent from `Test/PortGate.cls`'s port roster (the tree before this pass added it) → `PortGate.TestEveryPortDeclaresANamedGate`, red in the full sweep and green once added
+- mutation: `Roots` falls back to the manager directory when a restricted purpose lists no root → `allowed-directories.browser-spec.mjs` "Restricted, empty" (the screen's empty state; the leg the Matrix Test Audit added)
+- mutation: `Screen.Read`'s `path` branch asks the port for `tMax` rows instead of `tMax + 1` → `PathPort.TestTheScreenReadAndToolAnswerThePortsRows` "cut: and the read says it was cut"
+- mutation: `Roots` treats every failed purpose read as absent (its 404 test dropped) → `PathPort.TestAVendorFaultPassesThroughAndARemovedPurposeFallsBack` (the 500 and 403 legs), alone
+- mutation: `Roots` drops the manager-directory fallback on the root-path list's 404 → `PathPort.TestAVendorFaultPassesThroughAndARemovedPurposeFallsBack` (the race leg)
+- mutation: the `Gate` call removed from `Resolve` → `PathPort.TestTheGateRefusesBeforeAnyAdminPortCall` "a bad name meets the gate before the name rule", for both pairs
+- mutation: `parsePathSources` answers `[]` for a missing parameter → `screen-mirror.test.mjs` "the path-source parser reads PathPort.SOURCES"
+- mutation (AC4): `.ocu-data-table-header-label` drawn in `--ocu-surface`, bundle rebuilt and redeployed → `allowed-directories.browser-spec.mjs` "AC4 (DW-1337)", fresh `security/allowed-directories|contrast|light` and `|dark` entries
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-This was a planning pass only, and the run halted after planning as dispatched. No code was written and nothing was committed.
+**Summary.** Implements AD-21's sixth case: `Port/PathPort` computes the allowed roots on every call through `AdminPort` (the `%GUIFileSelector` roots when restricted, otherwise the manager directory), gates on its own two pairs, and resolves a root plus a relative name. A `path` read source feeds a read-only Security › Allowed directories screen, its `security.alloweddirectories.read` tool, and the framework-free `AllowedDirectoriesStore` behind the shared `app-server-path-picker`. The picker and `Resolve` have no consumer yet; 18.3 is the first.
 
-The vendor endpoints, `%SYS.FileSystemAccess` and `%CSP.Portal.Utils` were read on `ocupilot-b-ci`. The observed shapes were confirmed there with the probe purpose `OcuPilotProbe181`, which was created and then deleted; `%SYS.FileSystemAccess` reads 0 rows afterwards.
+**Files changed.**
 
-The AD-21 sixth-case text under Design Notes is for the runner to write at the spec gate.
+- `src/OcuPilot/Port/PathPort.cls` (new): the port: roots, gate, `Rows`, `Resolve`, `NameAdmitted`, `Contains`.
+- `src/OcuPilot/Screen/Descriptor/AllowedDirectoryList.cls` (new): the screen's descriptor.
+- `src/OcuPilot/Screen/Read.cls`, `Screen/Registry.cls`: the `path` source, its dispatch branch and its registry rules.
+- `src/OcuPilot/Api/Error.cls`: `PATH.ROOT` and `PATH.NAME` with their reasons.
+- `src/OcuPilot/Kernel/EntityType.cls`: `allowed-directory`.
+- `src/OcuPilot/Test/PathPort.cls`, `PathPortFixture.cls`, `PathPortPrivilege.cls` (new): the port's matrix, its seam and scripted answers, and the pair set over the wire.
+- `src/OcuPilot/Test/` `AdminPairCorpus`, `Descriptor`, `PortGate`, `ReadTool`, `SecurityLists`, `SurfaceCoverage`, `Wire`, `WireOAuthRead`, `WireSecurityRead`: this story's roster entries and legs.
+- `scripts/ci-throwaway.sh`: arms `PathPort` and `PathPortPrivilege`.
+- `ui/src/app/core/allowed-directories.ts` (new): the store.
+- `ui/src/app/shell/server-path-picker.ts` and `.spec.ts` (new): the picker and its host spec.
+- `ui/src/app/core/strings.ts`, `screens.generated.ts` (regenerated), `ui/src/styles/_components.scss`: strings, mirror and one layout rule.
+- `ui/tools/screen-mirror.mjs`, `screen-mirror.test.mjs`, `navigation.test.mjs`, `allowed-directories.test.mjs` (new): the mirrored `path` rules and client tests.
+- `ui/browser/allowed-directories.browser-spec.mjs` (new): fresh, restricted, restricted-empty and the structural walk.
+- EXPERIENCE.md rows 168 and 364, in place; still 993 lines.
+
+**Review.** Two layers (verification-gap, intent-alignment); 17 findings, triaged in the Review Triage Log. Six entries patched (two medium, four low), all test-side: the cut-read leg, the scripted vendor-fault and race legs, `Resolve`'s gate leg, the parser's null leg, the AC4 mutation, and the corpus wording. Nothing deferred. Rejected: the spec-text row, which Finalize rewrites; the "No privilege" code, which the declared pairs make unreachable on the wire; and the tool-gate row, which holds by construction. Seven rows are `false`, each with its refutation in the log. The Matrix Test Audit added the browser leg for "Restricted, empty".
+
+**Follow-up review: false.** Patched counts: high 0, medium 2, low 4. Both medium patches only add tests, and each new leg reddened under its named mutation and passed on the reverted code, so no unverified risk in the patched code can be named.
+
+**Verification.**
+
+- On `ocupilot-b-ci`, every class the story touches ran one class per call. After the patches, `PathPort` (11/11), `PathPortPrivilege`, `PortGate` and `ReadTool` passed again.
+- The full sweep ran once before review. `%UnitTest_Result`, latest run per class, now reads 331 classes, 2,738 passed, 0 failed, with no unlanded run. The two source classes absent from it carry no unit tests.
+- The browser spec passed 4/4 on the rebuilt and redeployed bundle.
+- `npm run test:tools` passed 1,655 and `npm run test:components` 1,609.
+- The build is 1.98 MB, under the 2,004 kB warning.
+- Smoke passed 49/49 after the patches. `check-objectscript` and `lint-docs` are clean, and EXPERIENCE.md is 993 lines.
+- Each mutation is listed under Verification. Each was applied to the throwaway copy or restored from a saved copy, so the tree stayed byte-identical.
+
+**Residual risks.**
+
+- **Merge with Epic 16.** Epic 16 adds a `timeline` source in the same places. `Read.Execute`'s explicit port list must admit `SOURCEPATH`, and the "five sources" sentence becomes six in `Registry.cls`, `screen-mirror.mjs` and `AdminPairCorpus`.
+- **AD-8 wording.** AD-8 still says "the one case today is Logs" for a screen's own pair, and Allowed directories is now a second area with one. That is a spine edit for the runner (Rule 20).
+- **Picker on a transport failure.** The picker's refused line is empty then, because no string exists for that case. It is unreachable until 18.3 embeds the picker.

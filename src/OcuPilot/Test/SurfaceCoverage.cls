@@ -61,6 +61,7 @@ XData Coverage
 <screen name="AgentTranscript" class="OcuPilot.Test.TranscriptStore" method="TestTheListAndTheTranscriptPageAreDeclared" corpus="one declaration test pins both screens Story 14.4 adds, the list and the transcript page beneath it"/>
 <screen name="AgentTranscripts" class="OcuPilot.Test.TranscriptStore" method="TestTheListAndTheTranscriptPageAreDeclared" corpus="one declaration test pins both screens Story 14.4 adds, the list and the transcript page beneath it"/>
 <screen name="AgentGovernance" class="OcuPilot.Test.GovernanceWire" method="TestTheReadAnswersEveryWriteKey"/>
+<screen name="AllowedDirectoryList" class="OcuPilot.Test.Descriptor" method="TestTheAllowedDirectoriesListDeclaresThePathSource"/>
 <screen name="AuditList" class="OcuPilot.Test.Descriptor" method="TestTheAuditListValidatesAndDeclaresItsServerCriteria"/>
 <screen name="AuditingConfig" class="OcuPilot.Test.Descriptor" method="TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTool"/>
 <screen name="AuditSystemEventList" class="OcuPilot.Test.AuditingScreen" method="TestTheSystemEventListReadsSystemEvents"/>

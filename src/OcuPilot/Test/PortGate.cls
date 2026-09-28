@@ -25,7 +25,7 @@ Parameter PORTPACKAGE = "OcuPilot.Port.";
 /// vendor's own resource check declares <parameter>VENDORGATE</parameter> instead.</p>
 /// <p><b>A class in the package and not on this roster fails.</b> That is the point: the roster is
 /// what a new port has to be added to, and adding it is what forces a gate to be named.</p>
-Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>";
+Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>|OcuPilot.Port.PathPort=PAIRS";
 
 /// <p>The roster value for a port whose gate is the vendor's own <code>ResourcesOR()</code> check,
 /// which AD-29 fixes as a lower bound with the remedy at the screen descriptor's declared pair
@@ -54,6 +54,7 @@ Method OnAfterOneTest() As %Status
     Do ##class(OcuPilot.Test.MgmntPortFixture).SetGateClass("")
     Do ##class(OcuPilot.Test.MonitorPortFixture).Clear()
     Do ##class(OcuPilot.Test.ProviderGate).Allow()
+    Do ##class(OcuPilot.Test.PathPortFixture).Reset()
     Quit $$$OK
 }
 
@@ -144,7 +145,8 @@ Method TestAMalformedPairSpecFailsClosed()
 }
 
 /// <p><b>AC6</b> -- every port's outbound entry refuses <code>AUTH.NOPRIVILEGE</code> when its
-/// declared gate is not held, before the call it guards is made. Driven, not read.</p>
+/// declared gate is not held, before the call it guards is made, and <class>OcuPilot.Port.PathPort</class>
+/// refuses on its own <code>PORT.ACCESSDENIED</code>. Driven, not read.</p>
 /// <p>Mutation: remove <method>OcuPilot.Port.ProviderPort.Invoke</method>'s
 /// <code>GateAnyOfForUser</code> call, or <method>OcuPilot.Port.MgmntPort.Invoke</method>'s or
 /// <method>OcuPilot.Port.MonitorPort.Performance</method>'s <code>EvaluateRequired</code> call -> this
@@ -194,6 +196,15 @@ Method TestEveryPortEvaluatesItsDeclaredGate()
     Set tSC = ##class(OcuPilot.Test.ErrorLogFixture).Errors("namespaces", "", "", "", "", .tResult5, .tHttp5, .tFault5)
     Do $$$AssertStatusNotOK(tSC, "LogSourcePort.Errors refuses a caller holding none of its pairs")
     Do $$$AssertEquals(tHttp5 _ "|" _ $Select($IsObject(tFault5): tFault5.%Get("code"), 1: ""), ##class(OcuPilot.Kernel.Denial).#STATUS _ "|" _ tDenialCode, "with AUTH.NOPRIVILEGE")
+
+    ; PathPort (Story 18.1): its own gate refuses on the port's own code, PORT.ACCESSDENIED, before
+    ; any admin port call is made.
+    Do ##class(OcuPilot.Test.PathPortFixture).Reset()
+    Do ##class(OcuPilot.Test.PathPortFixture).Deny($Piece(##class(OcuPilot.Port.PathPort).#PAIRS, ",", 1))
+    Set tSC = ##class(OcuPilot.Test.PathPortFixture).Rows("roots", 2, .tRows7, .tHttp7, .tFault7)
+    Do $$$AssertStatusNotOK(tSC, "PathPort.Rows refuses a caller holding its pairs but the first")
+    Do $$$AssertEquals(tHttp7 _ "|" _ $Select($IsObject(tFault7): tFault7.%Get("code"), 1: "") _ "|" _ ##class(OcuPilot.Test.PathPortFixture).Calls(), "403|" _ ##class(OcuPilot.Api.Error).#PORTACCESSDENIED _ "|0", "with PORT.ACCESSDENIED, before the allow-list is read")
+    Do ##class(OcuPilot.Test.PathPortFixture).Reset()
 }
 
 /// <p><b>AC6</b> -- the administrative floor has one home. The router's list and the provider
