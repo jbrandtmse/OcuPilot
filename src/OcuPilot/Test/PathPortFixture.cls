@@ -105,10 +105,12 @@ ClassMethod JournalDirectories(Output pDirectories As %List) As %Status
 
 /// <p>Answer <var>pPrimary</var>, <var>pAlternate</var> and <var>pCurrentFile</var> as the
 /// instance's primary and alternate journal directories and current journal file until
-/// <method>Reset</method>, so the port's own composition of the three is what runs.</p>
-ClassMethod UseJournalSources(pPrimary As %String = "", pAlternate As %String = "", pCurrentFile As %String = "")
+/// <method>Reset</method>, so the port's own composition of the three is what runs; with
+/// <var>pFail</var>, answer them and fail that read as well, as a read that stops part way
+/// does.</p>
+ClassMethod UseJournalSources(pPrimary As %String = "", pAlternate As %String = "", pCurrentFile As %String = "", pFail As %Boolean = 0)
 {
-    Set ^||OcuPilotPathPortFixture("journalsources") = $ListBuild(pPrimary, pAlternate, pCurrentFile)
+    Set ^||OcuPilotPathPortFixture("journalsources") = $ListBuild(pPrimary, pAlternate, pCurrentFile, ''pFail)
 }
 
 ClassMethod JournalSources(Output pPrimary As %String, Output pAlternate As %String, Output pCurrentFile As %String) As %Status
@@ -118,6 +120,7 @@ ClassMethod JournalSources(Output pPrimary As %String, Output pAlternate As %Str
     Set pPrimary = $List(tSeam, 1)
     Set pAlternate = $List(tSeam, 2)
     Set pCurrentFile = $List(tSeam, 3)
+    If $List(tSeam, 4) Quit $$$ERROR($$$GeneralError, "the journal source read failed, as the fixture was told")
     Quit $$$OK
 }
 

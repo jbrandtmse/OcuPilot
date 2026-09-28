@@ -7080,6 +7080,7 @@ So that database administration is complete rather than list-only.
 
 - DW-1791: A directory a vendor writes into may be another database's own: pVendorWrites refuses only <ManagerDirectory> itself, so <mgr>/irissecurity/ resolves for a database create (ledger; routed by cr 2026-09-28)
 - DW-1795: PATH.INSTANCE refuses a database's volume files only beside its IRIS.DAT; an overwriting consumer can resolve an existing volume file in an additional volume directory (ledger; routed by harvest 2026-09-28)
+- DW-1796: PathPort.DatabaseDirectories' own read is pinned only against a stable default configuration (a configured StreamLocation, a ':' directory, a failure or cache inside the reader) (ledger; routed by cr 2026-09-28)
 
 **Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
@@ -7130,6 +7131,8 @@ So that the transaction record is inspectable from the portal.
 - **Given** the journal is a transaction record rather than an operator log
 - **When** it is placed
 - **Then** it stays in System Operation rather than joining the Logs area - a deliberate judgment carried from the catalog.
+
+- DW-1797: PathPort's journal read names only the primary, alternate and current file's directories, so files in a former journal directory and IRIS.WIJ outside the manager directory resolve for an overwrite (ledger; routed by cr 2026-09-28)
 
 **Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);

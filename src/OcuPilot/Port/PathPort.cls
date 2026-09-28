@@ -399,15 +399,16 @@ ClassMethod InstanceFile(pFile As %String) As %Boolean
 
 /// <p>Whether normalized file path <var>pFile</var> sits directly in the directory of
 /// <method>ConfigurationFile</method>, beside the instance's configuration file and its saved
-/// copies. Textual; a configuration file that is empty, or whose directory is empty or does not
-/// normalize, answers true, so the refusal it guards fails closed.</p>
+/// copies. Textual and ignoring case, so on a filesystem that ignores case another spelling of the
+/// same file is refused too; a configuration file that is empty, or whose directory is empty or
+/// does not normalize, answers true, so the refusal it guards fails closed.</p>
 ClassMethod DirectlyInConfigurationDirectory(pFile As %String) As %Boolean
 {
     Set tDirectory = ..ConfigurationFile()
     If tDirectory '= "" Set tDirectory = ##class(%File).GetDirectory(tDirectory)
     If tDirectory '= "" Set tDirectory = ##class(%File).NormalizeDirectory(tDirectory)
     If tDirectory = "" Quit 1
-    Quit (pFile = (tDirectory _ ##class(%File).GetFilename(pFile)))
+    Quit ($ZConvert(pFile, "L") = $ZConvert(tDirectory _ ##class(%File).GetFilename(pFile), "L"))
 }
 
 /// <p>Whether normalized file path <var>pFile</var> is a database file one directory below the
@@ -428,21 +429,25 @@ ClassMethod DatabaseFileBelowManagerDirectory(pFile As %String) As %Boolean
 /// directly in a database's directory, as the database file, its lock file and the volume files
 /// kept beside it do, or anywhere under that database's stream location, as
 /// <method>DatabaseDirectories</method> answers them at this call. A file in any other
-/// subdirectory of a database's directory is not the database's. Textual; a read that fails
-/// answers true, so the refusal it guards fails closed.</p>
+/// subdirectory of a database's directory is not the database's. Textual and ignoring case, so on
+/// a filesystem that ignores case another spelling of the same file is refused too; a read that
+/// fails answers true, so the refusal it guards fails closed.</p>
 ClassMethod InDatabaseDirectory(pFile As %String) As %Boolean
 {
     If $$$ISERR(..DatabaseDirectories(.tDirectories, .tStreams)) Quit 1
+    Set tFile = $ZConvert(pFile, "L")
+    Set tName = $ZConvert(##class(%File).GetFilename(pFile), "L")
     Set tIn = 0
     For tI = 1:1:$ListLength(tDirectories) {
-        If pFile = ($List(tDirectories, tI) _ ##class(%File).GetFilename(pFile)) {
+        If tFile = ($ZConvert($List(tDirectories, tI), "L") _ tName) {
             Set tIn = 1
             Quit
         }
     }
     If tIn Quit 1
     For tI = 1:1:$ListLength(tStreams) {
-        If ..Contains($List(tStreams, tI), pFile) {
+        Set tStream = $ZConvert($List(tStreams, tI), "L")
+        If (tStream '= "") && ($Extract(tFile, 1, $Length(tStream)) = tStream) {
             Set tIn = 1
             Quit
         }
@@ -451,14 +456,17 @@ ClassMethod InDatabaseDirectory(pFile As %String) As %Boolean
 }
 
 /// <p>Whether normalized file path <var>pFile</var> sits directly in one of the instance's journal
-/// directories, as <method>JournalDirectories</method> answers them at this call. Textual; a read
-/// that fails answers true, so the refusal it guards fails closed.</p>
+/// directories, as <method>JournalDirectories</method> answers them at this call. Textual and
+/// ignoring case, as <method>InDatabaseDirectory</method> is; a read that fails answers true, so
+/// the refusal it guards fails closed.</p>
 ClassMethod InJournalDirectory(pFile As %String) As %Boolean
 {
     If $$$ISERR(..JournalDirectories(.tDirectories)) Quit 1
+    Set tFile = $ZConvert(pFile, "L")
+    Set tName = $ZConvert(##class(%File).GetFilename(pFile), "L")
     Set tIn = 0
     For tI = 1:1:$ListLength(tDirectories) {
-        If pFile = ($List(tDirectories, tI) _ ##class(%File).GetFilename(pFile)) {
+        If tFile = ($ZConvert($List(tDirectories, tI), "L") _ tName) {
             Set tIn = 1
             Quit
         }

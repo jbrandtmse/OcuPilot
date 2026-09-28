@@ -143,3 +143,10 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T22:08:24Z	Story 18.1	committed_code	sha=b086fb2a pushed=true ci=pending run=36490516242 head_confirmed_by=headSha note=DW-1790_fix_pushed_alone
 2026-09-28T22:08:24Z	Story 18.1	ledger_routed_planned	story=18-3-databases-configuration-creation-properties-and-volumes entries=1 excess=0 by=harvest dw=DW-1795
 2026-09-28T22:08:24Z	Story 18.1	stage_spawned	stage=code-review spawn_at=2026-09-28T22:08:24Z model=opus agent_name=18-1-allowlist-code-review-5 cycle_iteration=5 review_tier=full-opus scope=01fbb1e5..b086fb2a
+2026-09-28T22:36:39Z	Story 18.1	ci_resolved	story=18.1 run=36490516242 head=b086fb2a result=success resolved_at=post_review
+2026-09-28T22:36:39Z	Story 18.1	cr_complete	spawn_at=2026-09-28T22:08:24Z model=opus resolved=5 fixed_at_source=5(case-insensitive_dir_match_MED) routed=2(DW-1796_18-3,DW-1797_18-5) escalated=0 decision_pending=1(DW-1798) dismissed=19 high=0 med=7 low=1 rows=37 unresolved_high_med=3 clarifications=0 closing_sections_present=true review_tier=full-opus scope=01fbb1e5..b086fb2a verdict=done cycle_iteration=5 cap_override_closed=true
+2026-09-28T22:36:39Z	Story 18.1	ledger_routed_planned	story=18-3-databases-configuration-creation-properties-and-volumes entries=1 excess=0 by=cr dw=DW-1796
+2026-09-28T22:36:39Z	Story 18.1	ledger_routed_planned	story=18-5-journals entries=1 excess=0 by=cr dw=DW-1797
+2026-09-28T22:36:39Z	Epic 18	spine_updated	ad=deferred reason=decision_pending_mirror(DW-1798) by=runner story=18-1-the-directory-allow-list lint=ok
+2026-09-28T22:36:39Z	Story 18.1	ledger_adjudicated	owned=1 resolved=1(DW-1790) reowned=0 terminal=0
+2026-09-28T22:36:39Z	Story 18.1	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=ocupilot-b-ci:docker_exec_PathPort.Resolve_ow1:hscustom/iris.lck->PATH.INSTANCE(case-insensitive);HSCUSTOM/IRIS.DAT->PATH.INSTANCE;journal/20260928.001->PATH.INSTANCE;journal/new->200;ordinary_existing_file->200;new_file_ow0->200;scratch_removed rework_iteration=4

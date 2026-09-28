@@ -2,7 +2,8 @@
 /// journal files: to a caller that overwrites, every existing file directly in a configured
 /// database's directory or under its stream location, and every existing file directly in a
 /// journal directory, is refused 400 <code>PATH.INSTANCE</code> on the name's field, the
-/// directories read from the instance at each call and a failed read refusing; an ordinary file in
+/// directories read from the instance at each call and compared ignoring case, and a failed read
+/// refusing; an ordinary file in
 /// a subdirectory still resolves. It also pins the port's two reads against the instance's own
 /// answers.</p>
 /// <p>Each method records the allow-list before it runs and restores it exactly afterwards, failure
@@ -192,13 +193,14 @@ Method TestAnOverwriteNeverReachesADatabasesFiles()
     }
 }
 
-/// <p>A file under a database's stream location is the database's, a file directly in its
+/// <p>A file anywhere under a database's stream location is the database's, a file directly in its
 /// directory is too, and a file in any other subdirectory of that directory is not; the
 /// databases are the port's read at each call, so naming none frees the same file, and a failed
 /// read refuses every overwrite. Works through the fixture's database seam over a scratch directory
 /// under <parameter>TMPROOT</parameter> that it creates and removes.</p>
 /// <p>Mutation (Rule 19): drop the stream-location test from
-/// <method>OcuPilot.Port.PathPort.InDatabaseDirectory</method> -&gt; the stream leg resolves; answer
+/// <method>OcuPilot.Port.PathPort.InDatabaseDirectory</method> -&gt; the stream legs resolve; test
+/// only a file directly in the stream location -&gt; the deeper stream leg resolves; answer
 /// false on a failed read -&gt; the failed-read leg resolves; keep the first read's directories in a
 /// process-private global and answer from it -&gt; the freed file stays refused; test containment
 /// under a database's directory -&gt; the ordinary subdirectory file is refused.</p>
@@ -208,7 +210,7 @@ Method TestAStreamFileIsTheDatabasesAndTheReadIsNeverKept()
     Set tPort = ..#FIXTURE
     Try {
         Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(..#TMPROOT)), "the purpose is restricted to /tmp/")
-        For tFile = "held.dat", "stream/s.stream", "sub/t.xml" {
+        For tFile = "held.dat", "stream/s.stream", "stream/deep/s.stream", "sub/t.xml" {
             Do $$$AssertStatusOK(..WriteFile(tScratch _ tFile), "a scratch file " _ tFile)
         }
         Set tRelative = $Piece(tScratch, "/", *-1)
@@ -217,6 +219,7 @@ Method TestAStreamFileIsTheDatabasesAndTheReadIsNeverKept()
         Do $ClassMethod(tPort, "UseDatabaseDirectories", $ListBuild(tScratch), $ListBuild(tScratch _ "stream/"))
         Do $$$AssertEquals(..Overwrite(..#TMPROOT, tRelative _ "/held.dat", tPort), tRefused, "a file directly in a database's directory is the database's")
         Do $$$AssertEquals(..Overwrite(..#TMPROOT, tRelative _ "/stream/s.stream", tPort), tRefused, "and so is a file under its stream location")
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, tRelative _ "/stream/deep/s.stream", tPort), tRefused, "and one deeper under it")
         Do $$$AssertEquals(..Overwrite(..#TMPROOT, tRelative _ "/sub/t.xml", tPort), "200|" _ tScratch _ "sub/t.xml", "but a file in another subdirectory of it is not")
 
         Do $ClassMethod(tPort, "UseDatabaseDirectories", "", "")
@@ -228,9 +231,10 @@ Method TestAStreamFileIsTheDatabasesAndTheReadIsNeverKept()
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the stream legs ran to the end")
     }
-    For tFile = "held.dat", "stream/s.stream", "sub/t.xml" {
+    For tFile = "held.dat", "stream/s.stream", "stream/deep/s.stream", "sub/t.xml" {
         Do ##class(%File).Delete(tScratch _ tFile)
     }
+    Do ##class(%File).RemoveDirectory(tScratch _ "stream/deep/")
     Do ##class(%File).RemoveDirectory(tScratch _ "stream/")
     Do ##class(%File).RemoveDirectory(tScratch _ "sub/")
     Do ##class(%File).RemoveDirectory(tScratch)
@@ -242,11 +246,13 @@ Method TestAStreamFileIsTheDatabasesAndTheReadIsNeverKept()
 /// from the journal directory as the root and, where it lies under the manager directory, from that
 /// directory as the unrestricted root; a caller that does not overwrite is refused as a taken name,
 /// and a new name there resolves. Through the fixture's journal seam over a scratch directory under
-/// <parameter>TMPROOT</parameter>, which it creates and removes, a directory the read names is
-/// refused, the same file resolves once it names none, and a failed read refuses.</p>
+/// <parameter>TMPROOT</parameter>, which it creates and removes, a file directly in a directory the
+/// read names is refused while one in a subdirectory of it resolves, the same file resolves once
+/// the read names none, and a failed read refuses.</p>
 /// <p>Mutation (Rule 19): drop <method>OcuPilot.Port.PathPort.InJournalDirectory</method> from
 /// <method>OcuPilot.Port.PathPort.InstanceFile</method> -&gt; each refused leg resolves; answer
-/// false on a failed read -&gt; the failed-read leg resolves.</p>
+/// false on a failed read -&gt; the failed-read leg resolves; test containment under a journal
+/// directory -&gt; the subdirectory leg is refused.</p>
 Method TestAnOverwriteNeverReachesAJournalFile()
 {
     Set tManager = ##class(%File).NormalizeDirectory($System.Util.ManagerDirectory())
@@ -278,9 +284,11 @@ Method TestAnOverwriteNeverReachesAJournalFile()
     Try {
         Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(..#TMPROOT)), "the purpose is restricted to /tmp/")
         Do $$$AssertStatusOK(..WriteFile(tScratch _ "20260101.001"), "a scratch journal-like file")
+        Do $$$AssertStatusOK(..WriteFile(tScratch _ "sub/20260101.002"), "and one in a subdirectory")
         Set tName = $Piece(tScratch, "/", *-1) _ "/20260101.001"
         Do $ClassMethod(tPort, "UseJournalDirectories", $ListBuild(tScratch))
         Do $$$AssertEquals(..Overwrite(..#TMPROOT, tName, tPort), tRefused, "a file directly in a directory the journal read names is refused")
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, $Piece(tScratch, "/", *-1) _ "/sub/20260101.002", tPort), "200|" _ tScratch _ "sub/20260101.002", "but one in a subdirectory of it resolves")
         Do $ClassMethod(tPort, "UseJournalDirectories", "")
         Do $$$AssertEquals(..Overwrite(..#TMPROOT, tName, tPort), "200|" _ tScratch _ "20260101.001", "and resolves once the read names none")
         Do $ClassMethod(tPort, "UseJournalDirectories", "", 1)
@@ -289,6 +297,8 @@ Method TestAnOverwriteNeverReachesAJournalFile()
         Do $$$AssertStatusOK(ex.AsStatus(), "the journal seam legs ran to the end")
     }
     Do ##class(%File).Delete(tScratch _ "20260101.001")
+    Do ##class(%File).Delete(tScratch _ "sub/20260101.002")
+    Do ##class(%File).RemoveDirectory(tScratch _ "sub/")
     Do ##class(%File).RemoveDirectory(tScratch)
     Do $$$AssertTrue('##class(%File).Exists(tScratch), "the scratch directory is removed")
 }
@@ -297,11 +307,14 @@ Method TestAnOverwriteNeverReachesAJournalFile()
 /// fixture's journal-source seam naming three distinct scratch directories under
 /// <parameter>TMPROOT</parameter>, the port's journal read names all three, in order, and an existing
 /// file in the alternate alone is refused <code>PATH.INSTANCE</code> to a caller that overwrites;
-/// three sources naming one directory name it once. Creates and removes its scratch directory.</p>
+/// three sources naming one directory name it once; a source read that fails fails the journal
+/// read, which names nothing and so refuses the overwrite. Creates and removes its scratch
+/// directory.</p>
 /// <p>Mutation (Rule 19): drop any one source from
 /// <method>OcuPilot.Port.PathPort.JournalDirectories</method> -&gt; the list lacks it (and, for the
 /// alternate, its file resolves); stop naming a directory once -&gt; the repeated one is listed
-/// three times.</p>
+/// three times; ignore <method>OcuPilot.Port.PathPort.JournalSources</method>' status -&gt; the
+/// failed-source legs read OK and resolve.</p>
 Method TestEveryJournalSourceIsAJournalDirectory()
 {
     Set tScratch = ..#TMPROOT _ "ocupilot-pathport-jsrc-" _ $Job _ "/"
@@ -318,11 +331,65 @@ Method TestEveryJournalSourceIsAJournalDirectory()
         Do $ClassMethod(tPort, "UseJournalSources", tScratch _ "primary", tScratch _ "primary/", tScratch _ "primary/20260101.003")
         Do $$$AssertStatusOK($ClassMethod(tPort, "JournalDirectories", .tDirectories), "the port reads one directory three times")
         Do $$$AssertEquals($ListToString(tDirectories, " "), tScratch _ "primary/", "and names it once")
+
+        Do $ClassMethod(tPort, "UseJournalSources", tScratch _ "primary", tScratch _ "other", tScratch _ "current/20260101.002", 1)
+        Do $$$AssertStatusNotOK($ClassMethod(tPort, "JournalDirectories", .tDirectories), "a source read that fails fails the journal read")
+        Do $$$AssertEquals($ListLength(tDirectories), 0, "which names no directory")
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, tName, tPort), $ClassMethod(..#HELPERS, "Refusal", ##class(OcuPilot.Api.Error).#PATHINSTANCE, "path"), "so the overwrite is refused, though no source named that directory")
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the journal-source legs ran to the end")
     }
     Do ##class(%File).Delete(tScratch _ "alternate/20260101.001")
     Do ##class(%File).RemoveDirectory(tScratch _ "alternate/")
+    Do ##class(%File).RemoveDirectory(tScratch)
+    Do $$$AssertTrue('##class(%File).Exists(tScratch), "the scratch directory is removed")
+}
+
+/// <p>The instance's directories are compared ignoring case, so on a filesystem that ignores case
+/// another spelling of an instance file is refused too: with the fixture's seams naming a scratch
+/// directory under <parameter>TMPROOT</parameter> in upper case, as a database's directory and
+/// stream location, as a journal directory and as the configuration file's directory, an existing
+/// file in it is refused <code>PATH.INSTANCE</code> to a caller that overwrites, and resolves while
+/// none names it. Creates and removes its scratch directory.</p>
+/// <p>Mutation (Rule 19): compare with case in
+/// <method>OcuPilot.Port.PathPort.InDatabaseDirectory</method>'s directory test or its stream test,
+/// in <method>OcuPilot.Port.PathPort.InJournalDirectory</method>, or in
+/// <method>OcuPilot.Port.PathPort.DirectlyInConfigurationDirectory</method> -&gt; that leg
+/// resolves.</p>
+Method TestAnInstanceDirectoryIsMatchedIgnoringCase()
+{
+    Set tScratch = ..#TMPROOT _ "ocupilot-pathport-case-" _ $Job _ "/"
+    Set tOther = $ZConvert(tScratch, "U")
+    Set tPort = ..#FIXTURE
+    Try {
+        Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(..#TMPROOT)), "the purpose is restricted to /tmp/")
+        For tFile = "held.dat", "stream/s.stream" {
+            Do $$$AssertStatusOK(..WriteFile(tScratch _ tFile), "a scratch file " _ tFile)
+        }
+        Set tRelative = $Piece(tScratch, "/", *-1)
+        Set tRefused = $ClassMethod(..#HELPERS, "Refusal", ##class(OcuPilot.Api.Error).#PATHINSTANCE, "path")
+        Do $ClassMethod(tPort, "UseDatabaseDirectories", "", "")
+        Do $ClassMethod(tPort, "UseJournalDirectories", "")
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, tRelative _ "/held.dat", tPort), "200|" _ tScratch _ "held.dat", "while nothing names the directory, the file resolves")
+
+        Do $ClassMethod(tPort, "UseDatabaseDirectories", $ListBuild(tOther), $ListBuild(tOther _ "STREAM/"))
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, tRelative _ "/held.dat", tPort), tRefused, "a file in a database's directory spelled in other case is the database's")
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, tRelative _ "/stream/s.stream", tPort), tRefused, "and so is one under its stream location spelled so")
+
+        Do $ClassMethod(tPort, "UseDatabaseDirectories", "", "")
+        Do $ClassMethod(tPort, "UseJournalDirectories", $ListBuild(tOther))
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, tRelative _ "/held.dat", tPort), tRefused, "a file in a journal directory spelled in other case is refused")
+
+        Do $ClassMethod(tPort, "UseJournalDirectories", "")
+        Do $ClassMethod(tPort, "UseConfigurationFile", tOther _ "IRIS.CPF")
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, tRelative _ "/held.dat", tPort), tRefused, "and so is a file beside a configuration file spelled in other case")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the case legs ran to the end")
+    }
+    For tFile = "held.dat", "stream/s.stream" {
+        Do ##class(%File).Delete(tScratch _ tFile)
+    }
+    Do ##class(%File).RemoveDirectory(tScratch _ "stream/")
     Do ##class(%File).RemoveDirectory(tScratch)
     Do $$$AssertTrue('##class(%File).Exists(tScratch), "the scratch directory is removed")
 }
