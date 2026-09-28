@@ -93,7 +93,7 @@ const LIVE_PAYLOAD = {
       allowed: false,
       failedPair: '%Admin_Manage:USE',
       // Story 6.11 took this roster from four screens to eight, and Story 6.12 took it from eight
-      // to nine, in ScreensForArea's own (sideBarPosition, class name) collation: the four unlisted
+      // to nine, in ScreensForArea's own (sideBarPosition, class name) collation: the unlisted
       // sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead of the
       // listed ones in position order. Story 18.2 adds the namespace editor among the unlisted ones
       // and Namespaces last.

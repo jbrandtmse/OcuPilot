@@ -2,7 +2,9 @@
 /// AD-39, AD-55): an edit of a namespace deleted since the read is refused on both callers and the
 /// upsert never re-creates it, a key outside the three is refused on both Save routes rather than
 /// dropped, a create without its globals and routines databases is refused on each field on both
-/// callers, and a vendor delete that answers 2xx and leaves the namespace is not believed.</p>
+/// callers, an edit naming no listed database or emptying a required one is refused on that field on
+/// both callers, the edit route decodes a <code>%</code>-led name, and a vendor delete that answers
+/// 2xx and leaves the namespace is not believed.</p>
 /// <p>Writes that should not happen go through <class>OcuPilot.Test.DeviceRecordPort</class>, which
 /// records and sends them, so a removed refusal shows as a recorded write.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, the <code>USER</code> and
@@ -122,6 +124,46 @@ Method TestACreateWithoutItsDatabasesIsRefusedOnEachField()
     Do $$$AssertTrue('$IsObject(tProposal) && (tProblem [ "'Globals'") && (tProblem [ "'Routines'"), "the agent's mint is refused naming each field (" _ tHttp _ " " _ tProblem _ ")")
     Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, "nothing is sent")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tName), 0, "and nothing is created")
+}
+
+/// <p>An edit naming a database the instance does not list, or emptying the globals or routines
+/// database, is refused on that field by the screen's Save and by the agent's mint (AD-55); nothing is
+/// sent and the namespace is unchanged.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.NamespaceUpdate.ArgumentProblem</method>
+/// answers no problem -> each agent leg is minted, and this goes red.</p>
+Method TestAnEditNamingNoDatabaseOrEmptyingOneIsRefusedOnEachCaller()
+{
+    Set tName = "OCUPROBE182RE"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Add", tName), "a namespace is created")
+    For tCase = $ListBuild("Globals", "NOSUCHDB", "NAMESPACE.GLOBALS.ABSENT"), $ListBuild("Globals", "", "NAMESPACE.GLOBALS.REQUIRED"), $ListBuild("Routines", "", "NAMESPACE.ROUTINES.REQUIRED") {
+        Set tField = $List(tCase, 1)
+        Set tCode = $List(tCase, 3)
+        Set tBody = {}
+        Do tBody.%Set(tField, $List(tCase, 2), "string")
+        Set tLabel = tBody.%ToJSON()
+        Set tSC = $ClassMethod(..#SAVE, "Update", tName, tBody, .tHttp, .tFault, .tViolations, .tReadBack)
+        Do $$$AssertEquals(..Fields(.tViolations), tField _ ":" _ tCode, tLabel _ ": the screen's edit is refused on the field")
+        Do tBody.%Set("Name", tName, "string")
+        Set tSC = ..Mint(..#UPDATETOOL, tName, tBody, .tProposal, .tHttp, .tProblem)
+        Set tWanted = "'" _ tField _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation(tCode)
+        Do $$$AssertTrue('$IsObject(tProposal) && (tProblem [ tWanted), tLabel _ ": the agent's mint is refused naming the field and its sentence (" _ tHttp _ " " _ tProblem _ ")")
+    }
+    Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, "nothing is sent")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tName, "Globals") _ " " _ $ClassMethod(..#PROBE, "Stored", tName, "Routines"), "USER USER", "and the namespace is unchanged")
+}
+
+/// <p>The edit route decodes its one path segment once (AD-13): a namespace whose name starts with
+/// <code>%</code>, addressed as the client encodes it, is edited over the wire.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.OsMgmt.NamespaceSave.HandleUpdate</method> takes the
+/// segment undecoded -> the edit answers 404, and this goes red.</p>
+Method TestAPercentLedNamespaceIsEditedOverTheWire()
+{
+    Set tName = "%OCUPROBE182P"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Add", tName), "a namespace whose name starts with % is created")
+    Set tPath = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/namespace/" _ ##class(OcuPilot.Kernel.EntityId).Encode(tName)
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders, {"Routines": "IRISTEMP"}.%ToJSON(), "application/json")
+    Do $$$AssertEquals(tStatus, 200, "the edit answers 200: " _ $Extract(tBody, 1, 200))
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tName, "Routines"), "IRISTEMP", "and the instance holds it")
 }
 
 /// <p>A vendor delete that answers 2xx while the namespace is still there is not a success: the port

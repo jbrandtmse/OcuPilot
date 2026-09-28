@@ -15,8 +15,8 @@
  *    themes, and the typed name removes the namespace and both applications while the databases stay.
  * 4. **OcuPilot's own namespace** (AC2): its Delete dialog states the kernel's refusal when it opens;
  *    the leg only opens and cancels it.
- * 5. **DW-1337** (AC4): the list and the create form pass the structural walk at wide light, narrow
- *    light and wide dark.
+ * 5. **DW-1337** (AC4): the list, the create form and the edit form (over USER, read only) pass the
+ *    structural walk at wide light, narrow light and wide dark.
  *
  * **It refuses the live container.** It creates `OCUPROBE182BR` through the form, seeds
  * `OCUPROBE182BD` with two bound web applications in `%SYS` (test-only), and removes every one of
@@ -55,6 +55,7 @@ const LIST_ROUTE = 'os-management/namespaces';
 const FORM_ROUTE = 'os-management/namespaces/edit';
 const LIST_URL = `/ocupilot/${LIST_ROUTE}?ns=HSCUSTOM`;
 const CREATE_URL = `/ocupilot/${FORM_ROUTE}?ns=HSCUSTOM`;
+const EDIT_URL = `/ocupilot/${FORM_ROUTE}/USER?ns=HSCUSTOM`;
 const SAVE_PATH = '/api/ocupilot/namespace';
 const ACTION_PATH = '/api/ocupilot/screens/osmgmt.namespaces/action';
 const ID = 'ocu-namespace';
@@ -537,10 +538,11 @@ test("AC2: Delete on OcuPilot's own namespace opens with the kernel's refusal as
 
 // AC4. Mutation (Rule 19), over a rebuilt and redeployed bundle: draw `.ocu-field-label` in
 // `--ocu-surface` -> the contrast legs go red in both themes.
-test('AC4 (DW-1337): the list and the create form pass the structural walk at wide light, narrow light and wide dark', async () => {
+test('AC4 (DW-1337): the list, the create form and the edit form pass the structural walk at wide light, narrow light and wide dark', async () => {
   for (const [url, route, ready] of [
     [LIST_URL, LIST_ROUTE, ROW_SELECTOR],
     [CREATE_URL, FORM_ROUTE, `#${ID}-Name`],
+    [EDIT_URL, FORM_ROUTE, `#${ID}-Routines:not([disabled])`],
   ]) {
     const { context, page } = await signedInAt(browser, config, url, VIEWPORTS.wide);
     try {

@@ -231,6 +231,44 @@ Every write is one derived tool that both callers reach (AD-53, AD-55). The kern
   - a principal holding exactly the declared pairs writes on both callers.
 - **AC4:** Given the new screens, when the DW-1337 structural walk runs in both themes, then no violation outside the baseline appears. The production build stays below 3800 kB; if it passes `maximumWarning` (2106 kB), the warning is re-based under DW-1166 together with `angular-json.test.mjs`'s literal.
 
+### Review Findings
+
+Code review 2026-09-28, four layers, `full-opus`. 38 rows, 33 entries: 4 patched, 6 ledgered, 23 rejected. No high. AD-8, AD-10, AD-4, AD-54, AD-22, AD-53/55, AD-39, AD-13, AD-36 and AD-58 hold. AD-44's gap is the ledgered decision below.
+
+- [x] [Review][Patch] `[medium]` The agent's edit rules (`NamespaceUpdate.ArgumentProblem`) and the edit's REQUIRED rule had no leg with a bad value; two mutations survived [src/OcuPilot/Test/NamespaceRefusals.cls:134]
+- [x] [Review][Patch] `[low]` The edit route's decode was crossed only by names it leaves unchanged; a `%`-led name now goes over the wire [src/OcuPilot/Test/NamespaceRefusals.cls:159]
+- [x] [Review][Patch] `[low]` AC4's DW-1337 walk skipped the edit form (read-only name, selects locked until the read lands); USER's editor is walked now [ui/browser/namespaces.browser-spec.mjs:545]
+- [x] [Review][Patch] `[low]` Three roster comments still said "the four unlisted" OS management screens, and one "the full nine" [src/OcuPilot/Test/WireSecurityRead.cls:542] (also `rail-wire.spec.ts:96`, `navigation-wire.test.mjs:99`)
+- [x] [Review][Defer] `[medium]` The New Namespace page's and the Delete Namespace dialog's custom resources are never unioned (AD-44); the spec names the gap, the spine does not, and three earlier dialogs share it [src/OcuPilot/Screen/Descriptor/NamespaceForm.cls:46] — deferred: DW-1784 `decision-pending`, an owner call; mirror it in the spine's Deferred (Rule 20)
+- [x] [Review][Defer] `[low]` `Taken`'s fail-closed branch on a non-404 read has no leg; the tool's own reads have no seam [src/OcuPilot/Area/OsMgmt/NamespaceRules.cls:246] — deferred: DW-1785 `wontfix-accepted`
+- [x] [Review][Defer] `[low]` No principal without the screen pairs calls `/namespace/form` or `/namespace/name` [src/OcuPilot/Area/OsMgmt/NamespaceRules.cls:374] — deferred: DW-1786 `wontfix-accepted`
+- [x] [Review][Defer] `[low]` A case-only database name diffs as a change before it is spelled: a phantom card row, and a refused no-op on the install namespace [src/OcuPilot/Area/OsMgmt/NamespaceSave.cls:198] — deferred: DW-1787 `wontfix-accepted`
+- [x] [Review][Defer] `[low]` The install-namespace predicate reads no application binding, so an OcuPilot application repointed elsewhere would go with that namespace [src/OcuPilot/Kernel/Proposal/Prohibited.cls:1627] — deferred: DW-1788 `wontfix-theoretical`, real under 18.13
+- [x] [Review][Defer] `[low]` The Save's absence read (create) and fresh read (edit) are not one transition with the upsert `PUT` [src/OcuPilot/Area/OsMgmt/NamespaceSave.cls:134] — deferred: occurrence on DW-1497 (screen writes take no per-target lock)
+
+**Rejected:**
+
+- `false`: `Validate`'s unused `pFresh`. Its doc says it is unread; no caller diverges.
+- `false`: the gate test's agent create target is never checked absent. That leg asserts `calls=0`, so no `PUT` reached the port.
+- `false`: `MappingCount` and `ApplicationsOf` pass vacuously on a failed query. Probed on `ocupilot-b-ci`: both queries answer OK with no rows for an absent namespace, and the pre-delete legs assert 1 mapping and 2 applications through the same helpers.
+- `false`: the commit's "the create fingerprints absence". AD-54 binds the tool's mint and confirm, which do.
+- `false`: Rule 3 for the agent's card impact and switcher path. Every AC has a real-runtime test; the card renders 16.19's shared line, whose namespace phrases `impact.test.mjs` pins, and the switcher re-reads on the one event both callers publish.
+- theoretical: the kernel does not refuse a create named `%SYS` or the install namespace. Both are always present, and both callers refuse a present target first (AD-54's absence read, the Save's `Taken`).
+- theoretical: `Taken` reads a 2xx answer that is not an object as free. The vendor answers a present namespace with its object.
+- theoretical: a vendor `DELETE` that answers non-2xx after deleting. The one measured case is refused by name before any port call (AD-8); DW-1775 carries the vendor defect.
+- theoretical: `RemoveAll`'s recount failing right after the removals. Throwaway hygiene.
+- `low`: an empty `TempGlobals` reads "No database on this instance has that name.". Agent-only (the form omits an empty choice), the field is named, and a fix is a new published sentence.
+- `low`: the name check answers `taken:false` for a malformed name. It answers taken-ness only, as `DeviceRules` does; the shape refusal lands at Save.
+- `low`: an edit Save with nothing changed still sends its `PUT`. The form sends no unchanged edit, and the rewrite changes nothing.
+- `low`: the own-namespace legs hard-code `USER`. On an install namespace over `USER` they go red, never falsely green; the throwaway installs into HSCUSTOM.
+- `low`: the form test asserts `>= 3` prompts and no `built`. Three is AD-5's floor, which the registry validates; `Navigation` pins the route of a built screen only.
+- `low`: `TestThePurgeIsTheOneDisabledLine` no longer describes its assertion, the disabled set is written in three rosters, and several roster files were restructured rather than appended to. Each is a contended roster; another rename or refactor widens the integrate-forward surface for no behavior.
+- `low`: the browser spec seeds through `Config.Namespaces` in `%SYS`. It is the device-editor model on the throwaway, seeds no mapping, and asserts every probe gone.
+- `low`: a ninth copy of the I/O capture block. A shared helper is a refactor across nine classes.
+- `low`: a namespace event arriving while a list read is in flight is absorbed by it. It needs a read already in flight at that moment, and a fix adds a pending re-read flag.
+- `low`: the form and name routes render a port refusal as a generic 500, as `DeviceRules` does. It needs a port-level failure behind a caller who passed the gate.
+- `low`: spec lines `:49`, `:72` and `:73`, and the Auto Run Result's counts. Each fix edits this spec.
+
 ## Spec Change Log
 
 - 2026-09-28, spec gate (runner): the orchestrator split the story (Rule 5, by=merge_gate): Part B, the mappings and copy-mappings (epic AC2 and AC3), moved to Story 18.14 with SA-13's enable-interop (DW-1776). The intent block above was cut to Part A and the spec set to `draft` for a re-plan of Part A only. The Part B research (payloads, amendments, tasks) stays in this file's history at commit `f473ce9b` for 18.14's plan. Also approved at the gate: namespace delete joins the baseline disabled.
@@ -375,6 +413,9 @@ Every write is one derived tool that both callers reach (AD-53, AD-55). The kern
 - mutation (review): `NamespaceRules.Validate`'s create REQUIRED add disabled → `NamespaceRefusals.TestACreateWithoutItsDatabasesIsRefusedOnEachField` red (run 419).
 - mutation (review): `NamespaceSave.Update`'s key check disabled → `NamespaceRefusals.TestAKeyOutsideTheThreeIsRefusedOnBothSaves` red (run 420).
 - mutation (review): `Namespace.Namespace/DELETE` removed from `AdminPort.VERIFIEDDELETES`, `RoleDeletePort` recompiled → `NamespaceRefusals.TestAReportedDeleteThatLeftTheNamespaceIsNotApplied` red (run 421).
+- mutation (code review): `NamespaceUpdate.ArgumentProblem` answers no problem → `NamespaceRefusals.TestAnEditNamingNoDatabaseOrEmptyingOneIsRefusedOnEachCaller` red, all three agent legs minted (run 769).
+- mutation (code review): `NamespaceRules.Validate` answers REQUIRED only on a create → the same method red on both callers' emptied-field legs, each read as ABSENT (run 770).
+- mutation (code review): `NamespaceSave.HandleUpdate` takes its segment undecoded, `NamespaceSaveFixture` recompiled → `NamespaceRefusals.TestAPercentLedNamespaceIsEditedOverTheWire` red, 404 `NAMESPACE.NAME.ABSENT` (run 771). Each mutation was applied to the throwaway's source copy only and reverted to the worktree's bytes (`diff -rq src` clean); the class is green again at run 772.
 
 ## Auto Run Result
 
