@@ -919,14 +919,15 @@ export const READ_TOOL_IDENTIFIER_RE = /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/;
 const ENDPOINT_RE = /^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
 
 /**
- * The five read sources, mirrored from `OcuPilot.Screen.Read`'s own parameters: `admin` is an
+ * The six read sources, mirrored from `OcuPilot.Screen.Read`'s own parameters: `admin` is an
  * instance endpoint reached through the admin port, `state` is OcuPilot's own protected state
  * resolved against a kernel store's guarded list (AD-9), `mgmnt` is the management API reached
  * through its own port, `logsource` is one instance log file's bounded tail read through
  * `OcuPilot.Port.LogSourcePort`, its `endpoint` a source key from that port's fixed enum (AD-21),
- * and `path` is the instance's directory allow-list read through `OcuPilot.Port.PathPort`.
- * Each changes where the rows come from and nothing else -- the same fields, filter, sort, paging
- * and row cap.
+ * `path` is the instance's directory allow-list read through `OcuPilot.Port.PathPort`, and
+ * `timeline` composes an area's listed screens' own reads. The first five change where the rows
+ * come from and nothing else -- the same fields, filter, sort, paging and row cap; a `timeline`
+ * read's fields and its one `since` criterion are fixed (`timelineProblem`).
  */
 export const SOURCE_ADMIN = 'admin';
 export const SOURCE_STATE = 'state';
@@ -2926,11 +2927,12 @@ export interface ReadSourcePart {
 
 /**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
- * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, or one
- * instance log file's bounded tail, or the instance's allowed directories. A \`state\` source names
- * the store by its own name, declares no \`rowGet\` and no \`criteria\`, and is bounded by the same
- * row cap; a \`mgmnt\` or \`logsource\` source declares no \`rowGet\`, and a \`path\` source is a
- * \`LIST\` of one of its port's sources.
+ * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, one
+ * instance log file's bounded tail, the instance's allowed directories, or an area's listed screens'
+ * reads composed into one timeline. A \`state\` source names the store by its own name, declares no
+ * \`rowGet\` and no \`criteria\`, and is bounded by the same row cap; a \`mgmnt\` or \`logsource\`
+ * source declares no \`rowGet\`, a \`path\` source is a \`LIST\` of one of its port's sources, and a
+ * \`timeline\` source's fields and criterion are fixed.
  */
 export interface ReadSource {
   readonly port: ${READ_SOURCE_PORTS.map((value) => `'${value}'`).join(' | ')};

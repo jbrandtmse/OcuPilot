@@ -145,11 +145,12 @@ export interface ReadSourcePart {
 
 /**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
- * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, or one
- * instance log file's bounded tail, or the instance's allowed directories. A `state` source names
- * the store by its own name, declares no `rowGet` and no `criteria`, and is bounded by the same
- * row cap; a `mgmnt` or `logsource` source declares no `rowGet`, and a `path` source is a
- * `LIST` of one of its port's sources.
+ * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, one
+ * instance log file's bounded tail, the instance's allowed directories, or an area's listed screens'
+ * reads composed into one timeline. A `state` source names the store by its own name, declares no
+ * `rowGet` and no `criteria`, and is bounded by the same row cap; a `mgmnt` or `logsource`
+ * source declares no `rowGet`, a `path` source is a `LIST` of one of its port's sources, and a
+ * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
   readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline';

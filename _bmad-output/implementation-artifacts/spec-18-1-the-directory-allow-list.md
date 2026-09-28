@@ -280,7 +280,7 @@ deferred: []
   - A `root` input that is not among the roots is not selected.
   - Each change emits `{root, path}`.
   - `rootReason` and `pathReason` render on their own fields with `aria-invalid` and `aria-describedby`.
-- **AC4:** Given the new screen, when the DW-1337 structural walk runs in both themes, then no violation outside the baseline appears. The production build stays under its 2004 kB warning.
+- **AC4:** Given the new screen, when the DW-1337 structural walk runs in both themes, then no violation outside the baseline appears. The production build stays under its 2106 kB warning [AMENDED 2026-09-28 - see the story change log].
 
 ### Review Findings
 
@@ -331,10 +331,30 @@ Code review 2026-09-28, four layers, `full-opus`. 51 rows, 15 entries: 10 patche
 - [x] [Merge] The runner merged feature `f03c1e32` in as `b219bc17` (Story 16.9's `timeline` read source beside this story's `path` source; `Read.Execute`'s port list now admits `SOURCEPATH`; the unknown-port refusal names six sources in `Registry.cls`, `screen-mirror.mjs` and `AdminPairCorpus.cls`; `ReadTool` 129). Re-derive every exact-count roster this story bumped against the merged code (`ReadTool`, `SurfaceCoverage`, `Descriptor`, `Wire`, `WireSecurityRead`, `WireOAuthRead`, `SecurityLists`, `navigation.test.mjs`, `screen-mirror.test.mjs`, `ci.test.mjs`) and fix any the merge left wrong. Verify on a throwaway loaded with the merged `src/` (Rule 22): the story's own classes and the rosters above, `LogHubWire`, the full ObjectScript sweep once, the story's browser spec plus `oauth.browser-spec.mjs` and `ssl.browser-spec.mjs`, the client tiers, and smoke.
 - [x] [Merge] CI run 36397094123 on `b219bc17`: every `gates` leg fails `ui/tools/build-output.test.mjs` DW-371, the merged initial total 2,005,146 bytes against `maximumWarning` 2004kB. Re-base the warning per DW-1166 (about 5% above the merged total you measure) in `ui/angular.json` and `ui/tools/angular-json.test.mjs`'s pinned literal together. (`instance shard 1/3` failed bringing up its throwaway on a bound host port; no test ran.)
 
+### Review Findings (round 2)
+
+Code review 2026-09-28, of rework 1 and merge `b219bc17`: four layers, `full-opus`. 15 rows, 11 entries: 3 patched, 2 ledgered, 6 rejected. No high. The three rework items are fixed, and the merge resolutions hold to AD-36 and AD-21's sixth case.
+
+- [x] [Review][Patch] `[low]` The merge left the read-source enumerations at five, without `timeline`, whose fields and criterion are fixed [ui/tools/screen-mirror.mjs:921] (also `:2928`, `Registry.cls:976`, and `screens.generated.ts` regenerated)
+- [x] [Review][Patch] `[low]` The rework's side-bar `mutation:` lines edit the tests' expected lists, and AC1's seventh entry had no product mutation; it is demonstrated below [src/OcuPilot/Screen/Descriptor/AllowedDirectoryList.cls:26]
+- [x] [Review][Patch] `[low]` The budget test's example of loosening, "2MB", is below the warning it claims to loosen [ui/tools/angular-json.test.mjs:372]
+- [x] [Review][Defer] `[med]` Area side bars are pinned as literal lists in browser specs that a screen-adding story does not target [ui/browser/oauth.browser-spec.mjs:283] — deferred: DW-1774 `routed` to 18-7-encryption
+- [x] [Review][Defer] `[low]` `maximumWarning` is edited on both epics' branches again [ui/angular.json:54] — deferred: occurrence on DW-1749
+
+**Rejected:**
+
+- `low`: AC4 still names 2004 kB. The fix edits this spec; it is the runner's Rule 5 apply-and-report amendment.
+- `low`: "The CI red is closed" was written before run 36403585450 finished, and `b219bc17`'s gates legs skipped the checkers. The fix edits this spec. At review time the run's three gates legs, `package`, `images` and `instance shard 2/3` were green; the other shards were still running, and Rule 28 leaves them to the lead.
+- `low`: the Spec Change Log counts three rework items where four are ticked. The fix edits the runner's section.
+- `false`: DW-1771 is a live hand-off to 18.3. It is terminal, and its `reopen_if` names what the embedding page would show, which is Rule 15's hand-off.
+- `low`: no corpus row refuses `criteria` on a `path` read. The rule is an allow-list whose refusing branch the `monitor` and `state` rows pin, so only a deliberate edit that adds `path` escapes it.
+- `low`: commit `86e9c0a9`'s message places run 36393142503 on `b219bc17`, but that run's head is `b29c7ea7`. The fix rewrites pushed history, and the spec's `[CI]` item names no head.
+
 ## Spec Change Log
 
 - 2026-09-27, spec gate (runner): the proposed AD-21 sixth case under Design Notes was written into the spine verbatim, with "every server-path field (Story 18.1 on)" added to AD-21's Binds (Rule 20). The spine is the authority from here; Design Notes keeps the proposal text for the reviewer.
 - 2026-09-28, rework iteration 1 (runner): re-opened on CI run 36393142503's red (two browser specs pin the Security side bar) and on the integrate-forward merge `b219bc17`; the work is the three items under Tasks & Acceptance › Rework iteration 1.
+- 2026-09-28, runner (Rule 5, apply and report): AC4 read "stays under its 2004 kB warning". The merged bundle measured 2,005,146 bytes and rework 1 re-based `maximumWarning` to 2106kB under the owner's DW-1166 policy (the runner's brief allows a re-base and stops only above 3800kB), so AC4 now names 2106 kB. Intent unchanged: the build stays under its warning.
 
 ## Review Triage Log
 
@@ -530,6 +550,7 @@ Each consumer does the following:
 - mutation: the same entry dropped from `ssl.browser-spec.mjs`'s AC4 list → its AC4 test (rework 1)
 - mutation: the same entry dropped from `security.browser-spec.mjs`'s AC1 list → its AC1 test (rework 1)
 - mutation: `maximumWarning` put back at 2004kB → `build-output.test.mjs` DW-371 (2,005,146 bytes over 2,004,000) and `angular-json.test.mjs`'s pinned literal (rework 1)
+- mutation (AC1, the seventh entry): `AllowedDirectoryList`'s `sideBarPosition` 7 → 0, `screens.generated.ts` regenerated → `navigation.test.mjs` "a side bar lists only built screens, in side-bar order" and its Security side-bar assertion (code review 2)
 
 ## Auto Run Result
 

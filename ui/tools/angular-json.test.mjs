@@ -369,7 +369,7 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // merged beside it.
 //
 // Mutations (Rule 19):
-// - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "2MB") -> the
+// - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
 //   "no other initial budget exists" and "warning under error" assertions still pass, but this
 //   test's own exact-string assertion goes red, which is the point: any edit to the literal is
 //   visible here.

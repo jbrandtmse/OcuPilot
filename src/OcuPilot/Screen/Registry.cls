@@ -973,17 +973,18 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>rowGet</code> or <code>forEach</code> either. A source's optional
 /// <code>forEach</code> lists a parent endpoint first (<method>ForEachProblem</method>), and its
 /// optional <code>query</code> fixes parameters no caller can change
-/// (<method>SourceQueryProblem</method>). The source is one of five kinds:
+/// (<method>SourceQueryProblem</method>). The source is one of six kinds:
 /// <code>admin</code>, an instance endpoint reached through the port, with a
 /// dotted endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>);
 /// <code>mgmnt</code>, the management API reached through its own port, which declares no
 /// <code>rowGet</code>;
 /// <code>state</code>, one of OcuPilot's own kernel stores (AD-9) named without a package, which
 /// declares neither a <code>rowGet</code> nor <code>criteria</code>; <code>logsource</code>, a log
-/// file's bounded tail, which declares no <code>rowGet</code>; or <code>path</code>, the instance's
+/// file's bounded tail, which declares no <code>rowGet</code>; <code>path</code>, the instance's
 /// allowed directories, a <code>LIST</code> of one of <class>OcuPilot.Port.PathPort</class>'s
 /// sources that declares no <code>rowGet</code>, <code>forEach</code>, <code>query</code> or
-/// <code>parts</code>;
+/// <code>parts</code>; or <code>timeline</code>, an area's listed screens' reads composed, whose
+/// shape is fixed (<method>TimelineProblem</method>);
 /// <code>fields</code> is a non-empty array of unique names; <code>filter</code>,
 /// <code>sort.fields</code> and <code>context.secretFields</code> name only declared fields, and no
 /// secret field is filterable or sortable (a filter over one would let a tool probe its value);
