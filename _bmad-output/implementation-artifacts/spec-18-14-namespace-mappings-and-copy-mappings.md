@@ -2,7 +2,7 @@
 title: 'Story 18.14: Namespace mappings and copy-mappings'
 type: 'feature'
 created: '2026-09-28'
-status: 'ready-for-dev'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -15,20 +15,21 @@ deferred: []
 
 ## Intent
 
-**Problem:** OcuPilot cannot list, create, edit or delete a namespace's global, routine and package mappings (catalog SA-11), copy mappings between namespaces (SA-14), or enable interoperability in a namespace (SA-13's enable-interop, DW-1776). The classic Mappings page and its three dialogs are the only way to manage mappings. There are two hazards:
+**Problem:** OcuPilot cannot list, create, edit or delete a namespace's global, routine and package mappings (catalog SA-11), or copy mappings between namespaces (SA-14). SA-13's enable-interop (DW-1776) moved to Story 18.15. The classic Mappings page and its three dialogs are the only way to manage mappings. There are two hazards:
 
 - The vendor accepts a `%`-named global mapping, which shadows a system global, with no guard.
 - Nothing stops a mapping write, or a copy, from moving OcuPilot's own `OcuPilot*` mapping.
 
-**Approach:** The namespace editor gains a Mappings line that links three per-namespace mapping lists, each with a create and edit form and a typed-name Delete. The Namespaces list gains two row actions, Copy mappings and Enable interoperability, and both run through the port's async path with a running line. Every write is one derived tool that both callers reach (AD-53, AD-55). The kernel permits a `%`-global mapping at the strongest confirmation and refuses any write to an `OcuPilot*` mapping in OcuPilot's namespace or `%ALL` (AD-10).
+**Approach:** The namespace editor gains a Mappings line that links three per-namespace mapping lists, each with a create and edit form and a typed-name Delete. The Namespaces list gains a Copy mappings row action that runs through AdminPort's async path, reading the finished task's result once.
 
-The work has three parts, built in order:
+The work has two parts, built in order:
 
-- **Part A**, mappings: epic AC1, covered by AC1 to AC5.
-- **Part B**, copy-mappings: epic AC2, covered by AC6.
-- **Part C**, enable-interop: DW-1776, covered by AC7.
+- **Part A**, mappings: epic AC1 (18.14's first AC).
+- **Part B**, copy-mappings: epic AC2 (18.14's second AC).
 
-AC8 covers all three parts. Part C is gated by an observation (Task 0). Design Notes recommends splitting Part C into its own story.
+**Also in scope, by the owner's decision on DW-1784 (AD-44 as amended 2026-09-28):** each namespace and mapping write tool's pairs union the custom resource assigned to every classic page whose operation it performs -- the namespace create the New Namespace page's (`%CSP.UI.Portal.Namespace`), the namespace delete the Delete Namespace dialog's (`%CSP.UI.Portal.Dialog.NamespaceDelete`), the mapping writes their kind's classic page -- so an operator's custom resource on a replaced classic page gates the OcuPilot write too.
+
+**Scope, decided by the orchestrator at the spec gate (2026-09-28, Rule 5):** the planned Part C, SA-13's enable-interop with its Task 0 observation (DW-1776), moved to Story 18.15, which runs after 18.4. The research stays in this spec's history at the commit that first planned it.
 
 ## Boundaries & Constraints
 
@@ -37,13 +38,13 @@ AC8 covers all three parts. Part C is gated by an observation (Task 0). Design N
 - **Screens.** Every new screen is in `os-management`, with the pairs `%Admin_Manage:USE` and `%DB_IRISSYS:READ`. None takes a side-bar position.
 - **Extra tool pairs.** Each is refused by name before any port call (AD-8):
   - Every mapping write declares `%DB_IRISSYS:WRITE`.
-  - `osmgmt.namespaces.copymappings` declares `%Admin_Operate:USE` (the poll) and `%DB_IRISSYS:WRITE`. Task 0 confirms the second.
-  - `osmgmt.namespaces.enableinterop` declares exactly the set Task 0 measures.
+  - `osmgmt.namespaces.copymappings` declares `%Admin_Operate:USE` (the poll) and `%DB_IRISSYS:WRITE`; the implement stage measures the second on the throwaway before the dialog is built.
+  - Each namespace and mapping write tool also declares the custom resource assigned to each classic page it replaces, read at call time, never cached (AD-44, DW-1784).
 - **Write kinds:**
   - A mapping create follows AD-54: it fingerprints the name's absence, because the vendor's `PUT` is an upsert.
   - A mapping edit follows AD-4: it sends the complete set, read fresh.
   - A mapping delete sends no body and is `DESTRUCTIVE`.
-  - Copy and enable-interop are AD-51 actions. Both are queued under `QUEUEDWRITES` (AD-26), and each is `DESTRUCTIVE` with its own consequence.
+  - Copy is an AD-51 action, queued under `QUEUEDWRITES` (AD-26), `DESTRUCTIVE` with its own consequence. Its finished task's result is read exactly once (a second `async-result` read logs ERROR #7846 and turns the instance state to Warning, reported) and one poller runs per task.
 - **Identity:**
   - Types `global-mapping`, `routine-mapping` and `package-mapping`, all with scope `instance`.
   - Composite id `[namespace, Name]`, joined on `$Char(1)` (`Kernel/EntityId`).
@@ -55,18 +56,16 @@ AC8 covers all three parts. Part C is gated by an observation (Task 0). Design N
 - **Kernel refusal (AD-10), from either caller:** `PROHIBITED.OCUPILOTMAPPING` refuses:
   - creating, changing or deleting a mapping whose name begins with `OcuPilot` (any case) in the install namespace (the evaluating process's `$NAMESPACE`, as 18.2 decided) or in `%ALL`;
   - a copy into either of those namespaces from a source holding such a mapping. The source's three lists are read at the write, and a list cut at its cap fails closed.
-- **Governance (`Kernel/Governance/Baseline.cls`), all `true`:** the nine mapping writes, copy-mappings and enable-interop.
+- **Governance (`Kernel/Governance/Baseline.cls`), all `true`:** the nine mapping writes and copy-mappings.
 - **Contended files are edited add-only.** EXPERIENCE.md stays at 993 lines. `screens.generated.ts` and `ToolFields.cls` are regenerated, never hand-merged.
 
 **Never:**
 
 - No `%Api.Admin.*` name outside `AdminPort` or a port extending it.
-- No direct `Config.Map*`, `Config.Namespaces` or `%EnsembleMgr` call in product code (test-only `%SYS` seeding is allowed).
+- No direct `Config.Map*` or `Config.Namespaces` call in product code (test-only `%SYS` seeding is allowed).
 - No polling outside the port, and no progress figure. The poll exposes none (measured).
-- No enable-interop tool or row action if Task 0 halts.
+- No enable-interop (Story 18.15).
 - No test writes a mapping of the `USER` or `HSCUSTOM` namespace.
-- No test runs enable-interop over the `USER` or `HSCUSTOM` databases.
-- No disable-interop.
 - No namespace, database or web-application create.
 - No spine edit. The runner writes the amendments.
 
@@ -89,9 +88,7 @@ AC8 covers all three parts. Part C is gated by an observation (Task 0). Design N
 | Copy past the bound | The poll bound is exceeded | Recorded applied and marked; "Still running on the instance. It finishes in the background." | none |
 | Copy source bad | The source is absent, or equals the destination (ignoring case) | Refused before any task is queued | `NAMESPACE.SOURCE.ABSENT` / `.SAME` |
 | Copy into own | The destination is the install namespace or `%ALL`, and the source holds an `OcuPilot*` mapping, or one of its lists is cut | Refused, failing closed | `PROHIBITED.OCUPILOTMAPPING` |
-| Enable interop | `OCUPROBE1814I` over probe database `OCUPROBE1814D` | Queued, polled. The running line shows, then done. The namespace is then interoperability-enabled | none |
-| Enable interop on `%SYS` | `%SYS` | Refused before any task is queued | `NAMESPACE.INTEROP.SYSTEM` |
-| Missing pair | A write without one of its declared pairs | 403 naming the pair, with zero port calls, on both callers | `AUTH.NOPRIVILEGE` |
+| Missing pair | A write without one of its declared pairs, a replaced classic page's custom resource among them | 403 naming the pair, with zero port calls, on both callers | `AUTH.NOPRIVILEGE` |
 | Integration | Each list and its read tool, and the copy dialog's choices | The same rows (AD-36). The dialog offers `NamespaceList`'s read, minus the destination | Same gate |
 
 </intent-contract>
@@ -580,6 +577,8 @@ The audit copy row (:516) is the source of the reused strings. The row with the 
 - **AC8:** Given the new screens and dialogs, when the DW-1337 structural walk runs in both themes, then no violation outside the baseline appears. The production build stays below 3800 kB; if it passes `maximumWarning` (2107 kB), the warning is re-based under DW-1166 together with `angular-json.test.mjs:384`'s literal.
 
 ## Spec Change Log
+
+- 2026-09-28, spec gate (runner): the orchestrator split the story for risk (Rule 5, by=merge_gate): Part C, SA-13's enable-interop with its Task 0 observation (DW-1776), moved to Story 18.15, which runs after 18.4; the intent block was cut to Parts A and B. The owner's DW-1784 decision (AD-44 amended: a screen replacing several classic pages unions each replaced page's custom resource into its write tools' pairs) joined the scope, routed here, with the namespace tools 18.2 shipped included. The orchestrator's 18.4 note applies to the copy: read a finished async task's result exactly once, one poller per task. The spec is `draft` for a re-plan; the first plan's Part C stays in this file's history at commit `4b73be11`.
 
 ## Review Triage Log
 

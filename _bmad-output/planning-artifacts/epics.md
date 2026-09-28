@@ -7322,6 +7322,25 @@ So that the namespace configuration task the contest deferred is complete. [AMEN
 - **When** it runs
 - **Then** it goes through the async path with progress.
 
+- DW-1784: A screen that replaces more than one classic page unions only the one it declares (AD-44), so the New Namespace page's and the Delete Namespace dialog's custom resources never reach the namespace create and delete (ledger; routed by merge_gate 2026-09-28)
+- Enable-interop moved to Story 18.15 [AMENDED 2026-09-28, orchestrator merge gate: split from 18.14 for risk, Rule 5].
+
+### Story 18.15: Enable interoperability on a namespace
+
+As an operator,
+I want to enable interoperability on a namespace,
+So that the namespace configuration the contest deferred includes the step the classic New Namespace page offers. [AMENDED 2026-09-28, orchestrator merge gate: split from 18.14 for risk, Rule 5]
+
+**Acceptance Criteria:**
+
+- **Given** SA-13's enable-interop route, which is asynchronous and changes more than the namespace
+- **When** it is picked up
+- **Then** its payload, its effects and the privileges it needs are observed on a throwaway first, before any form or tool is built.
+
+- **Given** the enable action
+- **When** it runs
+- **Then** it round-trips through the admin API's async path, reading the finished task's result once, and states its consequence before it is confirmed.
+
 - DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan (ledger; routed by merge_gate 2026-09-28)
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API

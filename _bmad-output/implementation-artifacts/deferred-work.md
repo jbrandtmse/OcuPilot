@@ -7876,6 +7876,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: 18.2's plan left it unobserved (it needs a probe database); the orchestrator routed it at the 18.2 spec gate 2026-09-28
 - 2026-09-28T11:02:18Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=observe its payload on the throwaway; an async write needs a QUEUEDWRITES entry (AD-26)
+- 2026-09-28T15:06:10Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=orchestrator 2026-09-28: 18.14 split for risk; 18.15 runs after 18.4 with its Task 0 observation first
 
 ### DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file: iris.cpf sits in the manager directory's parent, so an overwriting file consumer under an allowed data-directory root could resolve it
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
@@ -7901,6 +7902,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: NamespaceForm declares only %CSP.UI.Portal.NamespaceEdit and NamespaceList only %CSP.UI.Portal.Namespaces; %CSP.UI.Portal.Namespace and Dialog.NamespaceDelete are separate Zen pages whose custom resource Screen.Gate.RequiredPairs never reads. The spec names the gap in Design Notes; the spine does not. Dialog.Resource, Dialog.ProcessTerminate and the RoleResource dialogs share it; 18.3's Dialog.DatabaseDelete will.
 - 2026-09-28T14:20:12Z status=decision-pending owner=burndown by=cr note=owner call: union each replaced page's key into its write tool's pairs, or name the gap in AD-44; mirror in spine Deferred
+- 2026-09-28T15:06:10Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=owner decision: a screen replacing more than one classic page unions every replaced page's custom resource into its write tools' pairs; AD-44
 
 ### DW-1785: NamespaceRules.Taken's fail-closed branch (a name read failing with anything but 404) is pinned by no test; the tool's own reads have no port seam
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: med | footprint: in-story
