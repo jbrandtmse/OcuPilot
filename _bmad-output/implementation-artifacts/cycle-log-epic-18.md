@@ -53,3 +53,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T10:35:53Z	Epic 18	decision_received	dw=DW-1770 by=orchestrator decision=kind_file_refuses_existing_name_unless_overwrite_and_names_directly_in_manager_dir vehicle=18.1_rework_iteration_2_own_commit_before_18.2_implement_push
 2026-09-28T10:35:53Z	Epic 18	spine_updated	ad=AD-21 reason=decision(DW-1770) by=runner story=18-1-the-directory-allow-list lint=ok(pre-existing_low_unchanged)
 2026-09-28T10:35:53Z	Story 18.1	rework_opened	cycle_iteration=3 iteration=2 trigger=orchestrator_decision(DW-1770) authorized_by=orchestrator items=Decision:DW-1770 scope_baseline=pending_rework_commit note=orchestrator_directed_own_fix_commit_overrides_decisions-do-not-reopen
+2026-09-28T10:35:59Z	Story 18.1	stage_spawned	stage=implement spawn_at=2026-09-28T10:35:59Z model=opus agent_name=18-1-the-directory-allow-list-implement-3 cycle_iteration=3 rework_iteration=2 ci_prev=success_run_36405867014
