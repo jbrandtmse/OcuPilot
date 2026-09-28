@@ -2,7 +2,7 @@
 title: 'Story 13.5: CI in parallel - the two long suites split across containers'
 type: 'feature'
 created: '2026-09-27'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'f4ab7c49f1e66ef7e1850563f20654fcc0e24784'
 baseline_commit: 'f4ab7c49f1e66ef7e1850563f20654fcc0e24784'
 review_loop_iteration: 0
@@ -38,7 +38,7 @@ deferred:
 
 **Always:** Inside a shard, items run one at a time, in the same relative order the unsharded run uses: the instance's list order for classes, sorted order for spec files. Assignment is a pure function of the offered item set and the timings file. It sorts by duration descending, then name in code-unit order (never `localeCompare`), and gives each item to the shard with the smallest running total, the lowest index on a tie, so every shard computes the same split. An item with no recorded time weighs the median of its suite's recorded times, or 1 when none are recorded. Every shard container is fresh (`ci-throwaway.sh up` scrubs its data), and nothing seeds agent definitions before a suite (DW-1759). Every new `uses:` action is pinned to a full commit SHA with its tag as a trailing comment. Slot B for every local command: `--container ocupilot-b-ci`, origin `http://localhost:52777`, both browser variables exported, one test run on the instance at a time.
 
-**Never:** Change `test:browser` or `pretest:browser` in `ui/package.json`, or ci-runner's behavior without `--shard`. Run two classes or two spec files at once against one instance. Pin a class or spec to a shard by name. Use `if: always()` on anything but a teardown step (`ci.test.mjs` counts them). Add `continue-on-error`, `|| true` or a `secrets.` reference. Edit `scripts/ci-throwaway.sh`, `ui/browser.config.mjs` or any spec under `ui/browser/`. Push, or run a full suite locally as a gate.
+**Never:** Change `test:browser` or `pretest:browser` in `ui/package.json`, or ci-runner's behavior without `--shard`. Run two classes or two spec files at once against one instance. Pin a class or spec to a shard by name. Use `if: always()` on anything but a teardown step (`ci.test.mjs` counts them). Add `continue-on-error`, `|| true` or a `secrets.` reference. Edit `scripts/ci-throwaway.sh` or `ui/browser.config.mjs`, or edit a spec under `ui/browser/` or an ObjectScript test class except to remove a dependence a `[CI]` task names. Push, or run a full suite locally as a gate.
 
 ## I/O & Edge-Case Matrix
 
@@ -108,6 +108,14 @@ deferred:
   - `test:browser`, `pretest:browser` and `pretest:browser:shard` are held byte-equal to today's harness build string.
 - `docs/DEVELOPMENT.md:438-447` -- The CI table and the paragraph under it describe the shard and roll-up jobs and the refresh command. This is a footprint extension.
 
+**Rework iteration 1 (trigger: CI run 36372545149 on `8cd58d28`, 21.5 min, three reds that the regrouped shards exposed; the roll-ups named each):**
+
+- [ ] [CI] instance shard 3/3: `OcuPilot.Test.AuditStarted` `TestAnAgentCopyStillRunningAtTheBoundIsAppliedAndMarked` -- "the instance's audit database holds records to copy (0)" (`src/OcuPilot/Test/AuditStarted.cls:86`, run 14 of the shard, about two minutes after install). `OcuPilot.Test.AuditCopy.Count` is `SELECT COUNT(*) FROM %SYS.Audit`, and the audit indexes lag about 60 s (DW-85, `AuditRecord.cls` header), so on a young instance it reads 0 (inference). Fix: the precondition must hold on a freshly installed instance at any position in a shard -- count through the master map (`%NOINDEX`, as `OcuPilot.Test.AuditEvent.RowsCarrying` reads) or wait, bounded, for a record; never by moving the class. Same for `:108` and any other `Count("%SYS")` precondition in the audit test classes.
+- [ ] [CI] browser shard 2/3: `ui/browser/audit-copy-purge.browser-spec.mjs:176` AC1 -- "the instance holds records to copy (0)", second file on its shard's fresh instance (the first was `account-and-filter`). It passed locally on a fresh instance a few minutes after install, so the likely cause is the same index lag (inference). Fix in the spec: its precondition must hold on a young instance.
+- [ ] [CI] browser shard 2/3: `ui/browser/oauth-server-editor.browser-spec.mjs:92` (`removeAll`, before hook at `:215`) -- "/oauth2 is left in place" `'0' !== '1'`; every test fails in the hook. `/oauth2` exists only after an earlier OAuth spec created it; reproduced red on a fresh `ocupilot-b-ci` with no OAuth spec before it. Fix: the hook must not require `/oauth2` to pre-exist (assert it is left as found, or establish it), keeping what the assertion protects.
+- [ ] [CI] Search `ui/browser/` and `src/OcuPilot/Test/` for other preconditions with either root cause (an audit count or audit read that assumes an indexed record on a young instance; `/oauth2` or another object a sibling creates) and fix each the same way; list what was searched and found in `## Auto Run Result`.
+- [ ] Refresh the timings from the run's real records: `cd ui && node tools/ci-shards.mjs refresh --run 36372545149` (the browser half becomes measured per file); keep `ci.test.mjs` and `ci-shards.test.mjs` green over the refreshed file.
+
 **Acceptance Criteria:**
 
 - **AC1.** Given a CI run, when the ObjectScript suite runs, then `instance shard 1/3`, `2/3` and `3/3` each bring up their own throwaway and run their share one class at a time, exactly as the single job did.
@@ -123,6 +131,7 @@ deferred:
 ## Spec Change Log
 
 - 2026-09-27, lead at the spec gate (Rule 20): the spine's Stack `CI` row, Operational Envelope `Build and CI` row and Conventions `Tests` row now state the shard layout and that a test depends on nothing its shard neighbours left; no new AD. The roll-up jobs keep both their job keys and their `name:` values, `instance` and `browser`.
+- 2026-09-27, lead, rework iteration 1 (trigger `ci`, run 36372545149): re-opened with the five tasks above. The Never clause now permits editing a spec under `ui/browser/` or an ObjectScript test class only to remove a dependence a `[CI]` task names (Rule 5 tier 1: the Design Notes' Risks already say such a red is fixed in the test).
 
 ## Review Triage Log
 
@@ -250,6 +259,16 @@ No new AD is needed (inference). One convention may be: a class or spec must not
 - mutation: `test:browser` rewritten → the unsharded-scripts test red (AC7, `npm run test:browser`).
 - mutation: shares keep assignment order instead of offered order → the sorted-share browser test red (AC2, sorted).
 - mutation: `if: ${{ matrix.shard == 1 }}` removed from the admin-spec step → the AC6 once-per-run test red.
+
+**Observed (QA gap-closing, 2026-09-27):** `ci-browser.mjs`'s "Empty share" row (share.length === 0)
+was pinned for `ci-runner.mjs` but not for `ci-browser.mjs` itself. Added
+`ui/tools/ci-shards.test.mjs`: "a browser shard assigned no spec file names itself distinctly from a
+skipped-all shard, and its record says it ran nothing" (shard 3/3 over two fixture files, both
+untimed, so the third leg gets none). `npm run test:tools` 1645/1645.
+
+- mutation: `ci-browser.mjs`'s `share.length === 0` ternary branch collapsed into the general
+  zero-tests message (`share.length === 0` → `false`) → the new test red (1 of 1 failed), applied
+  to the tracked `ci-browser.mjs` by the lead and reverted; `git status --short` unchanged.
 
 ## Auto Run Result
 

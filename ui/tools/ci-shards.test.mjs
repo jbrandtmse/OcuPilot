@@ -615,6 +615,28 @@ test('a browser shard whose every test skipped executed nothing, and fails namin
   }
 });
 
+// Mutation (Rule 19): collapse ci-browser's share.length === 0 branch into the general
+// zero-tests message -> this goes red (see the story's ## Verification for the demonstration,
+// run against a scratch copy since ci-browser.mjs is not edited in this stage).
+test('a browser shard assigned no spec file names itself distinctly from a skipped-all shard, and its record says it ran nothing', () => {
+  const fixture = specFixture({ 'alpha.browser-spec.mjs': PASSING, 'bravo.browser-spec.mjs': PASSING }, {});
+  try {
+    const recordPath = join(fixture.dir, 'records', 'browser-shard-3.json');
+    const result = runBrowserShard(fixture, ['--shard', '3/3', '--record', recordPath]);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.stdout, /^ci-browser: shard 3\/3 -- running 0 of 2 spec file\(s\), one at a time$/m);
+    assert.match(
+      result.stderr,
+      /^ci-browser: shard 3\/3 -- was assigned none of the 2 spec file\(s\), so it executed 0 tests -- which is a failure, never a pass$/m
+    );
+    const record = JSON.parse(readFileSync(recordPath, 'utf8'));
+    assert.deepEqual(record.assigned, [], 'the record says the shard was assigned nothing');
+    assert.deepEqual(record.ran, [], 'and that it ran nothing');
+  } finally {
+    rmSync(fixture.dir, { recursive: true, force: true });
+  }
+});
+
 test('a spec file whose test timed out fails its shard, although no test reported a failure', () => {
   const fixture = specFixture(
     {
