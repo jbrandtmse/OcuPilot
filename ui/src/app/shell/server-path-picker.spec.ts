@@ -100,6 +100,26 @@ describe('the server-path picker (Story 18.1, AD-21)', () => {
     expect(input()).toBeNull();
   });
 
+  // Mutation (Rule 19): drop the picker's store subscription -> it stays on the loading line and
+  // this goes red.
+  it('follows the store from loading to ready after it has drawn', async () => {
+    let open: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    const answer = { kind: 'ok', status: 200, body: { fields: ['Directory', 'Restricted'], rows: [{ Directory: '/tmp/', Restricted: true }], truncated: false, banner: '' } };
+    const held = { requestJson: async () => { await gate; return answer; } } as unknown as Api;
+    const loaded = fixture.componentInstance.store.load(held);
+    await settle();
+    expect(slot('loading')).not.toBeNull();
+    open();
+    await loaded;
+    await settle();
+    expect(slot('loading')).toBeNull();
+    expect(select()?.value).toBe('/tmp/');
+    expect(fixture.componentInstance.changes).toEqual([{ root: '/tmp/', path: '' }]);
+  });
+
   // Mutation (Rule 19): render the select in the refused state -> this goes red.
   it("draws the store's reason and no control when the read was refused", async () => {
     const reason = 'This account does not hold the privilege this request requires.';

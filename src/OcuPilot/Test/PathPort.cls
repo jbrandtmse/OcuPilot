@@ -152,7 +152,7 @@ Method TestRestrictedWithNoRootsAnswersNone()
 /// <p>Mutation (Rule 19): remove the <code>Gate</code> call from
 /// <method>OcuPilot.Port.PathPort.Roots</method> -&gt; the roots answer and the call count moves;
 /// remove it from <method>OcuPilot.Port.PathPort.Resolve</method> -&gt; the bad-name leg answers
-/// 400.</p>
+/// 400; check the kind before it -&gt; the unknown-kind leg answers 500.</p>
 Method TestTheGateRefusesBeforeAnyAdminPortCall()
 {
     Set tPort = ..#FIXTURE
@@ -170,6 +170,7 @@ Method TestTheGateRefusesBeforeAnyAdminPortCall()
         Do $$$AssertEquals(tHttp, 403, tPair _ " denied: the declared source is refused too")
         Do $$$AssertEquals($Piece(..ResolveOf(..#TMPROOT, "a", "directory", , , tPort), "|", 1), 403, tPair _ " denied: and so is a resolution")
         Do $$$AssertEquals($Piece(..ResolveOf(..#TMPROOT, "a..b", "directory", , , tPort), "|", 1), 403, tPair _ " denied: a bad name meets the gate before the name rule")
+        Do $$$AssertEquals($Piece(..ResolveOf(..#TMPROOT, "a", "Directory", , , tPort), "|", 1), 403, tPair _ " denied: and so does a kind the port does not know")
         Do $$$AssertEquals($ClassMethod(tPort, "Calls"), 0, tPair _ " denied: no admin port call was made")
     }
     Do $ClassMethod(tPort, "Reset")
@@ -212,7 +213,8 @@ Method TestAForeignRootIsRefused()
 }
 
 /// <p>Matrix "Bad name" -- each shape is refused 400 <code>PATH.NAME</code> on the name's field,
-/// echoing nothing, and an empty name is refused for a file.</p>
+/// echoing nothing, and an empty name is refused for a file. A kind outside the two is a caller
+/// fault, a 500.</p>
 /// <p>Mutation (Rule 19): drop the literal <code>..</code> refusal from
 /// <method>OcuPilot.Port.PathPort.NameAdmitted</method> -&gt; <code>a..b</code> resolves and this goes
 /// red.</p>
@@ -227,6 +229,27 @@ Method TestABadNameIsRefused()
     }
     Do $$$AssertEquals(..ResolveOf(..#TMPROOT, "", "file"), tRefused, "an empty name names no file")
     Do $$$AssertEquals(..ResolveOf(..#TMPROOT, "a..b", "file", "Dir", "Name"), ..Refusal(##class(OcuPilot.Api.Error).#PATHNAME, "Name"), "the refusal lands on the field the caller named")
+    Do $$$AssertEquals($Piece(..ResolveOf(..#TMPROOT, "a", "Directory"), "|", 1), 500, "a kind other than the two is a caller fault")
+}
+
+/// <p>AD-21's containment check in <method>OcuPilot.Port.PathPort.Resolve</method>, behind the name
+/// rule: with every name admitted through the seam, <code>../etc</code> normalizes to
+/// <code>/etc/</code>, outside <parameter>TMPROOT</parameter>, and is refused 400
+/// <code>PATH.NAME</code>. Scripted through the seam, so the allow-list is not touched.</p>
+/// <p>Mutation (Rule 19): drop the <method>OcuPilot.Port.PathPort.Contains</method> test from
+/// <method>OcuPilot.Port.PathPort.Resolve</method> -&gt; <code>../etc</code> resolves and this goes
+/// red.</p>
+Method TestResolveRefusesANameThatLeavesItsRoot()
+{
+    Set tPort = ..#FIXTURE
+    Do $ClassMethod(tPort, "Reset")
+    Do $ClassMethod(tPort, "Script", "FSAccess.Purpose", "GET", 200, "{""Restricted"":true}")
+    Do $ClassMethod(tPort, "Script", "FSAccess.Path", "LIST", 200, "[{""RootPath"":""/tmp/""}]")
+    Do $ClassMethod(tPort, "AdmitAnyName")
+    Set tRefused = ..Refusal(##class(OcuPilot.Api.Error).#PATHNAME, "path")
+    Do $$$AssertEquals(..ResolveOf(..#TMPROOT, "a", "directory", , , tPort), "200|/tmp/a/", "a name under the root resolves through the seam")
+    Do $$$AssertEquals(..ResolveOf(..#TMPROOT, "../etc", "directory", , , tPort), tRefused, "a directory that normalizes outside the root is refused on the name's field")
+    Do $$$AssertEquals(..ResolveOf(..#TMPROOT, "../etc/x.txt", "file", , , tPort), tRefused, "and so is such a file")
 }
 
 /// <p>Matrix "Not cached" -- a root removed between two resolutions refuses the second.</p>
@@ -285,6 +308,7 @@ Method TestTheScreenReadAndToolAnswerThePortsRows()
         Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(..#DESCRIPTOR, {}, 1000, .tView)
         Do ##class(OcuPilot.Kernel.Scope).Clear()
         Do $$$AssertStatusOK(tSC, tState _ ": the read tool answers")
+        Do $$$AssertTrue($$$ISERR(tSC) || $IsObject(tView), tState _ ": with a view")
         If $$$ISOK(tSC) && $IsObject(tView) {
             Set tOrdered = ##class(OcuPilot.Screen.Read).ApplyView(tPortRows, $ClassMethod(..#DESCRIPTOR, "Read"))
             Do $$$AssertEquals(tView.rows.%ToJSON(), tOrdered.%ToJSON(), tState _ ": the tool's rows are the port's in the declared order")
@@ -303,12 +327,13 @@ Method TestTheScreenReadAndToolAnswerThePortsRows()
 /// <p>Matrix "Unrestricted", the removed-purpose race, and the fail-closed rule behind it: a purpose
 /// read the admin port refuses with anything but 404 passes through with its status and fault,
 /// answers no row and reads no list, so a vendor fault never widens the roots to the manager
-/// directory; and a restricted purpose whose root-path list then answers 404, removed between the
-/// two reads, answers the manager directory alone. Scripted through the seam, so the allow-list is
-/// not touched.</p>
+/// directory; a restricted purpose whose root-path list then answers 404, removed between the
+/// two reads, answers the manager directory alone; and one whose list fails otherwise passes that
+/// fault through. Scripted through the seam, so the allow-list is not touched.</p>
 /// <p>Mutation (Rule 19): drop the 404 test on the purpose read in
 /// <method>OcuPilot.Port.PathPort.Roots</method> -&gt; the 500 and 403 legs answer 200; drop the
-/// fallback on the list's 404 -&gt; the race leg answers no row.</p>
+/// fallback on the list's 404 -&gt; the race leg answers no row; drop the 404 test on the list
+/// read -&gt; the list-fault leg answers the manager directory.</p>
 Method TestAVendorFaultPassesThroughAndARemovedPurposeFallsBack()
 {
     Set tPort = ..#FIXTURE
@@ -328,6 +353,14 @@ Method TestAVendorFaultPassesThroughAndARemovedPurposeFallsBack()
     Do $ClassMethod(tPort, "Script", "FSAccess.Path", "LIST", 404, "")
     Do $$$AssertEquals(..RootsOf(tPort), "200|" _ ..ManagerRow(), "a purpose removed between the two reads answers the manager directory alone")
     Do $$$AssertEquals($ClassMethod(tPort, "Calls"), 2, "after both reads")
+
+    Do $ClassMethod(tPort, "Reset")
+    Do $ClassMethod(tPort, "Script", "FSAccess.Purpose", "GET", 200, "{""Restricted"":true}")
+    Do $ClassMethod(tPort, "Script", "FSAccess.Path", "LIST", 500, "")
+    Set tSC = $ClassMethod(tPort, "Roots", 1000, .tRows, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "500 on the root-path list of a restricted purpose: the roots fail")
+    Do $$$AssertEquals(tHttp, 500, "500 on the root-path list: with the port's own status")
+    Do $$$AssertTrue('$IsObject(tRows), "500 on the root-path list: no row, never the manager directory")
 }
 
 }

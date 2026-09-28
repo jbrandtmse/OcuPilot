@@ -1,6 +1,7 @@
 /// <p>A seam subclass of <class>OcuPilot.Port.PathPort</class> and the allow-list helpers its two
-/// test classes share. As a port it denies the pairs <method>Deny</method> names and counts every
-/// admin port call it forwards, so a test can show the gate refusing with none made (AD-29). The
+/// test classes share. As a port it denies the pairs <method>Deny</method> names, admits any name
+/// after <method>AdmitAnyName</method>, and counts every admin port call it forwards, so a test can
+/// show the gate refusing with none made (AD-29). The
 /// helpers record, set and restore the instance's <parameter>PURPOSE</parameter> allow-list through
 /// <code>%SYS.FileSystemAccess</code> in <code>%SYS</code>.</p>
 /// <p><b>Caller contract:</b> the helpers change the instance's own file-dialog allow-list, so only
@@ -32,6 +33,19 @@ ClassMethod HoldsPrivilege(pResource As %String, pPermission As %String) As %Boo
 {
     If $Get(^||OcuPilotPathPortFixture("deny", pResource _ ":" _ pPermission)) Quit 0
     Quit ##super(pResource, pPermission)
+}
+
+/// <p>Admit every relative name until <method>Reset</method>, so a test can reach the containment
+/// check behind the name rule.</p>
+ClassMethod AdmitAnyName()
+{
+    Set ^||OcuPilotPathPortFixture("admitany") = 1
+}
+
+ClassMethod NameAdmitted(pPath As %String, pKind As %String) As %Boolean
+{
+    If $Get(^||OcuPilotPathPortFixture("admitany")) Quit 1
+    Quit ##super(pPath, pKind)
 }
 
 ClassMethod AdminPortClass() As %String

@@ -564,7 +564,7 @@ Method TestTheUsersListIsDeniedToAPrincipalWithoutAdminSecure()
 /// it with <code>AUTH.NOPRIVILEGE</code>. The entry is compared whole, as the captured payloads in
 /// <file>ui/tools/navigation-wire.test.mjs</file> and <file>ui/src/app/shell/rail-wire.spec.ts</file>
 /// carry it.</p>
-/// <p>Story 6.3 and 6.4 -- the Security and secrets area lists sixteen built screens: the unlisted
+/// <p>Story 6.3 and 6.4 -- the Security and secrets area lists twenty-three built screens: the unlisted
 /// audit event lists, OAuth 2.0 tabs, SSL/TLS configuration form (Story 9.5), wallet secret form
 /// (Story 8.6), Secrets list and X.509 credential form (Story 8.5) first, at position 0, then
 /// SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing and Allowed directories (Story 18.1).

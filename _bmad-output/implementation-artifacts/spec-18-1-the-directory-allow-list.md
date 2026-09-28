@@ -282,6 +282,48 @@ deferred: []
   - `rootReason` and `pathReason` render on their own fields with `aria-invalid` and `aria-describedby`.
 - **AC4:** Given the new screen, when the DW-1337 structural walk runs in both themes, then no violation outside the baseline appears. The production build stays under its 2004 kB warning.
 
+### Review Findings
+
+Code review 2026-09-28, four layers, `full-opus`. 51 rows, 15 entries: 10 patched, 5 ledgered, 31 rows rejected.
+
+- [x] [Review][Patch] `[medium]` The picker was never drawn before its store settled, so dropping its subscription stayed green (AC3) [ui/src/app/shell/server-path-picker.spec.ts:105]
+- [x] [Review][Patch] `[medium]` A restricted purpose whose root-path list fails with anything but 404 had no leg (fail-closed) [src/OcuPilot/Test/PathPort.cls:361]
+- [x] [Review][Patch] `[medium]` The browser spec's teardown cleared the allow-list on any non-live container, including one its own `before()` had refused [ui/browser/allowed-directories.browser-spec.mjs:59]
+- [x] [Review][Patch] `[low]` `Resolve` checked the kind before its gate, against its doc [src/OcuPilot/Port/PathPort.cls:224]
+- [x] [Review][Patch] `[low]` `Resolve`'s unknown-kind 500 had no leg [src/OcuPilot/Test/PathPort.cls:232]
+- [x] [Review][Patch] `[low]` `Resolve`'s normalize comment described the two-argument form [src/OcuPilot/Port/PathPort.cls:253]
+- [x] [Review][Patch] `[low]` `Resolve`'s containment check (AD-21) was pinned only through `Contains` alone; a seam now admits any name [src/OcuPilot/Test/PathPort.cls:242]
+- [x] [Review][Patch] `[low]` The integration leg skipped the tool comparison silently on an OK status with no view [src/OcuPilot/Test/PathPort.cls:311]
+- [x] [Review][Patch] `[low]` AC2's 200 leg had no `mutation:` line; demonstrated below [src/OcuPilot/Test/PathPortPrivilege.cls:216]
+- [x] [Review][Patch] `[low]` `Wire.cls` said "sixteen built screens" beside the twenty-three it asserts [src/OcuPilot/Test/Wire.cls:567]
+- [x] [Review][Defer] `[low]` The destructive-test gate cannot see the allow-list helpers reached through `$ClassMethod(..#FIXTURE, …)` [scripts/check-objectscript.py:1353] — deferred: occurrence on DW-1451 (same root cause)
+- [x] [Review][Defer] `[med]` `Resolve` admits any file name under the manager-directory default root, instance files included [src/OcuPilot/Port/PathPort.cls:277] — deferred: DW-1770 `decision-pending`, an owner call before 16.4 writes a file
+- [x] [Review][Defer] `[low]` The picker's refused line is empty without an envelope reason [ui/src/app/shell/server-path-picker.ts:52] — deferred: DW-1771 `wontfix-accepted`
+- [x] [Review][Defer] `[low]` `HoldsPrivilege`'s real check is never denied in a test [src/OcuPilot/Port/PathPort.cls:80] — deferred: DW-1772 `wontfix-theoretical`
+- [x] [Review][Defer] `[low]` `PATH.NAME`'s reason omits the leading-character, 100-character and trailing-`/` rules [src/OcuPilot/Api/Error.cls:401] — deferred: DW-1773 `by-design`
+
+**Rejected:**
+
+- `false`: AD-8's "the one case today is Logs" (blind-hunter, acceptance-auditor). It is a spine edit, which Rule 20 gives to the runner, not a code defect.
+- `false`: the matrix "No privilege" code (acceptance-auditor). The fix would edit this spec; the screen gate refuses first by construction.
+- `false`: `PORT.ACCESSDENIED` for the port's own gate. The Always list names that code.
+- `false`: the caption shows nothing until a root is chosen. There is nothing to compose, and a spec test pins it.
+- `false`: default field ids. `idPrefix`'s default is evaluated per instance.
+- `false`: `onRoot` and `onPath` read the root differently. The picker is controlled, as its doc says ("the consumer owns … the `{root, path}`").
+- `false`: the unrestricted root is misstated, and the empty state gives no remedy. Both are spec-bound (Design Notes, Tasks).
+- `false`: symbolic links. AD-21 names textual containment.
+- `false`: `lockColumnDirectory` reuse and the Wallet row at `EXPERIENCE.md:364`. The spec directs both.
+- `false`: smoke skips the `path` source. AD-45 asks for one list per area.
+- `false`: EXPERIENCE.md:168 was not add-only. The spec directs that in-place cell edit.
+- `false`: AC3 needs more mutations. Rule 19 asks one per AC.
+- `false`: the picker has no browser host. No page embeds it until 18.3, so Rule 3's real-runtime evidence is the screen's browser spec.
+- `low`: the caption for a `..` name, a trailing `/`, or a file with no name. The caption is display only, and no client copy of the name rule is allowed.
+- `low`: no placeholder option in the select, a reload unmounting the controls, a one-root picker drifting from a stale consumer root, no live-region role on the refused line. Each is a new string or a behavior change, with no consumer yet.
+- `low`: AC1's side-bar entry is never seen allowed for a principal who also lacks the area's pairs. The position is pinned by `navigation.test.mjs`, and the area gate is AD-8's.
+- `low`: the empty-state iteration compares nothing with nothing. The other two iterations carry that test.
+- theoretical: a missing or non-boolean `Restricted`; `tBase` read as `""`; a row without `RootPath`; the mirror's `.trim()`; the two 1,000-row caps coupled only by comment. Each needs vendor drift or more than 1,000 roots.
+- theoretical: throwaway-only test hygiene. That covers principals left after a failed setup, a partial `Restore`, a `Scope` left set on a throw, and the untested caller-fault branches (unknown source, `maxRows` below 1, a non-object purpose, a non-array list).
+
 ## Spec Change Log
 
 - 2026-09-27, spec gate (runner): the proposed AD-21 sixth case under Design Notes was written into the spine verbatim, with "every server-path field (Story 18.1 on)" added to AD-21's Binds (Rule 20). The spine is the authority from here; Design Notes keeps the proposal text for the reviewer.
@@ -457,6 +499,12 @@ Each consumer does the following:
 - mutation: the `Gate` call removed from `Resolve` → `PathPort.TestTheGateRefusesBeforeAnyAdminPortCall` "a bad name meets the gate before the name rule", for both pairs
 - mutation: `parsePathSources` answers `[]` for a missing parameter → `screen-mirror.test.mjs` "the path-source parser reads PathPort.SOURCES"
 - mutation (AC4): `.ocu-data-table-header-label` drawn in `--ocu-surface`, bundle rebuilt and redeployed → `allowed-directories.browser-spec.mjs` "AC4 (DW-1337)", fresh `security/allowed-directories|contrast|light` and `|dark` entries
+- mutation (AC2, the 200 leg): `PathPort.PAIRS` gains `%Admin_Secure:USE` → `PathPortPrivilege.TestTheDeclaredPairsReadTheScreen`, both states (code review)
+- mutation (AC3): the picker's store subscription removed → `server-path-picker.spec.ts` "follows the store from loading to ready after it has drawn", alone (code review)
+- mutation: `Resolve` checks the kind before its `Gate` call → `PathPort.TestTheGateRefusesBeforeAnyAdminPortCall` "and so does a kind the port does not know", both pairs (code review)
+- mutation: `Resolve`'s kind check removed → `PathPort.TestABadNameIsRefused` "a kind other than the two is a caller fault", alone (code review)
+- mutation: `Roots` drops the 404 test on the root-path list read → `PathPort.TestAVendorFaultPassesThroughAndARemovedPurposeFallsBack`, the list-fault leg, alone (code review)
+- mutation: `Resolve` drops its `Contains` test → `PathPort.TestResolveRefusesANameThatLeavesItsRoot`, alone (code review)
 
 ## Auto Run Result
 

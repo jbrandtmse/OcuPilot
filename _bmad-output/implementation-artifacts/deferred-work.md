@@ -6005,6 +6005,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T14:47:04Z occurrence=5-13-logs-delete-application-errors-by-namespace
 - 2026-09-22T15:30:14Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
 - 2026-09-26T09:53:53Z status=routed owner=burndown by=spec_gate note=needs a confirm-following (call-graph) checker; the limit is stated at check-objectscript.py:1287
+- 2026-09-28T08:16:00Z occurrence=18-1-the-directory-allow-list
 
 ### DW-1452: OcuPilot.Test.ProhibitedRoute is now armed class-wide, so on a throwaway predating OCUPILOT_ALLOW_AUDIT_TOGGLE its nine pre-existing least-privileged legs no longer run
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Test/ProhibitedRoute.cls
@@ -7809,3 +7810,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-5-ci-in-parallel-the-two-long-suites-split-across-containers.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: scripts/wait-readiness.sh:5, ci-durable-ownership.sh:3 and ci-throwaway.sh:2 say CI's instance job runs them, and ci.test.mjs:1571 says the instance and browser jobs; since 13.5 the instance-shard and browser-shard legs do. scripts/** is contended with Epic 16, ci-throwaway.sh is off-limits to 13.5, and ci.test.mjs:1571 is add-only for 13.5
 - 2026-09-28T04:38:49Z status=wontfix-accepted owner=13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=cr note=reopen_if=grep -n 'instance job' scripts/*.sh still matches when a later story next edits any of these files
+
+### DW-1770: PathPort.Resolve admits any file name under the unrestricted default root (the manager directory), so a later file-writing consumer could target IRIS.DAT, messages.log or another instance file
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: NameAdmitted accepts IRIS.DAT and irisaudit/IRIS.DAT under $System.Util.ManagerDirectory() (Test/PathPort.cls resolves 1-8 names there); no consumer writes a file in 18.1, and the first file-kind consumers are 16.4, 19.2, 19.8 and 21.2. The earlier AD-21 cases narrowed names by pattern (.txt, messages.old_*). (inference) on consumer impact.
+- 2026-09-28T08:16:00Z status=decision-pending owner=burndown by=cr note=owner call: should AD-21's sixth case refuse an existing file or instance file for kind file, or leave it to each consumer
+
+### DW-1771: The server-path picker's refused line is empty when the store is refused without an envelope reason (transport status 0, an installing answer)
+- source: spec-18-1-the-directory-allow-list.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: server-path-picker.ts:52 draws {{ reason }}; AllowedDirectoriesStore.load sets reason '' when the answer is not an error envelope. The shell's unreachable and installing states show at the same time. No page embeds the picker until 18.3.
+- 2026-09-28T08:16:00Z status=wontfix-accepted owner=18-1-the-directory-allow-list by=cr note=reopen_if=a page embedding the picker shows an empty refused line while no shell banner explains it
+
+### DW-1772: PathPort.HoldsPrivilege's real $System.Security.Check is never exercised with a denial; the port gate's tests deny through the seam
+- source: spec-18-1-the-directory-allow-list.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: PathPortFixture.HoldsPrivilege returns 0 before ##super; every surface reaching the port (the screen gate, and AD-21's tool) declares the port's pairs and refuses first; a %All test process passes Check even for a nonexistent resource (probed on ocupilot-b-ci).
+- 2026-09-28T08:16:00Z status=wontfix-theoretical owner=18-1-the-directory-allow-list by=cr note=real once a surface reaches PathPort without a gate declaring %Admin_FileSystemAccess:USE and %DB_IRISSYS:READ
+
+### DW-1773: PATH.NAME's reason omits three name rules: a leading letter or digit, 100 characters a name, and no trailing '/'
+- source: spec-18-1-the-directory-allow-list.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Api/Error.cls REASONPATHNAME is the spec's verbatim sentence, and it reads as satisfied by '.hidden', '-x', 'a/' and a 101-character name, each of which PathPort refuses.
+- 2026-09-28T08:16:00Z status=by-design owner=18-1-the-directory-allow-list by=cr note=spec-bound: the Tasks fix the sentence verbatim; reopen via a spec amendment when a consumer renders it

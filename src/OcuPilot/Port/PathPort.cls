@@ -221,12 +221,12 @@ ClassMethod Resolve(pRoot As %String = "", pPath As %String = "", pKind As %Stri
     Set pHttpStatus = 0
     Set pFault = ""
     Try {
-        If (pKind '= ..#KINDDIRECTORY) && (pKind '= ..#KINDFILE) {
-            Set tSC = ..Fail("a path was resolved for a kind this port does not know", $$$ERROR($$$GeneralError, "unknown kind"), .pHttpStatus, .pFault)
-            Quit
-        }
         If '..Gate(.tFailedPair) {
             Set tSC = ..Denied(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pKind '= ..#KINDDIRECTORY) && (pKind '= ..#KINDFILE) {
+            Set tSC = ..Fail("a path was resolved for a kind this port does not know", $$$ERROR($$$GeneralError, "unknown kind"), .pHttpStatus, .pFault)
             Quit
         }
         If '..NameAdmitted(pPath, pKind) {
@@ -250,8 +250,8 @@ ClassMethod Resolve(pRoot As %String = "", pPath As %String = "", pKind As %Stri
         }
 
         Set tBase = ##class(%File).NormalizeDirectory(pRoot)
-        ; The one-argument forms: given a base, %File changes into it first, and a location that
-        ; does not exist yet normalizes to "".
+        ; The one-argument forms: they never change directory, so a location that does not exist
+        ; yet still normalizes; each answers "" only when it fails, which is refused below.
         If pKind = ..#KINDDIRECTORY {
             Set tCandidate = ##class(%File).NormalizeDirectory(tBase _ pPath)
         } Else {

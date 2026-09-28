@@ -17,7 +17,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 
-import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
+import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { ROW_SELECTOR, viewCount, waitForRows } from './list-spec.mjs';
 import { authHeader, signedInAt } from './panel-spec.mjs';
@@ -56,7 +56,7 @@ before(async () => {
 
 after(async () => {
   try {
-    if (config.container !== LIVE_CONTAINER) allowList('Clear()');
+    if (/-ci$/.test(config.container)) allowList('Clear()');
   } finally {
     if (browser !== null) await browser.close();
   }
