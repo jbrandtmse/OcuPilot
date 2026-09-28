@@ -3915,6 +3915,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T23:34:21Z by=cr note=observed slot B: %SecurityAdministrator holds %Admin_Secure:U and %DB_IRISSYS:RW but no %Admin_Wallet; rail gates it
 - 2026-09-17T00:18:27Z occurrence=6-4-the-oauth-2-0-screen note=Story 6.4 appends %Admin_OAuth2_Client, %Admin_OAuth2_Server and %Admin_OAuth2_Registration (USE) to the security area: a holder of the Secure, IRISSYS and Wallet pairs without any OAuth resource sees the Security rail gated though 6 of its 10 built screens would serve them; %Manager and %SecurityAdministrator hold all three OAuth resources (observed on slot B by the 6.4 plan)
 - 2026-09-18T19:44:55Z status=routed owner=16-3-effective-privileges-and-the-permission-check-tool by=merge_gate note=decided: a rail item is allowed when ANY of its screens is; each screen keeps its own gate
+- 2026-09-28T06:34:37Z status=routed owner=16-3-effective-privileges-and-the-permission-check-tool by=merge_gate note=Option A decided 2026-09-28: Security set Secure+IRISSYS, wallet/OAuth screens ownPrivileges; AD-8 amended; residual filed separately
 
 ### DW-1019: Demo-fixture counts and the inventory kind vocabulary are stale outside Fixture.cls after the wallet fixture landed
 - source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: low | footprint: in-epic
@@ -7812,3 +7813,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-5-ci-in-parallel-the-two-long-suites-split-across-containers.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: scripts/wait-readiness.sh:5, ci-durable-ownership.sh:3 and ci-throwaway.sh:2 say CI's instance job runs them, and ci.test.mjs:1571 says the instance and browser jobs; since 13.5 the instance-shard and browser-shard legs do. scripts/** is contended with Epic 16, ci-throwaway.sh is off-limits to 13.5, and ci.test.mjs:1571 is add-only for 13.5
 - 2026-09-28T04:38:49Z status=wontfix-accepted owner=13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=cr note=reopen_if=grep -n 'instance job' scripts/*.sh still matches when a later story next edits any of these files
+
+### DW-1768: Rail items stay gated for holders of only some of an area's screens: a wallet-only or OAuth-only holder at Security, and %Operator at Logs and OS management, although screens there would serve them
+- source: spec-16-3-effective-privileges-and-the-permission-check-tool.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: AD-8's area AND pair set cannot express 'any of its screens'; measured on ocupilot-ci at 16.3 plan: %Operator holds %Admin_Operate:U and %DB_IRISSYS:RW only; 11 of 22 Security screens lack %Admin_Secure
+- 2026-09-28T06:34:37Z status=decision-pending owner=range-end-cleanup by=merge_gate note=owner decision after the voting week: keep AD-8's area set, or Option B (AD-8 any-screen rail: rail/Home tile/side bar open when any listed screen is allowed)

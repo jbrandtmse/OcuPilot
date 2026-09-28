@@ -2,7 +2,7 @@
 title: 'Story 16.3: Effective privileges and the permission-check tool'
 type: 'feature'
 created: '2026-09-27'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -23,7 +23,7 @@ deferred: []
 - **Permission check.** Two callers share one operation, which answers yes or no, names the granting role, and short-circuits on `%All`:
   - the read tool `permissions.privileges.check`;
   - a "Check permission" command-bar dialog on the Users and Roles lists and on the user and role editors.
-- **DW-1018 (Option A, pending the owner's decision, see Auto Run Result).** The wallet and OAuth pairs move off the Security area and onto the 13 screens that need them, as `ownPrivileges`.
+- **DW-1018 (Option A, decided by the owner at the merge gate 2026-09-28).** The wallet and OAuth pairs move off the Security area and onto the 13 screens that need them, as `ownPrivileges`.
 
 ## Boundaries & Constraints
 
@@ -99,7 +99,7 @@ deferred: []
     - Check button: `aria-disabled` with "Enter a name and a resource first." until both fields hold text.
     - Result: the answer appears in a polite status line. A refusal shows its own reason inline, and the dialog stays open.
 - **Copy** is taken verbatim from Design Notes. EXPERIENCE.md is edited in place and stays at 993 lines.
-- **DW-1018 (Option A, pending).**
+- **DW-1018 (Option A, decided).**
   - The Security area's set becomes `{%Admin_Secure:USE, %DB_IRISSYS:READ}`.
   - `WalletCollectionList`, `WalletSecretList` and `WalletSecretForm` own `%Admin_Wallet:USE`.
   - Each OAuth tab and form owns its OAuth pair. The resource-server tab and form own `%Admin_OAuth2_Client:USE`.
@@ -326,6 +326,8 @@ Docs:
 
 ## Spec Change Log
 
+- 2026-09-28T06:45Z, lead spec gate: DW-1018 decided Option A by the owner (merge gate, relayed by the orchestrator); the `(pending)` markers in the intent contract and Tasks now read decided; status reset to `ready-for-dev`; spine changes (a) and (b) written by the lead; the residual rail cases filed as their own `decision-pending` entry owned by `range-end-cleanup`.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -414,22 +416,7 @@ Docs:
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: DW-1018 (AD-8). The decided rule, "a rail item is allowed when ANY of its screens is", cannot be expressed by AD-8's area pair set, even with `ownPrivileges`, so it needs a product call. Option A, the `ownPrivileges` fix for Security, closes the filed symptom but narrows the decision. Option B, deriving the rail item from its screens' verdicts, contradicts AD-8's "an area gates its rail item, Home tile and side bar on its declared set".
+Status: ready-for-dev
+Blocking condition: none
 
-**The question for the owner.** Which of these governs DW-1018?
-
-- **Option A (recommended).** Security's set becomes `%Admin_Secure:USE` and `%DB_IRISSYS:READ`, and the 13 wallet and OAuth screens declare their pair as `ownPrivileges`. This is the plan as written, and it needs spine change (b).
-  - It fixes the filed case: stock `%SecurityAdministrator`, and any holder of those two pairs without the wallet or an OAuth resource, reaches SSL/TLS, X.509, LDAP and Auditing.
-  - The owner confirms that AD-8 as amended on 2026-09-27 (DW-1755, which kept Logs' Release 1 set) supersedes the 2026-09-18 "any" rule for the residual: wallet-only and OAuth-only holders, and stock `%Operator` at the Logs and OS management rails (DW-278, DW-275). Alternatively, the owner routes that residual to its own story.
-- **Option B.** Amend AD-8 through the Update intent (Rule 20), so that a rail item, Home tile and side bar are allowed when any listed built screen is allowed, and name the first listed screen's failed pair otherwise. `Area.cls` pair sets, `AreaCoverageProblem` and `ownPrivileges` then stop gating anything.
-  - It changes Release 1 rail behavior: the Logs and OS management rails open to `%Operator`. No read widens, because every screen keeps its own gate.
-  - Its tests and edits (`NarrowArea`, the `Descriptor` area rows, `Navigation`, the `WireSecurityRead`/`WireOAuthRead` area verdicts, the navigation-wire and rail-wire client tests, and the security and OAuth browser AC5 legs) replace this spec's Option A rows, AC7 and task.
-
-**Evidence** (measured on `ocupilot-ci` at plan time; probe principals created and removed):
-
-- 11 of the 22 security screens do not declare `%Admin_Secure:USE`. The wallet screens are `{%Admin_Wallet:USE, %DB_IRISSYS:READ}`, and each OAuth tab is its OAuth resource plus `%DB_IRISSYS:READ`. So the "any" rule is `IRISSYS AND (Secure OR Wallet OR an OAuth resource)`, which no single AND pair set can state.
-- `%Operator` holds `%Admin_Operate:U` and `%DB_IRISSYS:RW`, with no `%Admin_Secure` or `%Admin_Manage`. `%SecurityAdministrator` holds Secure, IRISSYS:RW and the three OAuth resources, but no Wallet.
-- The ledger entry, decided 2026-09-18 at the Epic 6 gate, is: "a rail item is allowed when ANY of its screens is". The later DW-1755 decision (2026-09-27) amended AD-8 with `ownPrivileges` and kept Logs' set.
-
-**Plan state.** Everything else in this spec is planned and was self-checked against the READY standard. Only the DW-1018 rows depend on the answer: the matrix's last row, Always' last bullet, AC7, the Option A task and tests, and spine change (b). With Option A confirmed, the lead sets `status: draft`, or accepts at the spec gate as written. With Option B, the lead replaces those rows.
+Plan pass 2026-09-27 halted `blocked` on the DW-1018 intent gap (AD-8). The owner decided Option A at the merge gate (2026-09-28, relayed by the orchestrator): Security's set becomes `%Admin_Secure:USE` + `%DB_IRISSYS:READ` and the 13 wallet and OAuth screens declare their pair as `ownPrivileges`; an own pair is never one the area already declares (DW-1760's direction). The residual rail cases (a wallet-only or OAuth-only holder at Security; `%Operator` at Logs and OS management) are a separate ledger entry for an owner decision after the voting week, with Option B (AD-8's any-screen rail) as the named alternative. The lead wrote spine changes (a) and (b) and accepted the spec as written at the spec gate.
