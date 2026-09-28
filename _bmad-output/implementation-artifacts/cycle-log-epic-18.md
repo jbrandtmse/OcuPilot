@@ -82,3 +82,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T13:49:24Z	Story 18.2	committed_code	sha=bb68a23e pushed=true ci=pending run=36431303133 head_confirmed_by=headSha note=implement_commit_pushed_alone(DW-1434)
 2026-09-28T13:49:24Z	Story 18.2	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none note=no_AD_commits_a_verification_tool_stack
 2026-09-28T13:49:24Z	Story 18.2	stage_spawned	stage=qa spawn_at=2026-09-28T13:49:24Z model=sonnet agent_name=18-2-namespaces-and-their-mappings-qa-1 cycle_iteration=1
+2026-09-28T13:53:05Z	Story 18.2	qa_complete	spawn_at=2026-09-28T13:49:24Z model=sonnet tests_added=0 mutations_demonstrated=0 first_run_failures=0 clarifications=0 closing_sections_present=true note=no_gaps;spot_rerun_NamespaceDescriptor_4/4,NamespaceRefusals_4/4
+2026-09-28T13:53:05Z	Story 18.2	stage_spawned	stage=code-review spawn_at=2026-09-28T13:53:05Z model=opus agent_name=18-2-namespaces-and-their-mappings-code-review-1 cycle_iteration=1 review_tier=full-opus
