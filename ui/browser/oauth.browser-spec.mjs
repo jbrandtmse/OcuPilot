@@ -4,7 +4,7 @@
  * read, reached by Right then Enter and by a click (AC1); the authorization server tab's cells against
  * its own read answer (AC2); a client configuration's name cell opening OcuPilot's own editor, Story
  * 12.5's (AC4); and a principal holding the Resource servers tab's three pairs without the wallet,
- * authorization server or registration resources, gated on the rail, reading the Resource servers tab
+ * authorization server or registration resources, offered the rail item, reading the Resource servers tab
  * under a strip whose authorization server and server client tabs are gated, and refused Server client
  * descriptions by name (AC5); and, Story 12.9, every tab's name cells opening OcuPilot's own editor
  * in this tab, with no link to the classic portal and no classic-link card on any of the five (AD-44).
@@ -37,7 +37,7 @@ import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
-const { formatDeniedScreen, formatRequires } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
+const { formatArea, formatDeniedScreen } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
 const { encodeEntityId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
 
 const config = browserConfig();
@@ -421,8 +421,7 @@ test('AC1 (Story 12.9): no OAuth 2.0 tab links to the classic portal', async () 
   }
 });
 
-test('AC5: with the Resource servers pairs alone the Security rail item is gated on the wallet pair, Resource servers reads under a strip whose server tabs are gated and focusable, and Server client descriptions is refused by name', async () => {
-  const walletRequires = formatRequires(STRINGS.privilegeRequiresResource, '%Admin_Wallet:USE');
+test('AC5: with the Resource servers pairs alone the Security rail item opens (Story 16.3, DW-1018), Resource servers reads under a strip whose server tabs are gated and focusable, and Server client descriptions is refused by name', async () => {
   const resources = TABS[2];
   const { context, page, reads } = await signedInAt(urlOf(resources.route), SECURE_USER, PASSWORD);
   try {
@@ -433,7 +432,7 @@ test('AC5: with the Resource servers pairs alone the Security rail item is gated
       const item = document.querySelector(`.ocu-rail-item[aria-label="${label}"]`);
       return { disabled: item.getAttribute('aria-disabled'), tip: document.getElementById(item.getAttribute('aria-describedby'))?.textContent.trim() };
     }, STRINGS.navAreaSecurity);
-    assert.deepEqual(rail, { disabled: 'true', tip: walletRequires }, 'the Security rail item is gated naming %Admin_Wallet:USE');
+    assert.deepEqual(rail, { disabled: null, tip: formatArea(STRINGS.navRailItemTooltip, STRINGS.navAreaSecurity) }, 'the Security rail item opens: the wallet and OAuth 2.0 screens own their pair');
 
     const strip = await stripOf(page);
     assert.deepEqual(

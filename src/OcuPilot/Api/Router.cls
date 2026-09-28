@@ -8,7 +8,8 @@
 /// (<code>/proposal/:id</code>); the generic
 /// screen read and row action (<code>/screens/:screen</code>); the log pages (<code>/logs</code>);
 /// and the editors' reads, Saves and checks for web applications, users, roles, resources, services,
-/// tasks, audit events, devices, LDAP, SSL/TLS, X.509 credentials, wallet secrets and OAuth 2.0.
+/// tasks, audit events, devices, LDAP, SSL/TLS, X.509 credentials, wallet secrets and OAuth 2.0; and
+/// the permission check (<code>/permissions/check</code>).
 /// Every other request that clears <method>OnPreDispatch</method> is answered by the framework 404
 /// override. The three ordering invariants below are load-bearing from the first route on; the
 /// first two are each asserted by their own routing test in <class>OcuPilot.Test.Routing</class> against
@@ -92,6 +93,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/web-applications" Method="POST" Call="WebAppCreate"/>
   <Route Url="/users/form" Method="GET" Call="UserFormRules"/>
   <Route Url="/users/name" Method="GET" Call="UserNameCheck"/>
+  <Route Url="/users/effective" Method="GET" Call="UserEffective"/>
   <Route Url="/users/:id" Method="PUT" Call="UserUpdate"/>
   <Route Url="/users" Method="POST" Call="UserCreate"/>
   <Route Url="/roles/form" Method="GET" Call="RoleFormRules"/>
@@ -185,6 +187,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/oauth/server-client/form" Method="GET" Call="OAuthServerClientFormRead"/>
   <Route Url="/oauth/server-client/:id" Method="PUT" Call="OAuthServerClientUpdate"/>
   <Route Url="/oauth/server-client" Method="POST" Call="OAuthServerClientCreate"/>
+  <Route Url="/permissions/check" Method="GET" Call="PermissionCheck"/>
 </Routes>
 }
 
@@ -379,7 +382,7 @@ ClassMethod WebAppUpdate(pId As %String) As %Status
 
 /// <p>Thin <code>Call=</code> target for <code>GET /users/form</code> (Story 8.2): delegates to
 /// <class>OcuPilot.Area.Permissions.UserCreateRules</class> and carries no logic of its own. The
-/// two sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
+/// three sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
 ClassMethod UserFormRules() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleForm()
@@ -392,10 +395,26 @@ ClassMethod UserNameCheck() As %Status
     Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleName()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>GET /users/effective</code> (Story 16.3): the user
+/// editor's Effective privileges tab. A literal sibling of <code>/users/:id</code>, above it.</p>
+ClassMethod UserEffective() As %Status
+{
+    Quit ##class(OcuPilot.Api.Privileges).HandleEffective()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /permissions/check</code> (Story 16.3): the
+/// command-bar permission check, the route caller of the operation
+/// <code>permissions.privileges.check</code> also answers. It shares no prefix with another
+/// route.</p>
+ClassMethod PermissionCheck() As %Status
+{
+    Quit ##class(OcuPilot.Api.Privileges).HandleCheck()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>PUT /users/:id</code> (Story 9.1): the user editor's
-/// Save, resolved through the one tool the agent's confirm uses (AD-55). The two sub-resources are
-/// <code>GET</code> routes, so a <code>PUT</code> to either path is this route's, for the account
-/// of that name.</p>
+/// Save, resolved through the one tool the agent's confirm uses (AD-55). The three sub-resources are
+/// <code>GET</code> routes, so a <code>PUT</code> to any of those paths is this route's, for the
+/// account of that name.</p>
 ClassMethod UserUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserSave).HandleUpdate(pId)

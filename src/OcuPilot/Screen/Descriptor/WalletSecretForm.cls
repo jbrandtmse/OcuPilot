@@ -31,6 +31,7 @@ XData Declaration
   "refreshes": false,
   "refreshRates": [],
   "privileges": [{"resource": "%Admin_Wallet", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
+  "ownPrivileges": [{"resource": "%Admin_Wallet", "permission": "USE"}],
   "entityType": "wallet-secret",
   "secondaryEntityTypes": [],
   "scope": "instance",

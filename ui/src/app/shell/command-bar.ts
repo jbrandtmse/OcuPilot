@@ -14,7 +14,7 @@ import { Router } from '@angular/router';
 import { NavigationService } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
-import { DOWNLOAD_CSV_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
+import { DOWNLOAD_CSV_ACTION_ID, PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
 import { applyView } from '../core/screen-read';
 import { ScreenStores, type SortDirection } from '../core/screen-store';
 import { selfProtectionReason } from '../core/self-protection';
@@ -146,7 +146,7 @@ interface SortOption {
  * has `read === null` -- Home, most form pages, the error drill-down -- has nothing to filter, so the
  * field and its count are not drawn, and no list of such screens is written here. **The bar itself
  * is not drawn when every slot is empty** (`hasContent`): no primary action, filter, row action,
- * View or Sort control, Refresh action, Download CSV control or chip.
+ * View or Sort control, Refresh or Check permission action, Download CSV control or chip.
  *
  * **The filter is the current screen's store's** (AD-19): the field is named "Filter rows"
  * (`commandBarFilterLabel`), reads and writes the filter of the store the screen's table renders,
@@ -311,6 +311,15 @@ interface SortOption {
         (click)="onRefreshAction()"
       >
         {{ refreshActionLabel }}
+      </button>
+    }
+    @if (hasPermissionCheckAction) {
+      <button
+        type="button"
+        class="ocu-button-text ocu-command-bar-action ocu-command-bar-permission-check"
+        (click)="onPermissionCheck()"
+      >
+        {{ permissionCheckLabel }}
       </button>
     }
     @if (hasDownloadAction) {
@@ -610,6 +619,7 @@ export class CommandBar {
       this.hasViewControl ||
       this.hasSortControl ||
       this.hasRefreshAction ||
+      this.hasPermissionCheckAction ||
       this.hasDownloadAction ||
       this.hasRefreshChip
     );
@@ -679,6 +689,26 @@ export class CommandBar {
     const screen = this.screen();
     if (screen === null) return;
     this.actions.run(screen.descriptor, REFRESH_ACTION_ID);
+  }
+
+  /**
+   * Check permission (Story 16.3), drawn after Refresh on exactly the screens that registered it.
+   * Like Refresh it is screen-level: it acts on no row, so it is never `aria-disabled` for want of
+   * a selection.
+   */
+  protected get hasPermissionCheckAction(): boolean {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null) return false;
+    return this.actions.has(screen.descriptor, PERMISSION_CHECK_ACTION_ID);
+  }
+
+  protected readonly permissionCheckLabel = actionLabel('', PERMISSION_CHECK_ACTION_ID);
+
+  protected onPermissionCheck(): void {
+    const screen = this.screen();
+    if (screen === null) return;
+    this.actions.run(screen.descriptor, PERMISSION_CHECK_ACTION_ID);
   }
 
   /**

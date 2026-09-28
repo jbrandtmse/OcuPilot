@@ -79,22 +79,10 @@
 /// <code>AreaCoverageProblem</code> refuse <code>ProcessList</code> at install --
 /// <class>OcuPilot.Test.NarrowArea</class> pins both halves, so the decision cannot be reversed by
 /// accident.</p>
-/// <p><b>Security and secrets names <code>%Admin_Wallet:USE</code> third</b>, after its screens'
-/// shared <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>: the Wallet list and its
-/// Secrets list declare it, and an area covers every pair its screens declare. Appended rather than
-/// placed first, so a caller short of <code>%Admin_Secure:USE</code> is still named that pair. The
-/// union is kept on the ground DW-275 and DW-278 give for OS management, and it costs the same kind
-/// of false denial: a caller holding <code>%Admin_Secure:USE</code> and
-/// <code>%DB_IRISSYS:READ</code> without <code>%Admin_Wallet:USE</code> sees the Security rail item
-/// gated, and a gated rail item opens no side bar, while SSL/TLS, X.509 and LDAP / Kerberos -- 3 of
-/// the area's 5 built screens -- would serve them and stay reachable by the command box and a deep
-/// link.</p>
-/// <p><b>It then names <code>%Admin_OAuth2_Client:USE</code>, <code>%Admin_OAuth2_Server:USE</code> and
-/// <code>%Admin_OAuth2_Registration:USE</code></b>, in that order, which the OAuth 2.0 tabs declare.
-/// The cost is the same kind of false denial: a caller holding the secure, system-database and wallet
-/// pairs without an OAuth resource sees the rail item gated while 6 of the area's 10 built screens
-/// would serve them. The stock <code>%Manager</code> and <code>%SecurityAdministrator</code> roles hold
-/// all three OAuth resources (observed on slot B), so no stock role is newly denied by them.</p>
+/// <p><b>Security and secrets declares <code>%Admin_Secure:USE</code> and
+/// <code>%DB_IRISSYS:READ</code> alone.</b> The wallet screens declare <code>%Admin_Wallet:USE</code>
+/// and each OAuth 2.0 tab and form its OAuth resource as their own pair (AD-8), so a caller without
+/// one loses that screen alone and keeps SSL/TLS, X.509, LDAP and Auditing (Story 16.3, DW-1018).</p>
 /// <p><b>A pair set is an AND and cannot express the admin API's OR.</b>
 /// <code>Task.CRUD</code> accepts <code>%Admin_Task</code> <i>or</i> <code>%Admin_Operate</code>
 /// (same probe). Tasks therefore names the narrower <code>%Admin_Task</code>, so a holder of
@@ -122,7 +110,7 @@ XData Areas
   {"key":"tasks","railPosition":4,"labelKey":"navAreaTasks","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Task","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"permissions","railPosition":5,"labelKey":"navAreaPermissions","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"web-applications","railPosition":6,"labelKey":"navAreaWebApplications","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
-  {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"},{"resource":"%Admin_Wallet","permission":"USE"},{"resource":"%Admin_OAuth2_Client","permission":"USE"},{"resource":"%Admin_OAuth2_Server","permission":"USE"},{"resource":"%Admin_OAuth2_Registration","permission":"USE"}]},
+  {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"agent","railPosition":8,"labelKey":"navAreaAgent","navigates":false,"pinBottom":true,"privileges":[]}
 ]}
 }
