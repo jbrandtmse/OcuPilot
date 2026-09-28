@@ -103,3 +103,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T15:07:01Z	Story 18.14	ledger_routed_planned	story=18-14-namespace-mappings-and-copy-mappings entries=1 excess=0 by=merge_gate dw=DW-1784
 2026-09-28T15:07:01Z	Story 18.15	ledger_routed_planned	story=18-15-enable-interoperability-on-a-namespace entries=1 excess=0 by=merge_gate dw=DW-1776 note=story_added_by_orchestrator_split(Rule5)
 2026-09-28T15:07:01Z	Story 18.14	spec_gate_resolved	spec_status=draft(re-plan_Parts_A+B_plus_DW-1784) amendments=epics.md:18.14_Part_C_moved,18.15_added
+2026-09-28T15:12:13Z	Epic 18	epic_context_compiled	sha=pending reason=planning_artifact_newer(18.14_split,18.15,AD-44,owner_notes) model=claude-opus-5-5[1m] lines=117
+2026-09-28T15:12:13Z	Story 18.14	plan_clarification_requested	resolved_by=orchestrator(split_C_to_18.15,DW-1784_to_18.14) redispatch=spec_path status=draft
+2026-09-28T15:12:13Z	Story 18.14	stage_spawned	stage=plan spawn_at=2026-09-28T15:12:13Z model=opus agent_name=18-14-namespace-mappings-and-copy-mappings-plan-2 cycle_iteration=2 dispatch=spec_path(draft) note=no_throwaway_probes
