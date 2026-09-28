@@ -185,6 +185,10 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/device/name" path="/api/ocupilot/device/name" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/device/:id" path="/api/ocupilot/device/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/device" path="/api/ocupilot/device" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/namespace/form" path="/api/ocupilot/namespace/form" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/namespace/name" path="/api/ocupilot/namespace/name" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/namespace/:id" path="/api/ocupilot/namespace/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/namespace" path="/api/ocupilot/namespace" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/ssl/form" path="/api/ocupilot/ssl/form" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/ssl/name" path="/api/ocupilot/ssl/name" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/ssl/:id/test" path="/api/ocupilot/ssl/ocupilot-coverage-probe/test" disposition="envelope" refusal="1"/>

@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -444,7 +444,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "agent-definition",
   "agent-switch",
   "agent-policy",
-  "allowed-directory"
+  "allowed-directory",
+  "namespace"
 ];
 
 /**
@@ -475,7 +476,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "audit-user-event": "foldcase",
   "service": "foldcase",
   "ldap-configuration": "foldcase",
-  "oauth2-server": "singleton"
+  "oauth2-server": "singleton",
+  "namespace": "foldcase"
 };
 
 /**
@@ -4672,6 +4674,215 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "logs.xdbc",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.NamespaceForm",
+    "route": "os-management/namespaces/edit",
+    "area": "os-management",
+    "labelKey": "headerNamespaceLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "namespace",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.NamespaceEdit",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.namespaceform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.NamespaceList",
+    "route": "os-management/namespaces",
+    "area": "os-management",
+    "labelKey": "namespaceListLabel",
+    "sideBarPosition": 6,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "namespace",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Globals",
+        "Routines",
+        "TempGlobals"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "namespaceListEmpty",
+    "commandAliases": [
+      "namespaces",
+      "configure namespace"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Namespaces",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Namespace.Namespace",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Globals",
+        "Routines",
+        "TempGlobals"
+      ],
+      "filter": [
+        "Name",
+        "Globals",
+        "Routines",
+        "TempGlobals"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Globals",
+          "Routines",
+          "TempGlobals"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Globals",
+          "labelKey": "namespaceColumnGlobals",
+          "kind": "identifier"
+        },
+        {
+          "field": "Routines",
+          "labelKey": "namespaceColumnRoutines",
+          "kind": "identifier"
+        },
+        {
+          "field": "TempGlobals",
+          "labelKey": "namespaceColumnTemp",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "namespaceListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.namespaces",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

@@ -151,12 +151,16 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/database-free-space',
       'os-management/databases/volumes',
       'os-management/devices/edit',
+      // Story 18.2: the unlisted namespace editor, reached from the Namespaces list.
+      'os-management/namespaces/edit',
       'os-management/processes/details',
       'os-management/processes',
       'os-management/locks',
       'os-management/system-usage',
       'os-management/databases',
       'os-management/devices',
+      // Story 18.2: Namespaces, the sixth OS management entry.
+      'os-management/namespaces',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -212,8 +216,32 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/governance',
       'agent/transcripts',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy and Transcripts list, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files, device editor and namespace editor, process details, processes, Locks, System usage, Databases, Devices, Namespaces, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy and Transcripts list, in area rail order'
   );
+});
+
+// Story 18.2 (AC1): Namespaces is OS management's sixth side-bar entry, after Devices, and its
+// editor takes no position.
+//
+// Mutation (Rule 19): give NamespaceList `sideBarPosition` 0 and regenerate the mirror -> this and
+// the built-screens roster above go red.
+test('OS management lists Processes, Locks, System usage, Databases, Devices, then Namespaces', () => {
+  assert.deepEqual(
+    listedScreensForArea('os-management').map((screen) => screen.route),
+    [
+      'os-management/processes',
+      'os-management/locks',
+      'os-management/system-usage',
+      'os-management/databases',
+      'os-management/devices',
+      'os-management/namespaces',
+    ]
+  );
+  assert.equal(stringFor(screenForRoute('os-management/namespaces').labelKey), STRINGS.namespaceListLabel);
+  const editor = createFormFor(screenForRoute('os-management/namespaces'));
+  assert.equal(editor?.route, 'os-management/namespaces/edit', "the list's Create opens its own form");
+  assert.equal(isListedScreen(editor), false, 'which takes no side-bar position');
+  assert.equal(editorScreenFor(screenForRoute('os-management/namespaces'))?.route, 'os-management/namespaces/edit', 'and a row name opens it at its id route');
 });
 
 // Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads

@@ -95,7 +95,8 @@ const LIVE_PAYLOAD = {
       // Story 6.11 took this roster from four screens to eight, and Story 6.12 took it from eight
       // to nine, in ScreensForArea's own (sideBarPosition, class name) collation: the four unlisted
       // sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead of the
-      // listed ones in position order.
+      // listed ones in position order. Story 18.2 adds the namespace editor among the unlisted ones
+      // and Namespaces last.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -114,6 +115,13 @@ const LIVE_PAYLOAD = {
         {
           route: 'os-management/databases/volumes',
           labelKey: 'databaseVolumeListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces/edit',
+          labelKey: 'headerNamespaceLabel',
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
@@ -157,6 +165,13 @@ const LIVE_PAYLOAD = {
           route: 'os-management/devices',
           labelKey: 'deviceListLabel',
           sideBarPosition: 5,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces',
+          labelKey: 'namespaceListLabel',
+          sideBarPosition: 6,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },

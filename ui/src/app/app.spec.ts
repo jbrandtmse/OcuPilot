@@ -23,6 +23,7 @@ import { OAuthResourceServerForm } from './areas/security/oauth-resource-server-
 import { OAuthServerForm } from './areas/security/oauth-server-form.store';
 import { OAuthRegisteredClientForm } from './areas/security/oauth-registered-client-form.store';
 import { DeviceForm } from './areas/os-management/device-form.store';
+import { NamespaceForm } from './areas/os-management/namespace-form.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
@@ -1196,6 +1197,12 @@ describe('the shell frame', () => {
     deviceForm.setValue('PhysicalDevice', '/tmp/a-path-this-principal-typed');
     expect(deviceForm.value('Name')).not.toBe('');
 
+    // The same answer for the namespace editor (Story 18.2): a namespace THIS principal typed and has
+    // not saved, in a root-provided store. A create takes input before its form read is made.
+    const namespaceForm = TestBed.inject(NamespaceForm);
+    namespaceForm.setValue('Name', 'ANAMESPACETHISPRINCIPALTYPED');
+    expect(namespaceForm.value('Name')).not.toBe('');
+
     // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
     // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
     // only in an edit, which is set before its form read answers.
@@ -1297,6 +1304,10 @@ describe('the shell frame', () => {
     // two go red, and the next principal's device editor holds the previous one's typed device.
     expect(deviceForm.value('Name')).toBe('');
     expect(deviceForm.value('PhysicalDevice')).toBe('');
+
+    // Mutation (Rule 19): delete `this.namespaceForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's namespace editor holds the previous one's typed name.
+    expect(namespaceForm.value('Name')).toBe('');
 
     // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
     // red, and the next principal's SSL/TLS form holds the previous one's typed key password.

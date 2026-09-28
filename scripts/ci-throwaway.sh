@@ -231,6 +231,7 @@ services:
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
       # classes: LogHubWire, PathPort, PathPortPrivilege
+      # classes: NamespaceWriteGate
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -348,6 +349,15 @@ services:
       # that effect: a runner pointed at an instance someone uses would empty that account's lists.
       # classes: PreferencesWire
       OCUPILOT_ALLOW_ACCOUNT_PREFERENCES: "1"
+      # Creates, edits and deletes namespaces in this instance's own configuration, with the web
+      # applications bound to them and a global mapping, through the shipped Save, row-action and
+      # confirm paths. Its own variable because no narrower one names that effect: a namespace delete
+      # removes every web application bound to it, so a runner pointed at an instance someone cares
+      # about could take applications nobody there asked to lose. The classes touch only OCUPROBE182*
+      # namespaces and /csp/ocuprobe182* applications, each by exact name, and write to the install
+      # namespace and %SYS only through a port that sends nothing.
+      # classes: NamespaceRefusals, NamespaceWrite, NamespaceWriteGate
+      OCUPILOT_ALLOW_NAMESPACE_CONFIG: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

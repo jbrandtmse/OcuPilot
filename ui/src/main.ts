@@ -112,14 +112,19 @@ const api: ApiService = new ApiService({
 const instance = new InstanceService({ api, connectivity });
 // `namespace` is the map read's single-flight key (DW-157): a read already in flight answers a
 // second caller in the same namespace and answers nobody after a switch. Lazy for the reason
-// `api: () => api` above is -- `scope` is declared two lines down and the arrow is not called
+// `api: () => api` above is -- `scope` is declared just below and the arrow is not called
 // until a map read is actually issued.
 const navigation = new NavigationService({
   api,
   connectivity,
   namespace: () => scope.namespace(),
 });
-const scope: ScopeService = new ScopeService({ api, connectivity });
+// Story 1.14's one client bus (AD-14), built before every service that publishes onto it or reads
+// it: the namespace list first, which re-reads itself when a namespace is created or deleted so the
+// switch offers the new one and drops the deleted one without a reload (Story 18.2), then the turn
+// store, which publishes onto it (Story 5.1), and the refresh framework below.
+const bus = new ChangeBus();
+const scope: ScopeService = new ScopeService({ api, connectivity, bus });
 
 // AD-44's "switching re-fetches rather than re-routing", wired once: the scope's consumer in
 // this story is the navigation map, which is computed per call and must be re-read against the
@@ -162,13 +167,10 @@ const panel = new PanelState({ account: accountPreferences, shell });
 // of it for the conversation id's own key). `restore()` is fired here, not awaited -- the same
 // "already in flight while Angular is still painting" shape the silent probe above uses -- so a
 // reload's transcript is often there by the time the panel first renders.
-// Story 1.14's three (AD-43, AD-19, AD-14): the one client bus, the one store per descriptor, and
-// the one refresh framework over both. Built here like every other core service so the command
-// bar's chip, the status bar's stamp and whatever screen binds all reach the same instance --
-// three of any of them would be three timers. The bus is constructed before the turn store
-// because that store publishes onto it (Story 5.1).
-const bus = new ChangeBus();
-
+// Story 1.14's three (AD-43, AD-19, AD-14): the one client bus (built above, beside the namespace
+// list), the one store per descriptor, and the one refresh framework over both. Built here like
+// every other core service so the command bar's chip, the status bar's stamp and whatever screen
+// binds all reach the same instance -- three of any of them would be three timers.
 const turn = new TurnStore({
   api,
   storage: readSessionStorage(),

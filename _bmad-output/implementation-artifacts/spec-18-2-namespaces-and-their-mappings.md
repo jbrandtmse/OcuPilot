@@ -2,7 +2,8 @@
 title: 'Story 18.2: Namespaces and their mappings'
 type: 'feature'
 created: '2026-09-28'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'b329f89286e80a95206aaee3d03f558e5138e7cd'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -236,6 +237,32 @@ Every write is one derived tool that both callers reach (AD-53, AD-55). The kern
 
 ## Review Triage Log
 
+### 2026-09-28 — Review pass
+
+- verdicts: 21 findings — high 0, medium 3, low 13, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) An edit of a namespace deleted since the read had no test of its 404, the guard that keeps the upsert from re-creating it — added `NamespaceRefusals.TestAnEditOfADeletedNamespaceIsRefusedAndNotRecreated` (Save 404 with nothing sent; agent mint, delete, confirm 409 `TARGETCHANGED`); its mutation reddened it (run 418).
+  - `[low]` `[patch]` (verification-gap) `Namespace.Namespace/DELETE` in `VERIFIEDDELETES` was not load-bearing in any test — added `NamespaceRefusals.TestAReportedDeleteThatLeftTheNamespaceIsNotApplied` over `RoleDeletePort`; removing the entry reddened it (run 421).
+  - `[medium]` `[patch]` (verification-gap) The namespace violation-code roster and the create's REQUIRED rules had no server test — `NamespaceDescriptor` now asserts every code's sentence, its field and one rule per code; `NamespaceRefusals.TestACreateWithoutItsDatabasesIsRefusedOnEachField` pins both callers (run 419 red under the mutation).
+  - `[medium]` `[patch]` (verification-gap) A key outside the three was untested on either Save route — added `NamespaceRefusals.TestAKeyOutsideTheThreeIsRefusedOnBothSaves` (create 403 `UNCOVEREDFIELD`, edit 400 `PORT.FIELD.UNEXPECTED`, schema refusal); run 420 red under the mutation.
+  - `[low]` `[reject]` (verification-gap) `NamespaceSave.PortViolations` (420, and the 457/7201 `PROPERTYFAULTS` rows) is untested — reachable only when a database vanishes between the rule check and the `PUT`, or the vendor's name rule changes (the corpus pins it today); a test needs a stub port, more than a direct correction.
+  - `[low]` `[patch]` (verification-gap) The own-namespace "is unchanged" read-back cannot fail through `AcceptPort`, and the spec's mutation line cited it as evidence — the claim was removed from the mutation line; the assertion stays as a guard on the port.
+  - `[low]` `[patch]` (verification-gap) "no vendor write was sent by either caller" counts only the Save's port — message corrected to the Save.
+  - `[false]` `[reject]` (verification-gap) The Integration row compares one read with itself — AD-36 requires one read; the equality fails if the tool's view projects or caps differently, so it is falsifiable.
+  - `[low]` `[patch]` (verification-gap) The in-process own-namespace legs take `$NAMESPACE` as the install namespace by construction — the test now first asserts `$NAMESPACE` equals `/api/ocupilot`'s configured `NameSpace`; the over-the-wire impact leg already ran in the API process.
+  - `[low]` `[patch]` (verification-gap) `MappingCount < 1` accepted the helper's `-1` — now `= 0`, green in the sweep.
+  - `[low]` `[patch]` (verification-gap) The browser spec's mutation comment named `sideBarPosition` 7, which reddens nothing — corrected to 0, as the spec's line says.
+  - `[false]` `[reject]` (verification-gap) AC sub-criteria without `mutation:` lines — Rule 19 asks one demonstrated mutation per AC, and each of AC1 to AC4 has one or more.
+  - `[low]` `[patch]` (verification-gap) The `VERIFIEDDELETES` comment justified the entry by a false failure — it now says the 2xx is not trusted unread either.
+  - `[low]` `[patch]` (intent-alignment) The kernel reads `$NAMESPACE`, not the API application's `NameSpace` — the Design Notes' decision (the API process runs in its application's namespace and a turn job refuses another); grouped with the precondition assertion above.
+  - `[low]` `[reject]` (intent-alignment) A taken name at the mint answers AD-54's shared "already present" refusal, not `NAMESPACE.NAME.TAKEN` — it refuses before any `PUT`, naming the name, as every create tool's mint does (`Mint.cls:177`); only the model reads the label, and a fix reorders the shared mint.
+  - `[low]` `[patch]` (intent-alignment) No test deletes the target between an edit's mint and confirm, nor covers the Save's check-then-`PUT` window — the edit half closed with the first row; the window is the shape every Save has and fingerprinting a person's Save is outside the intent.
+  - `[low]` `[reject]` (intent-alignment) A bad name at the mint reaches one vendor `GET` before the refusal — the read changes nothing and is AD-54's shared absence read; the Save makes zero calls (pinned).
+  - `[false]` `[reject]` (intent-alignment) "The complete set is sent" diverges between browser and server — the intent's surface is the vendor call, pinned on both callers; the browser sends changed fields by design (AD-4 is server-side).
+  - `[false]` `[reject]` (intent-alignment) No server test opens the impact as a caller who cannot read `WebAppList` — the impact route and the mint gate on the delete's pairs, which include `WebAppList`'s two, so the part is unchecked only by truncation, pinned by Story 16.19.
+  - `[low]` `[reject]` (intent-alignment) No principal missing a pair goes through the mint — the mint's pair refusal is shared `Operation` code (`ProposalPrivilege`); the Save and confirm gates that precede a write are pinned per principal.
+  - `[false]` `[reject]` (intent-alignment) Behavior beyond the intent (switch re-read, Home shortcut, EXPERIENCE column, arming variable) — each is a spec task (AC1, the Code Map rosters, `:164`, the `ci-throwaway.sh` block).
+
 ## Design Notes
 
 **Governing ADs:**
@@ -315,7 +342,7 @@ Every write is one derived tool that both callers reach (AD-53, AD-55). The kern
 
 **Commands:**
 
-- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one call at a time, for `NamespaceWrite`, `NamespaceWriteGate`, `NamespaceDescriptor`, `Descriptor`, `ReadTool`, `SurfaceCoverage`, `EndpointCoverage`, `Prohibited`, `RefusalCopy`, `GovernanceBaseline`, `ToolWrite`, `ToolRoundTrip`, `DraftRegistry`, `ProposalPrivilege`, `EntityRef`, `Navigation`, `Wire`, `WireSecurityRead`, `ScreenGrounding`, `ImpactRoute` and `Envelope` -- expected: 0 failures each, the totals checked against `%UnitTest_Result`.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one call at a time, for `NamespaceWrite`, `NamespaceWriteGate`, `NamespaceRefusals`, `NamespaceDescriptor`, `Descriptor`, `ReadTool`, `SurfaceCoverage`, `EndpointCoverage`, `Prohibited`, `RefusalCopy`, `GovernanceBaseline`, `ToolWrite`, `ToolRoundTrip`, `DraftRegistry`, `ProposalPrivilege`, `EntityRef`, `Navigation`, `Wire`, `WireSecurityRead`, `ScreenGrounding`, `ImpactRoute` and `Envelope` -- expected: 0 failures each, the totals checked against `%UnitTest_Result`.
 - `(loop)` `cd ui && node --test --test-concurrency=1 browser/namespaces.browser-spec.mjs browser/impact.browser-spec.mjs` -- expected: pass.
 - `(loop)` `cd ui && npm run test:tools && npm run test:components`, then `uv run scripts/check-objectscript.py <changed .cls>` and `bash scripts/lint-docs.sh` -- expected: clean, and `wc -l` on EXPERIENCE.md reads 993.
 - `(once, before dev_complete)` the full ObjectScript sweep, `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci`, which runs one class at a time; then `cd ui && npm test && npm run build`; then `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS` -- expected: green, with a non-zero count. CI runs the full browser suite (Rule 29).
@@ -334,9 +361,31 @@ Every write is one derived tool that both callers reach (AD-53, AD-55). The kern
 | AC3 | The create drops `%DB_IRISSYS:WRITE` from its pairs | `NamespaceWriteGate` |
 | AC4 | A header label is drawn in `--ocu-surface` | the DW-1337 legs, in both themes |
 
+- mutation: `NamespaceCreate` `CREATES` 0 → `NamespaceWrite.TestATakenNameIsRefusedInAnyCase` red (the upsert minted, 200).
+- mutation: `NamespaceList` `sideBarPosition` 0, mirror regenerated → `navigation.test.mjs` (two side-bar tests) and `Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` red.
+- mutation: `NamespaceList`'s `read.fields` drops `TempGlobals` → `NamespaceDescriptor.TestTheReadToolAnswersTheListsRows` and four `ReadTool` methods red.
+- mutation: `ScopeService` drops its bus subscription → `scope.test.mjs` (the 18.2 re-read test) and `namespaces.browser-spec.mjs` (both switch legs) red.
+- mutation: `Impact.KindOf` omits `namespace-delete` → `NamespaceWrite.TestTheImpactNamesTheApplicationsAndTheDatabasesThatStay` (all three sources) and the browser spec's advisory legs red.
+- mutation: the `OCUPILOTNAMESPACE` arm disabled in `Prohibited.Namespace` → every leg of `NamespaceWrite.TestTheInstallNamespaceAndSysAreRefused` red, each refused write recorded as accepted by `AcceptPort`.
+- mutation: `NamespaceDelete.PrivilegePairs` drops `%Admin_Secure:USE` → `NamespaceWriteGate.TestADeleteWithoutTheApplicationPairIsRefusedBeforeAnyPortCall` red (the vendor deleted the namespace and left its application).
+- mutation: `NamespaceCreate.PrivilegePairs` drops `%DB_IRISSYS:WRITE` → `NamespaceWriteGate.TestAWriteWithoutTheWritePairIsRefusedBeforeAnyPortCall` red (both create legs).
+- mutation: `.ocu-field-label` drawn in `--ocu-surface`, bundle rebuilt and redeployed → the browser spec's AC2 and AC4 DW-1337 legs red in light (1.04:1) and dark (1.08:1).
+- mutation (review): `NamespaceSave.Update` carries on past a 404 fresh read with `{}` → `NamespaceRefusals.TestAnEditOfADeletedNamespaceIsRefusedAndNotRecreated` red (run 418).
+- mutation (review): `NamespaceRules.Validate`'s create REQUIRED add disabled → `NamespaceRefusals.TestACreateWithoutItsDatabasesIsRefusedOnEachField` red (run 419).
+- mutation (review): `NamespaceSave.Update`'s key check disabled → `NamespaceRefusals.TestAKeyOutsideTheThreeIsRefusedOnBothSaves` red (run 420).
+- mutation (review): `Namespace.Namespace/DELETE` removed from `AdminPort.VERIFIEDDELETES`, `RoleDeletePort` recompiled → `NamespaceRefusals.TestAReportedDeleteThatLeftTheNamespaceIsNotApplied` red (run 421).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Re-planned for Part A only, after the orchestrator's split: every Part B task, test, string, literal and amendment is gone, and the Part A measurements are kept. Two read-only re-probes were added (the `GET` of an absent name is a 404, and the LIST row's fields). The test probe is renamed `NamespaceWriteProbe`, because `OcuPilot.Test.NamespaceProbe` already exists. The `multiple-goals` warning is dropped. Three spine amendments are proposed for the runner.
+**Change.** Part A as specified: the Namespaces list (OS management, position 6) and its form; `osmgmt.namespaces.create`, `.update` and `.delete`, each reached by the screen's Save or row action and by the agent's mint and confirm; the delete's impact (bound applications deleted, databases that stay); `PROHIBITED.OCUPILOTNAMESPACE`; the `namespace` entity type (`foldcase`); governance lines (delete `false`); the switcher's re-read on a namespace created or deleted; EXPERIENCE.md rows `:164`, `:173`, `:378`, `:479`, `:481`, `:577` (993 lines).
+
+**Files.** New: `Area/OsMgmt/NamespaceRules.cls`, `NamespaceSave.cls`; `Screen/Descriptor/NamespaceList.cls`, `NamespaceForm.cls`; `Screen/Tool/NamespaceCreate.cls`, `NamespaceUpdate.cls`, `NamespaceDelete.cls`; tests `NamespaceWrite`, `NamespaceWriteGate` (+`Probe`), `NamespaceRefusals`, `NamespaceDescriptor`, `NamespaceWriteProbe`, `NamespaceSaveFixture`, `NamespaceActionFixture`, `NamespaceConfirm`; client `namespace-actions.ts`, `namespace-form.page.ts`, `namespace-form.store.ts` and specs; `ui/browser/namespaces.browser-spec.mjs`. Changed: `Error.cls`, `Router.cls`, `EntityType.cls`, `EntityRef.cls`, `Baseline.cls`, `Impact.cls`, `Prohibited.cls`, `AdminPort.cls`, `Classification.cls`, `ToolFields.cls` (regenerated), `AcceptPort.cls` (opt-in `ReadThrough`), `DeviceRecordPort.cls` (query keys), the rosters, `impact.ts`, `scope.ts`, `main.ts`, `app.ts`, `screen-action-handler.ts`, `screen-outlet.ts`, `shortcuts.ts`, `strings.ts`, `screens.generated.ts` (regenerated), `scripts/ci-throwaway.sh`, EXPERIENCE.md.
+
+**Review.** 21 findings: 3 medium and 8 low patched (tests in the new `NamespaceRefusals`, the roster loop, wording and assertion corrections), 5 low rejected and 5 false, each with its reason in the triage log; none deferred. Patched by verdict: medium 3, low 8. Follow-up review: `false` -- every patched test was reddened by its own mutation (runs 418-421) and nothing outside tests changed but one comment.
+
+**Verification** (all on `ocupilot-b-ci`, source copy byte-identical to the worktree; the three namespace-write classes armed per call with `docker exec -e`, since the throwaway predates the variable). Full sweep once: 338 classes, 2,784 tests, 4 failed, 0 leftovers -- the four were rosters the loop list missed (`AuditingUpdate` codes 19, `Governance` and `ToolDispatch` disabled set, `ToolEmit` the delete's second pair), fixed and green (runs 762-765). Browser: `namespaces` 5/5, `impact` 5/5. Client: `test:tools` 1660/1660, components 1648/1648, `ci.test.mjs` 75/75. Build 2.03 MB (under the 2106 kB warning). Smoke 48/48. `check-objectscript` and `lint-docs` clean. No `OCUPROBE182*` namespace, `/csp/ocuprobe182*` application or gate principal remains.
+
+**Residual risks.** The install namespace is the evaluating process's `$NAMESPACE` (Design Notes); 18.13's multi-namespace install must keep it true. A taken or malformed name at the agent's mint answers AD-54's shared refusal after one vendor read.

@@ -560,9 +560,11 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // 12's integration, the bound moves to 1400 under the same protocol.
   // Epic 14's and Epic 16's rows together, merged for release 1.0.2, with Story 16.8's two rows, take
   // the table past 1400; the bound moves to 1500 under the same protocol.
+  // Story 18.2 moves the bound to 1600 under the same protocol: its four extended rows' twenty-one
+  // literals take the table past 1500, with the rest of Epic 18's screens still to publish theirs.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 1500,
-    `expected between 150 and 1500 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 1600,
+    `expected between 150 and 1600 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 
@@ -636,14 +638,36 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // there IS now a sentence for an unknown namespace, which supersedes the claim this roster
   // carried for DW-126: the shell is silent for a namespace only where no screen publishes copy.
   // `userFormNamespace` is a field label, not a sentence about a namespace: the create-a-user
-  // form's startup namespace, which the account enters on sign-in.
+  // form's startup namespace, which the account enters on sign-in. Story 18.2's Namespaces list and
+  // form name their own copy `namespace*`, on the device screens' convention, and are listed here
+  // one by one.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
   assert.deepEqual(
     namespaceSentences.map(([key]) => key).sort(),
-    ['errorLogEmptyNamespace', 'errorLogRefusedNamespace', 'headerNamespaceLabel', 'userFormNamespace'],
-    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, one named refusal and one field label'
+    [
+      'errorLogEmptyNamespace',
+      'errorLogRefusedNamespace',
+      'headerNamespaceLabel',
+      'namespaceColumnGlobals',
+      'namespaceColumnRoutines',
+      'namespaceColumnTemp',
+      'namespaceDeleteConsequence',
+      'namespaceFormPrompt1',
+      'namespaceFormPrompt2',
+      'namespaceFormPrompt3',
+      'namespaceFormRefusedAction',
+      'namespaceListEmpty',
+      'namespaceListEmptyAgent',
+      'namespaceListLabel',
+      'namespaceListPrompt1',
+      'namespaceListPrompt2',
+      'namespaceListPrompt3',
+      'namespaceRefusalOcuPilot',
+      'userFormNamespace',
+    ],
+    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, one named refusal, one field label and the Namespaces screens\' own copy'
   );
 });
 

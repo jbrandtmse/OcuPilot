@@ -90,6 +90,7 @@ XData ReadShapes
 <screen name="LogSystemMonitorViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="LogTaskErrorViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="LogXdbcViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
+<screen name="NamespaceList" filter="Name,Globals,Routines,TempGlobals" sort="Name,Globals,Routines,TempGlobals" kinds="Name:name,Globals:identifier,Routines:identifier,TempGlobals:identifier"/>
 <screen name="OAuthClientTab" filter="ApplicationName,IssuerEndpoint,ClientType,DefaultScope" sort="ApplicationName,IssuerEndpoint,ClientType,DefaultScope" kinds="ApplicationName:name,IssuerEndpoint:text,ClientType:text,DefaultScope:text"/>
 <screen name="OAuthResourceServerTab" filter="Name,ServerDefinition" sort="Name,ServerDefinition" kinds="Name:name,ServerDefinition:text"/>
 <screen name="OAuthServerClientTab" filter="Name,ClientId,ClientType,RedirectURL,Description" sort="Name,ClientId,ClientType,RedirectURL,Description" kinds="Name:name,ClientId:identifier,ClientType:text,RedirectURL:text,Description:text"/>
@@ -1696,7 +1697,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 32, "the closed vocabulary holds thirty-two values -- allowed-directory joined in Story 18.1; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 33, "the closed vocabulary holds thirty-three values -- namespace joined in Story 18.2; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }

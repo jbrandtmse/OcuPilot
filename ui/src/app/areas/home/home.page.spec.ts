@@ -323,7 +323,9 @@ describe('Home', () => {
           { path: '', children: [] },
           { path: 'os-management/processes', children: [] },
           // Story 15.3: the first built shortcut's own target, so the row that opens one asserts a
-          // URL the harness could have reached rather than one it could never fail on.
+          // URL the harness could have reached rather than one it could never fail on. Story 18.2's
+          // Namespaces list is that first shortcut now.
+          { path: 'os-management/namespaces', children: [] },
           { path: 'os-management/databases', children: [] },
           // DW-161's second screen: the tile's target when the first one's verdict refuses. It
           // has to resolve here, or the row asserting the skip would assert a URL the harness
@@ -988,8 +990,8 @@ describe('Home', () => {
   });
 
   it('Story 15.3 (AD-37): a roster route naming no built screen is dropped, and the rest keep roster order', () => {
-    // The roster is the shipped one, read through the real mirror: seven of its seventeen name
-    // screens this product has not built, so the block is the ten that resolve. Deriving the
+    // The roster is the shipped one, read through the real mirror: six of its seventeen name
+    // screens this product has not built, so the block is the eleven that resolve. Deriving the
     // expectation from `screenForRoute` rather than from `shortcutScreens()` is what keeps this
     // from asserting the code against itself.
     const labels = Array.from(
@@ -1054,7 +1056,7 @@ describe('Home', () => {
     // replace `withQuery(row.route, this.router.url)` with `row.route` -> the namespace
     // assertion goes red; drop the `showArea` line -> the side-bar assertion does.
     const first = shortcutScreens()[0];
-    expect(first.route).toBe('os-management/databases');
+    expect(first.route).toBe('os-management/namespaces');
 
     // An open side bar showing another area, so "moved to the shortcut's own" is observable at
     // all; a collapsed one is left collapsed and would prove nothing either way.

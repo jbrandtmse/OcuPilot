@@ -1,6 +1,6 @@
 /// <p>The impact of a removal (AD-8, AD-53): what else depends on a role or a resource about to be
-/// deleted, and what a user actually loses when a role is taken from them. Both callers of the
-/// three write tools share it: the agent's mint records it on the proposal row, and the screen's
+/// deleted, what a user actually loses when a role is taken from them, and what a namespace delete
+/// takes with it and leaves. Both callers of the four write tools share it: the agent's mint records it on the proposal row, and the screen's
 /// dialog asks <class>OcuPilot.Api.ScreenImpact</class> for it when it opens.</p>
 /// <p><b>Names only.</b> The answer is
 /// <code>{kind, refused, parts: [{part, count, names, unchecked}]}</code>: counts, at most
@@ -23,11 +23,15 @@ Parameter RESOURCEDELETETOOL = "permissions.resources.delete";
 
 Parameter USERUPDATETOOL = "permissions.users.update";
 
+Parameter NAMESPACEDELETETOOL = "osmgmt.namespaces.delete";
+
 Parameter KINDROLEDELETE = "role-delete";
 
 Parameter KINDRESOURCEDELETE = "resource-delete";
 
 Parameter KINDROLEREMOVAL = "role-removal";
+
+Parameter KINDNAMESPACEDELETE = "namespace-delete";
 
 Parameter PARTHOLDERS = "holders";
 
@@ -40,6 +44,14 @@ Parameter PARTGUARDEDAPPLICATIONS = "guardedApplications";
 Parameter PARTGUARDEDDATABASES = "guardedDatabases";
 
 Parameter PARTLOSES = "loses";
+
+Parameter PARTBOUNDAPPLICATIONS = "boundApplications";
+
+Parameter PARTDATABASES = "databases";
+
+/// <p>The fresh read's database fields a namespace delete's <parameter>PARTDATABASES</parameter> is
+/// named from, comma-separated.</p>
+Parameter NAMESPACEDATABASEFIELDS = "Globals,Routines,TempGlobals";
 
 /// <p>How many names a part carries.</p>
 Parameter NAMESSHOWN As INTEGER = 3;
@@ -86,7 +98,8 @@ ClassMethod ProhibitedClass() As %String
 /// <p>The impact of the write <var>pToolName</var> would make to <var>pTargetRef</var>, carrying
 /// <var>pPayloadJson</var> and <var>pDiffJson</var> over the fresh read <var>pFreshJson</var>, or
 /// <code>""</code> for a write that removes nothing this class covers: a role delete, a resource
-/// delete, and a user update whose <code>Roles</code> lacks a role the fresh read held.</p>
+/// delete, a namespace delete, and a user update whose <code>Roles</code> lacks a role the fresh read
+/// held.</p>
 /// <p><b>Never throws and never fails its caller</b>: a fault anywhere logs one line and answers
 /// <code>""</code>, so a mint or a dialog carries no impact rather than a wrong one.</p>
 ClassMethod Of(pToolName As %String, pTargetRef As %String, pFreshJson As %String, pPayloadJson As %String, pDiffJson As %String) As %DynamicObject
@@ -133,6 +146,13 @@ ClassMethod Of(pToolName As %String, pTargetRef As %String, pFreshJson As %Strin
             Set tSC = ..Guarded(..#DATABASEDESCRIPTOR, ..#PARTGUARDEDDATABASES, "Directory", tId, .tPart)
             If $$$ISERR(tSC) Quit
             Do tParts.%Push(tPart)
+        } ElseIf tKind = ..#KINDNAMESPACEDELETE {
+            Set tSC = ..Guarded(..#WEBAPPDESCRIPTOR, ..#PARTBOUNDAPPLICATIONS, "Name", tId, .tPart, "Namespace")
+            If $$$ISERR(tSC) Quit
+            Do tParts.%Push(tPart)
+            Set tSC = ..Databases(tFresh, .tPart)
+            If $$$ISERR(tSC) Quit
+            Do tParts.%Push(tPart)
         } Else {
             Set tSC = ..Loses(tFresh, tPayload, .tPart)
             If $$$ISERR(tSC) Quit
@@ -158,6 +178,7 @@ ClassMethod KindOf(pToolName As %String, pFresh As %DynamicObject, pPayload As %
 {
     If pToolName = ..#ROLEDELETETOOL Quit ..#KINDROLEDELETE
     If pToolName = ..#RESOURCEDELETETOOL Quit ..#KINDRESOURCEDELETE
+    If pToolName = ..#NAMESPACEDELETETOOL Quit ..#KINDNAMESPACEDELETE
     If pToolName '= ..#USERUPDATETOOL Quit ""
     If '$IsObject(pPayload) || (pPayload.%GetTypeOf(..#ROLESFIELD) '= "array") Quit ""
     Kill tSent
@@ -277,9 +298,10 @@ ClassMethod GrantingRoles(pResource As %String, Output pPart As %DynamicObject) 
     Quit ..Fill(pPart, .tNames)
 }
 
-/// <p>The rows of <var>pDescriptor</var>'s declared read whose <code>Resource</code> is the
-/// resource, named by their <var>pNameField</var>, under that screen's pairs.</p>
-ClassMethod Guarded(pDescriptor As %String, pPartName As %String, pNameField As %String, pResource As %String, Output pPart As %DynamicObject) As %Status
+/// <p>The rows of <var>pDescriptor</var>'s declared read whose <var>pMatchField</var> is
+/// <var>pResource</var>, compared without regard to case, named by their <var>pNameField</var>, under
+/// that screen's pairs.</p>
+ClassMethod Guarded(pDescriptor As %String, pPartName As %String, pNameField As %String, pResource As %String, Output pPart As %DynamicObject, pMatchField As %String = "Resource") As %Status
 {
     Set pPart = ..Part(pPartName)
     Set tSC = ..ListRows(pDescriptor, pPart, .tRows)
@@ -289,8 +311,25 @@ ClassMethod Guarded(pDescriptor As %String, pPartName As %String, pNameField As 
     Set tIterator = tRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
         If '$IsObject(tRow) Continue
-        If $ZConvert(tRow.%Get("Resource"), "U") '= tWanted Continue
+        If $ZConvert(tRow.%Get(pMatchField), "U") '= tWanted Continue
         Do ..Add(.tNames, tRow.%Get(pNameField))
+    }
+    Quit ..Fill(pPart, .tNames)
+}
+
+/// <p>The databases a namespace names, which its delete leaves in place: the distinct
+/// <parameter>NAMESPACEDATABASEFIELDS</parameter> of its fresh read <var>pFresh</var>. Read from the
+/// fresh read the write itself needs, so it is never unchecked.</p>
+ClassMethod Databases(pFresh As %DynamicObject, Output pPart As %DynamicObject) As %Status
+{
+    Set pPart = ..Part(..#PARTDATABASES)
+    Kill tNames
+    If $IsObject(pFresh) {
+        For tI = 1:1:$Length(..#NAMESPACEDATABASEFIELDS, ",") {
+            Set tField = $Piece(..#NAMESPACEDATABASEFIELDS, ",", tI)
+            If pFresh.%GetTypeOf(tField) '= "string" Continue
+            Do ..Add(.tNames, pFresh.%Get(tField))
+        }
     }
     Quit ..Fill(pPart, .tNames)
 }
