@@ -274,7 +274,7 @@ development_status:
 
   epic-18: in-progress
   18-1-the-directory-allow-list: done
-  18-2-namespaces-and-their-mappings: ready-for-dev
+  18-2-namespaces-and-their-mappings: in-progress
   18-3-databases-configuration-creation-properties-and-volumes: backlog
   18-4-the-deferred-disk-operations: backlog
   18-5-journals: backlog
