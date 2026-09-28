@@ -2,7 +2,7 @@
 title: 'Story 18.1: The directory allow-list'
 type: 'feature'
 created: '2026-09-27'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: 'e3d44277999c4fec1400e21a8628db4a431ede7c'
 baseline_commit: 'e3d44277999c4fec1400e21a8628db4a431ede7c'
@@ -384,12 +384,20 @@ Code review 2026-09-28, of rework 2 (`e3d44277..27246d90`): four layers, `full-o
 - `false`: DW-1770 is not closed. The runner closes this story's entries at `ledger_adjudicated`.
 - `low`: the Auto Run Result's counts and caller list, the `deferred:` entry's wording, and a triage-log line number (four rows). Each fix edits this spec's implement-stage record; DW-1777 is the harvested record.
 
+### Rework iteration 3 (DW-1777, DW-1778, DW-1779, orchestrator decision)
+
+- [ ] [Decision] DW-1778 (orchestrator, by=merge_gate 2026-09-28, before Epic 16's 16.4 builds on the `pOverwrite` workaround): add a read-existing mode to `PathPort.Resolve`, `kind` `source`, which requires the file to exist (refused with its own `PATH.*` code and server-written reason when it does not, and when the name is a directory) and never implies overwrite; `file` keeps new-or-overwrite. A `source` is not refused for existing, and is still contained and still refused directly in the manager directory. Amend AD-21's sixth case once, at origin, in the runner's words (the runner writes the spine; say in the spec what the sentence must state).
+- [ ] [Decision] DW-1777: for any overwriting consumer (`file` with `pOverwrite` 1), also refuse the instance's configuration file and its siblings in the data directory (`iris.cpf`, `_LastGood_.cpf`, dated CPF copies -- the directory `$System.Util.ManagerDirectory()`'s parent on this build; derive it at call time from the instance's own CPF location, never a literal) and a database file one level below the manager directory (`irisaudit/IRIS.DAT`, `irissecurity/IRIS.DAT`, any `<subdir>/IRIS.DAT` directly under the manager directory), with a `PATH.*` code; a new file is unaffected.
+- [ ] [Decision] DW-1779, if small: a `directory` kind that resolves to the manager directory itself (the unrestricted root with an empty name) is refused for a consumer whose vendor writes its own files into the chosen directory. If it is not a small change, leave it unchecked and say so in the Auto Run Result; the runner re-owns it to 18.3.
+- Each refusal and the new mode is pinned by a `Test/PathPort.cls` leg with a Rule 19 mutation, recompiling `PathPort` and `PathPortFixture` on the throwaway.
+
 ## Spec Change Log
 
 - 2026-09-27, spec gate (runner): the proposed AD-21 sixth case under Design Notes was written into the spine verbatim, with "every server-path field (Story 18.1 on)" added to AD-21's Binds (Rule 20). The spine is the authority from here; Design Notes keeps the proposal text for the reviewer.
 - 2026-09-28, rework iteration 1 (runner): re-opened on CI run 36393142503's red (two browser specs pin the Security side bar) and on the integrate-forward merge `b219bc17`; the work is the three items under Tasks & Acceptance › Rework iteration 1.
 - 2026-09-28, runner (Rule 5, apply and report): AC4 read "stays under its 2004 kB warning". The merged bundle measured 2,005,146 bytes and rework 1 re-based `maximumWarning` to 2106kB under the owner's DW-1166 policy (the runner's brief allows a re-base and stops only above 3800kB), so AC4 now names 2106 kB. Intent unchanged: the build stays under its warning.
 - 2026-09-28, rework iteration 2 (runner): re-opened on the orchestrator's decision of DW-1770 at the 18.1 boundary, which directs the fix as its own commit before 18.2's implement push; the work is the one item under Tasks & Acceptance > Rework iteration 2. AD-21's sixth case carries the rule.
+- 2026-09-28, rework iteration 3 (runner): re-opened on the orchestrator's decision (by=merge_gate) that DW-1777, DW-1778 and, if small, DW-1779 are fixed here, as their own commit, before Epic 16's 16.4 consumes PathPort; the work is the items under Tasks & Acceptance > Rework iteration 3.
 
 ## Review Triage Log
 
