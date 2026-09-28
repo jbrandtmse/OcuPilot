@@ -46,6 +46,7 @@ import { SslFormPage } from '../areas/security/ssl-form.page';
 import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { DeviceFormPage } from '../areas/os-management/device-form.page';
+import { NamespaceFormPage } from '../areas/os-management/namespace-form.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -133,6 +134,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.OAuthServerClientForm': OAuthRegisteredClientFormPage,
   'OcuPilot.Screen.Descriptor.WalletSecretForm': WalletSecretFormPage,
   'OcuPilot.Screen.Descriptor.DeviceForm': DeviceFormPage,
+  'OcuPilot.Screen.Descriptor.NamespaceForm': NamespaceFormPage,
   'OcuPilot.Screen.Descriptor.SslForm': SslFormPage,
   'OcuPilot.Screen.Descriptor.TaskForm': TaskWizardPage,
   'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,

@@ -260,6 +260,9 @@ const KERNEL_REFUSALS = [
   // Story 9.9: the service OcuPilot is served through, whose Enabled the service form draws
   // unavailable before a click with this same sentence.
   ['SERVINGSERVICE', 'serviceRefusalServing'],
+  // Story 18.2: OcuPilot's install namespace and %SYS, whose Delete dialog states this sentence as
+  // its advisory when it opens.
+  ['OCUPILOTNAMESPACE', 'namespaceRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {

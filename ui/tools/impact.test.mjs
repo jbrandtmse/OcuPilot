@@ -113,6 +113,38 @@ test('a refused removal renders the prohibited set\u2019s sentence and no impact
   assert.equal(impactLine(null, 'R'), '');
 });
 
+test('Story 18.2: a namespace delete names the applications deleted with it and the databases that stay', () => {
+  // Mutation (Rule 19): drop the empty-phrase filter from impactLine() -> the none and unchecked
+  // legs read a dangling "; " and go red; render the databases part's count-0 phrase as the
+  // applications' -> the same legs go red.
+  assert.deepEqual(IMPACT_PARTS['namespace-delete'], ['boundApplications', 'databases']);
+  const read = (parts, refused = null) => impactOf({ kind: 'namespace-delete', refused, parts });
+  assert.notEqual(read([part('boundApplications', 0), part('databases', 1, ['USER'])]), null, 'the kind and both parts are in the vocabulary');
+  assert.equal(read([part('holders', 0)]), null, 'a part the kind does not carry is not');
+  assert.equal(
+    impactLine(read([part('boundApplications', 2, ['/csp/a', '/csp/b']), part('databases', 2, ['IRISTEMP', 'USER'])]), 'NS'),
+    'Impact: 2 web applications run in it and are deleted with it: /csp/a, /csp/b; it uses 2 databases, which stay: IRISTEMP, USER.'
+  );
+  assert.equal(
+    impactLine(read([part('boundApplications', 1, ['/csp/a']), part('databases', 1, ['USER'])]), 'NS'),
+    'Impact: 1 web application runs in it and is deleted with it: /csp/a; it uses 1 database, which stays: USER.'
+  );
+  assert.equal(
+    impactLine(read([part('boundApplications', 0), part('databases', 0)]), 'NS'),
+    'Impact: no web application runs in it.',
+    'a databases part counted 0 renders nothing, and leaves no empty segment'
+  );
+  assert.equal(
+    impactLine(read([part('boundApplications', 0, [], '%Admin_Secure:USE'), part('databases', 0, [], '%Admin_Manage:USE')]), 'NS'),
+    'Impact: which web applications run in it was not checked (requires %Admin_Secure:USE).',
+    'an unchecked applications part is said to be unchecked, and an unchecked databases part renders nothing'
+  );
+  assert.equal(impactLine(read([part('databases', 0)]), 'NS'), '', 'a line whose every part renders nothing is no line');
+  assert.equal(impactLine(read([part('databases', 0, [], 'truncated')]), 'NS'), '');
+  const reason = STRINGS.namespaceRefusalOcuPilot;
+  assert.equal(impactLine(read([], { code: 'PROHIBITED.OCUPILOTNAMESPACE', reason }), 'HSCUSTOM'), reason, 'a refused delete states the refusal');
+});
+
 test('the proposal row carries the impact to the card view, and a row without one carries null', () => {
   const row = (impact) => ({
     proposalId: 'p1',

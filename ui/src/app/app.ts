@@ -29,6 +29,8 @@ import { X509Actions } from './areas/security/x509-actions';
 import { X509Form } from './areas/security/x509-form.store';
 import { DeviceActions } from './areas/os-management/device-actions';
 import { DeviceForm } from './areas/os-management/device-form.store';
+import { NamespaceActions } from './areas/os-management/namespace-actions';
+import { NamespaceForm } from './areas/os-management/namespace-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
 import { OAuthServerDescriptionForm } from './areas/security/oauth-server-description-form.store';
 import { OAuthClientForm } from './areas/security/oauth-client-form.store';
@@ -301,6 +303,9 @@ export class App {
   // The Devices list's declared Create, the same way (`areas/os-management/device-actions.ts`).
   private readonly deviceActions = inject(DeviceActions);
   private readonly deviceForm = inject(DeviceForm);
+  // The Namespaces list's declared Create, the same way (`areas/os-management/namespace-actions.ts`).
+  private readonly namespaceActions = inject(NamespaceActions);
+  private readonly namespaceForm = inject(NamespaceForm);
   // The SSL/TLS list's declared Create, the same way (`areas/security/ssl-actions.ts`).
   private readonly sslActions = inject(SslActions);
   private readonly sslForm = inject(SslForm);
@@ -602,6 +607,8 @@ export class App {
       this.walletSecretForm.reset();
       // The device editor holds a device THIS principal was creating or editing and has not saved.
       this.deviceForm.reset();
+      // The namespace editor holds a namespace THIS principal was creating or editing and has not saved.
+      this.namespaceForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).
       this.sslForm.reset();
       this.formDirty.reset();

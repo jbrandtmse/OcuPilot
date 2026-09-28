@@ -27,6 +27,7 @@
  */
 
 import type { ApiService } from './api';
+import type { ChangeBus, ChangeEvent } from './change-bus';
 import type { ConnectivityService } from './connectivity';
 // The `.ts` extension is what `node --test`'s resolver needs to follow a runtime import between
 // two core modules, the same reason `navigation.ts` spells `screens.generated.ts` in full.
@@ -34,6 +35,9 @@ import { NAMESPACE_PARAM } from './navigation.ts';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
 export const NAMESPACES_PATH = '/api/ocupilot/namespaces';
+
+/** The entity type whose created and deleted events change the list (AD-13, Story 18.2). */
+export const NAMESPACE_ENTITY = 'namespace';
 
 /** One namespace the caller may enter, and whether it may also be written to. */
 export interface NamespaceEntry {
@@ -56,6 +60,13 @@ export interface ScopeOptions {
    * re-read can leave it out.
    */
   readonly connectivity?: ConnectivityService;
+  /**
+   * The one client bus (AD-14). A namespace created or deleted, by the Namespaces screens or by the
+   * agent's confirmed write, re-reads the list, so the switch offers a new namespace and drops a
+   * deleted one without a reload (Story 18.2). Optional so a test that is not about the re-read can
+   * leave it out.
+   */
+  readonly bus?: ChangeBus;
 }
 
 /**
@@ -176,6 +187,8 @@ export class ScopeService {
   constructor(options: ScopeOptions) {
     this.api = options.api;
     this.connectivity = options.connectivity ?? null;
+    // Never unsubscribed: this service lives as long as the tab does, as `AgentStatus`'s does.
+    options.bus?.subscribe((event) => this.onChange(event));
   }
 
   /** Whether the list has been received at all. Nothing is scoped until it has. */
@@ -315,6 +328,19 @@ export class ScopeService {
 
   private isListed(namespace: string): boolean {
     return this.entries.some((entry) => entry.name === namespace);
+  }
+
+  /**
+   * A namespace was created or deleted: re-read the list (AD-14 -- consumers re-fetch, they never
+   * patch). Only those two change which namespaces the list names, so an update is not re-read. A
+   * list never read is not read here: its first read is still to come, or parked until the instance
+   * answers again.
+   */
+  private onChange(event: ChangeEvent): void {
+    if (event.kind !== 'changed' || event.type !== NAMESPACE_ENTITY) return;
+    if (event.action !== 'created' && event.action !== 'deleted') return;
+    if (!this.loadedOnce) return;
+    void this.load();
   }
 
   private async runLoad(): Promise<void> {

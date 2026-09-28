@@ -72,6 +72,7 @@ XData Coverage
 <screen name="DatabaseList" class="OcuPilot.Test.Descriptor" method="TestTheDatabasesGeneralViewDeclaresExactlyItsFiveFieldsAndFiveColumns"/>
 <screen name="DatabaseVolumeList" class="OcuPilot.Test.Descriptor" method="TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall"/>
 <screen name="DeviceList" class="OcuPilot.Test.Descriptor" method="TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns"/>
+<screen name="NamespaceList" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheListDeclaresItsFourFieldsAndItsDelete"/>
 <screen name="Home" class="OcuPilot.Test.Descriptor" method="TestARefreshingScreenDeclaresItsRatesAndHomeDefaultsToTen"/>
 <screen name="LdapConfigList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="LockList" class="OcuPilot.Test.Descriptor" method="TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns"/>
@@ -122,6 +123,7 @@ XData Coverage
 <screen name="X509Form" class="OcuPilot.Test.X509Import" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="DeviceForm" class="OcuPilot.Test.DeviceCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
+<screen name="NamespaceForm" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
 <screen name="TaskForm" class="OcuPilot.Test.TaskCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="ServiceForm" class="OcuPilot.Test.ServiceUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
 <screen name="LdapConfigForm" class="OcuPilot.Test.LdapUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
@@ -144,6 +146,9 @@ XData Coverage
 <tool name="osmgmt.devices.create" class="OcuPilot.Test.DeviceCreate" method="TestTheSchemaAndTheSettableSetAreTheSets"/>
 <tool name="osmgmt.devices.update" class="OcuPilot.Test.DeviceUpdate" method="TestTheEditIsAMergeWriteOverTheEightFields"/>
 <tool name="osmgmt.devices.delete" class="OcuPilot.Test.DeviceDelete" method="TestTheDeleteIsAnActionWriteOverTheWholeRead"/>
+<tool name="osmgmt.namespaces.create" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
+<tool name="osmgmt.namespaces.update" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
+<tool name="osmgmt.namespaces.delete" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
 <tool name="logs.applicationerrors.delete" class="OcuPilot.Test.ToolWrite" method="TestTheErrorDeleteToolIsAnActionWriteOverItsOwnPort"/>
 <tool name="osmgmt.processes.resume" class="OcuPilot.Test.ToolWrite" method="TestTheProcessResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="osmgmt.processes.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheProcessSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>

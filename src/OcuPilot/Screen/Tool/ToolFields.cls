@@ -30,6 +30,16 @@ XData Tools
   {"path":"SubType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Type","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
+"osmgmt.namespaces.create": {"fieldList":"Namespace.Namespace","fields":[
+  {"path":"Globals","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Routines","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"TempGlobals","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"osmgmt.namespaces.update": {"fieldList":"Namespace.Namespace","fields":[
+  {"path":"Globals","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Routines","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"TempGlobals","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
 "permissions.resources.create": {"fieldList":"Security.Resource","fields":[
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"PublicPermission","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"letters"}

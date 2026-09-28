@@ -95,8 +95,8 @@ Method TestTheCredentialTypeRefusalIsItsParameter()
     Do $$$AssertEquals(tServer, ##class(OcuPilot.Api.Error).#REASONAGENTCREDTYPEUNAVAILABLE, "which is the parameter the client's copy is pinned to")
 }
 
-/// <p>DW-1598, AD-53 (Stories 9.3, 9.5): the unreviewed-field, own-role, own-resource and own SSL/TLS
-/// configuration codes each answer their own parameter, published in EXPERIENCE.md's Fixed strings,
+/// <p>DW-1598, AD-53 (Stories 9.3, 9.5, 18.2): the unreviewed-field, own-role, own-resource, own
+/// SSL/TLS configuration and install-namespace codes each answer their own parameter, published in EXPERIENCE.md's Fixed strings,
 /// and none names a caller -- a screen's Save reaches each as well as the agent's confirm.</p>
 /// <p>Mutation (Rule 19): restore the literal for <code>UNCOVEREDFIELD</code> in
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.ReasonFor</method> and recompile -- that code's legs go
@@ -104,7 +104,7 @@ Method TestTheCredentialTypeRefusalIsItsParameter()
 Method TestEachKernelRefusalIsItsParameterAndNamesNoCaller()
 {
     Set tClass = "OcuPilot.Kernel.Proposal.Prohibited"
-    For tCode = "UNCOVEREDFIELD", "OCUPILOTROLE", "OCUPILOTRESOURCE", "OCUPILOTSSL" {
+    For tCode = "UNCOVEREDFIELD", "OCUPILOTROLE", "OCUPILOTRESOURCE", "OCUPILOTSSL", "OCUPILOTNAMESPACE" {
         Set tServer = ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter(tClass, tCode))
         Do $$$AssertNotEquals(tServer, "", tCode _ ": the kernel answers a written sentence")
         Do $$$AssertEquals(tServer, $Parameter(tClass, tCode _ "REASON"), tCode _ ": which is its parameter, not a literal in the lookup")
