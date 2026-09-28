@@ -398,12 +398,13 @@ that carry Community Opportunity status:
   local model. A turn that makes a change can take up to a minute, and a small local model may
   propose changes that need correcting.
 - **IRIS 2026.2 or later.** OcuPilot relies on the admin API that version introduced.
-- **Two admin API defects, reported upstream.** On 2026.2 the task list reports every task as not
-  suspended ([issue #1](https://github.com/intersystems-community/sysadmin-api-specification/issues/1)),
-  so OcuPilot reads each task's own information and the Task schedule shows the true state; the
-  specification and the instance also disagree on two OAuth 2.0 names
-  ([issue #2](https://github.com/intersystems-community/sysadmin-api-specification/issues/2)), and
-  OcuPilot follows the instance.
+- **Where the admin API's specification and 2026.2 disagree.** We found five places, listed in
+  [docs/api-gaps.md](docs/api-gaps.md), and OcuPilot follows the instance in each. The one you might
+  notice: on 2026.2 the task list reports every task as not suspended
+  ([issue #1](https://github.com/intersystems-community/sysadmin-api-specification/issues/1)), so
+  OcuPilot reads each task's own information and the Task schedule shows the true state. Two OAuth 2.0
+  differences are also reported upstream
+  ([issue #2](https://github.com/intersystems-community/sysadmin-api-specification/issues/2)).
 - **Auditing must be on for the audit record.** If it is switched off, the agent's changes still
   need your Confirm, and the panel says plainly that they are not being marked.
 - **English only.**
