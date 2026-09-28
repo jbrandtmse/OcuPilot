@@ -7043,6 +7043,10 @@ So that no later screen has to invent its own answer to "which directories may I
 - **When** the stage is sequenced
 - **Then** it lands **first**.
 
+- DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file (iris.cpf sits in the manager directory's parent), so an overwriting file consumer under an allowed data-directory root could resolve it (ledger; re-routed by merge_gate 2026-09-28; first routed by harvest 2026-09-28)
+- DW-1778: PathPort.Resolve's file kind offers only new-or-overwrite, so a consumer that reads an existing file (an import, a key file to activate) is refused PATH.EXISTS unless it passes pOverwrite, which no tool declaration ties it to (ledger; re-routed by merge_gate 2026-09-28; first routed by cr 2026-09-28)
+- DW-1779: A directory-kind location may be the manager directory itself (the unrestricted root, empty name), so a consumer whose vendor writes its own files into the chosen directory (a database's IRIS.DAT) lands among the instance's own (ledger; re-routed by merge_gate 2026-09-28; first routed by cr 2026-09-28)
+
 ### Story 18.2: Namespaces and their mappings
 
 As an operator,
@@ -7072,8 +7076,6 @@ So that database administration is complete rather than list-only.
 - **Given** the delete wizard
 - **When** it runs
 - **Then** it lists dependent namespaces and applications first, and confirms by name.
-
-- DW-1779: A directory-kind location may be the manager directory itself (the unrestricted root, empty name), so a consumer whose vendor writes its own files into the chosen directory (a database's IRIS.DAT) lands among the instance's own (ledger; routed by cr 2026-09-28)
 
 ### Story 18.4: The deferred disk operations
 
@@ -7153,8 +7155,6 @@ So that key management is not a reason to keep the classic portal open.
 - **Then** it is write-only and returned by no read, like every other secret.
 
 - DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards (ledger; routed by cr 2026-09-28)
-- DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file (iris.cpf sits in the manager directory's parent), so an overwriting file consumer under an allowed data-directory root could resolve it (ledger; routed by harvest 2026-09-28)
-- DW-1778: PathPort.Resolve's file kind offers only new-or-overwrite, so a consumer that reads an existing file (an import, a key file to activate) is refused PATH.EXISTS unless it passes pOverwrite, which no tool declaration ties it to (ledger; routed by cr 2026-09-28)
 
 ### Story 18.8: Superservers, authentication options and managed file transfer
 
