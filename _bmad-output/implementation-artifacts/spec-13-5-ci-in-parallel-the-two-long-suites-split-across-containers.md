@@ -2,12 +2,27 @@
 title: 'Story 13.5: CI in parallel - the two long suites split across containers'
 type: 'feature'
 created: '2026-09-27'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'f4ab7c49f1e66ef7e1850563f20654fcc0e24784'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Whether any ObjectScript class or browser spec depends on residue from an item the shard split no longer runs before it is unverified locally.
+    evidence: |-
+      Only --shard 40/40 ran against a real instance (10 classes, 4 spec files). Settled by the lead's measured CI run: every instance and browser leg green on its fresh throwaway; a red that depends on composition is a coupling defect fixed in the test.
+    location: >-
+      .github/workflows/ci.yml instance-shard, browser-shard
+    severity: medium (unverified)
+  - summary: >-
+      skill-rules.md Rule 29 still says CI runs the browser suite in its own `browser` job; that job is now the roll-up over three browser-shard legs.
+    evidence: |-
+      _bmad/custom/skill-rules.md:270 "CI runs it in its own `browser` job against a **fresh** throwaway"; after this story each browser-shard leg has its own fresh throwaway and `browser` only checks their records. Agent-context file, so the lead changes it with CLAUDE.md's job list.
+    location: >-
+      _bmad/custom/skill-rules.md:270
+    severity: low
 ---
 
 <intent-contract>
@@ -110,6 +125,30 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-27 — Review pass
+
+- verdicts: 19 findings — high 0, medium 4, low 10, false 4, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` The `browser` roll-up's checkout expected set was pinned only through `checkRecords`, never through `check` — added a CLI test with a spec file no leg was offered; `expected = null` turns it red.
+  - `[low]` `[patch]` The no-shard "writes no record" assertion could not fail for a default record path — the runner now runs with `cwd` at the temp tree, and the test holds the tree's JSON files to the timings file.
+  - `[medium]` `[patch]` A timed-out browser test (reported `cancelled`, `fail 0`) fails its shard only through two untested branches — added a timeout fixture test; dropping both branches turns it red.
+  - `[low]` `[patch]` AC3 refresh half had no `mutation:` line — demonstrated and recorded.
+  - `[low]` `[patch]` AC4 clauses had no `mutation:` line — the browser-checkout clause is now demonstrated; the result and duplicate clauses are covered by AC4's existing lines (Rule 19 is per AC).
+  - `[low]` `[patch]` AC5 browser half had no `mutation:` line — demonstrated and recorded.
+  - `[low]` `[patch]` AC6 admin-spec condition had no `mutation:` line — demonstrated and recorded.
+  - `[low]` `[patch]` AC7 `npm run test:browser` half had no `mutation:` line — demonstrated and recorded.
+  - `[low]` `[patch]` AC2 "sorted" clause had no `mutation:` line — demonstrated and recorded.
+  - `[false]` `[reject]` AC9's measured duration is untested — the spec assigns it to the lead's push; no local test can observe a GitHub-hosted duration.
+  - `[low]` `[reject]` Record `seconds` asserted only `>= 0`, and `assign` has no executed test — seconds feed only `refresh`, whose diff the lead reviews, and `assign` is a hand-run listing exercised in Verification.
+  - `[medium]` `[patch]` Artifact names are per run, not per attempt (upload-artifact README and issue #480), so re-running a failed leg would 409 at its upload — added `overwrite: true` to both uploads and pinned it in `ci.test.mjs`.
+  - `[false]` `[reject]` The Actions-runtime surface (matrix results, download layout) is not exercised by the diff's tests — by design; the spec's "Lead, on push" checks are that proof.
+  - `[maybe-false]` `[defer]` A class or spec that depends on residue from a predecessor the split no longer places before it is unexercised locally — settled by the lead's measured run with every leg green on fresh throwaways.
+  - `[low]` `[defer]` `_bmad/custom/skill-rules.md:270` says CI runs the browser suite in "its own `browser` job", now a roll-up over `browser-shard` legs — agent-context file, the lead's to change with `CLAUDE.md`.
+  - `[false]` `[reject]` Smoke now follows a third of the suite — the spec's Design Notes choose this and say why.
+  - `[false]` `[reject]` The median is over offered items' times, not the whole suite table — consistent with the matrix row that ignores stale entries; the split stays a pure function of the offered set and the file.
+  - `[low]` `[reject]` `--record` and `--timings` are accepted without `--shard`, and `--timings` alone is ignored — the spec prescribes `--record` without `--shard`; refusing `--timings` would add a guard for a flag nobody passes alone.
+  - `[medium]` `[patch]` The timings-file test required the browser `source` to say "estimated", so the lead's mandated `refresh` would turn `test:tools` red — the test now requires only that each half names its run.
+
 ## Design Notes
 
 **Governing ADs.**
@@ -182,7 +221,58 @@ No new AD is needed (inference). One convention may be: a class or spec must not
 - AC7: default an absent `--shard` to `1/3` -> the no-shard test goes red.
 - AC9: set a shard job's `timeout-minutes` to 25 -> the margin test goes red.
 
+**Observed (implement stage, 2026-09-27):**
+
+- `npm run test:tools`: 1642/1642 (`ci-shards.test.mjs` 27, `ci.test.mjs` 75). `npm run build` and `npm test` (1642 tools, 1599 components) green; `lint-docs.sh` and `check-objectscript.py` 0 problems.
+- `assign`: objectscript 327 classes at 16.1/16.1/16.1 min, browser 115 files at 17.2/17.1/17.1 min (1 untimed); each item listed once; spreads 0.0 s and 2.3 s against largest items of 201.5 s and 171.3 s.
+- `ci-runner.mjs --container ocupilot-b-ci --shard 40/40 --record ...`: 10 of 329 classes, 78 tests, exit 0, record written. `test:browser:shard -- --shard 40/40` on 52777/`ocupilot-b-ci`: 4 of 115 files, 11 tests, exit 0, record written.
+- `git diff -- ui/package.json`: two added lines; `test:browser` and `pretest:browser` untouched.
+- mutation: `shard: [1, 2]` in `instance-shard`, then in `browser-shard` → the `[1, 2, 3]` matrix test (and the AC9 margin test) red.
+- mutation: `assignShards` iterates only recorded items → the unknown-item test red (plus five executed tests).
+- mutation: `assignShards` sorts ascending → the longest-first test red (plus six others).
+- mutation: `checkRecords` drops the ran-in-no-shard push → the three-shard stub-record test red (plus two check tests).
+- mutation: `checkRecords` drops the zero-tests push → the three-shard stub-record test red (plus one check test).
+- mutation: `browser-shard`'s capture step deleted → the DW-232 capture test red (plus the three gate-equality tests).
+- mutation: `ci-runner.mjs` problem lines lose the `shard k/n:` prefix → the failing-shard-2 test red (plus the zero-executed test).
+- mutation: `if: ${{ matrix.shard == 1 }}` removed from the smoke step → the AC6 once-per-run test red, alone.
+- mutation: absent `--shard` defaulted to `{index: 1, count: 3}` → the no-shard test red, alone.
+- mutation: `instance-shard` `timeout-minutes: 25` → the AC9 margin test red, alone.
+
+**Observed (review patches, 2026-09-27):** `npm run test:tools` 1644/1644, `lint-docs.sh` 0 problems; each mutation below went red alone and was reverted byte-identical.
+
+- mutation: `check` passes `expected = null` for `browser` → the roll-up-holds-the-checkout test red (AC4, browser clause).
+- mutation: `ci-browser.mjs` drops the `cancelled` and non-zero-exit branches → the timed-out-spec test red.
+- mutation: `ci-runner.mjs` defaults `record` to `ci-records/objectscript-shard-1.json` → the no-shard test red (AC7, no record).
+- mutation: `overwrite: true` removed from `browser-shard`'s upload → the AC4 upload/roll-up test red.
+- mutation: `refreshTimings` starts each suite from the current table → the refresh test red (AC3, refresh).
+- mutation: `ci-browser.mjs` problem lines lose `shard k/n --` → the failing-spec-file test red (AC5, browser).
+- mutation: `test:browser` rewritten → the unsharded-scripts test red (AC7, `npm run test:browser`).
+- mutation: shares keep assignment order instead of offered order → the sorted-share browser test red (AC2, sorted).
+- mutation: `if: ${{ matrix.shard == 1 }}` removed from the admin-spec step → the AC6 once-per-run test red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+**Summary.** Both long suites run as three-leg matrix jobs (`instance-shard`, `browser-shard`), each leg on its own fresh throwaway, one item at a time, its share assigned longest-first from `ui/tools/ci-timings.json`. Each leg uploads a record; the roll-ups `instance` and `browser` fail unless every item ran in exactly one leg, every leg executed a test, and the legs succeeded. Unsharded local paths are unchanged.
+
+**Files.**
+
+- `.github/workflows/ci.yml` -- seven jobs; shard matrices, record uploads (`overwrite: true`), roll-ups; header and timeout comments rewritten.
+- `ui/tools/ci-shards.mjs` -- new: assignment, record check, `assign`/`check`/`refresh` CLI.
+- `ui/tools/ci-browser.mjs` -- new: browser shard runner, one `node --test` per file.
+- `ui/tools/ci-runner.mjs` -- `--shard`, `--timings`, `--record`; no-shard output unchanged.
+- `ui/tools/ci-timings.json` -- new: seeded from run 36359053662 (browser half estimated).
+- `ui/tools/ci-shards.test.mjs` -- new: 29 tests over every I/O-matrix row.
+- `ui/tools/ci.test.mjs` -- existing lines changed: the runner and browser `DECLARED_GATES` entries (plus two `check` entries), `PINNED_ACTIONS`, the capture test's job list, the jobs/readiness test (now seven jobs, per shard job), the literal-Node pinner list, the reservation loop; new shard-matrix, roll-up, AC6 and AC9-margin tests.
+- `ui/package.json` -- `test:browser:shard` and `pretest:browser:shard` added only.
+- `docs/DEVELOPMENT.md` -- CI table and shard paragraph (footprint extension).
+
+**Review.** 19 findings: 11 patched (4 medium, 7 low), 2 deferred (1 medium unverified, 1 low), 6 rejected (4 false, 2 low) -- reasons in the Review Triage Log.
+
+**Follow-up review recommended: true** (4 medium patched). The unverified risk is the Actions-runtime wiring: `overwrite: true` on a re-run leg, `download-artifact` `merge-multiple` layout, and `needs.<matrix job>.result` are proven only by the lead's push.
+
+**Verification.** `npm run build` and `npm test` green once (1642 tools, 120 component files); after patches `npm run test:tools` 1644/1644 and `lint-docs.sh` 0 problems. `assign`: 327 classes at 16.1/16.1/16.1 min, 115 specs at 17.2/17.1/17.1 min, each listed once. Real runs on `ocupilot-b-ci`, sequential: `ci-runner --shard 40/40` 10 of 329 classes, 78 tests, green, record written; `test:browser:shard -- --shard 40/40` 4 of 115 files, 11 tests, green, record written. Workflow parses as YAML with the seven jobs. All Rule 19 mutations in `## Verification` observed red and reverted byte-identical.
+
+**Residual risks.** Timeouts (40 min) rest on estimates until the lead measures; `actions: read` not added (same-run artifacts use the runtime token, inference); Node 22/24 run the two-reporter form first in the `gates` legs. `home-findings.browser-spec.mjs` was not in the 40/40 share, so nothing was observed about it. `CLAUDE.md`'s "five jobs" line is left for the lead.
+
+Status: done
 Blocking condition: none

@@ -37,6 +37,16 @@
  * Usage:
  *   node tools/ci-runner.mjs --container <name> [--namespace NS] [--package OcuPilot.Test]
  *   node tools/ci-runner.mjs --container <name> --class OcuPilot.Test.Wire --class ...
+ *   node tools/ci-runner.mjs --container <name> --shard k/n [--timings PATH] [--record PATH]
+ *
+ * **`--shard k/n`** is one leg of CI's `instance shard k/3` (Story 13.5). The listing and the
+ * on-disk floor are unchanged; the run then keeps only this shard's share of the offered classes,
+ * as `ci-shards.mjs` assigns it from `--timings` (default `ui/tools/ci-timings.json`), in the order
+ * the instance offered them, and labels its summary and problems with the shard. A shard assigned
+ * nothing, or whose classes executed no test, is a failure. It cannot be combined with `--class`.
+ * `--record PATH` writes what ran, with each class's seconds and counts, for `ci-shards.mjs check`
+ * and `refresh`; it is accepted without `--shard` too, as shard 1 of 1. Without either flag the
+ * runner behaves exactly as it did before them.
  *
  * Exit 0 only when at least one class ran, every class landed and asserted something, none
  * overlapped, no test failed, no class recorded a class-level error (its own setup or teardown, or
@@ -50,6 +60,8 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+
+import { assignShards, parseShard, readTimings, writeRecord } from './ci-shards.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -362,6 +374,9 @@ export function parseArgs(argv) {
     namespace: DEFAULT_NAMESPACE,
     pkg: DEFAULT_PACKAGE,
     classes: [],
+    shard: null,
+    timings: '',
+    record: '',
   };
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
@@ -373,9 +388,23 @@ export function parseArgs(argv) {
     if (flag === '--namespace') { options.namespace = value; i += 1; continue; }
     if (flag === '--package') { options.pkg = value; i += 1; continue; }
     if (flag === '--class') { options.classes.push(value); i += 1; continue; }
+    if (flag === '--shard') {
+      try {
+        options.shard = parseShard(value);
+      } catch (error) {
+        throw new Error(`ci-runner: ${error.message}`);
+      }
+      i += 1;
+      continue;
+    }
+    if (flag === '--timings') { options.timings = value; i += 1; continue; }
+    if (flag === '--record') { options.record = value; i += 1; continue; }
     throw new Error(`ci-runner: unknown argument ${flag}`);
   }
   if (options.container === '') throw new Error('ci-runner: --container is required');
+  if (options.shard !== null && options.classes.length > 0) {
+    throw new Error('ci-runner: --shard cannot be combined with --class; a shard runs its share of the classes the instance offers');
+  }
   return options;
 }
 
@@ -391,6 +420,17 @@ function main() {
     console.error(error.message);
     process.exitCode = 2;
     return;
+  }
+
+  let timings = null;
+  if (options.shard !== null) {
+    try {
+      timings = readTimings(options.timings === '' ? undefined : options.timings);
+    } catch (error) {
+      console.error(`ci-runner: ${error.message}`);
+      process.exitCode = 1;
+      return;
+    }
   }
 
   let classes = options.classes;
@@ -431,8 +471,18 @@ function main() {
     }
   }
 
-  console.log(`ci-runner: running ${classes.length} test class(es), one at a time (DW-54)`);
+  const offered = classes;
+  let label = '';
+  if (options.shard !== null) {
+    const { index, count } = options.shard;
+    classes = assignShards(offered, timings.objectscript, count).shares[index - 1].items;
+    label = `shard ${index}/${count} -- `;
+    console.log(`ci-runner: shard ${index}/${count} -- running ${classes.length} of ${offered.length} test class(es), one at a time (DW-54)`);
+  } else {
+    console.log(`ci-runner: running ${classes.length} test class(es), one at a time (DW-54)`);
+  }
   const runs = [];
+  const ran = [];
   const problems = [];
   let total = 0;
   let failed = 0;
@@ -472,9 +522,16 @@ function main() {
     if (outcome === 'passed' && leftover !== null) {
       outcome = !checked ? 'unchecked' : leftoverIsOwn(probeApps, probeAppsBefore) ? 'leaked' : 'inherited';
     }
-    const label = outcome === 'passed' ? 'ok' : outcome.toUpperCase();
+    ran.push({
+      name: className,
+      seconds: (finishedAt - startedAt) / 1000,
+      tests: marker !== null && marker.landed ? marker.total : 0,
+      failed: marker !== null && marker.landed ? marker.failed : 0,
+      outcome,
+    });
+    const tag = outcome === 'passed' ? 'ok' : outcome.toUpperCase();
     const counts = marker === null ? '' : ` -- ${marker.total} test(s), ${marker.failed} failed, run ${marker.runIndex}`;
-    console.log(`  ${label.padEnd(11)}${className}${counts}`);
+    console.log(`  ${tag.padEnd(11)}${className}${counts}`);
     // DW-243: the method and the assertion message, not only the class, so a red run names its cause.
     if (failures !== null && failures.length > 0) {
       for (const line of describeFailures(failures)) console.log(`      ${line}`);
@@ -509,16 +566,35 @@ function main() {
     );
   }
 
+  // A shard is a failure when it executed nothing, whether it was assigned no class or every class
+  // it was assigned ran zero methods: a leg that reports green over no test proves nothing.
+  if (options.shard !== null && total === 0) {
+    problems.push(
+      classes.length === 0
+        ? `was assigned none of the ${offered.length} test class(es) the instance offered, so it executed 0 tests -- which is a failure, never a pass`
+        : `its ${classes.length} test class(es) executed 0 tests -- which is a failure, never a pass`
+    );
+  }
+
   console.log(
-    `ci-runner: ${classes.length} class(es), ${total} test(s), ${failed} failed, ${leaked} with probe leftovers, ${overlaps.length} overlap(s), ${gaps.length} foreign run(s)`
+    `ci-runner: ${label}${classes.length} class(es), ${total} test(s), ${failed} failed, ${leaked} with probe leftovers, ${overlaps.length} overlap(s), ${gaps.length} foreign run(s)`
   );
+  if (options.record !== '') {
+    const { index, count } = options.shard ?? { index: 1, count: 1 };
+    try {
+      writeRecord(options.record, { suite: 'objectscript', shard: index, shards: count, offered, assigned: classes, ran });
+    } catch (error) {
+      problems.push(`could not write the record ${options.record}: ${error.message}`);
+    }
+  }
   if (problems.length > 0) {
-    console.error('ci-runner: found problems --');
-    for (const problem of problems) console.error(`  ${problem}`);
+    const prefix = options.shard === null ? '' : `shard ${options.shard.index}/${options.shard.count}: `;
+    console.error(`ci-runner: ${label}found problems --`);
+    for (const problem of problems) console.error(`  ${prefix}${problem}`);
     process.exitCode = 1;
     return;
   }
-  console.log('ci-runner: green.');
+  console.log(`ci-runner: ${label}green.`);
 }
 
 if (process.argv[1] && process.argv[1].endsWith('ci-runner.mjs')) {
