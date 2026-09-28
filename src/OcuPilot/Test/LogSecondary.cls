@@ -262,9 +262,12 @@ Method TestEachSourceMapsItsEntries()
 }
 
 /// <p>AD-36 -- entries merge across namespaces newest first and cut at the cap, reporting
-/// <code>truncated</code> only when something was cut.</p>
+/// <code>truncated</code> only when something was cut; <method>OcuPilot.Port.LogSourcePort.Rows</method>
+/// reports the same cut to a declared read (Story 16.9).</p>
 /// <p>Mutation (Rule 19): walk <method>OcuPilot.Port.LogSourcePort.Recent</method>'s merge in
-/// ascending time -&gt; the order assertions go red.</p>
+/// ascending time -&gt; the order assertions go red. Drop <method>OcuPilot.Port.LogSourcePort.Rows</method>'
+/// report of <method>OcuPilot.Port.LogSourcePort.Recent</method>'s cut -&gt; the port-cut assertion
+/// goes red.</p>
 Method TestTheMergeIsNewestFirstAndCutAtTheCap()
 {
     Do ..HoldAll()
@@ -280,6 +283,12 @@ Method TestTheMergeIsNewestFirstAndCutAtTheCap()
     Set tSC = ..Recent("xdbc", 10, .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(..Texts(tResult), "[HSCUSTOM] <-1> at 14|[USER] <-1> at 13|[HSCUSTOM] <-1> at 12|[USER] <-1> at 11|[HSCUSTOM] <-1> at 10", "all five, newest first")
     Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.truncated, 1: ""), 0, "and nothing cut")
+
+    Set tCut = ""
+    Set tSC = $ClassMethod(..#PORT, "Rows", "xdbc", 3, .tRows, .tHttp, .tFault, .tCut)
+    Do $$$AssertEquals($Select($IsObject($Get(tRows)): tRows.%Size(), 1: 0) _ "|" _ tCut, "3|1", "Rows reports the port's own cut beside its rows")
+    Set tSC = $ClassMethod(..#PORT, "Rows", "xdbc", 10, .tRows, .tHttp, .tFault, .tCut)
+    Do $$$AssertEquals($Select($IsObject($Get(tRows)): tRows.%Size(), 1: 0) _ "|" _ tCut, "5|0", "and none when nothing was cut")
 }
 
 /// <p><method>Page</method> serves messages and alerts only: each of the six keys is refused

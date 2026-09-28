@@ -31,6 +31,7 @@ import { UpcomingPage } from '../areas/tasks/upcoming.page';
 import { HomePage } from '../areas/home/home.page';
 import { AuditPage } from '../areas/logs/audit.page';
 import { ErrorLogPage } from '../areas/logs/error-log.page';
+import { LogHubPage } from '../areas/logs/log-hub.page';
 import { LogViewerPage } from '../areas/logs/log-viewer.page';
 import { UserCreateFormPage } from '../areas/permissions/user-create-form.page';
 import { RoleEditorPage } from '../areas/permissions/role-editor.page';
@@ -137,6 +138,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.LdapConfigForm': ReducedFormPage,
   'OcuPilot.Screen.Descriptor.AuditUserEventList': AuditUserEventListPage,
   'OcuPilot.Screen.Descriptor.AgentGovernance': GovernancePage,
+  'OcuPilot.Screen.Descriptor.LogHub': LogHubPage,
 };
 
 /**

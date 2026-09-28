@@ -29,6 +29,10 @@ Parameter PROBENOTAFILE = "notafile";
 /// otherwise.</p>
 Parameter PROBESOURCE = "messages";
 
+/// <p>The console log's screen, whose declared read runs <parameter>PROBESOURCE</parameter> through
+/// <method>OcuPilot.Port.LogSourcePort.Rows</method>.</p>
+Parameter MESSAGESVIEWER = "OcuPilot.Screen.Descriptor.LogMessageViewer";
+
 /// <p>Every scratch line is exactly this many bytes, newline included, so a window's start and
 /// stop land on arithmetic a test can state rather than on whatever the file happens to hold.</p>
 Parameter LINEBYTES As INTEGER = 100;
@@ -316,6 +320,32 @@ Method TestRowsProjectTheTailNewestFirst()
     Do $$$AssertEquals(tAll.%Get(4).time, "", "the window opens mid-continuation, so its oldest entry carries no time")
     Do $$$AssertEquals(tAll.%Get(4).severity, "", "and no severity")
     Do $$$AssertEquals(tAll.%Get(4).text, "partial tail of an earlier entry", "while its bytes are kept rather than dropped")
+}
+
+/// <p>Story 16.9 (AD-36) -- <method>OcuPilot.Port.LogSourcePort.Rows</method> reports its own cut:
+/// a tail that began past the file's first byte leaves older lines unread, and a file the window
+/// holds whole is not cut. The console log's declared read carries that cut into its
+/// <code>truncated</code> though it answers fewer rows than its cap.</p>
+/// <p>Mutation (Rule 19): drop the tail's size comparison from
+/// <method>OcuPilot.Port.LogSourcePort.Rows</method> -&gt; the long file's cut goes red; drop the
+/// port's cut from <method>OcuPilot.Screen.Read.Execute</method> -&gt; the declared read's goes red.</p>
+Method TestRowsReportATailThatBeganPastTheFirstByte()
+{
+    Set tCut = ""
+    Set tSC = ##class(OcuPilot.Test.LogSourceFixture).Rows(..#PROBESOURCE, 5, .tRows, .tHttp, .tFault, .tCut)
+    Do $$$AssertStatusOK(tSC, "the short file's rows answer")
+    Do $$$AssertEquals(tCut, 0, "a file the window holds whole is not cut")
+    Set tSC = ##class(OcuPilot.Test.LogSourceReadFixture).Execute(..#MESSAGESVIEWER, 1000, .tRead, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the console log's declared read answers over the short file")
+    If $IsObject($Get(tRead)) Do $$$AssertEquals((tRead.rows.%Size() > 0) _ "|" _ tRead.truncated, "1|0", "its rows, uncut")
+    Set tSC = ..WriteLines(..DirectoryOne(), "beta", 700)
+    Do $$$AssertStatusOK(tSC, "a file longer than the window is written")
+    Set tSC = ##class(OcuPilot.Test.LogSourceFixture).Rows(..#PROBESOURCE, 5, .tRows, .tHttp, .tFault, .tCut)
+    Do $$$AssertStatusOK(tSC, "its rows answer")
+    Do $$$AssertEquals(tCut, 1, "and a tail that began past its first byte is reported cut")
+    Set tSC = ##class(OcuPilot.Test.LogSourceReadFixture).Execute(..#MESSAGESVIEWER, 1000, .tRead, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the declared read answers over the long file")
+    If $IsObject($Get(tRead)) Do $$$AssertEquals((tRead.rows.%Size() < 1000) _ "|" _ tRead.truncated, "1|1", "fewer rows than its cap, and truncated all the same")
 }
 
 /// <p>AC2 -- a key outside <method>OcuPilot.Port.LogSourcePort.Sources</method> is refused 404

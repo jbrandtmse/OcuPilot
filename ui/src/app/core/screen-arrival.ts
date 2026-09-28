@@ -1,9 +1,10 @@
 /**
- * The one-shot hand-off between an agent navigation and the screen it arrives at (Story 11.11,
- * AD-11).
+ * The one-shot hand-off between an agent navigation, or a person's choice of an entry in the log
+ * hub's timeline (Story 16.9), and the screen it arrives at (Story 11.11, AD-11).
  *
  * The navigator sets an arrival -- the route, the flag criterion and the criteria values the
- * instance validated on the directive -- before it moves the browser. The arriving page takes it
+ * instance validated on the directive -- before it moves the browser; the log hub sets one carrying
+ * the chosen entry, which a log viewer marks, or the criteria bracketing an audit entry's second. The arriving page takes it
  * once, in place of its own default read, and runs exactly that search. A page that is already
  * mounted on the route is told through `subscribe`, and takes it the same way. Nothing here puts a
  * criterion in a URL: the values ride this holder and reach the read only as its own criteria
@@ -20,6 +21,16 @@ export interface ScreenArrival {
   readonly criterion: string;
   /** Criteria values keyed by the screen's declared criteria (AD-11). An omitted key takes its default. */
   readonly criteria: Readonly<Record<string, string>>;
+  /** The log entry to open the screen at (Story 16.9): its instance-local time and its text. */
+  readonly entry?: ArrivalEntry;
+}
+
+/** One log entry a log viewer is opened at, as the log hub's timeline shows it. */
+export interface ArrivalEntry {
+  /** The instance-local `YYYY-MM-DDTHH:MM:SS.mmm` the entry carries. */
+  readonly time: string;
+  /** The entry's text, which may end in U+2026 where it was cut. */
+  readonly text: string;
 }
 
 export class ScreenArrivals {

@@ -1,10 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
-import { Router, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
+import { joinCompositeId } from '../../core/entity-id';
 import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../../core/explain-entry';
 import { NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
@@ -135,7 +136,8 @@ class StubApi {
 describe('ErrorLogPage', () => {
   function mount(
     api: StubApi,
-    explain: ExplainEntry | null = null
+    explain: ExplainEntry | null = null,
+    id: string | null = null
   ): {
     fixture: ComponentFixture<ErrorLogPage>;
     drill: ErrorLogDrill;
@@ -155,6 +157,9 @@ describe('ErrorLogPage', () => {
         { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
         { provide: OverlayStack, useValue: new OverlayStack() },
         ...(explain === null ? [] : [{ provide: ExplainEntry, useValue: explain }]),
+        ...(id === null
+          ? []
+          : [{ provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id }) } } as unknown as ActivatedRoute }]),
       ],
     });
     const fixture = TestBed.createComponent(ErrorLogPage);
@@ -230,6 +235,24 @@ describe('ErrorLogPage', () => {
     expect(emptyTitle(fixture)).toBe(
       STRINGS[declaration?.emptyStateKey as keyof typeof STRINGS]
     );
+  });
+
+  // Story 16.9, AC8. Mutation (Rule 19): open the namespaces on the id route as on the bare one ->
+  // the detail assertions go red.
+  it("Story 16.9: an error's id route drills from the top to that error's detail, each level the instance's own", async () => {
+    const api = new StubApi();
+    api.answer('namespaces', { rows: [{ namespace: 'HSCUSTOM' }], truncated: false });
+    api.answer('dates', { namespace: 'HSCUSTOM', rows: [{ date: '09/14/2026', count: 1 }], truncated: false });
+    api.answer('list', { namespace: 'HSCUSTOM', date: '09/14/2026', rows: [{ errorNumber: 3, time: '10:20:00', errorText: '<DIVIDE>x+1^y', routine: 'y', line: 'x', username: '_SYSTEM', process: '42' }], truncated: false });
+    api.answer('detail', { expressions: [], stack: [], variables: [{ level: '1', name: 'tZero', value: '0' }], truncated: false });
+    const { fixture, drill } = mount(api, null, encodeURIComponent(joinCompositeId(['HSCUSTOM', '09/14/2026', '3'])));
+    for (let turn = 0; turn < 40; turn += 1) await Promise.resolve();
+    fixture.detectChanges();
+    expect(api.paths.map((path) => path.split('?')[0].split('/').pop())).toEqual(['namespaces', 'dates', 'list', 'detail']);
+    expect(api.paths[3]).toContain('errorNumber=3');
+    expect(drill.level()).toBe('detail');
+    expect(drill.namespace() + '|' + drill.date() + '|' + drill.errorNumber()).toBe('HSCUSTOM|09/14/2026|3');
+    expect(fixture.nativeElement.querySelector('[data-ocu-level="detail"]')).not.toBeNull();
   });
 
   it('AC4: every level carries its own namespace parameter and no route scope', async () => {

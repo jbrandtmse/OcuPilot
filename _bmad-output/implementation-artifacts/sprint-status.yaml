@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-27-2026 22:08'
+last_updated: '09-27-2026 23:35'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -238,13 +238,13 @@ development_status:
   epic-16: in-progress
   16-1-the-try-it-request-console: done
   16-2-web-sessions-listed-and-ended: backlog
-  16-3-effective-privileges-and-the-permission-check-tool: backlog
+  16-3-effective-privileges-and-the-permission-check-tool: ready-for-dev
   16-4-task-export-and-import: backlog
   16-5-background-tasks: backlog
   16-6-broadcast-a-message-to-processes: backlog
   16-7-license-usage-and-the-full-dashboard: backlog
   16-8-the-six-secondary-log-viewers: done
-  16-9-the-unified-log-hub: in-progress
+  16-9-the-unified-log-hub: done
   16-10-external-language-servers: backlog
   16-11-start-suspend-and-resume-the-task-manager: backlog
   16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client: backlog
@@ -259,7 +259,7 @@ development_status:
   16-21-security-findings-with-a-fix-you-confirm: done
   16-22-the-guardrails-page: done
   16-23-any-table-downloaded-as-csv: done
-  16-24-a-try-it-request-copied-as-curl: backlog
+  16-24-a-try-it-request-copied-as-curl: ready-for-dev
   epic-16-retrospective: optional
 
   epic-17: backlog

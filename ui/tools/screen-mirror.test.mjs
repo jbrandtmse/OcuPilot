@@ -47,6 +47,7 @@ import {
   PROMPT_GROUP_KEYS,
   SCREEN_REGISTRY_SOURCE,
   tabProblem,
+  timelineMemberProblem,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
@@ -647,6 +648,7 @@ test('readProblem returns every source-type, forEach, query and parts sentence O
     if (testCase.sort !== undefined) declaration.read.sort = structuredClone(testCase.sort);
     if (testCase.table !== undefined) declaration.table = structuredClone(testCase.table);
     if (testCase.context !== undefined) declaration.context = structuredClone(testCase.context);
+    if (testCase.area !== undefined) declaration.area = testCase.area;
     assert.equal(readProblem(declaration), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
   }
@@ -1136,7 +1138,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // criteria are Story 6.7's and 6.6's; Upcoming tasks, whose two criteria are the horizon; the
   // Secrets list, whose one criterion is its parent collection, filled from the route id
   // (Story 6.3); and Story 6.11's two -- Database details and Database volumes, whose one
-  // criterion each is the parent Databases route's directory.
+  // criterion each is the parent Databases route's directory; and Story 16.9's log hub, whose one
+  // criterion is its timeline's window.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1144,6 +1147,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.AuditList',
       'OcuPilot.Screen.Descriptor.DatabaseDetails',
       'OcuPilot.Screen.Descriptor.DatabaseVolumeList',
+      'OcuPilot.Screen.Descriptor.LogHub',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
       'OcuPilot.Screen.Descriptor.ProcessDetails',
       'OcuPilot.Screen.Descriptor.TaskDetails',
@@ -2407,5 +2411,36 @@ test('a secretArguments entry may name a top-level secret row, and nothing that 
     confirmChannelProblem(of(['MatchRoles[].MatchRole']), widened),
     null,
     'a nested secret path of the shipped list is not admitted'
+  );
+});
+
+// Story 16.9 (AD-36 as amended): a timeline's members are its area's other listed built screens,
+// and a member that declares a timeline read itself is refused -- the same sentence
+// `OcuPilot.Screen.Registry.TimelineMemberProblem` returns in `OcuPilot.Test.LogHub`, over the
+// same two-entry roster. The shipped roster holds one timeline and passes.
+//
+// Mutation (Rule 19): drop the `sideBarPosition` test from `timelineMemberProblem` -> the unlisted
+// case goes red.
+test('timelineMemberProblem refuses a timeline member that declares a timeline itself, and the shipped roster passes', () => {
+  const { screens } = readSources();
+  assert.equal(timelineMemberProblem(screens), null, 'the shipped roster holds one timeline, sound');
+  const hub = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.LogHub');
+  assert.ok(hub !== undefined, 'the log hub is in the roster');
+  const second = structuredClone(hub.declaration);
+  second.route = 'logs/hub2';
+  second.sideBarPosition = 12;
+  const roster = [
+    { className: 'Hub', declaration: hub.declaration },
+    { className: 'Hub2', declaration: second },
+  ];
+  assert.equal(
+    timelineMemberProblem(roster),
+    "Hub: timeline member 'logs/hub2' declares a timeline read itself, and a timeline composes its members' own reads (AD-36)"
+  );
+  second.sideBarPosition = 0;
+  assert.equal(
+    timelineMemberProblem(roster),
+    "Hub2: timeline member 'logs/hub' declares a timeline read itself, and a timeline composes its members' own reads (AD-36)",
+    'an unlisted timeline is no member, but the listed one is its member'
   );
 });

@@ -356,13 +356,14 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
 
     ; Logs, pinned the same way and for the same reason: its screens declare consecutive side-bar
     ; positions, so a screen landing on the wrong one is only visible as an order. Story 16.8 took
-    ; it from four screens to ten, the six secondary logs at positions 5 to 10; an added Logs screen
-    ; updates this count and the per-index assertions with it.
+    ; it from four screens to ten, the six secondary logs at positions 5 to 10, and Story 16.9 to
+    ; eleven, the log hub at 11; an added Logs screen updates this count and the per-index
+    ; assertions with it.
     Set tLogs = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "logs")
     Do $$$AssertTrue($IsObject(tLogs), "the payload carries the logs area")
     If $IsObject(tLogs) {
-        Do $$$AssertEquals(tLogs.screens.%Size(), 10, "which carries its ten built screens -- an added Logs screen updates this count and the per-index assertions below with it")
-        Set tOrder = $ListBuild("logs/alerts|alertLogListLabel", "logs/messages|messagesLogListLabel", "logs/errors|errorLogListLabel", "logs/audit|auditListLabel", "logs/systemmonitor|systemMonitorLogListLabel", "logs/taskerrors|taskErrorLogListLabel", "logs/xdbc|xdbcErrorLogListLabel", "logs/sqldiagnostics|sqlDiagnosticsLogListLabel", "logs/eventlog|eventLogListLabel", "logs/analytics|analyticsLogListLabel")
+        Do $$$AssertEquals(tLogs.screens.%Size(), 11, "which carries its eleven built screens -- an added Logs screen updates this count and the per-index assertions below with it")
+        Set tOrder = $ListBuild("logs/alerts|alertLogListLabel", "logs/messages|messagesLogListLabel", "logs/errors|errorLogListLabel", "logs/audit|auditListLabel", "logs/systemmonitor|systemMonitorLogListLabel", "logs/taskerrors|taskErrorLogListLabel", "logs/xdbc|xdbcErrorLogListLabel", "logs/sqldiagnostics|sqlDiagnosticsLogListLabel", "logs/eventlog|eventLogListLabel", "logs/analytics|analyticsLogListLabel", "logs/hub|logHubLabel")
         For tAt = 1:1:$ListLength(tOrder) {
             Set tScreen = tLogs.screens.%Get(tAt - 1)
             Do $$$AssertEquals($Select($IsObject(tScreen): tScreen.route _ "|" _ tScreen.labelKey, 1: ""), $List(tOrder, tAt), "logs position " _ tAt _ " is its declared screen, under its own label key")

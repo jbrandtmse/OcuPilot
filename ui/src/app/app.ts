@@ -38,6 +38,7 @@ import { OAuthRegisteredClientForm } from './areas/security/oauth-registered-cli
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { LogHubStore } from './areas/logs/log-hub.store';
 import { LogViewerStore } from './areas/logs/log-viewer.store';
 import { About } from './core/about';
 import { AccountPreferences } from './core/account-preferences';
@@ -248,6 +249,7 @@ export class App {
   private readonly auditSearch = inject(AuditSearch);
   private readonly errorLogDrill = inject(ErrorLogDrill);
   private readonly logViewer = inject(LogViewerStore);
+  private readonly logHub = inject(LogHubStore);
   private readonly definitionForm = inject(DefinitionForm);
   private readonly formDirty = inject(FormDirty);
   // Constructed for its own sake: the Definitions list is served by the generic `ListPage`, so
@@ -564,6 +566,8 @@ export class App {
       this.errorLogDrill.reset();
       // The log viewer holds the entries THIS principal read, from whichever log was open (DW-1110).
       this.logViewer.reset();
+      // The log hub holds the entries of every Logs source THIS principal read (Story 16.9).
+      this.logHub.reset();
       // The eighth: the Definition form holds an edit buffer THIS principal typed -- including a
       // pasted API key that has not been stored yet (AD-35) -- and its dirty flag would otherwise
       // make the next principal's first navigation ask about work that is not theirs.
