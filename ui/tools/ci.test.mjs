@@ -30,6 +30,7 @@ import {
   parseRunMarker,
   testClassesOnDisk,
 } from './ci-runner.mjs';
+import { assignShards, browserSpecsOnDisk, readTimings } from './ci-shards.mjs';
 import { NODE_RANGE_LABEL } from './version-guard.mjs';
 import { declaredShell, stubEnv, writeStub } from './stub-bin.mjs';
 
@@ -107,7 +108,7 @@ export const DECLARED_GATES = [
   'uv run scripts/check-objectscript.py',
   'uv run scripts/test_check_objectscript.py',
   'bash scripts/lint-docs.sh',
-  // instance -- `npm ci` and `npm run build` run again here, in a job with its own checkout,
+  // instance-shard -- `npm ci` and `npm run build` run again here, in a job with its own checkout,
   // and are listed again: one entry per occurrence, so deleting either one is red.
   'sh scripts/ci-durable-ownership.sh --image intersystems/irishealth-community:2026.2',
   'npm ci',
@@ -118,13 +119,16 @@ export const DECLARED_GATES = [
   'sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/',
   'node tools/admin-spec.mjs --origin http://localhost:52776',
   'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781',
-  'node tools/ci-runner.mjs --container ocupilot-ci',
+  'node tools/ci-runner.mjs --container ocupilot-ci --shard ${{ matrix.shard }}/3 --record ${{ runner.temp }}/ci-records/objectscript-shard-${{ matrix.shard }}.json',
   'sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS',
-  'npm run test:browser',
+  'npm run test:browser:shard -- --shard ${{ matrix.shard }}/3 --record ${{ runner.temp }}/ci-records/browser-shard-${{ matrix.shard }}.json',
   'sh scripts/ci-throwaway.sh logs',
   'sh scripts/ci-throwaway.sh down',
-  // browser -- the same script fully parameterised onto a second throwaway, so the two suites
-  // that dominated the old instance job run side by side instead of end to end.
+  // instance and browser -- the roll-ups, one check each over their shard jobs' records.
+  'node tools/ci-shards.mjs check --suite objectscript --shards 3 --records ${{ runner.temp }}/ci-records --result ${{ needs.instance-shard.result }}',
+  'node tools/ci-shards.mjs check --suite browser --shards 3 --records ${{ runner.temp }}/ci-records --result ${{ needs.browser-shard.result }}',
+  // browser-shard -- the same script fully parameterised onto a second throwaway, so the two
+  // suites that dominated the old instance job run side by side instead of end to end.
   'npm ci',
   'npm run build',
   'cat /proc/sys/net/ipv4/ip_local_port_range',
@@ -183,12 +187,15 @@ export function usesActions(text) {
  * was pinned (`gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`, 2026-09-13; DW-218). A closed
  * list, edited deliberately: moving a pin is a new lookup and a reviewed change here. Each is the
  * lowest major whose `action.yml` declares `using: node24` (DW-238): checkout v5 (= v5.1.0),
- * setup-node v5 (= v5.0.0), setup-uv v7 (= v7.6.0).
+ * setup-node v5 (= v5.0.0), setup-uv v7 (= v7.6.0), and, resolved 2026-09-27 for the shard records,
+ * upload-artifact v6 and download-artifact v7.
  */
 export const PINNED_ACTIONS = [
   { action: 'actions/checkout', sha: 'fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09', tag: 'v5' },
   { action: 'actions/setup-node', sha: 'a0853c24544627f65ddf259abe73b1d18a591444', tag: 'v5' },
   { action: 'astral-sh/setup-uv', sha: '37802adc94f370d6bfd71619e3f0bf239e1f3b78', tag: 'v7' },
+  { action: 'actions/upload-artifact', sha: 'b7c566a772e6b6bfb58ed0dc250532a479d7789f', tag: 'v6' },
+  { action: 'actions/download-artifact', sha: '37930b1c2abaa49bbe596cd826c3c89aef350131', tag: 'v7' },
 ];
 
 export const DECLARED_USES = PINNED_ACTIONS.map(({ action, sha }) => `${action}@${sha}`);
@@ -411,10 +418,10 @@ test('a failing instance job captures the throwaway before the teardown removes 
   // Mutation (Rule 19): delete the capture step, or move it below the teardown, or narrow its
   // condition to `failure()` -> this goes red.
   // Every throwaway-owning job, not just the first: the browser job was split out of instance on
-  // 2026-09-22 and the images job gained its own throwaway in Story 8.9, and each inherits the same
-  // hazard, so asserting only `instance` would let a newer job lose its capture silently -- which
-  // is the exact shape of the defect this test was written for.
-  for (const jobName of ['instance', 'browser', 'images']) {
+  // 2026-09-22, the images job gained its own throwaway in Story 8.9, and both suites became shard
+  // jobs in Story 13.5, and each inherits the same hazard, so asserting only one would let another
+  // lose its capture silently -- which is the exact shape of the defect this test was written for.
+  for (const jobName of ['instance-shard', 'browser-shard', 'images']) {
   const instance = jobSlice(workflow, jobName);
   const captureAt = instance.indexOf('capture the throwaway on failure');
   const teardownAt = instance.indexOf('tear the throwaway down');
@@ -460,33 +467,39 @@ test('a superseded run is cancelled rather than queued behind the one that repla
   assert.match(workflow, /group: ci-/, 'grouped per workflow and ref');
 });
 
-test('the five jobs are declared, and the instance job waits on readiness before any suite', () => {
+test('the seven jobs are declared, and each shard job waits on readiness before its suite', () => {
   // An equality, not a superset: a job nothing here names is how a step nothing here describes
   // arrives, which is the same reason the run-command list is held equal in both directions.
-  assert.deepEqual(jobNames(workflow), ['gates', 'instance', 'browser', 'images', 'package']);
+  assert.deepEqual(jobNames(workflow), ['gates', 'instance-shard', 'instance', 'browser-shard', 'browser', 'images', 'package']);
 
-  const waitAt = workflow.indexOf('scripts/wait-readiness.sh');
-  const runnerAt = workflow.indexOf('tools/ci-runner.mjs');
-  const smokeAt = workflow.indexOf('scripts/smoke.sh');
-  const browserAt = workflow.indexOf('npm run test:browser');
-  assert.ok(waitAt > 0, 'the instance job waits for readiness');
-  assert.ok(runnerAt > waitAt, 'before the ObjectScript suite');
-  assert.ok(smokeAt > waitAt, 'before the smoke script');
-  assert.ok(browserAt > waitAt, 'and before the browser spec');
+  // Per shard job, because each leg brings up its own throwaway: the order has to hold inside every
+  // job, and a whole-file index would read one job's step against another's. The DECLARED_GATES
+  // equality above compares SORTED multisets, so without these assertions any of these steps could
+  // be moved with every gate green. DW-439's criterion is that the range is logged "whether or not
+  // the bind succeeded", which is only true while the probe runs BEFORE the bring-up that may fail.
+  for (const [job, suite] of [
+    ['instance-shard', 'tools/ci-runner.mjs'],
+    ['browser-shard', 'npm run test:browser:shard'],
+  ]) {
+    const slice = jobSlice(workflow, job);
+    const rangeAt = slice.indexOf('cat /proc/sys/net/ipv4/ip_local_port_range');
+    const upAt = slice.indexOf('ci-throwaway.sh up');
+    const waitAt = slice.indexOf('scripts/wait-readiness.sh');
+    const suiteAt = slice.indexOf(suite);
+    assert.ok(rangeAt > 0 && rangeAt < upAt, `${job}: the ephemeral-range probe runs before the bind that may fail (DW-439)`);
+    assert.ok(upAt > 0 && upAt < waitAt, `${job}: the throwaway comes up first`);
+    assert.ok(waitAt > 0 && suiteAt > waitAt, `${job}: its suite waits for readiness`);
+  }
 
-  const upAt = workflow.indexOf('ci-throwaway.sh up');
-  assert.ok(upAt > 0 && upAt < waitAt, 'the throwaway comes up first');
-
-  // Both new steps are placed for their position, and the DECLARED_GATES equality above compares
-  // SORTED multisets -- so without these two assertions either could be moved with every gate
-  // green. DW-439's criterion is that the range is logged "whether or not the bind succeeded",
-  // which is only true while the probe runs BEFORE the bring-up that may fail; and the admin-spec
-  // step is placed to fail in seconds rather than forty minutes into the suites.
-  const rangeAt = workflow.indexOf('cat /proc/sys/net/ipv4/ip_local_port_range');
-  assert.ok(rangeAt > 0 && rangeAt < upAt, 'the ephemeral-range probe runs before the bind that may fail (DW-439)');
-  const adminSpecAt = workflow.indexOf('tools/admin-spec.mjs --origin');
+  // The admin-spec step is placed to fail in seconds rather than minutes into the suite (AD-27).
+  const instance = jobSlice(workflow, 'instance-shard');
+  const waitAt = instance.indexOf('scripts/wait-readiness.sh');
+  const adminSpecAt = instance.indexOf('tools/admin-spec.mjs --origin');
+  const runnerAt = instance.indexOf('tools/ci-runner.mjs');
+  const smokeAt = instance.indexOf('scripts/smoke.sh');
   assert.ok(adminSpecAt > waitAt, 'the admin API drift gate runs after readiness');
-  assert.ok(adminSpecAt < runnerAt, 'and before the long suites, so a vendor drift fails in seconds (AD-27)');
+  assert.ok(adminSpecAt < runnerAt, 'and before the suite, so a vendor drift fails in seconds (AD-27)');
+  assert.ok(smokeAt > waitAt, 'and so does the smoke script');
 });
 
 test('the images job covers both stock Community editions at the pinned version (NFR-13)', () => {
@@ -586,7 +599,7 @@ test('every job that pins a literal Node pins one the engines range admits', () 
   // report it as an npm failure in a job no gate had ever looked at.
   const packageJson = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'));
   const declared = packageJson.engines.node;
-  const literalPinners = ['instance', 'browser', 'images', 'package'];
+  const literalPinners = ['instance-shard', 'instance', 'browser-shard', 'browser', 'images', 'package'];
   for (const job of literalPinners) {
     const pinned = /node-version:\s*(\S+)/.exec(jobSlice(workflow, job));
     assert.ok(pinned, `the ${job} job pins a node version`);
@@ -1613,7 +1626,7 @@ test("the throwaway's port and name are one fact, not six declarations of one", 
   assert.notEqual(imagesProject[1], browserProject[1], 'nor the browser throwaway');
   assert.match(imagesUp, / --image \$\{\{ matrix\.image \}\}$/, 'installing the edition this leg of the matrix names');
   assert.match(reserve, new RegExp(`(=|,)${imagesPort[1]}(,|$)`), `the reservation covers ${imagesPort[1]}`);
-  for (const job of ['instance', 'browser', 'images']) {
+  for (const job of ['instance-shard', 'browser-shard', 'images']) {
     const reserved = runCommands(jobSlice(workflow, job)).find((command) => command.startsWith('sudo sysctl -w net.ipv4.ip_local_reserved_ports='));
     assert.equal(reserved, reserve, `the ${job} job reserves the same three ports as every other job`);
   }
@@ -2424,4 +2437,129 @@ test("Story 8.9: smoke.sh's default install namespace is container-start.sh's, c
   assert.deepEqual(asked?.slice(1), chosen.slice(1), 'smoke asks about the same candidates, in the same order');
   assert.match(smoke, new RegExp(`1,\\[01\\]\\) NAMESPACE="${chosen[1]}"`), `the first existing candidate wins: ${chosen[1]}`);
   assert.match(smoke, new RegExp(`0,1\\) NAMESPACE="${chosen[2]}"`), `and the second only without it: ${chosen[2]}`);
+});
+
+// --- The shard jobs and their roll-ups (Story 13.5) ------------------------------------------
+
+/** Each sharded suite: its shard job, the roll-up that keeps the old job name, and its record suite. */
+const SHARDED = [
+  { shard: 'instance-shard', rollUp: 'instance', suite: 'objectscript', command: 'node tools/ci-runner.mjs' },
+  { shard: 'browser-shard', rollUp: 'browser', suite: 'browser', command: 'npm run test:browser:shard' },
+];
+
+/** The setup minutes a shard job spends before its suite: checkout, build, bring-up, readiness. */
+const SHARD_SETUP_MINUTES = 3;
+
+/** The `shard: [...]` list a job's matrix declares, as numbers, or `[]` when it declares none. */
+export function shardMatrix(text, job) {
+  const match = /^ {8}shard:\s*\[([^\]\n]*)\]\s*$/m.exec(jobSlice(text, job));
+  if (match === null) return [];
+  return match[1]
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value !== '')
+    .map(Number);
+}
+
+/** A job's steps in order, each as `{text, condition, run}`, `condition` and `run` `null` when absent. */
+export function jobSteps(text, job) {
+  const slice = jobSlice(text, job);
+  const at = slice.indexOf('\n    steps:\n');
+  if (at === -1) return [];
+  return slice
+    .slice(at + '\n    steps:\n'.length)
+    .split(/\n(?= {6}- )/)
+    .map((step) => ({
+      text: step,
+      condition: /^ {6}(?:- | {2})if:\s*(.+?)\s*$/m.exec(step)?.[1] ?? null,
+      run: /^ {6}(?:- | {2})run:\s*(.+?)\s*$/m.exec(step)?.[1] ?? null,
+    }));
+}
+
+// Mutation (Rule 19): delete `3` from either shard matrix -> this goes red naming the job.
+test('both suites run as a [1, 2, 3] shard matrix, and every k/n and --shards n is its length (AC1, AC2, AC8)', () => {
+  for (const { shard, rollUp, suite, command } of SHARDED) {
+    const matrix = shardMatrix(workflow, shard);
+    assert.deepEqual(matrix, [1, 2, 3], `${shard} runs legs 1, 2 and 3; it declares ${JSON.stringify(matrix)}`);
+    const runs = runCommands(jobSlice(workflow, shard)).filter((run) => run.startsWith(command));
+    assert.equal(runs.length, 1, `${shard} runs its suite exactly once per leg`);
+    assert.match(
+      runs[0],
+      new RegExp(` --shard \\$\\{\\{ matrix\\.shard \\}\\}/${matrix.length} `),
+      `${shard} runs its leg as shard k/${matrix.length}, the matrix's own length`
+    );
+    const check = runCommands(jobSlice(workflow, rollUp)).filter((run) => run.startsWith('node tools/ci-shards.mjs check'));
+    assert.equal(check.length, 1, `the ${rollUp} roll-up checks the records once`);
+    assert.match(check[0], new RegExp(` --suite ${suite} --shards ${matrix.length} `), `and over the same ${matrix.length} shards`);
+  }
+});
+
+test('each shard job reports every leg, and each roll-up checks its records and its shard job\'s result (AC4)', () => {
+  for (const { shard, rollUp, suite, command } of SHARDED) {
+    const shardJob = jobSlice(workflow, shard);
+    assert.match(shardJob, /^ {6}fail-fast: false$/m, `${shard}: one failing leg still reports the others`);
+
+    // The record the runner writes is the file the upload names, under the runner's temp directory
+    // and never in the checkout, and the upload runs on a failed leg as well.
+    const runner = runCommands(shardJob).find((run) => run.startsWith(command));
+    const recordPath = / --record (.+)$/.exec(runner ?? '')?.[1];
+    assert.equal(recordPath, `\${{ runner.temp }}/ci-records/${suite}-shard-\${{ matrix.shard }}.json`, `${shard} writes its record under runner.temp`);
+    const upload = jobSteps(workflow, shard).find((step) => /uses:\s*actions\/upload-artifact@/.test(step.text));
+    assert.ok(upload, `${shard} uploads its record`);
+    assert.equal(upload.condition, '${{ !cancelled() }}', `${shard}: the upload runs unless the run was cancelled, so a failing leg's record still arrives`);
+    assert.match(upload.text, new RegExp(`\\n {10}name: ci-record-${suite}-\\$\\{\\{ matrix\\.shard \\}\\}\\n`), `${shard}: one artifact per leg`);
+    assert.ok(upload.text.includes(`\n          path: ${recordPath}\n`), `${shard}: the upload names the file the runner wrote`);
+    assert.match(upload.text, /\n {10}if-no-files-found: error(\n|$)/, `${shard}: a leg that wrote no record fails its upload`);
+    assert.match(upload.text, /\n {10}overwrite: true(\n|$)/, `${shard}: a re-run leg replaces its failed attempt's record rather than conflicting with it`);
+
+    const rollUpJob = jobSlice(workflow, rollUp);
+    assert.equal(/^ {4}needs:\s*(\S+)\s*$/m.exec(rollUpJob)?.[1], shard, `${rollUp} waits for ${shard}`);
+    assert.equal(/^ {4}if:\s*(.+?)\s*$/m.exec(rollUpJob)?.[1], '${{ !cancelled() }}', `${rollUp} runs after a failed leg too, and never with always()`);
+    const download = jobSteps(workflow, rollUp).find((step) => /uses:\s*actions\/download-artifact@/.test(step.text));
+    assert.ok(download, `${rollUp} downloads the legs' records`);
+    assert.match(download.text, new RegExp(`\\n {10}pattern: 'ci-record-${suite}-\\*'\\n`), `${rollUp} downloads this suite's records only`);
+    assert.match(download.text, /\n {10}merge-multiple: true\n/, `${rollUp} merges them into one directory`);
+    const downloadPath = /\n {10}path: (.+)/.exec(download.text)?.[1];
+    const check = runCommands(rollUpJob).find((run) => run.startsWith('node tools/ci-shards.mjs check'));
+    assert.equal(/ --records (.+?) --result /.exec(check ?? '')?.[1], downloadPath, `${rollUp} checks the directory it downloaded into`);
+    assert.ok(check.endsWith(` --result \${{ needs.${shard}.result }}`), `${rollUp} passes ${shard}'s own result, since a skipped roll-up reads as no failure`);
+  }
+});
+
+// Mutation (Rule 19): remove `if: ${{ matrix.shard == 1 }}` from the smoke step -> this goes red.
+test('the admin API drift check and smoke run once per CI run, in leg 1, around its share (AC6)', () => {
+  const steps = jobSteps(workflow, 'instance-shard');
+  const index = (prefix) => steps.findIndex((step) => step.run?.startsWith(prefix));
+  for (const prefix of ['node tools/admin-spec.mjs', 'sh scripts/smoke.sh']) {
+    const matching = steps.filter((step) => step.run?.startsWith(prefix));
+    assert.equal(matching.length, 1, `instance-shard runs ${prefix} in exactly one step`);
+    assert.equal(matching[0].condition, '${{ matrix.shard == 1 }}', `${prefix} runs in leg 1 only, so once per CI run`);
+  }
+  assert.ok(shardMatrix(workflow, 'instance-shard').includes(1), 'and leg 1 is in the matrix, so they run at all');
+  const runner = steps[index('node tools/ci-runner.mjs')];
+  assert.equal(runner.condition, null, 'every leg runs its share');
+  assert.ok(index('sh scripts/wait-readiness.sh') < index('node tools/admin-spec.mjs'), 'the drift check waits for readiness');
+  assert.ok(index('node tools/admin-spec.mjs') < index('node tools/ci-runner.mjs'), 'and runs before any class');
+  assert.ok(index('node tools/ci-runner.mjs') < index('sh scripts/smoke.sh'), 'and smoke runs after the share, as it ran after the suite');
+  for (const job of ['browser-shard', 'instance', 'browser']) {
+    const runs = runCommands(jobSlice(workflow, job));
+    assert.ok(!runs.some((run) => /tools\/admin-spec\.mjs|scripts\/smoke\.sh/.test(run)), `${job} runs neither, so neither runs twice`);
+  }
+});
+
+// Mutation (Rule 19): set a shard job's `timeout-minutes` to 25 -> this goes red naming it.
+test("each shard job's timeout is at least 1.5 times its largest leg's estimate plus setup (AC9)", () => {
+  const timings = readTimings();
+  for (const { shard, suite } of SHARDED) {
+    const items = suite === 'objectscript' ? testClassesOnDisk(REPO_ROOT) : browserSpecsOnDisk();
+    assert.ok(items.length > 0, `the checkout carries ${suite} items to estimate`);
+    const { shares } = assignShards(items, timings[suite], shardMatrix(workflow, shard).length);
+    const largest = Math.max(...shares.map((share) => share.seconds)) / 60;
+    const floor = 1.5 * (largest + SHARD_SETUP_MINUTES);
+    const timeout = Number(/^ {4}timeout-minutes:\s*(\d+)\s*$/m.exec(jobSlice(workflow, shard))?.[1]);
+    assert.ok(
+      timeout >= floor,
+      `${shard}'s timeout-minutes is ${timeout}; its largest leg is estimated at ${largest.toFixed(1)} min, so it needs at least ${floor.toFixed(1)}`
+    );
+  }
 });
