@@ -7852,3 +7852,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Measured on ocupilot-b-ci 2026-09-28 by Story 18.2's plan; the eight are listed under the spec's Design Notes > Vendor defect candidates; OcuPilot guards each on its own side (pairs refused before any call, no maxRows on DELETE)
 - 2026-09-28T10:34:45Z status=decision-pending owner=burndown by=runner note=human=report the eight to intersystems-community/sysadmin-api-specification as candidate defects, as DW-1527 was
+
+### DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan
+- source: spec-18-2-namespaces-and-their-mappings.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 18.2's plan left it unobserved (it needs a probe database); the orchestrator routed it at the 18.2 spec gate 2026-09-28
+- 2026-09-28T11:02:18Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=observe its payload on the throwaway; an async write needs a QUEUEDWRITES entry (AD-26)
+
+### DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file: iris.cpf sits in the manager directory's parent, so an overwriting file consumer under an allowed data-directory root could resolve it
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: On ocupilot-b-ci iris.cpf, _LastGood_.cpf and dated CPF copies are in /durable/iris/, the parent of ManagerDirectory(); PATH.MANAGER refuses only a file whose parent is the manager directory; PATH.EXISTS is skipped by pOverwrite 1 (inference, not executed); no consumer overwrites yet
+- 2026-09-28T11:02:18Z status=routed owner=18-7-encryption by=harvest note=18.7's key-file write is Epic 18's first file consumer; decide there whether kind=file also refuses the CPF's directory

@@ -2,7 +2,7 @@
 title: 'Story 18.2: Namespaces and their mappings'
 type: 'feature'
 created: '2026-09-28'
-status: 'ready-for-dev'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -15,20 +15,16 @@ deferred: []
 
 ## Intent
 
-**Problem:** OcuPilot cannot create, edit or delete a namespace or its mappings, which are catalog rows SA-03 and SA-11 to SA-15. The classic Namespaces, Mappings and Delete Namespace pages are the only way. The admin API carries every step (observed on `ocupilot-b-ci`), with two hazards:
+**Problem:** OcuPilot cannot create, edit or delete a namespace, which are catalog rows SA-03 and SA-11 to SA-15 (mappings and copy-mappings are Story 18.14's). The classic Namespaces and Delete Namespace pages are the only way. The admin API carries every step (observed on `ocupilot-b-ci`), with two hazards:
 
 - Its namespace delete also deletes every web application bound to the namespace.
-- Nothing stops a caller from repointing OcuPilot's own namespace or moving its `OcuPilot*` mapping.
+- Nothing stops a caller from deleting or repointing OcuPilot's own namespace.
 
-**Approach:** The story adds these screens to OS management:
+**Approach:** The story adds a Namespaces list to OS management with a create and edit form, and a Delete whose typed-name dialog lists the web applications deleted with the namespace and the databases that stay (AD-8's removal impact).
 
-- A Namespaces list with a create and edit form, and a Delete whose typed-name dialog lists the web applications deleted with the namespace and the databases that stay (AD-8's removal impact).
-- Per-namespace lists and forms for global, routine and package mappings.
-- A Copy mappings row action that runs through AdminPort's async path.
+Every write is one derived tool that both callers reach (AD-53, AD-55). The kernel refuses deleting or repointing OcuPilot's install namespace (AD-10).
 
-Every write is one derived tool that both callers reach (AD-53, AD-55). The kernel refuses deleting or repointing OcuPilot's install namespace and moving its mappings (AD-10).
-
-The work is planned in two parts. **Part A** (namespaces) covers AC1-AC3; **Part B** (mappings and copy) covers AC4-AC5. AC6 covers both. Design Notes recommends splitting Part B into a story of its own.
+**Scope, decided by the orchestrator at the spec gate (2026-09-28, Rule 5):** the planned Part B (global, routine and package mappings with the `%`-global guard, and async copy-mappings) moved to Story 18.14 with epic AC2 and AC3; SA-13's enable-interop is routed there as DW-1776. This story is the former Part A only.
 
 ## Boundaries & Constraints
 
@@ -36,26 +32,20 @@ The work is planned in two parts. **Part A** (namespaces) covers AC1-AC3; **Part
 
 - **Screens.** Every screen is in `os-management` with the pairs `%Admin_Manage:USE` and `%DB_IRISSYS:READ`, which the area already covers.
 - **Extra tool pairs.** Tools declare the measured extras and refuse by name before any port call:
-  - every namespace and mapping write: `%DB_IRISSYS:WRITE`;
+  - every namespace write: `%DB_IRISSYS:WRITE`;
   - `osmgmt.namespaces.delete`: also `%Admin_Secure:USE`;
-  - `osmgmt.namespaces.copymappings`: also `%Admin_Operate:USE`.
 - **Write kinds:**
   - A create is AD-54: it fingerprints the name's absence, because both PUTs are upserts.
   - An edit is AD-4: it sends the complete set read fresh.
   - A delete sends no body and is `DESTRUCTIVE`.
-  - Copy-mappings is AD-51: its body is built by the port, and it is queued under `QUEUEDWRITES`.
 - **Delete impact.** A namespace delete carries AD-8's impact, computed at mint and again when the dialog opens:
   - the web applications whose `Namespace` equals the target, ignoring case, read through `WebAppList`'s declared read;
   - the target's own globals, routines and temporary databases, which stay.
   - A part the caller cannot read is reported unchecked, naming the pair.
 - **Kernel refusals (AD-10), from either caller:**
   - `PROHIBITED.OCUPILOTNAMESPACE` refuses deleting, or changing the `Globals` or `Routines` database of, OcuPilot's install namespace or `%SYS`.
-  - `PROHIBITED.OCUPILOTMAPPING` refuses any mapping write whose name begins with `OcuPilot` (ignoring case), in the install namespace or in `%ALL`. It also refuses a copy into either namespace from a source that holds such a mapping.
   - The install namespace is the `NameSpace` of OcuPilot's own API application, read at the write.
-- **The `%`-global guard.** A global-mapping create or edit whose name begins with `%` is permitted at the strongest confirmation. It carries effect `MAPPING.SYSTEMGLOBAL`: the agent's proposal is destructive and states the consequence, and the form states it under Name. A delete or a list is unaffected.
-- **Identity:**
-  - `namespace`: scope `instance`, id `Name`, rule `foldcase`.
-  - `global-mapping`, `routine-mapping` and `package-mapping`: scope `instance`, composite id `[namespace, Name]`, and a new rule `foldcase-firstpart`, which folds the namespace part only.
+- **Identity:** `namespace`: scope `instance`, id `Name`, rule `foldcase`.
 - **Contended files are edited add-only.** EXPERIENCE.md is edited in place and stays at 993 lines. `screens.generated.ts` is regenerated, never hand-merged.
 
 **Never:**
@@ -66,10 +56,9 @@ The work is planned in two parts. **Part A** (namespaces) covers AC1-AC3; **Part
 - No inline database create (18.3).
 - No database delete in the namespace delete.
 - No `maxRows` on a namespace `DELETE`.
-- No `%Api.Admin.*` name outside `AdminPort` or a port extending it.
-- No direct `Config.Namespaces` or `Config.Map*` write.
-- No polling outside the port.
-- No progress figure: the poll exposes none, measured.
+- No `%Api.Admin.*` name outside `AdminPort`.
+- No direct `Config.Namespaces` write.
+- No mapping screen, mapping write or copy-mappings (Story 18.14).
 - No server-path field. A namespace names databases, so 18.1's `PathPort` is not consumed.
 - No spine edit. The runner writes the amendments.
 
@@ -85,17 +74,8 @@ The work is planned in two parts. **Part A** (namespaces) covers AC1-AC3; **Part
 | Delete with bound apps | A probe namespace with two bound apps | The dialog lists both as deleted with it and its databases as staying; afterwards the namespace, its mappings and both apps are gone, and the databases remain | none |
 | Own namespace | Delete, or a Globals/Routines change, on the install namespace or `%SYS` | Refused; the dialog advisory states the reason when it opens | `PROHIBITED.OCUPILOTNAMESPACE` |
 | Delete without `%Admin_Secure:USE` | A principal lacking the pair | 403 names the pair before any port call; the namespace still exists | `AUTH.NOPRIVILEGE` |
-| Write without `%DB_IRISSYS:WRITE` | Any namespace or mapping write | 403 names the pair; no vendor call | `AUTH.NOPRIVILEGE` |
-| Mapping round-trip | Each kind in a probe namespace | Create 201; an edit keeps omitted fields; delete leaves the row absent | none |
-| `%` global | `%OcuProbe182`, or `%OcuProbe182("a")` | Permitted; the card is destructive with the consequence; the form shows the line under Name | effect `MAPPING.SYSTEMGLOBAL` |
-| OcuPilot mapping | A name beginning `OcuPilot`/`ocupilot`, in the install namespace or `%ALL` | Refused for create, edit and delete | `PROHIBITED.OCUPILOTMAPPING` |
-| Base with subscripts | Delete `G` while `G("a"):("m")` exists | Refused on Name; no vendor call | `MAPPING.NAME.SUBSCRIPTS` |
-| Routine suffix | `X_mac` | Refused on Name; no vendor call. The vendor would create it and answer 500 | `MAPPING.NAME.SHAPE` |
-| Copy | Source `OCUPROBE182`, destination `OCUPROBE182B` | 202, then polled; the running line, then done; the destination is merged, with same-named mappings replaced and the rest kept | none |
-| Copy past the bound | Poll bound exceeded | Recorded applied and marked; "Still running on the instance. It finishes in the background." | none |
-| Copy source bad | Absent, or the same as the destination | Refused before any task is queued | `NAMESPACE.SOURCE.ABSENT` / `.SAME` |
-| Copy into own | Destination is the install namespace or `%ALL`, and the source holds an `OcuPilot*` mapping or a list cut at its cap | Refused (fails closed) | `PROHIBITED.OCUPILOTMAPPING` |
-| Integration | Each list and its read tool | The same rows (AD-36) | Same gate |
+| Write without `%DB_IRISSYS:WRITE` | Any namespace write | 403 names the pair; no vendor call | `AUTH.NOPRIVILEGE` |
+| Integration | The Namespaces list and its read tool; the delete's impact reading `WebAppList`'s read | The same rows (AD-36); the impact names the bound applications | Same gate |
 
 </intent-contract>
 
@@ -429,6 +409,8 @@ The work is planned in two parts. **Part A** (namespaces) covers AC1-AC3; **Part
 - **AC6:** Given the new screens, when the DW-1337 structural walk runs in both themes, then no violation outside the baseline appears. The production build stays below 3800 kB; if it passes `maximumWarning` (2106 kB), the warning is re-based under DW-1166 together with `angular-json.test.mjs`'s literal.
 
 ## Spec Change Log
+
+- 2026-09-28, spec gate (runner): the orchestrator split the story (Rule 5, by=merge_gate): Part B, the mappings and copy-mappings (epic AC2 and AC3), moved to Story 18.14 with SA-13's enable-interop (DW-1776). The intent block above was cut to Part A and the spec set to `draft` for a re-plan of Part A only. The Part B research (payloads, amendments, tasks) stays in this file's history at commit `f473ce9b` for 18.14's plan. Also approved at the gate: namespace delete joins the baseline disabled.
 
 ## Review Triage Log
 
