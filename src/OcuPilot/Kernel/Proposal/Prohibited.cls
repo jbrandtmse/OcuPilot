@@ -3250,7 +3250,7 @@ ClassMethod LdapFields() As %List
 
 /// <p>The web session predicates (Story 16.2): a session OcuPilot is itself running in is refused
 /// <parameter>OCUPILOTSESSION</parameter> (<method>IsOcuPilotSession</method>), then a preserve-mode
-/// session whose own process runs <parameter>PRESERVEDSESSION</parameter>
+/// session whose own process runs is refused <parameter>PRESERVEDSESSION</parameter>
 /// (<method>IsPreservedSession</method>), and every other session may be ended. <var>pTarget</var>
 /// is the fresh list row and <var>pOwnSession</var> the serving request's own session id,
 /// <code>""</code> when it runs in none.</p>

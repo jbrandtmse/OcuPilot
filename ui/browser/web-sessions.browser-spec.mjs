@@ -194,8 +194,8 @@ before(async () => {
 after(async () => {
   try {
     if (/-ci$/.test(config.container)) {
-      for (const id of seeded) endSession(id);
       try {
+        for (const id of seeded) endSession(id);
         const left = listed().filter((row) => seeded.includes(row.id));
         assert.deepEqual(left, [], 'every session this spec seeded is ended');
       } finally {

@@ -238,6 +238,35 @@ Rejected:
 - low: `PrivilegePairs`, `StateDiff` and the client path compare are copies. That follows the per-tool convention, with no named divergence.
 - low: the fresh read and the wait send no `maxRows` (the vendor default is 1000). The screen reads at most the cap + 1 ≤ 1001 in the same order, so it bites only with more than 1000 sessions and churn.
 
+### Review Findings (re-review)
+
+Rework re-review 2026-09-28 (`full-opus`; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; diff `87ebbadd..HEAD`; 28 rows, 7 entries, high 0). DW-1792 is fixed as option K: `Prohibited.IsPreservedSession` refuses both callers before any `DELETE` only while `$Data(^$JOB(SesProcessId))`, End stays drawn, and `WebSessionsLive` ends a real preserve-mode session once its process is terminated. Each entry: severity / fix-risk / footprint / disposition.
+
+- [x] [Review][Patch] The `Preserve` half of `IsPreservedSession` had no test that failed without it: every running-pid row carried `Preserve` 1 [src/OcuPilot/Test/WebSessions.cls:328] — med (Rule 19) / low / in-story / patched: a `Preserve` 0 row naming `$Job` is permitted; mutation red (run 18294), green on revert (18295).
+- [x] [Review][Patch] The browser `after` ran `endSession` outside the `try`, so a failed admin `LIST` skipped the page's removal [ui/browser/web-sessions.browser-spec.mjs:198] — low / low / in-story / patched: the loop moved inside; spec 3/3.
+- [x] [Review][Patch] The test page's teardown removal had no `mutation:` line [src/OcuPilot/Test/WebSessionsLive.cls:117] — low / low / in-story / closed in-pass under `## Verification` (run 18296; green 18297).
+- [x] [Review][Patch] AD-10's preserve-mode clause named no code, unlike its sibling arms [ARCHITECTURE-SPINE.md:217] — low / low / in-story / patched: "refused `PROHIBITED.PRESERVEDSESSION`"; `lint_spine` adds nothing.
+- [x] [Review][Patch] The `WebSession` doc lacked its verb ("whose own process runs `PRESERVEDSESSION`") [src/OcuPilot/Kernel/Proposal/Prohibited.cls:3253] — low / low / in-story / patched.
+- [x] [Review][Patch] `WebSessionEnd`'s class doc named only the own-session arm's field [src/OcuPilot/Screen/Tool/WebSessionEnd.cls:15] — low / low / in-story / patched: it names `Preserve` and `SesProcessId`, which the subject covers.
+- [x] [Review][Patch] `KERNEL_REFUSALS`' header and mutation comment still said three codes [ui/tools/self-protection.test.mjs:252] — low / low / in-story / patched; 17/17.
+
+Rejected:
+
+- `false`: epics.md AC2's "once the process is terminated, the session ends". Its When is "the user ends it", so the Then states that end's outcome, which the live terminate-then-end leg shows.
+- `false`: AD-10's "so the row's End stays drawn". A drawn refusal would block the end that succeeds after the terminate, which is the loop option K closed.
+- `false`: the memlog keeps the (a) entry. The memlog is append-only through `memlog.py append`, and option K is its next entry. The Change Log scope is a spec edit.
+- `false`: fails open on a `Preserve` 1 row naming no pid. The doc makes no claim about such a row, and the ruling refuses only while a named process runs. `WebSessions`' "is not named" leg pins the permit.
+- `false`: "the refusal answers the click". That is the orchestrator's wording, and the refusal answers the typed-name dialog's confirming click (row 357: "after a click").
+- `false`: teardown's `DELETE` straight after `Terminate` waits out 240 s. A lock wait returns when the holder releases, and a terminated process releases its locks on exit (inference).
+- `false`: `$ZHorolog` wraps at midnight. It counts seconds since the instance started.
+- `false`: `WebSessionsLive` needs `OCUPILOT_ALLOW_PROCESS_CONTROL`. That variable guards suspending a real process. Classes that end a process they started (`TurnChain`, `ToolWire`, `InjectionSeed`) declare none.
+- low: teardown may terminate a reused pid. It needs the preserve test to fail after its own terminate and the pid to be reused within seconds on a throwaway, and a guard cannot tell a reuse.
+- low: the browser spec hard-codes `/csp/hscustom/`. Every test in the file pins HSCUSTOM (`LIST_URL`) on an IRIS for Health throwaway, and reading `Path()` adds a round trip.
+- low, theoretical: a zero-padded `SesProcessId` reads as ended. The vendor answers the process's `$Job`.
+- low: `Listed()` reads 0 on a failed `LIST`. The leg discriminates by its `200 deleted` assertion.
+- DW-1792's ledger status is the lead's `ledger_adjudicated` gate (Rule 17).
+- spec-bound: the spec's narration, the ticked superseded item and triage line :300. The fix edits this spec.
+
 ## Spec Change Log
 
 - 2026-09-28, rework iteration 1 re-dispatch (lead): the implement pass halted because refusing every `Preserve` 1 row loops (a terminated process leaves the row listed until its timeout). The orchestrator took option K at the merge gate: refuse only while the session's own process runs, End stays drawn, and the test page is gated or made at test time. epics.md AC2 and AD-10 re-amended at origin. The saved attempt is applied and the three items above are the rest of this iteration.
@@ -385,6 +414,8 @@ No AD-27 case is needed. The `AdminPort` wait is `DELETE` verification on AD-26'
 - DW-1792 (the refusal): mutation: drop the `WebSession` branch's `IsPreservedSession` refusal → `WebSessions.TestAPreserveModeSessionIsRefusedWhileItsProcessRuns` running-process set, route and confirm legs red (run 18280).
 - DW-1792 (End stays drawn): mutation: answer the preserve-mode sentence for a `Preserve` 1 row in `selfProtectionReason`'s `ocupilot-session` branch → `self-protection.test.mjs` "Story 16.2 (DW-1792)", `screen-action-handler.spec.ts` and `list-page.spec.ts` "offers End session on a preserve-mode session" red, and, rebuilt and redeployed, `web-sessions.browser-spec.mjs` DW-1792 red (the entry drawn `aria-disabled`).
 - DW-1792 (an unanswered question is not a permit): mutation: throw from `Prohibited.IsRunningProcess` for an empty pid → `WebSessions.TestAPreserveModeSessionIsRefusedWhileItsProcessRuns` red on its status assertion (run 18289).
+- DW-1792 (preserve-mode only): mutation: delete `Prohibited.IsPreservedSession`'s `Preserve` test, recompiled with `Test/ProhibitedFixture.cls` and `Test/RosterFaultSet.cls` → `WebSessions.TestAPreserveModeSessionIsRefusedWhileItsProcessRuns` `Preserve` 0 leg red (run 18294).
+- Test page removed at teardown: mutation: drop `$System.OBJ.Delete` from `Test/PreservedSession.Remove` → `WebSessionsLive.OnAfterOneTest` "the preserve-mode page is removed" red in all 7 tests (run 18296).
 
 **Test page (DW-1792): created at test time, not gated.** `Test/PreservedSession.cls` is a helper, not a page: `Create()` defines and compiles `OcuPilot.Test.PreservedSessionPage` in the current namespace and `Remove()` deletes it, so no install carries the page. `WebSessionsLive` creates it in its preserve test and removes it in `OnAfterOneTest`; the browser spec creates it in its DW-1792 test and removes it in `after`. No new arming variable, so `ocupilot-ci` ran both legs live and CI's throwaway runs the same code.
 

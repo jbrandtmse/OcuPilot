@@ -288,7 +288,8 @@ Method TestBothCallersAreRefusedForOcuPilotsOwnSession()
 /// <p>AD-10 as amended 2026-09-28, AD-53: a preserve-mode session whose own process runs is refused
 /// <code>PROHIBITED.PRESERVEDSESSION</code> on both callers with nothing sent -- after the
 /// own-session arm, whose code a preserve-mode session under OcuPilot's own application still
-/// earns. One whose process has ended, or that names none, may be ended, and so may a session under
+/// earns. One whose process has ended, or that names none, may be ended, and so may one with
+/// <code>Preserve</code> 0 that names a running process, and a session under
 /// <code>/csp/sys/</code> with <code>Preserve</code> 0, the vendor's <code>AllowEndSession</code>
 /// false notwithstanding. The reason is the published sentence, and the Guardrails page lists the
 /// code with it. The running process is this test's own job; the ended one is a pid no process runs
@@ -296,7 +297,8 @@ Method TestBothCallersAreRefusedForOcuPilotsOwnSession()
 /// <p>Mutation (Rule 19): drop the <code>WebSession</code> branch's
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.IsPreservedSession</method> refusal -- the refused set,
 /// route and confirm legs go red; answer 1 in place of its running-process test -- the ended-process
-/// set and route legs go red.</p>
+/// set and route legs go red; delete its <code>Preserve</code> test -- the <code>Preserve</code> 0
+/// leg goes red.</p>
 Method TestAPreserveModeSessionIsRefusedWhileItsProcessRuns()
 {
     Set tCode = $Parameter(..#SET, "PRESERVEDSESSION")
@@ -318,6 +320,12 @@ Method TestAPreserveModeSessionIsRefusedWhileItsProcessRuns()
         Do $$$AssertStatusOK(tSC, "the set answers for a process that " _ $Select(tPid = "": "is not named", 1: "has ended"))
         Do $$$AssertEquals(tProhibits _ " " _ tAnswered, "0 ", "a preserve-mode session whose process " _ $Select(tPid = "": "is not named", 1: "has ended") _ " may be ended")
     }
+    Set tRow = ..Row(..#SESSION, "/api/atelier/")
+    Do tRow.%Set("SesProcessId", $Job, "string")
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(tRow))
+    Set tSC = ..Ask(..#SESSION, .tProhibits, .tAnswered)
+    Do $$$AssertStatusOK(tSC, "the set answers for a session that is not in preserve mode")
+    Do $$$AssertEquals(tProhibits _ " " _ tAnswered, "0 ", "a session whose Preserve reads 0 may be ended though it names a running process")
 
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(..Preserved(..#SESSION, "/api/atelier/", $Job)))
     Set tSC = $ClassMethod(..#ACTION, "Act", "webapp.sessions", {"action": "end", "id": (..#SESSION)}, .tAnswer, .tStatus)

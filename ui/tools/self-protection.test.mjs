@@ -249,7 +249,7 @@ test('AD-53, DW-1513, DW-1528: each delete refusal is one sentence on both surfa
   }
 });
 
-/** The three kernel refusals Story 9.3 publishes (DW-1598), each a `Prohibited.cls` parameter and a `strings.ts` key. */
+/** The kernel refusals published in Fixed strings (DW-1598, from Story 9.3), each a `Prohibited.cls` parameter and a `strings.ts` key. */
 const KERNEL_REFUSALS = [
   ['UNCOVEREDFIELD', 'uncoveredFieldRefusal'],
   ['OCUPILOTROLE', 'roleRefusalOcuPilot'],
@@ -269,7 +269,7 @@ const KERNEL_REFUSALS = [
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
-  // Mutation (Rule 19): answer a literal for any of the three codes in `Prohibited.ReasonFor`, or
+  // Mutation (Rule 19): answer a literal for any of these codes in `Prohibited.ReasonFor`, or
   // change one word of its parameter -> that code's legs go red.
   const prohibited = readFileSync(PROHIBITED, 'utf8');
   const experience = readFileSync(EXPERIENCE, 'utf8');

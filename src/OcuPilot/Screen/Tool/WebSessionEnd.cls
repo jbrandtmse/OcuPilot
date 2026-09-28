@@ -12,7 +12,10 @@
 /// application, in this preserve mode, served by this process. <code>Timeout</code> is left out
 /// because every request the session serves moves it. <code>Application</code> is the
 /// precondition, the field the kernel's own-session arm reads
-/// (<method>OcuPilot.Kernel.Proposal.Prohibited.IsOcuPilotSession</method>).</p>
+/// (<method>OcuPilot.Kernel.Proposal.Prohibited.IsOcuPilotSession</method>); the preserve-mode arm
+/// reads <code>Preserve</code> and <code>SesProcessId</code>
+/// (<method>OcuPilot.Kernel.Proposal.Prohibited.IsPreservedSession</method>), which the subject
+/// also covers.</p>
 /// <p><b>The write declares <code>%DB_IRISSYS:WRITE</code> beyond the list's pairs</b> (AD-8): the
 /// vendor ends a session through <code>$$DeleteSession^%SYS.cspServer</code>, which refuses a caller
 /// without it, so a caller without it is refused by name before any port call.</p>

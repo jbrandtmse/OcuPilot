@@ -7926,6 +7926,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T18:07:16Z status=decision-pending owner=burndown by=cr note=product call asked at cr: refuse Preserve=1 by name (amends Never + AD-10) or publish it as a named gap
 - 2026-09-28T18:11:00Z status=routed owner=16-2-web-sessions-listed-and-ended by=merge_gate note=decided (a), orchestrator: refuse ending a Preserve=1 session by name on both callers before the DELETE; sentence says why and points to Process details
 - 2026-09-28T19:04:41Z status=routed owner=16-2-web-sessions-listed-and-ended by=merge_gate note=refined K: refuse only while the session's own process runs; End stays drawn; test page gated by arming or made at test time
+- 2026-09-28T20:09:28Z status=resolved-by:16-2-web-sessions-listed-and-ended by=adjudication note=b02da8af: refused only while its process runs; terminate-then-end live test (runs 18279,18291,18297); CI 36474469983 green
 
 ### DW-1793: AD-26 names only the synchronous and async port paths, and says nothing of AdminPort's bounded post-2xx waits (AWAITEDDELETES, like VERIFIEDDELETES)
 - source: spec-16-2-web-sessions-listed-and-ended.md | severity: low | fix-risk: low | footprint: out-of-footprint
