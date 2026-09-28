@@ -11,13 +11,19 @@
  * **It sends through the injected `fetch`, never through `ApiService`**: same origin, the tab's
  * access token as the one credential, no cookie and no redirect followed (AD-57 (1)). The request is
  * checked against `refuseRequest` once more at the moment it is sent, whatever the page decided.
+ *
+ * **Copy as curl writes through the injected `copyText` and sends nothing** (Story 16.24, AD-57 (5)):
+ * the command is `curlCommand`'s, so a request `refuseRequest` refuses is never copied, and the
+ * outcome lasts until the form changes or the page reads another document.
  */
 
 import {
+  curlCommand,
   isSafeVerb,
   maskedRecord,
   refuseRequest,
   renderBody,
+  sentHeaders,
   type ComposedRequest,
   type RenderedBody,
   type RequestRecord,
@@ -46,6 +52,14 @@ export interface TryItStoreOptions {
   readonly fetch: TryItFetch;
   /** The tab's current access token, or `''` when it holds none. */
   readonly accessToken: () => string;
+  /** Put `text` on the clipboard, answering whether it was; never rejects (`shell/copy-control.ts`). */
+  readonly copyText: (text: string) => Promise<boolean>;
+}
+
+/** The last Copy as curl of a console: the command, and whether the clipboard took it. */
+export interface CopyOutcome {
+  readonly copied: boolean;
+  readonly command: string;
 }
 
 /** An answer, as the console shows it. */
@@ -71,12 +85,17 @@ interface ConsoleState {
   answer: TryItAnswer | null;
   failed: boolean;
   generation: number;
+  copy: CopyOutcome | null;
+  /** Bumped by each copy and each form edit, so a copy the form has since moved past never lands. */
+  copies: number;
 }
 
 export class TryItStore {
   private readonly http: TryItFetch;
 
   private readonly accessToken: () => string;
+
+  private readonly clipboard: (text: string) => Promise<boolean>;
 
   private readonly consoles = new Map<string, ConsoleState>();
 
@@ -87,6 +106,7 @@ export class TryItStore {
   constructor(options: TryItStoreOptions) {
     this.http = options.fetch;
     this.accessToken = options.accessToken;
+    this.clipboard = options.copyText;
   }
 
   subscribe(listener: () => void): () => void {
@@ -119,6 +139,7 @@ export class TryItStore {
   setValue(key: string, index: number, value: string): void {
     const state = this.state(key);
     state.parameters[index] = value;
+    this.forgetCopy(state);
     this.notify();
   }
 
@@ -127,7 +148,9 @@ export class TryItStore {
   }
 
   setBody(key: string, value: string): void {
-    this.state(key).body = value;
+    const state = this.state(key);
+    state.body = value;
+    this.forgetCopy(state);
     this.notify();
   }
 
@@ -148,6 +171,11 @@ export class TryItStore {
   /** Whether the last request did not complete: the browser answered no response at all. */
   failed(key: string): boolean {
     return this.consoles.get(key)?.failed ?? false;
+  }
+
+  /** The last Copy as curl's outcome, or `null` when none stands for the form as it is. */
+  copyOutcome(key: string): CopyOutcome | null {
+    return this.consoles.get(key)?.copy ?? null;
   }
 
   /** The write waiting on its confirmation, or `null`. */
@@ -185,6 +213,29 @@ export class TryItStore {
     this.notify();
   }
 
+  /**
+   * Put `request` on the clipboard as `curlCommand` writes it, and record the outcome for console
+   * `key`. Nothing is sent, and a request in flight does not block it; a refused request is not
+   * copied. The status empties first, so a second copy is announced again.
+   */
+  async copyCurl(key: string, request: ComposedRequest): Promise<void> {
+    const built = curlCommand(request);
+    if (built.kind !== 'ok') return;
+    const state = this.state(key);
+    this.forgetCopy(state);
+    const copies = state.copies;
+    this.notify();
+    let copied = false;
+    try {
+      copied = await this.clipboard(built.command);
+    } catch {
+      copied = false;
+    }
+    if (this.consoles.get(key) !== state || state.copies !== copies) return;
+    state.copy = { copied, command: built.command };
+    this.notify();
+  }
+
   /** Forget every console and any waiting write, and drop every answer still in flight. */
   reset(): void {
     for (const state of this.consoles.values()) state.generation += 1;
@@ -210,9 +261,7 @@ export class TryItStore {
 
     // The tab's token is the one `Authorization` sent; a declared header of that name is not.
     const headers: Record<string, string> = {};
-    for (const [name, value] of request.headers) {
-      if (name.toLowerCase() !== 'authorization') headers[name] = value;
-    }
+    for (const [name, value] of sentHeaders(request)) headers[name] = value;
     const token = this.accessToken();
     if (token !== '') headers['Authorization'] = `Bearer ${token}`;
     const init: TryItFetchInit = {
@@ -247,10 +296,16 @@ export class TryItStore {
   private state(key: string): ConsoleState {
     let state = this.consoles.get(key);
     if (state === undefined) {
-      state = { open: false, parameters: [], body: '', sending: false, record: null, answer: null, failed: false, generation: 0 };
+      state = { open: false, parameters: [], body: '', sending: false, record: null, answer: null, failed: false, generation: 0, copy: null, copies: 0 };
       this.consoles.set(key, state);
     }
     return state;
+  }
+
+  /** Drop the copy outcome, and any copy still waiting on the clipboard. */
+  private forgetCopy(state: ConsoleState): void {
+    state.copy = null;
+    state.copies += 1;
   }
 
   private notify(): void {

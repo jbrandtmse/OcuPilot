@@ -3283,6 +3283,15 @@ export const STRINGS = {
   logHubPrompt2: 'What happened just before the most recent error, across every log?',
   /** EXPERIENCE.md:585 */
   logHubPrompt3: 'Which log should I open first to investigate, and why?',
+
+  // Story 16.24: the try-it console's Copy as curl. "Copied" is `copyAnnouncementCopied`, the
+  // clipboard sentence `copyAnnouncementUnavailable`, and the refusals the four `tryIt*` above.
+  /** EXPERIENCE.md:574 */
+  tryItCopyCurl: 'Copy as curl',
+  /** EXPERIENCE.md:574 */
+  tryItCurlAccessToken: '<AccessToken>',
+  /** EXPERIENCE.md:574 */
+  tryItCurlNote: 'The command leaves out your access token and every secret value: each reads as a name in angle brackets for you to replace.',
 } as const;
 
 /**

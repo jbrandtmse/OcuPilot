@@ -379,4 +379,158 @@ describe('OpenApiViewerPage try-it console', () => {
     const heading = fixture.nativeElement.querySelector('[role="dialog"] .ocu-dialog-title') as HTMLElement;
     expect(textOf(heading)).toBe(`Send DELETE ${document.location.origin}/api/probe/x$&y?`);
   });
+
+  /**
+   * Copy as curl (Story 16.24, AD-57 (5)): the exact command written to the clipboard with nothing
+   * sent, every secret as its name in angle brackets with the note describing the control, each
+   * refusal shared with Send and described by the same sentence, and the command shown on the code
+   * surface when the clipboard takes neither route. The live clipboard and the command run by real
+   * curl are the browser spec's.
+   *
+   * Mutations (Rule 19): write the tab's token into the copied Authorization -> the secrets case
+   * goes red; draw Copy without `aria-disabled` -> the refusals case goes red; leave `copyFallback`
+   * empty -> the clipboard-failure case goes red.
+   */
+  describe('Copy as curl', () => {
+    const restores: Array<() => void> = [];
+
+    function stub(target: object, key: string, value: unknown): void {
+      const prior = Object.getOwnPropertyDescriptor(target, key);
+      Object.defineProperty(target, key, { configurable: true, writable: true, value });
+      restores.push(() => {
+        if (prior === undefined) {
+          delete (target as Record<string, unknown>)[key];
+        } else {
+          Object.defineProperty(target, key, prior);
+        }
+      });
+    }
+
+    /** A secure context whose clipboard records what it was given. */
+    function secureClipboard(): string[] {
+      const written: string[] = [];
+      stub(window, 'isSecureContext', true);
+      stub(navigator, 'clipboard', { writeText: (text: string) => (written.push(text), Promise.resolve()) });
+      return written;
+    }
+
+    afterEach(() => {
+      while (restores.length > 0) restores.pop()?.();
+    });
+
+    const BEARER = `Authorization: Bearer ${STRINGS.tryItCurlAccessToken}`;
+
+    it('writes the one exact command, announces "Copied" and sends nothing', async () => {
+      const calls = stubFetch({ status: 200, type: 'application/json', body: '{}' });
+      const written = secureClipboard();
+      const fixture = await opened('/api/admin', answer('/api/admin', [row(1, '/v2/web-apps', 'get')]));
+      const copy = one(fixture, 'copy')!;
+      expect(textOf(copy)).toBe(STRINGS.tryItCopyCurl);
+      expect(copy.getAttribute('aria-disabled')).toBe('false');
+      expect(textOf(one(fixture, 'copy-status'))).toBe('');
+      copy.click();
+      await settle(fixture);
+      expect(written).toEqual([`curl --request 'GET' '${document.location.origin}/api/admin/v2/web-apps' --header '${BEARER}'`]);
+      expect(one(fixture, 'copy-status')!.getAttribute('role')).toBe('status');
+      expect(textOf(one(fixture, 'copy-status'))).toBe(STRINGS.copyAnnouncementCopied);
+      expect(one(fixture, 'curl')).toBeNull();
+      expect(calls).toHaveLength(0);
+      expect(fixture.nativeElement.outerHTML).not.toContain(TOKEN);
+    });
+
+    it('every secret reads as its name in angle brackets, and the note describes the control', async () => {
+      stubFetch({ status: 200, type: 'application/json', body: '{}' });
+      const written = secureClipboard();
+      const fixture = await opened(
+        '/api/probe',
+        answer('/api/probe', [row(1, '/x/{token}', 'post', [{ name: 'token', in: 'path' }, { name: 'apiKey', in: 'query' }, { name: 'X-Token', in: 'header' }])])
+      );
+      const [token, apiKey, header] = all(fixture, 'field') as HTMLInputElement[];
+      type(fixture, token, 'secret-path-value');
+      type(fixture, apiKey, 'secret-query-value');
+      type(fixture, header, 'secret-header-value');
+      type(fixture, one(fixture, 'body') as HTMLTextAreaElement, '{"Password":"secret-body-value","User":"me"}');
+      const copy = one(fixture, 'copy')!;
+      const note = one(fixture, 'curl-note')!;
+      expect(textOf(note)).toBe(STRINGS.tryItCurlNote);
+      expect(copy.getAttribute('aria-describedby')).toBe(note.id);
+      copy.click();
+      await settle(fixture);
+      expect(written).toHaveLength(1);
+      const [line] = written;
+      expect(line).toContain(`'${document.location.origin}/api/probe/x/<token>?apiKey=<apiKey>'`);
+      expect(line).toContain(`--header 'X-Token: <X-Token>'`);
+      expect(line).toContain(`--header '${BEARER}'`);
+      expect(line).toContain('"Password": "<Password>"');
+      expect(line).toContain('"User": "me"');
+      for (const secret of ['secret-path-value', 'secret-query-value', 'secret-header-value', 'secret-body-value', TOKEN]) {
+        expect(line).not.toContain(secret);
+      }
+    });
+
+    it('a write copies without opening its confirmation, and sends nothing', async () => {
+      const calls = stubFetch({ status: 204, type: '', body: '' });
+      const written = secureClipboard();
+      const fixture = await opened('/api/probe', answer('/api/probe', [row(1, '/x', 'delete')]));
+      one(fixture, 'copy')!.click();
+      await settle(fixture);
+      expect(written).toEqual([`curl --request 'DELETE' '${document.location.origin}/api/probe/x' --header '${BEARER}'`]);
+      expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+      expect(calls).toHaveLength(0);
+    });
+
+    it('is refused whenever Send is, aria-disabled and described by the same sentence, and a press writes nothing', async () => {
+      const calls = stubFetch({ status: 200, type: 'text/plain', body: '' });
+      const written = secureClipboard();
+      const describedBy = (fixture: ComponentFixture<OpenApiViewerPage>): string => {
+        const copy = one(fixture, 'copy')!;
+        expect(copy.getAttribute('aria-disabled')).toBe('true');
+        expect(one(fixture, 'curl-note')).toBeNull();
+        copy.click();
+        const id = copy.getAttribute('aria-describedby') ?? '';
+        return textOf(fixture.nativeElement.querySelector(`[id="${id}"]`));
+      };
+
+      const admin = await opened('/api/admin', answer('/api/admin', [row(1, '/v2/web-app', 'delete')]));
+      expect(describedBy(admin)).toBe(STRINGS.tryItAdminWrite);
+      expect(textOf(one(admin, 'refusal'))).toBe(STRINGS.tryItAdminWrite);
+
+      TestBed.resetTestingModule();
+      const own = await opened('/API/OcuPilot', answer('/API/OcuPilot', [row(1, '/instance', 'get')]));
+      expect(describedBy(own)).toBe(STRINGS.tryItOwnApplication);
+
+      TestBed.resetTestingModule();
+      const traversal = await opened('/api/probe', answer('/api/probe', [row(1, '/x/{id}', 'get', [{ name: 'id', in: 'path' }])]));
+      type(traversal, one(traversal, 'field') as HTMLInputElement, '..');
+      expect(describedBy(traversal)).toBe(STRINGS.tryItTraversal);
+      expect(one(traversal, 'copy')!.getAttribute('aria-describedby')).toBe(one(traversal, 'traversal')!.id);
+
+      TestBed.resetTestingModule();
+      const offOrigin = await opened('/api/probe', answer('/' + '/evil.example', [row(1, '/x', 'get')]));
+      expect(describedBy(offOrigin)).toBe(STRINGS.tryItNoAddress);
+
+      await settle(offOrigin);
+      expect(written).toEqual([]);
+      expect(calls).toHaveLength(0);
+    });
+
+    it('when the clipboard takes neither route, the sentence shows with the command on the code surface, and an edit clears both', async () => {
+      stubFetch({ status: 200, type: 'text/plain', body: '' });
+      stub(window, 'isSecureContext', false);
+      stub(document, 'execCommand', () => false);
+      const fixture = await opened('/api/probe', answer('/api/probe', [row(1, '/x', 'get', [{ name: 'limit', in: 'query' }])]));
+      one(fixture, 'copy')!.click();
+      await settle(fixture);
+      expect(textOf(one(fixture, 'copy-status'))).toBe(STRINGS.copyAnnouncementUnavailable);
+      const shown = one(fixture, 'curl')!;
+      expect(shown.tagName).toBe('PRE');
+      expect(shown.classList.contains('ocu-try-it-code')).toBe(true);
+      expect(shown.getAttribute('tabindex')).toBe('0');
+      expect(shown.textContent).toBe(`curl --request 'GET' '${document.location.origin}/api/probe/x' --header '${BEARER}'`);
+
+      type(fixture, one(fixture, 'field') as HTMLInputElement, '5');
+      expect(one(fixture, 'curl')).toBeNull();
+      expect(textOf(one(fixture, 'copy-status'))).toBe('');
+    });
+  });
 });

@@ -7195,3 +7195,19 @@ app-log-hub-page {
 .ocu-log-viewer-entry-gone {
   margin: var(--ocu-space-2) var(--ocu-space-4) 0;
 }
+
+// --- The try-it console's Copy as curl (Story 16.24) --------------------------------------------
+//
+// Copy as curl follows Send, then its polite status and the note that describes it; the row wraps
+// so the note takes its own line on a narrow console rather than scrolling it sideways.
+
+.ocu-try-it-actions {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-try-it-copy[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
