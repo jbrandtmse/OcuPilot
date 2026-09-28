@@ -246,14 +246,17 @@ test('a DELETE in /api/admin\'s document offers no Send and shows the admin-writ
 
 test('Copy as curl on GET /v2/web-apps writes the exact command without the token, sends nothing, and the command answers the same JSON', async () => {
   // Mutations (Rule 19): write the tab's token into the copied Authorization -> the no-token
-  // assertion goes red; unbind `onCopyCurl` and redeploy -> the wait for "Copied" times out.
+  // assertion goes red; unbind `onCopyCurl` and redeploy -> the wait for "Copied" times out; fill
+  // `<AccessToken>` with anything but the Send's token -> the JSON comparison goes red.
   const { context, page, requests } = await atDocument('/api/admin');
   try {
     await context.overridePermissions(config.origin, CLIPBOARD_PERMISSIONS);
     const operation = await openConsole(page, '/v2/web-apps', 'Get');
     const answered = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/admin/v2/web-apps', { timeout: config.navigationTimeoutMs });
     await page.click(`${operation} [data-ocu-try-it="send"]`);
-    const wire = await (await answered).json();
+    const response = await answered;
+    assert.equal(response.status(), 200, 'the Send answered 200, so the JSON the command must match is the web-apps list');
+    const wire = await response.json();
     const sent = requests.filter((request) => request.path === '/api/admin/v2/web-apps');
     assert.equal(sent.length, 1);
     const bearer = /^Bearer (\S+)$/.exec(sent[0].headers.authorization ?? '');

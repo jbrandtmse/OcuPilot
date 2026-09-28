@@ -389,7 +389,8 @@ describe('OpenApiViewerPage try-it console', () => {
    *
    * Mutations (Rule 19): write the tab's token into the copied Authorization -> the secrets case
    * goes red; draw Copy without `aria-disabled` -> the refusals case goes red; leave `copyFallback`
-   * empty -> the clipboard-failure case goes red.
+   * empty, or keep the outcome across a field edit -> the clipboard-failure case goes red; refuse
+   * the copy while a request is in flight -> the in-flight case goes red.
    */
   describe('Copy as curl', () => {
     const restores: Array<() => void> = [];
@@ -477,6 +478,32 @@ describe('OpenApiViewerPage try-it console', () => {
       expect(written).toEqual([`curl --request 'DELETE' '${document.location.origin}/api/probe/x' --header '${BEARER}'`]);
       expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
       expect(calls).toHaveLength(0);
+    });
+
+    it('a request in flight does not block the copy: it stays offered, described by the note, and copies', async () => {
+      let release: () => void = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const fetch = vi.fn(async () => {
+        await held;
+        return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+      });
+      vi.stubGlobal('fetch', fetch);
+      const written = secureClipboard();
+      const fixture = await opened('/api/probe', answer('/api/probe', [row(1, '/x', 'get')]));
+      one(fixture, 'send')!.click();
+      await settle(fixture);
+      expect(one(fixture, 'send')!.getAttribute('aria-disabled')).toBe('true');
+      const copy = one(fixture, 'copy')!;
+      expect(copy.getAttribute('aria-disabled')).toBe('false');
+      expect(copy.getAttribute('aria-describedby')).toBe(one(fixture, 'curl-note')!.id);
+      copy.click();
+      await settle(fixture);
+      expect(written).toEqual([`curl --request 'GET' '${document.location.origin}/api/probe/x' --header '${BEARER}'`]);
+      release();
+      await settle(fixture);
+      expect(fetch).toHaveBeenCalledTimes(1);
     });
 
     it('is refused whenever Send is, aria-disabled and described by the same sentence, and a press writes nothing', async () => {

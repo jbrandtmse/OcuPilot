@@ -151,6 +151,33 @@ deferred: []
 - Given this change, when `npm run test:tools` runs, then the three keys resolve to literals on EXPERIENCE.md :574, the file has 993 lines, and no citation moved.
 - Integration (Rule 1): Given the deployed bundle, when `OpenApiViewerPage` handles a Copy as curl press, then it reaches `curlCommand` through `TryItStore.copyCurl`, and the clipboard text of the first AC is its observable effect in a real browser.
 
+### Review Findings
+
+Code review 2026-09-28, full mode, four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 22 findings; 5 patched, 1 ledgered decision-pending, 16 rejected.
+
+- [x] [Review][Defer] The note and AD-57 (5) promise every secret is left out; only names the credential pattern matches are masked (`api_key`, `X-API-Key`, `Cookie` and nested members copy verbatim) [strings.ts:3294] — deferred: DW-1769 `decision-pending` (medium; copy call: reword the note and AD-57 (5), or widen the pattern)
+- [x] [Review][Patch] AC1's round trip compared two answers that could both be the same 401: assert the Send answered 200 [browser/openapi-try-it.browser-spec.mjs:258] (medium)
+- [x] [Review][Patch] "A request in flight does not block the copy" was unpinned at the page: in-flight case added [openapi-try-it.page.spec.ts:483]
+- [x] [Review][Patch] AC5's "a form edit clears them" had no observed mutation: observed, line recorded under Verification
+- [x] [Review][Patch] A refused Copy or blocked Send kept the text button's hover and pressed state layer: canceled as on other `aria-disabled` controls [_components.scss:7215]
+- [x] [Review][Patch] `curlCommand`'s doc comment said "one line", but a masked JSON body is pretty-printed across lines inside its quotes [try-it.ts:459]
+
+Rejected:
+
+- `low` by-design: a JSON body with a secret member is re-serialized, so numbers beyond double precision, `1e400` and duplicate keys change. The Boundaries specify that re-serialization. AD-57 (5)'s "every other value is written as sent" does not name the exception.
+- `low` spec-bound: `--globoff` is written for percent-encoded brackets and braces, beyond the Format bullet. The flag is harmless there, and the matrix's Glob row needs it.
+- `low` spec-bound: `.ocu-try-it-actions` is split across two blocks, which `_components.scss`'s append-only footprint forces.
+- `low` spec-bound: nothing says how to encode a filled-in placeholder or where to get a token. The copy is fixed, and the token is never shown (AD-28).
+- `low` spec-named limits: a body over 128 KiB, and Fetch-forbidden headers written as typed.
+- `low`: duplicate declared header names copy both, while Send keeps the last. Only an operation declaring one name twice triggers it; `MgmntPort` merges by name and location.
+- `low`: an empty secret-named path value reads `<name>`. The record masks that position too, and the parity test holds the two equal.
+- `low`: an empty status span adds a second gap. Hiding an empty live region would stop its announcement.
+- `low`: the fallback `pre` has no heading. It follows the status sentence, the record and answer `pre`s carry no accessible name either, and the component case pins it.
+- `low`: a parameter named `AccessToken` shares the token's placeholder, and a spaces-only header is dropped by curl but sent empty by fetch.
+- `low`: one console keeps "Copied" after another console copies, as the code block's control does.
+- `low` theoretical: a base path holding a tab or line break around marker text, and a `//host:{secret}` document path, break `curlHref`.
+- `false`: the reused-keys comment in `strings.ts` spans two lines. It is one comment wrapped at the file's width.
+
 ## Spec Change Log
 
 - 2026-09-28T06:00Z, lead spec gate: the masking decision is accepted as planned (the copy masks everything the request record masks, AD-57 item 4; safer than AC2's minimum and consistent with AD-59's `<Name>` convention). AD-57's Binds and item 5 are written into the spine by the lead in this gate's commit; the implement stage does not write them. `ui/angular.json` (and `ui/tools/angular-json.test.mjs`, in footprint) may change only for a DW-1166 re-base; the lead reports `ui/angular.json` as a footprint extension if touched.
@@ -269,6 +296,9 @@ The other reading would copy body and query secrets verbatim. That reading is on
 - mutation (review): a secret-named header copied as typed -> the node secrets and parity cases and the page's AC2 case red.
 - mutation (review): non-secret path and query values beside a secret pushed unencoded into `curlUrl` -> "beside a secret, every other path and query value is encoded exactly as request.url encodes it" red.
 - mutation (review): `copyCurl` no longer empties the outcome and notifies before the clipboard answers -> "a second press empties the status before the clipboard answers" red.
+- mutation (code review): `setValue` no longer clears the copy outcome -> the page's clipboard-failure case red ("an edit clears both").
+- mutation (code review): `copyRefused` also true while a request is in flight -> the page's new in-flight case red, alone.
+- mutation (code review): browser AC1 fills `<AccessToken>` with a wrong value -> the round trip red (bundle rebuilt and redeployed first; 6/6 green before).
 - Initial total 2,006,491 B, over 2,004,000 B; `maximumWarning` re-based to 2107kB under DW-1166.
 
 ## Auto Run Result

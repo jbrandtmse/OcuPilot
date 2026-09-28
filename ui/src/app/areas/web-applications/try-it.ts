@@ -456,8 +456,9 @@ export function shellQuote(value: string): string {
 }
 
 /**
- * `request` as one line of POSIX curl that sends what the console sends (AD-57 (5)), or the
- * refusal `refuseRequest` gives it. Every argument but an option name is single-quoted. The tab's
+ * `request` as one POSIX curl command that sends what the console sends (AD-57 (5)), or the
+ * refusal `refuseRequest` gives it. Its arguments are joined by single spaces, and a body keeps any
+ * line break inside its quotes. Every argument but an option name is single-quoted. The tab's
  * token reads `Bearer <AccessToken>` and every value the record masks reads `<name>`; `--data-raw`
  * never reads a leading `@` as a file, `--head` is HEAD's own verb, and `--globoff` keeps curl from
  * expanding brackets or braces in the URL, written whenever the URL holds one as typed or encoded.

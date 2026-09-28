@@ -7211,3 +7211,12 @@ app-log-hub-page {
   color: var(--ocu-restrained);
   cursor: default;
 }
+
+// No state layer on a refused Copy or a blocked Send, as on every other `aria-disabled` control
+// (`.ocu-command-bar-action`, `.ocu-suggested-open`): a hover highlight would offer a dead press.
+.ocu-try-it-send[aria-disabled='true']:hover,
+.ocu-try-it-send[aria-disabled='true']:active,
+.ocu-try-it-copy[aria-disabled='true']:hover,
+.ocu-try-it-copy[aria-disabled='true']:active {
+  background: transparent;
+}
