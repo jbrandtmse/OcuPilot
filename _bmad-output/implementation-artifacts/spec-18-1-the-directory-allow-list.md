@@ -2,9 +2,9 @@
 title: 'Story 18.1: The directory allow-list'
 type: 'feature'
 created: '2026-09-27'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: 'b41037bc6932e90e5719c13f9bdee045b96af678'
+baseline_revision: '42b525899b46d1509fcb9412c28f32e286c6a538'
 baseline_commit: 'b41037bc6932e90e5719c13f9bdee045b96af678'
 followup_review_recommended: false
 context:
@@ -326,9 +326,10 @@ Code review 2026-09-28, four layers, `full-opus`. 51 rows, 15 entries: 10 patche
 
 ### Rework iteration 1 (CI red and integrate-forward)
 
-- [ ] [CI] browser shard 1/3, run 36393142503: `ui/browser/oauth.browser-spec.mjs:283` (AC1) pins the Security side bar as six entries and now reads a seventh, "Allowed directories" -- add it to the expected list.
-- [ ] [CI] browser shard 3/3, run 36393142503: `ui/browser/ssl.browser-spec.mjs:206` (AC4) pins the same side bar and its assertion message -- add "Allowed directories" to both. Then grep every other test for a pinned Security side-bar list or Security screen count and extend each one the new screen reaches.
-- [ ] [Merge] The runner merged feature `f03c1e32` in as `b219bc17` (Story 16.9's `timeline` read source beside this story's `path` source; `Read.Execute`'s port list now admits `SOURCEPATH`; the unknown-port refusal names six sources in `Registry.cls`, `screen-mirror.mjs` and `AdminPairCorpus.cls`; `ReadTool` 129). Re-derive every exact-count roster this story bumped against the merged code (`ReadTool`, `SurfaceCoverage`, `Descriptor`, `Wire`, `WireSecurityRead`, `WireOAuthRead`, `SecurityLists`, `navigation.test.mjs`, `screen-mirror.test.mjs`, `ci.test.mjs`) and fix any the merge left wrong. Verify on a throwaway loaded with the merged `src/` (Rule 22): the story's own classes and the rosters above, `LogHubWire`, the full ObjectScript sweep once, the story's browser spec plus `oauth.browser-spec.mjs` and `ssl.browser-spec.mjs`, the client tiers, and smoke.
+- [x] [CI] browser shard 1/3, run 36393142503: `ui/browser/oauth.browser-spec.mjs:283` (AC1) pins the Security side bar as six entries and now reads a seventh, "Allowed directories" -- add it to the expected list.
+- [x] [CI] browser shard 3/3, run 36393142503: `ui/browser/ssl.browser-spec.mjs:206` (AC4) pins the same side bar and its assertion message -- add "Allowed directories" to both. Then grep every other test for a pinned Security side-bar list or Security screen count and extend each one the new screen reaches.
+- [x] [Merge] The runner merged feature `f03c1e32` in as `b219bc17` (Story 16.9's `timeline` read source beside this story's `path` source; `Read.Execute`'s port list now admits `SOURCEPATH`; the unknown-port refusal names six sources in `Registry.cls`, `screen-mirror.mjs` and `AdminPairCorpus.cls`; `ReadTool` 129). Re-derive every exact-count roster this story bumped against the merged code (`ReadTool`, `SurfaceCoverage`, `Descriptor`, `Wire`, `WireSecurityRead`, `WireOAuthRead`, `SecurityLists`, `navigation.test.mjs`, `screen-mirror.test.mjs`, `ci.test.mjs`) and fix any the merge left wrong. Verify on a throwaway loaded with the merged `src/` (Rule 22): the story's own classes and the rosters above, `LogHubWire`, the full ObjectScript sweep once, the story's browser spec plus `oauth.browser-spec.mjs` and `ssl.browser-spec.mjs`, the client tiers, and smoke.
+- [x] [Merge] CI run 36397094123 on `b219bc17`: every `gates` leg fails `ui/tools/build-output.test.mjs` DW-371, the merged initial total 2,005,146 bytes against `maximumWarning` 2004kB. Re-base the warning per DW-1166 (about 5% above the merged total you measure) in `ui/angular.json` and `ui/tools/angular-json.test.mjs`'s pinned literal together. (`instance shard 1/3` failed bringing up its throwaway on a bound host port; no test ran.)
 
 ## Spec Change Log
 
@@ -358,6 +359,19 @@ Code review 2026-09-28, four layers, `full-opus`. 51 rows, 15 entries: 10 patche
   - `[false]` `[reject]` (intent-alignment) `strings.ts` keys are inserted beside `walletListEmpty`, not at the end — no existing key changed; they sit with the other `EXPERIENCE.md:364` citations, and nothing enforces position.
   - `[false]` `[reject]` (intent-alignment) Roster counts, messages and one corpus case changed — each is forced by the added entry and named by the spec (127 → 128, 31 → 32, "five sources"); nothing was removed or reordered.
   - `[false]` `[reject]` (intent-alignment) The "Resolves to" caption shows a path for a name the server would refuse — by design: the caption is display only and the Never list forbids a client copy of the segment rule; `PATH.NAME` arrives as `pathReason`.
+
+### 2026-09-28 — Review pass, rework 1
+
+- verdicts: 8 findings — high 0, medium 0, low 3, false 5, maybe-false 0
+- findings:
+  - `[low]` `[reject]` (verification-gap, other) AC4 still reads "under its 2004 kB warning" while the diff re-bases the warning to 2106kB — the fix edits this spec; the re-base follows DW-1166's owner policy, and the AC4 figure is reported to the runner as a Rule 5 apply-and-report amendment.
+  - `[low]` `[reject]` (verification-gap, other) `## Auto Run Result` is stale and records none of this pass's verification — the fix edits this spec; Finalize rewrites that section with this pass's record, including the merged-tree sweep that covers `instance shard 1/3`'s unrun leg.
+  - `[false]` `[reject]` (intent-alignment) The diff's tests exercise the side bar and the budget, not the port, read, picker and store the intent lives at — this pass changes no code on those surfaces, and their pinning tests ran on the merged tree: `PathPort` 12/12, `PathPortPrivilege` 2/2, `allowed-directories.browser-spec.mjs` 4/4, full sweep 0 failed.
+  - `[low]` `[reject]` (intent-alignment) No test reads the Allowed directories entry for a principal lacking `%Admin_FileSystemAccess:USE` — not caused by this pass; the "No privilege" row is pinned by `PathPort`'s gate leg, `PathPortPrivilege` and the picker spec, the own pair by `Descriptor.cls:1064`, and a lesser-principal browser leg adds a fixture for AD-8's generic gate.
+  - `[false]` `[reject]` (intent-alignment) The screen's side-bar placement is pinned only by sibling specs — it is pinned at `navigation.test.mjs:379` and in three browser specs; which file pins it has no named harm.
+  - `[false]` `[reject]` (intent-alignment) The `[Merge]` roster item is ticked with no evidence in the diff — re-derivation found no roster wrong, so no roster or mutation line changed; the sweep was re-read from `%UnitTest_Result` on `ocupilot-b-ci` (334 classes, 2,760 passed, 0 failed, none unlanded).
+  - `[false]` `[reject]` (intent-alignment) The side-bar mutations' "rebuilt and redeployed bundle" is unchecked — checked: the served `index.html` on `ocupilot-b-ci` loads `main-HO67DN2T.js`, md5-identical to the working tree's `dist/`.
+  - `[false]` `[reject]` (intent-alignment) Under a broad add-only reading the rewritten test titles, messages and `maximumWarning` break the constraint — the intent's add-only list names EXPERIENCE.md, `strings.ts` and the shared rosters; each rewritten message sits beside an appended entry, and DW-1166 re-bases the budget value in place with its pinned literal.
 
 ## Design Notes
 
@@ -512,47 +526,46 @@ Each consumer does the following:
 - mutation: `Resolve`'s kind check removed → `PathPort.TestABadNameIsRefused` "a kind other than the two is a caller fault", alone (code review)
 - mutation: `Roots` drops the 404 test on the root-path list read → `PathPort.TestAVendorFaultPassesThroughAndARemovedPurposeFallsBack`, the list-fault leg, alone (code review)
 - mutation: `Resolve` drops its `Contains` test → `PathPort.TestResolveRefusesANameThatLeavesItsRoot`, alone (code review)
+- mutation: `STRINGS.allowedDirectoriesLabel` dropped from `oauth.browser-spec.mjs`'s expected side bar → its AC1 test, on the rebuilt and redeployed bundle (rework 1)
+- mutation: the same entry dropped from `ssl.browser-spec.mjs`'s AC4 list → its AC4 test (rework 1)
+- mutation: the same entry dropped from `security.browser-spec.mjs`'s AC1 list → its AC1 test (rework 1)
+- mutation: `maximumWarning` put back at 2004kB → `build-output.test.mjs` DW-371 (2,005,146 bytes over 2,004,000) and `angular-json.test.mjs`'s pinned literal (rework 1)
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Summary.** Implements AD-21's sixth case: `Port/PathPort` computes the allowed roots on every call through `AdminPort` (the `%GUIFileSelector` roots when restricted, otherwise the manager directory), gates on its own two pairs, and resolves a root plus a relative name. A `path` read source feeds a read-only Security › Allowed directories screen, its `security.alloweddirectories.read` tool, and the framework-free `AllowedDirectoriesStore` behind the shared `app-server-path-picker`. The picker and `Resolve` have no consumer yet; 18.3 is the first.
+**Summary (rework iteration 1).** The four rework items closed. The Security side bar now has a seventh entry, "Allowed directories", and the three browser specs that pin it expect that entry. The bundle warning is re-based after the integrate-forward merge. The merged tree was verified on a throwaway loaded with `b219bc17`'s `src/` (Rule 22). No ObjectScript or client source changed in this pass.
 
 **Files changed.**
 
-- `src/OcuPilot/Port/PathPort.cls` (new): the port: roots, gate, `Rows`, `Resolve`, `NameAdmitted`, `Contains`.
-- `src/OcuPilot/Screen/Descriptor/AllowedDirectoryList.cls` (new): the screen's descriptor.
-- `src/OcuPilot/Screen/Read.cls`, `Screen/Registry.cls`: the `path` source, its dispatch branch and its registry rules.
-- `src/OcuPilot/Api/Error.cls`: `PATH.ROOT` and `PATH.NAME` with their reasons.
-- `src/OcuPilot/Kernel/EntityType.cls`: `allowed-directory`.
-- `src/OcuPilot/Test/PathPort.cls`, `PathPortFixture.cls`, `PathPortPrivilege.cls` (new): the port's matrix, its seam and scripted answers, and the pair set over the wire.
-- `src/OcuPilot/Test/` `AdminPairCorpus`, `Descriptor`, `PortGate`, `ReadTool`, `SecurityLists`, `SurfaceCoverage`, `Wire`, `WireOAuthRead`, `WireSecurityRead`: this story's roster entries and legs.
-- `scripts/ci-throwaway.sh`: arms `PathPort` and `PathPortPrivilege`.
-- `ui/src/app/core/allowed-directories.ts` (new): the store.
-- `ui/src/app/shell/server-path-picker.ts` and `.spec.ts` (new): the picker and its host spec.
-- `ui/src/app/core/strings.ts`, `screens.generated.ts` (regenerated), `ui/src/styles/_components.scss`: strings, mirror and one layout rule.
-- `ui/tools/screen-mirror.mjs`, `screen-mirror.test.mjs`, `navigation.test.mjs`, `allowed-directories.test.mjs` (new): the mirrored `path` rules and client tests.
-- `ui/browser/allowed-directories.browser-spec.mjs` (new): fresh, restricted, restricted-empty and the structural walk.
-- EXPERIENCE.md rows 168 and 364, in place; still 993 lines.
+- `ui/browser/oauth.browser-spec.mjs`, `ssl.browser-spec.mjs`, `security.browser-spec.mjs`: each expected Security side bar gains `STRINGS.allowedDirectoriesLabel`, and its message or title changes to match.
+  - `security.browser-spec.mjs` was not named in the rework items; it was red in both CI runs, and the grep the second `[CI]` item asks for found it.
+- `ui/angular.json`, `ui/tools/angular-json.test.mjs`: `maximumWarning` goes from 2004kB to 2106kB under DW-1166 (5% above the measured merged total of 2,005,146 bytes). The pinned literal changes with it.
+- This spec: the rework check-offs and four `mutation:` lines.
 
-**Review.** Two layers (verification-gap, intent-alignment); 17 findings, triaged in the Review Triage Log. Six entries patched (two medium, four low), all test-side: the cut-read leg, the scripted vendor-fault and race legs, `Resolve`'s gate leg, the parser's null leg, the AC4 mutation, and the corpus wording. Nothing deferred. Rejected: the spec-text row, which Finalize rewrites; the "No privilege" code, which the declared pairs make unreachable on the wire; and the tool-gate row, which holds by construction. Seven rows are `false`, each with its refutation in the log. The Matrix Test Audit added the browser leg for "Restricted, empty".
+**Review.** Two layers ran (verification-gap and intent-alignment) and filed 8 findings: 3 low, 5 false. Nothing was patched or deferred. Every finding was rejected; the Review Triage Log gives each one's reason.
 
-**Follow-up review: false.** Patched counts: high 0, medium 2, low 4. Both medium patches only add tests, and each new leg reddened under its named mutation and passed on the reverted code, so no unverified risk in the patched code can be named.
+**Follow-up review: false.** This is a follow-up pass and it patched no `high`. Patched counts: high 0, medium 0, low 0.
 
-**Verification.**
+**Verification.** The CI red is closed. Run 36397094123 on `b219bc17` failed only on these causes: the three side-bar specs, the DW-371 budget in every `gates` leg, and `instance shard 1/3`, whose throwaway could not bind its host port so no test ran.
 
-- On `ocupilot-b-ci`, every class the story touches ran one class per call. After the patches, `PathPort` (11/11), `PathPortPrivilege`, `PortGate` and `ReadTool` passed again.
-- The full sweep ran once before review. `%UnitTest_Result`, latest run per class, now reads 331 classes, 2,738 passed, 0 failed, with no unlanded run. The two source classes absent from it carry no unit tests.
-- The browser spec passed 4/4 on the rebuilt and redeployed bundle.
-- `npm run test:tools` passed 1,655 and `npm run test:components` 1,609.
-- The build is 1.98 MB, under the 2,004 kB warning.
-- Smoke passed 49/49 after the patches. `check-objectscript` and `lint-docs` are clean, and EXPERIENCE.md is 993 lines.
-- Each mutation is listed under Verification. Each was applied to the throwaway copy or restored from a saved copy, so the tree stayed byte-identical.
+All of the following ran on `ocupilot-b-ci` with the rebuilt bundle; the served `index.html` loads `main-HO67DN2T.js`, byte-identical to `dist/`:
+
+- **Browser specs:** `allowed-directories` 4/4, `oauth` 5/5, `ssl` 5/5 and `security` 4/4.
+- **Targeted classes:** `PathPort` 12, `PathPortPrivilege` 2, `SecurityLists` 7, `Descriptor` 57, `ReadTool` 27, `SurfaceCoverage` 4, `Wire` 20, `WireSecurityRead` 24, `WireOAuthRead` 6, `Envelope` 15, `PortGate` 4 and `LogHubWire` 3. All passed.
+- **Full ObjectScript sweep:** once, one class per call. `%UnitTest_Result`, latest run per class, reads 334 classes and 2,760 methods: 2,760 passed, 0 failed, and no run left unlanded.
+- **Client tiers:** `npm run test:tools` 1,657/1,657 and `npm run test:components` 1,628/1,628. `angular-json.test.mjs` and `build-output.test.mjs` pass 30/30 against the 2,005,146-byte build.
+- **Smoke:** 49/49.
+- **Docs:** `lint-docs` is clean, and EXPERIENCE.md is still 993 lines.
 
 **Residual risks.**
 
-- **Merge with Epic 16.** Epic 16 adds a `timeline` source in the same places. `Read.Execute`'s explicit port list must admit `SOURCEPATH`, and the "five sources" sentence becomes six in `Registry.cls`, `screen-mirror.mjs` and `AdminPairCorpus`.
-- **AD-8 wording.** AD-8 still says "the one case today is Logs" for a screen's own pair, and Allowed directories is now a second area with one. That is a spine edit for the runner (Rule 20).
-- **Picker on a transport failure.** The picker's refused line is empty then, because no string exists for that case. It is unreachable until 18.3 embeds the picker.
+- AC4 still names the 2004 kB warning, but the warning is now 2106kB. This is a Rule 5 apply-and-report restatement for the runner.
+- If Epic 16 re-bases the same `maximumWarning` line, the next merge conflicts there. Settle it by measuring the merged total again.
+- `instance shard 1/3` has not yet run on CI against the merged tree. The local sweep covers its classes.
+- The earlier residual risks are closed:
+  - the Epic 16 merge, in `b219bc17` and this pass;
+  - AD-8's wording, in `03b59d38`;
+  - the picker's transport-failure line, which is DW-1771.
