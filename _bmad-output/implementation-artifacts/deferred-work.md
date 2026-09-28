@@ -2917,6 +2917,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T12:21:50Z status=routed owner=burndown by=cr note=The failure mode is silent: the screens' never-render-the-server-reason guarantee stops being checked with every gate green.
 - 2026-09-16T12:29:23Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=re-owned off burndown at the Epic 3 close. The specs hardcode the STATE.CONFLICT reason text, and 5-3 owns what a conflict on a confirmed write means and says
 - 2026-09-19T18:55:05Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=lead note=re-owned off 5.3: the assertions are not.toContain over a hardcoded server sentence, which is a pin that cannot fail - 13.2's charter - and one of the two files, definition-form.page.spec.ts, is contended by Epic 10
+- 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-435: Two first writers to a singleton store can both create a row, and GuardedCurrent's TOP 1 then hides the second
 - source: bmad-code-review Story 3.9 (edge-case-hunter) | severity: med | fix-risk: med | footprint: in-epic
@@ -4336,6 +4337,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci: after the 134-class sweep, smoke and two AD-gate mutation cycles, the full browser suite read 178/185 with all seven losses in audit.browser-spec.mjs (AC1 10.7 s then six sub-second cascades). The same spec ran 7/7 green in isolation on that same container, and the full suite ran 185/185 on a container brought up fresh and given nothing but the bundle. So the cause is accumulated instance state - the sweep's own test classes write audit rows - not the spec and not the story's code. CI is unaffected because it brings up a fresh container per run
 - 2026-09-19T12:40:08Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=cr note=the general case behind DW-1190; 13.2 owns the CI suite. Until it is fixed the browser gate must run on a container the sweep has not touched, which is what this story did
 - 2026-09-19T14:20:56Z occurrence=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read
+- 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1205: fingerprintExcludes is validated against the write body template while the digest is taken over the fresh GET, so the side-effect fields AD-6 names cannot be declared at all
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: high | footprint: src/OcuPilot/Screen/Registry.cls, src/OcuPilot/Kernel/Proposal/Mint.cls
@@ -4462,11 +4464,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Entry.Seq is COUNT(*)+1, so it coincides with the ordinal join in every state the append path produces; the ordinal mutation was applied and stayed green. The implement pass corrected its own comment at the origin rather than leaving the claim. Location: src/OcuPilot/Api/Conversation.cls AttachProposals
 - 2026-09-19T18:03:23Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=a pin that cannot fail is 13.2's charter; reaching a divergent state needs a fixture that writes entries out of order
+- 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1234: The conversation read's unreadable-proposal-store contract is pinned only by a scan of the handler's source text
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: No executing assertion drives a store that refuses; the test reads the handler's own source for the degradation branch. Location: src/OcuPilot/Api/Conversation.cls, src/OcuPilot/Test/Convo.cls
 - 2026-09-19T18:03:23Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=a source-text scan standing in for an executing assertion is 13.2's charter
+- 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1235: A new index on the Proposal table is not built for rows stored before it, and nothing in the install path builds it
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4579,31 +4583,37 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Test.ConfirmRoute drives the refusals and the browser spec drives the success, so the happy path has no class-level assertion. Location: src/OcuPilot/Test/ConfirmRoute.cls
 - 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns the CI suite's coverage; the browser leg alone makes the happy path depend on a bundle
+- 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1254: AC6's no-window-in-which-both-are-live-and-one-is-burned is pinned by a source-text ordering scan, not an executed observation
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The assertion reads the method's source for statement order rather than observing two callers. Location: src/OcuPilot/Test/ConfirmRoute.cls
 - 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=a source-text scan standing in for an executing assertion is 13.2's charter
+- 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1255: The turn-start proactive close has no test that drives its handler
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ProposalClose drives Api.Conversation.HandleCreate's close only through the store, never through the handler. Location: src/OcuPilot/Test/ProposalClose.cls
 - 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=handler-level coverage is 13.2's charter
+- 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1256: DW-412's rollback restore ships unpinned
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: No test in the tree makes pObject.%Save() itself fail, so the new restore on the TROLLBACK path is never executed. Location: src/OcuPilot/Kernel/State/Base.cls
 - 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=reaching it needs a save-failure fixture, which is 13.2's charter
+- 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1257: Nine of the thirteen matrix rows never reach a rendered HTTP envelope in the class suite
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Test/ConfirmRoute.cls drives the store directly for nine rows and the envelope for four. Location: src/OcuPilot/Test/ConfirmRoute.cls
 - 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns the CI suite's envelope coverage
+- 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1258: The port's mutating path has no class-level test
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: MUTATINGTYPES, HttpMethodFor and EndpointType's widening are exercised only through the confirm route. Location: src/OcuPilot/Port/AdminPort.cls
 - 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns class-level port coverage; the mutating path is new in this story
+- 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1259: A mutating endpoint that queues its own work would be reported by AwaitTask, which consults no pair table
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4918,16 +4928,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The new OR evaluation ships unexercised, and the port-gate tests inject a stub gate rather than the shipped one. Location: src/OcuPilot/Screen/Gate.cls and the 5.4 port tests
 - 2026-09-20T05:33:29Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns the CI suite; a gate asserted only through a substituted class is the vacuous-pin shape
 - 2026-09-20T06:02:47Z by=code-review note=correction at origin: EvaluateAnyOf's OR semantics ARE pinned - refused-tool.browser-spec.mjs runs a real turn as a principal holding one member of INVOKEPAIRS and asserts two provider calls, which AND semantics would refuse. What stands is only the substituted gate class in the class-level port assertions
+- 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1307: TurnSecretResidue sweeps no log line although its class header and AC5 both name one
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The class asserts residue in the ledger and the transcript and not in the log, which is the surface AD-35 is most concerned with. Location: src/OcuPilot/Test/TurnSecretResidue.cls
 - 2026-09-20T05:33:29Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage; a header promising a sweep the code does not perform is the claim this project corrects at origin
+- 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1308: The matrix's exactly-one-refused-ledger-row-per-refused-call is asserted nowhere
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: DenialParity asserts the sentence and not the row count. Location: src/OcuPilot/Test/DenialParity.cls
 - 2026-09-20T05:33:29Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage
+- 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1309: The provider port's new gate evaluates the calling process where the matrix row describes the turn owner's live grants
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: med | footprint: in-epic
@@ -4940,6 +4953,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Location: the 5.4 identity tests
 - 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage; an assertion on a path where the thing could not be present is the vacuous shape
 - 2026-09-20T06:02:47Z by=code-review note=half closed: the identity-role absence assertion was deleted from Test/AsTheUser.cls because it could not fail on that path, and what the identity role reaches is now pinned where it can fail (Test/IdentityInstall.cls). The AC1 tool-identity falsifier half stands with this owner
+- 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1311: The per-request identity read is unmeasured
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4962,11 +4976,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: context-chip and the other turn-driving specs call requireFreeSlot first; this one does not, so it can collide with AD-41's one-turn bound. Location: ui/browser/refused-tool.browser-spec.mjs
 - 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns suite hygiene; an unguarded turn is a flake source of exactly the class this epic has already paid for twice
+- 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1315: The IsEnabled-before-HoldsAdminResource ordering in OnPreDispatch is unexercised
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Location: src/OcuPilot/Test/Disabled.cls
 - 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage
+- 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1316: The doc claim that a second application gives the escalation to one method overstates the containment
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4978,6 +4994,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: ToolSetFull asserts the advertised set at the dispatcher, one layer before the request the AC describes. Location: src/OcuPilot/Test/ToolSetFull.cls
 - 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage
+- 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1319: The spine's decisions table still records the Epic 4 decision as refuse /refresh for a disabled user, which Story 5.4 disproved
 - source: cr | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -5014,6 +5031,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cr | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The class header names 'the four token paths' and drives one of them. Whether the vendor refuses a disabled account's /login is IRIS behaviour rather than OcuPilot's, which is why it is coverage and not a hole. Location: src/OcuPilot/Test/Disabled.cls
 - 2026-09-20T06:03:15Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=code-review note=13.2 owns coverage; the refusal at use already covers every route a minted pair can be presented to
+- 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1325: NewTurnKey is duplicated verbatim in two new test classes, review narration included
 - source: cr | severity: low | fix-risk: low | footprint: in-epic
@@ -6045,6 +6063,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-11-tasks-resume-a-task-suspended-after-an-error.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: DW-1453's fix made SurfaceCoverage.DeriveScreens roster every declared descriptor built or not, so spec-13-2's recorded recipe (flipped LockList's built key to false -> the coverage test went red) no longer reddens anything, and it names a method this story renamed
 - 2026-09-22T04:54:00Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=A_STALE_MUTATION_LINE_IS_A_RULE_19_DEFECT_IN_THE_STORY_THAT_OWNS_IT,_not_in_the_one_that_invalidated_it,_and_13.2_is_in_another_epic_whose_spec_I_do_not_edit_from_here._Worth_filing_rather_than_shrugging_at:_a_recorded_recipe_that_no_longer_reddens_is_exactly_the_unfalsifiable_pass_this_epic_keeps_finding,_and_the_next_reader_of_that_spec_would_take_it_as_evidence
+- 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 
 ### DW-1462: shell.screen.open's entityId now means a row key on three screens and the parent's id on four, with nothing declaring which
 - source: spec-5-11-tasks-resume-a-task-suspended-after-an-error.md | severity: med | fix-risk: med | footprint: in-epic

@@ -287,6 +287,7 @@ No new AD is needed (inference). One convention may be: a class or spec must not
 - AC4: dropping `OcuPilot.Test.AuditEventTools` from a real downloaded record of run 36372545149 made `check` report "1 of 329 class(es) ran in no shard: OcuPilot.Test.AuditEventTools", exit 1.
 - AC6: in run 36372545149 the drift check and smoke ran once, in `instance shard 1/3` (smoke executed=49 passed=49); no other leg ran either.
 - `ci-timings.json` refreshed from run 36376868939. `home-findings.browser-spec.mjs` passed in both runs; no shard layout made it deterministic.
+- On the refreshed timings, run 36379087336 on `8fb85232` (review patches plus feature merged forward), attempt 1, green: 04:46:04Z to 05:07:41Z, **21.6 min**. Shard jobs: instance 18.1/15.2/21.3 min, browser 20.1/17.2/17.4 min; 1.5 x 21.3 = 32.0, under 40. The legs' balance varies by a few minutes from run to run on the same timings (inference).
 
 **Mutations (Rule 19; each one planned, then observed and recorded):**
 
