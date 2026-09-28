@@ -162,3 +162,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T23:20:12Z	Epic 18	decision_received	by=orchestrator(merge_gate) dw=DW-1803(widen_overlap,fix_in_18.14_rework),DW-1798(served_files_refused;folded_into_18.14_rework) routed=DW-1795,DW-1796_18.3,DW-1797_18.5
 2026-09-28T23:20:12Z	Story 18.14	ledger_routed_planned	story=18-14-namespace-mappings-and-copy-mappings entries=2 excess=0 by=merge_gate dw=DW-1803,DW-1798
 2026-09-28T23:20:12Z	Story 18.14	rework_opened	cycle_iteration=2 iteration=1 trigger=orchestrator_decision(DW-1803,DW-1798) items=Decision:DW-1803,Decision:DW-1798 scope_baseline=pending_rework_commit
+2026-09-28T23:21:14Z	Story 18.14	stage_spawned	stage=implement spawn_at=2026-09-28T23:21:14Z model=opus agent_name=18-14-mappings-implement-2 cycle_iteration=2 rework_iteration=1 ci_prev=success_run_36493475067(f7d8a8dd)
