@@ -7886,6 +7886,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T11:21:00Z occurrence=18-1-the-directory-allow-list
 - 2026-09-28T11:21:00Z status=routed owner=18-7-encryption by=cr note=also the databases one level down: irisaudit/ and irissecurity/ IRIS.DAT resolve to an overwriting file consumer
 - 2026-09-28T14:34:22Z status=routed owner=18-1-the-directory-allow-list by=merge_gate note=orchestrator 2026-09-28: fix before Epic 16's 16.4, own commit after 18.2's boundary, under 18.1 rework iteration 3
+- 2026-09-28T17:04:58Z status=resolved-by:18-1-the-directory-allow-list by=adjudication note=67790caa: PATH.INSTANCE refuses an overwrite of files beside the CPF (read at call time) and IRIS.DAT one below the manager dir; Test/PathPort legs, mutations
 
 ### DW-1778: PathPort.Resolve's file kind offers only new-or-overwrite: a consumer that reads an existing file (an import, a key file to activate) is refused PATH.EXISTS unless it passes pOverwrite, and nothing ties pOverwrite to a tool declaration
 - source: spec-18-1-the-directory-allow-list.md (code review 3) | severity: med | fix-risk: med | footprint: in-epic
@@ -7948,3 +7949,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-16-the-agent-audit-viewer.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Code review: Kernel.State.Ledger.WindowWhere binds %EXACT(UserName) = ? for a named read, the semantics the spec keeps (a named user behaves as it does today), and the page's User field now reaches it (inference: not reproduced).
 - 2026-09-28T14:20:32Z status=wontfix-accepted owner=16-16-the-agent-audit-viewer by=cr note=reopen_if=a named ledger search reads empty for a user whose rows the every-user view lists
+
+### DW-1790: PATH.INSTANCE protects only the files DW-1777 names: an overwriting consumer under a root reaching another database directory (IRISLIB at /usr/irissys/mgr/irislib/ on this build), the journals, or an IRIS.DAT deeper down can still resolve an existing instance file
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: InstanceFile answers 0 for /usr/irissys/mgr/irislib/IRIS.DAT (read-only, verification-gap layer, ocupilot-b-ci); journal files under <mgr>/journal/ are outside the rule; no overwriting consumer exists yet (inference on reach)
+- 2026-09-28T17:04:58Z status=escalated owner=burndown by=harvest note=policy call for the decision sheet: widen PATH.INSTANCE to every configured database directory and the journal directories, or accept the named set
