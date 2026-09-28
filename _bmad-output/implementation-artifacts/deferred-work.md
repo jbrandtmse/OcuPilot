@@ -7819,3 +7819,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-3-effective-privileges-and-the-permission-check-tool.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: AD-8's area AND pair set cannot express 'any of its screens'; measured on ocupilot-ci at 16.3 plan: %Operator holds %Admin_Operate:U and %DB_IRISSYS:RW only; 11 of 22 Security screens lack %Admin_Secure
 - 2026-09-28T06:34:37Z status=decision-pending owner=range-end-cleanup by=merge_gate note=owner decision after the voting week: keep AD-8's area set, or Option B (AD-8 any-screen rail: rail/Home tile/side bar open when any listed screen is allowed)
+
+### DW-1769: Copy as curl's note and AD-57 (5) promise every secret value is left out, but only names the credential pattern matches are masked
+- source: spec-16-24-a-try-it-request-copied-as-curl.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: isSecretName is false for api_key, X-API-Key, Cookie, Proxy-Authorization; those headers/params and nested body members copy verbatim (cr probes 2026-09-28). tryItCurlNote says 'every secret value'; AD-57 (5) says 'no secret value reaches the clipboard'. Use case is pasting into a ticket.
+- 2026-09-28T08:04:13Z status=decision-pending owner=burndown by=cr note=copy call: reword note (EXPERIENCE :574, strings) and AD-57 (5) to the pattern's reach (recommended), or widen the pattern
