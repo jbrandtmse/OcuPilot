@@ -126,3 +126,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T17:28:45Z	Story 18.1	committed	sha=c79d8745 submodules= ci=pending run=36458344873 head_confirmed_by=headSha rework_iteration=3 amendments=ARCHITECTURE-SPINE.md:AD-21_source_kind,CPF,DW-1779_sentences epics.md:DW-1791_bullet(18.3),DW-1777-1779_bullets_moved_to_18.1
 2026-09-28T17:34:17Z	Epic 18	epic_context_compiled	sha=pending reason=planning_artifact_newer(18.1_rework3,DW-1791,correction) model=claude-opus-5-5[1m] lines=106
 2026-09-28T17:34:17Z	Story 18.3	stage_spawned	stage=plan spawn_at=2026-09-28T17:34:17Z model=opus agent_name=18-3-databases-configuration-creation-properties-and-volumes-plan-1 cycle_iteration=1 note=Rule28_plan_while_18.1_CI_pending
+2026-09-28T17:35:08Z	Story 18.3	stage_spawned	stage=plan spawn_at=2026-09-28T17:35:08Z model=opus agent_name=18-3-databases-plan-1 cycle_iteration=1 note=supersedes_previous_entry_agent_name_too_long_for_harness(64_chars)
