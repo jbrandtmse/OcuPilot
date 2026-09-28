@@ -7964,3 +7964,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md (code review 4) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Executed on ocupilot-b-ci: Resolve(<mgr>, "irissecurity", "directory", pVendorWrites 1) answers 200 /durable/iris/mgr/irissecurity/. Whether the vendor's database create accepts a directory already holding an IRIS.DAT is unmeasured (severity unverified); epic-18-context.md:76 reads this half of DW-1779 as fixed under 18.1.
 - 2026-09-28T17:21:24Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=probe the create on the throwaway; refuse a directory holding an IRIS.DAT in 18.3's tool, or amend AD-21 if PathPort should
+
+### DW-1795: PATH.INSTANCE refuses a database's volume files only beside its IRIS.DAT: an overwriting consumer can resolve an existing volume file in one of the database's additional volume directories (SYS.Database VolumeDirectoryList, NewVolumeDirectory)
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: PathPort.DatabaseDirectories reads Config.Databases, which carries no volume directories; every local database on ocupilot-b-ci is single-volume, so no reach today (inference)
+- 2026-09-28T22:08:13Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=harvest note=18.3's multi-volume properties create the first additional volume directory; extend the instance-file read to SYS.Database's volume directories there
