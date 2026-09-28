@@ -1859,10 +1859,10 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
 }
 
 /// <p>Story 16.3, DW-1018 (Option A) -- each of the thirteen wallet and OAuth 2.0 screens declares
-/// its wallet or OAuth resource as its own pair, never one the Security and secrets area declares,
-/// and the area covers the rest of its pairs; Story 18.1's Allowed directories owns
-/// <code>%Admin_FileSystemAccess:USE</code> the same way; every other Security and secrets screen
-/// owns no pair and is covered whole (AD-8).</p>
+/// its wallet or OAuth resource as its own pair, and Story 18.1's Allowed directories its
+/// file-system pair, never one the Security and secrets area declares, and the area covers the rest
+/// of its pairs; every other Security and secrets screen owns no pair and is covered whole
+/// (AD-8).</p>
 /// <p>Mutation (Rule 19): drop <code>ownPrivileges</code> from
 /// <class>OcuPilot.Screen.Descriptor.OAuthServerTab</class> -&gt; its own-pair and coverage rows go
 /// red.</p>
@@ -1893,7 +1893,7 @@ Method TestTheSecurityScreensOwnTheirWalletAndOAuthPairs()
         }
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", tClass _ ": covered by the area, less its own pair")
     }
-    Do $$$AssertEquals(tSeen, 14, "fourteen screens own a pair: the thirteen wallet and OAuth 2.0 screens and Story 18.1's Allowed directories")
+    Do $$$AssertEquals(tSeen, 14, "fourteen screens own a pair")
     Do $$$AssertTrue(tOthers > 0, "and the rest own none: " _ tOthers)
 }
 

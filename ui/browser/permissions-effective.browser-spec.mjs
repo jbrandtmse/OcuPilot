@@ -429,8 +429,9 @@ test('AC7 (DW-1018), AC3: a principal holding only the Security pairs is offered
         { label: STRINGS.walletListLabel, disabled: 'true', reason: formatRequires(STRINGS.privilegeRequiresResource, '%Admin_Wallet:USE') },
         { label: STRINGS.oauthLabel, disabled: 'true', reason: formatRequires(STRINGS.privilegeRequiresResource, '%Admin_OAuth2_Client:USE') },
         { label: STRINGS.auditingConfigurationLink, disabled: null, reason: '' },
+        { label: STRINGS.allowedDirectoriesLabel, disabled: 'true', reason: formatRequires(STRINGS.privilegeRequiresResource, '%Admin_FileSystemAccess:USE') },
       ],
-      'SSL/TLS, X.509, LDAP and Auditing are available; Wallet and OAuth 2.0 are not, each naming its pair'
+      'SSL/TLS, X.509, LDAP and Auditing are available; Wallet, OAuth 2.0 and Allowed directories are not, each naming its pair'
     );
   } finally {
     await context.close();

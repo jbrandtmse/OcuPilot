@@ -2124,7 +2124,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   }
   const owners = screens.filter((screen) => Array.isArray(screen.declaration.ownPrivileges)).map((screen) => screen.className);
   // Story 16.3, DW-1018 (Option A): the Logs area's two, and the thirteen wallet and OAuth 2.0
-  // screens, which own their pair so the Security area declares only %Admin_Secure and IRISSYS.
+  // screens, which own their pair so the Security area declares only %Admin_Secure and IRISSYS;
+  // Story 18.1's Allowed directories owns %Admin_FileSystemAccess the same way.
   assert.deepEqual(
     owners.sort(),
     [
@@ -2145,7 +2146,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.WalletSecretForm',
       'OcuPilot.Screen.Descriptor.WalletSecretList',
     ],
-    "the screens AD-8 names, Story 16.3's wallet and OAuth 2.0 screens and Story 18.1's Allowed directories are the ones declaring own pairs"
+    "the screens AD-8 names and Story 18.1's Allowed directories are the ones declaring own pairs"
   );
 
   const hostile = structuredClone(testCorpus(['Test', 'DeclarationCorpus.cls'], 'Cases').declaration);

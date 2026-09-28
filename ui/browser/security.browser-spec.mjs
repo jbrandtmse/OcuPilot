@@ -361,8 +361,9 @@ test('AC5, Story 16.3 AC7 (DW-1018, Option A): without %Admin_Wallet:USE the Sec
         { label: STRINGS.walletListLabel, disabled: 'true', reason: requires },
         { label: STRINGS.oauthLabel, disabled: 'true', reason: formatRequires(STRINGS.privilegeRequiresResource, '%Admin_OAuth2_Client:USE') },
         { label: STRINGS.auditingConfigurationLink, disabled: null, reason: '' },
+        { label: STRINGS.allowedDirectoriesLabel, disabled: 'true', reason: formatRequires(STRINGS.privilegeRequiresResource, '%Admin_FileSystemAccess:USE') },
       ],
-      'SSL/TLS, X.509, LDAP and Auditing are available, and Wallet and OAuth 2.0 each name the pair they lack'
+      'SSL/TLS, X.509, LDAP and Auditing are available, and Wallet, OAuth 2.0 and Allowed directories each name the pair they lack'
     );
 
     await x509.page.click('[role="combobox"]');

@@ -7822,6 +7822,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: NameAdmitted accepts IRIS.DAT and irisaudit/IRIS.DAT under $System.Util.ManagerDirectory() (Test/PathPort.cls resolves 1-8 names there); no consumer writes a file in 18.1, and the first file-kind consumers are 16.4, 19.2, 19.8 and 21.2. The earlier AD-21 cases narrowed names by pattern (.txt, messages.old_*). (inference) on consumer impact.
 - 2026-09-28T08:16:00Z status=decision-pending owner=burndown by=cr note=owner call: should AD-21's sixth case refuse an existing file or instance file for kind file, or leave it to each consumer
+- 2026-09-28T10:35:34Z status=routed owner=18-1-the-directory-allow-list by=merge_gate note=orchestrator decision 2026-09-28: kind=file refuses an existing name unless the consumer declares overwrite, and a name directly in the manager dir; AD-21
+- 2026-09-28T11:23:50Z status=resolved-by:18-1-the-directory-allow-list by=adjudication note=27246d90 plus review round 3: PATH.MANAGER and PATH.EXISTS in PathPort.Resolve, pOverwrite; Test/PathPort legs with mutations runs 348-350,363,366-369
 
 ### DW-1771: The server-path picker's refused line is empty when the store is refused without an envelope reason (transport status 0, an installing answer)
 - source: spec-18-1-the-directory-allow-list.md | severity: low | fix-risk: low | footprint: in-story
@@ -7860,3 +7862,31 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Security is pinned at oauth.browser-spec:283, ssl:228, security:242 and navigation.test.mjs:377; permissions:279 and tasks:1032 pin theirs. Rule 29 runs a story's own specs only, so 18.1 met it as CI run 36393142503's red and a rework.
 - 2026-09-28T09:44:59Z status=routed owner=18-7-encryption by=cr note=a screen-adding story extends every pinned list of its area (grep -l ocu-side-bar-label ui/browser); 18.8 and 18.9 meet it too
+- 2026-09-28T08:40:12Z status=resolved-by:16-24-a-try-it-request-copied-as-curl by=merge_gate note=decided: reword the note, leave the pattern; fixed in 20d4a106 (strings.ts, EXPERIENCE :574, AD-57 item 5); CI run 36398685106
+
+### DW-1775: Eight candidate admin API defects observed probing namespaces and mappings on 2026.2 (delete without %Admin_Secure answers 500 after deleting; maxRows limits a namespace DELETE's app cascade; client-input errors as 500; v2 async Location points at /v1)
+- source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured on ocupilot-b-ci 2026-09-28 by Story 18.2's plan; the eight are listed under the spec's Design Notes > Vendor defect candidates; OcuPilot guards each on its own side (pairs refused before any call, no maxRows on DELETE)
+- 2026-09-28T10:34:45Z status=decision-pending owner=burndown by=runner note=human=report the eight to intersystems-community/sysadmin-api-specification as candidate defects, as DW-1527 was
+
+### DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan
+- source: spec-18-2-namespaces-and-their-mappings.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: 18.2's plan left it unobserved (it needs a probe database); the orchestrator routed it at the 18.2 spec gate 2026-09-28
+- 2026-09-28T11:02:18Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=observe its payload on the throwaway; an async write needs a QUEUEDWRITES entry (AD-26)
+
+### DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file: iris.cpf sits in the manager directory's parent, so an overwriting file consumer under an allowed data-directory root could resolve it
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: On ocupilot-b-ci iris.cpf, _LastGood_.cpf and dated CPF copies are in /durable/iris/, the parent of ManagerDirectory(); PATH.MANAGER refuses only a file whose parent is the manager directory; PATH.EXISTS is skipped by pOverwrite 1 (inference, not executed); no consumer overwrites yet
+- 2026-09-28T11:02:18Z status=routed owner=18-7-encryption by=harvest note=18.7's key-file write is Epic 18's first file consumer; decide there whether kind=file also refuses the CPF's directory
+- 2026-09-28T11:21:00Z occurrence=18-1-the-directory-allow-list
+- 2026-09-28T11:21:00Z status=routed owner=18-7-encryption by=cr note=also the databases one level down: irisaudit/ and irissecurity/ IRIS.DAT resolve to an overwriting file consumer
+
+### DW-1778: PathPort.Resolve's file kind offers only new-or-overwrite: a consumer that reads an existing file (an import, a key file to activate) is refused PATH.EXISTS unless it passes pOverwrite, and nothing ties pOverwrite to a tool declaration
+- source: spec-18-1-the-directory-allow-list.md (code review 3) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: PathPort.cls:276 refuses an existing file unless pOverwrite; AD-21's sixth case binds every server-path field, and 16.4 and 19.2 (import), 18.7 (activate or manage a key file) name existing files to read. pOverwrite is a bare runtime boolean. (inference) on consumer impact; no consumer calls Resolve yet.
+- 2026-09-28T11:21:00Z status=routed owner=18-7-encryption by=cr note=decide Resolve's file mode (new, overwrite, must exist) and how a tool declares it; amend AD-21; 16.4's import too
+
+### DW-1779: A directory-kind location may be the manager directory itself (the unrestricted root, empty name), so a consumer whose vendor writes its own files into the chosen directory (a database's IRIS.DAT, journals, a backup) lands among the instance's own files
+- source: spec-18-1-the-directory-allow-list.md (code review 3) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: PATH.MANAGER applies to kind file only (PathPort.cls:270); ResolveOf(<ManagerDirectory>, "", "directory") answers 200 (Test/PathPort.cls), and IRISSYS's IRIS.DAT sits there. Severity unverified: whether the admin API's database create accepts a directory already holding an IRIS.DAT is (inference); settle with a create probe on the slot throwaway.
+- 2026-09-28T11:21:00Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=18.3's database directory must refuse the manager directory itself, or any directory holding an IRIS.DAT; probe first
