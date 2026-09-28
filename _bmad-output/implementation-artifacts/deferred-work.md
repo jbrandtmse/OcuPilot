@@ -7776,6 +7776,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-13-5-ci-in-parallel-the-two-long-suites-split-across-containers.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Only --shard 40/40 ran locally (10 classes, 4 spec files); the regrouped legs first run together on the lead's push, run 36372545149
 - 2026-09-28T03:09:14Z status=open owner=13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=harvest note=settled by the measured CI run; a composition-dependent red is fixed in the test
+- 2026-09-28T04:14:56Z occurrence=13-5-ci-in-parallel-the-two-long-suites-split-across-containers
+- 2026-09-28T04:14:57Z status=open owner=13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=harvest note=rework1_deferred_audit-index-lag_cause_shown_only_in_simulation_settled_by_run_36376868939
 
 ### DW-1766: skill-rules.md Rule 29 still says CI runs the browser suite in its own browser job, now the roll-up over three browser-shard legs
 - source: _bmad-output/implementation-artifacts/spec-13-5-ci-in-parallel-the-two-long-suites-split-across-containers.md | severity: low | fix-risk: low | footprint: in-story
