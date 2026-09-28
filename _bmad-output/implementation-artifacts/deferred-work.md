@@ -7771,3 +7771,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: feature CI run 36359053662 attempt 1 on c46cafa9 (orchestrator), 2026-09-27 | severity: medium | fix-risk: low | footprint: ui/browser/home-findings.browser-spec.mjs, src/OcuPilot/Kernel/Shell/Findings.cls
 - evidence: attempt 1 red 500/501, attempt 2 green on the same head; the same code passed on staging runs 36352462516 and 36355806784 (inference: a stock task suspended with a non-empty last-run Error on that container)
 - 2026-09-28T01:18:59Z status=routed owner=range-end-cleanup by=orchestrator note=make the assertion print the operations lines, then pin the cause; if the product reports a person-suspended task as an error, fix TaskErrors
+
+### DW-1765: Whether a class or spec depends on residue from an item the shard split no longer runs before it is unverified until every CI leg is green
+- source: _bmad-output/implementation-artifacts/spec-13-5-ci-in-parallel-the-two-long-suites-split-across-containers.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Only --shard 40/40 ran locally (10 classes, 4 spec files); the regrouped legs first run together on the lead's push, run 36372545149
+- 2026-09-28T03:09:14Z status=open owner=13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=harvest note=settled by the measured CI run; a composition-dependent red is fixed in the test
+
+### DW-1766: skill-rules.md Rule 29 still says CI runs the browser suite in its own browser job, now the roll-up over three browser-shard legs
+- source: _bmad-output/implementation-artifacts/spec-13-5-ci-in-parallel-the-two-long-suites-split-across-containers.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: _bmad/custom/skill-rules.md:270 names one browser job against a fresh throwaway; after 13.5 each browser-shard leg has its own fresh throwaway
+- 2026-09-28T03:09:14Z status=open owner=13-5-ci-in-parallel-the-two-long-suites-split-across-containers by=harvest note=lead corrects it with CLAUDE.md's job list

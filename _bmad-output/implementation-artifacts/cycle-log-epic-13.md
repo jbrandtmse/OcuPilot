@@ -104,3 +104,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T01:53:44Z	Epic 13	throwaway_up	container=ocupilot-b-ci dir=/tmp/ocupilot-b-ci project=ocupilot-b-ci web=52777 super=1976 by=runner_lead_this_session readiness=installed
 2026-09-28T01:53:53Z	Epic 13	epic_status_reopened	from=done to=in-progress reason=orchestrator_instruction_story_13.5_dispatched
 2026-09-28T01:53:53Z	Story 13.5	stage_spawned	stage=implement spawn_at=2026-09-28T01:53:53Z model=opus agent_name=13-5-ci-in-parallel-implement-1 cycle_iteration=1 prev_ci=none_pending
+2026-09-28T03:09:26Z	Story 13.5	dev_complete	spawn_at=2026-09-28T01:53:53Z model=opus build_sha=8cd58d28 baseline_revision=f4ab7c49 review_loop_iteration=0 followup_review_recommended=true deferred=2 harvested=DW-1765,DW-1766 files=10 loc_added=2285 loc_removed=100 cycle_iteration=1
+2026-09-28T03:09:26Z	Story 13.5	pushed	sha=8cd58d28 ci=pending run=36372545149 reason=DW-1434_push_code_commit_immediately
+2026-09-28T03:09:26Z	Story 13.5	orchestrator_notice	DW-1764_home-findings_211_flaky=attributed_rerun_failed_only_counts note=measure_wall_time_on_run_without_rerun_or_name_rerun
+2026-09-28T03:09:40Z	Story 13.5	stage_spawned	stage=qa spawn_at=2026-09-28T03:09:40Z model=sonnet agent_name=13-5-ci-in-parallel-qa-1 cycle_iteration=1 note=adr_gate_deferred_until_ci_run_36372545149_lands_its_evidence_is_the_run
