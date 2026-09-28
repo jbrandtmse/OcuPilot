@@ -7624,6 +7624,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-27T03:15:58Z status=decision-pending owner=burndown by=cr note=product call: does rule 4's any host include the instance's own origin? If yes, render every image as its alt text
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=merge_gate note=decided fix: render every reply image as its alt text; AD-11 rule 4's any host includes the instance's own origin; first after 1.0.2; pre-existing since 1.0.0
 - 2026-09-28T15:02:11Z status=routed owner=16-2-web-sessions-listed-and-ended by=lead note=re-owned by the orchestrator to Epic 16's next dispatch; fixed first, as its own code commit ef90e7f4
+- 2026-09-28T15:45:15Z status=resolved-by:16-2-web-sessions-listed-and-ended by=adjudication note=ef90e7f4: every reply image renders as its alt text; seeded-injection spec pins any-origin image requests; CI run 36440454976 green
 
 ### DW-1729: Sanitize.Strip omits invisible and bidi characters outside the spec's closed set (U+061C, U+00AD, U+180E, U+2028/9, U+FE00-FE0F, U+E0100-E01EF, U+FFF9-FFFB)
 - source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story

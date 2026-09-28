@@ -338,3 +338,5 @@
 2026-09-28T15:02:11Z	Epic 16	spine_updated	ad=AD-11(rule_4:any_host_includes_own_origin) reason=decision_sheet(DW-1725) by=runner story=16-2-web-sessions-listed-and-ended lint=ok(pre-existing_low_placeholder_AD-7)
 2026-09-28T15:07:39Z	Epic 16	epic_context_compiled	reason=planning_artifact_newer(epics.md_merge,spine_AD-11) model=claude-opus-5-5 spawn_at=2026-09-28T15:02:23Z
 2026-09-28T15:08:21Z	Story 16.2	stage_spawned	stage=plan spawn_at=2026-09-28T15:08:21Z model=opus agent_name=16-2-web-sessions-listed-and-ended-plan-1 cycle_iteration=1 note=planned_while_DW-1725_CI_runs(Rule_28)
+2026-09-28T15:45:15Z	Story 16.2	ci_resolved	story=DW-1725_fix run=36440454976 result=success resolved_at=story_boundary head=ef90e7f4
+2026-09-28T15:45:15Z	Story 16.2	story_boundary	item=DW-1725 head=ef90e7f4 ci_run=36440454976 ci=success note=security_fix_for_1.0.3;DW-1725_resolved-by_16-2
