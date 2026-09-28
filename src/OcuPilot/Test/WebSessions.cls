@@ -285,31 +285,41 @@ Method TestBothCallersAreRefusedForOcuPilotsOwnSession()
     Do $$$AssertEquals(tVerdict, $Parameter("OcuPilot.Kernel.Proposal.ReadBack", "PRESENT"), "and a session still listed after the write reads back present, the write standing as made")
 }
 
-/// <p>AD-10 as amended 2026-09-28, AD-53: a preserve-mode session, whose own process holds its
-/// lock, is refused <code>PROHIBITED.PRESERVEDSESSION</code> on both callers with nothing sent --
-/// after the own-session arm, whose code a preserve-mode session under OcuPilot's own application
-/// still earns -- while a session under <code>/csp/sys/</code> with <code>Preserve</code> 0 is
-/// still ended, the vendor's <code>AllowEndSession</code> false notwithstanding. The reason is the
-/// published sentence, and the Guardrails page lists the code with it.</p>
+/// <p>AD-10 as amended 2026-09-28, AD-53: a preserve-mode session whose own process runs is refused
+/// <code>PROHIBITED.PRESERVEDSESSION</code> on both callers with nothing sent -- after the
+/// own-session arm, whose code a preserve-mode session under OcuPilot's own application still
+/// earns. One whose process has ended, or that names none, may be ended, and so may a session under
+/// <code>/csp/sys/</code> with <code>Preserve</code> 0, the vendor's <code>AllowEndSession</code>
+/// false notwithstanding. The reason is the published sentence, and the Guardrails page lists the
+/// code with it. The running process is this test's own job; the ended one is a pid no process runs
+/// under (<method>EndedPid</method>).</p>
 /// <p>Mutation (Rule 19): drop the <code>WebSession</code> branch's
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsPreservedSession</method> refusal -- the set, route
-/// and confirm legs go red.</p>
-Method TestBothCallersAreRefusedForAPreserveModeSession()
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsPreservedSession</method> refusal -- the refused set,
+/// route and confirm legs go red; answer 1 in place of its running-process test -- the ended-process
+/// set and route legs go red.</p>
+Method TestAPreserveModeSessionIsRefusedWhileItsProcessRuns()
 {
     Set tCode = $Parameter(..#SET, "PRESERVEDSESSION")
     Set tReason = $Parameter(..#SET, "PRESERVEDSESSIONREASON")
+    Set tEnded = ..EndedPid()
     For tForm = "number", "boolean" {
-        Set tRow = ..Preserved(..#SESSION, "/api/atelier/")
+        Set tRow = ..Preserved(..#SESSION, "/api/atelier/", $Job)
         Do tRow.%Set("Preserve", 1, tForm)
         Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(tRow))
         Set tSC = ..Ask(..#SESSION, .tProhibits, .tAnswered)
-        Do $$$AssertEquals(tProhibits _ " " _ tAnswered, "1 " _ tCode, "a session whose Preserve reads 1 as a " _ tForm _ " is refused as preserve-mode")
+        Do $$$AssertEquals(tProhibits _ " " _ tAnswered, "1 " _ tCode, "a session whose Preserve reads 1 as a " _ tForm _ " and whose process runs is refused as preserve-mode")
     }
-    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(..Preserved(..#SESSION, "/api/ocupilot/")))
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(..Preserved(..#SESSION, "/api/ocupilot/", $Job)))
     Set tSC = ..Ask(..#SESSION, .tProhibits, .tAnswered)
     Do $$$AssertEquals(tProhibits _ " " _ tAnswered, "1 " _ $Parameter(..#SET, "OCUPILOTSESSION"), "and one under OcuPilot's own application is refused as OcuPilot's own first")
+    For tPid = tEnded, "" {
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(..Preserved(..#SESSION, "/api/atelier/", tPid)))
+        Set tSC = ..Ask(..#SESSION, .tProhibits, .tAnswered)
+        Do $$$AssertStatusOK(tSC, "the set answers for a process that " _ $Select(tPid = "": "is not named", 1: "has ended"))
+        Do $$$AssertEquals(tProhibits _ " " _ tAnswered, "0 ", "a preserve-mode session whose process " _ $Select(tPid = "": "is not named", 1: "has ended") _ " may be ended")
+    }
 
-    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(..Preserved(..#SESSION, "/api/atelier/")))
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(..Preserved(..#SESSION, "/api/atelier/", $Job)))
     Set tSC = $ClassMethod(..#ACTION, "Act", "webapp.sessions", {"action": "end", "id": (..#SESSION)}, .tAnswer, .tStatus)
     Do $$$AssertStatusOK(tSC, "the route answers")
     Set tEnvelope = ..Parsed(tAnswer)
@@ -337,6 +347,11 @@ Method TestBothCallersAreRefusedForAPreserveModeSession()
     Set tEnvelope = ..Parsed(tAnswer)
     Do $$$AssertEquals(tStatus _ " " _ tEnvelope.%Get("action"), "200 deleted", "a /csp/sys/ session with Preserve 0 is still ended: " _ tAnswer)
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount() _ " " _ ##class(OcuPilot.Test.ProposalFixture).LastType() _ " " _ ##class(OcuPilot.Test.ProposalFixture).LastQuery("id"), "1 DELETE " _ ..#SESSION, "by one DELETE naming it")
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(..Preserved(..#SESSION, "/api/atelier/", tEnded)))
+    Set tSC = $ClassMethod(..#ACTION, "Act", "webapp.sessions", {"action": "end", "id": (..#SESSION)}, .tAnswer, .tStatus)
+    Set tEnvelope = ..Parsed(tAnswer)
+    Do $$$AssertEquals(tStatus _ " " _ tEnvelope.%Get("action"), "200 deleted", "and so is a preserve-mode session whose process has ended: " _ tAnswer)
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount() _ " " _ ##class(OcuPilot.Test.ProposalFixture).LastType() _ " " _ ##class(OcuPilot.Test.ProposalFixture).LastQuery("id"), "2 DELETE " _ ..#SESSION, "by one more DELETE naming it")
 
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode), tReason, "the reason is the published sentence")
     Set tSC = ##class(OcuPilot.Kernel.Shell.Guardrails).Read(.tAnswer)
@@ -411,14 +426,25 @@ ClassMethod Row(pId As %String, pApplication As %String, pTimeout As %String = "
 }
 
 /// <p>One preserve-mode session row as the vendor's <code>LIST</code> answers it: its own process
-/// named, and <code>AllowEndSession</code> false.</p>
-ClassMethod Preserved(pId As %String, pApplication As %String) As %DynamicObject
+/// <var>pPid</var> named, and <code>AllowEndSession</code> false.</p>
+ClassMethod Preserved(pId As %String, pApplication As %String, pPid As %String) As %DynamicObject
 {
     Set tRow = ..Row(pId, pApplication)
     Do tRow.%Set("Preserve", 1, "number")
-    Do tRow.%Set("SesProcessId", "4242", "string")
+    Do tRow.%Set("SesProcessId", pPid, "string")
     Do tRow.%Set("AllowEndSession", 0, "boolean")
     Quit tRow
+}
+
+/// <p>A process id no process on this instance runs under now, counting down from the largest a
+/// Linux host assigns.</p>
+ClassMethod EndedPid() As %String
+{
+    Set tPid = 4194303
+    While $Data(^$JOB(tPid)) {
+        Set tPid = tPid - 1
+    }
+    Quit tPid
 }
 
 /// <p>The rows given, as the JSON array text the fixture's port answers.</p>

@@ -27,7 +27,7 @@ Parameter TOOLNAME = "webapp.sessions.end";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.WebSessionList";
 
-Parameter DESCRIPTION = "Propose ending one web session on this instance. It changes nothing by itself: it answers a proposal the user reviews and confirms. Ending a session discards what its application kept for it, and its next request starts a new session. Name the session by its ID exactly as the web sessions list reports it, case included. A session OcuPilot is itself running in is refused.";
+Parameter DESCRIPTION = "Propose ending one web session on this instance. It changes nothing by itself: it answers a proposal the user reviews and confirms. Ending a session discards what its application kept for it, and its next request starts a new session. Name the session by its ID exactly as the web sessions list reports it, case included. A session OcuPilot is itself running in is refused. A preserve-mode session is refused while its own process runs; once that process is terminated, the session can be ended.";
 
 /// <p>The screen's own End session row action, which sends no argument (AD-51, AD-53).</p>
 Parameter SCREENACTIONS = "end";

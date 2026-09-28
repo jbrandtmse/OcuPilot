@@ -362,10 +362,11 @@ Parameter FIELDAPPLICATION = "Application";
 /// <p>A web session's id field, compared exactly with the serving request's own session id.</p>
 Parameter FIELDSESSIONID = "ID";
 
-/// <p>The write would end a preserve-mode web session (<method>IsPreservedSession</method>): the
-/// session's own process holds its lock, so the vendor's end waits out the lock timeout and the
-/// session stays listed (AD-10 as amended 2026-09-28). Refused whatever the caller, before any
-/// <code>DELETE</code> is sent.</p>
+/// <p>The write would end a preserve-mode web session while its own process runs
+/// (<method>IsPreservedSession</method>): that process holds the session's lock, so the vendor's end
+/// waits out the lock timeout and the session stays listed (AD-10 as amended 2026-09-28). Refused
+/// whatever the caller, before any <code>DELETE</code> is sent. Once the process has ended, the
+/// session may be ended.</p>
 Parameter PRESERVEDSESSION = "PROHIBITED.PRESERVEDSESSION";
 
 /// <p>The one sentence <parameter>PRESERVEDSESSION</parameter> carries, caller-neutral, published
@@ -375,6 +376,9 @@ Parameter PRESERVEDSESSIONREASON = "This session's own process holds its lock, s
 
 /// <p>A web session's preserve-mode field, which the vendor's list answers as a number.</p>
 Parameter FIELDPRESERVE = "Preserve";
+
+/// <p>A web session's own process id, which a preserve-mode session carries.</p>
+Parameter FIELDSESPROCESSID = "SesProcessId";
 
 /// <p>The write would turn off the service OcuPilot is served through
 /// (<parameter>SERVINGSERVICENAME</parameter>): every request to OcuPilot arrives through it (AD-10 as
@@ -3246,9 +3250,10 @@ ClassMethod LdapFields() As %List
 
 /// <p>The web session predicates (Story 16.2): a session OcuPilot is itself running in is refused
 /// <parameter>OCUPILOTSESSION</parameter> (<method>IsOcuPilotSession</method>), then a preserve-mode
-/// session <parameter>PRESERVEDSESSION</parameter> (<method>IsPreservedSession</method>), and every
-/// other session may be ended. <var>pTarget</var> is the fresh list row and <var>pOwnSession</var> the
-/// serving request's own session id, <code>""</code> when it runs in none.</p>
+/// session whose own process runs <parameter>PRESERVEDSESSION</parameter>
+/// (<method>IsPreservedSession</method>), and every other session may be ended. <var>pTarget</var>
+/// is the fresh list row and <var>pOwnSession</var> the serving request's own session id,
+/// <code>""</code> when it runs in none.</p>
 /// <p>The end sends no body (AD-51), and its card rows are removals read from the fresh read, so it
 /// reaches the reviewed-few sweep with nothing changed, as <method>Device</method> reasons.</p>
 ClassMethod WebSession(pTarget As %DynamicObject, pOwnSession As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
@@ -3293,13 +3298,24 @@ ClassMethod IsOcuPilotSession(pTarget As %DynamicObject, pOwnSession As %String 
     Quit ''tServes
 }
 
-/// <p>Whether <var>pTarget</var>, a web session's list row, is in preserve mode: its
-/// <code>Preserve</code> reads 1, as the vendor's number or as a boolean true. A row that carries
-/// no <code>Preserve</code> is not one.</p>
+/// <p>Whether <var>pTarget</var>, a web session's list row, is a preserve-mode session whose own
+/// process runs: its <code>Preserve</code> reads 1, as the vendor's number or as a boolean true, and
+/// its <code>SesProcessId</code> names a process running on this instance now
+/// (<method>IsRunningProcess</method>). A row that carries no <code>Preserve</code>, or whose
+/// process has ended, is not one: no process holds its lock, and the vendor's end succeeds.</p>
 ClassMethod IsPreservedSession(pTarget As %DynamicObject) As %Boolean
 {
     Set tPreserve = ..Rendered(pTarget, ..#FIELDPRESERVE)
-    Quit (tPreserve = 1) || (tPreserve = "true")
+    If (tPreserve '= 1) && (tPreserve '= "true") Quit 0
+    Quit ..IsRunningProcess(..Rendered(pTarget, ..#FIELDSESPROCESSID))
+}
+
+/// <p>Whether <var>pPid</var> is a whole number naming a process running on this instance, read
+/// from <code>^$JOB</code> when called.</p>
+ClassMethod IsRunningProcess(pPid As %String) As %Boolean
+{
+    If '$Match(pPid, "^[0-9]+$") Quit 0
+    Quit ''$Data(^$JOB(pPid))
 }
 
 /// <p>The session id of the CSP session the serving request runs in, or <code>""</code> when

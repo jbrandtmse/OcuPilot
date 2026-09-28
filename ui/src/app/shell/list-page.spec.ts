@@ -803,20 +803,21 @@ describe('the list page', () => {
       expect(page.bodies).toEqual([]);
     });
 
-    it('draws End session refused on a preserve-mode session with the sentence pointing to its process, sending nothing', async () => {
+    it('offers End session on a preserve-mode session, whose refusal while its process runs is the instance\'s to answer', async () => {
       // Through the real handler, page and table; only the transport is stubbed.
-      // Mutation (Rule 19): answer '' for a `Preserve` 1 row in `ocupilot-session` -> the entry is
-      // offered and its click opens the dialog, red.
+      // Mutation (Rule 19): answer the preserve-mode sentence for a `Preserve` 1 row in
+      // `ocupilot-session` -> the entry is drawn refused and no dialog opens, red.
       const page = await mount(SESSIONS, listed, true, '/web-applications/sessions?ns=HSCUSTOM');
       (rowFor(page.host(), 'prsvSess02').querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
       await settle(page.fixture);
-      const refused = page.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
-      expect(refused.querySelector('.ocu-data-table-menu-label')?.textContent?.trim()).toBe(STRINGS.webSessionEndAction);
-      expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.webSessionRefusalPreserved);
-      expect(refused.getAttribute('aria-disabled')).toBe('true');
-      refused.click();
+      const offered = page.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+      expect(offered.querySelector('.ocu-data-table-menu-label')?.textContent?.trim()).toBe(STRINGS.webSessionEndAction);
+      expect(offered.hasAttribute('aria-disabled')).toBe(false);
+      offered.click();
       await settle(page.fixture);
-      expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+      const dialog = page.host().querySelector('[role="dialog"]') as HTMLElement;
+      expect(dialog).not.toBeNull();
+      expect(dialog.textContent).toContain(`${STRINGS.webSessionEndAction} prsvSess02`);
       expect(page.bodies).toEqual([]);
     });
   });

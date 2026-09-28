@@ -1,15 +1,16 @@
 /// <p>Pins Story 16.2 against live web sessions (AD-2, AD-8, AD-10, AD-26, AD-53, AD-58): the
 /// declared read fields held to a live row, <class>OcuPilot.Port.AdminPort</class>'s wait for the
 /// daemon, the screen's End session and the agent's confirm each ending a real session and each
-/// refused for a preserve-mode one, a principal without <code>%DB_IRISSYS:WRITE</code> refused by
-/// name, and a holder of the area's pairs alone keeping Web applications while Web sessions is
-/// refused.</p>
+/// refused for a preserve-mode one while its process runs, a principal without
+/// <code>%DB_IRISSYS:WRITE</code> refused by name, and a holder of the area's pairs alone keeping
+/// Web applications while Web sessions is refused.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and
 /// serving over HTTP as <class>OcuPilot.Test.Http</class>'s test account, <code>/api/atelier/</code>
-/// and <parameter>PRESERVEDPAGE</parameter> answering that account, and
-/// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class creates and
-/// deletes two users and two roles and terminates the process of a preserve-mode session it seeded.
-/// Each test seeds its own sessions and ends every one it seeded.</p>
+/// and <code>/csp/hscustom/</code> answering that account, and <parameter>ARMINGVARIABLE</parameter>
+/// reading <code>1</code>, because the class creates and deletes two users and two roles, compiles
+/// and deletes <class>OcuPilot.Test.PreservedSession</class>'s page, and terminates the process of a
+/// preserve-mode session it seeded. Each test seeds its own sessions and ends every one it
+/// seeded.</p>
 Class OcuPilot.Test.WebSessionsLive Extends %UnitTest.TestCase
 {
 
@@ -25,10 +26,6 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
 /// <p>The application whose request leaves a session behind.</p>
 Parameter SEEDPATH = "/api/atelier/";
-
-/// <p>The page whose request leaves a preserve-mode session behind, under the install namespace's
-/// default CSP application (<class>OcuPilot.Test.PreservedSession</class>).</p>
-Parameter PRESERVEDPAGE = "/csp/hscustom/OcuPilot.Test.PreservedSession.cls";
 
 /// <p>A session id no session carries.</p>
 Parameter ABSENT = "OcuNoSessn";
@@ -100,8 +97,9 @@ Method OnBeforeOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>End every session this test seeded that is still listed, and assert none is. A preserve-mode
-/// session's own process holds its lock, so that process is terminated first.</p>
+/// <p>End every session this test seeded that is still listed, and assert none is, then remove the
+/// preserve-mode page. A preserve-mode session's own process holds its lock, so that process is
+/// terminated first.</p>
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
@@ -116,6 +114,7 @@ Method OnAfterOneTest() As %Status
         Do $$$AssertEquals(..Listed(tId), 0, "a seeded session is ended in teardown")
     }
     Set ..PreparedSeeded = ""
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.PreservedSession).Remove(), "the preserve-mode page is removed")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the probe proposals and turns are removed")
     Quit $$$OK
@@ -294,25 +293,32 @@ Method TestAnAreaHolderKeepsTheAreaAndIsRefusedWebSessions()
     Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody) _ " " _ ..FailedPair(tBody), "403 AUTH.NOPRIVILEGE %Admin_Operate:USE", "and its read is refused naming that pair")
 }
 
-/// <p>AD-10 as amended 2026-09-28, AD-53: a real preserve-mode session lists with <code>Preserve</code>
-/// the number 1 and its own process, and both callers are refused
-/// <code>PROHIBITED.PRESERVEDSESSION</code> at once, the session still listed: no <code>DELETE</code>
-/// was sent to wait on the lock its process holds.</p>
-/// <p>Mutation (Rule 19): drop the <code>WebSession</code> branch's
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsPreservedSession</method> refusal -- the route's
-/// <code>DELETE</code> waits on the lock and the refused legs go red.</p>
-Method TestAPreserveModeSessionIsRefusedOnBothCallers()
+/// <p>AD-10 as amended 2026-09-28, AD-53: a real preserve-mode session lists with
+/// <code>Preserve</code> the number 1 and its own running process. While that process runs, both
+/// callers are refused <code>PROHIBITED.PRESERVEDSESSION</code> within ten seconds, where the
+/// vendor's end would wait out its 240-second lock timeout, and the session is still listed. Once
+/// the process is terminated through Processes' own Terminate, the screen's End session ends the
+/// session and the list no longer carries it.</p>
+/// <p>Mutation (Rule 19): answer 1 in place of
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsPreservedSession</method>'s running-process test --
+/// the terminate-then-end leg is refused and goes red.</p>
+Method TestAPreserveModeSessionIsRefusedWhileItsProcessRuns()
 {
     Set tCode = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "PRESERVEDSESSION")
-    Set tSC = ..Seed(.tId, ..#PRESERVEDPAGE)
+    Set tSC = ##class(OcuPilot.Test.PreservedSession).Create()
+    Do $$$AssertStatusOK(tSC, "the preserve-mode page is compiled: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..Seed(.tId, ##class(OcuPilot.Test.PreservedSession).Path())
     Do $$$AssertStatusOK(tSC, "a preserve-mode session is seeded: " _ $System.Status.GetErrorText(tSC))
     If $$$ISERR(tSC) Quit
     Set tRow = ..LiveRow(tId)
-    Do $$$AssertTrue($IsObject(tRow) && (tRow.%GetTypeOf("Preserve") = "number") && (tRow.%Get("Preserve") = 1) && (tRow.%Get("SesProcessId") '= ""), "the list answers it in preserve mode, as a number, with its own process: " _ $Select($IsObject(tRow): tRow.%ToJSON(), 1: ""))
+    Set tPid = $Select($IsObject(tRow): tRow.%Get("SesProcessId"), 1: "")
+    Do $$$AssertTrue($IsObject(tRow) && (tRow.%GetTypeOf("Preserve") = "number") && (tRow.%Get("Preserve") = 1) && (tPid ? 1.N) && $Data(^$JOB(tPid)), "the list answers it in preserve mode, as a number, with its own running process: " _ $Select($IsObject(tRow): tRow.%ToJSON(), 1: ""))
+    If '(tPid ? 1.N) Quit
     Set tStart = $ZHorolog
     Set tSC = ..Act(tId, "", "", .tStatus, .tBody)
     Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody), "403 " _ tCode, "the screen's End session is refused as preserve-mode")
-    Do $$$AssertTrue(($ZHorolog - tStart) < 10, "at once: " _ ($ZHorolog - tStart) _ " s")
+    Do $$$AssertTrue(($ZHorolog - tStart) < 10, "within ten seconds: " _ ($ZHorolog - tStart) _ " s")
     Do $$$AssertEquals(..Listed(tId), 1, "and the session is still listed")
 
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
@@ -326,10 +332,23 @@ Method TestAPreserveModeSessionIsRefusedOnBothCallers()
         Set tStart = $ZHorolog
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tConfirmCode, .tDetail)
         Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Get(tConfirmCode), "403 " _ tCode, "and its confirm is refused as preserve-mode")
-        Do $$$AssertTrue(($ZHorolog - tStart) < 10, "at once: " _ ($ZHorolog - tStart) _ " s")
+        Do $$$AssertTrue(($ZHorolog - tStart) < 10, "within ten seconds: " _ ($ZHorolog - tStart) _ " s")
     }
     Do $$$AssertEquals(..Listed(tId), 1, "and the session is still listed")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+
+    Set tSC = ..Terminate(tPid, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "Processes' Terminate ends the session's process: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
+    Set tGone = $ZHorolog + 10
+    While $Data(^$JOB(tPid)) && ($ZHorolog < tGone) {
+        Hang 0.1
+    }
+    Do $$$AssertEquals($Data(^$JOB(tPid)), 0, "and the process has ended")
+    Set tRow = ..LiveRow(tId)
+    Do $$$AssertEquals($Select($IsObject(tRow): tRow.%Get("Preserve") _ " " _ tRow.%Get("SesProcessId"), 1: ""), "1 " _ tPid, "while the list still reads the session in preserve mode with that process")
+    Set tSC = ..Act(tId, "", "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tBody): tBody.%Get("action"), 1: ""), "200 deleted", "the screen's End session then ends it: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
+    Do $$$AssertEquals(..Listed(tId), 0, "and the list no longer carries it")
 }
 
 /// <p>Seed one session as the test account through <var>pPath</var>, answering its id: the one row
@@ -403,6 +422,18 @@ Method Act(pId As %String, pUser As %String, pPassword As %String, Output pStatu
     Set tRequest = {"action": "end"}
     Do tRequest.%Set("id", pId, "string")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/screens/webapp.sessions/action", pUser, pPassword, .pStatus, .tRaw, .tHeaders, tRequest.%ToJSON(), "application/json")
+    Try { Set pBody = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set pBody = $Get(tRaw) }
+    Quit tSC
+}
+
+/// <p>One Terminate of process <var>pPid</var> over Processes' screen-action route as the test
+/// account, answering the HTTP status and the parsed envelope.</p>
+Method Terminate(pPid As %String, Output pStatus As %Integer, Output pBody) As %Status
+{
+    Set pBody = ""
+    Set tRequest = {"action": "terminate"}
+    Do tRequest.%Set("id", pPid, "string")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/screens/osmgmt.processes/action", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .tRaw, .tHeaders, tRequest.%ToJSON(), "application/json")
     Try { Set pBody = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set pBody = $Get(tRaw) }
     Quit tSC
 }

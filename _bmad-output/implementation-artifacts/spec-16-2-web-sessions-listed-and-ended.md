@@ -2,8 +2,8 @@
 title: 'Story 16.2: Web sessions, listed and ended'
 type: 'feature'
 created: '2026-09-28'
-status: 'in-progress'
-baseline_revision: '5594b414673bbccef0890babc9dfbbe65fb16353'
+status: 'done'
+baseline_revision: '1274ef309e8d2684ea8b2f0b3adfb6f17a187dc3'
 baseline_commit: 'c4a871c902c669ef06ac3663f33c169f38de1411'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -214,9 +214,9 @@ Code review 2026-09-28 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
 
 - [x] [Review] (superseded by the refined item below; the attempt is restored from `16-2-rework1-dw1792-attempt.patch`) DW-1792, decided (a): refuse ending a preserve-mode session by name, on both callers, before any `DELETE` is sent -- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` (`WebSession` branch, after the OcuPilot check), `ui/src/app/core/self-protection.ts` (the `end` row action's rule), EXPERIENCE.md + `strings.ts` -- A fresh read with `Preserve` 1 is refused with a new code (`PROHIBITED.PRESERVEDSESSION`) and one published sentence that says why (the session's own process holds its lock) and points to that process in Process details, where it can be terminated (proposed: "This session's own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session."). The kernel's reason is pinned equal to the sentence (`RefusalCopy`), Guardrails lists the code, the code counts move 19 to 20 (`Test/Prohibited.cls`, `Test/AuditingUpdate.cls`), and the row action is drawn refused with the same sentence for a `Preserve` 1 row, the OcuPilot check first. Tests: `WebSessions` -- both callers refused for a `Preserve` 1 row with nothing sent, a `Preserve` 0 row under `/csp/sys/` still ends -- with a Rule 19 mutation; `self-protection.test.mjs` and a component case; and a browser check that a preserve-mode row's End is drawn refused with the pointer, seeded as a real preserve-mode session on the throwaway if the reviewer's method (DW-1792's evidence) is repeatable in a spec, removed in `after` by terminating its process and then ending it; otherwise the browser check drives an intercepted read row and says so in `## Verification`. EXPERIENCE.md stays 993 lines, citations updated.
 
-- [ ] [Review] DW-1792 refined, option K (orchestrator, merge gate): the restored attempt refuses every `Preserve` 1 row, and a terminated process leaves the row listed with `Preserve` 1 until its timeout, so its remedy loops. Refuse ending a preserve-mode session only WHILE its own process runs (`$Data(^$JOB(<SesProcessId>))`, read on the instance at the write, both callers, before any `DELETE`); once the process is gone the end is permitted and the vendor's `DELETE` succeeds. The row's End stays drawn: remove the client rule's `Preserve` branch (the list has no running-process field), so the refusal and its pointer answer the click. The sentence must stay true: it says the session's own process holds its lock and that terminating the process in Process details lets the session be ended. Tests with Rule 19 mutations: `WebSessionsLive` (or the attempt's live test) -- End refused while the process runs, then terminate the process and End succeeds and the row leaves -- mutation: drop the running-process condition → the terminate-then-end leg red; the browser check becomes "End on a preserve-mode row answers the sentence with the pointer". Update the attempt's client and component tests accordingly.
-- [ ] [Review] The test page class that opens a real preserve-mode session (`src/OcuPilot/Test/PreservedSession.cls` in the attempt) must not be reachable on a product install: either gate it with a new arming variable that only `scripts/ci-throwaway.sh` and CI set (like the other `OCUPILOT_ALLOW_*`), refusing before doing anything and answering as if it did not exist, with a test that it refuses unarmed and its class added add-only to `ci-throwaway.sh`'s roster and the `ui/tools/ci.test.mjs` pin; or create it at test setup and delete it at teardown. Say which in `## Verification`.
-- [ ] [Review] The attempt's triage log's three `[patch]` items: EXPERIENCE.md `:220` lists a preserve-mode session (in place, 993 lines); `WebSessionEnd`'s model-facing description names the preserve-mode refusal beside the own-session one; `WebSessionsLive`'s "still listed" doc comment says only what the check proves.
+- [x] [Review] DW-1792 refined, option K (orchestrator, merge gate): the restored attempt refuses every `Preserve` 1 row, and a terminated process leaves the row listed with `Preserve` 1 until its timeout, so its remedy loops. Refuse ending a preserve-mode session only WHILE its own process runs (`$Data(^$JOB(<SesProcessId>))`, read on the instance at the write, both callers, before any `DELETE`); once the process is gone the end is permitted and the vendor's `DELETE` succeeds. The row's End stays drawn: remove the client rule's `Preserve` branch (the list has no running-process field), so the refusal and its pointer answer the click. The sentence must stay true: it says the session's own process holds its lock and that terminating the process in Process details lets the session be ended. Tests with Rule 19 mutations: `WebSessionsLive` (or the attempt's live test) -- End refused while the process runs, then terminate the process and End succeeds and the row leaves -- mutation: drop the running-process condition → the terminate-then-end leg red; the browser check becomes "End on a preserve-mode row answers the sentence with the pointer". Update the attempt's client and component tests accordingly.
+- [x] [Review] The test page class that opens a real preserve-mode session (`src/OcuPilot/Test/PreservedSession.cls` in the attempt) must not be reachable on a product install: either gate it with a new arming variable that only `scripts/ci-throwaway.sh` and CI set (like the other `OCUPILOT_ALLOW_*`), refusing before doing anything and answering as if it did not exist, with a test that it refuses unarmed and its class added add-only to `ci-throwaway.sh`'s roster and the `ui/tools/ci.test.mjs` pin; or create it at test setup and delete it at teardown. Say which in `## Verification`.
+- [x] [Review] The attempt's triage log's three `[patch]` items: EXPERIENCE.md `:220` lists a preserve-mode session (in place, 993 lines); `WebSessionEnd`'s model-facing description names the preserve-mode refusal beside the own-session one; `WebSessionsLive`'s "still listed" doc comment says only what the check proves.
 
 Rejected:
 
@@ -247,6 +247,23 @@ Rejected:
 - 2026-09-28, spec gate (lead): AC3 amended in epics.md from "the user's **own** session" to "a session **OcuPilot is itself running in**" (Rule 5, apply-and-report: the AC's own reference is the process arm's shape, and the literal reading has no subject on this build). Option A taken; AD-8, AD-10, AD-15 and AD-53 amended in the spine; status reset `blocked` to `ready-for-dev`.
 
 ## Review Triage Log
+
+### 2026-09-28 — Review pass (rework iteration 1 re-dispatch, option K)
+
+- verdicts: 12 findings — high 0, medium 0, low 8, false 4, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `WebSessions` asserted `$Data(^$JOB(tEnded)) = 0` right after `EndedPid` made it so, which cannot fail — deleted.
+  - `[low]` `[patch]` the ended and unnamed-process `Ask` legs read `"0 "` without the status, so an unanswered question passed as a permit — added `$$$AssertStatusOK`; a throw for an empty pid reddened it alone (run 18289), green on revert (18290).
+  - `[low]` `[patch]` the browser spec's `after` removed the page only once its every-session-ended assertion passed — the removal now runs in a `finally`; spec 3/3.
+  - `[low]` `[reject]` the spec is stale (Auto Run Result, the Residuals line on the Process link, unticked items, the spec's AC2 copy) — the fix edits this build's spec; the first three are written at finalize, and AC2 is amended at origin in epics.md.
+  - `[low]` `[reject]` a terminated session's pid reused by another process re-arms the refusal — it needs a reuse within the session's timeout, the refusal errs safe, and telling the session's own process from a reuse is more than a direct correction; the ruling names `$Data(^$JOB(pid))`.
+  - `[low]` `[reject]` the agent's confirm after the process has ended is never driven — the confirm consults the same set the ended-pid `Ask` legs pin, and its refused leg shows it reaches that set; a live leg adds no discriminating power.
+  - `[false]` `[reject]` the person types the id before learning of the refusal — the item keeps End drawn and has the refusal answer the click; the frozen End flow confirms through the typed-name dialog before anything is sent, and a verdict before the dialog would need a new route, which Never forbids.
+  - `[false]` `[reject]` only the browser spec shows the kernel's sentence reaching the screen — that is the real-runtime tier doing it live; the component tier stubs the transport by convention.
+  - `[false]` `[reject]` a caller able to run code could still create the page — such a caller can already define any class; nothing shipped answers over HTTP.
+  - `[low]` `[reject]` no test asserts the page path answers 404 after teardown — `Remove()` answers OK only when neither the definition nor the compiled class exists, and an HTTP probe is more than a direct correction.
+  - `[false]` `[reject]` `WebSessionsLive` creates the page inside the test method — `OnAfterOneTest` removes it after every test, so it exists only within the test that made it.
+  - `[low]` `[patch]` (grouped with the `after` finding above) the browser `after` removes the page only after its assertion — same fix.
 
 ### 2026-09-28 — Review pass (rework iteration 1, DW-1792)
 
@@ -332,7 +349,6 @@ No AD-27 case is needed. The `AdminPort` wait is `DELETE` verification on AD-26'
 
 **Residuals:**
 
-- **Process link not proven live.** No preserve-mode session (the only kind with a process) could be produced on the throwaway without compiling a CSP page. The Process link is therefore pinned at the component tier, and the shared click is `locks.browser-spec.mjs`'s.
 - **Slow daemon.** If the daemon takes longer than 10 s, the ended row stays listed until the next read.
 
 ## Verification
@@ -365,13 +381,44 @@ No AD-27 case is needed. The `AdminPort` wait is `DELETE` verification on AD-26'
 - Slow daemon (matrix): mutation: make `AdminPort.AwaitGone` read the list once and return (its deadline check replaced by `Quit`), recompiled with `Test/AwaitPort.cls` → `WebSessions.TestTheWaitForTheDaemonIsBoundedAndNeverFailsTheWrite` red (run 18223).
 - AC3 (fails closed): mutation: `IsOcuPilotSession` answers 0 on a roster fault → `WebSessions.TestTheSetRefusesASessionOcuPilotIsRunningIn` roster leg red through `Test/RosterFaultSet.cls` (run 18246).
 - Never (no id in a log line): mutation: empty `AdminPort.UNLOGGEDQUERY` → `WebSessionsLive.TestThePortReturnsOnceTheSessionIsGone` log leg red, the line quoting `ERROR #5907: Session ID 'OcuNoSessn'` (run 18247).
+- DW-1792 (option K): mutation: answer 1 in place of `Prohibited.IsPreservedSession`'s running-process test, recompiled with `Test/ProhibitedFixture.cls` and `Test/RosterFaultSet.cls` → `WebSessionsLive.TestAPreserveModeSessionIsRefusedWhileItsProcessRuns` terminate-then-end leg red (403 `PROHIBITED.PRESERVEDSESSION` after Processes' Terminate, run 18279), and `WebSessions.TestAPreserveModeSessionIsRefusedWhileItsProcessRuns` ended-process legs red (run 18278).
+- DW-1792 (the refusal): mutation: drop the `WebSession` branch's `IsPreservedSession` refusal → `WebSessions.TestAPreserveModeSessionIsRefusedWhileItsProcessRuns` running-process set, route and confirm legs red (run 18280).
+- DW-1792 (End stays drawn): mutation: answer the preserve-mode sentence for a `Preserve` 1 row in `selfProtectionReason`'s `ocupilot-session` branch → `self-protection.test.mjs` "Story 16.2 (DW-1792)", `screen-action-handler.spec.ts` and `list-page.spec.ts` "offers End session on a preserve-mode session" red, and, rebuilt and redeployed, `web-sessions.browser-spec.mjs` DW-1792 red (the entry drawn `aria-disabled`).
+- DW-1792 (an unanswered question is not a permit): mutation: throw from `Prohibited.IsRunningProcess` for an empty pid → `WebSessions.TestAPreserveModeSessionIsRefusedWhileItsProcessRuns` red on its status assertion (run 18289).
+
+**Test page (DW-1792): created at test time, not gated.** `Test/PreservedSession.cls` is a helper, not a page: `Create()` defines and compiles `OcuPilot.Test.PreservedSessionPage` in the current namespace and `Remove()` deletes it, so no install carries the page. `WebSessionsLive` creates it in its preserve test and removes it in `OnAfterOneTest`; the browser spec creates it in its DW-1792 test and removes it in `after`. No new arming variable, so `ocupilot-ci` ran both legs live and CI's throwaway runs the same code.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- DW-1792's published remedy is unreachable. After the session's process is terminated, the vendor `LIST` still answers `Preserve` 1 (with the dead `SesProcessId`) until the session's own timeout, so a refusal keyed on `Preserve` 1 refuses "then end the session" on both callers, and the client cannot see process liveness to lift its drawn refusal. Decide one: (K, recommended) the kernel refuses only while `SesProcessId` names a running process (`$Data(^$JOB(pid))`), the client draws no preserve-mode refusal before a click and the instance answers it after one (as `system-resource` defers when the client lacks the data), and AD-10 reads "while its own process runs"; (A) as K, but keep the drawn refusal by adding a process-running field to the list read (new read surface); (J) keep refusing every `Preserve` 1 row and reword the sentence so it promises no end (the session leaves at its own timeout, as the classic page's `AllowEndSession` false implies). The attempt is saved in `_bmad-output/implementation-artifacts/16-2-rework1-dw1792-attempt.patch` (`git apply` restores it).
+Status: done
+Blocking condition: none
 
-Rework iteration 1 (DW-1792), 2026-09-28: the handoff implemented the item as written -- `PROHIBITED.PRESERVEDSESSION` in `Prohibited.WebSession` after the own-session check, the sentence in EXPERIENCE.md row 357 and `strings.ts`, the `ocupilot-session` rule's preserve arm, counts 19 to 20, and a real preserve-mode session seeded through a new test page `Test/PreservedSession.cls` (`/csp/hscustom/`). It verified green on `ocupilot-ci`: `WebSessions` 9/9 (run 18269), `WebSessionsLive` 7/7 (18270), `Prohibited` 13/13 (18271), `RefusalCopy` 8/8 (18272), `Guardrails` 10/10 (18273), `AuditingUpdate` refused on `OCUPILOT_ALLOW_AUDIT_TOGGLE` (residue); `npm run test:tools` 1685/1685; the two component specs 77/77; `web-sessions.browser-spec.mjs` 3/3 on the redeployed bundle (the Process link proven live). Its mutations reddened (runs 18260, 18262; client, rebuilt and redeployed). The verification-gap review then found the remedy loop above, demonstrated by terminating a seeded session's process through `osmgmt.processes` and ending it (403); the session left at its timeout (19:01:06 UTC). Per the intent-gap branch the change was saved and reverted: the tree is at `5594b414` plus the patch file; on `ocupilot-ci` the touched classes are recompiled from the reverted tree, `OcuPilot.Test.PreservedSession` is deleted, the reverted bundle is redeployed (last build 2.05 MB initial, 359.15 kB transfer), and no web session is left. The three low items routed `patch` in the triage log go with the re-dispatch. No footprint extension is committed (the attempt adds `src/OcuPilot/Test/PreservedSession.cls` and touches EXPERIENCE.md and `Screen/Registry.cls`).
+Rework iteration 1 re-dispatch (option K), 2026-09-28: `Prohibited.IsPreservedSession` refuses `PROHIBITED.PRESERVEDSESSION` only while the row's `SesProcessId` names a running process (new `IsRunningProcess`, `$Data(^$JOB(pid))` read at the write, both callers, before any `DELETE`); a session whose process has ended, or that names none, is ended. The client rule's `Preserve` branch is removed, so End session stays offered and the instance answers the confirmed click with the unchanged sentence. The test page is created at test time, not gated: `Test/PreservedSession.cls` is an abstract helper whose `Create()` compiles `OcuPilot.Test.PreservedSessionPage` and whose `Remove()` deletes it, so no install carries a page and no arming variable is added. The three triage patches landed.
+
+Files (this pass):
+
+- `Kernel/Proposal/Prohibited.cls` -- the running-process condition (`FIELDSESPROCESSID`, `IsRunningProcess`).
+- `Screen/Tool/WebSessionEnd.cls` -- the model-facing description names the preserve-mode refusal and its remedy.
+- `Screen/Registry.cls`, `Screen/Descriptor/WebSessionList.cls` -- doc comments back to the own-session refusal only.
+- `Test/PreservedSession.cls` -- the page, now defined and deleted at test time.
+- `Test/WebSessions.cls`, `Test/WebSessionsLive.cls` -- running, ended and unnamed process legs; the live terminate-then-end leg.
+- `ui/src/app/core/self-protection.ts` -- the `Preserve` branch removed; `self-protection.test.mjs`, `list-page.spec.ts`, `screen-action-handler.spec.ts`, `web-sessions.browser-spec.mjs` follow.
+- EXPERIENCE.md `:220` and row 357 in place (993 lines).
+
+Review: 12 findings (verification-gap, intent-alignment) -- 3 low entries patched (an unfalsifiable precondition deleted, a status assertion added with its mutation, the browser teardown's page removal made unconditional); nothing deferred; rejected: the stale spec (a spec edit), pid reuse (rare, errs safe), the agent's post-terminate confirm (same set, pinned), and a 404 probe of the removed page (more than a direct correction), with four `false` (typed id before the refusal, the component tier's stubbed transport, a code-running caller, where the page is created). Follow-up review: not recommended (follow-up pass; patched high 0, medium 0, low 3).
+
+Verification (this pass):
+
+- ObjectScript on `ocupilot-ci`, one class per call: `WebSessions` 9/9 (runs 18281, 18287, and 18290 after the patches), `WebSessionsLive` 7/7 (18282, 18288), `Prohibited` 13/13 (18283), `RefusalCopy` 8/8 (18284), `Guardrails` 10/10 (18285). `AuditingUpdate` refuses on `ocupilot-ci` (residue); its twenty codes passed in CI run 36469822554 on `868ece4c`, and this pass adds none.
+- Client: `npm run test:tools` 1685/1685; `npm run test:components` 1700/1700; `web-sessions.browser-spec.mjs` 3/3 on the rebuilt, redeployed bundle, again after the patches. Bundle: 2.05 MB initial (359.33 kB transfer), under `maximumWarning` 2107kB.
+- Mutations: the handoff's three DW-1792 lines (runs 18278-18280; the client one rebuilt and redeployed) and this stage's one (run 18289), each red, reverted byte-identical, and re-run green.
+- `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues. `ocupilot-ci` holds no web session and no page class. The full ObjectScript sweep was not run: nothing beyond the web-session classes, their tests and the client rule changed (Rule 29 as scoped by the lead).
+
+Footprint extensions (this pass): none new; the story's list is under the implement stage below.
+
+Residual risks: a reused pid refuses a terminated session's end until its timeout; a daemon slower than 10 s leaves the ended row listed until the next read.
+
+Rework iteration 1, first attempt (DW-1792 as decided (a)): halted on an intent gap (the remedy looped); closed by option K above and in the Spec Change Log.
 
 Implemented (implement stage, 2026-09-28): the Web sessions list (third Web applications entry, `WebSession` `LIST`, Process cell linked to Process details) and `webapp.sessions.end` (bodyless `DELETE`, exact-case fresh read through the new `READROWKEYEXACT`, `%DB_IRISSYS:WRITE` declared, destructive typed-name confirm), `AdminPort`'s bounded wait for the vendor's daemon (`AWAITEDDELETES`, `AwaitGone`), the `PROHIBITED.OCUPILOTSESSION` arm and its client rule `ocupilot-session`, the governance key, and the copy. The plan's option-A ruling is in the Spec Change Log.
 
@@ -400,6 +447,6 @@ Verification:
 
 Footprint extensions (outside the listed trees): `src/OcuPilot/Kernel/EntityType.cls`, `src/OcuPilot/Kernel/Governance/Baseline.cls`, `scripts/ci-throwaway.sh`, `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`.
 
-Residual risks: the own-session arm has no live subject on this build (option A, proven over canned rows); a daemon slower than 10 s leaves the ended row listed until the next read; the Process link is pinned at the component tier only.
+Residual risks: the own-session arm has no live subject on this build (option A, proven over canned rows); a daemon slower than 10 s leaves the ended row listed until the next read.
 
 Planned (plan stage, 2026-09-28): the full spec for option A, from three investigations (server conventions, client conventions, instance measurement on ocupilot-ci) and four direct probes (the WebSession class source, a LIST with unknown query parameters, the vendor audit trail after an end, seeding a synthetic session). Everything created on ocupilot-ci was removed; the one extra /api/atelier/ session this stage opened was ended by its own probe.

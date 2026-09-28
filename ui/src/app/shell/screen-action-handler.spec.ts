@@ -1158,13 +1158,19 @@ describe('the Web sessions list\u2019s End session (Story 16.2)', () => {
     expect(calls).toHaveLength(0);
   });
 
-  it('draws a preserve-mode session refused with the sentence pointing to its process before anything is sent', () => {
-    // Mutation (Rule 19): answer '' for a `Preserve` 1 row in `selfProtectionReason` -> the
-    // dialog opens and the refusal assertion goes red.
-    const { handler, store, calls } = mount(undefined, SESSIONS);
+  it("offers End session on a preserve-mode session and shows the instance's refusal, pointing to its process, after the click", async () => {
+    // Mutation (Rule 19): answer the preserve-mode sentence for a `Preserve` 1 row in
+    // `selfProtectionReason` -> no dialog opens and the typed-name assertion goes red.
+    const refused = { kind: 'error', status: 403, code: 'PROHIBITED.PRESERVEDSESSION', reason: STRINGS.webSessionRefusalPreserved, detail: null } as JsonResult<unknown>;
+    const { handler, store, calls, events } = mount(refused, SESSIONS);
     handler.startFor(SESSIONS, 'end', ID, { ID, Application: '/csp/hscustom/', Preserve: 1, SesProcessId: '4242' }, store);
+    expect(handler.pending()?.kind).toBe('typed-name');
+    expect(store.refusal()).toBe('');
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'end', id: ID });
     expect(store.refusal()).toBe(STRINGS.webSessionRefusalPreserved);
-    expect(handler.pending()).toBeNull();
-    expect(calls).toHaveLength(0);
+    expect(events).toEqual([]);
   });
 });

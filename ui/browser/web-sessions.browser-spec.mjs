@@ -9,15 +9,15 @@
  * sends nothing, the exact id sends one request, and the row leaves on the re-read that follows.
  * With the dialog open, the screen passes the structural and contrast checks at 1280 light, 720
  * light and 1280 dark, with no entry beyond the baseline (DW-1337). A real preserve-mode session,
- * opened through `OcuPilot.Test.PreservedSession` under `/csp/hscustom/`, lists with its process
- * linked to Process details, and its End session is drawn refused with the published sentence that
- * points to that process, sending nothing.
+ * opened through the page `OcuPilot.Test.PreservedSession` compiles under `/csp/hscustom/`, lists
+ * with its process linked to Process details; its End session is offered, and while that process
+ * runs the instance answers the confirmed click with the published sentence pointing to it.
  *
- * **It ends web sessions and terminates processes**, so it runs on a throwaway only. It seeds each
- * session itself as the configured account over HTTP, reads its id from the admin API's
- * `WebSession` `LIST` through `docker exec`, and its `after` hook ends every session it seeded that
- * is still listed, terminating a preserve-mode session's own process first, since that process
- * holds the session's lock.
+ * **It ends web sessions, terminates processes and compiles a page**, so it runs on a throwaway
+ * only. It seeds each session itself as the configured account over HTTP, reads its id from the
+ * admin API's `WebSession` `LIST` through `docker exec`, and its `after` hook ends every session it
+ * seeded that is still listed, terminating a preserve-mode session's own process first, since that
+ * process holds the session's lock, and then deletes the page.
  *
  * Run: `node --test --test-concurrency=1 browser/web-sessions.browser-spec.mjs` (after
  * `npm run build`, the bundle copied into the throwaway, and `sh scripts/ci-throwaway.sh up`).
@@ -40,7 +40,7 @@ const ROUTE = 'web-applications/sessions';
 const LIST_URL = `/ocupilot/${ROUTE}?ns=HSCUSTOM`;
 const ACTION_PATH = '/api/ocupilot/screens/webapp.sessions/action';
 const SEED_PATH = '/api/atelier/';
-const PRESERVED_PATH = '/csp/hscustom/OcuPilot.Test.PreservedSession.cls';
+const PRESERVED_PATH = '/csp/hscustom/OcuPilot.Test.PreservedSessionPage.cls';
 
 let browser = null;
 const seeded = [];
@@ -85,6 +85,15 @@ function endSession(id) {
   if (row === undefined) return;
   if (row.preserve === '1' && /^\d+$/.test(row.pid)) runIris(config.container, [`Do $SYSTEM.Process.Terminate(${row.pid})`]);
   runIris(config.container, [`Kill q Set q("id")="${escapeOs(id)}" Set sc=##class(OcuPilot.Port.AdminPort).Invoke("WebSession","DELETE",.q,"",.r,.h,.f)`]);
+}
+
+/** Compile (`Create`) or delete (`Remove`) the preserve-mode page on the throwaway. */
+function preservedPage(method) {
+  const output = runIris(config.container, [
+    `Set sc=##class(OcuPilot.Test.PreservedSession).${method}()`,
+    'Write "OCU-WSPAGE-START:"_$Select($System.Status.IsOK(sc):"ok",1:$System.Status.GetErrorText(sc))_":OCU-WSPAGE-END",!',
+  ]);
+  assert.equal(markerValue(output, 'WSPAGE'), 'ok', `OcuPilot.Test.PreservedSession.${method} answers: ${output}`);
 }
 
 /** `id` with every letter's case swapped: an id the instance holds as a different session. */
@@ -186,8 +195,12 @@ after(async () => {
   try {
     if (/-ci$/.test(config.container)) {
       for (const id of seeded) endSession(id);
-      const left = listed().filter((row) => seeded.includes(row.id));
-      assert.deepEqual(left, [], 'every session this spec seeded is ended');
+      try {
+        const left = listed().filter((row) => seeded.includes(row.id));
+        assert.deepEqual(left, [], 'every session this spec seeded is ended');
+      } finally {
+        preservedPage('Remove');
+      }
     }
   } finally {
     if (browser !== null) await browser.close();
@@ -283,10 +296,11 @@ test('AC2: End session types the session id, sends one request on the exact id, 
   }
 });
 
-// DW-1792. Mutation (Rule 19): answer '' for a `Preserve` 1 row in `selfProtectionReason`'s
-// `ocupilot-session` branch, then rebuild and redeploy -> the entry is offered and the refusal
-// assertions go red.
-test('DW-1792: a real preserve-mode session lists with its process linked, and its End session is drawn refused with the sentence pointing to that process', async () => {
+// DW-1792. Mutation (Rule 19): answer the preserve-mode sentence for a `Preserve` 1 row in
+// `selfProtectionReason`'s `ocupilot-session` branch, then rebuild and redeploy -> the entry is
+// drawn refused and the offered-entry assertion goes red.
+test('DW-1792: a real preserve-mode session lists with its process linked, and while that process runs End session is answered with the sentence pointing to it', async () => {
+  preservedPage('Create');
   const id = await seed(PRESERVED_PATH);
   const session = listed().find((row) => row.id === id);
   assert.equal(session?.preserve, '1', `the page left a preserve-mode session: ${JSON.stringify(session)}`);
@@ -308,15 +322,23 @@ test('DW-1792: a real preserve-mode session lists with its process linked, and i
         (candidate) => candidate.querySelector('.ocu-data-table-menu-label')?.textContent.trim() === label
       );
       if (item === undefined) return null;
-      const refused = { disabled: item.getAttribute('aria-disabled'), reason: item.querySelector('.ocu-data-table-menu-reason')?.textContent.trim() ?? '' };
+      const drawn = { disabled: item.getAttribute('aria-disabled'), reason: item.querySelector('.ocu-data-table-menu-reason')?.textContent.trim() ?? '' };
       item.click();
-      return refused;
+      return drawn;
     }, STRINGS.webSessionEndAction);
-    assert.deepEqual(entry, { disabled: 'true', reason: STRINGS.webSessionRefusalPreserved }, 'End session is drawn refused with the sentence pointing to the process');
-    await frames(page);
-    assert.equal(await page.$('app-typed-name-dialog'), null, 'and its click opens no dialog');
-    assert.equal(posts.length, 0, 'and sends nothing');
-    assert.equal(listed().some((row) => row.id === id), true, 'the session is still listed');
+    assert.deepEqual(entry, { disabled: null, reason: '' }, 'End session is offered: the list does not show whether the process runs');
+    await page.waitForSelector('app-typed-name-dialog', { timeout: config.navigationTimeoutMs });
+    await page.type('.ocu-typed-name-field', id);
+    await page.waitForFunction(() => document.querySelector('.ocu-button-destructive')?.getAttribute('aria-disabled') === null, {
+      timeout: config.navigationTimeoutMs,
+    });
+    await page.click('.ocu-button-destructive');
+    await page.waitForSelector('.ocu-list-page-banner[role="alert"] .ocu-banner-message', { timeout: config.navigationTimeoutMs });
+    const refusal = await page.$eval('.ocu-list-page-banner[role="alert"] .ocu-banner-message', (element) => element.textContent.trim());
+    assert.equal(refusal, STRINGS.webSessionRefusalPreserved, 'the instance answers with the sentence pointing to the process');
+    assert.equal(posts.length, 1, `after one request: ${JSON.stringify(posts)}`);
+    assert.deepEqual(JSON.parse(posts[0].body), { action: 'end', id });
+    assert.equal(listed().find((row) => row.id === id)?.pid, session.pid, 'and the session is still listed with its process');
   } finally {
     await context.close();
   }
