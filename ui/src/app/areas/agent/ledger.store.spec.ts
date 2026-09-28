@@ -181,6 +181,8 @@ describe('LedgerSearch', () => {
   it('names the field a refused criterion or window belongs to', async () => {
     expect([refusedField('LEDGER.CRITERION.INVALID', 'all'), refusedField('LEDGER.CRITERION.INVALID', 'route')]).toEqual(['user', 'route']);
     expect([refusedField('LEDGER.WINDOW.INVALID', undefined), refusedField('LEDGER.CRITERION.INVALID', 'nope')]).toEqual(['begin', '']);
+    // Mutation (Rule 19): drop the account-name shape line from `refusedField` -> this goes red.
+    expect(refusedField('LEDGER.USER.INVALID', undefined)).toBe('user');
     const { search } = mountStore([
       { kind: 'error', status: 400, code: 'LEDGER.CRITERION.INVALID', reason: 'x', detail: { criterion: 'begin' } },
       { kind: 'ok', status: 200, body: answer() },

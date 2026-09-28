@@ -64,8 +64,7 @@ interface DetailView {
  * is root-provided, so a row's dialog, which is the `/:id` route, keeps it.
  *
  * Everything shown is stored data rendered by interpolation, never as markup (AD-11 rule 4).
- * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
- * records.
+ * No control-flow condition holds a call expression, for the reason `sign-in.ts` records.
  */
 @Component({
   selector: 'app-ledger-page',

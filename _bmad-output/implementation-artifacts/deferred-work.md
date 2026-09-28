@@ -7895,6 +7895,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-16-the-agent-audit-viewer.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: plan probe on ocupilot-ci 2026-09-28: RecordToolCall stored certificate, nested Certificate, Value and a PEM block under Notes verbatim; declared names at their spelling read [redacted]; x509 import's Certificate is the only declared name the pattern misses
 - 2026-09-28T13:44:39Z status=wontfix-accepted owner=16-16-the-agent-audit-viewer by=harvest note=reopen_if=a declared secret under its own tool's declared name is found verbatim in a ledger row, or a new tool declares a secret the pattern misses
+- 2026-09-28T14:20:32Z occurrence=16-16-the-agent-audit-viewer by=cr note=target half: a case-variant or undeclared secret the model also sends as id stays in Target, which has no pattern backstop
 
 ### DW-1782: A tool step's target in the turn's progress and stored transcript keeps a declared secret's value the model sent as id, and can show in the agent panel's tool-call card; the ledger row stores the mark since Story 16.16, the step does not
 - source: spec-16-16-the-agent-audit-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -7906,3 +7907,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-16-the-agent-audit-viewer.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: review probe on ocupilot-ci: /etc/localtime Etc/UTC, $ZTIMEZONE 0, $H equals $ZTS; a process-level $ZTIMEZONE change does not move $ZDATETIME(h,-3)
 - 2026-09-28T13:44:39Z status=escalated owner=burndown by=harvest note=for the decision sheet: needs one run on a throwaway started with a non-UTC TZ (CI or ci-throwaway.sh change); recommended route to range-end-cleanup
+
+### DW-1789: A user named in the agent audit viewer in another letter case than the stored account name reads an empty list with no refusal, because a named ledger read matches UserName exactly
+- source: spec-16-16-the-agent-audit-viewer.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Code review: Kernel.State.Ledger.WindowWhere binds %EXACT(UserName) = ? for a named read, the semantics the spec keeps (a named user behaves as it does today), and the page's User field now reaches it (inference: not reproduced).
+- 2026-09-28T14:20:32Z status=wontfix-accepted owner=16-16-the-agent-audit-viewer by=cr note=reopen_if=a named ledger search reads empty for a user whose rows the every-user view lists

@@ -9,6 +9,7 @@ import { ScreenStores } from '../../core/screen-store';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { STRINGS, stringFor } from '../../core/strings';
 import { screenForRoute } from '../../core/navigation';
+import { formatCapNotice } from '../../core/table-model';
 import { AGENT_LEDGER, LedgerPage } from './ledger.page';
 
 /**
@@ -184,6 +185,60 @@ describe('LedgerPage', () => {
       "You need OcuPilotAdmin:USE to see another user's agent activity."
     );
     expect(host.querySelector('[role="grid"]')).toBeNull();
+  });
+
+  it('AC2: a refusal after a listed search leaves no rows and no count standing', async () => {
+    const refusals: JsonResult<unknown>[] = [
+      { kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'x', detail: { failedPair: 'OcuPilotAdmin:USE' } },
+      { kind: 'error', status: 400, code: 'LEDGER.CRITERION.INVALID', reason: 'That value is not one.', detail: { criterion: 'end' } },
+      { kind: 'error', status: 503, code: 'LEDGER.UNAVAILABLE', reason: 'down', detail: null },
+    ];
+    for (const refusal of refusals) {
+      const { fixture, host } = await mount([ok(answer()), refusal]);
+      expect(host.querySelectorAll('.ocu-data-table-body [role="row"]').length).toBe(2);
+      setField(host, 'ocu-ledger-user', 'bob');
+      (host.querySelector('button[type="submit"]') as HTMLButtonElement).click();
+      await settle(fixture);
+      // Mutation (Rule 19): keep the previous view on a 403 in `LedgerSearch.search` -> the count stays and this goes red.
+      expect(host.querySelector('[role="grid"]')).toBeNull();
+      expect(host.querySelector('.ocu-data-table-count')).toBeNull();
+    }
+  });
+
+  it('searches again on a return to the screen, and not across a row dialog', async () => {
+    const { fixture, paths, router } = await mount([ok(answer())]);
+    expect(paths.length).toBe(1);
+    const recreate = async () => {
+      const next = TestBed.createComponent(LedgerPage);
+      document.body.appendChild(next.nativeElement);
+      planted.push(next.nativeElement);
+      await settle(next);
+      return next;
+    };
+    await router.navigateByUrl('/agent/ledger/b2?ns=HSCUSTOM');
+    fixture.destroy();
+    const dialog = await recreate();
+    expect(paths.length).toBe(1);
+    await router.navigateByUrl('/os-management/processes?ns=HSCUSTOM');
+    dialog.destroy();
+    await router.navigateByUrl('/agent/ledger?ns=HSCUSTOM');
+    await recreate();
+    // Mutation (Rule 19): drop the `leave()` call from the page's destroy hook -> the return sends nothing and this goes red.
+    expect(paths.length).toBe(2);
+  });
+
+  it("the dialog's Result shows a write's audit marking and a cut field list", async () => {
+    const cut = { ...writeRow, fieldsTruncated: true };
+    const { host } = await mount([ok(answer({ rows: [toolRow, cut] }))], '/agent/ledger/a1?ns=HSCUSTOM', 'a1');
+    const result = JSON.parse(host.querySelector('[data-ocu-ledger="result"]')?.textContent ?? '{}');
+    // Mutation (Rule 19): `parseRow` reads `fieldsTruncated` as `=== 'true'` -> this goes red.
+    expect([result.fieldsTruncated, result.auditMarked]).toEqual([true, 'marked']);
+  });
+
+  it('a capped answer shows the cap line', async () => {
+    const { host } = await mount([ok(answer({ truncated: true }))]);
+    // Mutation (Rule 19): `capNotice` answers '' -> this goes red.
+    expect(host.querySelector('.ocu-data-table-cap-notice')?.textContent?.trim()).toBe(formatCapNotice(STRINGS.tableRowCapNotice, 2));
   });
 
   it('a refused criterion shows the instance reason at the form', async () => {

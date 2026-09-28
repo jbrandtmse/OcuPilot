@@ -236,6 +236,51 @@ deferred:
 - **AC5.** Given the registry and the screen, when tools and screen context are derived, then no read tool reads the ledger (the `ReadTool` roster stays 128) and the screen's context carries no rows.
 - **Integration (Rule 1).** Given a real instance, when `LedgerPage` calls `GET /agent/ledger` with its criteria, then the rows the extended `ViewForUser` answers render with the dialog (browser spec).
 
+### Review Findings
+
+Code review 2026-09-28, `full-opus`, four layers: 32 findings. Of those, 13 were patched, 2 were ledgered and 17 were rejected. None was high; 4 were medium.
+
+- [x] [Review][Patch] (medium) AC2's "no rows" was pinned only from a store that had never listed; the page spec now lists, then refuses 403/400/503 [ledger.page.spec.ts]
+- [x] [Review][Patch] (medium) Nothing pinned a new search on return, or none across a row dialog; the page spec now has a revisit leg [ledger.page.spec.ts]
+- [x] [Review][Patch] (medium) No test ever read `fieldsTruncated` true, or the dialog's `auditMarked` [LedgerSearch.cls, ledger.page.spec.ts]
+- [x] [Review][Patch] (medium) Rule 3: the browser spec claims AC1 but ran only the Screen criterion; it now also runs User, Begin and End against the real route [agent-ledger.browser-spec.mjs]
+- [x] [Review][Patch] (low) The cap line was never rendered in any test [ledger.page.spec.ts]
+- [x] [Review][Patch] (low) A malformed User (`LEDGER.USER.INVALID`) marked no field [ledger.store.ts `refusedField`]
+- [x] [Review][Patch] (low) A declared secret sent as a JSON number, and also as `id`, stayed in Target [Kernel/Audit/Ledger.cls `CarriesSecretValue`]
+- [x] [Review][Patch] (low) The target check's containment was untested (`=` stayed green) [LedgerSearch.cls]
+- [x] [Review][Patch] (low) The route's 512-character bound was unpinned [LedgerSearchWire.cls]
+- [x] [Review][Patch] (low) The browser assertion `status !== ''` could not fail [agent-ledger.browser-spec.mjs]
+- [x] [Review][Patch] (low) The QA leg's mutation comment named a failure that does not happen; the leg now waits on its own submit and asserts 400 [agent-ledger.browser-spec.mjs]
+- [x] [Review][Patch] (low) The test helpers `Age` and `LocalHoursAgo` were typed `%Integer` but take fractional hours [LedgerSearch.cls]
+- [x] [Review][Patch] (low) The page's doc comment said every control-flow condition is a member reference [ledger.page.ts]
+- [x] [Review][Defer] (low) A case-variant or undeclared secret the model also sends as `id` stays in Target, which has no pattern backstop — deferred: same root cause as DW-1781 (occurrence appended)
+- [x] [Review][Defer] (low) A user named in another letter case reads an empty list — deferred: DW-1789 `wontfix-accepted`, because a named read keeps today's exact match
+
+Rejected:
+
+- By design, because the spec fixes the behavior:
+  - the withheld sentence, including for rows withheld for their shape;
+  - the cap notice's max-rows advice (`tableRowCapNotice` is reused);
+  - the no-longer-present sentence for a row outside the search (Matrix);
+  - `*` as the every-user subject;
+  - no Begin means 24 hours from now, whatever End is;
+  - no Kind criterion and no paging;
+  - the Result members;
+  - `tableReadOnlyEmptyNext`;
+  - "<n> rows" at 1;
+  - "contains" masking a target that merely holds a short value;
+  - no index for an every-user scan;
+  - local time without a zone (Conventions › Dates).
+- False:
+  - The cap count is the number of rows shown, and the withheld line accounts for the rest.
+  - The browser spec's `find` takes this run's rows, because the grid lists newest first.
+- Low, and not worth the fix: failure-path cleanup of turn rows (about twenty turnprobe specs leave them).
+- Theoretical: `LocalHoursAgo` drifting across a DST switch needs a non-UTC instance.
+- Rejected because the fix would edit this spec:
+  - ReadTool "128";
+  - the stale follow-up reason;
+  - a named limit for turns run with sharing off.
+
 ## Spec Change Log
 
 - 2026-09-28T08:45Z, lead spec gate: the two spine changes under Design Notes (AD-46's "read by people, not by the agent"; Conventions › Dates) are written into the spine by the lead in this gate's commit. `Kernel/Audit/Ledger.cls`, `Kernel/State/Ledger.cls` and `Kernel/State/Turn.cls` are accepted as footprint extensions (uncontended).
@@ -381,6 +426,25 @@ Applied at review on `ocupilot-ci` (same discipline):
 - mutation: `LedgerSearch.search()` loses its generation check → `ledger.store.spec.ts` "drops a late answer…" red.
 - mutation: the End field loses `[attr.aria-invalid]` → `ledger.page.spec.ts` "a refused criterion marks the field it names…" red.
 - mutation: `App.verifyWhenSignedIn` loses `this.ledgerSearch.reset()` → `app.spec.ts` "AD-8: leaving the signed-in state…" red.
+
+Applied at QA on `ocupilot-ci` (same discipline):
+
+- mutation: the End field loses `[attr.aria-invalid]` in `ledger.page.ts`; bundle rebuilt and redeployed → new `agent-ledger.browser-spec.mjs` "Bad criterion" red against the real route and the deployed bundle, not only `ledger.page.spec.ts`'s jsdom double; reverted byte-identical, rebuilt, redeployed green. (QA)
+
+Applied at code review on `ocupilot-ci` (same discipline; each reverted byte-identical, `Kernel.Audit.Ledger`'s three probe subclasses recompiled, bundle rebuilt and redeployed):
+
+- mutation: `LedgerSearch.search` keeps the previous view on a 403 → `ledger.page.spec.ts` "AC2: a refusal after a listed search leaves no rows and no count standing" red.
+- mutation: the page's destroy hook loses `leave()` → "searches again on a return to the screen, and not across a row dialog" red.
+- mutation: `parseRow` reads `fieldsTruncated` as `=== 'true'` → "the dialog's Result shows a write's audit marking and a cut field list" red.
+- mutation: `capNotice` answers `''` → "a capped answer shows the cap line" red.
+- mutation: `refusedField` loses its `LEDGER.USER.INVALID` line → `ledger.store.spec.ts` "names the field a refused criterion or window belongs to" red.
+- mutation: `RowObject` sets `fieldsTruncated` false → `LedgerSearch.TestAWriteRowSaysWhenItsFieldListWasCut` red (run 17851).
+- mutation: `CarriesSecretValue` compares with `=` → `TestADeclaredSecretReachesNoTargetNoArgumentsAndNoFields` red on the longer id (17852); it reads strings only → red on the numeric `Password` (17853).
+- mutation: `Api.Ledger.Handle` drops the route length bound → `LedgerSearchWire.TestEachMalformedCriterionIsRefusedByName` red on a 513-character route (17854).
+- mutation: `ledgerPath` sends `all=1` whatever User holds → `agent-ledger.browser-spec.mjs` red at "the instance applied the User, Begin and End criteria".
+- mutation: `WindowWhere`'s end predicate always holds → `agent-ledger.browser-spec.mjs` red at "an End one second earlier … leaves it out".
+- mutation: `Api.Ledger.Handle` skips its End check → "Bad criterion" red on the route's 500. Dropping only the shape half stays green, because the echoed Begin makes an unconvertible End read as before it.
+- After all reverts: `LedgerSearch` 10/10 (17855), `LedgerSearchWire` 3/3 (17856), `Ledger` 11/11 (17857), the page and store specs 30/30, and `agent-ledger.browser-spec.mjs` 2/2. The bundle is 2.05 MB.
 
 ## Auto Run Result
 

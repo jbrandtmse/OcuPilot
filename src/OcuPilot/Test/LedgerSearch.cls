@@ -103,7 +103,7 @@ ClassMethod Seed(pUser As %String, pRoute As %String, pResource As %String, pNam
 }
 
 /// <p>Move turn <var>pKey</var>'s rows to <var>pHoursAgo</var> hours before now, by direct SQL.</p>
-ClassMethod Age(pKey As %String, pHoursAgo As %Integer) As %Integer
+ClassMethod Age(pKey As %String, pHoursAgo As %Numeric) As %Integer
 {
     Set tNow = $ZTimeStamp
     Set tSeconds = ((+$Piece(tNow, ",", 1)) * 86400) + ($Piece(tNow, ",", 2) \ 1) - (pHoursAgo * 3600)
@@ -114,7 +114,7 @@ ClassMethod Age(pKey As %String, pHoursAgo As %Integer) As %Integer
 }
 
 /// <p>The instance's local time <var>pHoursAgo</var> hours before now, as the viewer's form takes it.</p>
-ClassMethod LocalHoursAgo(pHoursAgo As %Integer) As %String
+ClassMethod LocalHoursAgo(pHoursAgo As %Numeric) As %String
 {
     Set tNow = $Horolog
     Set tSeconds = ((+$Piece(tNow, ",", 1)) * 86400) + ($Piece(tNow, ",", 2) \ 1) - (pHoursAgo * 3600)
@@ -344,7 +344,8 @@ Method TestAConfirmedWriteRecordsTheScreenItsTurnRanFrom()
 /// <code>permissions.users.password</code>'s own, read through the registry.</p>
 /// <p>Mutation (Rule 19): remove the target check from
 /// <method>OcuPilot.Kernel.Audit.Ledger.RecordToolCall</method> -- the value reaches the target and
-/// this goes red.</p>
+/// this goes red; compare with <code>=</code> instead of <code>[</code> in
+/// <method>OcuPilot.Kernel.Audit.Ledger.CarriesSecretValue</method> -- the longer id keeps it.</p>
 Method TestADeclaredSecretReachesNoTargetNoArgumentsAndNoFields()
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("permissions.users.password", .tTool)
@@ -396,6 +397,60 @@ Method TestADeclaredSecretReachesNoTargetNoArgumentsAndNoFields()
     Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", tUser, "", 0, "", 200, .tPlainView, .tFault, 0, tPlainRoute), "and reads")
     Do $$$AssertEquals(tPlainView.rows.%Size(), 1, "as one row")
     If tPlainView.rows.%Size() = 1 Do $$$AssertEquals(tPlainView.rows.%Get(0).target, "ocupilotprobeaccount", "whose target is the account, not the mark")
+
+    ; A target holding the value inside a longer id, and one holding a declared value sent as a
+    ; number, both store the mark.
+    Set tMoreRoute = ..ProbeRoute()
+    Set tInside = {}
+    Do tInside.%Set("id", "account/" _ ..#SECRETVALUE, "string")
+    Do tInside.%Set("Password", ..#SECRETVALUE, "string")
+    Set tNumber = {}
+    Do tNumber.%Set("id", "8675309", "string")
+    Do tNumber.%Set("Password", 8675309, "number")
+    For tMore = tInside, tNumber {
+        Set tMoreTarget = ##class(OcuPilot.Kernel.Agent.Dispatch).TargetOf(tMore)
+        Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "RecordToolCall", ..NewTurnKey(), tUser, tMoreRoute, "permissions.users.password", tMoreTarget, tMore, $ListBuild($ListBuild("%Admin_Secure", "USE")), "", tSecrets, "error", "ADMIN.NOTFOUND", ..#LIMITS, 1, "checked"), "a call whose target is " _ tMoreTarget _ " is recorded")
+    }
+    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", tUser, "", 0, "", 200, .tMoreView, .tFault, 0, tMoreRoute), "and reads")
+    Do $$$AssertEquals(tMoreView.rows.%Size(), 2, "as two rows")
+    Set tIterator = tMoreView.rows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Do $$$AssertEquals(tRow.target, tMark, "each target is the mark: " _ tRow.target)
+    }
+}
+
+/// <p>The wire row's <code>fieldsTruncated</code>: a confirmed write whose field names run past
+/// <parameter>OcuPilot.Kernel.State.Ledger.FIELDSMAXLENGTH</parameter> reads 1, and one within it
+/// reads 0 with its names whole.</p>
+/// <p>Mutation (Rule 19): set <code>fieldsTruncated</code> to a constant false in
+/// <method>OcuPilot.Kernel.Audit.Ledger.RowObject</method> -- this goes red.</p>
+Method TestAWriteRowSaysWhenItsFieldListWasCut()
+{
+    Set tUser = ..User("U1")
+    Set tRoute = ..ProbeRoute()
+    Set tRef = "user" _ $Char(2) _ "instance" _ $Char(2) _ "probe"
+    Set tPairs = $ListBuild($ListBuild("%Admin_Secure", "USE"))
+    Set tNames = ""
+    For tI = 1:1:40 {
+        Set tNames = tNames _ $ListBuild("OcuPilotProbeLedgerField" _ tI)
+    }
+    Set tLong = ..NewTurnKey()
+    Do $ClassMethod(..#LEDGER, "OpenConfirmedWrite", tLong, tUser, "permissions.users.update", tRef, ..#LIMITS, .tLongKey, tPairs, tRoute)
+    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "FinalizeConfirmedWrite", tLongKey, "ok", "", tRef, tNames, tPairs, "marked"), "a write sending forty field names is finalized")
+    Set tShort = ..NewTurnKey()
+    Do $ClassMethod(..#LEDGER, "OpenConfirmedWrite", tShort, tUser, "permissions.users.update", tRef, ..#LIMITS, .tShortKey, tPairs, tRoute)
+    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "FinalizeConfirmedWrite", tShortKey, "ok", "", tRef, $ListBuild("Name"), tPairs, "marked"), "and one sending one")
+
+    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", tUser, "", 0, "", 200, .tView, .tFault, 0, tRoute), "the view reads")
+    Do $$$AssertEquals(tView.rows.%Size(), 2, "listing both writes")
+    Set tIterator = tView.rows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tRow.turnKey = tLong {
+            Do $$$AssertEquals(tRow.fieldsTruncated, 1, "the long list reads cut, " _ $Length(tRow.fields) _ " characters kept")
+        } Else {
+            Do $$$AssertEquals(tRow.fieldsTruncated _ "|" _ tRow.fields, "0|Name", "the short one reads whole")
+        }
+    }
 }
 
 /// <p>The Matrix's overflow row under the criteria -- <code>rowsDropped</code> sums the overflow

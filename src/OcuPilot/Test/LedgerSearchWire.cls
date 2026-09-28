@@ -177,13 +177,13 @@ Method TestAnAdministratorReadsEveryUserThroughThePerRowGate()
 /// past the bounded window is refused <code>LEDGER.WINDOW.INVALID</code> with its bound.</p>
 /// <p>Mutation (Rule 19): drop the route shape check from
 /// <method>OcuPilot.Api.Ledger.Handle</method> -- <code>route=../x</code> answers 200 and this goes
-/// red.</p>
+/// red; drop its length bound -- a well-shaped 513-character route answers 200.</p>
 Method TestEachMalformedCriterionIsRefusedByName()
 {
     Set tOld = ##class(OcuPilot.Test.LedgerSearch).LocalHoursAgo(721)
     Set tBegin = ##class(OcuPilot.Test.LedgerSearch).LocalHoursAgo(2)
     Set tEnd = ##class(OcuPilot.Test.LedgerSearch).LocalHoursAgo(3)
-    Set tCases = $ListBuild($ListBuild("route=../x", "route"), $ListBuild("route=Agent/Ledger", "route"), $ListBuild("all=2", "all"), $ListBuild("all=1&user=" _ ..#SUBJECT, "all"))
+    Set tCases = $ListBuild($ListBuild("route=../x", "route"), $ListBuild("route=Agent/Ledger", "route"), $ListBuild("route=" _ $Translate($Justify("", 513), " ", "a"), "route"), $ListBuild("all=2", "all"), $ListBuild("all=1&user=" _ ..#SUBJECT, "all"))
     Set tCases = tCases _ $ListBuild($ListBuild("begin=" _ $ZConvert("2026-02-30 00:00:00", "O", "URL"), "begin"), $ListBuild("begin=" _ $ZConvert(tBegin, "O", "URL") _ "&windowHours=5", "begin"))
     Set tCases = tCases _ $ListBuild($ListBuild("end=yesterday", "end"), $ListBuild("begin=" _ $ZConvert(tBegin, "O", "URL") _ "&end=" _ $ZConvert(tEnd, "O", "URL"), "end"))
     For tI = 1:1:$ListLength(tCases) {

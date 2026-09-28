@@ -259,7 +259,7 @@ ClassMethod RecordProviderCall(pTurnKey As %String, pUser As %String, pRoute As 
 /// <method>SenseFor</method>. It is trailing and defaults to <code>""</code>, the legacy sense,
 /// so a caller that does not answer leaves its row withheld from every cross-user reader.</p>
 /// <p><b>A declared secret's value is kept out of the target at write time</b> (AD-41): where
-/// <var>pTarget</var> contains the string value of a name in <var>pSecretNames</var> that
+/// <var>pTarget</var> contains the value of a name in <var>pSecretNames</var> that
 /// <var>pInput</var> carries, the row stores the redaction mark as its target. Where
 /// <method>RedactArguments</method> refuses to store an argument string for an object it was
 /// given, the row stores the mark there too, the "sent and withheld" state above.</p>
@@ -288,9 +288,9 @@ ClassMethod RecordToolCall(pTurnKey As %String, pUser As %String, pRoute As %Str
 }
 
 /// <p>Whether <var>pTarget</var> contains the value of a declared secret argument: a name in
-/// <var>pSecretNames</var> that <var>pInput</var> carries at the top level as a non-empty string
-/// other than the redaction mark. A value that cannot be read answers 1, so a doubtful target is
-/// withheld rather than stored.</p>
+/// <var>pSecretNames</var> that <var>pInput</var> carries at the top level as a non-empty string or
+/// number other than the redaction mark. A value that cannot be read answers 1, so a doubtful
+/// target is withheld rather than stored.</p>
 ClassMethod CarriesSecretValue(pTarget As %String, pInput As %DynamicAbstractObject, pSecretNames As %List) As %Boolean
 {
     Set tCarries = 0
@@ -300,7 +300,8 @@ ClassMethod CarriesSecretValue(pTarget As %String, pInput As %DynamicAbstractObj
         For tI = 1:1:$ListLength(pSecretNames) {
             Set tName = $ListGet(pSecretNames, tI)
             If tName = "" Continue
-            If pInput.%GetTypeOf(tName) '= "string" Continue
+            Set tType = pInput.%GetTypeOf(tName)
+            If (tType '= "string") && (tType '= "number") Continue
             Set tValue = pInput.%Get(tName)
             If (tValue = "") || (tValue = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED) Continue
             If pTarget [ tValue {

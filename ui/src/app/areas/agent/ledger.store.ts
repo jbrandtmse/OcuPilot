@@ -151,12 +151,13 @@ export function parseView(value: unknown): LedgerView | null {
 
 /**
  * The form field a 400 names: `detail.criterion` as the route sends it, `all` being the User
- * field's, and a refused window being the Begin field's, since Begin is the only field that sets
- * the window.
+ * field's, a refused account-name shape being the User field's too, and a refused window being the
+ * Begin field's, since Begin is the only field that sets the window.
  */
 export function refusedField(code: string | null, criterion: unknown): LedgerField | '' {
   if (criterion === 'all' || criterion === 'user') return 'user';
   if (criterion === 'route' || criterion === 'begin' || criterion === 'end') return criterion;
+  if (code === 'LEDGER.USER.INVALID') return 'user';
   return code === 'LEDGER.WINDOW.INVALID' ? 'begin' : '';
 }
 
