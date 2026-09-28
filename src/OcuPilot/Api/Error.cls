@@ -431,8 +431,10 @@ Parameter PATHNOFILE = "PATH.NOFILE";
 Parameter REASONPATHNOFILE = "No file of that name exists to read. Name a file that is already there, not a directory.";
 
 /// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named, for a consuming tool that
-/// overwrites, an existing file of the instance's own: one beside its configuration file, or a
-/// database file one directory below the manager directory. Rendered on the
+/// overwrites, an existing file of the instance's own: one beside its configuration file, a
+/// database file one directory below the manager directory, one directly in a configured
+/// database's directory or under its stream location, or one directly in a journal directory.
+/// Rendered on the
 /// <parameter>BADREQUEST</parameter> slug by <class>OcuPilot.Port.PathPort</class> with one
 /// <code>detail.violations</code> entry on the name's field, and never with the value or a
 /// path.</p>

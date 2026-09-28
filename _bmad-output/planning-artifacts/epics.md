@@ -7047,6 +7047,7 @@ So that no later screen has to invent its own answer to "which directories may I
 - DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file (iris.cpf sits in the manager directory's parent), so an overwriting file consumer under an allowed data-directory root could resolve it (ledger; re-routed by merge_gate 2026-09-28; first routed by harvest 2026-09-28)
 - DW-1778: PathPort.Resolve's file kind offers only new-or-overwrite, so a consumer that reads an existing file (an import, a key file to activate) is refused PATH.EXISTS unless it passes pOverwrite, which no tool declaration ties it to (ledger; re-routed by merge_gate 2026-09-28; first routed by cr 2026-09-28)
 - DW-1779: A directory-kind location may be the manager directory itself (the unrestricted root, empty name), so a consumer whose vendor writes its own files into the chosen directory (a database's IRIS.DAT) lands among the instance's own (ledger; re-routed by merge_gate 2026-09-28; first routed by cr 2026-09-28)
+- DW-1790: PATH.INSTANCE protects only the files DW-1777 names; widen it to every configured database directory and the journal directories, read from the instance at call time (ledger; routed by merge_gate 2026-09-28)
 
 ### Story 18.2: Namespaces and their mappings
 
@@ -7079,6 +7080,8 @@ So that database administration is complete rather than list-only.
 - **Then** it lists dependent namespaces and applications first, and confirms by name.
 
 - DW-1791: A directory a vendor writes into may be another database's own: pVendorWrites refuses only <ManagerDirectory> itself, so <mgr>/irissecurity/ resolves for a database create (ledger; routed by cr 2026-09-28)
+- DW-1795: PATH.INSTANCE refuses a database's volume files only beside its IRIS.DAT; an overwriting consumer can resolve an existing volume file in an additional volume directory (ledger; routed by harvest 2026-09-28)
+- DW-1796: PathPort.DatabaseDirectories' own read is pinned only against a stable default configuration (a configured StreamLocation, a ':' directory, a failure or cache inside the reader) (ledger; routed by cr 2026-09-28)
 
 **Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
@@ -7129,6 +7132,8 @@ So that the transaction record is inspectable from the portal.
 - **Given** the journal is a transaction record rather than an operator log
 - **When** it is placed
 - **Then** it stays in System Operation rather than joining the Logs area - a deliberate judgment carried from the catalog.
+
+- DW-1797: PathPort's journal read names only the primary, alternate and current file's directories, so files in a former journal directory and IRIS.WIJ outside the manager directory resolve for an overwrite (ledger; routed by cr 2026-09-28)
 
 **Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);

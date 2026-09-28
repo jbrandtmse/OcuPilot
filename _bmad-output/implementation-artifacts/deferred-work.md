@@ -7961,6 +7961,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T17:04:58Z status=escalated owner=burndown by=harvest note=policy call for the decision sheet: widen PATH.INSTANCE to every configured database directory and the journal directories, or accept the named set
 - 2026-09-28T17:21:24Z occurrence=18-1-the-directory-allow-list
 - 2026-09-28T17:21:25Z status=escalated owner=burndown by=cr note=also <mgr>/<db>/iris.lck and stream/ files, multi-volume IRIS-*.VOL (inference), and OcuPilot's own csp/ocupilot/ bundle
+- 2026-09-28T20:39:53Z status=routed owner=18-1-the-directory-allow-list by=merge_gate note=owner/orchestrator: widen PATH.INSTANCE to every configured db dir and journal dirs read at call time; own commit before 16.4 (18.1 cap override)
+- 2026-09-28T22:36:14Z status=resolved-by:18-1-the-directory-allow-list by=adjudication note=b086fb2a plus review 5: Config.Databases and journal dirs read per call, case-insensitive; PathPortInstance legs with mutations
 
 ### DW-1791: A directory a vendor writes into may be another database's own: pVendorWrites refuses only <ManagerDirectory> itself, as AD-21 says, so <mgr>/irissecurity/ (IRIS.DAT, iris.lck) resolves for a database create
 - source: spec-18-1-the-directory-allow-list.md (code review 4) | severity: med | fix-risk: low | footprint: in-epic
@@ -7985,3 +7987,22 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 3 failures in 4 runs with 16.16 present: 'failed to find element matching selector app-ledger-page #ocu-ledger-user' at spec :142; reproduced on ocupilot-ci by deferring the page's form 1.5 s
 - 2026-09-28T18:09:36Z status=open owner=16-2-web-sessions-listed-and-ended by=lead note=flake in 16.16's spec; fixed ahead of 16.2 as its own commit
 - 2026-09-28T18:09:36Z status=resolved-by:16-2-web-sessions-listed-and-ended by=adjudication note=c4a871c9: readDialog waits for the re-created page's form, setCriterion for its field; CI run 36458908646 green
+### DW-1795: PATH.INSTANCE refuses a database's volume files only beside its IRIS.DAT: an overwriting consumer can resolve an existing volume file in one of the database's additional volume directories (SYS.Database VolumeDirectoryList, NewVolumeDirectory)
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: PathPort.DatabaseDirectories reads Config.Databases, which carries no volume directories; every local database on ocupilot-b-ci is single-volume, so no reach today (inference)
+- 2026-09-28T22:08:13Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=harvest note=18.3's multi-volume properties create the first additional volume directory; extend the instance-file read to SYS.Database's volume directories there
+
+### DW-1796: PathPort.DatabaseDirectories' own read is pinned only against a stable default configuration: a configured StreamLocation, the skip of a ':' directory, and a failure or cache inside the reader keep every test green
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: All 14 local databases on ocupilot-b-ci answer StreamLocation empty (read-only probe, review layers), so the port's comparison with GetStreamLocation is default against default; the fixture's UseDatabaseDirectories replaces the reader whole, so the failed-read and never-kept legs (runs 11, 13, 395) mutate the consumer, not the reader.
+- 2026-09-28T22:34:01Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=pin the reader with a probe database whose stream location and configuration change between two reads
+
+### DW-1797: PathPort's journal read names only the primary, alternate and current file's directories: journal files left in a former journal directory, and IRIS.WIJ in a write-image-journal directory outside the manager directory, resolve for an overwriting consumer
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: JournalDirectories reads GetPrimaryDirectory, GetAlternateDirectory and GetCurrentFileName only; after a journal directory change the older files stay where they were and the journal history still lists them (inference; never changed on the throwaway). Config.config wijdir is empty on ocupilot-b-ci, so IRIS.WIJ is refused there only as a manager-directory file.
+- 2026-09-28T22:34:01Z status=routed owner=18-5-journals by=cr note=18.5 changes journal directories: add the history's directories and the WIJ directory to the refusal, read at call time
+
+### DW-1798: PATH.INSTANCE does not cover OcuPilot's own static bundle (csp/ocupilot/): DW-1790's review note named it, and the decision widened only databases and journals
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: InstanceFile answers 0 for /durable/iris/csp/ocupilot/index.html on ocupilot-b-ci (read-only, blind-hunter layer); DW-1790's 17:21:25Z trailer lists the bundle, and its merge_gate decision names database and journal directories only; no overwriting consumer exists yet.
+- 2026-09-28T22:34:01Z status=decision-pending owner=burndown by=cr note=owner: should an overwriting consumer also be refused OcuPilot's own served files, as self-protection?
