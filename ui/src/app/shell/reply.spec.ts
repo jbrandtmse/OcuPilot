@@ -8,8 +8,8 @@ import { Reply, sanitizeReplyRoot } from './reply';
 /**
  * The reply component's rendered contract, asserted against the DOM (Story 4.6). `tools/reply.test.mjs`
  * pins `core/reply.ts`'s node tree in isolation; this file pins what `app-reply` builds from it --
- * one matrix row each for what `parseReply` alone cannot show (an actual `<img>` absent from the
- * DOM, no `target` attribute surviving, the sanitizer pass genuinely running).
+ * one matrix row each for what `parseReply` alone cannot show (no `<img>` in the DOM, no `target`
+ * attribute surviving, the sanitizer pass genuinely running).
  */
 
 // Built from fragments so these fixtures are not themselves a literal off-origin URL --
@@ -58,12 +58,25 @@ describe('the reply component', () => {
     expect(host.textContent).toBe('a map');
   });
 
-  it('creates an img element only for a same-origin src', () => {
+  // AD-11 rule 4: no rendered reply fetches anything, the instance's own origin included.
+  // Mutation (Rule 19): return an `img` element from `core/reply.ts`'s `imageNode` for a
+  // same-origin `src`, with `img` back in `REPLY_TAGS` and `src` in `ALLOWED_ATTR` -> red.
+  it('creates no img element for a same-origin Markdown image, which renders as its alt text', () => {
     const { host } = mount('![logo](/ocupilot/media/x.png)');
-    const img = host.querySelector('img');
-    expect(img).not.toBeNull();
-    expect(img?.getAttribute('src')).toBe('/ocupilot/media/x.png');
-    expect(img?.getAttribute('alt')).toBe('logo');
+    expect(host.querySelector('img')).toBeNull();
+    expect(host.textContent).toBe('logo');
+  });
+
+  // Mutation (Rule 19): put `img` back into `REPLY_TAGS` -> the sanitizer keeps the element and
+  // this reddens.
+  it('the sanitizer pass removes an img element, same-origin src included', () => {
+    const root = document.createElement('span');
+    const img = document.createElement('img');
+    img.setAttribute('src', '/ocupilot/media/x.png');
+    root.appendChild(img);
+    sanitizeReplyRoot(root);
+    expect(root.querySelector('img')).toBeNull();
+    expect(root.querySelector('[src]')).toBeNull();
   });
 
   it('creates no a element for a hostile scheme, and renders the link label as text', () => {
