@@ -357,3 +357,5 @@
 2026-09-28T18:12:14Z	Story 16.2	rework_opened	cycle_iteration=2 iteration=1 trigger=med_first_review items=DW-1792(refuse_Preserve1_session_by_name) scope_baseline=87ebbadd
 2026-09-28T18:17:35Z	Story 16.2	ci_resolved	story=16.2(implement) run=36461504753 result=success head=122e6010 note=TaskHistory_local_failures_were_throwaway_state
 2026-09-28T18:17:50Z	Story 16.2	stage_spawned	stage=implement spawn_at=2026-09-28T18:17:50Z model=opus agent_name=16-2-web-sessions-listed-and-ended-implement-2 cycle_iteration=2 note=rework_iteration_1(DW-1792)
+2026-09-28T19:03:59Z	Story 16.2	ci_resolved	story=16.2(rework_commit) run=36464170921 result=success head=87ebbadd
+2026-09-28T19:03:59Z	Story 16.2	dev_clarification_requested	spawn_at=2026-09-28T18:17:50Z model=opus condition=intent_gap(DW-1792_refusal_loops:Preserve1_row_survives_process_termination_until_timeout) options=K(refuse_only_while_process_runs,recommended),A(K+derived_running_field),J(refuse_all,reword) patch=16-2-rework1-dw1792-attempt.patch asked=orchestrator(SendMessage)

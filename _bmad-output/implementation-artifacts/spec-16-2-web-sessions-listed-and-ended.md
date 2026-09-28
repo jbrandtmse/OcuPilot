@@ -2,8 +2,8 @@
 title: 'Story 16.2: Web sessions, listed and ended'
 type: 'feature'
 created: '2026-09-28'
-status: 'in-progress'
-baseline_revision: '5bd3404921b58f23316d46ecb735f3ba2746b94e'
+status: 'blocked'
+baseline_revision: '5594b414673bbccef0890babc9dfbbe65fb16353'
 baseline_commit: 'c4a871c902c669ef06ac3663f33c169f38de1411'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -242,6 +242,23 @@ Rejected:
 
 ## Review Triage Log
 
+### 2026-09-28 — Review pass (rework iteration 1, DW-1792)
+
+- verdicts: 12 findings — high 1, medium 0, low 10, false 1, maybe-false 0
+- findings:
+  - `[high]` `[intent_gap]` The refusal's own remedy loops: after the session's process is terminated, the vendor `LIST` still answers `Preserve` 1 with the dead `SesProcessId` until the session's timeout, so both callers refuse "then end the session" with the same sentence, and the client cannot see process liveness to lift its drawn refusal — demonstrated on `ocupilot-ci`: `osmgmt.processes` terminate answered 200 `deleted`, the row still read `Preserve` 1, End answered 403 `PROHIBITED.PRESERVEDSESSION`, and the row left only at its own timeout. Attempt saved as [16-2-rework1-dw1792-attempt.patch](16-2-rework1-dw1792-attempt.patch) and reverted.
+  - `[low]` `[patch]` `WebSessionsLive`'s preserve test doc says "still listed" shows no `DELETE` was sent; the pins are the 403 code and the under-10 s bound — moot under the intent gap; reword on re-dispatch.
+  - `[low]` `[reject]` the browser test's `posts.length` and still-listed assertions stay green under the client mutation — the `aria-disabled`, reason and dialog-null assertions beside them redden (observed); extra assertions are not a defect.
+  - `[low]` `[reject]` the OcuPilot-first ordering and the `/csp/sys/` `Preserve` 0 leg carry assertions but no mutation line of their own — Rule 19 asks one per AC, as this log ruled on the first pass.
+  - `[low]` `[patch]` the agent learns of the refusal only at confirm, and `WebSessionEnd`'s model-facing description names only the own-session refusal — confirm-time refusal is the `OCUPILOTSESSION` arm's shape (AD-53); the description line is moot under the intent gap; add it on re-dispatch.
+  - `[false]` `[reject]` the refusal carries no process id or link — the item's pointer is the sentence naming Process details beside the row's own Process link, which the browser test checked live.
+  - `[low]` `[patch]` EXPERIENCE.md `:220` (Self-protection refusals) does not list a preserve-mode session — moot under the intent gap; edit in place on re-dispatch.
+  - `[low]` `[reject]` no kernel test for a row with no `Preserve` — the vendor `LIST` always answers it (`TreatColumnAsNumber`); no reachable failure.
+  - `[low]` `[reject]` the spec's Residuals and Auto Run Result still describe the first pass — the fix edits this build's spec.
+  - `[low]` `[reject]` the `/csp/sys/` `Preserve` 0 leg is canned only — the tier the item names.
+  - `[low]` `[reject]` AD-10's new clause does not name `PROHIBITED.PRESERVEDSESSION` — spine wording is the lead's, and the intent gap already asks for an AD-10 edit.
+  - `[low]` `[reject]` `Test/PreservedSession.cls` is web-reachable on container installs (`container-start.sh` compiles all of `src/`) — gated on `%Admin_Operate:USE`, which already terminates any process; moving the page to test-time compilation is more than a direct correction.
+
 ### 2026-09-28 — Review pass
 
 - verdicts: 15 findings — high 0, medium 0, low 10, false 5, maybe-false 0
@@ -345,8 +362,10 @@ No AD-27 case is needed. The `AdminPort` wait is `DELETE` verification on AD-26'
 
 ## Auto Run Result
 
-Status: done
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap -- DW-1792's published remedy is unreachable. After the session's process is terminated, the vendor `LIST` still answers `Preserve` 1 (with the dead `SesProcessId`) until the session's own timeout, so a refusal keyed on `Preserve` 1 refuses "then end the session" on both callers, and the client cannot see process liveness to lift its drawn refusal. Decide one: (K, recommended) the kernel refuses only while `SesProcessId` names a running process (`$Data(^$JOB(pid))`), the client draws no preserve-mode refusal before a click and the instance answers it after one (as `system-resource` defers when the client lacks the data), and AD-10 reads "while its own process runs"; (A) as K, but keep the drawn refusal by adding a process-running field to the list read (new read surface); (J) keep refusing every `Preserve` 1 row and reword the sentence so it promises no end (the session leaves at its own timeout, as the classic page's `AllowEndSession` false implies). The attempt is saved in `_bmad-output/implementation-artifacts/16-2-rework1-dw1792-attempt.patch` (`git apply` restores it).
+
+Rework iteration 1 (DW-1792), 2026-09-28: the handoff implemented the item as written -- `PROHIBITED.PRESERVEDSESSION` in `Prohibited.WebSession` after the own-session check, the sentence in EXPERIENCE.md row 357 and `strings.ts`, the `ocupilot-session` rule's preserve arm, counts 19 to 20, and a real preserve-mode session seeded through a new test page `Test/PreservedSession.cls` (`/csp/hscustom/`). It verified green on `ocupilot-ci`: `WebSessions` 9/9 (run 18269), `WebSessionsLive` 7/7 (18270), `Prohibited` 13/13 (18271), `RefusalCopy` 8/8 (18272), `Guardrails` 10/10 (18273), `AuditingUpdate` refused on `OCUPILOT_ALLOW_AUDIT_TOGGLE` (residue); `npm run test:tools` 1685/1685; the two component specs 77/77; `web-sessions.browser-spec.mjs` 3/3 on the redeployed bundle (the Process link proven live). Its mutations reddened (runs 18260, 18262; client, rebuilt and redeployed). The verification-gap review then found the remedy loop above, demonstrated by terminating a seeded session's process through `osmgmt.processes` and ending it (403); the session left at its timeout (19:01:06 UTC). Per the intent-gap branch the change was saved and reverted: the tree is at `5594b414` plus the patch file; on `ocupilot-ci` the touched classes are recompiled from the reverted tree, `OcuPilot.Test.PreservedSession` is deleted, the reverted bundle is redeployed (last build 2.05 MB initial, 359.15 kB transfer), and no web session is left. The three low items routed `patch` in the triage log go with the re-dispatch. No footprint extension is committed (the attempt adds `src/OcuPilot/Test/PreservedSession.cls` and touches EXPERIENCE.md and `Screen/Registry.cls`).
 
 Implemented (implement stage, 2026-09-28): the Web sessions list (third Web applications entry, `WebSession` `LIST`, Process cell linked to Process details) and `webapp.sessions.end` (bodyless `DELETE`, exact-case fresh read through the new `READROWKEYEXACT`, `%DB_IRISSYS:WRITE` declared, destructive typed-name confirm), `AdminPort`'s bounded wait for the vendor's daemon (`AWAITEDDELETES`, `AwaitGone`), the `PROHIBITED.OCUPILOTSESSION` arm and its client rule `ocupilot-session`, the governance key, and the copy. The plan's option-A ruling is in the Spec Change Log.
 
