@@ -86,8 +86,9 @@ function gridRows(page) {
   );
 }
 
-/** Set criterion field `id` to `value` as typing would. */
-function setCriterion(page, id, value) {
+/** Set criterion field `id` to `value` as typing would, once the field is rendered. */
+async function setCriterion(page, id, value) {
+  await page.waitForSelector(`app-ledger-page #${id}`, { timeout: config.navigationTimeoutMs });
   return page.$eval(
     `app-ledger-page #${id}`,
     (input, next) => {
@@ -133,9 +134,18 @@ async function readDialog(page, key) {
     text: document.querySelector('app-ledger-page')?.innerText ?? '',
   }));
   await page.click('app-ledger-page [role="dialog"] .ocu-dialog-actions button');
-  await page.waitForFunction(() => document.querySelector('app-ledger-page [role="dialog"]') === null, {
-    timeout: config.navigationTimeoutMs,
-  });
+  // The close re-creates the page too, and between the two there is no page at all, so "no
+  // dialog" alone holds before the new page exists. Wait for the re-created page's criteria form,
+  // back on the list's own route and not busy.
+  await page.waitForFunction(
+    (openedPath) =>
+      window.location.pathname !== openedPath &&
+      document.querySelector('app-ledger-page [role="dialog"]') === null &&
+      document.querySelector('app-ledger-page #ocu-ledger-user') !== null &&
+      document.querySelector('app-ledger-page [aria-busy="true"]') === null,
+    { timeout: config.navigationTimeoutMs },
+    shown.path
+  );
   return shown;
 }
 
