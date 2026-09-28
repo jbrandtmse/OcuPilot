@@ -7904,11 +7904,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: implement on ocupilot-ci 2026-09-28: OcuPilot_Kernel_State.Step.Target held the probe value for each permissions.users.password step agent-ledger.browser-spec ran while ledger rows read [redacted]; tool-call-card.ts renders the step target (inference for the card)
 - 2026-09-28T13:44:39Z status=escalated owner=burndown by=harvest note=for the decision sheet: recommended route to range-end-cleanup, store the redaction mark in Step.Target at write time as the ledger does (AD-35, AD-41)
 - 2026-09-28T13:44:39Z occurrence=16-16-the-agent-audit-viewer note=the agent panel's tool-call card can show the same step target (review inference)
+- 2026-09-28T14:49:57Z status=routed owner=range-end-cleanup by=merge_gate note=recommended: store the redaction mark on the progress step's target when written, as the ledger does
 
 ### DW-1783: The agent ledger's local-to-UTC conversion direction cannot be falsified on the project's UTC test instances (ocupilot-ci and CI throwaways run Etc/UTC), so a swapped conversion keeps every begin, end, time and echo assertion green
 - source: spec-16-16-the-agent-audit-viewer.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: review probe on ocupilot-ci: /etc/localtime Etc/UTC, $ZTIMEZONE 0, $H equals $ZTS; a process-level $ZTIMEZONE change does not move $ZDATETIME(h,-3)
 - 2026-09-28T13:44:39Z status=escalated owner=burndown by=harvest note=for the decision sheet: needs one run on a throwaway started with a non-UTC TZ (CI or ci-throwaway.sh change); recommended route to range-end-cleanup
+- 2026-09-28T14:49:57Z status=routed owner=range-end-cleanup by=merge_gate note=recommended: one run on a throwaway started in a non-UTC time zone
 
 ### DW-1789: A user named in the agent audit viewer in another letter case than the stored account name reads an empty list with no refusal, because a named ledger read matches UserName exactly
 - source: spec-16-16-the-agent-audit-viewer.md | severity: low | fix-risk: med | footprint: in-story
