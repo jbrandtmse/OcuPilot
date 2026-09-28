@@ -191,7 +191,8 @@ services:
       # classes: LogHubWire
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
       # Every class that creates or deletes IRIS principals, or the OAuth 2.0 configuration
-      # objects handled the same way. Same reasoning, same single home: test classes are selected
+      # objects handled the same way, or the instance's file-system access allow-list. Same
+      # reasoning, same single home: test classes are selected
       # by package, so a runner pointed at an instance someone cares about would otherwise create
       # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
       # population. AuditCopy and AuditStarted also copy the instance's audit database into USER and empty USER's
@@ -229,7 +230,7 @@ services:
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
-      # classes: LogHubWire
+      # classes: LogHubWire, PathPort, PathPortPrivilege
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
