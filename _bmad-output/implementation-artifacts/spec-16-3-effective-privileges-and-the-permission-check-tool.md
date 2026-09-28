@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-27'
 status: 'done'
 baseline_revision: '57f5989156132d7bc0e6c54b5392a9a5e5950240'
+baseline_commit: '57f5989156132d7bc0e6c54b5392a9a5e5950240'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -126,7 +127,7 @@ deferred: []
 | `%All` via role | Account `V` has role `R`, and `R` grants `%All` | Tab reads "Holds every privilege: R is or grants %All." and lists roles only. Check (any existing resource) → "Yes. V holds <pair>, granted by %All (through R)." | — |
 | Role check | (`role`, `A`, `%DB_USER`, `READ`) | "Yes. A holds %DB_USER:READ, granted by B." (a role check has no through) | — |
 | Unread part | Caller holds `%Admin_Secure:USE`, `%DB_IRISSYS:READ` and the code database, but not `%Admin_Manage` | Databases reads "Not checked (requires %Admin_Manage:USE)". Every other section is listed. | not a fault |
-| Services | `%Service_SQL` is public at `U` | listed under Services for every account. `%Service_Bindings` is never listed. | — |
+| Services | `%Service_Terminal` is public at `U` | listed under Services for every account. `%Service_Bindings` is never listed. | — |
 | Unknown | missing user, role or resource | the dialog shows the reason: "This instance has no user with that name." (or role, or resource) | 404 `USER`/`ROLE`/`RESOURCE.NAME.ABSENT` |
 | Bad arguments | `kind=group`, or `permission=ALL`, or a blank name | the tool is refused and the route answers 400. The dialog never sends: its Check stays `aria-disabled` | 400 `TOOL.ARGUMENTS` |
 | No privilege | caller without `%Admin_Secure:USE` | route and tool refuse, naming `%Admin_Secure:USE` | 403 `AUTH.NOPRIVILEGE` |
@@ -326,6 +327,8 @@ Docs:
   The bundle stays under the warning or is re-based under DW-1166.
 
 ## Spec Change Log
+
+- 2026-09-28T10:50Z, lead (Rule 5, apply and report): the I/O matrix's Services row named `%Service_SQL`, which on this instance is a resource and not a service; corrected in place to `%Service_Terminal`, one of the five services whose own resource is public at USE, as the implement stage's test pins.
 
 - 2026-09-28T06:45Z, lead spec gate: DW-1018 decided Option A by the owner (merge gate, relayed by the orchestrator); the `(pending)` markers in the intent contract and Tasks now read decided; status reset to `ready-for-dev`; spine changes (a) and (b) written by the lead; the residual rail cases filed as their own `decision-pending` entry owned by `range-end-cleanup`.
 
