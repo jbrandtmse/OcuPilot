@@ -440,6 +440,48 @@ test('one request however many callers', async () => {
   assert.equal(api.calls.length, 1);
 });
 
+// Story 18.2 (AD-14): a namespace created or deleted, by the Namespaces screens or the agent's
+// confirmed write, re-reads the list, so the switch offers the new namespace and drops the deleted
+// one without a reload.
+//
+// Mutation (Rule 19): drop the bus subscription from `ScopeService`'s constructor, or return early
+// from `onChange` for the namespace type -> the create and delete legs go red.
+test('Story 18.2: a namespace created or deleted re-reads the list, and nothing else on the bus does', async () => {
+  const { ChangeBus } = await import(corePath('change-bus.ts'));
+  const before = [{ name: 'HSCUSTOM', writable: true }];
+  const after = [...before, { name: 'OCUPROBE182', writable: true }];
+  const api = stubApi([ok(listBody('HSCUSTOM', before)), ok(listBody('HSCUSTOM', after)), ok(listBody('HSCUSTOM', before))]);
+  const bus = new ChangeBus();
+  const scope = new ScopeService({ api, bus });
+  const changed = (action, type = 'namespace', id = 'OCUPROBE182') => ({ kind: 'changed', type, scope: 'instance', id, action });
+  const offered = () => writableNamespaces(scope.namespaces()).map((entry) => entry.name);
+
+  assert.equal(bus.publish(changed('created')), true, 'the bus carries a namespace change');
+  await SETTLE();
+  assert.equal(api.calls.length, 0, 'a list never read is not read by an event');
+  await scope.load();
+  assert.deepEqual(offered(), ['HSCUSTOM']);
+
+  bus.publish(changed('updated', 'namespace', 'HSCUSTOM'));
+  bus.publish(changed('created', 'database', 'USER'));
+  bus.publish({ kind: 'proposal-open', type: 'namespace', scope: 'instance', id: 'OCUPROBE182', proposalId: 'p1' });
+  await SETTLE();
+  assert.equal(api.calls.length, 1, `an update, another type and a proposal are not re-reads: ${JSON.stringify(api.calls)}`);
+
+  bus.publish(changed('created'));
+  await SETTLE();
+  await SETTLE();
+  assert.equal(api.calls.length, 2, 'a create is');
+  assert.equal(api.calls[1].scope, null, 'on the unscoped recovery channel');
+  assert.deepEqual(offered(), ['HSCUSTOM', 'OCUPROBE182'], 'and the switch offers the new namespace');
+
+  bus.publish(changed('deleted'));
+  await SETTLE();
+  await SETTLE();
+  assert.equal(api.calls.length, 3, 'a delete is');
+  assert.deepEqual(offered(), ['HSCUSTOM'], 'and the switch no longer offers it');
+});
+
 // --- The Integration AC, composed -----------------------------------------------------------
 //
 // The rows above exercise `ScopeService` against a stub API, and `navigation.test.mjs` exercises

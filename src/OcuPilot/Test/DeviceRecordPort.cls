@@ -1,5 +1,5 @@
 /// <p>Test-only <class>OcuPilot.Port.AdminPort</class> subclass with one added seam: every mutating
-/// call's request type, <code>name</code> query parameter and body are recorded in a process-private
+/// call's request type, <code>name</code> query parameter, query parameter names and body are recorded in a process-private
 /// global before the shipped port sends it, so a test can compare what two callers sent, and every
 /// call of any request type, reads included, is counted (<method>CallCount</method>). Every call
 /// still reaches the instance through the shipped port.</p>
@@ -15,6 +15,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set ^||OcuPilotDeviceRecord(tIndex, "type") = pType
         Set ^||OcuPilotDeviceRecord(tIndex, "name") = $Get(pQuery("name"))
         Set ^||OcuPilotDeviceRecord(tIndex, "body") = $Select($IsObject(pBody): pBody.%ToJSON(), 1: "")
+        Set tKeys = ""
+        Set tKey = ""
+        For {
+            Set tKey = $Order(pQuery(tKey))
+            If tKey = "" Quit
+            Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
+        }
+        Set ^||OcuPilotDeviceRecord(tIndex, "query") = tKeys
     }
     Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
 }
@@ -57,6 +65,13 @@ ClassMethod LastWriteBody() As %String
 ClassMethod LastType() As %String
 {
     Quit $Get(^||OcuPilotDeviceRecord(+$Get(^||OcuPilotDeviceRecord), "type"))
+}
+
+/// <p>The query parameter names of the last recorded call, comma-separated in collation order, or
+/// <code>""</code>.</p>
+ClassMethod LastQueryKeys() As %String
+{
+    Quit $Get(^||OcuPilotDeviceRecord(+$Get(^||OcuPilotDeviceRecord), "query"))
 }
 
 /// <p>The last recorded <code>name</code> query parameter, or <code>""</code>.</p>

@@ -205,6 +205,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['service', 'foldcase'],
     ['ldap-configuration', 'foldcase'],
     ['oauth2-server', 'singleton'],
+    // Story 18.2: a namespace name resolves without case and is stored upper case.
+    ['namespace', 'foldcase'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares

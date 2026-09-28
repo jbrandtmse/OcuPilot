@@ -466,6 +466,22 @@ XData Entries
       "Type": "ordinary"
     }
   },
+  "osmgmt.namespaces.create": {
+    "fieldList": "Namespace.Namespace",
+    "classification": {
+      "Globals": "ordinary",
+      "Routines": "ordinary",
+      "TempGlobals": "ordinary"
+    }
+  },
+  "osmgmt.namespaces.update": {
+    "fieldList": "Namespace.Namespace",
+    "classification": {
+      "Globals": "ordinary",
+      "Routines": "ordinary",
+      "TempGlobals": "ordinary"
+    }
+  },
   "security.oauthserverdescriptions.create": {
     "fieldList": "Security.OAuth2.Client.ServerDefinition",
     "compare": {"Metadata": "members"},

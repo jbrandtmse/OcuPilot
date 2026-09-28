@@ -15,7 +15,7 @@
 // - make `shortcutScreens` return `SHORTCUT_ROUTES.map(screenForRoute)` without dropping the
 //   nulls -> the "a route no built screen declares is dropped" row goes red. Dropping the
 //   `!screen.built` half alone would NOT redden it: every screen the shipped mirror declares is
-//   built, so the seven roster routes it does not resolve return null, and null is what that
+//   built, so the six roster routes it does not resolve return null, and null is what that
 //   filter's other half rejects.
 // - make `isStale` compare unconditionally -> the "either side empty is never stale" row goes red,
 //   and every dev serve would carry the reload prompt.

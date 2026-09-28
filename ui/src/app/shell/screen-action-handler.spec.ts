@@ -15,6 +15,7 @@ import {
   ADD_GRANTED_ROLE,
   ADD_MATCHING_ROLE,
   ADD_ROLE,
+  NAMESPACE_LIST,
   REMOVE_APPLICATION_ROLE,
   REMOVE_GRANTED_ROLE,
   REMOVE_MATCHING_ROLE,
@@ -1110,5 +1111,78 @@ describe('the X.509, Secrets and SSL/TLS lists\u2019 Delete (Story 9.5)', () => 
     expect(store.refusal()).toBe(STRINGS.sslRefusalOcuPilot);
     expect(handler.pending()).toBeNull();
     expect(calls).toHaveLength(0);
+  });
+});
+
+/**
+ * Story 18.2 (AD-8, AD-10): the Namespaces list's Delete types the name, states the consequence and
+ * the removal's impact as the dialog opens, or the kernel's refusal of OcuPilot's own namespace, and
+ * publishes the deleted namespace the instance answered.
+ */
+describe('the Namespaces list\u2019s Delete (Story 18.2)', () => {
+  const NAMESPACES = SCREENS.find((screen) => screen.descriptor === NAMESPACE_LIST)!;
+
+  function mountWith(answers: readonly JsonResult<unknown>[]) {
+    const mounted = mount(undefined, NAMESPACE_LIST);
+    const queue = [...answers];
+    const api = TestBed.inject(ApiService) as unknown as { requestJson: (path: string, init?: ApiRequestInit) => Promise<JsonResult<unknown>> };
+    api.requestJson = async (path: string, init: ApiRequestInit = {}) => {
+      mounted.calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+      return (queue.shift() ?? { kind: 'ok', status: 200, body: {} }) as JsonResult<unknown>;
+    };
+    return mounted;
+  }
+
+  it('opens the typed-name dialog with the consequence and the impact read as it opens, and sends the delete once confirmed', async () => {
+    // Mutation (Rule 19): drop the Namespaces list from `IMPACT_ACTIONS` -> the impact read and the
+    // advisory assertions go red; drop it from `SCREEN_ACTION_DESCRIPTORS` -> the registration does.
+    const impact = {
+      kind: 'namespace-delete',
+      refused: null,
+      parts: [
+        { part: 'boundApplications', count: 2, names: ['/csp/ocuprobe182bd1', '/csp/ocuprobe182bd2'], unchecked: '' },
+        { part: 'databases', count: 2, names: ['IRISTEMP', 'USER'], unchecked: '' },
+      ],
+    };
+    const deleted = { action: 'deleted', target: { type: 'namespace', scope: 'instance', id: 'OCUPROBE182BD' } };
+    const { actions, handler, calls, events, store } = mountWith([
+      { kind: 'ok', status: 200, body: { impact } },
+      { kind: 'ok', status: 200, body: deleted },
+    ]);
+    expect(actions.has(NAMESPACE_LIST, 'delete')).toBe(true);
+    handler.startFor(NAMESPACE_LIST, 'delete', 'OCUPROBE182BD', { Name: 'OCUPROBE182BD' }, store);
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${NAMESPACES.toolIdentifier}/impact?action=delete&id=OCUPROBE182BD`);
+    expect(handler.pending()?.kind).toBe('typed-name');
+    expect(handler.pending()?.name).toBe('OCUPROBE182BD');
+    expect(handler.pending()?.consequence).toBe(STRINGS.namespaceDeleteConsequence);
+    expect(handler.pending()?.advisory).toBe(
+      'Impact: 2 web applications run in it and are deleted with it: /csp/ocuprobe182bd1, /csp/ocuprobe182bd2; it uses 2 databases, which stay: IRISTEMP, USER.'
+    );
+
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(2);
+    expect(calls[1].path).toBe(`/api/ocupilot/screens/${NAMESPACES.toolIdentifier}/action`);
+    expect(calls[1].method).toBe('POST');
+    expect(JSON.parse(calls[1].body)).toEqual({ action: 'delete', id: 'OCUPROBE182BD' });
+    expect(events.map(({ kind, type, scope, id, action }) => ({ kind, type, scope, id, action }))).toEqual([
+      { kind: 'changed', type: 'namespace', scope: 'instance', id: 'OCUPROBE182BD', action: 'deleted' },
+    ]);
+  });
+
+  it('states the kernel\u2019s refusal of OcuPilot\u2019s own namespace as the advisory, and sends nothing until confirmed', async () => {
+    const reason = STRINGS.namespaceRefusalOcuPilot;
+    const { handler, calls, store } = mountWith([
+      { kind: 'ok', status: 200, body: { impact: { kind: 'namespace-delete', refused: { code: 'PROHIBITED.OCUPILOTNAMESPACE', reason }, parts: [] } } },
+    ]);
+    handler.startFor(NAMESPACE_LIST, 'delete', 'HSCUSTOM', { Name: 'HSCUSTOM' }, store);
+    await settle();
+    expect(handler.pending()?.consequence).toBe(STRINGS.namespaceDeleteConsequence);
+    expect(handler.pending()?.advisory).toBe(reason);
+    handler.cancelPending();
+    expect(calls.map((call) => call.method)).toEqual(['GET']);
+    expect(NAMESPACES.rowActions.find((action) => action.id === 'delete')?.selfProtection).toBe('');
   });
 });

@@ -7,13 +7,14 @@
  * classic menu's own order. Nothing here is a search: 15.2 settled that the command box is the one
  * finder, and a second one would be a defect.
  *
- * **A row naming no built screen is dropped** (AD-37 degrade). Seven of the seventeen replace
- * screens OcuPilot has not built -- the four System Explorer views are Stage 3, and namespace
- * configuration, memory and startup, and background tasks are later work -- so their routes
- * resolve to nothing in the mirror and `shortcutScreens()` leaves them out. They stay declared so
- * the block can complete itself as those screens land (**inference** -- no descriptor declares any
- * of those seven routes yet, so each spelling is this file's guess at one and nothing fails if the
- * screen lands under another; check them against the descriptors when those screens are built).
+ * **A row naming no built screen is dropped** (AD-37 degrade). Six of the seventeen replace
+ * screens OcuPilot has not built -- the four System Explorer views are Stage 3, and memory and
+ * startup, and background tasks are later work -- so their routes resolve to nothing in the mirror
+ * and `shortcutScreens()` leaves them out; namespace configuration is Story 18.2's Namespaces list.
+ * They stay declared so the block can complete itself as those screens land (**inference** -- no
+ * descriptor declares any of those six routes yet, so each spelling is this file's guess at one and
+ * nothing fails if the screen lands under another; check them against the descriptors when those
+ * screens are built).
  *
  * **A row adds no string.** Its label is the screen's own `labelKey`, read from the mirror, so a
  * screen renamed once is renamed everywhere (AD-5).
