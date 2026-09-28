@@ -7623,6 +7623,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ui/src/app/core/reply.ts imageNode:272-274 renders isSameOriginUrl images as <img src>; the 14.8 browser spec filters same-origin requests, so it pins off-origin only. No spine text scopes rule 4 to other hosts
 - 2026-09-27T03:15:58Z status=decision-pending owner=burndown by=cr note=product call: does rule 4's any host include the instance's own origin? If yes, render every image as its alt text
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=merge_gate note=decided fix: render every reply image as its alt text; AD-11 rule 4's any host includes the instance's own origin; first after 1.0.2; pre-existing since 1.0.0
+- 2026-09-28T15:02:11Z status=routed owner=16-2-web-sessions-listed-and-ended by=lead note=re-owned by the orchestrator to Epic 16's next dispatch; fixed first, as its own code commit ef90e7f4
 
 ### DW-1729: Sanitize.Strip omits invisible and bidi characters outside the spec's closed set (U+061C, U+00AD, U+180E, U+2028/9, U+FE00-FE0F, U+E0100-E01EF, U+FFF9-FFFB)
 - source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
