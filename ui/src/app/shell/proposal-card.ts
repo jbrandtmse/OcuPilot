@@ -23,6 +23,8 @@ import {
   offersRepropose,
   statusLineFor,
 } from '../core/proposal-view';
+import { impactLine } from '../core/impact';
+import { type ReadBack, readBackLine } from '../core/read-back';
 import { STRINGS } from '../core/strings';
 import {
   type ProposalCardView,
@@ -293,9 +295,26 @@ export interface ProposalConfirmRequest {
             >
               {{ statusLine }}
             </p>
+            @if (readBackText !== '') {
+              <p class="ocu-proposal-card-read-back" data-slot="read-back">{{ readBackText }}</p>
+            }
           }
         }
         @if (buttonsVisible) {
+          @if (impactText !== '') {
+            @if (impactRefused) {
+              <p
+                class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+                role="status"
+                data-slot="impact"
+              >
+                <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+                <span class="ocu-banner-message">{{ impactText }}</span>
+              </p>
+            } @else {
+              <p class="ocu-proposal-card-runs-as" data-slot="impact">{{ impactText }}</p>
+            }
+          }
           @if (privilegeLine; as line) {
             @if (line.missing) {
               <p
@@ -333,6 +352,14 @@ export interface ProposalConfirmRequest {
             (click)="onCancel()"
           >
             {{ STRINGS.actionCancel }}
+          </button>
+          <button
+            type="button"
+            class="ocu-button-text ocu-proposal-card-draft-action"
+            [attr.aria-disabled]="cancelAriaDisabled"
+            (click)="onDraft()"
+          >
+            {{ STRINGS.actionTakeScript }}
           </button>
         }
         @if (guardVisible) {
@@ -373,6 +400,12 @@ export class ProposalCard {
   readonly confirmedAt = input<string>('');
 
   /**
+   * The confirmed write's read-back, as the instance answered it (AD-58), or `null`. The card
+   * renders the line under its confirmed status line and compares nothing itself.
+   */
+  readonly readBack = input<ReadBack | null>(null);
+
+  /**
    * Confirm was pressed: the proposal's id and the values typed into its masked fields (AD-6,
    * AD-35).
    *
@@ -387,6 +420,12 @@ export class ProposalCard {
 
   /** Re-propose was pressed: the accommodation for the expiry limit (WCAG 2.2.1). */
   readonly repropose = output<string>();
+
+  /**
+   * "Give me the script instead" was pressed (Story 14.1, AD-59). Offered wherever Cancel is and
+   * refused whenever Cancel is; the panel makes the request, and the instance closes the row.
+   */
+  readonly draft = output<string>();
 
   protected readonly STRINGS = STRINGS;
 
@@ -662,12 +701,10 @@ export class ProposalCard {
 
   /**
    * Whether the tool declared this write destructive, which turns the card's left-edge bar and its
-   * Confirm to the destructive treatment (DESIGN.md `:1176`, `:1243`).
+   * Confirm to the destructive treatment (DESIGN.md `:1181`, `:1242`).
    *
-   * **The styling ships without the typed-name field.** `button-destructive` is published as
-   * appearing only once a typed name matches, and that field is Story 14.7's: shipping it here
-   * would leave Confirm permanently `aria-disabled`, since nothing yet compares what was typed.
-   * The declaration on the wire is what 14.7 then reads, from one place.
+   * A destructive agent proposal has no typed-name field: the destructive bar, the destructive
+   * Confirm and the user's own press are its confirmation.
    */
   protected get destructive(): boolean {
     return this.view().destructive === true;
@@ -794,6 +831,24 @@ export class ProposalCard {
     return phase === null ? '' : statusLineFor(phase, this.userName(), this.confirmedAt());
   }
 
+  /** The read-back line under a confirmed card's status line, or `''` (AD-58). */
+  protected get readBackText(): string {
+    return this.confirmed ? readBackLine(this.readBack()) : '';
+  }
+
+  /**
+   * The removal's impact line (AD-8), or `''`: the instance's own answer from the mint, rendered
+   * about the proposal's target. It shows only inside the buttons' block, above the privilege line.
+   */
+  protected get impactText(): string {
+    return impactLine(this.view().impact ?? null, this.view().name);
+  }
+
+  /** Whether the impact line is the prohibited set's refusal, which takes the warning treatment. */
+  protected get impactRefused(): boolean {
+    return (this.view().impact?.refused ?? null) !== null;
+  }
+
   /**
    * Confirm and Cancel show while the card is live, and across a terminal transition they stay in
    * the DOM `aria-disabled` until the status line has taken focus (see the class header).
@@ -859,5 +914,10 @@ export class ProposalCard {
   protected onRepropose(): void {
     if (this.reproposeAriaDisabled !== null) return;
     this.repropose.emit(this.view().proposalId ?? '');
+  }
+
+  protected onDraft(): void {
+    if (this.cancelAriaDisabled !== null) return;
+    this.draft.emit(this.view().proposalId ?? '');
   }
 }

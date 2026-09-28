@@ -371,6 +371,14 @@ Parameter LOGENTRY = "LOG.ENTRY";
 /// ceiling, so a large value is honoured rather than refused.</p>
 Parameter LOGMAXROWS = "LOG.MAXROWS";
 
+/// <p>Machine code (AD-12, AD-21): a log page named a <code>file</code> the port does not admit --
+/// anything but one rotated console log's name (<code>messages.old_YYYYMMDD</code>, optionally
+/// <code>_n</code>) on the <code>messages</code> source, <code>messages.log</code> itself included,
+/// or a name that does not resolve directly in the manager directory. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug by <method>OcuPilot.Port.LogSourcePort.Page</method>,
+/// after the gate and before the filesystem is touched, and never with the value or a path.</p>
+Parameter LOGFILE = "LOG.FILE";
+
 /// <p>Machine code (AD-12, AD-39): the agent configuration the request submitted broke one or more
 /// of the rules <class>OcuPilot.Kernel.AgentRules</class> (a definition) or
 /// <class>OcuPilot.Kernel.SwitchRules</class> (the switches and the per-user holds) applies.
@@ -407,6 +415,15 @@ Parameter AGENTCONTEXTSHARE = "AGENT.CONTEXT.SHARE";
 
 /// <p>The envelope's <code>reason</code> for <parameter>AGENTCONTEXTSHARE</parameter>.</p>
 Parameter REASONAGENTCONTEXTSHARE = "The body must carry exactly one member, the boolean share.";
+
+/// <p>Machine code (Story 14.5, AD-39): <code>PUT /agent/restraint</code>'s body carries anything
+/// other than exactly the boolean member <code>readOnly</code> -- an absent, badly typed or extra
+/// member, or a body that is not JSON. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug
+/// by <class>OcuPilot.Api.Switches</class>; nothing is written.</p>
+Parameter AGENTRESTRAINTBODY = "AGENT.RESTRAINT.BODY";
+
+/// <p>The envelope's <code>reason</code> for <parameter>AGENTRESTRAINTBODY</parameter>.</p>
+Parameter REASONAGENTRESTRAINTBODY = "The body must carry exactly one member, the boolean readOnly.";
 
 /// <p>Violation code (rule 1): a definition needs a name of one to sixty-four characters.
 /// Rendered inside <code>detail.violations</code> on the <parameter>VALIDATIONFAILED</parameter>
@@ -577,6 +594,16 @@ Parameter AGENTSWITCHREASONREQUIRED = "AGENT.SWITCH.REASONREQUIRED";
 /// field <code>contextRowCap</code>.</p>
 Parameter AGENTSWITCHCONTEXTROWCAP = "AGENT.SWITCH.CONTEXTROWCAP";
 
+/// <p>Violation code (Story 14.6, AD-41): <code>turnsPerHour</code> is not a whole number from 0 to
+/// 10,000. Produced by <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> on the field
+/// <code>turnsPerHour</code>.</p>
+Parameter AGENTSWITCHTURNSPERHOUR = "AGENT.SWITCH.TURNSPERHOUR";
+
+/// <p>Violation code (Story 14.6, AD-41): a body carried <code>concurrentTurns</code> as anything
+/// but the number 1. Produced by <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> on
+/// the field <code>concurrentTurns</code>.</p>
+Parameter AGENTSWITCHCONCURRENTTURNS = "AGENT.SWITCH.CONCURRENTTURNS";
+
 /// <p>Violation code (FR-20): a per-user hold named no user. Produced by
 /// <method>OcuPilot.Kernel.SwitchRules.ValidateHold</method> on the field <code>userName</code>.</p>
 Parameter AGENTHOLDUSERREQUIRED = "AGENT.HOLD.USERREQUIRED";
@@ -621,6 +648,11 @@ Parameter AGENTREADONLYENFORCED = "AGENT.READONLY.ENFORCED";
 /// (<property>OcuPilot.Kernel.State.Agent.ReadOnly</property>).</p>
 Parameter AGENTREADONLYDEFINITION = "AGENT.READONLY.DEFINITION";
 
+/// <p>Restraint code (AD-30, FR-19, Story 14.5): the acting user turned read-only on for
+/// themselves (<parameter>OcuPilot.Kernel.State.Pref.KINDRESTRAINT</parameter>). Enforced
+/// read-only wins over it, and it wins over <parameter>AGENTREADONLYDEFINITION</parameter>.</p>
+Parameter AGENTREADONLYUSER = "AGENT.READONLY.USER";
+
 /// <p>Restraint code (AD-30, FR-20): the kill switch is on for everyone on this instance.</p>
 Parameter AGENTKILLSWITCHGLOBAL = "AGENT.KILLSWITCH.GLOBAL";
 
@@ -638,6 +670,7 @@ ClassMethod ReasonForRestraint(pCode As %String) As %String
 {
     If pCode = ..#AGENTREADONLYENFORCED Quit ..#REASONAGENTREADONLYENFORCED
     If pCode = ..#AGENTREADONLYDEFINITION Quit ..#REASONAGENTREADONLYDEFINITION
+    If pCode = ..#AGENTREADONLYUSER Quit ..#REASONAGENTREADONLYUSER
     If pCode = ..#AGENTKILLSWITCHGLOBAL Quit ..#REASONAGENTKILLSWITCHGLOBAL
     If pCode = ..#AGENTKILLSWITCHUSER Quit ..#REASONAGENTKILLSWITCHUSER
     Quit ""
@@ -648,7 +681,7 @@ ClassMethod ReasonForRestraint(pCode As %String) As %String
 /// catches a code added with no sentence behind it.</p>
 ClassMethod RestraintCodes() As %List
 {
-    Quit $ListBuild(..#AGENTREADONLYENFORCED, ..#AGENTREADONLYDEFINITION, ..#AGENTKILLSWITCHGLOBAL, ..#AGENTKILLSWITCHUSER)
+    Quit $ListBuild(..#AGENTREADONLYENFORCED, ..#AGENTREADONLYDEFINITION, ..#AGENTREADONLYUSER, ..#AGENTKILLSWITCHGLOBAL, ..#AGENTKILLSWITCHUSER)
 }
 
 /// <p>Written sentence for <parameter>AGENTREADONLYENFORCED</parameter>.</p>
@@ -656,6 +689,9 @@ Parameter REASONAGENTREADONLYENFORCED = "Read-only mode is enforced on this inst
 
 /// <p>Written sentence for <parameter>AGENTREADONLYDEFINITION</parameter>.</p>
 Parameter REASONAGENTREADONLYDEFINITION = "The agent definition in force is read-only, so no write can be made through the agent.";
+
+/// <p>Written sentence for <parameter>AGENTREADONLYUSER</parameter>.</p>
+Parameter REASONAGENTREADONLYUSER = "Read-only is on for this user, so no write can be made through the agent.";
 
 /// <p>Written sentence for <parameter>AGENTKILLSWITCHGLOBAL</parameter>.</p>
 Parameter REASONAGENTKILLSWITCHGLOBAL = "The agent is switched off on this instance.";
@@ -703,6 +739,11 @@ Parameter TURNCONVERSATIONNOTFOUND = "TURN.CONVERSATION.NOTFOUND";
 /// <parameter>CONFLICT</parameter> slug, HTTP 409.</p>
 Parameter TURNBUSY = "TURN.BUSY";
 
+/// <p>Machine code (AD-41, Story 14.6): the caller has reached the instance's limit of turns an
+/// hour. Rendered on the <parameter>FORBIDDEN</parameter> slug, HTTP 403, with
+/// <code>detail</code> <code>{limit, retryAt}</code>, and nothing is reserved.</p>
+Parameter TURNLIMITHOUR = "TURN.LIMITHOUR";
+
 /// <p>Machine code (AD-33): no turn with that id belongs to the caller. Rendered on the
 /// <parameter>NOTFOUND</parameter> slug for an unknown id and for another user's alike.</p>
 Parameter TURNNOTFOUND = "TURN.NOTFOUND";
@@ -748,6 +789,36 @@ Parameter TOOLUNKNOWN = "TOOL.UNKNOWN";
 /// <p>Tool-result code (AD-22): the governance gate point refused the call. The tool stays
 /// advertised.</p>
 Parameter TOOLDENIED = "TOOL.DENIED";
+
+/// <p>Tool-result code (AD-22, Story 14.2): the governance policy disables the key this call
+/// resolves to. Answered as the content of an error tool result while the tool stays advertised,
+/// and as a 403 on the <parameter>FORBIDDEN</parameter> slug by the confirm of a proposal whose key
+/// was disabled after it was minted.</p>
+Parameter GOVERNANCEDISABLED = "GOVERNANCE.DISABLED";
+
+/// <p>Written sentence for <parameter>GOVERNANCEDISABLED</parameter>.</p>
+Parameter REASONGOVERNANCEDISABLED = "This tool is disabled by policy.";
+
+/// <p>Machine code (Story 14.2, AD-39): <code>PUT /agent/governance</code>'s body is not exactly
+/// <code>{preset, settings, rowVersion}</code> with a known preset and settings of
+/// <code>inherit</code>, <code>enabled</code> or <code>disabled</code>. Rendered on the
+/// <parameter>VALIDATIONFAILED</parameter> slug by <class>OcuPilot.Api.Governance</class>, with
+/// <code>detail.violations</code>; nothing is written.</p>
+Parameter GOVERNANCEBODY = "GOVERNANCE.BODY";
+
+/// <p>The envelope's <code>reason</code> for <parameter>GOVERNANCEBODY</parameter>, and the reason
+/// each of its violations carries.</p>
+Parameter REASONGOVERNANCEBODY = "The body must carry preset, settings and rowVersion, with a setting of inherit, enabled or disabled.";
+
+/// <p>Machine code (Story 14.2, AD-39): <code>PUT /agent/governance</code> named a key no
+/// registered write tool yields -- the ledger, the agent marker and a read tool among them.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug, with
+/// <code>detail.violations</code>; nothing is written.</p>
+Parameter GOVERNANCEKEY = "GOVERNANCE.KEY";
+
+/// <p>The envelope's <code>reason</code> for <parameter>GOVERNANCEKEY</parameter>, and the reason
+/// each of its violations carries.</p>
+Parameter REASONGOVERNANCEKEY = "That key names no write tool on this instance.";
 
 /// <p>Tool-result code (AD-11): the call's input is not an object, or does not satisfy the tool's
 /// input schema. <code>detail.problem</code> names the argument and the rule.</p>
@@ -829,6 +900,12 @@ Parameter REASONTURNCONVERSATIONNOTFOUND = "No conversation with that identifier
 
 /// <p>Written sentence for <parameter>TURNBUSY</parameter>: EXPERIENCE.md's lock banner.</p>
 Parameter REASONTURNBUSY = "A turn is in progress. Wait for it to finish before sending another message.";
+
+/// <p>Written sentence for <parameter>TURNLIMITHOUR</parameter>: EXPERIENCE.md's turn-limit
+/// banner. The handler fills <code>&lt;n&gt;</code> with the limit and <code>&lt;hh:mm&gt;</code>
+/// with the retry time as <code>HH:MM UTC</code>; the panel renders the same sentence with the
+/// browser's local time.</p>
+Parameter REASONTURNLIMITHOUR = "You have reached this instance's limit of <n> agent turns an hour. You can send again at <hh:mm>.";
 
 /// <p>Written sentence for <parameter>TURNNOTFOUND</parameter>.</p>
 Parameter REASONTURNNOTFOUND = "No turn with that identifier exists for this account.";
@@ -979,7 +1056,7 @@ ClassMethod ReasonForNav(pCode As %String) As %String
 /// <method>ReasonForTurn</method> to the vocabulary.</p>
 ClassMethod TurnCodes() As %List
 {
-    Quit $ListBuild(..#TURNBADBODY, ..#TURNMESSAGEREQUIRED, ..#TURNMESSAGELENGTH, ..#TURNCONTEXTINVALID, ..#TURNCONVERSATIONREQUIRED, ..#TURNCONVERSATIONNOTFOUND, ..#TURNBUSY, ..#TURNNOTFOUND, ..#TURNUNAVAILABLE, ..#TURNSTOPPED, ..#TURNABANDONEDREADONLY, ..#TURNABANDONEDPRIVILEGE, ..#TURNABANDONEDLEASE, ..#TURNABANDONEDSIGNOUT, ..#TURNABANDONEDJOBLOST, ..#TURNLIMITDURATION, ..#TURNLIMITTOKENS, ..#TURNNAVIGATIONINVALID)
+    Quit $ListBuild(..#TURNBADBODY, ..#TURNMESSAGEREQUIRED, ..#TURNMESSAGELENGTH, ..#TURNCONTEXTINVALID, ..#TURNCONVERSATIONREQUIRED, ..#TURNCONVERSATIONNOTFOUND, ..#TURNBUSY, ..#TURNLIMITHOUR, ..#TURNNOTFOUND, ..#TURNUNAVAILABLE, ..#TURNSTOPPED, ..#TURNABANDONEDREADONLY, ..#TURNABANDONEDPRIVILEGE, ..#TURNABANDONEDLEASE, ..#TURNABANDONEDSIGNOUT, ..#TURNABANDONEDJOBLOST, ..#TURNLIMITDURATION, ..#TURNLIMITTOKENS, ..#TURNNAVIGATIONINVALID)
 }
 
 /// <p>The written sentence a <code>TURN.*</code> code carries, or <code>""</code> for any other
@@ -993,6 +1070,7 @@ ClassMethod ReasonForTurn(pCode As %String) As %String
     If pCode = ..#TURNCONVERSATIONREQUIRED Quit ..#REASONTURNCONVERSATIONREQUIRED
     If pCode = ..#TURNCONVERSATIONNOTFOUND Quit ..#REASONTURNCONVERSATIONNOTFOUND
     If pCode = ..#TURNBUSY Quit ..#REASONTURNBUSY
+    If pCode = ..#TURNLIMITHOUR Quit ..#REASONTURNLIMITHOUR
     If pCode = ..#TURNNOTFOUND Quit ..#REASONTURNNOTFOUND
     If pCode = ..#TURNUNAVAILABLE Quit ..#REASONTURNUNAVAILABLE
     If pCode = ..#TURNSTOPPED Quit ..#REASONTURNSTOPPED
@@ -1007,11 +1085,11 @@ ClassMethod ReasonForTurn(pCode As %String) As %String
     Quit ""
 }
 
-/// <p>Every <code>TOOL.*</code> code, as a <class>%List</class>, so a test can hold
-/// <method>ReasonForTool</method> to the vocabulary.</p>
+/// <p>Every <code>TOOL.*</code> code and <parameter>GOVERNANCEDISABLED</parameter>, as a
+/// <class>%List</class>, so a test can hold <method>ReasonForTool</method> to the vocabulary.</p>
 ClassMethod ToolCodes() As %List
 {
-    Quit $ListBuild(..#TOOLUNAVAILABLE, ..#TOOLUNKNOWN, ..#TOOLDENIED, ..#TOOLARGUMENTS, ..#TOOLRESULTTOOLARGE)
+    Quit $ListBuild(..#TOOLUNAVAILABLE, ..#TOOLUNKNOWN, ..#TOOLDENIED, ..#TOOLARGUMENTS, ..#TOOLRESULTTOOLARGE, ..#GOVERNANCEDISABLED)
 }
 
 /// <p>The written sentence a <code>TOOL.*</code> code carries, or <code>""</code> for any other
@@ -1024,6 +1102,7 @@ ClassMethod ReasonForTool(pCode As %String) As %String
     If pCode = ..#TOOLDENIED Quit ..#REASONTOOLDENIED
     If pCode = ..#TOOLARGUMENTS Quit ..#REASONTOOLARGUMENTS
     If pCode = ..#TOOLRESULTTOOLARGE Quit ..#REASONTOOLRESULTTOOLARGE
+    If pCode = ..#GOVERNANCEDISABLED Quit ..#REASONGOVERNANCEDISABLED
     Quit ""
 }
 
@@ -1110,6 +1189,8 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#AGENTCREDENTIALNOPRIVILEGE Quit ..#REASONAGENTCREDENTIALNOPRIVILEGE
     If pCode = ..#AGENTSWITCHREASONREQUIRED Quit ..#REASONAGENTSWITCHREASONREQUIRED
     If pCode = ..#AGENTSWITCHCONTEXTROWCAP Quit ..#REASONAGENTSWITCHCONTEXTROWCAP
+    If pCode = ..#AGENTSWITCHTURNSPERHOUR Quit ..#REASONAGENTSWITCHTURNSPERHOUR
+    If pCode = ..#AGENTSWITCHCONCURRENTTURNS Quit ..#REASONAGENTSWITCHCONCURRENTTURNS
     If pCode = ..#AGENTHOLDUSERREQUIRED Quit ..#REASONAGENTHOLDUSERREQUIRED
     If pCode = ..#AGENTHOLDREASONREQUIRED Quit ..#REASONAGENTHOLDREASONREQUIRED
     If pCode = ..#AGENTHOLDDUPLICATE Quit ..#REASONAGENTHOLDDUPLICATE
@@ -1295,7 +1376,7 @@ ClassMethod DeviceViolationCodes() As %List
 /// <class>OcuPilot.Test.AccountPasswordWire</class>, which asserts each sentence over the wire.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTCREDTYPEUNAVAILABLE, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTHTTPACKREQUIRED, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
+    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTCREDTYPEUNAVAILABLE, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTHTTPACKREQUIRED, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTSWITCHTURNSPERHOUR, ..#AGENTSWITCHCONCURRENTTURNS, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
 }
 
 /// <p>Refusal sentence for <parameter>AGENTNAMEREQUIRED</parameter>.</p>
@@ -1397,6 +1478,12 @@ Parameter REASONAGENTSWITCHREASONREQUIRED = "Give a reason for switching the age
 
 /// <p>Refusal sentence for <parameter>AGENTSWITCHCONTEXTROWCAP</parameter>.</p>
 Parameter REASONAGENTSWITCHCONTEXTROWCAP = "Context rows sent with a turn is a whole number from 1 to 1,000.";
+
+/// <p>Refusal sentence for <parameter>AGENTSWITCHTURNSPERHOUR</parameter>.</p>
+Parameter REASONAGENTSWITCHTURNSPERHOUR = "Agent turns per user an hour is a whole number from 0 to 10,000, where 0 means no limit.";
+
+/// <p>Refusal sentence for <parameter>AGENTSWITCHCONCURRENTTURNS</parameter>.</p>
+Parameter REASONAGENTSWITCHCONCURRENTTURNS = "Agent turns running at once per user is fixed at 1.";
 
 /// <p>Refusal sentence for <parameter>AGENTHOLDUSERREQUIRED</parameter>.</p>
 Parameter REASONAGENTHOLDUSERREQUIRED = "Name the user the agent is switched off for.";
@@ -3801,5 +3888,14 @@ ClassMethod AuditEventViolationCodes() As %List
 {
     Quit $ListBuild(..#AUDITEVENTPARTREQUIRED, ..#AUDITEVENTPARTLENGTH, ..#AUDITEVENTPARTSLASH, ..#AUDITEVENTPARTRESERVED, ..#AUDITEVENTDESCRIPTIONLENGTH, ..#AUDITEVENTEVENTNAMESHAPE, ..#AUDITEVENTSYSTEM, ..#AUDITEVENTUSER, ..#AUDITEVENTTAKEN, ..#AUDITEVENTABSENT)
 }
+
+/// <p>Machine code (AD-12, AD-39, AD-42): the provider ended the reply because the model's tool call
+/// could not be completed -- malformed, not one it was offered, or more calls than the request
+/// allowed -- mapped from the canonical
+/// <parameter>OcuPilot.Kernel.Provider.MessageAdapter.TOOLCALLFAILEDSTOPREASON</parameter>. A turn
+/// ends <code>failed</code> on it with no reply; produced by
+/// <class>OcuPilot.Kernel.Agent.Loop</class> on the <parameter>UNAVAILABLE</parameter> slug, with
+/// its sentence in <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method>.</p>
+Parameter PROVIDERTOOLCALLFAILED = "PROVIDER.TOOLCALLFAILED";
 
 }

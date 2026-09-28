@@ -605,8 +605,8 @@ Method TestTheGeminiReplyBecomesCanonicalBlocksAndTheRoundTripCloses()
 
     ; Every reason the dialect can send, read on a reply that called no tool -- a reply that did
     ; call one is tool_use only where the vendor's reason said no more than that, asserted above.
-    ; The three that refuse a tool call are its own vocabulary and map to one canonical refusal.
-    For tCase = "MAX_TOKENS:max_tokens", "SAFETY:refusal", "SPII:refusal", "LANGUAGE:refusal", "MALFORMED_FUNCTION_CALL:refusal", "UNEXPECTED_TOOL_CALL:refusal", "TOO_MANY_TOOL_CALLS:refusal", "STOP:end_turn", "OTHER:end_turn", "SOMETHINGNEW:end_turn" {
+    ; The three that end a failed tool call map to their own canonical reason, not a refusal.
+    For tCase = "MAX_TOKENS:max_tokens", "SAFETY:refusal", "SPII:refusal", "LANGUAGE:refusal", "MALFORMED_FUNCTION_CALL:tool_call_failed", "UNEXPECTED_TOOL_CALL:tool_call_failed", "TOO_MANY_TOOL_CALLS:tool_call_failed", "STOP:end_turn", "OTHER:end_turn", "SOMETHINGNEW:end_turn" {
         Set tBody = "{""candidates"":[{""content"":{""parts"":[{""text"":""x""}]},""finishReason"":""" _ $Piece(tCase, ":", 1) _ """}]}"
         Set tMapped = ##class(OcuPilot.Kernel.Provider.Response).%New()
         Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "GeminiToCanonical", tBody, tMapped), "the reply reads for " _ tCase)
@@ -1055,7 +1055,12 @@ Method TestEveryGeminiStopReasonMapsAndImageSafetyIsARefusal()
     For tI = 1:1:$Length(tMap, ",") {
         If $Piece($Piece(tMap, ",", tI), ":", 2) = "refusal" Set tRefusals = tRefusals + 1
     }
-    Do $$$AssertEquals(tRefusals, 10, "ten of which mean the model would not answer")
+    Do $$$AssertEquals(tRefusals, 7, "seven of which mean the model would not answer")
+    Set tFailedCalls = 0
+    For tI = 1:1:$Length(tMap, ",") {
+        If $Piece($Piece(tMap, ",", tI), ":", 2) = $Parameter(..#MESSAGES, "TOOLCALLFAILEDSTOPREASON") Set tFailedCalls = tFailedCalls + 1
+    }
+    Do $$$AssertEquals(tFailedCalls, 3, "and three of which end a tool call the provider could not complete")
 
     Set tResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
     Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "GeminiToCanonical", "{""candidates"":[{""content"":{""parts"":[{""text"":""x""}]},""finishReason"":""IMAGE_SAFETY""}]}", tResponse), "a reply finished IMAGE_SAFETY reads")

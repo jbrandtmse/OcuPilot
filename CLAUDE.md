@@ -102,7 +102,7 @@ The MCP-server rule above and the container detail below this block are the oper
 
 - Read
   `_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md`
-  in full before writing code — all 56 ADs, not the ones that look relevant. It is a contract:
+  in full before writing code — all 60 ADs, not the ones that look relevant. It is a contract:
   change an AD there rather than working around it in a slice. Read it once and keep it: re-read
   only a region that changed since (Rule 26 in `_bmad/custom/skill-rules.md`).
 - Epics and stories: `_bmad-output/planning-artifacts/epics.md` (22 epics). PRD, UX and research sit
@@ -121,7 +121,8 @@ The MCP-server rule above and the container detail below this block are the oper
 - Check authored Markdown with `bash scripts/lint-docs.sh` (`--fix` repairs structure). A bare
   `npx markdownlint-cli2` lints nothing: the config carries rules only, and the document set lives
   in `scripts/check-prose.py`. The `.githooks/pre-commit` hook runs both on staged files once you
-  have run `git config core.hooksPath .githooks` in the clone.
+  have run `git config core.hooksPath .githooks` in the clone. A planning document other suites cite
+  by line (EXPERIENCE.md, epics.md) also needs `cd ui && npm run test:tools`.
 - Build and test the client from `ui/`: `npm run build` (its `prebuild` chains seven checkers —
   version guard, `client-lint.mjs`, `screen-mirror.mjs --check`, `classic-links.mjs`,
   `ipm-manifest.mjs --check`, `field-lists.mjs --check`, `browser-reset.mjs`) and `npm test`

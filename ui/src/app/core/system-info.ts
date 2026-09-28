@@ -15,8 +15,8 @@
  * answer wins" a property of this store rather than of whichever response happened to arrive
  * last, the shape `about.ts` and `agent-status.ts` use for the same hazard.
  *
- * **No timer.** The panel settles with this one read and Home is not on AD-43's auto-refresh
- * roster; nothing here schedules a second call.
+ * **No timer.** The panel settles with this one read, and Home's auto-refresh tick (AD-43) re-reads
+ * only its performance row; nothing here schedules a second call.
  *
  * Framework-free, like the rest of `core/` (AD-19), so `ui/tools/system-info.test.mjs` executes
  * it under `node --test`.

@@ -98,6 +98,9 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.ConfigGate creates and deletes IRIS users and roles on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
+    If $System.Util.GetEnviron("OCUPILOT_ALLOW_PRODUCTION_INSTALL") '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.ConfigGate runs OcuPilot's production install on this instance and runs on a throwaway container only. OCUPILOT_ALLOW_PRODUCTION_INSTALL does not read 1 here, so nothing was installed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     ; Read before the switch: OcuPilot's classes are not mapped into %SYS, so a
@@ -275,7 +278,7 @@ Method ConcretePath(pUrl As %String) As %String
 /// map declares it -- a list naming a route the map does not carry fails the sweep.</p>
 ClassMethod Exceptions() As %List
 {
-    Quit $ListBuild($ListBuild("GET", "/agent/definitions", "the selection projection is what the switcher needs and what every portal user may see (AD-46)"), $ListBuild("GET", "/agent/restraint", "it answers the calling user their own verdict, and the audience for the kill-switch banner is precisely the people who cannot change it"), $ListBuild("GET", "/agent/context", "it answers the calling user their own screen-context sharing choice and instance facts (Story 4.4), caller-own like /agent/restraint"), $ListBuild("PUT", "/agent/context", "it stores only the calling user's own sharing choice (Story 4.4), never another user's row or an instance setting"), $ListBuild("GET", "/agent/ledger", "it answers the calling user their own agent-ledger rows (Story 4.9, AD-46: a user sees their own); a ?user= naming anyone else is what requires the administrative resource, and that refusal is inside the read rather than on the route"))
+    Quit $ListBuild($ListBuild("GET", "/agent/definitions", "the selection projection is what the switcher needs and what every portal user may see (AD-46)"), $ListBuild("GET", "/agent/restraint", "it answers the calling user their own verdict, and the audience for the kill-switch banner is precisely the people who cannot change it"), $ListBuild("GET", "/agent/context", "it answers the calling user their own screen-context sharing choice and instance facts (Story 4.4), caller-own like /agent/restraint"), $ListBuild("PUT", "/agent/context", "it stores only the calling user's own sharing choice (Story 4.4), never another user's row or an instance setting"), $ListBuild("PUT", "/agent/restraint", "it stores only the calling user's own read-only choice (Story 14.5), which can only restrain further"), $ListBuild("GET", "/agent/ledger", "it answers the calling user their own agent-ledger rows (Story 4.9, AD-46: a user sees their own); a ?user= naming anyone else is what requires the administrative resource, and that refusal is inside the read rather than on the route"))
 }
 
 /// <p>The exception entry for <var>pMethod</var> <var>pUrl</var>, or <code>""</code>.</p>

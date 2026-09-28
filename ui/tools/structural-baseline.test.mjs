@@ -10,7 +10,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { compare, collapse, componentMinimums, entryKey, readBaseline, staleInstruction, INVARIANTS } = await import(
+import { readFileSync } from 'node:fs';
+
+const { compare, collapse, componentMinimums, entryKey, readBaseline, staleInstruction, INVARIANTS, OVERFLOW_ALLOWANCES } = await import(
   new URL('../browser/structural-walk.mjs', import.meta.url).href
 );
 
@@ -101,6 +103,31 @@ test('every owner-reported finding is recorded with what the walk found', () => 
   for (const held of baseline.entries.filter((candidate) => candidate.tag !== null)) {
     assert.ok(tags.includes(held.tag), `an entry's tag names an owner-reported finding: ${held.key}`);
   }
+});
+
+test('the baseline holds no entry for a finding the component layer or the walk has since fixed', () => {
+  // Matched by shape as well as by ledger id, because a regenerated baseline writes `dw: null`:
+  // the resize handle past its panel, the status bar's right group past the bar, and a bare input
+  // under the 24px floor.
+  const fixed = ['DW-1583', 'DW-1584', 'DW-1587'];
+  const fixedShape = (held) =>
+    (held.invariant === 'overflow' && held.element.includes('ocu-panel-resize-handle')) ||
+    (held.invariant === 'overflow' && /ocu-status-bar-(connection|stamp)/.test(held.element)) ||
+    (held.invariant === 'min-width' && /^app-[a-z0-9-]+>input$/.test(held.element));
+  const left = baseline.entries.filter((held) => fixed.includes(held.dw) || fixedShape(held)).map((held) => held.key);
+  assert.deepEqual(left, []);
+});
+
+test("the resize handle's overflow allowance is the hit area's own offset in the component layer", () => {
+  const scss = readFileSync(new URL('../src/styles/_components.scss', import.meta.url), 'utf8');
+  const rule = scss.match(/\n\.ocu-panel-resize-handle\s*\{([^}]*)\}/);
+  assert.ok(rule !== null, 'the component layer declares .ocu-panel-resize-handle');
+  const offset = rule[1].match(/\n\s*left:\s*-(\d+)px;/);
+  assert.ok(offset !== null, `the handle is offset left by a px value: ${rule[1]}`);
+  const allowance = OVERFLOW_ALLOWANCES.find((entry) => entry.className === 'ocu-panel-resize-handle');
+  assert.ok(allowance !== undefined, `the walk declares the handle's allowance: ${JSON.stringify(OVERFLOW_ALLOWANCES)}`);
+  assert.equal(allowance.px, Number(offset[1]), 'the allowance is exactly the offset, and no wider');
+  for (const entry of OVERFLOW_ALLOWANCES) assert.ok(entry.source.length > 0, `each allowance names its source: ${entry.className}`);
 });
 
 test('the token-sized minimum widths are found in the shipped component layer', () => {

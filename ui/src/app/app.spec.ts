@@ -29,6 +29,7 @@ import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
 import { ApiService } from './core/api';
+import { LogViewerStore, XDBC_SOURCE } from './areas/logs/log-viewer.store';
 import { ChangeBus } from './core/change-bus';
 import { ConnectivityService } from './core/connectivity';
 import { FormDirty } from './core/form-dirty';
@@ -60,6 +61,13 @@ import { SystemInfo } from './core/system-info';
 import { HelpLinks } from './core/help';
 import { stubAbout, stubHelpLinks, type StubbedAbout, type StubbedHelpLinks } from './testing/about';
 import { stubSystemInfo, type StubbedSystemInfo } from './testing/system-info';
+import { PerformanceRow } from './core/performance';
+import { stubPerformanceRow, type StubbedPerformanceRow } from './testing/performance';
+import { Findings } from './core/findings';
+import { Guardrails } from './core/guardrails';
+import { FixFinding } from './core/fix-finding';
+import { stubFindings, stubFixFinding, type StubbedFindings } from './testing/findings';
+import { stubGuardrails, type StubbedGuardrails } from './testing/guardrails';
 
 /**
  * The frame itself (DW-138, UX-DR80): which bands render, in what order, and around what.
@@ -373,6 +381,11 @@ describe('the shell frame', () => {
   let accountPreferences: AccountPreferences;
   let about: StubbedAbout;
   let systemInfo: StubbedSystemInfo;
+  let performanceRow: StubbedPerformanceRow;
+  let findings: StubbedFindings;
+  let guardrails: StubbedGuardrails;
+  let fixFinding: FixFinding;
+  let fixFindingResets: number;
   let helpLinks: StubbedHelpLinks;
   /** The definitions the stubbed read answers with. Mutated to arrange an Enable. */
   let definitionRows: { enabled: boolean }[];
@@ -412,6 +425,18 @@ describe('the shell frame', () => {
     // sign-out; held by name so the sign-out row below can see whether they were.
     about = stubAbout();
     systemInfo = stubSystemInfo();
+    performanceRow = stubPerformanceRow();
+    // Story 16.21: held by name so the sign-out row below can see whether both were dropped.
+    findings = stubFindings();
+    // Story 16.22: held by name so the sign-out row below can see whether it was dropped.
+    guardrails = stubGuardrails();
+    fixFinding = stubFixFinding().fix;
+    fixFindingResets = 0;
+    const fixFindingReset = fixFinding.reset.bind(fixFinding);
+    fixFinding.reset = () => {
+      fixFindingResets += 1;
+      fixFindingReset();
+    };
     helpLinks = stubHelpLinks({ 'permissions/users': '/csp/docbook/DocBook.UI.PortalHelpPage.cls?KEY=Users' });
     scope = new StubScope();
     connectivity = new StubConnectivity();
@@ -446,6 +471,10 @@ describe('the shell frame', () => {
       providers: [
         { provide: About, useValue: about },
         { provide: SystemInfo, useValue: systemInfo },
+        { provide: PerformanceRow, useValue: performanceRow },
+        { provide: Findings, useValue: findings },
+        { provide: FixFinding, useValue: fixFinding },
+        { provide: Guardrails, useValue: guardrails },
         { provide: HelpLinks, useValue: helpLinks },
         { provide: AccountPreferences, useValue: accountPreferences },
         // Three real routes, so "the gate navigated" and "the gate did not" are different
@@ -485,7 +514,18 @@ describe('the shell frame', () => {
         {
           provide: ApiService,
           useValue: {
-            requestJson: async () => ({ kind: 'ok', status: 200, body: { rows: [] } }),
+            requestJson: async (path: string) =>
+              path.startsWith('/api/ocupilot/logs/xdbc')
+                ? {
+                    kind: 'ok',
+                    status: 200,
+                    body: {
+                      source: 'xdbc',
+                      entries: [{ time: '2026-09-27T10:00:00.000', pid: '7', severity: '2', text: '[HSCUSTOM] <-30>', raw: 'x' }],
+                      truncated: false,
+                    },
+                  }
+                : { kind: 'ok', status: 200, body: { rows: [] } },
           } as unknown as ApiService,
         },
       ],
@@ -764,8 +804,15 @@ describe('the shell frame', () => {
     await about.load();
     await helpLinks.load('permissions/users');
     await systemInfo.load();
+    await performanceRow.read();
+    await findings.load();
+    await guardrails.load();
     expect(about.answered()).toBe(true);
+    expect(guardrails.data()).not.toBeNull();
+    expect(findings.answered()).toBe(true);
+    expect(fixFindingResets).toBe(0);
     expect(systemInfo.answered()).toBe(true);
+    expect(performanceRow.values()).not.toBeNull();
     expect(helpLinks.hrefFor('permissions/users')).toBe(
       '/csp/docbook/DocBook.UI.PortalHelpPage.cls?KEY=Users'
     );
@@ -812,6 +859,19 @@ describe('the shell frame', () => {
     // and Home's System Information panel would open on the state the departed principal's own
     // privileges answered, degraded members included (AD-8).
     expect(systemInfo.answered()).toBe(false);
+    // Mutation (Rule 19): delete `this.performanceRow.reset()` from the same branch -> this goes
+    // red, and Home's performance row would open on the departed principal's values -- drawn even
+    // for a next principal the instance refuses them to (Story 16.18, AD-8).
+    expect(performanceRow.values()).toBeNull();
+    // Mutation (Rule 19): delete `this.findings.reset()` from the same branch -> this goes red, and
+    // Home's Findings panel would open on the departed principal's findings (Story 16.21, AD-8).
+    expect(findings.answered()).toBe(false);
+    // Mutation (Rule 19): delete `this.fixFinding.reset()` from the same branch -> this goes red,
+    // and a Fix it request not yet taken could send under the next principal.
+    expect(fixFindingResets).toBe(1);
+    // Mutation (Rule 19): delete `this.guardrails.reset()` from the same branch -> this goes red,
+    // and the Guardrails page would open on the departed principal's verdict (Story 16.22, AD-8).
+    expect(guardrails.data()).toBeNull();
 
     // Mutation (Rule 19): delete `this.recentsRecorder.reset()` from the same branch -> this goes
     // red, answering []. The next principal resumes on the screen this tab is already on, and a
@@ -1020,6 +1080,12 @@ describe('the shell frame', () => {
     expect(errorLogDrill.level()).toBe('list');
     expect(errorLogDrill.namespace()).toBe('HSCUSTOM');
 
+    // DW-1110: the log viewer holds the entries THIS principal read.
+    const logViewer = TestBed.inject(LogViewerStore);
+    logViewer.setSource(XDBC_SOURCE);
+    await logViewer.open();
+    expect(logViewer.lines()).toHaveLength(1);
+
     // The eighth answer of the same kind (Story 3.5). The Definition form's buffer holds what THIS
     // principal typed, and `keyValue` holds a provider API key they pasted and have not yet
     // stored -- a secret, in a root-provided store, in the tab the next principal signs in to
@@ -1137,6 +1203,11 @@ describe('the shell frame', () => {
     expect(errorLogDrill.level()).toBe('namespaces');
     expect(errorLogDrill.namespace()).toBe('');
     expect(errorLogDrill.date()).toBe('');
+
+    // Mutation (Rule 19): delete `this.logViewer.reset()` from `App.verifyWhenSignedIn` -> these
+    // two go red, and the shipped shell shows the next principal the previous one's log entries.
+    expect(logViewer.lines()).toHaveLength(0);
+    expect(logViewer.loaded()).toBe(false);
 
     // Mutation (Rule 19): delete `this.refresh.reset()` from `App.verifyWhenSignedIn` -> these
     // two go red, and the shipped shell keeps ticking the previous principal's screen.

@@ -527,7 +527,7 @@ Gaps: "Legacy CSP pages were never exported … Their actions are inferred from 
 | P0 | OS-10 | `POST /database-dir/info` is async; async-result polling semantics not verified |
 | P0 | PK-06 | "hidden /api/admin verified on both" editions is cited to api-coverage-verify C8; keep as a test, not an assumption |
 | P1 | TM-16 | admin-v2 `/async-results` tracks `%Api.Admin` async tasks, not `%CSP.UI.System.BackgroundTask` jobs; "full parity needs the custom part too" |
-| P1 | SH-13, SH-14 | "custom or local" — storage location undecided |
+| P1 | SH-13, SH-14 | *extractor's note, resolved 2026-09-20:* per user, on the instance (AD-50; epics.md Story 15.2) |
 | P1 | SH-16 | "custom for cache sizes" |
 | P1 | WA-08 | backing `none` (browser fetch same-origin); rests on the session-cookie-per-CookiePath auth model, which the catalog cites as an analysis, not a live test |
 | P1 | IO-01 / LG-09 | custom SQL over `Ens_Util.Log`; interop-v7 exposes only the per-host `/log` |

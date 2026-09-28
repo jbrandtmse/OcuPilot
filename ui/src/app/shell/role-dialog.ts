@@ -15,7 +15,8 @@ let dialogCount = 0;
  * another session changed meanwhile is kept. **Nothing is refused here**: whether a role may be
  * granted is the instance's answer at the write (AD-10). While the chosen role is one of
  * `privileged` -- the server's own mark -- the grant's consequence is stated under the select and
- * read with it (DW-1523).
+ * read with it (DW-1523). A Remove role states the removal's impact for the chosen role the same way
+ * -- `impact`, the line the caller read from the instance for that choice (AD-8, Story 16.19).
  *
  * The confirming action is `aria-disabled` until a role is chosen; the select's first option is an
  * empty placeholder so the choice is always the person's.
@@ -42,6 +43,9 @@ let dialogCount = 0;
       @if (grantsPrivilege) {
         <p class="ocu-field-caption" [id]="effectId">{{ STRINGS.privilegedGrantEffect }}</p>
       }
+      @if (impactVisible) {
+        <p class="ocu-field-caption" [id]="impactId" data-slot="impact">{{ impact() }}</p>
+      }
     </div>
     <button
       dialogAction
@@ -67,8 +71,14 @@ export class RoleDialog {
   /** The roles on offer that grant %All or an administrative privilege (AD-10). */
   readonly privileged = input<readonly string[]>([]);
 
+  /** The removal's impact line for the role now chosen, or `''` (AD-8). */
+  readonly impact = input('');
+
   /** The one role chosen. */
   readonly submitted = output<string>();
+
+  /** The choice changed, carrying the role now chosen (`''` for none). */
+  readonly chose = output<string>();
 
   /** Emitted on every dismissal path: Escape, Cancel and the scrim. */
   readonly cancelled = output<void>();
@@ -78,6 +88,8 @@ export class RoleDialog {
   protected readonly fieldId = `ocu-role-${++dialogCount}`;
 
   protected readonly effectId = `${this.fieldId}-effect`;
+
+  protected readonly impactId = `${this.fieldId}-impact`;
 
   private readonly roleSelect = viewChild.required<ElementRef<HTMLSelectElement>>('roleSelect');
 
@@ -100,8 +112,14 @@ export class RoleDialog {
     return chosen !== '' && this.privileged().includes(chosen);
   }
 
+  /** The impact line shows while a role is chosen and the caller has one for it. */
+  protected get impactVisible(): boolean {
+    return this.chosen() !== '' && this.impact() !== '';
+  }
+
   protected get effectDescribedBy(): string | null {
-    return this.grantsPrivilege ? this.effectId : null;
+    const ids = [this.grantsPrivilege ? this.effectId : '', this.impactVisible ? this.impactId : ''].filter((id) => id !== '');
+    return ids.length === 0 ? null : ids.join(' ');
   }
 
   protected get submitDisabled(): string | null {
@@ -110,6 +128,7 @@ export class RoleDialog {
 
   protected onChange(): void {
     this.chosen.set(this.roleSelect().nativeElement.value);
+    this.chose.emit(this.chosen());
   }
 
   protected submit(): void {

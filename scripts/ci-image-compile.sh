@@ -43,7 +43,7 @@ done
 
 [ -n "$IMAGE" ] || { echo "ci-image-compile: --image is required"; exit 2; }
 case "$IMAGE" in
-    *latest-cd*|*:latest) echo "ci-image-compile: refusing a floating tag; AD-27 requires an explicit one"; exit 2 ;;
+    *:latest|*:latest-*) echo "ci-image-compile: refusing a floating tag; AD-27 requires an explicit one"; exit 2 ;;
 esac
 # A reference with no tag at all is the floating `:latest` under another spelling, and the
 # patterns above need a colon to see it. Tested on the segment after the last "/", because the
@@ -52,10 +52,12 @@ case "${IMAGE##*/}" in
     *:*) ;;
     *) echo "ci-image-compile: '$IMAGE' names no tag, which Docker resolves to :latest; AD-27 requires an explicit one"; exit 2 ;;
 esac
-if [ "$NAME" = "ocupilot" ]; then
-    echo "ci-image-compile: 'ocupilot' is the live container's own name; this probe never takes it"
-    exit 2
-fi
+case "$NAME" in
+    ocupilot|ocupilot-slot-*)
+        echo "ci-image-compile: '$NAME' is a live or development container's own name; this probe never takes it"
+        exit 2
+        ;;
+esac
 
 cleanup() {
     docker rm -f "$NAME" >/dev/null 2>&1 || true

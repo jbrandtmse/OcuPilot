@@ -250,6 +250,26 @@ ClassMethod SetTag(pId As %String, pTag As %String) As %Status
     Quit tSC
 }
 
+/// <p>The body of a recorded <code>tool_result</code> content that
+/// <class>OcuPilot.Kernel.Agent.Sanitize</class> framed: <var>pContent</var> without its opening
+/// line (plain or cut) and its closing line. <var>pWrapped</var> is 1 only when both lines frame it
+/// exactly; otherwise it is 0 and the answer is <var>pContent</var> unchanged.</p>
+ClassMethod Unwrapped(pContent As %String, Output pWrapped As %Boolean) As %String
+{
+    Set pWrapped = 0
+    Set tClose = $Char(10) _ ##class(OcuPilot.Kernel.Agent.Sanitize).#CLOSETAG
+    If $Extract(pContent, * - $Length(tClose) + 1, *) '= tClose Quit pContent
+    For tOpen = ##class(OcuPilot.Kernel.Agent.Sanitize).#OPENTAG, ##class(OcuPilot.Kernel.Agent.Sanitize).#CUTOPENTAG {
+        Set tOpenLine = tOpen _ $Char(10)
+        If $Extract(pContent, 1, $Length(tOpenLine)) '= tOpenLine Continue
+        If $Length(pContent) < ($Length(tOpenLine) + $Length(tClose)) Continue
+        Set pWrapped = 1
+        Quit
+    }
+    If 'pWrapped Quit pContent
+    Quit $Extract(pContent, $Length(tOpenLine) + 1, * - $Length(tClose))
+}
+
 /// <p>Remove the probe definitions and the credential entry, and move the default marker back to
 /// <var>pPrior</var> when it is still an enabled definition.</p>
 ClassMethod RemoveDefinition(pPrior As %String) As %Status
@@ -322,7 +342,8 @@ ClassMethod AwaitCall(pTag As %String, pCall As %Integer, pSeconds As %Integer) 
 /// terminate any that has not, remove every probe turn and the stub nodes of each tag in
 /// <var>pTags</var>, and answer
 /// what was left, <code>""</code> when nothing was: a live job, a turn, a held slot, a held
-/// conversation lock or a stub node. Every probe user's conversations are removed too.</p>
+/// conversation lock or a stub node. Every probe user's conversations and turn start records are
+/// removed too.</p>
 ClassMethod Sweep(pTags As %List) As %String
 {
     Set tLeft = ""
@@ -348,6 +369,9 @@ ClassMethod Sweep(pTags As %List) As %String
     If $$$ISERR(tSC) || (tRemaining '= 0) Set tLeft = tLeft _ " turns (" _ tRemaining _ ")"
     If ##class(OcuPilot.Test.TurnFixture).AnyProbeSlotHeld() Set tLeft = tLeft _ " a slot"
     Set tLeft = tLeft _ ..SweepConversations()
+    For tUser = ..#USERA, ..#USERB {
+        If $$$ISERR(##class(OcuPilot.Kernel.State.Turn).GuardedForgetStarts(tUser)) Set tLeft = tLeft _ " starts of " _ tUser
+    }
     For tI = 1:1:$ListLength(pTags) {
         Do ##class(OcuPilot.Test.TurnProvider).Forget($List(pTags, tI))
         If ##class(OcuPilot.Test.TurnProvider).Remains($List(pTags, tI)) Set tLeft = tLeft _ " stub " _ $List(pTags, tI)

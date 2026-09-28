@@ -46,6 +46,10 @@ Parameter REASONSIBLING = "sibling";
 /// longer matched (AD-6, FR-17).</p>
 Parameter REASONTARGETCHANGED = "target-changed";
 
+/// <p><property>ClosedReason</property>: the minting user took the copy-out draft instead of the
+/// write (AD-59).</p>
+Parameter REASONDRAFT = "draft";
+
 /// <p>The opaque, server-minted proposal id: 32 lower-case hex characters. Unique; matched
 /// exactly.</p>
 Property ProposalKey As %String(MAXLEN = 64);
@@ -169,6 +173,28 @@ Property DefinitionVersion As %String(MAXLEN = 32);
 /// OcuPilot reads it.</p>
 Property RequiredPairs As %String(MAXLEN = 1024);
 
+/// <p>The read-back of the confirmed write (AD-58), as the compact JSON of
+/// <method>OcuPilot.Kernel.Proposal.ReadBack.Of</method>'s answer -- a verdict and field names, never
+/// a value; <code>""</code> until one is recorded.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b>, for the reason
+/// <property>AuditWarning</property> records: every pre-existing row reads <code>""</code>, which
+/// the wire serializes as <code>null</code>, so no older row means anything different once a newer
+/// OcuPilot reads it.</p>
+Property ReadBack As %String(MAXLEN = 4000);
+
+/// <p>The longest <property>Impact</property> a row holds; the property's own <code>MAXLEN</code>
+/// equals it.</p>
+Parameter IMPACTMAXLENGTH As INTEGER = 4000;
+
+/// <p>The impact of the removal this proposal carries (AD-8), as the compact JSON of
+/// <method>OcuPilot.Kernel.Proposal.Impact.Of</method>'s answer, computed once at the mint -- names,
+/// counts, pairs and a refusal, never a value; <code>""</code> for a write with none.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b>, for the reason
+/// <property>AuditWarning</property> records: every pre-existing row reads <code>""</code>, which
+/// the wire serializes as <code>null</code>, so no older row means anything different once a newer
+/// OcuPilot reads it.</p>
+Property Impact As %String(MAXLEN = 4000);
+
 Index ProposalKeyIdx On ProposalKey [ Unique ];
 
 Index ProposalTokenIdx On Token [ Unique ];
@@ -202,7 +228,7 @@ Index ProposalTargetIdx On (TargetRef As Exact, State);
 /// <code>arguments</code>, <code>payload</code>, <code>diff</code>, <code>unchangedCount</code>,
 /// <code>rationale</code>, <code>expectedImpact</code>, <code>reverse</code>,
 /// <code>auditWarning</code>, <code>consequence</code>, <code>definitionId</code>,
-/// <code>definitionVersion</code> and <code>requiredPairs</code>, every one already
+/// <code>definitionVersion</code>, <code>requiredPairs</code> and <code>impact</code>, every one already
 /// built and already stripped of secret-declared keys by
 /// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method>; nothing here strips anything.
 /// <var>pLimitsClass</var> is the class <code>PROPOSALEXPIRYSECONDS</code> is read from, so a test
@@ -245,6 +271,8 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
         Set tRow.DefinitionId = ..Cut($Get(pValues("definitionId")), 64)
         Set tRow.DefinitionVersion = ..Cut($Get(pValues("definitionVersion")), 32)
         Set tRow.RequiredPairs = $Get(pValues("requiredPairs"))
+        ; A cut impact would be unreadable JSON, so one over the column's length is not stored.
+        Set tRow.Impact = $Select($Length($Get(pValues("impact"))) > ..#IMPACTMAXLENGTH: "", 1: $Get(pValues("impact")))
         Set tRow.CreatedAt = ..Stamp(tStamp)
         Set tRow.ExpiresAt = ..StampOfSeconds(tSeconds)
         Set tRow.State = ..#STATELIVE
@@ -299,6 +327,50 @@ ClassMethod GuardedByKey(pKey As %String, Output pFound As %Boolean, Output pVal
     Set pFound = 1
     Quit $$$OK
 }
+
+/// <p>Record on proposal <var>pProposalKey</var> the read-back of its confirmed write
+/// <var>pReadBack</var> (AD-58): the verdict and names <method>OcuPilot.Kernel.Proposal.ReadBack.Of</method>
+/// answered, never a value. An answer longer than the column keeps its verdict, its reason and as
+/// many names as fit.</p>
+/// <p><b>Caller contract:</b> called by the confirm after its write, outside the claim's
+/// transaction. An error status is the caller's to log; it never changes the write's answer.</p>
+ClassMethod GuardedRecordReadBack(pProposalKey As %String, pReadBack As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        If (pProposalKey = "") || '$IsObject(pReadBack) Quit
+        Set tText = pReadBack.%ToJSON()
+        Set tMax = ..#READBACKMAX
+        If $Length(tText) > tMax {
+            Set tCut = {}
+            Do tCut.%Set("verdict", pReadBack.%Get("verdict"), "string")
+            Do tCut.%Set("fields", [])
+            Do tCut.%Set("written", [])
+            If pReadBack.%Get("reason") '= "" Do tCut.%Set("reason", pReadBack.%Get("reason"), "string")
+            For tList = "fields", "written" {
+                If pReadBack.%GetTypeOf(tList) '= "array" Continue
+                Set tIterator = pReadBack.%Get(tList).%GetIterator()
+                While tIterator.%GetNext(.tIndex, .tName) {
+                    Do tCut.%Get(tList).%Push(tName, "string")
+                    If $Length(tCut.%ToJSON()) > tMax {
+                        Do tCut.%Get(tList).%Pop()
+                        Quit
+                    }
+                }
+            }
+            Set tText = tCut.%ToJSON()
+        }
+        Set tParams = [].%Push(tText).%Push(pProposalKey)
+        Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET ReadBack = ? WHERE %EXACT(ProposalKey) = ?", .tParams, .tRows)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The longest read-back <method>GuardedRecordReadBack</method> stores: the column's own
+/// <code>MAXLEN</code>.</p>
+Parameter READBACKMAX As %Integer = 4000;
 
 /// <p>How long a claim waits for its scoped target's lock before giving up. The transition it
 /// guards is two SQL statements, so a wait this long means a genuinely concurrent confirm.</p>
@@ -632,6 +704,8 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
     Set pValues("destructive") = ''pRow.Destructive
     Set pValues("consequence") = ..Text(pRow.Consequence)
     Set pValues("requiredPairs") = ..Text(pRow.RequiredPairs)
+    Set pValues("readBack") = ..Text(pRow.ReadBack)
+    Set pValues("impact") = ..Text(pRow.Impact)
     Set tSC = ..GuardedStreamText(pRow, "Arguments", .tArguments)
     If $$$ISERR(tSC) Quit tSC
     Set pValues("arguments") = tArguments
@@ -653,7 +727,10 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
 /// <code>{field, value}</code> projection -- never as itself, and never carrying a value its
 /// tool's field list does not classify <code>ordinary</code>. <code>privilege</code> is
 /// <method>OcuPilot.Kernel.Proposal.Disclosure.Privilege</method>'s answer for the recorded pairs and
-/// the row's owner, evaluated at this call, or <code>null</code> when no pairs were recorded.</p>
+/// the row's owner, evaluated at this call, or <code>null</code> when no pairs were recorded.
+/// <code>readBack</code> is the confirmed write's recorded read-back (AD-58), or <code>null</code>
+/// until one is recorded. <code>impact</code> is the removal's impact recorded at the mint (AD-8), or
+/// <code>null</code> for a write with none.</p>
 ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ Private ]
 {
     Set pOut = ""
@@ -684,8 +761,35 @@ ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ P
     } Else {
         Do tOut.%Set("privilege", "", "null")
     }
+    Set tReadBack = ..ParsedObject($Get(pValues("readBack")))
+    If $IsObject(tReadBack) {
+        Do tOut.%Set("readBack", tReadBack)
+    } Else {
+        Do tOut.%Set("readBack", "", "null")
+    }
+    Set tImpact = ..ParsedObject($Get(pValues("impact")))
+    If $IsObject(tImpact) {
+        Do tOut.%Set("impact", tImpact)
+    } Else {
+        Do tOut.%Set("impact", "", "null")
+    }
     Set pOut = tOut
     Quit $$$OK
+}
+
+/// <p><var>pText</var> parsed as a JSON object, or <code>""</code> when it is empty or
+/// unreadable.</p>
+ClassMethod ParsedObject(pText As %String) As %DynamicObject [ Private ]
+{
+    Set tObject = ""
+    Try {
+        If pText = "" Quit
+        Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pText)
+        If $IsObject(tParsed) && tParsed.%IsA("%Library.DynamicObject") Set tObject = tParsed
+    } Catch {
+        Set tObject = ""
+    }
+    Quit tObject
 }
 
 /// <p><var>pText</var> parsed as a JSON array, or an empty array when it is empty or unreadable --

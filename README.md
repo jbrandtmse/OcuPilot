@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://ocupilot.org"><b>Live demo</b></a> ·
+  <a href="https://youtu.be/tbFVXdDR5iI"><b>Video</b></a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#get-a-model-key-in-two-minutes">Get a key</a> ·
   <a href="#a-change-from-question-to-audit-record">Walkthrough</a> ·
@@ -31,10 +32,19 @@ a proposal you confirm; nothing changes until you press Confirm.** The change th
 privileges, is marked in the IRIS audit database as an agent write, and the screen refreshes and
 marks the row that changed.
 
+> **Requires InterSystems IRIS or IRIS for Health 2026.2 or later.** OcuPilot is built on version 2
+> of the IRIS admin API, which first shipped in 2026.2, so it does not run on earlier versions. The
+> Docker quick start below already uses 2026.2. If you install with IPM, check your instance first:
+> the `intersystemsdc/iris-community:latest` and `intersystemsdc/irishealth-community:latest` images
+> are currently 2026.1, so use their `2026.2` tags instead (for example
+> `intersystemsdc/irishealth-community:2026.2-zpm`). IPM refuses to install OcuPilot on an older
+> version.
+
 ## Try it without installing
 
 **[ocupilot.org](https://ocupilot.org)** runs the current release on a real IRIS for Health
-instance. Sign in as `demo` with the password `ocupilot-demo`.
+instance. Sign in as `demo` with the password `ocupilot-demo`. Or watch it first:
+[OcuPilot in three minutes: ask, review, confirm, audit](https://youtu.be/tbFVXdDR5iI).
 
 - The agent runs on Claude Opus 5.5, so you do not need a model key.
 - Everyone shares the one instance, and it resets to a clean state every hour, on the hour.
@@ -111,7 +121,7 @@ change and says what would be needed; Home marks the screens this user may not o
 | Security and secrets | SSL/TLS, X.509 credentials, wallet, OAuth 2.0 (client server descriptions, client configurations, resource servers, the authorization server, server client descriptions), LDAP, auditing | Editors for each, SSL/TLS and LDAP connection tests, OAuth token revocation, audit event configuration, and audit database copy and purge |
 | Tasks | Task schedule, on-demand tasks, upcoming tasks, task history, task details | A New Task wizard, edit, run, suspend, resume and delete |
 | OS management | Processes, process details, locks, system usage, databases, devices | Suspend, resume and terminate processes; edit devices; free space per database |
-| Logs | `alerts.log`, `messages.log`, application errors, the audit database | Search and page each log, filter the audit database to agent writes, delete application errors, and ask the agent to explain any entry |
+| Logs | `alerts.log`, `messages.log` and its older files, application errors, the audit database | Search and page each log, filter the audit database to agent writes, delete application errors, and ask the agent to explain any entry |
 
 ## Quick start
 
@@ -164,6 +174,21 @@ and the agent has something to fix. The IPM install never creates them.
 
 To install without them, remove `OCUPILOT_DEMO: "1"` from `docker-compose.yml` before the first
 start.
+
+### Update to a new release
+
+Your agent definitions, keys, conversations, settings and audit records live in `./iris-data` and
+carry over.
+
+```bash
+git pull
+docker compose restart iris
+docker compose up -d --wait
+```
+
+`docker compose up` on its own does not update: the running container keeps the release it started
+with. The restart installs the new release over the same data, and `--wait` returns once the health
+check reports it installed.
 
 ## Get a model key in two minutes
 
@@ -306,6 +331,13 @@ Against your own install, use `http://localhost:52774/api/ocupilot` and your own
 - **The instance is the source of truth.** Screens read live data through IRIS's own management
   APIs, and the agent's tools are derived from the same screen descriptors, so the agent and the
   screen see the same thing.
+- **The admin API, in process.** Screens and the agent's tools call the `/api/admin` v2 operations
+  described in the [published specification](https://github.com/intersystems-community/sysadmin-api-specification).
+  OcuPilot runs the same endpoint classes, validation and permission checks the REST service
+  dispatches to, in process and as the signed-in user, so there is no second sign-in, token or CORS
+  setup. What the admin API does not serve is read directly: `messages.log` and `alerts.log` from
+  the instance's manager directory, and the REST API explorer's applications and OpenAPI documents
+  from the logic behind `/api/mgmnt`.
 - **The model never writes.** An agent turn runs in a background job that can only read and
   propose. Writes happen in a separate request that only your Confirm makes.
 
@@ -343,7 +375,7 @@ Against your own install, use `http://localhost:52774/api/ocupilot` and your own
 
 ## Community ideas
 
-OcuPilot implements two ideas from the [InterSystems Ideas portal](https://ideas.intersystems.com/)
+OcuPilot implements three ideas from the [InterSystems Ideas portal](https://ideas.intersystems.com/)
 that carry Community Opportunity status:
 
 - [DPI-I-516](https://ideas.intersystems.com/ideas/DPI-I-516), **Integration with LLMs like GPT,
@@ -352,6 +384,9 @@ that carry Community Opportunity status:
 - [DPI-I-574](https://ideas.intersystems.com/ideas/DPI-I-574), **AI analysis of error logs:** the
   agent explains any application error, `messages.log` line, alert or audit record in front of it
   and suggests what to do next.
+- [DPI-I-966](https://ideas.intersystems.com/ideas/DPI-I-966), **Option to show older message.log in
+  IRIS SMP:** the `messages.log` viewer opens every older messages file the instance keeps, with the
+  same search, filters and agent explanations.
 
 ## Known limitations
 
@@ -363,6 +398,12 @@ that carry Community Opportunity status:
   local model. A turn that makes a change can take up to a minute, and a small local model may
   propose changes that need correcting.
 - **IRIS 2026.2 or later.** OcuPilot relies on the admin API that version introduced.
+- **Two admin API defects, reported upstream.** On 2026.2 the task list reports every task as not
+  suspended ([issue #1](https://github.com/intersystems-community/sysadmin-api-specification/issues/1)),
+  so OcuPilot reads each task's own information and the Task schedule shows the true state; the
+  specification and the instance also disagree on two OAuth 2.0 names
+  ([issue #2](https://github.com/intersystems-community/sysadmin-api-specification/issues/2)), and
+  OcuPilot follows the instance.
 - **Auditing must be on for the audit record.** If it is switched off, the agent's changes still
   need your Confirm, and the panel says plainly that they are not being marked.
 - **English only.**
@@ -374,7 +415,6 @@ Improvements continue through the contest's voting week, released to `main` in t
 - a try-it console that sends a request from the REST API explorer;
 - a read-back line showing that the instance now holds what a change wrote;
 - a performance row on Home, and impact lines on removals ("3 users hold this role");
-- older `messages.log` files in the Logs area ([DPI-I-966](https://ideas.intersystems.com/ideas/DPI-I-966));
 - the remaining log viewers and a unified log hub;
 - the agent handing you a script instead of running a change, and tests that content the agent
   reads cannot steer it.

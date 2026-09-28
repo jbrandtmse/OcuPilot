@@ -325,7 +325,7 @@ Method TestResolvedAnswersTheVerdictForTheDefinitionInForce()
 Method TestEveryRestraintCodeHasAWrittenSentence()
 {
     Set tCodes = ##class(OcuPilot.Api.Error).RestraintCodes()
-    Do $$$AssertEquals($ListLength(tCodes), 4, "the vocabulary holds four restraint codes; adding one is a deliberate edit in OcuPilot.Api.Error")
+    Do $$$AssertEquals($ListLength(tCodes), 5, "the vocabulary holds five restraint codes; adding one is a deliberate edit in OcuPilot.Api.Error")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = ##class(OcuPilot.Api.Error).ReasonForRestraint(tCode)
@@ -337,17 +337,17 @@ Method TestEveryRestraintCodeHasAWrittenSentence()
     Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForRestraint("AGENT.NO.SUCH.CODE"), "", "and a code the vocabulary does not hold carries none")
 }
 
-/// <p><b>The three footer keys are the published ones</b> the client renders, and they are the only
-/// values <method>Verdict</method> can answer with. The fourth,
-/// <code>statusReadOnlyForYou</code>, is Story 14.5's and is deliberately not answered yet.</p>
+/// <p><b>The four footer keys are the published ones</b> the client renders, and they are the only
+/// values <method>Verdict</method> can answer with.</p>
 /// <p>The client half is <file>ui/tools/agent-status.test.mjs</file>, which asserts each of these
 /// exists in <file>ui/src/app/core/strings.ts</file>. Both ends are pinned, so a key renamed on
 /// either side reddens.</p>
-Method TestTheFooterKeysAreTheThreePublishedOnes()
+Method TestTheFooterKeysAreTheFourPublishedOnes()
 {
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Restraint).#FOOTERKEYOFF, "statusReadOnlyOff", "the off key")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Restraint).#FOOTERKEYENFORCED, "statusReadOnlyEnforced", "the enforced key")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Restraint).#FOOTERKEYDEFINITION, "statusReadOnlyByDefinition", "and the by-the-definition key")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Restraint).#FOOTERKEYDEFINITION, "statusReadOnlyByDefinition", "the by-the-definition key")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Restraint).#FOOTERKEYFORYOU, "statusReadOnlyForYou", "and the for-you key")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Restraint).#AUDIENCEEVERYONE, "everyone", "the everyone audience, which resolves the published banner's slot")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Restraint).#AUDIENCEYOU, "you", "and the you audience")
 }

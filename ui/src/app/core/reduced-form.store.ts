@@ -23,6 +23,7 @@ import type { ApiRequestInit, JsonResult } from './api.ts';
 import type { ChangeEventInput } from './change-bus.ts';
 import { encodeEntityId } from './entity-id.ts';
 import type { FormDirty } from './form-dirty.ts';
+import { readBackOf, type ReadBack } from './read-back.ts';
 import { reasonForField, type Violation, violationsOf } from './violations.ts';
 
 /** What a field holds: a text, a boolean, one bit of a number, or a list of entries. */
@@ -117,6 +118,8 @@ export class ReducedFormStore {
   private savingValue = false;
 
   private savedValue = false;
+  /** The instance's read-back of the last accepted Save (AD-58), or `null`. */
+  private readBackValue: ReadBack | null = null;
 
   private violationList: readonly Violation[] = [];
 
@@ -171,6 +174,11 @@ export class ReducedFormStore {
 
   busy(): boolean {
     return this.savingValue;
+  }
+
+  /** The read-back the last accepted Save answered (AD-58), which its "Saved" line renders. */
+  readBack(): ReadBack | null {
+    return this.readBackValue;
   }
 
   saved(): boolean {
@@ -347,6 +355,7 @@ export class ReducedFormStore {
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
+    this.readBackValue = null;
     this.notify();
     const result = await this.deps.api.requestJson<unknown>(`${this.declaration.savePath}/${encodeEntityId(this.idValue)}`, {
       method: 'PUT',
@@ -364,6 +373,7 @@ export class ReducedFormStore {
     }
     this.opened = this.buffer;
     this.savedValue = true;
+    this.readBackValue = readBackOf((result.body as Record<string, unknown> | null)?.['readBack']);
     this.deps.formDirty.setDirty(false);
     this.deps.bus.publish({
       kind: 'changed',
@@ -371,6 +381,7 @@ export class ReducedFormStore {
       scope: REDUCED_FORM_SCOPE,
       id: this.idValue,
       action: 'updated',
+      readBack: this.readBackValue,
     });
     this.notify();
     return true;

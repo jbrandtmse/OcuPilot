@@ -367,4 +367,23 @@ ClassMethod Body(pType As %String, ByRef pQuery) As %DynamicObject
     Quit ""
 }
 
+/// <p>The admin port's answer: this port's copy and purge are the vendor's own routes.</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    Quit ##super(pEndpoint, pType)
+}
+
+/// <p><method>Invoke</method>'s branches as a script (AD-59): a <parameter>COMPOSEDTYPES</parameter>
+/// pair is the vendor call with <method>Body</method>'s body and an empty query, and a query
+/// <method>Body</method> cannot compose from answers no step; every other call is the admin port's
+/// script.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    If (pEndpoint '= ..#RECORDENDPOINT) || '$ListFind($ListFromString(..#COMPOSEDTYPES), pEndpoint _ "/" _ pType) Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+    Set tBody = ..Body(pType, .pQuery)
+    If '$IsObject(tBody) Quit []
+    Kill tNone
+    Quit ##super(pEndpoint, pType, .tNone, tBody, pContext)
+}
+
 }

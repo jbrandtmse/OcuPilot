@@ -17,7 +17,8 @@
    a reviewer reads and a later story mines, and an unclosed fence hides
    everything after it.
 
-Checks 1 and 2 ignore fenced code blocks, inline code spans, and link targets.
+Checks 1 and 2 ignore fenced code blocks, inline code spans, and link targets. Check 2 also
+ignores blockquote lines in docs/articles/, where a quoted speaker keeps their own spelling.
 
 Usage:
     uv run scripts/check-prose.py [PATH ...]
@@ -136,6 +137,7 @@ GWT_PLAIN = re.compile(r"^\s*(Given|When|Then)\s")
 LIST_ITEM = re.compile(r"^\s*([-*+]|\d+[.)])\s")
 HEADING = re.compile(r"^\s*#{1,6}\s")
 FENCE = re.compile(r"^\s*(```|~~~)")
+BLOCKQUOTE = re.compile(r"^\s*>")
 
 INLINE_CODE = re.compile(r"`[^`]*`")
 LINK_TARGET = re.compile(r"\]\([^)]*\)")
@@ -266,6 +268,7 @@ def check(path: Path) -> list[str]:
     if SPEC_NAME_RE.match(path.name):
         problems.extend(check_spec_structure(path, lines))
 
+    quotes_verbatim = path.resolve().parent.as_posix().endswith("/docs/articles")
     in_fence = False
     for i, raw in enumerate(lines):
         if FENCE.match(raw):
@@ -291,6 +294,8 @@ def check(path: Path) -> list[str]:
                 )
 
         # 2. British spellings.
+        if quotes_verbatim and BLOCKQUOTE.match(raw):
+            continue
         for m in BRITISH_RE.finditer(strip_code(raw)):
             found = m.group(1)
             problems.append(

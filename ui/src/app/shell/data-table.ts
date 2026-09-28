@@ -29,9 +29,11 @@ import { normalizeEntityId } from '../core/entity-ref';
 import { isBannerFault } from '../core/fault';
 import { childListFor, detailScreenFor, documentScreenFor, editorScreenFor, hasIdRoute, screenForRoute, withQuery } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
+import { readBackLine, withReadBack } from '../core/read-back';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { ScreenActions, actionLabel } from '../core/screen-actions';
+import { csvFileName, csvText, tableCsvRows } from '../core/csv';
+import { DOWNLOAD_CSV_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
 import { applyView, textOf } from '../core/screen-read';
 import type { ScreenStore } from '../core/screen-store';
 import type { ScreenDeclaration, TableColumn } from '../core/screens.generated';
@@ -90,6 +92,8 @@ interface CellModel {
   readonly disc: boolean;
   readonly plain: boolean;
   readonly tag: boolean;
+  /** The marked row's read-back line (AD-58), drawn after the tag; `''` for none. */
+  readonly readBack: string;
   readonly active: boolean;
   /** This one cell draws a skeleton bar instead of `view` (Story 6.11, `pendingFields`). */
   readonly pending: boolean;
@@ -348,6 +352,9 @@ interface CellTooltip {
                     }
                     @if (cell.tag) {
                       <span class="ocu-data-table-changed-tag">{{ STRINGS.tableChangedTag }}</span>
+                      @if (cell.readBack !== '') {
+                        <span class="ocu-data-table-read-back" [attr.title]="cell.readBack">{{ cell.readBack }}</span>
+                      }
                     }
                   </div>
                 }
@@ -574,6 +581,7 @@ export class DataTable implements OnInit {
     const selected = store.selection()[0] ?? '';
     const changed = store.changed();
     const markedKeys = new Set([...changed].map((key) => this.viewKeyFor(key)));
+    const readBackLines = new Map([...changed].map((key) => [this.viewKeyFor(key), readBackLine(store.changedReadBack(key))]));
     const activeColumn = this.activeColumn();
     const menuKey = this.menuIsOpen() ? this.menuKey() : null;
     // The name cell opens the entity's own surface: a declared rowTarget first (Story 6.10's
@@ -639,6 +647,7 @@ export class DataTable implements OnInit {
             disc: !pending && view.disc !== null,
             plain: !pending && !link && !classic,
             tag: !pending && isChanged && column.kind === 'name',
+            readBack: !pending && isChanged && column.kind === 'name' ? (readBackLines.get(key) ?? '') : '',
             active: isActive && activeColumn === columnIndex,
             pending,
           };
@@ -714,7 +723,32 @@ export class DataTable implements OnInit {
   ngOnInit(): void {
     const stopStore = this.store().subscribe(() => this.sync());
     this.destroyRef.onDestroy(stopStore);
+    // Download CSV (Story 16.23): the table owns the view, so it is what registers; the command
+    // bar draws the control while this is registered and the screen's read has landed.
+    const stopDownload = this.actions.register(this.screen().descriptor, DOWNLOAD_CSV_ACTION_ID, () => this.downloadCsv());
+    this.destroyRef.onDestroy(stopDownload);
     this.lastKeys = this.viewKeys();
+  }
+
+  /**
+   * Save the view as it stands -- filter and sort applied, the declared columns under their header
+   * labels, each cell as displayed -- as a CSV file built here: an in-document anchor over an
+   * object URL, clicked and removed, with the URL revoked on a later task. No request leaves the
+   * page and nothing navigates (AD-20, AD-47).
+   */
+  private downloadCsv(): void {
+    const columns = this.columns();
+    const header = columns.map((column) => this.lookup(column.labelKey));
+    const text = csvText(header, tableCsvRows(this.view(), columns, this.lookup, this.pendingFields()));
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = csvFileName(this.gridLabel, new Date());
+    anchor.hidden = true;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
   // --- What renders ------------------------------------------------------------------------------
@@ -1509,11 +1543,15 @@ export class DataTable implements OnInit {
     }
     for (const key of changed) {
       const action = store.changedAction(key);
-      if (this.announcedChanged.get(key) === action) continue;
+      const readBack = store.changedReadBack(key);
+      // The read-back rides the announcement, so a second write whose read-back differs from the
+      // first's is announced again even under the same action.
+      const said = `${action}|${readBackLine(readBack)}`;
+      if (this.announcedChanged.get(key) === said) continue;
       const row = this.viewKeyFor(key);
       if (row === '') continue;
-      this.announcedChanged.set(key, action);
-      this.announcement.set(formatChangeAnnouncement(STRINGS.tableChangeAnnouncement, row, action));
+      this.announcedChanged.set(key, said);
+      this.announcement.set(withReadBack(formatChangeAnnouncement(STRINGS.tableChangeAnnouncement, row, action), readBack));
     }
   }
 

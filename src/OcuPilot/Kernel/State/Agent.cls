@@ -118,9 +118,19 @@ Property SystemPromptOverride As %String(MAXLEN = 8192);
 /// what a new row starts with, not what a stored value means.</p>
 Property ReadOnly As %Boolean [ InitialExpression = 0 ];
 
-/// <p>How many days of this definition's conversation history are kept, 1-365. Inert until
-/// Story 14.4 enables the field and ships the purge task.</p>
-Property RetentionDays As %Integer [ InitialExpression = 30 ];
+/// <p>How many days a conversation entry this definition produced is kept, 1-365
+/// (<parameter>DEFAULTRETENTIONDAYS</parameter> for a new definition). The daily retention task
+/// removes an entry older than its own definition's value (<class>OcuPilot.Kernel.Retention</class>,
+/// AD-37).</p>
+Property RetentionDays As %Integer [ InitialExpression = {..#DEFAULTRETENTIONDAYS} ];
+
+/// <p>The retention a new definition starts with, and the one the retention sweep applies when no
+/// definition exists at all.</p>
+Parameter DEFAULTRETENTIONDAYS As %Integer = 30;
+
+/// <p>The longest retention a definition may keep; the retention sweep reads a larger stored value
+/// as this one.</p>
+Parameter MAXRETENTIONDAYS As %Integer = 365;
 
 /// <p>Whether this definition may serve a turn. A definition is created disabled, and a save
 /// that changes a security-relevant field disables it again
@@ -439,6 +449,43 @@ ClassMethod GuardedVersion(pId As %String, Output pVersion As %String) As %Statu
 ClassMethod GuardedList(Output pIds) As %Status
 {
     Quit ..GuardedIdsWhereNoParam("SELECT ID FROM OcuPilot_Kernel_State.Agent ORDER BY ID", .pIds)
+}
+
+/// <p>Every definition's retention, for the retention sweep (AD-37): <var>pById(id)</var> is
+/// definition <var>id</var>'s <property>RetentionDays</property>, <var>pDefaultDays</var> the
+/// default-marked definition's (<parameter>DEFAULTRETENTIONDAYS</parameter> when none is marked),
+/// and <var>pLongestDays</var> the longest of all of them and of <var>pDefaultDays</var>. A stored
+/// value that is not a whole number of days from 1 reads as
+/// <parameter>DEFAULTRETENTIONDAYS</parameter>, so no row can ask for everything to go, and one above
+/// <parameter>MAXRETENTIONDAYS</parameter> reads as that. A row that
+/// cannot be opened is skipped, the way <method>GuardedScreenRows</method> skips it.</p>
+ClassMethod GuardedRetentions(Output pById, Output pDefaultDays As %Integer, Output pLongestDays As %Integer) As %Status
+{
+    Kill pById
+    Set pDefaultDays = ..#DEFAULTRETENTIONDAYS
+    Set pLongestDays = ..#DEFAULTRETENTIONDAYS
+    Set tSC = ..GuardedList(.tIds)
+    If $$$ISERR(tSC) Quit tSC
+    Set tMarked = ""
+    For tI = 1:1:+$Get(tIds) {
+        Set tOpenSC = ..GuardedOpenId(tIds(tI), .tRow)
+        If $$$ISERR(tOpenSC) || '$IsObject(tRow) Continue
+        Set tDays = tRow.RetentionDays
+        If '$Match(tDays, "^[1-9][0-9]*$") Set tDays = ..#DEFAULTRETENTIONDAYS
+        If tDays > ..#MAXRETENTIONDAYS Set tDays = ..#MAXRETENTIONDAYS
+        Set pById(tIds(tI)) = +tDays
+        If tRow.DefaultMark = "1" Set tMarked = tIds(tI)
+        Set tRow = ""
+    }
+    If tMarked '= "" Set pDefaultDays = pById(tMarked)
+    Set pLongestDays = pDefaultDays
+    Set tId = ""
+    For {
+        Set tId = $Order(pById(tId), 1, tDays)
+        If tId = "" Quit
+        If tDays > pLongestDays Set pLongestDays = tDays
+    }
+    Quit $$$OK
 }
 
 /// <p>The six keys a screen row and the selection projection both carry -- id, name, provider,

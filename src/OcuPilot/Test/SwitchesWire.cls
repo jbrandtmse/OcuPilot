@@ -1,4 +1,4 @@
-/// <p>The five switch routes over HTTP -- status, content type and body shape (Conventions, Tests)
+/// <p>The switch routes over HTTP -- status, content type and body shape (Conventions, Tests)
 /// -- through the shipped router rather than by calling the handler in process.</p>
 /// <p><b>The caller is the suite's own privileged account</b>, so these assert what an
 /// administrator is served. The refusals a principal holding no OcuPilot administrative resource
@@ -34,16 +34,14 @@ Method OnAfterOneTest() As %Status
 /// <p><b>DW-388's integration acceptance criterion</b> -- a switches save whose row moved after
 /// this request read it is refused 409 with <code>STATE.CONFLICT</code>, through the one envelope
 /// and the one error writer (AD-12, AD-39), and the other writer's values survive.</p>
-/// <p><b>It runs through <class>OcuPilot.Test.Dispatch</class> and not over a socket, and that is
-/// a property of the defect rather than of the test.</b> The window the conditional write closes
-/// opens and closes inside one request -- a handler that reads, does work, then writes -- and
-/// OcuPilot publishes no version token a second request could carry, deliberately. So the second
-/// writer has to be inside the request, which is what
-/// <class>OcuPilot.Test.SwitchesStaleProbe</class> is; everything under it, including the real
-/// <code>%CSP.REST</code> dispatch, the real status and the real envelope, is the shipped path.
-/// The ordinary save over a real socket is this class's own
-/// <method>TestTheSwitchesUpdateWritesAndAnswersTheStoredTruth</method>, which is what says the
-/// conditional write did not break the path that does not race.</p>
+/// <p><b>It runs through <class>OcuPilot.Test.Dispatch</class> and not over a socket.</b> The body
+/// carries no <code>rowVersion</code>, so the window the conditional write closes opens and closes
+/// inside one request -- a handler that reads, does work, then writes -- and the second writer has
+/// to be inside the request, which is what <class>OcuPilot.Test.SwitchesStaleProbe</class> is;
+/// everything under it, including the real <code>%CSP.REST</code> dispatch, the real status and
+/// the real envelope, is the shipped path. A body that carries the version the screen read is
+/// <method>TestASaveCarryingAStaleVersionIsRefusedUntilReloaded</method>'s, over a real
+/// socket.</p>
 /// <p>Mutation: drop <code>AND COALESCE(RowVersion, 0) = ?</code> from
 /// <method>OcuPilot.Kernel.State.Base.GuardedSaveIfCurrent</method>, or stop passing the version
 /// read in <method>OcuPilot.Api.Switches.HandleUpdate</method> -- this answers 200 and goes
@@ -85,13 +83,17 @@ Method TestTheSwitchesReadAnswersTheDefaultsOnACleanInstance()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "killSwitch,killSwitchReason,enforcedReadOnly,shareContextByDefault,contextRowCap,updatedAt,holds", "the seven keys the screen reads")
+    Do $$$AssertEquals(tKeys, "killSwitch,killSwitchReason,enforcedReadOnly,shareContextByDefault,contextRowCap,turnsPerHour,concurrentTurns,updatedAt,rowVersion,holds", "the ten keys the screen reads")
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("rowVersion"), "number", "the row version arrives as a JSON number")
+    Do $$$AssertEquals(tAnswer.rowVersion, 0, "and is 0 while the instance holds no row")
     Do $$$AssertEquals(tAnswer.%GetTypeOf("killSwitch"), "boolean", "a flag arrives as a JSON boolean")
     Do $$$AssertEquals(tAnswer.killSwitch, 0, "the kill switch is off")
     Do $$$AssertEquals(tAnswer.enforcedReadOnly, 0, "read-only is not enforced")
     Do $$$AssertEquals(tAnswer.shareContextByDefault, 1, "and screen context is shared by default")
     Do $$$AssertEquals(tAnswer.%GetTypeOf("contextRowCap"), "number", "the row cap arrives as a JSON number")
     Do $$$AssertEquals(tAnswer.contextRowCap, 200, "at the default")
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("turnsPerHour") _ "|" _ tAnswer.turnsPerHour, "number|0", "turns an hour is a number, 0 for no limit (Story 14.6)")
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("concurrentTurns") _ "|" _ tAnswer.concurrentTurns, "number|1", "and turns at once is the fixed 1")
     Do $$$AssertTrue($IsObject(tAnswer.holds), "the holds arrive as an array")
     Do $$$AssertEquals(tAnswer.holds.%Size(), 0, "which is empty")
     Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "and the read wrote no row")
@@ -121,6 +123,43 @@ Method TestTheSwitchesUpdateWritesAndAnswersTheStoredTruth()
     Do $$$AssertEquals(tAnswer.killSwitch, 0, "turning the kill switch off")
     Do $$$AssertEquals(tAnswer.enforcedReadOnly, 1, "and leaving enforced read-only alone (AD-4)")
     Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 1, "with one row written, not two")
+}
+
+/// <p>A save carrying the version the screen read is refused <code>STATE.CONFLICT</code> once
+/// another writer has moved the row, and pressing Save again with the same version is refused
+/// again; a read hands back the current version, and a save carrying it is taken, as is the next
+/// one carrying the version that answer carried. A body with no <code>rowVersion</code> saves as it
+/// always has.</p>
+/// <p>Mutation: have <method>OcuPilot.Api.Switches.HandleUpdate</method> ignore the body's
+/// <code>rowVersion</code> -- the two stale saves answer 200 and this goes red.</p>
+Method TestASaveCarryingAStaleVersionIsRefusedUntilReloaded()
+{
+    Do ..Call("GET", "/agent/switches", "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the switches read: " _ tBody)
+    Set tRead = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
+    Do ..Call("PUT", "/agent/switches", "{""killSwitchReason"":""first"",""rowVersion"":" _ tRead _ "}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "a save carrying the version read is taken: " _ tBody)
+    Set tHeld = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
+    Do $$$AssertTrue(tHeld > tRead, "and answers the version the save wrote: " _ tHeld)
+
+    Do ..Call("PUT", "/agent/switches", "{""killSwitchReason"":""other""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "another writer's save with no rowVersion is taken as it always was: " _ tBody)
+
+    For tAttempt = 1, 2 {
+        Do ..Call("PUT", "/agent/switches", "{""killSwitchReason"":""stale"",""rowVersion"":" _ tHeld _ "}", .tStatus, .tBody, .tHeaders)
+        Do $$$AssertEquals(tStatus, 409, "save " _ tAttempt _ " with the version this screen held is refused: " _ tBody)
+        If tStatus = 409 Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).code, ##class(OcuPilot.Api.Error).#STATECONFLICT, "as a stale save")
+    }
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).Resolve(.tNow), "the switches read back")
+    Do $$$AssertEquals(tNow("killSwitchReason"), "other", "and the other writer's reason survived both")
+
+    Do ..Call("GET", "/agent/switches", "", .tStatus, .tBody, .tHeaders)
+    Set tReloaded = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
+    Do ..Call("PUT", "/agent/switches", "{""killSwitchReason"":""after reload"",""rowVersion"":" _ tReloaded _ "}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "a save carrying the reloaded version is taken: " _ tBody)
+    Set tAnswered = ##class(%DynamicObject).%FromJSON(tBody).rowVersion
+    Do ..Call("PUT", "/agent/switches", "{""killSwitchReason"":""answered"",""rowVersion"":" _ tAnswered _ "}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "and so is the next, carrying the version that answer carried: " _ tBody)
 }
 
 /// <p><b>A flag sent as anything but a JSON boolean, and a reason sent as anything but a JSON
@@ -372,7 +411,7 @@ Method TestTheRestraintReadAnswersTheCallersOwnVerdict()
     }
     ; `writesMarked` is Story 5.6's and is not part of the verdict: marking is not a restraint
     ; (AD-30), and only its false arm is ever rendered (AD-15).
-    Do $$$AssertEquals(tKeys, "blocked,code,reason,footerKey,killSwitch,killSwitchAudience,killSwitchReason,enforcedReadOnly,writesMarked", "the nine keys the panel reads")
+    Do $$$AssertEquals(tKeys, "blocked,code,reason,footerKey,killSwitch,killSwitchAudience,killSwitchReason,enforcedReadOnly,readOnlyForYou,writesMarked", "the ten keys the panel reads")
     Do $$$AssertEquals(tAnswer.blocked, 0, "a clean instance restrains nothing")
     Do $$$AssertEquals(tAnswer.%GetTypeOf("writesMarked"), "boolean", "and marking arrives as a JSON boolean")
     Do $$$AssertEquals(tAnswer.writesMarked, 1, "which an installed instance answers true, so no banner is drawn over a healthy one")
@@ -538,7 +577,7 @@ Method TestTheSwitchRoutesAreDeclaredInTheShippedRouter()
     If '$IsObject(tXData) Quit
     Do tXData.Data.Rewind()
     Set tMap = tXData.Data.Read(32000)
-    For tRoute = "<Route Url=""/agent/switches/holds/:id"" Method=""DELETE"" Call=""AgentSwitchHoldDelete""/>", "<Route Url=""/agent/switches/holds"" Method=""POST"" Call=""AgentSwitchHoldCreate""/>", "<Route Url=""/agent/switches"" Method=""GET"" Call=""AgentSwitchesRead""/>", "<Route Url=""/agent/switches"" Method=""PUT"" Call=""AgentSwitchesUpdate""/>", "<Route Url=""/agent/restraint"" Method=""GET"" Call=""AgentRestraint""/>" {
+    For tRoute = "<Route Url=""/agent/switches/holds/:id"" Method=""DELETE"" Call=""AgentSwitchHoldDelete""/>", "<Route Url=""/agent/switches/holds"" Method=""POST"" Call=""AgentSwitchHoldCreate""/>", "<Route Url=""/agent/switches"" Method=""GET"" Call=""AgentSwitchesRead""/>", "<Route Url=""/agent/switches"" Method=""PUT"" Call=""AgentSwitchesUpdate""/>", "<Route Url=""/agent/restraint"" Method=""GET"" Call=""AgentRestraint""/>", "<Route Url=""/agent/restraint"" Method=""PUT"" Call=""AgentRestraintUpdate""/>" {
         Do $$$AssertTrue(tMap [ tRoute, "the router declares " _ tRoute)
     }
 }
@@ -589,6 +628,64 @@ Method TestTheContextRowCapValidatesItsRange()
     Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertEquals(tAnswer.contextRowCap, 500, "and reads back as a number")
+}
+
+/// <p><b>AC1 (Story 14.6): turns an hour is a whole number from 0 to 10,000</b>. <code>-1</code>,
+/// <code>10001</code>, <code>1.5</code>, the string <code>"5"</code> and <code>true</code> are each
+/// refused 422 on <code>turnsPerHour</code> with <code>AGENT.SWITCH.TURNSPERHOUR</code> and write
+/// nothing; <code>3</code> is accepted, a fresh read answers it, and the change lands as a
+/// security-change audit row naming the field.</p>
+/// <p>Mutation (Rule 19): drop the <code>turnsPerHour</code> rule from
+/// <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> -- the refused values answer 200
+/// and this goes red.</p>
+Method TestTurnsPerHourValidatesItsRangeAndIsAudited()
+{
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    For tCase = "-1", "10001", "1.5", """5""", "true" {
+        Set tSC = ..Call("PUT", "/agent/switches", "{""turnsPerHour"":" _ tCase _ "}", .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, tCase _ ": the request completes")
+        Do $$$AssertEquals(tStatus, 422, tCase _ ": is refused as a validation failure: " _ tBody)
+        If tStatus '= 422 Continue
+        Set tFirst = ##class(%DynamicObject).%FromJSON(tBody).detail.violations.%Get(0)
+        Do $$$AssertEquals(tFirst.field _ "|" _ tFirst.code, "turnsPerHour|" _ ##class(OcuPilot.Api.Error).#AGENTSWITCHTURNSPERHOUR, tCase _ ": on its own field, with its own code")
+        Do $$$AssertEquals(tFirst.reason, ##class(OcuPilot.Api.Error).#REASONAGENTSWITCHTURNSPERHOUR, tCase _ ": and its sentence")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "none of the refused writes wrote a row")
+
+    Set tSC = ..Call("PUT", "/agent/switches", "{""turnsPerHour"":3}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "a value in range completes")
+    Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
+    Set tSC = ..Call("GET", "/agent/switches", "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "a fresh read answers: " _ tBody)
+    If tStatus '= 200 Quit
+    Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).turnsPerHour, 3, "with the stored limit")
+    Set tRows = ##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, ##class(OcuPilot.Kernel.Audit.Event).EventNameFor(1), """turnsPerHour"":{""old"":""0"",""new"":""3""}", .tData)
+    Do $$$AssertEquals(tRows, 1, "exactly one security-change audit row names the field's old and new values: " _ tRows)
+}
+
+/// <p><b>AC1 (Story 14.6): turns running at once is fixed at 1</b>. A body carrying
+/// <code>concurrentTurns</code> as 2, 0 or the string <code>"1"</code> is refused 422 on that field
+/// with <code>AGENT.SWITCH.CONCURRENTTURNS</code> and writes nothing; the number 1 is accepted and
+/// the read still answers 1.</p>
+/// <p>Mutation (Rule 19): drop the <code>concurrentTurns</code> rule from
+/// <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> -- the refused values answer 200
+/// and this goes red.</p>
+Method TestConcurrentTurnsIsFixedAtOne()
+{
+    For tCase = "2", "0", """1""" {
+        Set tSC = ..Call("PUT", "/agent/switches", "{""concurrentTurns"":" _ tCase _ "}", .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, tCase _ ": the request completes")
+        Do $$$AssertEquals(tStatus, 422, tCase _ ": is refused as a validation failure: " _ tBody)
+        If tStatus '= 422 Continue
+        Set tFirst = ##class(%DynamicObject).%FromJSON(tBody).detail.violations.%Get(0)
+        Do $$$AssertEquals(tFirst.field _ "|" _ tFirst.code, "concurrentTurns|" _ ##class(OcuPilot.Api.Error).#AGENTSWITCHCONCURRENTTURNS, tCase _ ": on its own field, with its own code")
+        Do $$$AssertEquals(tFirst.reason, ##class(OcuPilot.Api.Error).#REASONAGENTSWITCHCONCURRENTTURNS, tCase _ ": and its sentence")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "none of the refused writes wrote a row")
+    Set tSC = ..Call("PUT", "/agent/switches", "{""concurrentTurns"":1}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the fixed value is accepted: " _ tBody)
+    If tStatus '= 200 Quit
+    Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).concurrentTurns, 1, "and the answer still reads 1")
 }
 
 }

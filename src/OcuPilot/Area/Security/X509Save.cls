@@ -53,7 +53,7 @@ ClassMethod ProhibitedClass() As %String
 }
 
 /// <p>Answer <code>POST /x509</code>: import one credential from the body and answer
-/// <code>{alias}</code> with 201. A broken rule is one 422
+/// <code>{alias, readBack}</code> with 201 (AD-58). A broken rule is one 422
 /// <parameter>OcuPilot.Api.Error.X509VALIDATION</parameter> envelope carrying every violation; any
 /// other refusal is the port's or the prohibited set's own envelope.</p>
 ClassMethod HandleCreate() As %Status
@@ -71,9 +71,9 @@ ClassMethod HandleCreate() As %Status
         }
         Set tAlias = ""
         If tBody.%GetTypeOf(..#IDARGUMENT) = "string" Set tAlias = tBody.%Get(..#IDARGUMENT)
-        Set tPerformSC = ..Create(tAlias, tBody, .tHttp, .tFault, .tViolations)
+        Set tPerformSC = ..Create(tAlias, tBody, .tHttp, .tFault, .tViolations, .tReadBack)
         Set tBody = ""
-        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, tAlias)
+        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, tAlias, $Get(tReadBack))
     } Catch ex {
         Set tBody = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -83,7 +83,7 @@ ClassMethod HandleCreate() As %Status
 
 /// <p>Answer <code>PUT /x509/:id</code>: change the credential <var>pId</var> -- one path segment,
 /// decoded once here (AD-13) -- from the body's <code>OwnerList</code> and <code>PeerNames</code>,
-/// and answer <code>{alias}</code> with 200. Any other key is 400
+/// and answer <code>{alias, readBack}</code> with 200 (AD-58). Any other key is 400
 /// <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>; an alias the instance does not
 /// hold is 404 <parameter>OcuPilot.Api.Error.X509ALIASABSENT</parameter>.</p>
 ClassMethod HandleUpdate(pId As %String) As %Status
@@ -100,12 +100,12 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Quit
         }
         Set tAlias = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
-        Set tPerformSC = ..Update(tAlias, tBody, .tHttp, .tFault, .tViolations)
+        Set tPerformSC = ..Update(tAlias, tBody, .tHttp, .tFault, .tViolations, .tReadBack)
         If $$$ISERR(tPerformSC) && (+$Get(tHttp) = 404) {
             Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONX509ALIASABSENT, ##class(OcuPilot.Api.Error).#X509ALIASABSENT)
             Quit
         }
-        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, tAlias)
+        Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, tAlias, $Get(tReadBack))
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
@@ -116,11 +116,13 @@ ClassMethod HandleUpdate(pId As %String) As %Status
 /// <p><b>Caller contract:</b> <var>pViolations</var> is the violation array
 /// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>); a
 /// non-zero count means nothing was written and the other outputs say nothing. Otherwise an error
-/// status carries <var>pHttpStatus</var> and <var>pFault</var>.</p>
-ClassMethod Create(pAlias As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations) As %Status
+/// status carries <var>pHttpStatus</var> and <var>pFault</var>. On success <var>pReadBack</var> is
+/// the write's read-back (AD-58); it is <code>""</code> otherwise.</p>
+ClassMethod Create(pAlias As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pReadBack As %DynamicObject) As %Status
 {
     Set pHttpStatus = 0
     Set pFault = ""
+    Set pReadBack = ""
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -155,7 +157,9 @@ ClassMethod Create(pAlias As %String, pArgs As %DynamicObject, Output pHttpStatu
             Set tSecret = $List(tSecrets, tI)
             If pArgs.%GetTypeOf(tSecret) = "string" Do tPayload.%Set(tSecret, pArgs.%Get(tSecret), "string")
         }
-        Set tSC = ..Send(tClass, pAlias, tPayload, .pHttpStatus, .pFault)
+        Set tSC = ..Send(tClass, pAlias, tPayload, .pHttpStatus, .pFault, .tWritten)
+        ; AD-58: the credential read back through the tool's port and compared with what was sent.
+        If $$$ISOK(tSC) Set pReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(tClass, pAlias, tPayload, "", ..PortClass(), $Get(tWritten), pHttpStatus)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -169,10 +173,11 @@ ClassMethod Create(pAlias As %String, pArgs As %DynamicObject, Output pHttpStatu
 /// <p><b>Caller contract:</b> as <method>Create</method>'s. An alias the instance does not hold is
 /// an error status with <var>pHttpStatus</var> 404; a key outside <parameter>EDITFIELDS</parameter>
 /// is an error status with <var>pHttpStatus</var> 400.</p>
-ClassMethod Update(pAlias As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations) As %Status
+ClassMethod Update(pAlias As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pReadBack As %DynamicObject) As %Status
 {
     Set pHttpStatus = 0
     Set pFault = ""
+    Set pReadBack = ""
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -218,7 +223,9 @@ ClassMethod Update(pAlias As %String, pArgs As %DynamicObject, Output pHttpStatu
 
         Set tSC = ..Prohibited(tClass, pAlias, tPayload, tDiff, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
-        Set tSC = ..Send(tClass, pAlias, tPayload, .pHttpStatus, .pFault)
+        Set tSC = ..Send(tClass, pAlias, tPayload, .pHttpStatus, .pFault, .tWritten)
+        ; AD-58: the credential read back through the tool's port and compared with what was sent.
+        If $$$ISOK(tSC) Set pReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(tClass, pAlias, tPayload, tFresh, ..PortClass(), $Get(tWritten), pHttpStatus)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -243,18 +250,19 @@ ClassMethod Prohibited(pToolClass As %String, pAlias As %String, pPayload As %Dy
 }
 
 /// <p>Issue tool <var>pToolClass</var>'s own write for <var>pAlias</var> with <var>pPayload</var>,
-/// through <method>PortClass</method>.</p>
-ClassMethod Send(pToolClass As %String, pAlias As %String, pPayload As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// through <method>PortClass</method>; <var>pWritten</var> is the port's answer.</p>
+ClassMethod Send(pToolClass As %String, pAlias As %String, pPayload As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pWritten) As %Status [ Private ]
 {
     Kill tQuery
     Set tQuery($ClassMethod(pToolClass, "IdParam")) = pAlias
-    Quit $ClassMethod(..PortClass(), "Invoke", $ClassMethod(pToolClass, "Endpoint"), $ClassMethod(pToolClass, "WriteType"), .tQuery, pPayload, .tAnswer, .pHttpStatus, .pFault)
+    Quit $ClassMethod(..PortClass(), "Invoke", $ClassMethod(pToolClass, "Endpoint"), $ClassMethod(pToolClass, "WriteType"), .tQuery, pPayload, .pWritten, .pHttpStatus, .pFault)
 }
 
 /// <p>Render the outcome of <method>Create</method> or <method>Update</method>: the violations as
 /// one 422 envelope, a refusal as its own envelope, and success as <code>{alias}</code> at
-/// <var>pSuccess</var>.</p>
-ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault As %DynamicObject, pSuccess As %Integer, pAlias As %String) As %Status [ Private ]
+/// <var>pSuccess</var>, with <var>pReadBack</var> as <code>readBack</code> when there is one
+/// (AD-58).</p>
+ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault As %DynamicObject, pSuccess As %Integer, pAlias As %String, pReadBack As %DynamicObject = "") As %Status [ Private ]
 {
     If $Get(pViolations) > 0 Quit ..RenderViolations(.pViolations)
     If $$$ISERR(pSC) {
@@ -265,6 +273,7 @@ ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault 
     }
     Set tAnswer = {}
     Do tAnswer.%Set("alias", pAlias, "string")
+    If $IsObject(pReadBack) Do tAnswer.%Set("readBack", pReadBack)
     Quit ##class(OcuPilot.Api.Response).JSONStatus(pSuccess, tAnswer)
 }
 

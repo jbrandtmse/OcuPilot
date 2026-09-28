@@ -259,9 +259,8 @@ Method TestSecondRunRepairsADriftedDescription()
 
 /// <p>AD-21 -- the install-time assertion refuses <b>loudly</b> when an unauthenticated
 /// application's declared matching role is not on the instance. Without the role, database READ
-/// is absent, IRIS cannot load the dispatch class for an anonymous request, and the endpoint
-/// answers 500 with a <code>&lt;PROTECT&gt;</code> naming the database directory -- so the
-/// install has to fail rather than leave that behind.</p>
+/// is absent and IRIS refuses an anonymous request 403 with an empty body before the dispatch
+/// class runs (measured below) -- so the install has to fail rather than leave that behind.</p>
 /// <p><b>Driven through <method>OcuPilot.Test.InstallerProbe.AssertOneApplication</method>,
 /// because on a healthy instance this assertion only ever passes.</b> Every state it refuses is
 /// one the ensure steps immediately before it have just finished making impossible, so its
@@ -295,6 +294,10 @@ Method TestTheInstallTimeAssertionRefusesAMissingMatchingRole()
     Set tControl = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplication("readiness", tApp, "ProbeOcuPilotReadiness")
     Do $$$AssertStatusOK(tControl, "the application install just created, with the role install just created, is asserted clean")
 
+    Set tPreSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tApp _ "/", "", "", .tPreStatus, .tPreBody, .tPreHeaders)
+    Do $$$AssertStatusOK(tPreSC, "the anonymous readiness request completes while the role is in place")
+    Do $$$AssertEquals(tPreStatus, 200, "and the readiness application answers it")
+
     ; The MatchRoles arm: a role the application does not actually carry.
     Set tMismatch = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplication("readiness", tApp, "ProbeOcuPilotShell")
     Do $$$AssertStatusNotOK(tMismatch, "an application carrying a different matching role is refused")
@@ -304,8 +307,8 @@ Method TestTheInstallTimeAssertionRefusesAMissingMatchingRole()
     ; about. How that actually happens is worth stating, because it is not what it looks like:
     ; deleting a role STRIPS it from every application that matched it, rather than leaving a
     ; dangling name. So the reachable shape is an application carrying NO matching role while
-    ; the roster declares one -- an anonymous request then loads no dispatch class and answers
-    ; 500 with a <PROTECT>, which is exactly what AD-21's floor exists to prevent.
+    ; the roster declares one -- an anonymous request is then refused before the dispatch class
+    ; runs, which is exactly what AD-21's floor exists to prevent.
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
@@ -319,6 +322,12 @@ Method TestTheInstallTimeAssertionRefusesAMissingMatchingRole()
         Throw ex
     }
     Set $NAMESPACE = tOrigNS
+
+    ; The anonymous answer that state produces, read live rather than assumed.
+    Set tReadSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tApp _ "/", "", "", .tAnonStatus, .tAnonBody, .tAnonHeaders)
+    Do $$$AssertStatusOK(tReadSC, "the anonymous readiness request completes without the role")
+    Do $$$AssertEquals(tAnonStatus, 403, "and IRIS refuses it 403")
+    Do $$$AssertEquals(tAnonBody, "", "with an empty body, so the dispatch class never ran")
 
     Set tMissing = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplication("readiness", tApp, "ProbeOcuPilotReadiness")
     Do $$$AssertStatusNotOK(tMissing, "an application that has lost its declared matching role fails the install")

@@ -23,10 +23,13 @@ export type ScreenActionRun = () => void;
  * actions, and adding it to a descriptor would have made every Epic 2 screen action-bearing --
  * which is what the empty state's agent invitation and `AdminPort.TYPESUFFIXES` both key off.
  * Registering it here instead is what lets both surfaces offer it on exactly the screens that can
- * carry it out: Home registers none, because it reads nothing, and the audit viewer registers only
- * once it has a search to re-run.
+ * carry it out: a screen with nothing to re-read registers none, and the audit viewer registers
+ * only once it has a search to re-run.
  */
 export const REFRESH_ACTION_ID = 'refresh';
+
+/** Download CSV (Story 16.23): a view control the data table registers, which the command box does not list. */
+export const DOWNLOAD_CSV_ACTION_ID = 'download-csv';
 
 /**
  * The label a surface draws for `actionId` on `descriptor`.

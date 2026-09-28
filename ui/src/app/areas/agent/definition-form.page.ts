@@ -41,8 +41,12 @@ const ADVANCED_FIELDS: readonly string[] = [
   'temperature',
   'maxIterationsPerTurn',
   'systemPromptOverride',
+  'readOnly',
   'retentionDays',
 ];
+
+/** The read-only checkbox's id, the one control whose id is not its wire name's. */
+const READ_ONLY_CONTROL_ID = 'ocu-definition-read-only';
 
 /** The application root, which the first-save offer goes to. */
 const HOME_ROUTE = '';
@@ -66,9 +70,8 @@ interface FieldView {
  * **Field order is the acceptance criterion.** Name, provider, model, endpoint, the key field and
  * Test connection are in the document before the Advanced disclosure; maximum tokens, temperature,
  * maximum iterations, the system-prompt override and retention are inside it, and it is closed on
- * first render. Retention is `aria-disabled` under its published caption, because nothing enforces
- * it until Story 14.4 -- listed and focusable and named, never removed (EXPERIENCE.md's Privilege
- * Gating mechanism applied to a control that cannot yet act).
+ * first render. Retention is an ordinary field under its published caption: the daily retention
+ * task removes each conversation entry older than its own definition's value (Story 14.4).
  *
  * **Two buttons, not four chores** (DW-354). Test connection on a create route performs create,
  * store the key and test, under one progress indicator, and reports one outcome; Save sends the
@@ -438,20 +441,41 @@ interface FieldView {
             </div>
 
             <div class="ocu-field">
+              <label class="ocu-field-checkbox">
+                <input
+                  type="checkbox"
+                  [id]="readOnlyField.id"
+                  [checked]="readOnlyFlag"
+                  [attr.aria-invalid]="readOnlyField.invalid"
+                  [attr.aria-describedby]="readOnlyField.describedBy"
+                  (change)="onReadOnly($event)"
+                />
+                <span>{{ STRINGS.agentDefinitionFieldReadOnly }}</span>
+              </label>
+              @if (readOnlyField.invalid) {
+                <p class="ocu-form-error" [id]="readOnlyField.id + '-reason'">{{ readOnlyField.reason }}</p>
+              }
+            </div>
+
+            <div class="ocu-field">
               <label class="ocu-field-label" [attr.for]="retentionField.id">{{ STRINGS.agentDefinitionFieldRetention }}</label>
               <div class="ocu-field-control">
                 <input
                   class="ocu-field-input"
                   type="text"
                   inputmode="numeric"
-                  aria-disabled="true"
-                  readonly
                   [id]="retentionField.id"
                   [value]="retentionValue"
-                  [attr.aria-describedby]="retentionField.id + '-caption'"
+                  [attr.aria-invalid]="retentionField.invalid"
+                  [attr.aria-describedby]="retentionField.describedBy"
+                  (input)="onText('retentionDays', $event)"
+                  (blur)="onFieldBlur('retentionDays')"
                 />
               </div>
               <p class="ocu-field-caption" [id]="retentionField.id + '-caption'">{{ retentionCaption }}</p>
+              @if (retentionField.invalid) {
+                <p class="ocu-form-error" [id]="retentionField.id + '-reason'">{{ retentionField.reason }}</p>
+              }
             </div>
           </div>
         }
@@ -806,8 +830,7 @@ export class DefinitionFormPage {
 
   /**
    * Whether the chosen provider's catalog row takes a temperature (Story 10.4). Where it does not,
-   * the field is readonly and `aria-disabled` under its caption -- the retention field's precedent
-   * -- and a value loaded with the definition is shown as held. Only a provider switch replaces it,
+   * the field is readonly and `aria-disabled` under its caption, and a value loaded with the definition is shown as held. Only a provider switch replaces it,
    * with the new row's canonical value, as it replaces the model and endpoint.
    */
   protected get temperatureApplies(): boolean {
@@ -948,6 +971,16 @@ export class DefinitionFormPage {
     return this.fieldView('systemPromptOverride');
   }
 
+  protected get readOnlyField(): FieldView {
+    return this.fieldView('readOnly');
+  }
+
+  /** The definition's own read-only flag (DW-1621), one of the sources the verdict reads. */
+  protected get readOnlyFlag(): boolean {
+    this.generation();
+    return this.store.flag('readOnly');
+  }
+
   protected get retentionField(): FieldView {
     return this.fieldView('retentionDays');
   }
@@ -989,6 +1022,12 @@ export class DefinitionFormPage {
       return;
     }
     this.store.setValue('credType', this.store.admissibleCredType(this.heldCredType));
+  }
+
+  protected onReadOnly(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    this.store.setFlag('readOnly', target.checked);
   }
 
   protected onHttpAcknowledge(event: Event): void {
@@ -1149,6 +1188,7 @@ export class DefinitionFormPage {
     if (field === 'apiKey' && this.showStoredCaption) described.push(`${id}-caption`);
     if (field === 'envVarName') described.push(`${id}-caption`);
     if (field === 'temperature' && !this.store.temperatureApplies()) described.push(`${id}-caption`);
+    if (field === 'retentionDays') described.push(`${id}-caption`);
     if (invalid) described.push(`${id}-reason`);
     return {
       id,
@@ -1159,6 +1199,7 @@ export class DefinitionFormPage {
   }
 
   private controlId(field: string): string {
+    if (field === 'readOnly') return READ_ONLY_CONTROL_ID;
     return `ocu-definition-${field}`;
   }
 

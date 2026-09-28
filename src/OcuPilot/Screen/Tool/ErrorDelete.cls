@@ -211,6 +211,32 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Quit tSC
 }
 
+/// <p>Gone when no entry of the payload's enumerated set -- its <code>date</code>,
+/// <code>errorNumber</code> and <code>time</code> -- re-enumerates in <var>pAfter</var> (AD-48,
+/// AD-58). The re-read carries the set through <method>PortQuery</method>, so an error logged after
+/// the proposal is in no stored set and never keeps the delete <code>present</code>.</p>
+ClassMethod ReadBackGone(pAfter As %DynamicObject, pPayload As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pAfter) || (pAfter.%GetTypeOf(..#PRECONDITIONFIELD) '= "array") Quit 1
+    If '$IsObject(pPayload) || (pPayload.%GetTypeOf(..#PRECONDITIONFIELD) '= "array") Quit 0
+    Kill tSent
+    Set tIterator = pPayload.%Get(..#PRECONDITIONFIELD).%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If '$IsObject(tEntry) Continue
+        Set tSent(tEntry.%Get("date") _ "|" _ tEntry.%Get("errorNumber") _ "|" _ tEntry.%Get("time")) = ""
+    }
+    Set tGone = 1
+    Set tIterator = pAfter.%Get(..#PRECONDITIONFIELD).%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If '$IsObject(tEntry) Continue
+        If $Data(tSent(tEntry.%Get("date") _ "|" _ tEntry.%Get("errorNumber") _ "|" _ tEntry.%Get("time"))) {
+            Set tGone = 0
+            Quit
+        }
+    }
+    Quit tGone
+}
+
 /// <p>The enumerated id set, as the compact JSON of the stored payload's own
 /// <parameter>PRECONDITIONFIELD</parameter> array, under the port's
 /// <parameter>OcuPilot.Port.LogSourcePort.ENTRIESPARAM</parameter> (AD-52).</p>

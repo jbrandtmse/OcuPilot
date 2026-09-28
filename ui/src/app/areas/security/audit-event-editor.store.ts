@@ -4,6 +4,7 @@ import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeAction } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
+import { readBackOf, type ReadBack } from '../../core/read-back';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
 
 /** The routes the editor saves through: `POST` creates, `PUT <path>/<id>` edits the Description. */
@@ -105,6 +106,8 @@ export class AuditEventEditor {
   private refusalPairValue = '';
 
   private savedValue = false;
+  /** The instance's read-back of the last accepted Save (AD-58), or `null`. */
+  private readBackValue: ReadBack | null = null;
 
   private createdIdValue = '';
 
@@ -186,6 +189,11 @@ export class AuditEventEditor {
 
   refusalPair(): string {
     return this.refusalPairValue;
+  }
+
+  /** The read-back the last accepted Save answered (AD-58), which its "Saved" line renders. */
+  readBack(): ReadBack | null {
+    return this.readBackValue;
   }
 
   saved(): boolean {
@@ -337,6 +345,7 @@ export class AuditEventEditor {
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
+    this.readBackValue = null;
     this.notify();
 
     const eventName = eventNameOf(this.values);
@@ -379,6 +388,7 @@ export class AuditEventEditor {
     }
     this.opened = this.values;
     this.savedValue = true;
+    this.readBackValue = readBackOf((result.body as Record<string, unknown> | null)?.['readBack']);
     this.formDirty.setDirty(false);
     this.publish(textAt(target, 'id') || eventName, creating ? 'created' : 'updated');
     this.notify();
@@ -447,6 +457,7 @@ export class AuditEventEditor {
       scope: AUDIT_EVENT_SCOPE,
       id,
       action,
+      readBack: this.readBackValue,
     });
   }
 

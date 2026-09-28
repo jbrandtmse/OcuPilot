@@ -230,6 +230,7 @@ Method TestEveryOtherRouteIsRefusedByNameAndWritesNothing()
         If tStatus '= 403 Continue
         Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody)
         Do $$$AssertEquals(tRefusal.code, "AUTH.NOPRIVILEGE", tMethod _ " " _ tSuffix _ ": on the screen-privilege code")
+        Do $$$AssertEquals(tRefusal.reason, ##class(OcuPilot.Kernel.Denial).Reason(), tMethod _ " " _ tSuffix _ ": with the one privilege sentence")
         Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), tExpectedPair, tMethod _ " " _ tSuffix _ ": naming " _ tExpectedPair)
     }
 
@@ -298,6 +299,7 @@ Method TestTheSwitchRoutesAreRefusedToANonAdministrator()
         Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, tMethod _ " " _ tPath _ ": as JSON")
         Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody)
         Do $$$AssertEquals(tRefusal.code, "AUTH.NOPRIVILEGE", tMethod _ " " _ tPath _ ": on the screen-privilege code")
+        Do $$$AssertEquals(tRefusal.reason, ##class(OcuPilot.Kernel.Denial).Reason(), tMethod _ " " _ tPath _ ": with the one privilege sentence")
         Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), tExpectedPair, tMethod _ " " _ tPath _ ": naming " _ tExpectedPair)
     }
 

@@ -824,4 +824,28 @@ Method TestAnEnumKeyWithNoFileIsRefused()
     Do $$$AssertEquals(tHttp2, 200, "with 200")
 }
 
+/// <p>Story 16.8 -- the six secondary keys are in the shipped enum, each declaring its own pair
+/// set and no page file; the two sources read by SQL add their namespace's globals database
+/// <code>READ</code> when a namespace is named, and the production port answers each through
+/// <method>OcuPilot.Port.LogSourcePort.Recent</method>.</p>
+/// <p>Mutation (Rule 19): drop <code>eventlog</code> from
+/// <parameter>OcuPilot.Port.LogSourcePort.SOURCES</parameter> -&gt; its membership and its read go
+/// red.</p>
+Method TestTheSixSecondaryKeysDeclareTheirPairs()
+{
+    Set tSources = ##class(OcuPilot.Port.LogSourcePort).Sources()
+    For tRow = "systemmonitor=%Admin_Operate:USE", "taskerrors=%Admin_Operate:USE", "xdbc=%Admin_Operate:USE", "sqldiagnostics=%Admin_Operate:USE", "eventlog=%Ens_EventLog:USE", "analytics=%DeepSee_Portal:USE" {
+        Set tKey = $Piece(tRow, "=", 1)
+        Do $$$AssertTrue($ListFind(tSources, tKey) > 0, tKey _ ": in the shipped enum")
+        Set tPairs = ##class(OcuPilot.Port.LogSourcePort).PairsFor(tKey)
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(tPairs, .tCut), $Piece(tRow, "=", 2), tKey _ ": declares its one pair")
+        Do $$$AssertEquals(##class(OcuPilot.Port.LogSourcePort).FileFor(tKey), "", tKey _ ": and no page file")
+        Set tSC = ##class(OcuPilot.Port.LogSourcePort).Recent(tKey, 5, .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp, 200, tKey _ ": the production port answers it: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(##class(OcuPilot.Port.LogSourcePort).PairsFor("sqldiagnostics", "HSCUSTOM"), .tCut), "%Admin_Operate:USE,%DB_HSCUSTOM:READ", "SQL diagnostics adds the namespace's database READ")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(##class(OcuPilot.Port.LogSourcePort).PairsFor("eventlog", "HSCUSTOM"), .tCut), "%DB_HSCUSTOM:READ,%Ens_EventLog:USE", "and so does the event log")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(##class(OcuPilot.Port.LogSourcePort).PairsFor("xdbc", "HSCUSTOM"), .tCut), "%Admin_Operate:USE", "while the xDBC log's does not depend on the namespace")
+}
+
 }

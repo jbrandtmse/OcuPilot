@@ -1,7 +1,8 @@
 /// <p>Pins AD-42's one retry exception for a model call (Story 10.6): a transport failure before any
 /// status line arrived is retried once, on a new request object, inside the attempt count, the
-/// attempt deadline and the delay budget; a second one, a break after a status line, and a break
-/// with no attempt or no time left each end the call <code>PROVIDER.TRANSPORT</code>. Also pins that
+/// attempt deadline and the delay budget; a second one, a connect that never opened, a break after
+/// a status line, and a break with no attempt or no time left each end the call
+/// <code>PROVIDER.TRANSPORT</code>. Also pins that
 /// every family's request disables keep-alive reuse (<code>SocketTimeout</code> 0).</p>
 /// <p><b>Opens no socket to a provider.</b> Every leg but one runs through
 /// <class>OcuPilot.Test.ProviderStub</class> and the three family stubs, which answer a queued
@@ -92,6 +93,24 @@ Method TestTwoBreaksStopTheCall()
     Do $$$AssertEquals(..FaultCode(tFault), ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, "and the second ends the call PROVIDER.TRANSPORT")
     Do $$$AssertEquals(tHttpStatus, 502, "answered as a gateway failure")
     Do $$$AssertEquals(tResponse.StopReason, "error", "with the error stop reason")
+}
+
+/// <p>A connect that never opened (<code>ERROR #6059</code>, no status line) is not retried: the
+/// call ends <code>PROVIDER.TRANSPORT</code> after one attempt with nothing waited, though three
+/// were allowed.</p>
+/// <p>Mutation: drop the <code>tNeverOpened</code> test from the retry condition in
+/// <method>OcuPilot.Kernel.Provider.Base.Attempts</method> -- the call count goes red at 2.</p>
+Method TestAConnectThatNeverOpenedIsNotRetried()
+{
+    Do $ClassMethod(..#DRIVER, "Settings", .tSettings, 3)
+    Do ##class(OcuPilot.Test.ProviderStub).QueueConnectRefused()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, $Parameter(..#DRIVER, "OKBODY"))
+    Set tSC = ..Call(.tSettings, .tResponse, .tFault, .tHttpStatus)
+    Do $$$AssertStatusOK(tSC, "the call returns $$$OK")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "the transport was entered once")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Waits(), "", "with nothing waited")
+    Do $$$AssertEquals(..FaultCode(tFault), ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, "and the call ends PROVIDER.TRANSPORT")
+    Do $$$AssertEquals(tHttpStatus, 502, "answered as a gateway failure")
 }
 
 /// <p>A connection that broke after its status line arrived is not retried: the provider
@@ -222,7 +241,7 @@ Method TestEveryFamilyDisablesKeepAlive()
 }
 
 /// <p>The shipped <method>OcuPilot.Kernel.Provider.Base.IssueHttpsPost</method>, against a
-/// refused loopback connect, answers an error status and a <var>pStatus</var> of 0 -- the
+/// refused loopback connect, answers <code>ERROR #6059</code> and a <var>pStatus</var> of 0 -- the
 /// classification the retry keys on, observed on the real transport rather than a stub.</p>
 Method TestARefusedConnectAnswersNoStatus()
 {
@@ -238,7 +257,8 @@ Method TestARefusedConnectAnswersNoStatus()
     Set tAdapter = ""
     Do $$$AssertStatusNotOK(tSC, "a refused connect answers an error status")
     Do $$$AssertTrue('$System.Status.Equals(tSC, $$$ERRORCODE($$$CSPTimeout)), "which is not a timeout: " _ $System.Status.GetErrorText(tSC))
-    Do $$$AssertEquals(tStatus, 0, "and no status line, so the loop may retry it")
+    Do $$$AssertTrue($System.Status.Equals(tSC, $$$ERRORCODE($$$HttpRequestConnect)), "it is the connect error the stub's QueueConnectRefused answers: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(tStatus, 0, "and no status line, so the loop does not retry it")
 }
 
 /// <p>The shipped <method>OcuPilot.Kernel.Provider.Base.IssueHttpsPost</method> classifies a read

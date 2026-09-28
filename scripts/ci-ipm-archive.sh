@@ -371,11 +371,15 @@ declarations "$REPO_ROOT/module.xml" > "$DIR/extract/declared-by-the-roster.txt"
 declarations "$DIR/extract/module.xml" > "$DIR/extract/declared-in-the-archive.txt"
 # Only declarations that carry a VALUE are counted. `text_element` prints its label whether or not
 # the element is there, so a manifest that had lost <Name> and <Version> would still produce
-# eleven lines, and `name=` would then compare equal to `name=` on both sides -- the floor meeting
-# its own number while two of the declarations AC2 names by word had compared nothing.
+# lines, and `name=` would then compare equal to `name=` on both sides -- the floor meeting its
+# own number while two of the declarations AC2 names by word had compared nothing.
+# The floor is what the roster's manifest declares: its three text elements, one per element of
+# the five kinds `declarations` reads (in any form, attributes or none), and the <Arg> count.
+DECLARABLE=$(grep -oE '<(Resource|FileCopy|Invoke|WebApplication|Dependency)[ />]' "$REPO_ROOT/module.xml" | wc -l | tr -d ' ')
+FLOOR=$((3 + ${DECLARABLE:-0} + 1))
 DECLARED=$(grep -c '=[^[:space:]]' < "$DIR/extract/declared-by-the-roster.txt" || true)
-if [ "${DECLARED:-0}" -lt 11 ]; then
-    fail "archive" "the manifest comparison read only ${DECLARED:-0} declaration(s) carrying a value from the roster's manifest, fewer than the 11 it declares; a comparison that read less than the file holds is a pass that means nothing"
+if [ "${DECLARED:-0}" -lt "$FLOOR" ]; then
+    fail "archive" "the manifest comparison read only ${DECLARED:-0} declaration(s) carrying a value from the roster's manifest, fewer than the $FLOOR it declares; a comparison that read less than the file holds is a pass that means nothing"
 fi
 if ! diff -u "$DIR/extract/declared-by-the-roster.txt" "$DIR/extract/declared-in-the-archive.txt"; then
     fail "archive" "the manifest inside $ARTIFACT_NAME declares something other than what the roster does"

@@ -801,6 +801,35 @@ export function malformedPair(privileges) {
 }
 
 /**
+ * What is wrong with `declaration.ownPrivileges`, or `null` when nothing is (AD-8): the sentence
+ * `OcuPilot.Screen.Registry.OwnPrivilegesProblem` returns for every case in
+ * `OcuPilot.Test.DeclarationCorpus`'s `OwnPrivilegeCases`. The key is optional; when declared it is
+ * an array of privilege pairs, each carrying both halves and each one of the screen's own
+ * `privileges`, matched exactly. A pair a screen declares its own is one it requires beyond its
+ * area's set, left out of the area's coverage check on the instance.
+ */
+export function ownPrivilegesProblem(declaration) {
+  const own = declaration?.ownPrivileges;
+  if (own === undefined || own === null) return null;
+  if (!Array.isArray(own)) return 'ownPrivileges is not an array of privilege pairs';
+  const bad = malformedPair(own);
+  if (bad !== null) return `declared own privilege pair ${bad} is missing its resource or its permission`;
+  const declared = (Array.isArray(declaration.privileges) ? declaration.privileges : []).filter(
+    (pair) => malformedPair([pair]) === null
+  );
+  for (const pair of own) {
+    const held = declared.some((d) => d.resource === pair.resource && d.permission === pair.permission);
+    if (!held) {
+      return (
+        `own privilege pair ${pair.resource}:${pair.permission} is not one of the screen's declared ` +
+        'privileges, and a screen owns only a pair it requires (AD-8)'
+      );
+    }
+  }
+  return null;
+}
+
+/**
  * The mirror's TypeScript source. Throws, naming the file and the value, when a declaration
  * uses an entity type outside `entityTypes`, a `scope` outside `scopeWords` (AD-13) -- the
  * refusal AD-14's mechanism asks the build for -- or when a declared privilege pair is missing
@@ -845,7 +874,7 @@ export function refreshProblem(declaration) {
   }
   const rates = refreshRates ?? [];
   if (refreshes !== true) {
-    if (rates.length === 0) return null;
+    if (rates.length === 0) return refreshDefaultProblem(declaration, rates);
     return (
       `refreshRates declares ${rates.length} rate(s) while refreshes is not true; a screen ` +
       `that does not refresh permits none (AD-43)`
@@ -864,7 +893,24 @@ export function refreshProblem(declaration) {
     }
     previous = rate;
   }
-  return null;
+  return refreshDefaultProblem(declaration, rates);
+}
+
+/**
+ * What is wrong with a declared `refreshDefault`, or `null` (AD-43 as amended, Story 16.18). The
+ * key is optional: absent or `0`, the screen starts off. Any other value must be one of the
+ * declared rates -- so a screen that does not refresh can declare no other -- and, JSON being able
+ * to say so, a number.
+ */
+function refreshDefaultProblem(declaration, rates) {
+  if (!('refreshDefault' in declaration)) return null;
+  const value = declaration.refreshDefault;
+  if (value === 0) return null;
+  if (typeof value === 'number' && rates.includes(value)) return null;
+  return (
+    `refreshDefault (${JSON.stringify(value)}) is not one of refreshRates; a screen's default rate ` +
+    `is a rate its chip may set (AD-43)`
+  );
 }
 
 /** The tool-identifier shape a read-declaring descriptor carries (Conventions, Tool naming). */
@@ -909,7 +955,9 @@ export const DECLARATION_KEYS = [
   'built',
   'refreshes',
   'refreshRates',
+  'refreshDefault',
   'privileges',
+  'ownPrivileges',
   'entityType',
   'entityLabelKey',
   'secondaryEntityTypes',
@@ -2468,6 +2516,10 @@ export function buildMirror({
           `resource or no permission; a dropped pair ships an ungated screen (AD-8)`
       );
     }
+    const ownFault = ownPrivilegesProblem(screen.declaration);
+    if (ownFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${ownFault}`);
+    }
     for (const named of entityTypesIn(screen.declaration)) {
       if (!known.has(named)) {
         throw new Error(
@@ -2582,6 +2634,8 @@ export function buildMirror({
     // descriptor would fail as an unreadable `tsc` error rather than at the named refusal.
     refreshes: screen.declaration.refreshes ?? false,
     refreshRates: screen.declaration.refreshRates ?? [],
+    // Absent is off, the published default (AD-43); only Home declares one.
+    refreshDefault: screen.declaration.refreshDefault ?? 0,
     // Defaulted the same way and for the same reason: Story 1.15 added `label` and `href` to
     // `classicLinkExemption`, and a descriptor written before they existed declares neither.
     // Spread first so a declaration that carries them emits byte-identically in its own order.
@@ -2925,7 +2979,11 @@ export interface ScreenDeclaration {
   readonly refreshes: boolean;
   /** The rates, in whole seconds ascending, the chip may set. Empty unless \`refreshes\`. */
   readonly refreshRates: readonly number[];
+  /** The rate the framework starts at when none is remembered: one of \`refreshRates\`, or \`0\`, off. */
+  readonly refreshDefault: number;
   readonly privileges: readonly PrivilegePair[];
+  /** The pairs of \`privileges\` it requires beyond its area's set, gating this screen alone (AD-8). */
+  readonly ownPrivileges?: readonly PrivilegePair[];
   readonly entityType: string;
   /** The string key of the singular noun for \`entityType\`, or \`''\` (AD-5, AD-14). */
   readonly entityLabelKey: string;

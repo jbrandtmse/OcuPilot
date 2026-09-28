@@ -151,6 +151,7 @@ ClassMethod Outcome(pId As %String, pBody As %DynamicObject, Output pAnswer As %
     If $$$ISERR(tSC) Quit tSC
     If '$IsObject(tRow) Quit $$$ERROR($$$GeneralError, "No agent definition with id " _ pId)
     Do $ClassMethod(..#PROBE, "ValuesFromRow", tRow, .tStored)
+    Set tVersion = +tRow.RowVersion
     Set tRow = ""
     Kill tValues
     Merge tValues = tStored
@@ -159,7 +160,7 @@ ClassMethod Outcome(pId As %String, pBody As %DynamicObject, Output pAnswer As %
     Set tValues("enabled") = $Get(tStored("enabled"))
     Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.tValues)
     Set tBegan = $ZHorolog
-    Do $ClassMethod(..#PROBE, "ConnectionOutcome", pId, .tValues, .tStored, .pAnswer, .pHttpStatus, .pFault, pBody)
+    Do $ClassMethod(..#PROBE, "ConnectionOutcome", pId, .tValues, .tStored, .pAnswer, .pHttpStatus, .pFault, pBody, tVersion)
     Set pElapsed = $ZHorolog - tBegan
     Quit $$$OK
 }

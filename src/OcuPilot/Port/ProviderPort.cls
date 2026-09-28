@@ -478,18 +478,12 @@ ClassMethod Gate(pPairs As %List, Output pFailedPair As %String) As %Boolean [ P
     Quit $ClassMethod(..GateClass(), "EvaluateRequired", pPairs, .pFailedPair)
 }
 
-/// <p>Whether the calling process holds <b>any one</b> pair in <var>pPairs</var>, asked of the
-/// same evaluator for the same reason. An empty set admits nobody.</p>
-ClassMethod GateAnyOf(pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
-{
-    Quit $ClassMethod(..GateClass(), "EvaluateAnyOf", pPairs, .pFailedPair)
-}
-
-/// <p>Whether <var>pUser</var>'s <b>live</b> grants hold any one pair in <var>pPairs</var>
-/// (AD-31, DW-1309). The OR-set semantics are <method>OcuPilot.Screen.Gate.EvaluateAnyOf</method>'s
-/// -- an empty or unreadable set admits nobody, and <var>pFailedPair</var> names the <b>first</b>
-/// pair, which is the one the caller would have to be granted -- but the question asked of each
-/// pair is about a named account rather than about this process.</p>
+/// <p>Whether <var>pUser</var>'s <b>live</b> grants hold <b>any one</b> pair in <var>pPairs</var>
+/// (AD-31) -- an OR-set, where <method>Gate</method> is an AND-set. An empty or unreadable set
+/// admits nobody. The question asked of each pair is about a named account rather than about this
+/// process.</p>
+/// <p><var>pFailedPair</var> is always <code>""</code>: when the answer is no, every pair failed
+/// rather than one, so a refusal carries no <code>failedPair</code> detail.</p>
 ClassMethod GateAnyOfForUser(pUser As %String, pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
 {
     Set pFailedPair = ""
@@ -504,13 +498,8 @@ ClassMethod GateAnyOfForUser(pUser As %String, pPairs As %List, Output pFailedPa
                 Quit
             }
         }
-        If 'tAllowed {
-            Set tFirst = $List(pPairs, 1)
-            If $ListValid(tFirst) && ($ListLength(tFirst) = 2) Set pFailedPair = $List(tFirst, 1) _ ":" _ $List(tFirst, 2)
-        }
     } Catch ex {
         Set tAllowed = 0
-        Set pFailedPair = ""
     }
     Quit tAllowed
 }
@@ -660,6 +649,19 @@ ClassMethod Refuse(pCode As %String, ByRef pHttpStatus As %Integer, ByRef pFault
 ClassMethod LogRaw(pMessage As %String, pStatus As %Status, pCode As %String = "")
 {
     Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, pMessage, pStatus, pCode)
+}
+
+/// <p><code>""</code>: <method>Invoke</method> is the provider call, which is no write, so no
+/// request type has a script form (AD-59).</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    Quit ""
+}
+
+/// <p>No step: no branch of <method>Invoke</method> writes to the instance (AD-59).</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    Quit []
 }
 
 }

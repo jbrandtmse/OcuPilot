@@ -15,9 +15,9 @@
 /// message) <i>or</i> an array of blocks already parsed by the one outer
 /// <method>%FromJSON</method> call on the whole array -- never a second JSON-encoded string
 /// needing a parse of its own. One level deeper, a block's own <code>content</code> -- the
-/// <code>tool_result</code>'s payload -- <i>is</i> a genuine JSON-encoded string
-/// (<method>OcuPilot.Kernel.Agent.Loop</method> sets it with <code>%Set(..., "string")</code>), so
-/// that one call is where a second <method>%FromJSON</method> belongs.</p>
+/// <code>tool_result</code>'s payload -- <i>is</i> a string: the payload JSON inside
+/// <class>OcuPilot.Kernel.Agent.Sanitize</class>'s frame, so <method>ResultPayload</method>
+/// unwraps it and that one call is where a second <method>%FromJSON</method> belongs.</p>
 Class OcuPilot.Test.TurnContext Extends %UnitTest.TestCase
 {
 
@@ -124,6 +124,16 @@ Method AwaitEnd(pTurnId As %String, pSeconds As %Integer, Output pView) As %Stri
     Quit $ClassMethod(..#FIXTURE, "AwaitEnd", pTurnId, $Parameter(..#FIXTURE, "USERA"), ..PreparedPassword, pSeconds, .pView)
 }
 
+/// <p>The parsed payload of the recorded <code>tool_result</code> block <var>pBlock</var>, after
+/// asserting the sanitizer framed it (<method>OcuPilot.Test.TurnWireFixture.Unwrapped</method>).
+/// <var>pBody</var> is the unwrapped JSON text.</p>
+Method ResultPayload(pBlock As %DynamicObject, Output pBody As %String) As %DynamicAbstractObject
+{
+    Set pBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(pBlock.content, .tWrapped)
+    Do $$$AssertTrue(tWrapped, "the tool_result arrives framed as data: " _ $Extract(pBlock.content, 1, 80))
+    Quit ##class(%DynamicAbstractObject).%FromJSON(pBody)
+}
+
 /// <p>A <code>context.view.rows</code> array of <var>pCount</var> rows, each
 /// <code>{TimeStamp, Description}</code>. Row <var>pLongAt</var> (1-based, 0 for none) carries a
 /// <var>pLongLength</var>-character <code>Description</code>; every other row's is short.</p>
@@ -180,9 +190,10 @@ Method TestTheIntegrationAcceptanceCriterion()
     Do $$$AssertEquals(tResultBlock.type _ "|" _ tResultBlock."tool_use_id", "tool_result|ocupilot_screen_context", "the synthetic tool_result")
     Do $$$AssertEquals(tUserBlocks.%Get(1).type _ "|" _ tUserBlocks.%Get(1).text, "text|what happened", "the caller's own message, verbatim")
 
-    ; The tool_result block's own content IS a JSON-encoded string (Loop.cls sets it with the
-    ; "string" type hint), so this %FromJSON is the one genuine second-level parse.
-    Set tPayload = ##class(%DynamicAbstractObject).%FromJSON(tResultBlock.content)
+    ; The tool_result block's own content IS a string (Loop.cls sets it with the "string" type
+    ; hint): the sanitizer's frame around the payload JSON, so the payload is the one genuine
+    ; second-level parse.
+    Set tPayload = ..ResultPayload(tResultBlock)
     Do $$$AssertEquals(tPayload.screen, "logs.audit", "the descriptor's own tool identifier")
     Do $$$AssertEquals(tPayload.rowsSent, 5, "cut to the row cap")
     Do $$$AssertEquals(tPayload.rowsAvailable, 250, "the pre-cut count")
@@ -213,8 +224,8 @@ Method TestTotalSize()
     Set tMessages = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "messages"))
     Set tUserBlocks = tMessages.%Get(2).content
     Set tResultBlock = tUserBlocks.%Get(0)
-    Set tPayload = ##class(%DynamicAbstractObject).%FromJSON(tResultBlock.content)
-    Do $$$AssertTrue($Length(tResultBlock.content) <= 65536, "the payload JSON is at most 65,536 characters")
+    Set tPayload = ..ResultPayload(tResultBlock, .tBody)
+    Do $$$AssertTrue($Length(tBody) <= 65536, "the payload JSON is at most 65,536 characters")
     Do $$$AssertTrue(tPayload.rowsSent < 200, "rowsSent is below 200")
     Do $$$AssertEquals(tPayload.rows.%Size(), tPayload.rowsSent, "whole rows only")
 }
@@ -243,7 +254,7 @@ Method TestANonScalarRowFieldIsDroppedAndNamedInTruncatedFields()
     Set tMessages = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "messages"))
     Set tUserBlocks = tMessages.%Get(2).content
     Set tResultBlock = tUserBlocks.%Get(0)
-    Set tPayload = ##class(%DynamicAbstractObject).%FromJSON(tResultBlock.content)
+    Set tPayload = ..ResultPayload(tResultBlock)
     Do $$$AssertEquals(tPayload.rows.%Get(0).%GetTypeOf("Description"), "unassigned", "the object value is dropped from the row")
     Do $$$AssertEquals(tPayload.rows.%Get(0).TimeStamp, "2026-09-17 00:00:00", "an untouched field is untouched")
     Do $$$AssertEquals(tPayload.truncatedFields.%ToJSON(), "[""Description""]", "the dropped field is named")
@@ -251,13 +262,15 @@ Method TestANonScalarRowFieldIsDroppedAndNamedInTruncatedFields()
 }
 
 /// <p>Secret screen -- <code>agent/definitions/edit</code> (which declares
-/// <code>context.secretFields</code>) answers identity only, with no <code>rows</code> key.</p>
+/// <code>context.secretFields</code>) answers identity only, with no <code>rows</code> key. The
+/// secret is a sentinel no AD-60 shape matches, so the check reads the projection, not the
+/// sanitizer.</p>
 /// <p>Mutation: drop the secret-descriptor identity-only branch in
 /// <method>OcuPilot.Screen.Context.Build</method> -- this goes red.</p>
 Method TestASecretScreenAnswersIdentityOnly()
 {
     Set tContext = {"route": "agent/definitions/edit", "namespace": "HSCUSTOM", "entity": "some-id"}
-    Do tContext.%Set("view", {"rows": [{"apiKey": "sk-ant-should-never-leave"}]})
+    Do tContext.%Set("view", {"rows": [{"apiKey": "ocupilot-sentinel-should-never-leave"}]})
 
     Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("ok"))
     Set tTurnId = ..Start("edit this", tContext, .tStatus, .tText)
@@ -269,11 +282,11 @@ Method TestASecretScreenAnswersIdentityOnly()
     Do $$$AssertEquals(tMessages.%Size(), 3, "context still opens the turn with three messages")
     Set tUserBlocks = tMessages.%Get(2).content
     Set tResultBlock = tUserBlocks.%Get(0)
-    Set tPayload = ##class(%DynamicAbstractObject).%FromJSON(tResultBlock.content)
+    Set tPayload = ..ResultPayload(tResultBlock)
     Do $$$AssertEquals(tPayload.screen, "agent.definition", "identity is still projected")
     Do $$$AssertEquals(tPayload.%GetTypeOf("rows"), "unassigned", "no rows key at all")
     Do $$$AssertEquals(tPayload.rowsSent, 0, "rowsSent is still reported, at 0")
-    Do $$$AssertTrue((tResultBlock.content [ "sk-ant") = 0, "the secret never reaches the payload text")
+    Do $$$AssertTrue((tResultBlock.content [ "ocupilot-sentinel") = 0, "the secret never reaches the payload text")
 }
 
 /// <p>Sharing off -- a caller who has <code>PUT</code> <code>{share:false}</code> gets the
@@ -340,7 +353,7 @@ Method TestAModelIssuedScreenContextCallIsUnknown()
     Do $$$AssertTrue($ClassMethod(..#FIXTURE, "AwaitCall", ..#TAG, 2, 10), "call 2 lands")
     Set tMessages = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 2, "messages"))
     Set tResultBlocks = tMessages.%Get(tMessages.%Size() - 1).content
-    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResultBlocks.%Get(0).content)
+    Set tContent = ..ResultPayload(tResultBlocks.%Get(0))
     Do $$$AssertEquals(tContent.code, "TOOL.UNKNOWN", "answered as an ordinary unknown-tool result")
 }
 
@@ -422,7 +435,7 @@ Method TestAReadToolResultsOwnFieldIsBound()
     Set tResultBlocks = tMessages.%Get(tMessages.%Size() - 1).content
     Set tResultBlock = tResultBlocks.%Get(0)
     Do $$$AssertEquals(tResultBlock."is_error", 0, "the read tool answers, not an error: " _ tResultBlock.content)
-    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResultBlock.content)
+    Set tContent = ..ResultPayload(tResultBlock)
     Set tIterator = tContent.rows.%GetIterator()
     Set tFoundSeeded = 0
     Set tSeededCut = 0
@@ -461,7 +474,7 @@ Method TestTheRowCapReachesAToolResultThroughTheJob()
     Set tMessages = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 2, "messages"))
     Set tResultBlock = tMessages.%Get(tMessages.%Size() - 1).content.%Get(0)
     Do $$$AssertEquals(tResultBlock."is_error", 0, "the read tool answers, not an error: " _ tResultBlock.content)
-    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResultBlock.content)
+    Set tContent = ..ResultPayload(tResultBlock)
     Do $$$AssertEquals($Select($IsObject(tContent.rows): tContent.rows.%Size(), 1: -1) _ "|" _ tContent.rowsSent _ "|" _ tContent.truncated, "2|2|1", "the tool result is cut to the resolved row cap and marked")
 }
 
@@ -564,7 +577,7 @@ Method TestATurnStartedUnderNsSetsTheJobsScope()
     Do $$$AssertTrue($ClassMethod(..#FIXTURE, "AwaitCall", ..#TAG, 2, 10), "call 2 lands")
     Set tMessages = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 2, "messages"))
     Set tResultBlocks = tMessages.%Get(tMessages.%Size() - 1).content
-    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResultBlocks.%Get(0).content)
+    Set tContent = ..ResultPayload(tResultBlocks.%Get(0))
     Do $$$AssertEquals(tContent.scope, "HSLIB", "the job's own scope is the route's ?ns=, not its execution namespace")
 }
 

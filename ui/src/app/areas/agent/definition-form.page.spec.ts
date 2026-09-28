@@ -244,7 +244,7 @@ describe('the Definition form', () => {
     expect(host.querySelector('#ocu-definition-retentionDays')).toBeNull();
   });
 
-  it('AC1: the Advanced section holds the five tuning fields, and retention is aria-disabled under its caption', async () => {
+  it('AC1: the Advanced section holds the five tuning fields, and retention is an editable field under its caption', async () => {
     const { fixture, host } = await mount(catalogOnly);
     (host.querySelector('.ocu-form-disclosure') as HTMLButtonElement).click();
     await settle(fixture);
@@ -260,11 +260,88 @@ describe('the Definition form', () => {
     ]);
 
     const retention = host.querySelector('#ocu-definition-retentionDays') as HTMLInputElement;
-    expect(retention.getAttribute('aria-disabled')).toBe('true');
+    expect(retention.hasAttribute('aria-disabled')).toBe(false);
+    expect(retention.hasAttribute('readonly')).toBe(false);
     expect(retention.hasAttribute('disabled')).toBe(false);
+    expect(retention.getAttribute('aria-describedby')).toBe('ocu-definition-retentionDays-caption');
     expect(host.querySelector('#ocu-definition-retentionDays-caption')?.textContent?.trim()).toBe(
       STRINGS.agentDefinitionRetentionCaption.replace('<n>', '30')
     );
+  });
+
+  it('Story 14.4 AC2: the retention field is editable, sends its value on Save, and shows its refusal at the field', async () => {
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') {
+        const days = JSON.parse(init.body ?? '{}').retentionDays;
+        if (days === 0) return refused([{ field: 'retentionDays', code: 'AGENT.RETENTION.RANGE', reason: 'Retention is a whole number of days from 1 to 365.' }]);
+        return ok(definition({ retentionDays: days }));
+      }
+      return ok(definition());
+    };
+    const { fixture, host, calls } = await mount(answer, '/agent/definitions/edit/7');
+    (host.querySelector('.ocu-form-disclosure') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    // Mutation (Rule 19): drop the input's `(input)` binding -> the PUT carries 30 and the caption
+    // keeps 30, and this goes red.
+    const retention = host.querySelector('#ocu-definition-retentionDays') as HTMLInputElement;
+    retention.value = '7';
+    retention.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-retentionDays-caption')?.textContent?.trim()).toBe(
+      STRINGS.agentDefinitionRetentionCaption.replace('<n>', '7')
+    );
+    const save = () => ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    save();
+    await settle(fixture);
+    const put = calls.filter((call) => call.method === 'PUT').at(-1);
+    expect(put).toBeDefined();
+    expect(JSON.parse(put!.body).retentionDays).toBe(7);
+
+    const field = host.querySelector('#ocu-definition-retentionDays') as HTMLInputElement;
+    field.value = '0';
+    field.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    save();
+    await settle(fixture);
+    const refusedField = host.querySelector('#ocu-definition-retentionDays') as HTMLInputElement;
+    expect(refusedField.getAttribute('aria-invalid')).toBe('true');
+    expect(host.querySelector('#ocu-definition-retentionDays-reason')?.textContent?.trim()).toBe('Retention is a whole number of days from 1 to 365.');
+    expect(refusedField.getAttribute('aria-describedby')).toBe('ocu-definition-retentionDays-caption ocu-definition-retentionDays-reason');
+  });
+
+  it('DW-1621: Advanced carries a Read-only checkbox before Retention, bound to the definition\'s readOnly', async () => {
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') return ok(definition({ readOnly: true }));
+      return ok(definition({ readOnly: false }));
+    };
+    const { fixture, host, calls } = await mount(answer, '/agent/definitions/edit/7');
+    (host.querySelector('.ocu-form-disclosure') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const box = host.querySelector('#ocu-definition-read-only') as HTMLInputElement;
+    expect(box).not.toBeNull();
+    expect(box.type).toBe('checkbox');
+    expect(box.closest('label')?.textContent?.trim()).toBe(STRINGS.agentDefinitionFieldReadOnly);
+    expect(box.checked).toBe(false);
+    // Inside Advanced, before Retention.
+    const advanced = host.querySelector('#ocu-definition-advanced') as HTMLElement;
+    const order = [...advanced.querySelectorAll('input, textarea')].map((node) => node.id);
+    expect(order.indexOf('ocu-definition-read-only')).toBe(order.indexOf('ocu-definition-retentionDays') - 1);
+
+    // Mutation (Rule 19): unbind the checkbox's `(change)` -> the PUT carries readOnly false and
+    // this goes red.
+    box.checked = true;
+    box.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+    const put = calls.find((call) => call.method === 'PUT');
+    expect(put).toBeDefined();
+    expect(JSON.parse(put!.body).readOnly).toBe(true);
+    expect((host.querySelector('#ocu-definition-read-only') as HTMLInputElement).checked).toBe(true);
   });
 
   it('DW-340: the key field is masked and empty, and its reveal toggle is labelled', async () => {
@@ -976,6 +1053,141 @@ describe('the Definition form', () => {
 
     expect(host.textContent).toContain(STRINGS.formStaleSave);
     expect(host.textContent).not.toContain(CONFLICT_ENVELOPE_REASON);
+  });
+
+  it('DW-425: a save sends the row version the screen read, takes the one each answer carries, and keeps it after a stale refusal', async () => {
+    // Mutation (Rule 19): drop `rowVersion` from `DefinitionForm.body()` -> the expectation goes
+    // red; take the version from a refusal as well as from an answer -> its last entry goes red.
+    let puts = 0;
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') {
+        puts += 1;
+        if (puts === 1) return ok(definition({ rowVersion: 4 }));
+        return { kind: 'error', status: 409, code: 'STATE.CONFLICT', reason: CONFLICT_ENVELOPE_REASON, detail: null };
+      }
+      return ok(definition({ rowVersion: 3 }));
+    };
+    const { fixture, host, calls } = await mount(answer, '/agent/definitions/edit/7');
+    const save = () => [...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement;
+    for (let press = 0; press < 3; press += 1) {
+      save().click();
+      await settle(fixture);
+    }
+    const sent = calls.filter((call) => call.method === 'PUT').map((call) => JSON.parse(call.body)['rowVersion']);
+    expect(sent).toEqual([3, 4, 4]);
+  });
+
+  it("DW-425: after this screen's own Test connection over unsaved edits, the version is re-taken only when nothing else about the row moved", async () => {
+    // Mutation (Rule 19): take the re-read's version without comparing the fields in
+    // `retakeVersion` -> the second leg goes red, sending the version of a row somebody else edited.
+    const run = async (afterTest: Record<string, unknown>) => {
+      let tested = false;
+      const answer: Answer = (path, init) => {
+        if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+        if (path.endsWith('/test')) {
+          tested = true;
+          return ok({ connected: true, reply: 'Hello', replyTruncated: false, latencyMs: 9, connectionVerified: true, testedAsStored: true });
+        }
+        if (init.method === 'PUT') return ok(definition({ rowVersion: 9 }));
+        return ok(tested ? definition({ rowVersion: 5, connectionVerified: true, ...afterTest }) : definition({ rowVersion: 3 }));
+      };
+      const { fixture, host, calls } = await mount(answer, '/agent/definitions/edit/7');
+      const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+      name.value = 'Claude edited';
+      name.dispatchEvent(new Event('input'));
+      await settle(fixture);
+      (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+      await settle(fixture);
+      ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+      await settle(fixture);
+      const put = JSON.parse(calls.filter((call) => call.method === 'PUT').at(-1)?.body ?? '{}');
+      return { version: put['rowVersion'], name: put['name'] };
+    };
+    expect(await run({})).toEqual({ version: 5, name: 'Claude edited' });
+    expect(await run({ model: 'claude-other-5' })).toEqual({ version: 3, name: 'Claude edited' });
+    expect(await run({ enabled: true })).toEqual({ version: 3, name: 'Claude edited' });
+  });
+
+  it('DW-425: after a key store and a refused Test connection over unsaved edits, the version is re-taken when only the store moved the row', async () => {
+    // Mutation (Rule 19): drop the re-take on the refused path of `testConnection` -> the first
+    // leg goes red, sending the version from before the key store; leave the loaded `enabled` as
+    // it was in `absorbKeyStore` -> the first leg goes red as well.
+    const run = async (afterStore: Record<string, unknown>) => {
+      let stored = false;
+      const answer: Answer = (path, init) => {
+        if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+        if (path.endsWith('/credential')) {
+          stored = true;
+          return ok({ stored: true });
+        }
+        if (path.endsWith('/test')) {
+          return { kind: 'error', status: 502, code: 'PROVIDER.REFUSED', reason: 'The provider refused the request', detail: { providerText: 'invalid x-api-key' } };
+        }
+        if (init.method === 'PUT') return ok(definition({ rowVersion: 9 }));
+        return ok(stored ? definition({ rowVersion: 6, enabled: false, ...afterStore }) : definition({ rowVersion: 3, enabled: true, connectionVerified: true }));
+      };
+      const { fixture, host, calls } = await mount(answer, '/agent/definitions/edit/7');
+      const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+      name.value = 'Claude edited';
+      name.dispatchEvent(new Event('input'));
+      const key = host.querySelector('#ocu-definition-apiKey') as HTMLInputElement;
+      key.value = 'sk-ant-probe';
+      key.dispatchEvent(new Event('input'));
+      await settle(fixture);
+      (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+      await settle(fixture);
+      ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(calls.filter((call) => call.path.endsWith('/credential')).length).toBe(1);
+      const put = JSON.parse(calls.filter((call) => call.method === 'PUT').at(-1)?.body ?? '{}');
+      return { version: put['rowVersion'], name: put['name'], enabled: put['enabled'] };
+    };
+    expect(await run({})).toEqual({ version: 6, name: 'Claude edited', enabled: false });
+    expect(await run({ model: 'claude-other-5' })).toEqual({ version: 3, name: 'Claude edited', enabled: false });
+  });
+
+  it("DW-425: a key store's disable is taken into the screen, so a Save after it never re-enables the definition, and every later Test connection re-takes the version", async () => {
+    // Mutation (Rule 19): drop the buffer half of `absorbKeyStore` -> the Save sends `enabled: true`
+    // over the stored row's disable (and over anybody else's); drop the loaded-record half -> both
+    // re-takes are skipped and the Save sends version 3, which the row has moved past.
+    let stored = false;
+    let tests = 0;
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (path.endsWith('/credential')) {
+        stored = true;
+        return ok({ stored: true });
+      }
+      if (path.endsWith('/test')) {
+        tests += 1;
+        return ok({ connected: true, reply: 'Hello', replyTruncated: false, latencyMs: 9, connectionVerified: true, testedAsStored: true });
+      }
+      if (init.method === 'PUT') return ok(definition({ rowVersion: 20 }));
+      return ok(
+        stored
+          ? definition({ rowVersion: 6 + tests, enabled: false, connectionVerified: tests > 0 })
+          : definition({ rowVersion: 3, enabled: true, connectionVerified: true })
+      );
+    };
+    const { fixture, host, calls } = await mount(answer, '/agent/definitions/edit/7');
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Claude edited';
+    name.dispatchEvent(new Event('input'));
+    const key = host.querySelector('#ocu-definition-apiKey') as HTMLInputElement;
+    key.value = 'sk-ant-probe';
+    key.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    for (let press = 0; press < 2; press += 1) {
+      (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+      await settle(fixture);
+    }
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(calls.filter((call) => call.path.endsWith('/credential')).length).toBe(1);
+    expect(tests).toBe(2);
+    const put = JSON.parse(calls.filter((call) => call.method === 'PUT').at(-1)?.body ?? '{}');
+    expect({ version: put['rowVersion'], name: put['name'], enabled: put['enabled'] }).toEqual({ version: 8, name: 'Claude edited', enabled: false });
   });
 
   it('AC8 (DW-373): name and provider carry the asterisk, and the published legend appears once', async () => {

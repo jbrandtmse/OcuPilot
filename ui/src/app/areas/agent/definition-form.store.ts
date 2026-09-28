@@ -181,6 +181,14 @@ function optionalNumberAt(source: unknown, key: string): number | null {
  * envelope-level code, a violation's own `reason` for a field-level one. The client publishes no
  * per-code copy.
  *
+ * **A save carries the row version this screen read** (Consistency Conventions: concurrent
+ * writes), taken from the load and from each answer that projects the definition, and sent back as
+ * `rowVersion`. A save refused as stale leaves it as it was, so pressing Save again is refused
+ * again; only a reload takes a version that matches. This screen's own key store and Test
+ * connection write the row without projecting it, so the version is re-taken after them when
+ * nothing else about the row moved (`retakeVersion`), and the key store's own disable is taken into
+ * the screen (`absorbKeyStore`).
+ *
  * Framework-only in its injection, like `ErrorLogDrill`: the API service is resolved on the first
  * call rather than in the constructor.
  */
@@ -203,6 +211,9 @@ export class DefinitionForm {
   private buffer: EditBuffer = emptyBuffer();
 
   private loadedRecord: Record<string, unknown> | null = null;
+
+  /** The row version the loaded record carried, or `null` before an answer carried one. */
+  private rowVersionValue: number | null = null;
 
   private providerRows: readonly ProviderRow[] = [];
 
@@ -450,6 +461,7 @@ export class DefinitionForm {
     this.testingValue = false;
     this.buffer = emptyBuffer();
     this.loadedRecord = null;
+    this.rowVersionValue = null;
     this.credentialsRungValue = true;
     this.violationList = [];
     this.envelopeReason = '';
@@ -717,6 +729,7 @@ export class DefinitionForm {
       }
       // Write-only: the field is cleared the moment the instance has it (DW-340).
       this.keyValue = '';
+      this.absorbKeyStore();
     }
 
     const sentToTest = this.snapshotValues();
@@ -724,6 +737,7 @@ export class DefinitionForm {
     if (generation !== this.generation) return false;
     if (tested.kind !== 'ok') {
       this.absorbTestRefusal(tested, sentToTest);
+      await this.retakeVersion(generation);
       return finish(false);
     }
     this.testReply = textAt(tested.body, 'reply');
@@ -733,6 +747,7 @@ export class DefinitionForm {
     // the operator's work under them and leave the dirty flag standing over changes that are no
     // longer on screen.
     if (!this.formDirty.dirty()) await this.reload();
+    else await this.retakeVersion(generation);
     return finish(true);
   }
 
@@ -750,6 +765,42 @@ export class DefinitionForm {
   }
 
   // --- internals ------------------------------------------------------------------------------
+
+  /**
+   * Re-read the definition after this screen's own key store or Test connection and take its row
+   * version, leaving the edit buffer alone. Those writes move the verification flag and `enabled`
+   * and answer no projection, so without this the next Save would be refused as stale over a row
+   * only this screen had written. The version is taken only when every writable field reads what
+   * the loaded record says, which after a key store includes its disable (`absorbKeyStore`). A row
+   * somebody else edited keeps the version this screen read, and its Save is refused.
+   */
+  private async retakeVersion(generation: number): Promise<void> {
+    if (this.idValue === '' || this.loadedRecord === null) return;
+    const loaded = this.loadedRecord;
+    const result = await this.api().requestJson<unknown>(
+      `${AGENT_DEFINITIONS_PATH}/${encodeURIComponent(this.idValue)}`
+    );
+    if (generation !== this.generation || result.kind !== 'ok') return;
+    const record = result.body !== null && typeof result.body === 'object' ? (result.body as Record<string, unknown>) : {};
+    for (const field of WRITABLE_FIELDS) {
+      if (record[field] !== loaded[field]) return;
+    }
+    const version = record['rowVersion'];
+    if (typeof version === 'number') this.rowVersionValue = version;
+  }
+
+  /**
+   * Take a stored key's own write into the screen. The credential route disables the definition,
+   * so it must pass Test connection again, and answers no projection. From here the loaded record
+   * reads it disabled, and so does an `enabled` the operator had not changed: a Save then leaves
+   * the definition disabled, as the stored row is, rather than enabling it over that write or over
+   * anybody else's disable the comparison could not tell apart from it.
+   */
+  private absorbKeyStore(): void {
+    if (this.loadedRecord === null) return;
+    if (this.buffer['enabled'] === flagAt(this.loadedRecord, 'enabled')) this.buffer = { ...this.buffer, enabled: false };
+    this.loadedRecord = { ...this.loadedRecord, enabled: false };
+  }
 
   private api(): ApiService {
     return this.injector.get(ApiService);
@@ -880,7 +931,10 @@ export class DefinitionForm {
     this.markDirty();
   }
 
-  /** The complete writable field set, typed as the wire expects (AD-4). */
+  /**
+   * The complete writable field set, typed as the wire expects (AD-4), with the row version this
+   * screen read when it has one.
+   */
   private body(options: { omitEnabled?: boolean }): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     for (const field of WRITABLE_FIELDS) {
@@ -898,6 +952,7 @@ export class DefinitionForm {
       }
       out[field] = this.value(field);
     }
+    if (this.rowVersionValue !== null) out['rowVersion'] = this.rowVersionValue;
     return out;
   }
 
@@ -1013,6 +1068,8 @@ export class DefinitionForm {
   private absorb(body: unknown): void {
     const record = body !== null && typeof body === 'object' ? (body as Record<string, unknown>) : {};
     this.loadedRecord = record;
+    const version = record['rowVersion'];
+    this.rowVersionValue = typeof version === 'number' ? version : null;
     const id = textAt(record, 'id');
     if (id !== '') this.idValue = id;
     const next: EditBuffer = {};

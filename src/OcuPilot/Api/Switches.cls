@@ -1,6 +1,6 @@
 /// <p>The handler behind the <code>/agent/switches</code> routes and the ungated
-/// <code>/agent/restraint</code> read (FR-19, FR-20, FR-29). One envelope, one gate, and one seam
-/// the audit row is written from.</p>
+/// <code>/agent/restraint</code> read and write (FR-19, FR-20, FR-29). One envelope, one gate, and
+/// one seam the audit row is written from.</p>
 /// <p><b>Who may see what.</b> Every caller that reaches here has cleared
 /// <method>OcuPilot.Api.Router.OnPreDispatch</method>. On top of that, <b>reading and writing the
 /// switches</b> and <b>every hold route</b> require OcuPilot's own administrative resource, checked
@@ -9,7 +9,9 @@
 /// it. <code>GET /agent/restraint</code> does not: it answers the calling user their own verdict,
 /// which is what the panel renders its banners and its footer line from, and it is ungated for the
 /// reason <method>OcuPilot.Api.Definitions.HandleList</method> is -- a refusal is not an answer, and
-/// the audience for the kill-switch banner is precisely the people who cannot change it.</p>
+/// the audience for the kill-switch banner is precisely the people who cannot change it.
+/// <code>PUT /agent/restraint</code> does not either: it stores only the caller's own read-only
+/// choice (Story 14.5), which can only restrain the caller further.</p>
 /// <p><b>No gate lives here.</b> Whether a write may happen is
 /// <method>OcuPilot.Kernel.Restraint.Verdict</method>'s alone (AD-30, AD-40); this class projects
 /// the verdict onto the wire and computes no part of it.</p>
@@ -17,10 +19,12 @@
 /// it still resolves on this instance is answered here, where the <code>%SYS</code> switch AD-16
 /// requires is allowed, and travels as the row's <code>present</code> flag so the screen renders
 /// rather than fails.</p>
-/// <p><b>Every accepted write is audited.</b> Each hands its changed-field set to this class's own
-/// <method>LogChange</method>, which writes the structured log line and the IRIS audit row --
-/// through <class>OcuPilot.Kernel.Audit.Event</class>, beside the one
-/// <class>OcuPilot.Api.Definitions</class> gives the definition routes (AD-15, FR-29).</p>
+/// <p><b>Every accepted write to the switches or a hold is audited.</b> Each hands its changed-field
+/// set to this class's own <method>LogChange</method>, which writes the structured log line and the
+/// IRIS audit row -- through <class>OcuPilot.Kernel.Audit.Event</class>, beside the one
+/// <class>OcuPilot.Api.Definitions</class> gives the definition routes (AD-15, FR-29). The caller's
+/// own read-only choice is a preference (AD-50) and is not audited, as <code>PUT
+/// /agent/context</code>'s sharing choice is not.</p>
 Class OcuPilot.Api.Switches Extends %RegisteredObject
 {
 
@@ -51,10 +55,10 @@ Parameter RELEASEVERB = "release";
 /// <p><code>security</code> is 1 for a field that decides whether the agent may act or what leaves
 /// the instance, which is what <method>IsSecurityChange</method> classifies a write by.
 /// <code>killSwitchReason</code> is 0: it is the operator's copy for the banner, and moving it
-/// changes no restraint.</p>
+/// changes no restraint. <code>turnsPerHour</code> is 1: it bounds how often the agent acts.</p>
 ClassMethod Fields() As %List
 {
-    Quit $ListBuild($ListBuild("killSwitch", "KillSwitch", "boolean", 1), $ListBuild("killSwitchReason", "KillSwitchReason", "string", 0), $ListBuild("enforcedReadOnly", "EnforcedReadOnly", "boolean", 1), $ListBuild("shareContextByDefault", "ShareContextByDefault", "boolean", 1), $ListBuild("contextRowCap", "ContextRowCap", "integer", 1))
+    Quit $ListBuild($ListBuild("killSwitch", "KillSwitch", "boolean", 1), $ListBuild("killSwitchReason", "KillSwitchReason", "string", 0), $ListBuild("enforcedReadOnly", "EnforcedReadOnly", "boolean", 1), $ListBuild("shareContextByDefault", "ShareContextByDefault", "boolean", 1), $ListBuild("contextRowCap", "ContextRowCap", "integer", 1), $ListBuild("turnsPerHour", "TurnsPerHour", "integer", 1))
 }
 
 /// <p>The wire names of the switch fields whose change is a security change, derived from
@@ -70,7 +74,8 @@ ClassMethod SecurityFieldNames() As %List
     Quit tNames
 }
 
-/// <p>Answer <code>GET /agent/switches</code>: the switches in force and every per-user hold.</p>
+/// <p>Answer <code>GET /agent/switches</code>: the switches in force, the row version they were
+/// read at, and every per-user hold.</p>
 ClassMethod HandleRead() As %Status
 {
     Set tSC = $$$OK
@@ -79,11 +84,20 @@ ClassMethod HandleRead() As %Status
             Set tSC = ..RenderForbidden()
             Quit
         }
+        ; The version is read before the values, for the reason HandleUpdate gives: a writer landing
+        ; between the two reads leaves the screen holding a version older than the values it shows,
+        ; so its save is refused rather than taken over that writer's change.
+        Set tVersionSC = ##class(OcuPilot.Kernel.State.Switch).GuardedVersion(.tVersion)
+        If $$$ISERR(tVersionSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tVersionSC))
+            Quit
+        }
         Set tReadSC = ##class(OcuPilot.Kernel.State.Switch).Resolve(.tValues)
         If $$$ISERR(tReadSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))
             Quit
         }
+        Set tValues("rowVersion") = tVersion
         Set tHoldSC = ..Holds(.tHolds)
         If $$$ISERR(tHoldSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tHoldSC))
@@ -99,6 +113,9 @@ ClassMethod HandleRead() As %Status
 /// <p>Answer <code>PUT /agent/switches</code>: merge the body over the stored switches, validate,
 /// then save. A key the body omits keeps its stored value, so turning the kill switch on is a
 /// two-key body and cannot silently clear enforced read-only (AD-4).</p>
+/// <p>A body carrying <code>rowVersion</code> as a JSON number saves only while the row still
+/// carries that version, and is refused <code>STATE.CONFLICT</code> otherwise. A body without it
+/// saves against the version this request read.</p>
 ClassMethod HandleUpdate() As %Status
 {
     Set tSC = $$$OK
@@ -107,9 +124,9 @@ ClassMethod HandleUpdate() As %Status
             Set tSC = ..RenderForbidden()
             Quit
         }
-        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody)
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
         If $$$ISERR(tReadSC) {
-            Set tSC = ..RenderBadBody(tReadSC)
+            Set tSC = ..RenderBadBody(tReadSC, tStage)
             Quit
         }
         If '##class(OcuPilot.Api.Definitions).BodyIsReadable(tBody) {
@@ -121,7 +138,8 @@ ClassMethod HandleUpdate() As %Status
         ; a version older than the row, and the conditional save below is refused. Read the values
         ; first and the same writer leaves a version that still matches while the merge carries
         ; the values it superseded -- which is the lost update this closes, not a case it catches.
-        ; Read from the store, never taken from the request: no version token crosses the wire.
+        ; Where the body carries rowVersion, the version is the one the screen read, sent back on
+        ; save, and it replaces this request's own.
         Set tVersionSC = ##class(OcuPilot.Kernel.State.Switch).GuardedVersion(.tVersion)
         If $$$ISERR(tVersionSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tVersionSC))
@@ -139,7 +157,8 @@ ClassMethod HandleUpdate() As %Status
             Set tSC = ..RenderViolations(.tViolations)
             Quit
         }
-        Set tSaveSC = ##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues, tVersion)
+        Set tExpected = ##class(OcuPilot.Api.Definitions).BodyRowVersion(tBody)
+        Set tSaveSC = ##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues, $Select(tExpected '= "": tExpected, 1: tVersion))
         If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(tSaveSC) {
             Set tSC = ..RenderConflict()
             Quit
@@ -148,12 +167,18 @@ ClassMethod HandleUpdate() As %Status
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The agent switches could not be saved", ##class(%Exception.StatusException).CreateFromStatus(tSaveSC))
             Quit
         }
+        Set tAfterVersionSC = ##class(OcuPilot.Kernel.State.Switch).GuardedVersion(.tAfterVersion)
+        If $$$ISERR(tAfterVersionSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tAfterVersionSC))
+            Quit
+        }
         Set tAfterSC = ##class(OcuPilot.Kernel.State.Switch).Resolve(.tAfter)
         If $$$ISERR(tAfterSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tAfterSC))
             Quit
         }
         Do ..LogChange(..#SWITCHESVERB, .tBefore, .tAfter)
+        Set tAfter("rowVersion") = tAfterVersion
         Set tHoldSC = ..Holds(.tHolds)
         If $$$ISERR(tHoldSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tHoldSC))
@@ -182,9 +207,9 @@ ClassMethod HandleHoldCreate() As %Status
             Set tSC = ..RenderForbidden()
             Quit
         }
-        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody)
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
         If $$$ISERR(tReadSC) {
-            Set tSC = ..RenderBadBody(tReadSC)
+            Set tSC = ..RenderBadBody(tReadSC, tStage)
             Quit
         }
         If '##class(OcuPilot.Api.Definitions).BodyIsReadable(tBody) {
@@ -268,6 +293,7 @@ ClassMethod HandleHoldDelete(pId As %String) As %Status
 
 /// <p>Answer <code>GET /agent/restraint</code>: the calling user's own verdict, as
 /// <method>OcuPilot.Kernel.Restraint.Resolved</method> answers it, plus
+/// <code>readOnlyForYou</code> -- the user's own stored choice (Story 14.5) -- and
 /// <code>writesMarked</code> -- whether the instance was marking agent writes when that was last
 /// observed (AD-15). <b>No OcuPilot administrative privilege required</b> -- see the class
 /// header.</p>
@@ -281,29 +307,109 @@ ClassMethod HandleRestraint() As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tVerdictSC = ##class(OcuPilot.Kernel.Restraint).Resolved(..CallerUsername(), .tVerdict)
-        If $$$ISERR(tVerdictSC) {
-            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tVerdictSC))
+        Set tBodySC = ..RestraintBody(..CallerUsername(), .tBody)
+        If $$$ISERR(tBodySC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tBodySC))
             Quit
         }
-        Set tBody = {}
-        Do tBody.%Set("blocked", $Select(+tVerdict("blocked"): 1, 1: 0), "boolean")
-        Do tBody.%Set("code", tVerdict("code"), "string")
-        Do tBody.%Set("reason", tVerdict("reason"), "string")
-        Do tBody.%Set("footerKey", tVerdict("footerKey"), "string")
-        Do tBody.%Set("killSwitch", $Select(+tVerdict("killSwitch"): 1, 1: 0), "boolean")
-        Do tBody.%Set("killSwitchAudience", tVerdict("killSwitchAudience"), "string")
-        Do tBody.%Set("killSwitchReason", tVerdict("killSwitchReason"), "string")
-        Do tBody.%Set("enforcedReadOnly", $Select(+tVerdict("enforcedReadOnly"): 1, 1: 0), "boolean")
-        ; Not part of the verdict: marking is not a restraint (AD-30), so Kernel.Restraint does not
-        ; answer it and the agent is not blocked by it. It rides this route because the panel
-        ; already reads it on every load, and because the banner it feeds is shown to every user.
-        Do tBody.%Set("writesMarked", $Select(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(): 1, 1: 0), "boolean")
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
     Quit tSC
+}
+
+/// <p>Answer <code>PUT /agent/restraint {readOnly: boolean}</code> (Story 14.5): store the calling
+/// user's own read-only choice and answer the same body <method>HandleRestraint</method> would.
+/// <b>No OcuPilot administrative privilege required</b> -- see the class header.</p>
+/// <p>A body carrying anything else -- missing, badly typed, an extra member, or not JSON -- is
+/// refused 422 <parameter>OcuPilot.Api.Error.AGENTRESTRAINTBODY</parameter> before anything is
+/// written. A body the server could not read or decode answers 500 through
+/// <method>RenderBadBody</method>. A write that lost its conditional save to a concurrent one is
+/// refused 409 <parameter>OcuPilot.Api.Error.STATECONFLICT</parameter> (Conventions: concurrent
+/// writes).</p>
+/// <p>The choice is stored whatever else restrains the caller, so turning it on while enforced
+/// read-only is on is kept, and the answered verdict still names the source that wins.</p>
+ClassMethod HandleRestraintUpdate() As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tRequestBody, .tStage)
+        If $$$ISERR(tReadSC) && (tStage '= "parse") {
+            Set tSC = ..RenderBadBody(tReadSC, tStage)
+            Quit
+        }
+        If $$$ISERR(tReadSC) {
+            Set tSC = ..RenderRestraintBodyViolation()
+            Quit
+        }
+        If '$IsObject(tRequestBody) || 'tRequestBody.%IsA("%Library.DynamicObject") {
+            Set tSC = ..RenderRestraintBodyViolation()
+            Quit
+        }
+        Set tExtra = 0
+        Set tIterator = tRequestBody.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tIgnored) {
+            If tKey '= "readOnly" Set tExtra = 1
+        }
+        If tExtra || (tRequestBody.%GetTypeOf("readOnly") '= "boolean") {
+            Set tSC = ..RenderRestraintBodyViolation()
+            Quit
+        }
+        Set tOn = ''tRequestBody.%Get("readOnly")
+        Set tUser = ..CallerUsername()
+        Set tSetSC = ##class(OcuPilot.Kernel.State.Pref).GuardedSetValue(tUser, ##class(OcuPilot.Kernel.State.Pref).#KINDRESTRAINT, ##class(OcuPilot.Kernel.State.Pref).#RESTRAINTREADONLY, $Select(tOn: "1", 1: "0"))
+        If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(tSetSC) {
+            Set tSC = ..RenderConflict()
+            Quit
+        }
+        If $$$ISERR(tSetSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tSetSC))
+            Quit
+        }
+        Set tBodySC = ..RestraintBody(tUser, .tBody)
+        If $$$ISERR(tBodySC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tBodySC))
+            Quit
+        }
+        Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
+/// <p><var>pUser</var>'s verdict, as <method>OcuPilot.Kernel.Restraint.Resolved</method> answers it,
+/// projected onto the wire body both restraint routes answer: the verdict's own subscripts,
+/// <code>readOnlyForYou</code> (the user's stored choice) and <code>writesMarked</code>.</p>
+/// <p>A verdict that could not be read answers its error and no body; the caller renders 500.</p>
+ClassMethod RestraintBody(pUser As %String, Output pBody As %DynamicObject) As %Status [ Private ]
+{
+    Set pBody = ""
+    Set tSC = ##class(OcuPilot.Kernel.Restraint).Resolved(pUser, .tVerdict)
+    If $$$ISERR(tSC) Quit tSC
+    Set pBody = {}
+    Do pBody.%Set("blocked", $Select(+tVerdict("blocked"): 1, 1: 0), "boolean")
+    Do pBody.%Set("code", tVerdict("code"), "string")
+    Do pBody.%Set("reason", tVerdict("reason"), "string")
+    Do pBody.%Set("footerKey", tVerdict("footerKey"), "string")
+    Do pBody.%Set("killSwitch", $Select(+tVerdict("killSwitch"): 1, 1: 0), "boolean")
+    Do pBody.%Set("killSwitchAudience", tVerdict("killSwitchAudience"), "string")
+    Do pBody.%Set("killSwitchReason", tVerdict("killSwitchReason"), "string")
+    Do pBody.%Set("enforcedReadOnly", $Select(+tVerdict("enforcedReadOnly"): 1, 1: 0), "boolean")
+    Do pBody.%Set("readOnlyForYou", $Select(+tVerdict("readOnlyForYou"): 1, 1: 0), "boolean")
+    ; Not part of the verdict: marking is not a restraint (AD-30), so Kernel.Restraint does not
+    ; answer it and the agent is not blocked by it. It rides this route because the panel
+    ; already reads it on every load, and because the banner it feeds is shown to every user.
+    Do pBody.%Set("writesMarked", $Select(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(): 1, 1: 0), "boolean")
+    Quit $$$OK
+}
+
+/// <p>Refuse with 422 <parameter>OcuPilot.Api.Error.AGENTRESTRAINTBODY</parameter>; nothing is
+/// written.</p>
+ClassMethod RenderRestraintBodyViolation() As %Status [ Private ]
+{
+    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.Error).#REASONAGENTRESTRAINTBODY, ##class(OcuPilot.Api.Error).#AGENTRESTRAINTBODY)
 }
 
 /// <p>The identity the verdict is resolved for: the authenticated caller of this request.</p>
@@ -312,7 +418,11 @@ ClassMethod CallerUsername() As %String
     Quit $Username
 }
 
-/// <p>The switch state and its holds, as the object both reads answer.</p>
+/// <p>The switch state and its holds, as the object both reads answer, with
+/// <code>rowVersion</code> -- the version <var>pValues</var> were read at, which the screen sends
+/// back on save -- and <code>concurrentTurns</code>, the fixed per-user bound
+/// <parameter>OcuPilot.Kernel.Agent.Limits.CONCURRENTTURNS</parameter>, which is shown and never
+/// stored (AD-41).</p>
 ClassMethod Projection(ByRef pValues, pHolds As %DynamicArray) As %DynamicObject
 {
     Set tOut = {}
@@ -329,7 +439,9 @@ ClassMethod Projection(ByRef pValues, pHolds As %DynamicArray) As %DynamicObject
             Do tOut.%Set(tField, tValue, "string")
         }
     }
+    Do tOut.%Set("concurrentTurns", +##class(OcuPilot.Kernel.Agent.Limits).#CONCURRENTTURNS, "number")
     Do tOut.%Set("updatedAt", $Get(pValues("updatedAt")), "string")
+    Do tOut.%Set("rowVersion", +$Get(pValues("rowVersion")), "number")
     Do tOut.%Set("holds", pHolds)
     Quit tOut
 }
@@ -388,6 +500,9 @@ ClassMethod UserExists(pUserName As %String) As %Boolean
 /// <method>StringMember</method> applies on the hold routes: a number or a boolean sent as
 /// <code>killSwitchReason</code> would otherwise reach the published banner as the operator's
 /// reason.</p>
+/// <p><b>A present <code>concurrentTurns</code> is copied for
+/// <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> alone</b>, as <code>""</code> when
+/// it is not a JSON number; it is not a stored field, so nothing saves it.</p>
 ClassMethod MergeBody(pBody As %DynamicObject, ByRef pValues)
 {
     If '$IsObject(pBody) Quit
@@ -407,6 +522,9 @@ ClassMethod MergeBody(pBody As %DynamicObject, ByRef pValues)
         ; any other type becomes "" and meets that rule's empty-value refusal.
         If ($List(tEntry, 3) = "integer") && (tType '= "number") Set tValue = ""
         Set pValues(tField) = tValue
+    }
+    If pBody.%IsDefined("concurrentTurns") {
+        Set pValues("concurrentTurns") = $Select(pBody.%GetTypeOf("concurrentTurns") = "number": pBody.%Get("concurrentTurns"), 1: "")
     }
 }
 
@@ -428,9 +546,8 @@ ClassMethod IsAdministrator() As %Boolean
     Quit ##class(OcuPilot.Api.Definitions).IsAdministrator()
 }
 
-/// <p>Refuse with the 403 the definition routes already publish copy for: the
-/// <parameter>OcuPilot.Api.Error.AUTHNOPRIVILEGE</parameter> code and the failed
-/// <code>(resource, permission)</code> pair in <code>detail.failedPair</code> (AD-8).</p>
+/// <p>Refuse through <method>OcuPilot.Api.Definitions.RenderForbidden</method>, the one privilege
+/// refusal the agent routes share (AD-8).</p>
 ClassMethod RenderForbidden() As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).RenderForbidden()
@@ -444,12 +561,13 @@ ClassMethod RenderConflict() As %Status
     Quit ##class(OcuPilot.Api.Definitions).RenderConflict()
 }
 
-/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, carrying
-/// <parameter>OcuPilot.Api.Error.REASONAGENTBADBODY</parameter> alone; <var>pStatus</var>'s raw
-/// text reaches the log only (AD-39).</p>
-ClassMethod RenderBadBody(pStatus As %Status) As %Status
+/// <p>Refuse an unreadable body through <method>OcuPilot.Api.Definitions.RenderBadBody</method>:
+/// 500 for a <code>read</code> or <code>decode</code> <var>pStage</var>, and otherwise 400 with
+/// <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>; <var>pStatus</var>'s raw text reaches
+/// the log only (AD-39).</p>
+ClassMethod RenderBadBody(pStatus As %Status, pStage As %String = "") As %Status
 {
-    Quit ##class(OcuPilot.Api.Definitions).RenderBadBody(pStatus)
+    Quit ##class(OcuPilot.Api.Definitions).RenderBadBody(pStatus, pStage)
 }
 
 /// <p>Refuse with <b>one</b> 422 carrying every violation as <code>detail.violations</code>, each a

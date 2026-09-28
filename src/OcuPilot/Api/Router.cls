@@ -1,26 +1,17 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
-/// <p>The <code>UrlMap</code> below holds the five agent-switch routes under
-/// <code>/agent/switches</code> and <code>/agent/restraint</code>, the agent ledger read
-/// <code>GET /agent/ledger</code>, the eight agent-definition
-/// routes under <code>/agent/definitions</code>, the provider catalog the Definition form cascades
-/// from, the generic screen read, <code>GET /screens/:screen/read</code>, the four
-/// application-error-log levels <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the
-/// console-log page <code>GET /logs/messages</code>, the three turn routes under
-/// <code>/turn</code>, and the three shell routes, <code>GET /instance</code>,
-/// <code>/agent/switches</code> and <code>/agent/restraint</code>, the eight agent-definition
-/// routes under <code>/agent/definitions</code>, the two proposal decisions
-/// <code>POST /proposal/:id/{confirm,cancel}</code> -- together the map's only write verbs -- the
-/// provider catalog the Definition form cascades from, the generic screen read,
-/// <code>GET /screens/:screen/read</code>, the screen's own row-action write
-/// <code>POST /screens/:screen/action</code>, the four application-error-log levels
-/// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
-/// <code>GET /logs/messages</code>, the alert-log page <code>GET /logs/alerts</code>, and the three
-/// shell routes, <code>GET /instance</code>,
-/// <code>GET /namespaces</code> and <code>GET /navigation</code>; every other request that clears
-/// <method>OnPreDispatch</method> is answered by the framework 404 override. The three
-/// ordering invariants below are load-bearing from the first route on; the first two are each
-/// asserted by their own routing test in <class>OcuPilot.Test.Routing</class> against
+/// <p>The <code>UrlMap</code> below holds these route families: the shell reads
+/// (<code>/instance</code>, <code>/namespaces</code>, <code>/navigation</code>, <code>/ui</code>) and
+/// the caller's own account (<code>/account</code>); the agent's definitions, provider catalog,
+/// context, switches, restraint and ledger (<code>/agent</code>), its conversations and turns
+/// (<code>/conversation</code>, <code>/turn</code>) and the two proposal decisions
+/// (<code>/proposal/:id</code>); the generic
+/// screen read and row action (<code>/screens/:screen</code>); the log pages (<code>/logs</code>);
+/// and the editors' reads, Saves and checks for web applications, users, roles, resources, services,
+/// tasks, audit events, devices, LDAP, SSL/TLS, X.509 credentials, wallet secrets and OAuth 2.0.
+/// Every other request that clears <method>OnPreDispatch</method> is answered by the framework 404
+/// override. The three ordering invariants below are load-bearing from the first route on; the
+/// first two are each asserted by their own routing test in <class>OcuPilot.Test.Routing</class> against
 /// <class>OcuPilot.Test.RouterFixture</class>, which inherits this class's real
 /// <method>OnPreDispatch</method>, <method>ReportHttpStatusCode</method> and
 /// <method>Http405</method> unchanged.</p>
@@ -68,7 +59,7 @@ Parameter ADMINRESOURCES As %String = {##class(OcuPilot.Screen.Gate).#ADMINRESOU
 /// <ol>
 /// <li>Explicit method-guard (405) routes before the catch-all for the same path.</li>
 /// <li>Sub-resource routes before single-segment <code>:param</code> routes.</li>
-/// <li>N-segment routes before (N-1)-segment routes.</li>
+/// <li>A longer route before a shorter one whose Url matches its leading segments.</li>
 /// </ol>
 /// <p><code>Call=</code> targets are thin wrappers with no business logic — dispatch to a
 /// slice's own handler class.</p>
@@ -80,6 +71,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/switches" Method="GET" Call="AgentSwitchesRead"/>
   <Route Url="/agent/switches" Method="PUT" Call="AgentSwitchesUpdate"/>
   <Route Url="/agent/restraint" Method="GET" Call="AgentRestraint"/>
+  <Route Url="/agent/restraint" Method="PUT" Call="AgentRestraintUpdate"/>
+  <Route Url="/agent/governance" Method="GET" Call="AgentGovernanceRead"/>
+  <Route Url="/agent/governance" Method="PUT" Call="AgentGovernanceUpdate"/>
   <Route Url="/agent/ledger" Method="GET" Call="AgentLedger"/>
   <Route Url="/agent/context" Method="GET" Call="AgentContextRead"/>
   <Route Url="/agent/context" Method="PUT" Call="AgentContextUpdate"/>
@@ -122,12 +116,20 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/device" Method="POST" Call="DeviceCreate"/>
   <Route Url="/screens/:screen/action" Method="POST" Call="ScreenAction"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
+  <Route Url="/screens/:screen/impact" Method="GET" Call="ScreenImpact"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
   <Route Url="/logs/errors/list" Method="GET" Call="LogErrorList"/>
   <Route Url="/logs/errors/detail" Method="GET" Call="LogErrorDetail"/>
   <Route Url="/logs/alerts" Method="GET" Call="LogAlerts"/>
+  <Route Url="/logs/messages/files" Method="GET" Call="LogMessageFiles"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
+  <Route Url="/logs/systemmonitor" Method="GET" Call="LogSystemMonitor"/>
+  <Route Url="/logs/taskerrors" Method="GET" Call="LogTaskErrors"/>
+  <Route Url="/logs/xdbc" Method="GET" Call="LogXdbc"/>
+  <Route Url="/logs/sqldiagnostics" Method="GET" Call="LogSqlDiagnostics"/>
+  <Route Url="/logs/eventlog" Method="GET" Call="LogEventLog"/>
+  <Route Url="/logs/analytics" Method="GET" Call="LogAnalytics"/>
   <Route Url="/turn/:id/progress" Method="GET" Call="TurnProgress"/>
   <Route Url="/turn/:id/stop" Method="POST" Call="TurnStop"/>
   <Route Url="/turn/:id/navigation" Method="POST" Call="TurnNavigation"/>
@@ -135,8 +137,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/turn" Method="POST" Call="TurnStart"/>
   <Route Url="/proposal/:id/confirm" Method="POST" Call="ProposalConfirm"/>
   <Route Url="/proposal/:id/cancel" Method="POST" Call="ProposalCancel"/>
+  <Route Url="/proposal/:id/draft" Method="POST" Call="ProposalDraft"/>
   <Route Url="/conversation/:id" Method="GET" Call="ConversationRead"/>
   <Route Url="/conversation" Method="POST" Call="ConversationCreate"/>
+  <Route Url="/transcripts/:id" Method="GET" Call="TranscriptRead"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
@@ -146,6 +150,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ui/about" Method="GET" Call="UiAbout"/>
   <Route Url="/ui/help" Method="GET" Call="UiHelp"/>
   <Route Url="/ui/system" Method="GET" Call="UiSystem"/>
+  <Route Url="/ui/performance" Method="GET" Call="UiPerformance"/>
+  <Route Url="/ui/findings" Method="GET" Call="UiFindings"/>
+  <Route Url="/ui/guardrails" Method="GET" Call="UiGuardrails"/>
   <Route Url="/ssl/form" Method="GET" Call="SslFormRead"/>
   <Route Url="/ssl/name" Method="GET" Call="SslNameCheck"/>
   <Route Url="/ssl/:id/test" Method="POST" Call="SslTest"/>
@@ -222,6 +229,28 @@ ClassMethod AgentRestraint() As %Status
     Quit ##class(OcuPilot.Api.Switches).HandleRestraint()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>PUT /agent/restraint</code> (Story 14.5) -- see
+/// <method>AgentSwitchHoldDelete</method>. Gates on nothing beyond this class, like
+/// <method>AgentRestraint</method>: it stores only the calling user's own read-only choice.</p>
+ClassMethod AgentRestraintUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Switches).HandleRestraintUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/governance</code> (Story 14.2): delegates
+/// to <class>OcuPilot.Api.Governance</class> and carries no logic of its own.</p>
+ClassMethod AgentGovernanceRead() As %Status
+{
+    Quit ##class(OcuPilot.Api.Governance).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /agent/governance</code> -- see
+/// <method>AgentGovernanceRead</method>.</p>
+ClassMethod AgentGovernanceUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Governance).HandleUpdate()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /agent/ledger</code> (Story 4.9): delegates to
 /// <class>OcuPilot.Api.Ledger</class> and carries no logic of its own. A two-segment literal beside
 /// <code>GET /agent/restraint</code>, so it conflicts with no <code>:param</code> route.</p>
@@ -247,7 +276,8 @@ ClassMethod AgentContextUpdate() As %Status
 /// <p>Thin <code>Call=</code> target for <code>POST /agent/definitions/:id/default</code>:
 /// delegates to <class>OcuPilot.Api.Definitions</class> and carries no logic of its own.</p>
 /// <p>The eight definition routes are declared longest first in the map above, for the third
-/// ordering invariant: an N-segment route goes before an (N-1)-segment one.</p>
+/// ordering invariant: a longer route before a shorter one whose Url matches its leading
+/// segments.</p>
 ClassMethod AgentDefinitionSetDefault(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).HandleSetDefault(pId)
@@ -660,6 +690,13 @@ ClassMethod ScreenRead(pScreen As %String) As %Status
     Quit ##class(OcuPilot.Api.ScreenRead).Handle(pScreen)
 }
 
+/// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/impact</code>: delegates to
+/// <class>OcuPilot.Api.ScreenImpact</class> and carries no logic of its own.</p>
+ClassMethod ScreenImpact(pScreen As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.ScreenImpact).Handle(pScreen)
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/errors/namespaces</code>: delegates to
 /// <class>OcuPilot.Api.ErrorLog</class> and carries no logic of its own.</p>
 /// <p>The route is literal and <b>binds the drill level here</b>, from the port's own enum, so no
@@ -696,10 +733,62 @@ ClassMethod LogErrorDetail() As %Status
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/messages</code>: delegates to
 /// <class>OcuPilot.Api.LogPage</class> and carries no logic of its own.</p>
 /// <p>The route is literal and <b>binds the source key here</b>, from the port's own enum, so no
-/// caller supplies a file name, a path or any part of one (AD-21).</p>
+/// caller supplies a path (AD-21). Its one caller-named value is <code>file</code>, a rotated
+/// console log's name the port admits by pattern or refuses (AD-21's fourth named case).</p>
 ClassMethod LogMessages() As %Status
 {
     Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/messages/files</code>: the console log
+/// and its rotated files, through <method>OcuPilot.Api.LogPage.HandleFiles</method>, with the
+/// source key bound here as <method>LogMessages</method> binds it.</p>
+ClassMethod LogMessageFiles() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleFiles(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/systemmonitor</code> (Story 16.8): the
+/// System Monitor log's newest entries through <method>OcuPilot.Api.LogPage.HandleRecent</method>,
+/// with the source key bound here from the port's own enum (AD-21).</p>
+ClassMethod LogSystemMonitor() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleRecent(##class(OcuPilot.Port.LogSourcePort).#SYSTEMMONITORKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/taskerrors</code> -- see
+/// <method>LogSystemMonitor</method>.</p>
+ClassMethod LogTaskErrors() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleRecent(##class(OcuPilot.Port.LogSourcePort).#TASKERRORSKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/xdbc</code> -- see
+/// <method>LogSystemMonitor</method>.</p>
+ClassMethod LogXdbc() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleRecent(##class(OcuPilot.Port.LogSourcePort).#XDBCKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/sqldiagnostics</code> -- see
+/// <method>LogSystemMonitor</method>.</p>
+ClassMethod LogSqlDiagnostics() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleRecent(##class(OcuPilot.Port.LogSourcePort).#SQLDIAGNOSTICSKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/eventlog</code> -- see
+/// <method>LogSystemMonitor</method>.</p>
+ClassMethod LogEventLog() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleRecent(##class(OcuPilot.Port.LogSourcePort).#EVENTLOGKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/analytics</code> -- see
+/// <method>LogSystemMonitor</method>.</p>
+ClassMethod LogAnalytics() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleRecent(##class(OcuPilot.Port.LogSourcePort).#ANALYTICSKEY)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /turn/:id/progress</code>: delegates to
@@ -754,6 +843,13 @@ ClassMethod ProposalCancel(pId As %String) As %Status
     Quit ##class(OcuPilot.Api.Confirm).HandleCancel(pId)
 }
 
+/// <p>Thin <code>Call=</code> target for <code>POST /proposal/:id/draft</code> -- see
+/// <method>ProposalConfirm</method>.</p>
+ClassMethod ProposalDraft(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Confirm).HandleDraft(pId)
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /conversation/:id</code>: delegates to
 /// <class>OcuPilot.Api.Conversation</class> and carries no logic of its own. Declared before
 /// <code>POST /conversation</code>, for the third ordering invariant.</p>
@@ -767,6 +863,13 @@ ClassMethod ConversationRead(pId As %String) As %Status
 ClassMethod ConversationCreate() As %Status
 {
     Quit ##class(OcuPilot.Api.Conversation).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /transcripts/:id</code> (Story 14.4): delegates
+/// to <class>OcuPilot.Api.Transcripts</class> and carries no logic of its own.</p>
+ClassMethod TranscriptRead(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Transcripts).HandleRead(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/alerts</code> -- see
@@ -850,6 +953,33 @@ ClassMethod UiHelp() As %Status
 ClassMethod UiSystem() As %Status
 {
     Quit ##class(OcuPilot.Api.UiSystem).HandleSystem()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ui/performance</code> (Story 16.18): delegates
+/// to <class>OcuPilot.Api.UiPerformance</class> and carries no logic of its own -- see
+/// <method>UiAbout</method> for why the <code>/ui/*</code> routes constrain none of the others'
+/// position.</p>
+ClassMethod UiPerformance() As %Status
+{
+    Quit ##class(OcuPilot.Api.UiPerformance).HandlePerformance()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ui/findings</code> (Story 16.21): delegates to
+/// <class>OcuPilot.Api.UiFindings</class> and carries no logic of its own -- see
+/// <method>UiAbout</method> for why the <code>/ui/*</code> routes constrain none of the others'
+/// position.</p>
+ClassMethod UiFindings() As %Status
+{
+    Quit ##class(OcuPilot.Api.UiFindings).HandleFindings()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ui/guardrails</code> (Story 16.22): delegates to
+/// <class>OcuPilot.Api.UiGuardrails</class> and carries no logic of its own -- see
+/// <method>UiAbout</method> for why the <code>/ui/*</code> routes constrain none of the others'
+/// position.</p>
+ClassMethod UiGuardrails() As %Status
+{
+    Quit ##class(OcuPilot.Api.UiGuardrails).HandleGuardrails()
 }
 
 /// <p>Resolves the authenticated caller for this request. Returns <code>$Username</code> —
@@ -988,7 +1118,8 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 /// <code>&lt;PROTECT&gt;</code> and the caller is answered a vendor 500 error page instead
 /// (measured on a throwaway container, 2026-09-21). Database READ is routine-execution
 /// permission (AD-9, AD-21), so this is a prerequisite rather than a gate OcuPilot can
-/// answer for, and README.md's roles section states it.</li>
+/// answer for, and <file>docs/DEVELOPMENT.md</file>'s "The web applications and the client
+/// bundle" states it.</li>
 /// <li><b>Namespace.</b> The <code>?ns=</code> query parameter, defaulting to the
 /// namespace already in effect when the request begins (the web application's configured,
 /// installed namespace) and validated with <code>##class(%SYS.Namespace).Exists()</code> —

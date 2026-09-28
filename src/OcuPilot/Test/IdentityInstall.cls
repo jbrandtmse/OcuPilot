@@ -123,14 +123,15 @@ ClassMethod IdentityShape() As %String
     Quit tOut
 }
 
-/// <p>Write <var>pProps</var> onto the probe's identity application, and answer whether the
-/// modify succeeded. Used to induce drift; every method that calls it repairs by re-installing.</p>
-ClassMethod DriftApplication(ByRef pProps) As %Boolean
+/// <p>Write <var>pProps</var> onto the probe's identity application, or the application
+/// <var>pName</var> names, and answer whether the modify succeeded. Used to induce drift; every
+/// method that calls it repairs by re-installing.</p>
+ClassMethod DriftApplication(ByRef pProps, pName As %String = "") As %Boolean
 {
     Set tOk = 0
     Set tOrigNS = $NAMESPACE
     Try {
-        Set tName = ..IdentityName()
+        Set tName = $Select(pName = "": ..IdentityName(), 1: pName)
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
         Set tSC = ##class(Security.Applications).Modify(tName, .pProps)
@@ -213,6 +214,58 @@ Method TestASecondRunRepairsADriftedIdentityApplication()
 
     Do $$$AssertEquals(..IdentityShape(), tBefore, "and repaired it back to the installed shape")
     Do $$$AssertTrue(tWarnings [ "identity routine application", "the repair was reported through the logger, not silently applied")
+}
+
+/// <p>A second run repairs the probe's storage routine application when only its
+/// <code>Type</code> has drifted, and reports the repair. An application of any other type grants
+/// no role, so every escalation into OcuPilot's own state would be refused (inference). The
+/// instance accepts the drift: <code>Security.Applications.Modify</code> sets <code>Type</code> 5
+/// on a routine application and keeps its <code>MatchRoles</code> and <code>Routines</code>, so only the
+/// <code>Type</code> comparison can see it.</p>
+/// <p>Mutation (Rule 19): delete the <code>Type</code> comparison from
+/// <method>OcuPilot.Install.Installer.EnsureApplication</method> and recompile
+/// <code>OcuPilot.*</code> -> this goes red.</p>
+Method TestASecondRunRepairsAStorageApplicationWhoseTypeDrifted()
+{
+    Set tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION _ "Probe"
+    Do $$$AssertEquals(..ApplicationType(tName), 4, "the probe's storage application is installed as a privileged routine application")
+    Kill tProps
+    Set tProps("Type") = 5
+    Do $$$AssertTrue(..DriftApplication(.tProps, tName), "its Type is manually drifted")
+    Do $$$AssertEquals(..ApplicationType(tName), 5, "the drift is real")
+
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install(..#PROFILE)
+    Do $$$AssertStatusOK(tSC, "a second install succeeds against the drifted application")
+    Set tWarnings = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+    Do $$$AssertEquals(..ApplicationType(tName), 4, "and repaired its Type")
+    Do $$$AssertTrue(tWarnings [ "Repaired the privileged routine application", "the repair was reported")
+    ; The instance refuses to delete an application of type 5, so a failed repair is undone here
+    ; before the uninstall in OnAfterOneTest.
+    If ..ApplicationType(tName) '= 4 {
+        Kill tBack
+        Set tBack("Type") = 4
+        Do ..DriftApplication(.tBack, tName)
+    }
+}
+
+/// <p>The live <code>Type</code> of the application <var>pName</var>, or <code>""</code>.</p>
+ClassMethod ApplicationType(pName As %String) As %String
+{
+    Set tType = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISOK(tSC), ##class(Security.Applications).Exists(pName, .tObj, .tExistSC) {
+            If $$$ISOK(##class(Security.Applications).Get(pName, .tProps)) Set tType = +$Get(tProps("Type"))
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tType
 }
 
 /// <p>The same for the role: a second run restores a role whose resources were widened or

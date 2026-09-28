@@ -399,9 +399,9 @@ The agent can change the instance only through a proposal the user has confirmed
 - A confirmation is single-use, expires after a fixed interval, and is refused if the user, the conversation, the agent definition or the user's read-only state has changed since the proposal. Before writing, the executor re-reads the target and refuses with a "target changed, re-propose" result when the fingerprint no longer matches.
 - A proposal is canceled, and the agent told, when the user presses Cancel, when a new turn starts in the conversation, or when a sibling proposal touching the same entity is confirmed. A card restored from a reloaded transcript is shown expired, never live.
 - Write tools whose payload includes a secret (password, private key, wallet secret value, API key) declare that field as secret in their schema and do not accept it from the model; the card renders a masked input the user fills at confirmation, and the value travels only in the confirmation request.
-- Each write tool declares whether it is destructive; a destructive proposal requires the user to type the target's name in the card, matching the screens' own delete confirmations.
+- Each write tool declares whether it is destructive; a destructive action taken on a screen requires the user to type the target's name, while a destructive agent proposal is drawn destructive and needs no typed name (owner plan 2026-09-25). [AMENDED 2026-09-26, Story 23.1]
 - A single turn may produce several proposals; each is confirmed or canceled individually.
-- Build step 2; the fingerprint re-read and the typed-name confirmation, step 7 (section 10.1).
+- Build step 2; the fingerprint re-read, step 7 (section 10.1). [AMENDED 2026-09-26, Story 23.1]
 - The write uses the same backing operation and field vocabulary as the corresponding screen; the tool path and the screen path are two callers of one operation, whether that operation is reached in-process or over the admin API (Open Question 17).
 
 #### FR-18: Execution strictly as the user
@@ -992,7 +992,7 @@ A user can ask for a copy-out draft (ObjectScript, CLI or REST snippet) instead 
 
 - On any proposal the user can choose the script instead; the agent returns an ObjectScript, CLI or REST snippet that would make the same change, and no write runs.
 - An OcuPilot administrator can enable or disable each write tool by tool and action, choose the read-only or full preset, and view the effective policy; a disabled tool returns a structured governance-disabled result and stays advertised to the agent.
-- The policy's frozen baseline enables every write tool-and-action key Release 1 ships, so SM-3 holds through 2026-10-04; keys added after Release 1 default to disabled, and the policy names each key it disables.
+- The policy's baseline enables every write tool-and-action key Release 1 ships, so SM-3 holds through 2026-10-04; through 2026-10-04 each story that ships a new write key adds it to the baseline, enabled unless its criteria set it disabled; a key absent from the baseline defaults to disabled, and the policy names each key it disables. [AMENDED 2026-09-26, owner: new write keys join the baseline through the voting week; was "keys added after Release 1 default to disabled"]
 - Before tool results or log text reach the model they are truncated to a bounded size, stripped of control characters, wrapped in a delimiter that marks them as data, and have secret-shaped strings redacted; a test feeds an injected instruction through a log entry and asserts the agent did not act on it.
 - Transcripts are stored per user with each turn's screen context, and a user sees only their own; a purge task removes transcripts older than the agent definition's retention period; an OcuPilot administrator opening another user's transcript is recorded in the agent audit ledger, and sees tool results and screen context only if they hold every resource the transcript's tool calls required, as recorded per ledger row (FR-21).
 

@@ -240,7 +240,7 @@ describe('OpenApiViewerPage', () => {
 
   it('a privilege denial names its pair through the published pattern', async () => {
     const api = new StubApi();
-    api.queue({ kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'This account may not read that screen', detail: { failedPair: '%Admin_Secure:USE' } });
+    api.queue({ kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'This account does not hold the privilege this request requires.', detail: { failedPair: '%Admin_Secure:USE' } });
     const { fixture } = mount(api, new StubScope());
     await settle(fixture);
     expect(textOf(q(fixture, 'refusal'))).toBe('You need %Admin_Secure:USE to read this document.');

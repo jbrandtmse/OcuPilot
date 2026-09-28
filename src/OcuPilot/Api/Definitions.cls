@@ -371,9 +371,9 @@ ClassMethod HandleCreate() As %Status
             Set tSC = ..RenderForbidden()
             Quit
         }
-        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody)
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
         If $$$ISERR(tReadSC) {
-            Set tSC = ..RenderBadBody(tReadSC)
+            Set tSC = ..RenderBadBody(tReadSC, tStage)
             Quit
         }
         If '..BodyIsReadable(tBody) {
@@ -419,6 +419,10 @@ ClassMethod HandleCreate() As %Status
 /// fields clears <code>connectionVerified</code> and <code>enabled</code>
 /// (<method>OcuPilot.Kernel.State.Agent.GuardedUpdate</method>); a change to anything else leaves
 /// both alone.</p>
+/// <p>A body carrying <code>rowVersion</code> as a JSON number saves only while the row still
+/// carries that version, and is refused <code>STATE.CONFLICT</code> otherwise: the version is the
+/// one the screen read, sent back on save. A body without it saves against the version this
+/// request read.</p>
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
@@ -436,9 +440,9 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tSC = ..RenderNotFound(pId)
             Quit
         }
-        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody)
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
         If $$$ISERR(tReadSC) {
-            Set tSC = ..RenderBadBody(tReadSC)
+            Set tSC = ..RenderBadBody(tReadSC, tStage)
             Quit
         }
         If '..BodyIsReadable(tBody) {
@@ -464,7 +468,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         Set tPriorOwned = ''tRow.CredentialCreated
         Do ##class(OcuPilot.Kernel.State.Agent).SnapshotSecurityFields(tRow, .tSnapshot)
         Do ..ApplyValues(tRow, .tValues)
-        Set tSaveSC = ##class(OcuPilot.Kernel.State.Agent).GuardedUpdate(tRow, .tSnapshot)
+        Set tSaveSC = ##class(OcuPilot.Kernel.State.Agent).GuardedUpdate(tRow, .tSnapshot, ..BodyRowVersion(tBody))
         If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(tSaveSC) {
             Set tSC = ..RenderConflict()
             Quit
@@ -622,9 +626,9 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
             Set tSC = ..RenderNotFound(pId)
             Quit
         }
-        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody)
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
         If $$$ISERR(tReadSC) {
-            Set tSC = ..RenderBadBody(tReadSC)
+            Set tSC = ..RenderBadBody(tReadSC, tStage)
             Quit
         }
         If '..BodyIsReadable(tBody) {
@@ -783,9 +787,9 @@ ClassMethod HandleTest(pId As %String) As %Status
             Set tSC = ..RenderNotFound(pId)
             Quit
         }
-        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody)
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
         If $$$ISERR(tReadSC) {
-            Set tSC = ..RenderBadBody(tReadSC)
+            Set tSC = ..RenderBadBody(tReadSC, tStage)
             Quit
         }
         If '..BodyIsReadable(tBody) {
@@ -793,6 +797,9 @@ ClassMethod HandleTest(pId As %String) As %Status
             Quit
         }
         Do ..ValuesFromRow(tRow, .tStored)
+        ; Captured at the open that read the stored values, so the verification write is
+        ; conditional on the row these values came from.
+        Set tVersion = +tRow.RowVersion
         ; Dropped before the call, so the re-read after the verification write is the stored truth
         ; rather than this in-memory instance handed back by %OpenId
         ; (.claude/rules/objectscript-basics.md).
@@ -812,7 +819,7 @@ ClassMethod HandleTest(pId As %String) As %Status
             Set tSC = ..RenderViolations(.tViolations)
             Quit
         }
-        Do ..ConnectionOutcome(pId, .tValues, .tStored, .tAnswer, .tHttpStatus, .tFault, tBody)
+        Do ..ConnectionOutcome(pId, .tValues, .tStored, .tAnswer, .tHttpStatus, .tFault, tBody, tVersion)
         If $IsObject(tFault) {
             Set tSC = ##class(OcuPilot.Api.Error).Render(tHttpStatus, tFault.error, tFault.reason, tFault.code, tFault.detail)
             Quit
@@ -856,10 +863,15 @@ ClassMethod HandleTest(pId As %String) As %Status
 /// answered or faulted (AD-42), carrying <code>effects.keySource</code> and, when it faulted,
 /// <code>effects.faultCode</code>: a port fault is recorded whether it came before the call or from
 /// it, and <code>faultCode</code> says which. An as-stored test that faulted records nothing, and
-/// neither does a row whose version could not be read, which answers 500 before the port is
-/// asked, or a row that moved during the call, which refuses <code>STATE.CONFLICT</code> because
-/// there is no transition to record.</p>
-ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pBody As %DynamicObject = "")
+/// neither does an as-stored test given no <var>pVersion</var>, which answers 500 before the port
+/// is asked, or a row that moved since <var>pVersion</var> was read, which refuses
+/// <code>STATE.CONFLICT</code> because there is no transition to record.</p>
+/// <p><b>Caller contract:</b> <var>pVersion</var> is the row version captured at the open that
+/// read <var>pStored</var>. The verification write is conditional on it, so a definition edited
+/// after that open is never recorded verified for values it no longer holds. It is required only
+/// for a test of the stored values; a test of anything else writes no verification and ignores
+/// it.</p>
+ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pBody As %DynamicObject = "", pVersion As %String = "")
 {
     Set pAnswer = ""
     Set pHttpStatus = 0
@@ -873,16 +885,14 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
     ; below or the endpoint the port fills in.
     Kill tTested
     Merge tTested = pValues
-    ; Captured beside the security-field judgement and carried across the provider call. A
-    ; definition somebody edits while the call is in flight is a definition these values no longer
-    ; describe, and "the values tested must be the stored ones" has to hold when the write lands,
-    ; not only when the call left (DW-362).
-    Set tVersionSC = ##class(OcuPilot.Kernel.State.Agent).GuardedVersion(pId, .tVersionAtCall)
-    If $$$ISERR(tVersionSC) || (tVersionAtCall = "") {
-        ; Not discarded. A version that could not be read makes the write below unconditional,
-        ; which is the pre-existing behaviour this method exists to replace -- so the call is not
-        ; made at all rather than made and then recorded against a row nothing checked.
-        Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the agent definition's row version could not be read, so no provider call was made", $Select($$$ISERR(tVersionSC): tVersionSC, 1: $$$ERROR($$$GeneralError, "no agent definition with id " _ pId)), ##class(OcuPilot.Api.Error).#INTERNAL)
+    ; The version was captured at the open that read the stored values and is carried across the
+    ; provider call. A definition somebody edits after that open is a definition these values no
+    ; longer describe, and "the values tested must be the stored ones" has to hold when the write
+    ; lands, not only when the call left.
+    If tTestedAsStored && (pVersion = "") {
+        ; Refused rather than written unconditionally: a verification recorded against a row
+        ; nothing checked is the outcome the version exists to prevent, so the call is not made.
+        Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "no row version was captured for the agent definition, so no provider call was made", $$$ERROR($$$GeneralError, "no row version for agent definition " _ pId), ##class(OcuPilot.Api.Error).#INTERNAL)
         Set pHttpStatus = 500
         Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, "The agent definition could not be read")
         Quit
@@ -918,7 +928,7 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
     }
     Set tVerified = +$Get(pStored("connectionVerified"))
     If tTestedAsStored {
-        Set tWriteSC = ##class(OcuPilot.Kernel.State.Agent).GuardedSetVerification(pId, tVersionAtCall)
+        Set tWriteSC = ##class(OcuPilot.Kernel.State.Agent).GuardedSetVerification(pId, pVersion)
         If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(tWriteSC) {
             ; The row moved while the call was out. Nothing is written and nothing is recorded: the
             ; definition stays unverified, which is the honest state, and the operator is told to
@@ -1320,16 +1330,10 @@ ClassMethod IsAdministrator() As %Boolean
     Quit ##class(OcuPilot.Screen.Gate).HoldsPrivilege(##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE, ..#ADMINPERMISSION)
 }
 
-/// <p>Refuse with the 403 Story 3.0 already published copy for: the
-/// <parameter>OcuPilot.Api.Error.AUTHNOPRIVILEGE</parameter> code and the failed
-/// <code>(resource, permission)</code> pair in <code>detail.failedPair</code> (AD-8), so the
-/// client renders "You need ... " from the row it already carries and this story mints no new
-/// code and no new string-table row.</p>
+/// <p>Refuse with the one privilege refusal (<class>OcuPilot.Kernel.Denial</class>), naming the administrative pair.</p>
 ClassMethod RenderForbidden() As %Status
 {
-    Set tDetail = {}
-    Do tDetail.%Set("failedPair", ##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE _ ":" _ ..#ADMINPERMISSION)
-    Quit ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, "This account does not hold OcuPilot's administrative privilege", ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, tDetail)
+    Quit ##class(OcuPilot.Kernel.Denial).Envelope(##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE _ ":" _ ..#ADMINPERMISSION)
 }
 
 /// <p>Refuse with 404 and <parameter>OcuPilot.Api.Error.AGENTNOTFOUND</parameter>. The id is not
@@ -1340,16 +1344,37 @@ ClassMethod RenderNotFound(pId As %String) As %Status
     Quit ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, "No agent definition with that identifier exists on this instance", ##class(OcuPilot.Api.Error).#AGENTNOTFOUND)
 }
 
-/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, carrying
-/// <parameter>OcuPilot.Api.Error.REASONAGENTBADBODY</parameter> alone. <var>pStatus</var>'s own
-/// text is vendor-shaped -- it names internal classes and occasionally a path -- so it reaches
-/// <method>OcuPilot.Kernel.Fault.LogRaw</method> and never the wire (AD-39). That seam, rather
-/// than a log call of its own, is what carries the code the caller was given alongside the raw
-/// text, so the log line and the response pair up.</p>
-ClassMethod RenderBadBody(pStatus As %Status) As %Status
+/// <p>Refuse a body the handler cannot use: 400 and
+/// <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, carrying
+/// <parameter>OcuPilot.Api.Error.REASONAGENTBADBODY</parameter> alone, except for a server-side
+/// fault (below). <var>pStatus</var>'s own text is vendor-shaped -- it names internal classes and
+/// occasionally a path -- so it reaches <method>OcuPilot.Kernel.Fault.LogRaw</method> and never
+/// the wire (AD-39). That seam, rather than a log call of its own, is what carries the code the
+/// caller was given alongside the raw text, so the 400's log line and response pair up.</p>
+/// <p><var>pStage</var> is the stage <method>OcuPilot.Kernel.Utils.ReadRequestBody</method>
+/// reported. A <code>read</code> or <code>decode</code> fault is the server's, not the client's,
+/// and answers 500 <code>INTERNAL</code> instead; a <code>parse</code> fault, a body that is not
+/// an object, and an empty stage answer the 400.</p>
+ClassMethod RenderBadBody(pStatus As %Status, pStage As %String = "") As %Status
 {
+    If (pStage = "read") || (pStage = "decode") {
+        Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pStatus))
+    }
     Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the request body could not be read, so the write was refused", pStatus, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
     Quit ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+}
+
+/// <p>The <code>rowVersion</code> a write body carries as a JSON number, as the expected version
+/// for a conditional save, or <code>""</code> when the body is absent or carries none -- a
+/// <code>rowVersion</code> of any other JSON type included -- which saves against the version the
+/// request itself read.</p>
+ClassMethod BodyRowVersion(pBody As %DynamicAbstractObject) As %String
+{
+    If '$IsObject(pBody) Quit ""
+    If 'pBody.%IsA("%Library.DynamicObject") Quit ""
+    If 'pBody.%IsDefined("rowVersion") Quit ""
+    If pBody.%GetTypeOf("rowVersion") '= "number" Quit ""
+    Quit +pBody.%Get("rowVersion")
 }
 
 /// <p>Whether <var>pBody</var> is a shape <method>MergeBody</method> can read: a JSON object, or
@@ -1383,11 +1408,14 @@ ClassMethod NotAnObject() As %Status
 /// about the request as a whole -- the key-shape refusal states the prefix expected. The sentence
 /// a form renders <b>on a field</b> is that violation's own <code>reason</code>, written once in
 /// <class>OcuPilot.Api.Error</class>; neither ever carries a value the caller sent (AD-35).</p>
-ClassMethod RenderViolations(ByRef pViolations, pReason As %String = "The agent definition was refused") As %Status
+/// <p><var>pCode</var> is the envelope's code, <parameter>OcuPilot.Api.Error.AGENTVALIDATION</parameter>
+/// when omitted; another route's refusal passes its own.</p>
+ClassMethod RenderViolations(ByRef pViolations, pReason As %String = "The agent definition was refused", pCode As %String = "") As %Status
 {
+    If pCode = "" Set pCode = ##class(OcuPilot.Api.Error).#AGENTVALIDATION
     Set tDetail = {}
     Do tDetail.%Set("violations", ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.pViolations))
-    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, pReason, ##class(OcuPilot.Api.Error).#AGENTVALIDATION, tDetail)
+    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, pReason, pCode, tDetail)
 }
 
 /// <p>Open definition <var>pId</var> through the guarded frame. <var>pFound</var> is 0 for an id
@@ -1485,8 +1513,9 @@ ClassMethod ApplyValues(pObject As OcuPilot.Kernel.State.Agent, ByRef pValues)
     }
 }
 
-/// <p>The full projection of one definition: every field, the derived <code>default</code>, and
-/// the id. <b>No credential value</b> -- the credential's type and its name are what the schema
+/// <p>The full projection of one definition: every field, the derived <code>default</code>, the
+/// id, and <code>rowVersion</code> -- the version the row carries, which the screen sends back on
+/// save. <b>No credential value</b> -- the credential's type and its name are what the schema
 /// holds, and both are scoped identity data rather than a secret (AD-35, AD-37).</p>
 ClassMethod FullProjection(pObject As OcuPilot.Kernel.State.Agent) As %DynamicObject
 {
@@ -1498,6 +1527,7 @@ ClassMethod FullProjection(pObject As OcuPilot.Kernel.State.Agent) As %DynamicOb
         Do ..SetTyped(tOut, $List(tEntry, 1), $Property(pObject, $List(tEntry, 2)), $List(tEntry, 3))
     }
     Do tOut.%Set("default", $Select(pObject.DefaultMark = "1": 1, 1: 0), "boolean")
+    Do tOut.%Set("rowVersion", +pObject.RowVersion, "number")
     Quit tOut
 }
 

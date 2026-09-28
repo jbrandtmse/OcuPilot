@@ -58,12 +58,12 @@ ClassMethod SourceLogCalls() As %Integer
     Quit $Get(^||OcuPilotAboutFixture("sourcelogcalls"), 0)
 }
 
-ClassMethod ReadSource(pField As %String) As %String
+ClassMethod ReadSource(pField As %String, ByRef pContext) As %String
 {
     If $Data(^||OcuPilotAboutFixture("sourcethrows", pField)) {
         Throw ##class(%Exception.General).%New("UiAboutFixture", 1, , "fixture: " _ pField _ " source refused")
     }
-    Quit ##super(pField)
+    Quit ##super(pField, .pContext)
 }
 
 ClassMethod ReadDocBookApplication() As %Boolean

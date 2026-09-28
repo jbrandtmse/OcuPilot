@@ -189,8 +189,8 @@ Method TestEveryToolIsAdvertisedToALeastPrivilegedPrincipal()
 }
 
 /// <p><b>AC3</b> -- the roster the turn advertises is exactly what
-/// <method>OcuPilot.Screen.Tool.Registry.ListTools</method> returns, name for name, less the tools it
-/// marks unadvertised (AD-53). The advertisement is a projection of the registry, never a second
+/// <method>OcuPilot.Screen.Tool.Registry.ListTools</method> returns, name for name, less any tool it
+/// marks unadvertised (AD-53), of which none ships today. The advertisement is a projection of the registry, never a second
 /// list.</p>
 /// <p>Mutation (Rule 19): drop one tool from
 /// <method>OcuPilot.Kernel.Agent.Dispatch.Advertise</method>'s answer -> this goes red.</p>

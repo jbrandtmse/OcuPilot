@@ -1,6 +1,7 @@
 /// <p>The agent ledger over HTTP (Story 4.9, AD-8, AD-21, AD-24, AD-46), driven by two
 /// least-privileged principals whose turns run as real jobs against the armed <code>turnprobe</code>
-/// row: what a turn writes, the resources a row records, the route's own envelope and refusals, and
+/// row: what a turn writes, the resources a row records, the store's own cut of an argument string,
+/// the route's own envelope and refusals, and
 /// an administrator's view of another user's rows gated row by row.</p>
 /// <p><b>It creates IRIS users and roles and spawns turn jobs, so <method>OnBeforeAllTests</method>
 /// refuses to run unless both <parameter>ARMINGVARIABLE</parameter> and
@@ -412,6 +413,39 @@ Method TestAFailedProviderCallWritesAnErrorRowWithItsCode()
     Do $$$AssertEquals(tLlm.code, ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE, "and the fault's own machine code")
     Do $$$AssertEquals(tLlm.name, "turnprobe", "against the provider key it called")
     Do $$$AssertEquals(tLlm.user, ..Subject(), "recorded against the caller")
+}
+
+/// <p>A row whose argument string reaches the store longer than <code>LEDGERROWMAXLENGTH</code> is
+/// cut there and reads <code>argumentsTruncated</code> 1 though its writer reported no cut; one of
+/// exactly that length is kept whole and reads 0; a short string reads the writer's own answer, 0
+/// or 1. Written through
+/// <method>OcuPilot.Kernel.State.Ledger.GuardedAppend</method> under
+/// <class>OcuPilot.Test.LedgerLimits</class>'s narrowed bound, one turn key per case, and read back
+/// over the route by the owner.</p>
+/// <p>Mutation (Rule 19): set <property>ArgumentsTruncated</property> from
+/// <var>pArgumentsTruncated</var> alone in <method>OcuPilot.Kernel.State.Ledger.GuardedAppend</method>
+/// -- the long-string case goes red. Compare the length with <code>&gt;=</code> -- the exact-length
+/// case goes red.</p>
+Method TestAnArgumentStringTheStoreCutsIsMarkedTruncated()
+{
+    Set tLimits = "OcuPilot.Test.LedgerLimits"
+    Set tMax = +$Parameter(tLimits, "LEDGERROWMAXLENGTH")
+    Set tLong = $Translate($Justify("", tMax + 12), " ", "a")
+    Set tExact = $Translate($Justify("", tMax), " ", "a")
+    For tCase = "long|0|1", "exact|0|0", "short|0|0", "short|1|1" {
+        Set tKey = "ledgerwirecut" _ $Translate($System.Util.CreateGUID(), "-", "")
+        Set tArguments = $Case($Piece(tCase, "|", 1), "long": tLong, "exact": tExact, : "{}")
+        Set tSC = $ClassMethod(..#STORE, "GuardedAppend", tKey, ..Subject(), ..#CONTEXTROUTE, $Parameter(..#STORE, "KINDTOOL"), "probe.ledger.read", "", "", tArguments, $Piece(tCase, "|", 2), "ok", "", 0, 0, "", tLimits, .tSeq, .tStored)
+        Do $$$AssertStatusOK(tSC, tCase _ ": the row is appended")
+        Do $$$AssertEquals(tStored, 1, tCase _ ": and stored")
+        Set tView = ..Read(..Subject(), "?turnKey=" _ tKey, .tStatus, .tText, .tHeaders)
+        Do $$$AssertEquals(tStatus, 200, tCase _ ": the owner reads it: " _ $Extract(tText, 1, 200))
+        Set tRow = ..RowOfKind(tView, $Parameter(..#STORE, "KINDTOOL"))
+        Do $$$AssertTrue($IsObject(tRow), tCase _ ": the row is in the view")
+        If '$IsObject(tRow) Continue
+        Do $$$AssertEquals(tRow.argumentsTruncated, $Piece(tCase, "|", 3), tCase _ ": argumentsTruncated reads " _ $Piece(tCase, "|", 3))
+        If $Piece(tCase, "|", 1) '= "short" Do $$$AssertEquals($Length(tRow.arguments), tMax, tCase _ ": at the bound")
+    }
 }
 
 /// <p>Start a turn whose model asks the browser to open <parameter>TARGETROUTE</parameter>, a screen

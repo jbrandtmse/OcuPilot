@@ -194,6 +194,23 @@ describe('the web application editor (Story 9.2)', () => {
     expect(calls.some((call) => call.path === `${WEB_APPLICATIONS_FORM_PATH}?name=${encodeURIComponent('/csp/probe')}`)).toBe(true);
   });
 
+  it('Story 16.17: a Save shows the instance\u2019s read-back beside Saved and carries it on the change', async () => {
+    // Mutation (Rule 19): render `STRINGS.formSaved` again instead of `savedLine(...)` in the
+    // page's status -> the status assertion goes red, and the form says "Saved" with no word on
+    // whether the instance now holds what was sent (AD-58).
+    const readBack = { verdict: 'differs', fields: ['Timeout'], written: [] };
+    const { fixture, host, events } = await mount('/csp/probe', { kind: 'ok', status: 200, body: { name: '/csp/probe', readBack } });
+    type(fixture, host, 'ocu-web-app-edit-Timeout', '1200');
+    (host.querySelector('.ocu-form-bar .ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(host.querySelector('.ocu-form-bar-status [role="status"]')?.textContent?.trim()).toBe(
+      `${STRINGS.formSaved} \u00b7 Read back: differs in Timeout`
+    );
+    const changed = events.filter((event) => event.kind === 'changed' && event.type === 'web-application');
+    expect(changed).toHaveLength(1);
+    expect(changed[0].readBack).toEqual({ ...readBack, reason: '' });
+  });
+
   it('re-reads the application in place when another caller changes it while the form is clean', async () => {
     // Mutation (Rule 19): drop the page's ChangeBus subscription -> the description assertion goes red.
     const served: Record<string, unknown> = {};

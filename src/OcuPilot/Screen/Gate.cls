@@ -167,38 +167,6 @@ ClassMethod EvaluateRequired(pPairs As %List, Output pFailedPair As %String) As 
     Quit ..EvaluatePairs(pPairs, .pFailedPair)
 }
 
-/// <p>Whether the calling process holds <b>any one</b> pair in <var>pPairs</var> -- an OR-set,
-/// where <method>EvaluateRequired</method> is an AND-set. An empty or unreadable set is never
-/// held, for the same reason.</p>
-/// <p><var>pFailedPair</var> is <code>""</code> when the answer is yes; when it is no, it is the
-/// <b>first</b> pair of the set, which is the one the caller would have to be granted. No single
-/// pair failed the caller here -- all of them did -- so naming the last one tried would name an
-/// arbitrary member of the list.</p>
-ClassMethod EvaluateAnyOf(pPairs As %List, Output pFailedPair As %String) As %Boolean
-{
-    Set pFailedPair = ""
-    If '$ListValid(pPairs) || ($ListLength(pPairs) = 0) Quit 0
-    Set tAllowed = 0
-    Try {
-        For tI = 1:1:$ListLength(pPairs) {
-            Set tPair = $List(pPairs, tI)
-            If '$ListValid(tPair) || ($ListLength(tPair) '= 2) Continue
-            If ..HoldsPrivilege($List(tPair, 1), $List(tPair, 2)) {
-                Set tAllowed = 1
-                Quit
-            }
-        }
-        If 'tAllowed {
-            Set tFirst = $List(pPairs, 1)
-            If $ListValid(tFirst) && ($ListLength(tFirst) = 2) Set pFailedPair = $List(tFirst, 1) _ ":" _ $List(tFirst, 2)
-        }
-    } Catch {
-        Set tAllowed = 0
-        Set pFailedPair = ""
-    }
-    Quit tAllowed
-}
-
 /// <p><parameter>ADMINRESOURCES</parameter> spelled as the comma-separated
 /// <code>resource:permission</code> specification every declared pair set in this tree uses, each
 /// member at <parameter>ADMINPERMISSION</parameter>.</p>

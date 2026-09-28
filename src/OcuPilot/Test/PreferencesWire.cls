@@ -11,11 +11,26 @@
 /// <file>ui/tools/account-preferences.test.mjs</file> and the component specs instead: a stored
 /// route that no longer resolves to a built screen, a favorite the caller may no longer open, and
 /// an instance that did not answer.</p>
+/// <p>It runs only where <parameter>ARMINGVARIABLE</parameter> reads <code>1</code>, because it
+/// clears that account's lists on the instance it runs against.</p>
 Class OcuPilot.Test.PreferencesWire Extends %UnitTest.TestCase
 {
 
+/// <p>The environment variable that arms this class, set by <file>scripts/ci-throwaway.sh</file>
+/// alone.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_ACCOUNT_PREFERENCES";
+
 /// <p>The route under test, from the origin root.</p>
 Parameter PREFERENCESPATH = "/api/ocupilot/account/preferences";
+
+/// <p>Refuse to run at all unless this instance is armed for clearing an account's preferences.</p>
+Method OnBeforeAllTests() As %Status
+{
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.PreferencesWire clears the test account's favorites, recents and remembered views on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was cleared. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Quit $$$OK
+}
 
 Method OnBeforeOneTest() As %Status
 {
@@ -507,6 +522,35 @@ Method TestAClearEmptiesAValueKindToo()
     Do $$$AssertEquals(tStatus, 200, "the shell kind clears too: " _ tBody)
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertEquals(tAnswer.shell.%Size(), 0, "leaving nothing")
+}
+
+/// <p><b>Home's rate is remembered under <code>home</code>, and only as a rate</b> (Story 16.18,
+/// AD-43): Home's route is empty, so the refresh kind alone takes
+/// <parameter>OcuPilot.Kernel.State.Pref.HOMEREFRESHNAME</parameter> in its place. A favorite or a
+/// view keyed by that name is still refused as a route no built screen declares.</p>
+/// <p>Mutation: drop the <method>OcuPilot.Api.Preferences.IsHomeRefresh</method> test from
+/// <method>OcuPilot.Api.Preferences.HandleUpdate</method> -- the rate is refused 422 and the first
+/// leg goes red; widen it to every kind -- the favorite answers 200 and the second leg goes red.</p>
+Method TestHomesRateIsRememberedUnderItsOwnName()
+{
+    Set tHome = ##class(OcuPilot.Kernel.State.Pref).#HOMEREFRESHNAME
+    Set tRate = ##class(OcuPilot.Kernel.State.Pref).#KINDREFRESH
+    Set tSC = ..Call("POST", ..ValuePayload(tRate, "route", tHome, "0"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the set completes")
+    Do $$$AssertEquals(tStatus, 200, "Home's rate is accepted: " _ tBody)
+    Do $$$AssertTrue($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", "as application/json")
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(..ValueFor(tAnswer, "refreshRates", "route", tHome), "0", "and answered under its own name")
+
+    For tCase = $ListBuild(..Payload("favorite", "add", tHome), "a favorite"), $ListBuild(..ValuePayload(##class(OcuPilot.Kernel.State.Pref).#KINDSCREENVIEW, "route", tHome, "{}"), "a view") {
+        Set tSC = ..Call("POST", $List(tCase, 1), .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 2) _ ": the request completes")
+        Do $$$AssertEquals(tStatus, 422, $List(tCase, 2) _ " named home is refused: " _ tBody)
+        Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#PREFERENCESROUTE, $List(tCase, 2) _ ": as a route no built screen declares")
+    }
+    Do $$$AssertEquals(..Count("favorites"), 0, "and no favorite was written")
+    Do $$$AssertEquals(..Count("views"), 0, "nor a view")
 }
 
 }

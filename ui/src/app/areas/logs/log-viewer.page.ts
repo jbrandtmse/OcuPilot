@@ -1,14 +1,16 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
-import { Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, inject, signal, viewChild } from '@angular/core';
+import { NavigationEnd, Router } from '@angular/router';
 
 import { ExplainEntry } from '../../core/explain-entry';
 import { isBannerFault } from '../../core/fault';
 import { formatDeniedAction, NavigationService } from '../../core/navigation';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import {
   SEVERITY_CHIPS,
+  fileOptionText,
   highlightSpans,
   matchCountText,
   matchesSearch,
@@ -16,7 +18,18 @@ import {
   severityWord,
   type LogLine,
 } from './log-line';
-import { ALERTS_SOURCE, MESSAGES_SOURCE, LogViewerStore, type LogViewerSource } from './log-viewer.store';
+import {
+  ALERTS_SOURCE,
+  ANALYTICS_SOURCE,
+  EVENT_LOG_SOURCE,
+  MESSAGES_SOURCE,
+  SQL_DIAGNOSTICS_SOURCE,
+  SYSTEM_MONITOR_SOURCE,
+  TASK_ERRORS_SOURCE,
+  XDBC_SOURCE,
+  LogViewerStore,
+  type LogViewerSource,
+} from './log-viewer.store';
 
 /** One row, resolved for drawing: the cells' text and the search spans of its message. */
 interface RowView {
@@ -32,6 +45,16 @@ interface RowView {
   readonly entry: { readonly time: string; readonly severity: string; readonly text: string };
 }
 
+/** One option of the file choice: `value` is `''` for the source's own file (Story 16.20). */
+interface FileOptionView {
+  readonly value: string;
+  readonly text: string;
+  readonly selected: boolean;
+}
+
+/** The query parameter the address names a rotated file by (Story 16.20); screen state, not scope. */
+const FILE_PARAM = 'file';
+
 /** One severity chip, resolved for drawing. */
 interface ChipView {
   readonly key: string;
@@ -44,11 +67,17 @@ interface ChipView {
 const SOURCES: Readonly<Record<string, LogViewerSource>> = {
   'logs/alerts': ALERTS_SOURCE,
   'logs/messages': MESSAGES_SOURCE,
+  'logs/systemmonitor': SYSTEM_MONITOR_SOURCE,
+  'logs/taskerrors': TASK_ERRORS_SOURCE,
+  'logs/xdbc': XDBC_SOURCE,
+  'logs/sqldiagnostics': SQL_DIAGNOSTICS_SOURCE,
+  'logs/eventlog': EVENT_LOG_SOURCE,
+  'logs/analytics': ANALYTICS_SOURCE,
 };
 
 /**
- * The page every `log-viewer` archetype renders (AD-5): a bounded window of one instance log file,
- * read from the file itself.
+ * The page every `log-viewer` archetype renders (AD-5): a bounded window of one instance log, read
+ * from the file itself or, for the six secondary logs, as their newest entries.
  *
  * Each log screen adds one `SOURCES` route rather than a page of its own.
  *
@@ -68,9 +97,20 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
  * while a chip is pressed, so a screen with nothing to clear offers no dead control, and
  * `shell/command-bar.ts` grows no slot for it (DW-1109).
  *
- * **Next and previous over the matches are the search field's own Enter and Shift+Enter**, not two
- * buttons. EXPERIENCE.md publishes no name for either control, and an icon button with no published
- * accessible name is worse than a keyboard affordance the polite count already announces.
+ * **The file choice is messages.log's alone** (Story 16.20): a source that declares `filesPath` lists
+ * its own file and its rotated files, and the address carries the chosen one as `?file=` beside
+ * `ns`, read when the page is built and on every navigation that stays on this screen. Choosing
+ * navigates; the navigation is what reads. The alert log renders no choice and asks for no list.
+ *
+ * **What is on screen is the screen context** (AD-24): every read publishes its entries into this
+ * screen's store as the declared `{time, severity, text}` rows, newest first, so a typed turn and
+ * the context chip see the file that is open.
+ *
+ * **Next match and Previous match move the caret over the matches, wrapping** (DW-1102): two text
+ * buttons beside the polite count, and the search field's own Enter and Shift+Enter do the same.
+ *
+ * **The six secondary logs read entries** (Story 16.8): their sources declare `entries`, the rows
+ * arrive already normalized, and Load newer reads the newest window again and jumps to the bottom.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -90,7 +130,25 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
         (input)="onSearch($event)"
         (keydown)="onSearchKey($event)"
       />
+      @if (showFileChoice) {
+        <select
+          class="ocu-criteria-select"
+          data-ocu-log="file"
+          [attr.aria-label]="STRINGS.databaseVolumeColumnFile"
+          (change)="onFile($event)"
+        >
+          @for (option of fileOptions; track option.value) {
+            <option [value]="option.value" [selected]="option.selected">{{ option.text }}</option>
+          }
+        </select>
+      }
       <p class="ocu-log-viewer-count" role="status" data-ocu-log="count">{{ countText }}</p>
+      <button type="button" class="ocu-button-text" data-ocu-log="next" (click)="onNext()">
+        {{ STRINGS.logViewerNextMatch }}
+      </button>
+      <button type="button" class="ocu-button-text" data-ocu-log="previous" (click)="onPrevious()">
+        {{ STRINGS.logViewerPreviousMatch }}
+      </button>
       <button type="button" class="ocu-button-text" data-ocu-log="top" (click)="onTop()">
         {{ STRINGS.logViewerJumpTop }}
       </button>
@@ -218,9 +276,20 @@ export class LogViewerPage {
   /** The screen this page renders, which an explained entry is sent as. */
   private readonly screen: ScreenDeclaration | null;
 
+  /** The file source this screen reads. */
+  private readonly source: LogViewerSource;
+
+  /** This screen's store, which a turn's screen context reads its rows from (AD-24). */
+  private readonly screenStore: ScreenStore | null;
+
+  /** The entries `publishRows` last wrote, so an unchanged window is not re-published. */
+  private publishedLines: readonly LogLine[] | null = null;
+
   protected readonly STRINGS = STRINGS;
 
   private readonly viewport = viewChild<ElementRef<HTMLElement>>('viewport');
+
+  private readonly injector = inject(Injector);
 
   /** Bumped by the store, so the rows re-render under `OnPush`. */
   private readonly generation = signal(0);
@@ -235,26 +304,102 @@ export class LogViewerPage {
   private caretValue = 0;
 
   constructor() {
-    const stop = this.store.subscribe(() => this.generation.update((value) => value + 1));
+    const stop = this.store.subscribe(() => {
+      this.publishRows();
+      this.generation.update((value) => value + 1);
+    });
     const stopExplain = this.explainEntry?.subscribe(() => this.generation.update((value) => value + 1)) ?? null;
     const screen = this.navigation.screenForUrl(this.router.url);
     this.screen = screen;
-    this.store.setSource(SOURCES[screen?.route ?? ''] ?? ALERTS_SOURCE);
+    const source = SOURCES[screen?.route ?? ''] ?? ALERTS_SOURCE;
+    this.source = source;
+    this.screenStore = screen === null ? null : inject(ScreenStores).for(screen.descriptor, screen.refreshRates);
+    this.store.setSource(source, this.addressedFile());
     // Manual Refresh only (DW-260). This screen binds no `RefreshService`: it declares
     // `refreshes: false` and adds rows only on an explicit Load newer, so Refresh re-opens the
-    // window rather than ticking it.
+    // window, and re-reads the file list, rather than ticking either.
     const stopRefreshAction =
       screen === null
         ? null
         : this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
             void this.store.open();
+            void this.store.loadFiles();
           });
+    // A choice navigates to this same route, which keeps this page; the address is what reads.
+    const stopAddress = this.router.events.subscribe((event) => {
+      if (!(event instanceof NavigationEnd) || screen === null) return;
+      if (this.navigation.screenForUrl(this.router.url)?.descriptor !== screen.descriptor) return;
+      const file = this.addressedFile();
+      if (file === this.store.file()) return;
+      this.store.setSource(source, file);
+      void this.store.open();
+    });
     inject(DestroyRef).onDestroy(() => {
       stop();
       stopExplain?.();
       stopRefreshAction?.();
+      stopAddress.unsubscribe();
     });
     if (!this.store.loaded() && !this.store.loading()) void this.store.open();
+    if (source.filesPath !== undefined && !this.store.filesLoaded()) void this.store.loadFiles();
+    this.publishRows();
+  }
+
+  /** The rotated file the address names, `''` for none or for a source that lists no files. */
+  private addressedFile(): string {
+    if (this.source.filesPath === undefined) return '';
+    const named = this.router.parseUrl(this.router.url).queryParams[FILE_PARAM];
+    return typeof named === 'string' ? named : '';
+  }
+
+  /**
+   * Publish the entries on screen into this screen's store, newest first as the declared read
+   * answers them, each as its declared `{time, severity, text}` (AD-24). The panel's own
+   * `assembleScreenContext` caps and narrows them.
+   */
+  private publishRows(): void {
+    if (this.screenStore === null) return;
+    const lines = this.store.lines();
+    if (lines === this.publishedLines) return;
+    this.publishedLines = lines;
+    const rows = [...lines].reverse().map((line) => ({ time: line.stamp, severity: line.severity, text: line.text }));
+    this.screenStore.applyTick(rows, this.store.truncated(), this.screenStore.banner(), new Date());
+  }
+
+  /** Whether the file choice renders: the source lists files, and its list has answered. */
+  protected get showFileChoice(): boolean {
+    this.generation();
+    return this.source.filesPath !== undefined && this.store.filesLoaded();
+  }
+
+  /**
+   * The file choice's options, in the list's order, the source's own file carrying the value `''`.
+   * A file the address names that the list does not hold is offered by its name alone, selected.
+   */
+  protected get fileOptions(): readonly FileOptionView[] {
+    this.generation();
+    const own = this.source.ownFile ?? '';
+    const chosen = this.store.file();
+    const options: FileOptionView[] = this.store.files().map((entry) => {
+      const value = entry.name === own ? '' : entry.name;
+      return { value, text: fileOptionText(entry), selected: value === chosen };
+    });
+    if (chosen !== '' && !options.some((option) => option.value === chosen)) {
+      options.push({ value: chosen, text: chosen, selected: true });
+    }
+    return options;
+  }
+
+  /** Put the chosen file in the address, keeping `ns`; the source's own file takes `file` out. */
+  protected onFile(event: Event): void {
+    const target = event.target;
+    const value = target instanceof HTMLSelectElement ? target.value : '';
+    void this.router.navigateByUrl(
+      this.router.createUrlTree([], {
+        queryParams: { [FILE_PARAM]: value === '' ? null : value },
+        queryParamsHandling: 'merge',
+      })
+    );
   }
 
   protected get search(): string {
@@ -348,12 +493,14 @@ export class LogViewerPage {
 
   protected get showRefusal(): boolean {
     this.generation();
+    if (this.store.gone()) return true;
     const fault = this.store.fault();
     return fault !== null && !isBannerFault(fault);
   }
 
   protected get refusalMessage(): string {
     this.generation();
+    if (this.store.gone()) return STRINGS.logViewerFileGone;
     const pair = this.store.failedPair();
     if (this.store.fault()?.code === 'AUTH.NOPRIVILEGE' && pair !== '') {
       return formatDeniedAction(STRINGS.privilegeDeniedAction, pair, STRINGS.errorLogRefusedAction);
@@ -368,7 +515,7 @@ export class LogViewerPage {
 
   protected get showEmpty(): boolean {
     this.generation();
-    if (!this.store.loaded() || this.store.fault() !== null) return false;
+    if (!this.store.loaded() || this.store.fault() !== null || this.store.gone()) return false;
     return this.rows.length === 0 || this.searchFoundNothing;
   }
 
@@ -447,7 +594,18 @@ export class LogViewerPage {
   }
 
   protected onLoadNewer(): void {
-    void this.store.loadNewer();
+    void this.store.loadNewer().then(() => {
+      if (this.source.entries !== true) return;
+      afterNextRender(() => this.onBottom(), { injector: this.injector });
+    });
+  }
+
+  protected onNext(): void {
+    this.step(1);
+  }
+
+  protected onPrevious(): void {
+    this.step(-1);
   }
 
   /** Move the caret over the matches, wrapping at both ends so neither control is a dead end. */

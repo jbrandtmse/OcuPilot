@@ -53,7 +53,7 @@ Property PreparedFixtureReports [ MultiDimensional ];
 
 /// <p>The exact identity (<code>"&lt;$H day&gt;,&lt;entry number&gt;"</code>) of the
 /// application-error entry <method>OnBeforeAllTests</method>' own
-/// <code>Fixture.Create</code> call seeded, so
+/// <code>Fixture.Create</code> call reported present, so
 /// <method>TestDemoSeedsAnApplicationError</method> asserts against the entry <b>this
 /// run</b> produced rather than against "some entry from today".</p>
 /// <p>Replaces the <code>$H</code> boundary this property used to hold (rework iteration
@@ -103,7 +103,7 @@ Parameter CREATEMAXSECONDS As %Integer = 30;
 /// method's own header) so this shared fixture can never collide with, or destroy, a
 /// real production demo fixture at <code>/csp/myapp</code>.</p>
 /// <p>Captures the fixture's own report stream and the exact identity of the
-/// application-error entry it seeded into instance properties, so
+/// application-error entry it reported into instance properties, so
 /// <method>TestDemoTaskIsSuspendedAfterAnError</method> and
 /// <method>TestDemoSeedsAnApplicationError</method> can each make their own,
 /// independently-verifiable assertion about what THIS run actually did, rather than
@@ -479,7 +479,7 @@ Method TestDemoTaskIsSuspendedAfterAnError()
 }
 
 /// <p>AC12 (DW-15) -- the install namespace's own application error log carries at least
-/// one entry with readable error text and a time, seeded by this run's own fixture.</p>
+/// one entry with readable error text and a time, present, as reported by this run's fixture.</p>
 /// <p><b>Rewritten for the deterministic seed (rework iteration 5).</b> This used to scan
 /// <code>SYS.ApplicationError:ErrorList</code> across a date window for an entry naming
 /// the demo <i>task</i>, bounded by a <code>$H</code> "since" value and a minute-floored
@@ -492,8 +492,8 @@ Method TestDemoTaskIsSuspendedAfterAnError()
 /// delivered the entry 180 s later". It did not. The task ran only after the fixture's
 /// own 300-second wait let go of it (see <method>OcuPilot.Install.Fixture.CreateTask</method>'s
 /// header), and the "180 s" came from a test that could not observe the task at all. The
-/// fixture now seeds its own
-/// entry synchronously and hands back its exact identity, so this asserts against that one
+/// fixture now keeps its own
+/// entry present synchronously and hands back its exact identity, so this asserts against that one
 /// row: its <code>Error #</code>, on its own date, in the install namespace.</p>
 /// <p>Independent of the fixture's own confirmation by construction: the fixture reports
 /// what it found, this test re-reads the entry itself from the supported query and checks
@@ -502,14 +502,14 @@ Method TestDemoTaskIsSuspendedAfterAnError()
 /// produce.</p>
 Method TestDemoSeedsAnApplicationError()
 {
-    Do $$$AssertTrue(..PreparedErrorEntryId '= "", "this run's own fixture seeded an application-error log entry and reported its exact identity")
+    Do $$$AssertTrue(..PreparedErrorEntryId '= "", "an application-error log entry is present, as reported by this run's fixture, with its exact identity")
     If ..PreparedErrorEntryId = "" {
         Quit
     }
 
     Set tDay = $Piece(..PreparedErrorEntryId, ",", 1)
     Set tNumber = $Piece(..PreparedErrorEntryId, ",", 2)
-    Do $$$AssertTrue((tDay > 0) && (tNumber > 0), "the seeded entry's identity is a real ($H day, entry number) pair")
+    Do $$$AssertTrue((tDay > 0) && (tNumber > 0), "the reported entry's identity is a real ($H day, entry number) pair")
 
     ; SYS.ApplicationError exists only in %SYS (AD-48's own note, confirmed live: a
     ; %ResultSet built against it from HSCUSTOM comes back not-an-object, and the
@@ -543,7 +543,7 @@ Method TestDemoSeedsAnApplicationError()
     }
     Set $NAMESPACE = tOrigNS
 
-    Do $$$AssertTrue(tFound, "the entry this run's fixture seeded is readable back from the install namespace's own application error log")
+    Do $$$AssertTrue(tFound, "the entry this run's fixture reported is readable back from the install namespace's own application error log")
     Do $$$AssertTrue(tMessage '= "", "the entry carries readable error text")
     Do $$$AssertTrue(tTime '= "", "the entry carries a time")
     ; The marker, not bare presence: the seed raises its error inside
@@ -556,6 +556,29 @@ Method TestDemoSeedsAnApplicationError()
     Set tRS2 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Demo WHERE Kind = 'errorentry' AND Profile = 'probe'")
     Do $$$AssertTrue(tRS2.%Next(), "the count query returns a row")
     Do $$$AssertTrue(tRS2.N > 0, "the error-log fixture has an inventory row")
+}
+
+/// <p>A second start finds the demo's application error the first one left and seeds no other:
+/// <method>OcuPilot.Install.Fixture.Create</method> answers the same entry, reports it already
+/// present, and the number of the demo's entries in the install namespace does not change.</p>
+/// <p>Mutation (Rule 19): call <method>OcuPilot.Install.Fixture.SeedApplicationError</method> in
+/// <method>OcuPilot.Install.Fixture.CreateErrorEntry</method> in place of
+/// <method>OcuPilot.Install.Fixture.EnsureErrorEntry</method> -> this goes red.</p>
+Method TestASecondStartSeedsNoSecondErrorEntry()
+{
+    Set tNs = $NAMESPACE
+    Set tBefore = ##class(OcuPilot.Test.DemoErrorSeed).DemoEntries(tNs, .tBeforeIds)
+    Do $$$AssertTrue(tBefore > 0, "the first start left the demo's entry: " _ tBefore)
+    Kill tReports
+    Set tSC = ##class(OcuPilot.Install.Fixture).Create("probe", .tReports, .tErrorEntryId)
+    Do $$$AssertStatusOK(tSC, "a second fixture run completes")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DemoErrorSeed).DemoEntries(tNs, .tAfterIds), tBefore, "the number of demo entries does not change")
+    Do $$$AssertEquals(tErrorEntryId, ..PreparedErrorEntryId, "the entry answered is the one the first run reported")
+    Set tReported = 0
+    For tI = 1:1:+$Get(tReports) {
+        If $Get(tReports(tI, "message")) [ "already present - not re-seeded" Set tReported = 1
+    }
+    Do $$$AssertTrue(tReported, "the second run reports the entry already present")
 }
 
 /// <p>AC9 -- positive assertion for the demo SSL/TLS configuration fixture: it exists,

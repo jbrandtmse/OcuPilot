@@ -62,20 +62,48 @@ Property StepsDropped As %Integer [ InitialExpression = 0 ];
 /// existed reads <code>""</code>, which restores as no citations.</p>
 Property Citations As %String(MAXLEN = "");
 
+/// <p>Stored as embedded JSON text deliberately: the screen-context payload the turn was started
+/// with, verbatim as <class>OcuPilot.Kernel.Agent.Job</class> held it -- already bounded and
+/// stripped of secret-typed fields by the turn request (AD-24, AD-35) -- or empty for a turn that
+/// carried none. Never queried by member, read back whole by <method>GuardedRows</method>.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b>: an entry appended before this property
+/// existed reads empty, which is the answer a turn that carried no context gives.</p>
+Property ContextJson As %Stream.GlobalCharacter;
+
+/// <p>The agent definition the turn ran under
+/// (<property>OcuPilot.Kernel.State.Turn.DefinitionId</property>), a weak reference (AD-37). Its
+/// <property>OcuPilot.Kernel.State.Agent.RetentionDays</property> decides how long this entry is
+/// kept. <b>Added with no <code>SCHEMAVERSION</code> move</b>: an older entry reads
+/// <code>""</code>, which retention reads as the default definition's, exactly as it reads a
+/// definition that has since gone.</p>
+Property DefinitionId As %String(MAXLEN = 32);
+
+/// <p>When the entry was appended, ISO-8601 UTC (Consistency Conventions: Dates). <b>Added with no
+/// <code>SCHEMAVERSION</code> move</b>: an older entry reads <code>""</code>, which every reader
+/// takes as its conversation's <property>OcuPilot.Kernel.State.Convo.CreatedAt</property>.</p>
+Property AppendedAt As %String(MAXLEN = 32);
+
 Index ConvoSeqIdx On (ConvoKey, Seq) [ Unique ];
 
 /// <p>Append one entry to conversation <var>pConvoKey</var>. <var>pStepsJson</var> is the
 /// already-capped step array, serialized; <var>pTurnKey</var> is the turn it records, which a
-/// caller that has none may omit; <var>pCitations</var> is the reply's citations as JSON text.</p>
-ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %String, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "", pCitations As %String = "") As %Status
+/// caller that has none may omit; <var>pCitations</var> is the reply's citations as JSON text;
+/// <var>pContextJson</var> is the turn's bounded screen-context payload as JSON text, or
+/// <code>""</code>; <var>pDefinitionId</var> is the definition the turn ran under.</p>
+/// <p>The new entry's <property>Seq</property> is one past the highest the conversation holds, so a
+/// conversation whose older entries retention removed keeps appending.</p>
+ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %String, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "", pCitations As %String = "", pContextJson As %String = "", pDefinitionId As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tSC = ..GuardedIdsWhere("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ?", pConvoKey, .tCount)
+        Set tSC = ..GuardedIdsWhere("SELECT MAX(Seq) FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ?", pConvoKey, .tHighest)
         If $$$ISERR(tSC) Quit
         Set tRow = ..%New()
         Set tRow.ConvoKey = pConvoKey
-        Set tRow.Seq = +$Get(tCount(1)) + 1
+        Set tRow.Seq = +$Get(tHighest(1)) + 1
+        Set tRow.AppendedAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
+        Set tRow.DefinitionId = ##class(OcuPilot.Kernel.State.Turn).Cap(pDefinitionId, 32, .tCutDefinition)
+        If pContextJson '= "" Do tRow.ContextJson.Write(pContextJson)
         Set tRow.Message = ##class(OcuPilot.Kernel.State.Turn).Cap(pMessage, +$Parameter(pLimitsClass, "MESSAGEMAXLENGTH"), .tCutMsg)
         Set tRow.State = pState
         Set tRow.Reply = ##class(OcuPilot.Kernel.State.Turn).Cap(pReply, +$Parameter(pLimitsClass, "TEXTMAXLENGTH"), .tCutReply)
@@ -107,11 +135,22 @@ ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %
 /// the stream. <code>AddRoles</code> is authorized by compiled routine, not by caller identity,
 /// so the escalated read has to happen inside a method compiled into <class>Base</class>'s own
 /// routine, which is what <code>GuardedStreamText</code> is for.</p>
-ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray) As %Status
+/// <p><var>pWithContext</var> 1 adds <code>appendedAt</code> -- the entry's own time, or its
+/// conversation's <property>OcuPilot.Kernel.State.Convo.CreatedAt</property> for an entry appended
+/// before the column existed -- and <code>context</code>, the stored screen-context payload parsed,
+/// or JSON null when the turn carried none or it does not parse. The default leaves the shape the
+/// panel's restore reads unchanged.</p>
+ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray, pWithContext As %Boolean = 0) As %Status
 {
     Set pRows = []
     Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ? ORDER BY Seq", pConvoKey, .tIds)
     If $$$ISERR(tSC) Quit tSC
+    Set tCreatedAt = ""
+    If pWithContext {
+        Set tSC = ..GuardedIdsWhere("SELECT CreatedAt FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(ConvKey) = ?", pConvoKey, .tCreated)
+        If $$$ISERR(tSC) Quit tSC
+        Set tCreatedAt = ..Text($Get(tCreated(1)))
+    }
     For tI = 1:1:+$Get(tIds) {
         Set tOpenSC = ..GuardedOpenId(tIds(tI), .tRow)
         If $$$ISERR(tOpenSC) Continue
@@ -151,6 +190,32 @@ ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray) As 
         }
         Do tOut.%Set("steps", tSteps)
         Do tOut.%Set("stepsDropped", +tRow.StepsDropped, "number")
+        If pWithContext {
+            Set tAppended = ..Text(tRow.AppendedAt)
+            If tAppended = "" Set tAppended = tCreatedAt
+            If tAppended = "" {
+                Do tOut.%Set("appendedAt", "", "null")
+            } Else {
+                Do tOut.%Set("appendedAt", tAppended, "string")
+            }
+            Set tContextSC = ..GuardedStreamText(tRow, "ContextJson", .tContextText)
+            If $$$ISERR(tContextSC) Set tContextText = ""
+            Set tContext = ""
+            Try {
+                If tContextText '= "" {
+                    Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(tContextText)
+                    If $IsObject(tParsed) && tParsed.%IsA("%Library.DynamicObject") Set tContext = tParsed
+                }
+            } Catch ex {
+                Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "conversation " _ pConvoKey _ " entry " _ +tRow.Seq _ ": ContextJson could not be parsed", ex.AsStatus())
+                Set tContext = ""
+            }
+            If $IsObject(tContext) {
+                Do tOut.%Set("context", tContext)
+            } Else {
+                Do tOut.%Set("context", "", "null")
+            }
+        }
         Set tRow = ""
         Do pRows.%Push(tOut)
     }
@@ -182,8 +247,40 @@ ClassMethod GuardedTurnKeys(pConvoKey As %String, Output pKeys) As %Status
     Quit $$$OK
 }
 
-/// <p>Delete every entry of conversation <var>pConvoKey</var>. For test teardown only; production
-/// never deletes a conversation (Story 14.4 owns retention).</p>
+/// <p>Delete every entry older than the retention its own definition names (AD-37, the Operational
+/// Envelope's Retention row). <var>pCutoffs(id)</var> is the cutoff, in
+/// <method>OcuPilot.Kernel.State.Turn.NowSeconds</method> units, for an entry of definition
+/// <var>id</var>; <var>pCutoffs</var> itself is the cutoff for an entry whose definition is not
+/// subscripted -- one that has gone, or an entry recorded before <property>DefinitionId</property>
+/// existed. An entry is older when its <property>AppendedAt</property>, or its conversation's
+/// <code>CreatedAt</code> where that is empty, is before its cutoff; an entry whose age cannot be
+/// read is kept. <var>pRemoved</var> is how many were deleted. A failed delete ends the walk with
+/// its status.</p>
+ClassMethod GuardedPurge(ByRef pCutoffs, Output pRemoved As %Integer) As %Status
+{
+    Set pRemoved = 0
+    Set tSC = ..GuardedRowsNoParam("SELECT e.ID, e.DefinitionId, e.AppendedAt, c.CreatedAt FROM OcuPilot_Kernel_State.Entry e LEFT JOIN OcuPilot_Kernel_State.Convo c ON c.ConvKey = e.ConvoKey", .tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Set tDefault = $Get(pCutoffs)
+    For tI = 1:1:+$Get(tRows) {
+        Set tDefinition = ..Text($Get(tRows(tI, 2)))
+        Set tCutoff = tDefault
+        If (tDefinition '= "") && $Data(pCutoffs(tDefinition)) Set tCutoff = pCutoffs(tDefinition)
+        If tCutoff = "" Continue
+        Set tAt = ..Text($Get(tRows(tI, 3)))
+        If tAt = "" Set tAt = ..Text($Get(tRows(tI, 4)))
+        Set tSeconds = ##class(OcuPilot.Kernel.State.Turn).SecondsOf(tAt)
+        If (tSeconds = "") || (tSeconds >= tCutoff) Continue
+        Set tSC = ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Entry WHERE ID = ?", tRows(tI, 1))
+        If $$$ISERR(tSC) Quit
+        Set pRemoved = pRemoved + 1
+    }
+    Quit tSC
+}
+
+/// <p>Delete every entry of conversation <var>pConvoKey</var>. For test teardown and
+/// <method>OcuPilot.Kernel.State.Convo.GuardedDelete</method>; retention removes entries one by one
+/// through <method>GuardedPurge</method>.</p>
 ClassMethod GuardedDeleteForConvo(pConvoKey As %String) As %Status
 {
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ?", pConvoKey)

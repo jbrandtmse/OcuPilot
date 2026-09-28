@@ -179,6 +179,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             Do tTextBlock.%Set("type", "text", "string")
             Do tTextBlock.%Set("text", pMessage, "string")
             Do tUserBlocks.%Push(tTextBlock)
+            Do ##class(OcuPilot.Kernel.Agent.Sanitize).Results(tUserBlocks)
             Set tMessages(tHistoryCount + 3, "role") = "user"
             Set tMessages(tHistoryCount + 3, "blocks") = tUserBlocks.%ToJSON()
         } Else {
@@ -224,6 +225,11 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             ; no reply, whatever text arrived before it, and the ledger row records the same code.
             If '$IsObject($Get(tFault)) && $IsObject($Get(tResponse)) && (tResponse.StopReason = ##class(OcuPilot.Kernel.Provider.MessageAdapter).#REFUSALSTOPREASON) {
                 Do ##class(OcuPilot.Kernel.Provider.Base).Fault(##class(OcuPilot.Api.Error).#PROVIDERDECLINED, "", "", .tFault, .tDeclinedHttp)
+            }
+            ; A tool call the provider could not complete ends the turn the same way, under its own
+            ; code, because the model did not decline.
+            If '$IsObject($Get(tFault)) && $IsObject($Get(tResponse)) && (tResponse.StopReason = ##class(OcuPilot.Kernel.Provider.MessageAdapter).#TOOLCALLFAILEDSTOPREASON) {
+                Do ##class(OcuPilot.Kernel.Provider.Base).Fault(##class(OcuPilot.Api.Error).#PROVIDERTOOLCALLFAILED, "", "", .tFault, .tDeclinedHttp)
             }
             Do ..RecordProviderRow(pKey, pUser, tContextRoute, tProviderKey, tProviderModel, tIterations, $Get(tResponse), $Get(tFault), tLimits, +$Get(tHttpStatus))
             Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedProgress(pKey, tIterations, tInput, tOutput)
@@ -419,7 +425,8 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 /// rebuilt from <var>pText</var> and <var>pToolUses</var>.</p>
 /// <p><var>pCandidates</var>, when an array, gains the citation candidates of every non-error call
 /// to a descriptor-backed read tool answered here (<method>OcuPilot.Kernel.Agent.Citations.Candidates</method>),
-/// read from the bounded content the model was handed.</p>
+/// read from the bounded content before <method>OcuPilot.Kernel.Agent.Sanitize.Results</method>
+/// frames the model's copy.</p>
 ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String, pContextRowCap As %Integer = 0, pRoute As %String = "", pContentJson As %String = "", pCandidates As %DynamicArray = "") As %Status
 {
     Set pState = ""
@@ -554,10 +561,10 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
                     Set tCode = ""
                 }
             }
-            ; The bounded result content the model was handed, stored on the step (DW-1052). It is
-            ; the tool_result content itself -- already cut to the per-call budget by the
-            ; dispatcher -- so the panel's card shows what the model read rather than nothing. The
-            ; dispatcher-failed finish above records none: there was no result.
+            ; The bounded result content, stored on the step (DW-1052): the tool_result content
+            ; already cut to the per-call budget by the dispatcher, before Sanitize.Results cleans
+            ; and frames the model's copy below, so the panel's card shows the bounded instance
+            ; data. The dispatcher-failed finish above records none: there was no result.
             Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tName, $Select(tIsError: "error", 1: "ok"), tCode, pLimitsClass, tDetail.target, tDetail.arguments, tDetail.result, tDetail.reason, tDetail.failedPair, tDetail.argumentsTruncated, $Select($IsObject(tResult): tResult.%Get("content"), 1: ""))
             If $$$ISERR(tSC) Quit
             If 'tIsError && $IsObject(tResult) && $IsObject(pCandidates) && ..CitesRows(tRunningResolved) {
@@ -574,6 +581,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
     }
     If $$$ISERR(tSC) Quit tSC
     If pState '= "" Quit $$$OK
+    Do ##class(OcuPilot.Kernel.Agent.Sanitize).Results(tAnswered)
     Set pMessages = pMessages + 1
     Set pMessages(pMessages, "role") = "user"
     Set pMessages(pMessages, "blocks") = tAnswered.%ToJSON()

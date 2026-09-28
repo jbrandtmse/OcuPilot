@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
 import { NavigationService, formatDeniedAction, withQuery } from '../../core/navigation';
+import { savedLine } from '../../core/read-back';
 import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
@@ -201,7 +202,7 @@ interface GrantRow {
     <div class="ocu-form-bar">
       <div class="ocu-form-bar-status">
         @if (showSaved) {
-          <span role="status">{{ STRINGS.formSaved }}</span>
+          <span role="status">{{ savedText }}</span>
         }
       </div>
       <div class="ocu-form-bar-actions">
@@ -384,6 +385,12 @@ export class RoleCreateFormPage {
     return this.store.saved();
   }
 
+  /** "Saved", with the instance's read-back line where the Save answered one (AD-58). */
+  protected get savedText(): string {
+    this.generation();
+    return savedLine(this.store.readBack());
+  }
+
   protected get leavePending(): boolean {
     this.generation();
     return this.formDirty.pending();
@@ -475,7 +482,7 @@ export class RoleCreateFormPage {
     // opens showing "Saved"; this form's own state is left behind with it.
     const created = this.store.createdId();
     if (created !== '') {
-      this.editor.arriveSaved(created);
+      this.editor.arriveSaved(created, this.store.readBack());
       void this.router.navigateByUrl(this.editorUrl(created), { replaceUrl: true });
     }
   }

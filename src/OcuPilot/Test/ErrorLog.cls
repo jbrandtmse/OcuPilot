@@ -1,6 +1,6 @@
 /// <p>The application error log at the port's own API (AD-48), driven against the entries this
-/// instance already holds -- the installer's own <code>SeedApplicationError</code> puts one in on
-/// every start, so every read here has a subject without anything being written.</p>
+/// instance already holds -- the installer's own <code>SeedApplicationError</code> keeps one present
+/// after every start, so every read here has a subject without anything being written.</p>
 /// <p><b>Read-only throughout.</b> Nothing here creates, modifies or deletes an application error,
 /// writes to <code>^ERRORS</code>, or creates a user, role or resource. The one class that seeds an
 /// entry is <class>OcuPilot.Test.ErrorLogSeed</class>, on a throwaway container; the three denial

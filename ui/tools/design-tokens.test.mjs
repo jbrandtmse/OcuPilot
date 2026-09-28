@@ -706,6 +706,17 @@ test('a row action\'s reason is revealed on hover AND on focus, not on hover alo
   assert.match(reveal[1], /clip-path:\s*none/, 'and actually un-clipped, not merely re-padded');
 });
 
+test("Story 16.23: Download CSV's cap description is revealed on keyboard focus too", () => {
+  // The slot's hover rule above covers the pointer; the control is not `.ocu-command-bar-action`,
+  // so without its own focus rule a keyboard user never sees the sentence (EXPERIENCE.md bans
+  // hover-only affordances). The browser half is `csv-download.browser-spec.mjs` AC4.
+  //
+  // Mutation: drop the `.ocu-command-bar-download:focus-visible` rule -> this goes red.
+  const reveal = /\n\.ocu-command-bar-download:focus-visible \+ \.ocu-command-bar-reason\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(reveal, 'expected the download description to be revealed on keyboard focus');
+  assert.match(reveal[1], /clip-path:\s*none/, 'and actually un-clipped, not merely re-padded');
+});
+
 test('DW-173: .ocu-command-bar-refresh is bounded and ellipsizes, and its row can shrink it', () => {
   // The same defect DW-145 was, one bar over: a bounded row meeting an unbounded string. The
   // paused chip's literal is 55 characters and no published design covers these chips at

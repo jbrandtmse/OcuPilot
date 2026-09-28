@@ -11,9 +11,11 @@
 /// log capture, and a conflict armed there would be a conflict they all met. This one is reachable
 /// only through <class>OcuPilot.Test.RouterFixture</class>'s own route, which nothing else
 /// calls.</p>
-/// <p>The window it exploits is real and is the one the conditional write closes: a handler that
-/// reads, does work, then writes. It cannot be produced over a socket, because it opens and closes
-/// inside one request and OcuPilot publishes no version token a second request could carry.</p>
+/// <p>The window it exploits is real and is the one the conditional write closes for a body that
+/// carries no <code>rowVersion</code>: a handler that reads, does work, then writes. It opens and
+/// closes inside one request, so it cannot be produced over a socket. A body that carries one names
+/// the version the screen read, sent back on save, and is refused over a socket
+/// (<class>OcuPilot.Test.SwitchesWire</class>).</p>
 Class OcuPilot.Test.SwitchesStaleProbe Extends OcuPilot.Api.Switches
 {
 

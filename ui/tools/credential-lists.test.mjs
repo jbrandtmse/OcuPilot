@@ -77,3 +77,21 @@ test('both lists equal the spine Conventions Secrets row', () => {
   sameMembers(CREDENTIAL_EXACT_NAMES, backticked(row, ', or a name that is exactly', ', and the server'));
   sameMembers(CREDENTIAL_EXCEPTIONS, backticked(row, 'The one exception:', ', the authorization server'));
 });
+
+// Story 16.1: the try-it console masks by name at runtime, from `core/secret-names.ts`, which the
+// bundle can import and this build-time module cannot be. The two copies hold one list.
+//
+// Mutation (Rule 19): drop `token` from `secret-names.ts`'s suffixes -> this goes red naming it.
+const secretNames = await import(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app', 'core', 'secret-names.ts'));
+
+test('the runtime credential lists equal the build-time ones, and isSecretName reads them', () => {
+  sameMembers(secretNames.CREDENTIAL_SUFFIXES, CREDENTIAL_SUFFIXES);
+  sameMembers(secretNames.CREDENTIAL_EXACT_NAMES, CREDENTIAL_EXACT_NAMES);
+  sameMembers(secretNames.CREDENTIAL_EXCEPTIONS, CREDENTIAL_EXCEPTIONS);
+  for (const name of ['Password', 'X-Token', 'apiKey', 'Key', 'CredentialName', 'ClientSecret64']) {
+    assert.equal(secretNames.isSecretName(name), true, name);
+  }
+  for (const name of ['ReturnRefreshToken', 'KeyFile', 'name', 'Authorization']) {
+    assert.equal(secretNames.isSecretName(name), false, name);
+  }
+});

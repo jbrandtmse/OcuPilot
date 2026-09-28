@@ -191,8 +191,12 @@ Method TestSeveralCallsAreAnsweredInOrderInOneMessage()
         Set tShape = tShape _ tBlock.type _ ":" _ tBlock."tool_use_id" _ ":" _ tBlock."is_error" _ ";"
     }
     Do $$$AssertEquals(tShape, "tool_result:toolu_1:0;tool_result:toolu_2:1;tool_result:toolu_3:0;", "every block a tool result, in call order, no text block")
-    Do $$$AssertTrue((tResults.content.%Get(0).content [ """m1""") && (tResults.content.%Get(2).content [ """m3"""), "each carrying its own call's result")
-    Do $$$AssertEquals(tResults.content.%Get(1).content, "{""code"":""TOOL.UNKNOWN""}", "and the unknown call its code")
+    For tI = 0:1:2 {
+        Set tBodies(tI) = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tResults.content.%Get(tI).content, .tWrapped)
+        Do $$$AssertTrue(tWrapped, "result " _ (tI + 1) _ " is framed as data")
+    }
+    Do $$$AssertTrue((tBodies(0) [ """m1""") && (tBodies(2) [ """m3"""), "each carrying its own call's result")
+    Do $$$AssertEquals(tBodies(1), "{""code"":""TOOL.UNKNOWN""}", "and the unknown call its code")
 
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound, .tView)
     Set tSteps = ""
@@ -269,7 +273,9 @@ Method TestNoToolResultReachesTheSystemPrompt()
     }
     Do $$$AssertEquals($Length(tBody, tMarker) - 1, 1, "the result's text appears once in the second request")
     Set tResult = tSent.messages.%Get(2).content.%Get(0)
-    Do $$$AssertEquals(tResult.type _ "|" _ (tResult.content [ tMarker), "tool_result|1", "inside the tool_result block")
+    Set tResultBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tResult.content, .tWrapped)
+    Do $$$AssertTrue(tWrapped, "framed as data")
+    Do $$$AssertEquals(tResult.type _ "|" _ (tResultBody [ tMarker), "tool_result|1", "inside the tool_result block")
 }
 
 /// <p>Reply budget (DW-452, Story 4.4) -- one reply's three identical calls, each sized so its full
@@ -300,20 +306,24 @@ Method TestAReplysToolResultsShareOneBudget()
     Do $$$AssertEquals(tResults.%Size(), 3, "three tool results, one per call")
 
     Set tMax = $Parameter("OcuPilot.Kernel.Agent.Limits", "TOOLRESULTMAXLENGTH")
+    For tI = 0:1:2 {
+        Set tBodies(tI) = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tResults.%Get(tI).content, .tWrapped)
+        Do $$$AssertTrue(tWrapped, "result " _ (tI + 1) _ " is framed as data")
+    }
     Set tFirst = tResults.%Get(0)
-    Set tFirstContent = ##class(%DynamicAbstractObject).%FromJSON(tFirst.content)
+    Set tFirstContent = ##class(%DynamicAbstractObject).%FromJSON(tBodies(0))
     Do $$$AssertEquals(tFirst."is_error", 0, "the first call is answered")
     Do $$$AssertEquals(tFirstContent.truncated, 0, "in full, uncut")
-    Set tFirstLength = $Length(tFirst.content)
+    Set tFirstLength = $Length(tBodies(0))
 
     Set tSecond = tResults.%Get(1)
-    Set tSecondContent = ##class(%DynamicAbstractObject).%FromJSON(tSecond.content)
+    Set tSecondContent = ##class(%DynamicAbstractObject).%FromJSON(tBodies(1))
     Do $$$AssertEquals(tSecond."is_error", 0, "the second call is still answered")
     Do $$$AssertEquals(tSecondContent.truncated, 1, "but cut to what the first call left of the budget")
-    Do $$$AssertTrue((tFirstLength + $Length(tSecond.content)) <= tMax, "the two answered results together stay inside the one budget")
+    Do $$$AssertTrue((tFirstLength + $Length(tBodies(1))) <= tMax, "the two answered results together stay inside the one budget")
 
     Set tThird = tResults.%Get(2)
-    Do $$$AssertEquals(tThird."is_error" _ "|" _ tThird.content, "1|{""code"":""TOOL.RESULTTOOLARGE""}", "the third finds under 256 characters left and is refused without running")
+    Do $$$AssertEquals(tThird."is_error" _ "|" _ tBodies(2), "1|{""code"":""TOOL.RESULTTOOLARGE""}", "the third finds under 256 characters left and is refused without running")
     Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Calls("probe.counter.read"), 2, "so the tool itself ran only twice")
 
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound, .tView)
@@ -346,7 +356,9 @@ Method TestContextRowCapBoundsToolResultsInATurn()
     Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Last("probe.counter.read", "cap"), 5, "the tool is asked for the resolved row cap, not TOOLROWS")
     Set tSent = ##class(%DynamicAbstractObject).%FromJSON($ClassMethod(..#STUB, "Recorded", "body", 2))
     Set tResult = tSent.messages.%Get(2).content.%Get(0)
-    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResult.content)
+    Set tResultBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tResult.content, .tWrapped)
+    Do $$$AssertTrue(tWrapped, "framed as data")
+    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResultBody)
     Do $$$AssertEquals(tContent.rows.%Size() _ "|" _ tContent.truncated, "5|1", "the result is cut to the resolved cap and marked")
 
     Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("looking", tCalls))

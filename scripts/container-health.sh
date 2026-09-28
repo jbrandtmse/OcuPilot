@@ -20,7 +20,7 @@
 # start-scoped condition there would refuse traffic forever. The trade (the key follows the
 # container, not the IRIS instance inside it, so an `iris restart` inside a running container
 # does not re-run the hook and the check stays healthy) is in container-start.sh's header and
-# README.md.
+# docs/DEVELOPMENT.md's "The container start path".
 #
 # See container-start.sh's own note: `iris session` echoes prompt text into stdout, so
 # the result is extracted with a distinctive marker, never assumed to be "the last line" --

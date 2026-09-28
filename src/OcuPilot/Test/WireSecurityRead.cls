@@ -456,7 +456,7 @@ Method TestTaskHistoryPairSetsAreEnforcedForARealPrincipal()
     Do ..AssertReadRefused(..#TASKUSER, "tasks.history", "%DB_IRISSYS:READ", "&search=OcuPilot")
     Do ..AssertReadRefused(..#TASKUSER, "tasks.taskhistory", "%DB_IRISSYS:READ")
 
-    Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.history")
+    Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.history", "&search=OcuPilotDemo%20nightly", "OcuPilotDemo nightly")
     Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.taskhistory")
 }
 
@@ -1011,8 +1011,9 @@ Method TestBothPairsReadEveryList()
 
 /// <p>Assert that <var>pUser</var>'s read of <var>pTool</var> at <code>maxRows=1000</code> answers
 /// 200 with a non-empty, untruncated row set equal, row for row, to the test account's own read of
-/// the same screen. <var>pQuery</var> is appended to both reads' query strings as given.</p>
-Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String, pQuery As %String = "")
+/// the same screen. <var>pQuery</var> is appended to both reads' query strings as given, and when
+/// <var>pEveryNameContains</var> is not empty every row's <code>Name</code> must contain it.</p>
+Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String, pQuery As %String = "", pEveryNameContains As %String = "")
 {
     Set tPath = "/api/ocupilot/screens/" _ pTool _ "/read?maxRows=1000" _ pQuery
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tWantStatus, .tWantBody, .tWantHeaders)
@@ -1028,6 +1029,13 @@ Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String, pQuery As
     Do $$$AssertEquals(tGot.truncated, 0, pUser _ " " _ pTool _ ": nothing is cut at 1,000")
     Do $$$AssertEquals(tGot.rows.%Size(), tWant.rows.%Size(), pUser _ " " _ pTool _ ": as many rows as the test account reads")
     Do $$$AssertTrue(tGot.rows.%ToJSON() = tWant.rows.%ToJSON(), pUser _ " " _ pTool _ ": and the same rows")
+    If pEveryNameContains = "" Quit
+    Set tOther = ""
+    Set tIter = tGot.rows.%GetIterator()
+    While tIter.%GetNext(.tKey, .tRow) {
+        If '(tRow.Name [ pEveryNameContains) Set tOther = "row " _ tKey _ ": " _ tRow.Name Quit
+    }
+    Do $$$AssertEquals(tOther, "", pUser _ " " _ pTool _ ": every row is one the query names (" _ pEveryNameContains _ ")")
 }
 
 /// <p>Story 6.3, Matrix "Secure pairs" -- a principal holding <code>%Admin_Secure:USE</code> and
@@ -1112,7 +1120,7 @@ Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
     Set tBefore = ..AsyncTaskCount()
     Do $$$AssertTrue(tBefore >= 0, "the async-task list reads before the refused read (" _ tBefore _ ")")
 
-    Do $$$AssertEquals(..ScreensFor(..#AUDITDENYUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/messages"",""labelKey"":""messagesLogListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Operate:USE""}]", "%Admin_Secure and the database read: all four Logs screens are denied on %Admin_Operate:USE, which each of them requires")
+    Do $$$AssertEquals(..ScreensFor(..#AUDITDENYUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/messages"",""labelKey"":""messagesLogListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/systemmonitor"",""labelKey"":""systemMonitorLogListLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/taskerrors"",""labelKey"":""taskErrorLogListLabel"",""sideBarPosition"":6,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/xdbc"",""labelKey"":""xdbcErrorLogListLabel"",""sideBarPosition"":7,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/sqldiagnostics"",""labelKey"":""sqlDiagnosticsLogListLabel"",""sideBarPosition"":8,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/eventlog"",""labelKey"":""eventLogListLabel"",""sideBarPosition"":9,""allowed"":false,""failedPair"":""%Ens_EventLog:USE""},{""route"":""logs/analytics"",""labelKey"":""analyticsLogListLabel"",""sideBarPosition"":10,""allowed"":true}]", "%Admin_Secure and the database read: every Logs screen needing %Admin_Operate:USE is denied on it, the event log on its own pair, and the analytics log, whose pair is public, is open")
     Do $$$AssertEquals(..AreaVerdictFor(..#AUDITDENYUSER, "logs"), "false:%Admin_Operate:USE", "and so is the Logs area")
     Do ..AssertReadRefused(..#AUDITDENYUSER, "logs.audit", "%Admin_Operate:USE")
     Do $$$AssertEquals(..AsyncTaskCount(), tBefore, "and the refused read queued nothing, so no async-task row is left behind (DW-249)")
@@ -1120,9 +1128,9 @@ Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
     ; The pair ORDER, read by a principal holding neither of the screen's administrative resources:
     ; %Admin_Secure:USE is declared first, so it is the pair the gate names. A descriptor that
     ; declared the first two the other way round would name %Admin_Operate:USE here.
-    Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/messages"",""labelKey"":""messagesLogListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "a principal holding neither administrative resource is denied on the first pair each screen declares -- %Admin_Operate for the two log files and the application error log, %Admin_Secure for the audit viewer")
+    Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/messages"",""labelKey"":""messagesLogListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""logs/systemmonitor"",""labelKey"":""systemMonitorLogListLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/taskerrors"",""labelKey"":""taskErrorLogListLabel"",""sideBarPosition"":6,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/xdbc"",""labelKey"":""xdbcErrorLogListLabel"",""sideBarPosition"":7,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/sqldiagnostics"",""labelKey"":""sqlDiagnosticsLogListLabel"",""sideBarPosition"":8,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/eventlog"",""labelKey"":""eventLogListLabel"",""sideBarPosition"":9,""allowed"":false,""failedPair"":""%Ens_EventLog:USE""},{""route"":""logs/analytics"",""labelKey"":""analyticsLogListLabel"",""sideBarPosition"":10,""allowed"":true}]", "a principal holding neither administrative resource is denied on the first pair each screen declares -- %Admin_Operate for the log files, the application error log and four secondary logs, %Admin_Secure for the audit viewer, %Ens_EventLog for the event log")
 
-    Do $$$AssertEquals(..ScreensFor(..#AUDITUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""logs/messages"",""labelKey"":""messagesLogListLabel"",""sideBarPosition"":2,""allowed"":true},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":true}]", "all three pairs: all four Logs screens are listed allowed")
+    Do $$$AssertEquals(..ScreensFor(..#AUDITUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""logs/messages"",""labelKey"":""messagesLogListLabel"",""sideBarPosition"":2,""allowed"":true},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":true},{""route"":""logs/systemmonitor"",""labelKey"":""systemMonitorLogListLabel"",""sideBarPosition"":5,""allowed"":true},{""route"":""logs/taskerrors"",""labelKey"":""taskErrorLogListLabel"",""sideBarPosition"":6,""allowed"":true},{""route"":""logs/xdbc"",""labelKey"":""xdbcErrorLogListLabel"",""sideBarPosition"":7,""allowed"":true},{""route"":""logs/sqldiagnostics"",""labelKey"":""sqlDiagnosticsLogListLabel"",""sideBarPosition"":8,""allowed"":true},{""route"":""logs/eventlog"",""labelKey"":""eventLogListLabel"",""sideBarPosition"":9,""allowed"":false,""failedPair"":""%Ens_EventLog:USE""},{""route"":""logs/analytics"",""labelKey"":""analyticsLogListLabel"",""sideBarPosition"":10,""allowed"":true}]", "all three pairs: the first four Logs screens and every secondary log but the event log are listed allowed")
     Do $$$AssertEquals(..AreaVerdictFor(..#AUDITUSER, "logs"), "true", "and so is the Logs area")
 
     ; The served read, through the port's self-queued async path (AD-26) and with a declared
@@ -1185,6 +1193,31 @@ Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/logs.audit/read?maxRows=25&authentication=Password", ..#AUDITUSER, ..PreparedPassword, .tStatus4, .tBody4, .tHeaders4)
     Do $$$AssertStatusOK(tSC, "the declared-value read completes")
     Do $$$AssertEquals(tStatus4, 200, "and answers")
+}
+
+/// <p>Story 16.8 (AD-8, DW-1755) -- the Logs area keeps Release 1's pair set, and the event log's
+/// <code>%Ens_EventLog:USE</code> gates that screen alone. <parameter>AUDITUSER</parameter> holds
+/// exactly the Logs area's three pairs and not that one: the Logs area reads allowed, messages.log
+/// and alerts.log are served on their routes and read tools, and only the event log's route and read
+/// tool are refused, naming its pair.</p>
+/// <p>Mutation (Rule 19): put <code>%Ens_EventLog:USE</code> back on the <code>logs</code> area in
+/// <class>OcuPilot.Screen.Area</class> -&gt; the area verdict goes red.</p>
+Method TestTheLogsAreaStaysOpenWithoutTheEventLogsPair()
+{
+    Do $$$AssertNotEquals($SYSTEM.Security.CheckUserPermission(..#AUDITUSER, "%Ens_EventLog", "USE"), 1, ..#AUDITUSER _ " does not hold %Ens_EventLog:USE")
+    Do $$$AssertEquals(..AreaVerdictFor(..#AUDITUSER, "logs"), "true", "the Logs area reads allowed on its three pairs")
+    For tPath = "/api/ocupilot/logs/messages", "/api/ocupilot/logs/alerts?maxBytes=4096", "/api/ocupilot/screens/logs.messages/read?maxRows=5", "/api/ocupilot/screens/logs.alerts/read?maxRows=5" {
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, ..#AUDITUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, tPath _ ": the request completes")
+        Do $$$AssertEquals(tStatus, 200, tPath _ ": served: " _ $Extract(tBody, 1, 200))
+    }
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/logs/eventlog", ..#AUDITUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the event log route request completes")
+    Do $$$AssertEquals(tStatus, 403, "the event log route is refused")
+    Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tRefusal.code, "AUTH.NOPRIVILEGE", "on the screen-privilege code")
+    Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), "%Ens_EventLog:USE", "naming %Ens_EventLog:USE")
+    Do ..AssertReadRefused(..#AUDITUSER, "logs.eventlog", "%Ens_EventLog:USE")
 }
 
 /// <p>Story 6.14 AC9 (DW-1025) -- an unprivileged caller's async read leaves no

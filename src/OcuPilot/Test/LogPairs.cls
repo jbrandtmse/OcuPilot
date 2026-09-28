@@ -32,6 +32,10 @@ Parameter CLASSICPERMISSION = "USE";
 /// <code>&lt;descriptor&gt;=&lt;port parameter&gt;</code>.</p>
 Parameter SOURCES = "OcuPilot.Screen.Descriptor.LogMessageViewer=MESSAGESPAIRS|OcuPilot.Screen.Descriptor.LogAlertViewer=ALERTSPAIRS|OcuPilot.Screen.Descriptor.LogErrorList=ERRORSINSTANCEPAIRS";
 
+/// <p>Story 16.8's six sources, <code>|</code>-separated, as
+/// <code>&lt;descriptor&gt;=&lt;port parameter&gt;=&lt;classic page&gt;</code>.</p>
+Parameter SECONDARYSOURCES = "OcuPilot.Screen.Descriptor.LogSystemMonitorViewer=SYSTEMMONITORPAIRS=%CSP.UI.Portal.ViewLog|OcuPilot.Screen.Descriptor.LogTaskErrorViewer=TASKERRORSPAIRS=%CSP.UI.Portal.BackgroundTaskError|OcuPilot.Screen.Descriptor.LogXdbcViewer=XDBCPAIRS=%CSP.UI.Portal.xDBCErrorNamespaces|OcuPilot.Screen.Descriptor.LogSqlDiagnosticsViewer=SQLDIAGNOSTICSPAIRS=%CSP.UI.Portal.SQL.Logs|OcuPilot.Screen.Descriptor.LogEventViewer=EVENTLOGPAIRS=EnsPortal.EventLog|OcuPilot.Screen.Descriptor.LogAnalyticsViewer=ANALYTICSPAIRS=%DeepSee.UI.LogViewer";
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
@@ -72,6 +76,37 @@ Method TestEachLogSourceDeclaresItsClassicPagesResource()
         Set tPortPairs = ##class(OcuPilot.Screen.Gate).ParsePairSpec(tPortSpec)
         Set tPortNormalized = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(tPortPairs, .tPortCut)
         Do $$$AssertEquals(tDeclaredSpec, tPortNormalized, tDescriptor _ ": the screen and the port require the same set")
+    }
+}
+
+/// <p>Story 16.8, way one -- each secondary log declares its classic page, and its port pair set is
+/// that page's own <code>RESOURCE</code> at <code>USE</code> (the first, where the page names
+/// alternatives), or the Logs area's <code>%Admin_Operate:USE</code> where the page names none; the
+/// descriptor declares the same set.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Port.LogSourcePort.EVENTLOGPAIRS</parameter> to
+/// <code>%Admin_Operate:USE</code> -&gt; the event log row goes red.</p>
+Method TestEachSecondaryLogDeclaresItsClassicPagesResource()
+{
+    For tI = 1:1:$Length(..#SECONDARYSOURCES, "|") {
+        Set tRow = $Piece(..#SECONDARYSOURCES, "|", tI)
+        Set tDescriptor = $Piece(tRow, "=", 1)
+        Set tPortSpec = $Parameter(..#PORT, $Piece(tRow, "=", 2))
+        Set tPage = $Piece(tRow, "=", 3)
+
+        Set tSC = $ClassMethod(tDescriptor, "DeclarationJson", .tDeclaration)
+        Do $$$AssertStatusOK(tSC, tDescriptor _ ": parses")
+        If $$$ISERR(tSC) Continue
+        Do $$$AssertEquals(tDeclaration.classicPage, tPage, tDescriptor _ ": declares its classic page")
+
+        Set tParameter = ##class(%Dictionary.CompiledParameter).%OpenId(tPage _ "||RESOURCE")
+        Set tResource = $Piece($Piece($Select($IsObject(tParameter): tParameter.Default, 1: ""), ",", 1), ":", 1)
+        Set tWanted = $Select(tResource = "": ..#CLASSICRESOURCE, 1: tResource) _ ":" _ ..#CLASSICPERMISSION
+        Do $$$AssertEquals(tPortSpec, tWanted, tDescriptor _ ": the port's pair is " _ tPage _ "'s own resource")
+
+        Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs(tDescriptor, .tResolved)
+        Set tDeclaredSpec = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(tDeclared, .tCut)
+        Set tPortSpecNormalized = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(##class(OcuPilot.Screen.Gate).ParsePairSpec(tPortSpec), .tPortCut)
+        Do $$$AssertEquals(tDeclaredSpec, tPortSpecNormalized, tDescriptor _ ": the screen and the port require the same set")
     }
 }
 

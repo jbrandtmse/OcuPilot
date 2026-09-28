@@ -46,8 +46,8 @@ ClassMethod Messages(Output pMessages)
 }
 
 /// <p>The first pair <parameter>OcuPilot.Port.ProviderPort.INVOKEPAIRS</parameter> declares,
-/// spelled <code>resource:permission</code> -- the one a refusal names, and the one this suite
-/// grants. Derived rather than written down, so a change to the administrative floor does not
+/// spelled <code>resource:permission</code> -- the one this suite asks the shipped per-user check
+/// about. Derived rather than written down, so a change to the administrative floor does not
 /// turn this into a test of a literal.</p>
 ClassMethod FirstPair() As %String
 {
@@ -59,11 +59,12 @@ ClassMethod FirstPair() As %String
 /// <p>This account holds <code>%All</code>, so the process check answers yes to every pair. That
 /// is what makes the refusal below load-bearing: only a question about the <b>owner</b> can
 /// produce it.</p>
-/// <p>Mutation (Rule 19): put <method>OcuPilot.Screen.Gate.HoldsPrivilege</method> back in
-/// <method>OcuPilot.Port.ProviderPort.Invoke</method> -- restore the
-/// <code>..GateAnyOf(..InvokePairs(), .tFailedPair)</code> call in place of
-/// <method>GateAnyOfForUser</method> -- and the refusal leg goes red, because the shipped gate
-/// answers yes for this <code>%All</code> process whatever the owner holds.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.ProviderPort.GateAnyOfForUser</method> ask
+/// <method>OcuPilot.Screen.Gate.HoldsPrivilege</method> about the calling process in place of
+/// <method>HoldsPairForUser</method> -- and the refusal leg goes red, because the shipped gate
+/// answers yes for this <code>%All</code> process whatever the owner holds. Set
+/// <var>pFailedPair</var> to the set's first pair on a refusal -- the no-detail assertion goes
+/// red.</p>
 Method TestTheGateReadsTheTurnOwnersLiveGrants()
 {
     Set tDenial = ##class(OcuPilot.Kernel.Denial).Code()
@@ -87,7 +88,7 @@ Method TestTheGateReadsTheTurnOwnersLiveGrants()
     Do $$$AssertStatusOK(tSC2, "the port answers")
     Do $$$AssertEquals(tHttp2, ##class(OcuPilot.Kernel.Denial).#STATUS, "a revoked owner is refused 403")
     Do $$$AssertEquals($Select($IsObject(tFault2): tFault2.%Get("code"), 1: ""), tDenial, "with AUTH.NOPRIVILEGE")
-    Do $$$AssertEquals($Select($IsObject(tFault2): tFault2.detail.failedPair, 1: ""), ..FirstPair(), "naming the pair the caller would have to be granted")
+    Do $$$AssertEquals($Select($IsObject(tFault2): tFault2.%GetTypeOf("detail"), 1: ""), "unassigned", "and no failedPair detail, because every pair of the OR-set failed rather than one")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "AskedUsers"), ..#OWNER, "and the refusal is about the owner, not the process")
 }
 

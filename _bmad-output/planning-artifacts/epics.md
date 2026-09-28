@@ -176,7 +176,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 
 - FR-70: Screen-aware help from the agent - "Explain this screen" as one click on every screen citing the read tool it used; an explain entry point on every log and audit entry sending that entry alone; at least three suggested prompts per screen grouped by task. Catalog: CP-23, CP-24, CP-25.
 - FR-71: Agent transparency - click-through citation chips on every reply that used a read tool; a data-egress line on every turn with context sharing on; an agent audit viewer over the ledger with filters by user, screen and date, where administrators see all users' rows and others their own. Catalog: CP-26, CP-27, CP-31.
-- FR-72: Agent restraint and governance - a copy-out ObjectScript, CLI or REST draft instead of an execution on any proposal; a per-tool-and-action governance policy with read-only and full presets over a frozen baseline that keeps every Release 1 write key enabled; truncation, control-stripping, delimiter-wrapping and secret redaction of tool and log content before it reaches the model with a seeded-injection test; transcripts persisted per user with a retention purge, an administrator's view of another user's transcript ledgered and gated by the resources those calls required. Catalog: CP-29, CP-30, CP-32, CP-33.
+- FR-72: Agent restraint and governance - a copy-out ObjectScript, CLI or REST draft instead of an execution on any proposal; a per-tool-and-action governance policy with read-only and full presets over a baseline that keeps every Release 1 write key enabled and, through 2026-10-04, gains each new write key in the story that ships it [AMENDED 2026-09-26, owner: new write keys join the baseline through the voting week; was "a frozen baseline"]; truncation, control-stripping, delimiter-wrapping and secret redaction of tool and log content before it reaches the model with a seeded-injection test; transcripts persisted per user with a retention purge, an administrator's view of another user's transcript ledgered and gated by the resources those calls required. Catalog: CP-29, CP-30, CP-32, CP-33.
 - FR-73: Shell conveniences - change own password, favorites, recent items, menu search, About, per-screen Help, the fixed shortcuts menu, the links panel, the Home system information panel, UI state across sessions and a light or dark theme, each reachable from the header or Home with per-user state surviving a sign-out. Catalog: SH-12 to SH-22.
 - FR-74: Web applications and permissions extras - a try-it request console round-tripping with the current session, web sessions list and end, a user's effective privileges, and a permission-check tool answering yes or no with the granting role. Catalog: WA-08, WA-09, PM-17, PM-18.
 - FR-75: Security and secrets editors and tests - SSL/TLS test connection, X.509 certificate details, LDAP test authentication, OAuth 2.0 token revoke, audit database copy and purge, and full editors for OAuth 2.0 resource servers, client server descriptions, client configurations, the authorization server and server client descriptions, each round-tripping create, edit and delete. Catalog: SS-17 to SS-27.
@@ -406,7 +406,7 @@ Actionable work items from the UX design contract (`DESIGN.md` for how it looks,
 
 - UX-DR20: `rail` and `rail-item` - 48x48 hit area with a 20px centered icon; the six documented states (rest at 72% opacity, hover with an 8% background and a 300ms tooltip, active with a **solid 3px `secondary-dark`** left-edge indicator inset 8px, focus with the on-chrome ring, privilege-gated at 45% with no hover and the resource tooltip on hover **and focus**, and the agent entry's attention state). Tab reaches the rail as one stop; Up/Down move between items; the active item carries `aria-current="page"`. **Never a count badge.** A rail item opens the side bar for its area and does not navigate by itself; clicking the active item collapses the side bar.
 - UX-DR21: `attention-dot` - `agent-accent-dark` in both modes with a `shell` ring, at the icon's top-right, on the Agent co-pilot rail entry only. It means the agent is unconfigured, the kill switch is on, or a definition needs attention, states the reason in its accessible name, and clears the moment the reason clears. **The only badge on the rail.**
-- UX-DR22: `side-bar` - 240px on `surface-container-low` with a 1px right edge; the area name as an uppercase `label` eyebrow; 28px entries with the five documented states, the current route marked `aria-current="page"`. Open/closed state remembered per browser; opens on rail click and collapses on the same click, Ctrl/Cmd+B, or the yield order. **A screen not yet built does not appear** - no dead entries. Gated entries stay listed and focusable with the reason **inline after the name** as well as in a tooltip.
+- UX-DR22: `side-bar` - 240px on `surface-container-low` with a 1px right edge; the area name as an uppercase `label` eyebrow; 28px entries with the five documented states, the current route marked `aria-current="page"`. Open/closed state remembered per user, on the instance [AMENDED 2026-09-26, Story 23.1]; opens on rail click and collapses on the same click, Ctrl/Cmd+B, or the yield order. **A screen not yet built does not appear** - no dead entries. Gated entries stay listed and focusable with the reason **inline after the name** as well as in a tooltip.
 - UX-DR23: `header` - the 90deg `shell` -> `shell-edge` gradient band, the one place the gradient fills an area. The namespace switch sits at the gradient's `shell-edge` end with a 100%-strength `label` eyebrow over the namespace name; choosing a namespace updates the route's `ns` parameter, re-fetches the current screen and updates the context chip. **No URL rewriting into another web application, no dialog.** Nothing else lives in the header.
 - UX-DR24: `command-box` - a 360x30px field with `role="combobox"`, `aria-expanded`, `aria-controls` and `aria-activedescendant`, opening on click or Ctrl/Cmd+K, with the chord shown **once** as a kbd chip at the field's right edge (never repeated in the placeholder). Typing filters every screen the user may open plus the current screen's command bar actions, matching **alias lists drawn from the contest wording** ("web apps", "REST", "x509", "certificates", "CPU", "disks"); results are a `listbox` grouped by `role="group"` for Screens and Actions with a polite count. Enter navigates or runs; Escape closes and returns focus. Gated results stay listed and arrow-reachable as non-selectable rows with the reason inline - never Material-disabled items, which the key manager skips. **It is not a channel to the agent** and never shows the avatar.
 - UX-DR25: `status-bar` - a 24px chrome band in `label` sentence case: server, instance name and version, the user, licensed-to on the left; `server-flag-badge`, the auto-refresh stamp and the connection state on the right, the state's colored disc always followed by the state word. The **user segment is the bar's one interactive element**, opening the account menu (Sign out; polish week adds Change password and the theme toggle). Nothing else is interactive or has a hover state.
@@ -434,7 +434,7 @@ Actionable work items from the UX design contract (`DESIGN.md` for how it looks,
 
 - UX-DR42: `panel` - docked right on the sheet with a 1px left edge and the resize handle on it; a 44px header (avatar at 20px, "Agent co-pilot" in `title`/`primary`, then **New conversation** and **Full screen** icon buttons, over a 2px `shell` -> `shell-edge` -> `#2090A0` bottom rule); then banners in fixed order (kill switch - enforced read-only - "not being marked" - administrator reminder - lock), the context chip, and the transcript as `role="log"` (polite, labeled "Conversation", `tabindex="0"`, newest at the bottom, scrolling independently); then a footer holding the **always-present read-only status line**, the composer (a growing outlined field, max four lines), the Send control, and the caption line. Implement all ten panel states. **No close control in Release 1**; route changes keep the panel and its conversation.
 - UX-DR43: The **Send control** - one size fixed by its widest label so the composer never reflows, with three appearances: *Send* as `button-primary` when nothing runs and no proposal is live; *Send* as `button-secondary` while a proposal card is live so **Confirm is the view's only filled button**; *Stop* as `button-secondary` with a 16px stop glyph while a turn runs. **It keeps focus through every change and is never removed or natively disabled.**
-- UX-DR44: `panel-resize-handle` - a 6px strip (8px hit area) carrying the panel's 2px vertical docked-edge gradient, the second and last place the logo gradient appears; a 3px x 28px grip on hover and drag with a `col-resize` cursor, turning `restrained` at the minimum. `role="separator"`, `aria-orientation="vertical"`, `aria-valuenow/min/max` in px, focusable, Left/Right arrows changing width by 16px, Escape releasing, the new width announced through the value, persisted per browser.
+- UX-DR44: `panel-resize-handle` - a 6px strip (8px hit area) carrying the panel's 2px vertical docked-edge gradient, the second and last place the logo gradient appears; a 3px x 28px grip on hover and drag with a `col-resize` cursor, turning `restrained` at the minimum. `role="separator"`, `aria-orientation="vertical"`, `aria-valuenow/min/max` in px, focusable, Left/Right arrows changing width by 16px, Escape releasing, the new width announced through the value, persisted per user, on the instance. [AMENDED 2026-09-26, Story 23.1]
 - UX-DR45: `context-chip` - a `surface-container` box with a Material switch ("Share screen context") at its right. On: `<Screen>, <NAMESPACE> - <N rows> - <provider> - <endpoint host>`, plus the **egress pill** "leaves the instance" in `egress-warning` on its container with a tooltip naming the host, when that host is not on a private network. Off: it says no screen data is being sent, in `restrained`, and the pill goes. It updates on route change, namespace change, selection and as the viewport's rows change; a screen with secret-typed fields adds a 14px key glyph. **Secret-typed fields are never included regardless of the toggle.** Absent in the configuration-empty state - there is no provider or endpoint to name.
 - UX-DR46: `message-user` - right-aligned at most 86% width on `primary-container`, corners `lg lg 2px lg` (the small corner pointing at the composer), whitespace preserved, **no avatar, no name, no timestamp**, not editable after send. A message refused by the turn lock is not rendered.
 - UX-DR47: `message-agent` - the avatar left, an 8px gap, then text at up to 96% width with **no bubble**; sanitized Markdown with teal underlined-on-hover links, **external links inert with the full host visible in caption after the link text**, inline code on `surface-container`, code blocks on `code-surface` with a copy button, and **images only from same-origin or inline sources**. Row names the agent cites are set in `code`. A turn-ending error renders as an error `banner` in the agent's slot; a turn the user stopped is not an error and takes the tool-call card's Stopped status instead.
@@ -449,9 +449,9 @@ Actionable work items from the UX design contract (`DESIGN.md` for how it looks,
 
 - UX-DR54: `toast` - bottom-right above the status bar on `inverse-surface`, stacking **at most three deep** newest on top with a fourth dropping the oldest, `role="status"`, carrying the change in one sentence, an "Open in <screen>" link **whose color swaps with the mode** because the inverse surface flips, and a close button on every toast. A toast without an action persists 10 seconds, one carrying "Open in" persists 30 seconds, and **the timer pauses while any toast is hovered or focused**. Used only for changes to entities whose screen is not open, and for "Saved" from form-pages. **Never for errors** (those are banners) and never to confirm what the user just did on the open screen (the row highlight is that confirmation). The region is reachable with Tab after the panel.
 - UX-DR55: `confirm-dialog` - a 440px Material dialog at elevation 3, **one level deep, never over another dialog**, titled with the action and target (the target in `code`), the body stating the consequence, then any inputs, with Cancel as `button-text` and the action as `button-primary` - or `button-destructive` when it deletes, terminates or removes. Escape and Cancel close without effect and focus returns to the opener. **Ctrl/Cmd+K, +I and +B are inert while a dialog is open.** Initial focus is the typed-name-field, else Cancel.
-- UX-DR56: `typed-name-field` - "Type <name> to confirm" with the target in `code`, `code` input text, helper text "Must match exactly"; an **exact, case-sensitive** match enables the destructive button, which is `aria-disabled` until then; paste is allowed; a mismatch on blur shows "Does not match" with `aria-invalid` and the message in `aria-describedby` - **reported, never silent**, because a disabled Delete with no reason gives a screen-reader user nothing. Enter submits only once the name matches. Used identically in the proposal card and in delete dialogs so the two paths look the same.
+- UX-DR56: `typed-name-field` - "Type <name> to confirm" with the target in `code`, `code` input text, helper text "Must match exactly"; an **exact, case-sensitive** match enables the destructive button, which is `aria-disabled` until then; paste is allowed; a mismatch on blur shows "Does not match" with `aria-invalid` and the message in `aria-describedby` - **reported, never silent**, because a disabled Delete with no reason gives a screen-reader user nothing. Enter submits only once the name matches. Used in delete dialogs and on a screen's destructive action; a destructive agent proposal card takes none (owner plan 2026-09-25). [AMENDED 2026-09-26, Story 23.1]
 - UX-DR57: `masked-secret-field` - a Material outlined password field with a **labeled** reveal toggle showing the value only while pressed or toggled. **Write-only:** after save the field is empty and captioned "Stored. Enter a new value to replace it."; it never pre-fills and never echoes a stored value; pastes are accepted without trimming. On a proposal card the user fills it at confirmation and **the diff never shows it**. Per-provider key-shape checks flag obvious paste errors inline before Test connection.
-- UX-DR58: The **four button variants** at 32px, full-radius, `body` at 600, with Material's state layers, 38% opacity when unavailable, and the focus ring: `button-primary` filled teal (**never `primary`**), one per bar, card footer or dialog, showing an inline progress indicator while its request runs and `aria-disabled` for the duration with focus retained; `button-secondary` outlined; `button-text`; `button-destructive` filled, **only inside a confirm-dialog or a destructive proposal card, only after the typed name matches, and only ever labeled with the verb** (never "OK" or "Yes"), never in a command bar or row menu. **Privilege-gated buttons are not dimmed** - `restrained` text on a `restrained-container` fill, no hover, the resource tooltip on hover and focus.
+- UX-DR58: The **four button variants** at 32px, full-radius, `body` at 600, with Material's state layers, 38% opacity when unavailable, and the focus ring: `button-primary` filled teal (**never `primary`**), one per bar, card footer or dialog, showing an inline progress indicator while its request runs and `aria-disabled` for the duration with focus retained; `button-secondary` outlined; `button-text`; `button-destructive` filled, **only inside a confirm-dialog or a destructive proposal card, in a confirm-dialog only after the typed name matches [AMENDED 2026-09-26, Story 23.1], and only ever labeled with the verb** (never "OK" or "Yes"), never in a command bar or row menu. **Privilege-gated buttons are not dimmed** - `restrained` text on a `restrained-container` fill, no hover, the resource tooltip on hover and focus.
 - UX-DR59: `focus-ring` - a two-tone ring (2px outer outside a 2px inner halo touching the control, following its radius) with **three grounds**: the two-tone ring on surfaces and the sheet; `focus-ring-dark` outside a `shell` halo on the chrome in **both** modes; `focus-ring-dark` outside `code-surface` on the code surface. Every pair clears its floor including the halo against each filled control it can touch. Drawn **inset** inside a table row or side bar entry so it is not clipped. `:focus-visible` semantics - shown for keyboard and programmatic focus, not mouse clicks - **never removed with `outline: none` and never replaced by a color change alone**. A "Skip to content" link is the first Tab stop, hidden until focused then drawn top-left over the header.
 
 #### Behavior: privilege gating, live data, the write lifecycle
@@ -750,6 +750,10 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner plan, 2026-09-25 (voting week).** Epics 14 and 16 run in the voting week, where improvements are allowed, starting once the submission build is cut. Order: Story 16.1 (the try-it console), then Stories 16.17 to 16.19 (the read-back line, Home's performance row and impact lines on removals, added from the contest survey the same evening) and Story 16.20 (older messages.log files, Community Idea DPI-I-966), then Stories 16.21 and 16.22 (a security findings panel with Fix it, and a Guardrails page, added from the survey of 2026-09-26), then Stories 16.8 and 16.9 (the secondary log viewers and the hub); then Story 14.1 (the copy-out draft), Stories 14.3 and 14.8 (defanging and the seeded-injection test), Story 16.3 (effective privileges) and Story 16.16 (the agent audit viewer); then the rest of Epic 16; then Story 14.5, with Stories 14.2, 14.4 and 14.6 last. The first two groups close the gaps a judge sees when comparing entries and show what only the agent does. `main` moves only at planned releases - after each of the first two groups and at the end of the week - each a pull request with green CI, a clean-clone check and a new package version, so a judge never installs a half-finished build. Story 14.7 is scratched: a user acting on a screen still types the target's name, while a destructive agent proposal takes the destructive bar, a destructive Confirm and the user's own press, without a typed name. FR-17 and Stories 5.10 and 7.2 are amended to match. Epics 18 to 22 stay after the contest.
 
+**Owner plan, 2026-09-26 (voting week, Epic 18).** Epic 18 joins the voting-week run on slot B once Epic 14's stories are done, in its story order; Story 18.1 stays where it was placed (ahead of Story 16.4) unless slot B reaches Epic 18 first. Stage 2 builds against the pinned 2026.2 contest image, and its 2027.1 re-derivation waits until 2027.1 ships. Its destructive keys (Story 18.4) follow Story 14.2's baseline rule, so they default to disabled.
+
+**Owner survey, 2026-09-26 (evening).** Two new entries surveyed. Story 16.23 (a CSV download on every table) joins the voting week after Story 16.22; Story 16.21 gains an Operations group of findings; Story 16.18 already carries live global references and disk reads per second, so nothing is added there.
+
 **Owner triage, 2026-09-25 (logo), high priority.** The header draws the reversed lockup, a white wordmark on a transparent cut-out whose anti-aliased edges fringe against the navy chrome. Story 15.10 draws the navy-wordmark lockup on a white rounded tile instead, as the demo landing page does, and amends DESIGN.md at origin. It runs alone on slot B, free since Epic 12 merged, and the submission cut waits for it.
 
 **Owner triage, 2026-09-25 (model), high priority.** Anthropic has released Claude Opus 5.5, and the public demo already runs on it, verified by a connection test and a tool-calling turn. Story 10.7 makes `claude-opus-5-5` the default model of a new Anthropic definition, so a judge's fresh install starts on it. It runs on the first slot to free, and the submission cut waits for it.
@@ -758,7 +762,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
-the archive is proven by a dry-run build and a local install, and a third criterion forbids touching the
+the archive is proven by a local `package` build [AMENDED 2026-09-26, Story 23.1] and a local install, and a third criterion forbids touching the
 registry or any credential at all. Story 15.6 is sequenced after Epic 5 merges, because it edits the
 style tokens Epic 5 is editing, so Epic 15 ships Stories 15.1 to 15.5 and 15.6 is dispatched afterwards.
 
@@ -868,7 +872,7 @@ A user completes the area the contest names most specifically: five OAuth 2.0 ed
 
 ### Epic 13: Bonus deliverables and engineering hygiene
 
-The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline.
+The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline. Story 13.5, added after the submission, splits CI's two long suites across parallel jobs; the owner ranked it the first story after release 1.0.2. [AMENDED 2026-09-27, owner: Story 13.5 added]
 
 **FRs covered:** FR-79
 
@@ -880,7 +884,7 @@ An OcuPilot administrator can disable any write tool by tool and action, a user 
 
 **FRs covered:** FR-72, FR-19 (per-user toggle and turn limits), NFR-6 (the seeded-injection test)
 
-**Implementation notes:** AD-22 fixed the shape in Release 1 so this fits without rework: keys are `tool` or `tool:action`; the **frozen baseline captured at the Release 1 freeze** means "pre-existing, therefore enabled", which is what keeps SM-3 holding through 2026-10-04; a key absent from it is disabled by default when it mutates; the baseline is never regenerated to grow; layers resolve with a null-coalescing cascade so an explicit `false` at any layer is honored; the read-only preset blocks anything it cannot classify; and **the audit ledger is configuration, not a governed tool**. The sanitizer is *additional* to NFR-6's invariants and is never the defense. An administrator opening another user's transcript is ledgered and sees tool results only when holding every resource that transcript's calls required. The per-user work is **data and UI, not a new enforcement point**: the gate already exists and is evaluated at the write. Per-user turn limits need a "turn limit reached" banner and a refusal sentence before Story 14.6 ships (UX-DR81).
+**Implementation notes:** AD-22 fixed the shape in Release 1 so this fits without rework: keys are `tool` or `tool:action`; the **baseline** holds every write key Release 1 shipped, enabled, which is what keeps SM-3 holding through 2026-10-04; through 2026-10-04 each story that ships a new write key adds it in the same change, enabled unless its own criteria set it disabled (as the Epic 11 and Epic 16 preambles say); a key absent from it is disabled by default when it mutates; the baseline grows only by those additions and is never regenerated [AMENDED 2026-09-26, owner: new write keys join the baseline through the voting week; was "the frozen baseline captured at the Release 1 freeze ... never regenerated to grow"]; layers resolve with a null-coalescing cascade so an explicit `false` at any layer is honored; the read-only preset blocks anything it cannot classify; and **the audit ledger is configuration, not a governed tool**. The sanitizer is *additional* to NFR-6's invariants and is never the defense. An administrator opening another user's transcript is ledgered and sees tool results only when holding every resource that transcript's calls required. The per-user work is **data and UI, not a new enforcement point**: the gate already exists and is evaluated at the write. Per-user turn limits need a "turn limit reached" banner and a refusal sentence before Story 14.6 ships (UX-DR81).
 
 ### Epic 15: Shell conveniences and the theme
 
@@ -892,7 +896,7 @@ A user makes the portal their own - own password, favorites, recents, menu searc
 
 ### Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22). The owner's surveys of the late entries add a CSV download on every table (16.23), a merged timeline in the log hub (16.9) and a try-it request copied as curl (16.24, run right after 16.9). [AMENDED 2026-09-27, owner: 16.9's timeline and Story 16.24 added]
 
 **FRs covered:** FR-74, FR-76, FR-77, FR-78
 
@@ -1367,7 +1371,7 @@ So that I learn the instance's permission model from the portal instead of from 
 - **When** they render
 - **Then** the rail carries eight items in daily-use order with Agent co-pilot pinned bottom, is one Tab stop with Up/Down moving between items, marks the active area with `aria-current="page"` and a solid 3px `secondary-dark` left indicator, and shows no count badge
 - **And** a rail item opens its area's side bar without navigating, while clicking the active item collapses it; Home is the exception and navigates
-- **And** the side bar is fixed at 240px with no sash, grip or resize cursor, lists only screens that are built, remembers its open state per browser, and toggles with Ctrl/Cmd+B.
+- **And** the side bar is fixed at 240px with no sash, grip or resize cursor, lists only screens that are built, remembers its open state per user, on the instance, and toggles with Ctrl/Cmd+B.
 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
@@ -2833,7 +2837,7 @@ So that asking about a screen never means leaving it.
 
 - **Given** the panel's left edge
 - **When** the user drags it
-- **Then** it resizes between the minimum and the point where content reaches its 640px minimum, with a `col-resize` cursor and a grip that turns `restrained` at either stop - the minimum and the 640px content point [AMENDED 2026-09-17 — see the story change log] - and the width persists per browser
+- **Then** it resizes between the minimum and the point where content reaches its 640px minimum, with a `col-resize` cursor and a grip that turns `restrained` at either stop - the minimum and the 640px content point [AMENDED 2026-09-17 — see the story change log] - and the width persists per user, on the instance
 - **And** it is the **only** resizable edge in the shell - the side bar has no sash, grip or resize cursor
 - **And** the handle is `role="separator"`, `aria-orientation="vertical"`, focusable, with `aria-valuenow/min/max` in px, Left and Right arrows changing width by 16px, Escape releasing, and the new width announced through the value.
 
@@ -5550,7 +5554,7 @@ So that the area the task statement names reads as rebuilt.
 
 ## Epic 13: Bonus deliverables and engineering hygiene
 
-The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline.
+The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline. Story 13.5, added after the submission, splits CI's two long suites across parallel jobs; the owner ranked it the first story after release 1.0.2. [AMENDED 2026-09-27, owner: Story 13.5 added]
 
 ### Story 13.1: The uninstall hook
 
@@ -5644,9 +5648,69 @@ which is a public, irreversible act that ships whatever the build is at that mom
 - **Given** this story is held
 - **When** it is implemented, reviewed and reported
 - **Then** nothing in it contacts the public registry, no registry credential or token is read,
-  configured, requested or used, the publish command is exercised only in its dry-run or local form,
+  configured, requested or used, the package is exercised only as a local build and install,
   and the story is **not** reported done by having published. A gate that can only be closed by
   publishing is an unmet gate, to be escalated rather than closed - the release is the owner's alone.
+
+### Story 13.5: CI in parallel - the two long suites split across containers
+
+As the owner, waiting on CI at every story boundary and every release,
+I want the ObjectScript suite and the browser specs split across parallel jobs,
+So that a run takes about 20 minutes instead of about 50, and stays inside its time limits as the suites grow.
+
+**Owner decision 2026-09-27, HIGH: the first story after release/1.0.2 is cut, on the first slot to free.** Run
+36347461573 took 55 minutes. Its `instance` job spent 52.2 of its 54.6 minutes running 327 test classes one at a time
+against one container (limit 60); its `browser` job spent 48.3 of 50.8 minutes running 100 spec files one at a time
+against one container (limit 50 on feature, 75 on the 1.0.2 staging branch). Every other job finished within 5
+minutes. One class at a time is a rule per instance, because classes share one instance's fixtures; nothing requires
+one instance per run.
+
+**Acceptance Criteria:**
+
+- **Given** a CI run
+- **When** the ObjectScript suite runs
+- **Then** it runs as **three parallel shard jobs**, each bringing up its own throwaway container and running its share
+  of the test classes **one class at a time**, exactly as the single job does today.
+
+- **Given** a CI run
+- **When** the browser specs run
+- **Then** they run as **three parallel shard jobs**, each with its own throwaway container, running its share of the
+  spec files one file at a time against its own instance.
+
+- **Given** the classes and spec files to share out
+- **When** the shards are assigned
+- **Then** the assignment is deterministic and balanced by recorded duration, longest first, from a timings file
+  committed in the repository; a class or spec file with no recorded time is still assigned; and one documented command
+  refreshes the timings file from a run's output.
+
+- **Given** the shards of one run
+- **When** they have finished
+- **Then** a roll-up job for each suite, still named `instance` and `browser`, fails unless every test class the
+  instance offers and every spec file the checkout carries ran in exactly one shard and no shard executed zero tests -
+  so a class or spec cannot be dropped silently.
+
+- **Given** a failing class or spec file
+- **When** its shard fails
+- **Then** the failure names the shard and the class or spec as today, and that shard's capture-on-failure step still
+  collects its container's logs.
+
+- **Given** the steps that run once per suite today - the admin API drift check and the smoke script
+- **When** CI runs
+- **Then** each still runs, once per run, against a freshly installed instance.
+
+- **Given** a developer running `ci-runner.mjs` or `npm run test:browser` locally without a shard option
+- **When** it runs
+- **Then** it behaves exactly as it does today: the full suite, one class or file at a time.
+
+- **Given** the pinned workflow rosters in `ui/tools/ci.test.mjs`
+- **When** the workflow changes
+- **Then** they are updated in the same change, and removing a shard from either matrix turns a test red.
+
+- **Given** the story's own green CI run on GitHub-hosted runners
+- **When** it is measured
+- **Then** the run takes **25 minutes or less** from its first job's start to its last job's end, with about 20 the
+  target; the measured time is recorded in the story; and each shard job's `timeout-minutes` leaves at least half again
+  its measured share as margin.
 
 ---
 
@@ -5674,6 +5738,8 @@ So that I can take its work into a process it is not allowed to bypass.
 - **When** the draft is taken
 - **Then** the proposal is resolved as a cancel rather than left live, and the panel says so.
 
+- DW-1081: DESIGN.md gives reply code blocks a copy icon button; Story 4.6 does not build one - build the copy control once, for reply code blocks too (ledger; routed by spec_gate 2026-09-26)
+
 ### Story 14.2: The tool governance policy
 
 As an OcuPilot administrator,
@@ -5686,11 +5752,12 @@ So that I can adopt the parts of it my organization is ready for.
 - **When** an administrator configures it
 - **Then** keys are `tool` or `tool:action`, with read-only and full presets, and the effective policy is viewable.
 
-- **Given** the **frozen baseline** captured at the Release 1 freeze
+- **Given** the **baseline**, a checked-in list of write keys [AMENDED 2026-09-26, owner: new write keys join the baseline through the voting week; was "the frozen baseline captured at the Release 1 freeze"]
 - **When** the policy resolves
 - **Then** every write tool-and-action key Release 1 shipped is **enabled** by it, which is what keeps the six-areas-six-writes metric holding through 2026-10-04
-- **And** a key **absent** from the baseline is new, and defaults to **disabled** when it mutates
-- **And** the baseline is **never regenerated to grow**.
+- **And** every write key a story ships after Release 1 and through 2026-10-04 is **on the list**, enabled unless that story's own criteria set it disabled: this story adds the keys already shipped, and each later story adds its own in the same change
+- **And** a key **absent** from the baseline defaults to **disabled** when it mutates, and a test fails when a registered write key is not on the list
+- **And** the baseline grows only by those additions and is **never regenerated**; after 2026-10-04 the owner decides how new keys enter it.
 
 - **Given** several policy layers
 - **When** they resolve
@@ -5738,6 +5805,8 @@ So that the invariants have a second layer behind them.
 - **When** it occurs
 - **Then** the truncation is marked, so the model is not silently given a partial record it may treat as complete.
 
+- DW-1722: DraftRoute.Counts reads %SYS.Audit in HSCUSTOM, where the audit global is unmapped, so its "no agent marker is written" comparison cannot fail - switch that query to %SYS and prove it with a mutation (ledger; routed by harvest 2026-09-27)
+
 ### Story 14.4: Transcripts, retention and administrator access
 
 As a developer-administrator,
@@ -5767,6 +5836,9 @@ So that the agent has memory of my work without keeping it forever.
 - **When** the retention task next sweeps
 - **Then** their transcripts survive as an audit record while their sessions are invalidated - stored references being weak by contract.
 
+- DW-1122: Nothing bounds the ledger table across turns until Story 14.4 - the retention purge also bounds the agent ledger (ledger; routed by spec_gate 2026-09-26)
+- DW-1240: The reload-after-retention row has no mechanism - the retention sweep this story builds is what drops a restored turn's cards after RETENTIONSECONDS (ledger; routed by harvest 2026-09-19)
+
 ### Story 14.5: The per-user read-only toggle
 
 As a cautious administrator on someone else's instance,
@@ -5791,6 +5863,8 @@ So that I can explore without any possibility of changing something.
 - **When** this story lands
 - **Then** it is **data and UI, not a new enforcement point**.
 
+- DW-1621: The Definition form draws no read-only control, so with the read/write default a per-definition read-only agent can be made only through the API - add the control (owner-confirmed 2026-09-26) (ledger; routed by merge_gate 2026-09-26)
+
 ### Story 14.6: Per-user turn limits, and the banner they need
 
 As an operator paying for tokens,
@@ -5804,13 +5878,17 @@ So that the agent's cost is bounded per person rather than only per turn.
 - **Then** they hold a per-user concurrent-turn limit and a per-user turns-per-hour limit, both **enforced on the instance**
 - **And** the concurrent-turn limit's permitted range in Release 1 is **exactly 1**, rendered read-only with its reason: the conversation lock and the panel's single transcript both assume one turn per user (Story 4.1), so widening it is a Stage 2 change and not an administrator setting.
 
-- **Given** a user reaches either limit
-- **When** they send
-- **Then** the panel shows a "turn limit reached" banner and the agent's refusal sentence - **and these two strings must exist before this story ships**, being the one UX item the architecture spine did not answer and the reason this story cannot start without them.
+- **Given** no administrator has set a turns-per-hour limit
+- **When** any user sends
+- **Then** no such limit applies: the default is **no limit** [AMENDED 2026-09-26, owner]
 
-- **Given** the strings are authored
-- **When** they land
-- **Then** they are added to the canonical Fixed strings table, not invented at the component.
+- **Given** a user reaches the turns-per-hour limit
+- **When** they send
+- **Then** the panel shows the banner "You have reached this instance's limit of <n> agent turns an hour. You can send again at <hh:mm>." and the transcript shows "This turn was not started: you have used your <n> turns for this hour."; the concurrent-turn limit keeps the existing lock banner [AMENDED 2026-09-26, owner: the two strings authored; was "these two strings must exist before this story ships"]
+
+- **Given** the strings
+- **When** this story lands
+- **Then** it adds them to the canonical Fixed strings table and the client string source in the same change, and resolves EXPERIENCE.md's step-7 `[NOTE FOR PRD]` and its index row, rather than inventing them at the component.
 
 ### Story 14.8: The seeded-injection test
 
@@ -5826,11 +5904,12 @@ So that "the model is assumed compromised" is a tested claim rather than a postu
 
 - **Given** a turn then runs over each seeded source
 - **When** the test asserts
-- **Then** it asserts **zero proposals, zero navigations and zero outbound requests to any host other than the configured provider**.
+- **Then** it asserts **zero proposals, zero navigations and zero outbound requests to any host other than the configured provider**, against a scripted model that obeys any instruction reaching the system prompt or the user role. [AMENDED 2026-09-26, Story 14.8 spec gate, Rule 5: an obeying stub that reads "call a write tool" in a tool result would mint a proposal by construction, so the zeros are stated against the channel-sensitive stub, which goes red if any seed ever reaches an instruction channel]
 
 - **Given** the five invariants the defense actually rests on
 - **When** they are verified
 - **Then** it confirms that untrusted text entered only as delimited tool-result content and never the system prompt or user role; that no write occurred without a confirmation on a server-computed diff; that navigation accepted only allow-listed route identifiers; and that nothing rendered issued a request to any host
+- **And** against a scripted model that obeys the seeded string wherever it reads it, the write it attempts is only proposed, and the navigation it attempts is refused [AMENDED 2026-09-26, Story 14.8 spec gate, Rule 5]
 - **And** the polish-week sanitizer is **additional** to these, never the defense.
 
 ---
@@ -6116,7 +6195,7 @@ So that the first thing I see looks finished.
 
 ## Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20), a security findings panel whose fixes are agent proposals (16.21) and a Guardrails page that shows what the agent may never do (16.22). The owner's surveys of the late entries add a CSV download on every table (16.23), a merged timeline in the log hub (16.9) and a try-it request copied as curl (16.24, run right after 16.9). [AMENDED 2026-09-27, owner: 16.9's timeline and Story 16.24 added]
 
 **Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
 
@@ -6279,8 +6358,12 @@ So that "all the logs" is literally true.
 ### Story 16.9: The unified log hub
 
 As a developer-administrator investigating an incident,
-I want one screen listing every log source with how much is in it,
-So that I know where to look before I start looking.
+I want one screen listing every log source with how much is in it, and one timeline across all of them,
+So that I know where to look before I start looking, and can see what happened in order without opening each log.
+[AMENDED 2026-09-27, owner: the merged timeline added; was a list of sources only]
+
+**Owner survey, 2026-09-27.** IRIS Admin Deck and iris-flightdeck both merge their log sources into one stream ordered by
+time; the hub gains that timeline beside its list of sources.
 
 **Acceptance Criteria:**
 
@@ -6291,6 +6374,40 @@ So that I know where to look before I start looking.
 - **Given** each row
 - **When** it renders
 - **Then** it carries an explain entry point, so the hub is where the agent's log help is most reachable.
+
+- **Given** the hub's **Timeline** view
+- **When** it opens
+- **Then** it merges the entries of every source the hub lists and the person may read into one list ordered by time,
+  newest first, over a chosen window that defaults to the last hour, each entry showing its time, its source, its
+  severity where the source records one, and its text.
+
+- **Given** sources that write their times in different forms or time zones
+- **When** they are merged
+- **Then** every time is compared and shown on the instance's clock, so the order is the order things happened.
+
+- **Given** each source the timeline reads
+- **When** it is read
+- **Then** it is read through that source's own bounded read, with the privilege its own viewer requires and its fixed
+  source name, never a path; each source has a row cap, and a source that reaches its cap is marked as truncated in the
+  words the log viewers already use.
+
+- **Given** a source the person may not read
+- **When** the timeline is built
+- **Then** that source is left out without an error, and the timeline says which sources are not shown and the
+  privilege each needs.
+
+- **Given** the timeline
+- **When** the person filters by source, by severity or by text
+- **Then** only matching entries remain, and each source's count in the list updates to match.
+
+- **Given** an entry in the timeline
+- **When** it is chosen
+- **Then** its source opens at that entry, and the entry carries the same explain entry point as the source's own
+  viewer, sending that entry alone.
+
+- **Given** the strings the timeline needs
+- **When** this story lands
+- **Then** they are added to the canonical Fixed strings table and the client string source in the same change.
 
 ### Story 16.10: External language servers
 
@@ -6570,6 +6687,14 @@ So that I can fix them before they matter, with the same review and confirmation
 - **When** it renders
 - **Then** it shows a Security findings panel that checks, at least: web applications reachable without signing in that hold database or administrative roles; the monitoring API open without authentication; accounts holding `%All`; X.509 certificates expiring within 30 days or expired; and auditing switched off - each finding naming the object and why it matters, and the panel saying plainly when there is nothing to report.
 
+- **Given** Home's findings panel [AMENDED 2026-09-26, owner: an Operations group of findings added]
+- **When** it renders
+- **Then** it has a second group, Operations, that checks at least: a database that is dismounted, a database near its maximum size, the Task Manager suspended or stopped, and a task suspended after an error - each naming the object, why it matters and what to do.
+
+- **Given** an Operations finding
+- **When** a write tool can fix it
+- **Then** Fix it proposes that fix like any other finding's - resuming a task suspended after an error today; mounting a database and resuming the Task Manager once Stories 18.4 and 16.11 ship those writes - and until then the finding links to the screen that handles it.
+
 - **Given** a finding with a fix a write tool can make
 - **When** the person chooses **Fix it**
 - **Then** the agent opens the affected screen and proposes the change as an ordinary proposal - comparison, privilege line, Confirm - and nothing changes until it is confirmed; a finding with no automatic fix, such as an expiring certificate, links to the screen that handles it instead.
@@ -6577,6 +6702,8 @@ So that I can fix them before they matter, with the same review and confirmation
 - **Given** a finding whose fix OcuPilot refuses - taking `%All` from the last account that holds it, say
 - **When** it renders
 - **Then** it offers no Fix it and says why, in the prohibited set's own words, and a finding the caller may not read is left out rather than reported as clean.
+
+- DW-1400: the shell-chrome read seam is in its third verbatim copy (About, Instance, SystemInfo) with no extracted base; extract it before this story's Home panel adds a fourth reader (ledger; routed by adjudication 2026-09-26)
 
 ### Story 16.22: The Guardrails page
 
@@ -6599,6 +6726,69 @@ So that the safety is something I can read, not something I have to take on fait
 - **Given** the page is generated from the enforced rules
 - **When** a rule is added or changed
 - **Then** the page follows without a second edit, and a test fails if a prohibited action has no reason text to show.
+
+### Story 16.23: Any table, downloaded as CSV
+
+As an administrator taking a list somewhere else,
+I want to download what a table shows as a CSV file,
+So that I can sort, share or keep it in a spreadsheet without copying rows by hand.
+
+**Owner survey, 2026-09-26.** IRISOperationsPortal offers a CSV download on every table; OcuPilot's data table has none.
+
+**Acceptance Criteria:**
+
+- **Given** any screen built on the data table
+- **When** the person chooses **Download CSV** in its toolbar
+- **Then** the browser saves the rows the table holds, after its filter and in its sort order, with its visible columns in their order and a header row of their labels, as UTF-8, named after the screen and the time - built in the browser from the rows already read, with no new server route.
+
+- **Given** a cell whose text starts with `=`, `+`, `-`, `@`, a tab or a carriage return
+- **When** it is written
+- **Then** it is prefixed so a spreadsheet shows it as text rather than evaluating it as a formula.
+
+- **Given** a screen that withholds fields - secrets, or the variables IRIS keeps with an application error
+- **When** it is downloaded
+- **Then** the file holds only what the table shows, never a field the screen does not display.
+
+- **Given** a read that stopped at its row limit
+- **When** the table offers the download
+- **Then** it says the file holds the loaded rows only, in the words the table already uses for truncation.
+
+- **Given** the strings the download needs
+- **When** this story lands
+- **Then** they are added to the canonical Fixed strings table and the client string source in the same change.
+
+### Story 16.24: A try-it request, copied as curl
+
+As a developer-administrator who has just tried a request,
+I want to copy it as a curl command,
+So that I can repeat it from a terminal, a script or a ticket.
+
+**Owner survey, 2026-09-27.** IRIS Admin Deck offers every call it makes as a copyable curl command; the try-it console
+(16.1) sends requests but offers no copy.
+
+**Acceptance Criteria:**
+
+- **Given** a request in the try-it console
+- **When** the person chooses **Copy as curl**
+- **Then** the clipboard holds one curl command with the method, the absolute URL with its query, the request headers
+  and the body, as the console would send them, and nothing is sent.
+
+- **Given** the session's access token, or any header the console masks in its record of a request
+- **When** the command is built
+- **Then** the value is never copied: the command carries a placeholder the person replaces, and the console says so
+  beside the copy.
+
+- **Given** a header or body value containing quotes, newlines or other shell metacharacters
+- **When** it is written into the command
+- **Then** it is quoted so the command runs exactly as shown in a POSIX shell.
+
+- **Given** a request the console refuses to send
+- **When** the person asks to copy it
+- **Then** the copy is refused too, with the same reason the console gives for not sending it.
+
+- **Given** the strings the copy needs
+- **When** this story lands
+- **Then** they are added to the canonical Fixed strings table and the client string source in the same change.
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
@@ -6835,7 +7025,7 @@ An operator reaches System Administration and System Operation parity on the hid
 
 **Applies to every story in this epic.** These stories are governed by **FR-80**, which is the architectural contract itself rather than a description of behavior: no requirement document specifies them at feature level, so their acceptance is that contract plus each row's own backing route, and anything finer is authored when the story is picked up rather than invented here. Each screen is one descriptor over `AdminPort`, with its read tool derived from the descriptor and its write tools' field lists derived at build time from the endpoint's own body template and pinned by the CI inventory fixture. Every write is a server-minted proposal, an instance-computed diff, an explicit confirmation and an agent marker; every read is bounded and reports truncation; every gate is the caller's own privileges checked at call time. **Every destructive action this stage adds - delete namespace, delete database, dismount, truncate, encryption changes - is absent from the governance baseline and therefore defaults to disabled.** Async operations go through `AdminPort`'s async path; no slice writes polling logic. These are not restated per story.
 
-**What gates the stage.** The admin API write payloads must be observed before the forms are built; the `/async-result` polling pattern must exist; SH-24's directory allow-list must land before any server-path picker; and the admin API's final form in IRIS 2027.1 matters more here than anywhere, because this stage deepens the dependency on an experimental service across twenty more screens - the inventory fixture is re-derived against 2027.1 before any of them is built.
+**What gates the stage.** The admin API write payloads must be observed before the forms are built; the `/async-result` polling pattern must exist; SH-24's directory allow-list must land before any server-path picker; and the admin API's final form in IRIS 2027.1 matters more here than anywhere, because this stage deepens the dependency on an experimental service across twenty more screens - the inventory fixture is re-derived against 2027.1 when it ships [AMENDED 2026-09-26, owner: Stage 2 starts in the voting week on the pinned 2026.2 contest image; was "before any of them is built"].
 
 ### Story 18.1: The directory allow-list
 

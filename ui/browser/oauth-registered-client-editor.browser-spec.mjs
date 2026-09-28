@@ -191,7 +191,8 @@ async function barButton(page, label) {
 
 async function statusLine(page, text, timeout = config.navigationTimeoutMs) {
   await page.waitForFunction(
-    (expected) => document.querySelector('.ocu-form-bar-status [role="status"]')?.textContent?.trim() === expected,
+    // Story 16.17: the text, or the text and the instance's read-back line after it.
+    (expected) => ((shown) => shown === expected || shown.startsWith(`${expected} \u00b7 `))(document.querySelector('.ocu-form-bar-status [role="status"]')?.textContent?.trim() ?? ''),
     { timeout },
     text
   );

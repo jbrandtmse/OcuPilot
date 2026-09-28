@@ -5,8 +5,8 @@
  * rather than in a dialog (AC5).
  *
  * **Almost every test here writes nothing.** Every level but the last is a read; the instance
- * already holds errors, because the installer's own `SeedApplicationError` puts one in on every
- * start. The one class that writes an application error is `OcuPilot.Test.ErrorLogSeed`, and it
+ * already holds errors, because the installer's own `SeedApplicationError` keeps one present after
+ * every start. The one class that writes an application error is `OcuPilot.Test.ErrorLogSeed`, and it
  * runs under its own arming variable; most tests here create no principal either -- AC6's denials
  * are `OcuPilot.Test.ErrorLogDenial`'s, over HTTP with real principals. The one exception is the
  * DW-307 truncation leg below, which seeds through that same guarded class and so refuses the live

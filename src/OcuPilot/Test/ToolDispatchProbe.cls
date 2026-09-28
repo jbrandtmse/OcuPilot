@@ -1,7 +1,8 @@
 /// <p>Test-only <class>OcuPilot.Kernel.Agent.Dispatch</class> subclass whose seams are switches, so
 /// every refusal in the dispatch order can be driven in process: the registry is
-/// <class>OcuPilot.Test.DispatchTool.Registry</class> unless a test names another; the gate is the
-/// shipped one unless a test denies or fails it; the restraint verdict is the real one unless a test forces it
+/// <class>OcuPilot.Test.DispatchTool.Registry</class> unless a test names another; the gate allows a
+/// tool only the fixture registry lists and is the shipped one for every production tool, unless a
+/// test denies or fails it; the restraint verdict is the real one unless a test forces it
 /// blocked, clear or unreadable; a pair is held unless a test denies it, because the suite's own
 /// account holds <code>%All</code> and the real check answers yes to everything; and a logged failure
 /// is recorded here instead of written. Each seam counts its calls. No method of the dispatcher itself
@@ -77,7 +78,9 @@ ClassMethod GateClass() As %String
     Quit "OcuPilot.Test.ToolDispatchProbe"
 }
 
-/// <p>The shipped gate's decision, or a denial when a test asked for one; counted either way.</p>
+/// <p>A denial when a test asked for one; otherwise allowed for a tool only the fixture registry
+/// lists, which no baseline line names, and the shipped gate's decision for every production tool.
+/// Counted either way.</p>
 ClassMethod Decide(pTool As %String, pKind As %String, pUser As %String, pArgs As %DynamicAbstractObject, Output pDecision) As %Status
 {
     Do $Increment(^||OcuPilotToolDispatchProbe("count", "gate"))
@@ -87,6 +90,12 @@ ClassMethod Decide(pTool As %String, pKind As %String, pUser As %String, pArgs A
         Kill pDecision
         Set pDecision("allowed") = 0
         Set pDecision("code") = $List(tDeny, 1)
+        Quit $$$OK
+    }
+    If ##class(OcuPilot.Test.GovernanceFixture).FixtureOnly(..RegistryClass(), pTool) {
+        Kill pDecision
+        Set pDecision("allowed") = 1
+        Set pDecision("code") = ""
         Quit $$$OK
     }
     Quit ##class(OcuPilot.Kernel.Governance.Gate).Decide(pTool, pKind, pUser, pArgs, .pDecision)

@@ -400,4 +400,42 @@ ClassMethod Text(pObject, pKey As %String) As %String
     Quit pObject.%Get(pKey)
 }
 
+/// <p>The kind of script step <method>Snippet</method> renders: <code>objectscript</code> for
+/// <parameter>ROTATETYPE</parameter>, which this port carries out through
+/// <parameter>CONFIGURATIONCLASS</parameter>, and the admin port's answer otherwise.</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    If (pEndpoint = ..#SERVERENDPOINT) && (pType = ..#ROTATETYPE) Quit "objectscript"
+    Quit ##super(pEndpoint, pType)
+}
+
+/// <p><method>Invoke</method>'s write branches as a script (AD-59): <code>PUT</code> is the vendor
+/// call with <method>VendorBody</method>'s body, <parameter>PASSWORDTYPE</parameter> the vendor call
+/// with <parameter>PASSWORDFIELD</parameter> alone, and <code>DELETE</code> the vendor call, each
+/// with an empty query as the port sends it; <parameter>ROTATETYPE</parameter> is the
+/// <code>RotateKeys()</code> call <method>RotateKeys</method> makes. Every other call is the admin
+/// port's script.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    If pEndpoint '= ..#SERVERENDPOINT Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+    Kill tNone
+    If pType = ..#ROTATETYPE {
+        Set tSteps = []
+        Do tSteps.%Push(..ObjectScriptStep($ListBuild("Set tConfiguration = ##class(" _ ..#CONFIGURATIONCLASS _ ").Open(.tSC)", "If $IsObject(tConfiguration) Set tSC = tConfiguration.RotateKeys()", "Do $System.Status.DisplayError(tSC)")))
+        Quit tSteps
+    }
+    If pType = "PUT" {
+        Set tBody = pBody
+        If $IsObject(pBody) && pBody.%IsA("%Library.DynamicObject") Set tBody = ..VendorBody(pBody)
+        Quit ##super(pEndpoint, "PUT", .tNone, tBody, pContext)
+    }
+    If pType = ..#PASSWORDTYPE {
+        Set tBody = {}
+        Do tBody.%Set(..#PASSWORDFIELD, ..Scalar(pBody, ..#PASSWORDFIELD), "string")
+        Quit ##super(pEndpoint, pType, .tNone, tBody, pContext)
+    }
+    If pType = "DELETE" Quit ##super(pEndpoint, "DELETE", .tNone, "", pContext)
+    Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+}
+
 }

@@ -187,6 +187,36 @@ test('detector liveness: a child 50px wider than its non-clipping parent is repo
   assert.ok(reported(entries, 'overflow', 'div.ocu-probe-child'), `reported: ${JSON.stringify(entries)}`);
 });
 
+test("detector liveness: the resize handle's overflow allowance covers its own offset and nothing wider", async () => {
+  const entries = await detectPlanted(() => {
+    for (const [name, left] of [['ocu-probe-handle-within', ''], ['ocu-probe-handle-beyond', 'left: -20px;']]) {
+      const parent = document.createElement('div');
+      parent.style.cssText = 'position: relative; width: 100px; height: 20px; overflow: visible;';
+      const handle = document.createElement('div');
+      handle.className = `ocu-panel-resize-handle ${name}`;
+      handle.style.cssText = left;
+      parent.appendChild(handle);
+      document.querySelector('main').appendChild(parent);
+    }
+  });
+  assert.ok(!reported(entries, 'overflow', 'div.ocu-panel-resize-handle.ocu-probe-handle-within'), `not reported: ${JSON.stringify(entries)}`);
+  assert.ok(reported(entries, 'overflow', 'div.ocu-panel-resize-handle.ocu-probe-handle-beyond'), `reported: ${JSON.stringify(entries)}`);
+});
+
+test('detector liveness: an inline svg wider than its non-clipping parent is reported under overflow', async () => {
+  const entries = await detectPlanted(() => {
+    const parent = document.createElement('div');
+    parent.style.cssText = 'width: 100px; height: 8px; overflow: visible;';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'ocu-probe-svg');
+    svg.setAttribute('width', '150');
+    svg.setAttribute('height', '4');
+    parent.appendChild(svg);
+    document.querySelector('main').appendChild(parent);
+  });
+  assert.ok(reported(entries, 'overflow', 'svg.ocu-probe-svg'), `reported: ${JSON.stringify(entries)}`);
+});
+
 test('detector liveness: a document that scrolls horizontally is reported under overflow on the page', async () => {
   const entries = await detectPlanted(() => {
     const wide = document.createElement('div');

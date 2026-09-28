@@ -1,11 +1,12 @@
-/// <p>Test-only <class>OcuPilot.Test.CatalogProbe</class> subclass whose <b>anthropic</b> row --
-/// the only provider key <method>OcuPilot.Kernel.AgentRules.Validate</method> ever accepts, since
-/// that check runs through the real, unsubclassed <class>OcuPilot.Kernel.Provider.Catalog</class>
-/// and cannot be pointed at a fixture -- answers the transport stub instead of the real
-/// <class>OcuPilot.Kernel.Provider.Anthropic</class> adapter. Every other column of the row, and
-/// every row <class>OcuPilot.Test.CatalogProbe</class> adds, is unchanged.</p>
-/// <p><b>DW-360's closing seam.</b> A definition naming <code>anthropic</code> is the only one
-/// <method>OcuPilot.Kernel.AgentRules.Validate</method> lets through, and a definition dispatched
+/// <p>Test-only <class>OcuPilot.Test.CatalogProbe</class> subclass whose <b>anthropic</b> row
+/// answers the transport stub instead of the real <class>OcuPilot.Kernel.Provider.Anthropic</class>
+/// adapter. <method>OcuPilot.Kernel.AgentRules.Validate</method> reads the real, unsubclassed
+/// <class>OcuPilot.Kernel.Provider.Catalog</class> and cannot be pointed at a fixture, so this class
+/// re-adapts the shipped <code>anthropic</code> row rather than adding a key
+/// <method>OcuPilot.Kernel.AgentRules.Validate</method> would refuse. Every other column of the row,
+/// and every row <class>OcuPilot.Test.CatalogProbe</class> adds, is unchanged.</p>
+/// <p>A definition naming <code>anthropic</code> passes
+/// <method>OcuPilot.Kernel.AgentRules.Validate</method>, and a definition dispatched
 /// through <class>OcuPilot.Test.ProviderPortProbe</class> with this catalog switched in (its
 /// <method>OcuPilot.Test.ProviderPortProbe.SetCatalogClass</method>) is one whose call still opens
 /// no socket -- so <method>OcuPilot.Api.Definitions.HandleTest</method>, the literal shipped

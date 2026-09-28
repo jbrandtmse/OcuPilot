@@ -101,9 +101,6 @@ Method Drive(pStatus As %Integer, pBody As %String, Output pResponse, Output pHt
 }
 
 /// <p>A turn key no other class and no other call uses.</p>
-/// <p><code>$ZHex</code> is not how random bytes become a string: it reads its argument as a
-/// number, so a binary one answers <code>0</code> every time and every key would collide. The
-/// hex-binary conversion is the tree's own idiom (<class>OcuPilot.Test.ProposalFixture</class>).</p>
 ClassMethod NewTurnKey() As %String
 {
     Quit "residue-" _ $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.GenCryptRand(16)), "L")

@@ -5,8 +5,9 @@
 /// <p><b>It is declared destructive and is deliberately outside the prohibited set.</b> AD-10
 /// refuses a write by effect, and turning auditing off is a change an operator is entitled to make
 /// -- the product's answer to it is the card's warning, the recorded drop and the banner, not a
-/// refusal. What the declaration buys is the card's destructive treatment now and Story 14.7's
-/// typed-name field later, from one place rather than from a kernel list naming tools.</p>
+/// refusal. What the declaration buys is the card's destructive treatment, from one place rather
+/// than from a kernel list naming tools. A destructive agent proposal has no typed-name field: the
+/// destructive bar, the destructive Confirm and the user's own press are its confirmation.</p>
 /// <p><b>Its marker cannot land, and that is a physical constraint</b> (AD-15 as amended
 /// 2026-09-21). The marker is emitted at one site in
 /// <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method> after the write reads OK, and by

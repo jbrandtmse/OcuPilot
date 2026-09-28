@@ -447,4 +447,35 @@ ClassMethod Violation(pField As %String, pCode As %String, Output pHttpStatus As
     Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.Error).#OAUTHSERVERCLIENTVALIDATION, ##class(OcuPilot.Api.Error).#REASONOAUTHSERVERCLIENTVALIDATION, .pHttpStatus, .pFault, tDetail)
 }
 
+/// <p>The kind of script step <method>Snippet</method> renders: <code>objectscript</code> for
+/// <parameter>REFRESHTYPE</parameter>, which this port carries out through
+/// <parameter>CLIENTCLASS</parameter>, and the admin port's answer otherwise.</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    If (pEndpoint = ..#CLIENTENDPOINT) && (pType = ..#REFRESHTYPE) Quit "objectscript"
+    Quit ##super(pEndpoint, pType)
+}
+
+/// <p><method>Invoke</method>'s write branches as a script (AD-59): <parameter>SECRETTYPE</parameter>
+/// is the vendor call with <parameter>SECRETFIELD</parameter> alone, and
+/// <parameter>REFRESHTYPE</parameter> the <code>RefreshJWKS</code> call
+/// <method>RefreshKeySet</method> makes, through the TLS configuration it names for an
+/// <code>https</code> key-set URI. Every other call is the admin port's script.</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    If pEndpoint '= ..#CLIENTENDPOINT Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+    If pType = ..#REFRESHTYPE {
+        Set tClient = ..Literal($Get(pQuery(..#IDQUERY)))
+        Set tSteps = []
+        Do tSteps.%Push(..ObjectScriptStep($ListBuild("Set tClient = ##class(" _ ..#CLIENTCLASS _ ").Open(" _ tClient _ ", .tSC)", "Set tUri = $Select($IsObject(tClient) && $IsObject(tClient.Metadata): $Property(tClient.Metadata, " _ ..Literal(..#JWKSMEMBER) _ "), 1: """")", "If tUri '= """" Do tClient.RefreshJWKS($Select($ZConvert($Piece(tUri, ""://"", 1), ""L"") = ""https"": " _ ..Literal(..SslConfiguration()) _ ", 1: """"), 1, 1, .tSC)", "Do $System.Status.DisplayError(tSC)")))
+        Quit tSteps
+    }
+    If pType = ..#SECRETTYPE {
+        Set tBody = {}
+        Do tBody.%Set(..#SECRETFIELD, ..Scalar(pBody, ..#SECRETFIELD), "string")
+        Quit ##super(pEndpoint, pType, .pQuery, tBody, pContext)
+    }
+    Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
+}
+
 }

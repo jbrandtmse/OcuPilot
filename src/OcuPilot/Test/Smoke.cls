@@ -100,6 +100,37 @@ Method TestOneFailedCheckFailsTheRun()
     Do $$$AssertTrue(tReport [ "FAILED", "the verdict line says so")
 }
 
+/// <p>The verdict line names every failed check, a row with an outcome outside the four among
+/// them, and a passing run names its skipped checks; the counts line keeps its shape either way.</p>
+/// <p>Mutation (Rule 19): restore "; the first is named above" in
+/// <method>OcuPilot.Install.Smoke.Render</method>, or drop the skipped suffix -- this goes red.</p>
+Method TestTheVerdictLineNamesFailedAndSkippedChecks()
+{
+    Kill tChecks
+    Do ##class(OcuPilot.Install.Smoke).Note(.tChecks, "readiness", "pass")
+    Do ##class(OcuPilot.Install.Smoke).Note(.tChecks, "shell", "fail", "the shell answered HTTP 503")
+    Do ##class(OcuPilot.Install.Smoke).Note(.tChecks, "signin", "skipped")
+    Do ##class(OcuPilot.Install.Smoke).Note(.tChecks, "wallet", "faild")
+    Set tOk = ##class(OcuPilot.Install.Smoke).Render(.tChecks, "http://fixture", .tReport, .tCounts)
+    Do $$$AssertEquals(tOk, 0, "the run failed")
+    Do $$$AssertEquals($Piece(tReport, $Char(10), $Length(tReport, $Char(10))), "ocupilot-smoke: FAILED -- 2 check(s) failed: shell, wallet", "the verdict line names both failed checks")
+    Do $$$AssertEquals(tCounts, "executed=3 passed=1 failed=2 pending=0 skipped=1", "the counts line keeps its shape")
+
+    Kill tPassing
+    Do ##class(OcuPilot.Install.Smoke).Note(.tPassing, "readiness", "pass")
+    Do ##class(OcuPilot.Install.Smoke).Note(.tPassing, "signin", "skipped")
+    Do ##class(OcuPilot.Install.Smoke).Note(.tPassing, "demofixture", "skipped")
+    Set tOk2 = ##class(OcuPilot.Install.Smoke).Render(.tPassing, "http://fixture", .tReport2, .tCounts2)
+    Do $$$AssertEquals(tOk2, 1, "a run whose only other checks were skipped passes")
+    Do $$$AssertEquals($Piece(tReport2, $Char(10), $Length(tReport2, $Char(10))), "ocupilot-smoke: PASSED -- 2 check(s) skipped: signin, demofixture", "the PASSED line names the skipped checks")
+    Do $$$AssertEquals(tCounts2, "executed=1 passed=1 failed=0 pending=0 skipped=2", "and the counts line keeps its shape")
+
+    Kill tClean
+    Do ##class(OcuPilot.Install.Smoke).Note(.tClean, "readiness", "pass")
+    Set tOk3 = ##class(OcuPilot.Install.Smoke).Render(.tClean, "http://fixture", .tReport3, .tCounts3)
+    Do $$$AssertEquals($Piece(tReport3, $Char(10), $Length(tReport3, $Char(10))), "ocupilot-smoke: PASSED", "with nothing skipped the PASSED line carries no suffix")
+}
+
 /// <p>The counts are printed whether the run passed or failed. A gate that reports its size
 /// only on failure cannot be told apart, on a green run, from one that looked at nothing.</p>
 Method TestTheCountsArePrintedOnEveryRun()

@@ -174,7 +174,9 @@ Method TestACreateShowsOnTheListAndAnEditKeepsTheValue()
     Set tRequest = {"Name": (tName), "Secret": (tValue), "Usage": 3, "RequireTLS": true, "AllowedHosts": ["h.example"]}
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody, tRequest.%ToJSON(), "application/json")
     Do $$$AssertEquals(tStatus, 201, "the create answers 201")
-    Do $$$AssertEquals($Select($IsObject($Get(tBody)): tBody.%ToJSON(), 1: ""), "{""name"":""" _ tName _ """}", "naming the secret and nothing else")
+    Do $$$AssertEquals($Select($IsObject($Get(tBody)) && (tBody.%GetTypeOf("readBack") = "object"): tBody.%Get("readBack").%Get("verdict") _ " " _ tBody.%Get("readBack").%Get("written").%ToJSON(), 1: ""), "matches [""Secret""]", "carrying the create's read-back, which holds what was sent (AD-58): " _ $Select($IsObject($Get(tBody)): tBody.%ToJSON(), 1: ""))
+    If $IsObject($Get(tBody)) Do tBody.%Remove("readBack")
+    Do $$$AssertEquals($Select($IsObject($Get(tBody)): tBody.%ToJSON(), 1: ""), "{""name"":""" _ tName _ """}", "naming the secret and nothing else beside it")
 
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", ..#NAMEPATH _ "?name=" _ tName, .tStatus, .tBody)
     Do $$$AssertEquals($Select($IsObject($Get(tBody)): tBody.%Get("taken") _ "|" _ tBody.%Get("reason"), 1: ""), "1|" _ ##class(OcuPilot.Api.Error).#REASONWALLETNAMETAKEN, "the look-up answers the stored name as taken, with the published sentence")

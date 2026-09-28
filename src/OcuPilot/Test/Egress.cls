@@ -543,18 +543,21 @@ Method TestTheShippedCompatibleRowAllowsLoopbackAndPrivateAndStillRefusesLinkLoc
 /// <p>AC3's metadata arm (DW-1214) -- a published cloud instance-metadata address is refused in
 /// <b>every</b> address family, marked local or not, which is the no-escape treatment IPv4
 /// link-local already had. AWS's and GCP's IPv6 metadata addresses are unique-local, so before this
-/// they classified public and the marked-local branch admitted them.</p>
+/// they classified public and the marked-local branch admitted them; Alibaba Cloud's
+/// <code>100.100.100.200</code> is outside link-local for the same reason.</p>
 /// <p><b>The second half is the point.</b> A legitimate unique-local address -- a private IPv6 LAN,
 /// which is where a local model actually sits -- is still permitted, so a fix that refused all of
 /// <code>fc00::/7</code> would not pass this method.</p>
 /// <p>mutation: remove the metadata arm from <method>OcuPilot.Kernel.Egress.KindOf</method> -- red
-/// on the three IPv6 metadata spellings alone. Counter-mutation, which is what makes the
+/// on the three IPv6 metadata spellings and <code>100.100.100.200</code> alone. Remove
+/// <code>100.100.100.200</code> from <parameter>OcuPilot.Kernel.Egress.METADATAADDRESSES</parameter>
+/// -- red on that address alone. Counter-mutation, which is what makes the
 /// demonstration two-sided: refuse the whole of <code>fc00::/7</code> there instead -- red on
 /// the <code>fd12:3456:789a::1</code> legs alone.</p>
 Method TestACloudMetadataAddressIsRefusedInEveryFamily()
 {
     Set tAllows = ##class(OcuPilot.Kernel.AgentRules).AllowsLocal(..#LOCALPROVIDER)
-    For tUrl = "https://169.254.169.254/latest/meta-data", "https://169.254.170.2/v2/credentials", "https://[fd00:ec2::254]/latest/meta-data", "https://[fd20:ce::254]/computeMetadata/v1", "https://[FD00:0EC2:0:0:0:0:0:0254]/latest/meta-data" {
+    For tUrl = "https://169.254.169.254/latest/meta-data", "https://169.254.170.2/v2/credentials", "https://[fd00:ec2::254]/latest/meta-data", "https://[fd20:ce::254]/computeMetadata/v1", "https://[FD00:0EC2:0:0:0:0:0:0254]/latest/meta-data", "https://100.100.100.200/latest/meta-data" {
         Do ..AssertKind(tUrl, "linklocal", "a published metadata address")
         Do ..AssertPermitted(tUrl, 0, 0, 0, "a metadata address with no escape asked for")
         Do ..AssertPermitted(tUrl, 1, tAllows, 0, "and marked local on the one shipped row that allows local")

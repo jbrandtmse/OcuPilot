@@ -1,20 +1,23 @@
 # Human in the loop, twice: building an AI co-pilot for IRIS with the BMAD Method
 
-<!-- Draft of the second contest article. Before publishing: confirm the Tsvetkov quote and its
-attribution on the LinkedIn post, ideally with his permission and a tag, and restore his British
-spelling of the bracketed word; re-count stories on the day; add the two visuals marked below. -->
+<!-- Draft of the second contest article. The Tsvetkov quote was checked word for word against Banksia
+Global's LinkedIn post on 2026-09-26; the numbers were re-counted on 2026-09-27 from the sprint status and the
+cycle logs; the quote keeps his spelling. When posting, upload the two charts from images/ where they
+appear. -->
 
 *How I used the BMAD Method and AI agents to build OcuPilot in nineteen days - and why a person
 stayed in the loop the whole way.*
 
-After this year's InterSystems READY event in Asia, Aleksandr Tsvetkov of Banksia Global wrote
-something that has stayed with me:
+After his first InterSystems READY in Asia this year, Aleksandr Tsvetkov, a developer at Banksia Global,
+said something in [an interview Banksia Global posted on
+LinkedIn](https://www.linkedin.com/posts/banksiaglobal_intersystems-intersystemsready-intersystemsiris-activity-7502714681350852608-5S_h)
+that has stayed with me:
 
 > "We'd put a human-in-the-loop approval step into our agent project almost as an afterthought. At
 > the Summit that's the part every serious conversation kept coming back to - not the AI. It
 > reframed the problem for me: in agentic AI the hard, interesting engineering isn't getting a
 > model to call tools, it's making that safe and observable enough that a regulated
-> [organization] would actually switch it on."
+> organisation would actually switch it on."
 
 He is right, and it matches what I found. For the last three weeks I have been building
 [OcuPilot](https://ocupilot.org), an AI co-pilot for the IRIS Management Portal, for the "Build
@@ -80,8 +83,7 @@ And the agent's changes are marked in the IRIS audit database, where administrat
 
 None of that was bolted on later. Every story was checked against it.
 
-<!-- VISUAL: the planning documents as a chain - idea, research, brief and requirements, UX,
-architecture, plan - with the day each was finished. -->
+![From idea to first code: the idea on Monday night, BMAD installed Tuesday 05:56, then research, the product brief, requirements, UX design and architecture on Tuesday, epics and stories early Wednesday, and the first code at 10:16 on Wednesday - about 28 hours of clock time.](images/bmad-planning-timeline.png)
 
 ## Building, one story at a time
 
@@ -100,12 +102,12 @@ streams of work side by side, each with its own IRIS instance, so their tests ne
 The results:
 
 - A typical story took **about three hours**.
-- About **6 stories a day** with one stream of work, about **11 a day** with two, and **16 a day**
+- About **6 stories a day** with one stream of work, about **10 a day** with two, and **16 a day**
   by the end.
 - By the submission, more than 140 of the plan's 229 stories were done - and because of the way the
   plan was ordered, everything that shipped is complete.
 
-<!-- VISUAL: stories finished per day, 9 to 25 September. -->
+![Stories finished per day from 9 to 25 September: about 6 a day with one stream of work, about 10 a day with two streams in parallel, and 16 a day over the last three days.](images/bmad-stories-per-day.png)
 
 BMAD now has its own build loop. Mine adds the two parallel streams and the review list below. If
 you are starting out, try BMAD's first.
@@ -145,8 +147,8 @@ hard way:
 
 I kept the decisions that matter: priorities, scope, security, what goes to the main branch, and
 what gets published. After the first week, I let the agents settle routine questions themselves and
-report what they decided. I did not read every line of code - that is what the reviews and tests are
-for. I read the plans, decided the questions that came back to me, and used the product.
+report what they decided. I did not read the code myself, beyond spot checks - that is what the reviews
+and tests are for. I read the plans, decided the questions that came back to me, and used the product.
 
 The decisions that changed the product were mine. I moved the OAuth 2.0 screens ahead of other work,
 because the contest named them. I decided that an administrator may grant powerful roles through
@@ -174,6 +176,7 @@ It is the same pattern as the product: the agents propose, and a person confirms
 ## Try it, and read the record
 
 - The live demo: [ocupilot.org](https://ocupilot.org), sign in as `demo` / `ocupilot-demo`.
+- A three-minute video of the agent at work: [OcuPilot: ask, review, confirm, audit](https://youtu.be/tbFVXdDR5iI).
 - The code and every planning document:
   [github.com/jbrandtmse/OcuPilot](https://github.com/jbrandtmse/OcuPilot).
 - The first article, on what OcuPilot does:

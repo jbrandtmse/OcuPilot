@@ -128,8 +128,9 @@ Method ProbeDefinitionOn(pSuffix As %String, pEndpoint As %String) As %String
 /// <method>OcuPilot.Api.Definitions.HandleTest</method> hands
 /// <method>OcuPilot.Api.Definitions.ConnectionOutcome</method>: the stored row's values,
 /// <var>pBody</var>'s edits merged over them, the two server-owned flags taken from the row,
-/// normalized, and <var>pBody</var> itself, which decides the key the call carries. Exactly one of
-/// <var>pAnswer</var> and <var>pFault</var> comes back set.</p>
+/// normalized, <var>pBody</var> itself, which decides the key the call carries, and the row version
+/// captured at the same open. Exactly one of <var>pAnswer</var> and <var>pFault</var> comes back
+/// set.</p>
 /// <p><b>It does not validate</b>: the route's <method>OcuPilot.Kernel.AgentRules.Validate</method>
 /// call refuses on a field before <method>ConnectionOutcome</method> is reached at all, so a leg
 /// that is about a refusal on a field is a wire leg rather than one of these.</p>
@@ -139,6 +140,7 @@ ClassMethod Outcome(pId As %String, pBody As %DynamicObject, Output pAnswer As %
     If $$$ISERR(tSC) Quit tSC
     If '$IsObject(tRow) Quit $$$ERROR($$$GeneralError, "No agent definition with id " _ pId)
     Do ##class(OcuPilot.Test.DefinitionsProbe).ValuesFromRow(tRow, .tStored)
+    Set tVersion = +tRow.RowVersion
     Set tRow = ""
     Kill tValues
     Merge tValues = tStored
@@ -146,7 +148,7 @@ ClassMethod Outcome(pId As %String, pBody As %DynamicObject, Output pAnswer As %
     Set tValues("connectionVerified") = $Get(tStored("connectionVerified"))
     Set tValues("enabled") = $Get(tStored("enabled"))
     Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.tValues)
-    Do ##class(OcuPilot.Test.DefinitionsProbe).ConnectionOutcome(pId, .tValues, .tStored, .pAnswer, .pHttpStatus, .pFault, pBody)
+    Do ##class(OcuPilot.Test.DefinitionsProbe).ConnectionOutcome(pId, .tValues, .tStored, .pAnswer, .pHttpStatus, .pFault, pBody, tVersion)
     Quit $$$OK
 }
 
@@ -714,10 +716,10 @@ Method HandlerDefinition(pSuffix As %String) As %String
 /// no answer body, rather than reporting <code>connected: true, connectionVerified: 1</code> for
 /// a state that was never recorded.</p>
 /// <p>Forced by a genuine race rather than a new seam: the row is removed between the read that
-/// captures <var>tStored</var> -- the same arrangement <method>Outcome</method> makes -- and the
-/// call into <method>OcuPilot.Api.Definitions.ConnectionOutcome</method>, so
-/// <method>OcuPilot.Kernel.State.Agent.GuardedSetVerification</method>, which opens the row
-/// fresh, fails on a row that is genuinely gone.</p>
+/// captures <var>tStored</var> and its version -- the same arrangement <method>Outcome</method>
+/// makes -- and the call into <method>OcuPilot.Api.Definitions.ConnectionOutcome</method>, so the
+/// provider is called and <method>OcuPilot.Kernel.State.Agent.GuardedSetVerification</method>,
+/// which opens the row fresh, fails on a row that is genuinely gone.</p>
 /// <p>Mutation: stop returning on <code>tWriteSC</code>'s failure in
 /// <method>OcuPilot.Api.Definitions.ConnectionOutcome</method> (swallow it instead of building
 /// the fault) -- this goes red, answering an object carrying <code>connected: true</code> and
@@ -730,7 +732,9 @@ Method TestTheVerificationWriteFailingAnswersFiveHundredAndNoAnswerBody()
 
     Set tOpenSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow)
     Do $$$AssertStatusOK(tOpenSC, "the row opens")
+    If $$$ISERR(tOpenSC) || '$IsObject(tRow) Quit
     Do ##class(OcuPilot.Test.DefinitionsProbe).ValuesFromRow(tRow, .tStored)
+    Set tVersion = +tRow.RowVersion
     Set tRow = ""
     Kill tValues
     Merge tValues = tStored
@@ -741,12 +745,14 @@ Method TestTheVerificationWriteFailingAnswersFiveHundredAndNoAnswerBody()
     Set tDeleteSC = ##class(OcuPilot.Kernel.State.Agent).GuardedDeleteId(tId)
     Do $$$AssertStatusOK(tDeleteSC, "the row is deleted between the read and the verification write, standing in for the race")
 
-    Do ##class(OcuPilot.Test.DefinitionsProbe).ConnectionOutcome(tId, .tValues, .tStored, .tAnswer, .tHttpStatus, .tFault)
+    Do ##class(OcuPilot.Test.DefinitionsProbe).ConnectionOutcome(tId, .tValues, .tStored, .tAnswer, .tHttpStatus, .tFault, "", tVersion)
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "the provider was called, so the refusal is the verification write's and not one before the call")
     Do $$$AssertTrue('$IsObject(tAnswer), "no answer body is produced -- the operator is not told the connection works")
     Do $$$AssertTrue($IsObject(tFault), "a fault is, instead")
     If '$IsObject(tFault) Quit
     Do $$$AssertEquals(tHttpStatus, 500, "reported as a server error, not a gateway failure")
     Do $$$AssertEquals(tFault.code, "INTERNAL", "with the internal code")
+    Do $$$AssertEquals(tFault.reason, "The provider answered and the agent definition could not be marked verified", "and the verification write's own reason")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedExistsId(tId, .tStillGone), "the existence check itself succeeds")
     Do $$$AssertEquals(tStillGone, 0, "and the row really is gone, so a 200 here would have reported success for nothing")
 }
@@ -788,6 +794,46 @@ Method TestARowMovedDuringTheCallRefusesTheVerification()
     Do $$$AssertStatusOK(tOpenSC, "the definition reads back")
     If $IsObject(tRow) Do $$$AssertEquals(tRow.Model, ..#MOVEDMODEL, "carrying the other writer's edit, which is what made this row stale")
     Set tRow = ""
+}
+
+/// <p>The verification is conditional on the version captured at the open that read the stored
+/// values, not on one read later: a definition edited between that open and the call refuses
+/// <code>STATE.CONFLICT</code> after the call, and stays unverified.</p>
+/// <p>Mutation: have <method>OcuPilot.Api.Definitions.ConnectionOutcome</method> read the version
+/// itself instead of taking <var>pVersion</var> -- this goes red, recording a verification of
+/// values the row no longer holds.</p>
+Method TestTheVerificationIsConditionalOnTheVersionReadAtTheOpen()
+{
+    Set tId = ..ProbeDefinition("OpenVersion")
+    If tId = "" Quit
+    Set tOpenSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow)
+    Do $$$AssertStatusOK(tOpenSC, "the row opens")
+    If $$$ISERR(tOpenSC) || '$IsObject(tRow) Quit
+    Do ##class(OcuPilot.Test.DefinitionsProbe).ValuesFromRow(tRow, .tStored)
+    Set tVersion = +tRow.RowVersion
+    Set tRow = ""
+    Kill tValues
+    Merge tValues = tStored
+    Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.tValues)
+
+    Set tEditSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tEdit)
+    If $$$ISOK(tEditSC) && $IsObject(tEdit) {
+        Do ##class(OcuPilot.Kernel.State.Agent).SnapshotSecurityFields(tEdit, .tSnapshot)
+        Set tEdit.Model = ..#MOVEDMODEL
+        Set tEditSC = ##class(OcuPilot.Kernel.State.Agent).GuardedUpdate(tEdit, .tSnapshot)
+    }
+    Set tEdit = ""
+    Do $$$AssertStatusOK(tEditSC, "another writer edits the definition after the open and before the call")
+
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#OKBODY)
+    Do ##class(OcuPilot.Test.DefinitionsProbe).ConnectionOutcome(tId, .tValues, .tStored, .tAnswer, .tHttpStatus, .tFault, "", tVersion)
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "the provider was called once")
+    Do $$$AssertTrue('$IsObject(tAnswer), "no answer body is produced")
+    Do $$$AssertTrue($IsObject(tFault), "a fault is, instead")
+    If '$IsObject(tFault) Quit
+    Do $$$AssertEquals(tHttpStatus, 409, "answered as a conflict")
+    Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#STATECONFLICT, "under the one code a stale save carries")
+    Do $$$AssertEquals(..FlagsOf(tId), "0|0", "and the definition is still unverified")
 }
 
 /// <p>The model the mid-call writer sets, so "the row moved" is observable as a value rather than

@@ -9,9 +9,14 @@
 /// <p><b>It never gates.</b> Its privilege set is empty and its area's is too, so every
 /// signed-in caller reaches it -- which is what keeps the rail's one navigating item working
 /// for a caller who holds a single administrative resource.</p>
-/// <p><b>It does not refresh.</b> EXPERIENCE.md's auto-refresh screens are the six live lists and
-/// details (`:561`); Home is not one, so it declares <code>refreshes: false</code> and no rates,
-/// and the shared framework binds nothing for it (AD-43).</p>
+/// <p><b>It refreshes, and it is the one screen whose default rate is not off</b> (AD-43).
+/// EXPERIENCE.md's Auto-refresh controls roster names it; a tick re-reads only its performance row
+/// (<code>GET /ui/performance</code>, Story 16.18), every 10 s until the person sets another rate or
+/// turns it off. That choice is remembered under the name <code>home</code>, because its route is
+/// empty.</p>
+/// <p><b>Its context carries the performance row</b> (AD-24): <code>context.fields</code> are the
+/// row's five values, and the one row the page publishes into its store is what a turn's screen
+/// context sends. A caller who may not read the metrics publishes no row.</p>
 /// <p>No entity type: Home administers nothing, so it has no change-event key, no id accessor
 /// and no read tool. The classic page it replaces is <code>%CSP.Portal.Home</code>, spelled in
 /// the class's own case because the custom-resource lookup does not case-fold
@@ -32,15 +37,16 @@ XData Declaration
   "sideBarPosition": 1,
   "archetype": "home",
   "built": true,
-  "refreshes": false,
-  "refreshRates": [],
+  "refreshes": true,
+  "refreshRates": [5, 10, 30, 60],
+  "refreshDefault": 10,
   "privileges": [],
   "entityType": "",
   "secondaryEntityTypes": [],
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "none", "parts": []},
-  "context": {"fields": [], "secretFields": []},
+  "context": {"fields": ["cacheEfficiency", "globalReferencesPerSecond", "globalUpdatesPerSecond", "diskReadsPerSecond", "diskWritesPerSecond"], "secretFields": []},
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
   "emptyStateKey": "",
