@@ -7746,6 +7746,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-27T18:31:11Z status=decision-pending owner=burndown by=harvest note=product call: keep; or gate the event-log screen alone (amend AD-8's area rule); or drop the screen to Stage 2
 - 2026-09-27T20:03:07Z status=open owner=16-8-the-six-secondary-log-viewers by=merge_gate note=decided option B: gate only the event-log screen; Logs keeps its Release 1 set; AD-8 amended; fixed in a 16.8 rework
 - 2026-09-28T01:18:58Z status=resolved-by:16-8-the-six-secondary-log-viewers by=merge_gate note=rework d4db0663 (CI 36348144770), independent review 0 high 0 med; released in 1.0.2 (c46cafa9)
+- 2026-09-28T01:31:58Z status=resolved-by:16-8-the-six-secondary-log-viewers by=adjudication note=d4db0663: event-log screen owns %Ens_EventLog:USE alone; Logs keeps Release 1 pairs; WireSecurityRead AUDITUSER leg
 
 ### DW-1760: Own-pair screens (AD-8 as amended for DW-1755) accept an own pair the area already declares, or an ownPrivileges equal to all of privileges, so a screen can leave the area-coverage check entirely
 - source: 16.8 rework independent review (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
