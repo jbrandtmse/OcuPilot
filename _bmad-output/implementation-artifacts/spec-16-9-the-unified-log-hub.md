@@ -404,6 +404,8 @@ Client (`ui/src/app/`):
 - mutation: `app.ts` drops `logHub.reset()` → `app.spec.ts` sign-out case red.
 - mutation: `Timeline.Compose` reads a refused member → `LogHub` zero-read leg red.
 - mutation: `Timeline.Compose` ignores a member's cut → `LogHub` truncation leg red.
+- mutation (QA): `Timeline.Compose` treats every member failure as a refusal (`If +tHttp = 403` → `If 1`) → `LogHub`'s `TestAMember403IsLeftOutAndA500FailsTheRead` 500 leg goes red (Matrix "Member fault").
+- mutation (QA): `Timeline.Compose`'s merge-cut branch drops the `tOwned.%Set("truncated", 1, ...)` call → `LogHub`'s `TestTheMergedCutFlagsEverySourceThatLostARow` goes red (Matrix "Merged cut").
 - mutation: `Timeline.Project` projects the audit stamp with `ClockStamp` instead of `LocalTime`, under the fixture's +2h clock → `LogHub` projection leg red.
 - mutation: `Timeline.Compose` merges ascending → `LogHub` merge, window, cut and projection legs red.
 - mutation: `Read.Execute` timeline branch skips the bound refusal → `LogHub` bad-bound leg red.
