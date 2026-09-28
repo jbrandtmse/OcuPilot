@@ -7820,6 +7820,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: NameAdmitted accepts IRIS.DAT and irisaudit/IRIS.DAT under $System.Util.ManagerDirectory() (Test/PathPort.cls resolves 1-8 names there); no consumer writes a file in 18.1, and the first file-kind consumers are 16.4, 19.2, 19.8 and 21.2. The earlier AD-21 cases narrowed names by pattern (.txt, messages.old_*). (inference) on consumer impact.
 - 2026-09-28T08:16:00Z status=decision-pending owner=burndown by=cr note=owner call: should AD-21's sixth case refuse an existing file or instance file for kind file, or leave it to each consumer
+- 2026-09-28T10:35:34Z status=routed owner=18-1-the-directory-allow-list by=merge_gate note=orchestrator decision 2026-09-28: kind=file refuses an existing name unless the consumer declares overwrite, and a name directly in the manager dir; AD-21
 
 ### DW-1771: The server-path picker's refused line is empty when the store is refused without an envelope reason (transport status 0, an installing answer)
 - source: spec-18-1-the-directory-allow-list.md | severity: low | fix-risk: low | footprint: in-story
@@ -7846,3 +7847,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Security is pinned at oauth.browser-spec:283, ssl:228, security:242 and navigation.test.mjs:377; permissions:279 and tasks:1032 pin theirs. Rule 29 runs a story's own specs only, so 18.1 met it as CI run 36393142503's red and a rework.
 - 2026-09-28T09:44:59Z status=routed owner=18-7-encryption by=cr note=a screen-adding story extends every pinned list of its area (grep -l ocu-side-bar-label ui/browser); 18.8 and 18.9 meet it too
+
+### DW-1775: Eight candidate admin API defects observed probing namespaces and mappings on 2026.2 (delete without %Admin_Secure answers 500 after deleting; maxRows limits a namespace DELETE's app cascade; client-input errors as 500; v2 async Location points at /v1)
+- source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured on ocupilot-b-ci 2026-09-28 by Story 18.2's plan; the eight are listed under the spec's Design Notes > Vendor defect candidates; OcuPilot guards each on its own side (pairs refused before any call, no maxRows on DELETE)
+- 2026-09-28T10:34:45Z status=decision-pending owner=burndown by=runner note=human=report the eight to intersystems-community/sysadmin-api-specification as candidate defects, as DW-1527 was

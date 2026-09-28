@@ -2,7 +2,7 @@
 title: 'Story 18.1: The directory allow-list'
 type: 'feature'
 created: '2026-09-27'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: '42b525899b46d1509fcb9412c28f32e286c6a538'
 baseline_commit: '42b525899b46d1509fcb9412c28f32e286c6a538'
@@ -350,11 +350,16 @@ Code review 2026-09-28, of rework 1 and merge `b219bc17`: four layers, `full-opu
 - `low`: no corpus row refuses `criteria` on a `path` read. The rule is an allow-list whose refusing branch the `monitor` and `state` rows pin, so only a deliberate edit that adds `path` escapes it.
 - `low`: commit `86e9c0a9`'s message places run 36393142503 on `b219bc17`, but that run's head is `b29c7ea7`. The fix rewrites pushed history, and the spec's `[CI]` item names no head.
 
+### Rework iteration 2 (DW-1770, orchestrator decision)
+
+- [ ] [Decision] DW-1770, decided by the orchestrator at the 18.1 boundary (2026-09-28) and written into AD-21's sixth case: for `kind` `file`, `PathPort.Resolve` also refuses (1) a name that already exists on disk, unless the caller declares that it overwrites (a new trailing `pOverwrite` argument, default 0, so no consumer overwrites by accident), and (2) a name directly in `<ManagerDirectory>` itself (one segment under an unrestricted root, or any root that normalizes to the manager directory), which holds the instance's own files. A `directory` kind is unaffected. Each refusal is a `detail.violations[]` entry on the `path` field with its own code and a server-written reason in `Api/Error.cls` (no path echoed, AD-39), refused before any vendor call. Pin each refusal with a `PathPort` test leg and a Rule 19 mutation (the existence check removed; the manager-directory check removed; overwrite ignored), and extend the `Test/PathPort.cls` matrix legs; the picker needs no change. Evaluated at every `Resolve`, so at the mint and again at the write.
+
 ## Spec Change Log
 
 - 2026-09-27, spec gate (runner): the proposed AD-21 sixth case under Design Notes was written into the spine verbatim, with "every server-path field (Story 18.1 on)" added to AD-21's Binds (Rule 20). The spine is the authority from here; Design Notes keeps the proposal text for the reviewer.
 - 2026-09-28, rework iteration 1 (runner): re-opened on CI run 36393142503's red (two browser specs pin the Security side bar) and on the integrate-forward merge `b219bc17`; the work is the three items under Tasks & Acceptance › Rework iteration 1.
 - 2026-09-28, runner (Rule 5, apply and report): AC4 read "stays under its 2004 kB warning". The merged bundle measured 2,005,146 bytes and rework 1 re-based `maximumWarning` to 2106kB under the owner's DW-1166 policy (the runner's brief allows a re-base and stops only above 3800kB), so AC4 now names 2106 kB. Intent unchanged: the build stays under its warning.
+- 2026-09-28, rework iteration 2 (runner): re-opened on the orchestrator's decision of DW-1770 at the 18.1 boundary, which directs the fix as its own commit before 18.2's implement push; the work is the one item under Tasks & Acceptance > Rework iteration 2. AD-21's sixth case carries the rule.
 
 ## Review Triage Log
 
