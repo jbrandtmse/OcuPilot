@@ -7593,11 +7593,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-14-8-the-seeded-injection-test.md (cr) | severity: med | fix-risk: high | footprint: in-story
 - evidence: SslRules.Test sends Security.SSLConfig/TEST (vendor Security.SSLConfigs.TestConnection to operator Host:Port); OAuthClientPort.Register sends REGISTERCLIENT (vendor dynamic registration POST). Neither is on ROSTER; both user-originated (screen-only route / confirm), so no turn reaches them today (inference from callers)
 - 2026-09-27T03:15:58Z status=escalated owner=burndown by=cr note=no structural signal marks which admin-API types the vendor answers by connecting out; class doc now names both. Needs a per-type decision
+- 2026-09-28T01:18:58Z status=wontfix-accepted by=merge_gate note=recommended disposition; reopen_if a tool reachable from a turn issues an admin-API request type the vendor answers by connecting out
 
 ### DW-1725: The reply renderer turns a same-origin Markdown image into a real <img>, so a compromised reply can make the browser issue a GET to the instance; AD-11 rule 4 says nothing rendered issues a request to any host
 - source: spec-14-8-the-seeded-injection-test.md (cr) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ui/src/app/core/reply.ts imageNode:272-274 renders isSameOriginUrl images as <img src>; the 14.8 browser spec filters same-origin requests, so it pins off-origin only. No spine text scopes rule 4 to other hosts
 - 2026-09-27T03:15:58Z status=decision-pending owner=burndown by=cr note=product call: does rule 4's any host include the instance's own origin? If yes, render every image as its alt text
+- 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=merge_gate note=decided fix: render every reply image as its alt text; AD-11 rule 4's any host includes the instance's own origin; first after 1.0.2; pre-existing since 1.0.0
 
 ### DW-1729: Sanitize.Strip omits invisible and bidi characters outside the spec's closed set (U+061C, U+00AD, U+180E, U+2028/9, U+FE00-FE0F, U+E0100-E01EF, U+FFF9-FFFB)
 - source: spec-14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model.md code-review | severity: low | fix-risk: low | footprint: in-story
@@ -7726,6 +7728,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-14-6-per-user-turn-limits-and-the-banner-they-need.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: origin/OCU-1-epic16 src/OcuPilot/Kernel/Shell/Guardrails.cls:103-110 lists contextRowCap and two character caps; turnsPerHour (Kernel.State.Switch, Story 14.6) is absent (inference until merged)
 - 2026-09-27T18:41:50Z status=routed owner=16-22-the-guardrails-page by=harvest note=the Guardrails page belongs to Story 16.22; add turnsPerHour at or after the 1.0.2 staging merge
+- 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=merge_gate note=16-22 is done; add turnsPerHour to the Guardrails page
 
 ### DW-1757: Smoke's two turn reserves record start records against the operator, counting toward that account's turns an hour
 - source: spec-14-6 code review | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -7742,3 +7745,29 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Area.cls logs row gains the pair because Registry.AreaCoverageProblem makes an area's set cover its screens'; %Manager lacks %Ens_EventLog:USE on ocupilot-ci (measured); the Epic 16 preamble forbids breaking a Release 1 screen
 - 2026-09-27T18:31:11Z status=decision-pending owner=burndown by=harvest note=product call: keep; or gate the event-log screen alone (amend AD-8's area rule); or drop the screen to Stage 2
 - 2026-09-27T20:03:07Z status=open owner=16-8-the-six-secondary-log-viewers by=merge_gate note=decided option B: gate only the event-log screen; Logs keeps its Release 1 set; AD-8 amended; fixed in a 16.8 rework
+- 2026-09-28T01:18:58Z status=resolved-by:16-8-the-six-secondary-log-viewers by=merge_gate note=rework d4db0663 (CI 36348144770), independent review 0 high 0 med; released in 1.0.2 (c46cafa9)
+
+### DW-1760: Own-pair screens (AD-8 as amended for DW-1755) accept an own pair the area already declares, or an ownPrivileges equal to all of privileges, so a screen can leave the area-coverage check entirely
+- source: 16.8 rework independent review (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
+- evidence: Registry.cls:736 and screen-mirror.mjs:811 accept both; only the owners roster pinned in screen-mirror.test.mjs:2110 guards it
+- 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=merge_gate note=fix: in both engines refuse an own pair the declaration's area already declares
+
+### DW-1761: The instance's MalformedPair accepts a non-string resource or permission ({resource: 5}) where the client mirror's malformedPair refuses it; the corpus has only string cases
+- source: 16.8 rework independent review (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
+- evidence: Registry.cls:2994 vs screen-mirror.mjs malformedPair; the mirror is stricter, so the build fails rather than leaks
+- 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=merge_gate note=fix: add a non-string case to both corpora and align the instance on %GetTypeOf = string
+
+### DW-1762: Every container stop in the 1.0.2 upgrade check logged Previous system shutdown was abnormal (restart of 1.0.1 code and recreate of 1.0.2); the README update step (docker compose restart) triggers it on every update
+- source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: medium | fix-risk: low | footprint: docker-compose.yml, scripts/ci-throwaway.sh, README.md
+- evidence: container log [ERROR] Status of instance IRIS is running; messages.log ends at Stopping User Jobs; next start recovered cleanly (0 blocks pending); pre-existing in 1.0.1; cause not investigated (inference: the default stop timeout is shorter than IRIS needs)
+- 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=orchestrator note=verify the cause first; a compose change recreates the owner's live ocupilot container on its next up, so coordinate with the owner
+
+### DW-1763: The README does not say a user needs READ on the install namespace's database beyond %Manager; a %Manager-only user gets an empty 403 on every /api/ocupilot route
+- source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: README.md
+- evidence: the router's comment names the prerequisite; same text in 1.0.1; %Manager plus %DB_HSCUSTOM works
+- 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=orchestrator note=plain one-line README note (owner collateral rule)
+
+### DW-1764: home-findings.browser-spec.mjs AC1 failed once nondeterministically: an Integrity Check or Automatic Table Statistics line appeared in the Operations findings, and the assertion does not name which task
+- source: feature CI run 36359053662 attempt 1 on c46cafa9 (orchestrator), 2026-09-27 | severity: medium | fix-risk: low | footprint: ui/browser/home-findings.browser-spec.mjs, src/OcuPilot/Kernel/Shell/Findings.cls
+- evidence: attempt 1 red 500/501, attempt 2 green on the same head; the same code passed on staging runs 36352462516 and 36355806784 (inference: a stock task suspended with a non-empty last-run Error on that container)
+- 2026-09-28T01:18:59Z status=routed owner=range-end-cleanup by=orchestrator note=make the assertion print the operations lines, then pin the cause; if the product reports a person-suspended task as an error, fix TaskErrors
