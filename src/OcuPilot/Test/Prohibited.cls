@@ -215,7 +215,7 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace", "the set covers exactly twenty-two entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6 and the namespace since Story 18.2")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,global-mapping,routine-mapping,package-mapping", "the set covers exactly twenty-five entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2 and the three mapping types since Story 18.14")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
     Set tKey = ..Seed(..Payload(), "Description", "probe-id", "lock")
@@ -394,7 +394,7 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             If 'tComposed Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
             ; Story 12.4's key-set refresh is composed from the stored JWKS URL alone, so it admits
             ; no argument beyond its target's issuer; Story 12.6's mapping writes from a service and
-            ; a key.
+            ; a key; Story 18.14's copy of mappings from its source namespace.
             If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
             For tI = 1:1:$ListLength(tPermitted) {
                 ; A type whose identifying field is also a reviewed field (an OAuth 2.0 server
@@ -669,7 +669,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 19, "the set declares nineteen codes")
+    Do $$$AssertEquals($ListLength(tCodes), 20, "the set declares twenty codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")

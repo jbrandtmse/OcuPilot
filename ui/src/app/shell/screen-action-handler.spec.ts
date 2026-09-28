@@ -15,6 +15,7 @@ import {
   ADD_GRANTED_ROLE,
   ADD_MATCHING_ROLE,
   ADD_ROLE,
+  COPY_MAPPINGS,
   NAMESPACE_LIST,
   REMOVE_APPLICATION_ROLE,
   REMOVE_GRANTED_ROLE,
@@ -1184,5 +1185,62 @@ describe('the Namespaces list\u2019s Delete (Story 18.2)', () => {
     handler.cancelPending();
     expect(calls.map((call) => call.method)).toEqual(['GET']);
     expect(NAMESPACES.rowActions.find((action) => action.id === 'delete')?.selfProtection).toBe('');
+  });
+});
+
+/**
+ * Story 18.14: the three mapping lists' Delete types the mapping's name -- the row key is
+ * `[namespace, Name]`, whose separator no one can type -- states its kind's consequence, and sends
+ * the whole row key; the Namespaces list's Copy mappings is left to that list's own page.
+ */
+describe('the mapping lists\u2019 Delete and the Namespaces list\u2019s Copy mappings (Story 18.14)', () => {
+  const MAPPING_LISTS = [
+    ['OcuPilot.Screen.Descriptor.GlobalMappingList', STRINGS.globalMappingDeleteConsequence],
+    ['OcuPilot.Screen.Descriptor.RoutineMappingList', STRINGS.routineMappingDeleteConsequence],
+    ['OcuPilot.Screen.Descriptor.PackageMappingList', STRINGS.packageMappingDeleteConsequence],
+  ] as const;
+
+  it('registers Delete on each list, typing the mapping\u2019s name under its kind\u2019s consequence', () => {
+    // Mutation (Rule 19): drop a list's entry from `TYPED_NAME_ROWS` -> its name assertion goes red,
+    // the dialog asking for the joined row key; drop its `DESTRUCTIVE_CONSEQUENCES` entry -> its
+    // registration and consequence assertions go red.
+    for (const [descriptor, consequence] of MAPPING_LISTS) {
+      const { actions, handler, store, calls } = mount(undefined, descriptor);
+      const target = 'OCUPROBE1814BA\u0001OcuProbe1814G';
+      expect(actions.has(descriptor, 'delete')).toBe(true);
+      handler.startFor(descriptor, 'delete', target, { namespace: 'OCUPROBE1814BA', Name: 'OcuProbe1814G' }, store);
+      expect(handler.pending()?.kind).toBe('typed-name');
+      expect(handler.pending()?.name).toBe('OcuProbe1814G');
+      expect(handler.pending()?.target).toBe(target);
+      expect(handler.pending()?.consequence).toBe(consequence);
+      expect(handler.pending()?.advisory).toBe('');
+      expect(calls).toHaveLength(0);
+    }
+  });
+
+  it('sends a confirmed Delete with the whole row key, and publishes what the instance answered', async () => {
+    const descriptor = 'OcuPilot.Screen.Descriptor.GlobalMappingList';
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const target = 'OCUPROBE1814BA\u0001OcuProbe1814G';
+    const { handler, store, calls, events } = mount(
+      { kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'global-mapping', scope: 'instance', id: target } } },
+      descriptor
+    );
+    handler.startFor(descriptor, 'delete', target, { namespace: 'OCUPROBE1814BA', Name: 'OcuProbe1814G' }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
+    expect(events.map(({ type, id, action }) => ({ type, id, action }))).toEqual([{ type: 'global-mapping', id: target, action: 'deleted' }]);
+  });
+
+  it('leaves Copy mappings undrawn, for the Namespaces list\u2019s own page to register', () => {
+    // Mutation (Rule 19): drop the Namespaces list's entry from `UNDRAWN_ACTIONS` -> this goes red,
+    // and a later construction of the handler would replace the page's registration with a send
+    // that carries no source.
+    const { actions } = mount(undefined, NAMESPACE_LIST);
+    expect(actions.has(NAMESPACE_LIST, 'delete')).toBe(true);
+    expect(actions.has(NAMESPACE_LIST, COPY_MAPPINGS)).toBe(false);
   });
 });

@@ -129,6 +129,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.OAuthServerTab': { rotatekeys: STRINGS.oauthClientRotateKeys },
   // Story 12.8: the OAuth 2.0 Server client descriptions tab's key-set refresh.
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab': { updatejwks: STRINGS.oauthServerUpdateJwks },
+  // Story 18.14: the Namespaces list's Copy mappings, which also titles its dialog.
+  'OcuPilot.Screen.Descriptor.NamespaceList': { 'copy-mappings': STRINGS.namespaceCopyMappingsAction },
 };
 
 export class ScreenActions {

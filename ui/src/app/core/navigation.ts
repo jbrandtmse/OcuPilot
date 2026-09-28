@@ -29,7 +29,7 @@
 
 import type { ApiService } from './api';
 import type { ConnectivityService } from './connectivity';
-import { decodeEntityId, encodeEntityId } from './entity-id.ts';
+import { decodeEntityId, encodeEntityId, splitCompositeId } from './entity-id.ts';
 import { INSTANCE_SCOPE, scopeFor } from './entity-ref.ts';
 import { AREAS, SCREENS, type AreaDeclaration, type ScreenDeclaration } from './screens.generated.ts';
 import { createSingleFlight } from './single-flight.ts';
@@ -253,15 +253,36 @@ export function listForDocumentScreen(screen: ScreenDeclaration): ScreenDeclarat
  */
 export function childListFor(screen: ScreenDeclaration): ScreenDeclaration | null {
   if (screen.route === '') return null;
+  return SCREENS.find((child) => isChildListOf(child, screen)) ?? null;
+}
+
+/**
+ * Whether `child` qualifies as one of `parent`'s sub-resource lists: `childListFor`'s predicate,
+ * which a parent may satisfy more than once. The namespace editor links a namespace's three mapping
+ * lists, each declaring `parentScope` `os-management/namespaces` (Story 18.14); `childListFor`
+ * answers the first, and `parentListFor` inverts every one.
+ */
+function isChildListOf(child: ScreenDeclaration, parent: ScreenDeclaration): boolean {
   return (
-    SCREENS.find(
-      (child) =>
-        child.parentScope === screen.route &&
-        child.built &&
-        !isListedScreen(child) &&
-        hasIdRoute(child) &&
-        child.archetype !== 'detail'
-    ) ?? null
+    parent.route !== '' &&
+    child.parentScope === parent.route &&
+    child.built &&
+    !isListedScreen(child) &&
+    hasIdRoute(child) &&
+    child.archetype !== 'detail'
+  );
+}
+
+/** Whether `child` qualifies as `parent`'s per-row detail screen: `detailScreenFor`'s predicate. */
+function isDetailScreenOf(child: ScreenDeclaration, parent: ScreenDeclaration): boolean {
+  return (
+    parent.route !== '' &&
+    child.parentScope === parent.route &&
+    child.built &&
+    !isListedScreen(child) &&
+    hasIdRoute(child) &&
+    child.archetype === 'detail' &&
+    child.tab === null
   );
 }
 
@@ -273,30 +294,23 @@ export function childListFor(screen: ScreenDeclaration): ScreenDeclaration | nul
  */
 export function detailScreenFor(screen: ScreenDeclaration): ScreenDeclaration | null {
   if (screen.route === '') return null;
-  return (
-    SCREENS.find(
-      (child) =>
-        child.parentScope === screen.route &&
-        child.built &&
-        !isListedScreen(child) &&
-        hasIdRoute(child) &&
-        child.archetype === 'detail' &&
-        child.tab === null
-    ) ?? null
-  );
+  return SCREENS.find((child) => isDetailScreenOf(child, screen)) ?? null;
 }
 
 /**
- * The list `screen` is the sub-resource list or per-row detail screen of (`childListFor`'s and
- * `detailScreenFor`'s shared inverse), or `null`.
+ * The list `screen` is a sub-resource list or the per-row detail screen of, or `null`: the screen
+ * at its `parentScope` whenever `screen` qualifies as that screen's child list or detail screen,
+ * not only when it is the one `childListFor` or `detailScreenFor` answers first. A parent may have
+ * several child lists -- a namespace's global, routine and package mappings (Story 18.14) -- and each
+ * one's locator links back to it. The screen is judged as the mirror declares it at its route, so a
+ * screen the roster does not carry is nobody's child.
  */
 export function parentListFor(screen: ScreenDeclaration): ScreenDeclaration | null {
   if (screen.parentScope === '') return null;
   const parent = screenForRoute(screen.parentScope);
-  if (parent === null) return null;
-  if (childListFor(parent)?.route === screen.route) return parent;
-  if (detailScreenFor(parent)?.route === screen.route) return parent;
-  return null;
+  const declared = screenForRoute(screen.route);
+  if (parent === null || declared === null) return null;
+  return isChildListOf(declared, parent) || isDetailScreenOf(declared, parent) ? parent : null;
 }
 
 /**
@@ -494,13 +508,24 @@ export interface ChangeTarget {
  *
  * `null` is not a fault. It is the "a type no built screen shows" row of this story's matrix: the
  * toast still says what changed, with no action to offer.
+ *
+ * **A parent-scoped list whose composite id opens with its one criterion is opened on that part**
+ * (AD-36, Story 18.14): a mapping list's route id is the namespace it reads, not the mapping, so a
+ * change to `[namespace, Name]` opens that namespace's list rather than reading for the joined id.
  */
 export function screenForChange(event: { readonly type: string; readonly id: string }): ChangeTarget | null {
   const screen = screenForEntityType(event.type);
   if (screen === null) return null;
   const route =
-    hasIdRoute(screen) && event.id !== '' ? `${screen.route}/${encodeEntityId(event.id)}` : screen.route;
+    hasIdRoute(screen) && event.id !== '' ? `${screen.route}/${encodeEntityId(routeIdFor(screen, event.id))}` : screen.route;
   return { screen, route };
+}
+
+/** The route id that opens `screen` on entity `id`: the id itself, or its parent part (above). */
+function routeIdFor(screen: ScreenDeclaration, id: string): string {
+  const fields = screen.read?.criteria?.fields ?? [];
+  if (screen.parentScope === '' || screen.id.kind !== 'composite' || fields.length !== 1) return id;
+  return screen.id.parts[0] === fields[0].param ? splitCompositeId(id)[0] : id;
 }
 
 /** Whether a screen is keyed by an id, and therefore carries an `/:id` route. */

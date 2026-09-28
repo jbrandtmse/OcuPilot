@@ -40,6 +40,15 @@ Parameter STRUCTUREDFIELDS = "entries=[{""date"":""2026-09-26"",""errorNumber"":
 /// part.</p>
 Parameter TARGETID = "OcuPilotDraftSource/OcuPilotDraftType/OcuPilotDraftName";
 
+/// <p>The entity types whose port splits the target id into its composite parts, comma-separated
+/// (Story 18.14's mappings, keyed <code>[namespace, Name]</code>): their synthetic id is
+/// <parameter>SPLITTARGETID</parameter>, since a port answers no step for an id it cannot split.</p>
+Parameter SPLITTARGETS = "global-mapping,routine-mapping,package-mapping";
+
+/// <p>The parts of the synthetic id a <parameter>SPLITTARGETS</parameter> type is given, joined as
+/// a composite.</p>
+Parameter SPLITTARGETID = "OcuPilotDraftNamespace,OcuPilotDraftName";
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
@@ -243,7 +252,9 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
         Do tPayload.%Set($List(tSecrets, tI), ..#SECRETPROBE _ tN, "string")
     }
     Set tDescriptor = $Parameter(tClass, "DESCRIPTORCLASS")
-    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($ClassMethod(tDescriptor, "PrimaryEntityType"), ##class(OcuPilot.Kernel.EntityRef).ScopeFor($ClassMethod(tDescriptor, "Scope")), ..#TARGETID, .tRef)
+    Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
+    Set tTargetId = $Select($ListFind($ListFromString(..#SPLITTARGETS), tType): ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#SPLITTARGETID)), 1: ..#TARGETID)
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key(tType, ##class(OcuPilot.Kernel.EntityRef).ScopeFor($ClassMethod(tDescriptor, "Scope")), tTargetId, .tRef)
     If $$$ISERR(tSC) Quit "no target reference: " _ $System.Status.GetErrorText(tSC)
     Kill tRow
     Set tRow("targetRef") = tRef

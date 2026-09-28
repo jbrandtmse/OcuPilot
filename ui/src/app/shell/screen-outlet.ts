@@ -47,6 +47,8 @@ import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { DeviceFormPage } from '../areas/os-management/device-form.page';
 import { NamespaceFormPage } from '../areas/os-management/namespace-form.page';
+import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
+import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -135,6 +137,12 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.WalletSecretForm': WalletSecretFormPage,
   'OcuPilot.Screen.Descriptor.DeviceForm': DeviceFormPage,
   'OcuPilot.Screen.Descriptor.NamespaceForm': NamespaceFormPage,
+  // Story 18.14: the Namespaces list with its Copy mappings, and the one page serving the three
+  // mapping forms, which takes the kind from the route.
+  'OcuPilot.Screen.Descriptor.NamespaceList': NamespaceListPage,
+  'OcuPilot.Screen.Descriptor.GlobalMappingForm': MappingFormPage,
+  'OcuPilot.Screen.Descriptor.RoutineMappingForm': MappingFormPage,
+  'OcuPilot.Screen.Descriptor.PackageMappingForm': MappingFormPage,
   'OcuPilot.Screen.Descriptor.SslForm': SslFormPage,
   'OcuPilot.Screen.Descriptor.TaskForm': TaskWizardPage,
   'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,

@@ -2,13 +2,35 @@
 title: 'Story 18.14: Namespace mappings and copy-mappings'
 type: 'feature'
 created: '2026-09-28'
-status: 'ready-for-dev'
+baseline_revision: '57c4a1d797567e26000d343ecd7d41069457f4a7'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized', 'multiple-goals']
-deferred: []
+deferred:
+  - summary: >-
+      A global mapping's Collation cannot be cleared from the edit form.
+    evidence: |-
+      The form sends Collation "" when cleared, and MappingRules.Validate refuses "" as MAPPING.COLLATION.VALUE (not a whole number); reported by the implementation stage, confirmed by reading Validate.
+    location: >-
+      src/OcuPilot/Area/OsMgmt/MappingRules.cls:123
+    severity: low
+  - summary: >-
+      The mapping form's locator screen segment opens the create route without its namespace, which shows the namespace-absent message.
+    evidence: |-
+      Reported by the implementation stage's client work; the form's route carries the namespace as a query parameter the locator's link does not keep.
+    location: >-
+      ui/src/app/shell/locator-bar.ts
+    severity: low
+  - summary: >-
+      A mapping create refused on Namespace shows its sentence only in the form's summary, on no field.
+    evidence: |-
+      Reported by the implementation stage's client work; the form draws no Namespace control, so a MAPPING.NAMESPACE.ABSENT violation has no field to attach to.
+    location: >-
+      ui/src/app/areas/os-management/mapping-form.page.ts
+    severity: low
 ---
 
 <intent-contract>
@@ -488,7 +510,42 @@ The work has two parts, built in order:
 
 - 2026-09-28, spec gate (runner, after the re-plan): the six proposed amendments under Design Notes were written into the spine verbatim (Rule 20) -- AD-8 (a paragraph), AD-10 (a bullet), AD-26 (a paragraph, with the read-once rule), AD-36 (a paragraph), AD-51 (a named case) and AD-44 (appended to the DW-1784 paragraph). Accepted at the gate: the update and copy also declare classic pages, as "every classic page whose operation it performs" reads.
 
+- 2026-09-28, implement (Task 0), for the runner (Rule 20): AD-8's Story 18.14 paragraph gains the sentence "`osmgmt.namespaces.copymappings` also declares `%DB_IRISSYS:WRITE`: a principal holding the Namespaces screens' pairs and `%Admin_Operate:USE` was answered 500, its queued copy failing `<PROTECT>` in `Config.Namespaces.CopyMaps` with the destination unchanged (measured on `ocupilot-b-ci`, 2026-09-28)."
+
 ## Review Triage Log
+
+### 2026-09-28 — Review pass
+
+- verdicts: 28 findings — high 0, medium 5, low 17, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` vendor name refusals (`PROPERTYFAULTS` `MAPPING.NAME.SHAPE`) reached by no test — added `MappingRefusals.TestANameTheInstanceRefusesAnswersOnName` (global unclosed subscript, routine and package hyphen; Save 422 on Name, confirm 422, nothing created), mutation recorded.
+  - `[medium]` `[patch]` `Validate`'s namespace-absent and collation rules and the form read's 404s untested — added `MappingRefusals.TestAnAbsentNamespaceAndABadCollationAreRefused` through `MappingAcceptPort`, mutation recorded.
+  - `[medium]` `[patch]` mapping violation codes' sentences and `Rules(kind)` not pinned as the namespace codes are — added `MappingDescriptor.TestEachViolationCodeCarriesASentenceAndItsField`, mutation recorded.
+  - `[medium]` `[patch]` the locator's composite-id label untested — added a `locator-bar.spec.ts` case, mutation recorded.
+  - `[low]` `[patch]` `NamespaceCopy`'s task-count comparison could pass with an unreadable list — added the `tTasks >= 0` floor, mutation recorded.
+  - `[low]` `[reject]` AC2 absent-database and suffix legs carry no own mutation line — Rule 19 asks one demonstrated mutation per AC and AC2 has several; writing more is not a direct correction.
+  - `[low]` `[reject]` AC2 edit-sends-complete-set leg has no own mutation line — same reason.
+  - `[low]` `[reject]` AC2 taken-name Save leg not shown load-bearing by the `CREATES` mutation — the Save leg asserts the `MAPPING.NAME.TAKEN` violation by code; the AC's line stands.
+  - `[low]` `[reject]` AC3 delete-carries-no-effect has no own mutation line — same per-AC reason.
+  - `[low]` `[reject]` AC5 positive halves have no own mutation line — same per-AC reason; AC5 carries two lines.
+  - `[low]` `[reject]` AC6 bad-source leg has no own mutation line — same per-AC reason; AC6 carries three.
+  - `[low]` `[patch]` AC6 copy-into-own and cut-list mutations only in doc comments — demonstrated the `CopiesOwnMapping` mutation and recorded it.
+  - `[low]` `[reject]` AC6 destination-contents mutation only in a doc comment — same per-AC reason.
+  - `[low]` `[reject]` AC7 restore check has no mutation line — it is the class's teardown contract, and every run since left each page reading empty.
+  - `[medium]` `[patch]` `ClassicPageGate.TestWithNoAssignment...` built its expected pairs through `WithClassicPages` itself — expected set now built from the recorded pages, mutation recorded.
+  - `[low]` `[patch]` stray `MappingQuery` call in `MappingRefusals.TestTheCompositeIdIsSplit...` — deleted.
+  - `[false]` `[reject]` the mint answers `TOOL.ARGUMENTS` with the rule's sentence rather than the matrix's code — the spec's Tasks route these through `ArgumentProblem`, the mint's convention; the Save answers the codes on their fields.
+  - `[false]` `[reject]` the routine suffix reaches a port read at the mint — the mint's absence `GET` is a read; no write reaches the port (`WriteCount` 0), which is what the matrix row guards.
+  - `[low]` `[reject]` tests assert route statuses, not the vendor's — the Taken rule precludes an upsert over an existing mapping; recording vendor statuses adds a seam for no user harm.
+  - `[false]` `[reject]` mapping deletes declare no `CLASSICPAGES` — by the spec's Tasks and AD-44 as amended; the descriptor's `%CSP.UI.Portal.Mappings` union predates this story (`ScreenGate`).
+  - `[low]` `[reject]` missing-pair coverage limited to the spec's legs (3 screen legs, global kind, copy `%DB_IRISSYS:WRITE` by declaration) — the declared pairs are pinned by `MappingDescriptor`, `ProposalPrivilege` and `ToolEmit`.
+  - `[low]` `[reject]` `%ALL` exercised only through the predicate — the spec's plan; `IsOwnMappingNamespace`'s `%ALL` arm is shared by the copy.
+  - `[low]` `[reject]` the Lists row's probe-namespace form runs only in the browser spec — covered there, 4/4.
+  - `[false]` `[reject]` the client sends only the changed field — AD-4's complete set is the server's merge, asserted at `MappingRecordPort`.
+  - `[low]` `[reject]` no Save confirmation for a `%` global and no edit-mode page test of its line — the spec's ruling puts the screen's confirmation at the field line.
+  - `[false]` `[reject]` read-once tested only indirectly — provoking a second read is forbidden by the orchestrator; the logs held no #7846 after the full sweep.
+  - `[low]` `[reject]` `SourceHeld` reads a non-404 failure as held — the pair gate precedes it, and the vendor then fails the task #420.
+  - `[false]` `[reject]` regeneration of `screens.generated.ts` and `ToolFields.cls` unverifiable — `npm run build`'s prebuild ran `screen-mirror.mjs --check` and `field-lists.mjs --check`, both clean.
 
 ## Design Notes
 
@@ -520,6 +577,13 @@ The work has two parts, built in order:
   - An absent source still gets 202, then `Failed` #420, which is why the tool refuses it first.
 - **Pairs.** Every mapping write needs `%DB_IRISSYS:WRITE`: without it the answer is `<PROTECT>`, and nothing changes. The poll needs `%Admin_Operate:USE` and is owner-only.
 - **Not measured, left to Task 0:** the copy's `%DB_IRISSYS:WRITE`, the LIST's case handling, and the read-once check.
+
+**Measured at implement** (Task 0, `ocupilot-b-ci`, 2026-09-28; probe namespaces `OCUPROBE1814A`/`B`/`C`, two probe principals and a probe port class, all removed):
+
+- **LIST case.** `namespace=user` and `namespace=USER` answered the same rows (117 global, 1 routine, 4 package), and so did `hscustom` against `HSCUSTOM` (120, 3, 8). `NamespacePort` does not upper-case a LIST's `namespace`.
+- **LIST keys.** Global rows carry `{Name, Subscript, Database, Collation, LockDatabase}`, routine rows `{Name, Type, Database}`, package rows `{Name, Database}`. Every row of all six reads carries `Name`. `HSCUSTOM`'s own mapping reads `{"Name":"OcuPilot*","Database":"OCUPILOT",...}`.
+- **Copy without `%DB_IRISSYS:WRITE`.** A principal holding the install namespace's code read, `%DB_IRISSYS:READ`, `%Admin_Manage:USE` and `%Admin_Operate:USE` was answered 500: the queued task failed `<PROTECT>CopyMaps+12^Config.Namespaces.1 ^SYS("CONFIG","IRIS","MapGlobals",...)`, and the destination was unchanged. With `%DB_IRISSYS:RW` added, the copy answered 200 and the destination held the source's three mappings. The copy tool keeps `%DB_IRISSYS:WRITE`.
+- **Read once.** After three copies through the async path, each read once by `AwaitTask`, neither `messages.log` nor `alerts.log` held ERROR #7846. `$SYSTEM.Monitor.State()` read 2 before and after, already raised by earlier severity-2 lines. A copy that carries a package mapping, made by a principal without write on the destination's globals database, logs a vendor severity-2 line (`Error rebuilding Extent index: <PROTECT>RebuildExtentIndexNS`), and the copy still applies.
 
 **Decisions:**
 
@@ -629,9 +693,60 @@ The work has two parts, built in order:
 | AC7 | `NamespaceDelete`'s `CLASSICPAGES` emptied | `ClassicPageGate`'s delete legs alone; `MappingDescriptor`'s roster |
 | AC8 | A field label drawn in `--ocu-surface` | the DW-1337 legs, in both themes |
 
+Demonstrated on `ocupilot-b-ci`, each ObjectScript mutation loaded with its subclasses, each client mutation over a rebuilt and redeployed bundle where a browser spec reads it, and each reverted byte-identical:
+
+- mutation: `Read.SeedRows` sets nothing → `MappingDescriptor.TestEachReadToolAnswersItsListsRowsWithTheNamespace` red on all three kinds (run 428), and `namespace-mappings.browser-spec`'s AC2/AC3 leg red (the name cell opens no edit); its AC1 leg stayed green.
+- mutation: `NamespacePort.Invoke` does not split the composite id → all nine `MappingWrite` methods red (run 430); the vendor refuses the unsplit name 400 `PORT.VALIDATION`, not 404.
+- mutation: `MappingCreate` `CREATES` 0 → `MappingWrite.TestATakenNameIsRefused` red, the upsert minted 200; every agent create red beside it (run 432).
+- mutation: `Prohibited.WeakensByEffect`'s `global-mapping` arm removed → `MappingWrite.TestASystemGlobalMappingIsPermittedAtTheStrongestConfirmation` alone red (run 434).
+- mutation: `Prohibited.IsOwnMapping` answers 0 → `MappingWrite`'s install-namespace and `%ALL` tests red, each refused write recorded by `MappingAcceptPort`, with OcuPilot's own mapping unchanged (run 435).
+- mutation: `MappingCreate.PrivilegePairs` drops `%DB_IRISSYS:WRITE` → `MappingWriteGate.TestAWriteWithoutTheWritePairIsRefusedBeforeAnyPortCall` red on both callers (run 436).
+- mutation: `NamespaceCopyMappings.PrivilegePairs` drops `%Admin_Operate:USE` → `MappingWriteGate.TestACopyWithoutThePollPairIsRefusedBeforeAnyPortCall` alone red on both callers (run 444).
+- mutation: `Namespace.Namespace/MAPPINGS` out of `AdminPort.QUEUEDWRITES` → 4 of 7 `NamespaceCopy` methods red, both callers answering 500 `INTERNAL` with no task row written (run 437); `AdminPortAsync.TestOnlyTheNamedQueuedWritesAreAdmitted` red (run 438).
+- mutation: `NamespacePort`'s started conversion removed → `NamespaceCopy`'s two zero-bound tests alone red, 503 `PORT.TIMEOUT` on both callers, each task still read once by `Settle` and deleted (run 439).
+- mutation: `Screen.Gate.WithClassicPages` answers `pPairs` → `ClassicPageGate`'s two assigned-page tests red, all ten declaring tools admitted; its no-assignment test green (run 440).
+- mutation: `NamespaceDelete` `CLASSICPAGES` "" → `ClassicPageGate.TestAnAssignedPageGatesTheScreensCaller` and `TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet` red (run 441), `MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools` red (run 442).
+- mutation: `NamespacePort.Refused` converts nothing → `MappingRefusals.TestABaseMappingWithSubscriptMappingsIsRefusedOnName` alone red, the Save answering 500 `INTERNAL` (run 443).
+- mutation: `.ocu-field-label` drawn in `--ocu-surface` → `namespace-mappings.browser-spec`'s AC8 leg red at 1.04:1 light and 1.08:1 dark. An inline `style` on the form's label left it green and is not counted (inference: the served CSP drops inline styles).
+- mutation: `EndpointCoverage`'s `GET /mapping/:kind/name` row deleted → `TestEveryRouteHasAProbeAndEveryProbeHasARoute` red (run 446); `SurfaceCoverage`'s `osmgmt.namespaces.copymappings` row deleted → `TestEveryWriteToolHasACoverageRowAndBack` red (run 447).
+- mutation: `navigation.ts` `parentListFor` as the first-child inverse → `navigation.test.mjs`'s mapping-parent test red (routine leg); `routeIdFor` returns the id unchanged → its mapping-change test red; `builtScreensForArea` descending → `app.routes.spec`'s route-order test red.
+- mutation: `entity-ref.ts` `foldcase-firstpart` lower-cases the whole id → `entity-ref.test.mjs`'s rule test red; `proposal-view.ts` drops `MAPPING.SYSTEMGLOBAL` → `proposal-view.test.mjs`'s consequence-codes test red.
+- mutation: `namespace-form.page.ts` `mappingLinks` answers `[]` → `namespace-form.page.spec` AC1 red; `namespace-list.page.ts` drops the `copy-mappings` registration, or its `continued` branch → `namespace-list.page.spec`'s AC6 legs red.
+- mutation: `screen-action-handler.ts` drops `GlobalMappingList` from `TYPED_NAME_ROWS`, or `NamespaceList` from `UNDRAWN_ACTIONS` → its typed-name Delete or undrawn-Copy test red; `screen-outlet.ts` drops `NamespaceList` from `DESCRIPTOR_PAGES` → `screen-outlet.spec`'s 18.14 test red; `app.ts` drops `mappingForm.reset()` → `app.spec`'s sign-out test red.
+- mutation: `mapping-form.page.ts`'s `%` line disabled → `mapping-form.page.spec` AC3 red; `mapping-form.store.ts` sends empty optional fields → `mapping-form.store.spec`'s create test red; `copy-mappings-dialog.ts` excludes the destination case-sensitively → `copy-mappings-dialog.spec`'s sources test red.
+- mutation (review pass): `MappingSave.PortViolations` returns at once → `MappingRefusals.TestANameTheInstanceRefusesAnswersOnName` alone red (run 810).
+- mutation (review pass): `MappingRules.Validate`'s namespace-absent arm removed → `MappingRefusals.TestAnAbsentNamespaceAndABadCollationAreRefused` alone red, every write going to `MappingAcceptPort` (run 811).
+- mutation (review pass): `Error.ReasonForMapping`'s `MAPPINGDATABASEREQUIRED` arm removed → `MappingDescriptor.TestEachViolationCodeCarriesASentenceAndItsField` alone red (run 812).
+- mutation (review pass): `Screen.Gate.WithClassicPages` adds an unassigned page's empty resource → `ClassicPageGate.TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet` alone red (run 813).
+- mutation (review pass): `NamespaceCopy.TaskCount` answers -1 → `NamespaceCopy.TestACopyRoundTripsOnBothCallers` red on its readable-list floor (run 814).
+- mutation (review pass): `Prohibited.CopiesOwnMapping` permits every destination → `NamespaceCopy.TestACopyIntoTheInstallNamespaceOfAnOcuPilotMappingIsRefused` and `TestACutSourceListIsRefused` red, each copy accepted by `MappingAcceptPort` and `HSCUSTOM`'s mappings unchanged (run 819).
+- mutation (review pass): `locator-bar.ts` `entityLabel` answers the raw id → `locator-bar.spec`'s Story 18.14 composite-id test red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Re-planned only; no code changed. Parts A (mappings) and B (copy-mappings) are specified in build order. Part C and its interop Task 0 are removed (Story 18.15). The DW-1784 union is designed as a tool-level `CLASSICPAGES` that `Screen.Gate.WithClassicPages` resolves on every gate call, and `ClassicPageGate` proves it against the throwaway's real store. Six spine amendments are proposed for the runner. The throwaway was not touched, and vendor source was read from `irissys/`, read-only.
+**Implemented.** Parts A and B and the DW-1784 mechanism, in the spec's order. Task 0 found every LIST row carrying `Name`, the LIST case-insensitive, and no #7846 after the async copies; the copy keeps `%DB_IRISSYS:WRITE`, measured refused without it (the AD-8 sentence is in the Spec Change Log for the runner).
+
+**Files.**
+
+- Server: `Port/NamespacePort.cls`; `Area/OsMgmt/MappingRules.cls` and `MappingSave.cls` behind four `/mapping/:kind` routes; six mapping descriptors; nine mapping tools on three abstract bases with `MappingMint`, and `NamespaceCopyMappings`.
+- Kernel: `Screen/Gate.WithClassicPages` with `Write.CLASSICPAGES`, declared by the four namespace tools and the six mapping create and update tools; `Screen/Read.cls` row seeding (AD-36); `PROHIBITED.OCUPILOTMAPPING` and `MAPPING.SYSTEMGLOBAL` in `Prohibited.cls` and `Mint.cls`; the id rule `foldcase-firstpart`; `AdminPort` mutating, bodyless, queued and property-fault rosters; `Error.cls` codes; ten `Baseline.cls` lines.
+- Client: the mapping form, its store and actions, the Namespaces list page with the copy dialog and status line, the namespace editor's Mappings line, and `parentListFor` widened.
+- Tests: 20 new classes and fixtures, the rosters extended, and `scripts/ci-throwaway.sh` given its class lines. No new arming variable.
+
+**Review (first pass).** 28 findings. Patched: 5 medium (vendor name refusals, `Validate`'s namespace and collation rules and the form's 404s, the mapping codes' sentences, the locator's composite label, `ClassicPageGate`'s self-referential expectation) and 3 low (a task-count floor, a stray line, the `CopiesOwnMapping` mutation line). Every patch is a test, each demonstrated red by its recorded mutation, and no product code changed in the pass. Deferred: 3 low client items the implementation reported. Rejected: 20, each with its reason in the triage log.
+
+**Follow-up review:** `false`. Five medium entries were patched, but all five are test additions, each shown red under its mutation and green on the reverted tree, so no unverified risk can be named.
+
+**Verification.**
+
+- The full ObjectScript sweep on `ocupilot-b-ci` (348 classes, 2852 tests) found one red, `PortGate`, whose port roster lacked `NamespacePort`. The row was added, and `PortGate` re-ran 4/4 (run 805).
+- After the patches: `MappingDescriptor` 6/6, `MappingRefusals` 7/7, `NamespaceCopy` 7/7 and `ClassicPageGate` 3/3 (runs 815-820).
+- Client: `npm test` 1688 tools and 1749 components, then the `locator-bar` spec 32/32. `npm run build` is clean at 2.11 MB initial, with the warning re-based to 2217kB under DW-1166.
+- Browser: `namespace-mappings` and `namespaces` 9/9 on the redeployed bundle. Smoke on `ocupilot-b-ci` 49/49.
+- `check-objectscript` and `lint-docs` clean, and EXPERIENCE.md is 993 lines.
+- Throwaway state afterwards: no probe namespaces, principals or resource, the six classic pages' custom resources empty as recorded, `HSCUSTOM`'s only OcuPilot mapping `OcuPilot*` on `OCUPILOT`, and no #7846 in either log.
+
+**Residual risks.** The contended rosters shared with Epic 16 (`Prohibited` codes, `ReadTool`, `Navigation`, `Wire`, `PortGate`, `strings.ts`, `screens.generated.ts`) will need their counts reconciled at the merge. `MappingDelete.InputSchema` finds its create class by replacing the class name, which holds only for the registered tool names.

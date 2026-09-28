@@ -151,9 +151,17 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/database-free-space',
       'os-management/databases/volumes',
       'os-management/devices/edit',
+      // Story 18.14: the three unlisted mapping lists and their forms, reached from the namespace
+      // editor's Mappings line, among the unlisted screens in descriptor class-name order.
+      'os-management/namespaces/global-mappings/edit',
+      'os-management/namespaces/global-mappings',
       // Story 18.2: the unlisted namespace editor, reached from the Namespaces list.
       'os-management/namespaces/edit',
+      'os-management/namespaces/package-mappings/edit',
+      'os-management/namespaces/package-mappings',
       'os-management/processes/details',
+      'os-management/namespaces/routine-mappings/edit',
+      'os-management/namespaces/routine-mappings',
       'os-management/processes',
       'os-management/locks',
       'os-management/system-usage',
@@ -217,7 +225,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/ledger',
       'agent/transcripts',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files, device editor and namespace editor, process details, processes, Locks, System usage, Databases, Devices, Namespaces, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files, device editor, the global mapping form and list, the namespace editor, the package mapping form and list, process details, the routine mapping form and list, processes, Locks, System usage, Databases, Devices, Namespaces, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
   );
 });
 
@@ -412,6 +420,53 @@ test('childListFor pairs the Wallet list with its Secrets list, parentListFor in
   assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');
   assert.equal(screenForUrl('/security/wallet/secrets?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'and so does the route with no id, never the Wallet list with an id of "secrets"');
   assert.equal(screenForUrl('/security/wallet/OcuPilotDemo')?.route, 'security/wallet', 'while a Wallet URL with an id is the Wallet list');
+});
+
+// Story 18.14 (AC1): a namespace's three mapping lists each declare the Namespaces list as their
+// parent. `childListFor` answers only the first of them, and the name cell never uses it here, since
+// the Namespaces list pairs an editor; the namespace editor's Mappings line links all three. Each
+// list's locator links back to Namespaces through `parentListFor`, which inverts every qualifying
+// child rather than only the first.
+//
+// Mutation (Rule 19): revert `parentListFor` to the first-child inverse
+// (`childListFor(parent)?.route === screen.route`) -> the routine and package legs go red.
+test('Story 18.14: every mapping list names Namespaces as its parent, and each opens its own form', () => {
+  const namespaces = screenForRoute('os-management/namespaces');
+  assert.ok(namespaces, 'the Namespaces list is declared');
+  assert.equal(editorScreenFor(namespaces)?.route, 'os-management/namespaces/edit', "a Namespaces row's name still opens the namespace editor");
+  for (const kind of ['global', 'routine', 'package']) {
+    const route = `os-management/namespaces/${kind}-mappings`;
+    const list = screenForRoute(route);
+    assert.ok(list, `${route} is declared`);
+    assert.equal(isListedScreen(list), false, `${route} takes no side-bar position`);
+    assert.equal(parentListFor(list)?.route, 'os-management/namespaces', `${route}'s locator links back to Namespaces`);
+    assert.equal(routeEntityType(list), 'namespace', `${route}'s route id names a namespace`);
+    assert.equal(createFormFor(list)?.route, `${route}/edit`, `${route}'s Create opens its own form`);
+    assert.equal(editorScreenFor(list)?.route, `${route}/edit`, 'and so does its name cell');
+    assert.equal(parentListFor(screenForRoute(`${route}/edit`)), null, 'the form names no parent list');
+    assert.equal(screenForUrl(`/${route}/USER?ns=HSCUSTOM`)?.route, route, `a ${kind} mapping URL resolves to its list, never Namespaces with an id`);
+    assert.equal(screenForUrl(`/${route}/edit/${encodeEntityId('USER\u0001X')}`)?.route, `${route}/edit`, 'and a form URL to its form');
+    assert.deepEqual(parentCriteria(list, `/${route}/USER?ns=HSCUSTOM`), { namespace: 'USER' }, 'the route id is the one criterion');
+  }
+  assert.equal(childListFor(namespaces)?.route, 'os-management/namespaces/global-mappings', 'childListFor still answers the first child alone');
+  assert.equal(detailScreenFor(namespaces), null, 'Namespaces pairs no detail screen');
+});
+
+// Story 18.14: a change to a mapping opens its namespace's list, whose route id is the parent the
+// list reads for rather than the joined `[namespace, Name]` id.
+//
+// Mutation (Rule 19): make `routeIdFor` answer `id` unconditionally -> the mapping leg goes red.
+test('Story 18.14: a mapping change opens the list of the namespace its composite id names', () => {
+  assert.equal(
+    screenForChange({ type: 'global-mapping', id: 'USER\u0001OcuProbe1814G' })?.route,
+    `os-management/namespaces/global-mappings/${encodeEntityId('USER')}`,
+    'the namespace part alone is the route id'
+  );
+  assert.equal(
+    screenForChange({ type: 'task-history-entry', id: '12\u00012026-09-28 10:00:00\u0001Completed' })?.route,
+    `tasks/history/${encodeEntityId('12\u00012026-09-28 10:00:00\u0001Completed')}`,
+    'while a list with no parent keeps the whole id'
+  );
 });
 
 // Story 6.6, DW-1020: a sub-resource screen's route id names an entity of its parent's own

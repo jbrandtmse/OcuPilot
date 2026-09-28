@@ -9,15 +9,17 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { LocationStrategy } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
-import { NavigationService, formatDeniedAction, ownIdSegment, screenForRoute, withQuery } from '../../core/navigation';
+import { NavigationService, formatDeniedAction, ownIdSegment, screenForDescriptor, screenForRoute, withQuery } from '../../core/navigation';
 import { savedLine } from '../../core/read-back';
 import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
+import { MAPPING_KINDS } from './mapping-form.store';
 import { GLOBALS_FIELD, NAME_FIELD, NamespaceForm, ROUTINES_FIELD, TEMP_GLOBALS_FIELD } from './namespace-form.store';
 
 /** The list this form is reached from, which Cancel returns to. */
@@ -28,6 +30,20 @@ export const NAMESPACE_FORM_ROUTE = 'os-management/namespaces/edit';
 
 /** The machine code a privilege denial carries (AD-39). Never the envelope's human reason. */
 const NO_PRIVILEGE_CODE = 'AUTH.NOPRIVILEGE';
+
+/** The Mappings line's three links' labels, keyed by list descriptor (Story 18.14). */
+const MAPPING_LINK_LABELS: Readonly<Record<string, string>> = {
+  'OcuPilot.Screen.Descriptor.GlobalMappingList': STRINGS.globalMappingListLabel,
+  'OcuPilot.Screen.Descriptor.RoutineMappingList': STRINGS.routineMappingListLabel,
+  'OcuPilot.Screen.Descriptor.PackageMappingList': STRINGS.packageMappingListLabel,
+};
+
+/** One link of the Mappings line: its label, the router URL it opens and the href it draws. */
+interface MappingLink {
+  readonly label: string;
+  readonly url: string;
+  readonly href: string;
+}
 
 /** One field, resolved for drawing: its control id, its refusal and its described-by wiring. */
 interface FieldView {
@@ -60,6 +76,9 @@ const DATABASE_LABELS: readonly { readonly field: string; readonly label: string
  * native select over the instance's database names from the form read. A create starts every
  * select on an empty choice; an edit starts each at its fresh read and shows the name read-only,
  * because a namespace is never renamed.
+ *
+ * **An edit links the namespace's mappings** (Story 18.14): a Mappings line after the fields opens
+ * its global, routine and package mapping lists, each at the namespace as its route id.
  *
  * It composes no payload and authors no field sentence; the unsaved-changes guard is the `form-page`
  * route guard, answered here. Every control-flow condition is a paren-free member reference, for the
@@ -149,6 +168,15 @@ const DATABASE_LABELS: readonly { readonly field: string; readonly label: string
       }
     </div>
 
+    @if (hasMappings) {
+      <nav class="ocu-details-links" aria-labelledby="ocu-namespace-mappings-label" data-namespace-mappings>
+        <span class="ocu-details-heading" id="ocu-namespace-mappings-label">{{ STRINGS.oauthResourceServerTabMappings }}</span>
+        @for (link of mappingLinks; track link.url) {
+          <a class="ocu-details-link" [href]="link.href" (click)="onOpenMappings($event, link.url)">{{ link.label }}</a>
+        }
+      </nav>
+    }
+
     <div class="ocu-form-bar">
       <div class="ocu-form-bar-status">
         @if (showSaved) {
@@ -183,6 +211,7 @@ export class NamespaceFormPage {
   private readonly router = inject(Router);
   private readonly navigation = inject(NavigationService);
   private readonly injector = inject(Injector);
+  private readonly locationStrategy = inject(LocationStrategy);
 
   protected readonly STRINGS = STRINGS;
 
@@ -287,6 +316,29 @@ export class NamespaceFormPage {
     return this.formDirty.pending();
   }
 
+  /**
+   * The Mappings line (Story 18.14): on an edit whose fresh read is held, one link per built mapping
+   * list, each to `<list route>/<namespace>` carrying the data scope. A create has no namespace to
+   * link yet.
+   */
+  protected get mappingLinks(): readonly MappingLink[] {
+    this.generation();
+    const name = this.store.mode() === 'edit' ? this.store.name() : '';
+    if (name === '' || !this.store.editable()) return [];
+    const links: MappingLink[] = [];
+    for (const kind of MAPPING_KINDS) {
+      const list = screenForDescriptor(kind.listDescriptor);
+      if (list === null || !list.built) continue;
+      const url = withQuery(`${list.route}/${encodeEntityId(name)}`, this.router.url);
+      links.push({ label: MAPPING_LINK_LABELS[kind.listDescriptor] ?? '', url, href: this.locationStrategy.prepareExternalUrl(url) });
+    }
+    return links;
+  }
+
+  protected get hasMappings(): boolean {
+    return this.mappingLinks.length > 0;
+  }
+
   protected value(field: string): string {
     this.generation();
     return this.store.value(field);
@@ -345,6 +397,13 @@ export class NamespaceFormPage {
 
   protected answerLeave(leave: boolean): void {
     this.formDirty.answer(leave);
+  }
+
+  /** A plain click opens the list in place; a modified click is the browser's (a new tab, say). */
+  protected onOpenMappings(event: MouseEvent, url: string): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    void this.router.navigateByUrl(url);
   }
 
   // --- internals -------------------------------------------------------------------------------

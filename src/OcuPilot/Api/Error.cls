@@ -1397,6 +1397,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 5) = "LDAP." Quit ..ReasonForLdap(pCode)
     If $Extract(pCode, 1, 11) = "AUDITEVENT." Quit ..ReasonForAuditEvent(pCode)
     If $Extract(pCode, 1, 10) = "NAMESPACE." Quit ..ReasonForNamespace(pCode)
+    If $Extract(pCode, 1, 8) = "MAPPING." Quit ..ReasonForMapping(pCode)
     Quit ""
 }
 
@@ -1460,9 +1461,34 @@ ClassMethod NamespaceViolationCodes() As %List
     Quit $ListBuild(..#NAMESPACENAMEREQUIRED, ..#NAMESPACENAMESHAPE, ..#NAMESPACENAMETAKEN, ..#NAMESPACENAMEABSENT, ..#NAMESPACEGLOBALSREQUIRED, ..#NAMESPACEROUTINESREQUIRED, ..#NAMESPACEGLOBALSABSENT, ..#NAMESPACEROUTINESABSENT, ..#NAMESPACETEMPGLOBALSABSENT)
 }
 
+/// <p>Every <code>MAPPING.*</code> field-level violation code (Story 18.14), as a
+/// <class>%List</class>, for the reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod MappingViolationCodes() As %List
+{
+    Quit $ListBuild(..#MAPPINGNAMEREQUIRED, ..#MAPPINGNAMESHAPE, ..#MAPPINGNAMETAKEN, ..#MAPPINGNAMEABSENT, ..#MAPPINGNAMESUBSCRIPTS, ..#MAPPINGNAMESPACEABSENT, ..#MAPPINGDATABASEREQUIRED, ..#MAPPINGDATABASEABSENT, ..#MAPPINGLOCKDATABASEABSENT, ..#MAPPINGCOLLATIONVALUE)
+}
+
+/// <p>The sentence a <code>MAPPING.*</code> violation code carries, or <code>""</code>. Where the
+/// sentence is a namespace code's, the namespace code's parameter answers.</p>
+ClassMethod ReasonForMapping(pCode As %String) As %String
+{
+    If pCode = ..#MAPPINGNAMEREQUIRED Quit ..#REASONMAPPINGNAMEREQUIRED
+    If pCode = ..#MAPPINGNAMESHAPE Quit ..#REASONMAPPINGNAMESHAPE
+    If pCode = ..#MAPPINGNAMETAKEN Quit ..#REASONMAPPINGNAMETAKEN
+    If pCode = ..#MAPPINGNAMEABSENT Quit ..#REASONMAPPINGNAMEABSENT
+    If pCode = ..#MAPPINGNAMESUBSCRIPTS Quit ..#REASONMAPPINGNAMESUBSCRIPTS
+    If pCode = ..#MAPPINGNAMESPACEABSENT Quit ..#REASONNAMESPACENAMEABSENT
+    If pCode = ..#MAPPINGDATABASEREQUIRED Quit ..#REASONNAMESPACEDATABASEREQUIRED
+    If (pCode = ..#MAPPINGDATABASEABSENT) || (pCode = ..#MAPPINGLOCKDATABASEABSENT) Quit ..#REASONNAMESPACEDATABASEABSENT
+    If pCode = ..#MAPPINGCOLLATIONVALUE Quit ..#REASONMAPPINGCOLLATIONVALUE
+    Quit ""
+}
+
 /// <p>The sentence a <code>NAMESPACE.*</code> violation code carries, or <code>""</code>.</p>
 ClassMethod ReasonForNamespace(pCode As %String) As %String
 {
+    If pCode = ..#NAMESPACESOURCEABSENT Quit ..#REASONNAMESPACENAMEABSENT
+    If pCode = ..#NAMESPACESOURCESAME Quit ..#REASONNAMESPACESOURCESAME
     If pCode = ..#NAMESPACENAMEREQUIRED Quit ..#REASONNAMESPACENAMEREQUIRED
     If pCode = ..#NAMESPACENAMESHAPE Quit ..#REASONNAMESPACENAMESHAPE
     If pCode = ..#NAMESPACENAMETAKEN Quit ..#REASONNAMESPACENAMETAKEN
@@ -2571,6 +2597,70 @@ Parameter NAMESPACEROUTINESABSENT = "NAMESPACE.ROUTINES.ABSENT";
 Parameter NAMESPACETEMPGLOBALSABSENT = "NAMESPACE.TEMPGLOBALS.ABSENT";
 
 Parameter REASONNAMESPACEDATABASEABSENT = "No database on this instance has that name.";
+
+/// <p>Violation code (Story 18.14): a copy of mappings names a source namespace this instance does
+/// not hold. Carried in a <code>TOOL.ARGUMENTS</code> refusal's problem.</p>
+Parameter NAMESPACESOURCEABSENT = "NAMESPACE.SOURCE.ABSENT";
+
+/// <p>Violation code (Story 18.14): a copy of mappings names the destination itself as its source,
+/// compared without regard to case.</p>
+Parameter NAMESPACESOURCESAME = "NAMESPACE.SOURCE.SAME";
+
+Parameter REASONNAMESPACESOURCESAME = "Choose a namespace other than this one.";
+
+/// <p>Envelope code (AD-39, Story 18.14): a mapping's create or edit broke one or more of the rules
+/// <class>OcuPilot.Area.OsMgmt.MappingRules</class> applies before the port is touched. Rendered on
+/// the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>.</p>
+Parameter MAPPINGVALIDATION = "MAPPING.VALIDATION";
+
+Parameter REASONMAPPINGVALIDATION = "The mapping was refused.";
+
+/// <p>Violation code: no mapping name was supplied.</p>
+Parameter MAPPINGNAMEREQUIRED = "MAPPING.NAME.REQUIRED";
+
+Parameter REASONMAPPINGNAMEREQUIRED = "Name what to map.";
+
+/// <p>Violation code: a name the instance does not accept for this kind of mapping (the vendor's
+/// 5854 and 448, mapped at the port), or a routine type suffix written in lower case, which the
+/// vendor applies and then refuses.</p>
+Parameter MAPPINGNAMESHAPE = "MAPPING.NAME.SHAPE";
+
+Parameter REASONMAPPINGNAMESHAPE = "The instance does not accept that name. A routine type suffix is written in capitals, as in _MAC.";
+
+/// <p>Violation code: the namespace already has a mapping of this kind with that name.
+/// <code>GET /mapping/:kind/name</code> answers it on blur.</p>
+Parameter MAPPINGNAMETAKEN = "MAPPING.NAME.TAKEN";
+
+Parameter REASONMAPPINGNAMETAKEN = "This namespace already has that mapping.";
+
+/// <p>Violation code: an edit or a form read names a mapping the namespace does not hold. Rendered
+/// at 404.</p>
+Parameter MAPPINGNAMEABSENT = "MAPPING.NAME.ABSENT";
+
+Parameter REASONMAPPINGNAMEABSENT = "This namespace has no mapping with that name.";
+
+/// <p>Violation code: a global's base mapping was deleted while a subscript-level mapping of the same
+/// global exists (the vendor's 451, mapped at the port).</p>
+Parameter MAPPINGNAMESUBSCRIPTS = "MAPPING.NAME.SUBSCRIPTS";
+
+Parameter REASONMAPPINGNAMESUBSCRIPTS = "Delete this global's subscript-level mappings first.";
+
+/// <p>Violation code: the mapping's namespace is not one this instance holds.</p>
+Parameter MAPPINGNAMESPACEABSENT = "MAPPING.NAMESPACE.ABSENT";
+
+/// <p>Violation code: a create carried no database, or an edit emptied it.</p>
+Parameter MAPPINGDATABASEREQUIRED = "MAPPING.DATABASE.REQUIRED";
+
+/// <p>Violation codes: a database field names no database this instance lists.</p>
+Parameter MAPPINGDATABASEABSENT = "MAPPING.DATABASE.ABSENT";
+
+Parameter MAPPINGLOCKDATABASEABSENT = "MAPPING.LOCKDATABASE.ABSENT";
+
+/// <p>Violation code: a global mapping's collation is not a whole number.</p>
+Parameter MAPPINGCOLLATIONVALUE = "MAPPING.COLLATION.VALUE";
+
+Parameter REASONMAPPINGCOLLATIONVALUE = "Collation is a whole number.";
 
 /// <p>Machine code (Story 12.4): the server description editor refused a Save; the envelope's
 /// <code>detail.violations</code> names each field and its rule (AD-39).</p>

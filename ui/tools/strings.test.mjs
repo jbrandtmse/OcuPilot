@@ -640,7 +640,7 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // `userFormNamespace` is a field label, not a sentence about a namespace: the create-a-user
   // form's startup namespace, which the account enters on sign-in. Story 18.2's Namespaces list and
   // form name their own copy `namespace*`, on the device screens' convention, and are listed here
-  // one by one.
+  // one by one; so does Story 18.14's Copy mappings row action on that list.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
@@ -653,6 +653,10 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'namespaceColumnGlobals',
       'namespaceColumnRoutines',
       'namespaceColumnTemp',
+      'namespaceCopyMappingsAction',
+      'namespaceCopyMappingsConsequence',
+      'namespaceCopyMappingsDone',
+      'namespaceCopyMappingsRunning',
       'namespaceDeleteConsequence',
       'namespaceFormPrompt1',
       'namespaceFormPrompt2',

@@ -23,6 +23,7 @@ import {
   ENTITY_TYPES,
   type EntityTypeKey,
 } from './screens.generated.ts';
+import { COMPOSITE_SEPARATOR } from './entity-id.ts';
 
 /**
  * The literal scope of a configuration object that has no namespace, mirroring
@@ -86,6 +87,15 @@ const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
     if (match === null) return id.toLowerCase();
     const digits = match[2];
     return (match[1] === '-' && digits !== '0' ? '-' : '') + digits;
+  },
+  // A namespace mapping is keyed by the composite `[namespace, Name]` (Story 18.14): the instance
+  // resolves the namespace without case, while a global's or routine's name is case-sensitive. So
+  // only the text before the first `COMPOSITE_SEPARATOR` is folded, and an id with no separator is
+  // folded whole -- what `OcuPilot.Kernel.EntityRef.NormalizedId` answers for the same rule.
+  'foldcase-firstpart': (id) => {
+    const at = id.indexOf(COMPOSITE_SEPARATOR);
+    if (at < 0) return id.toLowerCase();
+    return id.slice(0, at).toLowerCase() + id.slice(at);
   },
 };
 

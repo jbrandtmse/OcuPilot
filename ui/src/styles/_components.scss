@@ -7304,3 +7304,19 @@ app-log-hub-page {
   border-width: 2px;
   border-color: var(--ocu-destructive);
 }
+
+// The Namespaces list's copy line (Story 18.14): above the list, the running line while a Copy
+// mappings runs and the line that replaces it. Kept in the tree while empty, so the status region
+// is present before its first announcement, and taking no room until it has text.
+.ocu-namespace-copy-status {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  padding: 0 var(--ocu-gutter);
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-namespace-copy-status:not(:empty) {
+  padding-block: var(--ocu-space-2);
+}

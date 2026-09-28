@@ -205,6 +205,12 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; (AD-34, AD-40), never a privilege delta.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            ; Story 18.14: the mapping copy declares the pair its queued task's poll needs, before
+            ; the write's own (AD-8).
+            If $Parameter(tTool.class, "POLLRESOURCE") '= "" {
+                Set tPollPair = $ListBuild($Parameter(tTool.class, "POLLRESOURCE"), $Parameter(tTool.class, "POLLPERMISSION"))
+                If '$ListFind(tExpected, tPollPair) Set tExpected = tExpected _ $ListBuild(tPollPair)
+            }
             Set tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION"))
             If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
             ; Story 18.2: the namespace delete declares a second pair beyond its write's, the

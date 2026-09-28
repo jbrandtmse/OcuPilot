@@ -12,9 +12,10 @@
 /// namespace tools add the pairs their writes need beyond it (AD-8).</p>
 /// <p><b>The classic key is <code>%CSP.UI.Portal.Namespaces</code></b> (AD-44); as a list it links
 /// out to nothing. It does not refresh (AD-43).</p>
-/// <p>Its primary action is Create, which opens the form, and its one row action is Delete, whose
-/// typed-name dialog states the removal's impact (AD-8). Both run the namespace tools (AD-53,
-/// AD-55).</p>
+/// <p>Its primary action is Create, which opens the form. Its row actions are Delete, whose
+/// typed-name dialog states the removal's impact (AD-8), and Copy mappings, whose dialog names the
+/// source namespace and runs <code>osmgmt.namespaces.copymappings</code> (Story 18.14). Each runs a
+/// namespace tool (AD-53, AD-55).</p>
 Class OcuPilot.Screen.Descriptor.NamespaceList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -36,7 +37,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [{"id": "delete", "selfProtection": ""}],
+  "rowActions": [{"id": "delete", "selfProtection": ""}, {"id": "copy-mappings", "selfProtection": ""}],
   "context": {"fields": ["Name", "Globals", "Routines", "TempGlobals"], "secretFields": []},
   "emptyStateKey": "namespaceListEmpty",
   "commandAliases": ["namespaces", "configure namespace"],

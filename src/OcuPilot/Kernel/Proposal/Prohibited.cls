@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,global-mapping,routine-mapping,package-mapping";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -359,6 +359,49 @@ Parameter OCUPILOTNAMESPACEREASON = "OcuPilot or the instance itself runs in thi
 /// <p>The two namespace fields whose change on an own namespace
 /// (<parameter>OCUPILOTNAMESPACE</parameter>) is refused, comma-separated.</p>
 Parameter OWNNAMESPACEFIELDS = "Globals,Routines";
+
+/// <p>A namespace's global, routine and package mappings (Story 18.14, <method>Mapping</method>),
+/// each keyed by the composite <code>[namespace, Name]</code>.</p>
+Parameter TYPEGLOBALMAPPING = "global-mapping";
+
+Parameter TYPEROUTINEMAPPING = "routine-mapping";
+
+Parameter TYPEPACKAGEMAPPING = "package-mapping";
+
+/// <p>The write would create, change or delete one of OcuPilot's own mappings -- a mapping whose name
+/// begins with <parameter>OWNMAPPINGPREFIX</parameter>, in any case, in the namespace OcuPilot's API
+/// runs in or in <parameter>ALLNAMESPACE</parameter> -- or copy mappings into either namespace from a
+/// source holding one (AD-10 as amended 2026-09-28). Such a mapping moves OcuPilot's protected
+/// globals out of its database (AD-9) or lets other code answer for its classes.</p>
+Parameter OCUPILOTMAPPING = "PROHIBITED.OCUPILOTMAPPING";
+
+/// <p>The one sentence <parameter>OCUPILOTMAPPING</parameter> carries, caller-neutral, published and
+/// pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter OCUPILOTMAPPINGREASON = "Mappings whose names begin with OcuPilot keep OcuPilot's own globals and code where it expects them. In the namespace OcuPilot runs in, and in %ALL, they cannot be added, changed, removed or copied in.";
+
+/// <p>The prefix, compared without case, that makes a mapping OcuPilot's own
+/// (<parameter>OCUPILOTMAPPING</parameter>).</p>
+Parameter OWNMAPPINGPREFIX = "ocupilot";
+
+/// <p>The pseudo-namespace whose mappings apply to every namespace.</p>
+Parameter ALLNAMESPACE = "%ALL";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for a global mapping whose name begins with
+/// <code>%</code>: it shadows a system global for its namespace (AD-10 as amended 2026-09-28). It is
+/// also the proposal's consequence code.</p>
+Parameter EFFECTSYSTEMGLOBAL = "MAPPING.SYSTEMGLOBAL";
+
+/// <p>The request type a copy of mappings is issued with, which the namespace predicate branches on
+/// (<method>Namespace</method>).</p>
+Parameter COPYMAPPINGSTYPE = "MAPPINGS";
+
+/// <p>The payload field a copy of mappings names its source in.</p>
+Parameter COPYSOURCEFIELD = "SourceNamespace";
+
+/// <p>The tool identifiers of the lists whose reads a copy into an own namespace checks the source
+/// through, comma-separated; each resolves to its descriptor through the screen registry, so the set
+/// names no screen class.</p>
+Parameter MAPPINGLISTS = "osmgmt.globalmappings,osmgmt.routinemappings,osmgmt.packagemappings";
 
 /// <p>The write would turn off the service OcuPilot is served through
 /// (<parameter>SERVINGSERVICENAME</parameter>): every request to OcuPilot arrives through it (AD-10 as
@@ -485,10 +528,11 @@ Parameter READTYPE = "GET";
 /// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
 /// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
 /// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the one
-/// <method>Namespace</method> adds last -- nineteen in all.</p>
+/// <method>Namespace</method> adds, and the one <method>Mapping</method> adds last -- twenty in
+/// all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTMAPPING)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -519,6 +563,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTSSL Quit ..#OCUPILOTSSLREASON
     If pCode = ..#SERVINGSERVICE Quit ..#SERVINGSERVICEREASON
     If pCode = ..#OCUPILOTNAMESPACE Quit ..#OCUPILOTNAMESPACEREASON
+    If pCode = ..#OCUPILOTMAPPING Quit ..#OCUPILOTMAPPINGREASON
     Quit ""
 }
 
@@ -620,6 +665,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPESERVICE Quit $ListBuild("AutheEnabled", "ClientSystems", ..#FIELDENABLED)
     If pType = ..#TYPELDAP Quit ..LdapFields()
     If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
+    If ..IsMappingType(pType) Quit ..MappingFields(pType)
     Quit ""
 }
 
@@ -727,6 +773,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPETASK Quit ..TaskCreateFields()
     If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
     If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
+    If ..IsMappingType(pType) Quit ..MappingFields(pType)
     Quit ""
 }
 
@@ -807,7 +854,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && '..IsMappingType(tType) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -884,7 +931,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Quit
         }
         If tType = ..#TYPENAMESPACE {
-            Set tSC = ..Namespace(tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
+            Set tSC = ..Namespace(tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode, tPayloadObject)
+            Quit
+        }
+        If ..IsMappingType(tType) {
+            Set tSC = ..Mapping(tType, tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPEAUDITING {
@@ -982,7 +1033,8 @@ ClassMethod UncoveredWriteTools(Output pTools As %List) As %Status
 /// registering before its type's list exists is the shape this fails closed against.</p>
 /// <p><var>pId</var> is the intended name, canonical under AD-13. A resource create that gives one of
 /// OcuPilot's own resources (<method>OcuPilotResources</method>) a public permission is refused
-/// <parameter>OCUPILOTRESOURCE</parameter>.</p>
+/// <parameter>OCUPILOTRESOURCE</parameter>, and a mapping create of one of OcuPilot's own mappings
+/// (<method>IsOwnMapping</method>) <parameter>OCUPILOTMAPPING</parameter>.</p>
 ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String, pId As %String = "") As %Status [ Private ]
 {
     Set pProhibits = 0
@@ -1005,6 +1057,10 @@ ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicO
                 Do ..Refuse(..#OCUPILOTRESOURCE, .pProhibits, .pCode)
                 Quit
             }
+        }
+        If ..IsMappingType(pType) && ..IsOwnMapping(pId) {
+            Do ..Refuse(..#OCUPILOTMAPPING, .pProhibits, .pCode)
+            Quit
         }
         Set tPermitted = ..PermittedCreateFields(pType)
         If tPermitted = "" {
@@ -1154,11 +1210,19 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// answers true, else <parameter>EFFECTAUTHENTICATORRESET</parameter> when
 /// <method>ResetsAuthenticator</method> does. For the authorization server configuration,
 /// <method>ServerClientsEffect</method>'s answer over <var>pTarget</var>.</p>
-ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "") As %Status
+/// <p>For a global mapping (<var>pId</var> being its composite id), <parameter>EFFECTSYSTEMGLOBAL</parameter>
+/// when the mapping's name begins with <code>%</code> (<method>IsSystemGlobalMapping</method>), on a
+/// create and a change alike and never on a removal (<var>pRemoves</var>), which shadows nothing.
+/// The mint asks it for a create of this type too, and no request field can suppress it.</p>
+ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "", pRemoves As %Boolean = 0) As %Status
 {
     Set pEffect = ""
     Set tSC = $$$OK
     Try {
+        If pType = ..#TYPEGLOBALMAPPING {
+            If 'pRemoves && ..IsSystemGlobalMapping(pId) Set pEffect = ..#EFFECTSYSTEMGLOBAL
+            Quit
+        }
         If pType = ..#TYPESSL {
             Set pEffect = ..SslWeakening(pPayload, pTarget)
             Quit
@@ -1592,12 +1656,24 @@ ClassMethod DeviceFields() As %List [ Private ]
 /// proposal's tool. A delete sends no body and its card rows are its fingerprint subject, so it
 /// reaches the sweep with nothing changed; a tool that cannot say whether it removes reads as one
 /// that does.</p>
-ClassMethod Namespace(pId As %String, pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+/// <p>A copy of mappings (<parameter>COPYMAPPINGSTYPE</parameter>, Story 18.14) is refused
+/// <parameter>OCUPILOTMAPPING</parameter> when <method>CopiesOwnMapping</method> answers true for the
+/// source <var>pPayload</var> names, and is otherwise permitted.</p>
+ClassMethod Namespace(pId As %String, pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String, pPayload As %DynamicObject = "") As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
+        ; Story 18.14: a copy of mappings is judged by what it would copy in, before the sweep, which
+        ; its one argument field is not a reviewed change of (AD-10 as amended 2026-09-28).
+        If ..WriteTypeOf(pToolClass) = ..#COPYMAPPINGSTYPE {
+            Kill pChanged
+            Set tSC = ..CopiesOwnMapping(pId, ..Rendered(pPayload, ..#COPYSOURCEFIELD), .tCopies)
+            If $$$ISERR(tSC) Quit
+            If tCopies Do ..Refuse(..#OCUPILOTMAPPING, .pProhibits, .pCode)
+            Quit
+        }
         Set tDelete = (..WriteTypeOf(pToolClass) = "DELETE") || ..RemovesOf(pToolClass)
         If tDelete Kill pChanged
         If ..IsOwnNamespace(pId) {
@@ -1636,6 +1712,156 @@ ClassMethod IsOwnNamespace(pId As %String) As %Boolean
 ClassMethod NamespaceFields() As %List [ Private ]
 {
     Quit $ListBuild("Globals", "Routines", "TempGlobals")
+}
+
+/// <p>Whether <var>pType</var> is one of the three mapping types (Story 18.14).</p>
+ClassMethod IsMappingType(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEGLOBALMAPPING) || (pType = ..#TYPEROUTINEMAPPING) || (pType = ..#TYPEPACKAGEMAPPING)
+}
+
+/// <p>A mapping's settable fields, create and change alike: its kind's template fields --
+/// <code>Database</code>, <code>LockDatabase</code> and <code>Collation</code> for a global, and
+/// <code>Database</code> for a routine or a package. Its namespace and name are its id and never
+/// change.</p>
+ClassMethod MappingFields(pType As %String) As %List [ Private ]
+{
+    If pType = ..#TYPEGLOBALMAPPING Quit $ListBuild("Database", "LockDatabase", "Collation")
+    Quit $ListBuild("Database")
+}
+
+/// <p>The mapping predicates (Story 18.14), in declared order, first hit wins: any write to one of
+/// OcuPilot's own mappings (<method>IsOwnMapping</method>) -- a change or a delete, whatever it
+/// changes -- is refused <parameter>OCUPILOTMAPPING</parameter>; then the reviewed-few sweep over
+/// <method>MappingFields</method>. A create is <method>Created</method>'s. A delete sends no body and
+/// its card rows are its fingerprint subject, so it reaches the sweep with nothing changed.</p>
+ClassMethod Mapping(pType As %String, pId As %String, pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If (..WriteTypeOf(pToolClass) = "DELETE") || ..RemovesOf(pToolClass) Kill pChanged
+        If ..IsOwnMapping(pId) {
+            Do ..Refuse(..#OCUPILOTMAPPING, .pProhibits, .pCode)
+            Quit
+        }
+        Set tSC = ..ReviewedFewOnly(pType, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether the mapping whose composite id is <var>pId</var> is one of OcuPilot's own: its
+/// namespace part, upper-cased, is the namespace this process runs in or
+/// <parameter>ALLNAMESPACE</parameter>, and its name part begins with
+/// <parameter>OWNMAPPINGPREFIX</parameter> ignoring case. The namespace is read at each call, for
+/// the reason <method>IsOwnNamespace</method> reads it. An id that is not two parts is none.</p>
+ClassMethod IsOwnMapping(pId As %String) As %Boolean
+{
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    If $ListLength(tParts) '= 2 Quit 0
+    If '..IsOwnMappingNamespace($ListGet(tParts, 1)) Quit 0
+    Quit ..IsOwnMappingName($ListGet(tParts, 2))
+}
+
+/// <p>Whether <var>pNamespace</var>, upper-cased, is the namespace this process runs in or
+/// <parameter>ALLNAMESPACE</parameter>: a namespace where one of OcuPilot's own mappings may
+/// live.</p>
+ClassMethod IsOwnMappingNamespace(pNamespace As %String) As %Boolean
+{
+    Set tName = $ZConvert(pNamespace, "U")
+    If tName = "" Quit 0
+    Quit (tName = $ZConvert($NAMESPACE, "U")) || (tName = ..#ALLNAMESPACE)
+}
+
+/// <p>Whether mapping name <var>pName</var> begins with <parameter>OWNMAPPINGPREFIX</parameter>,
+/// ignoring case.</p>
+ClassMethod IsOwnMappingName(pName As %String) As %Boolean
+{
+    Quit $ZConvert($Extract(pName, 1, $Length(..#OWNMAPPINGPREFIX)), "L") = ..#OWNMAPPINGPREFIX
+}
+
+/// <p>Whether the global mapping whose composite id is <var>pId</var> names a system global: its
+/// name part begins with <code>%</code>, with or without a subscript range.</p>
+ClassMethod IsSystemGlobalMapping(pId As %String) As %Boolean
+{
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    If $ListLength(tParts) '= 2 Quit 0
+    Quit $Extract($ListGet(tParts, 2)) = "%"
+}
+
+/// <p>The row cap the source's lists are read with when a copy into an own namespace is checked
+/// (<method>CopiesOwnMapping</method>): <code>""</code>, the read's default. A seam a fixture
+/// narrows so a cut list is observed; production never overrides it.</p>
+ClassMethod CopySourceCap() As %String
+{
+    Quit ""
+}
+
+/// <p>Whether copying the mappings of <var>pSource</var> into the namespace <var>pDestination</var>
+/// would copy one of OcuPilot's own mappings in, in <var>pCopies</var> (Story 18.14).</p>
+/// <p>Only a destination where one may live (<method>IsOwnMappingNamespace</method>) is checked, and
+/// then each of the source's three lists is read as the caller, through its descriptor's own gate
+/// and declared read (the <method>OcuPilot.Kernel.Proposal.Impact</method> idiom), at
+/// <method>CopySourceCap</method>. It fails closed: a row whose <code>Name</code> begins with
+/// <parameter>OWNMAPPINGPREFIX</parameter>, a list the caller may not read, a list cut at its cap and
+/// an empty source each answer true. A read that fails is an error status.</p>
+ClassMethod CopiesOwnMapping(pDestination As %String, pSource As %String, Output pCopies As %Boolean) As %Status
+{
+    Set pCopies = 0
+    Set tSC = $$$OK
+    Try {
+        If '..IsOwnMappingNamespace(pDestination) Quit
+        If pSource = "" {
+            Set pCopies = 1
+            Quit
+        }
+        For tI = 1:1:$Length(..#MAPPINGLISTS, ",") {
+            Set tDescriptor = ##class(OcuPilot.Screen.Registry).DescriptorForTool($Piece(..#MAPPINGLISTS, ",", tI))
+            If tDescriptor = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "no screen answers the mapping list " _ $Piece(..#MAPPINGLISTS, ",", tI))
+                Quit
+            }
+            Set tGateSC = ##class(OcuPilot.Kernel.Shell.Effective).Gate(tDescriptor, .tUnchecked)
+            If $$$ISERR(tGateSC) {
+                Set tSC = tGateSC
+                Quit
+            }
+            If tUnchecked '= "" {
+                Set pCopies = 1
+                Quit
+            }
+            Kill tCriteria
+            Set tCriteria("namespace") = pSource
+            Set tReadSC = ##class(OcuPilot.Screen.Read).Execute(tDescriptor, ..CopySourceCap(), .tResult, .tHttp, .tFault, .tCriteria)
+            If $$$ISERR(tReadSC) {
+                Set tSC = tReadSC
+                Quit
+            }
+            If '$IsObject($Get(tResult)) || tResult.%Get("truncated") {
+                Set pCopies = 1
+                Quit
+            }
+            Set tRows = tResult.%Get("rows")
+            If '$IsObject(tRows) {
+                Set pCopies = 1
+                Quit
+            }
+            Set tIterator = tRows.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tRow) {
+                If $IsObject(tRow) && ..IsOwnMappingName(tRow.%Get("Name")) Set pCopies = 1
+            }
+            If pCopies Quit
+        }
+    } Catch ex {
+        Set pCopies = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>An OAuth 2.0 server description's settable fields, create and change alike: the four
