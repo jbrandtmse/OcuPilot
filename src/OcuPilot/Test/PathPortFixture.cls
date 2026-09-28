@@ -1,8 +1,11 @@
-/// <p>A seam subclass of <class>OcuPilot.Port.PathPort</class> and the allow-list helpers its two
-/// test classes share. As a port it denies the pairs <method>Deny</method> names, admits any name
+/// <p>A seam subclass of <class>OcuPilot.Port.PathPort</class> and the allow-list helpers its test
+/// classes share. As a port it denies the pairs <method>Deny</method> names, admits any name
 /// after <method>AdmitAnyName</method>, answers the configuration file
-/// <method>UseConfigurationFile</method> names, and counts every admin port call it forwards, so a
-/// test can show the gate refusing with none made (AD-29). The
+/// <method>UseConfigurationFile</method> names, the database and journal directories
+/// <method>UseDatabaseDirectories</method> and <method>UseJournalDirectories</method> name and the
+/// three journal sources <method>UseJournalSources</method> names, and
+/// counts every admin port call it forwards, so a test can show the gate refusing with none made
+/// (AD-29). The
 /// helpers record, set and restore the instance's <parameter>PURPOSE</parameter> allow-list through
 /// <code>%SYS.FileSystemAccess</code> in <code>%SYS</code>.</p>
 /// <p><b>Caller contract:</b> the helpers change the instance's own file-dialog allow-list, so only
@@ -60,6 +63,62 @@ ClassMethod ConfigurationFile() As %String
 {
     If $Data(^||OcuPilotPathPortFixture("cpf")) Quit ^||OcuPilotPathPortFixture("cpf")
     Quit ##super()
+}
+
+/// <p>Answer the directories <var>pDirectories</var> and stream locations <var>pStreams</var>, each
+/// a <code>$List</code> of normalized directories, as the configured databases' until
+/// <method>Reset</method>; with <var>pFail</var>, fail that read instead.</p>
+ClassMethod UseDatabaseDirectories(pDirectories As %List = "", pStreams As %List = "", pFail As %Boolean = 0)
+{
+    Set ^||OcuPilotPathPortFixture("databases") = $ListBuild(pDirectories, pStreams, ''pFail)
+}
+
+ClassMethod DatabaseDirectories(Output pDirectories As %List, Output pStreams As %List) As %Status
+{
+    If '$Data(^||OcuPilotPathPortFixture("databases")) Quit ##super(.pDirectories, .pStreams)
+    Set tSeam = ^||OcuPilotPathPortFixture("databases")
+    Set pDirectories = ""
+    Set pStreams = ""
+    If $List(tSeam, 3) Quit $$$ERROR($$$GeneralError, "the database read failed, as the fixture was told")
+    Set pDirectories = $List(tSeam, 1)
+    Set pStreams = $List(tSeam, 2)
+    Quit $$$OK
+}
+
+/// <p>Answer the directories <var>pDirectories</var>, a <code>$List</code> of normalized
+/// directories, as the instance's journal directories until <method>Reset</method>; with
+/// <var>pFail</var>, fail that read instead.</p>
+ClassMethod UseJournalDirectories(pDirectories As %List = "", pFail As %Boolean = 0)
+{
+    Set ^||OcuPilotPathPortFixture("journals") = $ListBuild(pDirectories, ''pFail)
+}
+
+ClassMethod JournalDirectories(Output pDirectories As %List) As %Status
+{
+    If '$Data(^||OcuPilotPathPortFixture("journals")) Quit ##super(.pDirectories)
+    Set tSeam = ^||OcuPilotPathPortFixture("journals")
+    Set pDirectories = ""
+    If $List(tSeam, 2) Quit $$$ERROR($$$GeneralError, "the journal read failed, as the fixture was told")
+    Set pDirectories = $List(tSeam, 1)
+    Quit $$$OK
+}
+
+/// <p>Answer <var>pPrimary</var>, <var>pAlternate</var> and <var>pCurrentFile</var> as the
+/// instance's primary and alternate journal directories and current journal file until
+/// <method>Reset</method>, so the port's own composition of the three is what runs.</p>
+ClassMethod UseJournalSources(pPrimary As %String = "", pAlternate As %String = "", pCurrentFile As %String = "")
+{
+    Set ^||OcuPilotPathPortFixture("journalsources") = $ListBuild(pPrimary, pAlternate, pCurrentFile)
+}
+
+ClassMethod JournalSources(Output pPrimary As %String, Output pAlternate As %String, Output pCurrentFile As %String) As %Status
+{
+    If '$Data(^||OcuPilotPathPortFixture("journalsources")) Quit ##super(.pPrimary, .pAlternate, .pCurrentFile)
+    Set tSeam = ^||OcuPilotPathPortFixture("journalsources")
+    Set pPrimary = $List(tSeam, 1)
+    Set pAlternate = $List(tSeam, 2)
+    Set pCurrentFile = $List(tSeam, 3)
+    Quit $$$OK
 }
 
 ClassMethod AdminPortClass() As %String
