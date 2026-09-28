@@ -210,11 +210,17 @@ ClassMethod Row(pDirectory As %String, pRestricted As %Boolean) As %DynamicObjec
 /// path, normalized with the one-argument <class>%File</class> form, is refused
 /// <code>PATH.NAME</code> unless <method>Contains</method> puts it under that root. A directory
 /// may be the root itself.</p>
+/// <p>A file is refused twice more on the name's field. <code>PATH.MANAGER</code> when
+/// <method>DirectlyInManagerDirectory</method> places it directly in the manager directory, which
+/// holds the instance's own files, whatever the root and whatever <var>pOverwrite</var> says; and
+/// <code>PATH.EXISTS</code> when something of that name already exists on disk, unless
+/// <var>pOverwrite</var> is true, which only a consuming tool that declares it overwrites passes.
+/// A directory is refused on neither.</p>
 /// <p>Each refusal carries <code>detail.violations</code>, one <code>{field, code, reason}</code>
 /// on <var>pRootField</var> or <var>pPathField</var>, the names the caller's own form uses. A kind
 /// outside the two is a caller fault and a 500. A consumer calls this at the mint and again at
 /// the write, and sends <var>pResolved</var> under the vendor's own field.</p>
-ClassMethod Resolve(pRoot As %String = "", pPath As %String = "", pKind As %String = "", pRootField As %String = "root", pPathField As %String = "path", Output pResolved As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod Resolve(pRoot As %String = "", pPath As %String = "", pKind As %String = "", pRootField As %String = "root", pPathField As %String = "path", Output pResolved As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pOverwrite As %Boolean = 0) As %Status
 {
     Set tSC = $$$OK
     Set pResolved = ""
@@ -261,6 +267,16 @@ ClassMethod Resolve(pRoot As %String = "", pPath As %String = "", pKind As %Stri
             Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHNAME, ##class(OcuPilot.Api.Error).#REASONPATHNAME, pPathField, .pHttpStatus, .pFault)
             Quit
         }
+        If pKind = ..#KINDFILE {
+            If ..DirectlyInManagerDirectory(tCandidate) {
+                Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHMANAGER, ##class(OcuPilot.Api.Error).#REASONPATHMANAGER, pPathField, .pHttpStatus, .pFault)
+                Quit
+            }
+            If 'pOverwrite && ##class(%File).Exists(tCandidate) {
+                Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHEXISTS, ##class(OcuPilot.Api.Error).#REASONPATHEXISTS, pPathField, .pHttpStatus, .pFault)
+                Quit
+            }
+        }
         Set pResolved = tCandidate
         Set pHttpStatus = 200
     } Catch ex {
@@ -299,6 +315,17 @@ ClassMethod Contains(pRoot As %String, pCandidate As %String) As %Boolean
     Set tRoot = ##class(%File).NormalizeDirectory(pRoot)
     If tRoot = "" Quit 0
     Quit ($Extract(pCandidate, 1, $Length(tRoot)) = tRoot)
+}
+
+/// <p>Whether normalized file path <var>pFile</var> sits directly in the manager directory: it is
+/// that directory, normalized, followed by its own last name. A file in a subdirectory of it is
+/// not. Textual, as <method>Contains</method> is; a manager directory that does not normalize
+/// answers true, so the refusal it guards fails closed.</p>
+ClassMethod DirectlyInManagerDirectory(pFile As %String) As %Boolean
+{
+    Set tManager = ##class(%File).NormalizeDirectory(..ManagerDirectory())
+    If tManager = "" Quit 1
+    Quit (pFile = (tManager _ ##class(%File).GetFilename(pFile)))
 }
 
 /// <p>The 403 the gate answers: <code>PORT.ACCESSDENIED</code> on its written sentence, with

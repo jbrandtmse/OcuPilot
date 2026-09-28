@@ -2,15 +2,22 @@
 title: 'Story 18.1: The directory allow-list'
 type: 'feature'
 created: '2026-09-27'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: '42b525899b46d1509fcb9412c28f32e286c6a538'
+baseline_revision: 'e3d44277999c4fec1400e21a8628db4a431ede7c'
 baseline_commit: '42b525899b46d1509fcb9412c28f32e286c6a538'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      AD-21's sixth case names iris.cpf among the manager directory's own files, but the CPF sits in the manager directory's parent, so PATH.MANAGER does not protect it and an overwriting consumer under an allowed install-directory root could resolve it.
+    evidence: |-
+      On ocupilot-b-ci, iris.cpf, _LastGood_.cpf and iris.cpf_20260928 are in /durable/iris/, the parent of $System.Util.ManagerDirectory() (/durable/iris/mgr/). DirectlyInManagerDirectory refuses only a file whose parent is the manager directory, as the rework item directs; under a restricted root /durable/iris/ iris.cpf is refused only by PATH.EXISTS, which pOverwrite 1 skips (inference; not executed). No consumer overwrites yet. The runner corrects AD-21's example list at its origin, or the orchestrator widens the rule.
+    location: >-
+      src/OcuPilot/Port/PathPort.cls:324
+    severity: medium
 ---
 
 <intent-contract>
@@ -352,7 +359,7 @@ Code review 2026-09-28, of rework 1 and merge `b219bc17`: four layers, `full-opu
 
 ### Rework iteration 2 (DW-1770, orchestrator decision)
 
-- [ ] [Decision] DW-1770, decided by the orchestrator at the 18.1 boundary (2026-09-28) and written into AD-21's sixth case: for `kind` `file`, `PathPort.Resolve` also refuses (1) a name that already exists on disk, unless the caller declares that it overwrites (a new trailing `pOverwrite` argument, default 0, so no consumer overwrites by accident), and (2) a name directly in `<ManagerDirectory>` itself (one segment under an unrestricted root, or any root that normalizes to the manager directory), which holds the instance's own files. A `directory` kind is unaffected. Each refusal is a `detail.violations[]` entry on the `path` field with its own code and a server-written reason in `Api/Error.cls` (no path echoed, AD-39), refused before any vendor call. Pin each refusal with a `PathPort` test leg and a Rule 19 mutation (the existence check removed; the manager-directory check removed; overwrite ignored), and extend the `Test/PathPort.cls` matrix legs; the picker needs no change. Evaluated at every `Resolve`, so at the mint and again at the write.
+- [x] [Decision] DW-1770, decided by the orchestrator at the 18.1 boundary (2026-09-28) and written into AD-21's sixth case: for `kind` `file`, `PathPort.Resolve` also refuses (1) a name that already exists on disk, unless the caller declares that it overwrites (a new trailing `pOverwrite` argument, default 0, so no consumer overwrites by accident), and (2) a name directly in `<ManagerDirectory>` itself (one segment under an unrestricted root, or any root that normalizes to the manager directory), which holds the instance's own files. A `directory` kind is unaffected. Each refusal is a `detail.violations[]` entry on the `path` field with its own code and a server-written reason in `Api/Error.cls` (no path echoed, AD-39), refused before any vendor call. Pin each refusal with a `PathPort` test leg and a Rule 19 mutation (the existence check removed; the manager-directory check removed; overwrite ignored), and extend the `Test/PathPort.cls` matrix legs; the picker needs no change. Evaluated at every `Resolve`, so at the mint and again at the write.
 
 ## Spec Change Log
 
@@ -397,6 +404,24 @@ Code review 2026-09-28, of rework 1 and merge `b219bc17`: four layers, `full-opu
   - `[false]` `[reject]` (intent-alignment) The `[Merge]` roster item is ticked with no evidence in the diff — re-derivation found no roster wrong, so no roster or mutation line changed; the sweep was re-read from `%UnitTest_Result` on `ocupilot-b-ci` (334 classes, 2,760 passed, 0 failed, none unlanded).
   - `[false]` `[reject]` (intent-alignment) The side-bar mutations' "rebuilt and redeployed bundle" is unchecked — checked: the served `index.html` on `ocupilot-b-ci` loads `main-HO67DN2T.js`, md5-identical to the working tree's `dist/`.
   - `[false]` `[reject]` (intent-alignment) Under a broad add-only reading the rewritten test titles, messages and `maximumWarning` break the constraint — the intent's add-only list names EXPERIENCE.md, `strings.ts` and the shared rosters; each rewritten message sits beside an appended entry, and DW-1166 re-bases the budget value in place with its pinned literal.
+
+### 2026-09-28 — Review pass, rework 2
+
+- verdicts: 13 findings — high 0, medium 2, low 5, false 6, maybe-false 0
+- findings:
+  - `[low]` `[patch]` (verification-gap) Which refusal wins for an existing file directly in the manager directory is unpinned — added `IRIS.DAT` without overwrite, expecting `PATH.MANAGER`; swapping the two checks reddens it alone (run 363).
+  - `[medium]` `[defer]` (verification-gap, other) `iris.cpf` sits in the manager directory's parent, so `PATH.MANAGER` does not protect it — confirmed on `ocupilot-b-ci` (`/durable/iris/iris.cpf`); the rework item scopes the rule to "directly in", and the fix is AD-21's example list or a wider rule, the runner's and orchestrator's; `deferred:`.
+  - `[medium]` `[defer]` (intent-alignment) Reading A3, "the instance's own files", reaches `iris.cpf` and the diff does not — same root cause and route as the row above.
+  - `[false]` `[reject]` (intent-alignment) The root-above leg exceeds the parenthetical, and a differently spelled root is untested — `DirectlyInManagerDirectory` compares the normalized file with the normalized manager directory whatever the root, and AD-21 reads "directly in".
+  - `[false]` `[reject]` (intent-alignment) `pOverwrite` is a runtime argument, not a tool declaration — the rework item directs a trailing `pOverwrite`, default 0; the declaration is the consumer's, and none exists yet.
+  - `[false]` `[reject]` (intent-alignment) No test creates a name between two resolutions — `Resolve` calls `%File.Exists` on every call with nothing cached (`PathPort.cls:276`).
+  - `[low]` `[reject]` (intent-alignment) The existing `/tmp/` file legs now pass only while those names are absent — nothing in `src`, `ui` or `scripts` writes `/tmp/exports`, and CI throwaways are fresh.
+  - `[low]` `[reject]` (intent-alignment) The matrix and Always bullets do not name the two refusals — the fix edits this spec's intent block; AD-21 carries the rule.
+  - `[false]` `[reject]` (intent-alignment) `epic-18-context.md` still lists DW-1770 as pending and two codes — the spine (03:35) is newer than the cache (02:54), so the pre-warm recompiles it before the next plan spawn.
+  - `[low]` `[patch]` (intent-alignment) Which code wins is not pinned — same root cause as the first row; closed by the same assertion.
+  - `[false]` `[reject]` (intent-alignment) The client has no map of `PATH.*` codes — the picker renders the consumer's reason for any code (AD-39), as the rework item says.
+  - `[low]` `[reject]` (intent-alignment) A manager directory that does not normalize refuses every file, untested — unreachable on a running instance; it fails closed by design.
+  - `[false]` `[reject]` (intent-alignment) The three mutation lines were not re-run by the auditor — runs 348 to 350 on `ocupilot-b-ci` each failed exactly the named method, and the verification-gap layer matched each line to the code.
 
 ## Design Notes
 
@@ -556,42 +581,51 @@ Each consumer does the following:
 - mutation: the same entry dropped from `security.browser-spec.mjs`'s AC1 list → its AC1 test (rework 1)
 - mutation: `maximumWarning` put back at 2004kB → `build-output.test.mjs` DW-371 (2,005,146 bytes over 2,004,000) and `angular-json.test.mjs`'s pinned literal (rework 1)
 - mutation (AC1, the seventh entry): `AllowedDirectoryList`'s `sideBarPosition` 7 → 0, `screens.generated.ts` regenerated → `navigation.test.mjs` "a side bar lists only built screens, in side-bar order" and its Security side-bar assertion (code review 2)
+- mutation: `Resolve`'s existence test removed → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` (the four refused legs), alone (rework 2)
+- mutation: `Resolve`'s manager-directory test removed → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` (all five refused legs, the overwriting `IRIS.DAT` leg included), alone (rework 2)
+- mutation: `Resolve` ignores `pOverwrite` → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` "a caller that overwrites resolves the existing file", alone (rework 2)
+- mutation: `Resolve` tests the existing name before the manager directory → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` "and to a caller that does not, an instance file is refused as the manager directory's", alone, run 363 (rework 2 review)
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Summary (rework iteration 1).** The four rework items closed. The Security side bar now has a seventh entry, "Allowed directories", and the three browser specs that pin it expect that entry. The bundle warning is re-based after the integrate-forward merge. The merged tree was verified on a throwaway loaded with `b219bc17`'s `src/` (Rule 22). No ObjectScript or client source changed in this pass.
+**Summary (rework iteration 2).** DW-1770 closed as AD-21's sixth case now reads. For `kind` `file`, `PathPort.Resolve` refuses a name directly in the manager directory (`PATH.MANAGER`, whatever `pOverwrite` says), and then a name that already exists (`PATH.EXISTS`), unless the new trailing `pOverwrite` (default 0) is set. A directory is unaffected. Each refusal is one `detail.violations[]` entry on the path field, and neither echoes a path.
 
 **Files changed.**
 
-- `ui/browser/oauth.browser-spec.mjs`, `ssl.browser-spec.mjs`, `security.browser-spec.mjs`: each expected Security side bar gains `STRINGS.allowedDirectoriesLabel`, and its message or title changes to match.
-  - `security.browser-spec.mjs` was not named in the rework items; it was red in both CI runs, and the grep the second `[CI]` item asks for found it.
-- `ui/angular.json`, `ui/tools/angular-json.test.mjs`: `maximumWarning` goes from 2004kB to 2106kB under DW-1166 (5% above the measured merged total of 2,005,146 bytes). The pinned literal changes with it.
-- This spec: the rework check-offs and four `mutation:` lines.
+- `src/OcuPilot/Port/PathPort.cls`: `Resolve` gains `pOverwrite` and the two checks. `DirectlyInManagerDirectory` does a textual check through the `ManagerDirectory()` seam, and fails closed.
+- `src/OcuPilot/Api/Error.cls`: four parameters are appended, add-only:
+  - `PATHEXISTS` "PATH.EXISTS", reason "A file or directory of that name already exists. Choose a name that is not taken."
+  - `PATHMANAGER` "PATH.MANAGER", reason "A file cannot go directly in the manager directory, which holds the instance's own files. Name a subdirectory for it."
+- `src/OcuPilot/Test/PathPort.cls`: two new legs, `TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` and `TestAFileDirectlyInTheManagerDirectoryIsRefused`. The first works in a `/tmp/` scratch directory that it removes.
+- This spec: the rework check-off, four `mutation:` lines, and the triage log.
 
-**Review.** Two layers ran (verification-gap and intent-alignment) and filed 8 findings: 3 low, 5 false. Nothing was patched or deferred. Every finding was rejected; the Review Triage Log gives each one's reason.
+**Review.** Two layers ran and filed 13 findings: medium 2, low 5, false 6.
 
-**Follow-up review: false.** This is a follow-up pass and it patched no `high`. Patched counts: high 0, medium 0, low 0.
+- One low was patched: an existing instance file without overwrite now pins that `PATH.MANAGER` wins.
+- One medium was deferred. `iris.cpf` sits in the manager directory's parent, so AD-21's example list overstates the rule. It is in `deferred:` for the runner.
+- The other 11 were rejected; the triage log gives each reason.
 
-**Verification.** The CI red is closed. Run 36397094123 on `b219bc17` failed only on these causes: the three side-bar specs, the DW-371 budget in every `gates` leg, and `instance shard 1/3`, whose throwaway could not bind its host port so no test ran.
+**Follow-up review: false.** This is a follow-up pass, and it patched no `high`. Patched counts: high 0, medium 0, low 1.
 
-All of the following ran on `ocupilot-b-ci` with the rebuilt bundle; the served `index.html` loads `main-HO67DN2T.js`, byte-identical to `dist/`:
+**Verification.** Everything ran on `ocupilot-b-ci`, one class per call, and was read from `%UnitTest_Result`. Its `src/` copy is byte-identical to the worktree.
 
-- **Browser specs:** `allowed-directories` 4/4, `oauth` 5/5, `ssl` 5/5 and `security` 4/4.
-- **Targeted classes:** `PathPort` 12, `PathPortPrivilege` 2, `SecurityLists` 7, `Descriptor` 57, `ReadTool` 27, `SurfaceCoverage` 4, `Wire` 20, `WireSecurityRead` 24, `WireOAuthRead` 6, `Envelope` 15, `PortGate` 4 and `LogHubWire` 3. All passed.
-- **Full ObjectScript sweep:** once, one class per call. `%UnitTest_Result`, latest run per class, reads 334 classes and 2,760 methods: 2,760 passed, 0 failed, and no run left unlanded.
-- **Client tiers:** `npm run test:tools` 1,657/1,657 and `npm run test:components` 1,628/1,628. `angular-json.test.mjs` and `build-output.test.mjs` pass 30/30 against the 2,005,146-byte build.
-- **Smoke:** 49/49.
-- **Docs:** `lint-docs` is clean, and EXPERIENCE.md is still 993 lines.
+- `PathPort` 14/14 (run 364, the final tree).
+- `PathPortPrivilege` 2/2, `PortGate` 4/4, `Descriptor` 57/57 and `Envelope` 15/15 (runs 352 to 355). `Descriptor` and `PortGate` are the other callers of `PathPort`.
+- The code sweeps over `Error.cls`, all green (runs 356 to 359): `AgentViolation` 8, `LedgerPairs` 9, `TurnStore` 11 and `ToolEmit` 11.
+- Mutations:
+  - Runs 348 to 350 each failed exactly the named method.
+  - The review's order swap failed only the new assertion (run 363). It was applied to the throwaway's copy alone and then reverted: md5-identical, and `PathPort` and `PathPortFixture` were recompiled.
+- Checks:
+  - `check-objectscript` reports 0 problems, and its harness passes 135/135.
+  - `lint-docs` reports 0 issues.
+  - `audit-event-copy.test.mjs` passes 2/2.
+  - The diff adds no non-ASCII bytes to source.
+- No client file changed. By Rule 29, CI runs the full sweep and the browser tier.
 
 **Residual risks.**
 
-- AC4 still names the 2004 kB warning, but the warning is now 2106kB. This is a Rule 5 apply-and-report restatement for the runner.
-- If Epic 16 re-bases the same `maximumWarning` line, the next merge conflicts there. Settle it by measuring the merged total again.
-- `instance shard 1/3` has not yet run on CI against the merged tree. The local sweep covers its classes.
-- The earlier residual risks are closed:
-  - the Epic 16 merge, in `b219bc17` and this pass;
-  - AD-8's wording, in `03b59d38`;
-  - the picker's transport-failure line, which is DW-1771.
+- No consumer calls `Resolve` yet. The first to write a file must pass `pOverwrite` only when its tool declares it.
+- `PATH.EXISTS` counts an existing directory as taken.
