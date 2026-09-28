@@ -7958,6 +7958,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T17:04:58Z status=escalated owner=burndown by=harvest note=policy call for the decision sheet: widen PATH.INSTANCE to every configured database directory and the journal directories, or accept the named set
 - 2026-09-28T17:21:24Z occurrence=18-1-the-directory-allow-list
 - 2026-09-28T17:21:25Z status=escalated owner=burndown by=cr note=also <mgr>/<db>/iris.lck and stream/ files, multi-volume IRIS-*.VOL (inference), and OcuPilot's own csp/ocupilot/ bundle
+- 2026-09-28T20:39:53Z status=routed owner=18-1-the-directory-allow-list by=merge_gate note=owner/orchestrator: widen PATH.INSTANCE to every configured db dir and journal dirs read at call time; own commit before 16.4 (18.1 cap override)
 
 ### DW-1791: A directory a vendor writes into may be another database's own: pVendorWrites refuses only <ManagerDirectory> itself, as AD-21 says, so <mgr>/irissecurity/ (IRIS.DAT, iris.lck) resolves for a database create
 - source: spec-18-1-the-directory-allow-list.md (code review 4) | severity: med | fix-risk: low | footprint: in-epic

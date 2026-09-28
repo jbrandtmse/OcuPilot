@@ -7046,6 +7046,7 @@ So that no later screen has to invent its own answer to "which directories may I
 - DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file (iris.cpf sits in the manager directory's parent), so an overwriting file consumer under an allowed data-directory root could resolve it (ledger; re-routed by merge_gate 2026-09-28; first routed by harvest 2026-09-28)
 - DW-1778: PathPort.Resolve's file kind offers only new-or-overwrite, so a consumer that reads an existing file (an import, a key file to activate) is refused PATH.EXISTS unless it passes pOverwrite, which no tool declaration ties it to (ledger; re-routed by merge_gate 2026-09-28; first routed by cr 2026-09-28)
 - DW-1779: A directory-kind location may be the manager directory itself (the unrestricted root, empty name), so a consumer whose vendor writes its own files into the chosen directory (a database's IRIS.DAT) lands among the instance's own (ledger; re-routed by merge_gate 2026-09-28; first routed by cr 2026-09-28)
+- DW-1790: PATH.INSTANCE protects only the files DW-1777 names; widen it to every configured database directory and the journal directories, read from the instance at call time (ledger; routed by merge_gate 2026-09-28)
 
 ### Story 18.2: Namespaces and their mappings
 

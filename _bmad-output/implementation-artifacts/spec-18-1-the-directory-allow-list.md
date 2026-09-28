@@ -2,7 +2,7 @@
 title: 'Story 18.1: The directory allow-list'
 type: 'feature'
 created: '2026-09-27'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: '8eee0559d50dc31de1bfed6d9dc91576582921db'
 baseline_commit: '8eee0559d50dc31de1bfed6d9dc91576582921db'
@@ -428,6 +428,10 @@ Code review 2026-09-28, of rework 3 (`8eee0559..67790caa`): four layers, `full-o
 - `by-design`: symbolic and hard links. AD-21 names textual containment.
 - theoretical: a FIFO or device as a source needs an allow-listed root over `/dev`; an unreadable source's vendor fault is normalized by its consumer's port (AD-39), and no consumer exists.
 
+### Rework iteration 4 (DW-1790, cap override authorized by the orchestrator, items=DW-1790 only)
+
+- [ ] [Decision] DW-1790 (owner decision at the orchestrator's decision sheet, 2026-09-28): widen `PATH.INSTANCE` so an overwriting consumer (`file` with `pOverwrite` 1) is refused every existing file in every configured database's directory and in every journal directory, as the instance answers them at call time (never cached, never a literal) -- a database outside the manager directory (`IRISLIB` under `/usr/irissys/mgr/irislib/` on this build), its `iris.lck`, `stream/` and multi-volume files, and the primary and alternate journal directories among them. Also refuse a `pVendorWrites` directory that is a configured database's own directory (closing DW-1791's case at the port if it is the same small change; say so if not, and DW-1791 stays with 18.3). Keep the refusals already shipped; a new name anywhere else is unaffected. Pin each with a `Test/PathPort.cls` leg and a Rule 19 mutation (the database-directory check removed; the journal check removed), plus a permitting leg that proves an ordinary subdirectory file still resolves. If `Test/PathPort.cls` passes about 500 lines, split the new legs into a second class.
+
 ## Spec Change Log
 
 - 2026-09-27, spec gate (runner): the proposed AD-21 sixth case under Design Notes was written into the spine verbatim, with "every server-path field (Story 18.1 on)" added to AD-21's Binds (Rule 20). The spine is the authority from here; Design Notes keeps the proposal text for the reviewer.
@@ -435,6 +439,7 @@ Code review 2026-09-28, of rework 3 (`8eee0559..67790caa`): four layers, `full-o
 - 2026-09-28, runner (Rule 5, apply and report): AC4 read "stays under its 2004 kB warning". The merged bundle measured 2,005,146 bytes and rework 1 re-based `maximumWarning` to 2106kB under the owner's DW-1166 policy (the runner's brief allows a re-base and stops only above 3800kB), so AC4 now names 2106 kB. Intent unchanged: the build stays under its warning.
 - 2026-09-28, rework iteration 2 (runner): re-opened on the orchestrator's decision of DW-1770 at the 18.1 boundary, which directs the fix as its own commit before 18.2's implement push; the work is the one item under Tasks & Acceptance > Rework iteration 2. AD-21's sixth case carries the rule.
 - 2026-09-28, rework iteration 3 (runner): re-opened on the orchestrator's decision (by=merge_gate) that DW-1777, DW-1778 and, if small, DW-1779 are fixed here, as their own commit, before Epic 16's 16.4 consumes PathPort; the work is the items under Tasks & Acceptance > Rework iteration 3.
+- 2026-09-28, rework iteration 4 (runner): the rework cap (3) is spent; the orchestrator authorized one more iteration with items=DW-1790 only, closing at the next review without a HIGH, so the fix lands as its own commit on the pushed head before Story 18.14's work and reaches feature before Epic 16's 16.4. AD-21's sixth case carries the widened rule.
 
 ## Review Triage Log
 
