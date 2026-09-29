@@ -190,3 +190,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-29T03:58:39Z	Story 18.14	committed_code	sha=e40733ef pushed=true ci=pending run=36519473392 head_confirmed_by=headSha
 2026-09-29T03:58:39Z	Epic 18	spine_updated	ad=AD-10 reason=rework_measurement(code_globals) by=runner story=18-14-namespace-mappings-and-copy-mappings lint=ok
 2026-09-29T03:58:39Z	Story 18.14	stage_spawned	stage=code-review spawn_at=2026-09-29T03:58:39Z model=opus agent_name=18-14-mappings-code-review-4 cycle_iteration=4 review_tier=full-opus scope=1a508d52..e40733ef
+2026-09-29T04:42:56Z	Story 18.14	ci_resolved	run=36519473392 head=e40733ef conclusion=success
+2026-09-29T04:42:56Z	Story 18.14	cr_complete	spawn_at=2026-09-29T03:58:39Z model=opus round=4 high=1 med=1 low=3 patched_in_review=1(HIGH_empty_low_end_range_covers_OcuPilot_names) unresolved_high_med=0 status=done note=HIGH_found_past_rework_cap_patched_and_verified_by_reviewer_accepted_by_lead_reported_to_orchestrator new_dw=DW-1813_routed_burndown
+2026-09-29T04:42:56Z	Story 18.14	ledger_adjudicated	resolved=3(DW-1798,DW-1803,DW-1806) new=DW-1814(routed_burndown_smoke) open_owned_after=0
+2026-09-29T04:42:56Z	Story 18.14	smoke_complete	target=ocupilot-b-ci create_ns=201x2 global_mapping_create=201_readback_match list_row_namespace=ok O*_in_HSCUSTOM=403_PROHIBITED.OCUPILOTMAPPING rOBJ_in_HSCUSTOM=403 copy_mappings=200_destination_lists_OcuSmokeG async_7846_lines=0 mapping_delete=200 probe_namespaces_deleted=2 leftover_maps=0 finding=DW-1814(alert_state_from_expected_404_logs)

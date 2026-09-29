@@ -106,13 +106,15 @@ Method TestTheCodeGlobalsAreTheOnesHoldingOcuPilotsNames()
 }
 
 /// <p>Each code global mapped whole, and a pattern or range naming one with case (<code>odd*</code>,
-/// <code>r*</code>, <code>Q:S</code>, which names <code>ROUTINE</code> alone), is refused on both
-/// callers in the namespace this process runs in with no write reaching the port, and by the set in
-/// <code>%ALL</code>; the same names in another case (<code>rObj</code>, <code>ODD*</code>) reach the
-/// port, since the instance compares global names with case.</p>
+/// <code>r*</code>, <code>Q:S</code>, which names <code>ROUTINE</code> alone, and <code>r:</code>,
+/// open at its upper end), is refused on both callers in the namespace this process runs in with no
+/// write reaching the port, and by the set in <code>%ALL</code>; the same names in another case
+/// (<code>rObj</code>, <code>ODD*</code>) reach the port, since the instance compares global names
+/// with case.</p>
 /// <p>Mutation (Rule 19): <parameter>OcuPilot.Kernel.Proposal.Prohibited.CODEGLOBALS</parameter> set
 /// to <code>""</code> -> the member floor fails, the member-pattern legs reach the port, and this
-/// goes red.</p>
+/// goes red; <method>OcuPilot.Kernel.Proposal.Prohibited.CoversCodeGlobal</method> reading an empty
+/// upper end as closed -> the <code>r:</code> legs reach the port.</p>
 Method TestAWholeCodeGlobalMappingIsRefused()
 {
     Set ^||OcuPilotNamespaceWritePort = ..#ACCEPT
@@ -122,9 +124,10 @@ Method TestAWholeCodeGlobalMappingIsRefused()
         Do ..AssertRefused($List(tMembers, tI))
         Do $$$AssertEquals(..AllProhibits($List(tMembers, tI)), "1 " _ ..#OWNCODE, "%ALL " _ $List(tMembers, tI) _ ": refused")
     }
-    For tName = "odd*", "r*", "Q:S" {
+    For tName = "odd*", "r*", "Q:S", "r:" {
         Do ..AssertRefused(tName)
     }
+    Do $$$AssertEquals(..AllProhibits("r:"), "1 " _ ..#OWNCODE, "%ALL r: refused")
     For tName = "rObj", "ODD*" {
         Do ..AssertPermitted(tName)
     }
@@ -213,7 +216,7 @@ Method TestABaseMappingThatWouldMoveACodeGlobalIsRefused()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddMapping", "global", ..#SPLIT, tName, "USER"), "the range is mapped in the probe namespace")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Names", "global", ..#SPLIT), "oddDEF," _ tName, "the instance created the base mapping with it")
     Set tAfter = ##class(%SYS.Namespace).GetGlobalDest(..#SPLIT, "oddDEF", tOwn)
-    Do $$$AssertEquals(tBefore '= tAfter, 1, "which moved this class's definition from " _ tBefore _ " to " _ tAfter)
+    Do $$$AssertEquals(tBefore '= tAfter, 1, "which moved where this class's definition is read from, from " _ tBefore _ " to " _ tAfter)
     Do $$$AssertEquals(tAfter, ##class(%SYS.Namespace).GetGlobalDest(..#SPLIT), "onto the namespace's globals database")
 }
 

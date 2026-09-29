@@ -344,7 +344,8 @@ Method TestOcuPilotsOwnMappingsAreRefusedInAll()
 /// <p>By overlap, not by prefix (AD-10 as amended, DW-1803): in the namespace this process runs in, a
 /// mapping whose pattern or range covers OcuPilot's own names -- <code>O*</code>, <code>Ocu*</code>,
 /// <code>*</code>, a range spanning them, a range open at its upper end (<code>O:</code>,
-/// <code>:</code>), a routine pattern with a type suffix, and a pattern, name range or subscript
+/// <code>:</code>) or with an empty low end (<code>:A</code>, whose low end the instance reads as
+/// <code>%</code>), a routine pattern with a type suffix, and a pattern, name range or subscript
 /// range that begins with the stem itself -- is refused
 /// <code>PROHIBITED.OCUPILOTMAPPING</code> on the screen's Save and at the agent's confirm with no
 /// write reaching <class>OcuPilot.Test.MappingAcceptPort</class>, while <code>Q*</code>,
@@ -354,12 +355,13 @@ Method TestOcuPilotsOwnMappingsAreRefusedInAll()
 /// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Proposal.Prohibited.CoversOwnName</method> tests
 /// only whether the name begins with a stem -> each pattern and range leg that neither begins with
 /// the stem nor names a code global (<class>OcuPilot.Test.MappingCodeGlobals</class>) reaches the
-/// port and this goes red.</p>
+/// port and this goes red; its empty-low-end check removed -> the <code>:A</code> legs reach the
+/// port.</p>
 Method TestAMappingWhosePatternCoversOcuPilotsNamesIsRefused()
 {
     Set tOwnNs = $ZConvert($NAMESPACE, "U")
     Set ^||OcuPilotNamespaceWritePort = ..#ACCEPT
-    For tCase = $ListBuild("global", "O*"), $ListBuild("global", "Ocu*"), $ListBuild("global", "*"), $ListBuild("global", "A:Z"), $ListBuild("global", "Oa:Od"), $ListBuild("routine", "O*"), $ListBuild("routine", "Ocu*_INT"), $ListBuild("routine", "N:P"), $ListBuild("routine", "O:"), $ListBuild("global", ":"), $ListBuild("global", "OcuPilotState*"), $ListBuild("global", "OcuPilotA:OcuPilotZ"), $ListBuild("global", "OcuPilotState(""a""):(""z"")") {
+    For tCase = $ListBuild("global", "O*"), $ListBuild("global", "Ocu*"), $ListBuild("global", "*"), $ListBuild("global", "A:Z"), $ListBuild("global", "Oa:Od"), $ListBuild("routine", "O*"), $ListBuild("routine", "Ocu*_INT"), $ListBuild("routine", "N:P"), $ListBuild("routine", "O:"), $ListBuild("global", ":"), $ListBuild("routine", ":A"), $ListBuild("global", ":A"), $ListBuild("global", "OcuPilotState*"), $ListBuild("global", "OcuPilotA:OcuPilotZ"), $ListBuild("global", "OcuPilotState(""a""):(""z"")") {
         Set tKind = $List(tCase, 1)
         Set tName = $List(tCase, 2)
         Do $ClassMethod(..#ACCEPT, "Clear")
@@ -378,7 +380,7 @@ Method TestAMappingWhosePatternCoversOcuPilotsNamesIsRefused()
         Set tSC = ..Mint(..Tool("global", "Create"), {"Namespace": (tOwnNs), "Name": (tName), "Database": "USER"}, .tProposal, .tHttp, .tProblem)
         Do $$$AssertEquals(..Confirm(tProposal) _ $ClassMethod(..#ACCEPT, "Writes"), "200 PUT", tName _ ": so is the agent's")
     }
-    For tCase = $ListBuild("O*", 1), $ListBuild("*", 1), $ListBuild("A:Z", 1), $ListBuild("Q*", 0) {
+    For tCase = $ListBuild("O*", 1), $ListBuild("*", 1), $ListBuild("A:Z", 1), $ListBuild(":A", 1), $ListBuild("Q*", 0) {
         Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("global-mapping", "instance", $ClassMethod(..#PROBE, "Id", "%ALL", $List(tCase, 1)), .tRef)
         Set tSC = ##class(OcuPilot.Test.MappingAllTargetFixture).Prohibits($Parameter(..Tool("global", "Create"), "TOOLNAME"), tRef, {"Database": "USER"}.%ToJSON(), "[]", .tProhibits, .tCode)
         Do $$$AssertStatusOK(tSC, "%ALL " _ $List(tCase, 1) _ ": the set answers")

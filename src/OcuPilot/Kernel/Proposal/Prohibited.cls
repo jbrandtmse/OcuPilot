@@ -1869,7 +1869,10 @@ ClassMethod OwnNameStems() As %List
 /// <var>pNamespace</var>, covers any of OcuPilot's own names (<method>OwnNameStems</method>),
 /// ignoring case: by overlap, not by prefix (AD-10 as amended, DW-1803). A global mapping also
 /// covers them when it moves one of the globals OcuPilot's code is read from
-/// (<method>CoversCodeGlobal</method>).</p>
+/// (<method>CoversCodeGlobal</method>). A range whose low end is empty (<code>:A</code>) covers
+/// them whatever its upper end: the instance reads that low end as <code>%</code> and drops the upper
+/// one (<code>NSPMAP</code>), and <code>:A</code> moved OcuPilot's routines and
+/// <code>^rINDEXEXT</code> (measured).</p>
 /// <p>Otherwise a global's subscripts and a routine's type suffix (<code>_MAC</code>) are set aside,
 /// since each only narrows the mapping within the name before it. What is left is a range
 /// <code>L:U</code>, a pattern <code>P*</code> or a name. A pattern covers a stem when either
@@ -1878,8 +1881,9 @@ ClassMethod OwnNameStems() As %List
 /// range holding <code>*</code> always.</p>
 ClassMethod CoversOwnName(pName As %String, pType As %String, pNamespace As %String) As %Boolean
 {
-    If (pType = ..#TYPEGLOBALMAPPING) && ..CoversCodeGlobal(pName, pNamespace) Quit 1
     Set tName = $Piece(pName, "(")
+    If (tName [ ":") && ($Piece(tName, ":") = "") Quit 1
+    If (pType = ..#TYPEGLOBALMAPPING) && ..CoversCodeGlobal(pName, pNamespace) Quit 1
     If $Match(tName, "(?s).*_[A-Za-z]+") Set tName = $Piece(tName, "_", 1, $Length(tName, "_") - 1)
     Set tLower = $ZConvert(tName, "L")
     Set tStems = ..OwnNameStems()

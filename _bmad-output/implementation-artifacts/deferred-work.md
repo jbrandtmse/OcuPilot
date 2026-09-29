@@ -8025,6 +8025,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: InstanceFile answers 0 for /durable/iris/csp/ocupilot/index.html on ocupilot-b-ci (read-only, blind-hunter layer); DW-1790's 17:21:25Z trailer lists the bundle, and its merge_gate decision names database and journal directories only; no overwriting consumer exists yet.
 - 2026-09-28T22:34:01Z status=decision-pending owner=burndown by=cr note=owner: should an overwriting consumer also be refused OcuPilot's own served files, as self-protection?
 - 2026-09-28T23:19:46Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: refuse an overwriting consumer OcuPilot's own served files (csp/ocupilot/ and what the installer deploys); folded into 18.14's rework
+- 2026-09-29T04:42:42Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings owner=18-14-namespace-mappings-and-copy-mappings by=adjudication note=PathPort.Resolve refuses an existing file under PathPort.ServedDirectory() to an overwriting consumer; PathPortInstance pins it with a recorded mutation; AD-21 sixth case amended
 
 ### DW-1799: A global mapping's Collation cannot be cleared from the edit form
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
@@ -8050,6 +8051,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T23:17:46Z status=decision-pending owner=burndown by=cr note=owner call: widen AD-10 to wildcard stems that cover OcuPilot (recommended); fix is IsOwnMappingName plus a MappingWrite leg
 - 2026-09-28T23:19:46Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: widen AD-10 to pattern overlap (O*, Ocu*, *, ranges) with OcuPilot package, routine or global names; fix in 18.14's rework
 - 2026-09-29T01:49:35Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=cr note=residual HIGH: rOBJ/oddDEF subscript ranges and code-global maps uncovered (measured); open range O: patched in cr
+- 2026-09-29T04:36:23Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=cr note=residual HIGH: empty-low-end range :A moved OcuPilot routines and rINDEXEXT (measured); patched in cr round 3
+- 2026-09-29T04:42:42Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings owner=18-14-namespace-mappings-and-copy-mappings by=adjudication note=Prohibited.CoversOwnName matches by overlap (O*, Ocu*, *, ranges, empty-ended ranges) plus the code globals; MappingCodeGlobals and MappingWrite pin both callers; lead smoke on ocupilot-b-ci refused O* and rOBJ in HSCUSTOM with 403 PROHIBITED.OCUPILOTMAPPING
 
 ### DW-1804: The mapping form read and name check are never called by a principal lacking the screen's pairs
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
@@ -8061,6 +8064,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: PathPortInstance pins that a new name under csp/ocupilot/ resolves; reach needs a restricted root above the data directory's csp/ (the default root is the manager directory); no file consumer on this branch yet (inference)
 - 2026-09-29T00:44:20Z status=decision-pending owner=burndown by=harvest note=owner: refuse any file, new or existing, under the served directory (recommended), or keep existing-only
 - 2026-09-29T00:44:54Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: refuse any file, new or existing, under the served directory, and the directory as a vendor-writes directory; fold into 18.14; AD-21
+- 2026-09-29T04:42:42Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings owner=18-14-namespace-mappings-and-copy-mappings by=adjudication note=PathPort.Resolve refuses every file consumer any file, new or existing, under the served directory and the directory as vendor-writes, PATH.SERVED; PathPortServed legs with recorded mutations; AD-21 sixth case amended
 
 ### DW-1807: Story 18.3's ready spec predates DW-1806: its database directory picker must plan for PATH.SERVED (a directory under OcuPilot's served directory refused as a vendor-writes directory) and render it on the field
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-epic
@@ -8086,3 +8090,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: ocupilot-b-ci sweep run 185 red, run 198 green alone; 18.14's diff does not touch the class or the token path (inference: timing in the deleted-user token check)
 - 2026-09-29T03:58:28Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=reopen_if=the Retention leg fails again in CI or a sweep
+
+### DW-1813: A global mapping range whose low end is empty (':A') covers the % globals in any namespace, yet carries no MAPPING.SYSTEMGLOBAL consequence, which 18.14 applies only to names beginning with %
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: measured in 18.14's round-3 review on ocupilot-b-ci: ':A' moved ^%zz in a probe namespace; the vendor reads an empty low end as '%' (NSPMAP oneglob)
+- 2026-09-29T04:38:55Z status=routed owner=burndown by=cr note=found after 18.14's rework cap; the %-global effect should also cover a range or pattern that reaches the % globals
+
+### DW-1814: AdminPort logs every vendor 404 at error severity, including VerifyGone's expected absence after a delete, so the lines reach alerts.log and an OcuPilot delete raises the instance's alert state
+- source: lead smoke, Story 18.14 | severity: med | fix-risk: low | footprint: out-of-story
+- evidence: measured on ocupilot-b-ci 2026-09-29: alerts.log holds only OcuPilot adminport 'failed with HTTP 404' lines (Namespace.Namespace, Namespace.GlobalMappings) plus 'generated 3 alerts' suspensions; $SYSTEM.Monitor.State() reads 2; AdminPort.Fail:2431 logs via Fault.LogRaw whatever the status
+- 2026-09-29T04:42:42Z status=routed owner=burndown by=lead note=pre-existing since Story 2.1; an expected 404 (a delete's re-read, a read-back of an absent row) should log below error, or not at all

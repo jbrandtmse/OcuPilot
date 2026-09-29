@@ -667,6 +667,45 @@ Rejected:
   - The refusal says "name or pattern" to a range. A range is written as the mapping's name.
 - duplicate: Story 18.3's spec predates `PATH.SERVED` (DW-1807).
 
+### Review Findings (round 3)
+
+Code review 2026-09-29 of rework 3 (`1a508d52..e40733ef`; `review_tier: full-opus`; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). The round-2 HIGH is met and pinned: `CODEGLOBALS` and `NESTEDCODEGLOBALS` equal the walk, and each arm is refused on both callers, in `%ALL` and in a copy, with the dispatch's two mutations recorded. A second HIGH of the same family was found and patched here. It was measured on `ocupilot-b-ci` through the shipped `NamespacePort`, in probe namespace `OCUPROBE1814X` (removed):
+
+- A global and a routine mapping named `:A` are created (201). `NSPMAP` reads an empty low end as `%` and drops the upper end.
+- The routine `:A` moved `OcuPilot.Api.Account.1`'s object code, and the global `:A` moved `^rINDEXEXT`. An `OcuPilot*` global mapping beside it kept `^OcuPilotX` in place, and `rOBJ` and `oddDEF` stayed on the routines database.
+- In `HSCUSTOM`, the screen's Save of each answered 201, with its `PUT` reaching `MappingAcceptPort`.
+
+- [x] [Review][Patch] HIGH (AD-10, DW-1803): a mapping name range with an empty low end (`:A`, `:O`) was permitted in the install namespace and `%ALL`, although it moves OcuPilot's routines and `^rINDEXEXT`. `CoversOwnName` now refuses such a range for every mapping type, and `MappingWrite` refuses routine and global `:A` on both callers and in `%ALL` [src/OcuPilot/Kernel/Proposal/Prohibited.cls:1885]
+- [x] [Review][Patch] MED (Rule 19): a code-global name range open at its upper end (`r:`) was refused only by `CoversCodeGlobal`'s empty-upper-end clause, and no leg exercised it. `MappingCodeGlobals` now refuses `r:` on both callers and in `%ALL` [src/OcuPilot/Test/MappingCodeGlobals.cls:127]
+- [x] [Review][Patch] LOW (Rule 19): the case legs (`rObj`, `ODD*`) had no mutation line. One is now recorded under `## Verification` [src/OcuPilot/Test/MappingCodeGlobals.cls:131]
+- [x] [Review][Patch] LOW: the base-mapping leg said the class's definition "moved". What moves is where the definition is read from, and the message now says so [src/OcuPilot/Test/MappingCodeGlobals.cls:219]
+- [x] [Review][Patch] LOW: the Auto Run Result said an error in `GetGlobalDest` answers an error. `getdest^%SYS.GXLINF1` catches its own errors and answers `""`, which `BaseMappingMoves` reads as moving, so the write is refused (fail closed). The residual-risk line now says so [Auto Run Result]
+
+Verified on `ocupilot-b-ci`: `MappingWrite` 10/10 (run 385), `MappingCodeGlobals` 7/7 (384), `NamespaceCopy` 8/8 (386), `MappingRefusals` 8/8 (387), `Prohibited` 13/13 (388) and `RefusalCopy` 8/8 (389). Three mutations went red on their legs alone (runs 381-383). `check-objectscript` is clean.
+
+For the lead, not filed (outside this range, not HIGH): outside the install namespace and `%ALL`, a range like `:A` also shadows `%` globals (measured: `^%zz` moved), without the `MAPPING.SYSTEMGLOBAL` consequence, which Part A keys on a leading `%`.
+
+Rejected:
+
+- `false`:
+  - `CODEGLOBALS` should be the vendor's 31 names. The walk holds it equal to the instance, and a vendor global the walk does not find holds no OcuPilot name.
+  - A `<PROTECT>` in `GetGlobalDest` makes a Save answer 500. The vendor's lookup catches its own errors (fifth patch).
+  - The base mapping was measured only through `Config.MapGlobals`. The shipped port's base mapping is Part A's `MAPPING.NAME.SUBSCRIPTS` row.
+  - AD-10's sentence omits a single subscript. The code reads one as a range of itself.
+  - The `ci-throwaway.sh` comment omits the new class. It already names `OCUPROBE1814*` mappings between `OCUPROBE1814*` namespaces.
+  - Doc comments read against the rule, and `BaseMappingMoves` has an unknown-namespace arm. Each comment describes the predicate, and `getdest` answers `""` for an unknown namespace.
+  - `FirstSubscriptBounds` returns no `%Status`. 77 project methods have the same Output-only shape.
+- `low`, not worth the churn:
+  - The walk also reads data globals. The residual risk says so, and a sibling that leaks an `OcuPilot*` record would redden it.
+  - A permitted `rOBJ("A"):("B")` leaves a base `rOBJ` row that OcuPilot will not delete, and a copy of it is refused. This fails closed, on a mapping nobody makes.
+  - An upper bound `("B",END)` reads as open, so it over-refuses.
+  - Change and delete are exercised only in `%ALL`, and `Created`'s and the copy's type argument has no mutation. Both are carried from round 2, and the AC has its mutation.
+  - The nested legs name the three measured subscripts. The walk holds `NESTEDCODEGLOBALS` itself.
+  - Three lines no mutation observes: `pName '[ "("`, the quit on a range with `*`, and the `BEGIN`/`END` token check. Each states intent that another path also serves.
+  - Helpers ignore `Save`'s status, the type names are literals, and the unrelated-global leg has no mutation of its own.
+  - Spec prose: run numbers across throwaway incarnations, the 09-28/09-29 headings, the stale `:1803` anchor, and the copy-versus-create asymmetry, which is stated only in the test header.
+- duplicate: the refusal sentence for a code-global refusal (DW-1810).
+
 ## Spec Change Log
 
 - 2026-09-28, spec gate (runner): the orchestrator split the story for risk (Rule 5, by=merge_gate): Part C, SA-13's enable-interop with its Task 0 observation (DW-1776), moved to Story 18.15, which runs after 18.4; the intent block was cut to Parts A and B. The owner's DW-1784 decision (AD-44 amended: a screen replacing several classic pages unions each replaced page's custom resource into its write tools' pairs) joined the scope, routed here, with the namespace tools 18.2 shipped included. The orchestrator's 18.4 note applies to the copy: read a finished async task's result exactly once, one poller per task. The spec is `draft` for a re-plan; the first plan's Part C stays in this file's history at commit `4b73be11`.
@@ -972,6 +1011,9 @@ Demonstrated on `ocupilot-b-ci`, each ObjectScript mutation loaded with its subc
 - mutation (rework 3): `BaseMappingMoves` answers 0 → `TestABaseMappingThatWouldMoveACodeGlobalIsRefused` alone red, on its two predicate legs. Its instance legs, where the base mapping moved this class's definition, stay green (run 12).
 - mutation (rework 3): `CoversOwnName` applies `CoversCodeGlobal` to every mapping type → the permitted test alone red, on its routine and package leg (run 13); reverted byte-identical, 6/6 (run 14), and 6/6 again after the reruns above (run 19), `MappingWrite` 10/10 (run 18).
 - mutation (rework 3 review): `Prohibited.Mapping` passes `""` as the mapping type → `MappingCodeGlobals.TestAChangeOrDeleteOfACodeGlobalMappingIsRefused` alone red, on its four `%ALL` `rOBJ` and `oddDEF("OcuPilot"):("OcuPilotz")` change and delete legs (run 21); reverted byte-identical, 7/7 (run 22).
+- mutation (code review 3): `CoversOwnName`'s empty-low-end check removed → `MappingWrite.TestAMappingWhosePatternCoversOcuPilotsNamesIsRefused` alone red, on its routine `:A`, global `:A` and `%ALL` `:A` legs only (run 381).
+- mutation (code review 3): `CoversCodeGlobal` reads an empty upper end as closed → `MappingCodeGlobals.TestAWholeCodeGlobalMappingIsRefused` alone red, on its `r:` and `%ALL` `r:` legs only (run 382).
+- mutation (code review 3): `CoversCodeGlobal` compares member names and pattern prefixes ignoring case → the same test alone red, on its permitted `rObj` and `ODD*` legs only (run 383). Each of the three was applied to the throwaway's source copy only and compiled with `Prohibited`'s subclasses, then reverted: 7/7 (run 384), `MappingWrite` 10/10 (385).
 
 ## Auto Run Result
 
@@ -1020,5 +1062,5 @@ Blocking condition: none
 **Residual risks.**
 
 - `%ALL`'s base mapping is judged in the install namespace, from `NSPMAP` (inference, deferred).
-- No least-privileged caller reaches `%SYS.Namespace.GetGlobalDest`. An error there answers an error with nothing sent (`MappingSave` :267, `Operation` :343).
+- No least-privileged caller reaches `%SYS.Namespace.GetGlobalDest`. Its lookup catches its own errors and answers `""`, which `BaseMappingMoves` reads as moving, so the write is refused with nothing sent.
 - The walk test is strict: a new OcuPilot `.inc`, or any global newly holding OcuPilot's names at its first two levels, reddens it until `CODEGLOBALS` is updated.
