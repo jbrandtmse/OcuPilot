@@ -8312,3 +8312,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: DW-1768 review | severity: low | fix-risk: low | footprint: in-epic
 - evidence: listed by the DW-1768 review, 2026-09-29
 - 2026-09-29T23:51:43Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=an Epic 18 merge adds a listed OS management or Security screen, or screen-mirror --check fails in CI
+
+### DW-1856: External language server editor: set JavaHome, PythonPath, LogFile and FilePath through PathPort's sixth case (directories, a source, a vendor-written file) instead of showing them only; ClassPath stays shown-only (a separator-joined list PathPort refuses)
+- source: spec-16-25-the-external-language-server-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: orchestrator decision 2026-09-29: option A for 16.25 (shown, never set, SSL/TLS precedent); the PathPort-backed follow-up is routed here
+- 2026-09-29T23:53:28Z status=routed owner=range-end-cleanup by=spec_gate note=orchestrator: 16.25 option A; follow-up for the four single-location fields
