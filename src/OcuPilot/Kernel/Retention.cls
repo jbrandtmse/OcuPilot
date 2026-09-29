@@ -9,7 +9,9 @@
 /// <property>OcuPilot.Kernel.State.Agent.RetentionDays</property>, then every conversation left with
 /// no entry once it is older than the longest retention; every ledger row older than the longest
 /// retention, so the per-row gate (AD-46) outlives every transcript it gates; and, for an account the
-/// instance no longer holds, its running turns, its preferences and its sharing choice.</p>
+/// instance no longer holds, its running turns, its preferences and its sharing choice; and, last,
+/// the admin API's async task rows OcuPilot's own port queued, once terminal and a day old
+/// (<method>OcuPilot.Port.AdminPort.SweepOwnTasks</method>).</p>
 /// <p><b>What is never removed for a deletion.</b> A deleted user's transcripts and ledger rows age
 /// like everyone's; the principal-gone pass abandons turns and removes per-user settings only. Only
 /// an account the instance answers does not exist is gone; one whose read fails, or whose identity
@@ -101,6 +103,14 @@ ClassMethod Sweep(pLimitsClass As %String = "OcuPilot.Kernel.Agent.Limits") As %
         Set tSC = ex.AsStatus()
     }
     Set tSC = ..Step("the state of deleted accounts could not be swept", tSC)
+    If $$$ISERR(tSC) && $$$ISOK(tFirst) Set tFirst = tSC
+
+    Try {
+        Set tSC = ##class(OcuPilot.Port.AdminPort).SweepOwnTasks()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set tSC = ..Step("the async task rows OcuPilot queued could not be swept", tSC)
     If $$$ISERR(tSC) && $$$ISOK(tFirst) Set tFirst = tSC
     Quit tFirst
 }

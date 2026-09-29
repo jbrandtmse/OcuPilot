@@ -231,6 +231,13 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Task:USE',
         },
+        {
+          route: 'tasks/background',
+          labelKey: 'backgroundTaskListLabel',
+          sideBarPosition: 5,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
       ],
     },
     {
@@ -436,6 +443,9 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   for (const route of ['tasks/on-demand', 'tasks/upcoming', 'tasks/history', 'tasks/schedule/history', 'tasks/schedule/details']) {
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Task:USE' }, route);
   }
+  // Story 16.5: Background tasks declares `%Admin_Operate:USE` -- its own pair, which this principal
+  // holds -- and `%DB_IRISSYS:READ`, which it does not, so it is denied on the second.
+  assert.deepEqual(service.screenVerdict('tasks/background'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
   assert.deepEqual(service.screenVerdict('os-management/processes'), { allowed: false, failedPair: '%Admin_Manage:USE' });
   // Story 6.9: System usage declares no `%Admin_Manage:USE` at all, so this principal, which
   // holds `%Admin_Operate:USE`, is denied on its second pair instead -- the same shape as the

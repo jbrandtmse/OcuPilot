@@ -96,7 +96,10 @@ XData Keys [ MimeType = application/json ]
   "webapp.list.create": true,
   "webapp.list.delete": true,
   "webapp.list.update": true,
-  "webapp.sessions.end": true
+  "webapp.sessions.end": true,
+  "tasks.background.cancel": true,
+  "tasks.background.pause": true,
+  "tasks.background.resume": true
 }
 }
 

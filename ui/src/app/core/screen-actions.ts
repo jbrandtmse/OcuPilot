@@ -89,6 +89,8 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   terminate: STRINGS.actionTerminate,
   // Story 7.11: an audit event's Reset counters, on System events and User events.
   reset: STRINGS.actionResetCounters,
+  // Story 16.5: a background task's Pause, on Background tasks.
+  pause: STRINGS.actionPause,
 };
 
 /**
@@ -131,6 +133,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab': { updatejwks: STRINGS.oauthServerUpdateJwks },
   // Story 16.2: the Web sessions list's End session.
   'OcuPilot.Screen.Descriptor.WebSessionList': { end: STRINGS.webSessionEndAction },
+  // Story 16.5: the Background tasks list's Cancel task, which also titles its warning dialog.
+  'OcuPilot.Screen.Descriptor.BackgroundTaskList': { cancel: STRINGS.backgroundTaskCancelAction },
 };
 
 export class ScreenActions {

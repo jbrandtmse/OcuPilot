@@ -128,6 +128,7 @@ XData Coverage
 <screen name="ServiceForm" class="OcuPilot.Test.ServiceUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
 <screen name="LdapConfigForm" class="OcuPilot.Test.LdapUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
 <screen name="WebSessionList" class="OcuPilot.Test.WebSessions" method="TestTheDescriptorDeclaresTheListItsPairsAndItsRowAction"/>
+<screen name="BackgroundTaskList" class="OcuPilot.Test.BackgroundTasks" method="TestTheDescriptorDeclaresTheListItsPairsAndItsActions"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -208,6 +209,9 @@ XData Coverage
 <tool name="webapp.list.delete" class="OcuPilot.Test.ToolWrite" method="TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>
 <tool name="webapp.sessions.end" class="OcuPilot.Test.WebSessions" method="TestTheToolIsADestructiveActionWriteOverTheListsPairsAndTheWritePair"/>
+<tool name="tasks.background.cancel" class="OcuPilot.Test.BackgroundTasks" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the three Background tasks control tools are asserted together in one loop"/>
+<tool name="tasks.background.pause" class="OcuPilot.Test.BackgroundTasks" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the three Background tasks control tools are asserted together in one loop"/>
+<tool name="tasks.background.resume" class="OcuPilot.Test.BackgroundTasks" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the three Background tasks control tools are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

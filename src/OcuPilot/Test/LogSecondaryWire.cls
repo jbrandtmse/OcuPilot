@@ -30,7 +30,8 @@ Parameter ROUTES = "/api/ocupilot/logs/systemmonitor,/api/ocupilot/logs/taskerro
 /// <code>position:name</code>; the query answers nine.</p>
 Parameter XDBCCOLUMNS = "1:DATE_TIME,3:SQLCODE,6:MESSAGE,7:DisplayPID,8:CONNECTION_INFO";
 
-/// <p>The columns <code>EnumerateTasks</code> answers, in order.</p>
+/// <p>The columns <code>EnumerateTasks</code> answers, in order: <class>OcuPilot.Port.LogSourcePort</class>
+/// reads the first six, and <class>OcuPilot.Port.BackgroundTaskPort</class> every one (Story 16.5).</p>
 Parameter TASKCOLUMNS = "ID,StartTime,Namespace,Task,Status,Details,ErrorCount,SysBGTaskId";
 
 /// <p>The columns <code>ErrorLog</code> answers, in order.</p>
@@ -213,7 +214,7 @@ Method TestTheVendorReadersColumnsArePinned()
         For tAt = 1:1:tRS.GetColumnCount() {
             Set tColumns = tColumns _ $Select(tColumns = "": "", 1: ",") _ tRS.GetColumnName(tAt)
         }
-        Do $$$AssertEquals(tColumns, $List(tRow, 2), tQuery _ ": answers the columns OcuPilot.Port.LogSourcePort reads")
+        Do $$$AssertEquals(tColumns, $List(tRow, 2), tQuery _ ": answers the columns OcuPilot.Port.LogSourcePort and OcuPilot.Port.BackgroundTaskPort read")
         Do tRS.Close()
     }
 }

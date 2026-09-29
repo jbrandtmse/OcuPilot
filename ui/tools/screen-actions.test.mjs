@@ -113,6 +113,13 @@ test("a screen's row action draws its own published words", () => {
   // Mutation (Rule 19): drop the WebSessionList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.WebSessionList', 'end'), STRINGS.webSessionEndAction);
   assert.equal(actionLabel(DEFINITIONS, 'end'), 'end');
+  // Story 16.5: Background tasks' Cancel task is its own words, since the warning dialog's own
+  // dismiss reads "Cancel"; its Pause is the shared verb, and Resume the Task schedule's.
+  // Mutation (Rule 19): drop the BackgroundTaskList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.BackgroundTaskList', 'cancel'), STRINGS.backgroundTaskCancelAction);
+  assert.equal(actionLabel(DEFINITIONS, 'cancel'), 'cancel');
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.BackgroundTaskList', 'pause'), STRINGS.actionPause);
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.BackgroundTaskList', 'resume'), STRINGS.actionResume);
 });
 
 test('an action that means the same thing everywhere falls back to the shared map', () => {

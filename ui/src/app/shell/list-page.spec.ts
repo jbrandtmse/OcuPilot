@@ -821,4 +821,39 @@ describe('the list page', () => {
       expect(page.bodies).toEqual([]);
     });
   });
+
+  describe('Story 16.5: Background tasks', () => {
+    const BACKGROUND = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.BackgroundTaskList')!;
+
+    it('reads the empty state and invites the agent when the instance holds no background task', async () => {
+      // Mutation (Rule 19): point the descriptor's emptyStateKey at another key -> the title
+      // assertion goes red.
+      const page = await mount(BACKGROUND, [], true, '/tasks/background?ns=HSCUSTOM');
+      const empty = page.host().querySelector('.ocu-data-table-empty') as HTMLElement;
+      expect(empty).not.toBeNull();
+      expect(empty.querySelector('.ocu-data-table-empty-title')?.textContent?.trim()).toBe(STRINGS.backgroundTaskListEmpty);
+      expect(empty.querySelector('.ocu-data-table-empty-next')?.textContent?.trim()).toBe(
+        STRINGS.tableWriteCapableEmptyState.split('<a write it could propose here>').join(STRINGS.backgroundTaskListEmptyAgent)
+      );
+    });
+
+    it('offers Cancel task, Pause and Resume on a row, and Cancel task opens its warning with nothing sent', async () => {
+      const row = { Source: 'Management Portal', Id: '4242', Task: 'Compact DB Space', Namespace: '%SYS', Status: 'Paused', Details: 'OCUBGSEED', ErrorCount: '', StartTime: '2026-09-28 12:00:05' };
+      const page = await mount(BACKGROUND, [row], true, '/tasks/background?ns=HSCUSTOM');
+      (page.host().querySelector('.ocu-data-table-body [role="row"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+      await settle(page.fixture);
+      const items = Array.from(page.host().querySelectorAll('[role="menu"] [role="menuitem"]')) as HTMLButtonElement[];
+      expect(items.map((item) => item.querySelector('.ocu-data-table-menu-label')?.textContent?.trim())).toEqual([
+        STRINGS.backgroundTaskCancelAction,
+        STRINGS.actionPause,
+        STRINGS.actionResume,
+      ]);
+      items[0].click();
+      await settle(page.fixture);
+      const dialog = page.host().querySelector('[role="dialog"]') as HTMLElement;
+      expect(dialog).not.toBeNull();
+      expect(dialog.textContent).toContain(STRINGS.backgroundTaskCancelConsequence);
+      expect(page.bodies).toEqual([]);
+    });
+  });
 });

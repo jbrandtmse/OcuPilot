@@ -6460,6 +6460,7 @@ So that I can hold maintenance during a change window.
 - **Given** `Task.Manager` publishes no body template
 - **When** the tool is built
 - **Then** it is recorded as action-style with a trivial body needing no template, rather than being given a hand-typed field list.
+- DW-1638: Task delete, suspend, resume and run skip the task type's declared privilege (%SYS.Task.Definition RESOURCE) that the create, the edit and the classic portal enforce (ledger; routed by spec_gate 2026-09-28)
 
 ### Story 16.12: Remove locks - one, all of a process, all of a remote client
 

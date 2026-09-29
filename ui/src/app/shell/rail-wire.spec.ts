@@ -228,6 +228,13 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Task:USE',
         },
+        {
+          route: 'tasks/background',
+          labelKey: 'backgroundTaskListLabel',
+          sideBarPosition: 5,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
       ],
     },
     {
@@ -464,6 +471,13 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     for (const route of ['tasks/schedule', 'tasks/on-demand', 'tasks/upcoming', 'tasks/history', 'tasks/schedule/history', 'tasks/schedule/details']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Task:USE' });
     }
+  });
+
+  it('Story 16.5: reads the Background tasks verdict the live payload carries', () => {
+    // Background tasks declares its own `%Admin_Operate:USE`, which this principal holds, and
+    // `%DB_IRISSYS:READ`, which it does not, so it is denied on the second.
+    const navigation = TestBed.inject(NavigationService);
+    expect(navigation.screenVerdict('tasks/background')).toEqual({ allowed: false, failedPair: '%DB_IRISSYS:READ' });
   });
 
   it('Story 2.12/6.13: reads both Logs file-screen verdicts the live payload carries', () => {
