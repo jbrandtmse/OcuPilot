@@ -2,9 +2,9 @@
 title: 'Story 18.14: Namespace mappings and copy-mappings'
 type: 'feature'
 created: '2026-09-28'
-baseline_revision: 'cae9a12c907d829e447938c23e8a999e56bb6aec'
+baseline_revision: '113ed57dc54ee79d823ed6cb71a6c972fc64f8f3'
 baseline_commit: 'cae9a12c907d829e447938c23e8a999e56bb6aec'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -38,6 +38,20 @@ deferred:
       PathPortInstance.TestAnOverwriteNeverReachesOcuPilotsServedFiles pins that a new name under csp/ocupilot/ resolves; DW-1798 and AD-21 cover existing files only, and the gap predates this pass (18.1). No product file consumer calls PathPort.Resolve on this branch (inference, grep). Widening it is an owner call.
     location: >-
       src/OcuPilot/Port/PathPort.cls:398
+    severity: low
+  - summary: >-
+      Story 18.3's spec and the epic-18 context predate DW-1806, so the first PathPort consumer with vendor-writes directories plans no PATH.SERVED refusal.
+    evidence: |-
+      spec-18-3's matrix row (:98) and verification (:414) list only PATH.ROOT, PATH.NAME and PATH.MANAGERDIR; epic-18-context.md:61 says every other vendor-writes directory resolves. PathPort now refuses the served directory as a vendor-writes directory PATH.SERVED.
+    location: >-
+      _bmad-output/implementation-artifacts/spec-18-3-databases-configuration-creation-properties-and-volumes.md:98
+    severity: low
+  - summary: >-
+      AD-21's DW-1779 sentence ("every other directory is unaffected") follows the DW-1806 sentence that refuses the served directory as a vendor-writes directory, so the spine reads against itself.
+    evidence: |-
+      ARCHITECTURE-SPINE.md:323, the sixth case's last two amendments; PathPort.Resolve's doc comment follows DW-1806. A spine edit is the runner's (Rule 20).
+    location: >-
+      _bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md:323
     severity: low
 ---
 
@@ -573,7 +587,7 @@ Rejected:
 
 ### Rework iteration 2 (DW-1806, orchestrator decision)
 
-- [ ] [Decision] DW-1806 (owner, by=merge_gate 2026-09-28; AD-21's sixth case as amended): `PathPort.Resolve` refuses every file consumer (`file`, whatever `pOverwrite`, and `source`) any file, new or existing, under OcuPilot's served directory (`PathPort.ServedDirectory()`), and refuses that directory and any directory under it as a `pVendorWrites` directory, with `PATH.INSTANCE` (or a new `PATH.*` code with a server-written reason if the sentence would mislead). A file or directory outside it is unaffected. Replace `PathPortInstance`'s leg that pins a new name under `csp/ocupilot/` resolving with legs that pin it refused (a new file; a source; the directory as vendor-writes), each with a Rule 19 mutation, plus a permitting leg for a sibling directory. If `PathPortInstance.cls` stays over ~500 lines, move these legs into a second class.
+- [x] [Decision] DW-1806 (owner, by=merge_gate 2026-09-28; AD-21's sixth case as amended): `PathPort.Resolve` refuses every file consumer (`file`, whatever `pOverwrite`, and `source`) any file, new or existing, under OcuPilot's served directory (`PathPort.ServedDirectory()`), and refuses that directory and any directory under it as a `pVendorWrites` directory, with `PATH.INSTANCE` (or a new `PATH.*` code with a server-written reason if the sentence would mislead). A file or directory outside it is unaffected. Replace `PathPortInstance`'s leg that pins a new name under `csp/ocupilot/` resolving with legs that pin it refused (a new file; a source; the directory as vendor-writes), each with a Rule 19 mutation, plus a permitting leg for a sibling directory. If `PathPortInstance.cls` stays over ~500 lines, move these legs into a second class.
 
 ## Spec Change Log
 
@@ -639,6 +653,21 @@ Rejected:
   - `[false]` `[reject]` an unreadable roster refuses every overwrite of an existing file — the roster is the installer's own XData, read from the dictionary of the code that runs; it fails only with OcuPilot broken, and failing closed matches the family's refusal on a failed read.
   - `[false]` `[reject]` the `PathPort` change lies outside the intent block — DW-1798 is the owner's decision routed into this rework (Rework iteration 1, Spec Change Log) and AD-21 carries it.
   - `[false]` `[reject]` OcuPilot's names come from code values rather than instance mapping rows — the rework item names `MAPPINGPATTERN` as the source, and no second literal remains.
+
+### 2026-09-28 — Review pass
+
+- verdicts: 10 findings — high 0, medium 0, low 6, false 4, maybe-false 0
+- findings:
+  - `[low]` `[patch]` no test refuses a missing source under the served directory, so checking a source only once it exists stays green — added a missing-name leg to `PathPortServed.TestASourceUnderTheServedDirectoryIsRefused`; the mutation reddens it alone (run 409), 5/5 after the revert (run 410).
+  - `[low]` `[defer]` Story 18.3's spec, the first `PathPort` consumer with vendor-writes directories (`:98`, `:414`), and `epic-18-context.md:61` predate DW-1806 and plan no `PATH.SERVED` — both are the runner's artifacts; in `deferred:`.
+  - `[low]` `[reject]` `## Auto Run Result` still describes rework 1 — the fix edits this build's spec; finalize replaces the block.
+  - `[false]` `[reject]` the refusal is exercised only at `PathPort.Resolve`, not at a consuming tool — `Resolve` has no production caller on this branch, every later consumer resolves through it, and DW-1806 names it as the surface.
+  - `[false]` `[reject]` a directory under the served directory resolves to a consumer that does not declare vendor writes — AD-21 and DW-1806 refuse it as a vendor-writes directory; a consumer whose vendor writes there declares so, and one that writes a file is a file consumer, which is refused.
+  - `[low]` `[reject]` the port reads the roster's bundle destination, not the `/ocupilot` application's live `Path` — they diverge only if an operator repoints OcuPilot's own application outside OcuPilot, the item names `ServedDirectory()`, and reading the application adds a `%SYS` read to every resolve.
+  - `[false]` `[reject]` no symbolic-link leg — AD-21 makes containment textual, as the vendor's `IsDirectoryAllowed` is, so a link inside a root is followed by design.
+  - `[false]` `[reject]` an unreadable served directory refuses every file anywhere — the roster is compiled XData read from the running code, so the read fails only with OcuPilot broken, and failing closed matches the database and journal checks.
+  - `[low]` `[defer]` AD-21's DW-1779 sentence ("every other directory is unaffected") follows DW-1806's served-directory refusal and now reads against it — a spine edit is the runner's (Rule 20); in `deferred:`.
+  - `[low]` `[reject]` rework 1's `InstanceFile` mutation line is deleted and no re-runs are recorded — run 393's line replaces it and pins the same existing-file refusal; `PathPortInstance`, `PathPort`, `PathPortPrivilege`, `PortGate` and `Envelope` re-ran as runs 398-402; the Auto Run Result is rewritten at finalize.
 
 ## Design Notes
 
@@ -820,59 +849,52 @@ Demonstrated on `ocupilot-b-ci`, each ObjectScript mutation loaded with its subc
 - mutation (code review): `NamespaceCreate` `CLASSICPAGES` "" → `ClassicPageGate.TestAnAssignedPageGatesTheScreensCaller` red on the namespace create's Save leg alone, beside the agent test's confirm leg and the roster count (run 15).
 - mutation (code review): `.ocu-namespace-copy-status` drawn in `--ocu-surface`, rebuilt and redeployed → `namespace-mappings.browser-spec`'s AC6 leg red at 1:1 in both themes, its AC8 leg green.
 - mutation (rework 1): `Prohibited.CoversOwnName` answers the prefix match (the name begins with the stem) → `MappingWrite.TestAMappingWhosePatternCoversOcuPilotsNamesIsRefused` alone red, each `O*`, `Ocu*`, `*`, range and suffixed-pattern leg reaching `MappingAcceptPort` and the `%ALL` legs permitted, `HSCUSTOM`'s mappings unchanged (run 27); `NamespaceCopy.TestACopyIntoTheInstallNamespaceOfACoveringPatternIsRefused` alone red (run 28).
-- mutation (rework 1): `PathPort.InServedDirectory` dropped from `InstanceFile` → `PathPortInstance.TestAnOverwriteNeverReachesOcuPilotsServedFiles` alone red, every deployed file and each refused seam leg resolving, nothing under `csp/ocupilot/` written (run 29).
 - mutation (rework 1 review): `CoversOwnName`'s pattern check keeps only "the stem begins with the pattern's prefix" → `MappingWrite.TestAMappingWhosePatternCoversOcuPilotsNamesIsRefused` alone red, on its `OcuPilotState*` leg only (run 384).
 - mutation (rework 1 review): `RangeCoversStem` drops "the low end begins with the spelling" → the same test alone red, on its `OcuPilotA:OcuPilotZ` leg only (run 385).
 - mutation (rework 1 review): `CoversOwnName` keeps a global's subscripts → the same test alone red, on its `OcuPilotState("a"):("z")` leg only (run 386).
 - mutation (rework 1 review): `RangeCoversStem` answers 1 → the same test alone red, on its permitted `A:B` leg only (run 387); reverted byte-identical, 10/10 (run 388).
+- mutation (rework 2): `PathPort.Resolve`'s served check on a file or source also requires the file to exist → `PathPortServed.TestAFileUnderTheServedDirectoryIsRefused` alone red, on its seven new-name legs (run 390).
+- mutation (rework 2): that check skips a source → `PathPortServed.TestASourceUnderTheServedDirectoryIsRefused` red on every leg, and `TestTheServedDirectoryIsReadAtEachCall` on its three refused source legs (run 391).
+- mutation (rework 2): the served check on a vendor-writes directory removed → `PathPortServed.TestTheServedDirectoryIsRefusedAsAVendorsDirectory` red on its four refused legs, and `TestTheServedDirectoryIsReadAtEachCall` on its three refused directory legs (run 392).
+- mutation (rework 2): the served check on a file or source removed → `PathPortServed.TestAFileUnderTheServedDirectoryIsRefused` red on every leg, each deployed file resolving to an overwrite, with the source test, the sibling test's stand-in leg and the read test's file and source legs red beside it; nothing under `csp/ocupilot/` written (run 393).
+- mutation (rework 2): `PathPort.InServedDirectory` drops the served directory's trailing separator → `PathPortServed.TestASiblingOfTheServedDirectoryIsUnaffected` alone red, on its five legs whose sibling name extends the served directory's (run 394).
+- mutation (rework 2): `InServedDirectory` compares with case → `PathPortServed.TestTheServedDirectoryIsReadAtEachCall` alone red, on its three other-spelling legs (run 395); it answers false while the directory cannot be read → the same test alone red, on its three unread legs (run 396); reverted byte-identical, 5/5 (run 397).
+- mutation (rework 2 review): the served check applies to a source only once it exists → `PathPortServed.TestASourceUnderTheServedDirectoryIsRefused` alone red, on its missing-name leg only, answered `PATH.NOFILE` (run 409); reverted byte-identical, 5/5 (run 410).
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Rework iteration 1 (DW-1803, DW-1798).** Both items are checked off.
+**Rework iteration 2 (DW-1806).** The item is checked off. Rework iteration 1 (DW-1803, DW-1798) closed at `ad3c9429`.
 
-- DW-1803: `Prohibited.CoversOwnName` replaces the prefix match. It sets aside a global's subscripts and a routine's type suffix, then refuses a pattern when it and OcuPilot's stem begin with each other, a name beginning with the stem, and a range holding any case spelling of the stem, or holding `*`. Create, change, delete and the copy's source rows all use it. The stems are read at call time by `OwnNameStems`: this class's top-level package and `Kernel.State.Base` `MAPPINGPATTERN` up to its `*`. `OWNMAPPINGPREFIX` is gone.
-- The refusal sentence now says "covers OcuPilot's own names". It changed together in `OCUPILOTMAPPINGREASON`, `strings.ts` and EXPERIENCE.md `:481`, which stays 993 lines, and in this spec's `:481` task line.
-- DW-1798: `PathPort.InstanceFile` adds `InServedDirectory`. An overwriting consumer is refused `PATH.INSTANCE` for any existing file under the served directory, compared ignoring case, and an unreadable directory refuses. `ServedDirectory` reads the installer roster's bundle destination at call time, with `${dataDir}` read as the data directory. The test pins it equal to the `/ocupilot` application's `Path`.
+- `PathPort.Resolve` refuses, with the new code `PATH.SERVED`, any file or source under `ServedDirectory()`, new or existing, whatever `pOverwrite` is, and the served directory or any directory under it when `pVendorWrites` is true. A directory without `pVendorWrites`, and anything beside the served directory, still resolves. `InServedDirectory` compares the normalized path with its trailing separator, ignoring case, and an unreadable directory refuses.
+- `PATH.INSTANCE`'s sentence says a file "cannot be overwritten", which misleads for a new file, a source or a directory, so `PATH.SERVED` carries its own server-written reason (`Error.cls`, added only). `InServedDirectory` left `InstanceFile`: the served check runs first, so an overwrite of a served file now answers `PATH.SERVED`.
+- This closes the frontmatter's deferred item on new names under `csp/ocupilot/` (`PathPort.cls:398`).
 
 **Files.**
 
-- `Kernel/Proposal/Prohibited.cls`: the overlap predicate and the new sentence.
-- `Port/PathPort.cls`: the served-files refusal.
-- `Test/PathPortFixture.cls`: the served-directory seam.
-- `Test/MappingWrite.cls`, `Test/NamespaceCopy.cls` and `Test/PathPortInstance.cls`: one new pinning test each.
-- `strings.ts` and EXPERIENCE.md: the sentence.
+- `Port/PathPort.cls`: the served-directory refusal.
+- `Api/Error.cls`: `PATH.SERVED` and its reason.
+- `Test/PathPortServed.cls` (new, 5 tests): a file, a source, the vendor-writes directory, a sibling, and the call-time read.
+- `Test/PathPortInstance.cls`: its served-files test moved out; now 474 lines.
+- `scripts/ci-throwaway.sh`: `PathPortServed` joins the principals `# classes:` lines.
 
-**Review.** 14 findings: 2 medium, 6 low and 6 false.
+**Review.** 10 findings: 6 low and 4 false.
 
-- Patched, test-only, in `MappingWrite`:
-  - refused legs for `OcuPilotState*`, `OcuPilotA:OcuPilotZ` and `OcuPilotState("a"):("z")`;
-  - a permitted `A:B` range;
-  - a status assertion on each `%ALL` leg.
-- Deferred: new file names in the served directory (low, owner call).
-- Rejected: 9, each with its reason in the triage log.
-- Follow-up review: `false`. This is a follow-up pass, and it patched no `high`.
+- Patched (1 low): a missing-source leg in `PathPortServed.TestASourceUnderTheServedDirectoryIsRefused`, with its mutation line.
+- Deferred (2 low): 18.3's spec and the epic context plan no `PATH.SERVED`; AD-21's DW-1779 sentence reads against DW-1806.
+- Rejected: 7, each with its reason in the triage log.
+- Follow-up review: `false`. This is a follow-up pass, and it patched no `high` (patched: high 0, medium 0, low 1).
 
-**Verification** (`ocupilot-b-ci`):
+**Verification** (`ocupilot-b-ci`, totals read from `%UnitTest_Result`):
 
-- Targeted:
-  - `MappingWrite` 10/10 (run 388, after the review patch);
-  - `NamespaceCopy` 8/8 (run 21), `PathPortInstance` 9/9 (run 22), `RefusalCopy` 8/8 (run 23), `Prohibited` 13/13 (run 24), `MappingRefusals` 8/8 (run 25) and `PathPort` 17/17 (run 26).
-- Mutations: six, each red alone on its leg and each reverted byte-identical (runs 27-29 and 384-387, under `## Verification`).
-- Full ObjectScript sweep: runs 34-382, 349 classes, 2867/2867 in `%UnitTest_Result`, before the test-only review patch.
-- Client and checks:
-  - `npm test`: 1688 tools and 1750 components.
-  - `npm run build`: 2.11 MB initial.
-  - Smoke: 49/49.
-  - `check-objectscript` and `lint-docs` clean.
-- Throwaway state afterwards:
-  - `HSCUSTOM` holds 120 global mappings, with `OcuPilot*` → `OCUPILOT` the only one matching the tested patterns.
-  - `%ALL` holds no global mapping, and no probe namespace remains.
-  - No file under `csp/ocupilot/` changed.
+- Targeted: `PathPortServed` 5/5 (run 410, after the review patch), `PathPortInstance` 8/8 (398), `PathPort` 17/17 (399), `PathPortPrivilege` 2/2 (400), `PortGate` 4/4 (401) and `Envelope` 15/15 (402).
+- Sweep over the classes that call `PathPort` or enumerate `Error.cls` codes: `Descriptor` 58/58, `AgentViolation` 8/8, `LedgerPairs` 9/9, `TurnStore` 11/11 and `ToolEmit` 11/11 (runs 403-407).
+- Mutations: eight, each red on its leg and reverted byte-identical (runs 390-396 and 409, under `## Verification`).
+- `npm run test:tools` 1688/1688, the arming-roster check included; `check-objectscript` and `lint-docs` clean.
+- No file under `csp/ocupilot/` changed, and no scratch directory remains under `/tmp/`.
 
 **Residual risks.**
 
-- The vendor's name-range upper bound was not measured, so a range is treated as inclusive at both ends (inference, fails closed).
-- `PathPortInstance.cls` is 540 lines, above the roughly 500-line guide.
+- `PathPort.Resolve` has no production caller yet. Story 18.3 is the first, and its spec plans no `PATH.SERVED` (deferred above).

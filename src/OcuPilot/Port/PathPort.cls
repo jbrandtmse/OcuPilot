@@ -245,14 +245,18 @@ ClassMethod Row(pDirectory As %String, pRestricted As %Boolean) As %DynamicObjec
 /// may be the root itself.</p>
 /// <p>A file or a source is refused <code>PATH.MANAGER</code> when
 /// <method>DirectlyInManagerDirectory</method> places it directly in the manager directory, which
-/// holds the instance's own files. Then a file is refused <code>PATH.EXISTS</code> when a
-/// directory stands at that name, or a file does and <var>pOverwrite</var> is false; and, when
-/// <var>pOverwrite</var> is true, <code>PATH.INSTANCE</code> when the file standing at that name is
-/// one <method>InstanceFile</method> names, OcuPilot's own served files among them. A source is refused <code>PATH.NOFILE</code> unless a file,
+/// holds the instance's own files, and <code>PATH.SERVED</code> when
+/// <method>InServedDirectory</method> places it under the directory OcuPilot's client is served
+/// from, new or existing, whatever <var>pOverwrite</var> is. Then a file is refused
+/// <code>PATH.EXISTS</code> when a directory stands at that name, or a file does and
+/// <var>pOverwrite</var> is false; and, when <var>pOverwrite</var> is true,
+/// <code>PATH.INSTANCE</code> when the file standing at that name is one
+/// <method>InstanceFile</method> names. A source is refused <code>PATH.NOFILE</code> unless a file,
 /// not a directory, stands at that name; it is never refused for existing, and
-/// <var>pOverwrite</var> means nothing to it. A directory is refused
-/// <code>PATH.MANAGERDIR</code> when it is the manager directory itself and
-/// <var>pVendorWrites</var> is true. Only a consuming tool that declares it overwrites passes
+/// <var>pOverwrite</var> means nothing to it. When <var>pVendorWrites</var> is true, a directory is
+/// refused <code>PATH.MANAGERDIR</code> when it is the manager directory itself, and
+/// <code>PATH.SERVED</code> when it is the served directory or one under it; when it is false, a
+/// directory is refused neither. Only a consuming tool that declares it overwrites passes
 /// <var>pOverwrite</var>, and only one whose vendor writes its own files into the directory it
 /// names (a database, a journal, a backup) passes <var>pVendorWrites</var>.</p>
 /// <p>Each refusal carries <code>detail.violations</code>, one <code>{field, code, reason}</code>
@@ -311,9 +315,17 @@ ClassMethod Resolve(pRoot As %String = "", pPath As %String = "", pKind As %Stri
                 Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHMANAGERDIR, ##class(OcuPilot.Api.Error).#REASONPATHMANAGERDIR, pPathField, .pHttpStatus, .pFault)
                 Quit
             }
+            If pVendorWrites && ..InServedDirectory(tCandidate) {
+                Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHSERVED, ##class(OcuPilot.Api.Error).#REASONPATHSERVED, pPathField, .pHttpStatus, .pFault)
+                Quit
+            }
         } Else {
             If ..DirectlyInManagerDirectory(tCandidate) {
                 Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHMANAGER, ##class(OcuPilot.Api.Error).#REASONPATHMANAGER, pPathField, .pHttpStatus, .pFault)
+                Quit
+            }
+            If ..InServedDirectory(tCandidate) {
+                Set tSC = ..Violation(##class(OcuPilot.Api.Error).#PATHSERVED, ##class(OcuPilot.Api.Error).#REASONPATHSERVED, pPathField, .pHttpStatus, .pFault)
                 Quit
             }
             If pKind = ..#KINDSOURCE {
@@ -395,26 +407,27 @@ ClassMethod IsManagerDirectory(pDirectory As %String) As %Boolean
 
 /// <p>Whether normalized file path <var>pFile</var> is one of the instance's own files an
 /// overwrite must not reach: <method>DirectlyInConfigurationDirectory</method>,
-/// <method>DatabaseFileBelowManagerDirectory</method>, <method>InDatabaseDirectory</method>,
-/// <method>InJournalDirectory</method> or <method>InServedDirectory</method>. It says nothing about
-/// whether the file exists.</p>
+/// <method>DatabaseFileBelowManagerDirectory</method>, <method>InDatabaseDirectory</method> or
+/// <method>InJournalDirectory</method>. It says nothing about whether the file exists.</p>
 ClassMethod InstanceFile(pFile As %String) As %Boolean
 {
-    Quit ..DirectlyInConfigurationDirectory(pFile) || ..DatabaseFileBelowManagerDirectory(pFile) || ..InDatabaseDirectory(pFile) || ..InJournalDirectory(pFile) || ..InServedDirectory(pFile)
+    Quit ..DirectlyInConfigurationDirectory(pFile) || ..DatabaseFileBelowManagerDirectory(pFile) || ..InDatabaseDirectory(pFile) || ..InJournalDirectory(pFile)
 }
 
-/// <p>Whether normalized file path <var>pFile</var> is one of OcuPilot's own served files: it lies
-/// anywhere under <method>ServedDirectory</method>, the directory the installer deploys OcuPilot's
-/// client into and its static application serves (AD-21 as amended, DW-1798). Textual and ignoring
-/// case, as <method>InDatabaseDirectory</method> is; a directory that is empty or does not normalize
-/// answers true, so the refusal it guards fails closed.</p>
-ClassMethod InServedDirectory(pFile As %String) As %Boolean
+/// <p>Whether normalized path <var>pPath</var>, a file's or a directory's with its trailing
+/// separator, lies under <method>ServedDirectory</method>, the directory the installer deploys
+/// OcuPilot's client into and its unauthenticated static application serves (AD-21, AD-47): it
+/// begins with that directory, trailing separator included, so the directory itself is under it
+/// and a sibling such as <code>ocupilotx/</code> is not. Textual and ignoring case, as
+/// <method>InDatabaseDirectory</method> is; a directory that is empty or does not normalize answers
+/// true, so the refusal it guards fails closed.</p>
+ClassMethod InServedDirectory(pPath As %String) As %Boolean
 {
     Set tDirectory = ..ServedDirectory()
     If tDirectory '= "" Set tDirectory = ##class(%File).NormalizeDirectory(tDirectory)
     If tDirectory = "" Quit 1
     Set tDirectory = $ZConvert(tDirectory, "L")
-    Quit ($Extract($ZConvert(pFile, "L"), 1, $Length(tDirectory)) = tDirectory)
+    Quit ($Extract($ZConvert(pPath, "L"), 1, $Length(tDirectory)) = tDirectory)
 }
 
 /// <p>The directory OcuPilot's client is served from, read on every call from the installer's roster

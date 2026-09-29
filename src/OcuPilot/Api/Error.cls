@@ -453,6 +453,17 @@ Parameter PATHMANAGERDIR = "PATH.MANAGERDIR";
 /// <p>The sentence <parameter>PATHMANAGERDIR</parameter> carries.</p>
 Parameter REASONPATHMANAGERDIR = "The manager directory holds the instance's own files, so a database, journal or backup cannot be kept in it. Name a subdirectory of it.";
 
+/// <p>Machine code (AD-12, AD-21, AD-39, AD-47): a server-path field named, under the directory
+/// OcuPilot's client is served from, a file for the consuming tool to write or read, new or
+/// existing, or named that directory or one under it as the directory a consuming tool's vendor
+/// writes its own files into. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Port.PathPort</class> with one <code>detail.violations</code> entry on the
+/// name's field, and never with the value or a path.</p>
+Parameter PATHSERVED = "PATH.SERVED";
+
+/// <p>The sentence <parameter>PATHSERVED</parameter> carries.</p>
+Parameter REASONPATHSERVED = "OcuPilot serves the files under that directory to anyone, signed in or not, so no file can be named there and a database, journal or backup cannot be kept there. Choose another directory.";
+
 /// <p>Machine code (AD-12, AD-39): the agent configuration the request submitted broke one or more
 /// of the rules <class>OcuPilot.Kernel.AgentRules</class> (a definition) or
 /// <class>OcuPilot.Kernel.SwitchRules</class> (the switches and the per-user holds) applies.

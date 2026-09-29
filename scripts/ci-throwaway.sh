@@ -231,6 +231,7 @@ services:
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
       # classes: LogHubWire, PathPort, PathPortInstance, PathPortPrivilege
+      # classes: PathPortServed
       # classes: PermissionCheck, EffectiveUser
       # classes: LedgerSearchWire
       # classes: NamespaceWriteGate
