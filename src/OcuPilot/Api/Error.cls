@@ -1409,6 +1409,8 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 11) = "AUDITEVENT." Quit ..ReasonForAuditEvent(pCode)
     If $Extract(pCode, 1, 10) = "NAMESPACE." Quit ..ReasonForNamespace(pCode)
     If $Extract(pCode, 1, 8) = "MAPPING." Quit ..ReasonForMapping(pCode)
+    If $Extract(pCode, 1, 9) = "DATABASE." Quit ..ReasonForDatabase(pCode)
+    If $Extract(pCode, 1, 5) = "PATH." Quit ..ReasonForPath(pCode)
     Quit ""
 }
 
@@ -1492,6 +1494,38 @@ ClassMethod ReasonForMapping(pCode As %String) As %String
     If pCode = ..#MAPPINGDATABASEREQUIRED Quit ..#REASONNAMESPACEDATABASEREQUIRED
     If (pCode = ..#MAPPINGDATABASEABSENT) || (pCode = ..#MAPPINGLOCKDATABASEABSENT) Quit ..#REASONNAMESPACEDATABASEABSENT
     If pCode = ..#MAPPINGCOLLATIONVALUE Quit ..#REASONMAPPINGCOLLATIONVALUE
+    Quit ""
+}
+
+/// <p>Every <code>DATABASE.*</code> field-level violation code (Story 18.3), as a
+/// <class>%List</class>, for the reason <method>WebAppViolationCodes</method> exists. The codes and
+/// their sentences are <class>OcuPilot.Api.DatabaseError</class>'s, because this class is at the
+/// compiler's limit of parameters.</p>
+ClassMethod DatabaseViolationCodes() As %List
+{
+    Quit ##class(OcuPilot.Api.DatabaseError).ViolationCodes()
+}
+
+/// <p>The sentence a <code>DATABASE.*</code> code carries, or <code>""</code>
+/// (<method>OcuPilot.Api.DatabaseError.ReasonFor</method>).</p>
+ClassMethod ReasonForDatabase(pCode As %String) As %String
+{
+    Quit ##class(OcuPilot.Api.DatabaseError).ReasonFor(pCode)
+}
+
+/// <p>The sentence a <code>PATH.*</code> code carries, or <code>""</code>: the sentence
+/// <class>OcuPilot.Port.PathPort</class> answers it with, so a form that re-renders a path refusal
+/// from its code alone (Story 18.3's step check) says the same thing.</p>
+ClassMethod ReasonForPath(pCode As %String) As %String
+{
+    If pCode = ..#PATHROOT Quit ..#REASONPATHROOT
+    If pCode = ..#PATHNAME Quit ..#REASONPATHNAME
+    If pCode = ..#PATHEXISTS Quit ..#REASONPATHEXISTS
+    If pCode = ..#PATHMANAGER Quit ..#REASONPATHMANAGER
+    If pCode = ..#PATHNOFILE Quit ..#REASONPATHNOFILE
+    If pCode = ..#PATHINSTANCE Quit ..#REASONPATHINSTANCE
+    If pCode = ..#PATHMANAGERDIR Quit ..#REASONPATHMANAGERDIR
+    If pCode = ..#PATHSERVED Quit ..#REASONPATHSERVED
     Quit ""
 }
 

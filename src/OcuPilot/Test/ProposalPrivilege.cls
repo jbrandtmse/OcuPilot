@@ -92,7 +92,7 @@ Method TestAMintRecordsTheGatesPairsAndTheWireCarriesThem()
 /// <p>(b) The set carries a tool's extra pairs and its argument pairs.</p>
 Method TestTheSetCarriesExtraAndArgumentPairs()
 {
-    For tName = "osmgmt.devices.create", "osmgmt.devices.update", "osmgmt.devices.delete", "osmgmt.namespaces.create", "osmgmt.namespaces.update", "osmgmt.namespaces.delete", "osmgmt.namespaces.copymappings", "osmgmt.globalmappings.create", "osmgmt.globalmappings.update", "osmgmt.globalmappings.delete", "osmgmt.routinemappings.create", "osmgmt.routinemappings.update", "osmgmt.routinemappings.delete", "osmgmt.packagemappings.create", "osmgmt.packagemappings.update", "osmgmt.packagemappings.delete" {
+    For tName = "osmgmt.devices.create", "osmgmt.devices.update", "osmgmt.devices.delete", "osmgmt.namespaces.create", "osmgmt.namespaces.update", "osmgmt.namespaces.delete", "osmgmt.namespaces.copymappings", "osmgmt.globalmappings.create", "osmgmt.globalmappings.update", "osmgmt.globalmappings.delete", "osmgmt.routinemappings.create", "osmgmt.routinemappings.update", "osmgmt.routinemappings.delete", "osmgmt.packagemappings.create", "osmgmt.packagemappings.update", "osmgmt.packagemappings.delete", "osmgmt.localdatabases.create", "osmgmt.localdatabases.updatemount", "osmgmt.localdatabases.delete" {
         Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).Resolve(tName, .tTool), tName _ " resolves")
         Do $$$AssertTrue($IsObject(tTool), tName _ " is a registered tool")
         If '$IsObject(tTool) Continue
@@ -108,6 +108,24 @@ Method TestTheSetCarriesExtraAndArgumentPairs()
     If $IsObject(tTool) {
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Operation).RequiredPairsOf(tTool, "{}", .tPairs), "the mapping copy's pairs resolve")
         Do $$$AssertTrue($ListFind(tPairs, $ListBuild("%Admin_Operate", "USE")) > 0, "and include %Admin_Operate:USE, the pair its queued task's poll needs (AD-8)")
+    }
+    ; Story 18.3: the database create declares the resource and path pairs; the mounting edit adds
+    ; %Admin_Operate:USE when it sets MountRequired, and the file edit adds %Admin_Secure:USE for a
+    ; resource and %Admin_FileSystemAccess:USE for a new volume directory (AD-8).
+    For tCase = $ListBuild("osmgmt.localdatabases.create", "{}", "%Admin_Secure:USE,%Admin_FileSystemAccess:USE"), $ListBuild("osmgmt.localdatabases.updatemount", "{""MountRequired"":true}", "%Admin_Operate:USE"), $ListBuild("osmgmt.localdatabases.update", "{""ResourceName"":""%DB_USER"",""volumeRoot"":""/probe/"",""volumePath"":""v""}", "%Admin_Secure:USE,%Admin_FileSystemAccess:USE") {
+        Set tName = $List(tCase, 1)
+        Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).Resolve(tName, .tTool), tName _ " resolves")
+        If '$IsObject($Get(tTool)) Continue
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Operation).RequiredPairsOf(tTool, $List(tCase, 2), .tPairs), tName _ ": its pairs resolve for " _ $List(tCase, 2))
+        For tI = 1:1:$Length($List(tCase, 3), ",") {
+            Set tPair = $ListFromString($Piece($List(tCase, 3), ",", tI), ":")
+            Do $$$AssertTrue($ListFind(tPairs, tPair) > 0, tName _ ": the set includes " _ $Piece($List(tCase, 3), ",", tI))
+        }
+    }
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).Resolve("osmgmt.localdatabases.update", .tTool), "the file edit resolves")
+    If $IsObject($Get(tTool)) {
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Operation).RequiredPairsOf(tTool, "{""MaxSize"":0}", .tPairs), "the file edit's pairs resolve for a size change")
+        Do $$$AssertEquals($ListFind(tPairs, $ListBuild("%DB_IRISSYS", "WRITE")) + $ListFind(tPairs, $ListBuild("%Admin_Secure", "USE")), 0, "and hold no write or resource pair: its PUT writes no system database (measured)")
     }
 
     Set tName = "logs.applicationerrors.delete"

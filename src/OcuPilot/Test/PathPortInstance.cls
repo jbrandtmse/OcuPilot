@@ -92,8 +92,11 @@ ClassMethod Overwrite(pRoot As %String, pPath As %String, pPort As %String = {..
 }
 
 /// <p>The configured local databases, read here in <code>%SYS</code> rather than through the port:
-/// their names, their directories normalized, and each one's stream location as the vendor's own
-/// <code>Config.Databases.GetStreamLocation</code> answers it, normalized.</p>
+/// their names, their directories normalized, each followed by the additional volume directories its
+/// <code>SYS.Database</code> lists when its file exists, and each one's stream location as the vendor's
+/// own <code>Config.Databases.GetStreamLocation</code> answers it, normalized. A row whose directory
+/// is empty or in the mirror or data-server form, beginning with <code>:</code>, names no local path
+/// and is skipped.</p>
 ClassMethod LocalDatabases(Output pNames As %List, Output pDirectories As %List, Output pStreams As %List) As %Status
 {
     Set tSC = $$$OK
@@ -106,8 +109,16 @@ ClassMethod LocalDatabases(Output pNames As %List, Output pDirectories As %List,
         Set tRS = ##class(%ResultSet).%New("Config.Databases:List")
         Set tSC = tRS.Execute("*", "", 1)
         While $$$ISOK(tSC) && tRS.Next(.tSC) {
+            If (tRS.Get("Directory") = "") || ($Extract(tRS.Get("Directory")) = ":") Continue
+            Set tDirectory = ##class(%File).NormalizeDirectory(tRS.Get("Directory"))
             Set pNames = pNames _ $ListBuild(tRS.Get("Name"))
-            Set pDirectories = pDirectories _ $ListBuild(##class(%File).NormalizeDirectory(tRS.Get("Directory")))
+            Set pDirectories = pDirectories _ $ListBuild(tDirectory)
+            If ##class(%File).Exists(tDirectory _ "IRIS.DAT") {
+                Set tVolumes = ##class(SYS.Database).%OpenId(tDirectory).VolumeDirectoryList
+                For tI = 1:1:$ListLength(tVolumes) {
+                    If $ListGet(tVolumes, tI) '= "" Set pDirectories = pDirectories _ $ListBuild(##class(%File).NormalizeDirectory($ListGet(tVolumes, tI)))
+                }
+            }
             Set pStreams = pStreams _ $ListBuild(##class(%File).NormalizeDirectory(##class(Config.Databases).GetStreamLocation(tRS.Get("Name"))))
         }
         Set $NAMESPACE = tOrigNS

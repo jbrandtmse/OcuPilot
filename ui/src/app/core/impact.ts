@@ -11,7 +11,7 @@
 import { READ_BACK_NAMES_SHOWN } from './read-back.ts';
 import { STRINGS } from './strings.ts';
 
-export type ImpactKind = 'role-delete' | 'resource-delete' | 'role-removal' | 'namespace-delete';
+export type ImpactKind = 'role-delete' | 'resource-delete' | 'role-removal' | 'namespace-delete' | 'database-delete';
 
 export type ImpactPartName =
   | 'holders'
@@ -21,7 +21,10 @@ export type ImpactPartName =
   | 'guardedDatabases'
   | 'loses'
   | 'boundApplications'
-  | 'databases';
+  | 'databases'
+  | 'namespaces'
+  | 'applications'
+  | 'sharedFile';
 
 /** The parts each kind carries, in the order the line states them. */
 export const IMPACT_PARTS: Readonly<Record<ImpactKind, readonly ImpactPartName[]>> = {
@@ -29,6 +32,7 @@ export const IMPACT_PARTS: Readonly<Record<ImpactKind, readonly ImpactPartName[]
   'resource-delete': ['grantingRoles', 'guardedApplications', 'guardedDatabases'],
   'role-removal': ['loses'],
   'namespace-delete': ['boundApplications', 'databases'],
+  'database-delete': ['namespaces', 'applications', 'sharedFile'],
 };
 
 /** A part's `unchecked` when its read was cut at its cap. */
@@ -109,7 +113,8 @@ function namesOf(part: ImpactPart): string {
  * The three counted phrases and the unchecked phrase of each part but `loses`. A phrase left `''`
  * renders nothing: a namespace's `databases` part names the databases that stay and publishes no
  * none or unchecked phrase, since the instance reads it from the fresh read the delete itself needs
- * (Story 18.2).
+ * (Story 18.2); a database's `applications` part publishes neither, and its `sharedFile` part no
+ * none phrase (Story 18.3).
  */
 const PHRASES: Readonly<
   Record<Exclude<ImpactPartName, 'loses'>, { readonly many: string; readonly one: string; readonly none: string; readonly unchecked: string }>
@@ -156,7 +161,36 @@ const PHRASES: Readonly<
     none: '',
     unchecked: '',
   },
+  namespaces: {
+    many: STRINGS.impactNamespacesUse,
+    one: STRINGS.impactNamespacesUseOne,
+    none: STRINGS.impactNamespacesUseNone,
+    unchecked: STRINGS.impactNamespacesUseUnchecked,
+  },
+  applications: {
+    many: STRINGS.impactApplicationsInThem,
+    one: STRINGS.impactApplicationsInThemOne,
+    none: '',
+    unchecked: '',
+  },
+  sharedFile: {
+    many: STRINGS.impactSharedFile,
+    one: STRINGS.impactSharedFileOne,
+    none: '',
+    unchecked: STRINGS.impactSharedFileUnchecked,
+  },
 };
+
+/**
+ * Whether `part` is left out because the part it depends on found nothing: a database delete's
+ * `applications` are the applications running in the namespaces its `namespaces` part found, so
+ * they render nothing when that part counted 0 or was not checked (Story 18.3).
+ */
+function dependsOnNothing(part: ImpactPart, parts: readonly ImpactPart[]): boolean {
+  if (part.part !== 'applications') return false;
+  const namespaces = parts.find((entry) => entry.part === 'namespaces');
+  return namespaces === undefined || namespaces.count === 0 || namespaces.unchecked !== '';
+}
 
 /**
  * Why a part was not read: " (requires <pair>)", or " (too many to check)" when its read was cut
@@ -193,7 +227,10 @@ function phraseOf(part: ImpactPart, subject: string): string {
 export function impactLine(impact: Impact | null, subject: string): string {
   if (impact === null) return '';
   if (impact.refused !== null) return impact.refused.reason;
-  const phrases = impact.parts.map((part) => phraseOf(part, subject)).filter((phrase) => phrase !== '');
+  const phrases = impact.parts
+    .filter((part) => !dependsOnNothing(part, impact.parts))
+    .map((part) => phraseOf(part, subject))
+    .filter((phrase) => phrase !== '');
   if (phrases.length === 0) return '';
   return STRINGS.impactLine.replace('<parts>', () => phrases.join('; '));
 }

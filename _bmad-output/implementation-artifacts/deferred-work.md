@@ -4063,6 +4063,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T00:05:40Z status=decision-pending owner=burndown by=plan note=orchestrator-decided at the 6.11 spec gate (Q3 option a): epics.md 6.11 AC3 amended to properties and volume files; only the owner can charter a story outside this epic
 - 2026-09-18T19:44:55Z status=routed owner=16-5-background-tasks by=merge_gate note=FR-76 owns background tasks; take the port decision there, not by widening AD-36 now
 - 2026-09-28T20:51:24Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=spec_gate note=16.5 took the port decision (public %SYS.BackgroundTask:DatabaseList; no AD-36 widening); the section belongs to DatabaseDetails.cls, 18.3's
+- 2026-09-29T15:13:58Z status=resolved-by:18-3-databases-configuration-creation-properties-and-volumes by=adjudication note=b43a0a2d AC8: Database details' Background tasks section reads the Background tasks screen's declared read through BackgroundTaskPort (BackgroundTasks, BackgroundTasksLive, database-details.page.spec, local-databases browser AC8 leg); the admin-API-started residual is DW-1821 (18.4)
 
 ### DW-1090: A rowGet read's async bound is per row, so a staged read's wall clock is rows x ASYNCTIMEOUT with no read-wide deadline
 - source: spec-6-11-databases-with-free-space-arriving-as-it-lands.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -7981,6 +7982,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md (code review 4) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Executed on ocupilot-b-ci: Resolve(<mgr>, "irissecurity", "directory", pVendorWrites 1) answers 200 /durable/iris/mgr/irissecurity/. Whether the vendor's database create accepts a directory already holding an IRIS.DAT is unmeasured (severity unverified); epic-18-context.md:76 reads this half of DW-1779 as fixed under 18.1.
 - 2026-09-28T17:21:24Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=probe the create on the throwaway; refuse a directory holding an IRIS.DAT in 18.3's tool, or amend AD-21 if PathPort should
+- 2026-09-29T14:12:01Z occurrence=18-3-databases-configuration-creation-properties-and-volumes
+- 2026-09-29T14:12:01Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=residual: create refuses; a NewVolumeDirectory naming another DB's directory resolves (vendor collision unmeasured, 18.4)
+- 2026-09-29T15:13:58Z status=routed owner=18-4-the-deferred-disk-operations by=adjudication note=create half resolved in 18.3 (DatabaseRules refuses a directory holding an IRIS.DAT; DatabaseRefusals DW-1791 legs); residual: a NewVolumeDirectory naming another database's directory still resolves, and whether the vendor accepts that collision is unmeasured -- 18.4's expand (new volume) owns it
 
 ### DW-1792: Ending a preserve-mode web session hangs until the gateway answers 504 and never ends it: the vendor DELETE waits on the session lock the session's own process holds
 - source: spec-16-2-web-sessions-listed-and-ended.md | severity: med | fix-risk: med | footprint: in-story
@@ -8007,6 +8011,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T23:07:48Z status=open owner=16-5-background-tasks by=harvest note=adjudicate at 16.5's gate against CI runs
 - 2026-09-28T23:43:52Z occurrence=16-5-background-tasks
 - 2026-09-28T23:51:23Z status=resolved-by:16-5-background-tasks by=adjudication note=CI 36496304575 red on the agent pause leg reading the state at once; Settled polls until it leaves Running (inference: async pause)
+- 2026-09-29T17:04:25Z occurrence=18-3-databases-configuration-creation-properties-and-volumes
 
 ### DW-1805: Background tasks lists OcuPilot's own port-queued async tasks under Admin API with Cancel, Pause and Resume, and AdminPort's await does not treat Canceled as terminal
 - source: spec-16-5-background-tasks.md | severity: low | fix-risk: low | footprint: in-story
@@ -8016,11 +8021,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: PathPort.DatabaseDirectories reads Config.Databases, which carries no volume directories; every local database on ocupilot-b-ci is single-volume, so no reach today (inference)
 - 2026-09-28T22:08:13Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=harvest note=18.3's multi-volume properties create the first additional volume directory; extend the instance-file read to SYS.Database's volume directories there
+- 2026-09-29T15:13:58Z status=resolved-by:18-3-databases-configuration-creation-properties-and-volumes by=adjudication note=b43a0a2d AC9: PathPort.DatabaseDirectories adds VolumeDirectories, so PATH.INSTANCE refuses a volume file in a new volume directory (PathPortDatabases volume leg, mutation recorded)
 
 ### DW-1796: PathPort.DatabaseDirectories' own read is pinned only against a stable default configuration: a configured StreamLocation, the skip of a ':' directory, and a failure or cache inside the reader keep every test green
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: All 14 local databases on ocupilot-b-ci answer StreamLocation empty (read-only probe, review layers), so the port's comparison with GetStreamLocation is default against default; the fixture's UseDatabaseDirectories replaces the reader whole, so the failed-read and never-kept legs (runs 11, 13, 395) mutate the consumer, not the reader.
 - 2026-09-28T22:34:01Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=pin the reader with a probe database whose stream location and configuration change between two reads
+- 2026-09-29T15:13:58Z status=resolved-by:18-3-databases-configuration-creation-properties-and-volumes by=adjudication note=b43a0a2d AC9: the reader follows a configured StreamLocation and a configuration change within one process, never keeps its answer in ^||, refuses on a failed volume read and skips a leading ':' directory (PathPortDatabases stream, never-kept, failure and colon legs, mutations recorded)
 
 ### DW-1797: PathPort's journal read names only the primary, alternate and current file's directories: journal files left in a former journal directory, and IRIS.WIJ in a write-image-journal directory outside the manager directory, resolve for an overwriting consumer
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: in-story
@@ -8104,6 +8111,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 18.3's spec and epic-18-context.md were written before PATH.SERVED existed; 18.3 is PathPort.Resolve's first real caller
 - 2026-09-29T01:16:56Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=harvest note=fold into 18.3's spec at its gate
+- 2026-09-29T15:13:58Z status=resolved-by:18-3-databases-configuration-creation-properties-and-volumes by=adjudication note=b43a0a2d AC1: the create wizard's directory step renders PATH.SERVED and the other PATH.* violations on the field (database-wizard.page.spec PATH.SERVED leg, browser PATH.MANAGERDIR leg; DatabaseRefusals ReasonForViolation over all eight PATH codes)
 
 ### DW-1808: audit-events.browser-spec.mjs AC2 (Selective SQL auditing sends exactly the one changed box, and the list re-reads it) flaked: it collected one 200 where it expects two (the write and the re-read), so the response collection ends before the re-read arrives
 - source: feature CI run 36507726737 attempt 1 on 3fa9c0db (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/audit-events.browser-spec.mjs
@@ -8152,3 +8160,43 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
 - evidence: browser shard 1/3, 3 passed 1 failed; the same code passed on staging ff53360c attempt 2 and on 16.3's own runs; shard 1 duration unchanged (21 min vs 18-23); intermittent (inference: the side bar renders after a privilege read the spec does not wait for)
 - 2026-09-29T13:58:49Z status=routed owner=16-4-task-export-and-import by=orchestrator note=Epic 16 owns the spec (16.3): wait for the rail item's side bar to finish its privilege read before querying items; pin with repeated runs
+### DW-1820: Three candidate admin API defects observed probing databases on 2026.2: DELETE /database-dir deletes a mounted file other names and namespaces still use, for a principal holding only %Admin_Manage:USE and %DB_IRISSYS:READ; PUT /database for a new name without Directory points it at the manager directory (IRISSYS's own file); a POST /database-dir refused for privilege leaves a directory and an unregistered IRIS.DAT the API can neither delete (#57) nor create over
+- source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured on ocupilot-b-ci 2026-09-28 by Story 18.3's plan probe (Steps 5, 6, 9); OcuPilot guards each on its own side: the file delete only after the configuration delete and no sharing name, the create always sends the resolved Directory, pairs refused before any port call
+- 2026-09-29T13:12:13Z status=decision-pending owner=burndown by=harvest note=human=report the three to intersystems-community/sysadmin-api-specification as candidate defects, as DW-1527 was
+
+### DW-1821: Database details lists only background tasks the classic Background tasks page holds: a compact or defragment started through the admin API (18.4 Database.Actions), ^DATABASE or %SYS.BackgroundTask.Start() has no portal row, carries no Database and is not listed
+- source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: EnumerateTasks reads ^IRIS.Temp.MgtPortalTask only (irissys/%CSP/UI/System/BackgroundTask.cls:1195-1256) while %SYS.BackgroundTask:DatabaseList lists every compact and defragment (irissys/%SYS/BackgroundTask.cls:911-920); inference until 18.4 queues one
+- 2026-09-29T13:12:13Z status=routed owner=18-4-the-deferred-disk-operations by=harvest note=18.4 queues admin-API compacts and defragments; it attributes them to their database in Database details' Background tasks section (BackgroundTaskPort PortalRows), or measures that the vendor gives them a portal row
+
+### DW-1824: The New Namespace form's Create a database leaves the form: typed values are discarded after the leave prompt, the wizard lands on the new database's editor, and nothing returns to the form
+- source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: namespace-form.page.ts resets its store on destroy (retaining() false), so the change-bus re-read never runs for this flow; database-wizard.page.ts replaces the route with the editor. AC6 holds only because the form's next open re-reads.
+- 2026-09-29T14:12:00Z status=decision-pending owner=burndown by=cr note=product call: carry the form across the wizard and return with the new database selected, as classic SA-13 does?
+
+### DW-1825: An accepted Save in the database editor re-opens its store through reset(), unmounting every field and the form bar until the re-read lands: focus is lost and edits typed during the PUT are dropped
+- source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: database-editor.store.ts save() awaits open(name, true), which calls reset(); NamespaceForm.save keeps its saved buffer as the new baseline instead.
+- 2026-09-29T14:12:00Z status=wontfix-accepted owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=reopen_if=a keyboard walk of the database editor finds focus off the form bar after an accepted Save
+
+### DW-1826: OcuPilot.Test.DatabaseWrite is 764 lines, over the ~500-line test-class guideline
+- source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: .claude/rules/objectscript-testing.md asks about 500 lines per class; the code review put its new legs in DatabaseWriteDetail rather than grow it.
+- 2026-09-29T14:12:01Z status=wontfix-accepted owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=reopen_if=DatabaseWrite.cls gains a test method or passes 800 lines
+
+### DW-1829: Pre-existing CI flake (Story 16.5): BackgroundSeed.PausedCompact can see a paused compact read Running for the whole 30 s Settled wait, so BackgroundTasksLive fails at its seed; and its ~2 s seeded compact can end between a pause test's mint and confirm (18.3 rework 2 retries up to 3 times, which makes that race unlikely, not impossible)
+- source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Feature run 36530303753 (2026-09-29 06:22, no 18.3 code): TestASeededPortalCompactIsListedPaused read Running after a 79 s class run; a PAUSEDISPOSITION -1 task reads Paused only while its process state is 18 (irissys/%SYS/BackgroundTask.cls:567-569); 18.3 rework 2 measured the resumed compact at 1.4-1.9 s on ocupilot-b-ci
+- 2026-09-29T16:48:14Z status=routed owner=burndown by=harvest note=BackgroundSeed.cls is Epic 16's (16.5); a longer seeded compact and a Settled that tolerates the process-state window would remove both races
+- 2026-09-29T17:04:25Z status=routed owner=burndown by=cr note=void 30 s half: run 36530303753 (dc34dc4a) predates 6bcc6d3b, a DW-1819 sighting; open cause is DW-1802 race
+
+### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
+- source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: .claude/rules/objectscript-testing.md asks about 500 lines per class; the retry and its two helpers took the class from 492 to 537 lines.
+- 2026-09-29T17:04:25Z status=wontfix-accepted owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=reopen_if=BackgroundTasksLive.cls gains a test method or passes 800 lines
+
+### DW-1831: OAuthServerDiscover.TestEachCauseIsRefusedByName intermittently misreads a fixture discovery case: its 'content' case did not answer 422 OAUTH.DISCOVERY.CONTENT once in CI (flake, inference)
+- source: cycle-log-epic-18.md (CI run 36600327713) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Run 36600327713 on 822c0e3f, instance shard 1/3, run 60: 'content: at 422, by name' red; the class and its port are untouched since Epic 12/14 and passed in runs 36573329469, 36581952884 and 36588987899 and 3/3 on ocupilot-b-ci (runs 428-430)
+- 2026-09-29T17:09:15Z status=routed owner=burndown by=lead note=Epic 12's issuer fixture (OAuthServerDiscover); probe the fixture server's timing on a slow runner

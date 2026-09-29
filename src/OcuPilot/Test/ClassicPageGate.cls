@@ -1,6 +1,6 @@
 /// <p>Pins DW-1784 (AD-44 as amended 2026-09-28, Story 18.14) against the instance's real
-/// custom-resource store: a probe resource assigned to a classic page a namespace or mapping write
-/// tool declares it performs (<parameter>OcuPilot.Screen.Tool.Write.CLASSICPAGES</parameter>) gates that
+/// custom-resource store: a probe resource assigned to a classic page a namespace, mapping or
+/// database write tool declares it performs (<parameter>OcuPilot.Screen.Tool.Write.CLASSICPAGES</parameter>) gates that
 /// tool on the agent's caller and the screen's, refused 403 <code>AUTH.NOPRIVILEGE</code> naming
 /// <code>&lt;resource&gt;:USE</code> with no port call, while a principal also holding the resource is
 /// admitted and its write reaches the port; with no assignment each tool's pairs are its declared
@@ -46,9 +46,13 @@ Parameter MAPPINGGATE = "OcuPilot.Test.MappingWriteGate";
 
 Parameter DELETEKEY = "osmgmt.namespaces.delete";
 
+/// <p>The agent's database delete key, which the baseline disables too (Story 18.3).</p>
+Parameter DATABASEDELETEKEY = "osmgmt.localdatabases.delete";
+
 /// <p>The pairs each declaring tool declares beyond its list's own, as <code>tool=pair|pair</code>
-/// entries: its declared set, with no classic page assigned.</p>
-Parameter OWNPAIRS = "osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE";
+/// entries: its declared set, with no classic page assigned. The declaring tools are exactly these,
+/// and the database file edit declares none of its own.</p>
+Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE";
 
 /// <p>The throwaway principals' password, generated for the run.</p>
 Property PreparedPassword As %String;
@@ -117,7 +121,7 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
 {
     Set tSC = ..Roster(.tRoster, .tTools)
     Do $$$AssertStatusOK(tSC, "the declaring tools are read from the registry")
-    Do $$$AssertEquals($ListLength(tTools), 10, "ten tools declare a replaced classic page")
+    Do $$$AssertEquals($ListToString(tTools), $ListToString(..Declared()), "the tools declaring a replaced classic page are the fourteen OWNPAIRS names")
     For tI = 1:1:$ListLength(tTools) {
         Set tName = $List(tTools, tI)
         Kill tTool
@@ -131,6 +135,7 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
             If $Piece($Piece(..#OWNPAIRS, ",", tJ), "=", 1) = tName Set tOwn = $Piece($Piece(..#OWNPAIRS, ",", tJ), "=", 2)
         }
         For tJ = 1:1:$Length(tOwn, "|") {
+            If $Piece(tOwn, "|", tJ) = "" Continue
             Set tPair = $ListFromString($Piece(tOwn, "|", tJ), ":")
             If '$ListFind(tDeclared, tPair) Set tDeclared = tDeclared _ $ListBuild(tPair)
         }
@@ -150,14 +155,17 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
 /// <p>With the probe resource assigned to every declared page, each declaring tool's call on the
 /// agent's caller is refused 403 <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code>
 /// for the principal lacking it, before its arguments are read; the principal holding it passes that
-/// gate. A namespace create minted for each is refused at the lacking principal's confirm naming the
-/// pair with no port call, and applied at the holding principal's, reaching the port.</p>
+/// gate. The legs are the declared roster's, so a tool that stops declaring its page is admitted for
+/// the lacking principal and its leg goes red. A namespace create minted for each is refused at the
+/// lacking principal's confirm naming the pair with no port call, and applied at the holding
+/// principal's, reaching the port.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Gate.WithClassicPages</method> answers
 /// <var>pPairs</var> unchanged -> the lacking principal is admitted and this goes red.</p>
 Method TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller()
 {
-    Do $$$AssertStatusOK(..EnableDelete(), "the agent's namespace delete key is enabled, so only the pairs stand in the way")
-    Set tSC = ..Roster(.tRoster, .tTools)
+    Do $$$AssertStatusOK(..EnableDelete(), "the agent's namespace and database delete keys are enabled, so only the pairs stand in the way")
+    Set tSC = ..Roster(.tRoster)
+    Set tTools = ..Declared()
     Do $$$AssertStatusOK(..Assign(.tRoster), "the probe resource is assigned to every declared page")
     For tUser = ..#LACKINGUSER, ..#HOLDINGUSER {
         Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "running", .tTurnKey)
@@ -316,11 +324,12 @@ Method RestorePages() As %Status
     Quit tSC
 }
 
-/// <p>Enable the agent's namespace delete key, over the snapshot this class took.</p>
+/// <p>Enable the agent's namespace and database delete keys, over the snapshot this class took.</p>
 Method EnableDelete() As %Status
 {
     Kill tSettings
     Set tSettings(..#DELETEKEY) = "enabled"
+    Set tSettings(..#DATABASEDELETEKEY) = "enabled"
     Quit ##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings)
 }
 
@@ -363,7 +372,7 @@ Method EnsurePrincipals() As %Status
             Set tSC = ##class(Security.Resources).Create(..#RESOURCE, "OcuPilot test: a classic page's custom resource (throwaway)", "")
             If $$$ISERR(tSC) Quit
         }
-        Set tDeclared = tCode _ ",%DB_IRISSYS:RW,%Admin_Manage:U,%Admin_Secure:U,%Admin_Operate:U"
+        Set tDeclared = tCode _ ",%DB_IRISSYS:RW,%Admin_Manage:U,%Admin_Secure:U,%Admin_Operate:U,%Admin_FileSystemAccess:U"
         For tCase = $ListBuild(..#LACKINGUSER, tDeclared, 0), $ListBuild(..#HOLDINGUSER, tDeclared _ "," _ ..#RESOURCE _ ":U", 1) {
             Set tUser = $List(tCase, 1)
             Set tRole = tUser _ "Role"
@@ -373,7 +382,7 @@ Method EnsurePrincipals() As %Status
             If $$$ISERR(tSC) Quit
             Set tSC = ##class(Security.Users).Create(tUser, tRole, ..PreparedPassword, "OcuPilot classic-page test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.ClassicPageGate; deleted in OnAfterAllTests")
             If $$$ISERR(tSC) Quit
-            If ($SYSTEM.Security.CheckUserPermission(tUser, "%DB_IRISSYS", "WRITE") '= 1) || ($SYSTEM.Security.CheckUserPermission(tUser, "%Admin_Secure", "USE") '= 1) || ($SYSTEM.Security.CheckUserPermission(tUser, "%Admin_Operate", "USE") '= 1) || (($SYSTEM.Security.CheckUserPermission(tUser, ..#RESOURCE, "USE") = 1) '= $List(tCase, 3)) {
+            If ($SYSTEM.Security.CheckUserPermission(tUser, "%DB_IRISSYS", "WRITE") '= 1) || ($SYSTEM.Security.CheckUserPermission(tUser, "%Admin_Secure", "USE") '= 1) || ($SYSTEM.Security.CheckUserPermission(tUser, "%Admin_Operate", "USE") '= 1) || ($SYSTEM.Security.CheckUserPermission(tUser, "%Admin_FileSystemAccess", "USE") '= 1) || (($SYSTEM.Security.CheckUserPermission(tUser, ..#RESOURCE, "USE") = 1) '= $List(tCase, 3)) {
                 Set tSC = $$$ERROR($$$GeneralError, "the throwaway principal " _ tUser _ "'s grants did not read back as declared")
                 Quit
             }
@@ -416,6 +425,24 @@ ClassMethod Names(pPairs As %List) As %String
         Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ $ListToString($List(pPairs, tI), ":")
     }
     Quit tOut
+}
+
+/// <p>The declaring tools <parameter>OWNPAIRS</parameter> names, sorted, as a <class>%List</class>.</p>
+ClassMethod Declared() As %List
+{
+    Kill tSorted
+    For tI = 1:1:$Length(..#OWNPAIRS, ",") {
+        Set tName = $Piece($Piece(..#OWNPAIRS, ",", tI), "=", 1)
+        If tName '= "" Set tSorted(tName) = ""
+    }
+    Set tTools = ""
+    Set tName = ""
+    For {
+        Set tName = $Order(tSorted(tName))
+        If tName = "" Quit
+        Set tTools = tTools _ $ListBuild(tName)
+    }
+    Quit tTools
 }
 
 }

@@ -269,6 +269,7 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#KNOWNTYPE, "/API/OcuPilot/"), "/API/OcuPilot/", "so its ids are the instance's own strings")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("role", "%All"), "%all", "while a role's fold, by Story 8.3's rule")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("resource", "%DB_OcuPilot"), "%db_ocupilot", "and a resource's, by Story 8.4's")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("database-configuration", "OcuProbe183X"), "ocuprobe183x", "and a database configuration's, by Story 18.3's: the instance resolves a configuration name without regard to case")
     ; Story 18.14's rule: a mapping is addressed by [namespace, Name], and only the namespace part
     ; folds -- a routine mapping's type suffix and a global mapping's subscript are the instance's
     ; own spelling. The same corpus runs through the client twin (ui/tools/entity-ref.test.mjs).

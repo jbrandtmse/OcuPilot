@@ -124,6 +124,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/mapping/:kind/name" Method="GET" Call="MappingNameCheck"/>
   <Route Url="/mapping/:kind/:id" Method="PUT" Call="MappingUpdate"/>
   <Route Url="/mapping/:kind" Method="POST" Call="MappingCreate"/>
+  <Route Url="/database/form" Method="GET" Call="DatabaseFormRead"/>
+  <Route Url="/database/check" Method="POST" Call="DatabaseCheck"/>
+  <Route Url="/database/:id" Method="PUT" Call="DatabaseUpdate"/>
+  <Route Url="/database" Method="POST" Call="DatabaseCreate"/>
   <Route Url="/screens/:screen/action" Method="POST" Call="ScreenAction"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/screens/:screen/impact" Method="GET" Call="ScreenImpact"/>
@@ -638,6 +642,36 @@ ClassMethod MappingCreate(pKind As %String) As %Status
 ClassMethod MappingUpdate(pKind As %String, pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.MappingSave).HandleUpdate(pKind, pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /database/form</code> (Story 18.3): the local
+/// database editor's and wizard's read, delegating to
+/// <class>OcuPilot.Area.OsMgmt.DatabaseRules</class>. The two sub-resources precede
+/// <code>/database/:id</code>.</p>
+ClassMethod DatabaseFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DatabaseRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /database/check</code>: the database wizard's
+/// Next, which validates one step on the instance.</p>
+ClassMethod DatabaseCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DatabaseRules).HandleCheck()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /database</code>: the database wizard's create,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DatabaseCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DatabaseSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /database/:id</code>: the database editor's Save,
+/// its two groups resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod DatabaseUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DatabaseSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /oauth/server-description/form</code> (Story

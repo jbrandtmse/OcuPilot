@@ -13,7 +13,7 @@ import { ScreenStores } from '../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
-import { STRINGS } from '../core/strings';
+import { STRINGS, stringFor } from '../core/strings';
 import { rowKey } from '../core/table-model';
 
 /** The absolute path a screen's own row action is issued under (AD-20, AD-53). */
@@ -51,8 +51,9 @@ export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
  * the Web sessions list (Story 16.2), whose End session types the session id, the Background tasks
  * list (Story 16.5), whose Pause and Resume are sent at once and whose Cancel task warns first, the
  * global, routine and package mapping lists (Story 18.14), whose Delete types the mapping's name,
- * and Processes' Broadcast (Story 16.6), which acts on the checked rows and opens the broadcast
- * dialog.
+ * Processes' Broadcast (Story 16.6), which acts on the checked rows and opens the broadcast
+ * dialog, and the Local databases list (Story 18.3), whose Delete types the name, states the
+ * removal's impact and offers to delete the file too.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -81,6 +82,7 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.GlobalMappingList',
   'OcuPilot.Screen.Descriptor.RoutineMappingList',
   'OcuPilot.Screen.Descriptor.PackageMappingList',
+  'OcuPilot.Screen.Descriptor.LocalDatabaseList',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -110,6 +112,12 @@ export const NAMESPACE_LIST = 'OcuPilot.Screen.Descriptor.NamespaceList';
  * whose status line follows the copy.
  */
 export const COPY_MAPPINGS = 'copy-mappings';
+
+/**
+ * The Local databases list's descriptor (Story 18.3), whose Delete states the removal's impact and
+ * carries the file option as a declared value (AD-56 (ii)).
+ */
+export const LOCAL_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.LocalDatabaseList';
 
 /** The three mapping lists (Story 18.14), each keyed by `[namespace, Name]`, whose Delete types the name. */
 const GLOBAL_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.GlobalMappingList';
@@ -206,6 +214,24 @@ const FLAGGED_ACTIONS: Readonly<Record<string, Readonly<Record<string, { readonl
 };
 
 /**
+ * The optional checkbox a typed-name dialog offers as one of the action's own declared values,
+ * keyed by descriptor and then by action id: the value's name and the key of its published label
+ * (AD-56 (ii)). Unlike `FLAGGED_ACTIONS` the action id is kept, and the box's state travels as the
+ * value -- `'true'` or `'false'`, a string, as every screen-action value does -- on the one write,
+ * and as the impact read's `value` when the dialog opens, unchecked.
+ */
+const VALUE_FLAGS: Readonly<Record<string, Readonly<Record<string, { readonly value: string; readonly labelKey: keyof typeof STRINGS }>>>> = {
+  [LOCAL_DATABASE_LIST]: { delete: { value: 'DeleteFile', labelKey: 'localDatabaseDeleteFileOption' } },
+};
+
+/** A typed-name dialog's checkbox: its label, and either the action it swaps in or the value it sends. */
+interface DialogFlag {
+  readonly label: string;
+  readonly action?: string;
+  readonly value?: string;
+}
+
+/**
  * The screen whose action route a descriptor's row actions are sent to, where it is not the
  * descriptor's own: Process details acts on the pid it shows through the processes list's write
  * tools, which name that list (AD-53).
@@ -232,6 +258,7 @@ const IMPACT_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [ROLE_LIST]: ['delete'],
   [RESOURCE_LIST]: ['delete'],
   [NAMESPACE_LIST]: ['delete'],
+  [LOCAL_DATABASE_LIST]: ['delete'],
 };
 
 /**
@@ -266,6 +293,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [GLOBAL_MAPPING_LIST]: { delete: STRINGS.globalMappingDeleteConsequence },
   [ROUTINE_MAPPING_LIST]: { delete: STRINGS.routineMappingDeleteConsequence },
   [PACKAGE_MAPPING_LIST]: { delete: STRINGS.packageMappingDeleteConsequence },
+  [LOCAL_DATABASE_LIST]: { delete: STRINGS.localDatabaseDeleteConsequence },
 };
 
 /**
@@ -472,14 +500,21 @@ export class ScreenActionHandler {
 
   /**
    * The typed name matched, or the warning was proceeded past: send the write the dialog was
-   * standing in front of. `flag` is the dialog's checkbox; checked, the flagged action is sent in
-   * place of the one the dialog was opened for, and nothing else about the request changes.
+   * standing in front of. `flag` is the dialog's checkbox. Where the checkbox is one of the action's
+   * declared values (`VALUE_FLAGS`), the action id is kept and the box's state is sent as that value,
+   * checked or not (AD-56 (ii)); otherwise a checked box sends the flagged action in place of the one
+   * the dialog was opened for, and nothing else about the request changes.
    */
   confirmPending(flag = false): void {
     const pending = this.waiting();
     const sink = this.takeSink();
     if (pending === null || (pending.kind !== 'typed-name' && pending.kind !== 'warning')) return;
-    const flagged = flag ? this.flag(pending.descriptor, pending.actionId) : null;
+    const own = this.flag(pending.descriptor, pending.actionId);
+    if (own?.value !== undefined) {
+      void this.send(pending.descriptor, pending.actionId, pending.target, { [own.value]: flag ? 'true' : 'false' }, sink);
+      return;
+    }
+    const flagged = flag ? own : null;
     void this.send(pending.descriptor, flagged?.action ?? pending.actionId, pending.target, undefined, sink);
   }
 
@@ -757,7 +792,9 @@ export class ScreenActionHandler {
    */
   private async openWithImpact(descriptor: string, actionId: string, target: string, sink: ActionSink): Promise<void> {
     const ask = ++this.impactAsk;
-    const line = await this.impactFor(descriptor, actionId, target);
+    // An action whose checkbox is a declared value is read as the dialog opens it: unchecked.
+    const value = this.flag(descriptor, actionId)?.value === undefined ? '' : 'false';
+    const line = await this.impactFor(descriptor, actionId, target, value);
     if (ask !== this.impactAsk) return;
     this.open('typed-name', descriptor, actionId, target, this.consequence(descriptor, actionId), [], sink, target, line);
   }
@@ -896,7 +933,12 @@ export class ScreenActionHandler {
     return rowFields?.[entry.field] === entry.equals ? entry.consequence : '';
   }
 
-  private flag(descriptor: string, actionId: string): { readonly label: string; readonly action: string } | null {
+  /** The checkbox a typed-name dialog offers for `actionId`: a flagged action or a declared value, or `null`. */
+  private flag(descriptor: string, actionId: string): DialogFlag | null {
+    const valued = VALUE_FLAGS[descriptor];
+    if (valued !== undefined && Object.hasOwn(valued, actionId)) {
+      return { label: stringFor(valued[actionId].labelKey), value: valued[actionId].value };
+    }
     const own = FLAGGED_ACTIONS[descriptor];
     if (own === undefined) return null;
     return Object.hasOwn(own, actionId) ? own[actionId] : null;

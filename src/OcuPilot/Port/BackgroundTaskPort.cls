@@ -22,8 +22,13 @@
 /// state refusal (the admin API's 409, <parameter>PORTALTASKCLASS</parameter>'s errors
 /// <parameter>PORTALSTATECODES</parameter>) and, before any vendor call, for a portal row with no
 /// background task to act on.</p>
+/// <p><b>A portal row names the database its task runs against</b> (AD-27's case as extended by Story
+/// 18.3, DW-1080): <code>Database</code>, the directory <parameter>DATABASEQUERY</parameter> answers
+/// for the row's background task while that task has not ended, as the vendor spells it, and
+/// <code>""</code> otherwise and on every admin API row. Database details lists a database's tasks
+/// from this field through the Background tasks screen's own read.</p>
 /// <p>Seams a test subclass overrides (<class>OcuPilot.Test.BackgroundTaskFixture</class>):
-/// <method>PortalRows</method> and <method>PortalControl</method>, with the admin port's own
+/// <method>PortalRows</method>, <method>TaskDatabases</method> and <method>PortalControl</method>, with the admin port's own
 /// <method>Invoke</method>, <method>HoldsPair</method> and <method>LogFault</method>. Production
 /// overrides none of them. Every seam that reaches the vendor is private, so
 /// <method>Invoke</method>, behind the gate, is the only way in.</p>
@@ -70,6 +75,10 @@ Parameter PORTALTASKCLASS = "%SYS.BackgroundTask";
 /// request, such as a defragment's pause), 9503 (<code>BGTaskRequestNotAllowedState</code>, its
 /// current state) and 9505 (<code>BGTaskNotRunning</code>, a task that is no longer running).</p>
 Parameter PORTALSTATECODES = "9502,9503,9505";
+
+/// <p>The public query that answers every database-oriented background task with the database it runs
+/// against, read in <code>%SYS</code>.</p>
+Parameter DATABASEQUERY = "%SYS.BackgroundTask:DatabaseList";
 
 /// <p>The admin port's own write types this port issues for its control types (Story 12.6's
 /// grammar): an admin API row is controlled through <code>AsyncResult</code>.</p>
@@ -166,6 +175,8 @@ ClassMethod Rows(pMax As %String, Output pRows As %DynamicArray, Output pHttpSta
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ..PortalRows(.tPortal)
     If $$$ISERR(tSC) Quit ..Fail(..#ENDPOINT, 500, tSC, .pHttpStatus, .pFault)
+    Set tSC = ..WithDatabases(tPortal)
+    If $$$ISERR(tSC) Quit ..Fail(..#ENDPOINT, 500, tSC, .pHttpStatus, .pFault)
     ; Keyed by start time, then by arrival, so two rows started in the same second both survive;
     ; the leading space gives a row not yet started a subscript that sorts below every time.
     Kill tSorted
@@ -203,6 +214,12 @@ ClassMethod Row(pKey As %String, Output pRow As %DynamicObject, Output pHttpStat
     Set tSC = ..Find(pKey, .pRow, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     If '$IsObject(pRow) Quit ..Fail(..#ENDPOINT, 404, $$$OK, .pHttpStatus, .pFault)
+    If pRow.%Get("Source") = ..#SOURCEPORTAL {
+        Set tOne = []
+        Do tOne.%Push(pRow)
+        Set tSC = ..WithDatabases(tOne)
+        If $$$ISERR(tSC) Quit ..Fail(..#ENDPOINT, 500, tSC, .pHttpStatus, .pFault)
+    }
     Set pRow = ..Listed(pRow)
     Set pHttpStatus = 200
     Quit $$$OK
@@ -240,11 +257,12 @@ ClassMethod Find(pKey As %String, Output pRow As %DynamicObject, Output pHttpSta
 }
 
 /// <p><var>pRow</var> as a list answers it: the declared members alone, without a portal row's
-/// background task id.</p>
+/// background task id; a row no database was named for carries <code>Database</code>
+/// <code>""</code>.</p>
 ClassMethod Listed(pRow As %DynamicObject) As %DynamicObject [ Private ]
 {
     Set tOut = {}
-    For tField = "Source", "Id", "Task", "Namespace", "Status", "Details", "ErrorCount", "StartTime" {
+    For tField = "Source", "Id", "Task", "Namespace", "Status", "Details", "ErrorCount", "StartTime", "Database" {
         Do tOut.%Set(tField, pRow.%Get(tField) _ "", "string")
     }
     Quit tOut
@@ -351,6 +369,75 @@ ClassMethod PortalRows(Output pRows As %DynamicArray) As %Status [ Private ]
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Set <code>Database</code> on each portal row of <var>pRows</var>: the directory
+/// <method>TaskDatabases</method> answers for its <code>SysBGTaskId</code>, or <code>""</code>. A
+/// failed read is an error status, which fails the whole read (AD-36).</p>
+ClassMethod WithDatabases(pRows As %DynamicArray) As %Status [ Private ]
+{
+    Set tSC = ..TaskDatabases(.tDatabases)
+    If $$$ISERR(tSC) Quit tSC
+    Set tIterator = pRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) Continue
+        Set tTaskId = tRow.%Get("SysBGTaskId")
+        Do tRow.%Set("Database", $Select(tTaskId = "": "", 1: $Get(tDatabases(tTaskId))), "string")
+    }
+    Quit $$$OK
+}
+
+/// <p>The database each background task that has not ended runs against, as
+/// <code>pDatabases(&lt;task id&gt;) = &lt;directory&gt;</code>, spelled as the vendor answers it:
+/// <parameter>DATABASEQUERY</parameter>'s rows, read once in <code>%SYS</code> (AD-16), kept by
+/// <method>KeepRunning</method>. A failed read is an error status.</p>
+ClassMethod TaskDatabases(Output pDatabases) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pDatabases
+    Set tRows = []
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%ResultSet).%New(..#DATABASEQUERY)
+        If '$IsObject(tRS) {
+            Set $NAMESPACE = tOrigNS
+            Set tSC = $$$ERROR($$$GeneralError, "the background task database list could not be opened")
+            Quit
+        }
+        Set tSC = tRS.Execute()
+        If $$$ISOK(tSC) {
+            While tRS.Next(.tSC) {
+                Set tRow = {}
+                Do tRow.%Set("ID", tRS.Get("ID") _ "", "string")
+                Do tRow.%Set("Database", tRS.Get("Database") _ "", "string")
+                Do tRow.%Set("HasEnded", ''tRS.Get("HasEnded"), "boolean")
+                Do tRows.%Push(tRow)
+            }
+        }
+        Do tRS.Close()
+        Set tRS = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Quit tSC
+    Do ..KeepRunning(tRows, .pDatabases)
+    Quit $$$OK
+}
+
+/// <p>From <parameter>DATABASEQUERY</parameter>'s rows <var>pRows</var>, each <code>{ID, Database,
+/// HasEnded}</code>, the database of each task that has not ended, as
+/// <code>pDatabases(&lt;ID&gt;) = &lt;Database&gt;</code>.</p>
+ClassMethod KeepRunning(pRows As %DynamicArray, Output pDatabases) [ Private ]
+{
+    Kill pDatabases
+    Set tIterator = pRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) || tRow.%Get("HasEnded") Continue
+        If tRow.%Get("ID") '= "" Set pDatabases(tRow.%Get("ID")) = tRow.%Get("Database")
+    }
 }
 
 /// <p>The admin half: the caller's own async tasks, as the <code>AsyncResult</code>

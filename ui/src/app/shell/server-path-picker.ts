@@ -22,6 +22,8 @@ let pickerCount = 0;
 export interface ServerPath {
   readonly root: string;
   readonly path: string;
+  /** `true` only on the report of the picker's own preselection of a single root; absent on a user's change. */
+  readonly preselected?: true;
 }
 
 /**
@@ -32,7 +34,10 @@ export interface ServerPath {
  *
  * **It offers only the roots the store read.** The select's options are exactly those roots, in
  * read order, and a `root` that is not one of them is not selected. A single root is preselected,
- * and the preselection is reported once through `changed` so the consumer holds it too.
+ * and the preselection is reported once through `changed`, marked `preselected`, so the consumer
+ * holds it too and can tell it from a user's choice. A form that draws the picker as it opens must
+ * hold a `preselected` report without marking itself dirty, or it opens dirty and the
+ * unsaved-changes guard stops the user leaving a form nobody touched.
  *
  * **The composed path is display only.** The "Resolves to" line joins the chosen root and the name
  * as typed; whether they resolve is the instance's answer, which arrives as `rootReason` or
@@ -122,7 +127,7 @@ export class ServerPathPicker {
   /** The prefix of every id the picker draws; each picker has its own by default. */
   readonly idPrefix = input(`ocu-path-picker-${++pickerCount}`);
 
-  /** Every change, and the one preselection of a single root. */
+  /** Every change, and the one preselection of a single root, which alone carries `preselected`. */
   readonly changed = output<ServerPath>();
 
   protected readonly STRINGS = STRINGS;
@@ -157,7 +162,7 @@ export class ServerPathPicker {
       this.preselectedFor = state;
       const only = state.roots[0];
       if (untracked(this.root) === only) return;
-      this.changed.emit({ root: only, path: untracked(this.path) });
+      this.changed.emit({ root: only, path: untracked(this.path), preselected: true });
     });
 
     // A native select selects its first option whenever none is chosen, so the chosen root, or

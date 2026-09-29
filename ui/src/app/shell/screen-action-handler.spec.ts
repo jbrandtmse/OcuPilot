@@ -16,6 +16,7 @@ import {
   ADD_MATCHING_ROLE,
   ADD_ROLE,
   COPY_MAPPINGS,
+  LOCAL_DATABASE_LIST,
   NAMESPACE_LIST,
   REMOVE_APPLICATION_ROLE,
   REMOVE_GRANTED_ROLE,
@@ -1461,5 +1462,98 @@ describe('the mapping lists\u2019 Delete and the Namespaces list\u2019s Copy map
     const { actions } = mount(undefined, NAMESPACE_LIST);
     expect(actions.has(NAMESPACE_LIST, 'delete')).toBe(true);
     expect(actions.has(NAMESPACE_LIST, COPY_MAPPINGS)).toBe(false);
+  });
+});
+
+/**
+ * Story 18.3 (AD-8, AD-10, AD-56 (ii)): Local databases' Delete types the name, states the removal's
+ * impact read unchecked as the dialog opens, and offers "Also delete the database file" as the
+ * action's declared `DeleteFile` value -- sent as a string on the same `delete`, never as a
+ * swapped action.
+ */
+describe('the Local databases list\u2019s Delete (Story 18.3)', () => {
+  const DATABASES = SCREENS.find((screen) => screen.descriptor === LOCAL_DATABASE_LIST)!;
+
+  function mountWith(answers: readonly JsonResult<unknown>[]) {
+    const mounted = mount(undefined, LOCAL_DATABASE_LIST);
+    const queue = [...answers];
+    const api = TestBed.inject(ApiService) as unknown as { requestJson: (path: string, init?: ApiRequestInit) => Promise<JsonResult<unknown>> };
+    api.requestJson = async (path: string, init: ApiRequestInit = {}) => {
+      mounted.calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+      return (queue.shift() ?? { kind: 'ok', status: 200, body: {} }) as JsonResult<unknown>;
+    };
+    return mounted;
+  }
+
+  const IMPACT = {
+    kind: 'database-delete',
+    refused: null,
+    parts: [
+      { part: 'namespaces', count: 1, names: ['OCUPROBE183NS'], unchecked: '' },
+      { part: 'applications', count: 1, names: ['/csp/ocuprobe183'], unchecked: '' },
+      { part: 'sharedFile', count: 0, names: [], unchecked: '' },
+    ],
+  };
+
+  it('opens the typed-name dialog with the consequence, the file option and the impact read unchecked', async () => {
+    // Mutation (Rule 19): drop the list from `IMPACT_ACTIONS` -> the impact read and advisory go red;
+    // drop its `VALUE_FLAGS` entry -> the flag label and the `value=false` query go red.
+    const { actions, handler, calls, store } = mountWith([{ kind: 'ok', status: 200, body: { impact: IMPACT } }]);
+    expect(actions.has(LOCAL_DATABASE_LIST, 'delete')).toBe(true);
+    handler.startFor(LOCAL_DATABASE_LIST, 'delete', 'OCUPROBE183A', { Name: 'OCUPROBE183A' }, store);
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${DATABASES.toolIdentifier}/impact?action=delete&id=OCUPROBE183A&value=false`);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('typed-name');
+    expect(pending?.name).toBe('OCUPROBE183A');
+    expect(pending?.consequence).toBe(STRINGS.localDatabaseDeleteConsequence);
+    expect(pending?.flagLabel).toBe(STRINGS.localDatabaseDeleteFileOption);
+    expect(pending?.advisory).toBe(
+      'Impact: 1 namespace uses it and must stop using it first: OCUPROBE183NS; 1 web application runs in those namespaces: /csp/ocuprobe183.'
+    );
+  });
+
+  it('sends DeleteFile as a string value on the same delete, checked or not, and publishes what the instance answered', async () => {
+    // Mutation (Rule 19): make `confirmPending` swap the action for a checked box instead of sending
+    // `DeleteFile` -> the body assertions go red.
+    for (const checked of [true, false]) {
+      const deleted = { action: 'deleted', target: { type: 'database-configuration', scope: 'instance', id: 'OCUPROBE183A' } };
+      const { handler, calls, events, store } = mountWith([
+        { kind: 'ok', status: 200, body: { impact: { ...IMPACT, parts: [] } } },
+        { kind: 'ok', status: 200, body: deleted },
+      ]);
+      handler.startFor(LOCAL_DATABASE_LIST, 'delete', 'OCUPROBE183A', { Name: 'OCUPROBE183A' }, store);
+      await settle();
+      handler.confirmPending(checked);
+      await settle();
+      expect(calls).toHaveLength(2);
+      expect(calls[1].path).toBe(`/api/ocupilot/screens/${DATABASES.toolIdentifier}/action`);
+      expect(calls[1].method).toBe('POST');
+      expect(JSON.parse(calls[1].body)).toEqual({ action: 'delete', id: 'OCUPROBE183A', values: { DeleteFile: checked ? 'true' : 'false' } });
+      expect(events.map(({ type, id, action }) => ({ type, id, action }))).toEqual([
+        { type: 'database-configuration', id: 'OCUPROBE183A', action: 'deleted' },
+      ]);
+    }
+  });
+
+  it('states the kernel\u2019s refusal of a protected database as the advisory, and sends nothing until confirmed', async () => {
+    const reason = STRINGS.databaseRefusalOcuPilot;
+    const { handler, calls, store } = mountWith([
+      { kind: 'ok', status: 200, body: { impact: { kind: 'database-delete', refused: { code: 'PROHIBITED.OCUPILOTDATABASE', reason }, parts: [] } } },
+    ]);
+    handler.startFor(LOCAL_DATABASE_LIST, 'delete', 'IRISSYS', { Name: 'IRISSYS' }, store);
+    await settle();
+    expect(handler.pending()?.advisory).toBe(reason);
+    handler.cancelPending();
+    expect(calls.map((call) => call.method)).toEqual(['GET']);
+  });
+
+  it('keeps the Terminate flag an action swap: a declared value is the database delete\u2019s alone', async () => {
+    const { handler, calls, store } = mount(undefined, 'OcuPilot.Screen.Descriptor.ProcessList');
+    handler.startFor('OcuPilot.Screen.Descriptor.ProcessList', 'terminate', '4711', null, store);
+    handler.confirmPending(true);
+    await settle();
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'terminate-with-error', id: '4711' });
   });
 });

@@ -40,6 +40,34 @@ XData Tools
   {"path":"LockDatabase","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Collation","shape":"literal","templateType":"number","itemType":"","class":"ordinary"}
 ]},
+"osmgmt.localdatabases.create": {"fieldList":"Database.ConfigCRUD","fields":[
+  {"path":"Server","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Directory","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unslashed"},
+  {"path":"StreamLocation","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClusterMountMode","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"MountAtStartup","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"MountRequired","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"osmgmt.localdatabases.update": {"fieldList":"Database.SysCRUD","fields":[
+  {"path":"MaxSize","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"ExpansionSize","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"NewVolumeThreshold","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"NewVolumeDirectory","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unslashed"},
+  {"path":"ResourceName","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"NewGlobalIsKeep","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"GlobalJournalState","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"NewGlobalCollation","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClusterMountMode","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"ReadOnly","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"osmgmt.localdatabases.updatemount": {"fieldList":"Database.ConfigCRUD","fields":[
+  {"path":"Server","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Directory","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unslashed"},
+  {"path":"StreamLocation","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClusterMountMode","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"MountAtStartup","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"MountRequired","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
 "osmgmt.namespaces.create": {"fieldList":"Namespace.Namespace","fields":[
   {"path":"Globals","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Routines","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
