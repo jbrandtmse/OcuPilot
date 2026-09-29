@@ -27,6 +27,7 @@ import { NamespaceForm } from './areas/os-management/namespace-form.store';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { DatabaseEditor } from './areas/os-management/database-editor.store';
 import { DatabaseWizard } from './areas/os-management/database-wizard.store';
+import { DatabaseIntegrityFlow } from './areas/os-management/database-integrity.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { LedgerSearch } from './areas/agent/ledger.store';
@@ -1250,6 +1251,10 @@ describe('the shell frame', () => {
     await databaseEditor.open('ADATABASETHISPRINCIPALOPENED');
     databaseEditor.setText('ExpansionSize', '7');
     expect(databaseEditor.text('ExpansionSize')).toBe('7');
+    // And the Check integrity flow (Story 18.4): the globals THIS principal typed.
+    const databaseIntegrity = TestBed.inject(DatabaseIntegrityFlow);
+    databaseIntegrity.setGlobals('AGLOBALTHISPRINCIPALTYPED');
+    expect(databaseIntegrity.globals()).not.toBe('');
 
     // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
     // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
@@ -1374,6 +1379,9 @@ describe('the shell frame', () => {
     // database and unsaved change.
     expect(databaseEditor.name()).toBe('');
     expect(databaseEditor.text('ExpansionSize')).toBe('');
+    // Mutation (Rule 19): delete `this.databaseIntegrity.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's Check integrity flow holds the previous one's globals.
+    expect(databaseIntegrity.globals()).toBe('');
 
     // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
     // red, and the next principal's SSL/TLS form holds the previous one's typed key password.

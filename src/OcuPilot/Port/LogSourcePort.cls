@@ -60,6 +60,12 @@
 /// <code>%ExecDirectNoPriv</code>, so the read rests on this port's gate and on the database
 /// <code>READ</code> IRIS enforces on the globals rather than on SQL grants (AD-8); a negative
 /// <code>%SQLCODE</code> or a failed <code>%Next</code> is a fault, never an empty result.</p>
+/// <p><b>One source is the instance's integrity checks</b> (Story 18.4): <parameter>INTEGRITYKEY</parameter>
+/// lists the checks <parameter>INTEGRITYQUERY</parameter> holds (<method>Files</method>) and pages the
+/// report of one, chosen by its id and rendered with the <code>Display^Integrity</code> call the admin
+/// API's own integrity task makes, into a temporary stream (<method>IntegrityReport</method>); a check
+/// still running answers no lines and <code>running</code> true. The admin API keeps a check's report
+/// only in its one-read task result, so this is the one reader of a past check.</p>
 /// <p>Seams a test subclass overrides (<class>OcuPilot.Test.LogSourceFixture</class>,
 /// <class>OcuPilot.Test.ErrorLogFixture</class>): <method>Sources</method>,
 /// <method>PairsFor</method>, <method>FileFor</method>, <method>ManagerDirectory</method>,
@@ -83,7 +89,44 @@ Class OcuPilot.Port.LogSourcePort Extends %RegisteredObject
 /// that -- each binds its own key -- and <class>OcuPilot.Test.ErrorLog</class> pins it. The six
 /// <parameter>RECENTSOURCES</parameter> are served by <method>Recent</method>, and
 /// <method>Page</method> refuses them by name.</p>
-Parameter SOURCES = "messages,alerts,applicationerrors,systemmonitor,taskerrors,xdbc,sqldiagnostics,eventlog,analytics";
+Parameter SOURCES = "messages,alerts,applicationerrors,systemmonitor,taskerrors,xdbc,sqldiagnostics,eventlog,analytics,integrity";
+
+/// <p>The <parameter>SOURCES</parameter> key for the instance's integrity checks (Story 18.4).</p>
+Parameter INTEGRITYKEY = "integrity";
+
+/// <p>The integrity checks' pair set (AD-8, AD-29): <code>%DB_IRISSYS:READ</code>, which the vendor's
+/// query and report need, and <code>%Admin_Operate:USE</code>, the classic Integrity log's own
+/// resource (measured on <code>ocupilot-b-ci</code>, Story 18.4 Task 0).</p>
+Parameter INTEGRITYPAIRS = "%Admin_Operate:USE,%DB_IRISSYS:READ";
+
+/// <p>The vendor's public query over every saved integrity check, read in <code>%SYS</code>; a test
+/// pins its columns (AD-29's internal-reader rule).</p>
+Parameter INTEGRITYQUERY = "SYS.BackgroundIntegrity:ListIntegrityTasks";
+
+/// <p>The class of an integrity check's background task, opened in <code>%SYS</code> for its output
+/// global and error count.</p>
+Parameter INTEGRITYCLASS = "SYS.BackgroundIntegrity";
+
+/// <p>A check's id as a caller names it: digits alone. Anything else is refused <code>LOG.FILE</code>
+/// before anything is read.</p>
+Parameter INTEGRITYFORM = "^[0-9]{1,10}$";
+
+/// <p>The most checks <method>Files</method> lists for <parameter>INTEGRITYKEY</parameter>, newest
+/// first.</p>
+Parameter INTEGRITYFILESCAP As INTEGER = 50;
+
+/// <p>The line the report opens with when the check found no error, and the one that opens its
+/// errors' details otherwise: the admin API's own integrity task's two headings.</p>
+Parameter INTEGRITYNOERRORS = "No Errors were found.";
+
+Parameter INTEGRITYERRORS = "************** Details Of Errors Found **************";
+
+/// <p>The heading above the full listing of the databases checked.</p>
+Parameter INTEGRITYLISTING = "Full Listing of Databases Checked";
+
+/// <p>The mark the report sets before a global it found errors in; <method>Rows</method> answers such
+/// a line at <code>error</code> severity.</p>
+Parameter INTEGRITYERRORMARK = "****";
 
 /// <p>The <parameter>SOURCES</parameter> key for the instance's console log.</p>
 Parameter MESSAGESKEY = "messages";
@@ -446,6 +489,7 @@ ClassMethod PairsFor(pSource As %String, pNamespace As %String = "") As %List
     If pSource = ..#SQLDIAGNOSTICSKEY Set tDeclared = ..#SQLDIAGNOSTICSPAIRS
     If pSource = ..#EVENTLOGKEY Set tDeclared = ..#EVENTLOGPAIRS
     If pSource = ..#ANALYTICSKEY Set tDeclared = ..#ANALYTICSPAIRS
+    If pSource = ..#INTEGRITYKEY Set tDeclared = ..#INTEGRITYPAIRS
     If (pNamespace '= "") && $ListFind($ListFromString(..#DATABASEREADSOURCES), pSource) {
         Set tDeclared = ..DatabaseReadSpec(tDeclared, pNamespace)
     }
@@ -709,6 +753,11 @@ ClassMethod Page(pSource As %String = "", pOffset As %String = "", pMaxBytes As 
             Quit
         }
 
+        If pSource = ..#INTEGRITYKEY {
+            Set tSC = ..IntegrityPage(pFile, tHasCursor, pOffset, pIdentity, tMaxBytes, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+
         If (pFile '= "") && '..RotatedName(pSource, pFile) {
             Set tSC = ..FileRefusal(.pHttpStatus, .pFault)
             Quit
@@ -807,6 +856,10 @@ ClassMethod Rows(pSource As %String = "", pMaxRows As %Integer = 0, Output pAnsw
                 Do pAnswer.%Push({"time": (tEntry.time), "severity": (tEntry.severity), "text": (tEntry.text)})
             }
             Set pTruncated = ''tRecent.truncated
+            Quit
+        }
+        If pSource = ..#INTEGRITYKEY {
+            Set tSC = ..IntegrityRows(pMaxRows, .pAnswer, .pHttpStatus, .pFault, .pTruncated)
             Quit
         }
         Set tSC = ..Page(pSource, "", "", "", .tPage, .pHttpStatus, .pFault)
@@ -2902,6 +2955,297 @@ ClassMethod DirectlyIn(pPath As %String, pDirectory As %String, pFile As %String
     Quit (##class(%File).GetFilename(pPath) = pFile)
 }
 
+/// <p>The integrity checks the instance holds, newest first, each <code>{ID, StartTime, RunningState,
+/// HasEnded}</code>, in <var>pRows</var>: <parameter>INTEGRITYQUERY</parameter>'s rows, read in
+/// <code>%SYS</code> by explicit save and restore (AD-16). A failed read is an error status.
+/// Overridable so a fixture can arm the checks; production never overrides it.</p>
+ClassMethod IntegrityChecks(Output pRows As %DynamicArray) As %Status
+{
+    Set tSC = $$$OK
+    Set pRows = []
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%ResultSet).%New(..#INTEGRITYQUERY)
+        Set tSC = tRS.Execute()
+        Kill tSorted
+        While $$$ISOK(tSC) && tRS.Next(.tSC) {
+            Set tId = tRS.Get("ID")
+            If tId = "" Continue
+            Set tSorted(" " _ tRS.Get("StartTime"), +tId) = $ListBuild(tId, tRS.Get("StartTime"), tRS.Get("RunningState"), ''tRS.Get("HasEnded"))
+        }
+        Do tRS.Close()
+        Set tRS = ""
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set tTime = ""
+        For {
+            Set tTime = $Order(tSorted(tTime), -1)
+            If tTime = "" Quit
+            Set tAt = ""
+            For {
+                Set tAt = $Order(tSorted(tTime, tAt), -1, tRow)
+                If tAt = "" Quit
+                Set tEntry = {}
+                Do tEntry.%Set("ID", $List(tRow, 1) _ "", "string")
+                Do tEntry.%Set("StartTime", $List(tRow, 2) _ "", "string")
+                Do tEntry.%Set("RunningState", $List(tRow, 3) _ "", "string")
+                Do tEntry.%Set("HasEnded", $List(tRow, 4), "boolean")
+                Do pRows.%Push(tEntry)
+            }
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pRows = []
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The report of the integrity check <var>pId</var>, as UTF-8 lines in <var>pStream</var>: the
+/// admin API's own integrity task's shape -- <parameter>INTEGRITYNOERRORS</parameter>, or
+/// <parameter>INTEGRITYERRORS</parameter> and the errors' details, then
+/// <parameter>INTEGRITYLISTING</parameter> and every database's listing -- each part
+/// <code>Display^Integrity</code>'s own output over the check's output global, captured from the device.
+/// The check is opened in <code>%SYS</code> (AD-16); the report routine and its global are named there
+/// by extended reference, so the capture runs in the caller's namespace. Nothing is written but the
+/// stream. Overridable for a fixture; production never overrides it.</p>
+ClassMethod IntegrityReport(pId As %String, Output pStream As %Stream.TmpCharacter) As %Status
+{
+    Set tSC = $$$OK
+    Set pStream = ##class(%Stream.TmpCharacter).%New()
+    Set tOrigNS = $NAMESPACE
+    Set tCapturing = 0
+    New %OcuPilotIntegrityStream, %OcuPilotIntegrityLine
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tCheck = $ClassMethod(..#INTEGRITYCLASS, "%OpenId", pId)
+        If '$IsObject(tCheck) {
+            Set $NAMESPACE = tOrigNS
+            Set tSC = $$$ERROR($$$GeneralError, "integrity check " _ pId _ " did not open")
+            Quit
+        }
+        Set tGlobal = tCheck.GetOutputGlobal()
+        Set tErrors = +tCheck.ErrorCount
+        Set tCheck = ""
+        Set $NAMESPACE = tOrigNS
+        If $Extract(tGlobal) '= "^" {
+            Set tSC = $$$ERROR($$$GeneralError, "integrity check " _ pId _ " named no output global")
+            Quit
+        }
+        Set tExtended = "^|""%SYS""|" _ $Extract(tGlobal, 2, *)
+        Set %OcuPilotIntegrityStream = pStream
+        Set %OcuPilotIntegrityLine = ""
+        Set tInitIO = $IO
+        Set tNull = ##class(%Library.Device).GetNullDevice()
+        Set tCapturing = 1
+        Open tNull:::1
+        Use tNull::("^" _ $ZNAME)
+        Do ##class(%Library.Device).ReDirectIO(1)
+        ; The report's own headings go to the stream directly; only Display's output is captured.
+        If tErrors = 0 {
+            Do ..IntegrityLine(..#INTEGRITYNOERRORS)
+        } Else {
+            Do ..IntegrityLine(..#INTEGRITYERRORS)
+            Do Display^|"%SYS"|Integrity(tExtended, 1, 0)
+            Do ..IntegrityLine("")
+        }
+        Do ..IntegrityLine("")
+        Do ..IntegrityLine("")
+        Do ..IntegrityLine(..#INTEGRITYLISTING)
+        Do Display^|"%SYS"|Integrity(tExtended, 0, 1)
+        Do ..IntegrityLine("")
+        Do ##class(%Library.Device).ReDirectIO(0)
+        Use tInitIO
+        Close tNull
+        Set tCapturing = 0
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        If tCapturing {
+            Do ##class(%Library.Device).ReDirectIO(0)
+            Use tInitIO
+            Close tNull
+        }
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>End the line <method>IntegrityReport</method>'s capture holds with <var>pText</var> appended, as
+/// a UTF-8 line of its stream.</p>
+ClassMethod IntegrityLine(pText As %String) [ Private ]
+{
+    Do %OcuPilotIntegrityStream.Write($ZConvert(%OcuPilotIntegrityLine _ pText, "O", "UTF8") _ $Char(10))
+    Set %OcuPilotIntegrityLine = ""
+}
+
+/// <p>The mnemonic space <method>IntegrityReport</method> binds with
+/// <code>Use tNull::("^"_$ZNAME)</code>: each written line, UTF-8 encoded, joins the stream, and a tab
+/// pads the line to its column. It must live in this class's own routine for <code>$ZNAME</code> to
+/// resolve these labels.</p>
+ClassMethod IntegrityRedirects() [ Internal, Private, ProcedureBlock = 0 ]
+{
+    Quit
+wstr(s) Set %OcuPilotIntegrityLine = %OcuPilotIntegrityLine _ s Quit
+wchr(a) Set %OcuPilotIntegrityLine = %OcuPilotIntegrityLine _ $Char(a) Quit
+wnl Do %OcuPilotIntegrityStream.Write($ZConvert(%OcuPilotIntegrityLine, "O", "UTF8") _ $Char(10)) Set %OcuPilotIntegrityLine = "" Quit
+wff Do %OcuPilotIntegrityStream.Write($ZConvert(%OcuPilotIntegrityLine, "O", "UTF8") _ $Char(10)) Set %OcuPilotIntegrityLine = "" Quit
+wtab(n) If $Length(%OcuPilotIntegrityLine) < n Set %OcuPilotIntegrityLine = %OcuPilotIntegrityLine _ $Justify("", n - $Length(%OcuPilotIntegrityLine)) Quit
+rstr(len,time) Quit ""
+rchr(time) Quit ""
+}
+
+/// <p>One page of an integrity check's report (<method>Page</method>'s answer for
+/// <parameter>INTEGRITYKEY</parameter>): the check <var>pFile</var> names by its id, or the newest when
+/// it is empty. The answer is <method>Page</method>'s, with <code>check</code>, <code>time</code>,
+/// <code>state</code> and <code>running</code> added; a check that has not ended answers no lines and
+/// <code>running</code> true. A <var>pFile</var> that is not <parameter>INTEGRITYFORM</parameter> is
+/// <code>LOG.FILE</code>; a check the instance does not hold, and none at all, is 404
+/// <code>LOG.ABSENT</code>.</p>
+ClassMethod IntegrityPage(pFile As %String, pHasCursor As %Boolean, pOffset As %String, pIdentity As %String, pMaxBytes As %Integer, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If (pFile '= "") && '$Match(pFile, ..#INTEGRITYFORM) Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#LOGFILE, "An integrity check is named by its id alone", .pHttpStatus, .pFault)
+    Set tSC = ..IntegrityChecks(.tChecks)
+    If $$$ISERR(tSC) Quit ..Unreadable(tSC, .pHttpStatus, .pFault)
+    Set tCheck = ""
+    Set tIterator = tChecks.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If (pFile '= "") && (tRow.%Get("ID") '= pFile) Continue
+        Set tCheck = tRow
+        Quit
+    }
+    If '$IsObject(tCheck) Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGABSENT, "This instance holds no such integrity check", .pHttpStatus, .pFault)
+    Set pResult = {}
+    Do pResult.%Set("source", ..#INTEGRITYKEY)
+    Do pResult.%Set("check", tCheck.%Get("ID"), "string")
+    Do pResult.%Set("time", ..IntegrityTime(tCheck.%Get("StartTime")), "string")
+    Do pResult.%Set("state", tCheck.%Get("RunningState"), "string")
+    If 'tCheck.%Get("HasEnded") {
+        Do pResult.%Set("running", 1, "boolean")
+        Do pResult.%Set("lines", [])
+        Do pResult.%Set("offset", 1, "number")
+        Do pResult.%Set("identity", "", "string")
+        Do pResult.%Set("size", 0, "number")
+        Do pResult.%Set("restarted", 0, "boolean")
+        Do pResult.%Set("truncated", 0, "boolean")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tSC = ..IntegrityReport(tCheck.%Get("ID"), .tStream)
+    If $$$ISERR(tSC) {
+        Set pResult = ""
+        Quit ..Unreadable(tSC, .pHttpStatus, .pFault)
+    }
+    Set tSC = ..Identity(tStream, .tSize, .tIdentity)
+    If $$$ISERR(tSC) {
+        Set pResult = ""
+        Quit ..Unreadable(tSC, .pHttpStatus, .pFault)
+    }
+    Set tRestarted = 0
+    If 'pHasCursor {
+        Set tStart = tSize - pMaxBytes + 1
+        If tStart < 1 Set tStart = 1
+    } Else {
+        Set tStart = +pOffset
+        If (pIdentity '= tIdentity) || (tStart > (tSize + 1)) {
+            Set tRestarted = 1
+            Set tStart = 1
+        }
+    }
+    Set tSC = ..ReadWindow(tStream, tStart, pMaxBytes, tSize, .tLines, .tNextOffset, .tTruncated)
+    If $$$ISERR(tSC) {
+        Set pResult = ""
+        Quit ..Unreadable(tSC, .pHttpStatus, .pFault)
+    }
+    Do pResult.%Set("running", 0, "boolean")
+    Do pResult.%Set("lines", tLines)
+    Do pResult.%Set("offset", tNextOffset, "number")
+    Do pResult.%Set("identity", tIdentity)
+    Do pResult.%Set("size", tSize, "number")
+    Do pResult.%Set("restarted", ''tRestarted, "boolean")
+    Do pResult.%Set("truncated", ''tTruncated, "boolean")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The integrity checks <method>Files</method> lists: at most <parameter>INTEGRITYFILESCAP</parameter>
+/// of them, newest first, each <code>{name, time, state, ended}</code> -- the check's id, its start as a
+/// log entry's time, its running state and whether it has ended -- with <code>truncated</code>.</p>
+ClassMethod IntegrityFiles(Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..IntegrityChecks(.tChecks)
+    If $$$ISERR(tSC) Quit ..Unreadable(tSC, .pHttpStatus, .pFault)
+    Set tFiles = []
+    Set tTruncated = 0
+    Set tIterator = tChecks.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tFiles.%Size() >= ..#INTEGRITYFILESCAP {
+            Set tTruncated = 1
+            Quit
+        }
+        Set tEntry = {}
+        Do tEntry.%Set("name", tRow.%Get("ID"), "string")
+        Do tEntry.%Set("time", ..IntegrityTime(tRow.%Get("StartTime")), "string")
+        Do tEntry.%Set("state", tRow.%Get("RunningState"), "string")
+        Do tEntry.%Set("ended", tRow.%Get("HasEnded"), "boolean")
+        Do tFiles.%Push(tEntry)
+    }
+    Set pResult = {}
+    Do pResult.%Set("source", ..#INTEGRITYKEY)
+    Do pResult.%Set("files", tFiles)
+    Do pResult.%Set("truncated", ''tTruncated, "boolean")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The newest integrity check's report as the declared read's rows (<method>Rows</method>): at most
+/// <var>pMaxRows</var> of its non-empty lines, in the report's order, each <code>{time, severity,
+/// text}</code> -- the check's start as <code>time</code>, and <code>error</code> for a line the report
+/// marks <parameter>INTEGRITYERRORMARK</parameter>, <code>info</code> for any other. No check, and a
+/// check still running, answer no rows. <var>pTruncated</var> is true when lines were left out.</p>
+ClassMethod IntegrityRows(pMaxRows As %Integer, Output pAnswer As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pTruncated As %Boolean) As %Status [ Private ]
+{
+    Set pAnswer = []
+    Set pTruncated = 0
+    Set tSC = ..Page(..#INTEGRITYKEY, "", ..MaxBytesCap(), "", .tPage, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) {
+        If $Select($IsObject(pFault): pFault.%Get("code"), 1: "") '= ##class(OcuPilot.Api.Error).#LOGABSENT Quit tSC
+        Set pFault = ""
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tTime = tPage.%Get("time")
+    Set tIterator = tPage.%Get("lines").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        If $ZStrip(tLine, "<>W") = "" Continue
+        If (pMaxRows > 0) && (pAnswer.%Size() >= pMaxRows) {
+            Set pTruncated = 1
+            Quit
+        }
+        Set tRow = {}
+        Do tRow.%Set("time", tTime, "string")
+        Do tRow.%Set("severity", $Select($Extract(tLine, 1, $Length(..#INTEGRITYERRORMARK)) = ..#INTEGRITYERRORMARK: "error", 1: "info"), "string")
+        Do tRow.%Set("text", tLine, "string")
+        Do pAnswer.%Push(tRow)
+    }
+    If tPage.%Get("truncated") Set pTruncated = 1
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>A check's <code>StartTime</code>, <code>YYYY-MM-DD HH:MM:SS</code> on the instance's clock, as a
+/// log entry's <code>time</code>, <code>YYYY-MM-DDTHH:MM:SS.mmm</code> (Conventions, Dates);
+/// <code>""</code> for one that is empty.</p>
+ClassMethod IntegrityTime(pStart As %String) As %String
+{
+    If pStart = "" Quit ""
+    Set tTime = $Translate($Extract(pStart, 1, 19), " ", "T")
+    If $Length(tTime) '= 19 Quit tTime
+    Quit tTime _ ".000"
+}
+
 /// <p>The 400 a file name this port does not admit answers with (AD-21). The sentence names no
 /// path and repeats nothing the caller sent.</p>
 ClassMethod FileRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
@@ -2942,6 +3286,10 @@ ClassMethod Files(pSource As %String = "", Output pResult As %DynamicObject, Out
         Set tFailedPair = ""
         If '..Gate(tPairs, .tFailedPair) {
             Set tSC = ..DeniedRefusal(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pSource = ..#INTEGRITYKEY {
+            Set tSC = ..IntegrityFiles(.pResult, .pHttpStatus, .pFault)
             Quit
         }
         If pSource '= ..#ROTATEDSOURCE {

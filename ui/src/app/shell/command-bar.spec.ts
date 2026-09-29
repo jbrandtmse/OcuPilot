@@ -363,6 +363,31 @@ describe('the command bar', () => {
     expect(fixture.nativeElement.textContent).not.toContain(STRINGS.agentDefinitionEnable);
   });
 
+  it('Story 18.4: an action declared as both the primary and a row action is drawn once, as the primary', () => {
+    // Mutation (Rule 19): drop the primary-id filter from `command-bar.ts`'s resolved row actions ->
+    // a second, row-scoped control is drawn beside the primary, red.
+    const declared = screenDeclaration({
+      primaryAction: { id: 'disable', selfProtection: '' },
+      rowActions: [
+        { id: 'disable', selfProtection: '' },
+        { id: 'enable', selfProtection: '' },
+      ],
+    });
+    build(declared);
+    actions.register(declared.descriptor, 'disable', () => {});
+    actions.register(declared.descriptor, 'enable', () => {});
+    fixture.detectChanges();
+
+    const primary = Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-bar-primary')).map((button) =>
+      (button as HTMLElement).textContent?.trim()
+    );
+    const rows = Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')).map((button) =>
+      (button as HTMLElement).textContent?.trim()
+    );
+    expect(primary).toEqual([STRINGS.agentDefinitionDisable]);
+    expect(rows).toEqual([STRINGS.agentDefinitionEnable]);
+  });
+
   it("AD-53: with a self-protected row selected, the bar's action carries the instance's own sentence and runs nothing", () => {
     // The bar says what the command box and the row menu say about the same action on the same row:
     // `aria-disabled`, never `disabled`, with the published reason as its tooltip. An ordinary row

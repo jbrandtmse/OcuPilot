@@ -81,14 +81,72 @@ Parameter REMOTE = "DATABASE.REMOTE";
 
 Parameter REASONREMOTE = "This database's file is on another server. Change its settings there.";
 
+/// <p>Envelope code (409, Story 18.4): a mount of a database that is already mounted (the vendor's
+/// own 19, mapped at the port, or refused before any vendor call).</p>
+Parameter MOUNTED = "DATABASE.MOUNTED";
+
+Parameter REASONMOUNTED = "This database is already mounted.";
+
+/// <p>Envelope code (409, Story 18.4): a dismount, truncate, compact, defragment, size grow, new
+/// volume or integrity check of a database that is not mounted, refused before any vendor call.</p>
+Parameter DISMOUNTED = "DATABASE.DISMOUNTED";
+
+Parameter REASONDISMOUNTED = "This database is dismounted. Mount it first.";
+
+/// <p>Envelope code (409, Story 18.4): a truncate, compact or defragment of a database mounted
+/// read-only, refused before any vendor call.</p>
+Parameter READONLY = "DATABASE.READONLY";
+
+Parameter REASONREADONLY = "This database is mounted read-only, so its file cannot be changed.";
+
+/// <p>Violation code (Story 18.4): a truncate's target size that is not 0 or a whole number of
+/// megabytes smaller than the current size.</p>
+Parameter TARGETSIZESHAPE = "DATABASE.TARGETSIZE.SHAPE";
+
+Parameter REASONTARGETSIZESHAPE = "Enter 0, or a whole number of megabytes smaller than the current size.";
+
+/// <p>Violation code (Story 18.4): a compact's target free space that is not a whole number of
+/// megabytes from 0 to the database's free space.</p>
+Parameter TARGETFREESHAPE = "DATABASE.TARGETFREE.SHAPE";
+
+Parameter REASONTARGETFREESHAPE = "Enter a whole number of megabytes, from 0 to the database's free space.";
+
+/// <p>Violation code (Story 18.4): a size grow that is not a whole number of megabytes larger than
+/// the current size and no larger than a non-zero maximum size.</p>
+Parameter GROWSIZESHAPE = "DATABASE.GROWSIZE.SHAPE";
+
+Parameter REASONGROWSIZESHAPE = "Enter a whole number of megabytes larger than the current size and no larger than the maximum size.";
+
+/// <p>Violation code (Story 18.4): a new volume's initial size that is not a whole number of
+/// megabytes, 1 or more, and no larger than a non-zero new volume threshold.</p>
+Parameter INITIALSIZESHAPE = "DATABASE.INITIALSIZE.SHAPE";
+
+Parameter REASONINITIALSIZESHAPE = "Enter a whole number of megabytes, 1 or more, and no larger than the new volume threshold when one is set.";
+
+/// <p>Violation code (Story 18.4): an integrity check that names no database.</p>
+Parameter INTEGRITYDATABASES = "DATABASE.INTEGRITY.DATABASES";
+
+Parameter REASONINTEGRITYDATABASES = "Choose at least one database to check.";
+
+/// <p>Violation code (Story 18.4): a global name an integrity check does not take.</p>
+Parameter GLOBALSSHAPE = "DATABASE.GLOBALS.SHAPE";
+
+Parameter REASONGLOBALSSHAPE = "Enter global names, one per line, each starting with a letter or %.";
+
+/// <p>Violation code (Story 18.4): global names given for an integrity check of more than one
+/// database.</p>
+Parameter GLOBALSONEDATABASE = "DATABASE.GLOBALS.ONEDATABASE";
+
+Parameter REASONGLOBALSONEDATABASE = "Globals can be chosen only when one database is checked.";
+
 /// <p>Every field-level code, as a <class>%List</class>, in the order the form lists its rules.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#NAMEREQUIRED, ..#NAMESHAPE, ..#NAMETAKEN, ..#NAMEABSENT, ..#DIRECTORYINUSE, ..#SIZESHAPE, ..#MAXSIZESHAPE, ..#EXPANSIONSIZESHAPE, ..#NEWVOLUMETHRESHOLDSHAPE, ..#RESOURCESHAPE, ..#RESOURCEABSENT)
+    Quit $ListBuild(..#NAMEREQUIRED, ..#NAMESHAPE, ..#NAMETAKEN, ..#NAMEABSENT, ..#DIRECTORYINUSE, ..#SIZESHAPE, ..#MAXSIZESHAPE, ..#EXPANSIONSIZESHAPE, ..#NEWVOLUMETHRESHOLDSHAPE, ..#RESOURCESHAPE, ..#RESOURCEABSENT, ..#TARGETSIZESHAPE, ..#TARGETFREESHAPE, ..#GROWSIZESHAPE, ..#INITIALSIZESHAPE, ..#INTEGRITYDATABASES, ..#GLOBALSSHAPE, ..#GLOBALSONEDATABASE)
 }
 
 /// <p>The sentence <var>pCode</var> carries, or <code>""</code> for a code this class does not
-/// declare: the field-level codes, the two envelope codes and the validation envelope.</p>
+/// declare: the field-level codes, the envelope codes and the validation envelope.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
     If pCode = ..#VALIDATION Quit ..#REASONVALIDATION
@@ -103,6 +161,16 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#RESOURCEABSENT Quit ..#REASONRESOURCEABSENT
     If pCode = ..#INUSE Quit ..#REASONINUSE
     If pCode = ..#REMOTE Quit ..#REASONREMOTE
+    If pCode = ..#MOUNTED Quit ..#REASONMOUNTED
+    If pCode = ..#DISMOUNTED Quit ..#REASONDISMOUNTED
+    If pCode = ..#READONLY Quit ..#REASONREADONLY
+    If pCode = ..#TARGETSIZESHAPE Quit ..#REASONTARGETSIZESHAPE
+    If pCode = ..#TARGETFREESHAPE Quit ..#REASONTARGETFREESHAPE
+    If pCode = ..#GROWSIZESHAPE Quit ..#REASONGROWSIZESHAPE
+    If pCode = ..#INITIALSIZESHAPE Quit ..#REASONINITIALSIZESHAPE
+    If pCode = ..#INTEGRITYDATABASES Quit ..#REASONINTEGRITYDATABASES
+    If pCode = ..#GLOBALSSHAPE Quit ..#REASONGLOBALSSHAPE
+    If pCode = ..#GLOBALSONEDATABASE Quit ..#REASONGLOBALSONEDATABASE
     Quit ""
 }
 

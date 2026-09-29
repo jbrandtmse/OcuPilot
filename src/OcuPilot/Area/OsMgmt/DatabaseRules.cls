@@ -9,6 +9,14 @@
 /// a create's directory that already holds a database file is refused
 /// <parameter>OcuPilot.Api.DatabaseError.DIRECTORYINUSE</parameter> (DW-1791). Every read goes through
 /// the create tool's port as the caller.</p>
+/// <p><b>The disk operations' rules</b> (Story 18.4) are
+/// <method>OcuPilot.Port.DatabasePort.ActionViolations</method>, asked against the operation's
+/// <code>STATE</code> read: at the mint (<method>ActionProblem</method>), at a Save's size group
+/// (<method>Validate</method>, a <code>Size</code> in an edit) and at the integrity flow's
+/// <code>globals</code> step (<method>HandleCheck</method>); the port asks them again at the write. A
+/// new volume directory in use by another database is refused
+/// <parameter>OcuPilot.Api.DatabaseError.DIRECTORYINUSE</parameter> (DW-1791,
+/// <method>OcuPilot.Port.DatabasePort.VolumeDirectoryInUse</method>).</p>
 Class OcuPilot.Area.OsMgmt.DatabaseRules Extends %RegisteredObject
 {
 
@@ -18,6 +26,9 @@ Parameter CREATETOOL = "OcuPilot.Screen.Tool.LocalDatabaseCreate";
 Parameter MOUNTTOOL = "OcuPilot.Screen.Tool.LocalDatabaseUpdateMount";
 
 Parameter UPDATETOOL = "OcuPilot.Screen.Tool.LocalDatabaseUpdate";
+
+/// <p>The size grow (Story 18.4), whose fresh read gives the editor the file's current size.</p>
+Parameter GROWTOOL = "OcuPilot.Screen.Tool.LocalDatabaseGrow";
 
 /// <p>The screen whose declared pairs gate these routes (AD-8).</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.LocalDatabaseForm";
@@ -41,7 +52,17 @@ Parameter NAMEPATTERN = "[A-Za-z][A-Za-z0-9_-]{0,63}";
 
 /// <p>The fields each wizard step validates, as <code>&lt;step&gt;=&lt;field&gt;:&lt;field&gt;</code>
 /// entries.</p>
-Parameter STEPS = "name=Name:root:path,size=Size:GlobalJournalState,resource=ResourceName";
+Parameter STEPS = "name=Name:root:path,size=Size:GlobalJournalState,resource=ResourceName,globals=Databases:Globals";
+
+/// <p>The disk operations' endpoint and fresh read type (Story 18.4).</p>
+Parameter ACTIONSENDPOINT = "Database.Actions";
+
+Parameter STATETYPE = "STATE";
+
+/// <p>The integrity flow's two fields: the checked directories and the global names.</p>
+Parameter FIELDDATABASES = "Databases";
+
+Parameter FIELDGLOBALS = "Globals";
 
 /// <p>The whole-megabyte fields an edit may send, each 0 or more.</p>
 Parameter MEGABYTEFIELDS = "MaxSize,ExpansionSize,NewVolumeThreshold";
@@ -110,9 +131,16 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
             If $$$ISERR(tSC) Quit
         }
         If 'tCreates && ..Checks(pFields, "volumeRoot") && ((..Text(pArgs, "volumeRoot") '= "") || (..Text(pArgs, "volumePath") '= "")) {
-            Set tSC = ..DirectoryViolations(..Text(pArgs, "volumeRoot"), ..Text(pArgs, "volumePath"), "volumeRoot", "volumePath", 0, .pViolations, .pHttpStatus, .pFault)
+            Set tSC = ##class(OcuPilot.Port.DatabasePort).DirectoryOf(pName, .tOwn, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Set tSC = ..DirectoryViolations(..Text(pArgs, "volumeRoot"), ..Text(pArgs, "volumePath"), "volumeRoot", "volumePath", 0, .pViolations, .pHttpStatus, .pFault, tOwn)
             If $$$ISERR(tSC) Quit
         }
+        If 'tCreates && ..Checks(pFields, ..#FIELDSIZE) && (pArgs.%GetTypeOf(..#FIELDSIZE) '= "unassigned") {
+            Set tSC = ..GrowViolations(pName, pArgs, .pViolations, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+        }
+        If (pFields '= "") && ..Checks(pFields, ..#FIELDGLOBALS) Do ..IntegrityViolations(pArgs, .pViolations)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -183,7 +211,7 @@ ClassMethod ResourceViolation(pResource As %String, Output pViolations, Output p
 /// as the port names it, and, when <var>pNewDatabase</var> is 1, a directory already holding a
 /// database file as <parameter>OcuPilot.Api.DatabaseError.DIRECTORYINUSE</parameter> on
 /// <var>pPathField</var>. A refusal that names no field is an error status with its fault.</p>
-ClassMethod DirectoryViolations(pRoot As %String, pPath As %String, pRootField As %String, pPathField As %String, pNewDatabase As %Boolean, Output pViolations, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod DirectoryViolations(pRoot As %String, pPath As %String, pRootField As %String, pPathField As %String, pNewDatabase As %Boolean, Output pViolations, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pOwnDirectory As %String = "") As %Status
 {
     Set pHttpStatus = 0
     Set pFault = ""
@@ -204,7 +232,103 @@ ClassMethod DirectoryViolations(pRoot As %String, pPath As %String, pRootField A
         Quit tSC
     }
     If pNewDatabase && ##class(OcuPilot.Port.DatabasePort).HoldsDatabase(tDirectory) Do ..Add(.pViolations, pPathField, ##class(OcuPilot.Api.DatabaseError).#DIRECTORYINUSE)
+    If 'pNewDatabase && (pOwnDirectory '= "") {
+        Set tSC = ##class(OcuPilot.Port.DatabasePort).VolumeDirectoryInUse(pOwnDirectory, tDirectory, .tInUse)
+        If $$$ISERR(tSC) Quit tSC
+        If tInUse Do ..Add(.pViolations, pPathField, ##class(OcuPilot.Api.DatabaseError).#DIRECTORYINUSE)
+    }
     Quit $$$OK
+}
+
+/// <p>Add the size grow's violations for the configuration <var>pName</var> (Story 18.4): its
+/// <code>STATE</code> read through the port as the caller, then
+/// <method>OcuPilot.Port.DatabasePort.ActionViolations</method> for <code>MODIFYSIZE</code>, a state
+/// refusal (a database that is not mounted) reported on <code>Size</code>. A read refused for any
+/// reason is an error status with its fault.</p>
+ClassMethod GrowViolations(pName As %String, pArgs As %DynamicObject, Output pViolations, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Kill tQuery
+    Set tQuery("name") = pName
+    Set tSC = $ClassMethod(..PortClass(), "Invoke", ..#ACTIONSENDPOINT, ..#STATETYPE, .tQuery, "", .tState, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Kill tArgQuery
+    Set tArgQuery(..#FIELDSIZE) = ..Text(pArgs, ..#FIELDSIZE)
+    Set tCode = ##class(OcuPilot.Port.DatabasePort).ActionViolations("MODIFYSIZE", tState, .tArgQuery, .tViolations)
+    If tCode '= "" Do ..Add(.pViolations, ..#FIELDSIZE, tCode)
+    For tI = 1:1:+$Get(tViolations) {
+        Do ..Add(.pViolations, $List(tViolations(tI), 1), $List(tViolations(tI), 2))
+    }
+    Quit $$$OK
+}
+
+/// <p>Add the integrity flow's violations for <var>pArgs</var>'s <parameter>FIELDDATABASES</parameter>
+/// (an array of directories) and <parameter>FIELDGLOBALS</parameter> (an array of global names), as
+/// <method>OcuPilot.Port.DatabasePort.ActionViolations</method> answers them for
+/// <code>INTEGRITYCHECK</code> without a state read: at least one database, each name's shape, and
+/// globals for one database only.</p>
+ClassMethod IntegrityViolations(pArgs As %DynamicObject, Output pViolations)
+{
+    Set tDirectories = []
+    If pArgs.%GetTypeOf(..#FIELDDATABASES) = "array" Set tDirectories = pArgs.%Get(..#FIELDDATABASES)
+    Set tState = {"Dismounted": ""}
+    Do tState.%Set("Directory", ##class(OcuPilot.Port.DatabasePort).CanonicalSet(tDirectories.%ToJSON()), "string")
+    If tDirectories.%Size() = 0 Do tState.%Set("Directory", "", "string")
+    Kill tQuery
+    If pArgs.%GetTypeOf(..#FIELDGLOBALS) = "array" {
+        Set tQuery(..#FIELDGLOBALS) = pArgs.%Get(..#FIELDGLOBALS).%ToJSON()
+    } ElseIf pArgs.%GetTypeOf(..#FIELDGLOBALS) '= "unassigned" {
+        Set tQuery(..#FIELDGLOBALS) = "invalid"
+    }
+    Set tCode = ##class(OcuPilot.Port.DatabasePort).ActionViolations("INTEGRITYCHECK", tState, .tQuery, .tViolations)
+    For tI = 1:1:+$Get(tViolations) {
+        Do ..Add(.pViolations, $List(tViolations(tI), 1), $List(tViolations(tI), 2))
+    }
+}
+
+/// <p>The agent's arguments <var>pArgs</var> for disk operation tool <var>pToolClass</var> against
+/// <var>pIdValue</var>, refused as one <var>pProblem</var> (AD-55): the target's <code>STATE</code>
+/// read through the tool's own port and read type as the caller, the tool's own port query built from
+/// <var>pArgs</var>, and <method>OcuPilot.Port.DatabasePort.ActionViolations</method> for the tool's
+/// write type -- a state refusal as its published sentence, an integrity set's dismounted members
+/// named after it in parentheses, and each argument refusal as <code>'field': sentence</code>. A read
+/// refused for any reason but absence is its reason; an absent target is the mint's own refusal,
+/// reached before this.</p>
+ClassMethod ActionProblem(pToolClass As %String, pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set pProblem = ""
+    Set tSC = $$$OK
+    Try {
+        Kill tQuery
+        Set tQuery($ClassMethod(pToolClass, "IdParam")) = pIdValue
+        Set tReadSC = $ClassMethod($ClassMethod(pToolClass, "PortClass"), "Invoke", $ClassMethod(pToolClass, "Endpoint"), $ClassMethod(pToolClass, "ReadType"), .tQuery, "", .tState, .tHttp, .tFault)
+        If $$$ISERR(tReadSC) {
+            If $IsObject($Get(tFault)) && (tFault.%Get("reason") '= "") && (tFault.%Get("code") '= ##class(OcuPilot.Api.Error).#INTERNAL) {
+                Set pProblem = tFault.%Get("reason")
+                Quit
+            }
+            Set tSC = tReadSC
+            Quit
+        }
+        Kill tArgQuery
+        Do $ClassMethod(pToolClass, "PortQuery", pArgs, .tArgQuery)
+        Set tCode = ##class(OcuPilot.Port.DatabasePort).ActionViolations($ClassMethod(pToolClass, "WriteType"), tState, .tArgQuery, .tViolations)
+        If tCode '= "" {
+            Set pProblem = ##class(OcuPilot.Api.DatabaseError).ReasonFor(tCode)
+            If ##class(OcuPilot.Port.DatabasePort).IsSet(..Text(tState, "Directory")) && (..Text(tState, "Dismounted") '= "") Set pProblem = pProblem _ " (" _ ..Text(tState, "Dismounted") _ ")"
+            Quit
+        }
+        For tI = 1:1:+$Get(tViolations) {
+            Set pProblem = pProblem _ $Select(pProblem = "": "", 1: " ") _ "'" _ $List(tViolations(tI), 1) _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation($List(tViolations(tI), 2))
+        }
+    } Catch ex {
+        Set pProblem = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>Whether a configuration already carries <var>pName</var>, compared without regard to case, in
@@ -236,8 +360,10 @@ ClassMethod PortClass() As %String
 /// with <code>resources</code>, the <code>%DB_*</code> resource names, when the caller may read the
 /// Resources list, and <code>resourcesRefused</code> naming the pair it lacks otherwise. With a name it
 /// adds <code>Name</code>, <code>configuration</code> (the mounting edit's fresh read) and
-/// <code>file</code> (the file edit's fresh read, <code>Directory</code> included); a name this
-/// instance does not hold is 404 <parameter>OcuPilot.Api.DatabaseError.NAMEABSENT</parameter>.</p>
+/// <code>file</code> (the file edit's fresh read, <code>Directory</code> included), and
+/// <code>size</code>, <code>{Size}</code> from the size grow's fresh read (Story 18.4), where that read
+/// answers; a name this instance does not hold is 404
+/// <parameter>OcuPilot.Api.DatabaseError.NAMEABSENT</parameter>.</p>
 ClassMethod HandleForm() As %Status
 {
     Set tSC = $$$OK
@@ -274,6 +400,13 @@ ClassMethod HandleForm() As %Status
             Do tBody.%Set(..#FIELDNAME, $ZConvert(tName, "U"), "string")
             Do tBody.%Set("configuration", ##class(OcuPilot.Port.DatabasePort).Without(tConfiguration, $ListBuild("DeleteFile")))
             Do tBody.%Set("file", ##class(OcuPilot.Port.DatabasePort).Without(tFile, $ListBuild("volumeRoot", "volumePath")))
+            ; The editor's Size (MB): the grow's own read, left out where it does not answer, so a
+            ; file the size read cannot reach still opens the rest of the editor.
+            If $$$ISOK(..Read(..#GROWTOOL, tName, .tState, .tSizeHttp, .tSizeFault)) && (tState.%GetTypeOf("Size") = "number") {
+                Set tSize = {}
+                Do tSize.%Set("Size", tState.%Get("Size"), "number")
+                Do tBody.%Set("size", tSize)
+            }
         }
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
@@ -422,6 +555,12 @@ ClassMethod FieldOf(pCode As %String) As %String
     If tPart = "MAXSIZE" Quit "MaxSize"
     If tPart = "EXPANSIONSIZE" Quit "ExpansionSize"
     If tPart = "NEWVOLUMETHRESHOLD" Quit "NewVolumeThreshold"
+    If tPart = "TARGETSIZE" Quit "TargetSize"
+    If tPart = "TARGETFREE" Quit "TargetFreeSpace"
+    If tPart = "GROWSIZE" Quit ..#FIELDSIZE
+    If tPart = "INITIALSIZE" Quit "InitialSize"
+    If tPart = "INTEGRITY" Quit ..#FIELDDATABASES
+    If tPart = "GLOBALS" Quit ..#FIELDGLOBALS
     Quit ""
 }
 

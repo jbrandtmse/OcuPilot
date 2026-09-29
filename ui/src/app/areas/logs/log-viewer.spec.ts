@@ -967,3 +967,94 @@ function textOfNode(fixture: ComponentFixture<LogViewerPage>, selector: string):
   const node = fixture.nativeElement.querySelector(selector) as HTMLElement | null;
   return node === null ? '' : (node.textContent ?? '').trim();
 }
+
+/**
+ * The Integrity log (Story 18.4, AC7): the same page over the `integrity` source, whose choice lists
+ * the instance's checks and whose window is one check's report.
+ */
+describe('LogViewerPage: the Integrity log (Story 18.4)', () => {
+  const SCREEN = SCREENS.find((screen) => screen.route === 'os-management/databases/integrity-log')!;
+  const REPORT_PATH = '/api/ocupilot/logs/integrity';
+  const CHECKS_PATH = '/api/ocupilot/logs/integrity/files';
+  const CHECKS = [
+    { name: '31', time: '2026-09-29T18:42:21.000', state: 'Done', ended: true },
+    { name: '30', time: '2026-09-29T17:00:05.000', state: 'Done', ended: true },
+  ];
+
+  afterEach(() => {
+    TestBed.inject(LogViewerStore).reset();
+    TestBed.resetTestingModule();
+  });
+
+  async function mount(report: JsonResult<unknown>, checks: readonly unknown[] = CHECKS) {
+    const paths: string[] = [];
+    const api = {
+      requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
+        paths.push(path);
+        if (path === CHECKS_PATH) return { kind: 'ok', status: 200, body: { source: 'integrity', files: checks, truncated: false } as T };
+        return report as JsonResult<T>;
+      },
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: SCREEN.route, children: [] }, { path: '**', children: [] }]),
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: NavigationService, useValue: { screenForUrl: () => SCREEN } as unknown as NavigationService },
+        { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
+      ],
+    });
+    const fixture = TestBed.createComponent(LogViewerPage);
+    fixture.detectChanges();
+    for (let turn = 0; turn < 8; turn += 1) await Promise.resolve();
+    fixture.detectChanges();
+    return { fixture, paths, host: fixture.nativeElement as HTMLElement };
+  }
+
+  const PAGE = {
+    source: 'integrity',
+    check: '31',
+    time: '2026-09-29T18:42:21.000',
+    state: 'Done',
+    running: false,
+    lines: ['************** Details Of Errors Found **************', '', '**** Global ^X: block 5 is bad', 'Full Listing of Databases Checked'],
+    offset: 120,
+    identity: 'id',
+    size: 119,
+    restarted: false,
+    truncated: false,
+  };
+
+  it('lists the checks newest first by start and state, and draws the newest check\u2019s report line by line', async () => {
+    // Mutation (Rule 19): parse the report as log-file lines -> the rows merge into one and this goes red.
+    const { host, paths } = await mount({ kind: 'ok', status: 200, body: PAGE });
+    expect(paths).toContain(REPORT_PATH);
+    expect(paths).toContain(CHECKS_PATH);
+    const choice = host.querySelector('[data-ocu-log="file"]') as HTMLSelectElement;
+    expect(choice.getAttribute('aria-label')).toBe(STRINGS.databaseIntegrityCheck);
+    const options = [...choice.querySelectorAll('option')];
+    expect(options.map((option) => option.textContent?.trim())).toEqual(['2026-09-29 18:42:21 \u00b7 Done', '2026-09-29 17:00:05 \u00b7 Done']);
+    expect(options[0].selected).toBe(true);
+    const rows = [...host.querySelectorAll('.ocu-log-row')].map((row) =>
+      [...row.querySelectorAll('.ocu-log-cell')].map((cell) => (cell.textContent ?? '').trim())
+    );
+    expect(rows.map((row) => row[3])).toEqual([
+      '************** Details Of Errors Found **************',
+      '**** Global ^X: block 5 is bad',
+      'Full Listing of Databases Checked',
+    ]);
+    expect(rows.map((row) => row[0])).toEqual(Array(3).fill(PAGE.time));
+    expect(rows.map((row) => row[2])).toEqual([STRINGS.logSeveritySevere, STRINGS.logSeveritySevere, STRINGS.logSeverityInfo]);
+  });
+
+  it('says a check still running is still running', async () => {
+    const { host } = await mount({ kind: 'ok', status: 200, body: { ...PAGE, running: true, state: 'Running', lines: [], identity: '', offset: 1, size: 0 } });
+    expect(host.querySelector('[data-ocu-log="empty"]')?.textContent?.trim()).toBe(STRINGS.databaseIntegrityRunning);
+  });
+
+  it('says an instance holding no check holds none', async () => {
+    const { host } = await mount({ kind: 'error', status: 404, code: 'LOG.ABSENT', reason: null, detail: null }, []);
+    expect(host.querySelector('[data-ocu-log="empty"]')?.textContent?.trim()).toBe(STRINGS.databaseIntegrityNone);
+    expect(host.querySelector('[data-ocu-log="refusal"]')).toBeNull();
+  });
+});

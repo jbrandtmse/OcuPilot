@@ -426,6 +426,9 @@ export class CommandBar {
     const checked = screen.multiSelect === null ? 0 : this.stores.for(screen.descriptor, screen.refreshRates).checked().size;
     return screen.rowActions
       .filter((action) => action.id !== '')
+      // An action the screen also declares as its primary is drawn once, as the primary, which
+      // needs no selection (Story 18.4: Databases' Check integrity).
+      .filter((action) => action.id !== screen.primaryAction.id)
       // DW-389: a declared action with no registered handler is a control nothing can act on, so
       // it is not drawn at all -- the same test the primary action above already applies.
       .filter((action) => this.actions.has(screen.descriptor, action.id))

@@ -16,9 +16,13 @@ export const DATABASE_VOLUMES_ROUTE = 'os-management/databases/volumes';
 /** The volumes read's own row cap: a database's own files are never many. */
 export const DATABASE_VOLUMES_MAX_ROWS = 200;
 
-/** The two groups a Save sends, each one write through its own tool (AD-4, AD-55). */
+/** The groups a Save sends, each one write through its own tool (AD-4, AD-55). */
 export const CONFIGURATION_GROUP = 'configuration';
 export const FILE_GROUP = 'file';
+
+/** The size grow's group (Story 18.4): the file's size in megabytes, sent after the other two. */
+export const SIZE_GROUP = 'size';
+export const SIZE_FIELD = 'Size';
 
 /** The mounting group's settable flags, as `Database.ConfigCRUD` names them. */
 export const CONFIGURATION_FLAGS: readonly string[] = ['MountAtStartup', 'MountRequired', 'ClusterMountMode'];
@@ -79,7 +83,8 @@ function numberValue(text: string): number | string {
  * **It composes no payload of its own.** `PUT /database/:id` carries only the groups that changed,
  * each holding only its changed fields; the server merges each over its own fresh read and sends
  * that endpoint's complete set (AD-4), through the tools the agent's `osmgmt.localdatabases.update`
- * and `updatemount` resolve. Every sentence is the server's (AD-39). A new volume directory is a
+ * and `updatemount` resolve. Size is its own group (Story 18.4), sent as the size grow the agent's
+ * `osmgmt.localdatabases.grow` makes, and offered only where the form read answered the file's size. Every sentence is the server's (AD-39). A new volume directory is a
  * root and a relative path from the page's picker, never a path.
  *
  * **The Volume files group issues `DatabaseVolumeList`'s declared read** with its one `dir`
@@ -103,6 +108,11 @@ export class DatabaseEditor {
   private newVolumeDirectoryValue = '';
 
   private textValues: Readonly<Record<string, string>> = {};
+
+  /** The file's size in megabytes as typed, and as the form read answered it; `null` where it did not. */
+  private sizeValue: string | null = null;
+
+  private openedSize: string | null = null;
 
   private flagValues: Readonly<Record<string, boolean>> = {};
 
@@ -137,6 +147,9 @@ export class DatabaseEditor {
   private refusalPairValue = '';
 
   private savedValue = false;
+
+  /** Whether the last accepted Save answered that its size grow continues on the instance (AD-26). */
+  private continuesValue = false;
 
   private readBackValue: ReadBack | null = null;
 
@@ -192,7 +205,18 @@ export class DatabaseEditor {
   }
 
   text(field: string): string {
+    if (field === SIZE_FIELD) return this.sizeValue ?? '';
     return this.textValues[field] ?? '';
+  }
+
+  /** Whether the form read answered the file's size, so Size (MB) is offered (Story 18.4). */
+  sizeHeld(): boolean {
+    return this.sizeValue !== null;
+  }
+
+  /** Whether the form holds a change not yet saved: Add a volume waits for a clean form (Story 18.4). */
+  dirty(): boolean {
+    return this.formDirty.dirty();
   }
 
   flag(field: string): boolean {
@@ -245,6 +269,11 @@ export class DatabaseEditor {
     return this.savedValue;
   }
 
+  /** Whether the last accepted Save is still running on the instance, until the next edit or Save. */
+  continues(): boolean {
+    return this.savedValue && this.continuesValue;
+  }
+
   readBack(): ReadBack | null {
     return this.readBackValue;
   }
@@ -271,6 +300,8 @@ export class DatabaseEditor {
     this.directoryValue = '';
     this.newVolumeDirectoryValue = '';
     this.textValues = {};
+    this.sizeValue = null;
+    this.openedSize = null;
     this.flagValues = {};
     this.openedText = {};
     this.openedFlags = {};
@@ -286,6 +317,7 @@ export class DatabaseEditor {
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
+    this.continuesValue = false;
     this.readBackValue = null;
     this.volumeRowsValue = [];
     this.volumesLoadedValue = false;
@@ -301,9 +333,11 @@ export class DatabaseEditor {
   async open(name: string, keepSaved = false): Promise<void> {
     const saved = keepSaved && this.savedValue;
     const readBack = this.readBackValue;
+    const continues = this.continuesValue;
     this.reset();
     if (saved) {
       this.savedValue = true;
+      this.continuesValue = continues;
       this.readBackValue = readBack;
     }
     if (name === '') return;
@@ -324,6 +358,12 @@ export class DatabaseEditor {
   }
 
   setText(field: string, value: string): void {
+    if (field === SIZE_FIELD) {
+      if (!this.heldValue || this.sizeValue === null || this.sizeValue === value) return;
+      this.sizeValue = value;
+      this.change(field);
+      return;
+    }
     if (!this.heldValue || !FILE_TEXT_FIELDS.includes(field) || this.text(field) === value) return;
     this.textValues = { ...this.textValues, [field]: value };
     this.change(field);
@@ -388,6 +428,7 @@ export class DatabaseEditor {
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
+    this.continuesValue = false;
     this.readBackValue = null;
     this.notify();
     const result = await this.api().requestJson<unknown>(`${DATABASE_PATH}/${encodeEntityId(this.nameValue)}`, {
@@ -406,9 +447,10 @@ export class DatabaseEditor {
       return false;
     }
     const answer = result.body;
-    // Both groups written: the one that does not hold what it sent is the one to show (AD-58).
-    const readBacks = [FILE_GROUP, CONFIGURATION_GROUP].map((group) => readBackOf(objectAt(objectAt(answer, group), 'readBack')));
+    // Every group written: the one that does not hold what it sent is the one to show (AD-58).
+    const readBacks = [SIZE_GROUP, FILE_GROUP, CONFIGURATION_GROUP].map((group) => readBackOf(objectAt(objectAt(answer, group), 'readBack')));
     this.readBackValue = readBacks.find((back) => back !== null && back.verdict !== 'matches') ?? readBacks.find((back) => back !== null) ?? null;
+    this.continuesValue = answer !== null && typeof answer === 'object' && (answer as Record<string, unknown>)['continues'] === true;
     this.savedValue = true;
     this.formDirty.setDirty(false);
     this.publish('updated');
@@ -452,6 +494,7 @@ export class DatabaseEditor {
     if (Object.keys(configuration).length > 0) body[CONFIGURATION_GROUP] = configuration;
     const file = this.changedFile();
     if (Object.keys(file).length > 0) body[FILE_GROUP] = file;
+    if (this.sizeValue !== null && this.sizeValue !== this.openedSize) body[SIZE_GROUP] = { [SIZE_FIELD]: numberValue(this.sizeValue) };
     return body;
   }
 
@@ -500,22 +543,34 @@ export class DatabaseEditor {
     this.flagValues = flags;
     this.openedText = text;
     this.openedFlags = flags;
+    const size = objectAt(body, SIZE_GROUP);
+    this.sizeValue = size === null ? null : textAt(size, SIZE_FIELD);
+    this.openedSize = this.sizeValue;
     this.heldValue = true;
   }
 
   /**
-   * A refused Save whose first group the instance had already written (`detail.applied`): that
-   * group's fields become the opened snapshot, so the next Save does not send them again, and the
-   * change it made is published (AD-14).
+   * A refused Save whose earlier groups the instance had already written (`detail.applied`): those
+   * groups' fields become the opened snapshot, so the next Save does not send them again, and the
+   * change they made is published (AD-14). The file group can precede a refused size grow (Story
+   * 18.4).
    */
   private absorbApplied(result: JsonResult<unknown>): void {
     if (result.kind !== 'error' || result.detail === null) return;
     const applied = result.detail['applied'];
-    if (!Array.isArray(applied) || !applied.includes(CONFIGURATION_GROUP)) return;
+    if (!Array.isArray(applied) || applied.length === 0) return;
     const flags: Record<string, boolean> = { ...this.openedFlags };
-    for (const field of CONFIGURATION_FLAGS) flags[field] = this.flag(field);
+    if (applied.includes(CONFIGURATION_GROUP)) {
+      for (const field of CONFIGURATION_FLAGS) flags[field] = this.flag(field);
+    }
+    if (applied.includes(FILE_GROUP)) {
+      for (const field of FILE_FLAGS) flags[field] = this.flag(field);
+      const text: Record<string, string> = { ...this.openedText };
+      for (const field of FILE_TEXT_FIELDS) text[field] = this.text(field);
+      this.openedText = text;
+    }
     this.openedFlags = flags;
-    this.publish('updated');
+    if (applied.includes(CONFIGURATION_GROUP) || applied.includes(FILE_GROUP)) this.publish('updated');
   }
 
   private change(field: string): void {

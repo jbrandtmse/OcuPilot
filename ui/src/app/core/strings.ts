@@ -3659,7 +3659,7 @@ export const STRINGS = {
     'Deleting this database removes it from the instance\'s configuration. Its file stays unless you also delete it here. This cannot be undone.',
   /** EXPERIENCE.md:481 */
   databaseRefusalOcuPilot:
-    'OcuPilot or the instance itself depends on this database. It cannot be deleted, and its directory, resource and read-only setting cannot be changed.',
+    'OcuPilot or the instance itself depends on this database. It cannot be deleted or dismounted, and its directory, resource and read-only setting cannot be changed.',
   /** EXPERIENCE.md:577 */
   impactNamespacesUse: '<n> namespaces use it and must stop using it first: <names>',
   /** EXPERIENCE.md:577 */
@@ -3678,6 +3678,90 @@ export const STRINGS = {
   impactSharedFileOne: '1 other database shares its file, which stays: <names>',
   /** EXPERIENCE.md:577 */
   impactSharedFileUnchecked: 'whether another database shares its file was not checked',
+  // Story 18.4: the disk operations on Database details, the editor's size and Add a volume, the
+  // Check integrity flow and the Integrity log. The flow's Databases and Globals steps reuse
+  // `databaseListLabel` and `processColumnGlobals`, Add a volume's field `databaseInitialSize`, and a
+  // run past the port's wait `auditDatabaseStillRunning`.
+  /** EXPERIENCE.md:377 */
+  databaseActionMount: 'Mount',
+  /** EXPERIENCE.md:377 */
+  databaseActionDismount: 'Dismount',
+  /** EXPERIENCE.md:377 */
+  databaseActionTruncate: 'Truncate',
+  /** EXPERIENCE.md:377 */
+  databaseActionCompact: 'Compact',
+  /** EXPERIENCE.md:377 */
+  databaseActionDefragment: 'Defragment',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityLabel: 'Check integrity',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityCheck: 'Integrity check',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityLogLabel: 'Integrity log',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityStepReport: 'Report',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityGlobalsOnly: 'Only these globals',
+  /** EXPERIENCE.md:377 */
+  databaseExpandAction: 'Add a volume',
+  /** EXPERIENCE.md:377 */
+  databaseSizeField: 'Size (MB)',
+  /** EXPERIENCE.md:377 */
+  databaseMountReadOnly: 'Mount read-only',
+  /** EXPERIENCE.md:377 */
+  databaseMountConsequence: 'Mounting makes this database available again to every namespace that uses it.',
+  /** EXPERIENCE.md:377 */
+  databaseDismountConsequence: 'Dismounting this database stops every process from reading or writing it until it is mounted again.',
+  /** EXPERIENCE.md:377 */
+  databaseTruncateConsequence: 'Truncating returns the unused space at the end of the database\'s file to the operating system. No data is removed.',
+  /** EXPERIENCE.md:377 */
+  databaseCompactConsequence: 'Compacting moves the database\'s free space to the end of its file, where Truncate can return it.',
+  /** EXPERIENCE.md:377 */
+  databaseDefragmentConsequence: 'Defragmenting can grow the database to make room while it works, and it cannot be paused.',
+  /** EXPERIENCE.md:377 */
+  databaseExpandConsequence: 'The new volume file is created in the database\'s new volume directory.',
+  /** EXPERIENCE.md:377 */
+  databaseTargetSizeLabel: 'Target file size (MB)',
+  /** EXPERIENCE.md:377 */
+  databaseTargetSizeHint: '0 returns all unused space. Otherwise enter less than the current size.',
+  /** EXPERIENCE.md:377 */
+  databaseTargetFreeLabel: 'Target free space at end of file (MB)',
+  /** EXPERIENCE.md:377 */
+  databaseTargetFreeHint: 'Enter a number from 0 to the database\'s free space.',
+  /** EXPERIENCE.md:377 */
+  databaseGlobalsHint: 'One name per line. Leave empty to check every global.',
+  /** EXPERIENCE.md:377 */
+  databaseGlobalsOneDatabase: 'Globals can be chosen when one database is checked.',
+  /** EXPERIENCE.md:377 */
+  databaseOperationRunning: '<operation> running on the instance since <time>',
+  /** EXPERIENCE.md:377 */
+  databaseOperationFinished: '<operation> finished.',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityOpenLog: 'Open the integrity log',
+  /** EXPERIENCE.md:377 */
+  databaseExpandDirty: 'Save your changes before adding a volume.',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityRunning: 'This check is still running.',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityNone: 'This instance holds no integrity check.',
+  /** EXPERIENCE.md:377 */
+  databaseListEmptyAgent: 'check the integrity of a database',
+  /** EXPERIENCE.md:377 */
+  databaseDetailsEmptyAgent: 'mount, dismount, truncate, compact or defragment a database',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityPrompt1: 'Which databases can I check for integrity?',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityPrompt2: 'What does an integrity check read?',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityPrompt3: 'Can an integrity check run while a database is in use?',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityLogPrompt1: 'Did the last integrity check find any errors?',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityLogPrompt2: 'Which databases did the last check cover?',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityLogPrompt3: 'When did the last integrity check run?',
+  /** EXPERIENCE.md:377 */
+  databaseInitialSizeHint: 'Enter a number of 1 or more, up to the new volume threshold when one is set.',
 } as const;
 
 /**

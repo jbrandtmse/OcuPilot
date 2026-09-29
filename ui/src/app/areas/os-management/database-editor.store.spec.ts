@@ -207,4 +207,34 @@ describe('the local database editor store', () => {
     expect(store.canSave()).toBe(false);
     expect(store.reason()).toBe('This instance has no database with that name.');
   });
+
+  it('Story 18.4: the size is its own group, and a grow refused after the file group applied does not send the file group again', async () => {
+    // Mutation (Rule 19): keep `absorbApplied` to the configuration group alone -> the second Save
+    // sends the file group again and this goes red.
+    const reason = 'Enter a whole number of megabytes larger than the current size and no larger than the maximum size.';
+    const { store, calls, events } = mount(
+      [
+        {
+          kind: 'error',
+          status: 422,
+          code: 'DATABASE.VALIDATION',
+          reason: 'The database was refused.',
+          detail: { violations: [{ field: 'Size', code: 'DATABASE.GROWSIZE.SHAPE', reason }], applied: ['file'] },
+        },
+      ],
+      { kind: 'ok', status: 200, body: { ...FORM, size: { Size: 5 } } }
+    );
+    await store.open('OCUPROBE183A');
+    expect(store.sizeHeld()).toBe(true);
+    expect(store.text('Size')).toBe('5');
+    store.setText('Size', '4');
+    store.setText('ExpansionSize', '8');
+    expect(await store.save()).toBe(false);
+    expect(JSON.parse(writes(calls)[0].body)).toEqual({ file: { ExpansionSize: 8 }, size: { Size: 4 } });
+    expect(store.violationFor('Size')).toBe(reason);
+    expect(events.map(({ action }) => action)).toEqual(['updated']);
+    store.setText('Size', '9');
+    await store.save();
+    expect(JSON.parse(writes(calls)[1].body)).toEqual({ size: { Size: 9 } });
+  });
 });

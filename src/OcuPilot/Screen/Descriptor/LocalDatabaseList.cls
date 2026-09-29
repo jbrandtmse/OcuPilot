@@ -14,8 +14,12 @@
 /// tools add the pairs their writes need beyond it (AD-8 as amended 2026-09-29).</p>
 /// <p>Its primary action is Create, which opens the wizard; its row action is Delete, whose typed-name
 /// dialog states the removal's impact (AD-8) and carries the choice to delete the file too (AD-56
-/// (ii)). Each runs a database tool (AD-53, AD-55). As a list it links out to nothing and it does not
-/// refresh (AD-43).</p>
+/// (ii)). Each runs a database tool (AD-53, AD-55). A second row action, <code>expand</code>, is Add a
+/// volume (<class>OcuPilot.Screen.Tool.LocalDatabaseExpand</class>, Story 18.4), which the editor's
+/// volume files section draws and no row does. Because a mount or a dismount on Database details
+/// changes this list's Status, it declares <code>database</code> as a secondary entity type and
+/// re-fetches after one (AD-14). As a list it links out to nothing and it does not refresh
+/// (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.LocalDatabaseList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -32,12 +36,12 @@ XData Declaration
   "refreshRates": [],
   "privileges": [{"resource": "%Admin_Manage", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
   "entityType": "database-configuration",
-  "secondaryEntityTypes": [],
+  "secondaryEntityTypes": ["database"],
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [{"id": "delete", "selfProtection": ""}],
+  "rowActions": [{"id": "delete", "selfProtection": ""}, {"id": "expand", "selfProtection": ""}],
   "context": {"fields": ["Name", "Directory", "Status"], "secretFields": []},
   "emptyStateKey": "localDatabaseListEmpty",
   "commandAliases": ["local databases", "configure database", "create database"],

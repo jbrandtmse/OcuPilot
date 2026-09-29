@@ -480,8 +480,8 @@ export class CommandBox {
    * selectable and then silently ignored would say the opposite of what the bar says about the
    * same action.
    *
-   * The two classes carry different id prefixes, so a screen declaring a primary and a row
-   * action under one identifier cannot produce two rows sharing a DOM id.
+   * An action a screen declares both as its primary and as a row action is offered once, as the
+   * primary, as the command bar draws it (Story 18.4).
    */
   private actionCandidates(needle: string): readonly CommandRow[] {
     const screen = this.navigation.screenForUrl(this.router.url);
@@ -509,6 +509,7 @@ export class CommandBox {
     const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
     const checked = screen.multiSelect === null ? 0 : this.stores.for(screen.descriptor, screen.refreshRates).checked().size;
     for (const action of screen.rowActions) {
+      if (action.id === screen.primaryAction.id) continue;
       // DW-389: the same test the primary action above already applies -- a declared action with
       // no registered handler is a control nothing can act on, so no surface offers it.
       if (action.id !== '' && this.actions.has(screen.descriptor, action.id)) {

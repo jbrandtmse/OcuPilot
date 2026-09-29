@@ -114,6 +114,20 @@ const LIVE_PAYLOAD = {
           failedPair: '%Admin_Manage:USE',
         },
         {
+          route: 'os-management/databases/integrity',
+          labelKey: 'databaseIntegrityLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/databases/integrity-log',
+          labelKey: 'databaseIntegrityLogLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
           route: 'os-management/databases/volumes',
           labelKey: 'databaseVolumeListLabel',
           sideBarPosition: 0,
@@ -564,6 +578,14 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     for (const route of ['os-management/local-databases', 'os-management/local-databases/edit']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
     }
+  });
+
+  it('Story 18.4: reads the Check integrity and Integrity log verdicts the live payload carries', () => {
+    // Check integrity declares the Databases list's pairs; the Integrity log declares
+    // `%Admin_Operate:USE` first, which this principal holds, so it is denied on the second.
+    const navigation = TestBed.inject(NavigationService);
+    expect(navigation.screenVerdict('os-management/databases/integrity')).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
+    expect(navigation.screenVerdict('os-management/databases/integrity-log')).toEqual({ allowed: false, failedPair: '%DB_IRISSYS:READ' });
   });
 
   it('Story 6.14: reads the messages.log verdict the live payload carries', () => {

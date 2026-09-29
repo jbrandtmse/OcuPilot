@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -366,17 +366,26 @@ Parameter OWNNAMESPACEFIELDS = "Globals,Routines";
 /// <p>A database configuration (Story 18.3, <method>Database</method>), keyed by its name.</p>
 Parameter TYPEDATABASECONFIG = "database-configuration";
 
+/// <p>A database, keyed by its directory (Story 18.4, <method>Database</method>): the disk
+/// operations' target.</p>
+Parameter TYPEDATABASE = "database";
+
+/// <p>The disk operation the own-database arm refuses on a <parameter>TYPEDATABASE</parameter>
+/// target.</p>
+Parameter DISMOUNTWRITETYPE = "DISMOUNT";
+
 /// <p>The write would delete, or change the directory, data server, resource or read-only setting
 /// of, one of the databases OcuPilot or the instance itself depends on
 /// (<method>OwnDatabaseNames</method>), compared by name without regard to case, or change the
 /// resource or read-only setting of another configuration name over one of their directories, which
-/// reaches the same file (AD-10 as amended 2026-09-29).</p>
+/// reaches the same file; or it would dismount one, matched by directory (AD-10 as amended
+/// 2026-09-29).</p>
 Parameter OCUPILOTDATABASE = "PROHIBITED.OCUPILOTDATABASE";
 
 /// <p>The one sentence <parameter>OCUPILOTDATABASE</parameter> carries, caller-neutral, published in
 /// EXPERIENCE.md's Fixed strings and pinned equal to <code>databaseRefusalOcuPilot</code> by
 /// <file>ui/tools/self-protection.test.mjs</file>.</p>
-Parameter OCUPILOTDATABASEREASON = "OcuPilot or the instance itself depends on this database. It cannot be deleted, and its directory, resource and read-only setting cannot be changed.";
+Parameter OCUPILOTDATABASEREASON = "OcuPilot or the instance itself depends on this database. It cannot be deleted or dismounted, and its directory, resource and read-only setting cannot be changed.";
 
 /// <p>The seven databases the classic Delete Database dialog refuses by name
 /// (<code>%CSP.UI.Portal.Dialog.DatabaseDelete</code>), comma-separated.</p>
@@ -756,6 +765,8 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
     If ..IsMappingType(pType) Quit ..MappingFields(pType)
     If pType = ..#TYPEDATABASECONFIG Quit ..DatabaseChangeFields()
+    ; A disk operation moves no field (Story 18.4): its one argument is its fingerprint subject's.
+    If pType = ..#TYPEDATABASE Quit ""
     Quit ""
 }
 
@@ -945,7 +956,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && '..IsMappingType(tType) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1041,8 +1052,8 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..Mapping(tType, tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
             Quit
         }
-        If tType = ..#TYPEDATABASECONFIG {
-            Set tSC = ..Database(tId, $Get(tToolClass), tTarget, .tChanged, .pProhibits, .pCode)
+        If (tType = ..#TYPEDATABASECONFIG) || (tType = ..#TYPEDATABASE) {
+            Set tSC = ..Database(tId, $Get(tToolClass), tTarget, .tChanged, .pProhibits, .pCode, tType)
             Quit
         }
         If tType = ..#TYPEAUDITING {
@@ -1854,12 +1865,40 @@ ClassMethod NamespaceFields() As %List [ Private ]
 /// reaches the protected file through another name. Then the reviewed-few sweep over
 /// <method>DatabaseChangeFields</method>. A read that fails refuses. A create is
 /// <method>Created</method>'s.</p>
-ClassMethod Database(pId As %String, pToolClass As %String, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+/// <p><b>A disk operation</b> (<var>pType</var> <parameter>TYPEDATABASE</parameter>, Story 18.4) is
+/// keyed by directory: a <parameter>DISMOUNTWRITETYPE</parameter> of a database whose directory
+/// <var>pTarget</var> answers is one of those databases' directories
+/// (<method>OwnDatabaseDirectories</method>, compared by
+/// <method>OcuPilot.Port.DatabasePort.SameDirectory</method>) is refused
+/// <parameter>OCUPILOTDATABASE</parameter>, and a read that fails refuses; every other operation is
+/// permitted, its one argument being its fingerprint subject's (<method>SkippedFields</method>).</p>
+ClassMethod Database(pId As %String, pToolClass As %String, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String, pType As %String = {..#TYPEDATABASECONFIG}) As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
+        If pType = ..#TYPEDATABASE {
+            If ..WriteTypeOf(pToolClass) = ..#DISMOUNTWRITETYPE {
+                Set tPort = ..PortClassOf(pToolClass)
+                Set tNamesSC = ..OwnDatabaseNames(tPort, .tOwn)
+                If $$$ISOK(tNamesSC) Set tDirsSC = ..OwnDatabaseDirectories(tPort, tOwn, .tDirectories)
+                Set tDirectory = ..Rendered(pTarget, "Directory")
+                If $$$ISERR(tNamesSC) || $$$ISERR(tDirsSC) || (tDirectory = "") {
+                    Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
+                    Quit
+                }
+                For tI = 1:1:$ListLength(tDirectories) {
+                    If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tDirectories, tI), tDirectory) {
+                        Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
+                        Quit
+                    }
+                }
+                If pProhibits Quit
+            }
+            Set tSC = ..ReviewedFewOnly(..#TYPEDATABASE, .pChanged, .pProhibits, .pCode)
+            Quit
+        }
         Set tDelete = (..WriteTypeOf(pToolClass) = "DELETE") || ..RemovesOf(pToolClass)
         If tDelete Kill pChanged
         Set tPort = ..PortClassOf(pToolClass)

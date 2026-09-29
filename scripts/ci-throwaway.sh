@@ -237,6 +237,7 @@ services:
       # classes: NamespaceWriteGate
       # classes: ClassicPageGate, MappingWriteGate
       # classes: DatabaseRefusals, DatabaseWriteGate
+      # classes: DatabaseActionsGate, DatabaseIntegrity
       # classes: WebSessionsLive
       # The Background tasks classes also create a scratch database and pause, resume and cancel a
       # compact of it; AdminPortForget runs the whole retention sweep.
@@ -383,6 +384,10 @@ services:
       # OCUPROBE183SRV data server they create, and write to the instance's own databases only
       # through a port that sends nothing.
       # classes: DatabaseRefusals, DatabaseWrite, DatabaseWriteDetail, DatabaseWriteGate, PathPortDatabases
+      # It also mounts, dismounts, truncates, compacts, defragments, grows, adds volumes to and
+      # checks the integrity of OCUPROBE184* databases, removing their background tasks and
+      # integrity checks by probe directory (Story 18.4).
+      # classes: DatabaseActions, DatabaseActionsGate, DatabaseActionsProhibited, DatabaseGrowExpand, DatabaseIntegrity
       OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
     volumes:
       - $DIR/data:/durable

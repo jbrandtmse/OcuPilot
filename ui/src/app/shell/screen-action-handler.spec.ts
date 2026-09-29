@@ -16,6 +16,8 @@ import {
   ADD_MATCHING_ROLE,
   ADD_ROLE,
   COPY_MAPPINGS,
+  DATABASE_DETAILS,
+  EXPAND_VOLUME,
   LOCAL_DATABASE_LIST,
   NAMESPACE_LIST,
   REMOVE_APPLICATION_ROLE,
@@ -1555,5 +1557,145 @@ describe('the Local databases list\u2019s Delete (Story 18.3)', () => {
     handler.confirmPending(true);
     await settle();
     expect(JSON.parse(calls[0].body)).toEqual({ action: 'terminate-with-error', id: '4711' });
+  });
+});
+
+/**
+ * Story 18.4 (AD-53, AD-56 (ii), AD-10): Database details' five disk operations each warn before they
+ * are sent; the mount's warning carries its read-only flag and the truncate's and compact's a size,
+ * each sent as the tool's one declared value; the Dismount reads the prohibited set's refusal as its
+ * advisory when it opens; and every send leaves its progress for the page's status line. The Local
+ * databases list's Add a volume is undrawn, and warns with its initial size when the editor starts it.
+ */
+describe('the disk operations (Story 18.4)', () => {
+  const DETAILS = SCREENS.find((screen) => screen.descriptor === DATABASE_DETAILS)!;
+  const LOCAL = SCREENS.find((screen) => screen.descriptor === LOCAL_DATABASE_LIST)!;
+  const DIRECTORY = '/durable/iris/mgr/ocuprobe184a/';
+
+  function mountWith(answers: readonly JsonResult<unknown>[], descriptor = DATABASE_DETAILS) {
+    const mounted = mount(undefined, descriptor);
+    const queue = [...answers];
+    const api = TestBed.inject(ApiService) as unknown as { requestJson: (path: string, init?: ApiRequestInit) => Promise<JsonResult<unknown>> };
+    api.requestJson = async (path: string, init: ApiRequestInit = {}) => {
+      mounted.calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+      return (queue.shift() ?? { kind: 'ok', status: 200, body: {} }) as JsonResult<unknown>;
+    };
+    return mounted;
+  }
+
+  it('registers the five operations on Database details and leaves Add a volume undrawn', () => {
+    // Mutation (Rule 19): drop Database details from `SCREEN_ACTION_DESCRIPTORS` -> the five go red.
+    const { actions } = mount(undefined, DATABASE_DETAILS);
+    for (const id of ['mount', 'dismount', 'truncate', 'compact', 'defragment']) {
+      expect(DETAILS.rowActions.some((action) => action.id === id)).toBe(true);
+      expect(actions.has(DATABASE_DETAILS, id)).toBe(true);
+    }
+    expect(LOCAL.rowActions.some((action) => action.id === EXPAND_VOLUME)).toBe(true);
+    expect(actions.has(LOCAL_DATABASE_LIST, EXPAND_VOLUME)).toBe(false);
+  });
+
+  it('warns before the mount with its read-only flag, and sends ReadOnly as a string value either way', async () => {
+    // Mutation (Rule 19): drop the mount's `WARNING_VALUES` entry -> the flag label and the value go red.
+    for (const checked of [true, false]) {
+      const { handler, calls, store } = mountWith([]);
+      handler.startFor(DATABASE_DETAILS, 'mount', DIRECTORY, null, store);
+      const pending = handler.pending();
+      expect(pending?.kind).toBe('warning');
+      expect(pending?.verb).toBe(STRINGS.databaseActionMount);
+      expect(pending?.consequence).toBe(STRINGS.databaseMountConsequence);
+      expect(pending?.flagLabel).toBe(STRINGS.databaseMountReadOnly);
+      expect(pending?.fieldLabel).toBe('');
+      expect(calls).toHaveLength(0);
+      handler.confirmPending(checked);
+      await settle();
+      expect(calls[0].path).toBe(`/api/ocupilot/screens/${DETAILS.toolIdentifier}/action`);
+      expect(JSON.parse(calls[0].body)).toEqual({ action: 'mount', id: DIRECTORY, values: { ReadOnly: checked ? 'true' : 'false' } });
+    }
+  });
+
+  it('warns before the truncate and the compact with a size field, and sends the size under its declared name', async () => {
+    for (const [action, value, label, hint, consequence] of [
+      ['truncate', 'TargetSize', STRINGS.databaseTargetSizeLabel, STRINGS.databaseTargetSizeHint, STRINGS.databaseTruncateConsequence],
+      ['compact', 'TargetFreeSpace', STRINGS.databaseTargetFreeLabel, STRINGS.databaseTargetFreeHint, STRINGS.databaseCompactConsequence],
+    ] as const) {
+      const { handler, calls, store } = mountWith([]);
+      handler.startFor(DATABASE_DETAILS, action, DIRECTORY, null, store);
+      const pending = handler.pending();
+      expect(pending?.consequence).toBe(consequence);
+      expect(pending?.fieldLabel).toBe(label);
+      expect(pending?.fieldHint).toBe(hint);
+      expect(pending?.flagLabel).toBe('');
+      handler.confirmPending(false, '30');
+      await settle();
+      expect(JSON.parse(calls[0].body)).toEqual({ action, id: DIRECTORY, values: { [value]: '30' } });
+    }
+  });
+
+  it('warns before the defragment and sends no value', async () => {
+    const { handler, calls, store } = mountWith([]);
+    handler.startFor(DATABASE_DETAILS, 'defragment', DIRECTORY, null, store);
+    expect(handler.pending()?.consequence).toBe(STRINGS.databaseDefragmentConsequence);
+    handler.confirmPending();
+    await settle();
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'defragment', id: DIRECTORY });
+  });
+
+  it('reads the dismount\u2019s impact as its dialog opens, and states a protected database\u2019s refusal as the advisory', async () => {
+    // Mutation (Rule 19): drop Database details from `IMPACT_ACTIONS` -> the read and the advisory go red.
+    const reason = STRINGS.databaseRefusalOcuPilot;
+    const { handler, calls, store } = mountWith([
+      { kind: 'ok', status: 200, body: { impact: { kind: 'database-dismount', refused: { code: 'PROHIBITED.OCUPILOTDATABASE', reason }, parts: [] } } },
+    ]);
+    handler.startFor(DATABASE_DETAILS, 'dismount', DIRECTORY, null, store);
+    await settle();
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${DETAILS.toolIdentifier}/impact?action=dismount&id=${encodeURIComponent(DIRECTORY)}`);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('warning');
+    expect(pending?.consequence).toBe(STRINGS.databaseDismountConsequence);
+    expect(pending?.advisory).toBe(reason);
+    handler.cancelPending();
+    expect(calls.map((call) => call.method)).toEqual(['GET']);
+
+    const permitted = mountWith([{ kind: 'ok', status: 200, body: { impact: null } }]);
+    permitted.handler.startFor(DATABASE_DETAILS, 'dismount', DIRECTORY, null, permitted.store);
+    await settle();
+    expect(permitted.handler.pending()?.advisory).toBe('');
+  });
+
+  it('leaves each send\u2019s progress: running while in flight, then finished, still running or refused', async () => {
+    // Mutation (Rule 19): never set `continues` in `send()` -> the still-running leg reads finished.
+    for (const [answer, state] of [
+      [{ kind: 'ok', status: 200, body: {} }, 'finished'],
+      [{ kind: 'ok', status: 200, body: { continues: true } }, 'continues'],
+      [{ kind: 'error', status: 409, code: 'DATABASE.DISMOUNTED', reason: STRINGS.databaseGlobalsHint, detail: null }, 'refused'],
+    ] as const) {
+      const { handler, store } = mountWith([answer as JsonResult<unknown>]);
+      expect(handler.progress()).toBeNull();
+      const sent = handler.sendFor(DATABASE_DETAILS, 'defragment', DIRECTORY);
+      expect(handler.progress()?.state).toBe('running');
+      expect(handler.progress()?.target).toBe(DIRECTORY);
+      await sent;
+      expect(handler.progress()?.state).toBe(state);
+      expect(handler.progress()?.actionId).toBe('defragment');
+      if (state === 'refused') expect(store.refusal()).toBe(STRINGS.databaseGlobalsHint);
+    }
+  });
+
+  it('warns before Add a volume with its initial size, and reports to the editor\u2019s own sink', async () => {
+    const { handler, calls } = mountWith([{ kind: 'ok', status: 200, body: {} }], LOCAL_DATABASE_LIST);
+    const refusals: string[] = [];
+    const applied: string[] = [];
+    handler.startFor(LOCAL_DATABASE_LIST, EXPAND_VOLUME, 'OCUPROBE184A', null, {
+      setRefusal: (reason) => refusals.push(reason),
+      applied: (action) => applied.push(action),
+    });
+    const pending = handler.pending();
+    expect(pending?.verb).toBe(STRINGS.databaseExpandAction);
+    expect(pending?.consequence).toBe(STRINGS.databaseExpandConsequence);
+    expect(pending?.fieldLabel).toBe(STRINGS.databaseInitialSize);
+    handler.confirmPending(false, '5');
+    await settle();
+    expect(JSON.parse(calls[0].body)).toEqual({ action: EXPAND_VOLUME, id: 'OCUPROBE184A', values: { InitialSize: '5' } });
+    expect(applied).toEqual([EXPAND_VOLUME]);
   });
 });

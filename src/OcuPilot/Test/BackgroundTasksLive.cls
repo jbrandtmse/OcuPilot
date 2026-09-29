@@ -212,6 +212,8 @@ Method TestTheScreensActionsResumePauseAndCancelACompact()
 /// account's own, under "Admin API" with its GUID as the id; the screen's Pause reaches it through
 /// <code>AsyncResult</code>, and <code>AsyncResult</code>'s own refusal of a cancel while it is paused
 /// is the published <code>TASK.BACKGROUND.STATE</code>; Resume sets it running again.</p>
+/// <p>While it is paused it is listed once, on its admin API row, naming the database it runs against
+/// (DW-1821).</p>
 /// <p>Mutation (Rule 19): drop the admin half from
 /// <method>OcuPilot.Port.BackgroundTaskPort.Rows</method> -- the listing leg goes red.</p>
 Method TestAnAdminApiCompactIsListedAndPausedThroughAsyncResult()
@@ -243,6 +245,11 @@ Method TestAnAdminApiCompactIsListedAndPausedThroughAsyncResult()
     Set tSC = ..Act("pause", tId, "", "", .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "the screen's Pause answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
     Do $$$AssertEquals(..StatusOf("Admin API", tGuid), "Paused", "and the row re-reads Paused")
+    ; DW-1821 (Story 18.4): the paused compact is listed once, on its admin API row, with its database.
+    Set tDirectory = $ZConvert(##class(%File).NormalizeDirectory($ClassMethod(..#SEED, "Directory")), "U")
+    Set tPaused = ..Listed("Admin API", tGuid)
+    Do $$$AssertEquals($Select($IsObject(tPaused): $ZConvert(##class(%File).NormalizeDirectory(tPaused.%Get("Database")), "U"), 1: ""), tDirectory, "the admin row names the database its task runs against")
+    Do $$$AssertEquals(..ListedFor(tDirectory), 1, "and the task is listed once")
     Set tSC = ..Act("cancel", tId, "", "", .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus _ " " _ ..Code(tAnswer) _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("reason"), 1: ""), "409 TASK.BACKGROUND.STATE " _ ##class(OcuPilot.Api.Error).#REASONTASKBACKGROUNDSTATE, "AsyncResult refuses to cancel a paused compact, with the published sentence")
     Set tSC = ..Act("resume", tId, "", "", .tStatus, .tAnswer)
@@ -427,6 +434,24 @@ Method Listed(pSource As %String, pId As %String) As %DynamicObject
         If (tEntry.%Get("Source") = pSource) && (tEntry.%Get("Id") = pId) Set tFound = tEntry
     }
     Quit tFound
+}
+
+/// <p>How many rows the screen's read lists as the test account whose <code>Database</code> is the
+/// directory <var>pDirectory</var>, normalized and upper-cased; <code>-1</code> when the read fails.</p>
+Method ListedFor(pDirectory As %String) As %Integer
+{
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/screens/tasks.background/read?maxRows=1000", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
+    If $$$ISERR(tSC) || (tStatus '= 200) Quit -1
+    Set tRead = ""
+    Try { Set tRead = ##class(%DynamicObject).%FromJSON(tRaw) } Catch {}
+    If '$IsObject(tRead) || '$IsObject(tRead.%Get("rows")) Quit -1
+    Set tCount = 0
+    Set tIterator = tRead.%Get("rows").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If tEntry.%Get("Database") = "" Continue
+        If $ZConvert(##class(%File).NormalizeDirectory(tEntry.%Get("Database")), "U") = pDirectory Set tCount = tCount + 1
+    }
+    Quit tCount
 }
 
 /// <p>The status the screen's read lists for <var>pSource</var> and <var>pId</var>, or

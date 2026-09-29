@@ -49,10 +49,14 @@ Parameter DELETEKEY = "osmgmt.namespaces.delete";
 /// <p>The agent's database delete key, which the baseline disables too (Story 18.3).</p>
 Parameter DATABASEDELETEKEY = "osmgmt.localdatabases.delete";
 
+/// <p>Story 18.4's disk operation keys that declare a classic page, which the baseline disables too.</p>
+Parameter DISKKEYS = "osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databases.integrity,osmgmt.localdatabases.grow,osmgmt.localdatabases.expand";
+
 /// <p>The pairs each declaring tool declares beyond its list's own, as <code>tool=pair|pair</code>
 /// entries: its declared set, with no classic page assigned. The declaring tools are exactly these,
-/// and the database file edit declares none of its own.</p>
-Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE";
+/// and the database file edit and truncate declare none of their own; Story 18.4's dismount, whose
+/// classic page performs it itself, declares no page.</p>
+Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,osmgmt.databasedetails.mount=%Admin_Secure:USE,osmgmt.databasedetails.truncate=,osmgmt.databasedetails.compact=%DB_IRISSYS:WRITE,osmgmt.databasedetails.defragment=%DB_IRISSYS:WRITE,osmgmt.databases.integrity=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.localdatabases.grow=%Admin_Operate:USE,osmgmt.localdatabases.expand=%Admin_Operate:USE";
 
 /// <p>The throwaway principals' password, generated for the run.</p>
 Property PreparedPassword As %String;
@@ -121,7 +125,7 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
 {
     Set tSC = ..Roster(.tRoster, .tTools)
     Do $$$AssertStatusOK(tSC, "the declaring tools are read from the registry")
-    Do $$$AssertEquals($ListToString(tTools), $ListToString(..Declared()), "the tools declaring a replaced classic page are the fourteen OWNPAIRS names")
+    Do $$$AssertEquals($ListToString(tTools), $ListToString(..Declared()), "the tools declaring a replaced classic page are the twenty-one OWNPAIRS names")
     For tI = 1:1:$ListLength(tTools) {
         Set tName = $List(tTools, tI)
         Kill tTool
@@ -324,12 +328,16 @@ Method RestorePages() As %Status
     Quit tSC
 }
 
-/// <p>Enable the agent's namespace and database delete keys, over the snapshot this class took.</p>
+/// <p>Enable the agent's namespace and database delete keys and Story 18.4's disk operation keys,
+/// over the snapshot this class took.</p>
 Method EnableDelete() As %Status
 {
     Kill tSettings
     Set tSettings(..#DELETEKEY) = "enabled"
     Set tSettings(..#DATABASEDELETEKEY) = "enabled"
+    For tI = 1:1:$Length(..#DISKKEYS, ",") {
+        Set tSettings($Piece(..#DISKKEYS, ",", tI)) = "enabled"
+    }
     Quit ##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings)
 }
 

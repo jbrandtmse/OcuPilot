@@ -6,7 +6,8 @@
 /// <p>It also pins the refusal of the mutating-and-async combination (DW-1279), which is driven
 /// through <class>OcuPilot.Test.EndpointFixture</class> because no vendor endpoint queues a
 /// <code>PUT</code>, and that the only mutating pairs admitted to the queue are
-/// <parameter>OcuPilot.Port.AdminPort.QUEUEDWRITES</parameter>.</p>
+/// <parameter>OcuPilot.Port.AdminPort.QUEUEDWRITES</parameter>, and that a disk operation not admitted
+/// there is refused before it queues (<class>OcuPilot.Test.PortFixtureUnqueued</class>).</p>
 /// <p>Runs through <class>OcuPilot.Test.PortFixture</class> with no canned answer, so the real
 /// poll and delete run. Needs <code>%Admin_Operate:U</code> and <code>%Admin_Secure:U</code>, a
 /// mounted globals database for the test namespace, and auditing enabled. Each test queues one
@@ -75,23 +76,56 @@ Method TestAMutatingRequestThatWouldQueueIsRefusedBeforeTheTaskRowIsWritten()
     Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") '[ "task row", "but not at the mutating guard, which this read never trips: " _ ##class(OcuPilot.Test.LogProbe).Captured("message"))
 }
 
-/// <p>AD-26 as amended 2026-09-24 and 2026-09-28: the queued writes the port admits are exactly
-/// <code>Security.Audit.Record</code> <code>COPY</code> and <code>PURGE</code> and
-/// <code>Namespace.Namespace</code> <code>MAPPINGS</code>, each a mutating
-/// pair, and the probe pair the refusal above is driven with is not one of them, so the refusal is
-/// still what every other mutating request that would queue meets.</p>
+/// <p>AD-26 as amended 2026-09-24, 2026-09-28 and 2026-09-29: the queued writes the port admits are
+/// exactly <code>Security.Audit.Record</code> <code>COPY</code> and <code>PURGE</code>,
+/// <code>Namespace.Namespace</code> <code>MAPPINGS</code> and Story 18.4's six
+/// <code>Database.Actions</code> operations, each a mutating pair, and the probe pair the refusal above
+/// is driven with is not one of them, so the refusal is still what every other mutating request that
+/// would queue meets.</p>
 /// <p>Mutation (Rule 19): add <code>OcuPilotProbeAsyncWrite/PUT</code> to
 /// <parameter>OcuPilot.Port.AdminPort.QUEUEDWRITES</parameter> -> this and the refusal above go
 /// red.</p>
 Method TestOnlyTheNamedQueuedWritesAreAdmitted()
 {
     Set tQueued = $ListFromString($Parameter("OcuPilot.Port.AdminPort", "QUEUEDWRITES"))
-    Do $$$AssertEquals($ListToString(tQueued), "Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Namespace.Namespace/MAPPINGS", "the admitted queued writes are exactly the audit copy and purge and the copy of mappings")
+    Do $$$AssertEquals($ListToString(tQueued), "Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Namespace.Namespace/MAPPINGS,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK", "the admitted queued writes are exactly the audit copy and purge, the copy of mappings and the six disk operations")
     For tI = 1:1:$ListLength(tQueued) {
         Set tPair = $List(tQueued, tI)
         Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating($Piece(tPair, "/", 1), $Piece(tPair, "/", 2)), tPair _ " is a mutating pair")
     }
     Do $$$AssertTrue('##class(OcuPilot.Test.PortFixture).IsQueuedWrite("OcuPilotProbeAsyncWrite", "PUT"), "and the probe pair is not admitted")
+}
+
+/// <p>AD-26, AD-35 (Story 18.4): a port that does not admit the six queued disk operations refuses each
+/// of the three whose own <code>Run()</code> queues a task
+/// (<parameter>OcuPilot.Port.AdminPort.SELFQUEUEDTYPES</parameter>) before their semantics or
+/// <code>Run()</code>, naming why in the log, with no task row left; the three
+/// <code>ShouldRunAsync()</code> hands off meet the async branch's refusal the first test pins. Every
+/// request names a directory that holds no database, so nothing would change were one sent.</p>
+/// <p>Mutation (Rule 19): remove the self-queued refusal from
+/// <method>OcuPilot.Port.AdminPort.Sequence</method> -> the three self-queued legs reach the endpoint,
+/// which refuses the absent directory, and this goes red.</p>
+Method TestAnUnadmittedDiskOperationIsRefusedBeforeItQueues()
+{
+    Set tBefore = ..TaskCount()
+    Do $$$AssertTrue(tBefore >= 0, "the task list reads before the calls (" _ tBefore _ ")")
+    Set tAbsent = $Piece(..GlobalsDirectory(), "/", 1, *-2) _ "/ocuprobe184absent/"
+    For tCase = $ListBuild("COMPACT", "{""TargetFreeSpace"":0}", "own Run()"), $ListBuild("DEFRAGMENT", "", "own Run()"), $ListBuild("INTEGRITYCHECK", "databases", "own Run()") {
+        Set tType = $List(tCase, 1)
+        Set tBody = $List(tCase, 2)
+        If $Extract(tBody) = "{" Set tBody = ##class(%DynamicObject).%FromJSON(tBody)
+        If tBody = "databases" {
+            Set tBody = {"Databases": [{}]}
+            Do tBody.Databases.%Get(0).%Set("Directory", tAbsent, "string")
+        }
+        Kill tQuery
+        If tType '= "INTEGRITYCHECK" Set tQuery("dir") = tAbsent
+        Do ##class(OcuPilot.Test.LogProbe).Clear()
+        Set tSC = ##class(OcuPilot.Test.PortFixtureUnqueued).Invoke("Database.Actions", tType, .tQuery, tBody, .tResult, .tHttp, .tFault)
+        Do $$$AssertStatusNotOK(tSC, tType _ ": refused when it is not admitted")
+        Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ $List(tCase, 3), tType _ ": at the refusal that names the queue: " _ ##class(OcuPilot.Test.LogProbe).Captured("message"))
+    }
+    Do $$$AssertEquals(..TaskCount(), tBefore, "and no task row was queued")
 }
 
 /// <p>How many async task rows this user owns, read through the port's own

@@ -100,7 +100,8 @@ const LIVE_PAYLOAD = {
       // sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead of the
       // listed ones in position order. Story 18.2 adds the namespace editor among the unlisted ones
       // and Namespaces last, and Story 18.14 the three mapping forms and lists among the unlisted ones.
-      // Story 18.3 adds the local database form among the unlisted ones and Local databases last.
+      // Story 18.3 adds the local database form among the unlisted ones and Local databases last, and
+      // Story 18.4 Check integrity and the Integrity log among the unlisted ones.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -115,6 +116,20 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/databases/integrity',
+          labelKey: 'databaseIntegrityLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/databases/integrity-log',
+          labelKey: 'databaseIntegrityLogLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
         },
         {
           route: 'os-management/databases/volumes',
@@ -521,6 +536,11 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
   }
   assert.deepEqual(service.screenVerdict('os-management/databases/details'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
+  // Story 18.4: Check integrity declares the Databases list's pairs, so this Operate-only principal is
+  // denied on `%Admin_Manage:USE`; the Integrity log declares `%Admin_Operate:USE` first, which it
+  // holds, and is denied on the second.
+  assert.deepEqual(service.screenVerdict('os-management/databases/integrity'), { allowed: false, failedPair: '%Admin_Manage:USE' });
+  assert.deepEqual(service.screenVerdict('os-management/databases/integrity-log'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
   assert.deepEqual(service.screenVerdict('logs/audit'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   // Story 2.12: the application error log declares `%Admin_Operate:USE` -- which this principal
   // holds -- and `%DB_IRISSYS:READ`, which it does not, so it is denied on the second. That pair is

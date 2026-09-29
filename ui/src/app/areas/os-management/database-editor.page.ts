@@ -21,9 +21,12 @@ import { STRINGS, stringFor } from '../../core/strings';
 import { cellView, fieldOf } from '../../core/table-model';
 import type { Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
+import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
+import { EXPAND_VOLUME, LOCAL_DATABASE_LIST, ScreenActionHandler } from '../../shell/screen-action-handler';
 import { ServerPathPicker, type ServerPath } from '../../shell/server-path-picker';
 import { LOCAL_DATABASE_LIST_ROUTE } from './database-actions';
-import { DATABASE_VOLUMES_ROUTE, DatabaseEditor, VOLUME_PATH_FIELD, VOLUME_ROOT_FIELD } from './database-editor.store';
+import { DATABASE_VOLUMES_ROUTE, DatabaseEditor, SIZE_FIELD, VOLUME_PATH_FIELD, VOLUME_ROOT_FIELD } from './database-editor.store';
+import { operationLine } from './database-operation';
 import { LOCAL_DATABASE_FORM_ROUTE } from './database-wizard.page';
 
 /** The machine code a privilege denial carries (AD-39). Never the envelope's human reason. */
@@ -79,13 +82,22 @@ interface VolumeRowView {
  * list them, the held value read-only with the pair it lacks named. The sticky Save sends only the
  * changed groups (the store's).
  *
+ * **Size and Add a volume** (Story 18.4). General's Size (MB) is sent as its own group, the size grow,
+ * after the other two. While a Save is in flight its held Save button is its running line; a Save the
+ * instance answers still running reads the still-running sentence until the next edit or Save.
+ * Volume files' Add a volume starts the Local databases list's declared
+ * `expand` for this database through the shell's handler, whose warning dialog asks for the initial
+ * size and renders here; it waits, `aria-disabled` with its reason, while the form holds an unsaved
+ * change, since it acts on the saved configuration. Its status line and its refusal render in the
+ * section, and the volume files read again once it is applied.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
  */
 @Component({
   selector: 'app-database-editor-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Dialog, ServerPathPicker],
+  imports: [Dialog, ScreenActionDialogs, ServerPathPicker],
   template: `<section class="ocu-form-page">
     @if (hasSummary) {
       <div #summary class="ocu-banner ocu-form-summary" role="alert" tabindex="-1">
@@ -118,6 +130,27 @@ interface VolumeRowView {
 
     <section class="ocu-form-fields" data-group="general" aria-labelledby="ocu-database-group-general">
       <h2 class="ocu-details-heading" id="ocu-database-group-general">{{ STRINGS.processDetailsGroupGeneral }}</h2>
+      @if (sizeHeld) {
+        <div class="ocu-field" data-field="size">
+          <label class="ocu-field-label" [attr.for]="sizeField.id">{{ sizeField.label }}</label>
+          <div class="ocu-field-control">
+            <input
+              class="ocu-field-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              [id]="sizeField.id"
+              [value]="sizeField.value"
+              [attr.aria-invalid]="sizeField.invalid"
+              [attr.aria-describedby]="sizeField.describedBy"
+              (input)="onText('Size', $event)"
+            />
+          </div>
+          @if (sizeField.invalid) {
+            <p class="ocu-form-error" [id]="sizeField.id + '-reason'">{{ sizeField.reason }}</p>
+          }
+        </div>
+      }
       @for (view of generalText; track view.field) {
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="view.id">{{ view.label }}</label>
@@ -272,8 +305,28 @@ interface VolumeRowView {
       @if (showVolumesEmpty) {
         <p class="ocu-data-table-empty-title">{{ STRINGS.databaseVolumeListEmpty }}</p>
       }
+      @if (expandRefusal) {
+        <p class="ocu-banner ocu-banner-warning" role="alert" data-volume="refusal">{{ expandRefusal }}</p>
+      }
+      <p class="ocu-namespace-copy-status" role="status" data-volume="operation">{{ expandStatus }}</p>
+      <div class="ocu-form-actions">
+        <button
+          type="button"
+          class="ocu-button-secondary"
+          data-action="add-volume"
+          [attr.aria-disabled]="expandBlocked"
+          [attr.aria-describedby]="expandDescribedBy"
+          (click)="onAddVolume()"
+        >
+          {{ STRINGS.databaseExpandAction }}
+        </button>
+      </div>
+      @if (expandWaits) {
+        <p class="ocu-field-caption" [id]="expandReasonId" data-volume="dirty">{{ STRINGS.databaseExpandDirty }}</p>
+      }
     </section>
     }
+    <app-screen-action-dialogs [descriptor]="localDatabaseList" />
 
     @if (loadedFlag) {
     <div class="ocu-form-bar">
@@ -322,6 +375,16 @@ export class DatabaseEditorPage {
 
   protected readonly resourceRefusedId = 'ocu-database-edit-resource-refused';
 
+  protected readonly expandReasonId = 'ocu-database-edit-expand-reason';
+
+  /** The descriptor whose Add a volume this page starts, which its warning dialog renders for. */
+  protected readonly localDatabaseList = LOCAL_DATABASE_LIST;
+
+  private readonly screenActions = inject(ScreenActionHandler);
+
+  /** The sentence Add a volume was last refused with, or `''`. */
+  private readonly expandRefusalSignal = signal('');
+
   /** Bumped by the stores, so the template re-reads them under `OnPush`. */
   private readonly generation = signal(0);
 
@@ -347,6 +410,8 @@ export class DatabaseEditorPage {
       stopDirty();
       stopIdChange.unsubscribe();
       this.store.reset();
+      // The handler is the app's, so a dialog left open would outlive the page it was opened on.
+      if (this.screenActions.pending()?.descriptor === LOCAL_DATABASE_LIST) this.screenActions.cancelPending();
     });
   }
 
@@ -399,8 +464,10 @@ export class DatabaseEditorPage {
     return this.store.saved();
   }
 
+  /** "Saved" with its read-back line, or the still-running sentence for a size grow that continues (AD-26). */
   protected get savedText(): string {
     this.generation();
+    if (this.store.continues()) return STRINGS.auditDatabaseStillRunning;
     return savedLine(this.store.readBack());
   }
 
@@ -430,6 +497,44 @@ export class DatabaseEditorPage {
 
   protected get resourceField(): TextView {
     return this.textView('ResourceName', STRINGS.webAppColumnResource);
+  }
+
+  /** Whether the form read answered the file's size, so Size (MB) is drawn (Story 18.4). */
+  protected get sizeHeld(): boolean {
+    this.generation();
+    return this.store.sizeHeld();
+  }
+
+  protected get sizeField(): TextView {
+    return this.textView(SIZE_FIELD, STRINGS.databaseSizeField);
+  }
+
+  /** Add a volume waits while the form holds an unsaved change. */
+  protected get expandWaits(): boolean {
+    this.generation();
+    return this.store.dirty();
+  }
+
+  protected get expandBlocked(): 'true' | null {
+    this.generation();
+    return this.expandWaits || !this.store.editable() ? 'true' : null;
+  }
+
+  protected get expandDescribedBy(): string | null {
+    return this.expandWaits ? this.expandReasonId : null;
+  }
+
+  protected get expandRefusal(): string {
+    return this.expandRefusalSignal();
+  }
+
+  /** Add a volume's running, finished or still-running line, for this database only. */
+  protected get expandStatus(): string {
+    this.generation();
+    const progress = this.screenActions.progress();
+    if (progress === null || progress.descriptor !== LOCAL_DATABASE_LIST || progress.actionId !== EXPAND_VOLUME) return '';
+    if (progress.target !== this.store.name()) return '';
+    return operationLine(STRINGS.databaseExpandAction, progress.state, progress.since);
   }
 
   protected get thresholdField(): TextView {
@@ -562,6 +667,19 @@ export class DatabaseEditorPage {
 
   protected onRetryVolumes(): void {
     void this.store.loadVolumes();
+  }
+
+  /**
+   * Add a volume: the handler's warning dialog asks for the initial size, and the confirmed action
+   * reports here -- its refusal in the section, its success by reading the volume files again.
+   */
+  protected onAddVolume(): void {
+    if (this.expandBlocked !== null) return;
+    this.expandRefusalSignal.set('');
+    this.screenActions.startFor(LOCAL_DATABASE_LIST, EXPAND_VOLUME, this.store.name(), null, {
+      setRefusal: (reason) => this.expandRefusalSignal.set(reason),
+      applied: () => void this.store.loadVolumes(),
+    });
   }
 
   protected async onSave(): Promise<void> {
