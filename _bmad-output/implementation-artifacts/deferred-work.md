@@ -8147,3 +8147,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: staging-16-7 run 36569407842 attempt 1 on ff53360c (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/a11y-structural-invariants.browser-spec.mjs, ui/browser/structural-walk.mjs
 - evidence: attempt 2 green on the same head; the same spec passed on 01e36ec7 (run 36564571344); the walk evaluates one long function per screen (inference: a slow runner exceeds puppeteer's default protocolTimeout)
 - 2026-09-29T13:27:46Z status=routed owner=range-end-cleanup by=orchestrator note=raise protocolTimeout for the walk's browser or split the per-screen evaluation
+
+### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
+- source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
+- evidence: browser shard 1/3, 3 passed 1 failed; the same code passed on staging ff53360c attempt 2 and on 16.3's own runs; shard 1 duration unchanged (21 min vs 18-23); intermittent (inference: the side bar renders after a privilege read the spec does not wait for)
+- 2026-09-29T13:58:49Z status=routed owner=16-4-task-export-and-import by=orchestrator note=Epic 16 owns the spec (16.3): wait for the rail item's side bar to finish its privilege read before querying items; pin with repeated runs
