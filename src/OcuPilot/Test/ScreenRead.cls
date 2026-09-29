@@ -168,8 +168,12 @@ Method TestTheRealWebApplicationListTruncatesAtTwo()
 }
 
 /// <p>Field drift -- for every production descriptor whose read is an admin <code>LIST</code> or
-/// <code>UPCOMING</code>, issued with its fixed <code>source.query</code>, each declared read field and
-/// context field is a key of the live endpoint's first row.
+/// <code>UPCOMING</code>, or a list over one member of a bare type (<code>source.rows</code>, Story
+/// 16.7), issued with its fixed <code>source.query</code>, each declared read field and
+/// context field is a key of the live endpoint's first row, the member's first row for a
+/// <code>rows</code> read. License usage's By user and Distributed members answer a row only while a
+/// terminal session holds a license unit: over HTTP alone both read empty on a throwaway, and the
+/// <code>iris session</code> this suite runs in holds one.
 /// <method>OcuPilot.Screen.Read.Project</method> writes <code>null</code> for a missing key, so a
 /// misspelt field would otherwise ship as an empty column. A read that declares
 /// <code>source.rowGet</code> holds its detail fields to the live detail call of that first row's
@@ -190,20 +194,25 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
     Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
     Do $$$AssertStatusOK(tSC, "the production descriptors list")
     Set tChecked = 0
+    Set tRowsChecked = ""
     For tI = 1:1:$ListLength(tList) {
         Set tClass = $List(tList, tI)
         Set tRead = $ClassMethod(tClass, "Read")
         If '$IsObject(tRead) Continue
         Set tSource = tRead.%Get("source")
-        If '$IsObject(tSource) || (tSource.%Get("port") '= "admin") || '$ListFind($ListBuild("LIST", "UPCOMING"), tSource.%Get("type")) Continue
+        Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
+        If '$IsObject(tSource) || (tSource.%Get("port") '= "admin") || ('$ListFind($ListBuild("LIST", "UPCOMING"), tSource.%Get("type")) && (tRowsMember = "")) Continue
         If $ClassMethod(tClass, "ParentScope") '= "" Continue
         If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList"), tClass) Continue
         Set tChecked = tChecked + 1
+        If tRowsMember '= "" Set tRowsChecked = tRowsChecked _ $ListBuild($Piece(tClass, ".", *))
         Kill tQuery
         Do ##class(OcuPilot.Screen.Read).SeedSourceQuery(tSource, .tQuery)
         Set tPortSC = ##class(OcuPilot.Port.AdminPort).Invoke(tSource.%Get("endpoint"), tSource.%Get("type"), .tQuery, "", .tAnswer, .tHttp, .tFault)
         Do $$$AssertStatusOK(tPortSC, tClass _ ": the live " _ tSource.%Get("endpoint") _ " " _ tSource.%Get("type") _ " answers")
         If $$$ISERR(tPortSC) Continue
+        ; Story 16.7: a list over one member of a bare type holds its fields to that member's rows.
+        If tRowsMember '= "" Set tAnswer = $Select($IsObject(tAnswer) && tAnswer.%IsA("%Library.DynamicObject"): tAnswer.%Get(tRowsMember), 1: "")
         Set tHasRow = $IsObject(tAnswer) && tAnswer.%IsA("%Library.DynamicArray") && (tAnswer.%Size() > 0)
         Do $$$AssertTrue(tHasRow, tClass _ ": and answers at least one row to hold the declared fields to")
         If 'tHasRow Continue
@@ -249,6 +258,9 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         }
     }
     Do $$$AssertTrue(tChecked > 0, "at least one production descriptor declares an admin LIST read: " _ tChecked)
+    For tTab = "LicenseSummaryTab", "LicenseProcessTab", "LicenseUserTab", "LicenseDistributedTab" {
+        Do $$$AssertTrue($ListFind(tRowsChecked, tTab) > 0, "the sweep held " _ tTab _ "'s list over one member to its live rows (Story 16.7): " _ $ListToString(tRowsChecked))
+    }
 }
 
 /// <p>AC3, Story 6.10 -- "No <code>ns</code> in the read" (Boundaries) means the Locks read

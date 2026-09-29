@@ -37,6 +37,9 @@ Parameter SYSTEMUSAGESHM As INTEGER = 14;
 /// <p><code>Monitor</code>'s unprefixed dashboard type number (Story 6.9).</p>
 Parameter DASHBOARDMAIN As INTEGER = 12;
 
+/// <p><code>Monitor</code>'s unprefixed license-usage type number (Story 16.7).</p>
+Parameter LICENSEUSAGE As INTEGER = 16;
+
 Property Type As %Integer;
 
 Property ApiVersion As %Integer;
@@ -64,7 +67,9 @@ ClassMethod Arm(pKey As %String, pValue As %String, pParent As %String = "")
 /// <code>maxRows</code>, likewise), or, for <code>Test.Fixed</code> and <code>Test.Upcoming</code>,
 /// <code>type</code> (the request type number) and <code>query</code> (every query parameter as
 /// <code>name=value</code>, comma-separated, in name order), which <code>Test.Object</code> and each
-/// child list also record, and <code>parentQuery</code>, the parent list's. <code>""</code> when never
+/// child list also record, and <code>parentQuery</code>, the parent list's; and, for
+/// <code>Monitor</code>, <code>monitorTypes</code> (the type numbers issued, in order) and
+/// <code>monitorQuery</code> (every call's query, likewise). <code>""</code> when never
 /// recorded.</p>
 ClassMethod Recorded(pKey As %String) As %String
 {
@@ -145,6 +150,7 @@ Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbs
         ; answer by, so this dispatches on `..Type` alone, the way `%Api.Admin.Endpoints.Monitor`
         ; itself does.
         Do ..Note("monitorTypes", ..Type)
+        Do ..NoteQuery("monitorQuery")
         If ..Faulted($Get(^||OcuPilotReadSource("byTypeFault", ..Type), ""), .pSC) Quit {}
         Quit ##class(%DynamicAbstractObject).%FromJSON($Get(^||OcuPilotReadSource("byType", ..Type), "{}"))
     }

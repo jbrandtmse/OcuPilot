@@ -96,7 +96,9 @@ const LIVE_PAYLOAD = {
       // to nine, in ScreensForArea's own (sideBarPosition, class name) collation: the unlisted
       // sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead of the
       // listed ones in position order. Story 18.2 adds the namespace editor among the unlisted ones
-      // and Namespaces last, and Story 18.14 the three mapping forms and lists among the unlisted ones.
+      // and Namespaces last, Story 18.14 the three mapping forms and lists among the unlisted ones,
+      // and Story 16.7 License usage's three unlisted tabs among them and License usage and the
+      // Dashboard last.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -132,6 +134,27 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/license-usage/distributed',
+          labelKey: 'licenseUsageDistributed',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/license-usage/processes',
+          labelKey: 'licenseUsageByProcess',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/license-usage/users',
+          labelKey: 'licenseUsageByUser',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
         },
         {
           route: 'os-management/namespaces/edit',
@@ -216,6 +239,20 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 6,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/license-usage',
+          labelKey: 'licenseUsageLabel',
+          sideBarPosition: 7,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/dashboard',
+          labelKey: 'dashboardLabel',
+          sideBarPosition: 8,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
         },
       ],
     },
