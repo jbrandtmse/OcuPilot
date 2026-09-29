@@ -4984,6 +4984,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns suite hygiene; an unguarded turn is a flake source of exactly the class this epic has already paid for twice
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-28T11:46:09Z occurrence=16-3-effective-privileges-and-the-permission-check-tool note=recurred on sharded CI run 36411822579 shard 1 (30s wait for the refused card); green next run
+- 2026-09-28T15:29:55Z occurrence=18-2-namespaces-and-their-mappings note=CI run 36440901497 shard 1/3 on merge head 1afd8045: AC2 timed out at :140 (30 s); passed locally on the merged tree in 8 s
 
 ### DW-1315: The IsEnabled-before-HoldsAdminResource ordering in OnPreDispatch is unexercised
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -6581,6 +6582,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T02:25:57Z status=routed owner=burndown by=harvest note=take AD-34's per-target lock in the screen caller too, or record why ordering by the vendor is enough
 - 2026-09-23T20:58:41Z owner=range-end-cleanup by=burndown note=Epic 7 burn-down overflow: the per-target lock belongs to the screen caller in Operation/ScreenAction, which Epic 8's AD-55 Save route also reaches; one fix after the Epic 7/8 merge covers both callers
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=a per-target lock must cover both callers' port write, not only the claim: an AD-34/AD-53 design change
+- 2026-09-28T14:20:24Z occurrence=18-2-namespaces-and-their-mappings
 
 ### DW-1498: The client explains the serving-path refusal only for Install.Roster's three applications, while the instance also protects the applications install recorded for a probe profile
 - source: _bmad-output/implementation-artifacts/spec-7-1-enable-disable-and-delete-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
@@ -7883,6 +7885,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: 18.2's plan left it unobserved (it needs a probe database); the orchestrator routed it at the 18.2 spec gate 2026-09-28
 - 2026-09-28T11:02:18Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=observe its payload on the throwaway; an async write needs a QUEUEDWRITES entry (AD-26)
+- 2026-09-28T15:06:10Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=orchestrator 2026-09-28: 18.14 split for risk; 18.15 runs after 18.4 with its Task 0 observation first
 
 ### DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file: iris.cpf sits in the manager directory's parent, so an overwriting file consumer under an allowed data-directory root could resolve it
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
@@ -7890,16 +7893,48 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T11:02:18Z status=routed owner=18-7-encryption by=harvest note=18.7's key-file write is Epic 18's first file consumer; decide there whether kind=file also refuses the CPF's directory
 - 2026-09-28T11:21:00Z occurrence=18-1-the-directory-allow-list
 - 2026-09-28T11:21:00Z status=routed owner=18-7-encryption by=cr note=also the databases one level down: irisaudit/ and irissecurity/ IRIS.DAT resolve to an overwriting file consumer
+- 2026-09-28T14:34:22Z status=routed owner=18-1-the-directory-allow-list by=merge_gate note=orchestrator 2026-09-28: fix before Epic 16's 16.4, own commit after 18.2's boundary, under 18.1 rework iteration 3
+- 2026-09-28T17:04:58Z status=resolved-by:18-1-the-directory-allow-list by=adjudication note=67790caa: PATH.INSTANCE refuses an overwrite of files beside the CPF (read at call time) and IRIS.DAT one below the manager dir; Test/PathPort legs, mutations
 
 ### DW-1778: PathPort.Resolve's file kind offers only new-or-overwrite: a consumer that reads an existing file (an import, a key file to activate) is refused PATH.EXISTS unless it passes pOverwrite, and nothing ties pOverwrite to a tool declaration
 - source: spec-18-1-the-directory-allow-list.md (code review 3) | severity: med | fix-risk: med | footprint: in-epic
 - evidence: PathPort.cls:276 refuses an existing file unless pOverwrite; AD-21's sixth case binds every server-path field, and 16.4 and 19.2 (import), 18.7 (activate or manage a key file) name existing files to read. pOverwrite is a bare runtime boolean. (inference) on consumer impact; no consumer calls Resolve yet.
 - 2026-09-28T11:21:00Z status=routed owner=18-7-encryption by=cr note=decide Resolve's file mode (new, overwrite, must exist) and how a tool declares it; amend AD-21; 16.4's import too
+- 2026-09-28T14:34:22Z status=routed owner=18-1-the-directory-allow-list by=merge_gate note=orchestrator 2026-09-28: fix before Epic 16's 16.4, own commit after 18.2's boundary, under 18.1 rework iteration 3
+- 2026-09-28T17:27:10Z status=resolved-by:18-1-the-directory-allow-list by=adjudication note=67790caa: kind source requires an existing file, PATH.NOFILE, never overwrites; Test/PathPort legs with mutations
 
 ### DW-1779: A directory-kind location may be the manager directory itself (the unrestricted root, empty name), so a consumer whose vendor writes its own files into the chosen directory (a database's IRIS.DAT, journals, a backup) lands among the instance's own files
 - source: spec-18-1-the-directory-allow-list.md (code review 3) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: PATH.MANAGER applies to kind file only (PathPort.cls:270); ResolveOf(<ManagerDirectory>, "", "directory") answers 200 (Test/PathPort.cls), and IRISSYS's IRIS.DAT sits there. Severity unverified: whether the admin API's database create accepts a directory already holding an IRIS.DAT is (inference); settle with a create probe on the slot throwaway.
 - 2026-09-28T11:21:00Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=18.3's database directory must refuse the manager directory itself, or any directory holding an IRIS.DAT; probe first
+- 2026-09-28T14:34:22Z status=routed owner=18-1-the-directory-allow-list by=merge_gate note=orchestrator 2026-09-28: fix before Epic 16's 16.4, own commit after 18.2's boundary, under 18.1 rework iteration 3
+- 2026-09-28T17:27:10Z status=resolved-by:18-1-the-directory-allow-list by=adjudication note=67790caa: pVendorWrites refuses the manager directory itself, PATH.MANAGERDIR; another db's dir is DW-1791 (18.3)
+
+### DW-1784: A screen that replaces more than one classic page unions only the one it declares (AD-44): the New Namespace page's and the Delete Namespace dialog's custom resources never reach the namespace create and delete
+- source: spec-18-2-namespaces-and-their-mappings.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: NamespaceForm declares only %CSP.UI.Portal.NamespaceEdit and NamespaceList only %CSP.UI.Portal.Namespaces; %CSP.UI.Portal.Namespace and Dialog.NamespaceDelete are separate Zen pages whose custom resource Screen.Gate.RequiredPairs never reads. The spec names the gap in Design Notes; the spine does not. Dialog.Resource, Dialog.ProcessTerminate and the RoleResource dialogs share it; 18.3's Dialog.DatabaseDelete will.
+- 2026-09-28T14:20:12Z status=decision-pending owner=burndown by=cr note=owner call: union each replaced page's key into its write tool's pairs, or name the gap in AD-44; mirror in spine Deferred
+- 2026-09-28T15:06:10Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=owner decision: a screen replacing more than one classic page unions every replaced page's custom resource into its write tools' pairs; AD-44
+
+### DW-1785: NamespaceRules.Taken's fail-closed branch (a name read failing with anything but 404) is pinned by no test; the tool's own reads have no port seam
+- source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Taken quits the read error unless it is 404, the only guard between a Save create and the vendor upsert PUT; replacing that with Quit $$$OK reddens nothing, because Taken reads through the create tool AdminPort, not the Save fixture seam.
+- 2026-09-28T14:20:24Z status=wontfix-accepted owner=18-2-namespaces-and-their-mappings by=cr note=reopen_if=a POST /namespace sends its PUT after the name read failed with a non-404 status
+
+### DW-1786: No principal lacking the Namespaces screen pairs calls GET /namespace/form or /namespace/name, so NamespaceRules.Gate's named refusal is unpinned
+- source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: NamespaceWriteGate's three principals all hold %Admin_Manage:U and %DB_IRISSYS:R; making Gate answer pRefused 0 reddens nothing, and the port's own check would then answer 500, not 403. DeviceWire pins the device twin.
+- 2026-09-28T14:20:24Z status=wontfix-accepted owner=18-2-namespaces-and-their-mappings by=cr note=reopen_if=a caller without %Admin_Manage:USE gets anything but 403 AUTH.NOPRIVILEGE naming it from either route
+
+### DW-1787: A namespace edit naming a database in another case is diffed before it is spelled: the agent's card shows a case-only row, and on the install namespace the no-op is refused
+- source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: NamespaceRules.Changed and Mint.Merge compare display strings case-sensitively, and Spell runs only in DerivedFields just before the send; {Globals: hscustom} over HSCUSTOM diffs one row, which Prohibited.Namespace refuses OCUPILOTNAMESPACE. The screen sends list spellings from selects.
+- 2026-09-28T14:20:24Z status=wontfix-accepted owner=18-2-namespaces-and-their-mappings by=cr note=reopen_if=an agent card shows a database row differing only in case, or a case-only own-namespace edit is refused
+
+### DW-1788: The install-namespace predicate compares a delete's target with $NAMESPACE and %SYS only, so an OcuPilot application bound to another namespace would go with that namespace's delete
+- source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Prohibited.IsOwnNamespace reads no application binding; the installer binds all three of OcuPilot's applications to the install namespace and PROHIBITED.DISPATCH refuses repointing one, so only an out-of-band repoint, undone at the next start, reaches it. The dialog's impact would name the application.
+- 2026-09-28T14:20:24Z status=wontfix-theoretical owner=18-13-multi-namespace-install by=cr note=real if 18.13 lets OcuPilot's applications span namespaces: then refuse a delete whose bound apps include one of its own
 
 ### DW-1781: A ledger tool row keeps an argument as the model typed it when its tool does not declare it secret, when it is a nested or case-variant spelling of a declared name, or when the call resolved no tool; the credential-name pattern still masks what it matches
 - source: spec-16-16-the-agent-audit-viewer.md | severity: low | fix-risk: med | footprint: in-epic
@@ -7924,6 +7959,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-16-the-agent-audit-viewer.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Code review: Kernel.State.Ledger.WindowWhere binds %EXACT(UserName) = ? for a named read, the semantics the spec keeps (a named user behaves as it does today), and the page's User field now reaches it (inference: not reproduced).
 - 2026-09-28T14:20:32Z status=wontfix-accepted owner=16-16-the-agent-audit-viewer by=cr note=reopen_if=a named ledger search reads empty for a user whose rows the every-user view lists
+
+### DW-1790: PATH.INSTANCE protects only the files DW-1777 names: an overwriting consumer under a root reaching another database directory (IRISLIB at /usr/irissys/mgr/irislib/ on this build), the journals, or an IRIS.DAT deeper down can still resolve an existing instance file
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: InstanceFile answers 0 for /usr/irissys/mgr/irislib/IRIS.DAT (read-only, verification-gap layer, ocupilot-b-ci); journal files under <mgr>/journal/ are outside the rule; no overwriting consumer exists yet (inference on reach)
+- 2026-09-28T17:04:58Z status=escalated owner=burndown by=harvest note=policy call for the decision sheet: widen PATH.INSTANCE to every configured database directory and the journal directories, or accept the named set
+- 2026-09-28T17:21:24Z occurrence=18-1-the-directory-allow-list
+- 2026-09-28T17:21:25Z status=escalated owner=burndown by=cr note=also <mgr>/<db>/iris.lck and stream/ files, multi-volume IRIS-*.VOL (inference), and OcuPilot's own csp/ocupilot/ bundle
+- 2026-09-28T20:39:53Z status=routed owner=18-1-the-directory-allow-list by=merge_gate note=owner/orchestrator: widen PATH.INSTANCE to every configured db dir and journal dirs read at call time; own commit before 16.4 (18.1 cap override)
+- 2026-09-28T22:36:14Z status=resolved-by:18-1-the-directory-allow-list by=adjudication note=b086fb2a plus review 5: Config.Databases and journal dirs read per call, case-insensitive; PathPortInstance legs with mutations
+
+### DW-1791: A directory a vendor writes into may be another database's own: pVendorWrites refuses only <ManagerDirectory> itself, as AD-21 says, so <mgr>/irissecurity/ (IRIS.DAT, iris.lck) resolves for a database create
+- source: spec-18-1-the-directory-allow-list.md (code review 4) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Executed on ocupilot-b-ci: Resolve(<mgr>, "irissecurity", "directory", pVendorWrites 1) answers 200 /durable/iris/mgr/irissecurity/. Whether the vendor's database create accepts a directory already holding an IRIS.DAT is unmeasured (severity unverified); epic-18-context.md:76 reads this half of DW-1779 as fixed under 18.1.
+- 2026-09-28T17:21:24Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=probe the create on the throwaway; refuse a directory holding an IRIS.DAT in 18.3's tool, or amend AD-21 if PathPort should
 
 ### DW-1792: Ending a preserve-mode web session hangs until the gateway answers 504 and never ends it: the vendor DELETE waits on the session lock the session's own process holds
 - source: spec-16-2-web-sessions-listed-and-ended.md | severity: med | fix-risk: med | footprint: in-story
@@ -7955,3 +8004,22 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-5-background-tasks.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: BackgroundTaskPort.AdminRows maps the caller's whole AsyncResult LIST, so rows labeled /v2/ocupilot/ (left for the sweep for a caller who cannot delete them) are listed and offered controls; AdminPort.AwaitTask treats only Finished and Failed as terminal, so an OcuPilot task canceled while Queued waits out PORT.TIMEOUT.
 - 2026-09-28T23:43:52Z status=wontfix-accepted owner=16-5-background-tasks by=cr note=reopen_if=a user reports /v2/ocupilot/ rows in Background tasks, or a canceled queued task holds a read to PORT.TIMEOUT
+### DW-1795: PATH.INSTANCE refuses a database's volume files only beside its IRIS.DAT: an overwriting consumer can resolve an existing volume file in one of the database's additional volume directories (SYS.Database VolumeDirectoryList, NewVolumeDirectory)
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: PathPort.DatabaseDirectories reads Config.Databases, which carries no volume directories; every local database on ocupilot-b-ci is single-volume, so no reach today (inference)
+- 2026-09-28T22:08:13Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=harvest note=18.3's multi-volume properties create the first additional volume directory; extend the instance-file read to SYS.Database's volume directories there
+
+### DW-1796: PathPort.DatabaseDirectories' own read is pinned only against a stable default configuration: a configured StreamLocation, the skip of a ':' directory, and a failure or cache inside the reader keep every test green
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: All 14 local databases on ocupilot-b-ci answer StreamLocation empty (read-only probe, review layers), so the port's comparison with GetStreamLocation is default against default; the fixture's UseDatabaseDirectories replaces the reader whole, so the failed-read and never-kept legs (runs 11, 13, 395) mutate the consumer, not the reader.
+- 2026-09-28T22:34:01Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=pin the reader with a probe database whose stream location and configuration change between two reads
+
+### DW-1797: PathPort's journal read names only the primary, alternate and current file's directories: journal files left in a former journal directory, and IRIS.WIJ in a write-image-journal directory outside the manager directory, resolve for an overwriting consumer
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: JournalDirectories reads GetPrimaryDirectory, GetAlternateDirectory and GetCurrentFileName only; after a journal directory change the older files stay where they were and the journal history still lists them (inference; never changed on the throwaway). Config.config wijdir is empty on ocupilot-b-ci, so IRIS.WIJ is refused there only as a manager-directory file.
+- 2026-09-28T22:34:01Z status=routed owner=18-5-journals by=cr note=18.5 changes journal directories: add the history's directories and the WIJ directory to the refusal, read at call time
+
+### DW-1798: PATH.INSTANCE does not cover OcuPilot's own static bundle (csp/ocupilot/): DW-1790's review note named it, and the decision widened only databases and journals
+- source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: InstanceFile answers 0 for /durable/iris/csp/ocupilot/index.html on ocupilot-b-ci (read-only, blind-hunter layer); DW-1790's 17:21:25Z trailer lists the bundle, and its merge_gate decision names database and journal directories only; no overwriting consumer exists yet.
+- 2026-09-28T22:34:01Z status=decision-pending owner=burndown by=cr note=owner: should an overwriting consumer also be refused OcuPilot's own served files, as self-protection?

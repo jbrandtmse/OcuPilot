@@ -3380,6 +3380,54 @@ export const STRINGS = {
   /** EXPERIENCE.md:336 */
   agentLedgerPrompt3: 'Did the agent change any user or role today?',
 
+  // Story 18.2: the Namespaces list and its form -- the list's title, its three database column
+  // headers (the form's select labels), its empty state and agent invitation, the edit's refused
+  // action and six suggested prompts; the Delete dialog's consequence; the kernel's install-namespace
+  // refusal; and the namespace delete's impact phrases. The form's title reuses `headerNamespaceLabel`.
+  /** EXPERIENCE.md:378 */
+  namespaceListLabel: 'Namespaces',
+  /** EXPERIENCE.md:378 */
+  namespaceColumnGlobals: 'Globals database',
+  /** EXPERIENCE.md:378 */
+  namespaceColumnRoutines: 'Routines database',
+  /** EXPERIENCE.md:378 */
+  namespaceColumnTemp: 'Temporary database',
+  /** EXPERIENCE.md:378 */
+  namespaceListEmpty: 'No namespaces on this instance.',
+  /** EXPERIENCE.md:378 */
+  namespaceListEmptyAgent: 'create a namespace',
+  /** EXPERIENCE.md:378 */
+  namespaceFormRefusedAction: 'change this namespace',
+  /** EXPERIENCE.md:378 */
+  namespaceListPrompt1: 'Which databases does each namespace use for its globals and routines?',
+  /** EXPERIENCE.md:378 */
+  namespaceListPrompt2: 'Which namespaces share a database?',
+  /** EXPERIENCE.md:378 */
+  namespaceListPrompt3: 'What would deleting a namespace take with it?',
+  /** EXPERIENCE.md:378 */
+  namespaceFormPrompt1: 'Which database should a new namespace use for its globals?',
+  /** EXPERIENCE.md:378 */
+  namespaceFormPrompt2: 'What changes if this namespace reads its routines from another database?',
+  /** EXPERIENCE.md:378 */
+  namespaceFormPrompt3: 'Which web applications run in this namespace?',
+  /** EXPERIENCE.md:479 */
+  namespaceDeleteConsequence:
+    'Deleting this namespace also deletes its mappings and every web application that runs in it. Its databases stay. This cannot be undone.',
+  /** EXPERIENCE.md:481 */
+  namespaceRefusalOcuPilot:
+    'OcuPilot or the instance itself runs in this namespace. It cannot be deleted, and its globals and routines databases cannot be changed.',
+  /** EXPERIENCE.md:577 */
+  impactBoundApplications: '<n> web applications run in it and are deleted with it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactBoundApplicationsOne: '1 web application runs in it and is deleted with it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactBoundApplicationsNone: 'no web application runs in it',
+  /** EXPERIENCE.md:577 */
+  impactBoundApplicationsUnchecked: 'which web applications run in it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactDatabasesStay: 'it uses <n> databases, which stay: <names>',
+  /** EXPERIENCE.md:577 */
+  impactDatabasesStayOne: 'it uses 1 database, which stays: <names>',
   // Story 16.2: Web sessions, the third Web applications entry. Its Process ID, User and
   // Application column headers reuse existing keys.
   /** EXPERIENCE.md:357 */

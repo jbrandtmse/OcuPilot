@@ -92,12 +92,17 @@ Method TestAMintRecordsTheGatesPairsAndTheWireCarriesThem()
 /// <p>(b) The set carries a tool's extra pairs and its argument pairs.</p>
 Method TestTheSetCarriesExtraAndArgumentPairs()
 {
-    For tName = "osmgmt.devices.create", "osmgmt.devices.update", "osmgmt.devices.delete" {
+    For tName = "osmgmt.devices.create", "osmgmt.devices.update", "osmgmt.devices.delete", "osmgmt.namespaces.create", "osmgmt.namespaces.update", "osmgmt.namespaces.delete" {
         Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).Resolve(tName, .tTool), tName _ " resolves")
         Do $$$AssertTrue($IsObject(tTool), tName _ " is a registered tool")
         If '$IsObject(tTool) Continue
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Operation).RequiredPairsOf(tTool, "{}", .tPairs), tName _ ": its pairs resolve")
         Do $$$AssertTrue($ListFind(tPairs, $ListBuild("%DB_IRISSYS", "WRITE")) > 0, tName _ ": the set includes %DB_IRISSYS:WRITE")
+    }
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).Resolve("osmgmt.namespaces.delete", .tTool), "the namespace delete resolves")
+    If $IsObject(tTool) {
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Operation).RequiredPairsOf(tTool, "{}", .tPairs), "the namespace delete's pairs resolve")
+        Do $$$AssertTrue($ListFind(tPairs, $ListBuild("%Admin_Secure", "USE")) > 0, "and include %Admin_Secure:USE (AD-8)")
     }
 
     Set tName = "logs.applicationerrors.delete"

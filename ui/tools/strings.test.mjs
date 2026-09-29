@@ -638,14 +638,36 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // there IS now a sentence for an unknown namespace, which supersedes the claim this roster
   // carried for DW-126: the shell is silent for a namespace only where no screen publishes copy.
   // `userFormNamespace` is a field label, not a sentence about a namespace: the create-a-user
-  // form's startup namespace, which the account enters on sign-in.
+  // form's startup namespace, which the account enters on sign-in. Story 18.2's Namespaces list and
+  // form name their own copy `namespace*`, on the device screens' convention, and are listed here
+  // one by one.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
   assert.deepEqual(
     namespaceSentences.map(([key]) => key).sort(),
-    ['errorLogEmptyNamespace', 'errorLogRefusedNamespace', 'headerNamespaceLabel', 'userFormNamespace'],
-    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, one named refusal and one field label'
+    [
+      'errorLogEmptyNamespace',
+      'errorLogRefusedNamespace',
+      'headerNamespaceLabel',
+      'namespaceColumnGlobals',
+      'namespaceColumnRoutines',
+      'namespaceColumnTemp',
+      'namespaceDeleteConsequence',
+      'namespaceFormPrompt1',
+      'namespaceFormPrompt2',
+      'namespaceFormPrompt3',
+      'namespaceFormRefusedAction',
+      'namespaceListEmpty',
+      'namespaceListEmptyAgent',
+      'namespaceListLabel',
+      'namespaceListPrompt1',
+      'namespaceListPrompt2',
+      'namespaceListPrompt3',
+      'namespaceRefusalOcuPilot',
+      'userFormNamespace',
+    ],
+    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, one named refusal, one field label and the Namespaces screens\' own copy'
   );
 });
 

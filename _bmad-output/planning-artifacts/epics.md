@@ -7045,6 +7045,11 @@ So that no later screen has to invent its own answer to "which directories may I
 - **When** the stage is sequenced
 - **Then** it lands **first**.
 
+- DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file (iris.cpf sits in the manager directory's parent), so an overwriting file consumer under an allowed data-directory root could resolve it (ledger; re-routed by merge_gate 2026-09-28; first routed by harvest 2026-09-28)
+- DW-1778: PathPort.Resolve's file kind offers only new-or-overwrite, so a consumer that reads an existing file (an import, a key file to activate) is refused PATH.EXISTS unless it passes pOverwrite, which no tool declaration ties it to (ledger; re-routed by merge_gate 2026-09-28; first routed by cr 2026-09-28)
+- DW-1779: A directory-kind location may be the manager directory itself (the unrestricted root, empty name), so a consumer whose vendor writes its own files into the chosen directory (a database's IRIS.DAT) lands among the instance's own (ledger; re-routed by merge_gate 2026-09-28; first routed by cr 2026-09-28)
+- DW-1790: PATH.INSTANCE protects only the files DW-1777 names; widen it to every configured database directory and the journal directories, read from the instance at call time (ledger; routed by merge_gate 2026-09-28)
+
 ### Story 18.2: Namespaces and their mappings
 
 As an operator,
@@ -7075,7 +7080,9 @@ So that database administration is complete rather than list-only.
 - **When** it runs
 - **Then** it lists dependent namespaces and applications first, and confirms by name.
 
-- DW-1779: A directory-kind location may be the manager directory itself (the unrestricted root, empty name), so a consumer whose vendor writes its own files into the chosen directory (a database's IRIS.DAT) lands among the instance's own (ledger; routed by cr 2026-09-28)
+- DW-1791: A directory a vendor writes into may be another database's own: pVendorWrites refuses only <ManagerDirectory> itself, so <mgr>/irissecurity/ resolves for a database create (ledger; routed by cr 2026-09-28)
+- DW-1795: PATH.INSTANCE refuses a database's volume files only beside its IRIS.DAT; an overwriting consumer can resolve an existing volume file in an additional volume directory (ledger; routed by harvest 2026-09-28)
+- DW-1796: PathPort.DatabaseDirectories' own read is pinned only against a stable default configuration (a configured StreamLocation, a ':' directory, a failure or cache inside the reader) (ledger; routed by cr 2026-09-28)
 
 **Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
@@ -7127,6 +7134,8 @@ So that the transaction record is inspectable from the portal.
 - **When** it is placed
 - **Then** it stays in System Operation rather than joining the Logs area - a deliberate judgment carried from the catalog.
 
+- DW-1797: PathPort's journal read names only the primary, alternate and current file's directories, so files in a former journal directory and IRIS.WIJ outside the manager directory resolve for an overwrite (ledger; routed by cr 2026-09-28)
+
 **Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
 "checked" means seen on slot A that day, "reported" means the article's word only]
@@ -7176,8 +7185,6 @@ So that key management is not a reason to keep the classic portal open.
 - **Then** it is write-only and returned by no read, like every other secret.
 
 - DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards (ledger; routed by cr 2026-09-28)
-- DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file (iris.cpf sits in the manager directory's parent), so an overwriting file consumer under an allowed data-directory root could resolve it (ledger; routed by harvest 2026-09-28)
-- DW-1778: PathPort.Resolve's file kind offers only new-or-overwrite, so a consumer that reads an existing file (an import, a key file to activate) is refused PATH.EXISTS unless it passes pOverwrite, which no tool declaration ties it to (ledger; routed by cr 2026-09-28)
 
 ### Story 18.8: Superservers, authentication options and managed file transfer
 
@@ -7323,6 +7330,25 @@ So that the namespace configuration task the contest deferred is complete. [AMEN
 - **Given** copy-mappings, which is asynchronous
 - **When** it runs
 - **Then** it goes through the async path with progress.
+
+- DW-1784: A screen that replaces more than one classic page unions only the one it declares (AD-44), so the New Namespace page's and the Delete Namespace dialog's custom resources never reach the namespace create and delete (ledger; routed by merge_gate 2026-09-28)
+- Enable-interop moved to Story 18.15 [AMENDED 2026-09-28, orchestrator merge gate: split from 18.14 for risk, Rule 5].
+
+### Story 18.15: Enable interoperability on a namespace
+
+As an operator,
+I want to enable interoperability on a namespace,
+So that the namespace configuration the contest deferred includes the step the classic New Namespace page offers. [AMENDED 2026-09-28, orchestrator merge gate: split from 18.14 for risk, Rule 5]
+
+**Acceptance Criteria:**
+
+- **Given** SA-13's enable-interop route, which is asynchronous and changes more than the namespace
+- **When** it is picked up
+- **Then** its payload, its effects and the privileges it needs are observed on a throwaway first, before any form or tool is built.
+
+- **Given** the enable action
+- **When** it runs
+- **Then** it round-trips through the admin API's async path, reading the finished task's result once, and states its consequence before it is confirmed.
 
 - DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan (ledger; routed by merge_gate 2026-09-28)
 

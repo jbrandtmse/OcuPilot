@@ -4,8 +4,8 @@ type: 'feature'
 created: '2026-09-27'
 status: 'done'
 review_loop_iteration: 0
-baseline_revision: 'e3d44277999c4fec1400e21a8628db4a431ede7c'
-baseline_commit: 'e3d44277999c4fec1400e21a8628db4a431ede7c'
+baseline_revision: '01fbb1e58f0599125367e341d5b979e711bf986f'
+baseline_commit: '01fbb1e58f0599125367e341d5b979e711bf986f'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
@@ -17,6 +17,20 @@ deferred:
       On ocupilot-b-ci, iris.cpf, _LastGood_.cpf and iris.cpf_20260928 are in /durable/iris/, the parent of $System.Util.ManagerDirectory() (/durable/iris/mgr/). DirectlyInManagerDirectory refuses only a file whose parent is the manager directory, as the rework item directs; under a restricted root /durable/iris/ iris.cpf is refused only by PATH.EXISTS, which pOverwrite 1 skips (inference; not executed). No consumer overwrites yet. The runner corrects AD-21's example list at its origin, or the orchestrator widens the rule.
     location: >-
       src/OcuPilot/Port/PathPort.cls:324
+    severity: medium
+  - summary: >-
+      PATH.INSTANCE protects only the files DW-1777 enumerates, so an overwriting consumer under a root that reaches another database directory or the journals can still resolve an existing instance file there.
+    evidence: |-
+      On ocupilot-b-ci the active CPF puts IRISLIB, ENSLIB and HSLIB at /usr/irissys/mgr/<name>/, not below $System.Util.ManagerDirectory() (/durable/iris/mgr/); InstanceFile answers 0 for /usr/irissys/mgr/irislib/IRIS.DAT (executed read-only by the verification-gap layer). Journal files under <mgr>/journal/ and an IRIS.DAT deeper down or under another root are outside the rule too. The code matches DW-1777 and AD-21 as written; widening them (for example, any configured database's IRIS.DAT) is the orchestrator's call. No consumer overwrites yet.
+    location: >-
+      src/OcuPilot/Port/PathPort.cls:408
+    severity: medium
+  - summary: >-
+      PATH.INSTANCE refuses a database's volume files only beside its IRIS.DAT, so an overwriting consumer can resolve an existing volume file in one of the database's additional volume directories.
+    evidence: |-
+      SYS.Database's VolumeDirectoryList and NewVolumeDirectory name directories beyond Directory where a database's volumes may live; Config.Databases, which PathPort.DatabaseDirectories reads, carries neither. On ocupilot-b-ci every local database is single-volume with NewVolumeDirectory equal to Directory, and SYS.Database opened for all 14 as a principal holding only the port's pairs and %DB_HSCUSTOM:R (executed). Story 18.3 resolves a new-volume directory through PathPort, so it creates the first such directory.
+    location: >-
+      src/OcuPilot/Port/PathPort.cls:477
     severity: medium
 ---
 
@@ -384,12 +398,85 @@ Code review 2026-09-28, of rework 2 (`e3d44277..27246d90`): four layers, `full-o
 - `false`: DW-1770 is not closed. The runner closes this story's entries at `ledger_adjudicated`.
 - `low`: the Auto Run Result's counts and caller list, the `deferred:` entry's wording, and a triage-log line number (four rows). Each fix edits this spec's implement-stage record; DW-1777 is the harvested record.
 
+### Rework iteration 3 (DW-1777, DW-1778, DW-1779, orchestrator decision)
+
+- [x] [Decision] DW-1778 (orchestrator, by=merge_gate 2026-09-28, before Epic 16's 16.4 builds on the `pOverwrite` workaround): add a read-existing mode to `PathPort.Resolve`, `kind` `source`, which requires the file to exist (refused with its own `PATH.*` code and server-written reason when it does not, and when the name is a directory) and never implies overwrite; `file` keeps new-or-overwrite. A `source` is not refused for existing, and is still contained and still refused directly in the manager directory. Amend AD-21's sixth case once, at origin, in the runner's words (the runner writes the spine; say in the spec what the sentence must state).
+- [x] [Decision] DW-1777: for any overwriting consumer (`file` with `pOverwrite` 1), also refuse the instance's configuration file and its siblings in the data directory (`iris.cpf`, `_LastGood_.cpf`, dated CPF copies -- the directory `$System.Util.ManagerDirectory()`'s parent on this build; derive it at call time from the instance's own CPF location, never a literal) and a database file one level below the manager directory (`irisaudit/IRIS.DAT`, `irissecurity/IRIS.DAT`, any `<subdir>/IRIS.DAT` directly under the manager directory), with a `PATH.*` code; a new file is unaffected.
+- [x] [Decision] DW-1779, if small: a `directory` kind that resolves to the manager directory itself (the unrestricted root with an empty name) is refused for a consumer whose vendor writes its own files into the chosen directory. If it is not a small change, leave it unchecked and say so in the Auto Run Result; the runner re-owns it to 18.3.
+  - AD-21's sixth case does not carry this rule yet. The sentence it needs: "A directory the consuming tool's vendor writes its own files into (a database, a journal, a backup) is refused when it is `<ManagerDirectory>` itself; the tool declares that its vendor writes there, and every other directory is unaffected."
+- Each refusal and the new mode is pinned by a `Test/PathPort.cls` leg with a Rule 19 mutation, recompiling `PathPort` and `PathPortFixture` on the throwaway.
+
+### Review Findings (round 4)
+
+Code review 2026-09-28, of rework 3 (`8eee0559..67790caa`): four layers, `full-opus`. 31 rows, 10 entries: 8 patched, 2 ledgered, 15 rows rejected. No high. DW-1778, DW-1777 and DW-1779 are done as AD-21's sixth case states them, each pinned by a leg with a recorded mutation.
+
+- [x] [Review][Patch] `[medium]` Only the refusing side of `PATH.INSTANCE` was pinned: an `InstanceFile` refusing every file one level below the manager directory, or every file under the data directory, stayed green [src/OcuPilot/Test/PathPort.cls:429]
+- [x] [Review][Patch] `[low]` `PATH.MANAGER`'s reason told a caller naming a `source` that a file "cannot go" there [src/OcuPilot/Api/Error.cls:421]
+- [x] [Review][Patch] `[low]` `PATH.MANAGERDIR`'s reason said "these files" without saying whose [src/OcuPilot/Api/Error.cls:452]
+- [x] [Review][Patch] `[low]` `DirectlyInConfigurationDirectory`'s fail-closed branch had no leg; the seam now names an empty configuration file [src/OcuPilot/Test/PathPort.cls:448]
+- [x] [Review][Patch] `[low]` DW-1779's "a subdirectory of it resolves" had no `mutation:` line; demonstrated below [src/OcuPilot/Test/PathPort.cls:475]
+- [x] [Review][Patch] `[low]` Three rework-2 `mutation:` lines said "alone", but the rework-3 methods go red too; re-run and corrected below, with the two configuration lines the new leg changes
+- [x] [Review][Patch] `[low]` The class doc named `ManagerDirectory` as a seam a test subclass overrides and left out `NameAdmitted` [src/OcuPilot/Port/PathPort.cls:22]
+- [x] [Review][Patch] `[low]` `Reset`'s doc named only the denied pairs and the call count [src/OcuPilot/Test/PathPortFixture.cls:15]
+- [x] [Review][Defer] `[med]` A vendor-writes directory may be another database's own: `<mgr>/irissecurity/` resolves under `pVendorWrites` (executed), and `epic-18-context.md:76` reads it as fixed here [src/OcuPilot/Port/PathPort.cls:296] — deferred: DW-1791 `routed` to 18-3, severity unverified until its create probe
+- [x] [Review][Defer] `[med]` `PATH.INSTANCE` also misses `<db>/iris.lck`, `stream/` files, multi-volume `IRIS-*.VOL` and OcuPilot's own `csp/ocupilot/` bundle [src/OcuPilot/Port/PathPort.cls:386] — deferred: occurrence on DW-1790
+
+**Rejected:**
+
+- spec edits (four rows): the rework item's "AD-21 does not carry this rule yet" and the Auto Run Result's "For the runner" line (AD-21 has carried it since `5208f1c0`), the stale first `deferred:` item (two rows; DW-1777's harvested record, closed at adjudication), and the Design Notes consumer list lacking `source`, `pVendorWrites` and the three codes. `epic-18-context.md` is recompiled before 18.3's plan, because the spine is newer.
+- `by-design`: `pVendorWrites` defaults to 0. AD-21 makes it the tool's declaration, as `pOverwrite` is.
+- `false`: DW-1778 and DW-1779 are not closed in the ledger. The runner closes this story's entries at `ledger_adjudicated`.
+- `false`: `Resolve`'s "at the mint and again at the write" is wrong for a `source`. A source's consumer is a write tool (an import, a key activation), and its confirm is the write (AD-21).
+- `false`: `NamesIn` discards `Execute`'s status. An empty list fails the non-empty assertions after it. `_LastGood_.cpf` is refused `PATH.NAME` before any file test, because it starts with `_`.
+- `false`: a `pVendorWrites` of `"true"`. It is a server-side `%Boolean` a tool passes as a constant, never a wire value.
+- `low`: a new file beside the CPF cannot be overwritten later. DW-1777 refuses the CPF's siblings, and a new name there resolves, by decision.
+- `low`: case (two rows). The folded `IRIS.DAT` name over-refuses only a user's `iris.dat`, and a case-variant manager directory is round 3's textual-containment row.
+- `low`: `Test/PathPort.cls` is over 500 lines. This is carried from round 3.
+- `by-design`: symbolic and hard links. AD-21 names textual containment.
+- theoretical: a FIFO or device as a source needs an allow-listed root over `/dev`; an unreadable source's vendor fault is normalized by its consumer's port (AD-39), and no consumer exists.
+
+### Rework iteration 4 (DW-1790, cap override authorized by the orchestrator, items=DW-1790 only)
+
+- [x] [Decision] DW-1790 (owner decision at the orchestrator's decision sheet, 2026-09-28): widen `PATH.INSTANCE` so an overwriting consumer (`file` with `pOverwrite` 1) is refused every existing file in every configured database's directory and in every journal directory, as the instance answers them at call time (never cached, never a literal) -- a database outside the manager directory (`IRISLIB` under `/usr/irissys/mgr/irislib/` on this build), its `iris.lck`, `stream/` and multi-volume files, and the primary and alternate journal directories among them. Also refuse a `pVendorWrites` directory that is a configured database's own directory (closing DW-1791's case at the port if it is the same small change; say so if not, and DW-1791 stays with 18.3). Keep the refusals already shipped; a new name anywhere else is unaffected. Pin each with a `Test/PathPort.cls` leg and a Rule 19 mutation (the database-directory check removed; the journal check removed), plus a permitting leg that proves an ordinary subdirectory file still resolves. If `Test/PathPort.cls` passes about 500 lines, split the new legs into a second class.
+
+### Review Findings (round 5)
+
+Code review 2026-09-28, of rework 4 (`01fbb1e5..b086fb2a`): four layers, `full-opus`. 37 rows, 8 entries: 5 patched, 3 ledgered, 19 rows rejected. No high. DW-1790 is done as AD-21's sixth case states it, and each clause is pinned by a recorded mutation. To a caller that overwrites, the port refuses every existing file directly in a configured local database's directory or under its stream location, and directly in a journal directory. It reads both at every call, and a failed read refuses. AD-16 holds for the new `%SYS` read.
+
+- [x] [Review][Patch] `[medium]` The instance-file checks compared directories with case, so on a filesystem that ignores case another spelling reached an instance file. On `ocupilot-b-ci`, whose `/durable` is a macOS bind mount, `hscustom/iris.lck` resolved 200 to a caller that overwrites. The database, stream, journal and configuration-directory checks now ignore case [src/OcuPilot/Port/PathPort.cls:435]
+- [x] [Review][Patch] `[medium]` No leg had a file deeper under a stream location, so a stream test matching only direct files stayed green [src/OcuPilot/Test/PathPortInstance.cls:222]
+- [x] [Review][Patch] `[medium]` No leg showed that a file in a subdirectory of a journal directory still resolves [src/OcuPilot/Test/PathPortInstance.cls:291]
+- [x] [Review][Patch] `[medium]` A failed journal source read was never driven, so `JournalDirectories` ignoring its status stayed green [src/OcuPilot/Test/PathPortFixture.cls:111]
+- [x] [Review][Patch] `[low]` `PATH.INSTANCE`'s doc named only the two rework-3 cases [src/OcuPilot/Api/Error.cls:433]
+- [x] [Review][Defer] `[med]` `DatabaseDirectories`' own read is pinned only against a stable default configuration: a configured `StreamLocation`, the `:` skip, and a failure or a cache inside the reader all stay green [src/OcuPilot/Port/PathPort.cls:485] — deferred: DW-1796 `routed` to 18-3-databases-configuration-creation-properties-and-volumes
+- [x] [Review][Defer] `[med]` The journal read misses files left in a former journal directory, and a write-image-journal directory outside the manager directory [src/OcuPilot/Port/PathPort.cls:527] — deferred: DW-1797 `routed` to 18-5-journals
+- [x] [Review][Defer] `[med]` OcuPilot's own `csp/ocupilot/` bundle, named on DW-1790's review note, is outside the decision [src/OcuPilot/Port/PathPort.cls:397] — deferred: DW-1798 `decision-pending`
+
+**Rejected:**
+
+- Spec edits (eight rows):
+  - the Verification loop's class list;
+  - the Auto Run Result's counts of rejected rows, corrected mutation lines and patched mediums (five rows);
+  - the resolved `deferred:` record;
+  - the protocol note, which the cycle log records.
+- `false`: AD-21 reads "every file in" a database's directory as containment. The rework item directs files directly in it, with a permitting leg for a subdirectory file, and that is what the code does.
+- `false`: the default stream location is a literal. It is the vendor's documented default, and `TestThePortReadsTheInstancesDirectories` compares it with the vendor's `GetStreamLocation` (run 16).
+- `false`: the port switches to `%SYS` itself, against the original Tasks line. The rework item requires the configured databases to be read at call time. The switch follows AD-16, and `Config.Databases` is not an admin-API class (AD-27).
+- theoretical (two rows):
+  - The new helpers are public and carry no gate of their own. No route or tool reaches them, which is also true of `InstanceFile` and `ConfigurationFile`.
+  - `Config.Databases:List` could answer no row with an OK status, but only after the gate's `%DB_IRISSYS:READ` has passed.
+- `low`: a failed read's refusal says "belongs to the instance" and logs nothing. The reads fail only where the gate's `%DB_IRISSYS:READ` would already refuse.
+- `low`: a database that is mounted but absent from the configuration. AD-21 names configured databases.
+- `low`: four test-environment rows: an empty alternate journal directory (two rows), a configured database with no `IRIS.DAT`, and a journal switch between two reads. The class is armed only on throwaways from the pinned image.
+
 ## Spec Change Log
 
 - 2026-09-27, spec gate (runner): the proposed AD-21 sixth case under Design Notes was written into the spine verbatim, with "every server-path field (Story 18.1 on)" added to AD-21's Binds (Rule 20). The spine is the authority from here; Design Notes keeps the proposal text for the reviewer.
 - 2026-09-28, rework iteration 1 (runner): re-opened on CI run 36393142503's red (two browser specs pin the Security side bar) and on the integrate-forward merge `b219bc17`; the work is the three items under Tasks & Acceptance › Rework iteration 1.
 - 2026-09-28, runner (Rule 5, apply and report): AC4 read "stays under its 2004 kB warning". The merged bundle measured 2,005,146 bytes and rework 1 re-based `maximumWarning` to 2106kB under the owner's DW-1166 policy (the runner's brief allows a re-base and stops only above 3800kB), so AC4 now names 2106 kB. Intent unchanged: the build stays under its warning.
 - 2026-09-28, rework iteration 2 (runner): re-opened on the orchestrator's decision of DW-1770 at the 18.1 boundary, which directs the fix as its own commit before 18.2's implement push; the work is the one item under Tasks & Acceptance > Rework iteration 2. AD-21's sixth case carries the rule.
+- 2026-09-28, rework iteration 3 (runner): re-opened on the orchestrator's decision (by=merge_gate) that DW-1777, DW-1778 and, if small, DW-1779 are fixed here, as their own commit, before Epic 16's 16.4 consumes PathPort; the work is the items under Tasks & Acceptance > Rework iteration 3.
+- 2026-09-28, rework iteration 4 (runner): the rework cap (3) is spent; the orchestrator authorized one more iteration with items=DW-1790 only, closing at the next review without a HIGH, so the fix lands as its own commit on the pushed head before Story 18.14's work and reaches feature before Epic 16's 16.4. AD-21's sixth case carries the widened rule.
 
 ## Review Triage Log
 
@@ -445,6 +532,50 @@ Code review 2026-09-28, of rework 2 (`e3d44277..27246d90`): four layers, `full-o
   - `[false]` `[reject]` (intent-alignment) The client has no map of `PATH.*` codes — the picker renders the consumer's reason for any code (AD-39), as the rework item says.
   - `[low]` `[reject]` (intent-alignment) A manager directory that does not normalize refuses every file, untested — unreachable on a running instance; it fails closed by design.
   - `[false]` `[reject]` (intent-alignment) The three mutation lines were not re-run by the auditor — runs 348 to 350 on `ocupilot-b-ci` each failed exactly the named method, and the verification-gap layer matched each line to the code.
+
+### 2026-09-28 — Review pass, rework 3
+
+- verdicts: 17 findings — high 0, medium 2, low 7, false 8, maybe-false 0
+- findings:
+  - `[low]` `[patch]` (verification-gap) A source directly in the manager directory had no `mutation:` line, and the rework-2 manager-directory line's "alone" went stale — limiting the check to a `file` reddened the source leg alone (run 23); removing it reddened both methods (run 24), and that line now says so.
+  - `[low]` `[patch]` (verification-gap) The database-file refusal was tested only with the manager directory as the root — added a leg restricted to the directory above it, expecting `PATH.INSTANCE`; the helper-false mutation reddens it (run 29).
+  - `[low]` `[patch]` (verification-gap) The case-insensitive `IRIS.DAT` match was untested — added a direct assertion on `DatabaseFileBelowManagerDirectory` for a lower-case name; comparing with case reddens it alone (run 25).
+  - `[low]` `[patch]` (verification-gap) Three decided clauses had no `mutation:` line (an existing source resolves, a new file is unaffected, only a declared vendor write is refused) — runs 26, 27 and 28 each reddened the named legs; lines added.
+  - `[medium]` `[defer]` (verification-gap, other) `PATH.INSTANCE` misses the library databases at `/usr/irissys/mgr/<name>/`, outside the manager directory — the code matches DW-1777 and AD-21 as written; widening is the orchestrator's call; `deferred:`.
+  - `[low]` `[reject]` (verification-gap, other) carried: `## Auto Run Result` still describes the previous pass — the fix edits this spec; Finalize rewrites it.
+  - `[low]` `[reject]` (verification-gap, other) `Test/PathPort.cls` is 606 lines against the rules' 500 — the rework item puts every leg in that class; a split is more than a direct correction, and no reader is misled.
+  - `[false]` `[reject]` (intent-alignment) Under a closed reading the diff adds a kind, three codes and two arguments — the intent defers to "a new AD-21 case" that the runner writes, and AD-21 now carries DW-1777 and DW-1778.
+  - `[false]` `[reject]` (intent-alignment) Nothing exercises the mint-then-write sequence, the wire envelope for the new codes, or a picker showing them — `Resolve` has no consumer or route in this story (Design Notes), `Envelope` sweeps every code, and the picker renders whatever reason its consumer passes.
+  - `[false]` `[reject]` (intent-alignment) The picker's `kind` is `directory` or `file`, so a source embeds it as `file` — `kind` chooses only the label and the caption separator (`server-path-picker.ts:238,248`), and "File name" with no trailing separator is right for a source.
+  - `[false]` `[reject]` (intent-alignment) carried: `pOverwrite` (and now `pVendorWrites`) is a per-call argument, not a tool declaration — the rework items direct trailing arguments, default 0; the declaration is the consumer's, and none exists yet.
+  - `[low]` `[reject]` (intent-alignment) `PATH.MANAGERDIR` runs ahead of AD-21, which does not state DW-1779 yet — the fix is a spine edit, which the Never list gives to the runner; the sentence is recorded under the rework item and handed to the runner in the Auto Run Result.
+  - `[false]` `[reject]` (intent-alignment) The first half of the configuration test derives its directory with the port's own call — the seam leg tells the two derivations apart, and its mutation reddened it alone (run 7).
+  - `[medium]` `[defer]` (intent-alignment) "The instance's own files" also covers journals and databases deeper down or under another root — same root cause as the library-database row; same route.
+  - `[false]` `[reject]` (intent-alignment) `PATH.INSTANCE` refuses every existing file beside the CPF, `irisinfo.txt` included — the rework item names the CPF "and its siblings", every file there is the instance's, and a new name there resolves.
+  - `[false]` `[reject]` (intent-alignment) `PATH.EXISTS`, `PATH.NOFILE` and `PATH.INSTANCE` let a caller probe names — the Never list's "no browsing" bars a listing control; DW-1778 requires a missing source to be refused with its own code, and the caller holds the port's two pairs.
+  - `[false]` `[reject]` (intent-alignment) The diff edits two existing mutation lines in place on an oversized spec — Rule 19 requires a changed pinning test's line to be updated in the same pass; Finalize rewrites the Auto Run Result.
+
+### 2026-09-28 — Review pass, rework 4
+
+- verdicts: 17 findings — high 0, medium 4, low 7, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) `JournalDirectories` takes three sources, all one directory on this build, so dropping any one stayed green — the vendor reads moved into a `JournalSources` seam; `TestEveryJournalSourceIsAJournalDirectory` names three distinct directories and refuses a file in the alternate alone, and `TestThePortReadsTheInstancesDirectories` compares each source with the vendor's; runs 369, 370 and 373.
+  - `[low]` `[reject]` (verification-gap) The new `%SYS` reads never run under a caller holding only the declared pairs — measured on `ocupilot-b-ci` as a principal holding `%Admin_FileSystemAccess:U`, `%DB_IRISSYS:R` and `%DB_HSCUSTOM:R`: an ordinary file resolved 200, `irisaudit/iris.lck` and two journal files were refused `PATH.INSTANCE`, so both reads answered; pinning it needs a JOBbed principal probe while `Resolve` has no route, and the image is pinned.
+  - `[low]` `[patch]` (verification-gap) The journal half of "never kept" had no `mutation:` line — demonstrated, run 372.
+  - `[medium]` `[patch]` (verification-gap) No `mutation:` line for the journal read's sources — same root cause as the first row; closed by the same legs.
+  - `[false]` `[reject]` (verification-gap) Multi-volume files have no leg — a volume beside `IRIS.DAT` is a file directly in the database's directory, which the legs enumerate and the seam leg pins with any name (run 7); volumes elsewhere are the deferred row below.
+  - `[low]` `[reject]` (verification-gap) The `pVendorWrites` clause has no code yet the item is ticked — the fix edits this spec; the Auto Run Result says DW-1791 stays with 18.3, as the item allows.
+  - `[medium]` `[defer]` (verification-gap, other) Volume files in a database's additional volume directories are never refused — `SYS.Database.VolumeDirectoryList` and `NewVolumeDirectory` are runtime properties that `Config.Databases` does not carry; the decision covers every file in each database's directory, which the code does; `deferred:`, for 18.3, which adds the new-volume directory.
+  - `[low]` `[reject]` (verification-gap, other) The item is ticked and nothing says DW-1791 stays with 18.3 — same as the `pVendorWrites` row; the fix edits this spec.
+  - `[low]` `[reject]` (verification-gap, other) The Verification loop omits `PathPortInstance` — the fix edits this spec; the class ran in the sweep (run 353) and after the patches (run 379).
+  - `[false]` `[reject]` (intent-alignment) carried: under a closed reading the diff is outside the intent — the intent defers to "a new AD-21 case" the runner writes, and AD-21 carries DW-1790.
+  - `[false]` `[reject]` (intent-alignment) carried: the change lives in `Resolve`'s overwrite branch, which no route, tool or client reaches — `Resolve` has no consumer in this story (Design Notes).
+  - `[low]` `[reject]` (intent-alignment) The vendor-writes clause is not done and the item is ticked — same as the verification-gap row; the fix edits this spec.
+  - `[medium]` `[defer]` (intent-alignment) Multi-volume files are refused only beside the database file — same root cause and route as the volume-directory row.
+  - `[low]` `[reject]` (intent-alignment) The privilege surface of the new reads is untested, and whether `Config.Databases:List` escalates is unknown — same measurement as the privilege row; an internal escalation would only let the port refuse more, never widen what the caller sees.
+  - `[false]` `[reject]` (intent-alignment) The journal set adds the current file's directory to the two DW-1790 names — that directory is one the instance journals into, which the decision's "every journal directory, as the instance answers them" covers.
+  - `[false]` `[reject]` (intent-alignment) `DatabaseFileBelowManagerDirectory` now overlaps the database read — the item says to keep the refusals already shipped, and `TestADatabaseFileBelowTheManagerDirectoryNeedsNoDatabaseRead` pins its own coverage.
+  - `[false]` `[reject]` (intent-alignment) `TestThePortReadsTheInstancesDirectories` checks the port against the query the port uses — the test keeps every row the vendor's query answers, so a port dropping or filtering a database reddens it; the query is AD-21's "as the instance answers them".
 
 ## Design Notes
 
@@ -596,62 +727,100 @@ Each consumer does the following:
 - mutation (AC2, the 200 leg): `PathPort.PAIRS` gains `%Admin_Secure:USE` → `PathPortPrivilege.TestTheDeclaredPairsReadTheScreen`, both states (code review)
 - mutation (AC3): the picker's store subscription removed → `server-path-picker.spec.ts` "follows the store from loading to ready after it has drawn", alone (code review)
 - mutation: `Resolve` checks the kind before its `Gate` call → `PathPort.TestTheGateRefusesBeforeAnyAdminPortCall` "and so does a kind the port does not know", both pairs (code review)
-- mutation: `Resolve`'s kind check removed → `PathPort.TestABadNameIsRefused` "a kind other than the two is a caller fault", alone (code review)
+- mutation: `Resolve`'s kind check removed → `PathPort.TestABadNameIsRefused` "a kind other than the three is a caller fault", alone (code review; re-run on the source kind, run 20, rework 3)
 - mutation: `Roots` drops the 404 test on the root-path list read → `PathPort.TestAVendorFaultPassesThroughAndARemovedPurposeFallsBack`, the list-fault leg, alone (code review)
-- mutation: `Resolve` drops its `Contains` test → `PathPort.TestResolveRefusesANameThatLeavesItsRoot`, alone (code review)
+- mutation: `Resolve` drops its `Contains` test → `PathPort.TestResolveRefusesANameThatLeavesItsRoot`, alone (code review); re-run with its source leg, all three legs red, run 9 (rework 3)
 - mutation: `STRINGS.allowedDirectoriesLabel` dropped from `oauth.browser-spec.mjs`'s expected side bar → its AC1 test, on the rebuilt and redeployed bundle (rework 1)
 - mutation: the same entry dropped from `ssl.browser-spec.mjs`'s AC4 list → its AC4 test (rework 1)
 - mutation: the same entry dropped from `security.browser-spec.mjs`'s AC1 list → its AC1 test (rework 1)
 - mutation: `maximumWarning` put back at 2004kB → `build-output.test.mjs` DW-371 (2,005,146 bytes over 2,004,000) and `angular-json.test.mjs`'s pinned literal (rework 1)
 - mutation (AC1, the seventh entry): `AllowedDirectoryList`'s `sideBarPosition` 7 → 0, `screens.generated.ts` regenerated → `navigation.test.mjs` "a side bar lists only built screens, in side-bar order" and its Security side-bar assertion (code review 2)
-- mutation: `Resolve`'s existence test removed → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` (the four refused legs), alone (rework 2)
-- mutation: `Resolve`'s manager-directory test removed → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` (all six refused legs, both `IRIS.DAT` legs included), alone (rework 2; re-run on the final tree, run 369, code review 3)
-- mutation: `Resolve` ignores `pOverwrite` → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` "a caller that overwrites resolves the existing file", alone (rework 2)
+- mutation: `Resolve`'s existence test removed → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` (its three refused legs) and `TestAnOverwriteNeverReachesTheInstancesOwnFiles` "and to one that does not, as a taken name" (both), run 377 (code review 4)
+- mutation: `Resolve`'s manager-directory test removed → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` (all six refused legs, both `IRIS.DAT` legs included) and `TestASourceMustBeAnExistingFile` "a source directly in the manager directory is refused", run 24 (rework 3 review)
+- mutation: `Resolve` ignores `pOverwrite` → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` "a caller that overwrites resolves the existing file" and every `PATH.INSTANCE` and seam leg of `TestAnOverwriteNeverReachesTheInstancesOwnFiles`, run 378 (code review 4)
 - mutation: `Resolve` tests the existing name before the manager directory → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` "and to a caller that does not, an instance file is refused as the manager directory's", alone, run 363 (rework 2 review)
 - mutation: `Resolve`'s directory test on a file's name dropped → `PathPort.TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` "but not a directory standing where the file would go", alone, run 366 (code review 3)
 - mutation (a directory is unaffected): the existence test moved out of the file-only branch → "an existing directory is never refused for existing", "and the directory itself is not refused" and `TestResolveComposesUnderAnAllowedRoot` "an empty name is the root itself", run 367 (code review 3)
-- mutation (a directory is unaffected): the manager-directory test moved out of the file-only branch → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` "and the directory itself is not refused", alone, run 368 (code review 3)
+- mutation (a directory is unaffected): the manager-directory test moved out of the file-only branch → `PathPort.TestAFileDirectlyInTheManagerDirectoryIsRefused` "and the directory itself is not refused" and four legs of `TestAVendorsDirectoryIsNeverTheManagerDirectory`, run 379 (code review 4)
+- mutation (a source must exist): the source's existence test dropped from `Resolve` → `PathPort.TestASourceMustBeAnExistingFile` "an absent name is refused", "and overwrite does not make it a new file" and its named-field leg, alone, run 2 (rework 3)
+- mutation (a source is never a directory): the source's directory test dropped → `PathPort.TestASourceMustBeAnExistingFile` "a directory at the name is refused", alone, run 3 (rework 3)
+- mutation (a source never implies an overwrite): a source passed `pOverwrite` resolved as a file → `PathPort.TestASourceMustBeAnExistingFile` "and overwrite does not make it a new file", alone, run 4 (rework 3)
+- mutation (the configuration files): `DirectlyInConfigurationDirectory` answers false → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles`, the legs for `iris.cpf`, `iris.cpf_20260928` and `irisinfo.txt`, its named-field leg and its two seam legs, alone, run 382 (code review 4)
+- mutation (the configuration directory is read at call time): it is taken as the manager directory's parent instead → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles` "and refused once the configuration file is read there" and "and refused while no configuration file can be read", alone, run 383 (code review 4)
+- mutation (a database file one level down): `DatabaseFileBelowManagerDirectory` answers false → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles` "a database file's name is matched ignoring case", alone in `PathPort`, run 15; in `PathPortInstance`, `TestADatabaseFileBelowTheManagerDirectoryNeedsNoDatabaseRead` alone, run 14 (rework 4); the ten `<subdir>/IRIS.DAT` legs and the root-above leg stay refused as configured databases' files
+- mutation (DW-1779): the vendor-directory test dropped from `Resolve` → `PathPort.TestAVendorsDirectoryIsNeverTheManagerDirectory`, its three refused legs, alone, run 8 (rework 3)
+- mutation (a source in the manager directory): the manager-directory test limited to a `file` → `PathPort.TestASourceMustBeAnExistingFile` "a source directly in the manager directory is refused, though it exists", alone, run 23 (rework 3 review)
+- mutation (a source that exists resolves): the source branch refuses every name → `PathPort.TestASourceMustBeAnExistingFile` "an existing file resolves as a source" and "and the same to a caller passing overwrite", alone, run 26 (rework 3 review)
+- mutation (a new file is unaffected): the existence test in front of `InstanceFile` dropped → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles` "a new name there resolves" and "a new database file name resolves", alone in `PathPort`, run 27 (rework 3 review); in `PathPortInstance`, its two new-name legs, in a database's and a journal directory, run 21 (rework 4)
+- mutation (DW-1779, only a declared vendor write): `pVendorWrites` dropped from the vendor-directory test → `PathPort.TestAVendorsDirectoryIsNeverTheManagerDirectory` "and without the declaration the manager directory resolves as any directory does" and `TestAFileDirectlyInTheManagerDirectoryIsRefused` "and the directory itself is not refused", run 28 (rework 3 review)
+- mutation (a database file's name ignoring case): `DatabaseFileBelowManagerDirectory` compares the name with its case → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles` "a database file's name is matched ignoring case", alone, run 25 (rework 3 review)
+- mutation (any other file below the manager directory is not the instance's): `DatabaseFileBelowManagerDirectory`'s name test dropped → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles` "but any other file one directory below the manager directory is not the instance's", alone in `PathPort`, run 373 (code review 4); in `PathPortInstance`, `TestAnOrdinarySubdirectoryFileStillResolves`, run 19 (rework 4)
+- mutation (only the configuration file's own directory): `DirectlyInConfigurationDirectory` tests that directory as a prefix → the same assertion, alone in `PathPort`, run 374 (code review 4); in `PathPortInstance`, `TestAnOrdinarySubdirectoryFileStillResolves`, run 20 (rework 4)
+- mutation (DW-1779, the manager directory only): `IsManagerDirectory` tests containment → `PathPort.TestAVendorsDirectoryIsNeverTheManagerDirectory` "a subdirectory of it resolves", alone, run 375 (code review 4)
+- mutation (an unreadable configuration file fails closed): `DirectlyInConfigurationDirectory`'s empty-directory test dropped → `PathPort.TestAnOverwriteNeverReachesTheInstancesOwnFiles` "and refused while no configuration file can be read, which fails closed", alone, run 376 (code review 4)
+- mutation (DW-1790, a database's files): `InDatabaseDirectory` dropped from `InstanceFile` → `PathPortInstance.TestAnOverwriteNeverReachesADatabasesFiles` (its fourteen refused legs: the ten lock-file legs, the three library databases' `IRIS.DAT` legs and the root-above leg), `TestAStreamFileIsTheDatabasesAndTheReadIsNeverKept` (its four refused legs) and `TestAnInstanceDirectoryIsMatchedIgnoringCase` (its two database legs), run 391 (code review 5)
+- mutation (DW-1790, the journals): `InJournalDirectory` dropped from `InstanceFile` → `PathPortInstance.TestAnOverwriteNeverReachesAJournalFile` (its five refused legs), `TestEveryJournalSourceIsAJournalDirectory` "a file in the alternate journal directory alone is refused" and "so the overwrite is refused, though no source named that directory", and `TestAnInstanceDirectoryIsMatchedIgnoringCase` "a file in a journal directory spelled in other case is refused", run 392 (code review 5)
+- mutation (DW-1790, an ordinary subdirectory file still resolves with `pOverwrite` 1): `InDatabaseDirectory` tests containment under each database's directory → `PathPortInstance.TestAnOrdinarySubdirectoryFileStillResolves` "resolves to a caller that overwrites" with `TestAStreamFileIsTheDatabasesAndTheReadIsNeverKept` "but a file in another subdirectory of it is not", run 9 (rework 4)
+- mutation (DW-1790, a database's stream location): the stream-location test dropped from `InDatabaseDirectory` → `PathPortInstance.TestAStreamFileIsTheDatabasesAndTheReadIsNeverKept` "and so is a file under its stream location" and "and one deeper under it", with `TestAnInstanceDirectoryIsMatchedIgnoringCase` "and so is one under its stream location spelled so", run 393 (code review 5)
+- mutation (DW-1790, a failed database read fails closed): `InDatabaseDirectory` answers false on a failed read → `PathPortInstance.TestAStreamFileIsTheDatabasesAndTheReadIsNeverKept` "while the databases cannot be read, every overwrite is refused", alone, run 11 (rework 4)
+- mutation (DW-1790, a failed journal read fails closed): `InJournalDirectory` answers false on a failed read → `PathPortInstance.TestAnOverwriteNeverReachesAJournalFile` "while the journal directories cannot be read, it is refused" with `TestEveryJournalSourceIsAJournalDirectory` "so the overwrite is refused, though no source named that directory", run 394 (code review 5)
+- mutation (DW-1790, read at every call, never kept): `InDatabaseDirectory` answers from a process-private copy of its first read → `PathPortInstance.TestAStreamFileIsTheDatabasesAndTheReadIsNeverKept` (its three legs after the first read), `TestAnOverwriteNeverReachesADatabasesFiles` (its fourteen refused legs) and `TestAnInstanceDirectoryIsMatchedIgnoringCase` (its two database legs), run 395 (code review 5)
+- mutation (DW-1790, the default stream location is the vendor's): a database naming none takes its directory as its stream location → `PathPortInstance.TestThePortReadsTheInstancesDirectories` "each with the vendor's own stream location" with `TestAnOrdinarySubdirectoryFileStillResolves` "resolves to a caller that overwrites", run 16 (rework 4)
+- mutation (DW-1790, the alternate journal directory): `JournalDirectories` drops the alternate from its three sources → `PathPortInstance.TestEveryJournalSourceIsAJournalDirectory` "the primary, the alternate and the current file's directory, in that order" and "a file in the alternate journal directory alone is refused", alone, run 369 (rework 4 review)
+- mutation (DW-1790, each journal source is the instance's): `JournalSources` answers the alternate empty → `PathPortInstance.TestThePortReadsTheInstancesDirectories` "its alternate is the instance's", alone, run 370 (rework 4 review)
+- mutation (DW-1790, the journal read is never kept): `InJournalDirectory` answers from a process-private copy of its first read → `PathPortInstance.TestAnOverwriteNeverReachesAJournalFile` "a file directly in a directory the journal read names is refused" and "while the journal directories cannot be read, it is refused", `TestEveryJournalSourceIsAJournalDirectory` "a file in the alternate journal directory alone is refused" and "so the overwrite is refused, though no source named that directory", and `TestAnInstanceDirectoryIsMatchedIgnoringCase` "a file in a journal directory spelled in other case is refused", run 396 (code review 5)
+- mutation (DW-1790, a journal directory named once): `JournalDirectories` lists a directory each time a source names it → `PathPortInstance.TestEveryJournalSourceIsAJournalDirectory` "and names it once" with `TestThePortReadsTheInstancesDirectories` "each once", run 373 (rework 4 review)
+- mutation (DW-1790, a database's directory ignoring case): `InDatabaseDirectory`'s directory test compares with case → `PathPortInstance.TestAnInstanceDirectoryIsMatchedIgnoringCase` "a file in a database's directory spelled in other case is the database's", alone, run 381 (code review 5)
+- mutation (DW-1790, a stream location ignoring case): its stream test compares with case → `PathPortInstance.TestAnInstanceDirectoryIsMatchedIgnoringCase` "and so is one under its stream location spelled so", alone, run 382 (code review 5)
+- mutation (DW-1790, a journal directory ignoring case): `InJournalDirectory` compares with case → `PathPortInstance.TestAnInstanceDirectoryIsMatchedIgnoringCase` "a file in a journal directory spelled in other case is refused", alone, run 383 (code review 5)
+- mutation (the configuration directory ignoring case): `DirectlyInConfigurationDirectory` compares with case → `PathPortInstance.TestAnInstanceDirectoryIsMatchedIgnoringCase` "and so is a file beside a configuration file spelled in other case", alone, run 384 (code review 5)
+- mutation (DW-1790, anywhere under a stream location): the stream test matches only a file directly in it → `PathPortInstance.TestAStreamFileIsTheDatabasesAndTheReadIsNeverKept` "and one deeper under it", alone, run 385 (code review 5)
+- mutation (DW-1790, a journal directory's subdirectory is not the journal's): `InJournalDirectory` tests containment → `PathPortInstance.TestAnOverwriteNeverReachesAJournalFile` "but one in a subdirectory of it resolves", alone, run 386 (code review 5)
+- mutation (DW-1790, a journal source read that fails fails closed): `JournalDirectories` ignores `JournalSources`' status → `PathPortInstance.TestEveryJournalSourceIsAJournalDirectory`, its three failed-source legs, alone, run 387 (code review 5)
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Summary (rework iteration 2).** DW-1770 closed as AD-21's sixth case now reads. For `kind` `file`, `PathPort.Resolve` refuses a name directly in the manager directory (`PATH.MANAGER`, whatever `pOverwrite` says), and then a name that already exists (`PATH.EXISTS`), unless the new trailing `pOverwrite` (default 0) is set. A directory is unaffected. Each refusal is one `detail.violations[]` entry on the path field, and neither echoes a path.
+**Summary (rework iteration 4, DW-1790).** An overwriting consumer (`file` with `pOverwrite` 1) is now refused `PATH.INSTANCE` for every existing file directly in a configured local database's directory, anywhere under that database's stream location, and directly in any journal directory. The directories are read on every call, never kept, and a failed read refuses every overwrite. A file in any other subdirectory still resolves, the manager directory's own included. The refusals already shipped are unchanged.
+
+- **Databases:** `Config.Databases`' documented `List` query, Flags 1 (local), in `%SYS` by explicit save and restore (AD-16). A database naming no stream location keeps its streams in `<dir>stream/`, the vendor's documented default.
+- **Journals:** `%SYS.Journal.System`: the primary directory, the alternate directory and the current file's directory, read through the new `JournalSources` seam.
+- **On `ocupilot-b-ci`:** 14 local databases, IRISLIB, ENSLIB and HSLIB among them under `/usr/irissys/mgr/`, and one journal directory, `/durable/iris/mgr/journal/`, from all three sources.
+- **DW-1791 is not closed at the port; it stays with 18.3.** 18.3's ready spec refuses a directory holding an `IRIS.DAT` in its own rules (`DATABASE.DIRECTORY.INUSE`) and resolves a new-volume directory with `pVendorWrites` 1, where the database's own directory is the normal value. A port refusal would block that and needs a new code.
 
 **Files changed.**
 
-- `src/OcuPilot/Port/PathPort.cls`: `Resolve` gains `pOverwrite` and the two checks. `DirectlyInManagerDirectory` does a textual check through the `ManagerDirectory()` seam, and fails closed.
-- `src/OcuPilot/Api/Error.cls`: four parameters are appended, add-only:
-  - `PATHEXISTS` "PATH.EXISTS", reason "A file or directory of that name already exists. Choose a name that is not taken."
-  - `PATHMANAGER` "PATH.MANAGER", reason "A file cannot go directly in the manager directory, which holds the instance's own files. Name a subdirectory for it."
-- `src/OcuPilot/Test/PathPort.cls`: two new legs, `TestAnExistingNameIsRefusedUnlessTheCallerOverwrites` and `TestAFileDirectlyInTheManagerDirectoryIsRefused`. The first works in a `/tmp/` scratch directory that it removes.
-- This spec: the rework check-off, four `mutation:` lines, and the triage log.
+- `src/OcuPilot/Port/PathPort.cls`: `InDatabaseDirectory`, `InJournalDirectory`, and the seams `DatabaseDirectories`, `JournalDirectories` and `JournalSources`, joined into `InstanceFile`; parameter `STREAMDIRECTORY`.
+- `src/OcuPilot/Test/PathPortFixture.cls`: `UseDatabaseDirectories`, `UseJournalDirectories` and `UseJournalSources`.
+- `src/OcuPilot/Test/PathPortInstance.cls` (new, 408 lines, armed like `PathPort`): seven methods covering the database, stream and journal refusals, the permitting leg, each journal source, and the port's reads against the instance's.
+- `scripts/ci-throwaway.sh`: `PathPortInstance` on its `# classes:` line.
+- `src/OcuPilot/Test/PathPort.cls`: one mutation sentence in a doc comment.
+- This spec: the item checked, twelve new `mutation:` lines and five corrected, the triage log, one `deferred:` item.
 
-**Review.** Two layers ran and filed 13 findings: medium 2, low 5, false 6.
+**Review.** Two layers filed 17 findings: medium 4, low 7, false 6.
 
-- One low was patched: an existing instance file without overwrite now pins that `PATH.MANAGER` wins.
-- One medium was deferred. `iris.cpf` sits in the manager directory's parent, so AD-21's example list overstates the rule. It is in `deferred:` for the runner.
-- The other 11 were rejected; the triage log gives each reason.
+- **Patched:** each journal source is now pinned on its own (medium), and the journal read's never-kept line was demonstrated (low); runs 369, 370, 372, 373 and 378.
+- **Deferred:** volume files in a database's additional volume directories (medium, two rows), for 18.3.
+- **The other 11 rejected.** The triage log gives each reason. The privilege row was measured: a principal holding only the port's pairs and `%DB_HSCUSTOM:R` resolved an ordinary file and was refused `irisaudit/iris.lck` and two journal files.
 
-**Follow-up review: false.** This is a follow-up pass, and it patched no `high`. Patched counts: high 0, medium 0, low 1.
+**Follow-up review: false.** This is a follow-up pass, and it patched no `high`. Patched counts: high 0, medium 1, low 1.
 
-**Verification.** Everything ran on `ocupilot-b-ci`, one class per call, and was read from `%UnitTest_Result`. Its `src/` copy is byte-identical to the worktree.
+**Verification.** All on `ocupilot-b-ci`, whose `src/` copies are md5-identical to the worktree.
 
-- `PathPort` 14/14 (run 364, the final tree).
-- `PathPortPrivilege` 2/2, `PortGate` 4/4, `Descriptor` 57/57 and `Envelope` 15/15 (runs 352 to 355). `Descriptor` and `PortGate` are the other callers of `PathPort`.
-- The code sweeps over `Error.cls`, all green (runs 356 to 359): `AgentViolation` 8, `LedgerPairs` 9, `TurnStore` 11 and `ToolEmit` 11.
-- Mutations:
-  - Runs 348 to 350 each failed exactly the named method.
-  - The review's order swap failed only the new assertion (run 363). It was applied to the throwaway's copy alone and then reverted: md5-identical, and `PathPort` and `PathPortFixture` were recompiled.
-- Checks:
-  - `check-objectscript` reports 0 problems, and its harness passes 135/135.
-  - `lint-docs` reports 0 issues.
-  - `audit-event-copy.test.mjs` passes 2/2.
-  - The diff adds no non-ASCII bytes to source.
-- No client file changed. By Rule 29, CI runs the full sweep and the browser tier.
+- **Targeted, one class per call:** `PathPortInstance` 7/7 (run 379), `PathPort` 17/17 (375), `PathPortPrivilege` 2/2 (376) and `PortGate` 4/4 (377), read from `%UnitTest_Result`; `Envelope` 15/15 in the sweep (287), with `Error.cls` unchanged.
+- **Mutations:** runs 7 to 21 (implementation) and 369 to 378 (review), each on the throwaway's copy only, with `PathPort` and `PathPortFixture` recompiled and the copy reverted md5-identical; the worktree's status and diff stat were unchanged.
+- **Full ObjectScript sweep, once, before the review:** 343 classes, 2,825 tests, 0 failed (runs 25 to 367), in twelve shard legs, one class at a time; `ci-shards.mjs check` confirmed every class ran in exactly one leg, and `%UnitTest_Result` read back the same totals with no run unlanded.
+- **Other checks:** smoke 49/49; `npm run test:tools` 1,684/1,684; `test:components` 1,711/1,711; `npm run build` succeeded; `check-objectscript` 0 problems; `lint-docs` 0 issues; no non-ASCII bytes in source; EXPERIENCE.md 993 lines. No client file changed.
+
+**For the runner.**
+
+- 18.3's spec cites `PathPort.cls` line numbers that moved by nine: `Resolve` is at :257, not :248.
+- AD-21's "its lock and volume files" reads as the files in each database's directory; the `deferred:` item covers additional volume directories.
+- `Api/Error.cls`'s `PATHINSTANCE` doc still names only the configuration and one-level database cases; it was left alone because `Error.cls` is append-only in this pass.
 
 **Residual risks.**
 
-- No consumer calls `Resolve` yet. The first to write a file must pass `pOverwrite` only when its tool declares it.
-- `PATH.EXISTS` counts an existing directory as taken.
+- `Resolve` has no consumer yet; the first overwriting consumer's wire test should carry a declared-pairs overwrite leg.
+- A configured database whose directory cannot be normalized fails the whole read closed, refusing every overwrite.

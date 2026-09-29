@@ -207,6 +207,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Set tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION"))
             If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            ; Story 18.2: the namespace delete declares a second pair beyond its write's, the
+            ; application pair its cascade reaches (AD-8), after the write's own.
+            If $Parameter(tTool.class, "APPLICATIONRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "APPLICATIONRESOURCE"), $Parameter(tTool.class, "APPLICATIONPERMISSION")))
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
         } ElseIf tTool.class = "OcuPilot.Kernel.Shell.PermissionCheck" {

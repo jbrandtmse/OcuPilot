@@ -116,6 +116,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/device/name" Method="GET" Call="DeviceNameCheck"/>
   <Route Url="/device/:id" Method="PUT" Call="DeviceUpdate"/>
   <Route Url="/device" Method="POST" Call="DeviceCreate"/>
+  <Route Url="/namespace/form" Method="GET" Call="NamespaceFormRead"/>
+  <Route Url="/namespace/name" Method="GET" Call="NamespaceNameCheck"/>
+  <Route Url="/namespace/:id" Method="PUT" Call="NamespaceUpdate"/>
+  <Route Url="/namespace" Method="POST" Call="NamespaceCreate"/>
   <Route Url="/screens/:screen/action" Method="POST" Call="ScreenAction"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/screens/:screen/impact" Method="GET" Call="ScreenImpact"/>
@@ -570,6 +574,35 @@ ClassMethod DeviceCreate() As %Status
 ClassMethod DeviceUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.DeviceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /namespace/form</code> (Story 18.2): the namespace
+/// editor's read, delegating to <class>OcuPilot.Area.OsMgmt.NamespaceRules</class>. The two
+/// sub-resources precede <code>/namespace/:id</code>.</p>
+ClassMethod NamespaceFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.NamespaceRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /namespace/name</code>: the namespace editor's
+/// blur check of whether a name is taken.</p>
+ClassMethod NamespaceNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.NamespaceRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /namespace</code>: the namespace editor's create
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod NamespaceCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.NamespaceSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /namespace/:id</code>: the namespace editor's edit
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod NamespaceUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.NamespaceSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /oauth/server-description/form</code> (Story

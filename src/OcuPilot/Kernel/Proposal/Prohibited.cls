@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,web-session,background-task";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -342,6 +342,23 @@ Parameter TYPESERVICE = "service";
 
 Parameter TYPELDAP = "ldap-configuration";
 
+/// <p>A namespace (Story 18.2, <method>Namespace</method>).</p>
+Parameter TYPENAMESPACE = "namespace";
+
+/// <p>The write would delete, or change the globals or routines database of, the namespace
+/// OcuPilot's own API application runs in or <code>%SYS</code> (<method>IsOwnNamespace</method>,
+/// AD-10 as amended 2026-09-28). The vendor's delete removes every web application bound to the
+/// namespace, OcuPilot's own among them, and the routines database holds the code that answers
+/// OcuPilot's addresses.</p>
+Parameter OCUPILOTNAMESPACE = "PROHIBITED.OCUPILOTNAMESPACE";
+
+/// <p>The one sentence <parameter>OCUPILOTNAMESPACE</parameter> carries, caller-neutral, published
+/// and pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter OCUPILOTNAMESPACEREASON = "OcuPilot or the instance itself runs in this namespace. It cannot be deleted, and its globals and routines databases cannot be changed.";
+
+/// <p>The two namespace fields whose change on an own namespace
+/// (<parameter>OCUPILOTNAMESPACE</parameter>) is refused, comma-separated.</p>
+Parameter OWNNAMESPACEFIELDS = "Globals,Routines";
 /// <p>A web session (Story 16.2, <method>WebSession</method>).</p>
 Parameter TYPEWEBSESSION = "web-session";
 
@@ -508,11 +525,11 @@ Parameter READTYPE = "GET";
 /// only a web application reaches, then the two <method>Process</method> adds, then the one every
 /// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
 /// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
-/// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the two
-/// <method>WebSession</method> adds last -- twenty in all.</p>
+/// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the one
+/// <method>Namespace</method> adds, and the two <method>WebSession</method> adds last -- twenty-one in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -542,6 +559,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTRESOURCE Quit ..#OCUPILOTRESOURCEREASON
     If pCode = ..#OCUPILOTSSL Quit ..#OCUPILOTSSLREASON
     If pCode = ..#SERVINGSERVICE Quit ..#SERVINGSERVICEREASON
+    If pCode = ..#OCUPILOTNAMESPACE Quit ..#OCUPILOTNAMESPACEREASON
     If pCode = ..#OCUPILOTSESSION Quit ..#OCUPILOTSESSIONREASON
     If pCode = ..#PRESERVEDSESSION Quit ..#PRESERVEDSESSIONREASON
     Quit ""
@@ -644,6 +662,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPETASK Quit ..TaskChangeFields()
     If pType = ..#TYPESERVICE Quit $ListBuild("AutheEnabled", "ClientSystems", ..#FIELDENABLED)
     If pType = ..#TYPELDAP Quit ..LdapFields()
+    If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
     Quit ""
 }
 
@@ -750,6 +769,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPESSL Quit ..SslFields()
     If pType = ..#TYPETASK Quit ..TaskCreateFields()
     If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
+    If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
     Quit ""
 }
 
@@ -830,7 +850,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -909,6 +929,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If tType = ..#TYPEDEVICE {
             Set tSC = ..Device($Get(tToolClass), .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPENAMESPACE {
+            Set tSC = ..Namespace(tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPEAUDITING {
@@ -1616,6 +1640,60 @@ ClassMethod Device(pToolClass As %String, ByRef pChanged, Output pProhibits As %
 ClassMethod DeviceFields() As %List [ Private ]
 {
     Quit $ListBuild("PhysicalDevice", "Type", "SubType", "OpenParameters", "Description", "Alias", "AlternateDevice", "Prompt")
+}
+
+/// <p>The namespace predicates, in declared order, first hit wins: for an own namespace
+/// (<method>IsOwnNamespace</method>), a delete, or a change to its globals or routines database, is
+/// refused <parameter>OCUPILOTNAMESPACE</parameter>; then, for every write, the reviewed-few sweep
+/// over <method>NamespaceFields</method>.</p>
+/// <p><var>pId</var> is the target's id as the reference carries it and <var>pToolClass</var> the
+/// proposal's tool. A delete sends no body and its card rows are its fingerprint subject, so it
+/// reaches the sweep with nothing changed; a tool that cannot say whether it removes reads as one
+/// that does.</p>
+ClassMethod Namespace(pId As %String, pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tDelete = (..WriteTypeOf(pToolClass) = "DELETE") || ..RemovesOf(pToolClass)
+        If tDelete Kill pChanged
+        If ..IsOwnNamespace(pId) {
+            Set tMoves = tDelete
+            Set tOwn = $ListFromString(..#OWNNAMESPACEFIELDS)
+            For tI = 1:1:$ListLength(tOwn) {
+                If $Data(pChanged($List(tOwn, tI))) Set tMoves = 1
+            }
+            If tMoves {
+                Do ..Refuse(..#OCUPILOTNAMESPACE, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPENAMESPACE, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pId</var>, compared upper-cased, is <code>%SYS</code> or the namespace this
+/// process runs in, read at each call. OcuPilot's API process runs in its web application's
+/// configured namespace and never switches it outside a port, and a turn job refuses any other, so
+/// for both callers that is the install namespace.</p>
+ClassMethod IsOwnNamespace(pId As %String) As %Boolean
+{
+    Set tName = $ZConvert(pId, "U")
+    If tName = "" Quit 0
+    Quit (tName = "%SYS") || (tName = $ZConvert($NAMESPACE, "U"))
+}
+
+/// <p>A namespace's settable fields, create and change alike: the three
+/// <code>Namespace.Namespace</code> template fields. Its name is its id and never changes.</p>
+ClassMethod NamespaceFields() As %List [ Private ]
+{
+    Quit $ListBuild("Globals", "Routines", "TempGlobals")
 }
 
 /// <p>An OAuth 2.0 server description's settable fields, create and change alike: the four

@@ -260,6 +260,9 @@ const KERNEL_REFUSALS = [
   // Story 9.9: the service OcuPilot is served through, whose Enabled the service form draws
   // unavailable before a click with this same sentence.
   ['SERVINGSERVICE', 'serviceRefusalServing'],
+  // Story 18.2: OcuPilot's install namespace and %SYS, whose Delete dialog states this sentence as
+  // its advisory when it opens.
+  ['OCUPILOTNAMESPACE', 'namespaceRefusalOcuPilot'],
   // Story 16.2: a web session OcuPilot is itself running in, whose End session the Web sessions
   // list draws refused before a click with this same sentence.
   ['OCUPILOTSESSION', 'webSessionRefusalOcuPilot'],

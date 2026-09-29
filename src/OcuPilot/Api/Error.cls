@@ -418,7 +418,40 @@ Parameter REASONPATHEXISTS = "A file or directory of that name already exists. C
 Parameter PATHMANAGER = "PATH.MANAGER";
 
 /// <p>The sentence <parameter>PATHMANAGER</parameter> carries.</p>
-Parameter REASONPATHMANAGER = "A file cannot go directly in the manager directory, which holds the instance's own files. Name a subdirectory for it.";
+Parameter REASONPATHMANAGER = "The manager directory holds the instance's own files, so no file can be named directly in it. Name one in a subdirectory.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a file for the consuming tool
+/// to read where no file stands, or where a directory does. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug by <class>OcuPilot.Port.PathPort</class> with one
+/// <code>detail.violations</code> entry on the name's field, and never with the value or a
+/// path.</p>
+Parameter PATHNOFILE = "PATH.NOFILE";
+
+/// <p>The sentence <parameter>PATHNOFILE</parameter> carries.</p>
+Parameter REASONPATHNOFILE = "No file of that name exists to read. Name a file that is already there, not a directory.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named, for a consuming tool that
+/// overwrites, an existing file of the instance's own: one beside its configuration file, a
+/// database file one directory below the manager directory, one directly in a configured
+/// database's directory or under its stream location, or one directly in a journal directory.
+/// Rendered on the
+/// <parameter>BADREQUEST</parameter> slug by <class>OcuPilot.Port.PathPort</class> with one
+/// <code>detail.violations</code> entry on the name's field, and never with the value or a
+/// path.</p>
+Parameter PATHINSTANCE = "PATH.INSTANCE";
+
+/// <p>The sentence <parameter>PATHINSTANCE</parameter> carries.</p>
+Parameter REASONPATHINSTANCE = "That file belongs to the instance itself and cannot be overwritten. Choose another name.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named the manager directory itself
+/// as the directory a consuming tool's vendor writes its own files into. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug by <class>OcuPilot.Port.PathPort</class> with one
+/// <code>detail.violations</code> entry on the name's field, and never with the value or a
+/// path.</p>
+Parameter PATHMANAGERDIR = "PATH.MANAGERDIR";
+
+/// <p>The sentence <parameter>PATHMANAGERDIR</parameter> carries.</p>
+Parameter REASONPATHMANAGERDIR = "The manager directory holds the instance's own files, so a database, journal or backup cannot be kept in it. Name a subdirectory of it.";
 
 /// <p>Machine code (AD-12, AD-39): the agent configuration the request submitted broke one or more
 /// of the rules <class>OcuPilot.Kernel.AgentRules</class> (a definition) or
@@ -1363,6 +1396,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "SERVICE." Quit ..ReasonForService(pCode)
     If $Extract(pCode, 1, 5) = "LDAP." Quit ..ReasonForLdap(pCode)
     If $Extract(pCode, 1, 11) = "AUDITEVENT." Quit ..ReasonForAuditEvent(pCode)
+    If $Extract(pCode, 1, 10) = "NAMESPACE." Quit ..ReasonForNamespace(pCode)
     Quit ""
 }
 
@@ -1417,6 +1451,25 @@ ClassMethod WalletViolationCodes() As %List
 ClassMethod DeviceViolationCodes() As %List
 {
     Quit $ListBuild(..#DEVICENAMEREQUIRED, ..#DEVICENAMELENGTH, ..#DEVICENAMESHAPE, ..#DEVICENAMETAKEN, ..#DEVICENAMEABSENT, ..#DEVICEPHYSICALDEVICEREQUIRED, ..#DEVICEPHYSICALDEVICELENGTH, ..#DEVICEPHYSICALDEVICESHAPE, ..#DEVICETYPEREQUIRED, ..#DEVICETYPEVALUE, ..#DEVICESUBTYPEREQUIRED, ..#DEVICESUBTYPEABSENT, ..#DEVICEOPENPARAMETERSLENGTH, ..#DEVICEOPENPARAMETERSSHAPE, ..#DEVICEDESCRIPTIONLENGTH, ..#DEVICEDESCRIPTIONSHAPE, ..#DEVICEALTERNATEDEVICELENGTH, ..#DEVICEALTERNATEDEVICESHAPE, ..#DEVICEALIASSHAPE, ..#DEVICEALIASTAKEN, ..#DEVICEALIASSAME, ..#DEVICEPROMPTVALUE)
+}
+
+/// <p>Every <code>NAMESPACE.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod NamespaceViolationCodes() As %List
+{
+    Quit $ListBuild(..#NAMESPACENAMEREQUIRED, ..#NAMESPACENAMESHAPE, ..#NAMESPACENAMETAKEN, ..#NAMESPACENAMEABSENT, ..#NAMESPACEGLOBALSREQUIRED, ..#NAMESPACEROUTINESREQUIRED, ..#NAMESPACEGLOBALSABSENT, ..#NAMESPACEROUTINESABSENT, ..#NAMESPACETEMPGLOBALSABSENT)
+}
+
+/// <p>The sentence a <code>NAMESPACE.*</code> violation code carries, or <code>""</code>.</p>
+ClassMethod ReasonForNamespace(pCode As %String) As %String
+{
+    If pCode = ..#NAMESPACENAMEREQUIRED Quit ..#REASONNAMESPACENAMEREQUIRED
+    If pCode = ..#NAMESPACENAMESHAPE Quit ..#REASONNAMESPACENAMESHAPE
+    If pCode = ..#NAMESPACENAMETAKEN Quit ..#REASONNAMESPACENAMETAKEN
+    If pCode = ..#NAMESPACENAMEABSENT Quit ..#REASONNAMESPACENAMEABSENT
+    If (pCode = ..#NAMESPACEGLOBALSREQUIRED) || (pCode = ..#NAMESPACEROUTINESREQUIRED) Quit ..#REASONNAMESPACEDATABASEREQUIRED
+    If (pCode = ..#NAMESPACEGLOBALSABSENT) || (pCode = ..#NAMESPACEROUTINESABSENT) || (pCode = ..#NAMESPACETEMPGLOBALSABSENT) Quit ..#REASONNAMESPACEDATABASEABSENT
+    Quit ""
 }
 
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
@@ -2470,6 +2523,54 @@ Parameter REASONDEVICEALIASSAME = "An alias cannot be the same as the physical d
 Parameter DEVICEPROMPTVALUE = "DEVICE.PROMPT.VALUE";
 
 Parameter REASONDEVICEPROMPTVALUE = "Choose one of the prompt options.";
+
+/// <p>Envelope code (AD-39): a namespace's create or edit broke one or more of the rules
+/// <class>OcuPilot.Area.OsMgmt.NamespaceRules</class> applies before the port is touched. Rendered
+/// on the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>.</p>
+Parameter NAMESPACEVALIDATION = "NAMESPACE.VALIDATION";
+
+Parameter REASONNAMESPACEVALIDATION = "The namespace was refused.";
+
+/// <p>Violation code: no name was supplied.</p>
+Parameter NAMESPACENAMEREQUIRED = "NAMESPACE.NAME.REQUIRED";
+
+Parameter REASONNAMESPACENAMEREQUIRED = "Name the namespace.";
+
+/// <p>Violation code: the name is not one <class>Config.Namespaces</class> accepts (the vendor's
+/// 457 and 7201, mapped at the port).</p>
+Parameter NAMESPACENAMESHAPE = "NAMESPACE.NAME.SHAPE";
+
+Parameter REASONNAMESPACENAMESHAPE = "A namespace name starts with a letter or %, then letters, digits, _ or -, at most 64 characters.";
+
+/// <p>Violation code: a namespace already carries that name, compared without regard to case.
+/// <code>GET /namespace/name</code> answers it on blur.</p>
+Parameter NAMESPACENAMETAKEN = "NAMESPACE.NAME.TAKEN";
+
+Parameter REASONNAMESPACENAMETAKEN = "This instance already has a namespace with that name. Choose a different one.";
+
+/// <p>Violation code: an edit or a form read names a namespace this instance does not hold.
+/// Rendered at 404.</p>
+Parameter NAMESPACENAMEABSENT = "NAMESPACE.NAME.ABSENT";
+
+Parameter REASONNAMESPACENAMEABSENT = "This instance has no namespace with that name.";
+
+/// <p>Violation codes: a create carried no globals or routines database, or an edit emptied
+/// one.</p>
+Parameter NAMESPACEGLOBALSREQUIRED = "NAMESPACE.GLOBALS.REQUIRED";
+
+Parameter NAMESPACEROUTINESREQUIRED = "NAMESPACE.ROUTINES.REQUIRED";
+
+Parameter REASONNAMESPACEDATABASEREQUIRED = "Choose a database.";
+
+/// <p>Violation codes: a database field names no database this instance lists.</p>
+Parameter NAMESPACEGLOBALSABSENT = "NAMESPACE.GLOBALS.ABSENT";
+
+Parameter NAMESPACEROUTINESABSENT = "NAMESPACE.ROUTINES.ABSENT";
+
+Parameter NAMESPACETEMPGLOBALSABSENT = "NAMESPACE.TEMPGLOBALS.ABSENT";
+
+Parameter REASONNAMESPACEDATABASEABSENT = "No database on this instance has that name.";
 
 /// <p>Machine code (Story 12.4): the server description editor refused a Save; the envelope's
 /// <code>detail.violations</code> names each field and its rule (AD-39).</p>

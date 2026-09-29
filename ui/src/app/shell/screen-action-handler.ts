@@ -45,9 +45,10 @@ export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
  * actions the role editor sends, and the X.509 credentials, Secrets and SSL/TLS configurations lists
  * (Story 9.5), whose Delete types the name, and the OAuth 2.0 Resource servers tab (Story 12.6), whose
  * Delete types the name, and the Authorization server tab (Story 12.7), whose Delete types the issuer
- * and whose Rotate Keys is sent at once, and the Web sessions list (Story 16.2), whose End session
- * types the session id, and the Background tasks list (Story 16.5), whose Pause and Resume are sent
- * at once and whose Cancel task warns first.
+ * and whose Rotate Keys is sent at once, and the Namespaces list (Story 18.2), whose Delete types the
+ * name and states the removal's impact, the Web sessions list (Story 16.2), whose End session types
+ * the session id, and the Background tasks list (Story 16.5), whose Pause and Resume are sent at once
+ * and whose Cancel task warns first.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -70,6 +71,7 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.SslConfigList',
   'OcuPilot.Screen.Descriptor.OAuthResourceServerTab',
   'OcuPilot.Screen.Descriptor.OAuthServerTab',
+  'OcuPilot.Screen.Descriptor.NamespaceList',
   'OcuPilot.Screen.Descriptor.WebSessionList',
   'OcuPilot.Screen.Descriptor.BackgroundTaskList',
 ];
@@ -91,6 +93,9 @@ export const ROLE_LIST = 'OcuPilot.Screen.Descriptor.RoleList';
 
 /** The Resources list's descriptor, whose Delete is drawn refused for a system resource (Story 9.3). */
 export const RESOURCE_LIST = 'OcuPilot.Screen.Descriptor.ResourceList';
+
+/** The Namespaces list's descriptor, whose Delete states the web applications deleted with it (Story 18.2). */
+export const NAMESPACE_LIST = 'OcuPilot.Screen.Descriptor.NamespaceList';
 
 /** The role value actions, and the values each sends (AD-56 (ii)). */
 export const ADD_GRANTED_ROLE = 'add-granted-role';
@@ -192,6 +197,7 @@ const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-t
 const IMPACT_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [ROLE_LIST]: ['delete'],
   [RESOURCE_LIST]: ['delete'],
+  [NAMESPACE_LIST]: ['delete'],
 };
 
 /**
@@ -221,6 +227,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.SslConfigList': { delete: STRINGS.sslDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthResourceServerTab': { delete: STRINGS.oauthResourceServerDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthServerTab': { delete: STRINGS.oauthAuthServerDeleteConsequence },
+  [NAMESPACE_LIST]: { delete: STRINGS.namespaceDeleteConsequence },
   'OcuPilot.Screen.Descriptor.WebSessionList': { end: STRINGS.webSessionEndConsequence },
 };
 
