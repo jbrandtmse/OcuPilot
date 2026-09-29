@@ -8162,6 +8162,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: namespace-form.page.ts resets its store on destroy (retaining() false), so the change-bus re-read never runs for this flow; database-wizard.page.ts replaces the route with the editor. AC6 holds only because the form's next open re-reads.
 - 2026-09-29T14:12:00Z status=decision-pending owner=burndown by=cr note=product call: carry the form across the wizard and return with the new database selected, as classic SA-13 does?
+- 2026-09-29T22:56:19Z status=routed owner=range-end-cleanup by=merge_gate note=decided as recommended (orchestrator 2026-09-29): Create a database from the New Namespace form keeps what was typed and returns to it, as the classic portal does; routed to range-end-cleanup, 18.4 stays bounded
 
 ### DW-1825: An accepted Save in the database editor re-opens its store through reset(), unmounting every field and the form bar until the re-read lands: focus is lost and edits typed during the PUT are dropped
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: med | footprint: in-story
@@ -8188,3 +8189,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (CI run 36600327713) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Run 36600327713 on 822c0e3f, instance shard 1/3, run 60: 'content: at 422, by name' red; the class and its port are untouched since Epic 12/14 and passed in runs 36573329469, 36581952884 and 36588987899 and 3/3 on ocupilot-b-ci (runs 428-430)
 - 2026-09-29T17:09:15Z status=routed owner=burndown by=lead note=Epic 12's issuer fixture (OAuthServerDiscover); probe the fixture server's timing on a slow runner
+
+### DW-1846: Admin API behaviours in Database.Actions on 2026.2 that OcuPilot designs around: mount without %Admin_Secure:USE answers 500 #356; a queued action refused for privilege answers 202 and fails in the task; modify-size silently no-ops a shrink and clamps above MaxSize (logging a severity-2 alert); an integrity check on a non-database directory reports both no errors and errors; NewVolumeDirectory collisions answer 500 (#576, #575); deleting an AsyncTaskSysBackground row as an object leaves its %SYS.BackgroundTask row
+- source: spec-18-4-the-deferred-disk-operations.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured on ocupilot-b-ci 2026-09-29 by Story 18.4's plan probe; OcuPilot guards each on its own side (pairs before any port call, size and target rules before any vendor call, the volume-directory rule before the PUT)
+- 2026-09-29T22:56:14Z status=wontfix-accepted owner=18-4-the-deferred-disk-operations by=harvest note=owner 2026-09-29 (as DW-1820): well-known vendor behaviour; no upstream report; reopen_if=a 2027.1 image answers any of these differently
+
+### DW-1847: osmgmt.databasedetails.dismount declares %Admin_Manage:USE beyond Database details' pairs, against 18.4's intent (dismount: Database details' pairs only): PROHIBITED.OCUPILOTDATABASE's dismount arm reads the install namespace and the database configurations as the caller, and those reads need %Admin_Manage
+- source: spec-18-4-the-deferred-disk-operations.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-b-ci 2026-09-29 by 18.4's implement: Namespace.Namespace GET and Database.ConfigCRUD LIST have ResourcesOR %Admin_Manage alone, and a failed read refuses, so an Operate-only holder is refused PROHIBITED on every dismount without the pair
+- 2026-09-29T22:56:14Z status=decision-pending owner=burndown by=harvest note=recommended: accept %Admin_Manage:USE for dismount now (AD-8 amended, intent pair line corrected) -- the classic page lets an Operate-only holder dismount, so an Operate-only path needs a Manage-free own-set read (an AD-27 named case) later
+
+### DW-1848: The Integrity log's error branch is unverified: no test renders the report of a check that found errors through the real Display^Integrity capture
+- source: spec-18-4-the-deferred-disk-operations.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Every live leg runs a clean check and the fixture replaces IntegrityReport wholesale; that an error line begins **** is taken from the fixture (inference)
+- 2026-09-29T22:56:14Z status=open owner=18-4-the-deferred-disk-operations by=harvest note=settle with a hand-built vendor output global or a damaged probe block on ocupilot-b-ci
+
+### DW-1849: Canceling a compact through %SYS.BackgroundTask kills the admin API worker running it, and that caller's AsyncTask row then stays Running
+- source: spec-18-4-the-deferred-disk-operations.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Observed on ocupilot-b-ci 2026-09-29 by 18.4's implement; BackgroundTaskPort controls a Database row no portal or own admin row holds through %SYS.BackgroundTask (AD-27's 18.4 case); an own admin row cancels through AsyncResult
+- 2026-09-29T22:56:14Z status=wontfix-accepted owner=18-4-the-deferred-disk-operations by=harvest note=vendor behaviour; reopen_if=a user's own admin API task reads Running after another user's cancel on a live instance
