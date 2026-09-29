@@ -496,7 +496,8 @@ export class DatabaseWizardPage {
   }
 
   protected onLocation(location: ServerPath): void {
-    this.store.setLocation(location.root, location.path);
+    if (location.preselected === true) this.store.preselectRoot(location.root);
+    else this.store.setLocation(location.root, location.path);
   }
 
   protected onSize(event: Event): void {

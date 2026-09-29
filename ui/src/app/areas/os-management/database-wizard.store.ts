@@ -290,7 +290,18 @@ export class DatabaseWizard {
     this.change('Name');
   }
 
-  /** The picker's root and relative path. A path that differs from the one held is an edit. */
+  /**
+   * The picker's own preselection of its single root: held as the root without marking the form
+   * dirty, since nobody chose it, and without counting as an edit of the path.
+   */
+  preselectRoot(root: string): void {
+    if (root === this.valuesValue.root) return;
+    this.valuesValue = { ...this.valuesValue, root };
+    this.clearFieldViolation('root');
+    this.notify();
+  }
+
+  /** A user's change of the picker's root or relative path; a path that differs from the one held is an edit. */
   setLocation(root: string, path: string): void {
     const held = this.valuesValue;
     if (root === held.root && path === held.path) return;

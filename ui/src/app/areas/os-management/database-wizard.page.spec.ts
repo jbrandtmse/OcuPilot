@@ -41,6 +41,7 @@ interface Options {
   readonly form?: unknown;
   readonly check?: readonly unknown[];
   readonly create?: JsonResult<unknown>;
+  readonly roots?: readonly string[];
 }
 
 async function mount(options: Options = {}) {
@@ -53,16 +54,18 @@ async function mount(options: Options = {}) {
       if (path.startsWith(DATABASE_FORM_PATH)) return { kind: 'ok', status: 200, body: options.form ?? FORM } as unknown as JsonResult<T>;
       if (path === DATABASE_CHECK_PATH) return { kind: 'ok', status: 200, body: { violations: options.check ?? [] } } as unknown as JsonResult<T>;
       if (path.includes('/read?')) {
-        return { kind: 'ok', status: 200, body: { rows: [{ Directory: ROOT }], truncated: false, banner: '' } } as unknown as JsonResult<T>;
+        const rows = (options.roots ?? [ROOT]).map((Directory) => ({ Directory }));
+        return { kind: 'ok', status: 200, body: { rows, truncated: false, banner: '' } } as unknown as JsonResult<T>;
       }
       return (options.create ?? { kind: 'ok', status: 201, body: { name: 'OCUPROBE183A' } }) as JsonResult<T>;
     },
   };
+  const formDirty = new FormDirty();
   TestBed.configureTestingModule({
     providers: [
       provideRouter([{ path: '**', children: [] }]),
       { provide: ApiService, useValue: api as unknown as ApiService },
-      { provide: FormDirty, useValue: new FormDirty() },
+      { provide: FormDirty, useValue: formDirty },
       { provide: ChangeBus, useValue: new ChangeBus() },
       { provide: OverlayStack, useValue: new OverlayStack() },
     ],
@@ -73,7 +76,7 @@ async function mount(options: Options = {}) {
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
   await settle(fixture);
-  return { fixture, calls, router, host: fixture.nativeElement as HTMLElement };
+  return { fixture, calls, router, formDirty, host: fixture.nativeElement as HTMLElement };
 }
 
 function headLabels(host: HTMLElement): string[] {
@@ -126,6 +129,28 @@ describe('DatabaseWizardPage', () => {
     expect(currentStep(host)).toBe(STRINGS.webAppColumnResource);
     expect(primary(host).textContent?.trim()).toBe(STRINGS.actionCreate);
     expect(host.querySelector('#ocu-database-resource-new')?.closest('label')?.textContent?.trim()).toBe('Create the resource %DB_OCUPROBE183A');
+  });
+
+  // Mutation (Rule 19): `onLocation` hands the preselection to `setLocation` -> the first
+  // `dirty()` assertion goes red.
+  it('opening over a single allowed root leaves the form clean; a user\u2019s edit of the path then marks it dirty', async () => {
+    const { fixture, host, formDirty } = await mount();
+    expect((host.querySelector('#ocu-database-location-root') as HTMLSelectElement).value).toBe(ROOT);
+    expect(formDirty.dirty()).toBe(false);
+    type(host, 'ocu-database-location-path', 'dbs');
+    await settle(fixture);
+    expect(formDirty.dirty()).toBe(true);
+  });
+
+  it('over several allowed roots nothing is preselected and the form stays clean until the user chooses a root', async () => {
+    const { fixture, host, formDirty } = await mount({ roots: ['/tmp/', ROOT] });
+    const root = host.querySelector('#ocu-database-location-root') as HTMLSelectElement;
+    expect(root.selectedIndex).toBe(-1);
+    expect(formDirty.dirty()).toBe(false);
+    root.value = ROOT;
+    root.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(formDirty.dirty()).toBe(true);
   });
 
   it('an edited path is kept when the name changes afterwards', async () => {

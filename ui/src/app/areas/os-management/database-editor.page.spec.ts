@@ -142,10 +142,13 @@ describe('DatabaseEditorPage', () => {
       },
     });
     expect(host.querySelector('app-server-path-picker')).toBeNull();
+    expect(TestBed.inject(FormDirty).dirty()).toBe(false);
     (host.querySelector('[data-action="change-volume-directory"]') as HTMLButtonElement).click();
     await settle(fixture);
     expect(host.querySelector('app-server-path-picker')).not.toBeNull();
     expect((host.querySelector('#ocu-database-volume-root') as HTMLSelectElement).value).toBe(ROOT);
+    // After an explicit Change, the picker's preselection is an edit: the form reads dirty.
+    expect(TestBed.inject(FormDirty).dirty()).toBe(true);
     save(host);
     await settle(fixture);
     expect(JSON.parse(calls.find((call) => call.method === 'PUT')?.body ?? '{}')).toEqual({ file: { volumeRoot: ROOT, volumePath: '' } });

@@ -71,13 +71,40 @@ describe('the create database wizard store', () => {
     store.setName('OcuProbe183A');
     expect(store.values().path).toBe('ocuprobe183a');
     expect(store.newResourceName()).toBe('%DB_OCUPROBE183A');
-    // The picker's preselection of its one root reports the path it was given: not an edit.
+    // A root change reporting the path as held is not an edit of the path.
     store.setLocation('/durable/iris/mgr/', 'ocuprobe183a');
     store.setName('OcuProbe183B');
     expect(store.values().path).toBe('ocuprobe183b');
     store.setLocation('/durable/iris/mgr/', 'dbs/b');
     store.setName('OcuProbe183C');
     expect(store.values()).toMatchObject({ root: '/durable/iris/mgr/', path: 'dbs/b' });
+  });
+
+  // Mutation (Rule 19): `preselectRoot` marks the form dirty -> the first test goes red.
+  it('the picker\u2019s preselection of its single root is held and leaves the form clean', async () => {
+    const { store, formDirty } = mount();
+    await store.open();
+    store.preselectRoot('/durable/iris/mgr/');
+    expect(store.values()).toMatchObject({ root: '/durable/iris/mgr/', path: '' });
+    expect(formDirty.dirty()).toBe(false);
+    store.setName('OcuProbe183A');
+    expect(store.values().path).toBe('ocuprobe183a');
+  });
+
+  it('after the preselection, a user\u2019s change of the root, or of the path, marks the form dirty', async () => {
+    const byRoot = mount();
+    await byRoot.store.open();
+    byRoot.store.preselectRoot('/durable/iris/mgr/');
+    expect(byRoot.formDirty.dirty()).toBe(false);
+    byRoot.store.setLocation('/tmp/', '');
+    expect(byRoot.formDirty.dirty()).toBe(true);
+
+    const byPath = mount();
+    await byPath.store.open();
+    byPath.store.preselectRoot('/durable/iris/mgr/');
+    expect(byPath.formDirty.dirty()).toBe(false);
+    byPath.store.setLocation('/durable/iris/mgr/', 'dbs');
+    expect(byPath.formDirty.dirty()).toBe(true);
   });
 
   it('Next posts the step and its values, keeps only that step\u2019s refusals and advances on none', async () => {
