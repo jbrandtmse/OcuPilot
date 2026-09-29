@@ -211,8 +211,21 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 Set tPollPair = $ListBuild($Parameter(tTool.class, "POLLRESOURCE"), $Parameter(tTool.class, "POLLPERMISSION"))
                 If '$ListFind(tExpected, tPollPair) Set tExpected = tExpected _ $ListBuild(tPollPair)
             }
+            ; Story 18.3: the database file edit declares no write pair, since its PUT writes no system
+            ; database (measured), so a tool naming no write resource adds none.
             Set tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION"))
-            If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            If ($List(tOwnPair, 1) '= "") && '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            ; Story 18.3: the database create declares the resource pair and the path pair after the
+            ; write's own, and the two edits add pairs by argument (AD-8 as amended 2026-09-29).
+            If tTool.name = "osmgmt.localdatabases.create" Set tExpected = tExpected _ $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_FileSystemAccess", "USE"))
+            If tTool.name = "osmgmt.localdatabases.updatemount" {
+                Set tByArgument = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, {"MountRequired": true}, .tByArgumentResolved)
+                Do $$$AssertTrue(tByArgumentResolved && (tByArgument = $ListBuild($ListBuild("%Admin_Operate", "USE"))), tTool.name _ ": setting MountRequired true adds %Admin_Operate:USE")
+            }
+            If tTool.name = "osmgmt.localdatabases.update" {
+                Set tByArgument = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, {"ResourceName": "%DB_USER", "volumeRoot": "/probe/", "volumePath": "v"}, .tByArgumentResolved)
+                Do $$$AssertTrue(tByArgumentResolved && (tByArgument = $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_FileSystemAccess", "USE"))), tTool.name _ ": a resource adds %Admin_Secure:USE and a new volume directory %Admin_FileSystemAccess:USE")
+            }
             ; Story 18.2: the namespace delete declares a second pair beyond its write's, the
             ; application pair its cascade reaches (AD-8), after the write's own.
             If $Parameter(tTool.class, "APPLICATIONRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "APPLICATIONRESOURCE"), $Parameter(tTool.class, "APPLICATIONPERMISSION")))

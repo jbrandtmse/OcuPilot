@@ -4,10 +4,11 @@ import { NavigationEnd, Router } from '@angular/router';
 import { ApiService } from '../../core/api';
 import { DetailHighlights } from '../../core/detail-highlights';
 import { NavigationService, parentCriteria, screenForRoute } from '../../core/navigation';
+import { uncheckedLine } from '../../core/privileges';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
-import { createScreenRead } from '../../core/screen-read';
+import { createScreenRead, screenReadPath } from '../../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration, TableColumn } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
@@ -47,6 +48,30 @@ const VOLUMES_ROUTE = 'os-management/databases/volumes';
 /** The volumes read's own row cap: a database's own files are never many. */
 const VOLUMES_MAX_ROWS = 200;
 
+/** The route Database details' Background tasks section reads (Story 18.3, DW-1080). */
+const TASKS_ROUTE = 'tasks/background';
+
+/** The Background tasks read's row cap: the section filters the instance's tasks to this database. */
+const TASKS_MAX_ROWS = 1000;
+
+/** The Background tasks section's columns: the field each shows and the string key it is labelled by. */
+const TASK_COLUMNS: readonly { readonly field: string; readonly labelKey: string }[] = [
+  { field: 'Task', labelKey: 'proposalEntityTask' },
+  { field: 'Status', labelKey: 'taskHistoryColumnStatus' },
+  { field: 'StartTime', labelKey: 'taskStartTime' },
+];
+
+/** A directory as the section compares it: lower case, with no trailing separator. */
+export function comparableDirectory(directory: string): string {
+  return directory.toLowerCase().replace(/[\\/]+$/, '');
+}
+
+/** The body a screen read answers, as far as the Background tasks section reads it. */
+interface TasksReadBody {
+  readonly rows?: unknown;
+  readonly truncated?: unknown;
+}
+
 /**
  * Database details (Story 6.11): one database's own properties and volume files, read on open
  * through the route's one criterion (`parentCriteria`, shared with `DatabaseVolumeList` since both
@@ -77,6 +102,13 @@ const VOLUMES_MAX_ROWS = 200;
  * section draws its own small table from the same declared columns and `cellView` rule instead,
  * one cell-rendering rule shared with every other table even though the markup is not literally
  * `app-data-table`'s.
+ *
+ * **Background tasks (Story 18.3, DW-1080).** The same pairing again: the section resolves the
+ * `tasks/background` screen by its route and issues that screen's declared read with `maxRows` 1000
+ * on open, on an id change and on Refresh, into that screen's own store, and shows the rows whose
+ * `Database` equals this page's directory, ignoring case and a trailing separator. A caller whose
+ * verdict for that screen is denied is never sent the read; it, and a read answering 403, sees the
+ * section "Not checked (requires <pair>)".
  *
  * **A refused volumes read says so in the section.** The sibling screen carries its own pair set
  * -- `%Admin_Manage:USE`, which this screen deliberately does not declare (see the descriptor) --
@@ -170,6 +202,44 @@ const VOLUMES_MAX_ROWS = 200;
           <p class="ocu-data-table-empty-title">{{ STRINGS.databaseVolumeListEmpty }}</p>
         }
       </section>
+      <section class="ocu-details-group ocu-details-tasks">
+        <h2 class="ocu-details-heading">{{ STRINGS.backgroundTaskListLabel }}</h2>
+        @if (tasksUnchecked) {
+          <p class="ocu-data-table-empty-title ocu-details-tasks-unchecked">{{ tasksUncheckedText }}</p>
+        }
+        @if (tasksFault) {
+          <div class="ocu-data-table-refusal" role="alert">
+            <span class="ocu-data-table-refusal-message">{{ STRINGS.connectivityRequestRefused }}</span>
+            <button type="button" class="ocu-button-text" (click)="onRetryTasks()">{{ STRINGS.actionRetry }}</button>
+          </div>
+        }
+        @if (hasTaskRows) {
+          <table class="ocu-details-volumes-table ocu-details-tasks-table" role="table">
+            <thead>
+              <tr role="row">
+                @for (column of taskColumns; track column.field) {
+                  <th role="columnheader" scope="col">{{ column.label }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of taskRows; track row.key) {
+                <tr role="row">
+                  @for (cell of row.cells; track cell.field) {
+                    <td role="cell">{{ cell.text }}</td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+        @if (showTasksEmpty) {
+          <p class="ocu-data-table-empty-title ocu-details-tasks-none">{{ STRINGS.databaseTasksNone }}</p>
+        }
+        @if (showTasksTruncated) {
+          <p class="ocu-data-table-empty-title ocu-details-tasks-truncated">{{ tasksTruncatedText }}</p>
+        }
+      </section>
     }
   </section>`,
 })
@@ -190,6 +260,8 @@ export class DatabaseDetailsPage {
 
   protected readonly volumes: DetailsView | null;
 
+  private readonly tasks: DetailsView | null;
+
   private readonly highlights: DetailHighlights;
 
   /** Bumped by the store and the refresh service, so the fields re-render under `OnPush`. */
@@ -203,12 +275,29 @@ export class DatabaseDetailsPage {
    * rendering an empty state that would claim the database has no volume files. */
   private readonly volumesFaultSignal = signal(false);
 
+  /** Whether the Background tasks section's read has completed, or been withheld by the verdict. */
+  private readonly tasksLoadedSignal = signal(false);
+
+  /** Whether the Background tasks read failed for any reason but a refused pair. */
+  private readonly tasksFaultSignal = signal(false);
+
+  /** The pair a refused Background tasks read names, or `''` while the read is allowed. */
+  private readonly tasksUncheckedSignal = signal('');
+
+  /** Whether the Background tasks read answered only the newest rows. */
+  private readonly tasksTruncatedSignal = signal(false);
+
+  /** The directory this page's route names, as the Background tasks section compares it. */
+  private readonly directorySignal = signal('');
+
   constructor() {
     const screen = this.navigation.screenForUrl(this.router.url);
     const volumesScreen = screenForRoute(VOLUMES_ROUTE);
+    const tasksScreen = screenForRoute(TASKS_ROUTE);
     if (screen === null || screen.read === null || screen.table === null) {
       this.view = null;
       this.volumes = null;
+      this.tasks = null;
       this.highlights = new DetailHighlights();
       return;
     }
@@ -218,12 +307,17 @@ export class DatabaseDetailsPage {
     store.clearAnswers();
     this.volumes =
       volumesScreen === null ? null : { screen: volumesScreen, store: this.stores.for(volumesScreen.descriptor, volumesScreen.refreshRates) };
+    this.tasks =
+      tasksScreen === null || tasksScreen.read === null
+        ? null
+        : { screen: tasksScreen, store: this.stores.for(tasksScreen.descriptor, tasksScreen.refreshRates) };
 
     const criteria = () => parentCriteria(screen, this.router.url);
     this.refresh.bind(screen, createScreenRead(this.api, screen, criteria));
     if (this.scope.loaded()) {
       void this.refresh.readNow();
       void this.loadVolumes(criteria());
+      void this.loadTasks(criteria());
     }
 
     let readFor = JSON.stringify(criteria());
@@ -240,15 +334,20 @@ export class DatabaseDetailsPage {
       this.volumes?.store.clearAnswers();
       this.volumesLoadedSignal.set(false);
       this.volumesFaultSignal.set(false);
+      this.tasksLoadedSignal.set(false);
+      this.tasksFaultSignal.set(false);
+      this.tasksUncheckedSignal.set('');
       if (this.scope.loaded()) {
         this.refresh.noteScopeChanged();
         void this.loadVolumes(next);
+        void this.loadTasks(next);
       }
     });
 
     const stopRefreshAction = this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
       void this.refresh.readNow();
       void this.loadVolumes(criteria());
+      void this.loadTasks(criteria());
     });
 
     const stopStore = store.subscribe(() => {
@@ -288,6 +387,42 @@ export class DatabaseDetailsPage {
     this.volumesFaultSignal.set(false);
     volumes.store.applyTick(result.rows, result.truncated, result.banner ?? '', new Date());
     this.volumesLoadedSignal.set(true);
+    this.generation.update((value) => value + 1);
+  }
+
+  /**
+   * The Background tasks section's read (Story 18.3, DW-1080): the `tasks/background` screen's own
+   * declared read, capped at `TASKS_MAX_ROWS`, applied into that screen's own store. Never sent when
+   * the caller's verdict for that screen is already denied; a 403 names its failed pair.
+   */
+  private async loadTasks(criteria: Readonly<Record<string, string>>): Promise<void> {
+    const tasks = this.tasks;
+    if (tasks === null) return;
+    this.directorySignal.set(comparableDirectory(criteria['dir'] ?? ''));
+    const verdict = this.navigation.screenVerdict(TASKS_ROUTE);
+    if (!verdict.allowed) {
+      this.tasksUncheckedSignal.set(verdict.failedPair);
+      this.tasksFaultSignal.set(false);
+      this.tasksLoadedSignal.set(true);
+      this.generation.update((value) => value + 1);
+      return;
+    }
+    const result = await this.api.requestJson<TasksReadBody>(screenReadPath(tasks.screen, TASKS_MAX_ROWS));
+    const body = result.kind === 'ok' ? result.body : null;
+    if (body !== null && typeof body === 'object' && Array.isArray(body.rows)) {
+      this.tasksUncheckedSignal.set('');
+      this.tasksFaultSignal.set(false);
+      this.tasksTruncatedSignal.set(body.truncated === true);
+      tasks.store.applyTick(body.rows as readonly unknown[], body.truncated === true, '', new Date());
+    } else if (result.kind === 'error' && result.status === 403) {
+      const pair = result.detail === null ? '' : result.detail['failedPair'];
+      this.tasksUncheckedSignal.set(typeof pair === 'string' && pair !== '' ? pair : verdict.failedPair);
+      this.tasksFaultSignal.set(false);
+    } else {
+      this.tasksUncheckedSignal.set('');
+      this.tasksFaultSignal.set(true);
+    }
+    this.tasksLoadedSignal.set(true);
     this.generation.update((value) => value + 1);
   }
 
@@ -354,7 +489,10 @@ export class DatabaseDetailsPage {
   protected onRetry(): void {
     void this.refresh.readNow();
     const view = this.view;
-    if (view !== null) void this.loadVolumes(parentCriteria(view.screen, this.router.url));
+    if (view !== null) {
+      void this.loadVolumes(parentCriteria(view.screen, this.router.url));
+      void this.loadTasks(parentCriteria(view.screen, this.router.url));
+    }
   }
 
   protected get volumesLoaded(): boolean {
@@ -399,5 +537,74 @@ export class DatabaseDetailsPage {
         text: cellView(fieldOf(row, column.field), column.kind, column.emptyKey ?? '').text,
       })),
     }));
+  }
+
+  /** Whether the Background tasks read was refused or withheld for a pair the caller lacks. */
+  protected get tasksUnchecked(): boolean {
+    this.generation();
+    return this.tasksLoadedSignal() && this.tasksUncheckedSignal() !== '';
+  }
+
+  /** "Not checked (requires <pair>)", naming the pair the Background tasks read needs. */
+  protected get tasksUncheckedText(): string {
+    return uncheckedLine(this.tasksUncheckedSignal());
+  }
+
+  protected get tasksFault(): boolean {
+    this.generation();
+    return this.tasksFaultSignal();
+  }
+
+  /** The Background tasks section's column headers. */
+  protected get taskColumns(): readonly { readonly field: string; readonly label: string }[] {
+    return TASK_COLUMNS.map((column) => ({ field: column.field, label: stringFor(column.labelKey) }));
+  }
+
+  /** The Background tasks running against this page's database, through the shared `cellView` rule. */
+  protected get taskRows(): readonly VolumeRowView[] {
+    this.generation();
+    const tasks = this.tasks;
+    if (tasks === null || !this.tasksLoadedSignal() || this.tasksUncheckedSignal() !== '' || this.tasksFaultSignal()) return [];
+    const directory = this.directorySignal();
+    if (directory === '') return [];
+    const declared = tasks.screen.table?.columns ?? [];
+    return tasks.store
+      .data()
+      .filter((row) => {
+        const database = fieldOf(row, 'Database');
+        return typeof database === 'string' && database !== '' && comparableDirectory(database) === directory;
+      })
+      .map((row, index) => ({
+        key: String(index),
+        cells: TASK_COLUMNS.map((column) => {
+          const kind = declared.find((each) => each.field === column.field)?.kind ?? 'text';
+          return { field: column.field, text: cellView(fieldOf(row, column.field), kind, '').text };
+        }),
+      }));
+  }
+
+  protected get hasTaskRows(): boolean {
+    return this.taskRows.length > 0;
+  }
+
+  protected get showTasksEmpty(): boolean {
+    this.generation();
+    return this.tasksLoadedSignal() && !this.tasksUnchecked && !this.tasksFault && !this.hasTaskRows;
+  }
+
+  protected get showTasksTruncated(): boolean {
+    this.generation();
+    return this.tasksLoadedSignal() && !this.tasksUnchecked && !this.tasksFault && this.tasksTruncatedSignal();
+  }
+
+  /** "Only the newest <n> background tasks were checked.", naming the read's cap. */
+  protected get tasksTruncatedText(): string {
+    return STRINGS.databaseTasksTruncated.replace('<n>', () => String(TASKS_MAX_ROWS));
+  }
+
+  /** Retry the Background tasks read alone. */
+  protected onRetryTasks(): void {
+    const view = this.view;
+    if (view !== null) void this.loadTasks(parentCriteria(view.screen, this.router.url));
   }
 }

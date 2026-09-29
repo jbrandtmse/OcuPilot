@@ -54,6 +54,11 @@ Parameter SPLITTARGETID = "OcuPilotDraftNamespace,OcuPilotDraftName";
 /// id is a pid set, which the broadcast's port refuses to compose from anything else (Story
 /// 16.6).</p>
 Parameter TYPEDTARGETIDS = "process=812,907";
+/// <p>The fields a tool's declared port adds to its fresh read, which its stored payload therefore
+/// carries, as <code>tool=field</code> entries, comma-separated (Story 18.3's file edit: the database
+/// port answers the configuration's directory for a file read by name, and the script addresses
+/// it).</p>
+Parameter PORTREADFIELDS = "osmgmt.localdatabases.update=Directory";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -238,6 +243,10 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     Set tSubject = $ClassMethod(tClass, "FingerprintSubject")
     For tI = 1:1:$ListLength(tSubject) {
         If tPayload.%GetTypeOf($List(tSubject, tI)) = "unassigned" Do ..SetProbe(tPayload, $List(tSubject, tI), "string", 0, .tN)
+    }
+    For tI = 1:1:$Length(..#PORTREADFIELDS, ",") {
+        Set tEntry = $Piece(..#PORTREADFIELDS, ",", tI)
+        If ($Piece(tEntry, "=", 1) = pTool.%Get("name")) && (tPayload.%GetTypeOf($Piece(tEntry, "=", 2)) = "unassigned") Do ..SetProbe(tPayload, $Piece(tEntry, "=", 2), "string", 0, .tN)
     }
     ; A composed secret is never stored: the mint names it in the diff with both sides empty, and
     ; the confirm is supplied it (Mint.AppendComposedSecrets).

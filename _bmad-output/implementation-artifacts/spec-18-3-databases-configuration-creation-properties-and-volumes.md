@@ -2,8 +2,8 @@
 title: 'Story 18.3: Databases - configuration, creation, properties and volumes'
 type: 'feature'
 created: '2026-09-28'
-status: 'in-progress'
-baseline_revision: '5e986a1f4cde1691754f323e7d63c62827af5317'
+status: 'done'
+baseline_revision: 'fb12ead7fbe8abfd0a27ee5f8be7874fd9f642f7'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -494,6 +494,20 @@ deferred:
 - [x] P10 `DatabaseWrite` -- a create minted while its name is absent and confirmed after a probe configuration of that name was added is refused (the sibling `ResourceCreate.TestATakenNameRefusesTheMintAndAConfirmTakenSince` model), with no file, resource or configuration change. Replace the first `mutation:` line with a mutation that this leg turns red.
 - [x] P11 `database-editor.store.spec.ts` -- the partial-failure stub carrying `detail.applied` answers a status the server sends for it (422, or 403 `PROHIBITED.*`), not 403 `AUTH.NOPRIVILEGE`.
 
+**Review patches (2026-09-29, second review pass, implement-2):**
+
+- [x] Q1 `DatabasePort.Snippet` (AD-59: the script makes the change the card reviewed) -- a delete with `DeleteFile` true answers no step (the draft is 409 `PROPOSAL.NODRAFT`), because the write deletes the file only when no other configuration name shares its directory, read at the write, and a script cannot carry that; `DeleteFile` false stays one `DELETE /database` step. The create's resource step creates `%DB_<NAME>` only when `Security.Resources.Exists` answers 0 (the write's `EnsureResource` never modifies an existing resource), as a `DatabasePort` step. Doc comment and `DraftPorts.TestDatabasePort` follow; the resource-step mutation line stays true or is re-recorded.
+- [x] Q2 `DraftPorts.TestDatabasePort` -- a file edit by name renders one `PUT /database-dir?dir=<payload Directory>` whose body carries no `Directory`, `volumeRoot` or `volumePath`. Mutation: the file-edit branch of `Snippet` falls through to the admin port's script.
+- [x] Q3 `DatabaseProhibitedFixture` + `DatabaseWrite` -- switches that fail `OwnDatabaseNames` and, separately, `OwnDatabaseDirectories`; through `DatabaseAcceptPort` on both callers, a probe database's delete (names read failing) and its `ResourceName` change (directories read failing) are refused 403 `PROHIBITED.OCUPILOTDATABASE` with `Writes()` empty. Mutation: `Prohibited.Database` carries on with an empty own set when `OwnDatabaseNames` fails.
+- [x] Q4 `DatabaseRefusals` -- the file edit's `volumeRoot`/`volumePath`: a root not allowed and `../x` are refused on those fields at the Save and at the mint, with no write; and a volume root dropped from the allow-list between mint and confirm refuses the confirm `PATH.ROOT` with nothing sent. Mutation: `LocalDatabaseUpdate.PortQuery` drops `volumeRoot`.
+- [x] Q5 `PathPortDatabases` -- with a probe configuration whose directory holds no `IRIS.DAT` (a configuration only), an unrelated overwrite under `<mgr>ocuprobe183pq/sub/` still resolves. Mutation: `VolumeDirectories` drops its no-`IRIS.DAT` early answer.
+- [x] Q6 `DatabaseRefusals` -- the three `Database.SysCRUD` `PROPERTYFAULTS` entries, through `AdminPort.Invoke` on probe objects: `POST /database-dir` on a probe database's directory answers `path:DATABASE.DIRECTORY.INUSE`, and one with `ResourceName` `OcuProbe183Custom` answers `ResourceName:DATABASE.RESOURCE.SHAPE`; the vendor's errors on this build are measured first, and a code the vendor also answers that leaves the mapping unapplied joins `PROPERTYFAULTS` with its measured fact. Mutation: drop the `:60` entry.
+- [x] Q7 `DatabaseWrite.TestTheThreeDeleteShapes` -- the with-file leg's probe carries a second volume file (test-only `SYS.Database`), and that file is gone after the delete; and `TestACreateRunsTheResourceTheFileAndTheConfigurationInOrder` asserts the recorded bodies' keys: `POST /database-dir` `{Directory, Size, GlobalJournalState, ResourceName}`, `PUT /database` `{Directory}`.
+- [x] Q8 `database-details.page.spec.ts` -- a tasks read answering 500 shows the refusal with Retry and no "none" line, and Retry reads the tasks again. Mutation: drop `tasksFaultSignal.set(true)`.
+- [x] Q9 `ui/src/app/app.spec.ts` sign-out test -- a value set in `DatabaseWizard` and in `DatabaseEditor` is cleared by the teardown. Mutation: drop `this.databaseWizard.reset()`.
+- [x] Q10 `DatabaseDescriptor.TestTheReadToolAnswersTheListsRowsAllLocal` -- the assertion and doc comment claim only what the class can fail on (no local configuration is left out); the remote half is `DatabaseRefusals.TestARemoteDatabaseIsRefused`'s. `DatabaseRefusals.TestARemoteDatabaseIsRefused` -- floors: the read tool resolves and each read answers at least one row before the absence assertions.
+- [x] Q11 `ReadTool` -- the second assertion's message names ninety-eight write tools and the class tools' current count.
+
 ## Spec Change Log
 
 - 2026-09-29, runner, before re-plan: the orchestrator split remote databases (SA-17, Part C) into Story 18.16 (Rule 5, 2026-09-28) and kept expand-volume and size-grow in 18.4. The intent contract drops Part C and adds DW-1080 (Database details' background tasks through `BackgroundTaskPort`), DW-1807 (`PATH.SERVED`), DW-1795 and DW-1796. Since the first plan, `PATH.INSTANCE` covers every file in every configured database and journal directory (DW-1790), and every file and vendor-writes directory under OcuPilot's served directory is refused `PATH.SERVED` (DW-1798, DW-1806). Status set to `draft` for the re-plan.
@@ -528,6 +542,36 @@ deferred:
   - `[false]` `[reject]` (intent-alignment) EXPERIENCE.md :98's bracket was replaced rather than added to — the spec's task directs "its bracket replaced by".
   - `[medium]` `[patch]` (intent-alignment) the confirm-time `DATABASE.DIRECTORY.INUSE` is untested — grouped with P1.
   - `[false]` `[reject]` (intent-alignment) the "Create a database" link, the two-write Save with `detail.applied`, and the rolled-back create keeping its resource are outside the intent text — each is a spec task (AC6; `DatabaseSave`; `DatabasePort`'s create).
+
+### 2026-09-29 — Review pass (implement-2)
+
+- verdicts: 25 findings — high 0, medium 7, low 12, false 4, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` (verification-gap) a failed `OwnDatabaseNames` or `OwnDatabaseDirectories` read is untested, so AD-10's fail-closed refusal could fail open unseen — Q3: fixture switches and `DatabaseWrite.TestAFailedOwnSetReadRefuses` on both callers, mutation recorded.
+  - `[medium]` `[patch]` (verification-gap) the file edit's `volumeRoot`/`volumePath` refusals and their re-resolution at the write are untested — Q4: `DatabaseRefusals.TestTheVolumeDirectoryRefusalsLandOnTheirFields`, mutation recorded.
+  - `[medium]` `[patch]` (verification-gap) `VolumeDirectories`' answer for a configured directory with no `IRIS.DAT` is untested — Q5: `PathPortDatabases.TestAConfigurationWithNoFileRefusesNothing`, mutation recorded.
+  - `[low]` `[patch]` (verification-gap) the file edit's script is unpinned (AD-59) — Q2: a `DraftPorts.TestDatabasePort` leg, mutation recorded.
+  - `[low]` `[patch]` (verification-gap) Database details' failed tasks read and its Retry are untested — Q8: a spec leg, mutation recorded.
+  - `[medium]` `[patch]` (verification-gap) the sign-out teardown's two database store resets are untested — Q9: `app.spec.ts`, each reset's mutation recorded.
+  - `[medium]` `[patch]` (verification-gap) the three `Database.SysCRUD` `PROPERTYFAULTS` entries are never exercised — Q6: `DatabaseRefusals.TestTheFileEndpointsFaultsLandOnTheirFields` on probe directories; the vendor answered #70/#60/#73 and #70/#18/#78, each carrying a mapped code, so the parameter is unchanged; mutation recorded.
+  - `[low]` `[reject]` (verification-gap) the delete impact's unchecked namespaces part is untested on the server — reachable only through a custom resource on a mapping list's classic page or a list past its cap, and a test needs principals and page assignment; reopen_if a caller holding the delete's pairs reads an advisory that omits a mapping-only user without an unchecked note.
+  - `[low]` `[patch]` (verification-gap) `DatabaseDescriptor`'s "no data server" half cannot fail where no remote configuration exists — Q10: the assertion and doc claim only that no local configuration is left out.
+  - `[low]` `[patch]` (verification-gap) `TestARemoteDatabaseIsRefused`'s absence assertions have no floor — Q10: the read tool resolves and each read answers rows first.
+  - `[false]` `[reject]` (verification-gap) AC sub-clauses without their own `mutation:` line — carried: Rule 19 asks one per AC, and AC1-AC9 each have an observed red.
+  - `[maybe-false]` `[reject]` (verification-gap) a 403 on the tasks read with no `detail.failedPair` would show the "none" line — every 403 path found (`ScreenRead`'s gate, `BackgroundTaskPort.GateRefusal`, `AdminPort.Denied`) sets `failedPair`; if one did not, only low: settle by a tasks-read 403 whose detail lacks it.
+  - `[low]` `[reject]` (verification-gap) a configuration `PUT` without `root` or `Directory` reaches the vendor's manager-directory upsert — no shipped caller sends one (`root` required, the mounting edit sends its fresh `Directory`); reopen_if a caller composes a configuration `PUT` without `Directory`.
+  - `[low]` `[reject]` (intent-alignment) an unchecked applications part renders nothing on the advisory — the phrase set is the spec's (`EXPERIENCE.md:577`), and the part is only non-empty when namespaces already make the vendor refuse the delete; reopen_if a deleter lacking `%Admin_Secure:USE` needs the application list to act.
+  - `[false]` `[reject]` (intent-alignment) "no vendor call" is tested as "no vendor write" — the name look-up and resource read are the rules' own inputs and cannot be skipped; the refused rows send no write, which `Writes()` asserts.
+  - `[low]` `[reject]` (intent-alignment) the agent's mint answers field and sentence, not the `DATABASE.*` code — carried: AD-39's agent refusal convention.
+  - `[maybe-false]` `[reject]` (intent-alignment) argument pairs follow the arguments, so an edit on a database whose stored `MountRequired` is true sends it without `%Admin_Operate:USE` — whether the vendor's #921 fires on an unchanged true is unmeasured; if it does, only low: the vendor refuses with nothing changed; settle by that edit as a principal without the pair.
+  - `[medium]` `[patch]` (intent-alignment) the delete's script sent `DELETE /database-dir` whether or not the file is shared, and the create's script modified an existing `%DB_<NAME>` (AD-59: a script making a change the card did not review) — Q1: a delete with its file answers no step (409 `PROPOSAL.NODRAFT`), and the resource step creates only when absent; mutation re-recorded.
+  - `[medium]` `[defer]` (intent-alignment) the Background tasks section lists portal rows only — carried: the fourth `deferred:` item.
+  - `[low]` `[reject]` (intent-alignment) `delete` and `updatemount` accept a remote configuration named by the agent — carried.
+  - `[false]` `[reject]` (intent-alignment) the directory arm, the "Create a database" link, the two-group Save, the rolled-back create's resource, the four routes and the `DatabaseList` read are outside the intent — carried: each is a spec task or amendment.
+  - `[low]` `[patch]` (intent-alignment) "its volume files are gone" is not tested with a volume file — Q7: the delete legs' probes carry a second volume file, gone with the file option and kept without it.
+  - `[low]` `[patch]` (intent-alignment) the create row's exact bodies are not asserted — Q7: the recorded `POST` and `PUT` bodies' keys are asserted, mutation recorded.
+  - `[false]` `[reject]` (intent-alignment) a protected target is minted before the confirm refuses it — the kernel refuses at the confirm and at the draft for every tool (AD-10); no protected write is sent.
+  - `[low]` `[reject]` (intent-alignment) a least-privileged principal's mint is never exercised, only its confirm — the mint's gate is the kernel's, pinned for these tools by `ProposalPrivilege` and `ToolEmit`; reopen_if a tool's mint admits a caller its confirm refuses.
 
 ## Design Notes
 
@@ -711,56 +755,66 @@ Probe objects created and removed: database `OCUPROBE183X` (directory `ocuprobe1
 | AC9 (DW-1796) | `DatabaseDirectories` drops a `VolumeDirectories` error | the failure leg |
 | AC9 (DW-1796) | `LocalDirectory` answers 1 for a leading `:` | the colon leg |
 
-- mutation: the confirm's create re-read in `Confirm` reads the name as absent (`tPresent` 0) → `DatabaseWrite.TestANameTakenSinceTheMintRefusesTheConfirm` alone red (run 135): the upsert was sent, the file and `%DB_OCUPROBE183TS` made and the configuration rewritten.
-- mutation: `DatabasePort.Create` skips `EnsureResource` → `DatabaseWrite.TestACreateRunsTheResourceTheFileAndTheConfigurationInOrder` red (call order and resource read-back).
-- mutation: `DatabaseRules.DirectoryViolations` skips the `IRIS.DAT` test → `DatabaseRefusals.TestADirectoryHoldingADatabaseIsRefused` red (step-check and mint legs).
-- mutation: the wizard store drops `path` violations → `database-wizard.page.spec.ts`' `PATH.SERVED` leg red; the browser `PATH.MANAGERDIR` leg was not run under this mutation.
-- mutation: `LocalDatabaseUpdate.MergeUpdate` narrows the payload to the changed keys → `DatabaseWrite.TestTheEditsSendTheirCompleteSets` red.
-- mutation: `DatabasePort.Delete` deletes the file although shared → `DatabaseWrite.TestTheThreeDeleteShapes` red.
-- mutation: `Impact.KindOf` drops `database-delete` → `DatabaseWrite.TestTheImpactNamesTheNamespacesAndApplications` red; `core/impact.ts` dropping it → `impact.test.mjs` red. The browser advisory was not run under this mutation.
-- mutation: `confirmPending` sends the flagged action without `DeleteFile` → `screen-action-handler.spec.ts` red; the browser delete-with-file leg was not run under this mutation.
-- mutation: `Prohibited.Database`'s own-name arm removed → `DatabaseWrite.TestTheProtectedDatabasesAreRefusedOnBothCallers` red, each write recorded by `DatabaseAcceptPort` and none sent.
-- mutation: `Prohibited.Database`'s directory arm removed → `DatabaseWrite.TestAResourceChangeThroughASecondNameOverAnOwnFileIsRefused` red.
-- mutation: `LocalDatabaseCreate.PrivilegePairs` drops `%DB_IRISSYS:WRITE` → `DatabaseWriteGate.TestEachMissingPairIsRefusedBeforeAnyPortCall` red.
-- mutation: `LocalDatabaseDelete` empties `CLASSICPAGES` → `ClassicPageGate`'s agent-caller and declared-set tests red, and `MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools` red.
+- Every line below was re-observed on 2026-09-29 on `ocupilot-b-ci`, each mutation reverted byte-identical and its class reloaded with subclasses: runs 38-60 before the container's last recreation, runs 365-378 on the recreated one (its full sweep is runs 1-363).
+- mutation: the confirm's create re-read in `Confirm` reads the name as absent (`tPresent` 0) → `DatabaseWrite.TestANameTakenSinceTheMintRefusesTheConfirm` red (run 41): the confirm was not refused and a file and resource were made.
+- mutation: `DatabasePort.Create` skips `EnsureResource` → `DatabaseWrite.TestACreateRunsTheResourceTheFileAndTheConfigurationInOrder` red (run 38; call order and resource read-back).
+- mutation: `DatabaseRules.DirectoryViolations` skips the `IRIS.DAT` test → `DatabaseRefusals.TestADirectoryHoldingADatabaseIsRefused` red (run 39; step-check and mint legs).
+- mutation: the wizard store drops `path` violations → `database-wizard.page.spec.ts`' `PATH.SERVED` and `DATABASE.DIRECTORY.INUSE` legs red; the browser `PATH.MANAGERDIR` leg was not run under this mutation.
+- mutation: `LocalDatabaseUpdate.MergeUpdate` narrows the payload to the changed keys → `DatabaseWrite.TestTheEditsSendTheirCompleteSets` red (run 42).
+- mutation: `DatabasePort.Delete` deletes the file although shared → `DatabaseWrite.TestTheThreeDeleteShapes` red (run 43).
+- mutation: `Impact.KindOf` drops `database-delete` → `DatabaseWrite.TestTheImpactNamesTheNamespacesAndApplications` red (run 44); `core/impact.ts` giving `database-delete` no parts → `impact.test.mjs`' Story 18.3 leg red. The browser advisory was not run under this mutation.
+- mutation: `confirmPending` sends the delete without `DeleteFile` → `screen-action-handler.spec.ts`' Story 18.3 leg red; the browser delete-with-file leg was not run under this mutation.
+- mutation: `Prohibited.Database`'s own-name arm removed → `DatabaseWrite.TestTheProtectedDatabasesAreRefusedOnBothCallers` red (run 46), each write recorded by `DatabaseAcceptPort` and none sent.
+- mutation: `Prohibited.Database`'s directory arm removed → `DatabaseWrite.TestAResourceChangeThroughASecondNameOverAnOwnFileIsRefused` red (run 47).
+- mutation: `LocalDatabaseCreate.PrivilegePairs` drops `%DB_IRISSYS:WRITE` → `DatabaseWriteGate.TestEachMissingPairIsRefusedBeforeAnyPortCall` red (run 48).
+- mutation: `LocalDatabaseDelete` empties `CLASSICPAGES` → `ClassicPageGate`'s agent-caller and declared-set tests red (run 49), and `MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools` red (run 50).
 - mutation: the namespace form store ignores the `database-configuration` event → `namespace-form.store.spec.ts`' AC6 leg red.
 - mutation: `.ocu-form-step-label` drawn in `--ocu-surface`, rebuilt and redeployed → `local-databases.browser-spec`'s AC7 leg red, 1:1 contrast on `os-management/local-databases/edit` in light and dark.
-- mutation: `BackgroundTaskPort.KeepRunning` keeps ended tasks → `BackgroundTasks.TestAPortalRowNamesTheDatabaseItsTaskRunsAgainst` alone red (run 70).
-- mutation: `comparableDirectory` keeps case → `database-details.page.spec.ts`' listing, truncated and Refresh legs red; rebuilt and redeployed, `local-databases.browser-spec`'s AC8 leg red, no task row rendered.
-- mutation: `DatabaseDirectories` skips `VolumeDirectories` → `PathPortDatabases.TestAVolumeDirectorysFilesAreTheInstances` and `TestAFailedVolumeReadRefuses` red (run 80).
-- mutation: the reader ignores a configured `StreamLocation` → `PathPortDatabases.TestAConfiguredStreamLocationIsFollowed` alone red (run 81).
-- mutation: the reader keeps its answer in `^||` → `PathPortDatabases.TestTheReaderKeepsNothing` red, with the stream, volume and failure legs (run 82).
-- mutation: `DatabaseDirectories` drops a `VolumeDirectories` error → `PathPortDatabases.TestAFailedVolumeReadRefuses` alone red (run 83).
-- mutation: `LocalDirectory` answers 1 for a leading `:` → `PathPortDatabases.TestAColonDirectoryIsNeverListed` alone red (run 84).
-- mutation: `DatabasePort.Create` skips `HoldsDatabase` → `DatabaseRefusals.TestADirectoryHoldingADatabaseIsRefused` alone red (run 128): the confirm's resource write was sent and `%DB_OCUPROBE183DC` made.
-- mutation: `DatabaseSave.Answer` drops `applied` from a violations refusal → `DatabaseWrite.TestTheRoutesAnswerOverTheWire` alone red (run 130).
-- mutation: `DatabasePort.Snippet` drops the resource step → `DraftPorts.TestDatabasePort` alone red (run 129).
-- mutation: `Impact`'s `MAPPINGDESCRIPTORS` drops `RoutineMappingList` → `DatabaseWrite.TestTheImpactNamesRoutineAndPackageMappingUsers` alone red (run 131).
-- mutation: the id-change handler drops `loadTasks` → `database-details.page.spec.ts`' id-change leg alone red (one tasks read, not two).
-- mutation: `Error.ReasonForPath` drops its `PATH.ROOT` arm → `DatabaseRefusals.TestEachPathCodeCarriesThePortsSentence` alone red (run 132).
-- mutation: the Local databases list's read sends `localOnly` `0` → `DatabaseRefusals.TestARemoteDatabaseIsRefused` alone red (run 134): the list's read and `osmgmt.localdatabases.read` both answered the remote row.
+- mutation: `BackgroundTaskPort.KeepRunning` keeps ended tasks → `BackgroundTasks.TestAPortalRowNamesTheDatabaseItsTaskRunsAgainst` alone red (run 51).
+- mutation: `comparableDirectory` keeps case → `database-details.page.spec.ts`' listing, truncated, Refresh and id-change legs red; rebuilt and redeployed, `local-databases.browser-spec`'s AC8 leg red.
+- mutation: `DatabaseDirectories` skips `VolumeDirectories` → `PathPortDatabases.TestAVolumeDirectorysFilesAreTheInstances` and `TestAFailedVolumeReadRefuses` red (run 52).
+- mutation: the reader ignores a configured `StreamLocation` → `PathPortDatabases.TestAConfiguredStreamLocationIsFollowed` alone red (run 53).
+- mutation: the reader keeps its answer in `^||` → `PathPortDatabases.TestTheReaderKeepsNothing` red, with the stream, volume and failure legs (run 54).
+- mutation: `DatabaseDirectories` drops a `VolumeDirectories` error → `PathPortDatabases.TestAFailedVolumeReadRefuses` alone red (run 55).
+- mutation: `LocalDirectory` answers 1 for a leading `:` → `PathPortDatabases.TestAColonDirectoryIsNeverListed` alone red (run 56).
+- mutation: `DatabasePort.Create` skips `HoldsDatabase` → `DatabaseRefusals.TestADirectoryHoldingADatabaseIsRefused` alone red (run 40): the confirm's resource write was sent.
+- mutation: `DatabaseSave.Answer` drops `applied` from a violations refusal → `DatabaseWrite.TestTheRoutesAnswerOverTheWire` alone red (run 57).
+- mutation: `DatabasePort.Snippet` drops the resource step → `DraftPorts.TestDatabasePort` alone red (run 365).
+- mutation: `Impact`'s `MAPPINGDESCRIPTORS` drops `RoutineMappingList` → `DatabaseWrite.TestTheImpactNamesRoutineAndPackageMappingUsers` alone red (run 45).
+- mutation: the id-change handler drops `loadTasks` → `database-details.page.spec.ts`' id-change leg alone red.
+- mutation: `Error.ReasonForPath` drops its `PATH.ROOT` arm → `DatabaseRefusals.TestEachPathCodeCarriesThePortsSentence` alone red (run 59).
+- mutation: the Local databases list's read sends `localOnly` `0` → `DatabaseRefusals.TestARemoteDatabaseIsRefused` alone red (run 60).
+- mutation: `DatabasePort.Snippet`'s file-edit branch falls through to the admin port's script → `DraftPorts.TestDatabasePort` alone red (run 366): the step carried no `?dir=` query, and the read's own names in its body.
+- mutation: `Prohibited.Database` carries on with an empty own set when `OwnDatabaseNames` fails → `DatabaseWrite.TestAFailedOwnSetReadRefuses` red (run 370, the method alone): neither delete was refused, and a write reached `DatabaseAcceptPort`.
+- mutation: `DatabasePort.FileBody` adds `VolThreshold` → `DatabaseWrite.TestACreateRunsTheResourceTheFileAndTheConfigurationInOrder` red on its two body-key assertions alone (run 371, the method alone).
+- mutation: `LocalDatabaseUpdate.PortQuery` drops `volumeRoot` → `DatabaseRefusals.TestTheVolumeDirectoryRefusalsLandOnTheirFields` red (run 373, the method alone): the confirm was not refused `PATH.ROOT`, and a write was sent.
+- mutation: `PROPERTYFAULTS` drops `Database.SysCRUD:60` → `DatabaseRefusals.TestTheFileEndpointsFaultsLandOnTheirFields` red (run 374, the method alone). The vendor answered the mounted probe directory's `POST` with #70, #60 and #73, a dismounted one's with #70, #18 and #78, and `OcuProbe183Custom` with #896, so no code joins `PROPERTYFAULTS`.
+- mutation: `PathPort.VolumeDirectories` drops its no-`IRIS.DAT` early answer → `PathPortDatabases.TestAConfigurationWithNoFileRefusesNothing` red (run 378, the method alone).
+- mutation: `loadTasks` drops `tasksFaultSignal.set(true)` → `database-details.page.spec.ts`' 500 leg alone red.
+- mutation: `App.verifyWhenSignedIn` drops `this.databaseWizard.reset()` → `app.spec.ts`' sign-out test red on the wizard's name; dropping `this.databaseEditor.reset()` → red on the editor's name.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**Re-planned; no product code changed.**
+**Implement-2 (2026-09-29): the recovered partial implementation completed, verified and reviewed.**
 
-- Part C (remote databases) is gone: its tasks, tools, routes, codes, strings, literals, keys, tests and its proposed spine case. `DATABASE.REMOTE` on `update` stays.
-- The inbox is planned: DW-1080 (AC8), DW-1795 and DW-1796 (AC9), DW-1807 (in AC1), and DW-1791 (kept). The Code Map is re-anchored to 18.14's landed names.
-- New measurements are recorded under Design Notes.
+- **Found already in the tree:** every task, matrix row and patch P1-P11. Changed: the editor's second prompt reuses `databaseDetailsPrompt2` (`LocalDatabaseForm.cls`, `strings.ts`, EXPERIENCE.md :377 in place, 993 lines), `screens.generated.ts` regenerated.
+- **Review patches Q1-Q11** (second review pass): `DatabasePort.Snippet` answers no step for a delete with its file and creates `%DB_<NAME>` only when absent (AD-59); new legs `DatabaseWrite.TestAFailedOwnSetReadRefuses`, `DatabaseRefusals.TestTheVolumeDirectoryRefusalsLandOnTheirFields` and `TestTheFileEndpointsFaultsLandOnTheirFields`, `PathPortDatabases.TestAConfigurationWithNoFileRefusesNothing`; extended `DraftPorts.TestDatabasePort`, `TestTheThreeDeleteShapes` (a second volume file), the create's body keys, `database-details.page.spec.ts` (500 and Retry), `app.spec.ts` (sign-out resets), `DatabaseDescriptor`/`TestARemoteDatabaseIsRefused` floors, `ReadTool`'s message. Each changed pin's mutation is recorded under `## Verification`.
+- **Review:** 25 findings (high 0, medium 7, low 12, false 4, maybe-false 2); 12 patched (6 medium, 6 low), 1 carried defer (the fourth `deferred:` item), 12 rejected with reasons in the triage log. Follow-up review: not recommended; every patch but Q1 is a test, and Q1's one product change is pinned by `DraftPorts` and `DraftRegistry`, each run in full.
+- **Rosters, read from the instance:** 39 entity types, 83 descriptors, 159 production tools (98 writes, 61 reads), 23 `Prohibited` codes over 28 covered types, governance baseline 98 keys (3 disabled: `osmgmt.localdatabases.delete`, `osmgmt.namespaces.delete`, `security.auditing.purge`), 20 OS management screens, 20 ports, 14 tools declaring classic pages.
+- **Full ObjectScript sweep** (once, on `ocupilot-b-ci` recreated from this tree): 363 classes, 2979 tests, 0 failures, runs 1-363, totals read from `%UnitTest_Result`. After the patches, the latest run of every class: 363 classes, 2983 tests, 0 failures (runs 1-381; patched classes re-run in full at 367-381).
+- **Client and gates:** `npm run test:tools` 1699/1699, `npm run test:components` 1832/1832, `client-lint`, `check-objectscript` (0 problems), `lint-docs` clean; the story's four browser spec files 16/16 on the redeployed bundle; `smoke.sh` 49/49.
+- **Bundle:** initial 2.19 MB (main 2,018,233 B, styles 174,097 B), under `angular.json`'s 2217kB warning and far under 3800kB.
+- **Throwaway:** afterwards no `OCUPROBE183*` configuration, namespace or application, no `ocuprobe183*` directory, `%DB_OCUPROBE183*` resource, gate principal or `OCUBGSEED` database; the `%GUIFileSelector` allow-list unset, as on a fresh instance.
+- **Residual:** `DatabaseWrite.cls` is about 760 lines, above the 500-line guideline for a test class. `DatabaseRules` checks a named resource with `Security.Resource` `GET` as the caller rather than the Resources list's read (same port, same gate).
+
+**Re-plan (2026-09-28):**
+
 - Probe objects created on `ocupilot-b-ci` and removed, with removal re-read:
   - databases `OCUPROBE183V` (with volume directory `ocuprobe183vx/`) and `OCUPROBE183W`, their directories;
   - configurations `OCUPROBE183D` and `OCUPROBE183M`, which made no directory;
   - role `OcuProbe183PP` and user `OcuProbe183PPUser`; role `OcuProbe183BG` and user `OcuProbe183BGUser`;
   - `BackgroundSeed`'s `OCUBGSEED` database, its `%DB_OCUBGSEED` resource and its paused compact (removed through `BackgroundSeed.Remove`).
   - Afterwards: no `OCUPROBE183*` or `OCUBGSEED` configuration, no probe directory, principal or resource, no database background task and no portal task row.
-
-**For the runner:**
-
-- Eight spine sentences are proposed under Design Notes (AD-8 twice, AD-10, AD-21 twice, AD-52, AD-44, AD-27).
-- The story stays one story; the fallback split moves DW-1080 to 18.4.
-- The footprint extends into Story 16.5's files; they are listed under Design Notes.
-- A fourth `deferred:` item (the portal-only task list) is for harvest to 18.4.
-- Recommended disposition for all five inbox entries: `resolved-by:18-3`.

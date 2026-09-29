@@ -146,6 +146,7 @@ Method TestASeededPortalCompactIsListedPaused()
     Do $$$AssertTrue($IsObject(tRow), "the screen's read lists it")
     If '$IsObject(tRow) Quit
     Do $$$AssertEquals(tRow.%Get("Task") _ " | " _ tRow.%Get("Namespace") _ " | " _ tRow.%Get("Status") _ " | " _ tRow.%Get("Details"), "Compact DB Space | %SYS | Paused | " _ $Parameter(..#SEED, "DATABASE") _ " " _ $ClassMethod(..#SEED, "Directory"), "as the portal's compact in %SYS, paused, with its database as the details")
+    Do $$$AssertEquals($ZConvert(tRow.%Get("Database"), "L"), $ZConvert($ClassMethod(..#SEED, "Directory"), "L"), "naming the database its task runs against, compared without case (Story 18.3, DW-1080)")
     Set tVendor = ..VendorRow(tJob)
     Do $$$AssertTrue($IsObject(tVendor) && (tVendor.%Get("StartTime") '= "") && (tVendor.%Get("ErrorCount") = 2), "the portal's own query lists the job with a start time and its error count: " _ $Select($IsObject(tVendor): tVendor.%ToJSON(), 1: ""))
     If '$IsObject(tVendor) Quit

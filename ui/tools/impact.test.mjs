@@ -145,6 +145,44 @@ test('Story 18.2: a namespace delete names the applications deleted with it and 
   assert.equal(impactLine(read([], { code: 'PROHIBITED.OCUPILOTNAMESPACE', reason }), 'HSCUSTOM'), reason, 'a refused delete states the refusal');
 });
 
+// Mutation (Rule 19): drop `database-delete` from IMPACT_PARTS -> every read below is null and this goes red.
+test('Story 18.3: a database delete names the namespaces that use it, the applications in them and the databases sharing its file', () => {
+  assert.deepEqual(IMPACT_PARTS['database-delete'], ['namespaces', 'applications', 'sharedFile']);
+  const read = (parts, refused = null) => impactOf({ kind: 'database-delete', refused, parts });
+  assert.notEqual(read([part('namespaces', 0), part('applications', 0), part('sharedFile', 0)]), null, 'the kind and its three parts are in the vocabulary');
+  assert.equal(read([part('databases', 0)]), null, 'a part the kind does not carry is not');
+  assert.equal(
+    impactLine(read([part('namespaces', 2, ['OCUA', 'OCUB']), part('applications', 2, ['/csp/a', '/csp/b']), part('sharedFile', 2, ['SYNA', 'SYNB'])]), 'DB'),
+    'Impact: 2 namespaces use it and must stop using it first: OCUA, OCUB; 2 web applications run in those namespaces: /csp/a, /csp/b; 2 other databases share its file, which stays: SYNA, SYNB.'
+  );
+  assert.equal(
+    impactLine(read([part('namespaces', 1, ['OCUA']), part('applications', 1, ['/csp/a']), part('sharedFile', 1, ['SYNA'])]), 'DB'),
+    'Impact: 1 namespace uses it and must stop using it first: OCUA; 1 web application runs in those namespaces: /csp/a; 1 other database shares its file, which stays: SYNA.'
+  );
+  assert.equal(
+    impactLine(read([part('namespaces', 0), part('applications', 0), part('sharedFile', 0)]), 'DB'),
+    'Impact: no namespace uses it.',
+    'an applications or shared-file part counted 0 renders nothing'
+  );
+  assert.equal(
+    impactLine(read([part('namespaces', 0, [], '%Admin_Manage:USE'), part('applications', 3, ['/csp/a', '/csp/b', '/csp/c']), part('sharedFile', 0, [], 'truncated')]), 'DB'),
+    'Impact: which namespaces use it was not checked (requires %Admin_Manage:USE); whether another database shares its file was not checked (too many to check).',
+    'an unchecked namespaces part says so, and the applications part renders nothing when the namespaces part was not checked'
+  );
+  assert.equal(
+    impactLine(read([part('namespaces', 0), part('applications', 2, ['/csp/a', '/csp/b']), part('sharedFile', 0)]), 'DB'),
+    'Impact: no namespace uses it.',
+    'the applications part renders nothing when the namespaces part counted 0'
+  );
+  assert.equal(
+    impactLine(read([part('namespaces', 1, ['OCUA']), part('applications', 0, [], '%Admin_Manage:USE'), part('sharedFile', 0)]), 'DB'),
+    'Impact: 1 namespace uses it and must stop using it first: OCUA.',
+    'an unchecked applications part renders nothing'
+  );
+  const reason = STRINGS.databaseRefusalOcuPilot;
+  assert.equal(impactLine(read([], { code: 'PROHIBITED.OCUPILOTDATABASE', reason }), 'IRISSYS'), reason, 'a refused delete states the refusal');
+});
+
 test('the proposal row carries the impact to the card view, and a row without one carries null', () => {
   const row = (impact) => ({
     proposalId: 'p1',

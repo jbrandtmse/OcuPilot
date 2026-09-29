@@ -194,6 +194,67 @@ Method TestAuditPort()
     Do $$$AssertTrue(tText [ """EndDateTime"":""2026-09-01 00:00:00""", "a purge sends its cutoff: " _ tText)
 }
 
+/// <p>The database port's scripts (Story 18.3): a create that names no resource is a step creating
+/// <code>%DB_&lt;NAME&gt;</code> only when it does not exist, then the file's <code>POST</code> and the
+/// configuration's <code>PUT</code>, in that order; a delete that keeps the file is the configuration's
+/// <code>DELETE</code> alone, and one that deletes the file answers no step, since whether another name
+/// shares the file is read at the write; a file edit by name is one <code>PUT</code> at the stored
+/// directory whose body carries none of the three names the port's read adds.</p>
+/// <p>Mutations (Rule 19): drop the resource step from
+/// <method>OcuPilot.Port.DatabasePort.Snippet</method> -> this goes red; let its file-edit branch fall
+/// through to the admin port's script -> this goes red.</p>
+Method TestDatabasePort()
+{
+    Set tPort = "OcuPilot.Port.DatabasePort"
+    For tCase = $ListBuild("", "objectscript,POST /database-dir,PUT /database"), $ListBuild("%DB_USER", "POST /database-dir,PUT /database") {
+        Kill tQuery
+        Set tQuery("name") = "DRAFTDB"
+        Set tQuery("root") = "/draft/"
+        Set tQuery("path") = "db"
+        If $List(tCase, 1) '= "" Set tQuery("ResourceName") = $List(tCase, 1)
+        Set tSteps = $ClassMethod(tPort, "Snippet", "Database.ConfigCRUD", "PUT", .tQuery, {"Directory": "/draft/db/"}, ..Context())
+        Do $$$AssertEquals(..Shapes(tSteps), $List(tCase, 2), "a create naming resource '" _ $List(tCase, 1) _ "': " _ ..Text(tSteps))
+        Do $$$AssertTrue(..Text(tSteps) [ ("""ResourceName"":""" _ $Select($List(tCase, 1) = "": "%DB_DRAFTDB", 1: $List(tCase, 1)) _ """"), "its file is guarded by that resource")
+    }
+    Kill tQuery
+    Set tQuery("name") = "DRAFTDB"
+    Set tQuery("root") = "/draft/"
+    Set tQuery("path") = "db"
+    Set tText = ..Text($ClassMethod(tPort, "Snippet", "Database.ConfigCRUD", "PUT", .tQuery, {"Directory": "/draft/db/"}, ..Context()))
+    Do $$$AssertTrue(tText [ "If '##class(Security.Resources).Exists(""%DB_DRAFTDB"") { Set tSC = ##class(Security.Resources).Create(""%DB_DRAFTDB"", """", """")", "the resource is created only when it does not exist: " _ tText)
+    Do $$$AssertTrue(tText '[ "Security.Resources).Modify(", "and one that exists is never modified")
+    For tCase = $ListBuild(1, ""), $ListBuild(0, "DELETE /database") {
+        Kill tQuery
+        Set tQuery("name") = "DRAFTDB"
+        Set tQuery("DeleteFile") = $List(tCase, 1)
+        Set tSteps = $ClassMethod(tPort, "Snippet", "Database.ConfigCRUD", "DELETE", .tQuery, "", ..Context({"Directory": "/draft/db/"}))
+        Do $$$AssertEquals(..Shapes(tSteps), $List(tCase, 2), "a delete with DeleteFile " _ $List(tCase, 1) _ ": " _ ..Text(tSteps))
+    }
+    Kill tQuery
+    Set tQuery("name") = "DRAFTDB"
+    Set tSteps = $ClassMethod(tPort, "Snippet", "Database.SysCRUD", "PUT", .tQuery, {"Directory": "/draft/db/", "ExpansionSize": 5, "NewVolumeDirectory": "/draft/vol/", "volumeRoot": "/draft/", "volumePath": "vol"}, ..Context({"Directory": "/draft/db/"}))
+    Set tText = ..Text(tSteps)
+    Do $$$AssertEquals(..Shapes(tSteps), "PUT /database-dir", "a file edit by name is one PUT: " _ tText)
+    Do $$$AssertTrue(tText [ ("-X PUT '" _ ..#PREFIX _ "/database-dir?dir=/draft/db/'"), "at the stored directory")
+    Do $$$AssertTrue((tText '[ """Directory""") && (tText '[ "volumeRoot") && (tText '[ "volumePath"), "whose body carries none of the three names the read adds")
+    Do $$$AssertTrue(tText [ """NewVolumeDirectory"":""/draft/vol/""", "and carries the new volume directory")
+}
+
+/// <p>Each step of <var>pSteps</var> as its kind, or for a <code>rest</code> step its verb and route
+/// without the query, comma-separated.</p>
+ClassMethod Shapes(pSteps As %DynamicArray) As %String
+{
+    Set tOut = ""
+    If '$IsObject(pSteps) Quit tOut
+    Set tIterator = pSteps.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tStep) {
+        Set tShape = tStep.%Get("kind")
+        If tShape = "rest" Set tShape = $Piece($Piece(tStep.%Get("text"), " -X ", 2), " ", 1) _ " " _ $Piece($Piece($Piece(tStep.%Get("text"), "'", 4), "?", 1), ..#PREFIX, 2)
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tShape
+    }
+    Quit tOut
+}
+
 /// <p>The admin port's own branches: AD-27's resource and credential completions as ObjectScript,
 /// the credential decoded from its PEM body; the wrapper, the constant body and the composite key
 /// split of a <code>rest</code> step.</p>

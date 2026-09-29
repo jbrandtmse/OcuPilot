@@ -59,7 +59,12 @@ interface DatabaseView extends FieldView {
   readonly label: string;
   readonly required: boolean;
   readonly choices: readonly string[];
+  /** Whether the "Create a database" link is drawn beside this select: the globals select alone. */
+  readonly createsDatabase: boolean;
 }
+
+/** The create database wizard's descriptor, which the "Create a database" link opens (Story 18.3, SA-13). */
+const DATABASE_WIZARD_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.LocalDatabaseForm';
 
 /** The three database selects, in the classic namespace page's order. */
 const DATABASE_LABELS: readonly { readonly field: string; readonly label: string }[] = [
@@ -76,6 +81,10 @@ const DATABASE_LABELS: readonly { readonly field: string; readonly label: string
  * native select over the instance's database names from the form read. A create starts every
  * select on an empty choice; an edit starts each at its fresh read and shows the name read-only,
  * because a namespace is never renamed.
+ *
+ * **A "Create a database" link beside the globals select opens the create database wizard**
+ * (Story 18.3, SA-13) as an ordinary navigation, so the form-page's unsaved-changes guard asks first;
+ * the store re-reads the database choices once a database is created.
  *
  * **An edit links the namespace's mappings** (Story 18.14): a Mappings line after the fields opens
  * its global, routine and package mapping lists, each at the namespace as its route id.
@@ -163,6 +172,11 @@ const DATABASE_LABELS: readonly { readonly field: string; readonly label: string
         </div>
         @if (database.invalid) {
           <p class="ocu-form-error" [id]="database.id + '-reason'">{{ database.reason }}</p>
+        }
+        @if (database.createsDatabase) {
+          <p class="ocu-field-caption" data-create-database>
+            <a class="ocu-details-link" [href]="createDatabaseLink.href" (click)="onCreateDatabase($event)">{{ STRINGS.databaseCreateLink }}</a>
+          </p>
         }
       </div>
       }
@@ -351,13 +365,23 @@ export class NamespaceFormPage {
   /** The three database selects, each with its choices from the form read. */
   protected get databaseFields(): readonly DatabaseView[] {
     this.generation();
+    const link = this.createDatabaseLink.url !== '';
     return DATABASE_LABELS.map(({ field, label }) => ({
       ...this.fieldView(field),
       field,
       label,
       required: this.store.required(field),
       choices: this.store.choices(field),
+      createsDatabase: link && field === GLOBALS_FIELD,
     }));
+  }
+
+  /** The create database wizard's router URL and href, carrying the data scope; empty when it is not built. */
+  protected get createDatabaseLink(): { readonly url: string; readonly href: string } {
+    const wizard = screenForDescriptor(DATABASE_WIZARD_DESCRIPTOR);
+    if (wizard === null || !wizard.built) return { url: '', href: '' };
+    const url = withQuery(wizard.route, this.router.url);
+    return { url, href: this.locationStrategy.prepareExternalUrl(url) };
   }
 
   // --- intents ---------------------------------------------------------------------------------
@@ -397,6 +421,17 @@ export class NamespaceFormPage {
 
   protected answerLeave(leave: boolean): void {
     this.formDirty.answer(leave);
+  }
+
+  /**
+   * "Create a database": a plain click opens the wizard in place, under the form-page's
+   * unsaved-changes guard; a modified click is the browser's.
+   */
+  protected onCreateDatabase(event: MouseEvent): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const url = this.createDatabaseLink.url;
+    if (url !== '') void this.router.navigateByUrl(url);
   }
 
   /** A plain click opens the list in place; a modified click is the browser's (a new tab, say). */

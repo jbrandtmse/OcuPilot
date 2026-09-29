@@ -97,6 +97,7 @@ const LIVE_PAYLOAD = {
       // sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead of the
       // listed ones in position order. Story 18.2 adds the namespace editor among the unlisted ones
       // and Namespaces last, and Story 18.14 the three mapping forms and lists among the unlisted ones.
+      // Story 18.3 adds the local database form among the unlisted ones and Local databases last.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -129,6 +130,13 @@ const LIVE_PAYLOAD = {
         {
           route: 'os-management/namespaces/global-mappings',
           labelKey: 'globalMappingListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/local-databases/edit',
+          labelKey: 'systemInfoDatabase',
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
@@ -214,6 +222,13 @@ const LIVE_PAYLOAD = {
           route: 'os-management/namespaces',
           labelKey: 'namespaceListLabel',
           sideBarPosition: 6,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/local-databases',
+          labelKey: 'localDatabaseListLabel',
+          sideBarPosition: 7,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -540,6 +555,14 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
       for (const route of [`os-management/namespaces/${kind}-mappings`, `os-management/namespaces/${kind}-mappings/edit`]) {
         expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
       }
+    }
+  });
+
+  it('Story 18.3: reads the Local databases list and form verdicts the live payload carries', () => {
+    // Both declare the Namespaces screens' pairs, so this principal is denied on `%Admin_Manage:USE`.
+    const navigation = TestBed.inject(NavigationService);
+    for (const route of ['os-management/local-databases', 'os-management/local-databases/edit']) {
+      expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
     }
   });
 
