@@ -198,6 +198,10 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/mapping/:kind/name" path="/api/ocupilot/mapping/global/name" disposition="envelope" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind"/>
 <probe class="Api.Router" method="PUT" url="/mapping/:kind/:id" path="/api/ocupilot/mapping/global/global" disposition="envelope" refusal="1" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind; the identifier segment carries the same value, which names no namespace and mapping pair, so the handler refuses before any write"/>
 <probe class="Api.Router" method="POST" url="/mapping/:kind" path="/api/ocupilot/mapping/global" disposition="envelope" refusal="1" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind; the body is the unreadable one every write-verb probe sends"/>
+<probe class="Api.Router" method="GET" url="/database/form" path="/api/ocupilot/database/form" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/database/check" path="/api/ocupilot/database/check" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="PUT" url="/database/:id" path="/api/ocupilot/database/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/database" path="/api/ocupilot/database" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/ssl/form" path="/api/ocupilot/ssl/form" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/ssl/name" path="/api/ocupilot/ssl/name" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/ssl/:id/test" path="/api/ocupilot/ssl/ocupilot-coverage-probe/test" disposition="envelope" refusal="1"/>

@@ -2,8 +2,9 @@
 title: 'Story 18.3: Databases - configuration, creation, properties and volumes'
 type: 'feature'
 created: '2026-09-28'
-status: 'in-progress'
-baseline_revision: '5e986a1f4cde1691754f323e7d63c62827af5317'
+status: 'done'
+baseline_revision: '6d9e451104e0e8937421904c4e7fcd79b0015058'
+baseline_commit: '6d9e451104e0e8937421904c4e7fcd79b0015058'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -26,6 +27,10 @@ deferred:
     evidence: 'EnumerateTasks reads ^IRIS.Temp.MgtPortalTask only (irissys/%CSP/UI/System/BackgroundTask.cls:1195-1256), while %SYS.BackgroundTask:DatabaseList lists every compact and defragment (irissys/%SYS/BackgroundTask.cls:911-920). Read in the vendor source at the re-plan (inference until 18.4 queues one).'
     severity: 'med'
     location: 'src/OcuPilot/Port/BackgroundTaskPort.cls PortalRows'
+  - summary: 'Pre-existing CI flake (Story 16.5, DW-1802): the ~2 s seeded compact of BackgroundSeed.PausedCompact can end between a pause test''s resume, mint and confirm; the retry narrows the mint-to-confirm window only'
+    evidence: 'CI run 36588987899 answered TARGETCHANGED (inference: the compact ended before the confirm); the resumed compact runs 1.4-1.9 s on ocupilot-b-ci. Feature run 36530303753 ran dc34dc4a, before 6bcc6d3b widened Settled to 30 s: a DW-1819 sighting, not this.'
+    severity: 'med'
+    location: 'src/OcuPilot/Test/BackgroundSeed.cls PausedCompact'
 ---
 
 <intent-contract>
@@ -494,8 +499,89 @@ deferred:
 - [x] P10 `DatabaseWrite` -- a create minted while its name is absent and confirmed after a probe configuration of that name was added is refused (the sibling `ResourceCreate.TestATakenNameRefusesTheMintAndAConfirmTakenSince` model), with no file, resource or configuration change. Replace the first `mutation:` line with a mutation that this leg turns red.
 - [x] P11 `database-editor.store.spec.ts` -- the partial-failure stub carrying `detail.applied` answers a status the server sends for it (422, or 403 `PROHIBITED.*`), not 403 `AUTH.NOPRIVILEGE`.
 
+**Review patches (2026-09-29, second review pass, implement-2):**
+
+- [x] Q1 `DatabasePort.Snippet` (AD-59: the script makes the change the card reviewed) -- a delete with `DeleteFile` true answers no step (the draft is 409 `PROPOSAL.NODRAFT`), because the write deletes the file only when no other configuration name shares its directory, read at the write, and a script cannot carry that; `DeleteFile` false stays one `DELETE /database` step. The create's resource step creates `%DB_<NAME>` only when `Security.Resources.Exists` answers 0 (the write's `EnsureResource` never modifies an existing resource), as a `DatabasePort` step. Doc comment and `DraftPorts.TestDatabasePort` follow; the resource-step mutation line stays true or is re-recorded.
+- [x] Q2 `DraftPorts.TestDatabasePort` -- a file edit by name renders one `PUT /database-dir?dir=<payload Directory>` whose body carries no `Directory`, `volumeRoot` or `volumePath`. Mutation: the file-edit branch of `Snippet` falls through to the admin port's script.
+- [x] Q3 `DatabaseProhibitedFixture` + `DatabaseWrite` -- switches that fail `OwnDatabaseNames` and, separately, `OwnDatabaseDirectories`; through `DatabaseAcceptPort` on both callers, a probe database's delete (names read failing) and its `ResourceName` change (directories read failing) are refused 403 `PROHIBITED.OCUPILOTDATABASE` with `Writes()` empty. Mutation: `Prohibited.Database` carries on with an empty own set when `OwnDatabaseNames` fails.
+- [x] Q4 `DatabaseRefusals` -- the file edit's `volumeRoot`/`volumePath`: a root not allowed and `../x` are refused on those fields at the Save and at the mint, with no write; and a volume root dropped from the allow-list between mint and confirm refuses the confirm `PATH.ROOT` with nothing sent. Mutation: `LocalDatabaseUpdate.PortQuery` drops `volumeRoot`.
+- [x] Q5 `PathPortDatabases` -- with a probe configuration whose directory holds no `IRIS.DAT` (a configuration only), an unrelated overwrite under `<mgr>ocuprobe183pq/sub/` still resolves. Mutation: `VolumeDirectories` drops its no-`IRIS.DAT` early answer.
+- [x] Q6 `DatabaseRefusals` -- the three `Database.SysCRUD` `PROPERTYFAULTS` entries, through `AdminPort.Invoke` on probe objects: `POST /database-dir` on a probe database's directory answers `path:DATABASE.DIRECTORY.INUSE`, and one with `ResourceName` `OcuProbe183Custom` answers `ResourceName:DATABASE.RESOURCE.SHAPE`; the vendor's errors on this build are measured first, and a code the vendor also answers that leaves the mapping unapplied joins `PROPERTYFAULTS` with its measured fact. Mutation: drop the `:60` entry.
+- [x] Q7 `DatabaseWrite.TestTheThreeDeleteShapes` -- the with-file leg's probe carries a second volume file (test-only `SYS.Database`), and that file is gone after the delete; and `TestACreateRunsTheResourceTheFileAndTheConfigurationInOrder` asserts the recorded bodies' keys: `POST /database-dir` `{Directory, Size, GlobalJournalState, ResourceName}`, `PUT /database` `{Directory}`.
+- [x] Q8 `database-details.page.spec.ts` -- a tasks read answering 500 shows the refusal with Retry and no "none" line, and Retry reads the tasks again. Mutation: drop `tasksFaultSignal.set(true)`.
+- [x] Q9 `ui/src/app/app.spec.ts` sign-out test -- a value set in `DatabaseWizard` and in `DatabaseEditor` is cleared by the teardown. Mutation: drop `this.databaseWizard.reset()`.
+- [x] Q10 `DatabaseDescriptor.TestTheReadToolAnswersTheListsRowsAllLocal` -- the assertion and doc comment claim only what the class can fail on (no local configuration is left out); the remote half is `DatabaseRefusals.TestARemoteDatabaseIsRefused`'s. `DatabaseRefusals.TestARemoteDatabaseIsRefused` -- floors: the read tool resolves and each read answers at least one row before the absence assertions.
+- [x] Q11 `ReadTool` -- the second assertion's message names ninety-eight write tools and the class tools' current count.
+
+### Review Findings
+
+Code review, 2026-09-29, `full-opus`, six layers (Blind Hunter and Edge Case Hunter each over the server and client halves, Verification Gap, Acceptance Auditor): 91 rows, 29 entries after grouping (high 1, medium 11, low 17). Every patch below was applied in this pass and verified on `ocupilot-b-ci`.
+
+- [x] [Review][Patch] [high] A mounting edit of a database whose `MountRequired` is stored true answered 500 INTERNAL to a principal holding the tool's declared pairs, because the complete set (AD-4) carries the stored `true` and the vendor answers #921 without `%Admin_Operate:USE` (AD-8, AD-29; measured, run 382). `ArgumentPairs` now declares the pair when the write sends `MountRequired` true, the stored value read through the tool's port, and the Save's gate passes the target's name [src/OcuPilot/Screen/Tool/LocalDatabaseUpdateMount.cls:110, src/OcuPilot/Area/OsMgmt/DatabaseSave.cls:113]
+- [x] [Review][Patch] [med] The editor's Change could not be withdrawn: with one allowed root the picker's preselected root marked the form dirty and every later Save sent `volumeRoot` with an empty path, refused or setting an unintended volume directory; Cancel beside the picker now keeps the current one [ui/src/app/areas/os-management/database-editor.store.ts:354]
+- [x] [Review][Patch] [med] Verification gaps closed in new class `DatabaseWriteDetail` and existing ones: the create's file size and its resource's empty public permission on both callers, the create's and the delete's card rows, the read-back verdicts of a create and a new volume directory, the impact matching a namespace by `Globals`, `Routines` and `TempGlobals` alone, the form read's `resources`, a remote configuration's delete with the file option sending no file delete, and a mounting edit of a deleted database refused `TARGETCHANGED` (the file-edit leg's "did not re-create it" could not fail) [src/OcuPilot/Test/DatabaseWriteDetail.cls, src/OcuPilot/Test/DatabaseRefusals.cls:300, :350]
+- [x] [Review][Patch] [low] The check route's resource step answered 500 when the resource read was refused; `ResourceViolation` now keeps the port's fault, and the reader's resource and name steps are pinned at 403 [src/OcuPilot/Area/OsMgmt/DatabaseRules.cls:157, src/OcuPilot/Test/DatabaseWriteGate.cls:113]
+- [x] [Review][Patch] [low] A file edit sending `volumePath` without `volumeRoot` passed every rule and wrote nothing its card showed; it is refused `PATH.ROOT` on `volumeRoot` [src/OcuPilot/Area/OsMgmt/DatabaseRules.cls:112]
+- [x] [Review][Patch] [low] The delete's applications part read checked and empty when its namespaces part was unchecked; it now carries the same unchecked reason [src/OcuPilot/Kernel/Proposal/Impact.cls:179]
+- [x] [Review][Patch] [low] `ToolEmit` dropped its own-write-pair expectation for every tool with no `WRITERESOURCE`; it now exempts only `osmgmt.localdatabases.update` [src/OcuPilot/Test/ToolEmit.cls:214]
+- [x] [Review][Patch] [low] `DatabaseError`'s codes had no sweep; `DatabaseDescriptor.TestEveryDatabaseCodeIsSaidAndListed` holds each code's sentence and `ViolationCodes()` against the class [src/OcuPilot/Test/DatabaseDescriptor.cls]
+- [x] [Review][Patch] [low] A Save of both groups showed the file group's read-back only; it shows the one that does not match [ui/src/app/areas/os-management/database-editor.store.ts:410]
+- [x] [Review][Patch] [low] The wizard's `ResourceName` reason under the new-resource choice was referenced by no `aria-describedby` [ui/src/app/areas/os-management/database-wizard.page.ts:444]
+- [x] [Review][Patch] [low] `VALUE_FLAGS.labelKey` is typed `keyof typeof STRINGS` [ui/src/app/shell/screen-action-handler.ts:223]
+- [x] [Review][Patch] [low] `local-databases.browser-spec.mjs`'s `after` removes the probes even when the seed's removal fails [ui/browser/local-databases.browser-spec.mjs:270]
+- [x] [Review][Patch] [low] Doc and name corrections: `Impact`'s header, `HandleForm`'s `Name` key, the `HandleUpdate` comment, `typed-name-dialog.ts`'s flag sentence, the arming comment's data server, and `Governance`/`ToolDispatch` test names that said "Two" [src/OcuPilot/Kernel/Proposal/Impact.cls:3, scripts/ci-throwaway.sh:377]
+- [x] [Review][Defer] [med] The New Namespace form's Create a database leaves the form, dropping typed values, and lands on the database editor; AC6 holds through the form's next open [ui/src/app/areas/os-management/namespace-form.page.ts] -- deferred: DW-1824, decision-pending (product call)
+- [x] [Review][Defer] [med, unverified] A new volume directory naming another database's directory resolves; whether the vendor collides volume files there is unmeasured [src/OcuPilot/Area/OsMgmt/DatabaseRules.cls:112] -- deferred: DW-1791 occurrence, residual noted for 18.4
+- [x] [Review][Defer] [low] An accepted editor Save re-opens through `reset()`, losing focus [ui/src/app/areas/os-management/database-editor.store.ts:400] -- deferred: DW-1825, wontfix-accepted
+- [x] [Review][Defer] [low] `DatabaseWrite.cls` is 764 lines [src/OcuPilot/Test/DatabaseWrite.cls] -- deferred: DW-1826, wontfix-accepted
+
+Rejected (layer: BS/BC blind server/client, ES/EC edge server/client, VG, AA):
+
+- false: A2's `ResourceName` half (AA) -- a reader holding only the screens' pairs saved a file edit whose complete set carried the unchanged `ResourceName` (run 384); BS22 -- `DatabaseDirectories`' doc states the unaligned lists; BC8 -- no rule refuses a flag field; BC11 -- the spec's Never excludes those edits; BC18 -- a browser spec's own oracle is deliberate; VG `DatabaseWrite.cls:172` -- dropping `CREATES` still reddens that test.
+- closed by the triage log, no new evidence: BS2/BC5 `fileDeleted` unsurfaced; BS19 the delete-with-file draft; BS24 remote delete/mount; BC4/EC1 a tasks 403 with no pair (still unreachable: the section's pairs are the port's); BC20 unchecked applications render nothing.
+- spec-bound: BS5 per-namespace mapping reads; BS10 a refused second group leaves the first applied; BS16 own-database fields and set; BS18 a rolled-back create keeps its resource and directory; BS21 per-call volume reads failing closed; BC6 the delete sentence; BC10 field labels; BC14 the tasks section's store and no criterion; BC16 its column keys; BC23 task actions.
+- low, unlikely and more than a direct correction: BS7/ES14/BS8 create-body ordering and stray keys; BS9/ES4/ES5/ES6 empty bodies, keys or groups; BS11/ES8 a non-boolean journal state; BS13/ES11 a configuration whose file is unreadable; BS25 duplicated defaults; BC7 the new-resource label when it exists; BC15/EC2 overlapping tasks reads; BC19 `dependsOnNothing`; BC21 a form read missing a group; BC22 a volumes 403; BC24 duplicated constants; BC25 other editor spec paths; EC3 a blank existing-resource choice; EC4 a stale path refusal until Next; ES2 `applied` lost on a 500; ES12 a file delete under a running task; AA4 the native `disabled` radio (form-input precedent); AA6 any 409 read as in use; VG `:78` (the port refuses first).
+- theoretical: BS4 a lock-database-only mapping; BS6 `#60` on a file edit; BS15/ES7 over 1,000 resources; BS17/ES10 a same-name create inside one POST; BS20/ES13 symlinked synonyms; EC7 two database events out of order; AA3 a resource deleted between mint and confirm.
+
+**Rework 1 (2026-09-29, CI):**
+
+- [x] [CI] browser shard 1/3 (run 36573329469 on `b43a0a2d`): `a11y-structural-invariants.browser-spec.mjs` 12/12 failed in its hook, `Waiting failed: 30000ms exceeded` in `structural-walk.mjs` `goInApp` -- `database-wizard.page.ts`/`database-wizard.store.ts` -- opening the create wizard marks the form dirty with nothing typed: `server-path-picker.ts` preselects the single allowed root and emits `changed`, and `DatabaseWizard.setLocation` records that as an edit (`change('path')` sets `FormDirty`). Leaving the wizard then raises the unsaved-changes guard, the walk's next in-app navigation is canceled and the URL restored (measured by the runner on `ocupilot-b-ci`: after `local-databases/edit` then `namespaces/edit`, the walk asking for `namespaces/package-mappings/edit` stood at `local-databases/edit`). The fix must make the picker's one preselection of a single root leave the wizard clean while any user change of root or path still marks it dirty; pin it (a store or page spec: open, preselect, not dirty; then a user change, dirty) with a demonstrated mutation, and re-run `a11y-structural-invariants.browser-spec.mjs` (both themes) against a rebuilt and redeployed bundle on `ocupilot-b-ci`. Check the editor's Change picker under the same rule (its preselection follows an explicit Change, so dirty there is intended).
+
+### Review Findings (rework 1)
+
+Code review, 2026-09-29, `full-opus`, four layers over `8692236c..11682150` (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor): 14 findings, 4 kept after grouping (all low, all patched), 0 high or medium. The `[CI]` item's fix holds: the wizard opens clean and a user's change of root or path marks it dirty (re-run in review: `a11y-structural-invariants` 12/12 on `ocupilot-b-ci`, `main-JT27HVRD.js`, 83 of 83 walked; components 1841/1841 after the patches). The flag changes no other consumer: the editor passes only `root` and `path`, and Epic 16's task dialogs rebuild `{root, path}` on submit.
+
+- [x] [Review][Patch] [low] The picker's doc names the flag but not a form's duty to hold a `preselected` report without marking itself dirty; the next form that draws the picker on open would open dirty again [ui/src/app/shell/server-path-picker.ts:37]
+- [x] [Review][Patch] [low] The picker spec's mutation comment named the select's assertion, not the `changes` one [ui/src/app/shell/server-path-picker.spec.ts:165]
+- [x] [Review][Patch] [low] `preselectRoot` clearing a `root` refusal (Next pressed before the allow-list arrived) was untested; a store leg pins it [ui/src/app/areas/os-management/database-wizard.store.spec.ts:94]
+- [x] [Review][Patch] [low] Rule 19: no recorded mutation showed `preselectRoot` holding the root that Next and Create send, or the store's path half of the user-change leg; both are recorded under `## Verification`
+
+Rejected:
+
+- false: the flag reaching Epic 16's `submitted` values (the dialogs emit a fresh `{root, path}`); the store comment "the first test goes red" (true as written); legs without in-file mutation comments (the `## Verification` line is the record); `preselectRoot`'s early return untested (removing it adds one notify, nothing visible).
+- outside the rework, not high: `structural-walk.mjs` `goInApp` reports a guard-canceled navigation as a 30 s timeout.
+- spec or lead bookkeeping: the bundle line's 2217 kB warning, the triage log's doubled row, the oversized spec's growth, the cycle-log order.
+
+**Rework 2 (2026-09-29, CI):**
+
+- [x] [CI] instance shard 2/3 (run 36588987899 on `f13a007c`): `BackgroundTasksLive.TestTheAgentsConfirmPausesACompact` red -- the confirm answered `PROPOSAL.TARGETCHANGED` (then: not paused, no ledger row, no marker). It passed on `b43a0a2d` and `8692236c`, and nothing server-side changed after `8692236c`, so the failure is timing-dependent. This story added `Database` to every Background tasks row (`BackgroundTaskPort.WithDatabases`/`TaskDatabases`/`KeepRunning`, the list descriptor's fields), which the write tools' fresh read carries into their fingerprint. Find which value moved between the mint and the confirm for a just-resumed compact (for example `Database` read from `%SYS.BackgroundTask:DatabaseList` lagging or changing against the portal row, or a moving `Details` counter that predates this story), and fix it at its cause: a fingerprint subject carries no value that moves while the target's own state does not (AD-51), and a task's `Database` must read the same for the task's life or stay out of the subject. Pin it with a test that goes red on the moving value (on `ocupilot-b-ci`, `BackgroundTasksLive` or a recording fixture) and a demonstrated mutation; then run `BackgroundTasks`, `BackgroundTasksLive` (at least three times, one run at a time) and `database-details.page.spec.ts`. If the cause predates this story, say so with evidence and still fix it here only if it is inside the Background tasks footprint this story already extended.
+
+### Review Findings (rework 2)
+
+Code review, 2026-09-29, `full-opus`, four layers over `6d9e4511..822c0e3f` (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor): 33 rows, 5 entries after grouping (0 high, 1 medium, 4 low); every patch applied, one low accepted (DW-1830). The `[CI]` item holds: `FINGERPRINTSUBJECT` is `Status` alone on all three tools and the confirm digests that projection (`Mint.cls:274`, `Confirm.cls:687`); every retry exit asserts, so a repeatable refusal still goes red; the new leg reddens when `Database` enters the subject. Re-run after the patches: `BackgroundTasksLive` 427, 7/7.
+
+- [x] [Review][Patch] [med] DW-1829 and this spec's `deferred:` item cited run 36530303753 for a 30 s `Settled` race; that run ran `dc34dc4a`, before `6bcc6d3b` widened the wait (a DW-1819 sighting). Both corrected; the open cause is DW-1802's race (occurrence appended) [deferred-work.md DW-1829, DW-1802]
+- [x] [Review][Patch] [low] A red after the last attempt could not tell a lost race from a regression; the message now carries the compact's state [src/OcuPilot/Test/BackgroundTasksLive.cls:305]
+- [x] [Review][Patch] [low] Doc corrections: at most `AGENTATTEMPTS` compacts in all, not re-seeds; a compact that ends before the mint is not retried; the moving-value mutation reads "every confirm is refused"; `ProposeAndConfirmPause` returns 0 only for the seed, turn or mint [src/OcuPilot/Test/BackgroundTasksLive.cls:285-293, :314]
+- [x] [Review][Patch] [low] `## Verification`'s stale "latest runs green" clause removed; the Cause bullet's claim about the CI run labeled (inference)
+- [x] [Review][Defer] [low] `BackgroundTasksLive.cls` is 537 lines -- DW-1830, wontfix-accepted
+
+Rejected: the resume-to-mint and re-read-to-`Pause()` windows and the sibling screen test's resume-then-pause (DW-1802's root cause, carried by DW-1829; the last is outside the rework); the `Done` check unpinned (it sets only how fast a repeatable refusal reds; run 413 read "attempt 1"); `AGENTATTEMPTS` of 0 (theoretical); the new leg's mutation shared with the subject-declaration leg (it also pins the confirm's projection); spec bookkeeping (run 420's forcing, triage-row labels, the lead's `[x]` item wording, repeated figures).
+
 ## Spec Change Log
 
+- 2026-09-29, runner, rework 2: CI run 36588987899 was red on `f13a007c` (`BackgroundTasksLive`, one [CI] item under Tasks & Acceptance); status set to `in-progress`.
+- 2026-09-29, runner, rework 1: CI run 36573329469 was red on `b43a0a2d` (the structural walk, one [CI] item under Tasks & Acceptance); status set to `in-progress` for one rework iteration. The code review's patches are committed with the rework commit.
 - 2026-09-29, runner, before re-plan: the orchestrator split remote databases (SA-17, Part C) into Story 18.16 (Rule 5, 2026-09-28) and kept expand-volume and size-grow in 18.4. The intent contract drops Part C and adds DW-1080 (Database details' background tasks through `BackgroundTaskPort`), DW-1807 (`PATH.SERVED`), DW-1795 and DW-1796. Since the first plan, `PATH.INSTANCE` covers every file in every configured database and journal directory (DW-1790), and every file and vendor-writes directory under OcuPilot's served directory is refused `PATH.SERVED` (DW-1798, DW-1806). Status set to `draft` for the re-plan.
 
 - 2026-09-29, runner, recovery: the first implement stage was killed by an account quota limit after its first review pass and patches P1-P11. Its uncommitted work was saved as a patch, the tree reset, DW-1814 committed alone (63c34657), and feature (Epic 16 through 16.6) merged in (baa7701d); the patch was re-applied with nine three-way list conflicts resolved by the runner. Status reset to `in-progress`: the tree holds that partial implementation, to be completed and verified, not trusted.
@@ -528,6 +614,61 @@ deferred:
   - `[false]` `[reject]` (intent-alignment) EXPERIENCE.md :98's bracket was replaced rather than added to — the spec's task directs "its bracket replaced by".
   - `[medium]` `[patch]` (intent-alignment) the confirm-time `DATABASE.DIRECTORY.INUSE` is untested — grouped with P1.
   - `[false]` `[reject]` (intent-alignment) the "Create a database" link, the two-write Save with `detail.applied`, and the rolled-back create keeping its resource are outside the intent text — each is a spec task (AC6; `DatabaseSave`; `DatabasePort`'s create).
+
+### 2026-09-29 — Review pass (implement-2)
+
+- verdicts: 25 findings — high 0, medium 7, low 12, false 4, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` (verification-gap) a failed `OwnDatabaseNames` or `OwnDatabaseDirectories` read is untested, so AD-10's fail-closed refusal could fail open unseen — Q3: fixture switches and `DatabaseWrite.TestAFailedOwnSetReadRefuses` on both callers, mutation recorded.
+  - `[medium]` `[patch]` (verification-gap) the file edit's `volumeRoot`/`volumePath` refusals and their re-resolution at the write are untested — Q4: `DatabaseRefusals.TestTheVolumeDirectoryRefusalsLandOnTheirFields`, mutation recorded.
+  - `[medium]` `[patch]` (verification-gap) `VolumeDirectories`' answer for a configured directory with no `IRIS.DAT` is untested — Q5: `PathPortDatabases.TestAConfigurationWithNoFileRefusesNothing`, mutation recorded.
+  - `[low]` `[patch]` (verification-gap) the file edit's script is unpinned (AD-59) — Q2: a `DraftPorts.TestDatabasePort` leg, mutation recorded.
+  - `[low]` `[patch]` (verification-gap) Database details' failed tasks read and its Retry are untested — Q8: a spec leg, mutation recorded.
+  - `[medium]` `[patch]` (verification-gap) the sign-out teardown's two database store resets are untested — Q9: `app.spec.ts`, each reset's mutation recorded.
+  - `[medium]` `[patch]` (verification-gap) the three `Database.SysCRUD` `PROPERTYFAULTS` entries are never exercised — Q6: `DatabaseRefusals.TestTheFileEndpointsFaultsLandOnTheirFields` on probe directories; the vendor answered #70/#60/#73 and #70/#18/#78, each carrying a mapped code, so the parameter is unchanged; mutation recorded.
+  - `[low]` `[reject]` (verification-gap) the delete impact's unchecked namespaces part is untested on the server — reachable only through a custom resource on a mapping list's classic page or a list past its cap, and a test needs principals and page assignment; reopen_if a caller holding the delete's pairs reads an advisory that omits a mapping-only user without an unchecked note.
+  - `[low]` `[patch]` (verification-gap) `DatabaseDescriptor`'s "no data server" half cannot fail where no remote configuration exists — Q10: the assertion and doc claim only that no local configuration is left out.
+  - `[low]` `[patch]` (verification-gap) `TestARemoteDatabaseIsRefused`'s absence assertions have no floor — Q10: the read tool resolves and each read answers rows first.
+  - `[false]` `[reject]` (verification-gap) AC sub-clauses without their own `mutation:` line — carried: Rule 19 asks one per AC, and AC1-AC9 each have an observed red.
+  - `[maybe-false]` `[reject]` (verification-gap) a 403 on the tasks read with no `detail.failedPair` would show the "none" line — every 403 path found (`ScreenRead`'s gate, `BackgroundTaskPort.GateRefusal`, `AdminPort.Denied`) sets `failedPair`; if one did not, only low: settle by a tasks-read 403 whose detail lacks it.
+  - `[low]` `[reject]` (verification-gap) a configuration `PUT` without `root` or `Directory` reaches the vendor's manager-directory upsert — no shipped caller sends one (`root` required, the mounting edit sends its fresh `Directory`); reopen_if a caller composes a configuration `PUT` without `Directory`.
+  - `[low]` `[reject]` (intent-alignment) an unchecked applications part renders nothing on the advisory — the phrase set is the spec's (`EXPERIENCE.md:577`), and the part is only non-empty when namespaces already make the vendor refuse the delete; reopen_if a deleter lacking `%Admin_Secure:USE` needs the application list to act.
+  - `[false]` `[reject]` (intent-alignment) "no vendor call" is tested as "no vendor write" — the name look-up and resource read are the rules' own inputs and cannot be skipped; the refused rows send no write, which `Writes()` asserts.
+  - `[low]` `[reject]` (intent-alignment) the agent's mint answers field and sentence, not the `DATABASE.*` code — carried: AD-39's agent refusal convention.
+  - `[maybe-false]` `[reject]` (intent-alignment) argument pairs follow the arguments, so an edit on a database whose stored `MountRequired` is true sends it without `%Admin_Operate:USE` — whether the vendor's #921 fires on an unchanged true is unmeasured; if it does, only low: the vendor refuses with nothing changed; settle by that edit as a principal without the pair.
+  - `[medium]` `[patch]` (intent-alignment) the delete's script sent `DELETE /database-dir` whether or not the file is shared, and the create's script modified an existing `%DB_<NAME>` (AD-59: a script making a change the card did not review) — Q1: a delete with its file answers no step (409 `PROPOSAL.NODRAFT`), and the resource step creates only when absent; mutation re-recorded.
+  - `[medium]` `[defer]` (intent-alignment) the Background tasks section lists portal rows only — carried: the fourth `deferred:` item.
+  - `[low]` `[reject]` (intent-alignment) `delete` and `updatemount` accept a remote configuration named by the agent — carried.
+  - `[false]` `[reject]` (intent-alignment) the directory arm, the "Create a database" link, the two-group Save, the rolled-back create's resource, the four routes and the `DatabaseList` read are outside the intent — carried: each is a spec task or amendment.
+  - `[low]` `[patch]` (intent-alignment) "its volume files are gone" is not tested with a volume file — Q7: the delete legs' probes carry a second volume file, gone with the file option and kept without it.
+  - `[low]` `[patch]` (intent-alignment) the create row's exact bodies are not asserted — Q7: the recorded `POST` and `PUT` bodies' keys are asserted, mutation recorded.
+  - `[false]` `[reject]` (intent-alignment) a protected target is minted before the confirm refuses it — the kernel refuses at the confirm and at the draft for every tool (AD-10); no protected write is sent.
+  - `[low]` `[reject]` (intent-alignment) a least-privileged principal's mint is never exercised, only its confirm — the mint's gate is the kernel's, pinned for these tools by `ProposalPrivilege` and `ToolEmit`; reopen_if a tool's mint admits a caller its confirm refuses.
+
+### 2026-09-29 — Review pass (rework 1)
+
+- verdicts: 6 findings — high 0, medium 0, low 3, false 3, maybe-false 0
+- findings:
+  - `[low]` `[patch]` (verification-gap) the store's user-change leg reads dirty whether or not `preselectRoot` dirties, so it does not pin the order it names, and no `mutation:` line names it — both halves now assert clean after `preselectRoot`; `preselectRoot` marking dirty reddens it, mutation line updated.
+  - `[low]` `[patch]` (verification-gap) the "a user's change of root marks dirty" half has no `mutation:` line — `setLocation` dirtying only on a path change reddens the store's root half and the page's several-roots leg; line recorded.
+  - `[false]` `[reject]` (verification-gap) the `[CI]` item is ticked with no browser result recorded — the stage ran the three browser specs after the redeploy and records them under `## Auto Run Result` at finalize; the fix is a spec edit.
+  - `[false]` `[reject]` (intent-alignment) the item's browser finish line has no recorded result — same as the row above: 12/12, 6/6 and 5/5 on `main-JT27HVRD.js`, recorded at finalize.
+  - `[false]` `[reject]` (intent-alignment) the diff widens 18.1's shared picker beyond the two wizard files the item names — the lead's dispatch allows the picker telling a preselection apart; the flag is optional, and the editor and Epic 16's task dialogs bind `root` and `path` only, with no emission-shape assertion (`git grep` on `OCU-1-epic16`).
+  - `[low]` `[patch]` (intent-alignment) the editor's dirty-after-Change is pinned only in its store spec, not through the picker's labeled report — `database-editor.page.spec.ts`' AD-21 leg asserts clean before Change and dirty after the preselection; `setVolumeLocation` not dirtying reddens it, mutation line recorded.
+
+### 2026-09-29 — Review pass (rework 2)
+
+- verdicts: 9 findings — high 0, medium 0, low 6, false 3, maybe-false 0
+- findings:
+  - `[low]` `[patch]` (verification-gap) `EndedBeforeTheConfirm` retries any `TARGETCHANGED` whose task reads Done afterwards, so a fresh read that failed as the task ended is retried too, against its doc's "any other refusal fails at once" — both doc comments now state exactly what is checked; the port read never failed in 104,731 one-row reads across three compacts' ends (stage probe).
+  - `[low]` `[reject]` (verification-gap) the spec omits run 420 (the one retry) and the `database-details.page.spec.ts` run, and 417-419 may predate the saved text — the fix is a spec edit: run 420 was a forced race, the component spec ran 16/16, and three runs after the final save are recorded at finalize.
+  - `[low]` `[reject]` (verification-gap) three attempts reduce the race rather than remove it; a larger seed would remove it (inference) — every one of 8 unforced local runs (417-419, 421-425) paused on attempt 1, and the fix is `BackgroundSeed.cls` (Epic 16's) doubling every seeded test's fill and disk.
+  - `[false]` `[reject]` (intent-alignment) no test goes red on the value that moved (`Status` Running to Done) — that refusal is correct and pinned by `BackgroundTasks.TestTheFingerprintRefusesAMovedStatus`; the new fixture test pins the measured boundary read (`Running` with `Database` "" in 2 of 3 probes).
+  - `[low]` `[reject]` (intent-alignment) the cause is asserted in a doc comment with no evidence — the fix is a spec edit; the timings and the probe are recorded under `## Auto Run Result`.
+  - `[low]` `[patch]` (intent-alignment) a failed `WithDatabases` read is a route to `TARGETCHANGED` that is neither tested nor ruled out, and the retry can admit it — grouped with the first row: 0 failures in 104,731 reads at the boundary, and the doc no longer claims to tell the two apart.
+  - `[false]` `[reject]` (intent-alignment) the added per-read query may widen the mint-to-confirm window — a one-row read costs about 0.11 ms with both queries (about 35,000 in 4 s), against a window of about 0.5 s.
+  - `[low]` `[reject]` (intent-alignment) no `database-details.page.spec.ts` run is recorded — the fix is a spec edit; it ran 16/16, recorded at finalize.
+  - `[false]` `[reject]` (intent-alignment) the criterion is now met by any one of three compacts — the successful attempt asserts the same four outcomes; a retry replaces only a seed whose compact ended before its confirm.
 
 ## Design Notes
 
@@ -711,56 +852,103 @@ Probe objects created and removed: database `OCUPROBE183X` (directory `ocuprobe1
 | AC9 (DW-1796) | `DatabaseDirectories` drops a `VolumeDirectories` error | the failure leg |
 | AC9 (DW-1796) | `LocalDirectory` answers 1 for a leading `:` | the colon leg |
 
-- mutation: the confirm's create re-read in `Confirm` reads the name as absent (`tPresent` 0) → `DatabaseWrite.TestANameTakenSinceTheMintRefusesTheConfirm` alone red (run 135): the upsert was sent, the file and `%DB_OCUPROBE183TS` made and the configuration rewritten.
-- mutation: `DatabasePort.Create` skips `EnsureResource` → `DatabaseWrite.TestACreateRunsTheResourceTheFileAndTheConfigurationInOrder` red (call order and resource read-back).
-- mutation: `DatabaseRules.DirectoryViolations` skips the `IRIS.DAT` test → `DatabaseRefusals.TestADirectoryHoldingADatabaseIsRefused` red (step-check and mint legs).
-- mutation: the wizard store drops `path` violations → `database-wizard.page.spec.ts`' `PATH.SERVED` leg red; the browser `PATH.MANAGERDIR` leg was not run under this mutation.
-- mutation: `LocalDatabaseUpdate.MergeUpdate` narrows the payload to the changed keys → `DatabaseWrite.TestTheEditsSendTheirCompleteSets` red.
-- mutation: `DatabasePort.Delete` deletes the file although shared → `DatabaseWrite.TestTheThreeDeleteShapes` red.
-- mutation: `Impact.KindOf` drops `database-delete` → `DatabaseWrite.TestTheImpactNamesTheNamespacesAndApplications` red; `core/impact.ts` dropping it → `impact.test.mjs` red. The browser advisory was not run under this mutation.
-- mutation: `confirmPending` sends the flagged action without `DeleteFile` → `screen-action-handler.spec.ts` red; the browser delete-with-file leg was not run under this mutation.
-- mutation: `Prohibited.Database`'s own-name arm removed → `DatabaseWrite.TestTheProtectedDatabasesAreRefusedOnBothCallers` red, each write recorded by `DatabaseAcceptPort` and none sent.
-- mutation: `Prohibited.Database`'s directory arm removed → `DatabaseWrite.TestAResourceChangeThroughASecondNameOverAnOwnFileIsRefused` red.
-- mutation: `LocalDatabaseCreate.PrivilegePairs` drops `%DB_IRISSYS:WRITE` → `DatabaseWriteGate.TestEachMissingPairIsRefusedBeforeAnyPortCall` red.
-- mutation: `LocalDatabaseDelete` empties `CLASSICPAGES` → `ClassicPageGate`'s agent-caller and declared-set tests red, and `MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools` red.
+- Every line below was re-observed on 2026-09-29 on `ocupilot-b-ci`, each mutation reverted byte-identical and its class reloaded with subclasses: runs 38-60 before the container's last recreation, runs 365-378 on the recreated one (its full sweep is runs 1-363).
+- mutation: the confirm's create re-read in `Confirm` reads the name as absent (`tPresent` 0) → `DatabaseWrite.TestANameTakenSinceTheMintRefusesTheConfirm` red (run 41): the confirm was not refused and a file and resource were made.
+- mutation: `DatabasePort.Create` skips `EnsureResource` → `DatabaseWrite.TestACreateRunsTheResourceTheFileAndTheConfigurationInOrder` red (run 38; call order and resource read-back).
+- mutation: `DatabaseRules.DirectoryViolations` skips the `IRIS.DAT` test → `DatabaseRefusals.TestADirectoryHoldingADatabaseIsRefused` red (run 39; step-check and mint legs).
+- mutation: the wizard store drops `path` violations → `database-wizard.page.spec.ts`' `PATH.SERVED` and `DATABASE.DIRECTORY.INUSE` legs red; the browser `PATH.MANAGERDIR` leg was not run under this mutation.
+- mutation: `LocalDatabaseUpdate.MergeUpdate` narrows the payload to the changed keys → `DatabaseWrite.TestTheEditsSendTheirCompleteSets` red (run 42).
+- mutation: `DatabasePort.Delete` deletes the file although shared → `DatabaseWrite.TestTheThreeDeleteShapes` red (run 43).
+- mutation: `Impact.KindOf` drops `database-delete` → `DatabaseWrite.TestTheImpactNamesTheNamespacesAndApplications` red (run 44); `core/impact.ts` giving `database-delete` no parts → `impact.test.mjs`' Story 18.3 leg red. The browser advisory was not run under this mutation.
+- mutation: `confirmPending` sends the delete without `DeleteFile` → `screen-action-handler.spec.ts`' Story 18.3 leg red; the browser delete-with-file leg was not run under this mutation.
+- mutation: `Prohibited.Database`'s own-name arm removed → `DatabaseWrite.TestTheProtectedDatabasesAreRefusedOnBothCallers` red (run 46), each write recorded by `DatabaseAcceptPort` and none sent.
+- mutation: `Prohibited.Database`'s directory arm removed → `DatabaseWrite.TestAResourceChangeThroughASecondNameOverAnOwnFileIsRefused` red (run 47).
+- mutation: `LocalDatabaseCreate.PrivilegePairs` drops `%DB_IRISSYS:WRITE` → `DatabaseWriteGate.TestEachMissingPairIsRefusedBeforeAnyPortCall` red (run 48).
+- mutation: `LocalDatabaseDelete` empties `CLASSICPAGES` → `ClassicPageGate`'s agent-caller and declared-set tests red (run 49), and `MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools` red (run 50).
 - mutation: the namespace form store ignores the `database-configuration` event → `namespace-form.store.spec.ts`' AC6 leg red.
 - mutation: `.ocu-form-step-label` drawn in `--ocu-surface`, rebuilt and redeployed → `local-databases.browser-spec`'s AC7 leg red, 1:1 contrast on `os-management/local-databases/edit` in light and dark.
-- mutation: `BackgroundTaskPort.KeepRunning` keeps ended tasks → `BackgroundTasks.TestAPortalRowNamesTheDatabaseItsTaskRunsAgainst` alone red (run 70).
-- mutation: `comparableDirectory` keeps case → `database-details.page.spec.ts`' listing, truncated and Refresh legs red; rebuilt and redeployed, `local-databases.browser-spec`'s AC8 leg red, no task row rendered.
-- mutation: `DatabaseDirectories` skips `VolumeDirectories` → `PathPortDatabases.TestAVolumeDirectorysFilesAreTheInstances` and `TestAFailedVolumeReadRefuses` red (run 80).
-- mutation: the reader ignores a configured `StreamLocation` → `PathPortDatabases.TestAConfiguredStreamLocationIsFollowed` alone red (run 81).
-- mutation: the reader keeps its answer in `^||` → `PathPortDatabases.TestTheReaderKeepsNothing` red, with the stream, volume and failure legs (run 82).
-- mutation: `DatabaseDirectories` drops a `VolumeDirectories` error → `PathPortDatabases.TestAFailedVolumeReadRefuses` alone red (run 83).
-- mutation: `LocalDirectory` answers 1 for a leading `:` → `PathPortDatabases.TestAColonDirectoryIsNeverListed` alone red (run 84).
-- mutation: `DatabasePort.Create` skips `HoldsDatabase` → `DatabaseRefusals.TestADirectoryHoldingADatabaseIsRefused` alone red (run 128): the confirm's resource write was sent and `%DB_OCUPROBE183DC` made.
-- mutation: `DatabaseSave.Answer` drops `applied` from a violations refusal → `DatabaseWrite.TestTheRoutesAnswerOverTheWire` alone red (run 130).
-- mutation: `DatabasePort.Snippet` drops the resource step → `DraftPorts.TestDatabasePort` alone red (run 129).
-- mutation: `Impact`'s `MAPPINGDESCRIPTORS` drops `RoutineMappingList` → `DatabaseWrite.TestTheImpactNamesRoutineAndPackageMappingUsers` alone red (run 131).
-- mutation: the id-change handler drops `loadTasks` → `database-details.page.spec.ts`' id-change leg alone red (one tasks read, not two).
-- mutation: `Error.ReasonForPath` drops its `PATH.ROOT` arm → `DatabaseRefusals.TestEachPathCodeCarriesThePortsSentence` alone red (run 132).
-- mutation: the Local databases list's read sends `localOnly` `0` → `DatabaseRefusals.TestARemoteDatabaseIsRefused` alone red (run 134): the list's read and `osmgmt.localdatabases.read` both answered the remote row.
+- mutation: `BackgroundTaskPort.KeepRunning` keeps ended tasks → `BackgroundTasks.TestAPortalRowNamesTheDatabaseItsTaskRunsAgainst` alone red (run 51).
+- mutation: `comparableDirectory` keeps case → `database-details.page.spec.ts`' listing, truncated, Refresh and id-change legs red; rebuilt and redeployed, `local-databases.browser-spec`'s AC8 leg red.
+- mutation: `DatabaseDirectories` skips `VolumeDirectories` → `PathPortDatabases.TestAVolumeDirectorysFilesAreTheInstances` and `TestAFailedVolumeReadRefuses` red (run 52).
+- mutation: the reader ignores a configured `StreamLocation` → `PathPortDatabases.TestAConfiguredStreamLocationIsFollowed` alone red (run 53).
+- mutation: the reader keeps its answer in `^||` → `PathPortDatabases.TestTheReaderKeepsNothing` red, with the stream, volume and failure legs (run 54).
+- mutation: `DatabaseDirectories` drops a `VolumeDirectories` error → `PathPortDatabases.TestAFailedVolumeReadRefuses` alone red (run 55).
+- mutation: `LocalDirectory` answers 1 for a leading `:` → `PathPortDatabases.TestAColonDirectoryIsNeverListed` alone red (run 56).
+- mutation: `DatabasePort.Create` skips `HoldsDatabase` → `DatabaseRefusals.TestADirectoryHoldingADatabaseIsRefused` alone red (run 40): the confirm's resource write was sent.
+- mutation: `DatabaseSave.Answer` drops `applied` from a violations refusal → `DatabaseWrite.TestTheRoutesAnswerOverTheWire` alone red (run 57).
+- mutation: `DatabasePort.Snippet` drops the resource step → `DraftPorts.TestDatabasePort` alone red (run 365).
+- mutation: `Impact`'s `MAPPINGDESCRIPTORS` drops `RoutineMappingList` → `DatabaseWrite.TestTheImpactNamesRoutineAndPackageMappingUsers` alone red (run 45).
+- mutation: the id-change handler drops `loadTasks` → `database-details.page.spec.ts`' id-change leg alone red.
+- mutation: `Error.ReasonForPath` drops its `PATH.ROOT` arm → `DatabaseRefusals.TestEachPathCodeCarriesThePortsSentence` alone red (run 59).
+- mutation: the Local databases list's read sends `localOnly` `0` → `DatabaseRefusals.TestARemoteDatabaseIsRefused` alone red (run 60).
+- mutation: `DatabasePort.Snippet`'s file-edit branch falls through to the admin port's script → `DraftPorts.TestDatabasePort` alone red (run 366): the step carried no `?dir=` query, and the read's own names in its body.
+- mutation: `Prohibited.Database` carries on with an empty own set when `OwnDatabaseNames` fails → `DatabaseWrite.TestAFailedOwnSetReadRefuses` red (run 370, the method alone): neither delete was refused, and a write reached `DatabaseAcceptPort`.
+- mutation: `DatabasePort.FileBody` adds `VolThreshold` → `DatabaseWrite.TestACreateRunsTheResourceTheFileAndTheConfigurationInOrder` red on its two body-key assertions alone (run 371, the method alone).
+- mutation: `LocalDatabaseUpdate.PortQuery` drops `volumeRoot` → `DatabaseRefusals.TestTheVolumeDirectoryRefusalsLandOnTheirFields` red (run 373, the method alone): the confirm was not refused `PATH.ROOT`, and a write was sent.
+- mutation: `PROPERTYFAULTS` drops `Database.SysCRUD:60` → `DatabaseRefusals.TestTheFileEndpointsFaultsLandOnTheirFields` red (run 374, the method alone). The vendor answered the mounted probe directory's `POST` with #70, #60 and #73, a dismounted one's with #70, #18 and #78, and `OcuProbe183Custom` with #896, so no code joins `PROPERTYFAULTS`.
+- mutation: `PathPort.VolumeDirectories` drops its no-`IRIS.DAT` early answer → `PathPortDatabases.TestAConfigurationWithNoFileRefusesNothing` red (run 378, the method alone).
+- mutation: `loadTasks` drops `tasksFaultSignal.set(true)` → `database-details.page.spec.ts`' 500 leg alone red.
+- mutation: `App.verifyWhenSignedIn` drops `this.databaseWizard.reset()` → `app.spec.ts`' sign-out test red on the wizard's name; dropping `this.databaseEditor.reset()` → red on the editor's name.
+- mutation (code review): `LocalDatabaseUpdateMount.ArgumentPairs` answers nothing when the arguments leave `MountRequired` out → `DatabaseWriteGate.TestAStoredMountRequiredNeedsTheOperatePair` alone red (run 385).
+- mutation (code review): `FileBody` always sends `DEFAULTSIZE`, `EnsureResource` makes the resource public, `LocalDatabaseCreate.DerivedFields` adds no `Directory`, `LocalDatabaseDelete.StateDiff` answers no rows, `LocalDatabaseUpdate.DerivedFields` sets no `NewVolumeDirectory`, `NAMESPACEUSEFIELDS` holds `Globals` alone, `DatabaseRules.Resources` drops its `%DB_` filter → each targeted `DatabaseWriteDetail` assertion red (run 399) and `DraftPorts.TestDatabasePort`'s size leg (run 400); `ViolationCodes` drops `RESOURCEABSENT` → `DatabaseDescriptor.TestEveryDatabaseCodeIsSaidAndListed` red (run 401).
+- mutation (code review): `DatabasePort.Delete` drops its `Server` clause → `DatabaseRefusals.TestARemoteDatabaseIsRefused` red, and the volume rule reverts to `volumeRoot` alone → `TestTheVolumeDirectoryRefusalsLandOnTheirFields` red (run 402); `ResourceViolation` drops the port's fault → `DatabaseWriteGate`'s reader leg red, 500 (run 403); client: `keepVolumeDirectory` keeps the root, the read-back pick reverts to the file group's, the wizard's `describedby` drops the reason → each new spec leg red. Every mutation reverted byte-identical; latest runs green: `DatabaseWrite` 398, `DatabaseRefusals` 404, `DatabaseWriteGate` 405, `DatabaseWriteDetail` 406, `DraftPorts` 407, `DatabaseDescriptor` 408.
+- mutation (rework 1): the wizard page's `onLocation` hands the picker's preselection to `setLocation` → `database-wizard.page.spec.ts`' single-root leg alone red (the form dirty on open).
+- mutation (rework 1): `DatabaseWizard.preselectRoot` marks the form dirty → `database-wizard.store.spec.ts`' preselection leg and its user-change leg (clean after the preselection) red, and the page's single-root leg red.
+- mutation (rework 1, review): `DatabaseWizard.setLocation` marks the form dirty only when the path differs → `database-wizard.store.spec.ts`' user-change leg (root half) and `database-wizard.page.spec.ts`' several-roots leg red.
+- mutation (rework 1, review): `DatabaseEditor.setVolumeLocation` notifies without marking the form dirty → `database-editor.page.spec.ts`' AD-21 leg red on the dirty-after-Change assertion.
+- mutation (rework 1): the picker reports its preselection without `preselected` → `server-path-picker.spec.ts`' loading-to-ready and preselection legs and the page's single-root leg red; the picker marks a typed name `preselected` → the picker's preselection and change legs and the page's single-root and edited-path legs red. Each reverted byte-identical.
+- mutation (rework 1, code review): `DatabaseWizard.preselectRoot` drops its `clearFieldViolation('root')` → `database-wizard.store.spec.ts`' refused-root leg alone red; `preselectRoot` holds no root → the store's preselection leg and `database-wizard.page.spec.ts`' two AC1 legs (check and create bodies) red; `setLocation` marks the form dirty only when the root differs → the store's user-change leg (path half) and the page's single-root leg red. Each reverted byte-identical.
+- mutation (rework 2): `BackgroundTaskCancel.FINGERPRINTSUBJECT` adds `Database` → `BackgroundTasks.TestAMovedDatabaseIsStillTheTaskReviewed` red, the confirm refused `PROPOSAL.TARGETCHANGED` with no pause sent, beside `TestTheToolsAreActionWritesOverTheScreensOwnPairs`' subject leg (run 411). The same subject left `BackgroundTasksLive` 7/7 (run 412).
+- mutation (rework 2): that subject, with `WithDatabases` setting `Database` to `$ZHorolog` on every read → `BackgroundTasksLive.TestTheAgentsConfirmPausesACompact` red on attempt 1 and not retried, the compact still running, beside `TestASeededPortalCompactIsListedPaused`' database leg (run 413).
+- mutation (rework 2): `BackgroundTaskPort.PortalControl` answers `$$$OK` in place of `Pause()` → `TestTheAgentsConfirmPausesACompact` red on "and the compact is paused" alone, beside `TestTheScreensActionsResumePauseAndCancelACompact`' pause legs (run 415). Each reverted byte-identical.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**Re-planned; no product code changed.**
+**Rework 2 (2026-09-29, CI): the agent's pause test survives a compact that ends before its confirm.**
 
-- Part C (remote databases) is gone: its tasks, tools, routes, codes, strings, literals, keys, tests and its proposed spine case. `DATABASE.REMOTE` on `update` stays.
-- The inbox is planned: DW-1080 (AC8), DW-1795 and DW-1796 (AC9), DW-1807 (in AC1), and DW-1791 (kept). The Code Map is re-anchored to 18.14's landed names.
-- New measurements are recorded under Design Notes.
+- **Cause:** the value that moved is `Status`, Running to Done: the seeded compact ended between the mint and the confirm (inference), and the refusal is AD-51's correct answer. The three Background tasks tools fingerprint `Status` alone (`BackgroundTaskCancel.FINGERPRINTSUBJECT`, Story 16.5, 73f7b3b8), so neither `Database` nor `Details` was ever in the subject. It predates this story: the test, the ~2 s seed and the subject are 16.5's.
+- **Evidence (`ocupilot-b-ci`):** once resumed, the compact runs 1.4-1.9 s, while the mint returns about 0.39 s and the confirm about 0.93 s after the resume; CI runs this class about twice as slowly (31-35 s against 14-16 s) (inference: CI's confirm can outlast the compact). The failure reproduces exactly: confirming after the compact ended answers `TARGETCHANGED` with the row reading Done. A stage probe read the one-row port read in a loop across three compacts' ends: 104,731 reads, 0 failures, about 0.11 ms each with both queries; `Database` read the same directory from the resume until the task ended, then `""`, and in 2 of 3 runs one read at the boundary saw `Running` with `Database` `""`.
+- **Fix (test-only, inside this story's Background tasks files):** `BackgroundTasksLive.TestTheAgentsConfirmPausesACompact` re-seeds, at most `AGENTATTEMPTS` (3) times, only when the confirm was refused `TARGETCHANGED` and the compact reads Done; any other refusal fails at once. New `BackgroundTasks.TestAMovedDatabaseIsStillTheTaskReviewed` pins that the measured boundary read, `Database` moving while `Status` reads Running, does not refuse the confirm. No product code changed.
+- **Files:** `src/OcuPilot/Test/BackgroundTasksLive.cls` (the bounded retry, `ProposeAndConfirmPause`, `EndedBeforeTheConfirm`); `src/OcuPilot/Test/BackgroundTasks.cls` (the new test and `DatabaseOf`); this spec.
+- **Review (follow-up pass, two layers):** 9 findings (high 0, medium 0, low 6, false 3). 2 lows patched as one entry (the two doc comments now state that the retry check reads Done afterwards and does not tell a moved status from a failed read); 4 lows and 3 false rejected, reasons in the triage log. Nothing deferred by review; the implement pass added one `deferred:` item, the older seed flake of run 36530303753 (`BackgroundSeed.cls`, Epic 16's). Follow-up review: not recommended, no high patched.
+- **Mutations:** three `mutation (rework 2)` lines under `## Verification` (runs 411, 413, 415); a forced race (run 420) was retried and paused on attempt 2.
+- **Verification** on `ocupilot-b-ci`, totals from `%UnitTest_Result`: after the final save, `BackgroundTasksLive` runs 423, 424 and 425, 7/7 each, one at a time; `BackgroundTasks` run 426, 12/12. Before the doc patch: `BackgroundTasksLive` 417-419, 421 and 422, 7/7 each; every unforced run paused on attempt 1. `database-details.page.spec.ts` 16/16. `check-objectscript` 0 problems; `lint-docs` clean. No probe object, seed database, task or global is left.
+- **Residual:** three attempts shrink the race rather than remove it; a seed that outlasts the window would remove it, in Epic 16's `BackgroundSeed.cls`. `BackgroundTasksLive.cls` is 537 lines, over the ~500-line guideline.
+
+**Rework 1 (2026-09-29, CI): the create wizard no longer opens dirty.**
+
+- **Change:** the picker's one preselection of a single root is reported with `preselected: true` (an optional field on `ServerPath`; `changed` still fires, so the editor's contract is kept). The wizard page sends that report to a new `DatabaseWizard.preselectRoot`, which holds the root without marking the form dirty or counting as a path edit. Every user change still goes through `setLocation` and marks the form dirty. The editor is unchanged: after an explicit Change, its preselection marks the form dirty, as intended.
+- **Files:** `ui/src/app/shell/server-path-picker.ts` (the flag) and its spec; `database-wizard.store.ts` (`preselectRoot`) and its spec; `database-wizard.page.ts` (routes the flagged report) and its spec; `database-editor.page.spec.ts` (dirty after Change, pinned at page level).
+- **Review (follow-up pass, two layers):** 6 findings (high 0, medium 0, low 3, false 3). The 3 lows were patched, all in tests: the store's user-change leg now asserts clean after the preselection, the root half has a recorded mutation, and the editor's dirty-after-Change is pinned. The 3 false findings were rejected; reasons are in the triage log. Nothing was deferred. Follow-up review: not recommended, because no high was patched.
+- **Mutations:** six mutations on five `mutation (rework 1…)` lines under `## Verification`. Each was applied, observed red and reverted byte-identical.
+- **Verification** on `ocupilot-b-ci`, against the rebuilt and redeployed bundle (`main-JT27HVRD.js`):
+  - `a11y-structural-invariants.browser-spec.mjs` passed 12/12. It walked 83 of 83 screens, with every visit settled and 0 violations, across its light 1280 px, light 720 px and dark 1280 px passes. The dark-only contrast liveness leg is green.
+  - `local-databases.browser-spec.mjs` passed 6/6, including AC7's walk in light and dark.
+  - `namespaces.browser-spec.mjs` passed 5/5.
+  - The client tier, after the review patches: `npm run test:tools` 1699/1699 and `npm run test:components` 1840/1840 (137 files). `client-lint` and `lint-docs` are clean.
+- **Bundle:** initial 2.19 MB (main 2,019,043 B, styles 174,097 B), under 3800kB. No contended file changed, and no ObjectScript changed.
+- **Residual:** a future picker consumer that must ignore the preselection has to read `preselected` itself.
+
+**Implement-2 (2026-09-29): the recovered partial implementation completed, verified and reviewed.**
+
+- **Found already in the tree:** every task, matrix row and patch P1-P11. Changed: the editor's second prompt reuses `databaseDetailsPrompt2` (`LocalDatabaseForm.cls`, `strings.ts`, EXPERIENCE.md :377 in place, 993 lines), `screens.generated.ts` regenerated.
+- **Review patches Q1-Q11** (second review pass): `DatabasePort.Snippet` answers no step for a delete with its file and creates `%DB_<NAME>` only when absent (AD-59); new legs `DatabaseWrite.TestAFailedOwnSetReadRefuses`, `DatabaseRefusals.TestTheVolumeDirectoryRefusalsLandOnTheirFields` and `TestTheFileEndpointsFaultsLandOnTheirFields`, `PathPortDatabases.TestAConfigurationWithNoFileRefusesNothing`; extended `DraftPorts.TestDatabasePort`, `TestTheThreeDeleteShapes` (a second volume file), the create's body keys, `database-details.page.spec.ts` (500 and Retry), `app.spec.ts` (sign-out resets), `DatabaseDescriptor`/`TestARemoteDatabaseIsRefused` floors, `ReadTool`'s message. Each changed pin's mutation is recorded under `## Verification`.
+- **Review:** 25 findings (high 0, medium 7, low 12, false 4, maybe-false 2); 12 patched (6 medium, 6 low), 1 carried defer (the fourth `deferred:` item), 12 rejected with reasons in the triage log. Follow-up review: not recommended; every patch but Q1 is a test, and Q1's one product change is pinned by `DraftPorts` and `DraftRegistry`, each run in full.
+- **Rosters, read from the instance:** 39 entity types, 83 descriptors, 159 production tools (98 writes, 61 reads), 23 `Prohibited` codes over 28 covered types, governance baseline 98 keys (3 disabled: `osmgmt.localdatabases.delete`, `osmgmt.namespaces.delete`, `security.auditing.purge`), 20 OS management screens, 20 ports, 14 tools declaring classic pages.
+- **Full ObjectScript sweep** (once, on `ocupilot-b-ci` recreated from this tree): 363 classes, 2979 tests, 0 failures, runs 1-363, totals read from `%UnitTest_Result`. After the patches, the latest run of every class: 363 classes, 2983 tests, 0 failures (runs 1-381; patched classes re-run in full at 367-381).
+- **Client and gates:** `npm run test:tools` 1699/1699, `npm run test:components` 1832/1832, `client-lint`, `check-objectscript` (0 problems), `lint-docs` clean; the story's four browser spec files 16/16 on the redeployed bundle; `smoke.sh` 49/49.
+- **Bundle:** initial 2.19 MB (main 2,018,233 B, styles 174,097 B), under `angular.json`'s 2217kB warning and far under 3800kB.
+- **Throwaway:** afterwards no `OCUPROBE183*` configuration, namespace or application, no `ocuprobe183*` directory, `%DB_OCUPROBE183*` resource, gate principal or `OCUBGSEED` database; the `%GUIFileSelector` allow-list unset, as on a fresh instance.
+- **Residual:** `DatabaseWrite.cls` is about 760 lines, above the 500-line guideline for a test class. `DatabaseRules` checks a named resource with `Security.Resource` `GET` as the caller rather than the Resources list's read (same port, same gate).
+
+**Re-plan (2026-09-28):**
+
 - Probe objects created on `ocupilot-b-ci` and removed, with removal re-read:
   - databases `OCUPROBE183V` (with volume directory `ocuprobe183vx/`) and `OCUPROBE183W`, their directories;
   - configurations `OCUPROBE183D` and `OCUPROBE183M`, which made no directory;
   - role `OcuProbe183PP` and user `OcuProbe183PPUser`; role `OcuProbe183BG` and user `OcuProbe183BGUser`;
   - `BackgroundSeed`'s `OCUBGSEED` database, its `%DB_OCUBGSEED` resource and its paused compact (removed through `BackgroundSeed.Remove`).
   - Afterwards: no `OCUPROBE183*` or `OCUBGSEED` configuration, no probe directory, principal or resource, no database background task and no portal task row.
-
-**For the runner:**
-
-- Eight spine sentences are proposed under Design Notes (AD-8 twice, AD-10, AD-21 twice, AD-52, AD-44, AD-27).
-- The story stays one story; the fallback split moves DW-1080 to 18.4.
-- The footprint extends into Story 16.5's files; they are listed under Design Notes.
-- A fourth `deferred:` item (the portal-only task list) is for harvest to 18.4.
-- Recommended disposition for all five inbox entries: `resolved-by:18-3`.

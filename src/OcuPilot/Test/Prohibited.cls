@@ -215,7 +215,7 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping", "the set covers exactly twenty-seven entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5 and the three mapping types since Story 18.14")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration", "the set covers exactly twenty-eight entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14 and the database configuration since Story 18.3")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
     Set tKey = ..Seed(..Payload(), "Description", "probe-id", "lock")
@@ -340,6 +340,14 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         If '$ClassMethod(tEntry.%Get("class"), "SendsBody") Continue
         Set tBodyDescriptor = $Parameter(tEntry.%Get("class"), "DESCRIPTORCLASS")
         If tBodyDescriptor '= "" Set tBodyTypes(''$ClassMethod(tEntry.%Get("class"), "Creates"), $ClassMethod(tBodyDescriptor, "PrimaryEntityType")) = ""
+        ; Story 18.3: two body-sending edits share one type (a database configuration's mounting and
+        ; file edits), so the type's reviewed few are the union of what its tools of one kind admit.
+        If tBodyDescriptor '= "" {
+            Set tBodySettable = $ClassMethod(tEntry.%Get("class"), "SettableFields")
+            For tI = 1:1:$ListLength(tBodySettable) {
+                Set tUnion(''$ClassMethod(tEntry.%Get("class"), "Creates"), $ClassMethod(tBodyDescriptor, "PrimaryEntityType"), $List(tBodySettable, tI)) = ""
+            }
+        }
     }
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tEntry) {
@@ -390,12 +398,17 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; arguments the port composes it from, which travel in the port query and are no field of
         ; the type (the reviewed-few loop below still holds them outside the type's fields).
         Set tComposed = 'tSendsBody && ($ListFind($ListFromString($Parameter($ClassMethod(tClass, "PortClass"), "COMPOSEDTYPES")), $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "WriteType")) > 0)
+        ; Story 18.3: a bodyless write whose declared port sequences its calls from one argument
+        ; admits exactly the value its screen action declares (AD-52 as amended 2026-09-29, AD-56
+        ; (ii)), which travels in the port query and is no field of the type.
+        Set tValued = 'tSendsBody && 'tComposed && (tSettable '= "") && (tSettable = ..ActionValues(tClass))
         If 'tSendsBody {
-            If 'tComposed Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
+            If 'tComposed && 'tValued Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
+            If tValued Do $$$AssertEquals(tEntry.%Get("name") _ ":" _ $ListToString(tSettable), "osmgmt.localdatabases.delete:DeleteFile", tEntry.%Get("name") _ " sends no body and admits only the value its screen action declares, which its port reads from its query")
             ; Story 12.4's key-set refresh is composed from the stored JWKS URL alone, so it admits
             ; no argument beyond its target's issuer; Story 12.6's mapping writes from a service and
             ; a key; Story 18.14's copy of mappings from its source namespace.
-            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
+            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, "tasks.schedule.export": 2, "tasks.schedule.import": 3, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
             For tI = 1:1:$ListLength(tPermitted) {
                 ; A type whose identifying field is also a reviewed field (an OAuth 2.0 server
                 ; description can be renamed) names its target by that field; naming is not setting.
@@ -410,10 +423,11 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             }
             ; The converse, so the two lists are asserted equal rather than one-way: a name added to
             ; the set's reviewed few alone reddens here, and so does a PERMITTEDFIELDS spelling the
-            ; tool's own $ListFromString does not trim, since the untrimmed name admits nothing.
+            ; tool's own $ListFromString does not trim, since the untrimmed name admits nothing. It is
+            ; asked of the body-sending tools of this kind over the type together.
             For tI = 1:1:$ListLength(tPermitted) {
                 Set tField = $List(tPermitted, tI)
-                Do $$$AssertTrue($ListFind(tSettable, tField) > 0, tEntry.%Get("name") _ " advertises '" _ tField _ "', which the prohibited set has reviewed for " _ tType)
+                Do $$$AssertTrue($Data(tUnion(tCreates, tType, tField)) > 0, tEntry.%Get("name") _ " or a sibling write of its kind advertises '" _ tField _ "', which the prohibited set has reviewed for " _ tType)
             }
         }
         ; And the two lists cannot overlap: a field whose every change is prohibited is never one of
@@ -669,7 +683,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 22, "the set declares twenty-two codes")
+    Do $$$AssertEquals($ListLength(tCodes), 23, "the set declares twenty-three codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")
@@ -777,6 +791,21 @@ ClassMethod WithoutAuthoredSecrets(pDescriptor As %String, pSecrets As %List) As
         Set tOut = tOut _ $ListBuild($List(pSecrets, tI))
     }
     Quit tOut
+}
+
+/// <p>The values <var>pClass</var>'s screen actions declare (AD-56 (ii)), each once, in declaration
+/// order, as a <class>%List</class>.</p>
+ClassMethod ActionValues(pClass As %String) As %List
+{
+    Set tValues = ""
+    Set tIds = $ClassMethod(pClass, "ScreenActionIds")
+    For tI = 1:1:$ListLength(tIds) {
+        Set tNames = $ClassMethod(pClass, "ScreenActionValueNames", $List(tIds, tI))
+        For tJ = 1:1:$ListLength(tNames) {
+            If '$ListFind(tValues, $List(tNames, tJ)) Set tValues = tValues _ $ListBuild($List(tNames, tJ))
+        }
+    }
+    Quit tValues
 }
 
 }

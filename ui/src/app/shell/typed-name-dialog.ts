@@ -28,9 +28,9 @@ let dialogCount = 0;
  * unchanged.
  *
  * **A flag is an optional checkbox, drawn only when the caller passes its label** -- Terminate's
- * error-to-job flag, `data-slot="flag"`, unchecked when the dialog opens. It changes which write is
- * sent, never the button's condition, and `confirmed` carries its state (`false` when none is
- * drawn).
+ * error-to-job flag, `data-slot="flag"`, unchecked when the dialog opens. It changes what is sent --
+ * which write, or a value the one write carries -- never the button's condition, and `confirmed`
+ * carries its state (`false` when none is drawn).
  *
  * Every control-flow condition is paren-free, for the reason `proposal-card.ts` records.
  *

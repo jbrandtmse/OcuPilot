@@ -1409,6 +1409,8 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 11) = "AUDITEVENT." Quit ..ReasonForAuditEvent(pCode)
     If $Extract(pCode, 1, 10) = "NAMESPACE." Quit ..ReasonForNamespace(pCode)
     If $Extract(pCode, 1, 8) = "MAPPING." Quit ..ReasonForMapping(pCode)
+    If $Extract(pCode, 1, 9) = "DATABASE." Quit ..ReasonForDatabase(pCode)
+    If $Extract(pCode, 1, 5) = "PATH." Quit ..ReasonForPath(pCode)
     Quit ""
 }
 
@@ -1492,6 +1494,38 @@ ClassMethod ReasonForMapping(pCode As %String) As %String
     If pCode = ..#MAPPINGDATABASEREQUIRED Quit ..#REASONNAMESPACEDATABASEREQUIRED
     If (pCode = ..#MAPPINGDATABASEABSENT) || (pCode = ..#MAPPINGLOCKDATABASEABSENT) Quit ..#REASONNAMESPACEDATABASEABSENT
     If pCode = ..#MAPPINGCOLLATIONVALUE Quit ..#REASONMAPPINGCOLLATIONVALUE
+    Quit ""
+}
+
+/// <p>Every <code>DATABASE.*</code> field-level violation code (Story 18.3), as a
+/// <class>%List</class>, for the reason <method>WebAppViolationCodes</method> exists. The codes and
+/// their sentences are <class>OcuPilot.Api.DatabaseError</class>'s, because this class is at the
+/// compiler's limit of parameters.</p>
+ClassMethod DatabaseViolationCodes() As %List
+{
+    Quit ##class(OcuPilot.Api.DatabaseError).ViolationCodes()
+}
+
+/// <p>The sentence a <code>DATABASE.*</code> code carries, or <code>""</code>
+/// (<method>OcuPilot.Api.DatabaseError.ReasonFor</method>).</p>
+ClassMethod ReasonForDatabase(pCode As %String) As %String
+{
+    Quit ##class(OcuPilot.Api.DatabaseError).ReasonFor(pCode)
+}
+
+/// <p>The sentence a <code>PATH.*</code> code carries, or <code>""</code>: the sentence
+/// <class>OcuPilot.Port.PathPort</class> answers it with, so a form that re-renders a path refusal
+/// from its code alone (Story 18.3's step check) says the same thing.</p>
+ClassMethod ReasonForPath(pCode As %String) As %String
+{
+    If pCode = ..#PATHROOT Quit ..#REASONPATHROOT
+    If pCode = ..#PATHNAME Quit ..#REASONPATHNAME
+    If pCode = ..#PATHEXISTS Quit ..#REASONPATHEXISTS
+    If pCode = ..#PATHMANAGER Quit ..#REASONPATHMANAGER
+    If pCode = ..#PATHNOFILE Quit ..#REASONPATHNOFILE
+    If pCode = ..#PATHINSTANCE Quit ..#REASONPATHINSTANCE
+    If pCode = ..#PATHMANAGERDIR Quit ..#REASONPATHMANAGERDIR
+    If pCode = ..#PATHSERVED Quit ..#REASONPATHSERVED
     Quit ""
 }
 
@@ -4167,6 +4201,34 @@ Parameter REASONPERMISSIONUNCHECKED = "There are too many roles or resources to 
 Parameter TASKBACKGROUNDSTATE = "TASK.BACKGROUND.STATE";
 
 Parameter REASONTASKBACKGROUNDSTATE = "This background task's current state does not allow that.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): a task export whose relative name names a directory
+/// that does not exist under its allowed directory, answered 400 with one violation on
+/// <code>path</code> by <class>OcuPilot.Port.TaskTransferPort</class> before any vendor call.</p>
+Parameter TASKEXPORTDIRECTORY = "TASK.EXPORT.DIRECTORY";
+
+Parameter REASONTASKEXPORTDIRECTORY = "There is no such directory under that allowed directory.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): a file an import names that is not a task export --
+/// unreadable XML, another root element, or no task -- answered 422 by
+/// <class>OcuPilot.Port.TaskTransferPort</class> before any vendor call.</p>
+Parameter TASKIMPORTFILE = "TASK.IMPORT.FILE";
+
+Parameter REASONTASKIMPORTFILE = "This file is not a task export, or it holds no task.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): an import whose every task is already on this
+/// instance, by the vendor's own task GUID, answered 409 by
+/// <class>OcuPilot.Port.TaskTransferPort</class> with nothing imported.</p>
+Parameter TASKIMPORTPRESENT = "TASK.IMPORT.PRESENT";
+
+Parameter REASONTASKIMPORTPRESENT = "Every task in this file is already on this instance.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): an agent's import whose file no longer yields the
+/// tasks its proposal reviewed, answered 409 by <class>OcuPilot.Port.TaskTransferPort</class> with
+/// nothing imported.</p>
+Parameter TASKIMPORTCHANGED = "TASK.IMPORT.CHANGED";
+
+Parameter REASONTASKIMPORTCHANGED = "The file's tasks changed after the import was proposed.";
 
 /// <p>Machine code (AD-12, AD-39, Story 16.6): a broadcast whose set names a process that has ended
 /// or cannot receive one, so nothing was sent to any of them. Answered on the

@@ -1,8 +1,8 @@
 /**
  * Story 16.7's License usage in a real browser, against the throwaway instance (AC1, AC6).
  *
- * What it pins: OS management's side bar lists its eight entries in order, License usage seventh and
- * the Dashboard eighth; License usage's strip shows its four tabs; Summary lists the vendor's five
+ * What it pins: OS management's side bar lists its nine entries in order, License usage seventh,
+ * the Dashboard eighth and Local databases ninth; License usage's strip shows its four tabs; Summary lists the vendor's five
  * rows under its three headers; By process lists rows whose first cell is a process id; By user and
  * Distributed each list rows or show their own empty text; and all four tabs pass the structural and
  * contrast checks at 1280 light, 720 light and 1280 dark, with no entry beyond the baseline
@@ -111,7 +111,7 @@ after(async () => {
 
 // AC1. Mutation (Rule 19): read the whole LICENSEUSAGE answer rather than its member in
 // `OcuPilot.Screen.Read` -> every tab's read fails, no row renders, and the row waits go red.
-test('AC1: OS management lists eight entries, License usage seventh; its strip shows four tabs; Summary lists the five vendor rows', async () => {
+test('AC1: OS management lists nine entries, License usage seventh; its strip shows four tabs; Summary lists the five vendor rows', async () => {
   const { context, page } = await signedInAt(browser, config, at(SUMMARY_ROUTE), VIEWPORTS.wide);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
@@ -134,8 +134,9 @@ test('AC1: OS management lists eight entries, License usage seventh; its strip s
         STRINGS.namespaceListLabel,
         STRINGS.licenseUsageLabel,
         STRINGS.dashboardLabel,
+        STRINGS.localDatabaseListLabel,
       ],
-      'the side bar lists License usage seventh and the Dashboard eighth'
+      'the side bar lists License usage seventh, the Dashboard eighth and Local databases ninth'
     );
     const tabs = await page.$$eval('.ocu-detail-tab .ocu-detail-tab-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(tabs, [STRINGS.openApiColumnSummary, STRINGS.licenseUsageByProcess, STRINGS.licenseUsageByUser, STRINGS.licenseUsageDistributed], 'the strip shows the four tabs');

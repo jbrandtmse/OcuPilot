@@ -4,10 +4,10 @@
 
 ## Goal
 
-This is the voting-week work. It gives the classic portal's remaining second-tier screens and actions an OcuPilot equivalent that a person and the agent both use (FR-74, FR-76 to FR-78). It also carries the six stories deferred from the contest build (16.11 to 16.16), the contest-survey additions (16.17 to 16.24), and 16.25, which was split from 16.10. **Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
+This is the voting-week work. It gives the classic portal's remaining second-tier screens and actions an OcuPilot equivalent that a person and the agent both use. It also carries the six stories deferred from the contest build (16.11 to 16.16), the contest-survey additions (16.17 to 16.24), and 16.25, which was split from 16.10 for size. **Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
 
-- **Done:** 16.1 to 16.3, 16.5 to 16.9, and 16.16 to 16.24. 16.7 is committed at 01e36ec7, with CI pending.
-- **Next on slot A, in the orchestrator's order:** 16.4, then 16.10 (spec ready for dev), then 16.25. After those, 16.11 to 16.15 are backlog.
+- **Done:** 16.1 to 16.9 and 16.16 to 16.24. 16.4 is committed at 6b3fe9c7, with CI pending.
+- **Next on slot A:** 16.10 (spec validated, ready for dev), then 16.25. After those, 16.11 to 16.15 are backlog.
 
 ## Stories
 
@@ -40,27 +40,18 @@ This is the voting-week work. It gives the classic portal's remaining second-tie
 ## Requirements & Constraints
 
 - **Every story.**
-  - **Screens.** A screen is one hand-written descriptor with its derived read tool and at least three grouped suggested prompts. It enters the side bar only once built.
-  - **Side-bar specs.** A screen-adding story extends every browser spec pinning its area's side-bar list (`grep -l ocu-side-bar-label ui/browser`, DW-1774).
-  - **Governance key.** An action ships with its confirmed write tool. The key joins `Kernel/Governance/Baseline.cls` in the same change, enabled unless the criteria say disabled.
+  - **Screens.** A screen is one hand-written descriptor with its derived read tool and at least three grouped suggested prompts. It enters the side bar only once built. A screen-adding story extends every browser spec pinning its area's side-bar list (`grep -l ocu-side-bar-label ui/browser`).
+  - **Governance key.** An action ships with its confirmed write tool. Through 2026-10-04 its key joins `Kernel/Governance/Baseline.cls` in the same change, enabled unless the criteria say disabled.
   - **Each write tool** meets all of the following, and a test fails on any gap:
     - Its port has a `Snippet` for every `Invoke` branch.
     - A field the instance normalizes on save declares a read-back `compare`.
     - Its entity type gets a canonical-spelling rule.
-    - It is measured with auditing on. Where IRIS records nothing, it is named as a further unaudited case in AD-15 and AD-53.
+    - It is measured with auditing on. Where IRIS records nothing, it is named as the next unaudited case in both AD-15 and AD-53. There are six so far, the latest being the task export.
   - **Prohibited arms.** A new arm needs reason text, because the Guardrails page is generated from the prohibited set. Its sentence is published once in Fixed strings and pinned equal to the kernel's reason.
 - **Copy.** New strings go into EXPERIENCE.md's Fixed strings and `strings.ts` in the same change. Edit EXPERIENCE.md in place so it stays at 993 lines. After touching it or epics.md, run `cd ui && npm run test:tools`.
-- **Bundle.** It stands at about 2.16 MB, against a 2217kB `maximumWarning`.
-  - Crossing the warning re-bases it to about 5% above the measured total, with the `angular-json.test.mjs` literal updated in the same change (DW-1166).
+- **Bundle.** It measures about 2.18 MB, against a 2217kB `maximumWarning`.
+  - Crossing the warning re-bases it to about 5% above the measured total, with the `angular-json.test.mjs` literal updated in the same change.
   - Stop and ask above 3800kB. The hard stop is 4000kB.
-- **16.4.** The acceptance is the export-and-import round trip across instances.
-  - **Paths.** The file is named as a root and a relative name through `Port/PathPort`, never as a path (AD-21's sixth case). The tool declares `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`, and the path is resolved again at the write.
-  - **Import.** An import reads an existing file as a `source`.
-  - **Export refusals.**
-    - An existing name, unless the tool declares that it overwrites.
-    - Any name directly in the manager directory, or under OcuPilot's served directory.
-    - For an overwriting export, also configuration, database and journal files.
-  - **Vendor class.** Reaching a vendor `%SYS` class instead of the admin API needs a named AD-27 case.
 - **16.10 (spec validated).**
   - **List and actions.** The list shows status. Start and stop update the row in place, and the Activity log opens in the shared log viewer.
   - **Privilege.** Both screens declare `%Admin_ExternalLanguageServerEdit:USE` as their own pair, beside `%DB_IRISSYS:READ`.
@@ -80,7 +71,7 @@ This is the voting-week work. It gives the classic portal's remaining second-tie
   - **DW-1074.** Drop the Process details link on a row with a remote owner.
 - **16.13.**
   - **Coverage.** The editor covers enabled state, allowed addresses with add and delete, roles and authentication methods.
-  - **Disabling `%Service_WebGateway`.** The control is drawn disabled with the published sentence. It is refused `PROHIBITED.SERVINGSERVICE` for both callers, and the agent is never offered it.
+  - **Disabling `%Service_WebGateway`.** The control is drawn disabled with the published sentence. The disable is refused `PROHIBITED.SERVINGSERVICE` on the instance for both callers.
   - **Address and authentication changes** on that service are permitted, minted destructive with a consequence line.
   - **DW-1016.** An empty address-list diff cell reads as unrestricted, not "(none)".
 - **16.14.**
@@ -91,8 +82,8 @@ This is the voting-week work. It gives the classic portal's remaining second-tie
 - **16.15.**
   - **Egress line.** It derives from the configuration the request actually uses (AD-42): a marked-local endpoint bypasses the proxy, and a proxy is judged as a destination.
   - **DW-1076.** Add a live leg in which the chip follows a real default-marker move.
-  - **DW-1192.** A Gemini endpoint with no model placeholder is allowed, but never silent: log that the Model is unused, and say so where the endpoint is edited.
-- **Epic-level DW-118.** It was resolved by 15.6, so decline it with that reason.
+  - **DW-1192.** A Gemini endpoint with no model placeholder is allowed, but never silently: log that the Model is unused, and say so where the endpoint is edited.
+- **Epic-level DW-118.** Story 15.6 resolved it, so decline it with that reason.
 
 ## Technical Decisions
 
@@ -103,28 +94,36 @@ This is the voting-week work. It gives the classic portal's remaining second-tie
   - Pairs are checked at call time, and an administrative resource is required at `USE`, never `WRITE`.
   - **Establishing a set.** Read the backing class's own check in `irislib/`, then run a least-privileged principal on the throwaway. Never use `%Operator` to prove a denial.
   - **Extra pairs** go in the screen's `ownPrivileges` or on the write tool. A caller without one is refused by name before any port call.
-  - **Classic pages.** Each classic page a tool's operation replaces is named in `CLASSICPAGES`.
+  - **Classic pages.** Each classic page a tool's operation replaces is named in `CLASSICPAGES`, and its custom resource joins the tool's pairs at `USE`.
 - **Writes.**
   - **Two callers.** A screen action and the agent's write are one operation. The screen caller mints no proposal and emits no marker, and read-only and the kill switch do not gate it (AD-53, AD-55).
   - **Declared shape.** Each tool declares its port, `AdminPort` by default (AD-52).
     - An action-style write sends no body and fingerprints a declared subject holding every precondition field (AD-51).
     - A merge sends the complete body (AD-4).
     - A create fingerprints the target's absence (AD-54).
-    - A screen action accepts only declared values (AD-56).
+    - A screen action accepts only declared values, and changes a list field by a server-side delta over a fresh read (AD-56).
+  - **Named cases.** Each is a closed list, and a new entry is added to the AD, never assumed.
+    - **A port that builds the vendor body** from declared non-secret arguments (AD-51).
+    - **A vendor `%SYS` class** reached instead of the admin API, allowed only where the admin API cannot carry the call (AD-27).
+    - **16.4 is the latest of both.** `TaskTransferPort` calls `%SYS.Task.ExportTasks` and `ImportTasks`, which the admin API lacks, and builds their file argument from the declared `root` and `path`.
   - **Gates.**
     - The prohibited set is judged by effect, inside the confirm transition, for both callers (AD-10, AD-34).
     - Governance is checked at dispatch and again at Confirm.
     - A write that would queue is refused unless it is listed on `QUEUEDWRITES` (AD-26).
+  - **Absence (AD-2, DW-1814).** A read answered 404 writes no log line: a delete's re-read, a read-back or an existence check still gets `PORT.NOTFOUND`, but it no longer raises the instance's alert state. A write answered 404 is still logged at error.
   - **After the write.** It reads its target back (AD-58), and a copy-out draft renders on the instance (AD-59).
-- **Refresh (AD-43).** Auto-refresh covers nine screens. A new one needs both its descriptor and EXPERIENCE.md's Auto-refresh controls row.
-- **Paths and logs (AD-21, AD-60).** No endpoint accepts a path. Log text reaches the model only through the sanitizer.
+- **Paths and logs (AD-21, AD-60).**
+  - **No endpoint accepts a path.** A file is named as a root and a relative name through `Port/PathPort`, and is resolved again at the write. The tool declares `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`.
+  - **Overwriting consumers** are also refused configuration, database, journal and OcuPilot-served files. A file the tool reads is a `source`.
+  - **Log text** reaches the model only through the sanitizer.
+- **Refresh (AD-43).** Auto-refresh now covers nine screens, including the Dashboard. A new one needs both its descriptor and EXPERIENCE.md's Auto-refresh controls row.
 
 ## UX & Interaction Patterns
 
 - **Placement.**
-  - **External language servers** is an OS management list, whose form-page editor takes side-bar position 0. Its Activity log uses the shared log viewer.
+  - **External language servers** is an OS management list, whose form-page editor (16.25) takes side-bar position 0. Its Activity log uses the shared log viewer.
   - **Remove locks** is a dialog from the Locks row menu.
-  - **Suspend Task Manager** is on the Task schedule command bar, with Export and Import as dialogs.
+  - **Suspend Task Manager** is on the Task schedule command bar.
   - **The service and LDAP editors** are tabbed form pages.
 - **Dialogs.** One level deep and titled with the action and target.
   - A destructive dialog asks for the typed name.
@@ -138,7 +137,8 @@ This is the voting-week work. It gives the classic portal's remaining second-tie
   - 16.25 builds on 16.10's list and entity type.
   - 16.11's Task Manager resume becomes 16.21's Operations "Fix it", which links to the screen until then.
   - 16.12 extends Story 6.10's Locks list.
-  - 16.13 and 16.14 each remove one classic-link exemption (`ServiceForm`, `LdapConfigForm`), which lowers SM-C1.
+  - 16.13 and 16.14 each remove one classic-link exemption (`ServiceForm`, `LdapConfigForm`), which lowers SM-C1 from two.
+  - **An open owner decision.** DW-1827 (16.4's import reviews task names only) is escalated to the owner. A later task story does not re-decide it.
 - **Epic 18, on slot B.**
   - Shared rosters are unioned at each merge, so keep edits additive: `EntityType`, `Prohibited` codes and covered types, `ReadTool` counts, `AdminPort` type lists, the baseline and the screen mirror.
   - OS management side-bar positions are reconciled from the merged registry.

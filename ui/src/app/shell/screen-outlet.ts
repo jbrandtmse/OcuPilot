@@ -49,7 +49,10 @@ import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { DeviceFormPage } from '../areas/os-management/device-form.page';
 import { NamespaceFormPage } from '../areas/os-management/namespace-form.page';
 import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
+import { TaskSchedulePage } from '../areas/tasks/task-schedule.page';
 import { MappingFormPage } from '../areas/os-management/mapping-form.page';
+import { DatabaseWizardPage } from '../areas/os-management/database-wizard.page';
+import { DatabaseEditorPage } from '../areas/os-management/database-editor.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -144,6 +147,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.GlobalMappingForm': MappingFormPage,
   'OcuPilot.Screen.Descriptor.RoutineMappingForm': MappingFormPage,
   'OcuPilot.Screen.Descriptor.PackageMappingForm': MappingFormPage,
+  // Story 18.3: the local database form's bare route is the create wizard.
+  'OcuPilot.Screen.Descriptor.LocalDatabaseForm': DatabaseWizardPage,
   'OcuPilot.Screen.Descriptor.SslForm': SslFormPage,
   'OcuPilot.Screen.Descriptor.TaskForm': TaskWizardPage,
   'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
@@ -154,6 +159,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AgentLedger': LedgerPage,
   // Story 16.7: the Dashboard's seven meter groups; System usage keeps the meters archetype's page.
   'OcuPilot.Screen.Descriptor.Dashboard': DashboardPage,
+  // Story 16.4: the Task schedule with its Export and Import dialogs.
+  'OcuPilot.Screen.Descriptor.TaskScheduleList': TaskSchedulePage,
 };
 
 /**
@@ -175,6 +182,8 @@ export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, Type<unknown>>> = {
   // their id route from the one page.
   'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
   'OcuPilot.Screen.Descriptor.LdapConfigForm': ReducedFormPage,
+  // Story 18.3: the local database form's id route is the properties editor beside the wizard.
+  'OcuPilot.Screen.Descriptor.LocalDatabaseForm': DatabaseEditorPage,
 };
 
 /**

@@ -31,6 +31,9 @@ import { DeviceActions } from './areas/os-management/device-actions';
 import { DeviceForm } from './areas/os-management/device-form.store';
 import { NamespaceActions } from './areas/os-management/namespace-actions';
 import { NamespaceForm } from './areas/os-management/namespace-form.store';
+import { DatabaseActions } from './areas/os-management/database-actions';
+import { DatabaseEditor } from './areas/os-management/database-editor.store';
+import { DatabaseWizard } from './areas/os-management/database-wizard.store';
 import { MappingActions } from './areas/os-management/mapping-actions';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
@@ -308,6 +311,11 @@ export class App {
   // The Namespaces list's declared Create, the same way (`areas/os-management/namespace-actions.ts`).
   private readonly namespaceActions = inject(NamespaceActions);
   private readonly namespaceForm = inject(NamespaceForm);
+  // Local databases' declared Create, the same way (`areas/os-management/database-actions.ts`),
+  // with the create wizard's and the properties editor's stores.
+  private readonly databaseActions = inject(DatabaseActions);
+  private readonly databaseWizard = inject(DatabaseWizard);
+  private readonly databaseEditor = inject(DatabaseEditor);
   // The three mapping lists' declared Create, the same way (`areas/os-management/mapping-actions.ts`).
   private readonly mappingActions = inject(MappingActions);
   private readonly mappingForm = inject(MappingForm);
@@ -614,6 +622,9 @@ export class App {
       this.deviceForm.reset();
       // The namespace editor holds a namespace THIS principal was creating or editing and has not saved.
       this.namespaceForm.reset();
+      // The database wizard and editor hold a database THIS principal was creating or editing and has not saved.
+      this.databaseWizard.reset();
+      this.databaseEditor.reset();
       // The mapping editor holds a mapping THIS principal was creating or editing and has not saved.
       this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).

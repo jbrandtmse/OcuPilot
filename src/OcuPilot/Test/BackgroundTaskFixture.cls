@@ -16,6 +16,14 @@ ClassMethod ArmPortal(pJson As %String)
     Set ^||OcuPilotBackgroundFixture("portal") = pJson
 }
 
+/// <p>Answer the task database query with the rows <var>pJson</var>, each <code>{ID, Database,
+/// HasEnded}</code>, which the port's own <code>KeepRunning</code> then filters (Story 18.3), or fail
+/// that read with <code>"fail"</code>. Unarmed, no task runs against a database.</p>
+ClassMethod ArmDatabases(pJson As %String)
+{
+    Set ^||OcuPilotBackgroundFixture("databases") = pJson
+}
+
 /// <p>Answer the admin API's <code>AsyncResult</code> <code>LIST</code> with the vendor rows
 /// <var>pJson</var>.</p>
 ClassMethod ArmAdmin(pJson As %String)
@@ -78,6 +86,15 @@ ClassMethod PortalRows(Output pRows As %DynamicArray) As %Status [ Private ]
 {
     Do $Increment(^||OcuPilotBackgroundFixture("reads"))
     Set pRows = ##class(%DynamicArray).%FromJSON($Get(^||OcuPilotBackgroundFixture("portal"), "[]"))
+    Quit $$$OK
+}
+
+ClassMethod TaskDatabases(Output pDatabases) As %Status [ Private ]
+{
+    Kill pDatabases
+    Set tArmed = $Get(^||OcuPilotBackgroundFixture("databases"), "[]")
+    If tArmed = "fail" Quit $$$ERROR($$$GeneralError, "the armed task database read fails")
+    Do ..KeepRunning(##class(%DynamicArray).%FromJSON(tArmed), .pDatabases)
     Quit $$$OK
 }
 

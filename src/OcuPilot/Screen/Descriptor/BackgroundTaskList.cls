@@ -19,6 +19,9 @@
 /// refresh (AD-43).</p>
 /// <p>The classic page is <code>%CSP.UI.Portal.BackgroundTaskList</code>. As a list archetype it
 /// links out to nothing.</p>
+/// <p>Each row also carries <code>Database</code>, the directory a portal job's unended task runs
+/// against (Story 18.3, DW-1080), with no column and no filter: Database details issues this screen's
+/// read and lists the rows naming its own directory (AD-5).</p>
 Class OcuPilot.Screen.Descriptor.BackgroundTaskList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -43,7 +46,7 @@ XData Declaration
   "id": {"kind": "composite", "parts": ["Source", "Id"]},
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [{"id": "cancel", "selfProtection": ""}, {"id": "pause", "selfProtection": ""}, {"id": "resume", "selfProtection": ""}],
-  "context": {"fields": ["Source", "Id", "Task", "Namespace", "Status", "Details", "ErrorCount", "StartTime"], "secretFields": []},
+  "context": {"fields": ["Source", "Id", "Task", "Namespace", "Status", "Details", "ErrorCount", "StartTime", "Database"], "secretFields": []},
   "secretArguments": [],
   "fingerprintExcludes": [],
   "emptyStateKey": "backgroundTaskListEmpty",
@@ -57,7 +60,7 @@ XData Declaration
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "background", "endpoint": "BackgroundTask", "type": "LIST"},
-    "fields": ["Source", "Id", "Task", "Namespace", "Status", "Details", "ErrorCount", "StartTime"],
+    "fields": ["Source", "Id", "Task", "Namespace", "Status", "Details", "ErrorCount", "StartTime", "Database"],
     "filter": ["Source", "Task", "Namespace", "Status", "Details"],
     "sort": {"fields": ["StartTime", "Task", "Source", "Namespace", "Status"], "default": "StartTime", "direction": "desc"},
     "paging": "cap"

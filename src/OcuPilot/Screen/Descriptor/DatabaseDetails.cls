@@ -1,10 +1,11 @@
 /// <p>Database details: one database's own properties, read through the vendor's own
 /// <code>Database.SysCRUD</code> <code>GET</code> (AD-2, AD-36) with its three free-space figures
 /// and mount state merged from one <code>INFO</code> call, and rendered by this screen's own page
-/// from the declared <code>table</code> doubling as the field list (AD-5) -- properties and volume
-/// files only. <code>%SYS.BackgroundTask:RunningInDatabase</code> is a <code>Final Internal</code>
-/// class query no <code>%Api.Admin.*</code> class references, so a background-tasks section is out
-/// of reach here and is chartered to the owner's decision sheet as <b>DW-1080</b>.</p>
+/// from the declared <code>table</code> doubling as the field list (AD-5): its properties, its volume
+/// files, and the background tasks running against it, which the page reads through
+/// <class>OcuPilot.Screen.Descriptor.BackgroundTaskList</class>'s declared read and
+/// <class>OcuPilot.Port.BackgroundTaskPort</class>, keeping the rows whose <code>Database</code> is
+/// this directory (Story 18.3, DW-1080).</p>
 /// <p><b>It is a sub-resource of Databases and never listed</b> (<code>sideBarPosition</code> 0). It
 /// declares its parent, <code>parentScope</code> <code>os-management/databases</code>, and is
 /// reached from the General view's name cell at

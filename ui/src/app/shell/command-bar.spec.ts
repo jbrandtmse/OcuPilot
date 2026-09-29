@@ -8,7 +8,7 @@ import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { DOWNLOAD_CSV_ACTION_ID, PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
+import { DOWNLOAD_CSV_ACTION_ID, PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -1248,6 +1248,28 @@ describe('the command bar', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ocu-command-bar')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.ocu-command-bar-permission-check')?.textContent?.trim()).toBe(STRINGS.permissionCheckAction);
+  });
+
+  it('Story 16.4: the bar draws Import only where registered, never held back for want of a selection', () => {
+    // Mutation (Rule 19): drop `hasTaskImportAction` from the template -> the drawn assertion goes red.
+    const declared = screenDeclaration({ rowActions: [{ id: 'export', selfProtection: '' }] });
+    build(declared);
+    actions.register(declared.descriptor, 'export', () => {});
+    fixture.detectChanges();
+    const importButton = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-command-bar-task-import');
+    expect(importButton()).toBeNull();
+    let ran = 0;
+    const stop = actions.register(declared.descriptor, TASK_IMPORT_ACTION_ID, () => {
+      ran += 1;
+    });
+    fixture.detectChanges();
+    expect(importButton()?.textContent?.trim()).toBe(STRINGS.actionImport);
+    expect(importButton()?.getAttribute('aria-disabled')).toBeNull();
+    importButton()?.click();
+    expect(ran).toBe(1);
+    stop();
+    fixture.detectChanges();
+    expect(importButton()).toBeNull();
   });
 
   // --- Story 16.23: Download CSV --------------------------------------------------------------

@@ -528,13 +528,15 @@ ClassMethod InJournalDirectory(pFile As %String) As %Boolean
     Quit tIn
 }
 
-/// <p>The configured local databases' directories in <var>pDirectories</var> and their stream
-/// locations in <var>pStreams</var>, each normalized with its trailing separator, read on every
-/// call from <code>Config.Databases</code>' <code>List</code> query in <code>%SYS</code>, reached by
-/// explicit save and restore (AD-16). A database that names no stream location keeps its streams in
-/// <parameter>STREAMDIRECTORY</parameter> under its directory. A directory in the mirror or
-/// data-server form names no local path and is left out. On failure both lists are empty and the
-/// status says why. Overridable so a fixture can name others or fail the read; production never
+/// <p>The configured local databases' directories, each followed by its additional volume
+/// directories (<method>VolumeDirectories</method>), in <var>pDirectories</var>, and their stream
+/// locations in <var>pStreams</var>, each normalized with its trailing separator, read on every call
+/// from <code>Config.Databases</code>' <code>List</code> query in <code>%SYS</code>, reached by
+/// explicit save and restore (AD-16), and never kept between calls. A database that names no stream
+/// location keeps its streams in <parameter>STREAMDIRECTORY</parameter> under its directory. A row
+/// <method>LocalDirectory</method> does not admit names no local path and is left out. On any failure,
+/// a volume read's among them, both lists are empty and the status says why, so the refusal that reads
+/// them fails closed. Overridable so a fixture can name others or fail the read; production never
 /// overrides it.</p>
 ClassMethod DatabaseDirectories(Output pDirectories As %List, Output pStreams As %List) As %Status
 {
@@ -548,7 +550,7 @@ ClassMethod DatabaseDirectories(Output pDirectories As %List, Output pStreams As
         Set tSC = tRS.Execute("*", "", 1)
         While $$$ISOK(tSC) && tRS.Next(.tSC) {
             Set tDirectory = tRS.Get("Directory")
-            If (tDirectory = "") || ($Extract(tDirectory) = ":") Continue
+            If '..LocalDirectory(tDirectory) Continue
             Set tStream = tRS.Get("StreamLocation")
             If tStream = "" Set tStream = ##class(%File).NormalizeDirectory(tDirectory) _ ..#STREAMDIRECTORY
             Set tDirectory = ##class(%File).NormalizeDirectory(tDirectory)
@@ -559,6 +561,9 @@ ClassMethod DatabaseDirectories(Output pDirectories As %List, Output pStreams As
             }
             Set pDirectories = pDirectories _ $ListBuild(tDirectory)
             Set pStreams = pStreams _ $ListBuild(tStream)
+            Set tSC = ..VolumeDirectories(tDirectory, .tVolumes)
+            If $$$ISERR(tSC) Quit
+            Set pDirectories = pDirectories _ tVolumes
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
@@ -569,6 +574,56 @@ ClassMethod DatabaseDirectories(Output pDirectories As %List, Output pStreams As
         Set pDirectories = ""
         Set pStreams = ""
     }
+    Quit tSC
+}
+
+/// <p>Whether a <code>Config.Databases</code> row's directory <var>pDirectory</var> names a local path:
+/// not empty, and not in the mirror or data-server form, which begins with <code>:</code>.</p>
+ClassMethod LocalDirectory(pDirectory As %String) As %Boolean
+{
+    If pDirectory = "" Quit 0
+    Quit ($Extract(pDirectory) '= ":")
+}
+
+/// <p>The additional volume directories of the database in normalized directory <var>pDirectory</var>,
+/// each normalized with its trailing separator, in <var>pDirectories</var>: its
+/// <code>SYS.Database</code> <code>VolumeDirectoryList</code>, read in <code>%SYS</code> (AD-16), which
+/// a new volume directory joins when it is saved. A directory holding no <code>IRIS.DAT</code> has
+/// none and answers an empty list, since a configuration may name a file that does not exist; any other
+/// failure is an error status. Overridable so a fixture can fail the read; production never overrides
+/// it.</p>
+ClassMethod VolumeDirectories(pDirectory As %String, Output pDirectories As %List) As %Status
+{
+    Set tSC = $$$OK
+    Set pDirectories = ""
+    If '##class(%File).Exists(##class(%File).NormalizeDirectory(pDirectory) _ ..#DATABASEFILE) Quit $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tDatabase = ##class(SYS.Database).%OpenId(pDirectory, , .tSC)
+        If '$IsObject(tDatabase) {
+            Set $NAMESPACE = tOrigNS
+            If $$$ISOK(tSC) Set tSC = $$$ERROR($$$GeneralError, "a database's volume directories could not be read")
+            Quit
+        }
+        Set tList = tDatabase.VolumeDirectoryList
+        Set tDatabase = ""
+        Set $NAMESPACE = tOrigNS
+        For tI = 1:1:$ListLength(tList) {
+            Set tVolume = $ListGet(tList, tI)
+            If tVolume = "" Continue
+            Set tVolume = ##class(%File).NormalizeDirectory(tVolume)
+            If tVolume = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "a database's volume directory did not normalize")
+                Quit
+            }
+            If '$ListFind(pDirectories, tVolume) Set pDirectories = pDirectories _ $ListBuild(tVolume)
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pDirectories = ""
     Quit tSC
 }
 

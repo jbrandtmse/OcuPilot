@@ -483,6 +483,10 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
     'permissions.roles.update': roles,
     'permissions.resources.create': { PublicPermission: 'letters' },
     'permissions.resources.update': { PublicPermission: 'letters' },
+    // Story 18.3: the vendor stores a directory with its trailing slash.
+    'osmgmt.localdatabases.create': { Directory: 'unslashed' },
+    'osmgmt.localdatabases.updatemount': { Directory: 'unslashed' },
+    'osmgmt.localdatabases.update': { NewVolumeDirectory: 'unslashed' },
     'security.oauthserverdescriptions.create': members,
     'security.oauthserverdescriptions.update': members,
     'security.oauthclients.create': oauthClients,

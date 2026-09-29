@@ -7439,3 +7439,35 @@ app-log-hub-page {
     animation: none;
   }
 }
+
+// Task schedule's Export and Import (Story 16.4): the status line above the list, as the Namespaces
+// list's copy line, and each dialog's note and refusal. A long server path wraps rather than
+// widening the dialog (DW-1337).
+.ocu-task-transfer-status {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  padding: 0 var(--ocu-gutter);
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-task-transfer-status:not(:empty) {
+  padding-block: var(--ocu-space-2);
+}
+
+.ocu-task-transfer-note {
+  @include typo.ocu-type('body');
+
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.ocu-task-transfer-refusal {
+  @include typo.ocu-type('body');
+
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-error);
+  overflow-wrap: anywhere;
+}

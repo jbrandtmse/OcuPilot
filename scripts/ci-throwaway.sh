@@ -236,6 +236,7 @@ services:
       # classes: LedgerSearchWire
       # classes: NamespaceWriteGate
       # classes: ClassicPageGate, MappingWriteGate
+      # classes: DatabaseRefusals, DatabaseWriteGate
       # classes: WebSessionsLive
       # The Background tasks classes also create a scratch database and pause, resume and cancel a
       # compact of it; AdminPortForget runs the whole retention sweep.
@@ -244,6 +245,8 @@ services:
       # classes: AdminPortAbsence
       # The broadcast's live class also starts terminal sessions of its own and broadcasts to them.
       # classes: ProcessBroadcastLive
+      # Task export and import's live class also exports and imports probe tasks as its principals.
+      # classes: TaskTransferLive
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -315,6 +318,9 @@ services:
       # classes: TaskCreate, TaskRules, TaskSave, TaskWire
       # classes: TaskUpdate, TaskEdit
       # classes: InjectionChannels, InjectionCompromised, InjectionSeed
+      # Task export and import's classes export probe tasks to files under the first allowed
+      # directory and import them back, then delete every task named OcuP164* and that directory.
+      # classes: TaskTransfer, TaskTransferLive
       OCUPILOT_ALLOW_TASK_CONTROL: "1"
       # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
       # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted
@@ -373,6 +379,16 @@ services:
       # classes: NamespaceRefusals, NamespaceWrite, NamespaceWriteGate
       # classes: ClassicPageGate, MappingCodeGlobals, MappingRefusals, MappingWrite, MappingWriteGate, NamespaceCopy
       OCUPILOT_ALLOW_NAMESPACE_CONFIG: "1"
+      # Creates, edits and deletes database configurations and database files in this instance's own
+      # configuration, with the %DB_* resources and directories a create makes, through the shipped
+      # Save, row-action and confirm paths. Its own variable because no narrower one names that
+      # effect: a database delete with its file removes data. The classes touch only OCUPROBE183*
+      # databases, %DB_OCUPROBE183* resources and <mgr>ocuprobe183* directories, each by exact
+      # name, with the probe namespaces, mapping and /csp/ocuprobe183* applications and the
+      # OCUPROBE183SRV data server they create, and write to the instance's own databases only
+      # through a port that sends nothing.
+      # classes: DatabaseRefusals, DatabaseWrite, DatabaseWriteDetail, DatabaseWriteGate, PathPortDatabases
+      OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

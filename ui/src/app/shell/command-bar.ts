@@ -14,7 +14,7 @@ import { Router } from '@angular/router';
 import { NavigationService } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
-import { DOWNLOAD_CSV_ACTION_ID, PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
+import { DOWNLOAD_CSV_ACTION_ID, PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID, actionLabel } from '../core/screen-actions';
 import { checkedSetReason, isCheckedSetAction } from '../core/multi-select';
 import { applyView } from '../core/screen-read';
 import { ScreenStores, type SortDirection } from '../core/screen-store';
@@ -323,6 +323,15 @@ interface SortOption {
         {{ permissionCheckLabel }}
       </button>
     }
+    @if (hasTaskImportAction) {
+      <button
+        type="button"
+        class="ocu-button-text ocu-command-bar-action ocu-command-bar-task-import"
+        (click)="onTaskImport()"
+      >
+        {{ taskImportLabel }}
+      </button>
+    }
     @if (hasDownloadAction) {
       <span class="ocu-command-bar-action-slot">
         <button
@@ -625,6 +634,7 @@ export class CommandBar {
       this.hasSortControl ||
       this.hasRefreshAction ||
       this.hasPermissionCheckAction ||
+      this.hasTaskImportAction ||
       this.hasDownloadAction ||
       this.hasRefreshChip
     );
@@ -714,6 +724,26 @@ export class CommandBar {
     const screen = this.screen();
     if (screen === null) return;
     this.actions.run(screen.descriptor, PERMISSION_CHECK_ACTION_ID);
+  }
+
+  /**
+   * Import on Task schedule (Story 16.4), drawn after Check permission on exactly the screen that
+   * registered it. Screen-level: it names a server file, not a row, so it is never `aria-disabled`
+   * for want of a selection.
+   */
+  protected get hasTaskImportAction(): boolean {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null) return false;
+    return this.actions.has(screen.descriptor, TASK_IMPORT_ACTION_ID);
+  }
+
+  protected readonly taskImportLabel = actionLabel('', TASK_IMPORT_ACTION_ID);
+
+  protected onTaskImport(): void {
+    const screen = this.screen();
+    if (screen === null) return;
+    this.actions.run(screen.descriptor, TASK_IMPORT_ACTION_ID);
   }
 
   /**

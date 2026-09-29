@@ -564,9 +564,11 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // 1600 under the same protocol.
   // Stories 16.2's, 16.5's and 18.14's rows, merged together, take the table past 1600; the bound
   // moves to 1700 under the same protocol.
+  // Stories 16.7's, 18.3's and 16.4's rows, merged for release 1.0.3, take the table past 1700; the
+  // bound moves to 1800 under the same protocol.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 1700,
-    `expected between 150 and 1700 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 1800,
+    `expected between 150 and 1800 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 
@@ -642,7 +644,8 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // `userFormNamespace` is a field label, not a sentence about a namespace: the create-a-user
   // form's startup namespace, which the account enters on sign-in. Story 18.2's Namespaces list and
   // form name their own copy `namespace*`, on the device screens' convention, and are listed here
-  // one by one; so does Story 18.14's Copy mappings row action on that list.
+  // one by one; so does Story 18.14's Copy mappings row action on that list, and Story 18.3's four
+  // phrases of a database delete's impact that name the namespaces using the database.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
@@ -652,6 +655,10 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'errorLogEmptyNamespace',
       'errorLogRefusedNamespace',
       'headerNamespaceLabel',
+      'impactNamespacesUse',
+      'impactNamespacesUseNone',
+      'impactNamespacesUseOne',
+      'impactNamespacesUseUnchecked',
       'namespaceColumnGlobals',
       'namespaceColumnRoutines',
       'namespaceColumnTemp',

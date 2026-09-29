@@ -1,7 +1,7 @@
 import { Injectable, Injector, inject } from '@angular/core';
 
 import { ApiService, type JsonResult } from '../../core/api';
-import { ChangeBus, type ChangeAction } from '../../core/change-bus';
+import { ChangeBus, type ChangeAction, type ChangeEvent } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
 import { readBackOf, type ReadBack } from '../../core/read-back';
@@ -31,6 +31,13 @@ export const TEMP_GLOBALS_FIELD = 'TempGlobals';
 
 /** The three settable fields, each a database name; the name is the id. */
 export const DATABASE_FIELDS: readonly string[] = [GLOBALS_FIELD, ROUTINES_FIELD, TEMP_GLOBALS_FIELD];
+
+/**
+ * The entity type a database create or delete publishes (Story 18.3): the form's database choices
+ * are re-read when one lands, so a database created from the form's own "Create a database" link is
+ * offered without a reload (SA-13).
+ */
+export const DATABASE_CONFIGURATION_ENTITY = 'database-configuration';
 
 /** The machine code the blur look-up reports a taken name under -- the server's own (AD-39). */
 export const NAME_TAKEN_CODE = 'NAMESPACE.NAME.TAKEN';
@@ -73,6 +80,10 @@ function stringsAt(source: unknown, key: string): string[] {
  * **It composes no payload of its own.** `POST /namespace` and `PUT /namespace/<id>` resolve the same
  * tool classes the agent's `osmgmt.namespaces.create` and `osmgmt.namespaces.update` do, every field
  * sentence is the server's (AD-39), and the database choices are the names the form read answers.
+ *
+ * **Its database choices follow the instance**: a `database-configuration` `created` or `deleted`
+ * change event re-reads them while the form is open (AD-14, the `core/scope.ts` model), keeping every
+ * value entered.
  *
  * **A create sends the name, the globals and the routines database**, and the temporary database
  * only when one was chosen, so an empty choice leaves the instance's own default. **An edit sends
@@ -130,6 +141,9 @@ export class NamespaceForm {
   private createdIdValue = '';
 
   private retainingValue = false;
+
+  /** Whether this store listens to the change bus yet: from its first open, for the tab's life. */
+  private listening = false;
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -287,6 +301,7 @@ export class NamespaceForm {
       this.readBackValue = readBack;
     }
     this.modeValue = name === '' ? 'create' : 'edit';
+    this.listen();
     const generation = this.generation;
     const path = name === '' ? NAMESPACE_FORM_PATH : `${NAMESPACE_FORM_PATH}?name=${encodeURIComponent(name)}`;
     const result = await this.api().requestJson<unknown>(path);
@@ -389,6 +404,36 @@ export class NamespaceForm {
   }
 
   // --- internals ------------------------------------------------------------------------------
+
+  private listen(): void {
+    if (this.listening) return;
+    const bus = this.injector.get(ChangeBus, null);
+    if (bus === null) return;
+    this.listening = true;
+    bus.subscribe((event) => this.onChange(event));
+  }
+
+  /**
+   * A database was created or deleted: re-read the form's database choices (AD-14 -- consumers
+   * re-fetch, they never patch), keeping every value entered. Only those two change which databases
+   * exist. A form not open is not read here: its next open reads them anyway.
+   */
+  private onChange(event: ChangeEvent): void {
+    if (event.kind !== 'changed' || event.type !== DATABASE_CONFIGURATION_ENTITY) return;
+    if (event.action !== 'created' && event.action !== 'deleted') return;
+    if (!this.loadedValue) return;
+    void this.rereadDatabases();
+  }
+
+  private async rereadDatabases(): Promise<void> {
+    const generation = this.generation;
+    const name = this.modeValue === 'edit' ? this.namespaceName : '';
+    const path = name === '' ? NAMESPACE_FORM_PATH : `${NAMESPACE_FORM_PATH}?name=${encodeURIComponent(name)}`;
+    const result = await this.api().requestJson<unknown>(path);
+    if (generation !== this.generation || result.kind !== 'ok') return;
+    this.databasesValue = stringsAt(result.body, 'databases');
+    this.notify();
+  }
 
   private api(): ApiService {
     return this.injector.get(ApiService);
