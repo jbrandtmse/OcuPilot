@@ -159,6 +159,8 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%DB_IRISSYS:READ',
+        },
+        {
           route: 'os-management/local-databases/edit',
           labelKey: 'systemInfoDatabase',
           sideBarPosition: 0,
@@ -262,6 +264,8 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 8,
           allowed: false,
           failedPair: '%DB_IRISSYS:READ',
+        },
+        {
           route: 'os-management/local-databases',
           labelKey: 'localDatabaseListLabel',
           sideBarPosition: 9,
