@@ -15,7 +15,14 @@ import { copyText } from '../../shell/copy-control';
 import { Dialog } from '../../shell/dialog';
 import { OpenApiViewerStore, verbLabel, type OpenApiOperation } from './openapi-viewer.store';
 import { FIELD_LOCATIONS, composeRequest, refuseRequest, takesBody, type Composition } from './try-it';
-import { TryItStore } from './try-it.store';
+import { TryItStore, type TryItOutcome } from './try-it.store';
+
+/** The sentence each outcome shows in place of an answer: never a bare status 0. */
+const OUTCOME_SENTENCES: Readonly<Record<TryItOutcome, string>> = {
+  unsent: STRINGS.tryItUnsent,
+  failed: STRINGS.tryItFailed,
+  redirected: STRINGS.tryItRedirected,
+};
 
 /** One parameter, resolved for drawing. */
 interface ParameterView {
@@ -81,7 +88,8 @@ interface TryItView {
   /** The line a non-text answer shows in place of its body, or `''`. */
   readonly binaryNote: string;
   readonly cut: boolean;
-  readonly failed: boolean;
+  /** The sentence shown in place of an answer when the last request brought back none to show, or `''`. */
+  readonly outcome: string;
 }
 
 /** One operation, resolved for drawing. */
@@ -128,8 +136,9 @@ interface PathView {
  * Send, which the browser issues on this origin under the tab's own access token (`TryItStore`). A
  * write asks first in a dialog naming the verb and URL; a request resolving under OcuPilot's own
  * applications, or a write to the admin API, shows its refusal in place of Send. The masked record
- * and the answer render as text on the code surface. A service listed by package name has no
- * address, so none of its operations has a console.
+ * and the answer render as text on the code surface; a request that brings back no answer to show
+ * gets its outcome's sentence instead of a status. A service listed by package name has no address,
+ * so none of its operations has a console.
  *
  * **Copy as curl (Story 16.24, AD-57 (5))** follows Send: the same request as one curl command on
  * the clipboard, nothing sent. It is refused, `aria-disabled` and described by the reason, exactly
@@ -331,8 +340,8 @@ interface PathView {
                               <h3 class="ocu-openapi-heading">{{ STRINGS.sslVerifyPeerRequest }}</h3>
                               <pre class="ocu-try-it-code" tabindex="0" data-ocu-try-it="record">{{ tryIt.record }}</pre>
                             }
-                            @if (tryIt.failed) {
-                              <p class="ocu-try-it-note" role="status" data-ocu-try-it="failed">{{ STRINGS.tryItFailed }}</p>
+                            @if (tryIt.outcome) {
+                              <p class="ocu-try-it-note" role="status" data-ocu-try-it="failed">{{ tryIt.outcome }}</p>
                             }
                             @if (tryIt.answer) {
                               <h3 class="ocu-openapi-heading">{{ STRINGS.tryItResponse }}</h3>
@@ -590,6 +599,7 @@ export class OpenApiViewerPage {
     const sending = this.tryIt.sending(key);
     const record = this.tryIt.record(key);
     const answer = this.tryIt.answer(key);
+    const outcome = this.tryIt.outcome(key);
     const fields = operation.parameters
       .map((parameter, index) => ({ parameter, index }))
       .filter(({ parameter }) => FIELD_LOCATIONS.includes(parameter.in))
@@ -634,7 +644,7 @@ export class OpenApiViewerPage {
       answer: answerText,
       binaryNote,
       cut: answer !== null && answer.body.cut,
-      failed: this.tryIt.failed(key),
+      outcome: outcome === null ? '' : OUTCOME_SENTENCES[outcome],
     };
   }
 

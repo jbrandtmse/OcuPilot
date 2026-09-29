@@ -20,6 +20,12 @@ import { dirname, join } from 'node:path';
 // - skip the dot-segment removal after decoding -> the `%2e%2e` and `%2F..%2F` spellings.
 // - make `refuseRequest` read only the fully decoded path -> "a path whose readings disagree".
 // - stop masking a secret-named query value -> "every secret the request carries reads masked".
+// - read a status-0 response as an answer in `TryItStore.dispatch` -> "a redirect answer ... is a
+//   redirected outcome".
+// - skip the `buildable` check before `fetch` -> "a request the browser would not build".
+// - record a rejected fetch as `unsent` -> "a fetch that rejects".
+// - read a body that broke off as an empty answer -> "an answer whose body breaks off".
+// - drop the outcome reset at the start of a send -> "a new send clears the last outcome".
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const tryIt = await import(join(uiRoot, 'src', 'app', 'areas', 'web-applications', 'try-it.ts'));
@@ -244,13 +250,76 @@ test('the store refuses at send what refusal refuses, whatever the caller compos
   assert.equal(calls.length, 0);
 });
 
-test('a fetch that rejects is reported as not completed, with no status invented', async () => {
-  const { fetch } = stubFetch(null);
+test('a fetch that rejects is a failed outcome, with no status invented', async () => {
+  const { fetch, calls } = stubFetch(null);
   const store = new TryItStore({ fetch, accessToken: () => 't' });
   await store.send('4', composed('/api/mgmnt', 'get', '/v2/', [], []));
-  assert.equal(store.failed('4'), true);
+  assert.equal(calls.length, 1, 'the request was built and handed to fetch');
+  assert.equal(store.outcome('4'), 'failed');
   assert.equal(store.answer('4'), null);
   assert.equal(store.sending('4'), false);
+});
+
+test('an answer whose body breaks off is a failed outcome: no complete answer came back', async () => {
+  const fetch = async () => ({
+    status: 201,
+    statusText: 'Created',
+    headers: { forEach: () => {} },
+    arrayBuffer: async () => {
+      throw new TypeError('network error');
+    },
+  });
+  const store = new TryItStore({ fetch, accessToken: () => 't' });
+  await store.send('9', composed('/api/mgmnt', 'get', '/v2/', [], []));
+  assert.equal(store.outcome('9'), 'failed');
+  assert.equal(store.answer('9'), null);
+});
+
+test('a new send clears the last outcome while it is in flight', async () => {
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  let calls = 0;
+  const fetch = async () => {
+    calls += 1;
+    if (calls === 1) throw new TypeError('Failed to fetch');
+    await gate;
+    return { status: 200, statusText: 'OK', headers: { forEach: () => {} }, arrayBuffer: async () => new ArrayBuffer(0) };
+  };
+  const store = new TryItStore({ fetch, accessToken: () => 't' });
+  const request = composed('/api/mgmnt', 'get', '/v2/', [], []);
+  await store.send('10', request);
+  assert.equal(store.outcome('10'), 'failed');
+  const second = store.send('10', request);
+  assert.equal(store.sending('10'), true);
+  assert.equal(store.outcome('10'), null, 'the last outcome is not shown beside a request in flight');
+  release();
+  await second;
+  assert.equal(store.outcome('10'), null);
+  assert.equal(store.answer('10').status, 200);
+});
+
+test('a request the browser would not build is an unsent outcome, and fetch is never called', async () => {
+  const form = (name) => ({ name, in: 'formData', required: false, type: 'string' });
+  for (const [label, request] of [
+    ['a header value past Latin-1', composed('/api/mgmnt', 'get', '/v2/', [h('X-Name')], ['\u65e5'])],
+    ['a header value holding a line break', composed('/api/mgmnt', 'get', '/v2/', [h('X-Name')], ['a\nb'])],
+    ['a GET carrying a form body', composed('/api/mgmnt', 'get', '/v2/', [form('name')], ['x'])],
+  ]) {
+    const { fetch, calls } = stubFetch({ status: 200 });
+    const store = new TryItStore({ fetch, accessToken: () => 't' });
+    await store.send('8', request);
+    assert.equal(calls.length, 0, `${label}: nothing is handed to fetch`);
+    assert.equal(store.outcome('8'), 'unsent', label);
+    assert.equal(store.answer('8'), null, label);
+    assert.notEqual(store.record('8'), null, `${label}: the record still shows what was composed`);
+  }
+  const { fetch, calls } = stubFetch({ status: 200 });
+  const store = new TryItStore({ fetch, accessToken: () => 't' });
+  await store.send('8', composed('/api/mgmnt', 'get', '/v2/', [h('X-Name')], ['caf\u00e9']));
+  assert.equal(calls.length, 1, 'a Latin-1 header value is built and sent');
+  assert.equal(store.outcome('8'), null);
 });
 
 test('a secret-named form parameter reads masked in the record body', () => {
@@ -270,16 +339,21 @@ test('the store sends the tab\'s token as the one Authorization: a declared one 
   assert.deepEqual(without.calls[0].init.headers, { 'X-Other': 'o1' });
 });
 
-test('a redirect answer (fetch resolved, redirect: manual) is shown as status 0 with nothing invented', async () => {
-  // AD-57 (1) sends `redirect: 'manual'`, so a redirect target answers with an opaque response:
-  // `fetch` resolves (it does not reject) with `status: 0` and an empty `statusText`.
+test('a redirect answer (fetch resolved, redirect: manual) is a redirected outcome, never an answer of status 0', async () => {
+  // AD-57 (1) sends `redirect: 'manual'`, so a redirect answers with an opaque response: `fetch`
+  // resolves (it does not reject) with `status: 0` and an empty `statusText`.
   const { fetch } = stubFetch({ status: 0, statusText: '', headers: {}, body: '' });
   const store = new TryItStore({ fetch, accessToken: () => 't' });
   await store.send('7', composed('/api/mgmnt', 'get', '/v2/', [], []));
-  assert.equal(store.failed('7'), false, 'the fetch resolved, so it is not reported as not-completed');
-  assert.equal(store.answer('7').status, 0, 'no status is invented for the opaque redirect');
-  assert.equal(store.answer('7').statusText, '', 'no explanatory text is invented either');
-  assert.notEqual(store.record('7'), null, 'the request was still recorded before the answer landed');
+  assert.equal(store.outcome('7'), 'redirected', 'the fetch resolved with status 0');
+  assert.equal(store.answer('7'), null, 'no answer, so no status 0 to show');
+  assert.notEqual(store.record('7'), null, 'the request was still recorded before the outcome landed');
+
+  const ordinary = stubFetch({ status: 404, statusText: 'Not Found', headers: {}, body: '' });
+  const other = new TryItStore({ fetch: ordinary.fetch, accessToken: () => 't' });
+  await other.send('7', composed('/api/mgmnt', 'get', '/v2/', [], []));
+  assert.equal(other.outcome('7'), null, 'a non-2xx status is an answer');
+  assert.equal(other.answer('7').status, 404);
 });
 
 test('reset forgets every console, and an answer still in flight does not land', async () => {

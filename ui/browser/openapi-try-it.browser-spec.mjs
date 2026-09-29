@@ -18,6 +18,13 @@
  *    refresh; the command, run by `/bin/sh` with real curl and the Send's Bearer in place of
  *    `<AccessToken>`, answers the JSON the wire carried; and DW-1337 passes with "Copied" shown.
  *    Needs `curl` on PATH. The token is never printed, logged or kept.
+ * 7. `/api/mgmnt`'s `GET /v2/`, stopped in the browser by request interception: aborted, it shows the
+ *    no-answer sentence; answered with a 302, the redirect sentence (`fetch` hands the console an
+ *    opaque redirect, status 0). Neither shows a Response block or a bare "0", and CDP records
+ *    neither on the wire, while the same Send let through is recorded there and answers its 401.
+ *    The page passes DW-1337 in both themes with the redirect sentence shown. On the same page,
+ *    Chrome's `Request` refuses to build the requests the store reports unsent, which its unit tests
+ *    decide under Node's `Request`, and builds a Latin-1 header value.
  *
  * **It sends reads only.** No mutating request is ever sent: the one write it composes is cancelled,
  * and the refused ones have no Send. Refuses the live container.
@@ -302,6 +309,99 @@ test('Copy as curl on GET /v2/web-apps writes the exact command without the toke
     assert.deepEqual(JSON.parse(run.stdout), wire, 'the command answers the JSON the console\'s own request carried');
 
     await assertStructure(page);
+  } finally {
+    await context.close();
+  }
+});
+
+test('a Send stopped before the instance shows its sentence and never a bare 0: aborted, then answered with a redirect', async () => {
+  // Mutations (Rule 19), each rebuilt and redeployed: read a status-0 response as an answer in
+  // `TryItStore.dispatch`, or show `tryItFailed` for the redirected outcome -> the wait for the
+  // redirect sentence times out.
+  const { context, page, sentHeaders } = await atDocument('/api/mgmnt');
+  try {
+    const operation = await openConsole(page, '/v2/', 'Get');
+    const target = '/api/mgmnt/v2/';
+    const probe = '/ocupilot-try-it-redirect-probe';
+    const stopped = [];
+    const passed = [];
+    const followed = [];
+    let mode = 'abort';
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      const path = new URL(request.url()).pathname;
+      if (path === probe) {
+        followed.push(request.id);
+        void request.abort('failed');
+      } else if (path === target && mode !== 'continue') {
+        stopped.push(request.id);
+        if (mode === 'abort') void request.abort('failed');
+        else void request.respond({ status: 302, headers: { location: `${config.origin}${probe}` }, body: '' });
+      } else {
+        if (path === target) passed.push(request.id);
+        void request.continue();
+      }
+    });
+
+    /** Press Send, then wait until the console shows `sentence` and nothing is in flight. */
+    const sendFor = async (sentence) => {
+      await page.click(`${operation} [data-ocu-try-it="send"]`);
+      await page.waitForFunction(
+        (selector, wanted) => {
+          const box = document.querySelector(`${selector} [data-ocu-try-it="console"]`);
+          return box?.getAttribute('aria-busy') === 'false' && box.querySelector('[data-ocu-try-it="failed"]')?.textContent.trim() === wanted;
+        },
+        { timeout: config.navigationTimeoutMs },
+        operation,
+        sentence
+      );
+      return page.$eval(`${operation} [data-ocu-try-it="console"]`, (box) => ({
+        answer: box.querySelector('[data-ocu-try-it="answer"]') !== null,
+        bareZero: Array.from(box.querySelectorAll('*')).some((node) => node.textContent.trim() === '0'),
+      }));
+    };
+
+    assert.deepEqual(await sendFor(STRINGS.tryItFailed), { answer: false, bareZero: false }, 'aborted: the sentence, no Response block, no bare 0');
+    mode = 'redirect';
+    assert.deepEqual(await sendFor(STRINGS.tryItRedirected), { answer: false, bareZero: false }, 'redirected: the sentence, no Response block, no bare 0');
+    assert.equal(stopped.length, 2, 'each Send was stopped in the browser');
+    assert.deepEqual(followed, [], 'the redirect was not followed');
+    await assertStructure(page);
+
+    mode = 'continue';
+    await page.click(`${operation} [data-ocu-try-it="send"]`);
+    await page.waitForSelector(`${operation} [data-ocu-try-it="answer"]`, { timeout: config.navigationTimeoutMs });
+    const text = await page.$eval(`${operation} [data-ocu-try-it="answer"]`, (pre) => pre.textContent);
+    assert.ok(text.startsWith('401'), `the Send let through answers its 401: ${text.slice(0, 60)}`);
+    assert.equal(await page.$(`${operation} [data-ocu-try-it="failed"]`), null, 'an answer replaces the sentence');
+    assert.equal(passed.length, 1);
+    await frames(page);
+    assert.ok(sentHeaders.has(passed[0]), 'CDP records a request that went on the wire');
+    assert.deepEqual(stopped.filter((id) => sentHeaders.has(id)), [], 'and records neither stopped request there: nothing reached the instance');
+
+    // The store decides `unsent` by building a `Request`, which its unit tests do under Node's.
+    const built = await page.evaluate((url) => {
+      const base = { method: 'GET', credentials: 'omit', redirect: 'manual' };
+      const cases = {
+        pastLatin1: { ...base, headers: { 'X-Name': '\u65e5' } },
+        lineBreak: { ...base, headers: { 'X-Name': 'a\nb' } },
+        badName: { ...base, headers: { 'X Name': 'x' } },
+        getBody: { ...base, body: 'name=x' },
+        trace: { ...base, method: 'TRACE' },
+        latin1: { ...base, headers: { 'X-Name': 'caf\u00e9' } },
+      };
+      const out = {};
+      for (const [name, init] of Object.entries(cases)) {
+        try {
+          void new Request(url, init);
+          out[name] = true;
+        } catch {
+          out[name] = false;
+        }
+      }
+      return out;
+    }, `${config.origin}/api/mgmnt/v2/`);
+    assert.deepEqual(built, { pastLatin1: false, lineBreak: false, badName: false, getBody: false, trace: false, latin1: true }, 'Chrome refuses to build what the store reports unsent');
   } finally {
     await context.close();
   }

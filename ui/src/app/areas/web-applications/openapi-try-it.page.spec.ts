@@ -77,6 +77,22 @@ function stubFetch(reply: { status: number; type: string; body: string } | null)
   return calls;
 }
 
+/**
+ * A fetch that records each call and answers as `redirect: 'manual'` answers a redirect: an opaque
+ * response of status 0, which `Response` itself cannot be built with.
+ */
+function stubRedirect() {
+  const calls: { url: string; init: RequestInit }[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return { type: 'opaqueredirect', status: 0, statusText: '', headers: new Headers(), arrayBuffer: async () => new ArrayBuffer(0) };
+    })
+  );
+  return calls;
+}
+
 async function settle(fixture: ComponentFixture<OpenApiViewerPage>): Promise<void> {
   for (let i = 0; i < 5; i += 1) await Promise.resolve();
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -87,9 +103,9 @@ async function settle(fixture: ComponentFixture<OpenApiViewerPage>): Promise<voi
  * The try-it console on the OpenAPI document viewer (Story 16.1, AD-57): the closed disclosure, one
  * labelled field per declared parameter, a GET sent with the tab's own token and its answer as text
  * on the code surface, a write held for its confirmation, the two refusals in place of Send, the
- * traversal refusal at its field, every secret masked in the record, a request that got no answer,
- * and a service listed by package name having no console. The live round trip is the browser
- * spec's.
+ * traversal refusal at its field, every secret masked in the record, each request that brings back
+ * no answer to show, and a service listed by package name having no console. The live round trip is
+ * the browser spec's.
  *
  * Mutations (Rule 19): bind the answer with `[innerHTML]` -> the markup-as-text case goes red; show
  * Send whatever `refusal` answers -> the two refusal cases go red; send a write without the dialog
@@ -97,7 +113,9 @@ async function settle(fixture: ComponentFixture<OpenApiViewerPage>): Promise<voi
  * fill the dialog heading from `url` rather than `displayUrl` -> the secrets case goes red; pass the
  * dialog's URL to `replace` as a string -> the `$&` case goes red; drop the page's no-address
  * refusal -> the no-address case goes red; judge the page's refusal on the fully decoded path alone
- * -> the disagreeing-readings case goes red.
+ * -> the disagreeing-readings case goes red; swap two outcome sentences, read a status-0 response
+ * as an answer in the store, skip the store's build check, or read a 4xx or 5xx as a redirect -> the
+ * no-answer case goes red.
  */
 describe('OpenApiViewerPage try-it console', () => {
   afterEach(() => {
@@ -281,13 +299,51 @@ describe('OpenApiViewerPage try-it console', () => {
     expect(apiKey.value).toBe('secret-query-value');
   });
 
-  it('a request that gets no answer says so and invents no status', async () => {
+  it('each request that brings back no answer shows its sentence, never a bare 0, and an ordinary error still shows its status', async () => {
+    /** Whether any node of the console reads exactly "0". */
+    const bareZero = (fixture: ComponentFixture<OpenApiViewerPage>): boolean =>
+      Array.from(one(fixture, 'console')!.querySelectorAll('*')).some((node) => textOf(node) === '0');
+    const rows = [row(1, '/x', 'get', [{ name: 'X-Name', in: 'header' }])];
+
     stubFetch(null);
-    const fixture = await opened('/api/probe', answer('/api/probe', [row(1, '/x', 'get')]));
-    one(fixture, 'send')!.click();
-    await settle(fixture);
-    expect(textOf(one(fixture, 'failed'))).toBe(STRINGS.tryItFailed);
-    expect(one(fixture, 'answer')).toBeNull();
+    const failed = await opened('/api/probe', answer('/api/probe', rows));
+    one(failed, 'send')!.click();
+    await settle(failed);
+    expect(textOf(one(failed, 'failed'))).toBe(STRINGS.tryItFailed);
+    expect(one(failed, 'failed')!.getAttribute('role')).toBe('status');
+    expect(one(failed, 'answer')).toBeNull();
+    expect(bareZero(failed)).toBe(false);
+
+    TestBed.resetTestingModule();
+    const redirected = stubRedirect();
+    const redirect = await opened('/api/probe', answer('/api/probe', rows));
+    one(redirect, 'send')!.click();
+    await settle(redirect);
+    expect(redirected).toHaveLength(1);
+    expect(textOf(one(redirect, 'failed'))).toBe(STRINGS.tryItRedirected);
+    expect(one(redirect, 'answer')).toBeNull();
+    expect(bareZero(redirect)).toBe(false);
+    expect(one(redirect, 'record')).not.toBeNull();
+
+    TestBed.resetTestingModule();
+    const sent = stubFetch({ status: 200, type: 'text/plain', body: '' });
+    const unsent = await opened('/api/probe', answer('/api/probe', rows));
+    type(unsent, one(unsent, 'field') as HTMLInputElement, '\u65e5');
+    one(unsent, 'send')!.click();
+    await settle(unsent);
+    expect(sent).toHaveLength(0);
+    expect(textOf(one(unsent, 'failed'))).toBe(STRINGS.tryItUnsent);
+    expect(one(unsent, 'answer')).toBeNull();
+    expect(bareZero(unsent)).toBe(false);
+
+    TestBed.resetTestingModule();
+    stubFetch({ status: 500, type: 'text/plain', body: 'boom' });
+    const ordinary = await opened('/api/probe', answer('/api/probe', rows));
+    one(ordinary, 'send')!.click();
+    await settle(ordinary);
+    expect(textOf(one(ordinary, 'answer')).startsWith('500')).toBe(true);
+    expect(textOf(one(ordinary, 'answer'))).toContain('boom');
+    expect(one(ordinary, 'failed')).toBeNull();
   });
 
   it('the answer shows a non-text body as its byte count and marks a text body cut at its cap', async () => {
