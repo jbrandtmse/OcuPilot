@@ -2,7 +2,7 @@
 title: 'Story 18.4: The deferred disk operations'
 type: 'feature'
 created: '2026-09-29'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '5b1bde51dc7fc45238cb45b6a5cc006c6834a9aa'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -61,7 +61,8 @@ deferred:
 - **Read once (AD-26).** A finished async task is read exactly once, by the port's in-request await, and its row deleted (`AdminPort.ForgetTask`). No client or screen reads `async-result`, so no two views poll one task. Past the port's bound a queued write answers started (HTTP 202, `continues`), never `PORT.TIMEOUT`, and its read-back is `unchecked` (`running`).
 - **Pairs (AD-8, AD-29), declared per tool and refused by name before any port call** (measured, Design Notes):
   - mount: Database details' `%Admin_Operate:USE`, `%DB_IRISSYS:READ`, plus `%Admin_Secure:USE`;
-  - dismount and truncate: Database details' pairs only;
+  - dismount: Database details' pairs plus `%Admin_Manage:USE`, which the self-protection check's read of the protected set needs (DW-1847, decided by=merge_gate 2026-09-29; an Operate-only dismount is DW-1850, routed to range-end-cleanup);
+  - truncate: Database details' pairs only;
   - compact and defragment: plus `%DB_IRISSYS:WRITE`, and `%DB_<resource>:READ` for the target's `ResourceName`, read through the port;
   - integrity: the Databases list's `%Admin_Manage:USE`, `%DB_IRISSYS:READ`, plus `%Admin_Operate:USE` (`ResourcesOR`, and the poll) and `%DB_IRISSYS:WRITE`;
   - grow: Local databases' `%Admin_Manage:USE`, `%DB_IRISSYS:READ`, plus `%Admin_Operate:USE` (the poll);
@@ -478,7 +479,15 @@ deferred:
 - R12 (AC10): `DatabaseActions` gains a live leg: a compact started through `DatabasePort` and paused (`DatabaseActionProbe.PausedAdminCompact`). `BackgroundTaskPort.Rows` lists it once, on its admin row, with its `Database`. The leg then cancels, settles and forgets the task, and `SecondReads` is unchanged.
 - R13 (AC9): `DatabaseActionsGate` gains defragment without `%DB_IRISSYS:WRITE` on both callers, and the grow's agent confirm without `%Admin_Operate:USE`.
 
+**Rework 1 (2026-09-29, decisions before review):**
+
+- [ ] [Owner] The owner's database-directory rule (orchestrator relay 2026-09-29, stated at AD-21's sixth case): a database directory is always required and never left for the vendor to default, and nothing is written into IRISSYS's directory (the manager directory). In this story it binds Add a volume (`osmgmt.localdatabases.expandvolume` or its name here) and any other operation that places a file: refuse, by name and before any vendor call, a database whose configured `NewVolumeDirectory` is empty (the vendor would otherwise pick the directory) and one whose effective new-volume directory is the manager directory. Pin both on both callers (the agent's mint and the screen action) with tests that go red when the refusal is removed, and record the `mutation:` lines.
+- [ ] [Decision] DW-1847 (option A, by=merge_gate): dismount keeps `%Admin_Manage:USE` (the intent's pair line and AD-8 are amended). Pin that an Operate-only holder (Database details' pairs without `%Admin_Manage:USE`) is refused with the missing pair named (the declared-pairs refusal, e.g. 403 naming `%Admin_Manage:USE`) before any port call, on both callers, and never `PROHIBITED.OCUPILOTDATABASE`; mutation recorded.
+- [ ] [Ledger] DW-1848: the Integrity log's error branch -- render a report that found errors through the real `Display^Integrity` capture (a hand-built vendor output row or a deliberately damaged probe block, on `ocupilot-b-ci` only, removed afterwards), and pin the error lines; if it cannot be produced on 2026.2, say so with evidence under Design Notes and close it there.
+
 ## Spec Change Log
+
+- 2026-09-29, runner, rework 1 (pre-review): feature merged forward (`d9f84f52`); three decisions arrived before code review -- the owner's directory rule, DW-1847 (dismount keeps `%Admin_Manage:USE`; intent pair line amended), and DW-1848 kept in-story. Status set to `in-progress` for one pass over those items.
 
 ## Review Triage Log
 

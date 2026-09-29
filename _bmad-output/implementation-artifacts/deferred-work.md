@@ -8310,3 +8310,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: DW-1838 review | severity: low | fix-risk: low | footprint: in-epic
 - evidence: pre-existing; only a crafted client sends it; the marker path now drops it (review, 2026-09-29)
 - 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=any client sends a non-finite number in screen_context
+
+### DW-1851: WireSecurityRead.TestTheLogsAreaStaysOpenWithoutTheEventLogsPair answers LOG.ABSENT on a fresh instance that has no alerts.log yet, so it fails when it runs before anything has posted a severe line (DW-1814 made that longer: deletes no longer post one)
+- source: cycle-log-epic-18.md (forward merge d9f84f52) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Forward-merge roster run on a freshly recreated ocupilot-b-ci: run 3 red (LOG.ABSENT), alerts.log appeared at 23:13 during the sweep, re-run 17 green
+- 2026-09-29T23:16:25Z status=routed owner=burndown by=lead note=the test should seed or tolerate an absent alerts.log (Epic 16's log hub, 16.9)
