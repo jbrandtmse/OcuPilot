@@ -8134,6 +8134,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead smoke, Story 18.14 | severity: med | fix-risk: low | footprint: out-of-story
 - evidence: measured on ocupilot-b-ci 2026-09-29: alerts.log holds only OcuPilot adminport 'failed with HTTP 404' lines (Namespace.Namespace, Namespace.GlobalMappings) plus 'generated 3 alerts' suspensions; $SYSTEM.Monitor.State() reads 2; AdminPort.Fail:2431 logs via Fault.LogRaw whatever the status
 - 2026-09-29T04:42:42Z status=routed owner=burndown by=lead note=pre-existing since Story 2.1; an expected 404 (a delete's re-read, a read-back of an absent row) should log below error, or not at all
+- 2026-09-29T10:01:50Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=merge_gate note=decided: a read answered 404 is logged below error or not at all, a write's 404 stays at error, rule stated in AD-2, pinned by a Rule 19 test; fixed ahead of 18.3 as its own commit 63c34657
+- 2026-09-29T11:02:14Z status=resolved-by:18-3-databases-configuration-creation-properties-and-volumes by=adjudication note=63c34657 + 0a36b6e2: AdminPort.Invoke tells Fail a read from a write; a read answered 404 writes no log line, a write's 404 stays at error (AD-2); AdminPortAbsence 3/3 with both mutations red on ocupilot-b-ci; CI run 36556187727 green on 0a36b6e2; smoke: a namespace delete through NamespacePort left the alert counter at 13
 
 ### DW-1819: BackgroundSeed.PausedCompact waits 2 s for a paused compact to leave Running; on a slow CI runner it read Running, failed background-tasks AC1, and the still-running compact then failed AC2's reseed
 - source: CI run 36522971621 (browser shard 3/3), Epic 18 head c811f1ab | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -8152,3 +8154,12 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: TaskTransferPort.cls:322 answers Fail 500 on a vendor error; the vendor keeps earlier tasks (measured); Examine refused every failing shape tried on ocupilot-ci 2026-09-29 (TimePeriod 9, a 60-char JobGUID) before the call
 - 2026-09-29T15:14:10Z status=wontfix-theoretical owner=16-4-task-export-and-import by=cr note=real when a file Examine accepts makes ImportTasks fail; none found (a digit-first name imports whole)
 - 2026-09-29T15:14:30Z status=wontfix-theoretical owner=16-4-task-export-and-import by=cr note=port line cited is 8bc275b5's; after this review's doc edit it reads TaskTransferPort.cls:323
+### DW-1822: a11y-structural-invariants.browser-spec.mjs failed whole (8 tests) on a Chrome protocol timeout: Runtime.callFunctionOn timed out during the structural walk
+- source: staging-16-7 run 36569407842 attempt 1 on ff53360c (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/a11y-structural-invariants.browser-spec.mjs, ui/browser/structural-walk.mjs
+- evidence: attempt 2 green on the same head; the same spec passed on 01e36ec7 (run 36564571344); the walk evaluates one long function per screen (inference: a slow runner exceeds puppeteer's default protocolTimeout)
+- 2026-09-29T13:27:46Z status=routed owner=range-end-cleanup by=orchestrator note=raise protocolTimeout for the walk's browser or split the per-screen evaluation
+
+### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
+- source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
+- evidence: browser shard 1/3, 3 passed 1 failed; the same code passed on staging ff53360c attempt 2 and on 16.3's own runs; shard 1 duration unchanged (21 min vs 18-23); intermittent (inference: the side bar renders after a privilege read the spec does not wait for)
+- 2026-09-29T13:58:49Z status=routed owner=16-4-task-export-and-import by=orchestrator note=Epic 16 owns the spec (16.3): wait for the rail item's side bar to finish its privilege read before querying items; pin with repeated runs
