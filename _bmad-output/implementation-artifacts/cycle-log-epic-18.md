@@ -174,3 +174,8 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-29T00:45:03Z	Story 18.14	ledger_routed_planned	story=18-14-namespace-mappings-and-copy-mappings entries=1 excess=0 by=merge_gate dw=DW-1806
 2026-09-29T00:45:03Z	Story 18.14	rework_opened	cycle_iteration=3 iteration=2 trigger=orchestrator_decision(DW-1806) items=Decision:DW-1806 scope_baseline=pending_rework_commit
 2026-09-29T00:45:03Z	Story 18.14	stage_spawned	stage=implement spawn_at=2026-09-29T00:45:03Z model=opus agent_name=18-14-mappings-implement-3 cycle_iteration=3 rework_iteration=2 ci_prev=pending_run_36504519612(ad3c9429,same_story)
+2026-09-29T01:16:57Z	Story 18.14	ci_resolved	story=18.14 run=36504519612 head=ad3c9429 result=failure attributed=agent-ledger.browser-spec.mjs:142_race(Epic16,fixed_on_feature,not_yet_integrated) resolved_at=pre_review action=integrate_forward_brings_fix
+2026-09-29T01:16:57Z	Story 18.14	dev_complete	spawn_at=2026-09-29T00:45:03Z model=opus build_sha=87d7923d baseline_revision=113ed57d review_loop_iteration=0 followup_review_recommended=false deferred=1(DW-1807_routed_18-3) cycle_iteration=3 rework_iteration=2 new_code=PATH.SERVED new_class=PathPortServed targeted=all_green
+2026-09-29T01:16:57Z	Story 18.14	committed_code	sha=87d7923d pushed=true ci=pending run=36507106334 head_confirmed_by=headSha
+2026-09-29T01:16:57Z	Epic 18	spine_updated	ad=AD-21 reason=correction_at_origin(DW-1779_sentence_vs_DW-1806) by=runner lint=ok
+2026-09-29T01:16:57Z	Story 18.14	stage_spawned	stage=code-review spawn_at=2026-09-29T01:16:57Z model=opus agent_name=18-14-mappings-code-review-3 cycle_iteration=3 review_tier=full-opus scope=cae9a12c..87d7923d(rework_1+2)

@@ -8022,3 +8022,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: PathPortInstance pins that a new name under csp/ocupilot/ resolves; reach needs a restricted root above the data directory's csp/ (the default root is the manager directory); no file consumer on this branch yet (inference)
 - 2026-09-29T00:44:20Z status=decision-pending owner=burndown by=harvest note=owner: refuse any file, new or existing, under the served directory (recommended), or keep existing-only
 - 2026-09-29T00:44:54Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: refuse any file, new or existing, under the served directory, and the directory as a vendor-writes directory; fold into 18.14; AD-21
+
+### DW-1807: Story 18.3's ready spec predates DW-1806: its database directory picker must plan for PATH.SERVED (a directory under OcuPilot's served directory refused as a vendor-writes directory) and render it on the field
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 18.3's spec and epic-18-context.md were written before PATH.SERVED existed; 18.3 is PathPort.Resolve's first real caller
+- 2026-09-29T01:16:56Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=harvest note=fold into 18.3's spec at its gate
