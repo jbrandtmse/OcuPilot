@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-28'
 baseline_revision: '113ed57dc54ee79d823ed6cb71a6c972fc64f8f3'
 baseline_commit: 'cae9a12c907d829e447938c23e8a999e56bb6aec'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -589,6 +589,57 @@ Rejected:
 
 - [x] [Decision] DW-1806 (owner, by=merge_gate 2026-09-28; AD-21's sixth case as amended): `PathPort.Resolve` refuses every file consumer (`file`, whatever `pOverwrite`, and `source`) any file, new or existing, under OcuPilot's served directory (`PathPort.ServedDirectory()`), and refuses that directory and any directory under it as a `pVendorWrites` directory, with `PATH.INSTANCE` (or a new `PATH.*` code with a server-written reason if the sentence would mislead). A file or directory outside it is unaffected. Replace `PathPortInstance`'s leg that pins a new name under `csp/ocupilot/` resolving with legs that pin it refused (a new file; a source; the directory as vendor-writes), each with a Rule 19 mutation, plus a permitting leg for a sibling directory. If `PathPortInstance.cls` stays over ~500 lines, move these legs into a second class.
 
+### Review Findings (round 2)
+
+Code review 2026-09-29 of reworks 1 and 2 (`cae9a12c..87d7923d`; `review_tier: full-opus`; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Measured on `ocupilot-b-ci` through `Config.MapGlobals` and `Config.MapRoutines` in two scratch namespaces, both deleted:
+
+- A leading `^` or surrounding space is refused (#5854, #5028).
+- A range's upper end is exclusive: `A:O` maps `N` but not `O`.
+- An empty end is open: `O:` and `:` move `^OcuPilotX` and `OcuPilot.X.1`'s object code.
+- Global mappings of `rOBJ`, `ROUTINE`, `oddDEF` and `oddCOM` are accepted, and so are `oddDEF("OcuPilot"):("OcuPilotz")` and `rOBJ("OcuPilot"):("OcuPilotz")` at Collation 133. Each moves where OcuPilot's object code, routine source, class definitions or compiled class records are read from (`%SYS.Namespace` `GetRoutineDest` and `GetGlobalDest`).
+
+- [ ] [Review][Patch] HIGH (AD-10, DW-1803): global mappings of the instance's routine and class-dictionary globals are permitted in the install namespace and `%ALL`, although they move OcuPilot's code. This covers a subscript range spanning an OcuPilot name (`oddDEF("OcuPilot"):("OcuPilotz")`, `rOBJ("OcuPilot"):("OcuPilotz")`) and a whole global (`rOBJ`, `ROUTINE`, `oddDEF`, `oddCOM`). `CoversOwnName` sets subscripts aside and answers 0 for each (measured).
+  - Refuse each `PROHIBITED.OCUPILOTMAPPING` on both callers, and in a copy's source rows.
+  - Read the set of code and dictionary globals from the instance where it can be read, and measure each member on the throwaway.
+  - Judge a subscript range the way a name range is judged.
+  - Pin one leg per measured global, each with a Rule 19 mutation.
+  - If AD-10's own-mappings wording changes, the runner names the set there (Rule 20).
+  [src/OcuPilot/Kernel/Proposal/Prohibited.cls:1803]
+- [x] [Review][Patch] HIGH (AD-10, DW-1803): a range open at its upper end (`O:`, `:`) was permitted, because `RangeCoversStem` read an empty end as below every name. The instance accepts such a range, and it moves OcuPilot's routines and globals. The empty end is now read as open, and `MappingWrite` refuses `routine O:` and `global :` on both callers [src/OcuPilot/Kernel/Proposal/Prohibited.cls:1842]
+- [x] [Review][Patch] No leg permitted a plain name that is a leading part of the stem, so the name branch could take the pattern's two-way rule unseen. `Ocu` joins `MappingWrite`'s permitted legs [src/OcuPilot/Test/MappingWrite.cls:372]
+- [x] [Review][Patch] `MappingWrite`'s mutation note said every pattern and range leg reaches the port under the prefix mutation. The legs that begin with the stem stay refused, and the note now says so [src/OcuPilot/Test/MappingWrite.cls:354]
+- [x] [Review][Patch] AD-21 said only "the directory itself" is refused as a vendor-writes directory, while DW-1806 and `PathPort` refuse it and every directory under it. The sentence now says both [ARCHITECTURE-SPINE.md:323]
+
+Verified on `ocupilot-b-ci`: `MappingWrite` 10/10 (run 411, and run 414 after the reverts) and `NamespaceCopy` 8/8 (run 415). `check-objectscript` is clean, and the spine lint is unchanged (one earlier low).
+
+Rework items: DW-1798 and DW-1806 are met, each pinned by `PathPortServed` with its mutation lines. DW-1803 is met for patterns and name ranges, but not for the code-global subscript ranges above, which its decision names ("a subscript range ... spanning an `OcuPilot` name"). Its ledger entry carries the residual.
+
+Lead note, not a code finding: the frontmatter `deferred:` still lists two items these reworks closed, the new-file gap (DW-1806) and AD-21's DW-1779 sentence (`6d1dac43`). A harvest must not re-file them.
+
+Rejected:
+
+- `false`:
+  - `ServedDirectory` should call `StaticHandler.RootDirectory`. A port calling into `Api` reverses the dependency direction. `Manifest.TestBundleDestinationIsTheHandlersOwnAnswer` holds the template, the handler's root and the application's `Path` equal, and `PathPortServed` holds the port's read equal to that `Path`.
+  - A leading `^`, whitespace, or an upper end that prefixes the stem (`A:O`) passes the predicate. The instance refuses the first two and excludes the upper end (measured).
+  - AD-21 names `PATH.INSTANCE` for the served files, and contradicts itself on DW-1779. It names no code there, and `6d1dac43` corrected the DW-1779 sentence.
+  - `REASONPATHSERVED`'s "that directory" is unclear. It is drawn on the name's field, and every refused name lies under the served directory.
+  - "Never a second literal" is unpinned. It constrains the source and was checked by reading it; no behavior differs while both reads give `ocupilot`.
+  - `media/` is a need the header does not state. `Deployed` asserts it, and its message names it.
+- by-design:
+  - A source under the served directory is refused, because DW-1806 names `source`.
+  - Other applications' directories stay open, because DW-1806 is self-protection (AD-10's family).
+- `low`, not worth the added branch:
+  - An unreadable roster refuses every resolve, logged or not. The roster is compiled XData, and the rework's own review rejected this.
+  - A file could take the served directory's name while the directory is absent. The directory exists whenever the client is served.
+  - A symbolic link could point into the served directory. That needs an operator-made link inside an allowed root, and AD-21 makes containment textual.
+  - A probe `StaticHandler` application's directory is not protected. It exists only in tests.
+  - `RangeCoversStem`'s ordering note and its 256-spelling count.
+  - `MAPPINGPATTERN` is compiled into `Prohibited`. The package compiles as a unit.
+  - The routine-suffix strip and a lower-case range leg. No answer changes, and `Oa:Od` pins the case enumeration.
+  - No edit, delete, package or `%ALL` pattern legs. The rework's own review rejected these, and no new argument was given.
+  - The refusal says "name or pattern" to a range. A range is written as the mapping's name.
+- duplicate: Story 18.3's spec predates `PATH.SERVED` (DW-1807).
+
 ## Spec Change Log
 
 - 2026-09-28, spec gate (runner): the orchestrator split the story for risk (Rule 5, by=merge_gate): Part C, SA-13's enable-interop with its Task 0 observation (DW-1776), moved to Story 18.15, which runs after 18.4; the intent block was cut to Parts A and B. The owner's DW-1784 decision (AD-44 amended: a screen replacing several classic pages unions each replaced page's custom resource into its write tools' pairs) joined the scope, routed here, with the namespace tools 18.2 shipped included. The orchestrator's 18.4 note applies to the copy: read a finished async task's result exactly once, one poller per task. The spec is `draft` for a re-plan; the first plan's Part C stays in this file's history at commit `4b73be11`.
@@ -599,6 +650,7 @@ Rejected:
 - 2026-09-28, runner: the implement commit (first 12a936cc) was moved by cherry-pick to 35f085bc on top of 18.1's DW-1790 fix, which the orchestrator ordered first; the code is byte-identical, and the review baseline is `c267f6da`, the cherry-pick's parent (`baseline_commit`), since `baseline_revision` 57c4a1d7 now also spans the DW-1790 commits.
 - 2026-09-28, rework iteration 1 (runner): re-opened after the first code review (no HIGH) on two owner decisions the orchestrator directed into this story: DW-1803 (the own-mappings refusal by overlap) and DW-1798 (PathPort refuses an overwrite of OcuPilot's served files, folded here instead of a separate commit). AD-10 and AD-21 carry both rules.
 - 2026-09-29, rework iteration 2 (runner): DW-1806 (owner, by=merge_gate) folded in before the re-review of rework 1, so one scoped re-review covers both passes; AD-21 carries the rule.
+- 2026-09-29, rework iteration 3 (runner): re-opened on the round-2 review's open HIGH (AD-10, DW-1803): global mappings of the instance's routine and class-dictionary globals (whole, or a subscript range spanning an OcuPilot name) are permitted in the install namespace and `%ALL`. The work is the unchecked `[Review][Patch]` item under `### Review Findings (round 2)`; this is the story's last rework iteration.
 
 ## Review Triage Log
 
@@ -860,6 +912,8 @@ Demonstrated on `ocupilot-b-ci`, each ObjectScript mutation loaded with its subc
 - mutation (rework 2): `PathPort.InServedDirectory` drops the served directory's trailing separator → `PathPortServed.TestASiblingOfTheServedDirectoryIsUnaffected` alone red, on its five legs whose sibling name extends the served directory's (run 394).
 - mutation (rework 2): `InServedDirectory` compares with case → `PathPortServed.TestTheServedDirectoryIsReadAtEachCall` alone red, on its three other-spelling legs (run 395); it answers false while the directory cannot be read → the same test alone red, on its three unread legs (run 396); reverted byte-identical, 5/5 (run 397).
 - mutation (rework 2 review): the served check applies to a source only once it exists → `PathPortServed.TestASourceUnderTheServedDirectoryIsRefused` alone red, on its missing-name leg only, answered `PATH.NOFILE` (run 409); reverted byte-identical, 5/5 (run 410).
+- mutation (code review 2): `RangeCoversStem` reads an empty upper end as below every name → `MappingWrite.TestAMappingWhosePatternCoversOcuPilotsNamesIsRefused` alone red, on its `routine O:` and `global :` legs only (run 412).
+- mutation (code review 2): `CoversOwnName`'s plain-name branch takes the pattern's two-way rule → the same test alone red, on its permitted `Ocu` legs only (run 413); reverted byte-identical, 10/10 (run 414).
 
 ## Auto Run Result
 

@@ -8011,6 +8011,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Prohibited.IsOwnMappingName compares the name's first 8 characters with ocupilot, so a routine mapping Ocu* or O* in the install namespace is minted and applied; it would redirect OcuPilot's compiled class routines to another database (inference, vendor wildcard resolution not measured). AD-10's text names only the prefix, so widening it is a spine change.
 - 2026-09-28T23:17:46Z status=decision-pending owner=burndown by=cr note=owner call: widen AD-10 to wildcard stems that cover OcuPilot (recommended); fix is IsOwnMappingName plus a MappingWrite leg
 - 2026-09-28T23:19:46Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: widen AD-10 to pattern overlap (O*, Ocu*, *, ranges) with OcuPilot package, routine or global names; fix in 18.14's rework
+- 2026-09-29T01:49:35Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=cr note=residual HIGH: rOBJ/oddDEF subscript ranges and code-global maps uncovered (measured); open range O: patched in cr
 
 ### DW-1804: The mapping form read and name check are never called by a principal lacking the screen's pairs
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story

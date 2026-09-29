@@ -179,3 +179,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-29T01:16:57Z	Story 18.14	committed_code	sha=87d7923d pushed=true ci=pending run=36507106334 head_confirmed_by=headSha
 2026-09-29T01:16:57Z	Epic 18	spine_updated	ad=AD-21 reason=correction_at_origin(DW-1779_sentence_vs_DW-1806) by=runner lint=ok
 2026-09-29T01:16:57Z	Story 18.14	stage_spawned	stage=code-review spawn_at=2026-09-29T01:16:57Z model=opus agent_name=18-14-mappings-code-review-3 cycle_iteration=3 review_tier=full-opus scope=cae9a12c..87d7923d(rework_1+2)
+2026-09-29T01:52:12Z	Story 18.14	cr_complete	spawn_at=2026-09-29T01:16:57Z model=opus resolved=4(open-range_HIGH_patched,Ocu_leg,mutation_note,AD-21_phrase) open=1(HIGH_code/dictionary_globals) dismissed=25 high=2 med=0 low=3 rows=5 unresolved_high_med=1 clarifications=0 closing_sections_present=true review_tier=full-opus scope=cae9a12c..87d7923d verdict=in-progress
+2026-09-29T01:52:12Z	Story 18.14	ci_resolved	story=18.14 run=36507106334 head=87d7923d result=failure attributed=agent-ledger.browser-spec.mjs:142_race(Epic16,fixed_on_feature) action=integrate_forward_before_next_push
+2026-09-29T01:52:12Z	Epic 18	spine_updated	ad=AD-21 reason=review_correction(served_dir_and_subdirs_vendor-writes) by=cr_stage lint=ok
+2026-09-29T01:52:12Z	Story 18.14	rework_opened	cycle_iteration=4 iteration=3 trigger=high items=Review:HIGH_AD-10_code_and_dictionary_global_mappings(DW-1803) scope_baseline=pending_rework_commit note=last_iteration

@@ -1823,8 +1823,10 @@ ClassMethod CoversOwnName(pName As %String) As %Boolean
 /// <p>Whether the range from <var>pLow</var> to <var>pHigh</var>, both ends included and compared as
 /// the instance orders names (character codes), holds a name beginning with some spelling of
 /// lower-case stem <var>pStem</var>, each of its letters in either case: some spelling is at most
-/// <var>pHigh</var>, and <var>pLow</var> is at most that spelling or begins with it. Every spelling
-/// is tried; an OcuPilot stem has eight letters, so there are 256.</p>
+/// <var>pHigh</var>, or <var>pHigh</var> is empty, which the instance reads as open
+/// (<code>O:</code> maps every name from <code>O</code> on), and <var>pLow</var> is at most that
+/// spelling or begins with it. Every spelling is tried; an OcuPilot stem has eight letters, so
+/// there are 256.</p>
 ClassMethod RangeCoversStem(pLow As %String, pHigh As %String, pStem As %String) As %Boolean
 {
     Set tLetters = ""
@@ -1837,7 +1839,7 @@ ClassMethod RangeCoversStem(pLow As %String, pHigh As %String, pStem As %String)
         For tJ = 1:1:$ListLength(tLetters) {
             If (tMask \ (2 ** (tJ - 1))) # 2 Set $Extract(tSpelling, $List(tLetters, tJ)) = $ZConvert($Extract(pStem, $List(tLetters, tJ)), "U")
         }
-        If tSpelling ] pHigh Continue
+        If (pHigh '= "") && (tSpelling ] pHigh) Continue
         If '(pLow ] tSpelling) || ($Extract(pLow, 1, $Length(tSpelling)) = tSpelling) {
             Set tCovers = 1
             Quit
