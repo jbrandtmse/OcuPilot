@@ -198,3 +198,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-29T04:46:33Z	Epic 18	epics_amended	story=18.3 change=AC1_remote_databases_moved_to_18.16 bullets_added=DW-1807,DW-1080 tag=split_from_18.3_Rule5 by=merge_gate(orchestrator_2026-09-28T18:12Z)
 2026-09-29T04:46:33Z	Epic 18	epics_amended	story=18.4 change=expand_names_new_volume_and_size_grow tag=assigned_from_18.3_Rule5 by=merge_gate
 2026-09-29T04:46:33Z	Epic 18	story_added	story=18.16-remote-databases position=after_18.15 sprint_status=backlog run_order=after_18.15_outside_dispatch by=merge_gate
+2026-09-29T04:47:29Z	Epic 18	epic_context_compiled	sha=pending reason=planning_artifact_newer(18.14_done,18.16_split,DW-1790_1798_1806_resolved,DW-1080_1807_routed,bundle_2217) model=claude-opus-5-5[1m] lines=108 method=lead_in_place_refresh
+2026-09-29T04:48:26Z	Story 18.3	spec_gate_answer_applied	answer=split_remote_databases_to_18.16(approved_by_merge_gate) intent_contract=cut_part_C+DW-1080,DW-1807,DW-1795,DW-1796 status=draft note=re-plan_follows

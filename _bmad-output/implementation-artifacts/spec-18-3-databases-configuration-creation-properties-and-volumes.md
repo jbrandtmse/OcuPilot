@@ -2,7 +2,7 @@
 title: 'Story 18.3: Databases - configuration, creation, properties and volumes'
 type: 'feature'
 created: '2026-09-28'
-status: 'ready-for-dev'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -27,7 +27,7 @@ deferred:
 
 ## Intent
 
-**Problem:** OcuPilot shows databases read-only (Epic 6). It cannot create, configure or delete one, so the classic pages are still the only way to do that. Those pages are Local Databases, the Database Wizard, the Database properties and volumes pages, the Delete Database dialog and Remote Databases (catalog rows SA-16 to SA-21). The admin API carries every step (measured on `ocupilot-b-ci`, Design Notes), with hazards OcuPilot must close itself:
+**Problem:** OcuPilot shows databases read-only (Epic 6). It cannot create, configure or delete one, so the classic pages are still the only way to do that. Those pages are Local Databases, the Database Wizard, the Database properties and volumes pages, and the Delete Database dialog (catalog rows SA-16 and SA-18 to SA-21). The admin API carries every step (measured on `ocupilot-b-ci`, Design Notes), with hazards OcuPilot must close itself:
 
 - The vendor creates no `%DB_<NAME>` resource.
 - `DELETE /database-dir` deletes a database's file even while namespaces and other configuration names still use it.
@@ -41,7 +41,8 @@ deferred:
 - Delete uses a typed-name dialog. Its advisory names the namespaces and web applications that depend on the database, and the database shares its file with no other configuration name before the file may go.
 - Every write is one derived tool that both callers reach (AD-53, AD-55), sequenced by a new `DatabasePort`.
 - The kernel refuses deleting or repointing OcuPilot's databases and the system databases (AD-10).
-- **Remote databases** (SA-17) is Part C. The plan recommends moving it to its own story (Design Notes, Recommended split); it is specified here so no AC is dropped.
+- Database details gains a **background tasks** section: the tasks running against that database, read through Epic 16's `Port/BackgroundTaskPort`, never a second port (DW-1080).
+- **Remote databases** (SA-17) is Story 18.16's, not this story's (orchestrator, Rule 5, 2026-09-28).
 
 ## Boundaries & Constraints
 
@@ -58,7 +59,7 @@ deferred:
   - The create is AD-54: it fingerprints the name's absence, because `PUT /database` is an upsert.
   - The two updates are AD-4: each sends its endpoint's complete set, read fresh.
   - The delete sends no body and is `DESTRUCTIVE`.
-- **Paths (AD-21's sixth case).** Two directory fields take a `root` and a relative `path`, resolved through `PathPort.Resolve(…, "directory", …, pOverwrite=0, pVendorWrites=1)` at the mint and again at the write: the create's directory and a new volume directory. The resolved path is sent only under the vendor's own field (`Directory`, `NewVolumeDirectory`), never as a settable field. The create also refuses a directory that already holds an `IRIS.DAT` (DW-1791).
+- **Paths (AD-21's sixth case).** Two directory fields take a `root` and a relative `path`, resolved through `PathPort.Resolve(…, "directory", …, pOverwrite=0, pVendorWrites=1)` at the mint and again at the write: the create's directory and a new volume directory. The resolved path is sent only under the vendor's own field (`Directory`, `NewVolumeDirectory`), never as a settable field. The create also refuses a directory that already holds an `IRIS.DAT` (DW-1791). A directory under OcuPilot's served directory is refused `PATH.SERVED`, rendered on the field (DW-1807). `PathPort`'s instance-file set also covers each database's additional volume directories (DW-1795), and its database-directory read is pinned against a non-default configuration (DW-1796).
 - **Resource first (Conventions › IRIS security objects).** Where the create is not told to use an existing `%DB_*` resource, `DatabasePort` creates `%DB_<NAME>` before the database file. A `ResourceName` is accepted only when it begins with `%DB_` and names a resource that exists.
 - **The delete's order.** `DELETE /database` goes first; the vendor refuses it while any namespace uses the database. Only after it succeeds, and only when the caller chose to delete the file, the database is local and no other configuration name shares its directory, does `DELETE /database-dir` follow.
 - **The delete's impact (AD-8)**, computed at mint and again when the dialog opens:
@@ -71,7 +72,7 @@ deferred:
   - the `Globals` or `Routines` database of OcuPilot's install namespace, read at the write;
   - the seven databases the classic Delete dialog refuses: `IRISAUDIT`, `IRISSYS`, `IRISLIB`, `IRISLOCALDATA`, `IRISTEMP`, `IRISMETRICS`, `IRISSECURITY`.
 - **Identity:** a new entity type `database-configuration`, scope `instance`, id `Name`, rule `foldcase` (Task 0 confirms it).
-- **Governance:** `osmgmt.localdatabases.delete` (and Part C's `osmgmt.remotedatabases.delete`) join the baseline `false`; every other new write key joins it `true`.
+- **Governance:** `osmgmt.localdatabases.delete` joins the baseline `false`; every other new write key joins it `true`.
 - **Contended files are edited add-only.** EXPERIENCE.md is edited in place and stays 993 lines. `screens.generated.ts` and `ToolFields.cls` are regenerated, never hand-merged.
 
 **Never:**
@@ -95,7 +96,7 @@ deferred:
 | Existing resource | `ResourceName` `%DB_USER` | No resource is created; the file is guarded by `%DB_USER` | none |
 | Name taken or bad | A present name in another case; `1AB`, `A.B`, `A B` or 65 characters | Refused on Name before any vendor call | `DATABASE.NAME.TAKEN`, `DATABASE.NAME.SHAPE` |
 | Directory holds a database (DW-1791) | path naming a probe database's directory, or `irissecurity` | Refused on `path` at the mint, at the confirm and at the Save; no vendor call | `DATABASE.DIRECTORY.INUSE` |
-| Path refusals | root not allowed; `../x`; `<mgr>` itself | Refused on the named field | `PATH.ROOT`, `PATH.NAME`, `PATH.MANAGERDIR` |
+| Path refusals | root not allowed; `../x`; `<mgr>` itself; a directory under `csp/ocupilot/` | Refused on the named field | `PATH.ROOT`, `PATH.NAME`, `PATH.MANAGERDIR`, `PATH.SERVED` |
 | Bad resource | `ResourceName` `OcuProbe183Custom`, or `%DB_NOSUCH` | Refused on `ResourceName`; no vendor call | `DATABASE.RESOURCE.SHAPE`, `DATABASE.RESOURCE.ABSENT` |
 | Config PUT fails after POST | The vendor refuses the config `PUT` | `DatabasePort` deletes the file it created and answers the fault with `detail.rolledBack` true or false | the vendor's fault, normalized |
 | Edit file settings | Expansion size changed | The complete `Database.SysCRUD` template set, read fresh, is sent to `PUT /database-dir?dir=`; the diff shows one row | none |
@@ -108,6 +109,7 @@ deferred:
 | Shared file | Two configuration names over one directory, file option on | Only the configuration is deleted; the advisory names the sharer; the answer carries `fileDeleted` false | none |
 | Protected target | Delete, or a `ResourceName`/`ReadOnly` change, on `OCUPILOT`, the install namespace's databases or `IRISSYS` | Refused on both callers; the dialog states the reason when it opens | `PROHIBITED.OCUPILOTDATABASE` |
 | Missing pair | Create without `%DB_IRISSYS:WRITE`, `%Admin_Secure:USE` or `%Admin_FileSystemAccess:USE`; delete without `%DB_IRISSYS:WRITE` | 403 names the pair; zero port calls; no directory, file, configuration or resource is left | `AUTH.NOPRIVILEGE` |
+| Background tasks | Database details for a probe database with a background task running against it | The section lists that task, read through `BackgroundTaskPort`; a caller lacking the port's pairs sees the section unchecked, naming the pair | none |
 | Integration | Local databases list and `osmgmt.localdatabases.read`; the create through `PathPort` and the picker; the delete's impact through `NamespaceList`, the mapping lists and `WebAppList` | The same rows (AD-36); a `PATH.*` reason on the picker's field; the impact names the dependents | Same gates |
 
 </intent-contract>
@@ -462,6 +464,8 @@ deferred:
 - **AC8 (Part C, recommended to move):** Given an ECP data-server definition on the throwaway, when a remote database is created, edited and deleted from Remote databases (OS management's eighth entry) and by the agent, then each round-trips through `PUT|DELETE /database`, with its directory chosen from the data server's own list, and no file on this instance is touched.
 
 ## Spec Change Log
+
+- 2026-09-29, runner, before re-plan: the orchestrator split remote databases (SA-17, Part C) into Story 18.16 (Rule 5, 2026-09-28) and kept expand-volume and size-grow in 18.4. The intent contract drops Part C and adds DW-1080 (Database details' background tasks through `BackgroundTaskPort`), DW-1807 (`PATH.SERVED`), DW-1795 and DW-1796. Since the first plan, `PATH.INSTANCE` covers every file in every configured database and journal directory (DW-1790), and every file and vendor-writes directory under OcuPilot's served directory is refused `PATH.SERVED` (DW-1798, DW-1806). Status set to `draft` for the re-plan.
 
 ## Review Triage Log
 
