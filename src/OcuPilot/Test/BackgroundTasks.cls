@@ -287,6 +287,43 @@ Method TestTheFingerprintRefusesAMovedStatus()
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
 
+/// <p>AD-51, DW-1080 (Story 18.3): a task's <code>Database</code> is outside the fingerprint. A pause
+/// minted while the task database read names the row's task, and confirmed once that read answers
+/// the task ended -- two reads the port takes a moment apart -- while the row's status still reads
+/// Running, sends one control naming the row's background task.</p>
+/// <p>Mutation (Rule 19): add <code>Database</code> to
+/// <parameter>OcuPilot.Screen.Tool.BackgroundTaskCancel.FINGERPRINTSUBJECT</parameter> -- the
+/// confirm is refused <code>PROPOSAL.TARGETCHANGED</code> and this goes red.</p>
+Method TestAMovedDatabaseIsStillTheTaskReviewed()
+{
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmPortal(..Rows(..PortalRow("4242", "Running", "7", "2026-09-28 12:00:05")))
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmDatabases("[{""ID"":""7"",""Database"":""/DURABLE/IRIS/MGR/OCUBGSEED/"",""HasEnded"":false}]")
+    Set tSC = ..MintFor("tasks.background.pause", "Management Portal", "4242", tTurn, .tProposal)
+    Do $$$AssertStatusOK(tSC, "the pause mints: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(..DatabaseOf("4242"), "/DURABLE/IRIS/MGR/OCUBGSEED/", "the row named its database when the pause was minted")
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmDatabases("[{""ID"":""7"",""Database"":""/DURABLE/IRIS/MGR/OCUBGSEED/"",""HasEnded"":true}]")
+    Do $$$AssertEquals(..DatabaseOf("4242"), "", "and names none now")
+    Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "a task whose database alone moved is still the one reviewed (HTTP " _ +$Get(tHttp) _ " " _ $Get(tCode) _ ")")
+    Do $$$AssertEquals(##class(OcuPilot.Test.BackgroundTaskFixture).Calls(), "PORTAL PAUSE 7", "one pause reached the job's background task")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>The <code>Database</code> the fixture port's one-row read answers for portal job
+/// <var>pId</var>, or <code>"?"</code> when it answers no row.</p>
+Method DatabaseOf(pId As %String) As %String
+{
+    Kill tQuery
+    Set tQuery("id") = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Management Portal", pId))
+    Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "BackgroundTask", "LIST", .tQuery, "", .tRow, .tHttp, .tFault)
+    If $$$ISERR(tSC) || '$IsObject($Get(tRow)) Quit "?"
+    Quit tRow.%Get("Database")
+}
+
 /// <p>A portal job with no background task -- a compile, say -- is refused
 /// <code>TASK.BACKGROUND.STATE</code> before any vendor call, as is one whose background task no
 /// longer opens; an admin control goes to <code>AsyncResult</code> with the GUID alone.</p>

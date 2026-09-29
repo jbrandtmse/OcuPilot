@@ -24,6 +24,10 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
 Parameter SEED = "OcuPilot.Test.BackgroundSeed";
 
+/// <p>How many seeded compacts <method>TestTheAgentsConfirmPausesACompact</method> may propose its
+/// pause against.</p>
+Parameter AGENTATTEMPTS As INTEGER = 3;
+
 /// <p>The purpose-built principal holding the install namespace's code read and the Tasks area's
 /// two pairs, and not <code>%Admin_Operate</code>.</p>
 Parameter TASKUSER = "OcuPilotBackgroundGateTask";
@@ -277,15 +281,50 @@ Method TestAnotherCallersAdminTaskIsNotListed()
 
 /// <p>AC2, AD-15: the agent's proposal to pause a running compact shows its status moving to
 /// Paused, and its confirm pauses it and lands the agent marker.</p>
+/// <p>The seeded compact runs for about two seconds once resumed, which a slow host's mint and
+/// confirm can outlast, and then the fingerprint correctly refuses the confirm (AD-51: its status
+/// moved from Running to Done). A confirm refused <code>PROPOSAL.TARGETCHANGED</code> whose compact
+/// reads Done afterwards is taken for that race: the attempt is removed and another compact seeded,
+/// at most <parameter>AGENTATTEMPTS</parameter> times. Any other refusal, or one while the compact
+/// still runs, fails at once.</p>
+/// <p>Mutation (Rule 19): answer <code>$$$OK</code> in place of the vendor's <code>Pause()</code> in
+/// <method>OcuPilot.Port.BackgroundTaskPort.PortalControl</method> -- the compact runs to its end
+/// and this goes red; fingerprint the tools over a value that moves on every read -- the first
+/// confirm is refused while the compact still runs, nothing is retried, and this goes red.</p>
 Method TestTheAgentsConfirmPausesACompact()
 {
-    Set tSC = $ClassMethod(..#SEED, "PausedCompact", .tJob, .tTaskId)
+    Set tSent = 0
+    For tAttempt = 1:1:..#AGENTATTEMPTS {
+        Set tSent = ..ProposeAndConfirmPause(.tTaskId, .tTurn, .tSC, .tCode)
+        If 'tSent || (tAttempt = ..#AGENTATTEMPTS) || '..EndedBeforeTheConfirm(tSC, tCode, tTaskId) Quit
+        Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+        Do $$$AssertStatusOK($ClassMethod(..#SEED, "Remove"), "a compact that ended before its confirm is removed before another is seeded")
+        Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    }
+    If 'tSent Quit
+    Do $$$AssertStatusOK(tSC, "the confirm pauses it: " _ tCode _ " (attempt " _ tAttempt _ ")")
+    Do $$$AssertEquals($ClassMethod(..#SEED, "Settled", tTaskId), "Paused", "and the compact is paused")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tTurn, .tLedger), 1, "one write-kind ledger row")
+    Do $$$AssertEquals($Get(tLedger("AuditMarked")), $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "and the agent marker landed on it")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>Seed a paused compact, resume it through the port, mint the agent's pause of it and confirm
+/// that: 1 once the confirm was sent, with its status in <var>pSC</var> and its code in
+/// <var>pCode</var>; 0 when a step before it failed, which is asserted here.</p>
+Method ProposeAndConfirmPause(Output pTaskId As %String, Output pTurn As %String, Output pSC As %Status, Output pCode As %String) As %Boolean
+{
+    Set pTaskId = ""
+    Set pTurn = ""
+    Set pSC = $$$OK
+    Set pCode = ""
+    Set tSC = $ClassMethod(..#SEED, "PausedCompact", .tJob, .pTaskId)
     Do $$$AssertStatusOK(tSC, "a portal compact is seeded and paused: " _ $System.Status.GetErrorText(tSC))
-    If $$$ISERR(tSC) Quit
+    If $$$ISERR(tSC) Quit 0
     Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Management Portal", tJob))
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .pTurn)
     Do $$$AssertStatusOK(tSC, "a turn is seeded")
-    If $$$ISERR(tSC) Quit
+    If $$$ISERR(tSC) Quit 0
     Kill tQuery
     Set tQuery("id") = tId
     Set tSC = ##class(OcuPilot.Port.BackgroundTaskPort).Invoke("BackgroundTask", "RESUME", .tQuery, "", .tResult, .tHttp, .tFault)
@@ -293,16 +332,22 @@ Method TestTheAgentsConfirmPausesACompact()
     Set tTool = "OcuPilot.Screen.Tool.BackgroundTaskPause"
     Set tArgs = {"source": "Management Portal"}
     Do tArgs.%Set("id", tJob, "string")
-    Set tSC = ##class(OcuPilot.Screen.Tool.BackgroundTaskMint).Mint(..#SCREEN, "tasks.background.pause", $Username, "", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tJob, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+    Set tSC = ##class(OcuPilot.Screen.Tool.BackgroundTaskMint).Mint(..#SCREEN, "tasks.background.pause", $Username, "", pTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tJob, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
     Do $$$AssertStatusOK(tSC, "the pause mints: " _ $System.Status.GetErrorText(tSC))
-    If $$$ISERR(tSC) Quit
+    If $$$ISERR(tSC) Quit 0
     Do $$$AssertEquals(tProposal.%Get("changed").%ToJSON(), "[{""field"":""Status"",""before"":""Running"",""after"":""Paused""}]", "the card shows the status moving to Paused")
-    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
-    Do $$$AssertStatusOK(tSC, "the confirm pauses it: " _ $Get(tCode))
-    Do $$$AssertEquals($ClassMethod(..#SEED, "Settled", tTaskId), "Paused", "and the compact is paused")
-    Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tTurn, .tLedger), 1, "one write-kind ledger row")
-    Do $$$AssertEquals($Get(tLedger("AuditMarked")), $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "and the agent marker landed on it")
-    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+    Set pSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Set pCode = $Get(tCode)
+    Quit 1
+}
+
+/// <p>Whether a confirm answered <var>pSC</var> and <var>pCode</var> was refused
+/// <code>PROPOSAL.TARGETCHANGED</code> and background task <var>pTaskId</var> now reads Done. It
+/// does not tell a status that moved from a fresh read that failed as the task ended.</p>
+ClassMethod EndedBeforeTheConfirm(pSC As %Status, pCode As %String, pTaskId As %String) As %Boolean
+{
+    If $$$ISOK(pSC) || (pCode '= $Parameter("OcuPilot.Kernel.Proposal.Write", "TARGETCHANGED")) Quit 0
+    Quit ($ClassMethod(..#SEED, "State", pTaskId) = "Done")
 }
 
 /// <p>AD-8's own-pair case: a holder of the Tasks area's two pairs alone keeps the area and its

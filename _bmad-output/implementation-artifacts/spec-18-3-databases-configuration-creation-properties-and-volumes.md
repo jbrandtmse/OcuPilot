@@ -2,8 +2,8 @@
 title: 'Story 18.3: Databases - configuration, creation, properties and volumes'
 type: 'feature'
 created: '2026-09-28'
-status: 'in-progress'
-baseline_revision: '8692236c883a2c50d05c4d55c8399ff9d308f557'
+status: 'done'
+baseline_revision: '6d9e451104e0e8937421904c4e7fcd79b0015058'
 baseline_commit: '8692236c883a2c50d05c4d55c8399ff9d308f557'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -27,6 +27,10 @@ deferred:
     evidence: 'EnumerateTasks reads ^IRIS.Temp.MgtPortalTask only (irissys/%CSP/UI/System/BackgroundTask.cls:1195-1256), while %SYS.BackgroundTask:DatabaseList lists every compact and defragment (irissys/%SYS/BackgroundTask.cls:911-920). Read in the vendor source at the re-plan (inference until 18.4 queues one).'
     severity: 'med'
     location: 'src/OcuPilot/Port/BackgroundTaskPort.cls PortalRows'
+  - summary: 'Pre-existing CI flake (Story 16.5): BackgroundSeed.PausedCompact can see a paused compact read Running for the whole 30 s Settled wait, so BackgroundTasksLive fails at its seed'
+    evidence: 'Feature run 36530303753 (2026-09-29 06:22, no 18.3 code): TestASeededPortalCompactIsListedPaused "the compact reads Running, not Paused" after a 79 s class run. A PAUSEDISPOSITION -1 task reads Paused only while its process state is 18 (irissys/%SYS/BackgroundTask.cls:567-569). Not reproduced here.'
+    severity: 'med'
+    location: 'src/OcuPilot/Test/BackgroundSeed.cls PausedCompact'
 ---
 
 <intent-contract>
@@ -560,7 +564,7 @@ Rejected:
 
 **Rework 2 (2026-09-29, CI):**
 
-- [ ] [CI] instance shard 2/3 (run 36588987899 on `f13a007c`): `BackgroundTasksLive.TestTheAgentsConfirmPausesACompact` red -- the confirm answered `PROPOSAL.TARGETCHANGED` (then: not paused, no ledger row, no marker). It passed on `b43a0a2d` and `8692236c`, and nothing server-side changed after `8692236c`, so the failure is timing-dependent. This story added `Database` to every Background tasks row (`BackgroundTaskPort.WithDatabases`/`TaskDatabases`/`KeepRunning`, the list descriptor's fields), which the write tools' fresh read carries into their fingerprint. Find which value moved between the mint and the confirm for a just-resumed compact (for example `Database` read from `%SYS.BackgroundTask:DatabaseList` lagging or changing against the portal row, or a moving `Details` counter that predates this story), and fix it at its cause: a fingerprint subject carries no value that moves while the target's own state does not (AD-51), and a task's `Database` must read the same for the task's life or stay out of the subject. Pin it with a test that goes red on the moving value (on `ocupilot-b-ci`, `BackgroundTasksLive` or a recording fixture) and a demonstrated mutation; then run `BackgroundTasks`, `BackgroundTasksLive` (at least three times, one run at a time) and `database-details.page.spec.ts`. If the cause predates this story, say so with evidence and still fix it here only if it is inside the Background tasks footprint this story already extended.
+- [x] [CI] instance shard 2/3 (run 36588987899 on `f13a007c`): `BackgroundTasksLive.TestTheAgentsConfirmPausesACompact` red -- the confirm answered `PROPOSAL.TARGETCHANGED` (then: not paused, no ledger row, no marker). It passed on `b43a0a2d` and `8692236c`, and nothing server-side changed after `8692236c`, so the failure is timing-dependent. This story added `Database` to every Background tasks row (`BackgroundTaskPort.WithDatabases`/`TaskDatabases`/`KeepRunning`, the list descriptor's fields), which the write tools' fresh read carries into their fingerprint. Find which value moved between the mint and the confirm for a just-resumed compact (for example `Database` read from `%SYS.BackgroundTask:DatabaseList` lagging or changing against the portal row, or a moving `Details` counter that predates this story), and fix it at its cause: a fingerprint subject carries no value that moves while the target's own state does not (AD-51), and a task's `Database` must read the same for the task's life or stay out of the subject. Pin it with a test that goes red on the moving value (on `ocupilot-b-ci`, `BackgroundTasksLive` or a recording fixture) and a demonstrated mutation; then run `BackgroundTasks`, `BackgroundTasksLive` (at least three times, one run at a time) and `database-details.page.spec.ts`. If the cause predates this story, say so with evidence and still fix it here only if it is inside the Background tasks footprint this story already extended.
 
 ## Spec Change Log
 
@@ -639,6 +643,20 @@ Rejected:
   - `[false]` `[reject]` (intent-alignment) the item's browser finish line has no recorded result — same as the row above: 12/12, 6/6 and 5/5 on `main-JT27HVRD.js`, recorded at finalize.
   - `[false]` `[reject]` (intent-alignment) the diff widens 18.1's shared picker beyond the two wizard files the item names — the lead's dispatch allows the picker telling a preselection apart; the flag is optional, and the editor and Epic 16's task dialogs bind `root` and `path` only, with no emission-shape assertion (`git grep` on `OCU-1-epic16`).
   - `[low]` `[patch]` (intent-alignment) the editor's dirty-after-Change is pinned only in its store spec, not through the picker's labeled report — `database-editor.page.spec.ts`' AD-21 leg asserts clean before Change and dirty after the preselection; `setVolumeLocation` not dirtying reddens it, mutation line recorded.
+
+### 2026-09-29 — Review pass (rework 2)
+
+- verdicts: 9 findings — high 0, medium 0, low 6, false 3, maybe-false 0
+- findings:
+  - `[low]` `[patch]` (verification-gap) `EndedBeforeTheConfirm` retries any `TARGETCHANGED` whose task reads Done afterwards, so a fresh read that failed as the task ended is retried too, against its doc's "any other refusal fails at once" — both doc comments now state exactly what is checked; the port read never failed in 104,731 one-row reads across three compacts' ends (stage probe).
+  - `[low]` `[reject]` (verification-gap) the spec omits run 420 (the one retry) and the `database-details.page.spec.ts` run, and 417-419 may predate the saved text — the fix is a spec edit: run 420 was a forced race, the component spec ran 16/16, and three runs after the final save are recorded at finalize.
+  - `[low]` `[reject]` (verification-gap) three attempts reduce the race rather than remove it; a larger seed would remove it (inference) — every one of 8 unforced local runs (417-419, 421-425) paused on attempt 1, and the fix is `BackgroundSeed.cls` (Epic 16's) doubling every seeded test's fill and disk.
+  - `[false]` `[reject]` (intent-alignment) no test goes red on the value that moved (`Status` Running to Done) — that refusal is correct and pinned by `BackgroundTasks.TestTheFingerprintRefusesAMovedStatus`; the new fixture test pins the measured boundary read (`Running` with `Database` "" in 2 of 3 probes).
+  - `[low]` `[reject]` (intent-alignment) the cause is asserted in a doc comment with no evidence — the fix is a spec edit; the timings and the probe are recorded under `## Auto Run Result`.
+  - `[low]` `[patch]` (intent-alignment) a failed `WithDatabases` read is a route to `TARGETCHANGED` that is neither tested nor ruled out, and the retry can admit it — grouped with the first row: 0 failures in 104,731 reads at the boundary, and the doc no longer claims to tell the two apart.
+  - `[false]` `[reject]` (intent-alignment) the added per-read query may widen the mint-to-confirm window — a one-row read costs about 0.11 ms with both queries (about 35,000 in 4 s), against a window of about 0.5 s.
+  - `[low]` `[reject]` (intent-alignment) no `database-details.page.spec.ts` run is recorded — the fix is a spec edit; it ran 16/16, recorded at finalize.
+  - `[false]` `[reject]` (intent-alignment) the criterion is now met by any one of three compacts — the successful attempt asserts the same four outcomes; a retry replaces only a seed whose compact ended before its confirm.
 
 ## Design Notes
 
@@ -868,11 +886,25 @@ Probe objects created and removed: database `OCUPROBE183X` (directory `ocuprobe1
 - mutation (rework 1, review): `DatabaseEditor.setVolumeLocation` notifies without marking the form dirty → `database-editor.page.spec.ts`' AD-21 leg red on the dirty-after-Change assertion.
 - mutation (rework 1): the picker reports its preselection without `preselected` → `server-path-picker.spec.ts`' loading-to-ready and preselection legs and the page's single-root leg red; the picker marks a typed name `preselected` → the picker's preselection and change legs and the page's single-root and edited-path legs red. Each reverted byte-identical.
 - mutation (rework 1, code review): `DatabaseWizard.preselectRoot` drops its `clearFieldViolation('root')` → `database-wizard.store.spec.ts`' refused-root leg alone red; `preselectRoot` holds no root → the store's preselection leg and `database-wizard.page.spec.ts`' two AC1 legs (check and create bodies) red; `setLocation` marks the form dirty only when the root differs → the store's user-change leg (path half) and the page's single-root leg red. Each reverted byte-identical.
+- mutation (rework 2): `BackgroundTaskCancel.FINGERPRINTSUBJECT` adds `Database` → `BackgroundTasks.TestAMovedDatabaseIsStillTheTaskReviewed` red, the confirm refused `PROPOSAL.TARGETCHANGED` with no pause sent, beside `TestTheToolsAreActionWritesOverTheScreensOwnPairs`' subject leg (run 411). The same subject left `BackgroundTasksLive` 7/7 (run 412).
+- mutation (rework 2): that subject, with `WithDatabases` setting `Database` to `$ZHorolog` on every read → `BackgroundTasksLive.TestTheAgentsConfirmPausesACompact` red on attempt 1 and not retried, the compact still running, beside `TestASeededPortalCompactIsListedPaused`' database leg (run 413).
+- mutation (rework 2): `BackgroundTaskPort.PortalControl` answers `$$$OK` in place of `Pause()` → `TestTheAgentsConfirmPausesACompact` red on "and the compact is paused" alone, beside `TestTheScreensActionsResumePauseAndCancelACompact`' pause legs (run 415). Each reverted byte-identical; latest runs green: `BackgroundTasks` 416 (12/12), `BackgroundTasksLive` 417, 418, 419 and 421 (7/7 each).
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
+
+**Rework 2 (2026-09-29, CI): the agent's pause test survives a compact that ends before its confirm.**
+
+- **Cause:** the value that moved is `Status`, Running to Done: the seeded compact ended between the mint and the confirm, and the refusal is AD-51's correct answer. The three Background tasks tools fingerprint `Status` alone (`BackgroundTaskCancel.FINGERPRINTSUBJECT`, Story 16.5, 73f7b3b8), so neither `Database` nor `Details` was ever in the subject. It predates this story: the test, the ~2 s seed and the subject are 16.5's.
+- **Evidence (`ocupilot-b-ci`):** once resumed, the compact runs 1.4-1.9 s, while the mint returns about 0.39 s and the confirm about 0.93 s after the resume; CI runs this class about twice as slowly (31-35 s against 14-16 s) (inference: CI's confirm can outlast the compact). The failure reproduces exactly: confirming after the compact ended answers `TARGETCHANGED` with the row reading Done. A stage probe read the one-row port read in a loop across three compacts' ends: 104,731 reads, 0 failures, about 0.11 ms each with both queries; `Database` read the same directory from the resume until the task ended, then `""`, and in 2 of 3 runs one read at the boundary saw `Running` with `Database` `""`.
+- **Fix (test-only, inside this story's Background tasks files):** `BackgroundTasksLive.TestTheAgentsConfirmPausesACompact` re-seeds, at most `AGENTATTEMPTS` (3) times, only when the confirm was refused `TARGETCHANGED` and the compact reads Done; any other refusal fails at once. New `BackgroundTasks.TestAMovedDatabaseIsStillTheTaskReviewed` pins that the measured boundary read, `Database` moving while `Status` reads Running, does not refuse the confirm. No product code changed.
+- **Files:** `src/OcuPilot/Test/BackgroundTasksLive.cls` (the bounded retry, `ProposeAndConfirmPause`, `EndedBeforeTheConfirm`); `src/OcuPilot/Test/BackgroundTasks.cls` (the new test and `DatabaseOf`); this spec.
+- **Review (follow-up pass, two layers):** 9 findings (high 0, medium 0, low 6, false 3). 2 lows patched as one entry (the two doc comments now state that the retry check reads Done afterwards and does not tell a moved status from a failed read); 4 lows and 3 false rejected, reasons in the triage log. Nothing deferred by review; the implement pass added one `deferred:` item, the older seed flake of run 36530303753 (`BackgroundSeed.cls`, Epic 16's). Follow-up review: not recommended, no high patched.
+- **Mutations:** three `mutation (rework 2)` lines under `## Verification` (runs 411, 413, 415); a forced race (run 420) was retried and paused on attempt 2.
+- **Verification** on `ocupilot-b-ci`, totals from `%UnitTest_Result`: after the final save, `BackgroundTasksLive` runs 423, 424 and 425, 7/7 each, one at a time; `BackgroundTasks` run 426, 12/12. Before the doc patch: `BackgroundTasksLive` 417-419, 421 and 422, 7/7 each; every unforced run paused on attempt 1. `database-details.page.spec.ts` 16/16. `check-objectscript` 0 problems; `lint-docs` clean. No probe object, seed database, task or global is left.
+- **Residual:** three attempts shrink the race rather than remove it; a seed that outlasts the window would remove it, in Epic 16's `BackgroundSeed.cls`. `BackgroundTasksLive.cls` is 537 lines, over the ~500-line guideline.
 
 **Rework 1 (2026-09-29, CI): the create wizard no longer opens dirty.**
 
