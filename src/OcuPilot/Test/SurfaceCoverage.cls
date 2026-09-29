@@ -135,6 +135,11 @@ XData Coverage
 <screen name="LdapConfigForm" class="OcuPilot.Test.LdapUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
 <screen name="WebSessionList" class="OcuPilot.Test.WebSessions" method="TestTheDescriptorDeclaresTheListItsPairsAndItsRowAction"/>
 <screen name="BackgroundTaskList" class="OcuPilot.Test.BackgroundTasks" method="TestTheDescriptorDeclaresTheListItsPairsAndItsActions"/>
+<screen name="LicenseSummaryTab" class="OcuPilot.Test.LicenseUsage" method="TestTheFourTabsDeclareTheirReadsAndFormOneGroup" corpus="the four License usage tabs are asserted together in one loop"/>
+<screen name="LicenseProcessTab" class="OcuPilot.Test.LicenseUsage" method="TestTheFourTabsDeclareTheirReadsAndFormOneGroup" corpus="the four License usage tabs are asserted together in one loop"/>
+<screen name="LicenseUserTab" class="OcuPilot.Test.LicenseUsage" method="TestTheFourTabsDeclareTheirReadsAndFormOneGroup" corpus="the four License usage tabs are asserted together in one loop"/>
+<screen name="LicenseDistributedTab" class="OcuPilot.Test.LicenseUsage" method="TestTheFourTabsDeclareTheirReadsAndFormOneGroup" corpus="the four License usage tabs are asserted together in one loop"/>
+<screen name="Dashboard" class="OcuPilot.Test.Dashboard" method="TestTheDeclarationIsTheDashboardsThirtyFieldsOverTwoParts"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>

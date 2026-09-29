@@ -991,6 +991,8 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// sources that declares no <code>rowGet</code>, <code>forEach</code>, <code>query</code> or
 /// <code>parts</code>; or <code>timeline</code>, an area's listed screens' reads composed, whose
 /// shape is fixed (<method>TimelineProblem</method>);
+/// A source may instead declare <code>rows</code>, a bare admin type's one-object answer read as a
+/// list over one member (<method>RowsProblem</method>, Story 16.7);
 /// <code>fields</code> is a non-empty array of unique names; <code>filter</code>,
 /// <code>sort.fields</code> and <code>context.secretFields</code> name only declared fields, and no
 /// secret field is filterable or sortable (a filter over one would let a tool probe its value);
@@ -1037,7 +1039,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tSource = tRead.%Get("source")
-        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts"))
+        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts", "rows"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
         If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND), tPort) {
@@ -1052,7 +1054,13 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' names a package, and a state source names a store inside " _ ##class(OcuPilot.Screen.Read).#STATEPACKAGE _ " by its own name alone (AD-9)"
             Quit
         }
-        If (tSource.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#READSOURCETYPES), tSource.%Get("type")) {
+        ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member takes
+        ; its own type rule, and every other read keeps the five declared types.
+        Set tRowsType = tSource.%GetTypeOf("rows")
+        If (tRowsType '= "unassigned") && (tRowsType '= "null") {
+            Set tProblem = ..RowsProblem(tSource)
+            If tProblem '= "" Quit
+        } ElseIf (tSource.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#READSOURCETYPES), tSource.%Get("type")) {
             Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'"
             Quit
         }
@@ -1958,6 +1966,47 @@ ClassMethod ForEachProblem(pRead As %DynamicObject, pSource As %DynamicObject, p
     Quit tProblem
 }
 
+/// <p>The shape a <code>read.source.rows</code> member name takes (AD-36, Story 16.7).</p>
+Parameter ROWSMEMBERPATTERN = "^[A-Za-z][A-Za-z0-9]*$";
+
+/// <p>What is wrong with <var>pSource</var>'s <code>rows</code>, or <code>""</code> (AD-36 as amended,
+/// Story 16.7). A declared <code>rows</code> is a member name (<parameter>ROWSMEMBERPATTERN</parameter>)
+/// on an <code>admin</code> source whose <code>type</code> is an upper-case bare type
+/// (<parameter>PARTTYPEPATTERN</parameter>) other than the five <parameter>READSOURCETYPES</parameter>,
+/// with no <code>parts</code>, <code>forEach</code> or <code>rowGet</code>: the read issues that type
+/// once, with <code>maxRows</code> the cap plus one, and lists the answer's one member.
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>rowsProblem</code> returns the same sentence for
+/// every case in <class>OcuPilot.Test.ReadSourceCorpus</class>.</p>
+ClassMethod RowsProblem(pSource As %DynamicObject) As %String
+{
+    Set tWhere = "read.source.rows"
+    Set tMember = pSource.%Get("rows")
+    If (pSource.%GetTypeOf("rows") '= "string") || '$Match(tMember, ..#ROWSMEMBERPATTERN) {
+        Quit tWhere _ " '" _ tMember _ "' is not a member name, and a list over one member names the answer's row array (AD-36)"
+    }
+    Set tPort = pSource.%Get("port")
+    If tPort '= ##class(OcuPilot.Screen.Read).#SOURCEADMIN {
+        Quit tWhere _ " is declared on a '" _ tPort _ "' source, and a list over one member reads an admin endpoint's one-object answer (AD-36)"
+    }
+    Set tType = pSource.%Get("type")
+    If (pSource.%GetTypeOf("type") '= "string") || '$Match(tType, ..#PARTTYPEPATTERN) || $ListFind($ListFromString(..#READSOURCETYPES), tType) {
+        Quit "read.source.type '" _ tType _ "' is not an upper-case bare admin type, and read.source.rows reads one member of a bare type's one-object answer (AD-36)"
+    }
+    Set tProblem = ""
+    For tKey = "parts", "forEach", "rowGet" {
+        Set tKeyType = pSource.%GetTypeOf(tKey)
+        If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+        Set tProblem = "read.source." _ tKey _ " is declared with read.source.rows, and a list over one member issues one call and projects its rows (AD-36)"
+        Quit
+    }
+    Quit tProblem
+}
+
+/// <p>The <code>port</code> values a declared part may name (AD-36): <code>admin</code>, the default,
+/// and <code>monitor</code>, the sensors behind <class>OcuPilot.Port.MonitorPort</class>'s own gate
+/// (Story 16.7).</p>
+Parameter PARTPORTS = "admin,monitor";
+
 /// <p>The shape a declared part's <code>type</code> takes (AD-36): the vendor's own upper-case
 /// request-type name, resolved through <class>OcuPilot.Port.AdminPort</class>'s
 /// <code>BARETYPES</code> map when it carries no <code>TYPE</code> prefix of its own (System
@@ -1975,8 +2024,11 @@ Parameter MAXPARTS As INTEGER = 3;
 /// Story 6.9). <var>pRead</var> is the declared read and <var>pFields</var> its declared fields.</p>
 /// <p>An absent or <code>null</code> <code>parts</code> declares none. Otherwise it is a
 /// non-empty array of 1 to <parameter>MAXPARTS</parameter> objects carrying only <code>type</code>
-/// (<parameter>PARTTYPEPATTERN</parameter>) and <code>as</code>
-/// (<parameter>PARTASPATTERN</parameter>, unique across the block), declared on a single-object
+/// (<parameter>PARTTYPEPATTERN</parameter>), <code>as</code>
+/// (<parameter>PARTASPATTERN</parameter>, unique across the block) and an optional <code>port</code>
+/// (one of <parameter>PARTPORTS</parameter>; at most one part names <code>monitor</code>, and its
+/// <code>type</code> is <class>OcuPilot.Port.MonitorPort</class>'s <code>SENSORSTYPE</code>, Story
+/// 16.7), declared on a single-object
 /// <code>GET</code> source with no <code>criteria</code> or <code>query</code> -- either would
 /// name the read's one criterion or a fixed parameter, and a parts read's row is assembled from
 /// the parts alone. A <code>GET</code> source already guarantees an <code>admin</code> port and
@@ -2024,6 +2076,7 @@ ClassMethod PartsProblem(pRead As %DynamicObject, pSource As %DynamicObject, pFi
         }
         Set tSeenAs = ""
         Set tAsList = ""
+        Set tMonitorParts = 0
         Set tIterator = tParts.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tPart, .tPartType) {
             Set tAt = tWhere _ " entry #" _ (tIndex + 1)
@@ -2031,12 +2084,32 @@ ClassMethod PartsProblem(pRead As %DynamicObject, pSource As %DynamicObject, pFi
                 Set tProblem = tAt _ " is not an object declaring its type and as"
                 Quit
             }
-            Set tProblem = ..UnknownKeyProblem(tPart, tAt, $ListBuild("type", "as"))
+            Set tProblem = ..UnknownKeyProblem(tPart, tAt, $ListBuild("type", "as", "port"))
             If tProblem '= "" Quit
             Set tPartType2 = tPart.%Get("type")
             If (tPart.%GetTypeOf("type") '= "string") || '$Match(tPartType2, ..#PARTTYPEPATTERN) {
                 Set tProblem = tAt _ " type '" _ tPartType2 _ "' is not upper-case letters"
                 Quit
+            }
+            ; AD-36 as amended (Story 16.7): one part may be the sensors', answered by the monitor
+            ; port behind its own gate, for the one type that port answers.
+            Set tPartPortType = tPart.%GetTypeOf("port")
+            If tPartPortType '= "unassigned" {
+                If (tPartPortType '= "string") || '$ListFind($ListFromString(..#PARTPORTS), tPart.%Get("port")) {
+                    Set tProblem = tAt _ " port '" _ tPart.%Get("port") _ "' is not 'admin' or 'monitor', the two ports a part is answered through (AD-36)"
+                    Quit
+                }
+                If tPart.%Get("port") = ##class(OcuPilot.Screen.Read).#PARTMONITOR {
+                    If tPartType2 '= ##class(OcuPilot.Port.MonitorPort).#SENSORSTYPE {
+                        Set tProblem = tAt _ " type '" _ tPartType2 _ "' is declared on a monitor part, which answers only '" _ ##class(OcuPilot.Port.MonitorPort).#SENSORSTYPE _ "' (AD-29, AD-36)"
+                        Quit
+                    }
+                    If tMonitorParts {
+                        Set tProblem = tAt _ " is a second monitor part, and a parts read names at most one (AD-36)"
+                        Quit
+                    }
+                    Set tMonitorParts = 1
+                }
             }
             Set tAs = tPart.%Get("as")
             If (tPart.%GetTypeOf("as") '= "string") || '$Match(tAs, ..#PARTASPATTERN) {

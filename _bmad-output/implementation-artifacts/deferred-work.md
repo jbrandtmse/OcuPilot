@@ -4149,6 +4149,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on throwaway ocupilot-b-ci 2026-09-18: kill ^IRIS.Temp.SAM in %SYS, confirm undefined after a 5s control with no call, then one MonitorPort.Invoke -- the node comes back defined, carrying alerts.log's newest line. Repeated with an empty tag, a bogus tag and a tag the vendor matched (97 of 98 rows returned): all three advance it to the newest entry. It only looked byte-identical on slot B because that cursor already named the newest line, which is what the spec's own probe measured. The spine's AD-7 says the read-triggered-vendor-write exception covers exactly two shapes and extends to nothing else; another SAM scraper polling /api/monitor/alerts without a tag shares that cursor and loses the alerts OcuPilot's read moved it past.
 - 2026-09-18T11:19:09Z status=decision-pending owner=burndown by=cr note=HIGH, paused for the lead (Rule 6 + Rule 20: the spine is the lead's to write). Options: amend AD-7 with a third named shape and its observable cost, as the two existing ones are named, and amend the Always block and AC2 to match; or drop the monitoring half; or save and restore the cursor around the call, which makes OcuPilot itself the writer. The port doc comment and Test/MonitorPort.cls now state the measured behaviour and name this entry.
 - 2026-09-18T11:25:34Z status=routed owner=16-7-license-usage-and-the-full-dashboard by=adjudication note=orchestrator decided option b at the 6.13 spec gate: alerts.log is read through LogSourcePort alone, the monitoring half is not shipped, and the MonitorPort implementation is recoverable at worktree sha 33361dc on OCU-1-epic6; FR-76 re-takes it where a consumer exists
+- 2026-09-29T11:52:09Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=adjudication note=9300a952: AD-7 third shape; no Alerts() call; DashboardLive.TestTheAlertCursorIsUnchanged... pins LastAlertSent (AC4)
 
 ### DW-1117: EXPERIENCE.md:368 still authorizes alertLogRecentUnavailable, a string no shipped component renders now that the monitoring half is not shipped
 - source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -4990,6 +4991,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T15:29:55Z occurrence=18-2-namespaces-and-their-mappings note=CI run 36440901497 shard 1/3 on merge head 1afd8045: AC2 timed out at :140 (30 s); passed locally on the merged tree in 8 s
 - 2026-09-29T05:35:50Z occurrence=16-6-broadcast-a-message-to-processes note=CI run 36523565927 shard 1/3 on e235b1fc: AC2 30 s wait; failed jobs re-run
 - 2026-09-29T06:00:34Z status=routed owner=16-7-license-usage-and-the-full-dashboard by=merge_gate note=orchestrator: fix now as a test-only commit (6bcc6d3b, requireFreeSlot before the tag)
+- 2026-09-29T06:52:01Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=adjudication note=6bcc6d3b: requireFreeSlot before the tag; CI 36528845707 and merge CI 36531012604 green
 
 ### DW-1315: The IsEnabled-before-HoldsAdminResource ordering in OnPreDispatch is unexercised
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -8040,6 +8042,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: data-table.ts puts the reason only in aria-description on a tabindex=-1 checkbox; the grid keeps DOM focus with aria-activedescendant on the row or cell, so it is never read there; onCheckClick and the Space branch return silently on an ineligible row; EXPERIENCE.md:646 forbids a title and a tooltip on an uncut cell
 - 2026-09-29T04:47:44Z status=decision-pending owner=burndown by=cr note=recommend: table tooltip on hover of an ineligible box or an ineligible active row, announced on Space; amends EXPERIENCE:646
 - 2026-09-29T06:26:25Z status=routed owner=16-7-license-usage-and-the-full-dashboard by=merge_gate note=decided as recommended: the table's tooltip on hover of an ineligible box, announced on Space; fixed ahead in f9c77be2
+- 2026-09-29T06:52:01Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=adjudication note=f9c77be2: tooltip on hover of an ineligible checkbox, announced on Space or a click; merge CI 36531012604 green
 
 ### DW-1816: Check all on a multi-select list has no keyboard path: its header checkbox is out of the Tab order and the grid's keys never reach the header
 - source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: med | footprint: in-story
@@ -8139,3 +8142,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: background-tasks.browser-spec.mjs AC1 'the compact reads Running, not Paused', AC2 'a background task still runs over the seed database'; BackgroundSeed.cls:155 polls 200 x 0.01 s; the same spec passed on e40733ef (run 36519473392); 18.14 touches neither file
 - 2026-09-29T05:18:37Z status=routed owner=burndown by=lead note=Story 16.5's seed; a timing race (inference); the failed job is re-run
 - 2026-09-29T06:52:04Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=merge_gate note=6bcc6d3b (Epic 16): BackgroundSeed waits through Settled, bounded at 30 s; the fix reaches feature in this merge
+
+### DW-1822: a11y-structural-invariants.browser-spec.mjs failed whole (8 tests) on a Chrome protocol timeout: Runtime.callFunctionOn timed out during the structural walk
+- source: staging-16-7 run 36569407842 attempt 1 on ff53360c (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/a11y-structural-invariants.browser-spec.mjs, ui/browser/structural-walk.mjs
+- evidence: attempt 2 green on the same head; the same spec passed on 01e36ec7 (run 36564571344); the walk evaluates one long function per screen (inference: a slow runner exceeds puppeteer's default protocolTimeout)
+- 2026-09-29T13:27:46Z status=routed owner=range-end-cleanup by=orchestrator note=raise protocolTimeout for the walk's browser or split the per-screen evaluation

@@ -606,7 +606,7 @@ Parameter QUERYPAIRS = "Process/LIST=%Admin_Manage:USE|%DB_IRISSYS:WRITE";
 /// through that bare parameter on the endpoint's class, without widening
 /// <parameter>TYPESUFFIXES</parameter>; every other suffix still resolves through the
 /// <code>TYPE</code>-prefixed parameter.</p>
-Parameter BARETYPES = "Monitor/SYSTEMUSAGE,Monitor/SYSTEMUSAGESHM,Monitor/DASHBOARDMAIN";
+Parameter BARETYPES = "Monitor/SYSTEMUSAGE,Monitor/SYSTEMUSAGESHM,Monitor/DASHBOARDMAIN,Monitor/LICENSEUSAGE";
 
 /// <p>The body-template method names, in the order <method>TemplateMethod</method> resolves them
 /// (AD-3): the first one an endpoint class defines itself is its template.</p>

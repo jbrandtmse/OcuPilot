@@ -155,6 +155,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // editor's Mappings line, among the unlisted screens in descriptor class-name order.
       'os-management/namespaces/global-mappings/edit',
       'os-management/namespaces/global-mappings',
+      // Story 16.7: License usage's three unlisted tabs, by descriptor class name.
+      'os-management/license-usage/distributed',
+      'os-management/license-usage/processes',
+      'os-management/license-usage/users',
       // Story 18.2: the unlisted namespace editor, reached from the Namespaces list.
       'os-management/namespaces/edit',
       'os-management/namespaces/package-mappings/edit',
@@ -169,6 +173,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/devices',
       // Story 18.2: Namespaces, the sixth OS management entry.
       'os-management/namespaces',
+      // Story 16.7: License usage and the Dashboard, the seventh and eighth OS management entries.
+      'os-management/license-usage',
+      'os-management/dashboard',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -229,7 +236,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/ledger',
       'agent/transcripts',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files, device editor, the global mapping form and list, the namespace editor, the package mapping form and list, process details, the routine mapping form and list, processes, Locks, System usage, Databases, Devices, Namespaces, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files, device editor, the global mapping form and list, the three unlisted License usage tabs, the namespace editor, the package mapping form and list, process details, the routine mapping form and list, processes, Locks, System usage, Databases, Devices, Namespaces, License usage, Dashboard, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
   );
 });
 
@@ -238,7 +245,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
 //
 // Mutation (Rule 19): give NamespaceList `sideBarPosition` 0 and regenerate the mirror -> this and
 // the built-screens roster above go red.
-test('OS management lists Processes, Locks, System usage, Databases, Devices, then Namespaces', () => {
+test('OS management lists Processes, Locks, System usage, Databases, Devices, Namespaces, then License usage and Dashboard', () => {
   assert.deepEqual(
     listedScreensForArea('os-management').map((screen) => screen.route),
     [
@@ -248,6 +255,9 @@ test('OS management lists Processes, Locks, System usage, Databases, Devices, th
       'os-management/databases',
       'os-management/devices',
       'os-management/namespaces',
+      // Story 16.7: the seventh and eighth entries.
+      'os-management/license-usage',
+      'os-management/dashboard',
     ]
   );
   assert.equal(stringFor(screenForRoute('os-management/namespaces').labelKey), STRINGS.namespaceListLabel);
