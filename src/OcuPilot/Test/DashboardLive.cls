@@ -128,13 +128,14 @@ Method TestTheToolAnswersWhatTheRouteDraws()
         Do $$$AssertStatusOK(tSC, tTool _ ": the tool reads")
         If $$$ISERR(tSC) || '$IsObject(tView) Continue
 
-        Set tRouteSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/" _ tTool _ "/read?maxRows=1000", "_SYSTEM", "SYS", .tStatus, .tBody, .tHeaders)
+        Set tRouteSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/" _ tTool _ "/read?maxRows=1000", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders)
         Do $$$AssertStatusOK(tRouteSC, tTool _ ": the route request completes")
         Do $$$AssertEquals(tStatus, 200, tTool _ ": the route answers")
         If tStatus '= 200 Continue
         Set tRoute = ##class(%DynamicObject).%FromJSON($ZConvert(tBody, "I", "UTF8"))
         Do $$$AssertEquals(tView.fields.%ToJSON(), tRoute.fields.%ToJSON(), tTool _ ": the same declared fields")
         Do $$$AssertEquals(tView.rows.%Size(), tRoute.rows.%Size(), tTool _ ": the same number of rows")
+        Do $$$AssertTrue(tView.rows.%Size() > 0, tTool _ ": at least one row, so the comparison holds something")
         If tClass = ..#SUMMARY {
             Do $$$AssertEquals(..Labels(tView.rows), ..Labels(tRoute.rows), tTool _ ": the same five labels")
         } ElseIf (tView.rows.%Size() = 1) && (tRoute.rows.%Size() = 1) {

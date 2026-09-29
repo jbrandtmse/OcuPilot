@@ -55,6 +55,13 @@ const UPCOMING_FIELDS: readonly string[] = ['Datetime', 'Name', 'Suspended'];
 const UPCOMING_CRITERIA = { hoursOffset: '24' } as const;
 
 /**
+ * The key of the Dashboard's own store for the Task manager group's rows, beside its screen store:
+ * the rows are the Dashboard's, so Upcoming tasks' own store is never written (AD-19). The store
+ * remembers nothing and is dropped at sign-out with every other store.
+ */
+const TASKS_STORE_SUFFIX = '#tasks';
+
+/**
  * Dashboard (Story 16.7): the classic System Dashboard's seven groups over one read, bound to the
  * shared auto-refresh framework the way `system-usage.page.ts` is -- `stores.for`,
  * `refresh.bind`, `readNow`, `REFRESH_ACTION_ID`, the generation signal, `DestroyRef` unbind.
@@ -67,10 +74,12 @@ const UPCOMING_CRITERIA = { hoursOffset: '24' } as const;
  *
  * **The Task manager group issues Upcoming tasks' own declared read** (AD-5, as
  * `database-details.page.ts` issues the volume files' read): once per Dashboard tick, at five rows
- * over the horizon that screen opens on, applied into that screen's own store, and drawn as its
- * At, Name and Suspended cells under its own column labels through the shared `cellView` rule. A
- * caller that screen refuses sees "Requires <pair>" and nothing is read; no rows show that
- * screen's own empty text.
+ * over the horizon that screen opens on, applied into the Dashboard's own tasks store -- never
+ * Upcoming tasks' store, which no other screen writes (AD-19) -- and drawn as its At, Name and
+ * Suspended cells under its own column labels through the shared `cellView` rule. Only the answer
+ * to the latest read issued by a live page is applied, so an earlier tick's or a departed page's
+ * late answer never replaces a newer one. A caller that screen refuses sees "Requires <pair>" and
+ * nothing is read; no rows show that screen's own empty text.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -84,7 +93,7 @@ const UPCOMING_CRITERIA = { hoursOffset: '24' } as const;
       <section class="ocu-dashboard-group" [attr.aria-labelledby]="group.headingId">
         <h2 class="ocu-details-heading ocu-dashboard-heading" [id]="group.headingId">{{ group.heading }}</h2>
         @if (group.tasks) {
-          <div class="ocu-dashboard-tasks">
+          <div class="ocu-dashboard-tasks" [attr.aria-busy]="showTasksSkeleton">
             @if (showTasksGated) {
               <p class="ocu-dashboard-tasks-gated">{{ tasksGatedText }}</p>
             }
@@ -157,8 +166,17 @@ export class DashboardPage {
 
   private readonly view: DashboardView | null;
 
-  /** Upcoming tasks' own screen and store, which the Task manager group reads into. */
+  /**
+   * Upcoming tasks' screen, whose declared read the Task manager group issues, with the Dashboard's
+   * own tasks store the answer lands in.
+   */
   private readonly upcoming: DashboardView | null;
+
+  /** The Task manager group's reads issued so far; only the latest one's answer is applied. */
+  private tasksIssued = 0;
+
+  /** Set when the page is destroyed, so a tasks read that lands afterwards applies nothing. */
+  private destroyed = false;
 
   /** Bumped by the stores and by the refresh service, so the view re-renders under `OnPush`. */
   private readonly generation = signal(0);
@@ -171,16 +189,20 @@ export class DashboardPage {
 
   constructor() {
     const screen = this.navigation.screenForUrl(this.router.url);
-    const upcoming = screenForRoute(UPCOMING_ROUTE);
-    this.upcoming =
-      upcoming === null || upcoming.read === null ? null : { screen: upcoming, store: this.stores.for(upcoming.descriptor, upcoming.refreshRates) };
     if (screen === null || screen.read === null) {
       this.view = null;
+      this.upcoming = null;
       return;
     }
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     this.view = { screen, store };
     store.clearAnswers();
+    const upcoming = screenForRoute(UPCOMING_ROUTE);
+    this.upcoming =
+      upcoming === null || upcoming.read === null
+        ? null
+        : { screen: upcoming, store: this.stores.for(`${screen.descriptor}${TASKS_STORE_SUFFIX}`, [], '') };
+    this.upcoming?.store.clearAnswers();
 
     const read = createScreenRead(this.api, screen);
     const tick: RefreshRead = async (options) => {
@@ -204,6 +226,7 @@ export class DashboardPage {
     const stopNavigation = this.navigation.subscribe(() => this.generation.update((value) => value + 1));
 
     inject(DestroyRef).onDestroy(() => {
+      this.destroyed = true;
       stopStore();
       stopRefresh();
       stopNavigation();
@@ -214,13 +237,17 @@ export class DashboardPage {
 
   /**
    * The Task manager group's read, issued once per Dashboard tick: Upcoming tasks' declared read at
-   * five rows, into that screen's own store, or nothing at all for a caller that screen refuses.
+   * five rows, into the Dashboard's own tasks store, or nothing at all for a caller that screen
+   * refuses. An answer that lands after a later read was issued, or after the page is gone, is
+   * dropped.
    */
   private async loadTasks(): Promise<void> {
     const upcoming = this.upcoming;
     if (upcoming === null || !this.tasksAllowed) return;
+    const issued = ++this.tasksIssued;
     const read = createScreenRead(this.api, upcoming.screen, () => UPCOMING_CRITERIA);
     const result = await read({ maxRows: UPCOMING_MAX_ROWS });
+    if (this.destroyed || issued !== this.tasksIssued) return;
     if (result.kind === 'ok') {
       upcoming.store.applyTick(result.rows, result.truncated, result.banner ?? '', new Date());
       this.tasksFaultSignal.set(false);

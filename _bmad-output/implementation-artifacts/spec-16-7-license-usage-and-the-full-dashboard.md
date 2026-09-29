@@ -343,6 +343,48 @@ deferred: []
 - **AC5.** Given Dashboard's chip set to 5 s, when two ticks arrive, then the meters update silently. With no rate remembered, the chip reads off.
 - **AC6 (Integration).** Given the agent on each screen, when it calls that screen's read tool, then the rows and values it gets are the ones the screen draws, and the screen context carries the same fields. Both screens pass the DW-1337 gate with no new allowance. The bundle stays under its warning or is re-based as Boundaries allow.
 
+### Review Findings
+
+Code review, 2026-09-29 (four layers, full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; 38 raw findings). 0 decision, 8 patches, 0 deferred, 23 rejected, 1 for the lead. One high (AD-19), patched in this pass. Other ADs checked and held: AD-1, 2, 5, 7, 8, 12, 16, 24, 27, 29, 36, 43, 44, 59. Rule 3 is met by `license-usage.browser-spec.mjs`, `dashboard.browser-spec.mjs` and `DashboardLive`.
+
+- [x] [Review][Patch] High, AD-19 ("Nothing mutates another screen's store"): the Dashboard applied its five-row, 24-hour tasks answer into Upcoming tasks' store. It had no guard for an earlier tick's answer or one landing after the page was gone, so a late answer could replace Upcoming's rows under Upcoming's own horizon and reach Upcoming's screen context. The rows now live in the Dashboard's own `#tasks` store, and only the latest read issued by a live page is applied. This supersedes the implement stage's triage rejection and the Auto Run Result's residual-risk line. Fix-risk low [ui/src/app/areas/os-management/dashboard.page.ts:219]
+- [x] [Review][Patch] Medium, Rule 19: AC5's "update silently" was asserted only after the tick's answer had landed. The recorded mutation reddened only the declaration half. A tick whose read is held in flight is now asserted to keep every meter's value, with no skeleton and nothing busy. Mutation recorded [ui/src/app/areas/os-management/dashboard.page.spec.ts]
+- [x] [Review][Patch] First-load `aria-busy` was never asserted true; it is now, in the skeleton case. Mutation recorded [ui/src/app/areas/os-management/dashboard.page.spec.ts]
+- [x] [Review][Patch] The Task manager skeleton could outlive the page's busy mark when the tasks read landed after the meters' read, leaving a skeleton outside a busy region (EXPERIENCE.md's skeleton row). The group now carries its own `aria-busy`. Mutation recorded [ui/src/app/areas/os-management/dashboard.page.ts:87]
+- [x] [Review][Patch] AC6's DW-1337 walk covered only Summary and By process. It now walks all four tabs [ui/browser/license-usage.browser-spec.mjs]
+- [x] [Review][Patch] AC6's tool-versus-route case had no non-empty check of its own, so two empty answers would compare equal [src/OcuPilot/Test/DashboardLive.cls]
+- [x] [Review][Patch] The route leg signed in as a literal `_SYSTEM`/`SYS`, while the class header names `OcuPilot.Test.Http`'s test account [src/OcuPilot/Test/DashboardLive.cls:131]
+- [x] [Review][Patch] The monitor part's 403 leg did not assert that a refusal is not logged as a fault [src/OcuPilot/Test/Dashboard.cls:206]
+- For the lead: AD-43's Binds line still says "the eight auto-refreshing screens", while its Rule now says nine (ARCHITECTURE-SPINE.md:567). The spine is the lead's under Rule 20, so it was not edited here.
+
+Verified: `Dashboard` 6/6 (run 19969) and `DashboardLive` 4/4 (run 19970) on `ocupilot-ci`. `dashboard.page.spec` 16/16, and 23/23 with `upcoming.page.spec`. The bundle measured 2.16 MB and was redeployed; the two browser specs passed 6/6 in both themes.
+
+Rejected:
+
+- `low` Summary's rows sort by label rather than in the vendor's order: Design Notes decide "Summary rows sort by their label".
+- `low` Distributed's `LicenseUnits` and `Connections` arrive as strings (measured `"1"`) under number-kind columns, so "10" would sort before "9": the tab draws the vendor's answer as it comes, and the kind sets only alignment.
+- `low` A meter whose field arrives empty after a successful read keeps its skeleton: all 30 fields were measured typed on both instances, and Boundaries say "until its first value".
+- `low` `DashboardLive` checks only CPU's type live: every numeric `DASHBOARDMAIN` member was measured a JSON number.
+- `false` Percent readouts are unformatted: `format` is documented as unused on percent meters, and both sources answer integers.
+- `low` `Performance` repeats `Gate` and `Collect`, and `BARETYPEPATTERN` repeats `PARTTYPEPATTERN`: Tasks say "Performance is unchanged", and the registry/executor pair follows every source rule's split.
+- `low` `ScreenRead`'s sweep needs a terminal session for By user and Distributed: this is documented at the method, it fails loudly under an HTTP runner, and `ci-runner.mjs` runs in `iris session`. Relaxing it would make those tabs' drift check vacuous.
+- `low` The Auto Run Result's "every row has a passing test": the fix edits the spec under review.
+- `low` AC6's tool-versus-route case covers two of the five tools: all five resolve through one `Read.Execute`, and By process's live row count moves between two calls.
+- `false` The least-privileged principal is proven only on Summary: `%Admin_Operate:USE` alone read all four members at `_SYSTEM`'s counts (measured on `ocupilot-ci`), and one vendor call answers all four.
+- `low` The Task manager group has no link to Upcoming tasks and ignores truncation: Boundaries set the group at five rows, and drill-downs are Story 18.11's.
+- `low` `ReadSourceCorpus` has no non-string `rows` or null part `port` case: a disagreement between the engines fails the mirror check or the registry loudly.
+- `low` EXPERIENCE.md :101 has no AMENDED marker, and :375 is stamped 09-28: the stamp is the spec's own, and the Q3 ruling is recorded in the spec and the spine.
+- `low` "Login ID" heads the login-type column: it is the classic page's own header (`LicenseUsage.cls:130`) and a spec string.
+- `low` License usage declares no command aliases: Boundaries give aliases to the Dashboard only.
+- `low` The cost of refreshing at 5 s is unmeasured: Design Notes carry NFR-1's read budget, and AD-7 and AD-29 name the cost to a scraper's window.
+- `low` A verdict that turns allowed after the first tick leaves the tasks skeleton up while refresh is off: that needs a mid-session grant plus a map reload while the Dashboard is open, and the fix adds a branch.
+- `low` The registry does not check a monitor part's pairs: a descriptor that lacks them answers 403 on its first read.
+- `low` The registry does not check a `rows` type against `BARETYPES`: such a descriptor answers 500 on its first read.
+- `false` `Labels` raises `<SUBSCRIPT>` on an empty label: a raise fails the method loudly, and the vendor's five labels are fixed.
+- `low` `ProposalPrivilege`'s sweep failure is labeled residue: this story does not touch that class, and the Auto Run Result records the cause.
+- `low` The tasks read hard-codes `hoursOffset=24`: Upcoming's constant lives in the tasks slice, which os-management does not import, and the page spec pins the literal.
+- `low` `Test/Navigation.cls`'s comment was reflowed: its count and list had to change, and the count line conflicts in any case.
+
 ## Spec Change Log
 
 - 2026-09-29, spec gate (lead): the plan's four rulings answered (A) each; the orchestrator approved AD-7's third named shape (the vendor's sensor baseline, rewritten by `PrometheusMetrics()`, never the alerts cursor). Spine amended: AD-7, AD-29, AD-36, AD-43. DW-1116 is to resolve at this story's adjudication by AC4's pin. DW-118 declined (Story 15.6 resolved it). Status `blocked` to `ready-for-dev`.
@@ -508,6 +550,9 @@ deferred: []
 - mutation: `dashboard.page.ts` hands every meter `null` in place of the page's fault text → `dashboard.page.spec`'s two read-fault cases went red.
 - mutation: `MonitorPort.Collect`'s catch no longer restores `$NAMESPACE` (`MonitorPortFixture` recompiled) → `Dashboard.TestAMonitorPartRefusalOrFaultFailsTheWholeRead` went red at its raising-collection leg.
 - mutation: `ScreenRead`'s field-drift sweep skips `rows` reads → its four License usage floor assertions went red.
+- mutation (code review): `dashboard.page.ts` clears its store at the start of a tick → `dashboard.page.spec` "a tick whose read is still out keeps every meter..." (AC5's "update silently", read while the tick is in flight) went red.
+- mutation (code review): the tasks answer applied into Upcoming tasks' store → `dashboard.page.spec` AD-19 store case went red; the latest-issue check dropped → the late-answer case; the destroyed check dropped → the page-gone case.
+- mutation (code review): `busy` answers false → the skeleton case's `aria-busy` assertion went red; the tasks group's `aria-busy` binding removed → the tasks-busy case went red.
 
 ## Auto Run Result
 

@@ -204,6 +204,7 @@ Method TestAMonitorPartRefusalOrFaultFailsTheWholeRead()
     Do $$$AssertEquals($Select($IsObject(tFault): tFault.code, 1: "") _ " " _ tPair, "AUTH.NOPRIVILEGE %Admin_Operate:USE", "naming the pair the monitor port's gate refused")
     Do $$$AssertEquals(tResult, "", "with no partial row")
     Do $$$AssertEquals(##class(OcuPilot.Test.MonitorPortFixture).SourceCalls(), 0, "and no sensor call")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MonitorPortFixture).LogCalls(), 0, "and a refusal is not logged as a fault")
 
     Do ..ClearFixtures()
     Do ##class(OcuPilot.Test.PortFixture).SetEndpointClass("OcuPilot.Test.ReadSource.Endpoint")

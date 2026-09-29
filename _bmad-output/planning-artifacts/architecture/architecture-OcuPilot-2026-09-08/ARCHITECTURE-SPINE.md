@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-09-28'
+updated: '2026-09-29'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -564,7 +564,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
 ### AD-43 — Live data has one framework, and the proposal pause is part of it
 
-- **Binds:** FR-7, FR-14, AD-14; the eight auto-refreshing screens EXPERIENCE.md's Auto-refresh controls row enumerates
+- **Binds:** FR-7, FR-14, AD-14; the nine auto-refreshing screens EXPERIENCE.md's Auto-refresh controls row enumerates
 - **Prevents:** seven screens each implementing refresh, and the UX's "pause auto-refresh while a proposal is live" having no channel to travel on
 - **Rule:** Auto-refresh is one shared framework, not a per-screen behavior: a screen declares in its descriptor whether it refreshes and its permitted rates, and the framework owns the timer, the persisted per-screen setting, the silent re-fetch, and preservation of sort, filter, selection and scroll. It refreshes through the same read as everything else (AD-36).
 

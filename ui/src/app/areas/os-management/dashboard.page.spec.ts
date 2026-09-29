@@ -24,7 +24,9 @@ import { stubAccountPreferences } from '../../testing/account-preferences';
  *
  * Mutations (Rule 19): declare `refreshes: false` on `Dashboard.cls` and regenerate the mirror ->
  * the refresh case goes red, the chip offering no rate. Drop the skeleton input from the page's
- * meters -> the skeleton case goes red on the value meters.
+ * meters -> the skeleton case goes red on the value meters. Clear the store at the start of a tick
+ * -> the in-flight tick case goes red. Apply the tasks answer into Upcoming tasks' store -> the
+ * AD-19 case goes red.
  */
 
 const DESCRIPTOR = 'OcuPilot.Screen.Descriptor.Dashboard';
@@ -92,6 +94,8 @@ interface MountOptions {
   readonly failFirst?: boolean;
   /** Upcoming tasks' read answers a 500. */
   readonly tasksFail?: boolean;
+  /** The first Upcoming tasks read is held until `releaseTasks()`. */
+  readonly holdFirstTasks?: boolean;
 }
 
 /** A `ScreenActions` that also records every action a page registers. */
@@ -109,7 +113,11 @@ async function mount(options: MountOptions = {}) {
   const declaration = SCREENS.find((screen) => screen.descriptor === DESCRIPTOR) ?? null;
   let answerRows = options.rows ?? [row()];
   let failing = options.failFirst === true;
-  const taskRows = options.tasks ?? TASK_ROWS;
+  let taskRows = options.tasks ?? TASK_ROWS;
+  let holdRead = false;
+  let holdTasks = options.holdFirstTasks === true;
+  const heldReads: (() => void)[] = [];
+  const heldTasks: (() => void)[] = [];
   const paths: string[] = [];
   const scheduled: (() => void)[] = [];
   const api = {
@@ -121,7 +129,14 @@ async function mount(options: MountOptions = {}) {
         return { kind: 'error', status: 500, code: 'SERVER.INTERNAL', reason: null, detail: null };
       }
       const rows = tasks ? taskRows : answerRows;
-      return { kind: 'ok', status: 200, body: { fields: [], rows, truncated: false, banner: '' } as T };
+      const answer: JsonResult<T> = { kind: 'ok', status: 200, body: { fields: [], rows, truncated: false, banner: '' } as T };
+      // A held read answers what it would have answered when it was sent, once released.
+      if (tasks ? holdTasks : holdRead) {
+        if (tasks) holdTasks = false;
+        else holdRead = false;
+        return new Promise<JsonResult<T>>((resolve) => (tasks ? heldTasks : heldReads).push(() => resolve(answer)));
+      }
+      return answer;
     },
   };
   const stores = new ScreenStores({ account: stubAccountPreferences() });
@@ -175,6 +190,27 @@ async function mount(options: MountOptions = {}) {
       scheduled[scheduled.length - 1]();
       await settle(fixture);
     },
+    setTasks: (rows: unknown[]) => {
+      taskRows = rows;
+    },
+    /** Hold the next Dashboard read until `releaseRead()`. */
+    holdNextRead: () => {
+      holdRead = true;
+    },
+    releaseRead: async () => {
+      for (const release of heldReads.splice(0)) release();
+      await settle(fixture);
+    },
+    /** Hold the next Upcoming tasks read until `releaseTasks()`. */
+    holdNextTasks: () => {
+      holdTasks = true;
+    },
+    releaseTasks: async () => {
+      for (const release of heldTasks.splice(0)) release();
+      if (fixture.componentRef.hostView.destroyed) await new Promise((resolve) => setTimeout(resolve, 60));
+      else await settle(fixture);
+    },
+    stores,
     actions: TestBed.inject(ScreenActions) as RecordingActions,
     host: fixture.nativeElement as HTMLElement,
   };
@@ -244,6 +280,18 @@ describe('DashboardPage', () => {
       expect(skeleton, meter.querySelector('.ocu-meter-label')?.textContent ?? '').not.toBeNull();
     }
     expect(host.querySelector('.ocu-dashboard-tasks .ocu-data-table-skeleton')).not.toBeNull();
+    expect(host.querySelector('.ocu-dashboard')?.getAttribute('aria-busy')).toBe('true');
+  });
+
+  it('marks the Task manager group busy while its first read is out, after the meters have drawn', async () => {
+    const { host, releaseTasks } = await mount({ holdFirstTasks: true });
+    expect(meterByLabel(host, STRINGS.dashboardCpu)?.querySelector('.ocu-meter-value')?.textContent?.trim()).toBe('12 %');
+    expect(host.querySelector('.ocu-dashboard')?.getAttribute('aria-busy')).toBe('false');
+    expect(host.querySelector('.ocu-dashboard-tasks')?.getAttribute('aria-busy')).toBe('true');
+    expect(host.querySelector('.ocu-dashboard-tasks .ocu-data-table-skeleton')).not.toBeNull();
+    await releaseTasks();
+    expect(host.querySelector('.ocu-dashboard-tasks')?.getAttribute('aria-busy')).toBe('false');
+    expect(host.querySelectorAll('.ocu-dashboard-tasks-table tbody tr')).toHaveLength(2);
   });
 
   it("draws the Task manager group from Upcoming tasks' own read: five rows asked for, its At, Name and Suspended cells under its labels", async () => {
@@ -304,6 +352,58 @@ describe('DashboardPage', () => {
     expect(host.querySelector('.ocu-meter-fill-skeleton, .ocu-meter-value-skeleton')).toBeNull();
     expect(host.querySelector('[aria-live]')).toBeNull();
     expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('a tick whose read is still out keeps every meter and the tasks on their last answer: no dash, no skeleton, nothing busy', async () => {
+    const { host, refresh, setRows, fireTick, holdNextRead, releaseRead } = await mount();
+    expect(refresh.setRate(5)).toBe(true);
+    setRows([row({ 'Sensors.cpuUsage': 97 })]);
+    holdNextRead();
+    await fireTick();
+    expect(meterByLabel(host, STRINGS.dashboardCpu)?.querySelector('.ocu-meter-value')?.textContent?.trim()).toBe('12 %');
+    expect(meterByLabel(host, STRINGS.systemUsageDatabaseSpace)?.querySelector('.ocu-meter-word')?.textContent?.trim()).toBe('Normal');
+    expect(meterByLabel(host, STRINGS.processDetailsGlobalReferences)?.querySelector('.ocu-meter-value')?.textContent?.trim()).toBe('64,649,129,276');
+    expect(host.querySelector('.ocu-meter-fill-skeleton, .ocu-meter-value-skeleton, .ocu-data-table-skeleton')).toBeNull();
+    expect(host.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(host.querySelectorAll('.ocu-dashboard-tasks-table tbody tr')).toHaveLength(2);
+    await releaseRead();
+    expect(meterByLabel(host, STRINGS.dashboardCpu)?.querySelector('.ocu-meter-value')?.textContent?.trim()).toBe('97 %');
+  });
+
+  it("keeps the Task manager rows in the Dashboard's own store: Upcoming tasks' store is never written (AD-19)", async () => {
+    const { host, stores } = await mount();
+    expect(host.querySelectorAll('.ocu-dashboard-tasks-table tbody tr')).toHaveLength(2);
+    const upcoming = SCREENS.find((screen) => screen.route === 'tasks/upcoming') ?? null;
+    expect(upcoming).not.toBeNull();
+    if (upcoming === null) return;
+    expect(stores.for(upcoming.descriptor, upcoming.refreshRates).data()).toHaveLength(0);
+  });
+
+  it("applies only the latest tasks read: an earlier tick's answer that lands late is dropped", async () => {
+    const { host, refresh, setTasks, fireTick, holdNextTasks, releaseTasks } = await mount();
+    const names = () =>
+      Array.from(host.querySelectorAll('.ocu-dashboard-tasks-table tbody tr')).map((tableRow) => tableRow.querySelectorAll('td')[1]?.textContent?.trim());
+    expect(refresh.setRate(5)).toBe(true);
+    holdNextTasks();
+    await fireTick();
+    setTasks([TASK_ROWS[1]]);
+    await fireTick();
+    expect(names()).toEqual(['Nightly backup']);
+    await releaseTasks();
+    expect(names()).toEqual(['Nightly backup']);
+  });
+
+  it('applies no tasks answer that lands after the page is gone', async () => {
+    const { actions, fixture, stores, setTasks, holdNextTasks, releaseTasks } = await mount();
+    const tasksStore = stores.for(`${DESCRIPTOR}#tasks`, [], '');
+    expect(tasksStore.data()).toHaveLength(2);
+    setTasks([TASK_ROWS[1]]);
+    holdNextTasks();
+    expect(actions.run(DESCRIPTOR, REFRESH_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    fixture.destroy();
+    await releaseTasks();
+    expect(tasksStore.data()).toHaveLength(2);
   });
 
   it('a read fault before any success leaves nothing busy, and every meter shows a dash with the tooltip', async () => {

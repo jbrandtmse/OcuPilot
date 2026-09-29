@@ -4,9 +4,9 @@
  * What it pins: OS management's side bar lists its eight entries in order, License usage seventh and
  * the Dashboard eighth; License usage's strip shows its four tabs; Summary lists the vendor's five
  * rows under its three headers; By process lists rows whose first cell is a process id; By user and
- * Distributed each list rows or show their own empty text; and the Summary and By process screens
- * pass the structural and contrast checks at 1280 light, 720 light and 1280 dark, with no entry
- * beyond the baseline (DW-1337).
+ * Distributed each list rows or show their own empty text; and all four tabs pass the structural and
+ * contrast checks at 1280 light, 720 light and 1280 dark, with no entry beyond the baseline
+ * (DW-1337).
  *
  * It reads only, but it signs in and resets the account's remembered state, so it runs on a
  * throwaway only.
@@ -176,7 +176,7 @@ test('AC1: By process lists rows whose first cell is a process id, and By user a
 });
 
 // AC6: the DW-1337 gate, with no new allowance.
-test('AC6: Summary and By process pass DW-1337 wide and narrow, light and dark, with no entry beyond the baseline', async () => {
+test('AC6: all four tabs pass DW-1337 wide and narrow, light and dark, with no entry beyond the baseline', async () => {
   // Reduced motion, as the baseline's own walk runs, so no tab label is measured mid-transition.
   const { context, page } = await signedInAt(browser, config, at(SUMMARY_ROUTE), VIEWPORTS.wide, REDUCED_MOTION);
   try {
@@ -184,6 +184,10 @@ test('AC6: Summary and By process pass DW-1337 wide and narrow, light and dark, 
     assert.deepEqual(await structural(page, SUMMARY_ROUTE), [], 'Summary: no violation beyond the baseline');
     await openTab(page, PROCESSES_ROUTE, STRINGS.licenseUsageLoginId);
     assert.deepEqual(await structural(page, PROCESSES_ROUTE), [], 'By process: no violation beyond the baseline');
+    await openTab(page, USERS_ROUTE, STRINGS.tableColumnType, STRINGS.licenseUsageUsersEmpty);
+    assert.deepEqual(await structural(page, USERS_ROUTE), [], 'By user: no violation beyond the baseline');
+    await openTab(page, DISTRIBUTED_ROUTE, STRINGS.licenseUsageLicenseUnits, STRINGS.licenseUsageDistributedEmpty);
+    assert.deepEqual(await structural(page, DISTRIBUTED_ROUTE), [], 'Distributed: no violation beyond the baseline');
   } finally {
     await context.close();
   }
