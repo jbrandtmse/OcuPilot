@@ -163,3 +163,8 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-28T23:20:12Z	Story 18.14	ledger_routed_planned	story=18-14-namespace-mappings-and-copy-mappings entries=2 excess=0 by=merge_gate dw=DW-1803,DW-1798
 2026-09-28T23:20:12Z	Story 18.14	rework_opened	cycle_iteration=2 iteration=1 trigger=orchestrator_decision(DW-1803,DW-1798) items=Decision:DW-1803,Decision:DW-1798 scope_baseline=pending_rework_commit
 2026-09-28T23:21:14Z	Story 18.14	stage_spawned	stage=implement spawn_at=2026-09-28T23:21:14Z model=opus agent_name=18-14-mappings-implement-2 cycle_iteration=2 rework_iteration=1 ci_prev=success_run_36493475067(f7d8a8dd)
+2026-09-29T00:44:35Z	Story 18.14	ci_resolved	story=18.14 run=36497518152 head=ee12995a result=success resolved_at=post_rework
+2026-09-29T00:44:35Z	Story 18.14	dev_complete	spawn_at=2026-09-28T23:21:14Z model=opus build_sha=ad3c9429 baseline_revision=cae9a12c review_loop_iteration=0 followup_review_recommended=false deferred=1(DW-1806_decision-pending) cycle_iteration=2 rework_iteration=1 names_from=Prohibited.OwnNameStems(package+MAPPINGPATTERN) served_dir_from=installer_roster_bundle.destinationTemplate full_os_sweep=349_classes_2867_tests_0_failed smoke=49/49 bundle=2.11MB
+2026-09-29T00:44:35Z	Story 18.14	committed_code	sha=ad3c9429 pushed=true ci=pending run=36504519612 head_confirmed_by=headSha
+2026-09-29T00:44:35Z	Story 18.14	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none
+2026-09-29T00:44:35Z	Story 18.14	stage_spawned	stage=code-review spawn_at=2026-09-29T00:44:35Z model=opus agent_name=18-14-mappings-code-review-2 cycle_iteration=2 review_tier=full-opus scope=cae9a12c..ad3c9429

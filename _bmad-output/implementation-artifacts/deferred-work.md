@@ -8016,3 +8016,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: MappingRules.HandleForm and HandleName gate through Screen.Gate.Evaluate; MappingWriteGate calls them only as a reader holding the pairs, and 18.2's /namespace/form has the same untested denial.
 - 2026-09-28T23:17:46Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=cr note=reopen_if=GET /mapping/global/form answers other than 403 AUTH.NOPRIVILEGE naming %Admin_Manage:USE for a principal without it
+
+### DW-1806: PathPort refuses only existing files in OcuPilot's served directory: a file consumer can resolve a NEW file under csp/ocupilot/, which the unauthenticated static application would then serve on the instance's origin (AD-47)
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: PathPortInstance pins that a new name under csp/ocupilot/ resolves; reach needs a restricted root above the data directory's csp/ (the default root is the manager directory); no file consumer on this branch yet (inference)
+- 2026-09-29T00:44:20Z status=decision-pending owner=burndown by=harvest note=owner: refuse any file, new or existing, under the served directory (recommended), or keep existing-only

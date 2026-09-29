@@ -3,7 +3,7 @@ title: 'Story 18.14: Namespace mappings and copy-mappings'
 type: 'feature'
 created: '2026-09-28'
 baseline_revision: 'cae9a12c907d829e447938c23e8a999e56bb6aec'
-baseline_commit: 'c267f6da5e9ababff6ea59664edcb9f4050afcc7'
+baseline_commit: 'cae9a12c907d829e447938c23e8a999e56bb6aec'
 status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
