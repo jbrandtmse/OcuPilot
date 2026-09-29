@@ -174,7 +174,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 
 #### PRD 5.12 - Polish-week capabilities (P1, 2026-09-28 to 2026-10-04)
 
-- FR-70: Screen-aware help from the agent - "Explain this screen" as one click on every screen citing the read tool it used; an explain entry point on every log and audit entry sending that entry alone; at least three suggested prompts per screen grouped by task. Catalog: CP-23, CP-24, CP-25.
+- FR-70: Screen-aware help from the agent - "Explain this screen" as one click on every screen citing the read tool it used; an explain entry point on every log and audit entry sending the screen's context with that entry marked [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry alone"]; at least three suggested prompts per screen grouped by task. Catalog: CP-23, CP-24, CP-25.
 - FR-71: Agent transparency - click-through citation chips on every reply that used a read tool; a data-egress line on every turn with context sharing on; an agent audit viewer over the ledger with filters by user, screen and date, where administrators see all users' rows and others their own. Catalog: CP-26, CP-27, CP-31.
 - FR-72: Agent restraint and governance - a copy-out ObjectScript, CLI or REST draft instead of an execution on any proposal; a per-tool-and-action governance policy with read-only and full presets over a baseline that keeps every Release 1 write key enabled and, through 2026-10-04, gains each new write key in the story that ships it [AMENDED 2026-09-26, owner: new write keys join the baseline through the voting week; was "a frozen baseline"]; truncation, control-stripping, delimiter-wrapping and secret redaction of tool and log content before it reaches the model with a seeded-injection test; transcripts persisted per user with a retention purge, an administrator's view of another user's transcript ledgered and gated by the resources those calls required. Catalog: CP-29, CP-30, CP-32, CP-33.
 - FR-73: Shell conveniences - change own password, favorites, recent items, menu search, About, per-screen Help, the fixed shortcuts menu, the links panel, the Home system information panel, UI state across sessions and a light or dark theme, each reachable from the header or Home with per-user state surviving a sign-out. Catalog: SH-12 to SH-22.
@@ -5289,7 +5289,7 @@ So that a log line becomes an explanation in one gesture.
 
 - **Given** any row in a log viewer or the audit database viewer
 - **When** the user activates its explain entry point
-- **Then** a turn is sent carrying **that entry, and only that entry**, as context.
+- **Then** a turn is sent carrying the screen's own context with **that entry marked** as the one asked about [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry, and only that entry"].
 
 - **Given** an application error row
 - **When** its explain entry point is used
@@ -6351,7 +6351,7 @@ So that "all the logs" is literally true.
 
 - **Given** each viewer
 - **When** it renders a row
-- **Then** the row carries an explain entry point sending that entry alone.
+- **Then** the row carries an explain entry point sending that entry marked among the screen's rows [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry alone"].
 
 - DW-1102: the log viewer's next and previous match controls have no accessible name; approved copy is "Next match" and "Previous match" (ledger; routed by merge_gate 2026-09-18)
 - DW-1110: `LogViewerStore` is absent from sign-out teardown, so one principal's log lines survive a sign-out in the same tab (ledger; routed by merge_gate 2026-09-18)
@@ -6404,7 +6404,7 @@ time; the hub gains that timeline beside its list of sources.
 - **Given** an entry in the timeline
 - **When** it is chosen
 - **Then** its source opens at that entry, and the entry carries the same explain entry point as the source's own
-  viewer, sending that entry alone.
+  viewer, sending that entry marked among the timeline's rows [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry alone"].
 
 - **Given** the strings the timeline needs
 - **When** this story lands

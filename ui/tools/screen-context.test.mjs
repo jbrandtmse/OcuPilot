@@ -17,9 +17,11 @@ import { dirname, join } from 'node:path';
 //   (Story 11.1).
 // - return `false` for a `sk-` prefix -> the prefix cases redden; return `true` for
 //   `%Api.Mgmnt.v2` -> the non-trigger cases redden.
-// - `assembleEntryContext` skips `narrowRow` -> the narrowing and not-an-object entry cases
-//   redden (Story 11.2). That only the one entry goes is pinned where the panel picks it
-//   (`panel.spec.ts`, Story 11.2).
+// - `assembleEntryContext` sends a view of the one entry, as Story 11.2 shipped it -> the
+//   page's-rows and focus cases redden (DW-1838).
+// - `assembleEntryContext` always sends `focus` -> the selected cases redden; always `selected` 0
+//   -> the outside-the-cap and filtered-out cases redden; index the rows before the filter and
+//   sort -> the sent-view case reddens; send `focus` for index 0 -> the first-row case reddens.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
@@ -233,7 +235,7 @@ test('a form page (no read, no context fields) posts identity only: no view, no 
   assert.equal(contextRowsSent(inputs), 0);
 });
 
-// --- assembleEntryContext (Story 11.2) --------------------------------------------------------
+// --- assembleEntryContext (Story 11.2, DW-1838) ------------------------------------------------
 
 const SCOPED_ERROR_FIELDS = ['namespace', 'date', ...ERROR_FIELDS];
 
@@ -241,35 +243,71 @@ function scopedErrorScreen() {
   return screen({ route: 'logs/errors', read: null, context: { fields: SCOPED_ERROR_FIELDS, secretFields: [] } });
 }
 
-function entryInputs(overrides = {}) {
-  const [row] = errorRows(2);
-  return {
-    descriptor: scopedErrorScreen(),
-    namespace: 'HSCUSTOM',
-    share: true,
-    row: { namespace: 'USER', date: '09/25/2026', ...row, stack: 'captured', variables: 'captured' },
-    ...overrides,
-  };
+/** The error list's rows as the page publishes them: each with the drilled namespace and date. */
+function scopedErrorRows(...numbers) {
+  return errorRows(...numbers).map((row) => ({ namespace: 'USER', date: '09/25/2026', ...row, stack: 'captured', variables: 'captured' }));
 }
 
-test('an entry posts its screen and the shell scope with a one-row view, and no entity', () => {
-  const payload = assembleEntryContext(entryInputs());
-  assert.deepEqual(Object.keys(payload), ['route', 'namespace', 'view']);
-  assert.equal(payload.route, 'logs/errors');
-  assert.equal(payload.namespace, 'HSCUSTOM', 'the shell scope, which the instance requires');
-  assert.equal(payload.view.rows.length, 1, 'that one entry and no other');
-  assert.equal(payload.view.rowsAvailable, 1);
-  assert.equal(payload.view.sort, '');
-  assert.equal(payload.view.direction, '');
-  assert.equal(payload.view.filter, '');
+function entryInputs(overrides = {}) {
+  const rows = scopedErrorRows(1, 2, 3);
+  return { ...baseInputs({ descriptor: scopedErrorScreen(), rows }), row: rows[1], ...overrides };
+}
+
+test("an entry posts exactly its screen's own context, with selected pointing at the entry among the page's rows", () => {
+  const inputs = entryInputs();
+  const payload = assembleEntryContext(inputs);
+  const { selected, ...view } = payload.view;
+  assert.deepEqual({ ...payload, view }, assembleScreenContext(inputs), "the screen's own route, namespace, rows, cap, sort and filter");
+  assert.equal(payload.view.rows.length, 3, "every row on the page, not the entry alone");
+  assert.equal(payload.view.rowsAvailable, 3);
+  assert.equal(selected, 1, "the entry's index in the rows sent");
+  assert.equal(payload.view.rows[selected].errorNumber, 2);
+  assert.equal('focus' in payload.view, false, 'one marker, never both');
 });
 
-test("an entry's row is narrowed to the declared fields: no user, process or captured detail", () => {
-  const [row] = assembleEntryContext(entryInputs()).view.rows;
-  assert.deepEqual(Object.keys(row), SCOPED_ERROR_FIELDS);
-  assert.equal(row.namespace, 'USER', 'the drilled namespace travels with the row');
-  assert.equal(row.date, '09/25/2026');
-  for (const dropped of ['username', 'process', 'stack', 'variables']) assert.equal(dropped in row, false, dropped);
+test('selected indexes the sent view after the filter and sort, not the rows as given, the first row being 0', () => {
+  const given = rows('d', 'ca', 'b', 'cb');
+  const inputs = baseInputs({ rows: given, filter: 'c', sort: 'Name', direction: 'desc' });
+  const payload = assembleEntryContext({ ...inputs, row: given[1] });
+  assert.deepEqual(payload.view.rows.map((row) => row.Name), ['cb', 'ca']);
+  assert.equal(payload.view.selected, 1, "the filter leaves 'd' out and 'ca' sorts after 'cb'");
+  assert.equal(assembleEntryContext({ ...inputs, row: given[3] }).view.selected, 0, 'the first row sent is 0');
+});
+
+test("an entry outside the cap arrives as the focus row, narrowed, with the page's rows still sent", () => {
+  const inputs = entryInputs({ rowCap: 2, row: scopedErrorRows(1, 2, 3)[2] });
+  const payload = assembleEntryContext(inputs);
+  assert.equal(payload.view.rows.length, 2, "the page's rows up to the cap");
+  assert.equal(payload.view.rowsAvailable, 3);
+  assert.equal('selected' in payload.view, false, 'one marker, never both');
+  assert.deepEqual(Object.keys(payload.view.focus), SCOPED_ERROR_FIELDS, 'the declared fields alone');
+  assert.equal(payload.view.focus.errorNumber, 3);
+  assert.equal(payload.view.focus.namespace, 'USER', 'the drilled namespace travels with the entry');
+  for (const dropped of ['username', 'process', 'stack', 'variables']) assert.equal(dropped in payload.view.focus, false, dropped);
+});
+
+test('an entry the filter leaves out, or one the page holds no row for, arrives as the focus row', () => {
+  const given = rows('c', 'a', 'b');
+  const filtered = assembleEntryContext({ ...baseInputs({ rows: given, filter: 'b' }), row: given[0] });
+  assert.deepEqual(filtered.view.rows, [{ Name: 'b', Enabled: true }]);
+  assert.deepEqual(filtered.view.focus, { Name: 'c', Enabled: true });
+  const absent = assembleEntryContext({ ...baseInputs({ rows: [] }), row: { Name: 'z', Enabled: true, NameSpace: 'USER' } });
+  assert.deepEqual(absent.view.rows, []);
+  assert.deepEqual(absent.view.focus, { Name: 'z', Enabled: true });
+});
+
+test('a row equal to the entry in every declared field is the entry, whatever else it holds', () => {
+  const given = rows('c', 'a', 'b');
+  const payload = assembleEntryContext({ ...baseInputs({ rows: given }), row: { Name: 'b', Enabled: true, NameSpace: 'elsewhere' } });
+  assert.equal(payload.view.selected, 1);
+  const differs = assembleEntryContext({ ...baseInputs({ rows: given }), row: { Name: 'b', Enabled: false } });
+  assert.equal('selected' in differs.view, false, 'one declared field differing is another entry');
+});
+
+test('an ordinary turn carries neither marker', () => {
+  const payload = assembleScreenContext(entryInputs());
+  assert.equal('selected' in payload.view, false);
+  assert.equal('focus' in payload.view, false);
 });
 
 test('an entry sends nothing with sharing off, no descriptor, no namespace, or a screen with no view', () => {
@@ -288,8 +326,10 @@ test('an entry sends nothing with sharing off, no descriptor, no namespace, or a
   );
 });
 
-test('an entry that is not an object sends one empty row rather than the value', () => {
-  assert.deepEqual(assembleEntryContext(entryInputs({ row: 'raw text' })).view.rows, [{}]);
+test('an entry that is not an object arrives as an empty focus row rather than the value', () => {
+  const payload = assembleEntryContext(entryInputs({ row: 'raw text' }));
+  assert.deepEqual(payload.view.focus, {});
+  assert.equal(payload.view.rows.length, 3);
 });
 
 // --- looksLikeSecret -------------------------------------------------------------------------

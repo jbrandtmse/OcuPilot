@@ -1,13 +1,15 @@
 /**
- * "Explain this entry" in a real browser against the throwaway instance (Story 11.2, FR-70): a
- * messages.log row's button, an application error's row-menu item and an audit record's dialog
- * action each send the fixed sentence with a context of that one entry. Every leg reads what
- * reached the provider back through `OcuPilot.Test.TurnProvider.Recorded` and asserts one row sent
- * and the sentence as the last user text; the error leg also asserts the row's seven keys, and the
- * audit leg that the dialog is gone.
+ * "Explain this entry" in a real browser against the throwaway instance (Story 11.2, FR-70,
+ * DW-1838): a messages.log row's button, an application error's row-menu item and an audit record's
+ * dialog action each send the fixed sentence with the screen's own context and one marker for that
+ * entry. Every leg reads what reached the provider back through
+ * `OcuPilot.Test.TurnProvider.Recorded` and asserts more than one row sent, exactly one marker, the
+ * marked entry being the one clicked, and the sentence as the last user text; the error leg also
+ * asserts the entry's seven keys, and the audit leg that the dialog is gone and that its entity names
+ * the same record.
  *
- * Arms the `turnprobe` definition the way `explain-screen.browser-spec.mjs` does, and seeds one
- * application error through the guarded `OcuPilot.Test.ErrorDelete`, cleared again in `after`, so
+ * Arms the `turnprobe` definition the way `explain-screen.browser-spec.mjs` does, and seeds two
+ * application errors through the guarded `OcuPilot.Test.ErrorDelete`, cleared again in `after`, so
  * it runs only in a throwaway. Leg (d) seeds an older messages file through `older-file-spec.mjs`
  * and removes it in the same leg (Story 16.20).
  *
@@ -163,20 +165,26 @@ async function waitForAvailable(page, selector) {
   );
 }
 
-/** The recorded payload and the last user text for `tag`, with the one-row claim every leg makes. */
-function assertOneEntry(tag, route) {
+/**
+ * The recorded payload for `tag` and the entry its marker names -- `rows[selected]`, or `focus` when
+ * the bounds left the entry out of the rows -- with the claims every leg makes: the screen's own
+ * rows went, beside exactly one marker, and the last user text is the sentence.
+ */
+function assertMarkedEntry(tag, route) {
   const messages = recordedMessages(tag);
   const payload = screenContextPayload(messages);
   assert.ok(payload, 'a screen_context pair was recorded');
   assert.equal(payload.route, route);
-  assert.equal(payload.rowsSent, 1, 'exactly one row was sent');
-  assert.equal(payload.rowsAvailable, 1, 'of one available');
-  assert.equal(payload.rows.length, 1);
-  assert.equal(lastUserText(messages), STRINGS.agentExplainEntryAction, 'the user message is the sentence');
-  return payload;
+  assert.ok(payload.rowsSent > 1, `the screen's rows were sent, not the entry alone: ${payload.rowsSent}`);
+  assert.equal(payload.rows.length, payload.rowsSent);
+  assert.equal(Number('selected' in payload) + Number('focus' in payload), 1, `exactly one marker: ${Object.keys(payload).join(',')}`);
+  const entry = 'selected' in payload ? payload.rows[payload.selected] : payload.focus;
+  assert.ok(entry, `the marker names an entry: ${JSON.stringify(payload.selected)}`);
+  assert.equal(lastUserText(messages), STRINGS.agentExplainEntryMessage, 'the user message is the sentence');
+  return { payload, entry };
 }
 
-test('(a) messages.log: a row\u2019s button sends that one line, and the reply renders', async () => {
+test('(a) messages.log: a row\u2019s button sends the screen\u2019s lines with that one marked, and the reply renders', async () => {
   await requireFreeSlot(config);
   const tag = nextTag(probe);
   setTag(probe, preparedId, tag);
@@ -194,11 +202,11 @@ test('(a) messages.log: a row\u2019s button sends that one line, and the reply r
     assert.equal(await chosen.$eval(LOG_EXPLAIN, (button) => button.textContent.trim()), STRINGS.agentExplainEntryAction);
     await (await chosen.$(LOG_EXPLAIN)).click();
     await waitForReply(page, 'that line explained');
-    assert.equal(await page.$eval('.ocu-panel-message-user', (el) => el.textContent.trim()), STRINGS.agentExplainEntryAction);
+    assert.equal(await page.$eval('.ocu-panel-message-user', (el) => el.textContent.trim()), STRINGS.agentExplainEntryMessage);
 
-    const payload = assertOneEntry(tag, 'logs/messages');
-    assert.deepEqual(Object.keys(payload.rows[0]).sort(), ['severity', 'text', 'time']);
-    assert.equal(payload.rows[0].time, time, 'the row sent is the row clicked');
+    const { payload, entry } = assertMarkedEntry(tag, 'logs/messages');
+    assert.deepEqual(Object.keys(entry).sort(), ['severity', 'text', 'time']);
+    assert.equal(entry.time, time, 'the entry marked is the row clicked');
     assert.deepEqual(payload.tools, ['logs_messages_read'], 'the log viewer names its read');
   } finally {
     await context.close();
@@ -206,10 +214,12 @@ test('(a) messages.log: a row\u2019s button sends that one line, and the reply r
   }
 });
 
-test('(b) Application errors: the list row menu\u2019s item sends that one error, scope and summary fields only', async () => {
+test('(b) Application errors: the list row menu\u2019s item marks that one error among the list\u2019s, scope and summary fields only', async () => {
   await requireFreeSlot(config);
   clearSeed();
+  const other = seedError();
   const seeded = seedError();
+  assert.equal(seeded.date, other.date, 'both seeded errors are on one date, so the list holds both');
   const tag = nextTag(probe);
   setTag(probe, preparedId, tag);
   scriptReply(probe, tag, 0, `##class(OcuPilot.Test.TurnProvider).TextReply("that error explained")`);
@@ -250,11 +260,11 @@ test('(b) Application errors: the list row menu\u2019s item sends that one error
     }, STRINGS.agentExplainEntryAction);
     await waitForReply(page, 'that error explained');
 
-    const payload = assertOneEntry(tag, 'logs/errors');
-    assert.deepEqual(Object.keys(payload.rows[0]).sort(), [...ERROR_FIELDS].sort(), 'the drilled scope and the five summary fields alone');
-    assert.equal(payload.rows[0].namespace, SEED_NAMESPACE, 'the namespace drilled to');
-    assert.equal(payload.rows[0].date, seeded.date, 'the date drilled to');
-    assert.equal(String(payload.rows[0].errorNumber), seeded.number, 'the error chosen');
+    const { payload, entry } = assertMarkedEntry(tag, 'logs/errors');
+    assert.deepEqual(Object.keys(entry).sort(), [...ERROR_FIELDS].sort(), 'the drilled scope and the five summary fields alone');
+    assert.equal(entry.namespace, SEED_NAMESPACE, 'the namespace drilled to');
+    assert.equal(entry.date, seeded.date, 'the date drilled to');
+    assert.equal(String(entry.errorNumber), seeded.number, 'the error chosen');
     assert.deepEqual(payload.tools, ['logs_applicationerrors_read', 'logs_applicationerrors_delete'], 'the error list names its read and delete');
   } finally {
     await context.close();
@@ -262,7 +272,7 @@ test('(b) Application errors: the list row menu\u2019s item sends that one error
   }
 });
 
-test('(c) Audit database: the record dialog\u2019s action sends that one record, and the dialog is gone', async () => {
+test('(c) Audit database: the record dialog\u2019s action marks that one record among the list\u2019s, and the dialog is gone', async () => {
   await requireFreeSlot(config);
   const tag = nextTag(probe);
   setTag(probe, preparedId, tag);
@@ -285,17 +295,21 @@ test('(c) Audit database: the record dialog\u2019s action sends that one record,
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
     await waitForReply(page, 'that record explained');
 
-    const payload = assertOneEntry(tag, 'logs/audit');
-    assert.equal('EventData' in payload.rows[0], false, 'the event data is not among the declared fields');
-    assert.equal(String(payload.rows[0].SystemID), systemId, 'the record sent is the record clicked');
-    assert.equal(String(payload.rows[0].AuditIndex), auditIndex);
+    const { payload, entry } = assertMarkedEntry(tag, 'logs/audit');
+    assert.equal('EventData' in entry, false, 'the event data is not among the declared fields');
+    assert.ok(
+      typeof payload.entity === 'string' && payload.entity.includes(systemId) && payload.entity.endsWith(auditIndex),
+      `the dialog's entity names the same record: ${JSON.stringify(payload.entity)}`
+    );
+    assert.equal(String(entry.SystemID), systemId, 'the record marked is the record clicked');
+    assert.equal(String(entry.AuditIndex), auditIndex);
   } finally {
     await context.close();
     forgetTag(probe, tag);
   }
 });
 
-test('(d) an older messages file: a row\u2019s button sends that line, and a typed turn\u2019s screen context carries that file\u2019s lines', async () => {
+test('(d) an older messages file: a row\u2019s button marks that line among the file\u2019s, and a typed turn\u2019s screen context carries that file\u2019s lines', async () => {
   await requireFreeSlot(config);
   seedOlderFile(config.container);
   const explainTag = nextTag(probe);
@@ -319,9 +333,10 @@ test('(d) an older messages file: a row\u2019s button sends that line, and a typ
     const text = await chosen.$eval('.ocu-log-cell-text', (cell) => cell.textContent.trim());
     await (await chosen.$(LOG_EXPLAIN)).click();
     await waitForReply(page, 'that older line explained');
-    const payload = assertOneEntry(explainTag, 'logs/messages');
-    assert.equal(payload.rows[0].text, text, 'the row sent is the older file\u2019s row clicked');
-    assert.ok(payload.rows[0].text.includes(OLDER_MARKER), 'and it is the older file\u2019s own line');
+    const { payload, entry } = assertMarkedEntry(explainTag, 'logs/messages');
+    assert.equal(payload.rowsSent, OLDER_LINES.length, 'every line of the older file was sent');
+    assert.equal(entry.text, text, 'the entry marked is the older file\u2019s row clicked');
+    assert.ok(entry.text.includes(OLDER_MARKER), 'and it is the older file\u2019s own line');
     await requireFreeSlot(config);
 
     typedTag = nextTag(probe);

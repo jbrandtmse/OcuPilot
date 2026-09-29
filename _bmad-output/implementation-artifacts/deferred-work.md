@@ -8258,3 +8258,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-10-external-language-servers.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: %Net.Remote.Service.IsGatewayRunning pings with a 10 s timeout unless the host is local and its port free; a Remote server's host is its Address (vendor source, read at review)
 - 2026-09-29T18:41:32Z status=by-design owner=16-10-external-language-servers by=cr note=AC1 reads the vendor's own CurrentlyRunning per row (AD-36 as amended); the spec's Named limits name the 10 s ping
+
+### DW-1840: Explain this entry: a focus row that fits alone but not beside the rest of the payload drops the whole screen_context (BoundFocus measures focus on its own)
+- source: DW-1838 review | severity: low | fix-risk: med | footprint: in-epic
+- evidence: needs about 60K of escaped control characters in a crafted request; fails closed (review, 2026-09-29)
+- 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=a screen_context is dropped while view.focus is present
+
+### DW-1841: Log hub: a Sources last entry longer than 1,000 characters that is also in the timeline is sent as focus beside its own unmarked row
+- source: DW-1838 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the Sources entry text is cut at 1,000 characters, so the equality match misses its timeline row (review, 2026-09-29)
+- 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=a reply treats that focus and row as two entries
+
+### DW-1842: Log viewer screen context ignores the active severity chip, so Explain and ordinary turns carry lines the chip hides
+- source: DW-1838 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: pre-existing; severity chips do not narrow the context rows (review, 2026-09-29)
+- 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=an explain with a chip active is answered as if the hidden lines were on screen
+
+### DW-1843: Error log keeps the first error's id in the route after Back, so a turn's entity can name another error than the one shown or marked
+- source: DW-1838 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: pre-existing; the prompt now says the marker, not entity, names the entry (review, 2026-09-29)
+- 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=an ordinary turn after Back answers about the error the URL names
+
+### DW-1844: A non-finite number (1e400) inside screen_context rows or rowsAvailable answers 500 instead of being dropped
+- source: DW-1838 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: pre-existing; only a crafted client sends it; the marker path now drops it (review, 2026-09-29)
+- 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=any client sends a non-finite number in screen_context

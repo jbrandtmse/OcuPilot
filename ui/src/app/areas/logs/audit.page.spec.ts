@@ -20,7 +20,7 @@ import { STRINGS } from '../../core/strings';
 import { AuditPage } from './audit.page';
 import { AuditSearch, MARKER_CRITERION } from './audit.store';
 import { stubAccountPreferences } from '../../testing/account-preferences';
-import { stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
+import { explainContext, narrowedEntry, stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
 
 /**
  * The audit database viewer, wired end to end over stubs of the two things an instance supplies --
@@ -530,7 +530,9 @@ describe('the audit database viewer', () => {
 
   const explainAction = (host: HTMLElement) => host.querySelector('[role="dialog"] [data-ocu-audit="explain"]') as HTMLButtonElement | null;
 
-  it('Story 11.2: the dialog\u2019s explain action hands over the open row, then closes the dialog back to the bare route', async () => {
+  // Mutation (Rule 19): send the one entry as the view, as Story 11.2 shipped it (DW-1838) -> this
+  // goes red on the rows.
+  it('Story 11.2: the dialog\u2019s explain action hands over the open row, marked among the screen\u2019s rows, then closes the dialog back to the bare route', async () => {
     const { host, fixture, entry, router, url } = await openDialog();
     const action = explainAction(host) as HTMLButtonElement;
     expect(action.textContent?.trim()).toBe(STRINGS.agentExplainEntryAction);
@@ -540,6 +542,11 @@ describe('the audit database viewer', () => {
     const taken = entry.take();
     expect(taken?.screen.route).toBe('logs/audit');
     expect((taken?.row as Record<string, unknown>)['Event']).toBe('UserCreated');
+    const context = explainContext(TestBed.inject(ScreenStores), taken);
+    expect(context?.view?.rows).toHaveLength(2);
+    expect(context?.view?.rows[context?.view?.selected ?? -1]).toEqual(narrowedEntry(AUDIT, taken?.row));
+    expect(context?.view?.rows[context?.view?.selected ?? -1]?.['Event']).toBe('UserCreated');
+    expect(context?.view?.focus).toBeUndefined();
     expect(router.url).not.toBe(url);
     expect(router.url).toBe('/logs/audit?ns=HSCUSTOM');
     expect(TestBed.inject(AuditSearch).takeGridFocusRequest()).toBe(true);

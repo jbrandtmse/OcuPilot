@@ -1,4 +1,7 @@
-import { ExplainEntry } from '../core/explain-entry';
+import { ExplainEntry, type ExplainEntryRequest } from '../core/explain-entry';
+import { assembleEntryContext, type ScreenContextPayload } from '../core/screen-context';
+import type { ScreenStores } from '../core/screen-store';
+import type { ScreenDeclaration } from '../core/screens.generated';
 
 /** The gate facts a page spec arranges for "Explain this entry". */
 export interface ExplainEntryState {
@@ -42,4 +45,33 @@ export function stubExplainEntry(overrides: Partial<ExplainEntryState> = {}): {
     for (const listener of [...listeners]) listener();
   };
   return { entry, state, fire };
+}
+
+/**
+ * The context the panel sends for `request` (DW-1838): `assembleEntryContext` over the request's
+ * screen and that screen's own store in `stores`, read as `Panel.contextInputs` reads it, with
+ * sharing on, no entity and `rowCap` -- for a page spec, which mounts the page that publishes the
+ * rows and hands the entry over without mounting the panel that sends them.
+ */
+export function explainContext(stores: ScreenStores, request: ExplainEntryRequest | null, rowCap = 200): ScreenContextPayload | null {
+  if (request === null) return null;
+  const store = stores.for(request.screen.descriptor, request.screen.refreshRates);
+  return assembleEntryContext({
+    descriptor: request.screen,
+    namespace: 'HSCUSTOM',
+    entity: '',
+    share: true,
+    rows: store.data(),
+    filter: store.filter(),
+    sort: store.sort(),
+    direction: store.direction(),
+    rowCap,
+    row: request.row,
+  });
+}
+
+/** `row` narrowed to `screen`'s declared context fields, as a sent row holds it. */
+export function narrowedEntry(screen: ScreenDeclaration, row: unknown): Record<string, unknown> {
+  const source = row as Record<string, unknown>;
+  return Object.fromEntries(screen.context.fields.filter((field) => field in source).map((field) => [field, source[field]]));
 }

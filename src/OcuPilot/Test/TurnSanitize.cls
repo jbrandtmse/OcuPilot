@@ -29,7 +29,7 @@ Parameter PROBENAME = "ocupilot-sanitize-probe";
 Parameter ADMINRESOURCES = "OcuPilotAdmin:U";
 
 /// <p>The message an entry's "Explain this entry" control sends.</p>
-Parameter EXPLAINENTRYMESSAGE = "Explain this entry";
+Parameter EXPLAINENTRYMESSAGE = "Explain the selected entry";
 
 Property PreparedPassword As %String;
 
