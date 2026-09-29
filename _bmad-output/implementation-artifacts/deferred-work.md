@@ -8009,6 +8009,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T23:07:48Z status=open owner=16-5-background-tasks by=harvest note=adjudicate at 16.5's gate against CI runs
 - 2026-09-28T23:43:52Z occurrence=16-5-background-tasks
 - 2026-09-28T23:51:23Z status=resolved-by:16-5-background-tasks by=adjudication note=CI 36496304575 red on the agent pause leg reading the state at once; Settled polls until it leaves Running (inference: async pause)
+- 2026-09-29T17:04:25Z occurrence=18-3-databases-configuration-creation-properties-and-volumes
 
 ### DW-1805: Background tasks lists OcuPilot's own port-queued async tasks under Admin API with Cancel, Pause and Resume, and AdminPort's await does not treat Canceled as terminal
 - source: spec-16-5-background-tasks.md | severity: low | fix-risk: low | footprint: in-story
@@ -8176,3 +8177,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Feature run 36530303753 (2026-09-29 06:22, no 18.3 code): TestASeededPortalCompactIsListedPaused read Running after a 79 s class run; a PAUSEDISPOSITION -1 task reads Paused only while its process state is 18 (irissys/%SYS/BackgroundTask.cls:567-569); 18.3 rework 2 measured the resumed compact at 1.4-1.9 s on ocupilot-b-ci
 - 2026-09-29T16:48:14Z status=routed owner=burndown by=harvest note=BackgroundSeed.cls is Epic 16's (16.5); a longer seeded compact and a Settled that tolerates the process-state window would remove both races
+- 2026-09-29T17:04:25Z status=routed owner=burndown by=cr note=void 30 s half: run 36530303753 (dc34dc4a) predates 6bcc6d3b, a DW-1819 sighting; open cause is DW-1802 race
+
+### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
+- source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: .claude/rules/objectscript-testing.md asks about 500 lines per class; the retry and its two helpers took the class from 492 to 537 lines.
+- 2026-09-29T17:04:25Z status=wontfix-accepted owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=reopen_if=BackgroundTasksLive.cls gains a test method or passes 800 lines
+
+### DW-1831: OAuthServerDiscover.TestEachCauseIsRefusedByName intermittently misreads a fixture discovery case: its 'content' case did not answer 422 OAUTH.DISCOVERY.CONTENT once in CI (flake, inference)
+- source: cycle-log-epic-18.md (CI run 36600327713) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Run 36600327713 on 822c0e3f, instance shard 1/3, run 60: 'content: at 422, by name' red; the class and its port are untouched since Epic 12/14 and passed in runs 36573329469, 36581952884 and 36588987899 and 3/3 on ocupilot-b-ci (runs 428-430)
+- 2026-09-29T17:09:15Z status=routed owner=burndown by=lead note=Epic 12's issuer fixture (OAuthServerDiscover); probe the fixture server's timing on a slow runner

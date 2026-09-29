@@ -285,12 +285,12 @@ Method TestAnotherCallersAdminTaskIsNotListed()
 /// confirm can outlast, and then the fingerprint correctly refuses the confirm (AD-51: its status
 /// moved from Running to Done). A confirm refused <code>PROPOSAL.TARGETCHANGED</code> whose compact
 /// reads Done afterwards is taken for that race: the attempt is removed and another compact seeded,
-/// at most <parameter>AGENTATTEMPTS</parameter> times. Any other refusal, or one while the compact
-/// still runs, fails at once.</p>
+/// up to <parameter>AGENTATTEMPTS</parameter> compacts in all. Any other refusal, one while the
+/// compact still runs, or a compact that ends before the mint, fails at once.</p>
 /// <p>Mutation (Rule 19): answer <code>$$$OK</code> in place of the vendor's <code>Pause()</code> in
 /// <method>OcuPilot.Port.BackgroundTaskPort.PortalControl</method> -- the compact runs to its end
-/// and this goes red; fingerprint the tools over a value that moves on every read -- the first
-/// confirm is refused while the compact still runs, nothing is retried, and this goes red.</p>
+/// and this goes red; fingerprint the tools over a value that moves on every read -- every confirm
+/// is refused and this goes red.</p>
 Method TestTheAgentsConfirmPausesACompact()
 {
     Set tSent = 0
@@ -302,7 +302,7 @@ Method TestTheAgentsConfirmPausesACompact()
         Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     }
     If 'tSent Quit
-    Do $$$AssertStatusOK(tSC, "the confirm pauses it: " _ tCode _ " (attempt " _ tAttempt _ ")")
+    Do $$$AssertStatusOK(tSC, "the confirm pauses it: " _ tCode _ " (attempt " _ tAttempt _ ", the compact then read " _ $ClassMethod(..#SEED, "State", tTaskId) _ ")")
     Do $$$AssertEquals($ClassMethod(..#SEED, "Settled", tTaskId), "Paused", "and the compact is paused")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tTurn, .tLedger), 1, "one write-kind ledger row")
     Do $$$AssertEquals($Get(tLedger("AuditMarked")), $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "and the agent marker landed on it")
@@ -311,7 +311,7 @@ Method TestTheAgentsConfirmPausesACompact()
 
 /// <p>Seed a paused compact, resume it through the port, mint the agent's pause of it and confirm
 /// that: 1 once the confirm was sent, with its status in <var>pSC</var> and its code in
-/// <var>pCode</var>; 0 when a step before it failed, which is asserted here.</p>
+/// <var>pCode</var>; 0 when the seed, the turn or the mint failed. Each step is asserted here.</p>
 Method ProposeAndConfirmPause(Output pTaskId As %String, Output pTurn As %String, Output pSC As %Status, Output pCode As %String) As %Boolean
 {
     Set pTaskId = ""
