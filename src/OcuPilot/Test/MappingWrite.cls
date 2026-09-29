@@ -341,6 +341,59 @@ Method TestOcuPilotsOwnMappingsAreRefusedInAll()
     }
 }
 
+/// <p>By overlap, not by prefix (AD-10 as amended, DW-1803): in the namespace this process runs in, a
+/// mapping whose pattern or range covers OcuPilot's own names -- <code>O*</code>, <code>Ocu*</code>,
+/// <code>*</code>, a range spanning them, a routine pattern with a type suffix, and a pattern, name
+/// range or subscript range that begins with the stem itself -- is refused
+/// <code>PROHIBITED.OCUPILOTMAPPING</code> on the screen's Save and at the agent's confirm with no
+/// write reaching <class>OcuPilot.Test.MappingAcceptPort</class>, while <code>Q*</code>,
+/// <code>Zz*</code> and the range <code>A:B</code> there reach it; in <code>%ALL</code> the set refuses
+/// the same patterns and permits <code>Q*</code>; and in a probe namespace the patterns the instance
+/// accepts are created on both callers.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Proposal.Prohibited.CoversOwnName</method> tests
+/// only whether the name begins with a stem -> each pattern and range leg reaches the port and this
+/// goes red.</p>
+Method TestAMappingWhosePatternCoversOcuPilotsNamesIsRefused()
+{
+    Set tOwnNs = $ZConvert($NAMESPACE, "U")
+    Set ^||OcuPilotNamespaceWritePort = ..#ACCEPT
+    For tCase = $ListBuild("global", "O*"), $ListBuild("global", "Ocu*"), $ListBuild("global", "*"), $ListBuild("global", "A:Z"), $ListBuild("global", "Oa:Od"), $ListBuild("routine", "O*"), $ListBuild("routine", "Ocu*_INT"), $ListBuild("routine", "N:P"), $ListBuild("global", "OcuPilotState*"), $ListBuild("global", "OcuPilotA:OcuPilotZ"), $ListBuild("global", "OcuPilotState(""a""):(""z"")") {
+        Set tKind = $List(tCase, 1)
+        Set tName = $List(tCase, 2)
+        Do $ClassMethod(..#ACCEPT, "Clear")
+        Set tSC = ..Save(tKind, "create", tOwnNs, tName, {"Database": "USER"}, .tHttp, .tCode, .tFields)
+        Do $$$AssertEquals(tHttp _ " " _ tCode, "403 " _ ..#OWNCODE, tKind _ " " _ tName _ ": the screen's create is refused")
+        Set tSC = ..Mint(..Tool(tKind, "Create"), {"Namespace": (tOwnNs), "Name": (tName), "Database": "USER"}, .tProposal, .tHttp, .tProblem)
+        Do $$$AssertStatusOK(tSC, tKind _ " " _ tName _ ": the agent's create is minted " _ tProblem)
+        Do $$$AssertEquals(..Confirm(tProposal), "403 " _ ..#OWNCODE, tKind _ " " _ tName _ ": and its confirm is refused")
+        Do $$$AssertEquals($ClassMethod(..#ACCEPT, "Writes"), "", tKind _ " " _ tName _ ": no write reached the port")
+    }
+    For tName = "Q*", "Zz*", "A:B" {
+        Do $ClassMethod(..#ACCEPT, "Clear")
+        Set tSC = ..Save("global", "create", tOwnNs, tName, {"Database": "USER"}, .tHttp, .tCode, .tFields)
+        Do $$$AssertEquals(tHttp _ " " _ tCode _ tFields _ " " _ $ClassMethod(..#ACCEPT, "Writes"), "201  PUT", tName _ ": the screen's create is permitted and reaches the port")
+        Do $ClassMethod(..#ACCEPT, "Clear")
+        Set tSC = ..Mint(..Tool("global", "Create"), {"Namespace": (tOwnNs), "Name": (tName), "Database": "USER"}, .tProposal, .tHttp, .tProblem)
+        Do $$$AssertEquals(..Confirm(tProposal) _ $ClassMethod(..#ACCEPT, "Writes"), "200 PUT", tName _ ": so is the agent's")
+    }
+    For tCase = $ListBuild("O*", 1), $ListBuild("*", 1), $ListBuild("A:Z", 1), $ListBuild("Q*", 0) {
+        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("global-mapping", "instance", $ClassMethod(..#PROBE, "Id", "%ALL", $List(tCase, 1)), .tRef)
+        Set tSC = ##class(OcuPilot.Test.MappingAllTargetFixture).Prohibits($Parameter(..Tool("global", "Create"), "TOOLNAME"), tRef, {"Database": "USER"}.%ToJSON(), "[]", .tProhibits, .tCode)
+        Do $$$AssertStatusOK(tSC, "%ALL " _ $List(tCase, 1) _ ": the set answers")
+        Do $$$AssertEquals(tProhibits _ " " _ tCode, $Select($List(tCase, 2): "1 " _ ..#OWNCODE, 1: "0 "), "%ALL " _ $List(tCase, 1) _ ": " _ $Select($List(tCase, 2): "refused", 1: "permitted"))
+    }
+    Set ^||OcuPilotNamespaceWritePort = ..#RECORD
+    For tCase = $ListBuild("global", "O*"), $ListBuild("routine", "N:P") {
+        Set tSC = ..Save($List(tCase, 1), "create", ..#NS, $List(tCase, 2), {"Database": "USER"}, .tHttp, .tCode, .tFields)
+        Do $$$AssertEquals(tHttp _ " " _ tCode _ tFields, "201 ", $ListToString(tCase, " ") _ ": the screen creates it in a probe namespace")
+    }
+    For tCase = $ListBuild("global", "Oa:Od"), $ListBuild("routine", "Ocu*_INT") {
+        Set tSC = ..Mint(..Tool($List(tCase, 1), "Create"), {"Namespace": (..#NS), "Name": ($List(tCase, 2)), "Database": "USER"}, .tProposal, .tHttp, .tProblem)
+        Do $$$AssertEquals(..Confirm(tProposal), "200 ", $ListToString(tCase, " ") _ ": and so does the agent " _ tProblem)
+    }
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Names", "global", ..#NS) _ "|" _ $ClassMethod(..#PROBE, "Names", "routine", ..#NS), "O*,Oa:Od|N:P,Ocu*_INT", "which the probe namespace holds")
+}
+
 /// <p>The screen's Save of kind <var>pKind</var> and verb <var>pVerb</var> (<code>create</code> or
 /// <code>update</code>) for mapping <var>pName</var> of <var>pNamespace</var> with <var>pBody</var>:
 /// <var>pHttp</var> the status it would answer, <var>pCode</var> the refusal's code, and

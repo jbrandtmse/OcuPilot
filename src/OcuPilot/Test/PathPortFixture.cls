@@ -2,8 +2,9 @@
 /// classes share. As a port it denies the pairs <method>Deny</method> names, admits any name
 /// after <method>AdmitAnyName</method>, answers the configuration file
 /// <method>UseConfigurationFile</method> names, the database and journal directories
-/// <method>UseDatabaseDirectories</method> and <method>UseJournalDirectories</method> name and the
-/// three journal sources <method>UseJournalSources</method> names, and
+/// <method>UseDatabaseDirectories</method> and <method>UseJournalDirectories</method> name, the
+/// three journal sources <method>UseJournalSources</method> names and the served directory
+/// <method>UseServedDirectory</method> names, and
 /// counts every admin port call it forwards, so a test can show the gate refusing with none made
 /// (AD-29). The
 /// helpers record, set and restore the instance's <parameter>PURPOSE</parameter> allow-list through
@@ -122,6 +123,19 @@ ClassMethod JournalSources(Output pPrimary As %String, Output pAlternate As %Str
     Set pCurrentFile = $List(tSeam, 3)
     If $List(tSeam, 4) Quit $$$ERROR($$$GeneralError, "the journal source read failed, as the fixture was told")
     Quit $$$OK
+}
+
+/// <p>Answer <var>pDirectory</var> as the directory OcuPilot's client is served from until
+/// <method>Reset</method>; <code>""</code> answers a read that found none.</p>
+ClassMethod UseServedDirectory(pDirectory As %String = "")
+{
+    Set ^||OcuPilotPathPortFixture("served") = pDirectory
+}
+
+ClassMethod ServedDirectory() As %String
+{
+    If $Data(^||OcuPilotPathPortFixture("served")) Quit ^||OcuPilotPathPortFixture("served")
+    Quit ##super()
 }
 
 ClassMethod AdminPortClass() As %String

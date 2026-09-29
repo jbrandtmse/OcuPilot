@@ -1,7 +1,8 @@
 /// <p>AD-21's sixth case at <class>OcuPilot.Port.PathPort</class>, the instance's database and
-/// journal files: to a caller that overwrites, every existing file directly in a configured
-/// database's directory or under its stream location, and every existing file directly in a
-/// journal directory, is refused 400 <code>PATH.INSTANCE</code> on the name's field, the
+/// journal files and OcuPilot's own served files: to a caller that overwrites, every existing file
+/// directly in a configured database's directory or under its stream location, every existing file
+/// directly in a journal directory, and every existing file under the directory OcuPilot's client is
+/// served from, is refused 400 <code>PATH.INSTANCE</code> on the name's field, the
 /// directories read from the instance at each call and compared ignoring case, and a failed read
 /// refusing; an ordinary file in
 /// a subdirectory still resolves. It also pins the port's two reads against the instance's own
@@ -436,6 +437,70 @@ Method TestADatabaseFileBelowTheManagerDirectoryNeedsNoDatabaseRead()
     Do $ClassMethod(..#FIXTURE, "UseDatabaseDirectories", "", "")
     Do $ClassMethod(..#FIXTURE, "UseJournalDirectories", "")
     If $ListLength(tNames) Do $$$AssertEquals(..Overwrite(tManager, $List(tNames, 1), ..#FIXTURE), $ClassMethod(..#HELPERS, "Refusal", ##class(OcuPilot.Api.Error).#PATHINSTANCE, "path"), "'" _ $List(tNames, 1) _ "' is refused with no database read")
+}
+
+/// <p>OcuPilot's own served files (AD-21 as amended, DW-1798): the port's served directory is the
+/// path the instance holds for the roster's bundle destination application, and every existing file
+/// in it, a subdirectory's among them, is refused <code>PATH.INSTANCE</code> to a caller that
+/// overwrites, while a new name there resolves and a caller that does not overwrite is refused as a
+/// taken name. Those legs resolve names only. Through the fixture's served-directory seam over a
+/// scratch directory under <parameter>TMPROOT</parameter>, which it creates and removes, the same
+/// files resolve once the seam names another directory, are refused under another spelling, and are
+/// refused while the directory cannot be read.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Port.PathPort.InServedDirectory</method> from
+/// <method>OcuPilot.Port.PathPort.InstanceFile</method> -&gt; each refused leg resolves.</p>
+Method TestAnOverwriteNeverReachesOcuPilotsServedFiles()
+{
+    Set tServed = ##class(OcuPilot.Port.PathPort).ServedDirectory()
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Roster).Get(.tRoster), "the roster reads")
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(Security.Applications).Get(tRoster.bundle.destinationApplication, .tProps)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Do $$$AssertStatusOK(tSC, "the instance holds the bundle destination application")
+    Do $$$AssertEquals(tServed, ##class(%File).NormalizeDirectory($Get(tProps("Path"))), "the served directory is that application's own path")
+    Set tFiles = $ClassMethod(..#HELPERS, "NamesIn", tServed, 0)
+    Set tDeeper = $ClassMethod(..#HELPERS, "NamesIn", tServed _ "media/", 0)
+    Do $$$AssertTrue($ListFind(tFiles, "index.html") && $ListLength(tDeeper), "the installer deployed files there and in media/: " _ $ListToString(tFiles, " "))
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(tServed)), "the purpose is restricted to the served directory")
+    Set tRefused = $ClassMethod(..#HELPERS, "Refusal", ##class(OcuPilot.Api.Error).#PATHINSTANCE, "path")
+    For tI = 1:1:$ListLength(tFiles) {
+        Do $$$AssertEquals(..Overwrite(tServed, $List(tFiles, tI)), tRefused, "'" _ $List(tFiles, tI) _ "' is refused to a caller that overwrites")
+    }
+    If $ListLength(tDeeper) Do $$$AssertEquals(..Overwrite(tServed, "media/" _ $List(tDeeper, 1)), tRefused, "and so is a deployed file in a subdirectory")
+    Do $$$AssertEquals($ClassMethod(..#HELPERS, "ResolveOf", tServed, "index.html", "file"), $ClassMethod(..#HELPERS, "Refusal", ##class(OcuPilot.Api.Error).#PATHEXISTS, "path"), "to a caller that does not overwrite, it is a taken name")
+    Do $$$AssertEquals(..Overwrite(tServed, "ocupilot-pathport-none.txt"), "200|" _ tServed _ "ocupilot-pathport-none.txt", "a new name there resolves")
+
+    Set tScratch = ..#TMPROOT _ "ocupilot-pathport-served-" _ $Job _ "/"
+    Set tPort = ..#FIXTURE
+    Try {
+        Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(..#TMPROOT)), "the purpose is restricted to /tmp/")
+        For tFile = "held.js", "media/m.svg" {
+            Do $$$AssertStatusOK(..WriteFile(tScratch _ tFile), "a scratch file " _ tFile)
+        }
+        Set tRelative = $Piece(tScratch, "/", *-1)
+        Do $ClassMethod(tPort, "UseDatabaseDirectories", "", "")
+        Do $ClassMethod(tPort, "UseJournalDirectories", "")
+        For tCase = $ListBuild(tScratch, 1, "a served file"), $ListBuild($ZConvert(tScratch, "U"), 1, "under another spelling"), $ListBuild(..#TMPROOT _ "ocupilot-pathport-elsewhere/", 0, "once the seam names another directory"), $ListBuild("", 1, "while the directory cannot be read") {
+            Do $ClassMethod(tPort, "UseServedDirectory", $List(tCase, 1))
+            For tFile = "held.js", "media/m.svg" {
+                Do $$$AssertEquals(..Overwrite(..#TMPROOT, tRelative _ "/" _ tFile, tPort), $Select($List(tCase, 2): tRefused, 1: "200|" _ tScratch _ tFile), tFile _ " " _ $List(tCase, 3) _ ": " _ $Select($List(tCase, 2): "refused", 1: "resolves"))
+            }
+        }
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the served-directory seam legs ran to the end")
+    }
+    For tFile = "held.js", "media/m.svg" {
+        Do ##class(%File).Delete(tScratch _ tFile)
+    }
+    Do ##class(%File).RemoveDirectory(tScratch _ "media/")
+    Do ##class(%File).RemoveDirectory(tScratch)
+    Do $$$AssertTrue('##class(%File).Exists(tScratch), "the scratch directory is removed")
 }
 
 /// <p>The port's two reads answer what the instance does:

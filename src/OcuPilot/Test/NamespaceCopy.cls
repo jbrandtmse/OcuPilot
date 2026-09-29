@@ -172,6 +172,30 @@ Method TestACopyIntoTheInstallNamespaceOfAnOcuPilotMappingIsRefused()
     Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#ACCEPT, "Writes"), "200 MAPPINGS", "a source with no OcuPilot mapping is permitted, and the copy reaches the port")
 }
 
+/// <p>By overlap (AD-10 as amended, DW-1803): a copy into the install namespace from a source holding
+/// a pattern that covers OcuPilot's own names, <code>O*</code>, is refused
+/// <code>PROHIBITED.OCUPILOTMAPPING</code> on both callers, while the same source copies into a probe
+/// namespace; every write goes to <class>OcuPilot.Test.MappingAcceptPort</class>, which sends
+/// none.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Proposal.Prohibited.CoversOwnName</method> tests
+/// only whether the name begins with a stem -> the refused legs are accepted copies and this goes
+/// red.</p>
+Method TestACopyIntoTheInstallNamespaceOfACoveringPatternIsRefused()
+{
+    Set tOwnNs = $ZConvert($NAMESPACE, "U")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddMapping", "global", ..#SOURCE, "O*", "USER"), "the source is seeded with a pattern covering OcuPilot's names")
+    Set ^||OcuPilotNamespaceWritePort = ..#ACCEPT
+    Set tSC = ##class(OcuPilot.Test.MappingActionFixture).Act("osmgmt.namespaces", ..Body(tOwnNs, ..#SOURCE), .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus _ " " _ ..Code(tAnswer), "403 " _ ..#OWNCODE, "the screen's copy is refused")
+    Set tSC = $ClassMethod(..#WRITE, "Mint", ..#TOOLCLASS, {"Name": (tOwnNs), "SourceNamespace": (..#SOURCE)}, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the agent's copy is minted " _ tProblem)
+    Do $$$AssertEquals($ClassMethod(..#WRITE, "Confirm", tProposal), "403 " _ ..#OWNCODE, "and its confirm is refused")
+    Do $$$AssertEquals($ClassMethod(..#ACCEPT, "Writes"), "", "no copy reached the port")
+    Do $ClassMethod(..#ACCEPT, "Clear")
+    Set tSC = ##class(OcuPilot.Test.MappingActionFixture).Act("osmgmt.namespaces", ..Body(..#DESTINATION, ..#SOURCE), .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#ACCEPT, "Writes"), "200 MAPPINGS", "into a probe namespace the same source is permitted, and the copy reaches the port")
+}
+
 /// <p>A source list cut at its cap fails closed (AD-10): read through
 /// <class>OcuPilot.Test.MappingProhibitedFixture</class>, whose cap is one row, a source holding two
 /// ordinary global mappings is refused on both callers when the destination is the install

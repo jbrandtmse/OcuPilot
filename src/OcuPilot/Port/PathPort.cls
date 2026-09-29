@@ -24,7 +24,8 @@
 /// directories from <class>%SYS.Journal.System</class>, both on every call. Seams a test subclass
 /// may override: <method>AdminPortClass</method>, <method>ManagerDirectory</method>,
 /// <method>ConfigurationFile</method>, <method>DatabaseDirectories</method>,
-/// <method>JournalDirectories</method>, <method>JournalSources</method>, <method>HoldsPrivilege</method> and
+/// <method>JournalDirectories</method>, <method>JournalSources</method>,
+/// <method>ServedDirectory</method>, <method>HoldsPrivilege</method> and
 /// <method>NameAdmitted</method>. Production overrides none of them.</p>
 Class OcuPilot.Port.PathPort Extends %RegisteredObject
 {
@@ -74,6 +75,10 @@ Parameter STREAMDIRECTORY = "stream";
 
 /// <p>The log subsystem a raw fault is written under.</p>
 Parameter LOGSUBSYSTEM = "pathport";
+
+/// <p>The placeholder the roster's bundle destination is written in for the data directory, as the
+/// installer's package manifest writes it.</p>
+Parameter DATADIRPLACEHOLDER = "${dataDir}";
 
 /// <p>The port every allow-list read goes through. Overridable so a fixture can count the calls;
 /// production never overrides it.</p>
@@ -243,7 +248,7 @@ ClassMethod Row(pDirectory As %String, pRestricted As %Boolean) As %DynamicObjec
 /// holds the instance's own files. Then a file is refused <code>PATH.EXISTS</code> when a
 /// directory stands at that name, or a file does and <var>pOverwrite</var> is false; and, when
 /// <var>pOverwrite</var> is true, <code>PATH.INSTANCE</code> when the file standing at that name is
-/// one <method>InstanceFile</method> names. A source is refused <code>PATH.NOFILE</code> unless a file,
+/// one <method>InstanceFile</method> names, OcuPilot's own served files among them. A source is refused <code>PATH.NOFILE</code> unless a file,
 /// not a directory, stands at that name; it is never refused for existing, and
 /// <var>pOverwrite</var> means nothing to it. A directory is refused
 /// <code>PATH.MANAGERDIR</code> when it is the manager directory itself and
@@ -390,11 +395,47 @@ ClassMethod IsManagerDirectory(pDirectory As %String) As %Boolean
 
 /// <p>Whether normalized file path <var>pFile</var> is one of the instance's own files an
 /// overwrite must not reach: <method>DirectlyInConfigurationDirectory</method>,
-/// <method>DatabaseFileBelowManagerDirectory</method>, <method>InDatabaseDirectory</method> or
-/// <method>InJournalDirectory</method>. It says nothing about whether the file exists.</p>
+/// <method>DatabaseFileBelowManagerDirectory</method>, <method>InDatabaseDirectory</method>,
+/// <method>InJournalDirectory</method> or <method>InServedDirectory</method>. It says nothing about
+/// whether the file exists.</p>
 ClassMethod InstanceFile(pFile As %String) As %Boolean
 {
-    Quit ..DirectlyInConfigurationDirectory(pFile) || ..DatabaseFileBelowManagerDirectory(pFile) || ..InDatabaseDirectory(pFile) || ..InJournalDirectory(pFile)
+    Quit ..DirectlyInConfigurationDirectory(pFile) || ..DatabaseFileBelowManagerDirectory(pFile) || ..InDatabaseDirectory(pFile) || ..InJournalDirectory(pFile) || ..InServedDirectory(pFile)
+}
+
+/// <p>Whether normalized file path <var>pFile</var> is one of OcuPilot's own served files: it lies
+/// anywhere under <method>ServedDirectory</method>, the directory the installer deploys OcuPilot's
+/// client into and its static application serves (AD-21 as amended, DW-1798). Textual and ignoring
+/// case, as <method>InDatabaseDirectory</method> is; a directory that is empty or does not normalize
+/// answers true, so the refusal it guards fails closed.</p>
+ClassMethod InServedDirectory(pFile As %String) As %Boolean
+{
+    Set tDirectory = ..ServedDirectory()
+    If tDirectory '= "" Set tDirectory = ##class(%File).NormalizeDirectory(tDirectory)
+    If tDirectory = "" Quit 1
+    Set tDirectory = $ZConvert(tDirectory, "L")
+    Quit ($Extract($ZConvert(pFile, "L"), 1, $Length(tDirectory)) = tDirectory)
+}
+
+/// <p>The directory OcuPilot's client is served from, read on every call from the installer's roster
+/// (<class>OcuPilot.Install.Roster</class>): its bundle destination with
+/// <parameter>DATADIRPLACEHOLDER</parameter> read as the instance's data directory. That is the
+/// directory the installer copies the client into and sets as its static application's path, which
+/// <method>OcuPilot.Test.Manifest.TestBundleDestinationIsTheHandlersOwnAnswer</method> holds equal.
+/// <code>""</code> when the roster cannot be read or its destination keeps any other placeholder.
+/// Overridable so a fixture can name another; production never overrides it.</p>
+ClassMethod ServedDirectory() As %String
+{
+    Set tDirectory = ""
+    Try {
+        If $$$ISERR(##class(OcuPilot.Install.Roster).Get(.tRoster)) Quit
+        If '$IsObject(tRoster.%Get("bundle")) Quit
+        Set tDirectory = $Replace(tRoster.%Get("bundle").%Get("destinationTemplate"), ..#DATADIRPLACEHOLDER, ##class(%File).NormalizeDirectory($System.Util.DataDirectory()))
+        If tDirectory [ "${" Set tDirectory = ""
+    } Catch {
+        Set tDirectory = ""
+    }
+    Quit tDirectory
 }
 
 /// <p>Whether normalized file path <var>pFile</var> sits directly in the directory of

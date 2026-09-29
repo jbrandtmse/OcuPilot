@@ -3526,7 +3526,7 @@ export const STRINGS = {
     'This namespace stops loading this package\'s classes from the mapped database. The classes themselves stay. This cannot be undone.',
   /** EXPERIENCE.md:481 */
   mappingRefusalOcuPilot:
-    'Mappings whose names begin with OcuPilot keep OcuPilot\'s own globals and code where it expects them. In the namespace OcuPilot runs in, and in %ALL, they cannot be added, changed, removed or copied in.',
+    'A mapping whose name or pattern covers OcuPilot\'s own names decides where OcuPilot\'s globals and code are found. In the namespace OcuPilot runs in, and in %ALL, such a mapping cannot be added, changed, removed or copied in.',
 } as const;
 
 /**

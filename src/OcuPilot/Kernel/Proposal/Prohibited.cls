@@ -368,20 +368,17 @@ Parameter TYPEROUTINEMAPPING = "routine-mapping";
 
 Parameter TYPEPACKAGEMAPPING = "package-mapping";
 
-/// <p>The write would create, change or delete one of OcuPilot's own mappings -- a mapping whose name
-/// begins with <parameter>OWNMAPPINGPREFIX</parameter>, in any case, in the namespace OcuPilot's API
-/// runs in or in <parameter>ALLNAMESPACE</parameter> -- or copy mappings into either namespace from a
-/// source holding one (AD-10 as amended 2026-09-28). Such a mapping moves OcuPilot's protected
-/// globals out of its database (AD-9) or lets other code answer for its classes.</p>
+/// <p>The write would create, change or delete one of OcuPilot's own mappings -- a mapping whose name,
+/// pattern or range covers one of OcuPilot's own names (<method>CoversOwnName</method>), in the
+/// namespace OcuPilot's API runs in or in <parameter>ALLNAMESPACE</parameter> -- or copy mappings
+/// into either namespace from a source holding one (AD-10 as amended 2026-09-28, DW-1803). Such a
+/// mapping moves OcuPilot's protected globals out of its database (AD-9) or lets other code answer
+/// for its classes.</p>
 Parameter OCUPILOTMAPPING = "PROHIBITED.OCUPILOTMAPPING";
 
 /// <p>The one sentence <parameter>OCUPILOTMAPPING</parameter> carries, caller-neutral, published and
 /// pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
-Parameter OCUPILOTMAPPINGREASON = "Mappings whose names begin with OcuPilot keep OcuPilot's own globals and code where it expects them. In the namespace OcuPilot runs in, and in %ALL, they cannot be added, changed, removed or copied in.";
-
-/// <p>The prefix, compared without case, that makes a mapping OcuPilot's own
-/// (<parameter>OCUPILOTMAPPING</parameter>).</p>
-Parameter OWNMAPPINGPREFIX = "ocupilot";
+Parameter OCUPILOTMAPPINGREASON = "A mapping whose name or pattern covers OcuPilot's own names decides where OcuPilot's globals and code are found. In the namespace OcuPilot runs in, and in %ALL, such a mapping cannot be added, changed, removed or copied in.";
 
 /// <p>The pseudo-namespace whose mappings apply to every namespace.</p>
 Parameter ALLNAMESPACE = "%ALL";
@@ -1757,15 +1754,15 @@ ClassMethod Mapping(pType As %String, pId As %String, pToolClass As %String, ByR
 
 /// <p>Whether the mapping whose composite id is <var>pId</var> is one of OcuPilot's own: its
 /// namespace part, upper-cased, is the namespace this process runs in or
-/// <parameter>ALLNAMESPACE</parameter>, and its name part begins with
-/// <parameter>OWNMAPPINGPREFIX</parameter> ignoring case. The namespace is read at each call, for
-/// the reason <method>IsOwnNamespace</method> reads it. An id that is not two parts is none.</p>
+/// <parameter>ALLNAMESPACE</parameter>, and its name part covers one of OcuPilot's own names
+/// (<method>CoversOwnName</method>). The namespace is read at each call, for the reason
+/// <method>IsOwnNamespace</method> reads it. An id that is not two parts is none.</p>
 ClassMethod IsOwnMapping(pId As %String) As %Boolean
 {
     Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
     If $ListLength(tParts) '= 2 Quit 0
     If '..IsOwnMappingNamespace($ListGet(tParts, 1)) Quit 0
-    Quit ..IsOwnMappingName($ListGet(tParts, 2))
+    Quit ..CoversOwnName($ListGet(tParts, 2))
 }
 
 /// <p>Whether <var>pNamespace</var>, upper-cased, is the namespace this process runs in or
@@ -1778,11 +1775,75 @@ ClassMethod IsOwnMappingNamespace(pNamespace As %String) As %Boolean
     Quit (tName = $ZConvert($NAMESPACE, "U")) || (tName = ..#ALLNAMESPACE)
 }
 
-/// <p>Whether mapping name <var>pName</var> begins with <parameter>OWNMAPPINGPREFIX</parameter>,
-/// ignoring case.</p>
-ClassMethod IsOwnMappingName(pName As %String) As %Boolean
+/// <p>The stems OcuPilot's own names begin with, lower-cased and each named once, read at each call
+/// rather than kept as a second literal: the top-level package of this class, which OcuPilot's
+/// classes and their routines are named under, and
+/// <parameter>OcuPilot.Kernel.State.Base.MAPPINGPATTERN</parameter> up to its <code>*</code>, the
+/// global mapping install creates for OcuPilot's own globals (AD-9).</p>
+ClassMethod OwnNameStems() As %List
 {
-    Quit $ZConvert($Extract(pName, 1, $Length(..#OWNMAPPINGPREFIX)), "L") = ..#OWNMAPPINGPREFIX
+    Set tStems = ""
+    For tStem = $Piece($ClassName(), "."), $Piece(##class(OcuPilot.Kernel.State.Base).#MAPPINGPATTERN, "*") {
+        Set tStem = $ZConvert(tStem, "L")
+        If (tStem '= "") && '$ListFind(tStems, tStem) Set tStems = tStems _ $ListBuild(tStem)
+    }
+    Quit tStems
+}
+
+/// <p>Whether mapping name <var>pName</var> covers any of OcuPilot's own names
+/// (<method>OwnNameStems</method>), ignoring case: by overlap, not by prefix (AD-10 as amended,
+/// DW-1803). A global's subscripts and a routine's type suffix (<code>_MAC</code>) are set aside,
+/// since each only narrows the mapping within the name before it. What is left is a range
+/// <code>L:U</code>, a pattern <code>P*</code> or a name. A pattern covers a stem when either
+/// begins with the other, so <code>*</code>, <code>O*</code> and <code>OcuPilotX*</code> each do; a
+/// name when it begins with the stem; a range when <method>RangeCoversStem</method> says so, and a
+/// range holding <code>*</code> always.</p>
+ClassMethod CoversOwnName(pName As %String) As %Boolean
+{
+    Set tName = $Piece(pName, "(")
+    If $Match(tName, "(?s).*_[A-Za-z]+") Set tName = $Piece(tName, "_", 1, $Length(tName, "_") - 1)
+    Set tLower = $ZConvert(tName, "L")
+    Set tStems = ..OwnNameStems()
+    Set tCovers = 0
+    For tI = 1:1:$ListLength(tStems) {
+        Set tStem = $List(tStems, tI)
+        If tName [ ":" {
+            Set tCovers = (tName [ "*") || ..RangeCoversStem($Piece(tName, ":"), $Piece(tName, ":", 2, *), tStem)
+        } ElseIf tName [ "*" {
+            Set tPrefix = $Piece(tLower, "*")
+            Set tCovers = ($Extract(tPrefix, 1, $Length(tStem)) = tStem) || ($Extract(tStem, 1, $Length(tPrefix)) = tPrefix)
+        } Else {
+            Set tCovers = ($Extract(tLower, 1, $Length(tStem)) = tStem)
+        }
+        If tCovers Quit
+    }
+    Quit tCovers
+}
+
+/// <p>Whether the range from <var>pLow</var> to <var>pHigh</var>, both ends included and compared as
+/// the instance orders names (character codes), holds a name beginning with some spelling of
+/// lower-case stem <var>pStem</var>, each of its letters in either case: some spelling is at most
+/// <var>pHigh</var>, and <var>pLow</var> is at most that spelling or begins with it. Every spelling
+/// is tried; an OcuPilot stem has eight letters, so there are 256.</p>
+ClassMethod RangeCoversStem(pLow As %String, pHigh As %String, pStem As %String) As %Boolean
+{
+    Set tLetters = ""
+    For tI = 1:1:$Length(pStem) {
+        If $ZConvert($Extract(pStem, tI), "U") '= $Extract(pStem, tI) Set tLetters = tLetters _ $ListBuild(tI)
+    }
+    Set tCovers = 0
+    For tMask = 0:1:(2 ** $ListLength(tLetters)) - 1 {
+        Set tSpelling = pStem
+        For tJ = 1:1:$ListLength(tLetters) {
+            If (tMask \ (2 ** (tJ - 1))) # 2 Set $Extract(tSpelling, $List(tLetters, tJ)) = $ZConvert($Extract(pStem, $List(tLetters, tJ)), "U")
+        }
+        If tSpelling ] pHigh Continue
+        If '(pLow ] tSpelling) || ($Extract(pLow, 1, $Length(tSpelling)) = tSpelling) {
+            Set tCovers = 1
+            Quit
+        }
+    }
+    Quit tCovers
 }
 
 /// <p>Whether the global mapping whose composite id is <var>pId</var> names a system global: its
@@ -1807,9 +1868,9 @@ ClassMethod CopySourceCap() As %String
 /// <p>Only a destination where one may live (<method>IsOwnMappingNamespace</method>) is checked, and
 /// then each of the source's three lists is read as the caller, through its descriptor's own gate
 /// and declared read (the <method>OcuPilot.Kernel.Proposal.Impact</method> idiom), at
-/// <method>CopySourceCap</method>. It fails closed: a row whose <code>Name</code> begins with
-/// <parameter>OWNMAPPINGPREFIX</parameter>, a list the caller may not read, a list cut at its cap and
-/// an empty source each answer true. A read that fails is an error status.</p>
+/// <method>CopySourceCap</method>. It fails closed: a row whose <code>Name</code> covers one of
+/// OcuPilot's own names (<method>CoversOwnName</method>), a list the caller may not read, a list
+/// cut at its cap and an empty source each answer true. A read that fails is an error status.</p>
 ClassMethod CopiesOwnMapping(pDestination As %String, pSource As %String, Output pCopies As %Boolean) As %Status
 {
     Set pCopies = 0
@@ -1853,7 +1914,7 @@ ClassMethod CopiesOwnMapping(pDestination As %String, pSource As %String, Output
             }
             Set tIterator = tRows.%GetIterator()
             While tIterator.%GetNext(.tIndex, .tRow) {
-                If $IsObject(tRow) && ..IsOwnMappingName(tRow.%Get("Name")) Set pCopies = 1
+                If $IsObject(tRow) && ..CoversOwnName(tRow.%Get("Name")) Set pCopies = 1
             }
             If pCopies Quit
         }

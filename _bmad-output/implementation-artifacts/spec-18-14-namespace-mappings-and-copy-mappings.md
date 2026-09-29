@@ -2,9 +2,9 @@
 title: 'Story 18.14: Namespace mappings and copy-mappings'
 type: 'feature'
 created: '2026-09-28'
-baseline_revision: '57c4a1d797567e26000d343ecd7d41069457f4a7'
+baseline_revision: 'cae9a12c907d829e447938c23e8a999e56bb6aec'
 baseline_commit: 'c267f6da5e9ababff6ea59664edcb9f4050afcc7'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -31,6 +31,13 @@ deferred:
       Reported by the implementation stage's client work; the form draws no Namespace control, so a MAPPING.NAMESPACE.ABSENT violation has no field to attach to.
     location: >-
       ui/src/app/areas/os-management/mapping-form.page.ts
+    severity: low
+  - summary: >-
+      PathPort refuses an overwriting consumer only existing files in OcuPilot's served directory, so a new file name there still resolves and the unauthenticated static application would serve it.
+    evidence: |-
+      PathPortInstance.TestAnOverwriteNeverReachesOcuPilotsServedFiles pins that a new name under csp/ocupilot/ resolves; DW-1798 and AD-21 cover existing files only, and the gap predates this pass (18.1). No product file consumer calls PathPort.Resolve on this branch (inference, grep). Widening it is an owner call.
+    location: >-
+      src/OcuPilot/Port/PathPort.cls:398
     severity: low
 ---
 
@@ -408,7 +415,7 @@ The work has two parts, built in order:
   - "This namespace stops reading these globals from the mapped database and reads its default database again. No data is deleted. This cannot be undone."
   - "This namespace stops running these routines from the mapped database. The routines themselves stay. This cannot be undone."
   - "This namespace stops loading this package's classes from the mapped database. The classes themselves stay. This cannot be undone."
-- `:481`: "Mappings whose names begin with OcuPilot keep OcuPilot's own globals and code where it expects them. In the namespace OcuPilot runs in, and in %ALL, they cannot be added, changed, removed or copied in."
+- `:481`: "A mapping whose name or pattern covers OcuPilot's own names decides where OcuPilot's globals and code are found. In the namespace OcuPilot runs in, and in %ALL, such a mapping cannot be added, changed, removed or copied in."
 
 **Tests.** Each stateful class refuses to run unless `OCUPILOT_ALLOW_NAMESPACE_CONFIG` reads 1, and the principal classes also need `OCUPILOT_ALLOW_PRINCIPALS`. Each runs `RemoveAll` before all tests, after each and after all, and a survivor fails the class.
 
@@ -561,8 +568,8 @@ Rejected:
 
 ### Rework iteration 1 (DW-1803, DW-1798, orchestrator decisions)
 
-- [ ] [Decision] DW-1803 (owner, by=merge_gate 2026-09-28; AD-10's own-mappings bullet as amended): `PROHIBITED.OCUPILOTMAPPING` refuses, in the install namespace (the evaluating process's `$NAMESPACE`) or `%ALL`, any global, routine or package mapping whose name pattern or range overlaps an OcuPilot package, routine or global name -- `O*`, `Ocu*`, `*`, a subscript range or routine range spanning an `OcuPilot` name -- not only a name beginning with `OcuPilot`; a copy into either namespace from a source holding such a mapping is refused the same way. Read OcuPilot's names from the instance (its package mapping and state-database mapping, `Kernel/State/Base` `MAPPINGPATTERN`), never a second literal. Pin the overlap cases (`O*`, `Ocu*`, `*`, a range) with tests on both callers through the recording/accepting port, plus a permitting leg (`Q*`, `Zz*` in the install namespace, and any pattern in another namespace), and a Rule 19 mutation that puts the prefix match back.
-- [ ] [Decision] DW-1798 (owner, by=merge_gate 2026-09-28; AD-21's sixth case as amended): `PathPort.Resolve` refuses an overwriting consumer (`file` with `pOverwrite` 1) any existing file in OcuPilot's own served files -- the static application's directory (`csp/ocupilot/`, read from the instance's own application definition or the installer's roster at call time, never a literal path) and whatever the installer deploys there -- with `PATH.INSTANCE`; a new name elsewhere is unaffected. Pin it with a `PathPortInstance` leg and a Rule 19 mutation.
+- [x] [Decision] DW-1803 (owner, by=merge_gate 2026-09-28; AD-10's own-mappings bullet as amended): `PROHIBITED.OCUPILOTMAPPING` refuses, in the install namespace (the evaluating process's `$NAMESPACE`) or `%ALL`, any global, routine or package mapping whose name pattern or range overlaps an OcuPilot package, routine or global name -- `O*`, `Ocu*`, `*`, a subscript range or routine range spanning an `OcuPilot` name -- not only a name beginning with `OcuPilot`; a copy into either namespace from a source holding such a mapping is refused the same way. Read OcuPilot's names from the instance (its package mapping and state-database mapping, `Kernel/State/Base` `MAPPINGPATTERN`), never a second literal. Pin the overlap cases (`O*`, `Ocu*`, `*`, a range) with tests on both callers through the recording/accepting port, plus a permitting leg (`Q*`, `Zz*` in the install namespace, and any pattern in another namespace), and a Rule 19 mutation that puts the prefix match back.
+- [x] [Decision] DW-1798 (owner, by=merge_gate 2026-09-28; AD-21's sixth case as amended): `PathPort.Resolve` refuses an overwriting consumer (`file` with `pOverwrite` 1) any existing file in OcuPilot's own served files -- the static application's directory (`csp/ocupilot/`, read from the instance's own application definition or the installer's roster at call time, never a literal path) and whatever the installer deploys there -- with `PATH.INSTANCE`; a new name elsewhere is unaffected. Pin it with a `PathPortInstance` leg and a Rule 19 mutation.
 
 ## Spec Change Log
 
@@ -608,6 +615,25 @@ Rejected:
   - `[false]` `[reject]` read-once tested only indirectly — provoking a second read is forbidden by the orchestrator; the logs held no #7846 after the full sweep.
   - `[low]` `[reject]` `SourceHeld` reads a non-404 failure as held — the pair gate precedes it, and the vendor then fails the task #420.
   - `[false]` `[reject]` regeneration of `screens.generated.ts` and `ToolFields.cls` unverifiable — `npm run build`'s prebuild ran `screen-mirror.mjs --check` and `field-lists.mjs --check`, both clean.
+
+### 2026-09-28 — Review pass
+
+- verdicts: 14 findings — high 0, medium 2, low 6, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` a pattern longer than the stem, a range whose low end begins with it, and a subscript range of an OcuPilot global each rely on a `CoversOwnName` branch no test reached — added `OcuPilotState*`, `OcuPilotA:OcuPilotZ` and `OcuPilotState("a"):("z")` to `MappingWrite`'s refused legs; each branch removed reddens its leg alone (runs 384-386).
+  - `[low]` `[patch]` no range is expected permitted, so an always-covering range check stays green — added `A:B` to the install-namespace permitted legs; `RangeCoversStem` answering 1 reddens it (run 387).
+  - `[low]` `[patch]` the new `%ALL` legs did not assert that `Prohibits` answered, so the `Q*` "0 " also matched a failed call — added `AssertStatusOK` per leg.
+  - `[low]` `[defer]` an overwriting consumer is refused only existing files in the served directory, so a new file there still resolves — pre-existing since 18.1 and outside DW-1798's "existing file" and AD-21's overwrite family; no product file consumer calls `PathPort.Resolve` on this branch (inference); in `deferred:` for the owner.
+  - `[false]` `[reject]` the spec's Boundaries, matrix rows, Code Map and AC4 state the prefix rule — overlap refuses a strict superset, so each still holds; the owner's DW-1803 decision and AD-10's amendment record the widening, and the intent block is read-only.
+  - `[false]` `[reject]` EXPERIENCE.md `:481` edited in place rather than added — the dispatch sanctions an in-place change of a refusal sentence with its published copy and pinned test together; the file stays 993 lines.
+  - `[low]` `[reject]` pattern edits and deletes are not exercised — `Mapping` and `Created` reach the same `IsOwnMapping`, whose edit and delete wiring the older `OcuPilot*` legs pin; a divergence would take a new call site.
+  - `[false]` `[reject]` the package kind has no pattern or range legs — the vendor accepts only plain package names (measured this pass), and the older test refuses a plain `OcuPilotProbe1814` package create.
+  - `[low]` `[reject]` carried: `%ALL` exercised only through the predicate — the spec's plan; `IsOwnMappingNamespace`'s `%ALL` arm is shared by the copy.
+  - `[medium]` `[patch]` (grouped with the first row) a subscript range over an OcuPilot-stem global is not exercised — the `OcuPilotState("a"):("z")` leg above.
+  - `[low]` `[reject]` the copy pins only an `O*` source and no `%ALL` destination — `CopiesOwnMapping` makes one `CoversOwnName` call per row, whose cases `MappingWrite` pins; run 28 shows the copy consumes it; `%ALL` shares `IsOwnMappingNamespace`.
+  - `[false]` `[reject]` an unreadable roster refuses every overwrite of an existing file — the roster is the installer's own XData, read from the dictionary of the code that runs; it fails only with OcuPilot broken, and failing closed matches the family's refusal on a failed read.
+  - `[false]` `[reject]` the `PathPort` change lies outside the intent block — DW-1798 is the owner's decision routed into this rework (Rework iteration 1, Spec Change Log) and AD-21 carries it.
+  - `[false]` `[reject]` OcuPilot's names come from code values rather than instance mapping rows — the rework item names `MAPPINGPATTERN` as the source, and no second literal remains.
 
 ## Design Notes
 
@@ -788,32 +814,60 @@ Demonstrated on `ocupilot-b-ci`, each ObjectScript mutation loaded with its subc
 - mutation (code review): `Error.ReasonForNamespace`'s `NAMESPACE.SOURCE.SAME` arm removed → `NamespaceCopy.TestABadSourceIsRefusedBeforeAnyTaskIsQueued` alone red (run 13).
 - mutation (code review): `NamespaceCreate` `CLASSICPAGES` "" → `ClassicPageGate.TestAnAssignedPageGatesTheScreensCaller` red on the namespace create's Save leg alone, beside the agent test's confirm leg and the roster count (run 15).
 - mutation (code review): `.ocu-namespace-copy-status` drawn in `--ocu-surface`, rebuilt and redeployed → `namespace-mappings.browser-spec`'s AC6 leg red at 1:1 in both themes, its AC8 leg green.
+- mutation (rework 1): `Prohibited.CoversOwnName` answers the prefix match (the name begins with the stem) → `MappingWrite.TestAMappingWhosePatternCoversOcuPilotsNamesIsRefused` alone red, each `O*`, `Ocu*`, `*`, range and suffixed-pattern leg reaching `MappingAcceptPort` and the `%ALL` legs permitted, `HSCUSTOM`'s mappings unchanged (run 27); `NamespaceCopy.TestACopyIntoTheInstallNamespaceOfACoveringPatternIsRefused` alone red (run 28).
+- mutation (rework 1): `PathPort.InServedDirectory` dropped from `InstanceFile` → `PathPortInstance.TestAnOverwriteNeverReachesOcuPilotsServedFiles` alone red, every deployed file and each refused seam leg resolving, nothing under `csp/ocupilot/` written (run 29).
+- mutation (rework 1 review): `CoversOwnName`'s pattern check keeps only "the stem begins with the pattern's prefix" → `MappingWrite.TestAMappingWhosePatternCoversOcuPilotsNamesIsRefused` alone red, on its `OcuPilotState*` leg only (run 384).
+- mutation (rework 1 review): `RangeCoversStem` drops "the low end begins with the spelling" → the same test alone red, on its `OcuPilotA:OcuPilotZ` leg only (run 385).
+- mutation (rework 1 review): `CoversOwnName` keeps a global's subscripts → the same test alone red, on its `OcuPilotState("a"):("z")` leg only (run 386).
+- mutation (rework 1 review): `RangeCoversStem` answers 1 → the same test alone red, on its permitted `A:B` leg only (run 387); reverted byte-identical, 10/10 (run 388).
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Implemented.** Parts A and B and the DW-1784 mechanism, in the spec's order. Task 0 found every LIST row carrying `Name`, the LIST case-insensitive, and no #7846 after the async copies; the copy keeps `%DB_IRISSYS:WRITE`, measured refused without it (the AD-8 sentence is in the Spec Change Log for the runner).
+**Rework iteration 1 (DW-1803, DW-1798).** Both items are checked off.
+
+- DW-1803: `Prohibited.CoversOwnName` replaces the prefix match. It sets aside a global's subscripts and a routine's type suffix, then refuses a pattern when it and OcuPilot's stem begin with each other, a name beginning with the stem, and a range holding any case spelling of the stem, or holding `*`. Create, change, delete and the copy's source rows all use it. The stems are read at call time by `OwnNameStems`: this class's top-level package and `Kernel.State.Base` `MAPPINGPATTERN` up to its `*`. `OWNMAPPINGPREFIX` is gone.
+- The refusal sentence now says "covers OcuPilot's own names". It changed together in `OCUPILOTMAPPINGREASON`, `strings.ts` and EXPERIENCE.md `:481`, which stays 993 lines, and in this spec's `:481` task line.
+- DW-1798: `PathPort.InstanceFile` adds `InServedDirectory`. An overwriting consumer is refused `PATH.INSTANCE` for any existing file under the served directory, compared ignoring case, and an unreadable directory refuses. `ServedDirectory` reads the installer roster's bundle destination at call time, with `${dataDir}` read as the data directory. The test pins it equal to the `/ocupilot` application's `Path`.
 
 **Files.**
 
-- Server: `Port/NamespacePort.cls`; `Area/OsMgmt/MappingRules.cls` and `MappingSave.cls` behind four `/mapping/:kind` routes; six mapping descriptors; nine mapping tools on three abstract bases with `MappingMint`, and `NamespaceCopyMappings`.
-- Kernel: `Screen/Gate.WithClassicPages` with `Write.CLASSICPAGES`, declared by the four namespace tools and the six mapping create and update tools; `Screen/Read.cls` row seeding (AD-36); `PROHIBITED.OCUPILOTMAPPING` and `MAPPING.SYSTEMGLOBAL` in `Prohibited.cls` and `Mint.cls`; the id rule `foldcase-firstpart`; `AdminPort` mutating, bodyless, queued and property-fault rosters; `Error.cls` codes; ten `Baseline.cls` lines.
-- Client: the mapping form, its store and actions, the Namespaces list page with the copy dialog and status line, the namespace editor's Mappings line, and `parentListFor` widened.
-- Tests: 20 new classes and fixtures, the rosters extended, and `scripts/ci-throwaway.sh` given its class lines. No new arming variable.
+- `Kernel/Proposal/Prohibited.cls`: the overlap predicate and the new sentence.
+- `Port/PathPort.cls`: the served-files refusal.
+- `Test/PathPortFixture.cls`: the served-directory seam.
+- `Test/MappingWrite.cls`, `Test/NamespaceCopy.cls` and `Test/PathPortInstance.cls`: one new pinning test each.
+- `strings.ts` and EXPERIENCE.md: the sentence.
 
-**Review (first pass).** 28 findings. Patched: 5 medium (vendor name refusals, `Validate`'s namespace and collation rules and the form's 404s, the mapping codes' sentences, the locator's composite label, `ClassicPageGate`'s self-referential expectation) and 3 low (a task-count floor, a stray line, the `CopiesOwnMapping` mutation line). Every patch is a test, each demonstrated red by its recorded mutation, and no product code changed in the pass. Deferred: 3 low client items the implementation reported. Rejected: 20, each with its reason in the triage log.
+**Review.** 14 findings: 2 medium, 6 low and 6 false.
 
-**Follow-up review:** `false`. Five medium entries were patched, but all five are test additions, each shown red under its mutation and green on the reverted tree, so no unverified risk can be named.
+- Patched, test-only, in `MappingWrite`:
+  - refused legs for `OcuPilotState*`, `OcuPilotA:OcuPilotZ` and `OcuPilotState("a"):("z")`;
+  - a permitted `A:B` range;
+  - a status assertion on each `%ALL` leg.
+- Deferred: new file names in the served directory (low, owner call).
+- Rejected: 9, each with its reason in the triage log.
+- Follow-up review: `false`. This is a follow-up pass, and it patched no `high`.
 
-**Verification.**
+**Verification** (`ocupilot-b-ci`):
 
-- The full ObjectScript sweep on `ocupilot-b-ci` (348 classes, 2852 tests) found one red, `PortGate`, whose port roster lacked `NamespacePort`. The row was added, and `PortGate` re-ran 4/4 (run 805).
-- After the patches: `MappingDescriptor` 6/6, `MappingRefusals` 7/7, `NamespaceCopy` 7/7 and `ClassicPageGate` 3/3 (runs 815-820).
-- Client: `npm test` 1688 tools and 1749 components, then the `locator-bar` spec 32/32. `npm run build` is clean at 2.11 MB initial, with the warning re-based to 2217kB under DW-1166.
-- Browser: `namespace-mappings` and `namespaces` 9/9 on the redeployed bundle. Smoke on `ocupilot-b-ci` 49/49.
-- `check-objectscript` and `lint-docs` clean, and EXPERIENCE.md is 993 lines.
-- Throwaway state afterwards: no probe namespaces, principals or resource, the six classic pages' custom resources empty as recorded, `HSCUSTOM`'s only OcuPilot mapping `OcuPilot*` on `OCUPILOT`, and no #7846 in either log.
+- Targeted:
+  - `MappingWrite` 10/10 (run 388, after the review patch);
+  - `NamespaceCopy` 8/8 (run 21), `PathPortInstance` 9/9 (run 22), `RefusalCopy` 8/8 (run 23), `Prohibited` 13/13 (run 24), `MappingRefusals` 8/8 (run 25) and `PathPort` 17/17 (run 26).
+- Mutations: six, each red alone on its leg and each reverted byte-identical (runs 27-29 and 384-387, under `## Verification`).
+- Full ObjectScript sweep: runs 34-382, 349 classes, 2867/2867 in `%UnitTest_Result`, before the test-only review patch.
+- Client and checks:
+  - `npm test`: 1688 tools and 1750 components.
+  - `npm run build`: 2.11 MB initial.
+  - Smoke: 49/49.
+  - `check-objectscript` and `lint-docs` clean.
+- Throwaway state afterwards:
+  - `HSCUSTOM` holds 120 global mappings, with `OcuPilot*` → `OCUPILOT` the only one matching the tested patterns.
+  - `%ALL` holds no global mapping, and no probe namespace remains.
+  - No file under `csp/ocupilot/` changed.
 
-**Residual risks.** The contended rosters shared with Epic 16 (`Prohibited` codes, `ReadTool`, `Navigation`, `Wire`, `PortGate`, `strings.ts`, `screens.generated.ts`) will need their counts reconciled at the merge. `MappingDelete.InputSchema` finds its create class by replacing the class name, which holds only for the registered tool names.
+**Residual risks.**
+
+- The vendor's name-range upper bound was not measured, so a range is treated as inclusive at both ends (inference, fails closed).
+- `PathPortInstance.cls` is 540 lines, above the roughly 500-line guide.
