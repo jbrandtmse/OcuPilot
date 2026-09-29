@@ -8071,3 +8071,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: feature CI run 36507726737 attempt 1 on 3fa9c0db (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/audit-events.browser-spec.mjs
 - evidence: spec :342 deepStrictEqual [200] vs [200,200]; the same code passed on 580d4005 (run 36504027685) and every earlier feature run; nothing in 16.5 touches the spec or the auditing screen
 - 2026-09-29T01:47:49Z status=routed owner=range-end-cleanup by=orchestrator note=wait for the re-read response by URL before asserting the list, instead of a fixed collection window
+
+### DW-1809: Prohibited.BaseMappingMoves judges a %ALL subscript mapping of a code global on an inference that %ALL's base mapping lands on each namespace's globals database (read from the vendor's NSPMAP, not measured: the throwaway has no %ALL)
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: no %ALL namespace on ocupilot-b-ci; the refusal errs toward refusing
+- 2026-09-29T03:58:28Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=reopen_if=a %ALL code-global subscript mapping is measured to leave OcuPilot's code where it was, or to move it despite the check
+
+### DW-1810: PROHIBITED.OCUPILOTMAPPING's sentence says the mapping's name or pattern covers OcuPilot's own names, which a code-global refusal (rOBJ, oddDEP(0)) does not literally do
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the sentence is written once in the kernel and pinned in strings.ts and EXPERIENCE.md :481 (AD-53); a code-global mapping moves OcuPilot's code without naming it
+- 2026-09-29T03:58:28Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=reopen_if=an operator reports the refusal sentence as misleading for a code-global mapping
+
+### DW-1811: Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay failed once in a full sweep: a deleted account's token was served where 401 AUTH.DISABLED was expected; it passed alone on rerun
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ocupilot-b-ci sweep run 185 red, run 198 green alone; 18.14's diff does not touch the class or the token path (inference: timing in the deleted-user token check)
+- 2026-09-29T03:58:28Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=reopen_if=the Retention leg fails again in CI or a sweep
