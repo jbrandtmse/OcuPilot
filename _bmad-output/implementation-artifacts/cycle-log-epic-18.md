@@ -273,3 +273,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-29T23:16:25Z	Story 18.4	committed_code	sha=0ba6ff66(via_merge_d9f84f52) pushed=true ci=pending run=36644214735 head=d9f84f52 head_confirmed_by=headSha
 2026-09-29T23:16:25Z	Epic 18	spine_updated	ad=AD-8(dismount_%Admin_Manage,DW-1847),AD-21(owner_database-directory_rule) reason=merge_gate_decision+owner_rule by=runner story=18-4-the-deferred-disk-operations lint=ok
 2026-09-29T23:16:25Z	Story 18.4	rework_opened	cycle_iteration=2 iteration=1 trigger=decision(pre-review) items=Owner:directory_rule,Decision:DW-1847_test,Ledger:DW-1848 scope_baseline=pending(post-merge_head) intent_amended=dismount_pair_line(DW-1847)
+2026-09-29T23:49:22Z	Story 18.4	ci_resolved	story=18.4 run=36644214735 head=d9f84f52(merge+0ba6ff66) result=success resolved_at=next_implement
+2026-09-29T23:49:22Z	Story 18.4	stage_spawned	stage=implement spawn_at=2026-09-29T23:49:22Z model=opus agent_name=18-4-disk-operations-implement-2 cycle_iteration=2 rework_iteration=1(pre-review_decisions)
