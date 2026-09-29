@@ -784,7 +784,8 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// <var>pFault</var> empty. Otherwise returns an error <class>%Status</class> carrying only
 /// OcuPilot's own text, <var>pResult</var> empty and <var>pFault</var>
 /// <code>{error, reason, code}</code> from <class>OcuPilot.Kernel.Fault</class>; vendor text goes
-/// to <method>LogFault</method> alone. <var>pHttpStatus</var> is the numeric HTTP status in both
+/// to <method>LogFault</method> alone, except a read's 404, which is logged nowhere (AD-2).
+/// <var>pHttpStatus</var> is the numeric HTTP status in both
 /// cases: the endpoint's, 503 for a refusal the port decided (<code>PORT.UNAVAILABLE</code>,
 /// <code>PORT.TIMEOUT</code>), 501 for a name no compiled endpoint class answers, a suffix
 /// outside <parameter>TYPESUFFIXES</parameter> that is not a <parameter>MUTATINGTYPES</parameter>
@@ -957,7 +958,8 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
         }
         ; UNLOGGEDQUERY: a refusal quoting a value that must not reach the log is masked first.
         If $$$ISERR(tSeqSC) Set tSeqSC = ..Unlogged(pEndpoint, pType, .pQuery, tSeqSC)
-        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType), pBody)
+        ; AD-2: a read the vendor answers 404 has its answer, an absence, and is not logged.
+        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType), pBody, '..IsMutating(pEndpoint, pType))
     } Catch ex {
         Set pResult = ""
         Set pHttpStatus = 500
@@ -2410,7 +2412,11 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
 /// <code>""</code>; a violation field that begins with it and a dot loses that segment.
 /// <var>pBody</var> is the body the request sent, whose secrets the logged status never carries
 /// (<method>LoggedStatus</method>).</p>
-ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWrapper As %String = "", pBody As %DynamicAbstractObject = "") As %Status [ Private ]
+/// <p><var>pRead</var> is 1 when the request was a read. A read answered 404 has found an absence,
+/// which is its answer and not a fault: its vendor status is not logged, so a delete's re-read or an
+/// existence check never writes an error line that raises the instance's alert state (AD-2). Every
+/// other 404, a write's included, is logged as any failure is.</p>
+ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWrapper As %String = "", pBody As %DynamicAbstractObject = "", pRead As %Boolean = 0) As %Status [ Private ]
 {
     Set pHttpStatus = $Select(+pHttp: +pHttp, 1: 500)
     Set tOutcomeSC = ##class(OcuPilot.Kernel.Fault).Outcome(pHttpStatus, pVendorSC, .pFault, .tDetail)
@@ -2434,7 +2440,7 @@ ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, 
         Do tFieldDetail.%Set("violations", tViolations)
         Do pFault.%Set("detail", tFieldDetail)
     }
-    If $$$ISERR(pVendorSC) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, ..LoggedStatus(pVendorSC, pBody), pFault.code)
+    If $$$ISERR(pVendorSC) && '(pRead && (pHttpStatus = 404)) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, ..LoggedStatus(pVendorSC, pBody), pFault.code)
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 

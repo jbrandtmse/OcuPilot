@@ -101,6 +101,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   - **Query parameters go into `%request.Data`, and `ValidateQueryParams()` is what populates the endpoint's identifying property.** `ClassQuery.GetMaxRows` and `AsyncTaskEndpoint.%OnNew` read `%request.Data` directly, so seeding through `SaveOneQueryParam()` alone is not enough — probed: `maxRows` 2 on the web-application LIST returned 45 rows. Skip `ValidateQueryParams()` and `..Name` is empty and the call fails with an error that does not name the cause (`ERROR #5813: Null oid` on 2026.2).
   - **`BeginCaptureOutput`/`EndCaptureOutput`** keep device output out of the response body, which is what stops it corrupting AD-12's envelope.
   - **A non-2xx `%response.Status` is a failure even when `tSC` is OK.** The port raises it; it never returns an empty success.
+  - **A read answered 404 has found an absence, and the port logs nothing for it** - a delete's re-read, a read-back, an existence check. The caller still gets its `PORT.NOTFOUND` fault. Every other failure's vendor text is logged at error severity (AD-39), which the instance copies to `alerts.log` and counts toward its alert state, so a logged absence raised the instance's alert state on every delete. A write answered 404 is still logged [AMENDED 2026-09-29, DW-1814, merge-gate decision, Rule 20].
 
   No slice constructs an endpoint object or works around the port. The async branch is AD-26's.
 
