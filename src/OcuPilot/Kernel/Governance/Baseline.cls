@@ -99,7 +99,8 @@ XData Keys [ MimeType = application/json ]
   "webapp.sessions.end": true,
   "tasks.background.cancel": true,
   "tasks.background.pause": true,
-  "tasks.background.resume": true
+  "tasks.background.resume": true,
+  "osmgmt.processes.broadcast": true
 }
 }
 

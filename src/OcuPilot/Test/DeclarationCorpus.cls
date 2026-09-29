@@ -109,7 +109,8 @@ XData Cases
     "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status", "cases": [{"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning"}]},
     "tab": null,
     "toolIdentifier": "tasks.declarationcorpus",
-    "rowTarget": null
+    "rowTarget": null,
+    "multiSelect": null
   },
   "cases": [
     {"name": "the sound shape, all thirty-two keys", "addKey": "", "dropKey": "", "expected": null},
@@ -140,7 +141,9 @@ XData Cases
     {"name": "a singular suggestedPrompt", "addKey": "suggestedPrompt", "dropKey": "", "expected": "the declaration declares the unknown key 'suggestedPrompt'"},
     {"name": "an absent required route is sound here, because this rule is unknown-key only", "addKey": "", "dropKey": "route", "expected": null},
     {"name": "an absent required toolIdentifier is sound here, for the same reason", "addKey": "", "dropKey": "toolIdentifier", "expected": null},
-    {"name": "an unknown key is still named when a required key is missing beside it", "addKey": "banners", "dropKey": "route", "expected": "the declaration declares the unknown key 'banners'"}
+    {"name": "an unknown key is still named when a required key is missing beside it", "addKey": "banners", "dropKey": "route", "expected": "the declaration declares the unknown key 'banners'"},
+    {"name": "an absent optional multiSelect is sound", "addKey": "", "dropKey": "multiSelect", "expected": null},
+    {"name": "a hyphenated multi-select", "addKey": "multi-select", "dropKey": "", "expected": "the declaration declares the unknown key 'multi-select'"}
   ]
 }
 }

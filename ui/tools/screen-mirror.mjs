@@ -159,7 +159,7 @@ export function parseEntityTypes(text) {
  * `prebuild`, naming the rule, rather than being mirrored into a key builder that does nothing
  * with it (AD-5, AD-13 as amended by DW-1359).
  */
-export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer'];
+export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'integerset'];
 
 /**
  * The per-type canonical id rules, from the kernel's own `IDRULES` parameter: `[[type, rule],
@@ -1049,6 +1049,7 @@ export const DECLARATION_KEYS = [
   'tab',
   'toolIdentifier',
   'rowTarget',
+  'multiSelect',
 ];
 
 /**
@@ -2299,6 +2300,67 @@ export function rowTargetProblem(declaration) {
   return null;
 }
 
+/** The keys a declared `multiSelect` carries (AD-5, Story 16.6). */
+export const MULTI_SELECT_KEYS = ['action', 'eligible', 'max', 'ineligibleKey'];
+
+/** The most rows a `multiSelect` may let a person check. */
+export const MULTI_SELECT_MAX = 1000;
+
+/**
+ * What is wrong with `declaration`'s declared `multiSelect`, or `null` when nothing is, including
+ * when none is declared (AD-5, Story 16.6). A multi-select is a list's one checked-set action: the
+ * table draws a checkbox on each row whose `eligible` read field is true, and the declared `action`
+ * acts on the checked rows from the command bar and the command box.
+ *
+ * Declarable only on a `list` archetype that declares a `read` and a `table`. Its `action` is one of
+ * the screen's `rowActions`, its `eligible` one of `read.fields`, its `max` a whole number from 1 to
+ * `MULTI_SELECT_MAX`, and its `ineligibleKey` a non-empty string key, which `declaredStringKeys`
+ * holds to the string source. `OcuPilot.Screen.Registry.MultiSelectProblem` returns the same
+ * sentence for every case in `OcuPilot.Test.MultiSelectCorpus`.
+ */
+export function multiSelectProblem(declaration) {
+  const { multiSelect } = declaration;
+  if (multiSelect === undefined || multiSelect === null) return null;
+  if (!isObject(multiSelect)) {
+    return 'multiSelect is not an object naming its action, eligible field, max and ineligibleKey (AD-5)';
+  }
+  const keysFault = unknownKeyProblem('multiSelect', multiSelect, MULTI_SELECT_KEYS);
+  if (keysFault !== null) return keysFault;
+  if (declaration.archetype !== 'list') {
+    return `multiSelect is declared on a '${shown(declaration.archetype)}' archetype, and a multi-select is a list's own (AD-5)`;
+  }
+  if (!isObject(declaration.read)) {
+    return 'multiSelect is declared without a read, and its eligible field is one of read.fields (AD-5)';
+  }
+  if (!isObject(declaration.table)) {
+    return 'multiSelect is declared without a table, and its checkboxes are drawn in the table (AD-5)';
+  }
+  if (typeof multiSelect.action !== 'string' || multiSelect.action === '') {
+    return 'multiSelect.action is empty, and a multi-select names the row action it acts through';
+  }
+  const actions = (Array.isArray(declaration.rowActions) ? declaration.rowActions : [])
+    .filter((action) => isObject(action) && typeof action.id === 'string')
+    .map((action) => action.id);
+  if (!actions.includes(multiSelect.action)) {
+    return `multiSelect.action '${multiSelect.action}' is not one of rowActions`;
+  }
+  if (typeof multiSelect.eligible !== 'string' || multiSelect.eligible === '') {
+    return 'multiSelect.eligible is empty, and a multi-select names the read field that makes a row checkable';
+  }
+  const fields = Array.isArray(declaration.read.fields) ? declaration.read.fields : [];
+  if (!fields.includes(multiSelect.eligible)) {
+    return `multiSelect.eligible '${multiSelect.eligible}' is not one of read.fields`;
+  }
+  const { max } = multiSelect;
+  if (typeof max !== 'number' || !Number.isInteger(max) || max < 1 || max > MULTI_SELECT_MAX) {
+    return `multiSelect.max must be a whole number from 1 to ${MULTI_SELECT_MAX}`;
+  }
+  if (typeof multiSelect.ineligibleKey !== 'string' || multiSelect.ineligibleKey === '') {
+    return "multiSelect.ineligibleKey is empty, and a multi-select names the string key an ineligible row's checkbox reads";
+  }
+  return null;
+}
+
 /**
  * Whether some other built entry in `screens` already pairs `route`'s own surface -- an editor or
  * document viewer at `<route>/edit` or `<route>/document`, or a detail screen or child list whose
@@ -2580,6 +2642,8 @@ export function declaredStringKeys(declaration) {
     for (const entry of Array.isArray(banner.cases) ? banner.cases : []) keys.push(entry?.messageKey);
   }
   if (tab !== null && typeof tab === 'object') keys.push(tab.labelKey);
+  const { multiSelect } = declaration;
+  if (multiSelect !== null && typeof multiSelect === 'object') keys.push(multiSelect.ineligibleKey);
   const { suggestedPrompts } = declaration;
   for (const prompt of Array.isArray(suggestedPrompts) ? suggestedPrompts : []) keys.push(prompt?.groupKey, prompt?.textKey);
   return keys.filter((key) => typeof key === 'string' && key !== '');
@@ -2794,6 +2858,11 @@ export function buildMirror({
     if (rowTargetFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${rowTargetFault}`);
     }
+    // AD-5, Story 16.6: a list's one declared multi-select action.
+    const multiSelectFault = multiSelectProblem(screen.declaration);
+    if (multiSelectFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${multiSelectFault}`);
+    }
     // AD-5, AD-53: the self-protection rule the client draws a refused row action from, refused
     // here against the instance's own closed vocabulary so a rule neither side understands fails
     // the build rather than rendering as a word in a row menu.
@@ -2850,6 +2919,8 @@ export function buildMirror({
     banner: screen.declaration.banner ?? null,
     tab: screen.declaration.tab ?? null,
     rowTarget: screen.declaration.rowTarget ?? null,
+    // Defaulted for the reason `rowTarget` is: optional, and absent from every other screen.
+    multiSelect: screen.declaration.multiSelect ?? null,
     // Defaulted for the reason `read` is: both keys are optional (AD-3, AD-6), every descriptor
     // written before them declares neither, and the mirror's two fields are not optional.
     secretArguments: screen.declaration.secretArguments ?? [],
@@ -3214,6 +3285,8 @@ export interface ScreenDeclaration {
   readonly toolIdentifier: string;
   /** This list's one declared cross-screen row target, or \`null\` for a screen with none (AD-5, Story 6.10). */
   readonly rowTarget: ScreenRowTarget | null;
+  /** This list's one declared multi-select action, or \`null\` for a screen with none (AD-5, Story 16.6). */
+  readonly multiSelect: ScreenMultiSelect | null;
 }
 
 /** One suggested prompt: the string key of the task group it sits under, and of its own text. */
@@ -3240,6 +3313,18 @@ export interface TabDeclaration {
 export interface ScreenRowTarget {
   readonly route: string;
   readonly field: string;
+}
+
+/**
+ * A list's one multi-select action (AD-5, Story 16.6): the row action that acts on the checked rows,
+ * the read field that makes a row checkable, the most rows it takes, and the string key an
+ * ineligible row's checkbox reads.
+ */
+export interface ScreenMultiSelect {
+  readonly action: string;
+  readonly eligible: string;
+  readonly max: number;
+  readonly ineligibleKey: string;
 }
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */

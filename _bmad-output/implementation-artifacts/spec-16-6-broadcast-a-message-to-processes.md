@@ -2,13 +2,24 @@
 title: 'Story 16.6: Broadcast a message to processes'
 type: 'feature'
 created: '2026-09-28'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '4552cadf3d8daa7083a393f705b56b81f9cd9e9b'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A broadcast whose every checked pid has ended is refused as not found (the RECIPIENTS read's
+      404), not with the published PROCESS.BROADCAST.RECIPIENT sentence AC3 names.
+    evidence: |-
+      Port/ProcessPort.cls answers RECIPIENTS 404 when no pid of the set is running, as the intent's
+      Boundaries specify; the screen route (Api/ScreenAction.cls:255-262) and the mint both stop on that
+      read, so AC3's sentence and the matrix's 409 are reached only by a set that still names a running pid.
+    location: >-
+      src/OcuPilot/Port/ProcessPort.cls RECIPIENTS branch
+    severity: low
 ---
 
 <intent-contract>
@@ -280,6 +291,43 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-28 — Review pass
+
+- verdicts: 30 findings — high 0, medium 7, low 19, false 4, maybe-false 0
+- findings:
+  - verification-gap:
+    - `[low]` `patch` The hint's 20-process cap is never checked on the path Processes renders (`ScreenActionDialogs.broadcastMax`) — asserted the hint through the real handler in `broadcast-dialog.spec.ts`; mutation `broadcastMax` → `0` red.
+    - `[medium]` `patch` A checked row a filter hides is never tested for being unchecked — added the `data-table.spec.ts` filter leg; mutation `store.data()` red.
+    - `[medium]` `patch` An ineligible row's checkbox carried a `title`, breaking DW-146's "no `title` under the table" — removed it, so the reason rides `aria-description` alone; added the multi-select no-`title` leg; mutation re-adding it red.
+    - `[low]` `reject` `measureLabels`' Check all term has no geometry test — the term is measured as the header lays it out; a regression needs a user to narrow Process ID below its label, and a browser geometry leg is more than a direct correction.
+    - `[medium]` `patch` The port's `$TLevel` refusal (the Never rule's only enforcement) is untested — added a `TSTART` leg to `ProcessBroadcast`; mutation red (run 18826).
+    - `[low]` `patch` Focus moving to Close after a send is untested — asserted in `process-broadcast.browser-spec.mjs` with the check cleared; mutation of the focus effect red after redeploy.
+    - `[low]` `defer` A set in which every pid has ended answers the fresh read's 404, not the published 409 — the intent's `RECIPIENTS` clause specifies 404 when no pid is found; which the dialog should show is a product call (deferred).
+    - `[medium]` `patch` The fingerprint test's ended and flag legs passed for the wrong reason, and its fresh reads went through `$ListBuild`, which stringified them, so every moved leg was vacuous — the ended and flag legs now assert the merge's refusal and the user and message legs a non-empty differing digest; mutation red (run 18827).
+    - `[low]` `reject` Sub-parts of ACs and in-file mutation comments have no recorded run — Rule 19 scopes to one pinning test per AC, each recorded; the tests this stage added carry recorded lines.
+    - `[low]` `reject` `ProcessBroadcastLive` is armed on `OCUPILOT_ALLOW_PRINCIPALS` where the spec says no arming — the fix edits this spec; the class creates and deletes a user, which every such class arms for, and `ci-throwaway.sh`'s roster names it.
+    - `[low]` `reject` The mint's refusal lives in `MergeUpdate`, not `StateDiff` as Tasks say — the fix edits this spec; `ScreenAction.Body` runs `StateDiff` (`Api/ScreenAction.cls:421`), so a `StateDiff` refusal would answer the screen 400 instead of the port's 409.
+  - intent-alignment:
+    - `[false]` `reject` The agent's mint answers 400 with the sentence, not 409 — Boundaries put the sentence at the mint (every mint refusal is 400 `TOOL.ARGUMENTS`, `Kernel/Proposal/Mint.cls:204`) and the 409 at the write for both callers, which the port answers.
+    - `[false]` `reject` `FINGERPRINTSUBJECT` adds `Message` to the intent's `Recipients,Absent` — the mint narrows the stored payload to the subject (`Mint.cls:270-284`) and `PortQuery` reads the message from it, so the literal subject sends no message on either caller; `Message` never moves in the fresh read. The intent text needs the correction.
+    - `[medium]` `patch` Filter-driven unchecking is unpinned — grouped with the filter row above.
+    - `[low]` `defer` An all-ended set never yields 409 — grouped with the 404 row above.
+    - `[low]` `reject` The card is tested as the proposal's `changed` rows, not as rendered — the panel renders every action write's rows generically; a rendered-card leg is more than a direct correction.
+    - `[false]` `reject` `ineligibleKey` is shape-checked only — it joins `declaredStringKeys`, which the same loop resolves against `strings.ts` for every declared key (`ui/tools/screen-mirror.test.mjs:134`).
+    - `[false]` `reject` Additions beyond the literal intent (the hint, Check all's indeterminate state, the caller-body 500, the transaction guard) — the hint is the spec gate's Task, the body refusal and the guard are Boundaries and Never items, and the indeterminate state is a neutral affordance.
+    - `[medium]` `patch` The checkbox `title` — grouped with the DW-146 row above.
+    - `[low]` `reject` The arming variable — grouped with the arming row above.
+    - `[low]` `patch` The browser spec never asserts the checks cleared after a send — asserted with the focus row above; two-receiver delivery stays pinned at the route by `ProcessBroadcastLive`.
+    - `[low]` `reject` The ledger's message argument is not asserted — the dispatch path records every tool call's arguments and the live class mints below dispatch; `Message` matches no secret pattern; a dispatch leg is more than a direct correction.
+    - `[low]` `reject` The browser draws only a daemon's ineligible checkbox — checkability is one vendor flag per row, pinned for a JOB'd process on the live read and for the drawing in `data-table.spec.ts`.
+    - `[low]` `reject` The 0 and over-max reasons are jsdom only — one function (`multi-select.ts`) computes them for the bar and the box, both pinned; the browser pins `aria-disabled`.
+    - `[low]` `reject` A good message is pinned at the rule, not delivered — `ScreenActionDelta` carries it exactly and `BroadcastBody` composes it unchanged, both pinned; the terminal's rendering is the vendor's.
+    - `[low]` `reject` The screen's "" set and the agent's "0" and 21-pid sets are unit only — "" is refused by the route's own empty-id check before the tool (`Api/ScreenAction.cls:192`); the mint runs the unit-pinned `PidsProblem` first, which its "abc" leg shows.
+    - `[medium]` `patch` The moved flag and ended legs pass by the merge's refusal — grouped with the fingerprint row above; the ended case is also pinned end to end (`TestAConfirmAfterARecipientEndedIsRefused`).
+    - `[low]` `reject` Refresh is pinned by `readNow`, not a timer tick — the timer calls the same read (AD-43) and `pruneChecked` runs on every store change.
+    - `[low]` `reject` Other tables and Suspend are pinned in jsdom and by a direct `Prohibits` call — `Prohibits` is the set's one home, the call every `Prohibited` test makes.
+    - `[low]` `reject` "The screen's caller leaves no record" and AD-58's action verdict are untested here — both are the kernel's behavior for every screen action and every bodyless write, pinned by their own suites.
+
 ## Design Notes
 
 **Measured on `ocupilot-ci`, 2026-09-28** (probes and vendor copies in `scratchpad/epic-16/16-6/`):
@@ -360,7 +408,81 @@ deferred: []
 - AC4: `\p{Cc}` is dropped from `MessageProblem` → the ESC leg of `ProcessBroadcast` goes red.
 - `integerset` sorts as strings → `EntityRef` and `entity-ref.test.mjs` go red.
 
+**Recorded mutations** (each reverted and the tree confirmed byte-identical; ObjectScript compiled on `ocupilot-ci` with every descendant, before and after the revert):
+
+- mutation: `ProcessPort.BroadcastBody` loops to `$ListLength(pPids) - 1` → `ProcessBroadcastLive` red (runs 18781, 18794): `TestTheScreenActionSendsToTwoReceivers` "and so does the second", `TestTheAgentsConfirmDeliversWithTheMarker`, `TestAThreePairsPrincipalBroadcasts`.
+- mutation: `ScreenActionHandler.startCheckedSet` sets `count: store.selection().length` → `broadcast-dialog.spec.ts` red: "titles the dialog with the checked rows' count" (expected "Broadcast to 2 processes", got "Broadcast to 1 process").
+- mutation: `DataTable.onGridKeydown` drops `this.screen().multiSelect !== null &&` from the Space branch → `data-table.spec.ts` red: "an undeclared list draws no checkbox and leaves Space to the browser".
+- mutation: `ProcessPort.Invoke`'s `Receivable` refusal becomes `If 0 Quit ...` → `ProcessBroadcastLive` red (run 18782): `TestASetHoldingAnIneligiblePidSendsNothing`, both the JOB'd and the ended legs; `ProcessBroadcast` red (run 18783): `TestThePortComposesTheBodyAndRefusesBeforeAnyVendorCall`.
+- mutation: `ProcessBroadcast.MessageProblem`'s `$Locate(pValue, "\p{Cc}")` becomes `0` → `ProcessBroadcast` red (run 18784): `TestTheMessageRuleRefusesPerTheMatrix`, the escape, tab, C1, DEL and line-feed legs and the screen's value.
+- mutation: `EntityRef.PlainIntegerSet` subscripts every positive member at length 1, and `entity-ref.ts`'s `integerset` sorts with `.sort()` → `EntityRef` red (run 18785): "'10,9,100' is the set 9,10,100"; `entity-ref.test.mjs` red: "the integerset rule folds a process id set to unique pids in ascending order".
+- mutation: `multiSelect.max`'s upper bound dropped in `Registry.MultiSelectProblem` and `screen-mirror.mjs`'s `multiSelectProblem` → `Descriptor` red (run 18786): `TestEveryMultiSelectCorpusCaseGetsItsSentence` "a max above a thousand"; `screen-mirror.test.mjs` red: "multiSelectProblem returns every sentence OcuPilot.Test.MultiSelectCorpus declares".
+- mutation: `Prohibited`'s `BROADCAST` skip of the process arm becomes `If 0 && ...` → `ProcessBroadcast` red (run 18787): `TestABroadcastPassesTheProcessArmWhileASuspendIsRefused`, the daemon and this-job legs.
+- mutation (matrix audit, stage): `ProcessBroadcast.MergeUpdate`'s `Receivable` refusal becomes `If 0` → `ProcessBroadcast` red (run 18821): `TestTheAgentsMintRefusesABadSetABadMessageAndAnIneligibleSet` (the daemon leg mints) and `TestTheStateRowNamesTheCountAndTheMergeRefusesAnIneligibleSet`.
+- mutation (matrix audit, stage): that `If 0` plus `FINGERPRINTSUBJECT` and `PRECONDITIONFIELD` narrowed to `Message` → `ProcessBroadcastLive` red (run 18822): `TestAConfirmAfterARecipientEndedIsRefused` reads 409 `PROCESS.BROADCAST.RECIPIENT` from the port, not `PROPOSAL.TARGETCHANGED`.
+- mutation (matrix audit, stage): `MessageProblem`'s `\p{Cc}` check becomes `If 0` → `ProcessBroadcastLive` red (run 18823): `TestTheScreenRefusesABadSetAndABadMessage`, the tab leg.
+- mutation (review pass): `ProcessPort.Invoke`'s `$TLevel` refusal becomes `If 0` → `ProcessBroadcast` red (run 18826): `TestThePortComposesTheBodyAndRefusesBeforeAnyVendorCall`, the transaction leg.
+- mutation (review pass): `MergeUpdate`'s `Receivable` refusal becomes `If 0` → `ProcessBroadcast` red (run 18827): `TestTheFingerprintRefusesAMovedRecipient` (the ended and flag legs), with the two tests above.
+- mutation (review pass): `pruneChecked` builds its set from `store.data()`; the row checkbox binds `[attr.title]`; `ScreenActionDialogs.broadcastMax` answers `0` → red, one each: `data-table.spec.ts` "a filter that hides a checked row unchecks it" and "Story 15.8: no element under a multi-select table carries a title", `broadcast-dialog.spec.ts` "titles the dialog with the checked rows' count" (the hint).
+- mutation (review pass): `BroadcastDialog`'s focus effect never runs, rebuilt and redeployed → `process-broadcast.browser-spec.mjs` red: the Space/Broadcast/Send leg times out waiting for focus on Close.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** Processes lists `CanReceiveBroadcast` and declares the data table's first `multiSelect`: a checked set in `ScreenStore` beside the unchanged selection, checkboxes at the name cell, Space and Check all, pruned on every sync. The command bar and command box act on the set, and the new broadcast dialog sends one `{action, id, values: {Message}}`. `osmgmt.processes.broadcast` is an action write through `ProcessPort`: `RECIPIENTS` read, eligibility refused 409 before any vendor call, body composed from the canonical pid set (`integerset` rule). The prohibited process arm is skipped for `BROADCAST`, and the key is in the governance baseline.
+
+**Files changed:**
+
+- Server:
+  - `Port/ProcessPort.cls`: `RECIPIENTS`, `BROADCAST`, `Snippet`.
+  - `Screen/Tool/ProcessBroadcast.cls` and `ProcessBroadcastMint.cls` (new): the tool and its pre-mint checks.
+  - `Kernel/EntityRef.cls`: `integerset`.
+  - `Kernel/Proposal/Prohibited.cls`: the broadcast skip.
+  - `Screen/Registry.cls`: `MultiSelectProblem`.
+  - `Screen/Descriptor/ProcessList.cls`.
+  - Appended to `Port/AdminPort.cls`, `Api/Error.cls` and `Kernel/Governance/Baseline.cls`.
+- Client:
+  - `ui/src/app/core/multi-select.ts` (new).
+  - `ui/src/app/core/screen-store.ts`, `entity-ref.ts` and `screen-actions.ts`; `strings.ts` appended.
+  - `ui/src/app/shell/data-table.ts`, `command-bar.ts`, `command-box.ts`, `screen-action-handler.ts` and `screen-action-dialogs.ts`.
+  - `ui/src/app/shell/broadcast-dialog.ts` (new).
+  - `ui/tools/screen-mirror.mjs`; `screens.generated.ts` regenerated.
+  - `_components.scss` appended.
+- Tests:
+  - New: `ProcessBroadcast`, `ProcessBroadcastLive` and `MultiSelectCorpus`; `broadcast-dialog.spec.ts`; `process-broadcast.browser-spec.mjs`.
+  - Rosters and pins in 13 ObjectScript classes, 4 component specs, 5 tools tests and `process-actions.browser-spec.mjs`.
+- Docs: EXPERIENCE.md edited in place, still 993 lines.
+
+**Review findings breakdown:**
+
+- 7 entries patched, six with a test and one in code: the filter prune, the checkbox `title` removed (DW-146), the transaction guard, the vacuous fingerprint legs, the hint through the real path, focus to Close, and the checks cleared in the browser.
+- 1 deferred: an all-ended set answers 404.
+- 16 rejected, each with its reason in the triage log: 4 `false` and 12 `low`.
+- The matrix audit added four legs before review: the agent's mint refusals, the screen's bad set and bad message, and a confirm after a recipient ended.
+
+**Follow-up review: recommended.** Patched: medium 4, low 3. The named unverified risk: removing the checkbox `title` leaves an ineligible row's reason on `aria-description` only. A pointer user sees a dimmed checkbox with no visible reason, since the table's tooltip shows cut values only. No test or reviewer has judged that acceptable against the Boundaries' "carries the declared reason".
+
+**Verification:**
+
+- ObjectScript on `ocupilot-ci`: every class the spec names, plus `ScreenGrounding`, `TurnGrounding`, `WireSecurityRead` and `Envelope`, one at a time, green apart from `WireSecurityRead`'s known task-history test.
+- Final runs: `ProcessBroadcast` 12/12 (run 18825) and `ProcessBroadcastLive` 7/7 (run 18820).
+- `npm test`: tools 1694/1694 and components 1745 in 129 files.
+- Browser, after rebuild and redeploy: `process-broadcast`, `data-table`, `data-table-columns`, `processes`, `process-actions`, `process-control`, `csv-download`, `column-widths`, `screen-height`, `a11y-structural-invariants`, `ui-state-survives-sign-out` and `context-chip`, 84/84, before and after the patches.
+- Bundle: 2,089,183 bytes initial, under the 2107kB warning.
+- Full sweep, once, as `--shard 1/10` through `10/10`, one class at a time: 349 classes and 2708 tests.
+  - 6 methods failed. The known residue is `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal`, `TaskHistory`'s three demo-task tests and `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest`.
+  - The sixth is `PathPortInstance.TestAnOverwriteNeverReachesADatabasesFiles`. It is environmental: this throwaway's `/durable/iris/mgr/iristemp/` holds no `IRIS.DAT` (measured).
+  - 22 classes refused on arming variables `ocupilot-ci` lacks: `TaskSave`, `TaskWire`, `LdapEdit`, `TaskRules`, `PreferencesWire`, `ProcessControl`, `TaskResume`, `AuditPurge`, `TaskEdit`, `DemoErrorSeed`, `ErrorDelete`, `LdapUpdate`, `NamespaceRefusals`, `ServiceEdit`, `InjectionChannels`, `NamespaceWrite`, `TaskCreate`, `NamespaceWriteGate`, `DraftExecute`, `TaskUpdate`, `AuditingUpdate` and `InjectionCompromised`.
+
+**Residual risks and spec drift (for the lead):**
+
+- The intent's `FINGERPRINTSUBJECT` reads `Recipients,Absent`. The code adds `Message`, because the mint narrows the stored payload to the subject and the literal value sends no message; the intent text needs correcting at origin.
+- Tasks name `StateDiff` for the mint refusal; it is `MergeUpdate`, so the screen keeps the port's 409.
+- `ProcessBroadcastLive` is armed on `OCUPILOT_ALLOW_PRINCIPALS`, where the spec says it needs no arming variable, because it creates a user; the class is added to `scripts/ci-throwaway.sh`'s roster.
+- The receiver records its pid in `^OcuPilotTestBroadcast` rather than writing `PID=`, which AD-12's one-writer check refuses.
+- A "" set from the screen is refused by the route's own empty-id check (400 `TOOL.ARGUMENTS`), not 400 `PORT.VALIDATION`.
+- The epic's `compile.sh` loads with `ck`, which leaves subclasses stale; this run recompiled with `b`.
+
+**Footprint extensions:** `src/OcuPilot/Kernel/EntityRef.cls` (expected), `src/OcuPilot/Kernel/Governance/Baseline.cls` (standing ruling), `scripts/ci-throwaway.sh` (one comment line in the principals roster), `ui/src/app/testing/screen-declaration.ts` (the test fixture's `multiSelect: null`), and EXPERIENCE.md.

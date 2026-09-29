@@ -701,6 +701,81 @@ describe('Processes and Process details: Suspend, Resume and Terminate (Story 7.
   });
 });
 
+describe('Processes\u2019 Broadcast over the checked rows (Story 16.6)', () => {
+  const LIST = 'OcuPilot.Screen.Descriptor.ProcessList';
+  const target = { type: 'process', scope: 'instance', id: '812,907' };
+
+  it('opens the broadcast dialog over the checked set, never the selection, and sends one request with the trimmed message', async () => {
+    const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target } }, LIST);
+    expect(actions.has(LIST, 'broadcast')).toBe(true);
+    store.setSelection(['4711']);
+    actions.run(LIST, 'broadcast');
+    await settle();
+    expect(handler.pending()).toBeNull();
+
+    store.setChecked(['907', '812']);
+    actions.run(LIST, 'broadcast');
+    await settle();
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('broadcast');
+    expect(pending?.count).toBe(2);
+    expect(pending?.target).toBe('812,907');
+    expect(calls).toHaveLength(0);
+
+    await handler.submitBroadcast('  Down at 18:00  ');
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/osmgmt.processes/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'broadcast', id: '812,907', values: { Message: 'Down at 18:00' } });
+    expect(handler.pending()?.sent).toBe(true);
+    expect(store.checked().size).toBe(0);
+    expect(store.selection()).toEqual(['4711']);
+    expect(events.map((event) => `${event.type}:${event.action}:${event.id}`)).toEqual(['process:updated:812,907']);
+
+    await handler.submitBroadcast('again');
+    await settle();
+    expect(calls).toHaveLength(1);
+    handler.cancelPending();
+    expect(handler.pending()).toBeNull();
+  });
+
+  // Mutation (Rule 19): put the refusal on the list's store rather than the dialog -> red.
+  it('keeps the dialog open on a refusal with the envelope\u2019s own reason, and keeps the checks', async () => {
+    const refused = { kind: 'error', status: 409, reason: STRINGS.processBroadcastRefusalRecipient, code: 'PROCESS.BROADCAST.RECIPIENT' } as unknown as JsonResult<unknown>;
+    const { actions, handler, store, calls, events } = mount(refused, LIST);
+    store.setChecked(['812', '907']);
+    actions.run(LIST, 'broadcast');
+    await settle();
+    await handler.submitBroadcast('Down at 18:00');
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(handler.pending()?.kind).toBe('broadcast');
+    expect(handler.pending()?.refusal).toBe(STRINGS.processBroadcastRefusalRecipient);
+    expect(handler.pending()?.sent).toBe(false);
+    expect(store.refusal()).toBe('');
+    expect(store.checked().size).toBe(2);
+    expect(events).toEqual([]);
+  });
+
+  it('Cancel sends nothing, and a set over the declared max opens nothing', async () => {
+    const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: {} }, LIST);
+    store.setChecked(['812']);
+    actions.run(LIST, 'broadcast');
+    await settle();
+    expect(handler.pending()?.count).toBe(1);
+    handler.cancelPending();
+    await settle();
+    expect(calls).toHaveLength(0);
+    expect(store.checked().size).toBe(1);
+
+    store.setChecked(Array.from({ length: 21 }, (_, index) => String(100 + index)));
+    actions.run(LIST, 'broadcast');
+    await settle();
+    expect(handler.pending()).toBeNull();
+    expect(calls).toHaveLength(0);
+  });
+});
+
 describe('the application error log: one Delete whose target names its scope (Story 7.10)', () => {
   const LOG = 'OcuPilot.Screen.Descriptor.LogErrorList';
   const SEP = '\u0001';

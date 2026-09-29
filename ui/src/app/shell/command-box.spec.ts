@@ -393,6 +393,39 @@ describe('the command box', () => {
     expect(field().getAttribute('aria-expanded')).toBe('true');
   });
 
+  it('Story 16.6: a multi-select action is listed with the checked rows\' reasons -- none, and above its max', () => {
+    // Mutation (Rule 19): drop the `isCheckedSetAction` branch from `actionCandidates` -> the box
+    // lists "Select a row first" and this goes red.
+    navigation.current = screen('os-management/processes', 'processListLabel', 'os-management', {
+      descriptor: 'OcuPilot.Screen.Descriptor.ProcessList',
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'broadcast', selfProtection: '' }],
+      multiSelect: { action: 'broadcast', eligible: 'CanReceiveBroadcast', max: 20, ineligibleKey: 'processBroadcastIneligible' },
+    });
+    TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.ProcessList', 'broadcast', () => {});
+    const store = TestBed.inject(ScreenStores).for('OcuPilot.Screen.Descriptor.ProcessList', []);
+    const entry = (): HTMLElement | undefined =>
+      (Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')) as HTMLElement[]).find(
+        (option) => option.querySelector('.ocu-command-box-option-label')?.textContent?.trim() === STRINGS.processBroadcastAction
+      );
+
+    chord();
+    expect(entry()?.getAttribute('aria-disabled')).toBe('true');
+    expect(entry()?.textContent).toContain(STRINGS.tableCheckRowsFirst);
+
+    store.setChecked(Array.from({ length: 21 }, (_, index) => String(100 + index)));
+    type('b');
+    type('');
+    expect(entry()?.getAttribute('aria-disabled')).toBe('true');
+    expect(entry()?.textContent).toContain('Check at most 20 rows');
+
+    store.setChecked(['100', '101']);
+    type('b');
+    type('');
+    expect(entry()?.getAttribute('aria-disabled')).toBeNull();
+    expect(entry()?.textContent).not.toContain(STRINGS.privilegeSelectRowFirst);
+  });
+
   it("AD-53: with a row selected, a self-protected action is listed with the instance's own sentence", () => {
     // The box says what the bar and the row menu say about the same action on the same row: the
     // reason is the published one, inline after the label, and the entry stays `aria-disabled`

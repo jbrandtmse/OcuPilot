@@ -40,6 +40,12 @@ Parameter STRUCTUREDFIELDS = "entries=[{""date"":""2026-09-26"",""errorNumber"":
 /// part.</p>
 Parameter TARGETID = "OcuPilotDraftSource/OcuPilotDraftType/OcuPilotDraftName";
 
+/// <p>The synthetic target id of an entity type whose port reads the id as more than a name, as
+/// <code>&lt;type&gt;=&lt;id&gt;</code> entries separated by <code>;</code>: a <code>process</code>
+/// id is a pid set, which the broadcast's port refuses to compose from anything else (Story
+/// 16.6).</p>
+Parameter TYPEDTARGETIDS = "process=812,907";
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
@@ -243,7 +249,12 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
         Do tPayload.%Set($List(tSecrets, tI), ..#SECRETPROBE _ tN, "string")
     }
     Set tDescriptor = $Parameter(tClass, "DESCRIPTORCLASS")
-    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($ClassMethod(tDescriptor, "PrimaryEntityType"), ##class(OcuPilot.Kernel.EntityRef).ScopeFor($ClassMethod(tDescriptor, "Scope")), ..#TARGETID, .tRef)
+    Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
+    Set tTargetId = ..#TARGETID
+    For tI = 1:1:$Length(..#TYPEDTARGETIDS, ";") {
+        If $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 1) = tType Set tTargetId = $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 2, *)
+    }
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key(tType, ##class(OcuPilot.Kernel.EntityRef).ScopeFor($ClassMethod(tDescriptor, "Scope")), tTargetId, .tRef)
     If $$$ISERR(tSC) Quit "no target reference: " _ $System.Status.GetErrorText(tSC)
     Kill tRow
     Set tRow("targetRef") = tRef

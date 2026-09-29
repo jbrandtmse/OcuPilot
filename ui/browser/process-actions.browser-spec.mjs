@@ -261,7 +261,8 @@ test('AC4, Integration AC: Suspend then Resume from the row menu open no dialog 
   const { context, page, posts, browserDialogs } = await signedInRecording(LIST_URL);
   try {
     await selectPid(page, pid);
-    assert.deepEqual(await commandBar(page), ACTIONS, 'the command bar offers Suspend, Resume and Terminate');
+    // Story 16.6: the command bar also offers the checked rows' Broadcast, which the row menu does not.
+    assert.deepEqual(await commandBar(page), [...ACTIONS, STRINGS.processBroadcastAction], 'the command bar offers Suspend, Resume, Terminate and Broadcast');
     assert.deepEqual(await openRowMenu(page), ACTIONS, 'and so does the row menu, destructive last');
 
     await chooseMenu(page, STRINGS.actionSuspend);

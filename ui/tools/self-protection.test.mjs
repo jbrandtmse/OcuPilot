@@ -362,3 +362,16 @@ test('Story 16.5: the background task state refusal is one sentence on both surf
   assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
   assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
 });
+
+/** Story 16.6's one published refusal, an `Error.cls` reason and a `strings.ts` key. */
+const BROADCAST_REFUSAL = ['REASONPROCESSBROADCASTRECIPIENT', 'processBroadcastRefusalRecipient'];
+
+test('Story 16.6: the broadcast recipient refusal is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONPROCESSBROADCASTRECIPIENT in Error.cls -> this goes red naming both.
+  const [parameter, key] = BROADCAST_REFUSAL;
+  const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(ERROR, 'utf8'));
+  assert.notEqual(server, null, `Error.cls declares ${parameter}`);
+  assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+  assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
+});

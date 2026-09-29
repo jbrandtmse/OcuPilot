@@ -36,7 +36,7 @@ Parameter EXPLAINMESSAGE = "Explain this screen";
 Parameter EXPLAINENTRYMESSAGE = "Explain this entry";
 
 /// <p>The process list's tools, as the registry names them.</p>
-Parameter PROCESSTOOLS = "[""osmgmt_processes_read"",""osmgmt_processes_resume"",""osmgmt_processes_suspend"",""osmgmt_processes_terminate"",""osmgmt_processes_terminatewitherror""]";
+Parameter PROCESSTOOLS = "[""osmgmt_processes_read"",""osmgmt_processes_broadcast"",""osmgmt_processes_resume"",""osmgmt_processes_suspend"",""osmgmt_processes_terminate"",""osmgmt_processes_terminatewitherror""]";
 
 Property PreparedPassword As %String;
 
@@ -145,7 +145,7 @@ Method TestAListScreenCarriesItsToolsAndReadOnly()
     Set tPayload = ..RecordedContext("what is running", ..ProcessContext())
     If '$IsObject(tPayload) Quit
     Do $$$AssertEquals(tPayload.screen, "osmgmt.processes", "the process list's context")
-    Do $$$AssertEquals(tPayload.tools.%ToJSON(), ..#PROCESSTOOLS, "carrying its read and its four action tools")
+    Do $$$AssertEquals(tPayload.tools.%ToJSON(), ..#PROCESSTOOLS, "carrying its read and its five action tools")
     Do $$$AssertEquals(tPayload.%GetTypeOf("readOnly") _ "|" _ tPayload.readOnly, "boolean|0", "and readOnly false, as a boolean")
     Do $$$AssertEquals(tPayload.rowsSent, 2, "beside its rows")
 }

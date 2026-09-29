@@ -41,6 +41,8 @@ import {
   readSources,
   ROW_TARGET_KEYS,
   rowTargetProblem,
+  MULTI_SELECT_KEYS,
+  multiSelectProblem,
   rowTargetResolutionProblem,
   sideBarPositionProblem,
   tabGroupProblem,
@@ -197,7 +199,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['user', 'foldcase'],
     ['auditing-configuration', 'singleton'],
     ['task', 'integer'],
-    ['process', 'integer'],
+    // Story 16.6: a process id may name a set of pids.
+    ['process', 'integerset'],
     ['application-error', 'foldcase'],
     ['role', 'foldcase'],
     ['resource', 'foldcase'],
@@ -209,7 +212,7 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     // Story 18.2: a namespace name resolves without case and is stored upper case.
     ['namespace', 'foldcase'],
   ]);
-  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
+  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'integerset']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
   // nothing are different facts, and only one of them is a source to build from.
   assert.equal(parseIdRules('Class X { }'), null);
@@ -308,7 +311,7 @@ test('AD-13: the generator refuses an id rule no reader can apply, naming the ru
 
   // The roster the third refusal is judged against is the one `entity-ref.ts` is pinned equal to
   // by `ui/tools/entity-ref.test.mjs`, so neither side can grow a rule alone.
-  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
+  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'integerset']);
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {
@@ -782,6 +785,54 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
   assert.ok(emitted.every((screen) => 'tab' in screen), 'every screen emits tab, null when it is no tab');
 });
 
+/**
+ * The corpus declaration with `testCase`'s own `multiSelect`, `archetype`, `rowActions`, `read` or
+ * `table`, mirroring `OcuPilot.Test.MultiSelectCorpus.DeclarationFor`.
+ */
+function multiSelectDeclarationFor(corpus, testCase) {
+  const declaration = structuredClone(corpus.declaration);
+  if ('multiSelect' in testCase) declaration.multiSelect = structuredClone(testCase.multiSelect);
+  if (testCase.archetype !== undefined) declaration.archetype = testCase.archetype;
+  if (testCase.rowActions !== undefined) declaration.rowActions = structuredClone(testCase.rowActions);
+  if ('read' in testCase) declaration.read = testCase.read;
+  if ('table' in testCase) declaration.table = testCase.table;
+  return declaration;
+}
+
+// AD-5, Story 16.6: every case in `OcuPilot.Test.MultiSelectCorpus` gets its exact sentence, or
+// none, from `multiSelectProblem`; the refusal reaches the generator; the corpus's sound
+// declaration carries exactly the declared vocabulary; and the shipped Processes declaration is the
+// only one, with its ineligible reason a string key the check above resolves.
+//
+// Mutation (Rule 19): drop the `max` arm from `multiSelectProblem` -> the four max cases go red.
+// Drop the `multiSelectProblem` call from `buildMirror` -> the generator-refusal assertion goes red.
+test('multiSelectProblem returns every sentence OcuPilot.Test.MultiSelectCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'MultiSelectCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0, 'the corpus carries cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    assert.equal(multiSelectProblem(multiSelectDeclarationFor(corpus, testCase)), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+  assert.deepEqual(Object.keys(corpus.declaration.multiSelect), MULTI_SELECT_KEYS, "the corpus's sound multiSelect carries exactly the declared vocabulary");
+
+  const sources = readSources();
+  const declaring = sources.screens.filter((screen) => screen.declaration.multiSelect !== undefined);
+  assert.deepEqual(declaring.map((screen) => screen.className), ['OcuPilot.Screen.Descriptor.ProcessList'], 'Processes is the one list that declares a multi-select');
+  assert.equal(multiSelectProblem(declaring[0].declaration), null, 'and its declaration passes');
+  assert.ok(declaredStringKeys(declaring[0].declaration).includes('processBroadcastIneligible'), 'its ineligible reason is a key the string check resolves');
+
+  const processes = declaring[0];
+  const broken = { ...processes.declaration, multiSelect: { ...processes.declaration.multiSelect, max: 0 } };
+  assert.throws(
+    () => buildMirror({ ...sources, screens: sources.screens.map((screen) => (screen === processes ? { ...screen, declaration: broken } : screen)) }),
+    /ProcessList.*multiSelect\.max must be a whole number from 1 to 1000/,
+    'and a refused multiSelect fails the build, naming the descriptor'
+  );
+  assert.match(generate(), /"multiSelect": \{\s*"action": "broadcast"/, 'the mirror emits it');
+});
+
 /** The corpus declaration with `testCase`'s own `rowTarget`, `archetype` or `table`, mirroring `OcuPilot.Test.RowTargetCorpus.DeclarationFor`. */
 function rowTargetDeclarationFor(corpus, testCase) {
   const declaration = structuredClone(corpus.declaration);
@@ -998,13 +1049,14 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(schedule.declaration.table.emptyNextKey, '', 'and names no read-only next step');
   assert.equal(schedule.declaration.entityLabelKey, 'proposalEntityTask');
   // Story 7.8: Processes and Process details declare Suspend, Resume, Terminate and the Terminate
-  // dialog's flag, none self-protected, and invite the agent from their empty states.
-  for (const name of ['ProcessList', 'ProcessDetails']) {
+  // dialog's flag, none self-protected, and invite the agent from their empty states. Story 16.6:
+  // Processes alone adds its checked rows' Broadcast, which Process details does not offer.
+  for (const [name, extra] of [['ProcessList', ['broadcast']], ['ProcessDetails', []]]) {
     const process = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.deepEqual(
       process.declaration.rowActions,
-      ['suspend', 'resume', 'terminate', 'terminate-with-error'].map((id) => ({ id, selfProtection: '' })),
-      `${name} declares the four process actions`
+      ['suspend', 'resume', 'terminate', 'terminate-with-error', ...extra].map((id) => ({ id, selfProtection: '' })),
+      `${name} declares the four process actions${extra.length === 0 ? '' : ' and Broadcast'}`
     );
     assert.equal(process.declaration.table.emptyAgentKey, 'processListEmptyAgent', `${name}'s empty state invites the agent`);
     assert.equal(process.declaration.table.emptyNextKey, '', `and names no read-only next step`);

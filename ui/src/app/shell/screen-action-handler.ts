@@ -5,6 +5,7 @@ import { ApiService } from '../core/api';
 import { ChangeBus, type ChangeAction } from '../core/change-bus';
 import { splitCompositeId } from '../core/entity-id';
 import { impactLine, impactOf } from '../core/impact';
+import { checkedSetReason, checkedSetTarget, isCheckedSetAction } from '../core/multi-select';
 import { readBackOf } from '../core/read-back';
 import { ScreenActions, actionLabel } from '../core/screen-actions';
 import { SCREEN_READ_PATH_PREFIX } from '../core/screen-read';
@@ -48,7 +49,8 @@ export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
  * and whose Rotate Keys is sent at once, and the Namespaces list (Story 18.2), whose Delete types the
  * name and states the removal's impact, the Web sessions list (Story 16.2), whose End session types
  * the session id, and the Background tasks list (Story 16.5), whose Pause and Resume are sent at once
- * and whose Cancel task warns first.
+ * and whose Cancel task warns first. Processes' Broadcast (Story 16.6) acts on the checked rows and
+ * opens the broadcast dialog.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -129,6 +131,19 @@ export const REQUIRE_PASSWORD_CHANGE = 'require-password-change';
 /** The set-password action, and the one value it sends: the declared secret (AD-56 (i)). */
 export const SET_PASSWORD = 'set-password';
 const PASSWORD_VALUE = 'Password';
+
+/** The broadcast action, and the one value it sends (Story 16.6, AD-56 (ii)). */
+export const BROADCAST = 'broadcast';
+const MESSAGE_VALUE = 'Message';
+
+/**
+ * The multi-select actions that open a dialog over the checked rows, keyed by descriptor and then
+ * by action id (Story 16.6). An action here is never sent without its dialog, which supplies its
+ * value.
+ */
+const CHECKED_SET_DIALOGS: Readonly<Record<string, Readonly<Record<string, 'broadcast'>>>> = {
+  [PROCESS_LIST]: { [BROADCAST]: 'broadcast' },
+};
 
 /** The two role actions, and the one value each sends (AD-56 (ii)). */
 export const ADD_ROLE = 'add-role';
@@ -308,7 +323,7 @@ interface ScreenActionAnswer {
 }
 
 /** Which dialog a pending row action is waiting on. */
-export type PendingKind = 'typed-name' | 'warning' | 'set-password' | 'role';
+export type PendingKind = 'typed-name' | 'warning' | 'set-password' | 'role' | 'broadcast';
 
 /**
  * The dialog a row action is waiting on, or `null`: the typed-name confirm of a destructive action,
@@ -336,6 +351,14 @@ export interface PendingConfirm {
   /** The role dialog's choices that grant %All or an administrative privilege (AD-10, DW-1523). */
   readonly privileged: readonly string[];
   readonly impact: string;
+  /** The broadcast dialog's count of checked rows (Story 16.6); absent for every other kind. */
+  readonly count?: number;
+  /** The broadcast dialog's message is being sent. */
+  readonly sending?: boolean;
+  /** The instance applied the broadcast, so the dialog reads its sent line. */
+  readonly sent?: boolean;
+  /** The envelope's reason for a refused broadcast, shown in the dialog, or `''`. */
+  readonly refusal?: string;
 }
 
 /**
@@ -463,6 +486,32 @@ export class ScreenActionHandler {
     void this.send(pending.descriptor, pending.actionId, pending.target, { [ROLE_VALUE]: role }, sink);
   }
 
+  /**
+   * The broadcast dialog's Send (Story 16.6): the message, trimmed, goes as one request to the
+   * checked set the dialog opened over. On the instance's 200 the checks are cleared and the dialog
+   * reads its sent line; a refusal puts the envelope's own reason in the dialog, which stays open.
+   */
+  async submitBroadcast(message: string): Promise<void> {
+    const pending = this.waiting();
+    if (pending === null || pending.kind !== 'broadcast' || pending.sending === true || pending.sent === true) return;
+    const text = message.trim();
+    if (text === '') return;
+    const screen = SCREENS.find((entry) => entry.descriptor === pending.descriptor);
+    if (screen === undefined) return;
+    this.waiting.set({ ...pending, sending: true, refusal: '' });
+    let refusal = '';
+    const sink: ActionSink = {
+      setRefusal: (reason) => {
+        refusal = reason;
+      },
+    };
+    const applied = await this.send(pending.descriptor, pending.actionId, pending.target, { [MESSAGE_VALUE]: text }, sink);
+    if (applied) this.store(screen.descriptor, screen.refreshRates).setChecked([]);
+    const now = this.waiting();
+    if (now === null || now.kind !== 'broadcast' || now.target !== pending.target) return;
+    this.waiting.set({ ...now, sending: false, sent: applied, refusal: applied ? '' : refusal });
+  }
+
   /** Escape, Cancel or the scrim: nothing was sent and nothing is. */
   cancelPending(): void {
     this.takeSink();
@@ -570,11 +619,31 @@ export class ScreenActionHandler {
     );
   }
 
-  /** A row menu's action: `startFor` on the list's selected row, reporting to the list's store. */
+  /**
+   * A row menu's action: `startFor` on the list's selected row, reporting to the list's store. A
+   * multi-select action acts on the checked rows instead (Story 16.6), and does nothing while its
+   * surfaces draw it refused.
+   */
   private start(screen: ScreenDeclaration, actionId: string): void {
+    if (isCheckedSetAction(screen, actionId)) {
+      this.startCheckedSet(screen, actionId);
+      return;
+    }
     const target = this.selected(screen);
     if (target === '') return;
     this.startFor(screen.descriptor, actionId, target, this.row(screen, target), this.store(screen.descriptor, screen.refreshRates));
+  }
+
+  /** Open the dialog a multi-select action waits on, over the checked rows as one target (AD-13). */
+  private startCheckedSet(screen: ScreenDeclaration, actionId: string): void {
+    const store = this.store(screen.descriptor, screen.refreshRates);
+    const checked = store.checked();
+    if (checkedSetReason(screen, checked.size) !== '') return;
+    if (CHECKED_SET_DIALOGS[screen.descriptor]?.[actionId] !== 'broadcast') return;
+    const target = checkedSetTarget(screen, checked);
+    this.open('broadcast', screen.descriptor, actionId, target, '', [], store);
+    const opened = this.waiting();
+    if (opened !== null) this.waiting.set({ ...opened, count: checked.size, sending: false, sent: false, refusal: '' });
   }
 
   private open(

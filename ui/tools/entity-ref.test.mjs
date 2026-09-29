@@ -277,3 +277,31 @@ test('AD-13: the integer rule folds a task id to its plain decimal spelling, and
     'so two spellings of one task build one key'
   );
 });
+
+// Story 16.6, AD-13: a process id may name a set of pids. The client answers what
+// `OcuPilot.Kernel.EntityRef.PlainIntegerSet` answers for the same corpus (`OcuPilot.Test.EntityRef`):
+// each member in the integer rule's spelling, each once, ordered on the string -- sign, length,
+// digits -- so a set never depends on two languages agreeing about numeric precision.
+//
+// Mutation (Rule 19): sort the members as plain strings in `integerset` -> '10,9,100' reads
+// '10,100,9' and this goes red.
+test('AD-13: the integerset rule folds a process id set to unique pids in ascending order', () => {
+  const type = 'process';
+  assert.equal(ENTITY_ID_RULES[type], 'integerset', 'the mirrored table declares the rule');
+  for (const [spelling, canonical] of [
+    [' 907,812, 812', '812,907'],
+    ['812', '812'],
+    [' 007 ', '7'],
+    ['10,9,100', '9,10,100'],
+    ['+0,-0,0', '0'],
+    ['-3,2,-12', '-12,-3,2'],
+    ['\t5,4', '4,5'],
+  ]) {
+    assert.equal(normalizeEntityId(type, spelling), canonical, `'${spelling}' is the set ${canonical}`);
+  }
+  for (const verbatim of ['abc', '812,', ',812', '812,abc', '8 12', '7.0']) {
+    assert.equal(normalizeEntityId(type, verbatim), verbatim, `'${verbatim}' is not a set of integers and keeps its spelling`);
+  }
+  assert.equal(normalizeEntityId(type, 'ABC,1'), 'abc,1', 'and is folded to lower case as the integer rule folds one');
+  assert.equal(entityRefKey(type, 'instance', '907, 812,812'), entityRefKey(type, 'instance', '812,907'), 'so two spellings of one set build one key');
+});

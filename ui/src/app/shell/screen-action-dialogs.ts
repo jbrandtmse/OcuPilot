@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output } from '@angular/core';
 
+import { screenForDescriptor } from '../core/navigation';
+import { BroadcastDialog } from './broadcast-dialog';
 import { type PendingCheck, PermissionCheck } from './permission-check';
 import { PermissionCheckDialog } from './permission-check-dialog';
 import { RoleDialog } from './role-dialog';
@@ -10,7 +12,8 @@ import { WarningDialog } from './warning-dialog';
 
 /**
  * The dialogs a declared action waits on (AD-53): the typed-name confirm of a destructive action,
- * the warning before a non-delete write, the set-password dialog and the role dialog -- the ones
+ * the warning before a non-delete write, the set-password dialog, the role dialog and the broadcast
+ * dialog over a list's checked rows (Story 16.6) -- the ones
  * `ScreenActionHandler` holds pending for `descriptor`, rendered wherever that screen's actions are
  * offered. A list page renders it under its table and the user editor under its form (DW-1501), so
  * the two surfaces show one dialog, not two copies of it. The Check permission dialog (Story 16.3)
@@ -23,7 +26,7 @@ import { WarningDialog } from './warning-dialog';
 @Component({
   selector: 'app-screen-action-dialogs',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PermissionCheckDialog, RoleDialog, SetPasswordDialog, TypedNameDialog, WarningDialog],
+  imports: [BroadcastDialog, PermissionCheckDialog, RoleDialog, SetPasswordDialog, TypedNameDialog, WarningDialog],
   template: `@if (pendingTypedName; as pending) {
       <app-typed-name-dialog
         [verb]="pending.verb"
@@ -60,6 +63,17 @@ import { WarningDialog } from './warning-dialog';
         [verb]="pending.verb"
         [consequence]="pending.consequence"
         (confirmed)="onWarning()"
+        (cancelled)="onCancel()"
+      />
+    }
+    @if (pendingBroadcast; as pending) {
+      <app-broadcast-dialog
+        [count]="broadcastCount"
+        [max]="broadcastMax"
+        [sending]="broadcastSending"
+        [sent]="broadcastSent"
+        [refusal]="broadcastRefusal"
+        (submitted)="onBroadcast($event)"
         (cancelled)="onCancel()"
       />
     }
@@ -105,6 +119,32 @@ export class ScreenActionDialogs {
     return this.pendingOf('warning');
   }
 
+  protected get pendingBroadcast(): PendingConfirm | null {
+    return this.pendingOf('broadcast');
+  }
+
+  /** The checked rows the broadcast dialog opened over. */
+  protected get broadcastCount(): number {
+    return this.pendingBroadcast?.count ?? 0;
+  }
+
+  /** The most processes one broadcast reaches: the screen's declared multi-select `max`. */
+  protected get broadcastMax(): number {
+    return screenForDescriptor(this.descriptor())?.multiSelect?.max ?? 0;
+  }
+
+  protected get broadcastSending(): boolean {
+    return this.pendingBroadcast?.sending === true;
+  }
+
+  protected get broadcastSent(): boolean {
+    return this.pendingBroadcast?.sent === true;
+  }
+
+  protected get broadcastRefusal(): string {
+    return this.pendingBroadcast?.refusal ?? '';
+  }
+
   /** The Check permission dialog this screen has open (Story 16.3), or `null`. */
   protected get pendingCheck(): PendingCheck | null {
     const pending = this.check.pending();
@@ -137,6 +177,11 @@ export class ScreenActionDialogs {
   /** The role dialog's choice changed: a Remove role reads the removal's impact for it (AD-8). */
   protected onChoose(role: string): void {
     void this.handler.chooseRole(role);
+  }
+
+  /** The broadcast dialog's message, trimmed: the handler sends it and keeps the dialog's state. */
+  protected onBroadcast(message: string): void {
+    void this.handler.submitBroadcast(message);
   }
 
   /** The role dialog's one role. */

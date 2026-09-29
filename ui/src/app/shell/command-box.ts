@@ -22,6 +22,7 @@ import { OverlayStack } from '../core/overlay-stack';
 import { PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
+import { checkedSetReason, isCheckedSetAction } from '../core/multi-select';
 import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
@@ -506,6 +507,7 @@ export class CommandBox {
       ? ''
       : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
     const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
+    const checked = screen.multiSelect === null ? 0 : this.stores.for(screen.descriptor, screen.refreshRates).checked().size;
     for (const action of screen.rowActions) {
       // DW-389: the same test the primary action above already applies -- a declared action with
       // no registered handler is a control nothing can act on, so no surface offers it.
@@ -513,9 +515,12 @@ export class CommandBox {
         declared.push({
           id: action.id,
           rowScoped: true,
-          reason: selected === ''
-            ? STRINGS.privilegeSelectRowFirst
-            : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row),
+          // A multi-select action (Story 16.6) acts on the checked rows, with the bar's own reasons.
+          reason: isCheckedSetAction(screen, action.id)
+            ? checkedSetReason(screen, checked)
+            : selected === ''
+              ? STRINGS.privilegeSelectRowFirst
+              : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row),
         });
       }
     }
