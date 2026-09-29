@@ -427,8 +427,8 @@ test('AC5: the form is routable and listed nowhere -- the area\'s listed entries
     // which is the sentinel this test is about: it is built, routed and listed nowhere.
     assert.deepEqual(
       entries,
-      [STRINGS.agentDefinitionListLabel, STRINGS.agentSwitchesLabel, STRINGS.agentGuardrailsLabel, STRINGS.agentGovernanceLabel, STRINGS.agentTranscriptsLabel],
-      'the area lists Definitions, Switches, Guardrails, Governance policy then Transcripts, and no form'
+      [STRINGS.agentDefinitionListLabel, STRINGS.agentSwitchesLabel, STRINGS.agentGuardrailsLabel, STRINGS.agentGovernanceLabel, STRINGS.agentLedgerLabel, STRINGS.agentTranscriptsLabel],
+      'the area lists Definitions, Switches, Guardrails, Governance policy, Agent audit ledger then Transcripts, and no form'
     );
 
     await page.keyboard.down('Control');

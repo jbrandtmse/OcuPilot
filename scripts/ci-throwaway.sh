@@ -188,9 +188,11 @@ services:
       # discarded, and the test refuses to run anywhere the variable is absent rather than
       # trusting a doc comment to keep it off a development instance.
       # classes: LogOlderFilesWire, LogSecondarySeed, LogSecondaryWire, LogSourceRotation
+      # classes: LogHubWire
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
       # Every class that creates or deletes IRIS principals, or the OAuth 2.0 configuration
-      # objects handled the same way. Same reasoning, same single home: test classes are selected
+      # objects handled the same way, or the instance's file-system access allow-list. Same
+      # reasoning, same single home: test classes are selected
       # by package, so a runner pointed at an instance someone cares about would otherwise create
       # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
       # population. AuditCopy and AuditStarted also copy the instance's audit database into USER and empty USER's
@@ -228,6 +230,23 @@ services:
       # classes: AuditEventEditor
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
+      # classes: LogHubWire, PathPort, PathPortInstance, PathPortPrivilege
+      # classes: PathPortServed
+      # classes: PermissionCheck, EffectiveUser
+      # classes: LedgerSearchWire
+      # classes: NamespaceWriteGate
+      # classes: ClassicPageGate, MappingWriteGate
+      # classes: DatabaseRefusals, DatabaseWriteGate
+      # classes: WebSessionsLive
+      # The Background tasks classes also create a scratch database and pause, resume and cancel a
+      # compact of it; AdminPortForget runs the whole retention sweep.
+      # classes: AdminPortForget, BackgroundSeed, BackgroundTasksLive
+      # The 404 class creates and deletes a probe role through the real port and reads the alert state.
+      # classes: AdminPortAbsence
+      # The broadcast's live class also starts terminal sessions of its own and broadcasts to them.
+      # classes: ProcessBroadcastLive
+      # Task export and import's live class also exports and imports probe tasks as its principals.
+      # classes: TaskTransferLive
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -237,6 +256,7 @@ services:
       # classes: SecretLeak, SecretStoreProbe
       # It also covers the seeded injection's append-only messages.log line and failed-login audit row.
       # classes: InjectionChannels, InjectionCompromised, InjectionSeed
+      # classes: LogHubErrors
       OCUPILOT_ALLOW_ERROR_SEED: "1"
       # Deletes OcuPilot's own audit event registrations to prove an unregistered triple drops
       # its row, then reinstalls to put them back -- the configuration triple, and the BASELINE
@@ -298,6 +318,9 @@ services:
       # classes: TaskCreate, TaskRules, TaskSave, TaskWire
       # classes: TaskUpdate, TaskEdit
       # classes: InjectionChannels, InjectionCompromised, InjectionSeed
+      # Task export and import's classes export probe tasks to files under the first allowed
+      # directory and import them back, then delete every task named OcuP164* and that directory.
+      # classes: TaskTransfer, TaskTransferLive
       OCUPILOT_ALLOW_TASK_CONTROL: "1"
       # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
       # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted
@@ -344,6 +367,28 @@ services:
       # that effect: a runner pointed at an instance someone uses would empty that account's lists.
       # classes: PreferencesWire
       OCUPILOT_ALLOW_ACCOUNT_PREFERENCES: "1"
+      # Creates, edits and deletes namespaces in this instance's own configuration, with the web
+      # applications bound to them and a global mapping, through the shipped Save, row-action and
+      # confirm paths. Its own variable because no narrower one names that effect: a namespace delete
+      # removes every web application bound to it, so a runner pointed at an instance someone cares
+      # about could take applications nobody there asked to lose. The classes touch only OCUPROBE182*
+      # namespaces and /csp/ocuprobe182* applications, each by exact name, and write to the install
+      # namespace and %SYS only through a port that sends nothing. It also adds, changes, removes
+      # and copies OCUPROBE1814* mappings between OCUPROBE1814* namespaces, and assigns a probe
+      # custom resource to the classic namespace and mapping pages, restoring each.
+      # classes: NamespaceRefusals, NamespaceWrite, NamespaceWriteGate
+      # classes: ClassicPageGate, MappingCodeGlobals, MappingRefusals, MappingWrite, MappingWriteGate, NamespaceCopy
+      OCUPILOT_ALLOW_NAMESPACE_CONFIG: "1"
+      # Creates, edits and deletes database configurations and database files in this instance's own
+      # configuration, with the %DB_* resources and directories a create makes, through the shipped
+      # Save, row-action and confirm paths. Its own variable because no narrower one names that
+      # effect: a database delete with its file removes data. The classes touch only OCUPROBE183*
+      # databases, %DB_OCUPROBE183* resources and <mgr>ocuprobe183* directories, each by exact
+      # name, with the probe namespaces, mapping and /csp/ocuprobe183* applications and the
+      # OCUPROBE183SRV data server they create, and write to the instance's own databases only
+      # through a port that sends nothing.
+      # classes: DatabaseRefusals, DatabaseWrite, DatabaseWriteDetail, DatabaseWriteGate, PathPortDatabases
+      OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

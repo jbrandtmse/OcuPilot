@@ -168,8 +168,12 @@ Method TestTheRealWebApplicationListTruncatesAtTwo()
 }
 
 /// <p>Field drift -- for every production descriptor whose read is an admin <code>LIST</code> or
-/// <code>UPCOMING</code>, issued with its fixed <code>source.query</code>, each declared read field and
-/// context field is a key of the live endpoint's first row.
+/// <code>UPCOMING</code>, or a list over one member of a bare type (<code>source.rows</code>, Story
+/// 16.7), issued with its fixed <code>source.query</code>, each declared read field and
+/// context field is a key of the live endpoint's first row, the member's first row for a
+/// <code>rows</code> read. License usage's By user and Distributed members answer a row only while a
+/// terminal session holds a license unit: over HTTP alone both read empty on a throwaway, and the
+/// <code>iris session</code> this suite runs in holds one.
 /// <method>OcuPilot.Screen.Read.Project</method> writes <code>null</code> for a missing key, so a
 /// misspelt field would otherwise ship as an empty column. A read that declares
 /// <code>source.rowGet</code> holds its detail fields to the live detail call of that first row's
@@ -181,7 +185,8 @@ Method TestTheRealWebApplicationListTruncatesAtTwo()
 /// <class>OcuPilot.Test.SecurityLists</class> holds the Secrets list's fields to its live rows. Nor are
 /// the five OAuth 2.0 tabs, named here, whose rows exist only once
 /// <class>OcuPilot.Test.OAuthProbe</class> has made them: <class>OcuPilot.Test.OAuthTabs</class> holds
-/// those.</p>
+/// those. Nor is the Web sessions list, named here, since a fresh instance holds no session:
+/// <class>OcuPilot.Test.WebSessionsLive</class> holds its fields to a session it seeds.</p>
 /// <p>Mutation: declare <code>NameSpace</code> in <class>OcuPilot.Screen.Descriptor.WebAppList</class>'s
 /// read -> this goes red naming the field.</p>
 Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
@@ -189,20 +194,25 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
     Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
     Do $$$AssertStatusOK(tSC, "the production descriptors list")
     Set tChecked = 0
+    Set tRowsChecked = ""
     For tI = 1:1:$ListLength(tList) {
         Set tClass = $List(tList, tI)
         Set tRead = $ClassMethod(tClass, "Read")
         If '$IsObject(tRead) Continue
         Set tSource = tRead.%Get("source")
-        If '$IsObject(tSource) || (tSource.%Get("port") '= "admin") || '$ListFind($ListBuild("LIST", "UPCOMING"), tSource.%Get("type")) Continue
+        Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
+        If '$IsObject(tSource) || (tSource.%Get("port") '= "admin") || ('$ListFind($ListBuild("LIST", "UPCOMING"), tSource.%Get("type")) && (tRowsMember = "")) Continue
         If $ClassMethod(tClass, "ParentScope") '= "" Continue
-        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab"), tClass) Continue
+        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList"), tClass) Continue
         Set tChecked = tChecked + 1
+        If tRowsMember '= "" Set tRowsChecked = tRowsChecked _ $ListBuild($Piece(tClass, ".", *))
         Kill tQuery
         Do ##class(OcuPilot.Screen.Read).SeedSourceQuery(tSource, .tQuery)
         Set tPortSC = ##class(OcuPilot.Port.AdminPort).Invoke(tSource.%Get("endpoint"), tSource.%Get("type"), .tQuery, "", .tAnswer, .tHttp, .tFault)
         Do $$$AssertStatusOK(tPortSC, tClass _ ": the live " _ tSource.%Get("endpoint") _ " " _ tSource.%Get("type") _ " answers")
         If $$$ISERR(tPortSC) Continue
+        ; Story 16.7: a list over one member of a bare type holds its fields to that member's rows.
+        If tRowsMember '= "" Set tAnswer = $Select($IsObject(tAnswer) && tAnswer.%IsA("%Library.DynamicObject"): tAnswer.%Get(tRowsMember), 1: "")
         Set tHasRow = $IsObject(tAnswer) && tAnswer.%IsA("%Library.DynamicArray") && (tAnswer.%Size() > 0)
         Do $$$AssertTrue(tHasRow, tClass _ ": and answers at least one row to hold the declared fields to")
         If 'tHasRow Continue
@@ -248,6 +258,9 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         }
     }
     Do $$$AssertTrue(tChecked > 0, "at least one production descriptor declares an admin LIST read: " _ tChecked)
+    For tTab = "LicenseSummaryTab", "LicenseProcessTab", "LicenseUserTab", "LicenseDistributedTab" {
+        Do $$$AssertTrue($ListFind(tRowsChecked, tTab) > 0, "the sweep held " _ tTab _ "'s list over one member to its live rows (Story 16.7): " _ $ListToString(tRowsChecked))
+    }
 }
 
 /// <p>AC3, Story 6.10 -- "No <code>ns</code> in the read" (Boundaries) means the Locks read
@@ -383,6 +396,51 @@ Method TestEveryDeclaredLogSourceReadFieldIsAKeyOfTheLiveRow()
         }
     }
     Do $$$AssertEquals(tChecked, 8, "all eight production logsource reads are checked, Story 16.8's six included: " _ tChecked)
+}
+
+/// <p>Story 16.9 -- every production <code>timeline</code> read answers through the executor on the
+/// live instance: 200, its declared fields, at most the cap's rows, each row carrying exactly those
+/// fields, the bound it applied, and one summary per member.</p>
+/// <p>Mutation (Rule 19): drop <code>sources</code> from
+/// <method>OcuPilot.Screen.Read.Execute</method>'s answer -&gt; the summary assertion goes red.</p>
+Method TestEveryTimelineReadAnswersThroughTheExecutor()
+{
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
+    Do $$$AssertStatusOK(tSC, "the production descriptors list")
+    Set tChecked = 0
+    For tI = 1:1:$ListLength(tList) {
+        Set tClass = $List(tList, tI)
+        If '##class(OcuPilot.Screen.Timeline).IsTimeline(tClass) Continue
+        Set tChecked = tChecked + 1
+        Set tRead = $ClassMethod(tClass, "Read")
+        Kill tCriteria
+        Set tExecSC = ##class(OcuPilot.Screen.Read).Execute(tClass, 5, .tResult, .tHttp, .tFault, .tCriteria)
+        Do $$$AssertStatusOK(tExecSC, tClass _ ": the composed read answers through the executor")
+        If $$$ISERR(tExecSC) Continue
+        Do $$$AssertEquals(tHttp, 200, tClass _ ": with 200")
+        Do $$$AssertEquals(tResult.fields.%ToJSON(), tRead.%Get("fields").%ToJSON(), tClass _ ": its declared fields")
+        Do $$$AssertTrue(tResult.rows.%Size() <= 5, tClass _ ": at most the cap's rows: " _ tResult.rows.%Size())
+        Do $$$AssertTrue(tResult.criteria.since '= "", tClass _ ": the bound it applied: " _ tResult.criteria.since)
+        Set tSC = ##class(OcuPilot.Screen.Timeline).Members(tRead.source.endpoint, .tMembers)
+        Do $$$AssertEquals($Select($IsObject(tResult.%Get("sources")): tResult.sources.%Size(), 1: -1), $ListLength(tMembers), tClass _ ": one summary per member")
+        ; The row shape is read over an unbounded window, which the instance's own console log fills.
+        Kill tCriteria
+        Set tCriteria("since") = ""
+        Set tExecSC = ##class(OcuPilot.Screen.Read).Execute(tClass, 5, .tResult, .tHttp, .tFault, .tCriteria)
+        Do $$$AssertStatusOK(tExecSC, tClass _ ": the composed read answers with no bound")
+        If $$$ISERR(tExecSC) Continue
+        Do $$$AssertTrue(tResult.rows.%Size() > 0, tClass _ ": and holds rows to check: " _ tResult.rows.%Size())
+        Set tIterator = tResult.rows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            Set tKeys = ""
+            Set tKeyIterator = tRow.%GetIterator()
+            While tKeyIterator.%GetNext(.tKey, .tValue) {
+                Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
+            }
+            Do $$$AssertEquals(tKeys, "time,source,severity,text,id", tClass _ ": row " _ tIndex _ " carries exactly the declared fields")
+        }
+    }
+    Do $$$AssertEquals(tChecked, 1, "the one production timeline read, the log hub's, is checked: " _ tChecked)
 }
 
 /// <p>Story 2.8 -- the declared banner is evaluated inside the read, against the real port, and it

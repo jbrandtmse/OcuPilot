@@ -1,15 +1,17 @@
-/// <p>The X.509, LDAP / Kerberos, Wallet and Secrets lists (Story 6.3): each descriptor's declaration
+/// <p>The X.509, LDAP / Kerberos, Wallet and Secrets lists (Story 6.3) and the Allowed directories
+/// list (Story 18.1): each descriptor's declaration
 /// against the grammar, the classic-link rule, the registry and the Security and secrets area's pair
 /// set; each read over the wire as the configured test principal (<class>OcuPilot.Test.Http</class>),
 /// the X.509 list's certificate fields included; the Secrets list's two named faults; the key set of
-/// every row the four reads, the four derived tools and the raw port LISTs answer, with no secret
+/// every row the five reads, the five derived tools and the raw admin port LISTs answer, with no secret
 /// key among them; and each derived read tool, which answers the route's rows narrowed by its
 /// cap.</p>
 /// <p>Needs the API application installed in <code>HSCUSTOM</code>, the demo fixture
 /// (<parameter>DEMOCERT</parameter> and the <parameter>DEMOCOLLECTION</parameter> wallet collection
 /// with its one secret), at least one LDAP configuration, and both the test principal and the
-/// process running this class holding <code>%Admin_Secure:USE</code>, <code>%Admin_Wallet:USE</code>
-/// and <code>%DB_IRISSYS:READ</code>: the key-set and tool tests call the port in process. It issues
+/// process running this class holding <code>%Admin_Secure:USE</code>, <code>%Admin_Wallet:USE</code>,
+/// <code>%Admin_FileSystemAccess:USE</code> and <code>%DB_IRISSYS:READ</code>: the key-set and tool
+/// tests call the port in process. It issues
 /// reads only and creates nothing; the pair sets' denials are
 /// <class>OcuPilot.Test.WireSecurityRead</class>'s.</p>
 Class OcuPilot.Test.SecurityLists Extends %UnitTest.TestCase
@@ -43,10 +45,10 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>The four screens as <code>$ListBuild(descriptor, route, tool, side-bar position, entity type,
+/// <p>The five screens as <code>$ListBuild(descriptor, route, tool, side-bar position, entity type,
 /// classic page, read fields as JSON, privileges as JSON, parent scope, the read's criterion query
 /// suffix, primary action, row actions)</code>. The X.509 and Secrets lists' primary action is Create
-/// and their one row action Delete; the other two declare neither.</p>
+/// and their one row action Delete; the other three declare neither.</p>
 ClassMethod Screens() As %List
 {
     Set tSecure = "[{""resource"":""%Admin_Secure"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]"
@@ -56,6 +58,8 @@ ClassMethod Screens() As %List
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.LdapConfigList", "security/ldap", "security.ldap", 3, "ldap-configuration", "%CSP.UI.Portal.LDAPs", "[""Name"",""Enabled"",""Description"",""LDAPCACertFile""]", tSecure, "", ""))
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.WalletCollectionList", "security/wallet", "security.wallet", 4, "wallet-collection", "", "[""Name"",""EditResource"",""UseResource""]", tWallet, "", ""))
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.WalletSecretList", "security/wallet/secrets", "security.secrets", 0, "wallet-secret", "", "[""Name"",""Type""]", tWallet, "security/wallet", "&collection=" _ ..#DEMOCOLLECTION, "create", "delete"))
+    Set tFileSystem = "[{""resource"":""%Admin_FileSystemAccess"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]"
+    Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.AllowedDirectoryList", "security/allowed-directories", "security.alloweddirectories", 7, "allowed-directory", "", "[""Directory"",""Restricted""]", tFileSystem, "", ""))
     Quit tScreens
 }
 
@@ -162,7 +166,7 @@ Method TestEachListIsDeclaredAsTheSecurityAreaEntryItReplaces()
         Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), $ListGet(tCase, 12), tClass _ ": and its row actions are the ones this class pins")
         Do $$$AssertEquals(tDeclaration.table.emptyNextKey, $Select(tAction = "": "tableReadOnlyEmptyNext", 1: ""), tClass _ ": its empty state names what to do next exactly when it declares no action")
         Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), $List(tCase, 8), tClass _ ": its pair set, in order")
-        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs")), "", tClass _ ": and the Security and secrets area covers it")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", tClass _ ": and the Security and secrets area covers it, save a pair it declares its own")
     }
 }
 
@@ -257,7 +261,7 @@ Method TestTheSecretsListReadsOneCollection()
     }
 }
 
-/// <p>AC4 -- every row the four reads answer over the wire and every row the four read tools answer
+/// <p>AC4 -- every row the five reads answer over the wire and every row the five read tools answer
 /// carries exactly the declared fields, and none carries a key <parameter>SECRETKEYS</parameter>
 /// names; and for the LDAP / Kerberos, Wallet and Secrets lists, every raw port LIST row's key set is
 /// the declared fields, so nothing is projected away there. The X.509 LIST row's own
@@ -293,6 +297,8 @@ Method TestEveryRowCarriesTheDeclaredFieldsAndNoSecret()
         }
 
         If tClass = "OcuPilot.Screen.Descriptor.X509CredentialList" Continue
+        ; A path read's rows are the port's own composition, with no raw admin LIST behind them.
+        If $ClassMethod(tClass, "Read").source.port '= "admin" Continue
         Kill tPortQuery
         If tQuery '= "" Set tPortQuery("collection") = ..#DEMOCOLLECTION
         Set tRead = $ClassMethod(tClass, "Read")

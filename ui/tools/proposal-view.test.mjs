@@ -39,6 +39,9 @@ const {
   CONSEQUENCE_SERVERCLIENTSPRIVILEGED,
   CONSEQUENCE_PRIVILEGED,
   CONSEQUENCE_PURGEMARKERS,
+  CONSEQUENCE_COPYMAPPINGS,
+  CONSEQUENCE_TASKEXPORTREPLACES,
+  CONSEQUENCE_SYSTEMGLOBAL,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
   CONSEQUENCE_SERVICEUNAUTHENTICATED,
@@ -222,6 +225,27 @@ test("the audit purge's consequence code is the tool's own and resolves to its p
   assert.ok(declared, 'AuditPurge.cls declares its consequence code');
   assert.equal(CONSEQUENCE_PURGEMARKERS, declared[1]);
   assert.equal(consequenceSentence(CONSEQUENCE_PURGEMARKERS), STRINGS.auditPurgeMarkersEffect);
+});
+
+// Story 18.14, AD-10: a global mapping whose name begins with `%` is permitted at the strongest
+// confirmation and named by the kernel's code, and a copy of mappings is destructive with its own
+// consequence, the copy dialog's sentence published once.
+//
+// Mutation (Rule 19): drop the SYSTEMGLOBAL branch from `consequenceSentence` -> this goes red.
+test("the system-global mapping's and the mapping copy's consequence codes resolve to their published sentences", () => {
+  assert.equal(CONSEQUENCE_SYSTEMGLOBAL, 'MAPPING.SYSTEMGLOBAL');
+  assert.equal(CONSEQUENCE_COPYMAPPINGS, 'NAMESPACE.COPYMAPPINGS');
+  assert.equal(consequenceSentence(CONSEQUENCE_SYSTEMGLOBAL), STRINGS.mappingSystemGlobalConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_COPYMAPPINGS), STRINGS.namespaceCopyMappingsConsequence);
+});
+
+// Story 16.4: a task export replaces a file already at its name, and its card says so in the export
+// dialog's own replace line.
+//
+// Mutation (Rule 19): drop the TASK.EXPORT.REPLACES branch from `consequenceSentence` -> this goes red.
+test("the task export's consequence code resolves to the export dialog's replace line", () => {
+  assert.equal(CONSEQUENCE_TASKEXPORTREPLACES, 'TASK.EXPORT.REPLACES');
+  assert.equal(consequenceSentence(CONSEQUENCE_TASKEXPORTREPLACES), STRINGS.taskExportReplaces);
 });
 
 // Story 9.7, AD-10: a task create that runs as another account is permitted, minted destructive

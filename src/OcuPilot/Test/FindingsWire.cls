@@ -301,4 +301,35 @@ Method TestACallerWithoutTheSecurityPairReadsThoseChecksUnchecked()
     Do $$$AssertEquals(tSecurity, 0, "and no security finding")
 }
 
+/// <p>Every task whose <code>Task.CRUD</code> <code>INFO</code> reads <code>Suspended</code> true,
+/// as a JSON array of that <code>INFO</code> answer with the list row's <code>Id</code> and
+/// <code>Name</code>, or <code>""</code> when the list cannot be read. It reads and writes nothing
+/// else; <file>ui/browser/home-findings.browser-spec.mjs</file> names these in its failure
+/// messages.</p>
+ClassMethod SuspendedTasks() As %String
+{
+    Set tJson = ""
+    Try {
+        Kill tQuery
+        Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "LIST", .tQuery, "", .tList, .tHttp, .tFault)
+        If $$$ISERR(tSC) || '$IsObject(tList) Quit
+        Set tOut = []
+        Set tIterator = tList.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If '$IsObject(tRow) Continue
+            Kill tQuery
+            Set tQuery("id") = tRow.%Get("Id")
+            Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "INFO", .tQuery, "", .tInfo, .tHttp, .tFault)
+            If $$$ISERR(tSC) || '$IsObject(tInfo) || 'tInfo.%Get("Suspended") Continue
+            Do tInfo.%Set("Id", tRow.%Get("Id"))
+            Do tInfo.%Set("Name", tRow.%Get("Name"), "string")
+            Do tOut.%Push(tInfo)
+        }
+        Set tJson = tOut.%ToJSON()
+    } Catch ex {
+        Set tJson = ""
+    }
+    Quit tJson
+}
+
 }

@@ -391,6 +391,23 @@ export const STRINGS = {
   taskColumnNextRun: 'Next run',
   /** EXPERIENCE.md:319 */
   taskListEmpty: 'No scheduled tasks on this instance.',
+  // Story 16.4: Task schedule's Export and Import dialogs.
+  /** EXPERIENCE.md:319 */
+  taskExportAction: 'Export',
+  /** EXPERIENCE.md:319 */
+  taskExportTitle: 'Export <task>',
+  /** EXPERIENCE.md:319 */
+  taskImportTitle: 'Import tasks',
+  /** EXPERIENCE.md:319 */
+  taskExportNote: 'The file holds the task\'s definition and settings, and a password setting in it is encoded, not encrypted.',
+  /** EXPERIENCE.md:319 */
+  taskExportReplaces: 'A file already at this name is replaced.',
+  /** EXPERIENCE.md:319 */
+  taskExportDone: 'Exported <task> to <path>.',
+  /** EXPERIENCE.md:319 */
+  taskImportDone: 'Imported the tasks in <path>. Any already on this instance were skipped.',
+  /** EXPERIENCE.md:319 */
+  taskImportRefused: 'Nothing was imported: task <task> cannot be created here. <reason>',
   /** EXPERIENCE.md:320 */
   processListLabel: 'Processes',
   /** EXPERIENCE.md:320 */
@@ -789,6 +806,30 @@ export const STRINGS = {
   walletColumnEditResource: 'Edit resource',
   /** EXPERIENCE.md:364 */
   walletListEmpty: 'No wallet collections on this instance.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoriesLabel: 'Allowed directories',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoriesColumnRestricted: 'Restricted',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoriesEmpty: 'The instance\'s allow-list names no directory.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryListPrompt1: 'Which server directories can a file or directory field choose from?',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryListPrompt2: 'Does this instance restrict the directories its file dialogs can reach?',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryListPrompt3: 'Is the manager directory one of the allowed directories?',
+  /** EXPERIENCE.md:364 */
+  pathPickerRootLabel: 'Allowed directory',
+  /** EXPERIENCE.md:364 */
+  pathPickerSubdirectoryLabel: 'Subdirectory',
+  /** EXPERIENCE.md:364 */
+  pathPickerFileLabel: 'File name',
+  /** EXPERIENCE.md:364 */
+  pathPickerResolvesTo: 'Resolves to <path>',
+  /** EXPERIENCE.md:364 */
+  pathPickerLoading: 'Reading the allowed directories\u2026',
+  /** EXPERIENCE.md:364 */
+  pathPickerTruncated: 'Only the first <n> allowed directories are listed.',
   /** EXPERIENCE.md:365 */
   walletSecretListLabel: 'Secrets',
   /** EXPERIENCE.md:365 */
@@ -3257,6 +3298,497 @@ export const STRINGS = {
   logAnalyticsViewerPrompt2: 'Summarize the recent analytics log entries by namespace.',
   /** EXPERIENCE.md:585 */
   logAnalyticsViewerPrompt3: 'Which analytics errors need attention?',
+
+  // Story 16.9: the unified log hub -- its label, its two sections, the Sources list's two column
+  // headers, the not-shown notice, and the sentence a log viewer shows when the hub's entry has
+  // left its loaded range.
+  /** EXPERIENCE.md:584 */
+  logHubLabel: 'Unified log hub',
+  /** EXPERIENCE.md:584 */
+  logHubSourcesHeading: 'Sources',
+  /** EXPERIENCE.md:584 */
+  logHubTimelineHeading: 'Timeline',
+  /** EXPERIENCE.md:584 */
+  logHubColumnEntries: 'Entries',
+  /** EXPERIENCE.md:584 */
+  logHubColumnLastEntry: 'Last entry',
+  /** EXPERIENCE.md:584 */
+  logHubNotShown: 'Not shown: <source> \u2014 requires <resource>.',
+  /** EXPERIENCE.md:584 */
+  logViewerEntryGone: 'That entry is no longer in the loaded range.',
+
+  // Story 16.9: the unified log hub's suggested prompts.
+  /** EXPERIENCE.md:585 */
+  logHubPrompt1: 'Which logs recorded errors in the last hour?',
+  /** EXPERIENCE.md:585 */
+  logHubPrompt2: 'What happened just before the most recent error, across every log?',
+  /** EXPERIENCE.md:585 */
+  logHubPrompt3: 'Which log should I open first to investigate, and why?',
+
+  // Story 16.24: the try-it console's Copy as curl. "Copied" is `copyAnnouncementCopied`, the
+  // clipboard sentence `copyAnnouncementUnavailable`, and the refusals the four `tryIt*` above.
+  /** EXPERIENCE.md:574 */
+  tryItCopyCurl: 'Copy as curl',
+  /** EXPERIENCE.md:574 */
+  tryItCurlAccessToken: '<AccessToken>',
+  /** EXPERIENCE.md:574 */
+  tryItCurlNote: 'The command replaces your access token, and each value this console masks in its record of the request, with a name in angle brackets for you to fill in. Check the command for any other secret before you share it.',
+
+  // Story 16.3: the user editor's Effective privileges tab, and the permission check on the Users
+  // and Roles lists and both editors. An unread section's suffix is `impactRequires` or
+  // `impactTooMany`, and a yes's role may take `userEffectiveThrough`.
+  /** EXPERIENCE.md:468 */
+  userEffectiveTab: 'Effective privileges',
+  /** EXPERIENCE.md:468 */
+  userEffectiveIntro: 'What this account holds through its roles, the roles they grant, and public permissions. Escalation roles are not counted until used.',
+  /** EXPERIENCE.md:468 */
+  userEffectiveAll: 'Holds every privilege: <role> is or grants %All.',
+  /** EXPERIENCE.md:468 */
+  userEffectiveThrough: ' (through <role>)',
+  /** EXPERIENCE.md:468 */
+  userEffectiveUnchecked: 'Not checked',
+  /** EXPERIENCE.md:468 */
+  permissionCheckAction: 'Check permission',
+  /** EXPERIENCE.md:468 */
+  permissionCheckField: 'Permission',
+  /** EXPERIENCE.md:468 */
+  permissionCheckRun: 'Check',
+  /** EXPERIENCE.md:468 */
+  permissionCheckIncomplete: 'Enter a name and a resource first.',
+  /** EXPERIENCE.md:468 */
+  permissionCheckYes: 'Yes. <name> holds <pair>, granted by <role>.',
+  /** EXPERIENCE.md:468 */
+  permissionCheckPublic: 'Yes. Every account holds <pair> publicly.',
+  /** EXPERIENCE.md:468 */
+  permissionCheckNo: 'No. <name> does not hold <pair>.',
+
+  // Story 16.16: the Agent audit ledger. Its Time, User, Name and Status columns, the dialog's
+  // Result label and the criteria form's Begin, End, hint, Search and Any reuse existing keys.
+  /** EXPERIENCE.md:336 */
+  agentLedgerLabel: 'Agent audit ledger',
+  /** EXPERIENCE.md:336 */
+  agentLedgerEmpty: 'No agent activity matches.',
+  /** EXPERIENCE.md:336 */
+  agentLedgerColumnKind: 'Kind',
+  /** EXPERIENCE.md:336 */
+  agentLedgerColumnScreen: 'Screen',
+  /** EXPERIENCE.md:336 */
+  agentLedgerColumnTarget: 'Target',
+  /** EXPERIENCE.md:336 */
+  agentLedgerArguments: 'Arguments',
+  /** EXPERIENCE.md:336 */
+  agentLedgerKindModel: 'Model call',
+  /** EXPERIENCE.md:336 */
+  agentLedgerKindTool: 'Tool call',
+  /** EXPERIENCE.md:336 */
+  agentLedgerKindWrite: 'Confirmed write',
+  /** EXPERIENCE.md:336 */
+  agentLedgerKindAccess: 'Transcript read',
+  /** EXPERIENCE.md:336 */
+  agentLedgerWithheld: '<n> rows withheld: each records a privilege you do not hold.',
+  /** EXPERIENCE.md:336 */
+  agentLedgerDropped: '<n> calls were counted and not stored.',
+  /** EXPERIENCE.md:336 */
+  agentLedgerDeniedAction: 'see another user\'s agent activity',
+  /** EXPERIENCE.md:336 */
+  agentLedgerPrompt1: 'Who used the agent to change anything this week?',
+  /** EXPERIENCE.md:336 */
+  agentLedgerPrompt2: 'Which web applications did the agent change this week?',
+  /** EXPERIENCE.md:336 */
+  agentLedgerPrompt3: 'Did the agent change any user or role today?',
+
+  // Story 18.2: the Namespaces list and its form -- the list's title, its three database column
+  // headers (the form's select labels), its empty state and agent invitation, the edit's refused
+  // action and six suggested prompts; the Delete dialog's consequence; the kernel's install-namespace
+  // refusal; and the namespace delete's impact phrases. The form's title reuses `headerNamespaceLabel`.
+  /** EXPERIENCE.md:378 */
+  namespaceListLabel: 'Namespaces',
+  /** EXPERIENCE.md:378 */
+  namespaceColumnGlobals: 'Globals database',
+  /** EXPERIENCE.md:378 */
+  namespaceColumnRoutines: 'Routines database',
+  /** EXPERIENCE.md:378 */
+  namespaceColumnTemp: 'Temporary database',
+  /** EXPERIENCE.md:378 */
+  namespaceListEmpty: 'No namespaces on this instance.',
+  /** EXPERIENCE.md:378 */
+  namespaceListEmptyAgent: 'create a namespace',
+  /** EXPERIENCE.md:378 */
+  namespaceFormRefusedAction: 'change this namespace',
+  /** EXPERIENCE.md:378 */
+  namespaceListPrompt1: 'Which databases does each namespace use for its globals and routines?',
+  /** EXPERIENCE.md:378 */
+  namespaceListPrompt2: 'Which namespaces share a database?',
+  /** EXPERIENCE.md:378 */
+  namespaceListPrompt3: 'What would deleting a namespace take with it?',
+  /** EXPERIENCE.md:378 */
+  namespaceFormPrompt1: 'Which database should a new namespace use for its globals?',
+  /** EXPERIENCE.md:378 */
+  namespaceFormPrompt2: 'What changes if this namespace reads its routines from another database?',
+  /** EXPERIENCE.md:378 */
+  namespaceFormPrompt3: 'Which web applications run in this namespace?',
+  /** EXPERIENCE.md:479 */
+  namespaceDeleteConsequence:
+    'Deleting this namespace also deletes its mappings and every web application that runs in it. Its databases stay. This cannot be undone.',
+  /** EXPERIENCE.md:481 */
+  namespaceRefusalOcuPilot:
+    'OcuPilot or the instance itself runs in this namespace. It cannot be deleted, and its globals and routines databases cannot be changed.',
+  /** EXPERIENCE.md:577 */
+  impactBoundApplications: '<n> web applications run in it and are deleted with it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactBoundApplicationsOne: '1 web application runs in it and is deleted with it: <names>',
+  /** EXPERIENCE.md:577 */
+  impactBoundApplicationsNone: 'no web application runs in it',
+  /** EXPERIENCE.md:577 */
+  impactBoundApplicationsUnchecked: 'which web applications run in it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactDatabasesStay: 'it uses <n> databases, which stay: <names>',
+  /** EXPERIENCE.md:577 */
+  impactDatabasesStayOne: 'it uses 1 database, which stays: <names>',
+  // Story 16.2: Web sessions, the third Web applications entry. Its Process ID, User and
+  // Application column headers reuse existing keys.
+  /** EXPERIENCE.md:357 */
+  webSessionListLabel: 'Web sessions',
+  /** EXPERIENCE.md:357 */
+  webSessionColumnSession: 'Session',
+  /** EXPERIENCE.md:357 */
+  webSessionColumnExpires: 'Expires (UTC)',
+  /** EXPERIENCE.md:357 */
+  webSessionListEmpty: 'No web sessions on this instance.',
+  /** EXPERIENCE.md:357 */
+  webSessionListEmptyAgent: 'end a web session that is stuck or unwanted',
+  /** EXPERIENCE.md:357 */
+  webSessionEndAction: 'End session',
+  /** EXPERIENCE.md:357 */
+  webSessionEndConsequence:
+    'Ending this session discards what its application kept for it, and its next request starts a new session. This cannot be undone.',
+  /** EXPERIENCE.md:357 */
+  webSessionRefusalOcuPilot: 'OcuPilot itself is running in this session. It cannot be ended from OcuPilot.',
+  /** EXPERIENCE.md:357 */
+  proposalEntityWebSession: 'Web session',
+  /** EXPERIENCE.md:357 */
+  webSessionListPrompt1: 'Which web sessions are open on this instance, and for which applications?',
+  /** EXPERIENCE.md:357 */
+  webSessionListPrompt2: 'Which users have more than one web session open?',
+  /** EXPERIENCE.md:357 */
+  webSessionListPrompt3: 'Which web sessions expire soonest?',
+  /** EXPERIENCE.md:357 */
+  webSessionRefusalPreserved:
+    'This session\'s own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session.',
+
+  // Story 16.5: Background tasks, the fifth Tasks entry. Its Source, Task, Status, Namespace and
+  // Start time column headers and its Resume row action reuse existing keys.
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListLabel: 'Background tasks',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskColumnDetails: 'Details',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskColumnErrorCount: 'Error count',
+  /** EXPERIENCE.md:371 */
+  actionPause: 'Pause',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskCancelAction: 'Cancel task',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListEmpty: 'No background tasks.',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListEmptyAgent: 'cancel, pause or resume a background task',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskCancelConsequence: 'Canceling stops this task where it is. What it has done stays done, and it cannot be resumed.',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskRefusalState: 'This background task\'s current state does not allow that.',
+  /** EXPERIENCE.md:371 */
+  proposalEntityBackgroundTask: 'Background task',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListPrompt1: 'Which background tasks are running, and since when?',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListPrompt2: 'Which background tasks ended with errors?',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListPrompt3: 'Is a database compact or defragment running?',
+
+  // Story 18.14: a namespace's global, routine and package mappings -- each list's and form's title,
+  // the global list's two extra column headers, each list's empty state and agent invitation, the
+  // edit's refused action, the system-global consequence under a global's Name, eighteen suggested
+  // prompts; the Namespaces list's Copy mappings action, its dialog's consequence and its running and
+  // done lines; each mapping Delete's consequence; and the kernel's refusal of OcuPilot's own
+  // mappings. The Mappings line's label reuses `oauthResourceServerTabMappings`, the Copy button
+  // `auditDatabaseCopyConfirm` and a copy that outlasts the wait `auditDatabaseStillRunning`.
+  /** EXPERIENCE.md:378 */
+  globalMappingListLabel: 'Global mappings',
+  /** EXPERIENCE.md:378 */
+  routineMappingListLabel: 'Routine mappings',
+  /** EXPERIENCE.md:378 */
+  packageMappingListLabel: 'Package mappings',
+  /** EXPERIENCE.md:378 */
+  globalMappingFormLabel: 'Global mapping',
+  /** EXPERIENCE.md:378 */
+  routineMappingFormLabel: 'Routine mapping',
+  /** EXPERIENCE.md:378 */
+  packageMappingFormLabel: 'Package mapping',
+  /** EXPERIENCE.md:378 */
+  mappingColumnLockDatabase: 'Lock database',
+  /** EXPERIENCE.md:378 */
+  mappingColumnCollation: 'Collation',
+  /** EXPERIENCE.md:378 */
+  globalMappingListEmpty: 'This namespace has no global mappings.',
+  /** EXPERIENCE.md:378 */
+  routineMappingListEmpty: 'This namespace has no routine mappings.',
+  /** EXPERIENCE.md:378 */
+  packageMappingListEmpty: 'This namespace has no package mappings.',
+  /** EXPERIENCE.md:378 */
+  globalMappingListEmptyAgent: 'map a global',
+  /** EXPERIENCE.md:378 */
+  routineMappingListEmptyAgent: 'map routines',
+  /** EXPERIENCE.md:378 */
+  packageMappingListEmptyAgent: 'map a package',
+  /** EXPERIENCE.md:378 */
+  mappingFormRefusedAction: 'change this mapping',
+  /** EXPERIENCE.md:378 */
+  mappingSystemGlobalConsequence:
+    'This maps a system global. Code in this namespace that uses it reads the mapped database instead of the system\'s own.',
+  /** EXPERIENCE.md:378 */
+  namespaceCopyMappingsAction: 'Copy mappings',
+  /** EXPERIENCE.md:378 */
+  namespaceCopyMappingsConsequence:
+    'Copies every mapping of the chosen namespace into this one. A mapping this namespace already has under the same name is replaced; its other mappings stay.',
+  /** EXPERIENCE.md:378 */
+  namespaceCopyMappingsRunning:
+    'Copying mappings from <source> into <namespace> on the instance since <time>',
+  /** EXPERIENCE.md:378 */
+  namespaceCopyMappingsDone: 'Copied the mappings of <source> into <namespace>.',
+  /** EXPERIENCE.md:378 */
+  globalMappingListPrompt1: 'Which globals does this namespace read from another database?',
+  /** EXPERIENCE.md:378 */
+  globalMappingListPrompt2: 'Is any system global mapped in this namespace?',
+  /** EXPERIENCE.md:378 */
+  globalMappingListPrompt3: 'Which database holds this namespace\'s mapped globals?',
+  /** EXPERIENCE.md:378 */
+  routineMappingListPrompt1: 'Which routines does this namespace run from another database?',
+  /** EXPERIENCE.md:378 */
+  routineMappingListPrompt2: 'Which routine mappings use a wildcard?',
+  /** EXPERIENCE.md:378 */
+  routineMappingListPrompt3: 'Where do this namespace\'s mapped routines come from?',
+  /** EXPERIENCE.md:378 */
+  packageMappingListPrompt1: 'Which packages does this namespace load from another database?',
+  /** EXPERIENCE.md:378 */
+  packageMappingListPrompt2: 'Is any package here mapped to a database outside this namespace?',
+  /** EXPERIENCE.md:378 */
+  packageMappingListPrompt3: 'Which database does this package load from here?',
+  /** EXPERIENCE.md:378 */
+  globalMappingFormPrompt1: 'What does mapping a global to another database change?',
+  /** EXPERIENCE.md:378 */
+  globalMappingFormPrompt2: 'When should a global mapping name a subscript range?',
+  /** EXPERIENCE.md:378 */
+  globalMappingFormPrompt3: 'What does a global mapping\'s lock database do?',
+  /** EXPERIENCE.md:378 */
+  routineMappingFormPrompt1: 'What does mapping routines to another database change?',
+  /** EXPERIENCE.md:378 */
+  routineMappingFormPrompt2: 'How do I map only one routine type?',
+  /** EXPERIENCE.md:378 */
+  routineMappingFormPrompt3: 'Can a routine mapping use a wildcard?',
+  /** EXPERIENCE.md:378 */
+  packageMappingFormPrompt1: 'What does mapping a package to another database change?',
+  /** EXPERIENCE.md:378 */
+  packageMappingFormPrompt2: 'Does a package mapping include its subpackages?',
+  /** EXPERIENCE.md:378 */
+  packageMappingFormPrompt3: 'Which database should this package mapping name?',
+  /** EXPERIENCE.md:479 */
+  globalMappingDeleteConsequence:
+    'This namespace stops reading these globals from the mapped database and reads its default database again. No data is deleted. This cannot be undone.',
+  /** EXPERIENCE.md:479 */
+  routineMappingDeleteConsequence:
+    'This namespace stops running these routines from the mapped database. The routines themselves stay. This cannot be undone.',
+  /** EXPERIENCE.md:479 */
+  packageMappingDeleteConsequence:
+    'This namespace stops loading this package\'s classes from the mapped database. The classes themselves stay. This cannot be undone.',
+  /** EXPERIENCE.md:481 */
+  mappingRefusalOcuPilot:
+    'A mapping whose name or pattern covers OcuPilot\'s own names decides where OcuPilot\'s globals and code are found. In the namespace OcuPilot runs in, and in %ALL, such a mapping cannot be added, changed, removed or copied in.',
+
+  // Story 16.6: Processes' Broadcast over the checked rows, its dialog and refusal, and the data
+  // table's checked set. The dialog's field label and buttons reuse `logViewerColumnMessage`,
+  // `actionSend`, `actionCancel` and `auditDialogClose`.
+  /** EXPERIENCE.md:320 */
+  processBroadcastAction: 'Broadcast',
+  /** EXPERIENCE.md:320 */
+  processBroadcastTitle: 'Broadcast to <n> processes',
+  /** EXPERIENCE.md:320 */
+  processBroadcastTitleOne: 'Broadcast to 1 process',
+  /** EXPERIENCE.md:320 */
+  processBroadcastHint: 'At most 255 characters, on one line. A broadcast reaches at most <n> processes.',
+  /** EXPERIENCE.md:320 */
+  processBroadcastSent: 'Message sent.',
+  /** EXPERIENCE.md:320 */
+  processBroadcastIneligible: 'Only a terminal session can receive a broadcast.',
+  /** EXPERIENCE.md:320 */
+  processBroadcastRefusalRecipient: 'At least one of these processes has ended or is not a terminal session, so nothing was sent.',
+  /** EXPERIENCE.md:294 */
+  tableCheckRowsFirst: 'Check one or more rows first',
+  /** EXPERIENCE.md:294 */
+  tableCheckAtMost: 'Check at most <n> rows',
+  /** EXPERIENCE.md:294 */
+  tableCheckAll: 'Check all',
+  /** EXPERIENCE.md:375 */
+  licenseUsageLabel: 'License usage',
+  /** EXPERIENCE.md:375 */
+  licenseUsageByProcess: 'By process',
+  /** EXPERIENCE.md:375 */
+  licenseUsageByUser: 'By user',
+  /** EXPERIENCE.md:375 */
+  licenseUsageDistributed: 'Distributed',
+  /** EXPERIENCE.md:375 */
+  licenseUsageUnitUse: 'License unit use',
+  /** EXPERIENCE.md:375 */
+  licenseUsageLocal: 'Local',
+  /** EXPERIENCE.md:375 */
+  licenseUsageLoginId: 'Login ID',
+  /** EXPERIENCE.md:375 */
+  licenseUsageUserId: 'User ID',
+  /** EXPERIENCE.md:375 */
+  licenseUsageActiveTime: 'Active time',
+  /** EXPERIENCE.md:375 */
+  licenseUsageUnits: 'Units',
+  /** EXPERIENCE.md:375 */
+  licenseUsageGraceTime: 'Grace time',
+  /** EXPERIENCE.md:375 */
+  licenseUsageMaxConnections: 'Maximum connections',
+  /** EXPERIENCE.md:375 */
+  licenseUsageLicenseUnits: 'License units',
+  /** EXPERIENCE.md:375 */
+  licenseUsageServerIp: 'Server IP',
+  /** EXPERIENCE.md:375 */
+  licenseUsageSummaryEmpty: 'The instance reports no license summary.',
+  /** EXPERIENCE.md:375 */
+  licenseUsageProcessesEmpty: 'No process holds a license unit.',
+  /** EXPERIENCE.md:375 */
+  licenseUsageUsersEmpty: 'No user holds a license unit.',
+  /** EXPERIENCE.md:375 */
+  licenseUsageDistributedEmpty: 'The instance reports no license connections.',
+  /** EXPERIENCE.md:375 */
+  licenseUsagePrompt1: 'How many license units are in use, and how close is that to the limit?',
+  /** EXPERIENCE.md:375 */
+  licenseUsagePrompt2: 'Which processes and users hold license units right now?',
+  /** EXPERIENCE.md:375 */
+  licenseUsagePrompt3: 'Is this instance connected to a license server?',
+  /** EXPERIENCE.md:375 */
+  dashboardLabel: 'Dashboard',
+  /** EXPERIENCE.md:375 */
+  dashboardGroupEcp: 'ECP and shadowing',
+  /** EXPERIENCE.md:375 */
+  dashboardGroupStatus: 'System status',
+  /** EXPERIENCE.md:375 */
+  dashboardGroupAlerts: 'Errors and alerts',
+  /** EXPERIENCE.md:375 */
+  dashboardGroupLicensing: 'Licensing',
+  /** EXPERIENCE.md:375 */
+  dashboardGroupTasks: 'Task manager',
+  /** EXPERIENCE.md:375 */
+  dashboardCpu: 'CPU',
+  /** EXPERIENCE.md:375 */
+  dashboardRoutineReferences: 'Routine references',
+  /** EXPERIENCE.md:375 */
+  dashboardApplicationServers: 'Application servers',
+  /** EXPERIENCE.md:375 */
+  dashboardApplicationServerTraffic: 'Application server traffic',
+  /** EXPERIENCE.md:375 */
+  dashboardDataServers: 'Data servers',
+  /** EXPERIENCE.md:375 */
+  dashboardDataServerTraffic: 'Data server traffic',
+  /** EXPERIENCE.md:375 */
+  dashboardShadowSource: 'Shadow source',
+  /** EXPERIENCE.md:375 */
+  dashboardShadowServer: 'Shadow server',
+  /** EXPERIENCE.md:375 */
+  dashboardLastBackup: 'Last backup',
+  /** EXPERIENCE.md:375 */
+  dashboardDatabaseJournal: 'Database journal',
+  /** EXPERIENCE.md:375 */
+  dashboardSeriousAlerts: 'Serious alerts',
+  /** EXPERIENCE.md:375 */
+  dashboardLicenseLimit: 'License limit',
+  /** EXPERIENCE.md:375 */
+  dashboardLicenseUse: 'Current license use',
+  /** EXPERIENCE.md:375 */
+  dashboardLicenseUseHigh: 'Highest license use',
+  /** EXPERIENCE.md:375 */
+  dashboardBytesPerSecond: 'bytes/s',
+  /** EXPERIENCE.md:375 */
+  dashboardLicenseUnitsUnit: 'license units',
+  /** EXPERIENCE.md:375 */
+  dashboardEmpty: 'The dashboard is unavailable.',
+  /** EXPERIENCE.md:375 */
+  dashboardPrompt1: 'Is any dashboard meter in a warning or troubled state?',
+  /** EXPERIENCE.md:375 */
+  dashboardPrompt2: 'How busy is the instance right now, and how much CPU is it using?',
+  /** EXPERIENCE.md:375 */
+  dashboardPrompt3: 'Have serious alerts or application errors been raised?',
+  /** EXPERIENCE.md:377 */
+  localDatabaseListLabel: 'Local databases',
+  /** EXPERIENCE.md:377 */
+  localDatabaseListEmpty: 'No local databases on this instance.',
+  /** EXPERIENCE.md:377 */
+  localDatabaseListEmptyAgent: 'create a database',
+  /** EXPERIENCE.md:377 */
+  localDatabaseFormRefusedAction: 'change this database',
+  /** EXPERIENCE.md:377 */
+  localDatabaseListPrompt1: 'Which databases does this instance define, and where are their files?',
+  /** EXPERIENCE.md:377 */
+  localDatabaseListPrompt2: 'Which databases could a new namespace use?',
+  /** EXPERIENCE.md:377 */
+  localDatabaseListPrompt3: 'What would deleting a database take with it?',
+  /** EXPERIENCE.md:377 */
+  localDatabaseFormPrompt1: 'Which resource guards this database?',
+  /** EXPERIENCE.md:377 */
+  localDatabaseFormPrompt3: 'What changes if this database becomes read only?',
+  /** EXPERIENCE.md:377 */
+  databaseWizardStepName: 'Name and directory',
+  /** EXPERIENCE.md:377 */
+  databaseWizardStepSize: 'Size and journaling',
+  /** EXPERIENCE.md:377 */
+  databaseInitialSize: 'Initial size (MB)',
+  /** EXPERIENCE.md:377 */
+  databaseResourceNew: 'Create the resource <name>',
+  /** EXPERIENCE.md:377 */
+  databaseResourceExisting: 'Use an existing resource',
+  /** EXPERIENCE.md:377 */
+  databaseGroupMounting: 'Mounting',
+  /** EXPERIENCE.md:377 */
+  databaseMountAtStartup: 'Mount at startup',
+  /** EXPERIENCE.md:377 */
+  databaseMountRequired: 'Mount required at startup',
+  /** EXPERIENCE.md:377 */
+  databaseCreateLink: 'Create a database',
+  /** EXPERIENCE.md:377 */
+  databaseDirectoryChange: 'Change',
+  /** EXPERIENCE.md:377 */
+  localDatabaseDeleteFileOption: 'Also delete the database file and its volume files',
+  /** EXPERIENCE.md:377 */
+  databaseTasksNone: 'No background task is running against this database.',
+  /** EXPERIENCE.md:377 */
+  databaseTasksTruncated: 'Only the newest <n> background tasks were checked.',
+  /** EXPERIENCE.md:479 */
+  localDatabaseDeleteConsequence:
+    'Deleting this database removes it from the instance\'s configuration. Its file stays unless you also delete it here. This cannot be undone.',
+  /** EXPERIENCE.md:481 */
+  databaseRefusalOcuPilot:
+    'OcuPilot or the instance itself depends on this database. It cannot be deleted, and its directory, resource and read-only setting cannot be changed.',
+  /** EXPERIENCE.md:577 */
+  impactNamespacesUse: '<n> namespaces use it and must stop using it first: <names>',
+  /** EXPERIENCE.md:577 */
+  impactNamespacesUseOne: '1 namespace uses it and must stop using it first: <names>',
+  /** EXPERIENCE.md:577 */
+  impactNamespacesUseNone: 'no namespace uses it',
+  /** EXPERIENCE.md:577 */
+  impactNamespacesUseUnchecked: 'which namespaces use it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactApplicationsInThem: '<n> web applications run in those namespaces: <names>',
+  /** EXPERIENCE.md:577 */
+  impactApplicationsInThemOne: '1 web application runs in those namespaces: <names>',
+  /** EXPERIENCE.md:577 */
+  impactSharedFile: '<n> other databases share its file, which stays: <names>',
+  /** EXPERIENCE.md:577 */
+  impactSharedFileOne: '1 other database shares its file, which stays: <names>',
+  /** EXPERIENCE.md:577 */
+  impactSharedFileUnchecked: 'whether another database shares its file was not checked',
 } as const;
 
 /**

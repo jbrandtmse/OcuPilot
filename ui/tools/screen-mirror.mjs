@@ -159,7 +159,7 @@ export function parseEntityTypes(text) {
  * `prebuild`, naming the rule, rather than being mirrored into a key builder that does nothing
  * with it (AD-5, AD-13 as amended by DW-1359).
  */
-export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer'];
+export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset'];
 
 /**
  * The per-type canonical id rules, from the kernel's own `IDRULES` parameter: `[[type, rule],
@@ -310,7 +310,7 @@ function oneActionProblem(action, where, rules) {
  * no explanation, which is the divergence `checkedDeclaredNameKinds` exists to prevent for its own
  * vocabulary (AD-5, AD-53).
  */
-export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl'];
+export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl', 'ocupilot-session'];
 
 /**
  * The projection names this module's `declaredNames` fills, for the roster check against
@@ -919,19 +919,88 @@ export const READ_TOOL_IDENTIFIER_RE = /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/;
 const ENDPOINT_RE = /^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
 
 /**
- * The four read sources, mirrored from `OcuPilot.Screen.Read`'s own parameters: `admin` is an
+ * The six read sources, mirrored from `OcuPilot.Screen.Read`'s own parameters: `admin` is an
  * instance endpoint reached through the admin port, `state` is OcuPilot's own protected state
  * resolved against a kernel store's guarded list (AD-9), `mgmnt` is the management API reached
- * through its own port, and `logsource` is one instance log file's bounded tail read through
- * `OcuPilot.Port.LogSourcePort`, its `endpoint` a source key from that port's fixed enum (AD-21).
- * Each changes where the rows come from and nothing else -- the same fields, filter, sort, paging
- * and row cap.
+ * through its own port, `logsource` is one instance log file's bounded tail read through
+ * `OcuPilot.Port.LogSourcePort`, its `endpoint` a source key from that port's fixed enum (AD-21),
+ * `path` is the instance's directory allow-list read through `OcuPilot.Port.PathPort`, and
+ * `timeline` composes an area's listed screens' own reads. The first five change where the rows
+ * come from and nothing else -- the same fields, filter, sort, paging and row cap; a `timeline`
+ * read's fields and its one `since` criterion are fixed (`timelineProblem`).
  */
 export const SOURCE_ADMIN = 'admin';
 export const SOURCE_STATE = 'state';
 export const SOURCE_MGMNT = 'mgmnt';
 export const SOURCE_LOGSOURCE = 'logsource';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE];
+export const SOURCE_PATH = 'path';
+
+/** The log hub's composition of its area's listed screens' reads (AD-36 as amended, Story 16.9). */
+export const SOURCE_TIMELINE = 'timeline';
+
+/** The background tasks read through `OcuPilot.Port.BackgroundTaskPort` (AD-27, Story 16.5). */
+export const SOURCE_BACKGROUND = 'background';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND];
+
+/** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
+export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
+
+const PATH_SOURCES_PARAM_RE = /^Parameter\s+SOURCES\s*=\s*"([^"]*)"\s*;/m;
+
+/**
+ * The source keys `OcuPilot.Port.PathPort`'s `SOURCES` parameter declares, read from its own
+ * class rather than restated here, or `null` when the parameter is missing -- reported, never read
+ * as an empty list that would refuse every `path` read, the discipline `parseEntityTypes` follows.
+ */
+export function parsePathSources(text) {
+  const match = PATH_SOURCES_PARAM_RE.exec(text);
+  if (match === null) return null;
+  return match[1]
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value !== '');
+}
+
+let pathSourcesCache;
+
+/** `parsePathSources` over the class on disk, read once. */
+export function pathSources() {
+  if (pathSourcesCache === undefined) pathSourcesCache = parsePathSources(readFileSync(PATH_PORT_SOURCE, 'utf8'));
+  return pathSourcesCache;
+}
+
+/** The one request type a `path` source declares. */
+export const PATH_READ_TYPE = 'LIST';
+
+/** The source keys a `path` source declares none of, in the order they are reported. */
+const PATH_REFUSED_SOURCE_KEYS = ['rowGet', 'forEach', 'query', 'parts'];
+
+/** Where `OcuPilot.Port.BackgroundTaskPort` declares the one endpoint a `background` read names. */
+export const BACKGROUND_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'BackgroundTaskPort.cls');
+
+const BACKGROUND_ENDPOINT_PARAM_RE = /^Parameter\s+ENDPOINT\s*=\s*"([^"]*)"\s*;/m;
+
+/**
+ * The endpoint `OcuPilot.Port.BackgroundTaskPort`'s `ENDPOINT` parameter declares, read from its
+ * own class rather than restated here, or `null` when the parameter is missing.
+ */
+export function parseBackgroundEndpoint(text) {
+  const match = BACKGROUND_ENDPOINT_PARAM_RE.exec(text);
+  return match === null ? null : match[1];
+}
+
+let backgroundEndpointCache;
+
+/** `parseBackgroundEndpoint` over the class on disk, read once. */
+export function backgroundEndpoint() {
+  if (backgroundEndpointCache === undefined) {
+    backgroundEndpointCache = parseBackgroundEndpoint(readFileSync(BACKGROUND_PORT_SOURCE, 'utf8'));
+  }
+  return backgroundEndpointCache;
+}
+
+/** The one request type a `background` source declares. */
+export const BACKGROUND_READ_TYPE = 'LIST';
 
 /** The package a `state` source's `endpoint` names a store inside, trailing dot included. */
 export const STATE_PACKAGE = 'OcuPilot.Kernel.State.';
@@ -980,6 +1049,7 @@ export const DECLARATION_KEYS = [
   'tab',
   'toolIdentifier',
   'rowTarget',
+  'multiSelect',
 ];
 
 /**
@@ -1109,12 +1179,13 @@ export function readProblem(declaration) {
   if (source === null || typeof source !== 'object' || Array.isArray(source)) {
     return 'read.source is not an object naming its port, endpoint and type (AD-36)';
   }
-  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet', 'forEach', 'query', 'parts']);
+  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet', 'forEach', 'query', 'parts', 'rows']);
   if (sourceKeysFault !== null) return sourceKeysFault;
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}' or '${SOURCE_LOGSOURCE}', the four sources a declared read names (AD-36)`
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}' or '${SOURCE_BACKGROUND}', ` +
+      'the seven sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1126,8 +1197,54 @@ export function readProblem(declaration) {
       `store inside ${STATE_PACKAGE} by its own name alone (AD-9)`
     );
   }
-  if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
+  // AD-36 as amended (Story 16.7): a bare admin type read as a list over one member takes its own
+  // type rule, and every other read keeps the five declared types.
+  if (source.rows !== undefined && source.rows !== null) {
+    const rowsFault = rowsProblem(source);
+    if (rowsFault !== null) return rowsFault;
+  } else if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
     return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'`;
+  }
+  // A path source lists the instance's allowed directories through `OcuPilot.Port.PathPort`, which
+  // computes them whole on every call (AD-21): one of that port's source keys, a LIST, and nothing
+  // the port would have to issue per row, per parent, under a fixed query or in parts.
+  if (source.port === SOURCE_PATH) {
+    const sources = pathSources();
+    if (sources === null) return `${PATH_PORT_SOURCE} declares no 'Parameter SOURCES'`;
+    if (!sources.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the path port's sources ('${sources.join("', '")}') (AD-21)`;
+    }
+    if (source.type !== PATH_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a path source, which lists the allowed directories (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a path source, which answers the allowed directories whole (AD-36)`;
+    }
+  }
+  // A background source lists the instance's background tasks through
+  // `OcuPilot.Port.BackgroundTaskPort`, which merges both halves whole on every call (AD-27): the
+  // port's own endpoint, a LIST, and nothing the port would have to issue per row, per parent, under
+  // a fixed query or in parts.
+  if (source.port === SOURCE_BACKGROUND) {
+    const endpoint = backgroundEndpoint();
+    if (endpoint === null) return `${BACKGROUND_PORT_SOURCE} declares no 'Parameter ENDPOINT'`;
+    if (source.endpoint !== endpoint) {
+      return `read.source.endpoint '${source.endpoint}' is not the background port's endpoint ('${endpoint}') (AD-27)`;
+    }
+    if (source.type !== BACKGROUND_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a background source, which lists the background tasks (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a background source, which answers the background tasks whole (AD-36)`;
+    }
+  }
+  // AD-36 as amended (Story 16.9): a timeline composes its area's listed screens' own reads, so its
+  // shape is fixed rather than declared piecemeal.
+  if (source.port === SOURCE_TIMELINE) {
+    const timelineFault = timelineProblem(declaration);
+    if (timelineFault !== null) return timelineFault;
   }
   // A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so it
   // lists no parents. It may take its one criterion from the route id, and pair a rowGet keyed by
@@ -1309,6 +1426,89 @@ export function readProblem(declaration) {
       'because the port runs every endpoint in %SYS (AD-2, AD-8)'
     );
   }
+  if (source.port === SOURCE_PATH && !declaresSystemRead(declaration.privileges)) {
+    return (
+      "read.source.port 'path' requires the declared privileges to include %DB_IRISSYS:READ, " +
+      'because the port reads the allow-list through the admin API in %SYS (AD-2, AD-8, AD-21)'
+    );
+  }
+  return null;
+}
+
+/** The areas a `timeline` read may compose, byte for byte `OcuPilot.Screen.Registry`'s `TIMELINEAREAS`. */
+export const TIMELINE_AREAS = ['logs'];
+
+/** The fields a `timeline` read declares, in order: the row every member is projected to. */
+export const TIMELINE_FIELDS = ['time', 'source', 'severity', 'text', 'id'];
+
+/**
+ * What is wrong with `declaration`'s `timeline` read, or `null` (AD-36 as amended, Story 16.9):
+ * it is declared in one of `TIMELINE_AREAS`, its `endpoint` is that area's key, its `type` is
+ * `LIST`, its source declares no `rowGet`, `forEach`, `query` or `parts`, its `fields` are exactly
+ * `TIMELINE_FIELDS`, and its `criteria` is exactly one `datetime` criterion `since` carrying
+ * `defaultHoursAgo` and no `atOrAfterField`, with no marker. `OcuPilot.Screen.Registry.TimelineProblem`
+ * returns the same sentences, and `OcuPilot.Test.ReadSourceCorpus` is the corpus both engines run.
+ */
+export function timelineProblem(declaration) {
+  const { read } = declaration;
+  const { source } = read;
+  const area = declaration.area;
+  if (!TIMELINE_AREAS.includes(area)) {
+    return `read.source.port 'timeline' is declared in the '${shown(area)}' area, and a timeline composes the Logs area's own screens alone (AD-36)`;
+  }
+  if (source.endpoint !== area) {
+    return `read.source.endpoint '${shown(source.endpoint)}' is not the screen's own area '${area}', which a timeline source names (AD-36)`;
+  }
+  if (source.type !== 'LIST') {
+    return `read.source.type '${shown(source.type)}' is declared on a timeline source, which composes lists (AD-36)`;
+  }
+  for (const key of ['rowGet', 'forEach', 'query', 'parts']) {
+    if (source[key] !== undefined && source[key] !== null) {
+      return `read.source.${key} is declared on a timeline source, which composes its members' own reads and issues none of its own (AD-36)`;
+    }
+  }
+  if (!Array.isArray(read.fields) || read.fields.join(',') !== TIMELINE_FIELDS.join(',')) {
+    return 'read.fields on a timeline source are not exactly time, source, severity, text and id, the row every member is projected to (AD-36)';
+  }
+  const criteria = read.criteria;
+  const bound = isObject(criteria) && Array.isArray(criteria.fields) && criteria.fields.length === 1 ? criteria.fields[0] : null;
+  const boundOk =
+    isObject(bound) &&
+    (criteria.marker === undefined || criteria.marker === null) &&
+    bound.param === 'since' &&
+    bound.kind === 'datetime' &&
+    bound.defaultHoursAgo !== undefined &&
+    bound.atOrAfterField === undefined;
+  if (!boundOk) {
+    return "read.criteria on a timeline source is not exactly one datetime criterion 'since' carrying defaultHoursAgo and no atOrAfterField (AD-36)";
+  }
+  return null;
+}
+
+/** Whether `declaration` declares a `timeline` read. */
+function declaresTimeline(declaration) {
+  return isObject(declaration.read) && isObject(declaration.read.source) && declaration.read.source.port === SOURCE_TIMELINE;
+}
+
+/**
+ * What is wrong with the roster's timelines taken together, or `null` (AD-36 as amended): a
+ * timeline's members are its area's listed built screens other than itself, and a member that
+ * declares a timeline read itself is refused. `screens` is `[{className, declaration}]` in roster
+ * order. `OcuPilot.Screen.Registry.TimelineMemberProblem` returns the same sentence.
+ */
+export function timelineMemberProblem(screens) {
+  for (let outer = 0; outer < screens.length; outer += 1) {
+    const declaration = screens[outer].declaration;
+    if (!declaresTimeline(declaration)) continue;
+    for (let inner = 0; inner < screens.length; inner += 1) {
+      if (inner === outer) continue;
+      const member = screens[inner].declaration;
+      if (member.area !== declaration.area) continue;
+      if (member.built !== true || !(Number(member.sideBarPosition) >= 1)) continue;
+      if (!declaresTimeline(member)) continue;
+      return `${screens[outer].className}: timeline member '${member.route}' declares a timeline read itself, and a timeline composes its members' own reads (AD-36)`;
+    }
+  }
   return null;
 }
 
@@ -1455,8 +1655,8 @@ export function criteriaProblem(declaration) {
   if (keysFault !== null) return keysFault;
 
   const port = isObject(read.source) ? read.source.port : undefined;
-  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT) {
-    return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin and mgmnt ports alone (AD-21)`;
+  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_TIMELINE) {
+    return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt and timeline ports alone (AD-21)`;
   }
 
   const params = [];
@@ -1817,12 +2017,52 @@ export const PART_AS_RE = /^[A-Z][A-Za-z0-9]*$/;
 /** The most parts a single-object `GET` may declare, `OcuPilot.Screen.Registry`'s `MAXPARTS`. */
 export const MAX_PARTS = 3;
 
+/** The ports a declared part may name, byte for byte `OcuPilot.Screen.Registry`'s `PARTPORTS` (Story 16.7). */
+export const PART_PORTS = ['admin', 'monitor'];
+
+/** The part port answered by the sensors, `OcuPilot.Screen.Read`'s `PARTMONITOR`. */
+export const PART_MONITOR = 'monitor';
+
+/** The one type a `monitor` part declares, `OcuPilot.Port.MonitorPort`'s `SENSORSTYPE`. */
+export const MONITOR_SENSORS_TYPE = 'SENSORS';
+
+/** The shape a `read.source.rows` member name takes, byte for byte `OcuPilot.Screen.Registry`'s `ROWSMEMBERPATTERN`. */
+export const ROWS_MEMBER_RE = /^[A-Za-z][A-Za-z0-9]*$/;
+
+/**
+ * What is wrong with `source.rows`, or `null` (AD-36 as amended, Story 16.7). A declared `rows` is a
+ * member name (`ROWS_MEMBER_RE`) on an `admin` source whose `type` is an upper-case bare type
+ * (`PART_TYPE_RE`) other than the five `READ_SOURCE_TYPES`, with no `parts`, `forEach` or `rowGet`:
+ * the read issues that type once, with `maxRows` the cap plus one, and lists the answer's one member.
+ * `OcuPilot.Screen.Registry.RowsProblem` returns the same sentence for every case in
+ * `OcuPilot.Test.ReadSourceCorpus`.
+ */
+export function rowsProblem(source) {
+  const where = 'read.source.rows';
+  if (typeof source.rows !== 'string' || !ROWS_MEMBER_RE.test(source.rows)) {
+    return `${where} '${shown(source.rows)}' is not a member name, and a list over one member names the answer's row array (AD-36)`;
+  }
+  if (source.port !== SOURCE_ADMIN) {
+    return `${where} is declared on a '${shown(source.port)}' source, and a list over one member reads an admin endpoint's one-object answer (AD-36)`;
+  }
+  if (typeof source.type !== 'string' || !PART_TYPE_RE.test(source.type) || READ_SOURCE_TYPES.includes(source.type)) {
+    return `read.source.type '${shown(source.type)}' is not an upper-case bare admin type, and read.source.rows reads one member of a bare type's one-object answer (AD-36)`;
+  }
+  const declared = ['parts', 'forEach', 'rowGet'].find((key) => source[key] !== undefined && source[key] !== null);
+  if (declared !== undefined) {
+    return `read.source.${declared} is declared with read.source.rows, and a list over one member issues one call and projects its rows (AD-36)`;
+  }
+  return null;
+}
+
 /**
  * What is wrong with `source.parts`, or `null` (AD-36, Story 6.9). `read` is the declared read and
  * `fields` its declared fields.
  *
  * An absent or `null` `parts` declares none. Otherwise it is a non-empty array of 1 to `MAX_PARTS`
- * objects carrying only `type` (`PART_TYPE_RE`) and `as` (`PART_AS_RE`, unique across the block),
+ * objects carrying only `type` (`PART_TYPE_RE`), `as` (`PART_AS_RE`, unique across the block) and an
+ * optional `port` (one of `PART_PORTS`; at most one part names `monitor`, and its `type` is
+ * `MONITOR_SENSORS_TYPE`, Story 16.7),
  * declared on a single-object `GET` source with no `criteria` or `query` -- either would name the
  * read's one criterion or a fixed parameter, and a parts read's row is assembled from the parts
  * alone. A `GET` source already guarantees an `admin` port and already refuses `rowGet` and
@@ -1856,14 +2096,29 @@ export function partsProblem(read, source, fields) {
     return `${where} declares ${parts.length} part(s), and a parts read names 1 to ${MAX_PARTS}`;
   }
   const seenAs = [];
+  let monitorParts = 0;
   for (let index = 0; index < parts.length; index += 1) {
     const part = parts[index];
     const at = `${where} entry #${index + 1}`;
     if (!isObject(part)) return `${at} is not an object declaring its type and as`;
-    const keysFault = unknownKeyProblem(at, part, ['type', 'as']);
+    const keysFault = unknownKeyProblem(at, part, ['type', 'as', 'port']);
     if (keysFault !== null) return keysFault;
     if (typeof part.type !== 'string' || !PART_TYPE_RE.test(part.type)) {
       return `${at} type '${shown(part.type)}' is not upper-case letters`;
+    }
+    // AD-36 as amended (Story 16.7): one part may be the sensors', answered by the monitor port
+    // behind its own gate, for the one type that port answers.
+    if (part.port !== undefined) {
+      if (typeof part.port !== 'string' || !PART_PORTS.includes(part.port)) {
+        return `${at} port '${shown(part.port)}' is not 'admin' or 'monitor', the two ports a part is answered through (AD-36)`;
+      }
+      if (part.port === PART_MONITOR) {
+        if (part.type !== MONITOR_SENSORS_TYPE) {
+          return `${at} type '${part.type}' is declared on a monitor part, which answers only '${MONITOR_SENSORS_TYPE}' (AD-29, AD-36)`;
+        }
+        if (monitorParts > 0) return `${at} is a second monitor part, and a parts read names at most one (AD-36)`;
+        monitorParts += 1;
+      }
     }
     if (typeof part.as !== 'string' || !PART_AS_RE.test(part.as)) {
       return `${at} as '${shown(part.as)}' is not an upper camel-case identifier`;
@@ -2101,6 +2356,67 @@ export function rowTargetProblem(declaration) {
   const fields = Array.isArray(declaration.read?.fields) ? declaration.read.fields : [];
   if (!fields.includes(rowTarget.field)) {
     return `rowTarget.field '${rowTarget.field}' is not one of read.fields`;
+  }
+  return null;
+}
+
+/** The keys a declared `multiSelect` carries (AD-5, Story 16.6). */
+export const MULTI_SELECT_KEYS = ['action', 'eligible', 'max', 'ineligibleKey'];
+
+/** The most rows a `multiSelect` may let a person check. */
+export const MULTI_SELECT_MAX = 1000;
+
+/**
+ * What is wrong with `declaration`'s declared `multiSelect`, or `null` when nothing is, including
+ * when none is declared (AD-5, Story 16.6). A multi-select is a list's one checked-set action: the
+ * table draws a checkbox on each row whose `eligible` read field is true, and the declared `action`
+ * acts on the checked rows from the command bar and the command box.
+ *
+ * Declarable only on a `list` archetype that declares a `read` and a `table`. Its `action` is one of
+ * the screen's `rowActions`, its `eligible` one of `read.fields`, its `max` a whole number from 1 to
+ * `MULTI_SELECT_MAX`, and its `ineligibleKey` a non-empty string key, which `declaredStringKeys`
+ * holds to the string source. `OcuPilot.Screen.Registry.MultiSelectProblem` returns the same
+ * sentence for every case in `OcuPilot.Test.MultiSelectCorpus`.
+ */
+export function multiSelectProblem(declaration) {
+  const { multiSelect } = declaration;
+  if (multiSelect === undefined || multiSelect === null) return null;
+  if (!isObject(multiSelect)) {
+    return 'multiSelect is not an object naming its action, eligible field, max and ineligibleKey (AD-5)';
+  }
+  const keysFault = unknownKeyProblem('multiSelect', multiSelect, MULTI_SELECT_KEYS);
+  if (keysFault !== null) return keysFault;
+  if (declaration.archetype !== 'list') {
+    return `multiSelect is declared on a '${shown(declaration.archetype)}' archetype, and a multi-select is a list's own (AD-5)`;
+  }
+  if (!isObject(declaration.read)) {
+    return 'multiSelect is declared without a read, and its eligible field is one of read.fields (AD-5)';
+  }
+  if (!isObject(declaration.table)) {
+    return 'multiSelect is declared without a table, and its checkboxes are drawn in the table (AD-5)';
+  }
+  if (typeof multiSelect.action !== 'string' || multiSelect.action === '') {
+    return 'multiSelect.action is empty, and a multi-select names the row action it acts through';
+  }
+  const actions = (Array.isArray(declaration.rowActions) ? declaration.rowActions : [])
+    .filter((action) => isObject(action) && typeof action.id === 'string')
+    .map((action) => action.id);
+  if (!actions.includes(multiSelect.action)) {
+    return `multiSelect.action '${multiSelect.action}' is not one of rowActions`;
+  }
+  if (typeof multiSelect.eligible !== 'string' || multiSelect.eligible === '') {
+    return 'multiSelect.eligible is empty, and a multi-select names the read field that makes a row checkable';
+  }
+  const fields = Array.isArray(declaration.read.fields) ? declaration.read.fields : [];
+  if (!fields.includes(multiSelect.eligible)) {
+    return `multiSelect.eligible '${multiSelect.eligible}' is not one of read.fields`;
+  }
+  const { max } = multiSelect;
+  if (typeof max !== 'number' || !Number.isInteger(max) || max < 1 || max > MULTI_SELECT_MAX) {
+    return `multiSelect.max must be a whole number from 1 to ${MULTI_SELECT_MAX}`;
+  }
+  if (typeof multiSelect.ineligibleKey !== 'string' || multiSelect.ineligibleKey === '') {
+    return "multiSelect.ineligibleKey is empty, and a multi-select names the string key an ineligible row's checkbox reads";
   }
   return null;
 }
@@ -2386,6 +2702,8 @@ export function declaredStringKeys(declaration) {
     for (const entry of Array.isArray(banner.cases) ? banner.cases : []) keys.push(entry?.messageKey);
   }
   if (tab !== null && typeof tab === 'object') keys.push(tab.labelKey);
+  const { multiSelect } = declaration;
+  if (multiSelect !== null && typeof multiSelect === 'object') keys.push(multiSelect.ineligibleKey);
   const { suggestedPrompts } = declaration;
   for (const prompt of Array.isArray(suggestedPrompts) ? suggestedPrompts : []) keys.push(prompt?.groupKey, prompt?.textKey);
   return keys.filter((key) => typeof key === 'string' && key !== '');
@@ -2600,6 +2918,11 @@ export function buildMirror({
     if (rowTargetFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${rowTargetFault}`);
     }
+    // AD-5, Story 16.6: a list's one declared multi-select action.
+    const multiSelectFault = multiSelectProblem(screen.declaration);
+    if (multiSelectFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${multiSelectFault}`);
+    }
     // AD-5, AD-53: the self-protection rule the client draws a refused row action from, refused
     // here against the instance's own closed vocabulary so a rule neither side understands fails
     // the build rather than rendering as a word in a row menu.
@@ -2619,6 +2942,9 @@ export function buildMirror({
   // does not already pair its own surface, which only the whole roster can say.
   const rowTargetResolutionFault = rowTargetResolutionProblem(screens);
   if (rowTargetResolutionFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${rowTargetResolutionFault}`);
+  // AD-36 as amended (Story 16.9): a timeline's members are the other listed screens of its area.
+  const timelineMemberFault = timelineMemberProblem(screens);
+  if (timelineMemberFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${timelineMemberFault}`);
 
   // `refreshes` / `refreshRates` are defaulted rather than spread verbatim, because `refreshProblem`
   // calls an omitted pair sound and `Base.Refreshes()` answers 0 for one: without these the mirror
@@ -2653,6 +2979,8 @@ export function buildMirror({
     banner: screen.declaration.banner ?? null,
     tab: screen.declaration.tab ?? null,
     rowTarget: screen.declaration.rowTarget ?? null,
+    // Defaulted for the reason `rowTarget` is: optional, and absent from every other screen.
+    multiSelect: screen.declaration.multiSelect ?? null,
     // Defaulted for the reason `read` is: both keys are optional (AD-3, AD-6), every descriptor
     // written before them declares neither, and the mirror's two fields are not optional.
     secretArguments: screen.declaration.secretArguments ?? [],
@@ -2666,6 +2994,19 @@ export function buildMirror({
   const builtArchetypeKeys = archetypeKeys.filter((key) =>
     screens.some((screen) => screen.declaration.built === true && screen.declaration.archetype === key)
   );
+
+  // AD-36 as amended (Story 16.7): a `rows` read declares a bare admin type, so the emitted type
+  // union carries the five declared types and every bare type a declaration names, and nothing else.
+  const bareRowTypes = [
+    ...new Set(
+      screens
+        .map((screen) => screen.declaration.read?.source)
+        .filter((source) => isObject(source) && typeof source.rows === 'string')
+        .map((source) => source.type)
+        .filter((type) => !READ_SOURCE_TYPES.includes(type))
+    ),
+  ].sort();
+  const emittedReadTypes = [...READ_SOURCE_TYPES, ...bareRowTypes];
 
   return `${HEADER}
 export type EntityTypeKey = ${entityTypes.map((value) => `'${value}'`).join(' | ')};
@@ -2775,14 +3116,18 @@ export interface ReadRowGet {
 export interface ReadSourcePart {
   readonly type: string;
   readonly as: string;
+  /** \`monitor\` for the one part the sensors answer (Story 16.7); absent is the admin endpoint. */
+  readonly port?: ${PART_PORTS.map((value) => `'${value}'`).join(' | ')};
 }
 
 /**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
- * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, or one
- * instance log file's bounded tail. A \`state\` source names the store by its own name, declares no
- * \`rowGet\` and no \`criteria\`, and is bounded by the same row cap; a \`mgmnt\` or
- * \`logsource\` source declares no \`rowGet\`.
+ * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, one
+ * instance log file's bounded tail, the instance's allowed directories, or an area's listed screens'
+ * reads composed into one timeline. A \`state\` source names the store by its own name, declares no
+ * \`rowGet\` and no \`criteria\`, and is bounded by the same row cap; a \`mgmnt\` or \`logsource\`
+ * source declares no \`rowGet\`, a \`path\` source is a \`LIST\` of one of its port's sources, and a
+ * \`timeline\` source's fields and criterion are fixed.
  */
 export interface ReadSource {
   readonly port: ${READ_SOURCE_PORTS.map((value) => `'${value}'`).join(' | ')};
@@ -2790,9 +3135,12 @@ export interface ReadSource {
   /**
    * \`LIST\` reads rows; \`GET\` reads one object as the one row, and a 404 reads as none;
    * \`UPCOMING\` reads an admin endpoint's scheduled occurrences as rows; \`HISTORY\` reads its task-run history;
-   * \`VOLUMELIST\` reads a database's own volume files as rows.
+   * \`VOLUMELIST\` reads a database's own volume files as rows; a bare admin type is read with
+   * \`rows\` (Story 16.7).
    */
-  readonly type: ${READ_SOURCE_TYPES.map((value) => `'${value}'`).join(' | ')};
+  readonly type: ${emittedReadTypes.map((value) => `'${value}'`).join(' | ')};
+  /** The one member of a bare admin type's one-object answer this read lists (AD-36, Story 16.7). */
+  readonly rows?: string | null;
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;
@@ -3015,6 +3363,8 @@ export interface ScreenDeclaration {
   readonly toolIdentifier: string;
   /** This list's one declared cross-screen row target, or \`null\` for a screen with none (AD-5, Story 6.10). */
   readonly rowTarget: ScreenRowTarget | null;
+  /** This list's one declared multi-select action, or \`null\` for a screen with none (AD-5, Story 16.6). */
+  readonly multiSelect: ScreenMultiSelect | null;
 }
 
 /** One suggested prompt: the string key of the task group it sits under, and of its own text. */
@@ -3041,6 +3391,18 @@ export interface TabDeclaration {
 export interface ScreenRowTarget {
   readonly route: string;
   readonly field: string;
+}
+
+/**
+ * A list's one multi-select action (AD-5, Story 16.6): the row action that acts on the checked rows,
+ * the read field that makes a row checkable, the most rows it takes, and the string key an
+ * ineligible row's checkbox reads.
+ */
+export interface ScreenMultiSelect {
+  readonly action: string;
+  readonly eligible: string;
+  readonly max: number;
+  readonly ineligibleKey: string;
 }
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */

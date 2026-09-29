@@ -17,6 +17,8 @@ import { HomePage } from '../areas/home/home.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
 import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
+import { MappingFormPage } from '../areas/os-management/mapping-form.page';
+import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
 import { ListPage } from './list-page';
 import { ReducedFormPage } from './reduced-form.page';
 import {
@@ -434,6 +436,18 @@ describe('the descriptor map (DW-369)', () => {
       expect(resolveArchetypePage(editPages, descriptor)).toBe(ReducedFormPage);
       expect(resolveArchetypePage(descriptorPages, descriptor)).toBe(ReducedFormPage);
     }
+  });
+
+  it('Story 18.14: the three mapping forms share one page, Namespaces takes its own, and the mapping lists stay the list page', () => {
+    // Mutation (Rule 19): drop NamespaceList from `DESCRIPTOR_PAGES` -> the Namespaces leg reads the
+    // list page, and Copy mappings would have no page to open its dialog.
+    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const archetypePages = ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>;
+    for (const kind of ['Global', 'Routine', 'Package']) {
+      expect(resolveScreenPage(descriptorPages, archetypePages, `OcuPilot.Screen.Descriptor.${kind}MappingForm`, 'form-page')).toBe(MappingFormPage);
+      expect(resolveScreenPage(descriptorPages, archetypePages, `OcuPilot.Screen.Descriptor.${kind}MappingList`, 'list')).toBe(ListPage);
+    }
+    expect(resolveScreenPage(descriptorPages, archetypePages, 'OcuPilot.Screen.Descriptor.NamespaceList', 'list')).toBe(NamespaceListPage);
   });
 
   it('the two form-page screens resolve to two different pages, which is what DW-369 asked for', () => {

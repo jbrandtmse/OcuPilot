@@ -507,7 +507,8 @@ ClassMethod GuardedSignals(pKey As %String, Output pStop As %Boolean, Output pAb
 
 /// <p>Turn <var>pKey</var> when <var>pUser</var> owns it, both matched exactly. <var>pFound</var>
 /// is 0 for an unknown key and for another user's turn alike. <var>pValues</var> carries
-/// <code>state</code>, <code>code</code> and <code>user</code>.</p>
+/// <code>state</code>, <code>code</code>, <code>user</code> and <code>route</code>, the screen route
+/// the turn was begun from (<property>ContextRoute</property>).</p>
 ClassMethod GuardedForOwner(pKey As %String, pUser As %String, Output pFound As %Boolean, Output pValues) As %Status
 {
     Set pFound = 0
@@ -520,6 +521,7 @@ ClassMethod GuardedForOwner(pKey As %String, pUser As %String, Output pFound As 
     Set pValues("state") = tRow.State
     Set pValues("code") = ..Text(tRow.Code)
     Set pValues("user") = tRow.UserName
+    Set pValues("route") = ..Text(tRow.ContextRoute)
     Set tRow = ""
     Set pFound = 1
     Quit $$$OK

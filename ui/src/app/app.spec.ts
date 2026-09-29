@@ -23,12 +23,18 @@ import { OAuthResourceServerForm } from './areas/security/oauth-resource-server-
 import { OAuthServerForm } from './areas/security/oauth-server-form.store';
 import { OAuthRegisteredClientForm } from './areas/security/oauth-registered-client-form.store';
 import { DeviceForm } from './areas/os-management/device-form.store';
+import { NamespaceForm } from './areas/os-management/namespace-form.store';
+import { MappingForm } from './areas/os-management/mapping-form.store';
+import { DatabaseEditor } from './areas/os-management/database-editor.store';
+import { DatabaseWizard } from './areas/os-management/database-wizard.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
+import { LedgerSearch } from './areas/agent/ledger.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
 import { ApiService } from './core/api';
+import { LogHubStore } from './areas/logs/log-hub.store';
 import { LogViewerStore, XDBC_SOURCE } from './areas/logs/log-viewer.store';
 import { ChangeBus } from './core/change-bus';
 import { ConnectivityService } from './core/connectivity';
@@ -42,6 +48,7 @@ import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/
 import { ScreenActions } from './core/screen-actions';
 import { ScreenStores } from './core/screen-store';
 import type { AreaDeclaration, ScreenDeclaration } from './core/screens.generated';
+import { SCREENS } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
 import { PanelState } from './core/panel-layout';
 import { TurnStore } from './core/turn';
@@ -65,6 +72,7 @@ import { PerformanceRow } from './core/performance';
 import { stubPerformanceRow, type StubbedPerformanceRow } from './testing/performance';
 import { Findings } from './core/findings';
 import { Guardrails } from './core/guardrails';
+import { PermissionCheck } from './shell/permission-check';
 import { FixFinding } from './core/fix-finding';
 import { stubFindings, stubFixFinding, type StubbedFindings } from './testing/findings';
 import { stubGuardrails, type StubbedGuardrails } from './testing/guardrails';
@@ -510,22 +518,45 @@ describe('the shell frame', () => {
         // The application error log's drill (Story 2.12) is the one root-provided store that
         // reads through `ApiService` directly -- it declares no read, so it has no `RefreshRead`
         // to stub. The stub answers an empty page so the drill's state can be driven here without
-        // a network, which is what the sign-out teardown below needs a subject for.
+        // a network, which is what the sign-out teardown below needs a subject for. The database
+        // editor's form read answers one database, so the teardown has an opened editor to clear.
         {
           provide: ApiService,
           useValue: {
             requestJson: async (path: string) =>
-              path.startsWith('/api/ocupilot/logs/xdbc')
+              path.startsWith('/api/ocupilot/database/form?name=')
                 ? {
                     kind: 'ok',
                     status: 200,
                     body: {
-                      source: 'xdbc',
-                      entries: [{ time: '2026-09-27T10:00:00.000', pid: '7', severity: '2', text: '[HSCUSTOM] <-30>', raw: 'x' }],
-                      truncated: false,
+                      Name: 'ADATABASETHISPRINCIPALOPENED',
+                      configuration: { Directory: '/durable/iris/mgr/adatabase/', MountAtStartup: true },
+                      file: { Directory: '/durable/iris/mgr/adatabase/', ExpansionSize: '0' },
                     },
                   }
-                : { kind: 'ok', status: 200, body: { rows: [] } },
+                : path.startsWith('/api/ocupilot/logs/xdbc')
+                  ? {
+                      kind: 'ok',
+                      status: 200,
+                      body: {
+                        source: 'xdbc',
+                        entries: [{ time: '2026-09-27T10:00:00.000', pid: '7', severity: '2', text: '[HSCUSTOM] <-30>', raw: 'x' }],
+                        truncated: false,
+                      },
+                    }
+                  : path.startsWith('/api/ocupilot/screens/logs.hub/read')
+                    ? {
+                        kind: 'ok',
+                        status: 200,
+                        body: {
+                          fields: ['time', 'source', 'severity', 'text', 'id'],
+                          rows: [{ time: '2026-09-27T10:00:00.000', source: 'logs/xdbc', severity: '2', text: '[HSCUSTOM] <-30>', id: '' }],
+                          truncated: false,
+                          criteria: { since: '2026-09-27 09:00:00' },
+                          sources: [{ source: 'logs/xdbc', shown: true, requires: '', count: 1, truncated: false, last: null }],
+                        },
+                      }
+                    : { kind: 'ok', status: 200, body: { rows: [] } },
           } as unknown as ApiService,
         },
       ],
@@ -807,6 +838,10 @@ describe('the shell frame', () => {
     await performanceRow.read();
     await findings.load();
     await guardrails.load();
+    // Story 16.3: an open Check permission dialog, so its reset below is observable.
+    const permissionCheck = TestBed.inject(PermissionCheck);
+    permissionCheck.open('OcuPilot.Screen.Descriptor.UserList', 'user', 'U');
+    expect(permissionCheck.pending()).not.toBeNull();
     expect(about.answered()).toBe(true);
     expect(guardrails.data()).not.toBeNull();
     expect(findings.answered()).toBe(true);
@@ -872,6 +907,10 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.guardrails.reset()` from the same branch -> this goes red,
     // and the Guardrails page would open on the departed principal's verdict (Story 16.22, AD-8).
     expect(guardrails.data()).toBeNull();
+    // Mutation (Rule 19): delete `this.permissionCheck.reset()` from the same branch -> this goes
+    // red, and a Check permission dialog and the departed principal's answer would open for the
+    // next one (Story 16.3, AD-8).
+    expect(permissionCheck.pending()).toBeNull();
 
     // Mutation (Rule 19): delete `this.recentsRecorder.reset()` from the same branch -> this goes
     // red, answering []. The next principal resumes on the screen this tab is already on, and a
@@ -1071,6 +1110,13 @@ describe('the shell frame', () => {
     auditSearch.setMarker(true);
     auditSearch.noteSearched();
 
+    // The Agent audit ledger's search (Story 16.16) holds what THIS principal typed and the rows
+    // it answered, which for an administrator include other users' agent activity (AD-8).
+    const ledgerSearch = TestBed.inject(LedgerSearch);
+    ledgerSearch.setValue('user', 'irisowner');
+    ledgerSearch.setValue('route', 'agent/ledger');
+    ledgerSearch.noteSearched();
+
     // The seventh answer of the same kind (Story 2.12). The application error log's drill holds
     // which namespace and date THIS principal was reading -- and, one level deeper, a captured
     // variable table carrying $ROLES, $USERNAME and every local at every stack level (AD-48).
@@ -1085,6 +1131,14 @@ describe('the shell frame', () => {
     logViewer.setSource(XDBC_SOURCE);
     await logViewer.open();
     expect(logViewer.lines()).toHaveLength(1);
+
+    // Story 16.9: the log hub holds the entries of every Logs source THIS principal read.
+    const logHub = TestBed.inject(LogHubStore);
+    const hubScreen = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.LogHub');
+    if (hubScreen === undefined) throw new Error('the mirror carries the log hub');
+    await logHub.read(hubScreen, 1000);
+    logHub.setSourceFilter('logs/xdbc');
+    expect(logHub.rows()).toHaveLength(1);
 
     // The eighth answer of the same kind (Story 3.5). The Definition form's buffer holds what THIS
     // principal typed, and `keyValue` holds a provider API key they pasted and have not yet
@@ -1174,6 +1228,29 @@ describe('the shell frame', () => {
     deviceForm.setValue('PhysicalDevice', '/tmp/a-path-this-principal-typed');
     expect(deviceForm.value('Name')).not.toBe('');
 
+    // The same answer for the namespace editor (Story 18.2): a namespace THIS principal typed and has
+    // not saved, in a root-provided store. A create takes input before its form read is made.
+    const namespaceForm = TestBed.inject(NamespaceForm);
+    namespaceForm.setValue('Name', 'ANAMESPACETHISPRINCIPALTYPED');
+    expect(namespaceForm.value('Name')).not.toBe('');
+
+    // The same answer for the mapping editor (Story 18.14): a mapping THIS principal typed and has
+    // not saved, in a root-provided store. A create takes input before its form read is made.
+    const mappingForm = TestBed.inject(MappingForm);
+    mappingForm.setValue('Name', 'AMappingThisPrincipalTyped');
+    expect(mappingForm.value('Name')).not.toBe('');
+
+    // The same answer for the database wizard and editor (Story 18.3): a database THIS principal
+    // typed or opened and has not saved, in two root-provided stores. The wizard takes input before
+    // its form read is made; the editor takes input once its form read has answered.
+    const databaseWizard = TestBed.inject(DatabaseWizard);
+    databaseWizard.setName('ADATABASETHISPRINCIPALTYPED');
+    expect(databaseWizard.values().Name).not.toBe('');
+    const databaseEditor = TestBed.inject(DatabaseEditor);
+    await databaseEditor.open('ADATABASETHISPRINCIPALOPENED');
+    databaseEditor.setText('ExpansionSize', '7');
+    expect(databaseEditor.text('ExpansionSize')).toBe('7');
+
     // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
     // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
     // only in an edit, which is set before its form read answers.
@@ -1198,6 +1275,11 @@ describe('the shell frame', () => {
     expect(auditSearch.marker()).toBe(false);
     expect(auditSearch.searched()).toBe(false);
 
+    // Mutation (Rule 19): delete `this.ledgerSearch.reset()` from `App.verifyWhenSignedIn` -> these
+    // go red, and the next principal opens the ledger on the previous one's search.
+    expect(ledgerSearch.value('user')).toBe('');
+    expect(ledgerSearch.value('route')).toBe('');
+
     // Mutation (Rule 19): delete `this.errorLogDrill.reset()` from `App.verifyWhenSignedIn` ->
     // these three go red, and the shipped shell shows the next principal the previous one's drill.
     expect(errorLogDrill.level()).toBe('namespaces');
@@ -1208,6 +1290,12 @@ describe('the shell frame', () => {
     // two go red, and the shipped shell shows the next principal the previous one's log entries.
     expect(logViewer.lines()).toHaveLength(0);
     expect(logViewer.loaded()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.logHub.reset()` from `App.verifyWhenSignedIn` -> these
+    // three go red, and the shipped shell shows the next principal the previous one's hub.
+    expect(logHub.rows()).toHaveLength(0);
+    expect(logHub.sources()).toHaveLength(0);
+    expect(logHub.sourceFilter()).toBe('');
 
     // Mutation (Rule 19): delete `this.refresh.reset()` from `App.verifyWhenSignedIn` -> these
     // two go red, and the shipped shell keeps ticking the previous principal's screen.
@@ -1269,6 +1357,23 @@ describe('the shell frame', () => {
     // two go red, and the next principal's device editor holds the previous one's typed device.
     expect(deviceForm.value('Name')).toBe('');
     expect(deviceForm.value('PhysicalDevice')).toBe('');
+
+    // Mutation (Rule 19): delete `this.namespaceForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's namespace editor holds the previous one's typed name.
+    expect(namespaceForm.value('Name')).toBe('');
+
+    // Mutation (Rule 19): delete `this.mappingForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's mapping editor holds the previous one's typed name.
+    expect(mappingForm.value('Name')).toBe('');
+
+    // Mutation (Rule 19): delete `this.databaseWizard.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's wizard holds the previous one's typed name.
+    expect(databaseWizard.values().Name).toBe('');
+    // Mutation (Rule 19): delete `this.databaseEditor.reset()` from `App.verifyWhenSignedIn` -> the
+    // first of these goes red, and the next principal's editor holds the previous one's opened
+    // database and unsaved change.
+    expect(databaseEditor.name()).toBe('');
+    expect(databaseEditor.text('ExpansionSize')).toBe('');
 
     // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
     // red, and the next principal's SSL/TLS form holds the previous one's typed key password.

@@ -251,9 +251,35 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
     }
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", "OcuP97Nightly"), "ocup97nightly", "a task name folds to lower case, so two spellings of one name are one target (AD-13, AD-54)")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", ""), "", "and an empty id is answered verbatim rather than folded to a number")
+    ; Story 16.6's rule: a process id may name a set of pids, each once, ascending, in the integer
+    ; rule's spelling -- so two spellings of one set are one key -- and a single pid reads as the
+    ; integer rule reads it. The order is on the string (sign, length, digits), as the client twin
+    ; (ui/tools/entity-ref.test.mjs) answers the same corpus.
+    Do $$$AssertEquals($Piece(##class(OcuPilot.Kernel.EntityRef).#IDRULES, "process:", 2) [ "integerset", 1, "the process pair names the integerset rule")
+    For tCase = $ListBuild(" 907,812, 812", "812,907"), $ListBuild("812", "812"), $ListBuild(" 007 ", "7"), $ListBuild("10,9,100", "9,10,100"), $ListBuild("+0,-0,0", "0"), $ListBuild("-3,2,-12", "-12,-3,2"), $ListBuild($Char(9) _ "5,4", "4,5") {
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("process", $List(tCase, 1)), $List(tCase, 2), "'" _ $List(tCase, 1) _ "' is the set " _ $List(tCase, 2))
+    }
+    For tVerbatim = "abc", "812,", ",812", "812,abc", "8 12", "7.0" {
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("process", tVerbatim), tVerbatim, "'" _ tVerbatim _ "' is not a set of integers and keeps its spelling")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("process", "ABC,1"), "abc,1", "and is folded to lower case as the integer rule folds one")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("process", "instance", "907, 812,812", .tSetKey), "a spelled set builds a key")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("process", "instance", "812,907", .tCanonicalKey), "and so does the canonical one")
+    Do $$$AssertEquals(tSetKey, tCanonicalKey, "and the two are one key")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#KNOWNTYPE, "/API/OcuPilot/"), "/API/OcuPilot/", "so its ids are the instance's own strings")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("role", "%All"), "%all", "while a role's fold, by Story 8.3's rule")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("resource", "%DB_OcuPilot"), "%db_ocupilot", "and a resource's, by Story 8.4's")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("database-configuration", "OcuProbe183X"), "ocuprobe183x", "and a database configuration's, by Story 18.3's: the instance resolves a configuration name without regard to case")
+    ; Story 18.14's rule: a mapping is addressed by [namespace, Name], and only the namespace part
+    ; folds -- a routine mapping's type suffix and a global mapping's subscript are the instance's
+    ; own spelling. The same corpus runs through the client twin (ui/tools/entity-ref.test.mjs).
+    Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
+    For tType = "global-mapping", "routine-mapping", "package-mapping" {
+        Do $$$AssertTrue($ListFind(tRuled, tType) > 0, "the " _ tType _ " pair is one Story 18.14 added")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("routine-mapping", "OcuProbe" _ tSeparator _ "Probe*_MAC"), "ocuprobe" _ tSeparator _ "Probe*_MAC", "a mapping folds its namespace part and keeps its name's spelling")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("global-mapping", "USER" _ tSeparator _ "Probe(""A"")"), "user" _ tSeparator _ "Probe(""A"")", "a global mapping's subscript keeps its case")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("package-mapping", "OcuProbe"), "ocuprobe", "and a value with no separator folds whole")
 
     ; A key built from a non-canonical spelling is the key built from the canonical one, which is
     ; the necessary condition behind AD-34's per-target lock.

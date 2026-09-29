@@ -23,12 +23,15 @@
 /// <file>ui/src/app/core/screen-read.ts</file>'s <code>applyView</code>, because the screen sorts
 /// and filters on the client and a tool runs in-process on the server; both are pinned by the one
 /// corpus in <class>OcuPilot.Test.ReadViewCorpus</class>.</p>
-/// <p><b>A declared read names one of two source kinds</b> (AD-36). An instance endpoint is reached
+/// <p><b>A declared read names one of three source kinds</b> (AD-36), the third being
+/// <code>port: "timeline"</code>, a composition of an area's listed screens' own reads through
+/// <method>TimelineClass</method>. An instance endpoint is reached
 /// through a port: <code>port: "admin"</code> through <method>PortClass</method>,
 /// <code>port: "mgmnt"</code>, the management API, through <method>MgmntPortClass</method>, which is
 /// handed the route's scope as its namespace, and <code>port: "logsource"</code>, an instance log
 /// file's bounded tail, through <method>LogSourcePortClass</method>, whose endpoint is a source key
-/// from that port's own fixed enum (AD-21). <code>port: "state"</code> is
+/// from that port's own fixed enum (AD-21), and <code>port: "path"</code>, the instance's allowed
+/// directories, through <method>PathPortClass</method>. <code>port: "state"</code> is
 /// OcuPilot's own protected state (AD-9), resolved against a kernel store's guarded list through
 /// <method>StateRows</method>. The second changes where the rows come from and nothing else: the
 /// same declared <code>fields</code>, the same secret strip, the same filter, sort and view rule,
@@ -51,7 +54,15 @@
 /// (<method>TotalRow</method>). Any part's fault, a missing <code>Total</code> row included, fails
 /// the whole read; there is no partial row. A part field composes
 /// <code>&lt;as&gt;.&lt;member&gt;</code> with the existing <code>&lt;object&gt;.&lt;member&gt;</code>
-/// projection to at most two members deep.</p>
+/// projection to at most two members deep. A part declaring <code>port</code>
+/// <parameter>PARTMONITOR</parameter> is answered by <method>MonitorPortClass</method>'s
+/// <code>Invoke</code> at that port's sensors endpoint, behind that port's own gate (AD-29, AD-36,
+/// Story 16.7); every other part is the admin endpoint's.</p>
+/// <p><b>A bare admin type may be read as a list over one member</b> (<code>source.rows</code>,
+/// AD-36, Story 16.7): the type is issued as a list is, with <code>maxRows</code> the cap plus one,
+/// and the answer must be an object whose member <code>rows</code> names is an array of objects
+/// (<method>RowsMember</method>). Those objects are the rows, projected, filtered, sorted, capped and
+/// reported exactly as a <code>LIST</code>'s; any other answer fails the whole read.</p>
 /// <p><b>A parent-scoped <code>GET</code> takes its one criterion from the route id</b> (Story
 /// 6.7): the value is required, refused 400 <code>READ.CRITERION</code> before the port is called
 /// when it is missing, and is then seeded onto the fetched object under two independent names,
@@ -157,6 +168,59 @@ ClassMethod LogSourcePortClass() As %String
     Quit "OcuPilot.Port.LogSourcePort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the instance's directory allow-list, read
+/// through <method>PathPortClass</method> (AD-21, AD-36). The source's <code>endpoint</code> is a key
+/// from that port's own <code>SOURCES</code>.</p>
+Parameter SOURCEPATH = "path";
+
+/// <p>The port class every <b>path</b> read is issued through. Overridable so a fixture can reach
+/// another; production never overrides it.</p>
+ClassMethod PathPortClass() As %String
+{
+    Quit "OcuPilot.Port.PathPort"
+}
+
+/// <p>The <code>read.source.port</code> value naming a composition of an area's listed screens'
+/// reads, the log hub's (AD-36 as amended, Story 16.9). Its <code>endpoint</code> is the area key;
+/// <method>TimelineClass</method> composes it.</p>
+Parameter SOURCETIMELINE = "timeline";
+
+/// <p>The class every <b>timeline</b> read is composed through. Overridable so a fixture can reach
+/// <class>OcuPilot.Test.LogHubFixture</class>; production never overrides it.</p>
+ClassMethod TimelineClass() As %String
+{
+    Quit "OcuPilot.Screen.Timeline"
+}
+
+/// <p>The <code>port</code> a <code>source.parts</code> entry declares to be answered by the sensors
+/// rather than the admin endpoint (AD-36, Story 16.7). A part that declares none is the admin
+/// endpoint's.</p>
+Parameter PARTMONITOR = "monitor";
+
+/// <p>The port every <b>monitor</b> part is issued through. Overridable so a fixture can reach
+/// <class>OcuPilot.Test.MonitorPortFixture</class>; production never overrides it.</p>
+ClassMethod MonitorPortClass() As %String
+{
+    Quit "OcuPilot.Port.MonitorPort"
+}
+
+/// <p>The shape a <code>source.rows</code> read's type takes: the vendor's own upper-case request-type
+/// name, resolved through <class>OcuPilot.Port.AdminPort</class>'s <code>BARETYPES</code> (AD-36,
+/// Story 16.7).</p>
+Parameter BARETYPEPATTERN = "^[A-Z]+$";
+
+/// <p>The <code>read.source.port</code> value naming the instance's background tasks, the admin API's
+/// async tasks the caller queued beside the classic portal's jobs, read through
+/// <method>BackgroundPortClass</method> (AD-27, AD-36).</p>
+Parameter SOURCEBACKGROUND = "background";
+
+/// <p>The port every <b>background</b> read is issued through. Overridable so a fixture can reach
+/// another; production never overrides it.</p>
+ClassMethod BackgroundPortClass() As %String
+{
+    Quit "OcuPilot.Port.BackgroundTaskPort"
+}
+
 /// <p>The package a <code>state</code> source's <code>endpoint</code> names a class in, trailing
 /// dot included. A source declares the class's short name -- <code>Agent</code> -- and never a
 /// package-qualified one, so no descriptor can point the read at a class outside the kernel's own
@@ -190,8 +254,10 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 
 /// <p>Run <var>pDescriptor</var>'s declared read, bounded by <var>pMaxRows</var>.</p>
 /// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner}</code>, plus
-/// <code>criteria</code> when the read declares criteria and <code>document</code> when a
-/// <code>mgmnt</code> source answered one:
+/// <code>criteria</code> when the read declares criteria, <code>document</code> when a
+/// <code>mgmnt</code> source answered one and <code>sources</code> when a <code>timeline</code> read
+/// composed its members (<method>OcuPilot.Screen.Timeline.Compose</method>, whose rows, cut and
+/// summary pass through unchanged):
 /// <code>fields</code>
 /// the declared field names without the descriptor's <code>context.secretFields</code>, each row an
 /// object carrying exactly those keys (an absent key is <code>null</code>), and at most the cap's
@@ -248,13 +314,17 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Set tRead = $ClassMethod(pDescriptor, "Read")
         Set tSource = $Select($IsObject(tRead): tRead.%Get("source"), 1: "")
         Set tSourceType = $Select($IsObject(tSource): tSource.%Get("type"), 1: "")
-        If '$IsObject(tSource) || ((tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
+        Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
+        Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
         Set tForEach = tSource.%Get("forEach")
         Set tTruncated = ""
         Set tApplied = ""
+        Set tSources = ""
         Kill tCutoffs
 
         If tSource.%Get("port") = ..#SOURCESTATE {
@@ -268,12 +338,55 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             }
         } ElseIf tSource.%Get("port") = ..#SOURCELOGSOURCE {
             ; A log file's bounded tail as rows, newest first. It takes no namespace -- the file is
-            ; the instance's, not a namespace's -- and no criteria, so the cap is the whole ask.
-            Set tPortSC = $ClassMethod(..LogSourcePortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            ; the instance's, not a namespace's -- and no criteria, so the cap is the whole ask. The
+            ; port's own cut (a tail that began past the file's first byte, or a merge cut) is a
+            ; truncation this read reports as well (AD-36).
+            Set tPortCut = 0
+            Set tPortSC = $ClassMethod(..LogSourcePortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault, .tPortCut)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit
             }
+            If tPortCut Set tTruncated = 1
+        } ElseIf tSource.%Get("port") = ..#SOURCEPATH {
+            ; The instance's allowed directories, computed by the port on this call: no namespace,
+            ; since the allow-list is the instance's, and no criteria, so the cap is the whole ask.
+            Set tPortSC = $ClassMethod(..PathPortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCEBACKGROUND {
+            ; The admin API's async tasks the caller queued beside the portal's jobs, merged newest
+            ; start first by the port; no namespace and no criteria, so the cap is the whole ask.
+            Kill tQuery
+            Set tQuery("maxRows") = tMax + 1
+            Set tPortSC = $ClassMethod(..BackgroundPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCETIMELINE {
+            ; AD-36 as amended: the area's listed screens' own reads, composed. The one datetime
+            ; criterion is seeded and checked here, so a bad bound is refused before any member is
+            ; read; the composition's rows, cut and per-source summary are not cut again below.
+            Kill tQuery
+            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
+            If tCriterionProblem '= "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tBound = ""
+            Set tParam = $Order(tQuery(""))
+            If tParam '= "" Set tBound = tQuery(tParam)
+            Set tComposeSC = $ClassMethod(..TimelineClass(), "Compose", tMax, tBound, .tComposed, .pHttpStatus, .pFault, tSource.%Get("endpoint"))
+            If $$$ISERR(tComposeSC) {
+                Set tSC = tComposeSC
+                Quit
+            }
+            Set tAnswer = tComposed.rows
+            Set tTruncated = ''tComposed.truncated
+            Set tSources = tComposed.sources
         } ElseIf tSource.%Get("port") = ..#SOURCEMGMNT {
             ; The management API's rows: the route's own scope travels as the port's namespace,
             ; and a document read also answers the document itself, which rides beside the rows.
@@ -358,9 +471,18 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tSC = ..ForEachRows(pDescriptor, tSource, tMax, .tAnswer, .tTruncated, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
         } Else {
-            ; An admin LIST, UPCOMING, HISTORY or VOLUMELIST: the declared type, the fixed query and then the criteria.
+            ; An admin LIST, UPCOMING, HISTORY or VOLUMELIST, or a bare type read over one member
+            ; (source.rows): the declared type, the fixed query and then the criteria.
             Do ..SeedSourceQuery(tSource, .tQuery)
             Set tQuery("maxRows") = tMax + 1
+            ; AD-36 as amended (Story 18.14): a parent-scoped list whose rows carry no parent key
+            ; takes it from its one criterion, which is therefore required, as a single-object
+            ; read's route-id criterion is.
+            Set tSeededPart = ..SeededPart(pDescriptor, tRead)
+            If (tSeededPart '= "") && ($Get(pCriteria(tSeededPart)) = "") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tSeededPart _ " is required", .pHttpStatus, .pFault)
+                Quit
+            }
             Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
             If tCriterionProblem '= "" {
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
@@ -371,6 +493,14 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tPortSC
                 Quit
             }
+            If tBareRows {
+                Set tAnswer = ..RowsMember(tAnswer, tRowsMember)
+                If '$IsObject(tAnswer) {
+                    Set tSC = ..Internal(pDescriptor _ "'s read answered no array of objects under '" _ tRowsMember _ "'", .pHttpStatus, .pFault)
+                    Quit
+                }
+            }
+            If (tSeededPart '= "") && $IsObject(tAnswer) && tAnswer.%IsA("%Library.DynamicArray") Do ..SeedRows(tAnswer, tSeededPart, pCriteria(tSeededPart))
         }
         If '$IsObject(tAnswer) || 'tAnswer.%IsA("%Library.DynamicArray") {
             Set tSC = ..Internal(pDescriptor _ "'s read answered something other than a list", .pHttpStatus, .pFault)
@@ -414,6 +544,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Do pResult.%Set("banner", ..BannerKey(pDescriptor))
         If $IsObject(tApplied) Do pResult.%Set("criteria", tApplied)
         If $IsObject($Get(tDocument)) Do pResult.%Set("document", tDocument)
+        If $IsObject(tSources) Do pResult.%Set("sources", tSources)
         Set pHttpStatus = 200
     } Catch ex {
         Set pResult = ""
@@ -542,8 +673,10 @@ ClassMethod ForEachRows(pDescriptor As %String, pSource As %DynamicObject, pMax 
 
 /// <p>The single-object read's one row assembled from <var>pParts</var> (<code>source.parts</code>,
 /// AD-36, Story 6.9): one call per declared part, issued in declared order against
-/// <var>pEndpoint</var> with the same <var>pQuery</var>, merged into <var>pObject</var> under each
-/// part's own <code>as</code>. An object answer is merged whole; an array answer is merged as the
+/// <var>pEndpoint</var> with the same <var>pQuery</var> -- or, for a part whose <code>port</code> is
+/// <parameter>PARTMONITOR</parameter>, against <method>MonitorPortClass</method>'s sensors endpoint
+/// with no query (Story 16.7) -- merged into <var>pObject</var> under each part's own
+/// <code>as</code>. An object answer is merged whole; an array answer is merged as the
 /// one row whose <code>Description</code> is exactly <code>Total</code>
 /// (<method>TotalRow</method>), and a part with no such row is a 500 -- like any other structural
 /// read failure, this is never sent to the wire. Any part whose call answers a non-2xx status,
@@ -561,7 +694,14 @@ ClassMethod PartsObject(pEndpoint As %String, pParts As %DynamicArray, ByRef pQu
             Set tAnswer = ""
             Set tHttp = 0
             Set tFault = ""
-            Set tPortSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, tType, .pQuery, "", .tAnswer, .tHttp, .tFault)
+            If tPart.%Get("port") = ..#PARTMONITOR {
+                ; AD-36 as amended (Story 16.7): the sensors, behind the monitor port's own gate.
+                Set tMonitorClass = ..MonitorPortClass()
+                Kill tMonitorQuery
+                Set tPortSC = $ClassMethod(tMonitorClass, "Invoke", $Parameter(tMonitorClass, "SENSORSENDPOINT"), tType, .tMonitorQuery, "", .tAnswer, .tHttp, .tFault)
+            } Else {
+                Set tPortSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, tType, .pQuery, "", .tAnswer, .tHttp, .tFault)
+            }
             If $$$ISERR(tPortSC) {
                 Set pObject = ""
                 Set pHttpStatus = tHttp
@@ -590,6 +730,23 @@ ClassMethod PartsObject(pEndpoint As %String, pParts As %DynamicArray, ByRef pQu
         Set tSC = ..Internal("the parts read failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The member <var>pMember</var> of <var>pAnswer</var> when <var>pAnswer</var> is an object and that
+/// member is an array whose every element is an object (AD-36, Story 16.7), or
+/// <code>$$$NULLOREF</code> for any other answer, which fails the whole read.</p>
+ClassMethod RowsMember(pAnswer, pMember As %String) As %DynamicArray [ Private ]
+{
+    If '$IsObject(pAnswer) || 'pAnswer.%IsA("%Library.DynamicObject") Quit $$$NULLOREF
+    If pAnswer.%GetTypeOf(pMember) '= "array" Quit $$$NULLOREF
+    Set tRows = pAnswer.%Get(pMember)
+    Set tAllObjects = 1
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow, .tType) {
+        If tType '= "object" Set tAllObjects = 0 Quit
+    }
+    If 'tAllObjects Quit $$$NULLOREF
+    Quit tRows
 }
 
 /// <p>The first row of <var>pRows</var> whose <code>Description</code> is the exact (case-sensitive,
@@ -637,6 +794,38 @@ ClassMethod CriteriaParams(pDescriptor As %String) As %List
         Set tParams = ""
     }
     Quit tParams
+}
+
+/// <p>The id part a parent-scoped admin list seeds onto its rows, or <code>""</code> (AD-36 as
+/// amended 2026-09-28, Story 18.14): the first part of <var>pDescriptor</var>'s composite id where
+/// the descriptor declares a <code>parentScope</code> and <var>pRead</var> declares exactly one
+/// criterion whose <code>param</code> is that part's name. The vendor's rows for such a list carry
+/// no parent key -- a namespace's mapping lists answer none -- so the row's id could not address
+/// the object its write reaches without it.</p>
+ClassMethod SeededPart(pDescriptor As %String, pRead As %DynamicObject) As %String [ Private ]
+{
+    Set tPart = ""
+    Try {
+        If $ClassMethod(pDescriptor, "ParentScope") = "" Quit
+        If $ClassMethod(pDescriptor, "IdKind") '= "composite" Quit
+        Set tParts = $ClassMethod(pDescriptor, "IdParts")
+        If $ListLength(tParts) < 2 Quit
+        Set tParam = ..ObjectCriterionParam(pRead)
+        If (tParam '= "") && (tParam = $List(tParts, 1)) Set tPart = tParam
+    } Catch {
+        Set tPart = ""
+    }
+    Quit tPart
+}
+
+/// <p>Set <var>pValue</var> as the string member <var>pPart</var> of every object row of
+/// <var>pRows</var>, before any row is projected (<method>SeededPart</method>).</p>
+ClassMethod SeedRows(pRows As %DynamicArray, pPart As %String, pValue As %String) [ Private ]
+{
+    Set tIterator = pRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $IsObject(tRow) && tRow.%IsA("%Library.DynamicObject") Do tRow.%Set(pPart, pValue, "string")
+    }
 }
 
 /// <p>The one <code>read.criteria</code> field's <code>param</code> a parent-scoped

@@ -89,14 +89,16 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>How many audit records <var>pNamespace</var>'s audit globals hold; <code>-1</code> when the
-/// count cannot be read.</p>
+/// count cannot be read. It counts the master map under <code>%IGNOREINDEX *</code>: the audit
+/// indexes are brought up to date by a background pass about every 60 seconds (DW-85), so an index
+/// read can miss every record on a freshly started instance.</p>
 ClassMethod Count(pNamespace As %String) As %Integer
 {
     Set tCount = -1
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM %SYS.Audit")
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM %IGNOREINDEX * %SYS.Audit")
         If (tRS.%SQLCODE = 0) && tRS.%Next() Set tCount = +tRS.%Get("N")
         Set $NAMESPACE = tOrigNS
     } Catch ex {

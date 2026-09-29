@@ -36,6 +36,7 @@ import {
   forgetTag,
   markerValue,
   nextTag,
+  requireFreeSlot,
   runIris,
   scriptReply,
   setTag,
@@ -109,6 +110,9 @@ function callCount(tag) {
 test('AC2: a tool the principal may not call renders a card naming the pair, and no second call is issued', async () => {
   // Mutation (Rule 19): make `tool-call-card.ts` resolve the `<reason>` slot with `step.reason`
   // again, rebuild and redeploy -> the status word reads the generic sentence and this goes red.
+  // A turn another spec left running would read the probe definition's tag and answer this
+  // spec's scripted replies, so the slot is freed before the tag is set (DW-1314).
+  await requireFreeSlot(config);
   const tag = nextTag(probe);
   setTag(probe, preparedId, tag);
   scriptReply(probe, tag, 0, `##class(OcuPilot.Test.TurnProvider).ToolUseReply("${escapeOs(REFUSED_TOOL)}")`);

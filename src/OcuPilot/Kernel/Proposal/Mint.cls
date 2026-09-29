@@ -320,10 +320,12 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
         ; AD-10: a change that weakens or repoints a web application that is not OcuPilot's own is
-        ; permitted and confirmed as a delete is; the one classifier names the effect.
+        ; permitted and confirmed as a delete is; the one classifier names the effect. A global
+        ; mapping's system-global effect is asked of a create too (Story 18.14), and never of a
+        ; removal.
         Set tEffect = ""
-        If 'tCreates {
-            Set tWeakSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).WeakensByEffect(tType, tPayload, tFresh, .tEffect, tId)
+        If 'tCreates || (tType = ##class(OcuPilot.Kernel.Proposal.Prohibited).#TYPEGLOBALMAPPING) {
+            Set tWeakSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).WeakensByEffect(tType, tPayload, $Select(tCreates: {}, 1: tFresh), .tEffect, tId, ..RemovesOf(pToolClass))
             If $$$ISERR(tWeakSC) {
                 Set tSC = ..Internal("whether the proposal weakens its target could not be read: " _ $System.Status.GetErrorText(tWeakSC), .pHttpStatus, .pFault)
                 Quit
@@ -668,6 +670,20 @@ ClassMethod AbsenceState(pPresent As %Boolean) As %DynamicObject
     Set tState = {}
     Do tState.%Set(..#ABSENCEFIELD, ''pPresent, ..#TYPEBOOLEAN)
     Quit tState
+}
+
+/// <p>Whether <var>pToolClass</var>'s write removes its target -- its declared AD-14 action is
+/// <code>deleted</code> -- or <code>0</code> when the call named no tool class or the class cannot be
+/// asked. Read for the system-global effect alone, which a removal never has.</p>
+ClassMethod RemovesOf(pToolClass As %String) As %Boolean [ Private ]
+{
+    Set tRemoves = 0
+    Try {
+        If pToolClass '= "" Set tRemoves = ($ClassMethod(pToolClass, "ChangeAction") = "deleted")
+    } Catch {
+        Set tRemoves = 0
+    }
+    Quit tRemoves
 }
 
 /// <p>Whether <var>pToolClass</var> declares that its write <b>creates</b> its target (AD-54), or

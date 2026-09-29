@@ -33,8 +33,11 @@ Parameter CLASSICPERMISSION = "USE";
 Parameter SOURCES = "OcuPilot.Screen.Descriptor.LogMessageViewer=MESSAGESPAIRS|OcuPilot.Screen.Descriptor.LogAlertViewer=ALERTSPAIRS|OcuPilot.Screen.Descriptor.LogErrorList=ERRORSINSTANCEPAIRS";
 
 /// <p>Story 16.8's six sources, <code>|</code>-separated, as
-/// <code>&lt;descriptor&gt;=&lt;port parameter&gt;=&lt;classic page&gt;</code>.</p>
-Parameter SECONDARYSOURCES = "OcuPilot.Screen.Descriptor.LogSystemMonitorViewer=SYSTEMMONITORPAIRS=%CSP.UI.Portal.ViewLog|OcuPilot.Screen.Descriptor.LogTaskErrorViewer=TASKERRORSPAIRS=%CSP.UI.Portal.BackgroundTaskError|OcuPilot.Screen.Descriptor.LogXdbcViewer=XDBCPAIRS=%CSP.UI.Portal.xDBCErrorNamespaces|OcuPilot.Screen.Descriptor.LogSqlDiagnosticsViewer=SQLDIAGNOSTICSPAIRS=%CSP.UI.Portal.SQL.Logs|OcuPilot.Screen.Descriptor.LogEventViewer=EVENTLOGPAIRS=EnsPortal.EventLog|OcuPilot.Screen.Descriptor.LogAnalyticsViewer=ANALYTICSPAIRS=%DeepSee.UI.LogViewer";
+/// <code>&lt;descriptor&gt;=&lt;port parameter&gt;=&lt;classic page&gt;</code>, followed by
+/// <code>=&lt;pair&gt;</code> where the source also requires a pair its classic page does not name:
+/// the background task error log's <code>%DB_IRISSYS:READ</code>, because its task list is read in
+/// <code>%SYS</code> (Story 16.5).</p>
+Parameter SECONDARYSOURCES = "OcuPilot.Screen.Descriptor.LogSystemMonitorViewer=SYSTEMMONITORPAIRS=%CSP.UI.Portal.ViewLog|OcuPilot.Screen.Descriptor.LogTaskErrorViewer=TASKERRORSPAIRS=%CSP.UI.Portal.BackgroundTaskError=%DB_IRISSYS:READ|OcuPilot.Screen.Descriptor.LogXdbcViewer=XDBCPAIRS=%CSP.UI.Portal.xDBCErrorNamespaces|OcuPilot.Screen.Descriptor.LogSqlDiagnosticsViewer=SQLDIAGNOSTICSPAIRS=%CSP.UI.Portal.SQL.Logs|OcuPilot.Screen.Descriptor.LogEventViewer=EVENTLOGPAIRS=EnsPortal.EventLog|OcuPilot.Screen.Descriptor.LogAnalyticsViewer=ANALYTICSPAIRS=%DeepSee.UI.LogViewer";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -81,10 +84,12 @@ Method TestEachLogSourceDeclaresItsClassicPagesResource()
 
 /// <p>Story 16.8, way one -- each secondary log declares its classic page, and its port pair set is
 /// that page's own <code>RESOURCE</code> at <code>USE</code> (the first, where the page names
-/// alternatives), or the Logs area's <code>%Admin_Operate:USE</code> where the page names none; the
-/// descriptor declares the same set.</p>
+/// alternatives), or the Logs area's <code>%Admin_Operate:USE</code> where the page names none, then
+/// the extra pair the row names; the descriptor declares the same set.</p>
 /// <p>Mutation (Rule 19): set <parameter>OcuPilot.Port.LogSourcePort.EVENTLOGPAIRS</parameter> to
-/// <code>%Admin_Operate:USE</code> -&gt; the event log row goes red.</p>
+/// <code>%Admin_Operate:USE</code> -&gt; the event log row goes red; drop <code>%DB_IRISSYS:READ</code>
+/// from <parameter>OcuPilot.Port.LogSourcePort.TASKERRORSPAIRS</parameter> -&gt; the task error log
+/// row goes red.</p>
 Method TestEachSecondaryLogDeclaresItsClassicPagesResource()
 {
     For tI = 1:1:$Length(..#SECONDARYSOURCES, "|") {
@@ -101,7 +106,8 @@ Method TestEachSecondaryLogDeclaresItsClassicPagesResource()
         Set tParameter = ##class(%Dictionary.CompiledParameter).%OpenId(tPage _ "||RESOURCE")
         Set tResource = $Piece($Piece($Select($IsObject(tParameter): tParameter.Default, 1: ""), ",", 1), ":", 1)
         Set tWanted = $Select(tResource = "": ..#CLASSICRESOURCE, 1: tResource) _ ":" _ ..#CLASSICPERMISSION
-        Do $$$AssertEquals(tPortSpec, tWanted, tDescriptor _ ": the port's pair is " _ tPage _ "'s own resource")
+        If $Piece(tRow, "=", 4) '= "" Set tWanted = tWanted _ "," _ $Piece(tRow, "=", 4)
+        Do $$$AssertEquals(tPortSpec, tWanted, tDescriptor _ ": the port's pair is " _ tPage _ "'s own resource, with any extra pair the row names")
 
         Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs(tDescriptor, .tResolved)
         Set tDeclaredSpec = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(tDeclared, .tCut)

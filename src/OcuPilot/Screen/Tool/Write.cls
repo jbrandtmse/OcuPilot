@@ -113,6 +113,16 @@ Parameter PRECONDITIONFIELD = "";
 /// the write path changes -- a port is where the target lives, never a lighter path to it.</p>
 Parameter PORTCLASS = "OcuPilot.Port.AdminPort";
 
+/// <p>The classic portal pages, beyond the descriptor's own <code>classicPage</code>, whose operation
+/// this tool performs, as comma-separated normalized class names spelled exactly (AD-44 as amended
+/// 2026-09-28, DW-1784). <code>""</code> here.</p>
+/// <p>A tool's <method>OcuPilot.Screen.Tool.Base.PrivilegePairs</method> unions the custom resource
+/// assigned to each page at <code>USE</code> through
+/// <method>OcuPilot.Screen.Gate.WithClassicPages</method>, read on every gate call, so an operator's
+/// custom resource on a replaced classic page gates this write on both callers. A page whose
+/// operation the descriptor's own classic page performs is not redeclared.</p>
+Parameter CLASSICPAGES = "";
+
 /// <p>The AD-14 action a confirmed write of this tool performs, which the change event carries and
 /// a screen showing the entity type decides what to do with. <code>updated</code> here, which every
 /// write against an object that already exists performs; a tool that declares
@@ -180,6 +190,12 @@ Parameter READIDPARAM = "";
 /// no such row reads as absent (404).</p>
 Parameter READROWKEY = "";
 
+/// <p>Whether a <b>list-type</b> fresh read compares <parameter>READROWKEY</parameter> with the id
+/// exactly, case included, rather than without regard to case. <code>0</code> here, which is every
+/// tool whose row key the instance resolves case-insensitively; a tool whose key is a case-bearing
+/// value, such as a web session's mixed-case id, declares <code>1</code>.</p>
+Parameter READROWKEYEXACT As BOOLEAN = 0;
+
 /// <p>The declared secret arguments an action-style write sends as its <b>only</b> body,
 /// comma-separated, or <code>""</code> for a write whose body is a merge or nothing (AD-56 (i)).
 /// <code>""</code> here, which is every write but a password change.</p>
@@ -233,6 +249,13 @@ ClassMethod ReadIdParam() As %String
 ClassMethod ReadRowKey() As %String
 {
     Quit ..#READROWKEY
+}
+
+/// <p><parameter>READROWKEYEXACT</parameter> as a boolean, for the same helper
+/// (<method>OcuPilot.Kernel.Proposal.Operation.ReadTarget</method>).</p>
+ClassMethod ReadRowKeyExact() As %Boolean
+{
+    Quit ''..#READROWKEYEXACT
 }
 
 /// <p>What happens once this tool's write has read OK, through the same port, for the target

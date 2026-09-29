@@ -29,6 +29,13 @@ import { X509Actions } from './areas/security/x509-actions';
 import { X509Form } from './areas/security/x509-form.store';
 import { DeviceActions } from './areas/os-management/device-actions';
 import { DeviceForm } from './areas/os-management/device-form.store';
+import { NamespaceActions } from './areas/os-management/namespace-actions';
+import { NamespaceForm } from './areas/os-management/namespace-form.store';
+import { DatabaseActions } from './areas/os-management/database-actions';
+import { DatabaseEditor } from './areas/os-management/database-editor.store';
+import { DatabaseWizard } from './areas/os-management/database-wizard.store';
+import { MappingActions } from './areas/os-management/mapping-actions';
+import { MappingForm } from './areas/os-management/mapping-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
 import { OAuthServerDescriptionForm } from './areas/security/oauth-server-description-form.store';
 import { OAuthClientForm } from './areas/security/oauth-client-form.store';
@@ -37,7 +44,9 @@ import { OAuthServerForm } from './areas/security/oauth-server-form.store';
 import { OAuthRegisteredClientForm } from './areas/security/oauth-registered-client-form.store';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
+import { LedgerSearch } from './areas/agent/ledger.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { LogHubStore } from './areas/logs/log-hub.store';
 import { LogViewerStore } from './areas/logs/log-viewer.store';
 import { About } from './core/about';
 import { AccountPreferences } from './core/account-preferences';
@@ -71,6 +80,7 @@ import { Header } from './shell/header';
 import { InstanceNotice } from './shell/instance-notice';
 import { LocatorBar } from './shell/locator-bar';
 import { COMPOSER_ID, Panel } from './shell/panel';
+import { PermissionCheck } from './shell/permission-check';
 import { Rail } from './shell/rail';
 import { SIDE_BAR_OVERLAY_ID, SideBar } from './shell/side-bar';
 import { SignIn } from './shell/sign-in';
@@ -236,6 +246,7 @@ export class App {
   private readonly findings = inject(Findings);
   private readonly fixFinding = inject(FixFinding);
   private readonly guardrails = inject(Guardrails);
+  private readonly permissionCheck = inject(PermissionCheck);
   private readonly performanceRow = inject(PerformanceRow);
   private readonly suggested = inject(SuggestedView);
   private readonly scope = inject(ScopeService);
@@ -246,8 +257,10 @@ export class App {
   private readonly theme = inject(ThemeState);
 
   private readonly auditSearch = inject(AuditSearch);
+  private readonly ledgerSearch = inject(LedgerSearch);
   private readonly errorLogDrill = inject(ErrorLogDrill);
   private readonly logViewer = inject(LogViewerStore);
+  private readonly logHub = inject(LogHubStore);
   private readonly definitionForm = inject(DefinitionForm);
   private readonly formDirty = inject(FormDirty);
   // Constructed for its own sake: the Definitions list is served by the generic `ListPage`, so
@@ -295,6 +308,17 @@ export class App {
   // The Devices list's declared Create, the same way (`areas/os-management/device-actions.ts`).
   private readonly deviceActions = inject(DeviceActions);
   private readonly deviceForm = inject(DeviceForm);
+  // The Namespaces list's declared Create, the same way (`areas/os-management/namespace-actions.ts`).
+  private readonly namespaceActions = inject(NamespaceActions);
+  private readonly namespaceForm = inject(NamespaceForm);
+  // Local databases' declared Create, the same way (`areas/os-management/database-actions.ts`),
+  // with the create wizard's and the properties editor's stores.
+  private readonly databaseActions = inject(DatabaseActions);
+  private readonly databaseWizard = inject(DatabaseWizard);
+  private readonly databaseEditor = inject(DatabaseEditor);
+  // The three mapping lists' declared Create, the same way (`areas/os-management/mapping-actions.ts`).
+  private readonly mappingActions = inject(MappingActions);
+  private readonly mappingForm = inject(MappingForm);
   // The SSL/TLS list's declared Create, the same way (`areas/security/ssl-actions.ts`).
   private readonly sslActions = inject(SslActions);
   private readonly sslForm = inject(SslForm);
@@ -557,6 +581,8 @@ export class App {
       // The sixth: the server-criteria archetype's form holds what THIS principal typed, and its
       // "has searched" flag decides whether the next visit re-runs that search or the default.
       this.auditSearch.reset();
+      // The Agent audit ledger's search holds what THIS principal typed and the rows it answered.
+      this.ledgerSearch.reset();
       // The seventh: the application error log's drill holds which namespace THIS principal was
       // reading and the captured detail of one entry -- every local at every stack level plus
       // $ROLES and $USERNAME, which on an IRIS for Health instance can hold patient data (AD-48).
@@ -564,6 +590,8 @@ export class App {
       this.errorLogDrill.reset();
       // The log viewer holds the entries THIS principal read, from whichever log was open (DW-1110).
       this.logViewer.reset();
+      // The log hub holds the entries of every Logs source THIS principal read (Story 16.9).
+      this.logHub.reset();
       // The eighth: the Definition form holds an edit buffer THIS principal typed -- including a
       // pasted API key that has not been stored yet (AD-35) -- and its dirty flag would otherwise
       // make the next principal's first navigation ask about work that is not theirs.
@@ -592,6 +620,13 @@ export class App {
       this.walletSecretForm.reset();
       // The device editor holds a device THIS principal was creating or editing and has not saved.
       this.deviceForm.reset();
+      // The namespace editor holds a namespace THIS principal was creating or editing and has not saved.
+      this.namespaceForm.reset();
+      // The database wizard and editor hold a database THIS principal was creating or editing and has not saved.
+      this.databaseWizard.reset();
+      this.databaseEditor.reset();
+      // The mapping editor holds a mapping THIS principal was creating or editing and has not saved.
+      this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).
       this.sslForm.reset();
       this.formDirty.reset();
@@ -653,6 +688,9 @@ export class App {
       // The twenty-first: the Guardrails page's answer, whose switches are this caller's own verdict
       // (Story 16.22, AD-8).
       this.guardrails.reset();
+      // The twenty-second: an open Check permission dialog and the instance's answer to this
+      // caller's last check (Story 16.3, AD-8).
+      this.permissionCheck.reset();
       return;
     }
     void this.instance.verify();

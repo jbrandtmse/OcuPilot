@@ -277,3 +277,70 @@ test('AD-13: the integer rule folds a task id to its plain decimal spelling, and
     'so two spellings of one task build one key'
   );
 });
+
+// Story 18.14, AD-13: a namespace mapping is keyed by the composite `[namespace, Name]`. The instance
+// resolves the namespace without case while a global's or routine's name is case-sensitive, so the
+// client folds the text before the first composite separator and keeps the rest, which is what
+// `OcuPilot.Kernel.EntityRef.NormalizedId` answers for `foldcase-firstpart`.
+//
+// Mutation (Rule 19): implement `foldcase-firstpart` as `(id) => id.toLowerCase()` in
+// `entity-ref.ts` -> the case-kept name legs go red; as `(id) => id` -> the folded namespace legs go red.
+test('AD-13: the foldcase-firstpart rule folds a mapping id\'s namespace part and keeps its name', () => {
+  for (const type of ['global-mapping', 'routine-mapping', 'package-mapping']) {
+    assert.equal(ENTITY_ID_RULES[type], 'foldcase-firstpart', `the mirrored table declares the rule for ${type}`);
+  }
+  const type = 'global-mapping';
+  const canonical = joinCompositeId(['user', 'OcuProbe1814G("a"):("m")']);
+  for (const namespace of ['USER', 'user', 'User']) {
+    assert.equal(
+      normalizeEntityId(type, joinCompositeId([namespace, 'OcuProbe1814G("a"):("m")'])),
+      canonical,
+      `${namespace} folds and the name keeps its case`
+    );
+  }
+  assert.notEqual(
+    normalizeEntityId(type, joinCompositeId(['USER', 'OCUPROBE1814G'])),
+    normalizeEntityId(type, joinCompositeId(['USER', 'OcuProbe1814G'])),
+    'two names differing only in case are two mappings'
+  );
+  assert.equal(
+    normalizeEntityId('routine-mapping', joinCompositeId(['HsCustom', 'X_MAC', 'extra'])),
+    joinCompositeId(['hscustom', 'X_MAC', 'extra']),
+    'only the text before the first separator folds'
+  );
+  assert.equal(normalizeEntityId('package-mapping', 'OcuProbe1814P'), 'ocuprobe1814p', 'an id with no separator folds whole');
+  assert.equal(
+    entityRefKey(type, INSTANCE_SCOPE, joinCompositeId(['USER', '%OcuProbe1814'])),
+    entityRefKey(type, INSTANCE_SCOPE, joinCompositeId(['user', '%OcuProbe1814'])),
+    'so two spellings of one mapping build one key'
+  );
+});
+
+
+// Story 16.6, AD-13: a process id may name a set of pids. The client answers what
+// `OcuPilot.Kernel.EntityRef.PlainIntegerSet` answers for the same corpus (`OcuPilot.Test.EntityRef`):
+// each member in the integer rule's spelling, each once, ordered on the string -- sign, length,
+// digits -- so a set never depends on two languages agreeing about numeric precision.
+//
+// Mutation (Rule 19): sort the members as plain strings in `integerset` -> '10,9,100' reads
+// '10,100,9' and this goes red.
+test('AD-13: the integerset rule folds a process id set to unique pids in ascending order', () => {
+  const type = 'process';
+  assert.equal(ENTITY_ID_RULES[type], 'integerset', 'the mirrored table declares the rule');
+  for (const [spelling, canonical] of [
+    [' 907,812, 812', '812,907'],
+    ['812', '812'],
+    [' 007 ', '7'],
+    ['10,9,100', '9,10,100'],
+    ['+0,-0,0', '0'],
+    ['-3,2,-12', '-12,-3,2'],
+    ['\t5,4', '4,5'],
+  ]) {
+    assert.equal(normalizeEntityId(type, spelling), canonical, `'${spelling}' is the set ${canonical}`);
+  }
+  for (const verbatim of ['abc', '812,', ',812', '812,abc', '8 12', '7.0']) {
+    assert.equal(normalizeEntityId(type, verbatim), verbatim, `'${verbatim}' is not a set of integers and keeps its spelling`);
+  }
+  assert.equal(normalizeEntityId(type, 'ABC,1'), 'abc,1', 'and is folded to lower case as the integer rule folds one');
+  assert.equal(entityRefKey(type, 'instance', '907, 812,812'), entityRefKey(type, 'instance', '812,907'), 'so two spellings of one set build one key');
+});

@@ -12,11 +12,14 @@
  * - `refuseRequest` is the one function the console asks: every reading of a URL's path, and
  *   `refusal` over each.
  * - `maskedRecord` is what the console shows of a request once sent: every secret masked (AD-57 (4)).
+ * - `curlCommand` is the same request as one POSIX curl command (Story 16.24, AD-57 (5)): refused
+ *   whenever `refuseRequest` refuses it, and every value the record masks reads `<name>`.
  * - `renderBody` turns an answer's bytes into text, and never into markup (AD-11 rule 4).
  */
 
 import { MASKED_VALUE } from '../../core/proposal-view.ts';
 import { isSecretName } from '../../core/secret-names.ts';
+import { STRINGS } from '../../core/strings.ts';
 import type { OpenApiParameter } from './openapi-viewer.store';
 
 /** OcuPilot's own applications (AD-10, AD-45): nothing under them is ever sent. */
@@ -70,7 +73,16 @@ export interface ComposedRequest {
   readonly body: string | null;
   /** The body as the record shows it: every secret-named top-level member masked. */
   readonly displayBody: string | null;
+  /** `url` with every secret-named path or query value reading `<name>`; `url` itself when none. */
+  readonly curlUrl: string;
+  /** `body` with every value the record masks reading `<name>`; `body` itself when none. */
+  readonly curlBody: string | null;
 }
+
+/** What `curlCommand` answers: the command, or the refusal `refuseRequest` gives. */
+export type CurlCommand =
+  | { readonly kind: 'ok'; readonly command: string }
+  | { readonly kind: 'refused'; readonly refusal: TryItRefusal };
 
 /** What `composeRequest` answers. */
 export type Composition =
@@ -230,20 +242,66 @@ export function refuseRequest(verb: string, url: string): TryItRefusal | null {
   return null;
 }
 
-/** `body` with each secret-named top-level member masked, when it is a JSON object; else as typed. */
-function maskBody(body: string): string {
+/** `body` parsed, when it is a JSON object; else `null`. */
+function jsonObject(body: string): Record<string, unknown> | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(body);
   } catch {
-    return body;
+    return null;
   }
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return body;
-  const masked: Record<string, unknown> = {};
-  for (const [name, value] of Object.entries(parsed as Record<string, unknown>)) {
-    masked[name] = isSecretName(name) ? MASKED_VALUE : value;
-  }
+  return parsed === null || typeof parsed !== 'object' || Array.isArray(parsed) ? null : (parsed as Record<string, unknown>);
+}
+
+/** `object` serialized as the record shows a body, each secret-named top-level member read as `mask(name)`. */
+function maskMembers(object: Record<string, unknown>, mask: (name: string) => string): string {
+  const masked = Object.fromEntries(Object.entries(object).map(([name, value]) => [name, isSecretName(name) ? mask(name) : value]));
   return JSON.stringify(masked, null, 2);
+}
+
+/** `body` with each secret-named top-level member masked, when it is a JSON object; else as typed. */
+function maskBody(body: string): string {
+  const object = jsonObject(body);
+  return object === null ? body : maskMembers(object, () => MASKED_VALUE);
+}
+
+/** The placeholder a masked value reads as in a copied command. */
+function placeholder(name: string): string {
+  return `<${name}>`;
+}
+
+/**
+ * `body` as the copied command sends it: a JSON object with a secret-named top-level member
+ * serialized as the record serializes it, each such member reading `"<Name>"`; else as typed.
+ */
+function curlJsonBody(body: string): string {
+  const object = jsonObject(body);
+  if (object === null || !Object.keys(object).some(isSecretName)) return body;
+  return maskMembers(object, placeholder);
+}
+
+/** A piece of the copied command's URL: literal text, or the placeholder for a secret-named value. */
+type CurlPart = string | { readonly name: string };
+
+/**
+ * The URL `parts` describe after `pageOrigin`, through the same `new URL` the request's own URL
+ * takes, with each placeholder `<name>` in its value's place. Each placeholder travels the parser
+ * as a marker of letters and digits, which it never encodes and never joins to its neighbours, and
+ * the marker is lengthened until it occurs nowhere else in the text, so nothing but a placeholder is
+ * put back.
+ */
+function curlHref(parts: readonly CurlPart[], pageOrigin: string): string {
+  const names = parts.filter((part): part is { readonly name: string } => typeof part !== 'string').map((part) => part.name);
+  let marker = 'ocucurl';
+  for (;;) {
+    let slot = 0;
+    const text = parts.map((part) => (typeof part === 'string' ? part : `${marker}${slot++}${marker}`)).join('');
+    if (text.split(marker).length - 1 === 2 * names.length) {
+      const href = new URL(text, pageOrigin).href;
+      return href.replace(new RegExp(`${marker}(\\d+)${marker}`, 'g'), (_, index: string) => placeholder(names[Number(index)]));
+    }
+    marker += 'x';
+  }
 }
 
 /**
@@ -274,53 +332,69 @@ export function composeRequest(
     if (parameter.in === 'path' && !indexOf.has(parameter.name)) indexOf.set(parameter.name, index);
   });
 
+  const base = basePath.replace(/\/+$/, '');
   const realSegments: string[] = [];
   const shownSegments: string[] = [];
+  // The copied command's URL, piece by piece: the real URL's text with a placeholder at each
+  // value the record masks.
+  const curlParts: CurlPart[] = [base];
   const operationPath = operation.path.startsWith('/') ? operation.path : `/${operation.path}`;
-  for (const segment of operationPath.split('/')) {
+  for (const [at, segment] of operationPath.split('/').entries()) {
     const placeholders: number[] = [];
-    const fill = (masked: boolean): string =>
-      segment
-        .split(/(\{[^{}]*\})/)
-        .map((part) => {
-          const match = /^\{([^{}]*)\}$/.exec(part);
-          if (match === null) return encodeLiteral(part);
-          const index = indexOf.get(match[1]);
-          if (index === undefined) return encodeLiteral(part);
-          if (!masked) placeholders.push(index);
-          return masked && isSecretName(match[1]) ? MASKED_VALUE : encodeURIComponent(valueOf(index));
-        })
-        .join('');
-    const real = fill(false);
+    let real = '';
+    let shown = '';
+    if (at > 0) curlParts.push('/');
+    for (const part of segment.split(/(\{[^{}]*\})/)) {
+      const match = /^\{([^{}]*)\}$/.exec(part);
+      const index = match === null ? undefined : indexOf.get(match[1]);
+      if (match === null || index === undefined) {
+        const literal = encodeLiteral(part);
+        real += literal;
+        shown += literal;
+        curlParts.push(literal);
+        continue;
+      }
+      placeholders.push(index);
+      const value = encodeURIComponent(valueOf(index));
+      const secret = isSecretName(match[1]);
+      real += value;
+      shown += secret ? MASKED_VALUE : value;
+      curlParts.push(secret ? { name: match[1] } : value);
+    }
     if (placeholders.length > 0 && (real === '.' || real === '..')) {
       return { kind: 'traversal', index: placeholders[0] };
     }
     realSegments.push(real);
-    shownSegments.push(fill(true));
+    shownSegments.push(shown);
   }
 
   const query: string[] = [];
   const shownQuery: string[] = [];
+  const curlQuery: CurlPart[][] = [];
   const headers: [string, string][] = [];
   const form: string[] = [];
   const shownForm: string[] = [];
+  const curlForm: string[] = [];
   operation.parameters.forEach((parameter, index) => {
     const value = valueOf(index);
     if (value === '') return;
-    const pair = `${encodeURIComponent(parameter.name)}=${encodeURIComponent(value)}`;
-    const shown = `${encodeURIComponent(parameter.name)}=${isSecretName(parameter.name) ? MASKED_VALUE : encodeURIComponent(value)}`;
+    const name = encodeURIComponent(parameter.name);
+    const secret = isSecretName(parameter.name);
+    const pair = `${name}=${encodeURIComponent(value)}`;
+    const shown = `${name}=${secret ? MASKED_VALUE : encodeURIComponent(value)}`;
     if (parameter.in === 'query') {
       query.push(pair);
       shownQuery.push(shown);
+      curlQuery.push(secret ? [`${name}=`, { name: parameter.name }] : [pair]);
     } else if (parameter.in === 'header') {
       headers.push([parameter.name, value]);
     } else if (parameter.in === 'formData') {
       form.push(pair);
       shownForm.push(shown);
+      curlForm.push(secret ? `${name}=${placeholder(parameter.name)}` : pair);
     }
   });
 
-  const base = basePath.replace(/\/+$/, '');
   const search = query.length > 0 ? `?${query.join('&')}` : '';
   let resolved: URL;
   try {
@@ -331,23 +405,28 @@ export function composeRequest(
   if (resolved.origin !== pageOrigin) return { kind: 'no-address' };
   const shownSearch = shownQuery.length > 0 ? `?${shownQuery.join('&')}` : '';
   const displayUrl = `${pageOrigin}${base}${shownSegments.join('/')}${shownSearch}`;
+  curlQuery.forEach((pair, at) => curlParts.push(at === 0 ? '?' : '&', ...pair));
+  const curlUrl = curlParts.every((part) => typeof part === 'string') ? resolved.href : curlHref(curlParts, pageOrigin);
 
   const declaresType = headers.some(([name]) => name.toLowerCase() === 'content-type');
   let body: string | null = null;
   let displayBody: string | null = null;
+  let curlBody: string | null = null;
   if (form.length > 0) {
     body = form.join('&');
     displayBody = shownForm.join('&');
+    curlBody = curlForm.join('&');
     if (!declaresType) headers.push(['Content-Type', 'application/x-www-form-urlencoded']);
   } else if (takesBody(operation.verb) && values.body !== '') {
     body = values.body;
     displayBody = maskBody(values.body);
+    curlBody = curlJsonBody(values.body);
     if (!declaresType) headers.push(['Content-Type', 'application/json']);
   }
 
   return {
     kind: 'ok',
-    request: { method: operation.verb.toUpperCase(), url: resolved.href, displayUrl, headers, body, displayBody },
+    request: { method: operation.verb.toUpperCase(), url: resolved.href, displayUrl, headers, body, displayBody, curlUrl, curlBody },
   };
 }
 
@@ -358,11 +437,45 @@ export function composeRequest(
  * body with its secret-named members masked.
  */
 export function maskedRecord(request: ComposedRequest): RequestRecord {
-  const headers = request.headers
-    .filter(([name]) => name.toLowerCase() !== 'authorization')
-    .map(([name, value]) => `${name}: ${isSecretName(name) ? MASKED_VALUE : value}`);
+  const headers = sentHeaders(request).map(([name, value]) => `${name}: ${isSecretName(name) ? MASKED_VALUE : value}`);
   headers.push(`Authorization: ${MASKED_VALUE}`);
   return { line: `${request.method} ${request.displayUrl}`, headers, body: request.displayBody };
+}
+
+/**
+ * The headers `request` sends besides the tab's token, in order: the declared headers the form
+ * filled, then any `Content-Type` the console adds. A declared `Authorization` is never sent.
+ */
+export function sentHeaders(request: ComposedRequest): (readonly [string, string])[] {
+  return request.headers.filter(([name]) => name.toLowerCase() !== 'authorization');
+}
+
+/** `value` as one POSIX shell word: single-quoted, each `'` inside written `'\''`. */
+export function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+/**
+ * `request` as one POSIX curl command that sends what the console sends (AD-57 (5)), or the
+ * refusal `refuseRequest` gives it. Its arguments are joined by single spaces, and a body keeps any
+ * line break inside its quotes. Every argument but an option name is single-quoted. The tab's
+ * token reads `Bearer <AccessToken>` and every value the record masks reads `<name>`; `--data-raw`
+ * never reads a leading `@` as a file, `--head` is HEAD's own verb, and `--globoff` keeps curl from
+ * expanding brackets or braces in the URL, written whenever the URL holds one as typed or encoded.
+ */
+export function curlCommand(request: ComposedRequest): CurlCommand {
+  const refused = refuseRequest(request.method, request.url);
+  if (refused !== null) return { kind: 'refused', refusal: refused };
+  const words = ['curl'];
+  if (/[[\]{}]|%5B|%5D|%7B|%7D/i.test(request.curlUrl)) words.push('--globoff');
+  words.push(...(request.method === 'HEAD' ? ['--head'] : ['--request', shellQuote(request.method)]));
+  words.push(shellQuote(request.curlUrl));
+  for (const [name, value] of sentHeaders(request)) {
+    words.push('--header', shellQuote(`${name}: ${isSecretName(name) ? placeholder(name) : value}`));
+  }
+  words.push('--header', shellQuote(`Authorization: Bearer ${STRINGS.tryItCurlAccessToken}`));
+  if (request.curlBody !== null) words.push('--data-raw', shellQuote(request.curlBody));
+  return { kind: 'ok', command: words.join(' ') };
 }
 
 /** Whether `contentType` is one the console decodes as text. */

@@ -1,6 +1,7 @@
 /// <p>The impact of a removal (AD-8, AD-53): what else depends on a role or a resource about to be
-/// deleted, and what a user actually loses when a role is taken from them. Both callers of the
-/// three write tools share it: the agent's mint records it on the proposal row, and the screen's
+/// deleted, what a user actually loses when a role is taken from them, what a namespace delete
+/// takes with it and leaves, and what uses a database about to be deleted. Both callers of each of
+/// those write tools share it: the agent's mint records it on the proposal row, and the screen's
 /// dialog asks <class>OcuPilot.Api.ScreenImpact</class> for it when it opens.</p>
 /// <p><b>Names only.</b> The answer is
 /// <code>{kind, refused, parts: [{part, count, names, unchecked}]}</code>: counts, at most
@@ -23,11 +24,19 @@ Parameter RESOURCEDELETETOOL = "permissions.resources.delete";
 
 Parameter USERUPDATETOOL = "permissions.users.update";
 
+Parameter NAMESPACEDELETETOOL = "osmgmt.namespaces.delete";
+
+Parameter DATABASEDELETETOOL = "osmgmt.localdatabases.delete";
+
 Parameter KINDROLEDELETE = "role-delete";
 
 Parameter KINDRESOURCEDELETE = "resource-delete";
 
 Parameter KINDROLEREMOVAL = "role-removal";
+
+Parameter KINDNAMESPACEDELETE = "namespace-delete";
+
+Parameter KINDDATABASEDELETE = "database-delete";
 
 Parameter PARTHOLDERS = "holders";
 
@@ -41,6 +50,22 @@ Parameter PARTGUARDEDDATABASES = "guardedDatabases";
 
 Parameter PARTLOSES = "loses";
 
+Parameter PARTBOUNDAPPLICATIONS = "boundApplications";
+
+Parameter PARTDATABASES = "databases";
+
+/// <p>A database delete's three parts (Story 18.3): the namespaces that use the database, the web
+/// applications that run in them, and the other configuration names that share its file.</p>
+Parameter PARTNAMESPACES = "namespaces";
+
+Parameter PARTAPPLICATIONS = "applications";
+
+Parameter PARTSHAREDFILE = "sharedFile";
+
+/// <p>The fresh read's database fields a namespace delete's <parameter>PARTDATABASES</parameter> is
+/// named from, comma-separated.</p>
+Parameter NAMESPACEDATABASEFIELDS = "Globals,Routines,TempGlobals";
+
 /// <p>How many names a part carries.</p>
 Parameter NAMESSHOWN As INTEGER = 3;
 
@@ -52,6 +77,17 @@ Parameter ROLEDESCRIPTOR = "OcuPilot.Screen.Descriptor.RoleList";
 Parameter WEBAPPDESCRIPTOR = "OcuPilot.Screen.Descriptor.WebAppList";
 
 Parameter DATABASEDESCRIPTOR = "OcuPilot.Screen.Descriptor.DatabaseList";
+
+Parameter NAMESPACEDESCRIPTOR = "OcuPilot.Screen.Descriptor.NamespaceList";
+
+/// <p>The three mapping lists a database delete's namespaces part reads, each with its one
+/// <code>namespace</code> criterion.</p>
+Parameter MAPPINGDESCRIPTORS = "OcuPilot.Screen.Descriptor.GlobalMappingList,OcuPilot.Screen.Descriptor.RoutineMappingList,OcuPilot.Screen.Descriptor.PackageMappingList";
+
+Parameter LOCALDATABASEDESCRIPTOR = "OcuPilot.Screen.Descriptor.LocalDatabaseList";
+
+/// <p>A namespace's database fields a database delete's namespaces part matches, comma-separated.</p>
+Parameter NAMESPACEUSEFIELDS = "Globals,Routines,TempGlobals";
 
 Parameter ROLEENDPOINT = "Security.Role";
 
@@ -86,7 +122,8 @@ ClassMethod ProhibitedClass() As %String
 /// <p>The impact of the write <var>pToolName</var> would make to <var>pTargetRef</var>, carrying
 /// <var>pPayloadJson</var> and <var>pDiffJson</var> over the fresh read <var>pFreshJson</var>, or
 /// <code>""</code> for a write that removes nothing this class covers: a role delete, a resource
-/// delete, and a user update whose <code>Roles</code> lacks a role the fresh read held.</p>
+/// delete, a namespace delete, and a user update whose <code>Roles</code> lacks a role the fresh read
+/// held.</p>
 /// <p><b>Never throws and never fails its caller</b>: a fault anywhere logs one line and answers
 /// <code>""</code>, so a mint or a dialog carries no impact rather than a wrong one.</p>
 ClassMethod Of(pToolName As %String, pTargetRef As %String, pFreshJson As %String, pPayloadJson As %String, pDiffJson As %String) As %DynamicObject
@@ -133,6 +170,27 @@ ClassMethod Of(pToolName As %String, pTargetRef As %String, pFreshJson As %Strin
             Set tSC = ..Guarded(..#DATABASEDESCRIPTOR, ..#PARTGUARDEDDATABASES, "Directory", tId, .tPart)
             If $$$ISERR(tSC) Quit
             Do tParts.%Push(tPart)
+        } ElseIf tKind = ..#KINDNAMESPACEDELETE {
+            Set tSC = ..Guarded(..#WEBAPPDESCRIPTOR, ..#PARTBOUNDAPPLICATIONS, "Name", tId, .tPart, "Namespace")
+            If $$$ISERR(tSC) Quit
+            Do tParts.%Push(tPart)
+            Set tSC = ..Databases(tFresh, .tPart)
+            If $$$ISERR(tSC) Quit
+            Do tParts.%Push(tPart)
+        } ElseIf tKind = ..#KINDDATABASEDELETE {
+            Set tSC = ..UsingNamespaces(tId, .tPart, .tUsing)
+            If $$$ISERR(tSC) Quit
+            Do tParts.%Push(tPart)
+            Set tNamespacesUnchecked = tPart.%Get("unchecked")
+            Set tSC = ..RunningIn(tUsing, .tPart)
+            If $$$ISERR(tSC) Quit
+            ; Namespaces unread leave the applications in them unread too, for the same reason.
+            If tNamespacesUnchecked '= "" Set tSC = ..Unchecked(tPart, tNamespacesUnchecked)
+            If $$$ISERR(tSC) Quit
+            Do tParts.%Push(tPart)
+            Set tSC = ..SharedFile(tId, tFresh, .tPart)
+            If $$$ISERR(tSC) Quit
+            Do tParts.%Push(tPart)
         } Else {
             Set tSC = ..Loses(tFresh, tPayload, .tPart)
             If $$$ISERR(tSC) Quit
@@ -158,6 +216,8 @@ ClassMethod KindOf(pToolName As %String, pFresh As %DynamicObject, pPayload As %
 {
     If pToolName = ..#ROLEDELETETOOL Quit ..#KINDROLEDELETE
     If pToolName = ..#RESOURCEDELETETOOL Quit ..#KINDRESOURCEDELETE
+    If pToolName = ..#NAMESPACEDELETETOOL Quit ..#KINDNAMESPACEDELETE
+    If pToolName = ..#DATABASEDELETETOOL Quit ..#KINDDATABASEDELETE
     If pToolName '= ..#USERUPDATETOOL Quit ""
     If '$IsObject(pPayload) || (pPayload.%GetTypeOf(..#ROLESFIELD) '= "array") Quit ""
     Kill tSent
@@ -277,9 +337,10 @@ ClassMethod GrantingRoles(pResource As %String, Output pPart As %DynamicObject) 
     Quit ..Fill(pPart, .tNames)
 }
 
-/// <p>The rows of <var>pDescriptor</var>'s declared read whose <code>Resource</code> is the
-/// resource, named by their <var>pNameField</var>, under that screen's pairs.</p>
-ClassMethod Guarded(pDescriptor As %String, pPartName As %String, pNameField As %String, pResource As %String, Output pPart As %DynamicObject) As %Status
+/// <p>The rows of <var>pDescriptor</var>'s declared read whose <var>pMatchField</var> is
+/// <var>pResource</var>, compared without regard to case, named by their <var>pNameField</var>, under
+/// that screen's pairs.</p>
+ClassMethod Guarded(pDescriptor As %String, pPartName As %String, pNameField As %String, pResource As %String, Output pPart As %DynamicObject, pMatchField As %String = "Resource") As %Status
 {
     Set pPart = ..Part(pPartName)
     Set tSC = ..ListRows(pDescriptor, pPart, .tRows)
@@ -289,8 +350,119 @@ ClassMethod Guarded(pDescriptor As %String, pPartName As %String, pNameField As 
     Set tIterator = tRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
         If '$IsObject(tRow) Continue
-        If $ZConvert(tRow.%Get("Resource"), "U") '= tWanted Continue
+        If $ZConvert(tRow.%Get(pMatchField), "U") '= tWanted Continue
         Do ..Add(.tNames, tRow.%Get(pNameField))
+    }
+    Quit ..Fill(pPart, .tNames)
+}
+
+/// <p>The databases a namespace names, which its delete leaves in place: the distinct
+/// <parameter>NAMESPACEDATABASEFIELDS</parameter> of its fresh read <var>pFresh</var>. Read from the
+/// fresh read the write itself needs, so it is never unchecked.</p>
+ClassMethod Databases(pFresh As %DynamicObject, Output pPart As %DynamicObject) As %Status
+{
+    Set pPart = ..Part(..#PARTDATABASES)
+    Kill tNames
+    If $IsObject(pFresh) {
+        For tI = 1:1:$Length(..#NAMESPACEDATABASEFIELDS, ",") {
+            Set tField = $Piece(..#NAMESPACEDATABASEFIELDS, ",", tI)
+            If pFresh.%GetTypeOf(tField) '= "string" Continue
+            Do ..Add(.tNames, pFresh.%Get(tField))
+        }
+    }
+    Quit ..Fill(pPart, .tNames)
+}
+
+/// <p>The namespaces that use the database configuration <var>pDatabase</var>, compared without
+/// regard to case (Story 18.3): each Namespaces list row whose <parameter>NAMESPACEUSEFIELDS</parameter>
+/// names it, and each namespace of that read one of whose global, routine or package mappings
+/// (<parameter>MAPPINGDESCRIPTORS</parameter>, criterion <code>namespace</code>) names it as its
+/// <code>Database</code>, each list read under its own screen's pairs. A refused or cut list makes the
+/// part unchecked. The namespaces found are <var>pUsing</var>, empty when the part is unchecked.</p>
+ClassMethod UsingNamespaces(pDatabase As %String, Output pPart As %DynamicObject, Output pUsing As %List) As %Status
+{
+    Set pUsing = ""
+    Set pPart = ..Part(..#PARTNAMESPACES)
+    Set tSC = ..ListRows(..#NAMESPACEDESCRIPTOR, pPart, .tRows)
+    If $$$ISERR(tSC) || '$IsObject(tRows) Quit tSC
+    Set tWanted = $ZConvert(pDatabase, "U")
+    Kill tNames
+    Set tAll = ""
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) || (tRow.%Get("Name") = "") Continue
+        Set tAll = tAll _ $ListBuild(tRow.%Get("Name"))
+        For tI = 1:1:$Length(..#NAMESPACEUSEFIELDS, ",") {
+            If $ZConvert(tRow.%Get($Piece(..#NAMESPACEUSEFIELDS, ",", tI)), "U") = tWanted Do ..Add(.tNames, tRow.%Get("Name"))
+        }
+    }
+    For tI = 1:1:$ListLength(tAll) {
+        Set tNamespace = $List(tAll, tI)
+        If $Data(tNames($ZConvert(tNamespace, "U"))) Continue
+        For tJ = 1:1:$Length(..#MAPPINGDESCRIPTORS, ",") {
+            Kill tCriteria
+            Set tCriteria("namespace") = tNamespace
+            Set tSC = ..ListRows($Piece(..#MAPPINGDESCRIPTORS, ",", tJ), pPart, .tMappings, .tCriteria)
+            If $$$ISERR(tSC) || '$IsObject(tMappings) Quit
+            Set tMapIterator = tMappings.%GetIterator()
+            While tMapIterator.%GetNext(.tMapIndex, .tMapping) {
+                If $IsObject(tMapping) && ($ZConvert(tMapping.%Get("Database"), "U") = tWanted) {
+                    Do ..Add(.tNames, tNamespace)
+                    Quit
+                }
+            }
+            If $Data(tNames($ZConvert(tNamespace, "U"))) Quit
+        }
+        If $$$ISERR(tSC) || (pPart.%Get("unchecked") '= "") Quit
+    }
+    If $$$ISERR(tSC) Quit tSC
+    If pPart.%Get("unchecked") '= "" Quit $$$OK
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tNames(tKey))
+        If tKey = "" Quit
+        Set pUsing = pUsing _ $ListBuild(tNames(tKey))
+    }
+    Quit ..Fill(pPart, .tNames)
+}
+
+/// <p>The web applications whose <code>Namespace</code> is one of <var>pNamespaces</var>, compared
+/// without regard to case: the Web applications list's own read, under that screen's pairs. None when
+/// <var>pNamespaces</var> is empty.</p>
+ClassMethod RunningIn(pNamespaces As %List, Output pPart As %DynamicObject) As %Status
+{
+    Set pPart = ..Part(..#PARTAPPLICATIONS)
+    If pNamespaces = "" Quit $$$OK
+    Set tSC = ..ListRows(..#WEBAPPDESCRIPTOR, pPart, .tRows)
+    If $$$ISERR(tSC) || '$IsObject(tRows) Quit tSC
+    Kill tWanted
+    For tI = 1:1:$ListLength(pNamespaces) Set tWanted($ZConvert($List(pNamespaces, tI), "U")) = ""
+    Kill tNames
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) || (tRow.%Get("Namespace") = "") Continue
+        If $Data(tWanted($ZConvert(tRow.%Get("Namespace"), "U"))) Do ..Add(.tNames, tRow.%Get("Name"))
+    }
+    Quit ..Fill(pPart, .tNames)
+}
+
+/// <p>The other configuration names whose directory is the directory of <var>pDatabase</var>'s fresh
+/// read <var>pFresh</var> (<method>OcuPilot.Port.DatabasePort.SameDirectory</method>): the Local
+/// databases list's own read, under that screen's pairs. A delete keeps a shared file.</p>
+ClassMethod SharedFile(pDatabase As %String, pFresh As %DynamicObject, Output pPart As %DynamicObject) As %Status
+{
+    Set pPart = ..Part(..#PARTSHAREDFILE)
+    Set tDirectory = ""
+    If $IsObject(pFresh) && (pFresh.%GetTypeOf("Directory") = "string") Set tDirectory = pFresh.%Get("Directory")
+    If tDirectory = "" Quit $$$OK
+    Set tSC = ..ListRows(..#LOCALDATABASEDESCRIPTOR, pPart, .tRows)
+    If $$$ISERR(tSC) || '$IsObject(tRows) Quit tSC
+    Kill tNames
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) || (tRow.%Get("Name") = "") Continue
+        If $ZConvert(tRow.%Get("Name"), "U") = $ZConvert(pDatabase, "U") Continue
+        If ##class(OcuPilot.Port.DatabasePort).SameDirectory(tRow.%Get("Directory"), tDirectory) Do ..Add(.tNames, tRow.%Get("Name"))
     }
     Quit ..Fill(pPart, .tNames)
 }
@@ -328,14 +500,15 @@ ClassMethod Loses(pFresh As %DynamicObject, pPayload As %DynamicObject, Output p
 }
 
 /// <p>The rows of <var>pDescriptor</var>'s declared read, after its pair gate, in
-/// <var>pRows</var>; <code>""</code> when <var>pPart</var> has been marked unchecked instead.</p>
-ClassMethod ListRows(pDescriptor As %String, pPart As %DynamicObject, Output pRows As %DynamicArray) As %Status [ Private ]
+/// <var>pRows</var>; <code>""</code> when <var>pPart</var> has been marked unchecked instead.
+/// <var>pCriteria</var>, where given, is the read's criteria, keyed by parameter.</p>
+ClassMethod ListRows(pDescriptor As %String, pPart As %DynamicObject, Output pRows As %DynamicArray, ByRef pCriteria) As %Status [ Private ]
 {
     Set pRows = ""
     Set tSC = ##class(OcuPilot.Kernel.Shell.Effective).Gate(pDescriptor, .tUnchecked)
     If $$$ISERR(tSC) Quit tSC
     If tUnchecked '= "" Quit ..Unchecked(pPart, tUnchecked)
-    Set tSC = ##class(OcuPilot.Screen.Read).Execute(pDescriptor, "", .tResult, .tHttp, .tFault)
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute(pDescriptor, "", .tResult, .tHttp, .tFault, .pCriteria)
     If $$$ISERR(tSC) Quit tSC
     If tResult.%Get("truncated") Quit ..Unchecked(pPart, ..#TRUNCATED)
     Set pRows = tResult.%Get("rows")

@@ -44,8 +44,10 @@
 /// <code>refreshes</code> against seven named screens -- at the rates
 /// <file>EXPERIENCE.md</file>'s auto-refresh bullet declares. As a list archetype it links out to
 /// nothing (<code>classicLinkExemption.exempt</code> false); it declares no primary or row action,
-/// so its empty state names what to do next rather than inviting the agent -- the database writes
-/// are Stage 2.</p>
+/// so its empty state names what to do next rather than inviting the agent. The database writes are
+/// <class>OcuPilot.Screen.Descriptor.LocalDatabaseList</class>'s, so this list declares
+/// <code>database-configuration</code> as a secondary entity type and re-fetches after a create or a
+/// delete there (AD-14, Story 18.3).</p>
 Class OcuPilot.Screen.Descriptor.DatabaseList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -62,7 +64,7 @@ XData Declaration
   "refreshRates": [5, 10, 30, 60],
   "privileges": [{"resource": "%Admin_Manage", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
   "entityType": "database",
-  "secondaryEntityTypes": [],
+  "secondaryEntityTypes": ["database-configuration"],
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},

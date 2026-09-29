@@ -54,6 +54,14 @@ const NAME_TEXT = '.ocu-data-table-link, .ocu-data-table-text';
 /** The four actions, in the order the list declares them. */
 const ACTIONS = [STRINGS.actionRun, STRINGS.actionSuspend, STRINGS.actionResume, STRINGS.actionDelete];
 
+/**
+ * Story 16.4's two beside them: Export, a row action on the selected task declared before Delete,
+ * and Import, which the command bar draws after the row actions as a screen-level action and the row
+ * menu never offers.
+ */
+const MENU_ACTIONS = [STRINGS.actionRun, STRINGS.actionSuspend, STRINGS.actionResume, STRINGS.taskExportAction, STRINGS.actionDelete];
+const BAR_ACTIONS = [...MENU_ACTIONS, STRINGS.actionImport];
+
 let browser = null;
 let taskId = '';
 let taskName = '';
@@ -266,8 +274,8 @@ test('AC1: the row menu and the command bar offer all four actions, and Run send
   const { context, page, posts, browserDialogs } = await signedInAtList();
   try {
     await select(page, taskName, taskName);
-    assert.deepEqual(await commandBar(page), ACTIONS, 'the command bar offers Run, Suspend, Resume and Delete');
-    assert.deepEqual(await openRowMenu(page), ACTIONS, 'and so does the row menu, destructive last');
+    assert.deepEqual(await commandBar(page), BAR_ACTIONS, 'the command bar offers Run, Suspend, Resume, Export and Delete, then Import');
+    assert.deepEqual(await openRowMenu(page), MENU_ACTIONS, 'and the row menu the four and Export, destructive last');
 
     const before = await rowNamed(page, taskName);
     const nextBefore = before.cells[NEXT_RUN_CELL];

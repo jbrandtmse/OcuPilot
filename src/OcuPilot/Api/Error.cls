@@ -379,6 +379,91 @@ Parameter LOGMAXROWS = "LOG.MAXROWS";
 /// after the gate and before the filesystem is touched, and never with the value or a path.</p>
 Parameter LOGFILE = "LOG.FILE";
 
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a root that is not, character
+/// for character, one of the instance's allowed directories as
+/// <class>OcuPilot.Port.PathPort</class> reads them at the call. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug with one <code>detail.violations</code> entry on the
+/// root's field, and never with the value or a path.</p>
+Parameter PATHROOT = "PATH.ROOT";
+
+/// <p>The sentence <parameter>PATHROOT</parameter> carries.</p>
+Parameter REASONPATHROOT = "That directory is not one of the instance's allowed directories.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): the relative name under an allowed root is not empty or
+/// one to eight <code>/</code>-separated names of letters, digits, dots, underscores and dashes,
+/// carries a literal <code>..</code>, is empty where a file is named, or does not resolve inside
+/// its root. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Port.PathPort</class> with one <code>detail.violations</code> entry on the
+/// name's field, and never with the value or a path.</p>
+Parameter PATHNAME = "PATH.NAME";
+
+/// <p>The sentence <parameter>PATHNAME</parameter> carries.</p>
+Parameter REASONPATHNAME = "Name a directory or file under it with letters, digits, '.', '_' or '-', at most eight names separated by '/', and no '..'.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a file where a directory
+/// already exists, or where a file does and the consuming tool does not declare that it
+/// overwrites. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Port.PathPort</class> with one <code>detail.violations</code> entry on the
+/// name's field, and never with the value or a path.</p>
+Parameter PATHEXISTS = "PATH.EXISTS";
+
+/// <p>The sentence <parameter>PATHEXISTS</parameter> carries.</p>
+Parameter REASONPATHEXISTS = "A file or directory of that name already exists. Choose a name that is not taken.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a file directly in the manager
+/// directory, which holds the instance's own files, under whatever root and whether or not the
+/// consuming tool overwrites. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Port.PathPort</class> with one <code>detail.violations</code> entry on the
+/// name's field, and never with the value or a path.</p>
+Parameter PATHMANAGER = "PATH.MANAGER";
+
+/// <p>The sentence <parameter>PATHMANAGER</parameter> carries.</p>
+Parameter REASONPATHMANAGER = "The manager directory holds the instance's own files, so no file can be named directly in it. Name one in a subdirectory.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named a file for the consuming tool
+/// to read where no file stands, or where a directory does. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug by <class>OcuPilot.Port.PathPort</class> with one
+/// <code>detail.violations</code> entry on the name's field, and never with the value or a
+/// path.</p>
+Parameter PATHNOFILE = "PATH.NOFILE";
+
+/// <p>The sentence <parameter>PATHNOFILE</parameter> carries.</p>
+Parameter REASONPATHNOFILE = "No file of that name exists to read. Name a file that is already there, not a directory.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named, for a consuming tool that
+/// overwrites, an existing file of the instance's own: one beside its configuration file, a
+/// database file one directory below the manager directory, one directly in a configured
+/// database's directory or under its stream location, or one directly in a journal directory.
+/// Rendered on the
+/// <parameter>BADREQUEST</parameter> slug by <class>OcuPilot.Port.PathPort</class> with one
+/// <code>detail.violations</code> entry on the name's field, and never with the value or a
+/// path.</p>
+Parameter PATHINSTANCE = "PATH.INSTANCE";
+
+/// <p>The sentence <parameter>PATHINSTANCE</parameter> carries.</p>
+Parameter REASONPATHINSTANCE = "That file belongs to the instance itself and cannot be overwritten. Choose another name.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39): a server-path field named the manager directory itself
+/// as the directory a consuming tool's vendor writes its own files into. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug by <class>OcuPilot.Port.PathPort</class> with one
+/// <code>detail.violations</code> entry on the name's field, and never with the value or a
+/// path.</p>
+Parameter PATHMANAGERDIR = "PATH.MANAGERDIR";
+
+/// <p>The sentence <parameter>PATHMANAGERDIR</parameter> carries.</p>
+Parameter REASONPATHMANAGERDIR = "The manager directory holds the instance's own files, so a database, journal or backup cannot be kept in it. Name a subdirectory of it.";
+
+/// <p>Machine code (AD-12, AD-21, AD-39, AD-47): a server-path field named, under the directory
+/// OcuPilot's client is served from, a file for the consuming tool to write or read, new or
+/// existing, or named that directory or one under it as the directory a consuming tool's vendor
+/// writes its own files into. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Port.PathPort</class> with one <code>detail.violations</code> entry on the
+/// name's field, and never with the value or a path.</p>
+Parameter PATHSERVED = "PATH.SERVED";
+
+/// <p>The sentence <parameter>PATHSERVED</parameter> carries.</p>
+Parameter REASONPATHSERVED = "OcuPilot serves the files under that directory to anyone, signed in or not, so no file can be named there and a database, journal or backup cannot be kept there. Choose another directory.";
+
 /// <p>Machine code (AD-12, AD-39): the agent configuration the request submitted broke one or more
 /// of the rules <class>OcuPilot.Kernel.AgentRules</class> (a definition) or
 /// <class>OcuPilot.Kernel.SwitchRules</class> (the switches and the per-user holds) applies.
@@ -1012,12 +1097,21 @@ Parameter REASONLEDGERUSERINVALID = "That is not the shape of an account name on
 /// <p>Written sentence for <parameter>LEDGERUNAVAILABLE</parameter>.</p>
 Parameter REASONLEDGERUNAVAILABLE = "The agent ledger could not be read on this instance.";
 
+/// <p>Machine code (Story 16.16, AD-21): one of <code>GET /agent/ledger</code>'s search criteria
+/// -- <code>all</code>, <code>route</code>, <code>begin</code> or <code>end</code> -- is not a value
+/// the ledger's search takes, named in <code>detail.criterion</code>. Rendered the way
+/// <parameter>LEDGERWINDOWINVALID</parameter> is.</p>
+Parameter LEDGERCRITERIONINVALID = "LEDGER.CRITERION.INVALID";
+
+/// <p>Written sentence for <parameter>LEDGERCRITERIONINVALID</parameter>.</p>
+Parameter REASONLEDGERCRITERIONINVALID = "That value is not one the agent ledger's search accepts.";
+
 /// <p>Every <code>LEDGER.*</code> code, as a <class>%List</class>, so a test can hold
 /// <method>ReasonForLedger</method> to the vocabulary -- the model
 /// <method>TurnCodes</method>/<method>ReasonForTurn</method> set.</p>
 ClassMethod LedgerCodes() As %List
 {
-    Quit $ListBuild(..#LEDGERWINDOWINVALID, ..#LEDGERMAXROWSINVALID, ..#LEDGERUSERINVALID, ..#LEDGERUNAVAILABLE)
+    Quit $ListBuild(..#LEDGERWINDOWINVALID, ..#LEDGERMAXROWSINVALID, ..#LEDGERUSERINVALID, ..#LEDGERUNAVAILABLE, ..#LEDGERCRITERIONINVALID)
 }
 
 /// <p>The written sentence a <code>LEDGER.*</code> code carries, or <code>""</code> for any other
@@ -1028,6 +1122,7 @@ ClassMethod ReasonForLedger(pCode As %String) As %String
     If pCode = ..#LEDGERMAXROWSINVALID Quit ..#REASONLEDGERMAXROWSINVALID
     If pCode = ..#LEDGERUSERINVALID Quit ..#REASONLEDGERUSERINVALID
     If pCode = ..#LEDGERUNAVAILABLE Quit ..#REASONLEDGERUNAVAILABLE
+    If pCode = ..#LEDGERCRITERIONINVALID Quit ..#REASONLEDGERCRITERIONINVALID
     Quit ""
 }
 
@@ -1312,6 +1407,10 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "SERVICE." Quit ..ReasonForService(pCode)
     If $Extract(pCode, 1, 5) = "LDAP." Quit ..ReasonForLdap(pCode)
     If $Extract(pCode, 1, 11) = "AUDITEVENT." Quit ..ReasonForAuditEvent(pCode)
+    If $Extract(pCode, 1, 10) = "NAMESPACE." Quit ..ReasonForNamespace(pCode)
+    If $Extract(pCode, 1, 8) = "MAPPING." Quit ..ReasonForMapping(pCode)
+    If $Extract(pCode, 1, 9) = "DATABASE." Quit ..ReasonForDatabase(pCode)
+    If $Extract(pCode, 1, 5) = "PATH." Quit ..ReasonForPath(pCode)
     Quit ""
 }
 
@@ -1366,6 +1465,82 @@ ClassMethod WalletViolationCodes() As %List
 ClassMethod DeviceViolationCodes() As %List
 {
     Quit $ListBuild(..#DEVICENAMEREQUIRED, ..#DEVICENAMELENGTH, ..#DEVICENAMESHAPE, ..#DEVICENAMETAKEN, ..#DEVICENAMEABSENT, ..#DEVICEPHYSICALDEVICEREQUIRED, ..#DEVICEPHYSICALDEVICELENGTH, ..#DEVICEPHYSICALDEVICESHAPE, ..#DEVICETYPEREQUIRED, ..#DEVICETYPEVALUE, ..#DEVICESUBTYPEREQUIRED, ..#DEVICESUBTYPEABSENT, ..#DEVICEOPENPARAMETERSLENGTH, ..#DEVICEOPENPARAMETERSSHAPE, ..#DEVICEDESCRIPTIONLENGTH, ..#DEVICEDESCRIPTIONSHAPE, ..#DEVICEALTERNATEDEVICELENGTH, ..#DEVICEALTERNATEDEVICESHAPE, ..#DEVICEALIASSHAPE, ..#DEVICEALIASTAKEN, ..#DEVICEALIASSAME, ..#DEVICEPROMPTVALUE)
+}
+
+/// <p>Every <code>NAMESPACE.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod NamespaceViolationCodes() As %List
+{
+    Quit $ListBuild(..#NAMESPACENAMEREQUIRED, ..#NAMESPACENAMESHAPE, ..#NAMESPACENAMETAKEN, ..#NAMESPACENAMEABSENT, ..#NAMESPACEGLOBALSREQUIRED, ..#NAMESPACEROUTINESREQUIRED, ..#NAMESPACEGLOBALSABSENT, ..#NAMESPACEROUTINESABSENT, ..#NAMESPACETEMPGLOBALSABSENT)
+}
+
+/// <p>Every <code>MAPPING.*</code> field-level violation code (Story 18.14), as a
+/// <class>%List</class>, for the reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod MappingViolationCodes() As %List
+{
+    Quit $ListBuild(..#MAPPINGNAMEREQUIRED, ..#MAPPINGNAMESHAPE, ..#MAPPINGNAMETAKEN, ..#MAPPINGNAMEABSENT, ..#MAPPINGNAMESUBSCRIPTS, ..#MAPPINGNAMESPACEABSENT, ..#MAPPINGDATABASEREQUIRED, ..#MAPPINGDATABASEABSENT, ..#MAPPINGLOCKDATABASEABSENT, ..#MAPPINGCOLLATIONVALUE)
+}
+
+/// <p>The sentence a <code>MAPPING.*</code> violation code carries, or <code>""</code>. Where the
+/// sentence is a namespace code's, the namespace code's parameter answers.</p>
+ClassMethod ReasonForMapping(pCode As %String) As %String
+{
+    If pCode = ..#MAPPINGNAMEREQUIRED Quit ..#REASONMAPPINGNAMEREQUIRED
+    If pCode = ..#MAPPINGNAMESHAPE Quit ..#REASONMAPPINGNAMESHAPE
+    If pCode = ..#MAPPINGNAMETAKEN Quit ..#REASONMAPPINGNAMETAKEN
+    If pCode = ..#MAPPINGNAMEABSENT Quit ..#REASONMAPPINGNAMEABSENT
+    If pCode = ..#MAPPINGNAMESUBSCRIPTS Quit ..#REASONMAPPINGNAMESUBSCRIPTS
+    If pCode = ..#MAPPINGNAMESPACEABSENT Quit ..#REASONNAMESPACENAMEABSENT
+    If pCode = ..#MAPPINGDATABASEREQUIRED Quit ..#REASONNAMESPACEDATABASEREQUIRED
+    If (pCode = ..#MAPPINGDATABASEABSENT) || (pCode = ..#MAPPINGLOCKDATABASEABSENT) Quit ..#REASONNAMESPACEDATABASEABSENT
+    If pCode = ..#MAPPINGCOLLATIONVALUE Quit ..#REASONMAPPINGCOLLATIONVALUE
+    Quit ""
+}
+
+/// <p>Every <code>DATABASE.*</code> field-level violation code (Story 18.3), as a
+/// <class>%List</class>, for the reason <method>WebAppViolationCodes</method> exists. The codes and
+/// their sentences are <class>OcuPilot.Api.DatabaseError</class>'s, because this class is at the
+/// compiler's limit of parameters.</p>
+ClassMethod DatabaseViolationCodes() As %List
+{
+    Quit ##class(OcuPilot.Api.DatabaseError).ViolationCodes()
+}
+
+/// <p>The sentence a <code>DATABASE.*</code> code carries, or <code>""</code>
+/// (<method>OcuPilot.Api.DatabaseError.ReasonFor</method>).</p>
+ClassMethod ReasonForDatabase(pCode As %String) As %String
+{
+    Quit ##class(OcuPilot.Api.DatabaseError).ReasonFor(pCode)
+}
+
+/// <p>The sentence a <code>PATH.*</code> code carries, or <code>""</code>: the sentence
+/// <class>OcuPilot.Port.PathPort</class> answers it with, so a form that re-renders a path refusal
+/// from its code alone (Story 18.3's step check) says the same thing.</p>
+ClassMethod ReasonForPath(pCode As %String) As %String
+{
+    If pCode = ..#PATHROOT Quit ..#REASONPATHROOT
+    If pCode = ..#PATHNAME Quit ..#REASONPATHNAME
+    If pCode = ..#PATHEXISTS Quit ..#REASONPATHEXISTS
+    If pCode = ..#PATHMANAGER Quit ..#REASONPATHMANAGER
+    If pCode = ..#PATHNOFILE Quit ..#REASONPATHNOFILE
+    If pCode = ..#PATHINSTANCE Quit ..#REASONPATHINSTANCE
+    If pCode = ..#PATHMANAGERDIR Quit ..#REASONPATHMANAGERDIR
+    If pCode = ..#PATHSERVED Quit ..#REASONPATHSERVED
+    Quit ""
+}
+
+/// <p>The sentence a <code>NAMESPACE.*</code> violation code carries, or <code>""</code>.</p>
+ClassMethod ReasonForNamespace(pCode As %String) As %String
+{
+    If pCode = ..#NAMESPACESOURCEABSENT Quit ..#REASONNAMESPACENAMEABSENT
+    If pCode = ..#NAMESPACESOURCESAME Quit ..#REASONNAMESPACESOURCESAME
+    If pCode = ..#NAMESPACENAMEREQUIRED Quit ..#REASONNAMESPACENAMEREQUIRED
+    If pCode = ..#NAMESPACENAMESHAPE Quit ..#REASONNAMESPACENAMESHAPE
+    If pCode = ..#NAMESPACENAMETAKEN Quit ..#REASONNAMESPACENAMETAKEN
+    If pCode = ..#NAMESPACENAMEABSENT Quit ..#REASONNAMESPACENAMEABSENT
+    If (pCode = ..#NAMESPACEGLOBALSREQUIRED) || (pCode = ..#NAMESPACEROUTINESREQUIRED) Quit ..#REASONNAMESPACEDATABASEREQUIRED
+    If (pCode = ..#NAMESPACEGLOBALSABSENT) || (pCode = ..#NAMESPACEROUTINESABSENT) || (pCode = ..#NAMESPACETEMPGLOBALSABSENT) Quit ..#REASONNAMESPACEDATABASEABSENT
+    Quit ""
 }
 
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
@@ -2419,6 +2594,118 @@ Parameter REASONDEVICEALIASSAME = "An alias cannot be the same as the physical d
 Parameter DEVICEPROMPTVALUE = "DEVICE.PROMPT.VALUE";
 
 Parameter REASONDEVICEPROMPTVALUE = "Choose one of the prompt options.";
+
+/// <p>Envelope code (AD-39): a namespace's create or edit broke one or more of the rules
+/// <class>OcuPilot.Area.OsMgmt.NamespaceRules</class> applies before the port is touched. Rendered
+/// on the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>.</p>
+Parameter NAMESPACEVALIDATION = "NAMESPACE.VALIDATION";
+
+Parameter REASONNAMESPACEVALIDATION = "The namespace was refused.";
+
+/// <p>Violation code: no name was supplied.</p>
+Parameter NAMESPACENAMEREQUIRED = "NAMESPACE.NAME.REQUIRED";
+
+Parameter REASONNAMESPACENAMEREQUIRED = "Name the namespace.";
+
+/// <p>Violation code: the name is not one <class>Config.Namespaces</class> accepts (the vendor's
+/// 457 and 7201, mapped at the port).</p>
+Parameter NAMESPACENAMESHAPE = "NAMESPACE.NAME.SHAPE";
+
+Parameter REASONNAMESPACENAMESHAPE = "A namespace name starts with a letter or %, then letters, digits, _ or -, at most 64 characters.";
+
+/// <p>Violation code: a namespace already carries that name, compared without regard to case.
+/// <code>GET /namespace/name</code> answers it on blur.</p>
+Parameter NAMESPACENAMETAKEN = "NAMESPACE.NAME.TAKEN";
+
+Parameter REASONNAMESPACENAMETAKEN = "This instance already has a namespace with that name. Choose a different one.";
+
+/// <p>Violation code: an edit or a form read names a namespace this instance does not hold.
+/// Rendered at 404.</p>
+Parameter NAMESPACENAMEABSENT = "NAMESPACE.NAME.ABSENT";
+
+Parameter REASONNAMESPACENAMEABSENT = "This instance has no namespace with that name.";
+
+/// <p>Violation codes: a create carried no globals or routines database, or an edit emptied
+/// one.</p>
+Parameter NAMESPACEGLOBALSREQUIRED = "NAMESPACE.GLOBALS.REQUIRED";
+
+Parameter NAMESPACEROUTINESREQUIRED = "NAMESPACE.ROUTINES.REQUIRED";
+
+Parameter REASONNAMESPACEDATABASEREQUIRED = "Choose a database.";
+
+/// <p>Violation codes: a database field names no database this instance lists.</p>
+Parameter NAMESPACEGLOBALSABSENT = "NAMESPACE.GLOBALS.ABSENT";
+
+Parameter NAMESPACEROUTINESABSENT = "NAMESPACE.ROUTINES.ABSENT";
+
+Parameter NAMESPACETEMPGLOBALSABSENT = "NAMESPACE.TEMPGLOBALS.ABSENT";
+
+Parameter REASONNAMESPACEDATABASEABSENT = "No database on this instance has that name.";
+
+/// <p>Violation code (Story 18.14): a copy of mappings names a source namespace this instance does
+/// not hold. Carried in a <code>TOOL.ARGUMENTS</code> refusal's problem.</p>
+Parameter NAMESPACESOURCEABSENT = "NAMESPACE.SOURCE.ABSENT";
+
+/// <p>Violation code (Story 18.14): a copy of mappings names the destination itself as its source,
+/// compared without regard to case.</p>
+Parameter NAMESPACESOURCESAME = "NAMESPACE.SOURCE.SAME";
+
+Parameter REASONNAMESPACESOURCESAME = "Choose a namespace other than this one.";
+
+/// <p>Envelope code (AD-39, Story 18.14): a mapping's create or edit broke one or more of the rules
+/// <class>OcuPilot.Area.OsMgmt.MappingRules</class> applies before the port is touched. Rendered on
+/// the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>.</p>
+Parameter MAPPINGVALIDATION = "MAPPING.VALIDATION";
+
+Parameter REASONMAPPINGVALIDATION = "The mapping was refused.";
+
+/// <p>Violation code: no mapping name was supplied.</p>
+Parameter MAPPINGNAMEREQUIRED = "MAPPING.NAME.REQUIRED";
+
+Parameter REASONMAPPINGNAMEREQUIRED = "Name what to map.";
+
+/// <p>Violation code: a name the instance does not accept for this kind of mapping (the vendor's
+/// 5854 and 448, mapped at the port), or a routine type suffix written in lower case, which the
+/// vendor applies and then refuses.</p>
+Parameter MAPPINGNAMESHAPE = "MAPPING.NAME.SHAPE";
+
+Parameter REASONMAPPINGNAMESHAPE = "The instance does not accept that name. A routine type suffix is written in capitals, as in _MAC.";
+
+/// <p>Violation code: the namespace already has a mapping of this kind with that name.
+/// <code>GET /mapping/:kind/name</code> answers it on blur.</p>
+Parameter MAPPINGNAMETAKEN = "MAPPING.NAME.TAKEN";
+
+Parameter REASONMAPPINGNAMETAKEN = "This namespace already has that mapping.";
+
+/// <p>Violation code: an edit or a form read names a mapping the namespace does not hold. Rendered
+/// at 404.</p>
+Parameter MAPPINGNAMEABSENT = "MAPPING.NAME.ABSENT";
+
+Parameter REASONMAPPINGNAMEABSENT = "This namespace has no mapping with that name.";
+
+/// <p>Violation code: a global's base mapping was deleted while a subscript-level mapping of the same
+/// global exists (the vendor's 451, mapped at the port).</p>
+Parameter MAPPINGNAMESUBSCRIPTS = "MAPPING.NAME.SUBSCRIPTS";
+
+Parameter REASONMAPPINGNAMESUBSCRIPTS = "Delete this global's subscript-level mappings first.";
+
+/// <p>Violation code: the mapping's namespace is not one this instance holds.</p>
+Parameter MAPPINGNAMESPACEABSENT = "MAPPING.NAMESPACE.ABSENT";
+
+/// <p>Violation code: a create carried no database, or an edit emptied it.</p>
+Parameter MAPPINGDATABASEREQUIRED = "MAPPING.DATABASE.REQUIRED";
+
+/// <p>Violation codes: a database field names no database this instance lists.</p>
+Parameter MAPPINGDATABASEABSENT = "MAPPING.DATABASE.ABSENT";
+
+Parameter MAPPINGLOCKDATABASEABSENT = "MAPPING.LOCKDATABASE.ABSENT";
+
+/// <p>Violation code: a global mapping's collation is not a whole number.</p>
+Parameter MAPPINGCOLLATIONVALUE = "MAPPING.COLLATION.VALUE";
+
+Parameter REASONMAPPINGCOLLATIONVALUE = "Collation is a whole number.";
 
 /// <p>Machine code (Story 12.4): the server description editor refused a Save; the envelope's
 /// <code>detail.violations</code> names each field and its rule (AD-39).</p>
@@ -3897,5 +4184,58 @@ ClassMethod AuditEventViolationCodes() As %List
 /// <class>OcuPilot.Kernel.Agent.Loop</class> on the <parameter>UNAVAILABLE</parameter> slug, with
 /// its sentence in <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method>.</p>
 Parameter PROVIDERTOOLCALLFAILED = "PROVIDER.TOOLCALLFAILED";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.3): a permission check whose composition read was cut at
+/// its cap, so the answer was not checked -- never an answer of no. Answered on the
+/// <parameter>UNAVAILABLE</parameter> slug with 503 by
+/// <method>OcuPilot.Kernel.Shell.PermissionCheck.Check</method>.</p>
+Parameter PERMISSIONUNCHECKED = "PERMISSION.UNCHECKED";
+
+Parameter REASONPERMISSIONUNCHECKED = "There are too many roles or resources to read, so this was not checked.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.5): a background task whose current state does not
+/// allow the cancel, pause or resume asked of it -- the vendor's own refusal (the admin API's 409,
+/// <code>%SYS.BackgroundTask</code>'s error 9503), or a Management Portal job with no background
+/// task to act on. Answered on the <parameter>CONFLICT</parameter> slug with 409 by
+/// <class>OcuPilot.Port.BackgroundTaskPort</class>.</p>
+Parameter TASKBACKGROUNDSTATE = "TASK.BACKGROUND.STATE";
+
+Parameter REASONTASKBACKGROUNDSTATE = "This background task's current state does not allow that.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): a task export whose relative name names a directory
+/// that does not exist under its allowed directory, answered 400 with one violation on
+/// <code>path</code> by <class>OcuPilot.Port.TaskTransferPort</class> before any vendor call.</p>
+Parameter TASKEXPORTDIRECTORY = "TASK.EXPORT.DIRECTORY";
+
+Parameter REASONTASKEXPORTDIRECTORY = "There is no such directory under that allowed directory.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): a file an import names that is not a task export --
+/// unreadable XML, another root element, or no task -- answered 422 by
+/// <class>OcuPilot.Port.TaskTransferPort</class> before any vendor call.</p>
+Parameter TASKIMPORTFILE = "TASK.IMPORT.FILE";
+
+Parameter REASONTASKIMPORTFILE = "This file is not a task export, or it holds no task.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): an import whose every task is already on this
+/// instance, by the vendor's own task GUID, answered 409 by
+/// <class>OcuPilot.Port.TaskTransferPort</class> with nothing imported.</p>
+Parameter TASKIMPORTPRESENT = "TASK.IMPORT.PRESENT";
+
+Parameter REASONTASKIMPORTPRESENT = "Every task in this file is already on this instance.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): an agent's import whose file no longer yields the
+/// tasks its proposal reviewed, answered 409 by <class>OcuPilot.Port.TaskTransferPort</class> with
+/// nothing imported.</p>
+Parameter TASKIMPORTCHANGED = "TASK.IMPORT.CHANGED";
+
+Parameter REASONTASKIMPORTCHANGED = "The file's tasks changed after the import was proposed.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.6): a broadcast whose set names a process that has ended
+/// or cannot receive one, so nothing was sent to any of them. Answered on the
+/// <parameter>CONFLICT</parameter> slug with 409 by <class>OcuPilot.Port.ProcessPort</class>, for
+/// both callers, before any vendor call.</p>
+Parameter PROCESSBROADCASTRECIPIENT = "PROCESS.BROADCAST.RECIPIENT";
+
+Parameter REASONPROCESSBROADCASTRECIPIENT = "At least one of these processes has ended or is not a terminal session, so nothing was sent.";
 
 }

@@ -16,6 +16,15 @@ Parameter CREATE = "webapp.list.create";
 
 Parameter PURGE = "security.auditing.purge";
 
+/// <p>The namespace delete, which the baseline also disables (Story 18.2).</p>
+Parameter NAMESPACEDELETE = "osmgmt.namespaces.delete";
+
+/// <p>The database delete, which the baseline also disables (Story 18.3).</p>
+Parameter DATABASEDELETE = "osmgmt.localdatabases.delete";
+
+/// <p>The agent's task import, which the baseline also disables (DW-1827).</p>
+Parameter TASKIMPORT = "tasks.schedule.import";
+
 Parameter ACTIONTOOL = "OcuPilot.Test.GovernanceActionTool";
 
 Parameter CONFIRM = "OcuPilot.Test.ConfirmFixture";
@@ -83,8 +92,9 @@ Method Store(pPreset As %String, pKey As %String = "", pSetting As %String = "")
 }
 
 /// <p>Matrix row 1 and AC2: with no stored policy every registered write key is enabled by the
-/// baseline except the purge, which the baseline disables.</p>
-Method TestTheDefaultEnablesEveryWriteButThePurge()
+/// baseline except the purge, the namespace delete, the database delete and the task import, which
+/// the baseline disables.</p>
+Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Governance.Policy).WriteKeys(.tKeys), "the write keys are read")
     Set tWrong = ""
@@ -94,11 +104,11 @@ Method TestTheDefaultEnablesEveryWriteButThePurge()
         Set tKey = $Order(tKeys(tKey))
         If tKey = "" Quit
         Set tCount = tCount + 1
-        Set tExpected = $Select(tKey = ..#PURGE: "0|baseline", 1: "1|baseline")
+        Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT): "0|baseline", 1: "1|baseline")
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")
-    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge disabled")
+    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete and the task import disabled")
     Do $$$AssertEquals(..Resolved(..#PURGE), "0|baseline", "the purge's source is the baseline")
 }
 

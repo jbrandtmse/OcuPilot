@@ -312,6 +312,12 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ tRowTargetProblem
                 Quit
             }
+            ; AD-5, Story 16.6: a list's one declared multi-select action.
+            Set tMultiSelectProblem = ..MultiSelectProblem(tObject)
+            If tMultiSelectProblem '= "" {
+                Set pProblem = tClass _ ": " _ tMultiSelectProblem
+                Quit
+            }
             ; AD-5, AD-53: a declared action's self-protection rule is drawn by the client from a
             ; closed vocabulary both sides read, so a rule neither understands is refused where it
             ; is declared rather than rendered as a word in a row menu.
@@ -338,6 +344,9 @@ ClassMethod Validate(Output pProblem As %String) As %Status
         ; AD-5, Story 6.10: a declared rowTarget's route has to resolve to a built, id-keyed
         ; screen that does not already pair its own surface, which only the whole roster can say.
         If (pProblem = "") && $$$ISOK(tSC) Set pProblem = ..RowTargetResolutionProblem(tRoster)
+        ; AD-36 as amended (Story 16.9): a timeline's members are the other listed screens of its
+        ; area, which only the whole roster can say.
+        If (pProblem = "") && $$$ISOK(tSC) Set pProblem = ..TimelineMemberProblem(tRoster)
     } Catch ex {
         Set pProblem = "the descriptor roster could not be validated: " _ ex.DisplayString()
         Set tSC = ex.AsStatus()
@@ -382,15 +391,15 @@ ClassMethod EntityLabelProblem(pDeclaration As %DynamicObject) As %String
 
 /// <p>The keys a screen declaration may carry at its top level -- the whole vocabulary, in the
 /// order <class>OcuPilot.Screen.Descriptor.Base</class> reads them (AD-5).</p>
-/// <p>Eleven are optional and the rest are not, but this parameter says nothing about which:
+/// <p>Twelve are optional and the rest are not, but this parameter says nothing about which:
 /// <method>DeclarationProblem</method> is an <b>unknown-key</b> check, never a presence check. A
 /// declaration missing an optional key -- <code>refreshes</code>, <code>refreshRates</code>, <code>refreshDefault</code>,
 /// <code>read</code>, <code>table</code>, <code>banner</code>, <code>tab</code>,
-/// <code>rowTarget</code>, <code>secretArguments</code>, <code>fingerprintExcludes</code>,
+/// <code>rowTarget</code>, <code>multiSelect</code>, <code>secretArguments</code>, <code>fingerprintExcludes</code>,
 /// <code>entityLabelKey</code> -- is sound, and a declaration missing a required one is already
 /// refused by the rule that reads it, with a sentence naming what it was for. <code>suggestedPrompts</code>
 /// is required on a built screen and optional on an unbuilt one (Story 11.3).</p>
-Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,refreshDefault,privileges,ownPrivileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
+Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,refreshDefault,privileges,ownPrivileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget,multiSelect";
 
 /// <p>What is wrong with <var>pDeclaration</var>'s own top-level keys, or <code>""</code> when
 /// nothing is (DW-271). Every key must be one of <parameter>DECLARATIONKEYS</parameter>.</p>
@@ -970,13 +979,20 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>rowGet</code> or <code>forEach</code> either. A source's optional
 /// <code>forEach</code> lists a parent endpoint first (<method>ForEachProblem</method>), and its
 /// optional <code>query</code> fixes parameters no caller can change
-/// (<method>SourceQueryProblem</method>). The source is one of three kinds:
+/// (<method>SourceQueryProblem</method>). The source is one of six kinds:
 /// <code>admin</code>, an instance endpoint reached through the port, with a
 /// dotted endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>);
 /// <code>mgmnt</code>, the management API reached through its own port, which declares no
-/// <code>rowGet</code>; or
+/// <code>rowGet</code>;
 /// <code>state</code>, one of OcuPilot's own kernel stores (AD-9) named without a package, which
-/// declares neither a <code>rowGet</code> nor <code>criteria</code>;
+/// declares neither a <code>rowGet</code> nor <code>criteria</code>; <code>logsource</code>, a log
+/// file's bounded tail, which declares no <code>rowGet</code>; <code>path</code>, the instance's
+/// allowed directories, a <code>LIST</code> of one of <class>OcuPilot.Port.PathPort</class>'s
+/// sources that declares no <code>rowGet</code>, <code>forEach</code>, <code>query</code> or
+/// <code>parts</code>; or <code>timeline</code>, an area's listed screens' reads composed, whose
+/// shape is fixed (<method>TimelineProblem</method>);
+/// A source may instead declare <code>rows</code>, a bare admin type's one-object answer read as a
+/// list over one member (<method>RowsProblem</method>, Story 16.7);
 /// <code>fields</code> is a non-empty array of unique names; <code>filter</code>,
 /// <code>sort.fields</code> and <code>context.secretFields</code> name only declared fields, and no
 /// secret field is filterable or sortable (a filter over one would let a tool probe its value);
@@ -989,9 +1005,9 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// no secret field. A read-declaring declaration also declares its <code>table</code>, whose
 /// shape <method>TableProblem</method> checks, unless it is a <code>form-page</code> that declares none
 /// (<method>RendersNoTable</method>); a <code>table</code> with no read is refused here.
-/// Last of all, a read on the <code>admin</code> port whose <code>privileges</code> omit
-/// <code>%DB_IRISSYS:READ</code> is refused, because the port runs every endpoint in
-/// <code>%SYS</code> -- a <code>state</code> read runs in the install namespace and needs no such
+/// Last of all, a read on the <code>admin</code> or <code>path</code> port whose
+/// <code>privileges</code> omit <code>%DB_IRISSYS:READ</code> is refused, because the admin port
+/// runs every endpoint in <code>%SYS</code> -- a <code>state</code> read runs in the install namespace and needs no such
 /// pair, so the rule is on the source kind rather than on every read. <file>ui/tools/screen-mirror.mjs</file>'s <code>readProblem</code> refuses the
 /// same shapes before the mirror is emitted, and
 /// <class>OcuPilot.Test.AdminPairCorpus</class> is the corpus both engines run.</p>
@@ -1023,11 +1039,11 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tSource = tRead.%Get("source")
-        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts"))
+        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts", "rows"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', the four sources a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', the seven sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -1038,9 +1054,64 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' names a package, and a state source names a store inside " _ ##class(OcuPilot.Screen.Read).#STATEPACKAGE _ " by its own name alone (AD-9)"
             Quit
         }
-        If (tSource.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#READSOURCETYPES), tSource.%Get("type")) {
+        ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member takes
+        ; its own type rule, and every other read keeps the five declared types.
+        Set tRowsType = tSource.%GetTypeOf("rows")
+        If (tRowsType '= "unassigned") && (tRowsType '= "null") {
+            Set tProblem = ..RowsProblem(tSource)
+            If tProblem '= "" Quit
+        } ElseIf (tSource.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#READSOURCETYPES), tSource.%Get("type")) {
             Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'"
             Quit
+        }
+        ; A path source lists the instance's allowed directories through OcuPilot.Port.PathPort, which
+        ; computes them whole on every call (AD-21): one of that port's source keys, a LIST, and
+        ; nothing the port would have to issue per row, per parent, under a fixed query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEPATH {
+            Set tPathSources = $ListFromString(##class(OcuPilot.Port.PathPort).#SOURCES)
+            If '$ListFind(tPathSources, tSource.%Get("endpoint")) {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not one of the path port's sources ('" _ $ListToString(tPathSources, "', '") _ "') (AD-21)"
+                Quit
+            }
+            If tSource.%Get("type") '= ..#READTYPEPATH {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a path source, which lists the allowed directories (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on a path source, which answers the allowed directories whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+        ; A background source lists the instance's background tasks through
+        ; OcuPilot.Port.BackgroundTaskPort, which merges both halves whole on every call (AD-27): the
+        ; port's own endpoint, a LIST, and nothing the port would have to issue per row, per parent,
+        ; under a fixed query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND {
+            Set tBackgroundEndpoint = ##class(OcuPilot.Port.BackgroundTaskPort).#ENDPOINT
+            If tSource.%Get("endpoint") '= tBackgroundEndpoint {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not the background port's endpoint ('" _ tBackgroundEndpoint _ "') (AD-27)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Port.BackgroundTaskPort).#LISTTYPE {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a background source, which lists the background tasks (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on a background source, which answers the background tasks whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+        ; AD-36 as amended (Story 16.9): a timeline composes its area's listed screens' own reads,
+        ; so its shape is fixed rather than declared piecemeal.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCETIMELINE {
+            Set tProblem = ..TimelineProblem(pDeclaration)
+            If tProblem '= "" Quit
         }
         ; A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so
         ; it has no row list to issue a detail call for, no parents to list and no server search.
@@ -1255,7 +1326,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         ; vendor endpoint fails inside %SYS and the port answers 500 where the gate would have
         ; named the missing privilege (AD-2, AD-8). A logsource read is outside the rule: it reads
         ; a file off disk and never enters %SYS.
-        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN {
+        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEPATH) {
             Set tHasSystemRead = 0
             Set tDeclaredPairs = pDeclaration.%Get("privileges")
             If $IsObject(tDeclaredPairs) {
@@ -1265,7 +1336,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
                     If (tDeclaredPair.%Get("resource") = "%DB_IRISSYS") && (tDeclaredPair.%Get("permission") = "READ") Set tHasSystemRead = 1
                 }
             }
-            If 'tHasSystemRead Set tProblem = "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)"
+            If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN) Set tProblem = "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)"
+            If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEPATH) Set tProblem = "read.source.port 'path' requires the declared privileges to include %DB_IRISSYS:READ, because the port reads the allow-list through the admin API in %SYS (AD-2, AD-8, AD-21)"
         }
     } Catch ex {
         Set tProblem = "the read declaration could not be read: " _ ex.DisplayString()
@@ -1363,8 +1435,8 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
 
         Set tPort = ""
         If tRead.%GetTypeOf("source") = "object" Set tPort = tRead.%Get("source").%Get("port")
-        If (tPort '= "admin") && (tPort '= "mgmnt") {
-            Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin and mgmnt ports alone (AD-21)"
+        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) {
+            Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt and timeline ports alone (AD-21)"
             Quit
         }
 
@@ -1631,6 +1703,122 @@ ClassMethod CriteriaMarkerProblem(pCriteria As %DynamicObject, pParams As %List)
     Quit ""
 }
 
+/// <p>The areas a <code>timeline</code> read may compose (AD-36 as amended, Story 16.9).</p>
+Parameter TIMELINEAREAS = "logs";
+
+/// <p>The fields a <code>timeline</code> read declares, in order: the row every member is projected
+/// to (AD-36 as amended).</p>
+Parameter TIMELINEFIELDS = "time,source,severity,text,id";
+
+/// <p>The one criterion a <code>timeline</code> read declares: its window's bound.</p>
+Parameter TIMELINEBOUND = "since";
+
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>timeline</code> read, or <code>""</code>
+/// (AD-36 as amended, Story 16.9): it is declared in one of <parameter>TIMELINEAREAS</parameter>,
+/// its <code>endpoint</code> is that area's key, its <code>type</code> is <code>LIST</code>, its
+/// source declares no <code>rowGet</code>, <code>forEach</code>, <code>query</code> or
+/// <code>parts</code>, its <code>fields</code> are exactly <parameter>TIMELINEFIELDS</parameter>,
+/// and its <code>criteria</code> is exactly one <code>datetime</code> criterion
+/// <parameter>TIMELINEBOUND</parameter> carrying <code>defaultHoursAgo</code> and no
+/// <code>atOrAfterField</code>, with no marker. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>timelineProblem</code> returns the same sentences, and
+/// <class>OcuPilot.Test.ReadSourceCorpus</class> is the corpus both engines run.</p>
+ClassMethod TimelineProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tRead = pDeclaration.%Get("read")
+        Set tSource = tRead.%Get("source")
+        Set tArea = pDeclaration.%Get("area")
+        If '$ListFind($ListFromString(..#TIMELINEAREAS), tArea) {
+            Set tProblem = "read.source.port 'timeline' is declared in the '" _ tArea _ "' area, and a timeline composes the Logs area's own screens alone (AD-36)"
+            Quit
+        }
+        If tSource.%Get("endpoint") '= tArea {
+            Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not the screen's own area '" _ tArea _ "', which a timeline source names (AD-36)"
+            Quit
+        }
+        If tSource.%Get("type") '= "LIST" {
+            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a timeline source, which composes lists (AD-36)"
+            Quit
+        }
+        For tKey = "rowGet", "forEach", "query", "parts" {
+            Set tKeyType = tSource.%GetTypeOf(tKey)
+            If (tKeyType '= "unassigned") && (tKeyType '= "null") {
+                Set tProblem = "read.source." _ tKey _ " is declared on a timeline source, which composes its members' own reads and issues none of its own (AD-36)"
+                Quit
+            }
+        }
+        If tProblem '= "" Quit
+        Set tFields = ""
+        If tRead.%GetTypeOf("fields") = "array" {
+            Set tIterator = tRead.%Get("fields").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tField) {
+                Set tFields = tFields _ $Select(tIndex = 0: "", 1: ",") _ tField
+            }
+        }
+        If tFields '= ..#TIMELINEFIELDS {
+            Set tProblem = "read.fields on a timeline source are not exactly time, source, severity, text and id, the row every member is projected to (AD-36)"
+            Quit
+        }
+        Set tBoundOk = 0
+        If tRead.%GetTypeOf("criteria") = "object" {
+            Set tCriteria = tRead.%Get("criteria")
+            Set tMarkerType = tCriteria.%GetTypeOf("marker")
+            If (tCriteria.%GetTypeOf("fields") = "array") && (tCriteria.%Get("fields").%Size() = 1) && ((tMarkerType = "unassigned") || (tMarkerType = "null")) {
+                Set tBound = tCriteria.%Get("fields").%Get(0)
+                If $IsObject(tBound) && (tBound.%Get("param") = ..#TIMELINEBOUND) && (tBound.%Get("kind") = "datetime") && (tBound.%GetTypeOf("defaultHoursAgo") '= "unassigned") && (tBound.%GetTypeOf("atOrAfterField") = "unassigned") Set tBoundOk = 1
+            }
+        }
+        If 'tBoundOk {
+            Set tProblem = "read.criteria on a timeline source is not exactly one datetime criterion 'since' carrying defaultHoursAgo and no atOrAfterField (AD-36)"
+            Quit
+        }
+    } Catch ex {
+        Set tProblem = "the timeline declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>What is wrong with <var>pRoster</var>'s timelines taken together, or <code>""</code> (AD-36
+/// as amended): a timeline's members are its area's listed built screens other than itself, and a
+/// member that declares a timeline read itself is refused, since a timeline composes its members'
+/// own reads. <file>ui/tools/screen-mirror.mjs</file>'s <code>timelineMemberProblem</code> returns
+/// the same sentence.</p>
+ClassMethod TimelineMemberProblem(pRoster As %DynamicArray) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tOuter = pRoster.%GetIterator()
+        While tOuter.%GetNext(.tOuterIndex, .tEntry) {
+            Set tDeclaration = tEntry.%Get("declaration")
+            If '..DeclaresTimeline(tDeclaration) Continue
+            Set tInner = pRoster.%GetIterator()
+            While tInner.%GetNext(.tInnerIndex, .tMemberEntry) {
+                If tInnerIndex = tOuterIndex Continue
+                Set tMember = tMemberEntry.%Get("declaration")
+                If tMember.%Get("area") '= tDeclaration.%Get("area") Continue
+                If 'tMember.%Get("built") || (+tMember.%Get("sideBarPosition") < 1) Continue
+                If '..DeclaresTimeline(tMember) Continue
+                Set tProblem = tEntry.%Get("descriptor") _ ": timeline member '" _ tMember.%Get("route") _ "' declares a timeline read itself, and a timeline composes its members' own reads (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+    } Catch ex {
+        Set tProblem = "the timeline roster could not be validated: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>Whether <var>pDeclaration</var> declares a <code>timeline</code> read.</p>
+ClassMethod DeclaresTimeline(pDeclaration As %DynamicObject) As %Boolean [ Private ]
+{
+    If pDeclaration.%GetTypeOf("read") '= "object" Quit 0
+    If pDeclaration.%Get("read").%GetTypeOf("source") '= "object" Quit 0
+    Quit pDeclaration.%Get("read").%Get("source").%Get("port") = ##class(OcuPilot.Screen.Read).#SOURCETIMELINE
+}
+
 /// <p>The request types a <code>read.source</code> may issue (AD-36): <code>LIST</code>, a list of
 /// rows; <code>GET</code>, one object read as the read's one row; <code>UPCOMING</code>, an admin
 /// endpoint's list of scheduled occurrences, issued as a list is; <code>HISTORY</code>,
@@ -1638,6 +1826,9 @@ ClassMethod CriteriaMarkerProblem(pCriteria As %DynamicObject, pParams As %List)
 /// <code>VOLUMELIST</code>, <code>Database.SysCRUD</code>'s volume-file list, issued the same way
 /// again (Story 6.11).</p>
 Parameter READSOURCETYPES = "LIST,GET,UPCOMING,HISTORY,VOLUMELIST";
+
+/// <p>The one request type a <code>path</code> source declares (AD-21, AD-36).</p>
+Parameter READTYPEPATH = "LIST";
 
 /// <p>The longest value a <code>read.source.query</code> entry may fix.</p>
 Parameter SOURCEQUERYMAXLENGTH As INTEGER = 50;
@@ -1775,6 +1966,47 @@ ClassMethod ForEachProblem(pRead As %DynamicObject, pSource As %DynamicObject, p
     Quit tProblem
 }
 
+/// <p>The shape a <code>read.source.rows</code> member name takes (AD-36, Story 16.7).</p>
+Parameter ROWSMEMBERPATTERN = "^[A-Za-z][A-Za-z0-9]*$";
+
+/// <p>What is wrong with <var>pSource</var>'s <code>rows</code>, or <code>""</code> (AD-36 as amended,
+/// Story 16.7). A declared <code>rows</code> is a member name (<parameter>ROWSMEMBERPATTERN</parameter>)
+/// on an <code>admin</code> source whose <code>type</code> is an upper-case bare type
+/// (<parameter>PARTTYPEPATTERN</parameter>) other than the five <parameter>READSOURCETYPES</parameter>,
+/// with no <code>parts</code>, <code>forEach</code> or <code>rowGet</code>: the read issues that type
+/// once, with <code>maxRows</code> the cap plus one, and lists the answer's one member.
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>rowsProblem</code> returns the same sentence for
+/// every case in <class>OcuPilot.Test.ReadSourceCorpus</class>.</p>
+ClassMethod RowsProblem(pSource As %DynamicObject) As %String
+{
+    Set tWhere = "read.source.rows"
+    Set tMember = pSource.%Get("rows")
+    If (pSource.%GetTypeOf("rows") '= "string") || '$Match(tMember, ..#ROWSMEMBERPATTERN) {
+        Quit tWhere _ " '" _ tMember _ "' is not a member name, and a list over one member names the answer's row array (AD-36)"
+    }
+    Set tPort = pSource.%Get("port")
+    If tPort '= ##class(OcuPilot.Screen.Read).#SOURCEADMIN {
+        Quit tWhere _ " is declared on a '" _ tPort _ "' source, and a list over one member reads an admin endpoint's one-object answer (AD-36)"
+    }
+    Set tType = pSource.%Get("type")
+    If (pSource.%GetTypeOf("type") '= "string") || '$Match(tType, ..#PARTTYPEPATTERN) || $ListFind($ListFromString(..#READSOURCETYPES), tType) {
+        Quit "read.source.type '" _ tType _ "' is not an upper-case bare admin type, and read.source.rows reads one member of a bare type's one-object answer (AD-36)"
+    }
+    Set tProblem = ""
+    For tKey = "parts", "forEach", "rowGet" {
+        Set tKeyType = pSource.%GetTypeOf(tKey)
+        If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+        Set tProblem = "read.source." _ tKey _ " is declared with read.source.rows, and a list over one member issues one call and projects its rows (AD-36)"
+        Quit
+    }
+    Quit tProblem
+}
+
+/// <p>The <code>port</code> values a declared part may name (AD-36): <code>admin</code>, the default,
+/// and <code>monitor</code>, the sensors behind <class>OcuPilot.Port.MonitorPort</class>'s own gate
+/// (Story 16.7).</p>
+Parameter PARTPORTS = "admin,monitor";
+
 /// <p>The shape a declared part's <code>type</code> takes (AD-36): the vendor's own upper-case
 /// request-type name, resolved through <class>OcuPilot.Port.AdminPort</class>'s
 /// <code>BARETYPES</code> map when it carries no <code>TYPE</code> prefix of its own (System
@@ -1792,8 +2024,11 @@ Parameter MAXPARTS As INTEGER = 3;
 /// Story 6.9). <var>pRead</var> is the declared read and <var>pFields</var> its declared fields.</p>
 /// <p>An absent or <code>null</code> <code>parts</code> declares none. Otherwise it is a
 /// non-empty array of 1 to <parameter>MAXPARTS</parameter> objects carrying only <code>type</code>
-/// (<parameter>PARTTYPEPATTERN</parameter>) and <code>as</code>
-/// (<parameter>PARTASPATTERN</parameter>, unique across the block), declared on a single-object
+/// (<parameter>PARTTYPEPATTERN</parameter>), <code>as</code>
+/// (<parameter>PARTASPATTERN</parameter>, unique across the block) and an optional <code>port</code>
+/// (one of <parameter>PARTPORTS</parameter>; at most one part names <code>monitor</code>, and its
+/// <code>type</code> is <class>OcuPilot.Port.MonitorPort</class>'s <code>SENSORSTYPE</code>, Story
+/// 16.7), declared on a single-object
 /// <code>GET</code> source with no <code>criteria</code> or <code>query</code> -- either would
 /// name the read's one criterion or a fixed parameter, and a parts read's row is assembled from
 /// the parts alone. A <code>GET</code> source already guarantees an <code>admin</code> port and
@@ -1841,6 +2076,7 @@ ClassMethod PartsProblem(pRead As %DynamicObject, pSource As %DynamicObject, pFi
         }
         Set tSeenAs = ""
         Set tAsList = ""
+        Set tMonitorParts = 0
         Set tIterator = tParts.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tPart, .tPartType) {
             Set tAt = tWhere _ " entry #" _ (tIndex + 1)
@@ -1848,12 +2084,32 @@ ClassMethod PartsProblem(pRead As %DynamicObject, pSource As %DynamicObject, pFi
                 Set tProblem = tAt _ " is not an object declaring its type and as"
                 Quit
             }
-            Set tProblem = ..UnknownKeyProblem(tPart, tAt, $ListBuild("type", "as"))
+            Set tProblem = ..UnknownKeyProblem(tPart, tAt, $ListBuild("type", "as", "port"))
             If tProblem '= "" Quit
             Set tPartType2 = tPart.%Get("type")
             If (tPart.%GetTypeOf("type") '= "string") || '$Match(tPartType2, ..#PARTTYPEPATTERN) {
                 Set tProblem = tAt _ " type '" _ tPartType2 _ "' is not upper-case letters"
                 Quit
+            }
+            ; AD-36 as amended (Story 16.7): one part may be the sensors', answered by the monitor
+            ; port behind its own gate, for the one type that port answers.
+            Set tPartPortType = tPart.%GetTypeOf("port")
+            If tPartPortType '= "unassigned" {
+                If (tPartPortType '= "string") || '$ListFind($ListFromString(..#PARTPORTS), tPart.%Get("port")) {
+                    Set tProblem = tAt _ " port '" _ tPart.%Get("port") _ "' is not 'admin' or 'monitor', the two ports a part is answered through (AD-36)"
+                    Quit
+                }
+                If tPart.%Get("port") = ##class(OcuPilot.Screen.Read).#PARTMONITOR {
+                    If tPartType2 '= ##class(OcuPilot.Port.MonitorPort).#SENSORSTYPE {
+                        Set tProblem = tAt _ " type '" _ tPartType2 _ "' is declared on a monitor part, which answers only '" _ ##class(OcuPilot.Port.MonitorPort).#SENSORSTYPE _ "' (AD-29, AD-36)"
+                        Quit
+                    }
+                    If tMonitorParts {
+                        Set tProblem = tAt _ " is a second monitor part, and a parts read names at most one (AD-36)"
+                        Quit
+                    }
+                    Set tMonitorParts = 1
+                }
             }
             Set tAs = tPart.%Get("as")
             If (tPart.%GetTypeOf("as") '= "string") || '$Match(tAs, ..#PARTASPATTERN) {
@@ -2371,8 +2627,11 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// its <class>OcuPilot.Api.Error</class> reason and refused by its delete tool.
 /// <code>ocupilot-ssl</code> is OcuPilot's own provider SSL/TLS configuration (Story 9.5), explained
 /// by <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSSLREASON</parameter> and refused by
+/// the kernel whatever the caller. <code>ocupilot-session</code> is a web session OcuPilot is itself
+/// running in (Story 16.2), explained by
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSESSIONREASON</parameter> and refused by
 /// the kernel whatever the caller.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl";
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session";
 
 /// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
 Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;
@@ -3277,6 +3536,97 @@ ClassMethod RowTargetProblem(pDeclaration As %DynamicObject) As %String
         }
     } Catch ex {
         Set tProblem = "rowTarget could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>The keys a declared <code>multiSelect</code> carries (AD-5, Story 16.6).</p>
+Parameter MULTISELECTKEYS = "action,eligible,max,ineligibleKey";
+
+/// <p>The most rows a <code>multiSelect</code> may let a person check.</p>
+Parameter MULTISELECTMAX = 1000;
+
+/// <p>What is wrong with <var>pDeclaration</var>'s declared <code>multiSelect</code>, or
+/// <code>""</code> when nothing is, including when none is declared (AD-5, Story 16.6). A
+/// multi-select is a list's one checked-set action: the table draws a checkbox on each row whose
+/// <code>eligible</code> read field is true, and the declared <code>action</code> acts on the
+/// checked rows from the command bar and the command box.</p>
+/// <p>Declarable only on a <code>list</code> archetype that declares a <code>read</code> and a
+/// <code>table</code>. Its <code>action</code> is one of the screen's <code>rowActions</code>, its
+/// <code>eligible</code> one of <code>read.fields</code>, its <code>max</code> a whole number from 1
+/// to <parameter>MULTISELECTMAX</parameter>, and its <code>ineligibleKey</code> a non-empty string
+/// key, the reason an ineligible row's checkbox carries.
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>multiSelectProblem</code> returns the same
+/// sentence for every case in <class>OcuPilot.Test.MultiSelectCorpus</class>, and its tests hold the
+/// key to the string source.</p>
+ClassMethod MultiSelectProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tType = pDeclaration.%GetTypeOf("multiSelect")
+        If (tType = "unassigned") || (tType = "null") Quit
+        If tType '= "object" {
+            Set tProblem = "multiSelect is not an object naming its action, eligible field, max and ineligibleKey (AD-5)"
+            Quit
+        }
+        Set tMulti = pDeclaration.%Get("multiSelect")
+        Set tProblem = ..UnknownKeyProblem(tMulti, "multiSelect", $ListFromString(..#MULTISELECTKEYS))
+        If tProblem '= "" Quit
+        If pDeclaration.%Get("archetype") '= "list" {
+            Set tProblem = "multiSelect is declared on a '" _ pDeclaration.%Get("archetype") _ "' archetype, and a multi-select is a list's own (AD-5)"
+            Quit
+        }
+        If pDeclaration.%GetTypeOf("read") '= "object" {
+            Set tProblem = "multiSelect is declared without a read, and its eligible field is one of read.fields (AD-5)"
+            Quit
+        }
+        If pDeclaration.%GetTypeOf("table") '= "object" {
+            Set tProblem = "multiSelect is declared without a table, and its checkboxes are drawn in the table (AD-5)"
+            Quit
+        }
+        If (tMulti.%GetTypeOf("action") '= "string") || (tMulti.%Get("action") = "") {
+            Set tProblem = "multiSelect.action is empty, and a multi-select names the row action it acts through"
+            Quit
+        }
+        Set tActions = ""
+        Set tActionsArray = pDeclaration.%Get("rowActions")
+        If $IsObject(tActionsArray) && tActionsArray.%IsA("%Library.DynamicArray") {
+            Set tActionIterator = tActionsArray.%GetIterator()
+            While tActionIterator.%GetNext(.tActionIndex, .tAction) {
+                If $IsObject(tAction) && tAction.%IsA("%Library.DynamicObject") && (tAction.%GetTypeOf("id") = "string") Set tActions = tActions _ $ListBuild(tAction.%Get("id"))
+            }
+        }
+        If '$ListFind(tActions, tMulti.%Get("action")) {
+            Set tProblem = "multiSelect.action '" _ tMulti.%Get("action") _ "' is not one of rowActions"
+            Quit
+        }
+        If (tMulti.%GetTypeOf("eligible") '= "string") || (tMulti.%Get("eligible") = "") {
+            Set tProblem = "multiSelect.eligible is empty, and a multi-select names the read field that makes a row checkable"
+            Quit
+        }
+        Set tFields = ""
+        Set tFieldsArray = pDeclaration.%Get("read").%Get("fields")
+        If $IsObject(tFieldsArray) && tFieldsArray.%IsA("%Library.DynamicArray") {
+            Set tFieldIterator = tFieldsArray.%GetIterator()
+            While tFieldIterator.%GetNext(.tFieldIndex, .tFieldValue) {
+                If '$IsObject(tFieldValue) Set tFields = tFields _ $ListBuild(tFieldValue)
+            }
+        }
+        If '$ListFind(tFields, tMulti.%Get("eligible")) {
+            Set tProblem = "multiSelect.eligible '" _ tMulti.%Get("eligible") _ "' is not one of read.fields"
+            Quit
+        }
+        Set tMax = tMulti.%Get("max")
+        If (tMulti.%GetTypeOf("max") '= "number") || (tMax '= (tMax \ 1)) || (tMax < 1) || (tMax > ..#MULTISELECTMAX) {
+            Set tProblem = "multiSelect.max must be a whole number from 1 to " _ ..#MULTISELECTMAX
+            Quit
+        }
+        If (tMulti.%GetTypeOf("ineligibleKey") '= "string") || (tMulti.%Get("ineligibleKey") = "") {
+            Set tProblem = "multiSelect.ineligibleKey is empty, and a multi-select names the string key an ineligible row's checkbox reads"
+            Quit
+        }
+    } Catch ex {
+        Set tProblem = "multiSelect could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
 }

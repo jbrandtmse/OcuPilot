@@ -29,13 +29,29 @@
 /// and the per-user holds together -- one screen administers both, and a hold is not a thing of its
 /// own outside it. <code>agent-policy</code> is the governance policy (Story 14.2), which the
 /// Governance policy screen administers and its audit row targets.</p>
+/// <p><code>allowed-directory</code> is one root of the instance's directory allow-list, keyed by
+/// the path exactly as the instance answers it; it needs no spelling rule of its own.</p>
+/// <p><code>namespace</code> is one of the instance's namespaces, keyed by its name, which the
+/// instance resolves without case (Story 18.2).</p>
+/// <p><code>web-session</code> is one CSP session the instance holds, keyed by its session id as
+/// the instance answers it. The id is mixed-case and compared exactly, so it needs no spelling rule
+/// of its own.</p>
+/// <p><code>background-task</code> is one row of the Background tasks list, keyed by its composite
+/// id: the source, then the portal job's number or the admin API task's GUID, whose leading zeros
+/// are significant. It is compared exactly, so it needs no spelling rule of its own.</p>
+/// <p><code>global-mapping</code>, <code>routine-mapping</code> and <code>package-mapping</code> are
+/// one mapping of a namespace, keyed by the composite <code>[namespace, Name]</code> (Story 18.14):
+/// the namespace part resolves without case, and the mapping's name keeps its case.</p>
+/// <p><code>database-configuration</code> is one database configuration name (Story 18.3), keyed by
+/// that name, which the instance resolves without case. It is a second id space beside
+/// <code>database</code>, which is keyed by the database's directory.</p>
 Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 {
 
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

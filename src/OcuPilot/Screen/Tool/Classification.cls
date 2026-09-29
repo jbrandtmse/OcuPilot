@@ -466,6 +466,102 @@ XData Entries
       "Type": "ordinary"
     }
   },
+  "osmgmt.namespaces.create": {
+    "fieldList": "Namespace.Namespace",
+    "classification": {
+      "Globals": "ordinary",
+      "Routines": "ordinary",
+      "TempGlobals": "ordinary"
+    }
+  },
+  "osmgmt.namespaces.update": {
+    "fieldList": "Namespace.Namespace",
+    "classification": {
+      "Globals": "ordinary",
+      "Routines": "ordinary",
+      "TempGlobals": "ordinary"
+    }
+  },
+  "osmgmt.globalmappings.create": {
+    "fieldList": "Namespace.GlobalMappings",
+    "classification": {
+      "Database": "ordinary",
+      "LockDatabase": "ordinary",
+      "Collation": "ordinary"
+    }
+  },
+  "osmgmt.globalmappings.update": {
+    "fieldList": "Namespace.GlobalMappings",
+    "classification": {
+      "Database": "ordinary",
+      "LockDatabase": "ordinary",
+      "Collation": "ordinary"
+    }
+  },
+  "osmgmt.routinemappings.create": {
+    "fieldList": "Namespace.RoutineMappings",
+    "classification": {
+      "Database": "ordinary"
+    }
+  },
+  "osmgmt.routinemappings.update": {
+    "fieldList": "Namespace.RoutineMappings",
+    "classification": {
+      "Database": "ordinary"
+    }
+  },
+  "osmgmt.packagemappings.create": {
+    "fieldList": "Namespace.PackageMappings",
+    "classification": {
+      "Database": "ordinary"
+    }
+  },
+  "osmgmt.packagemappings.update": {
+    "fieldList": "Namespace.PackageMappings",
+    "classification": {
+      "Database": "ordinary"
+    }
+  },
+  "osmgmt.localdatabases.create": {
+    "fieldList": "Database.ConfigCRUD",
+    "compare": {"Directory": "unslashed"},
+    "classification": {
+      "Server": "ordinary",
+      "Directory": "ordinary",
+      "StreamLocation": "ordinary",
+      "ClusterMountMode": "ordinary",
+      "MountAtStartup": "ordinary",
+      "MountRequired": "ordinary"
+    }
+  },
+  "osmgmt.localdatabases.updatemount": {
+    "fieldList": "Database.ConfigCRUD",
+    "compare": {"Directory": "unslashed"},
+    "classification": {
+      "Server": "ordinary",
+      "Directory": "ordinary",
+      "StreamLocation": "ordinary",
+      "ClusterMountMode": "ordinary",
+      "MountAtStartup": "ordinary",
+      "MountRequired": "ordinary"
+    }
+  },
+  "osmgmt.localdatabases.update": {
+    "fieldList": "Database.SysCRUD",
+    "compare": {"NewVolumeDirectory": "unslashed"},
+    "classification": {
+      "MaxSize": "ordinary",
+      "ExpansionSize": "ordinary",
+      "NewVolumeThreshold": "ordinary",
+      "NewVolumeDirectory": "ordinary",
+      "ResourceName": "ordinary",
+      "NewGlobalIsKeep": "ordinary",
+      "GlobalJournalState": "ordinary",
+      "NewGlobalCollation": "ordinary",
+      "ClusterMountMode": "ordinary",
+      "ReadOnly": "ordinary"
+    }
+  },
   "security.oauthserverdescriptions.create": {
     "fieldList": "Security.OAuth2.Client.ServerDefinition",
     "compare": {"Metadata": "members"},

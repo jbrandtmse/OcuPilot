@@ -69,36 +69,44 @@ XData ReadShapes
 <shapes>
 <screen name="AgentDefinitionList" filter="name,provider,model" sort="name,provider,model" kinds="name:name,provider:text,model:text,enabled:status,default:status"/>
 <screen name="AgentTranscripts" filter="user,started,lastActivity,title" sort="user,started,lastActivity,turns,title" kinds="started:name,user:text,turns:number,lastActivity:text,title:text"/>
+<screen name="AllowedDirectoryList" filter="Directory,Restricted" sort="Directory,Restricted" kinds="Directory:name,Restricted:status"/>
 <screen name="AuditList" filter="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" sort="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" kinds="TimeStamp:text,EventSource:text,EventType:text,Event:name,Username:text,Pid:identifier,Namespace:text,Description:text"/>
 <screen name="AuditSystemEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
 <screen name="AuditUserEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
 <screen name="AuditingConfig" filter="Enabled" sort="Enabled" kinds=""/>
+<screen name="BackgroundTaskList" filter="Source,Task,Namespace,Status,Details" sort="StartTime,Task,Source,Namespace,Status" kinds="Task:name,Source:text,Status:status,Namespace:text,Details:text,ErrorCount:text,StartTime:text"/>
 <screen name="DatabaseDetails" filter="Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted" sort="Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted" kinds="Directory:name,Size:number,MaxSize:number,AvailableSpace:number,DiskFree:text,Mounted:status,ExpansionSize:number,NewVolumeThreshold:number,NewVolumeDirectory:identifier,ResourceName:identifier,NewGlobalIsKeep:status,NewGlobalCollation:number,ClusterMountMode:status,ReadOnly:status,GlobalJournalState:status"/>
 <screen name="DatabaseFreeSpace" filter="Directory,Size,AvailableSpace,DiskFree,Mounted" sort="Directory,Size,AvailableSpace,DiskFree" kinds="Directory:name,Size:number,AvailableSpace:number,DiskFree:text,Mounted:text"/>
 <screen name="DatabaseList" filter="Directory,Size,MaxSize,Status,Resource" sort="Directory,Size,MaxSize,Status,Resource" kinds="Directory:name,Size:number,MaxSize:text,Status:text,Resource:identifier"/>
 <screen name="DatabaseVolumeList" filter="VolumeDirectory,File" sort="VolumeNumber,File,VolumeDirectory,Size,VolumeDirectoryTotalSize,DiskFree" kinds="File:name,VolumeNumber:number,VolumeDirectory:identifier,Size:number,VolumeDirectoryTotalSize:number,DiskFree:number"/>
 <screen name="DeviceList" filter="Name,PhysicalDevice,Type,SubType,Description,Alias" sort="Name,PhysicalDevice,Type,SubType,Description,Alias" kinds="Name:name,PhysicalDevice:identifier,Type:text,SubType:text,Description:text,Alias:number"/>
+<screen name="GlobalMappingList" filter="Name,Database,LockDatabase" sort="Name,Database,LockDatabase,Collation" kinds="Name:name,Database:identifier,LockDatabase:identifier,Collation:text"/>
 <screen name="LdapConfigList" filter="Name,Description" sort="Name,Description" kinds="Name:name,Enabled:status,Description:text"/>
+<screen name="LocalDatabaseList" filter="Name,Directory,Status" sort="Name,Directory,Status" kinds="Name:name,Directory:identifier,Status:text"/>
 <screen name="LockList" filter="Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System" sort="Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System" kinds="Pid:name,OSUserName:text,RoutineInfo:identifier,ModeCount:text,Reference:identifier,Directory:identifier,System:text"/>
 <screen name="LogAlertViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="LogAnalyticsViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="LogEventViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
+<screen name="LogHub" filter="time,source,severity,text" sort="time" kinds="time:name,source:text,severity:status,text:text"/>
 <screen name="LogMessageViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="LogSqlDiagnosticsViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="LogSystemMonitorViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="LogTaskErrorViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="LogXdbcViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
+<screen name="NamespaceList" filter="Name,Globals,Routines,TempGlobals" sort="Name,Globals,Routines,TempGlobals" kinds="Name:name,Globals:identifier,Routines:identifier,TempGlobals:identifier"/>
 <screen name="OAuthClientTab" filter="ApplicationName,IssuerEndpoint,ClientType,DefaultScope" sort="ApplicationName,IssuerEndpoint,ClientType,DefaultScope" kinds="ApplicationName:name,IssuerEndpoint:text,ClientType:text,DefaultScope:text"/>
 <screen name="OAuthResourceServerTab" filter="Name,ServerDefinition" sort="Name,ServerDefinition" kinds="Name:name,ServerDefinition:text"/>
 <screen name="OAuthServerClientTab" filter="Name,ClientId,ClientType,RedirectURL,Description" sort="Name,ClientId,ClientType,RedirectURL,Description" kinds="Name:name,ClientId:identifier,ClientType:text,RedirectURL:text,Description:text"/>
 <screen name="OAuthServerDescriptionTab" filter="IssuerEndpoint" sort="IssuerEndpoint,ClientCount,ResourceCount" kinds="IssuerEndpoint:name,ClientCount:number,ResourceCount:number"/>
 <screen name="OAuthServerTab" filter="IssuerEndpoint,Metadata.scopes_supported,Metadata.grant_types_supported,SigningAlgorithm,EncryptionAlgorithm,KeyAlgorithm,ServerCredentials" sort="IssuerEndpoint,Metadata.scopes_supported,Metadata.grant_types_supported,SigningAlgorithm,EncryptionAlgorithm,KeyAlgorithm,ServerCredentials" kinds="IssuerEndpoint:name,Metadata.scopes_supported:text,Metadata.grant_types_supported:text,SigningAlgorithm:text,EncryptionAlgorithm:text,KeyAlgorithm:text,ServerCredentials:text"/>
 <screen name="OpenApiViewer" filter="Path,Verb,Summary" sort="Order,Path,Verb" kinds="Path:name,Verb:text,Summary:text"/>
+<screen name="PackageMappingList" filter="Name,Database" sort="Name,Database" kinds="Name:name,Database:identifier"/>
 <screen name="ProcessDetails" filter="Pid,ParentPid,UserName,LoginRoles,EscalatedRoles,OSUserName,NameSpace,Priority,StartTimeUTC,CPUTime,CommandsExecuted,GlobalReferences,PrivateGlobalReferences,PrivateGlobalBlockCount,MemoryAllocated,MemoryPeak,MemoryUsed,CurrentDevice,OpenDevices,State,InTransaction,Routine,CurrentLineAndRoutine,Location,ClientNodeName,ClientExecutableName,ClientIPAddress" sort="Pid,ParentPid,UserName,LoginRoles,EscalatedRoles,OSUserName,NameSpace,Priority,StartTimeUTC,CPUTime,CommandsExecuted,GlobalReferences,PrivateGlobalReferences,PrivateGlobalBlockCount,MemoryAllocated,MemoryPeak,MemoryUsed,CurrentDevice,OpenDevices,State,InTransaction,Routine,CurrentLineAndRoutine,Location,ClientNodeName,ClientExecutableName,ClientIPAddress" kinds="Pid:name,ParentPid:text,UserName:text,LoginRoles:text,EscalatedRoles:text,OSUserName:text,NameSpace:text,Priority:number,StartTimeUTC:text,CPUTime:number,CommandsExecuted:number,GlobalReferences:number,PrivateGlobalReferences:number,PrivateGlobalBlockCount:number,MemoryAllocated:number,MemoryPeak:number,MemoryUsed:number,CurrentDevice:text,OpenDevices:text,State:text,InTransaction:text,Routine:identifier,CurrentLineAndRoutine:identifier,Location:text,ClientNodeName:text,ClientExecutableName:text,ClientIPAddress:text"/>
 <screen name="ProcessList" filter="Pid,Username,Nspace,Routine,State" sort="Pid,Username,Nspace,Routine,State,Commands,Globals" kinds="Pid:name,Username:text,Nspace:text,Routine:identifier,State:text,Commands:number,Globals:number"/>
 <screen name="ResourceList" filter="Name,Description,PublicPermission,ResourceType" sort="Name,Description,PublicPermission,ResourceType" kinds="Name:name,Description:text,PublicPermission:text,ResourceType:text,AllowDelete:text"/>
 <screen name="RestApiList" filter="Name,Namespace,DispatchClass" sort="Name,Namespace,DispatchClass" kinds="Name:name,Namespace:identifier,DispatchClass:identifier,SpecBased:status,Enabled:status"/>
 <screen name="RoleList" filter="Name,Description,CreatedBy" sort="Name,Description,CreatedBy" kinds="Name:name,Description:text,CreatedBy:text,EscalationOnly:text"/>
+<screen name="RoutineMappingList" filter="Name,Type,Database" sort="Name,Type,Database" kinds="Name:name,Type:text,Database:identifier"/>
 <screen name="ServiceList" filter="Name,Description,AuthenticationMethods,AllowedConnections" sort="Name,Description" kinds="Name:name,Enabled:status,AuthenticationMethods:text,AllowedConnections:identifier,Description:text"/>
 <screen name="SslConfigList" filter="Name,Description,Type" sort="Name,Description,Type" kinds="Name:name,Description:text,Enabled:status,Type:text"/>
 <screen name="SystemUsage" filter="Usage.AllGlobalReferences,Usage.GlobalUpdateReferences,Usage.RoutineCalls,Usage.LogicalBlockRequests,Usage.BlockReads,Usage.BlockWrites,Usage.JournalEntries,Usage.JournalBlockWrites,Usage.LastUpdate,SharedMemory.SMHAllocated,SharedMemory.SMHUsed,SharedMemory.SMHAvailable,Dashboard.Performance.GlobalRefsPerSecond,Dashboard.Performance.CacheEfficiency,Dashboard.SystemUsage.DatabaseSpace,Dashboard.SystemUsage.JournalSpace,Dashboard.SystemUsage.LockTable,Dashboard.SystemUsage.WriteDaemon" sort="Usage.AllGlobalReferences,Usage.GlobalUpdateReferences,Usage.RoutineCalls,Usage.LogicalBlockRequests,Usage.BlockReads,Usage.BlockWrites,Usage.JournalEntries,Usage.JournalBlockWrites,Usage.LastUpdate,SharedMemory.SMHAllocated,SharedMemory.SMHUsed,SharedMemory.SMHAvailable,Dashboard.Performance.GlobalRefsPerSecond,Dashboard.Performance.CacheEfficiency,Dashboard.SystemUsage.DatabaseSpace,Dashboard.SystemUsage.JournalSpace,Dashboard.SystemUsage.LockTable,Dashboard.SystemUsage.WriteDaemon" kinds="Usage.AllGlobalReferences:number,Usage.GlobalUpdateReferences:number,Usage.RoutineCalls:number,Usage.LogicalBlockRequests:number,Usage.BlockReads:number,Usage.BlockWrites:number,Usage.JournalEntries:number,Usage.JournalBlockWrites:number,Usage.LastUpdate:name,SharedMemory.SMHAllocated:number,SharedMemory.SMHUsed:number,SharedMemory.SMHAvailable:number,Dashboard.Performance.GlobalRefsPerSecond:number,Dashboard.Performance.CacheEfficiency:number,Dashboard.SystemUsage.DatabaseSpace:text,Dashboard.SystemUsage.JournalSpace:text,Dashboard.SystemUsage.LockTable:text,Dashboard.SystemUsage.WriteDaemon:text"/>
@@ -112,7 +120,13 @@ XData ReadShapes
 <screen name="WalletCollectionList" filter="Name,UseResource,EditResource" sort="Name,UseResource,EditResource" kinds="Name:name,UseResource:text,EditResource:text"/>
 <screen name="WalletSecretList" filter="Name,Type" sort="Name,Type" kinds="Name:name,Type:text"/>
 <screen name="WebAppList" filter="Name,Namespace,Type,DispatchClass,Resource" sort="Name,Namespace,Type,DispatchClass,Resource" kinds="Name:name,Namespace:identifier,Type:text,Enabled:status,DispatchClass:identifier,Resource:identifier"/>
+<screen name="WebSessionList" filter="ID,Username,Application,SesProcessId" sort="ID,Username,Application,SesProcessId,Timeout" kinds="SesProcessId:name,ID:identifier,Username:text,Application:identifier,Timeout:text"/>
 <screen name="X509CredentialList" filter="Alias,SubjectDN,IssuerDN" sort="Alias,SubjectDN,IssuerDN,ValidityNotAfter" kinds="Alias:name,SubjectDN:text,IssuerDN:text,ValidityNotBefore:text,ValidityNotAfter:text"/>
+<screen name="LicenseSummaryTab" filter="" sort="LicenseUnitUse,Local,Distributed" kinds="LicenseUnitUse:name,Local:text,Distributed:text"/>
+<screen name="LicenseProcessTab" filter="Process,LID,Type" sort="PID,Process,LID,Type,Con,Active,CSPCon,LU,Grace" kinds="PID:name,Process:text,LID:text,Type:text,Con:number,Active:number,CSPCon:number,LU:number,Grace:number"/>
+<screen name="LicenseUserTab" filter="UserId,Type" sort="UserId,Type,Connects,MaxCon,CSPCon,LU,Active,Grace" kinds="UserId:name,Type:text,Connects:number,MaxCon:number,CSPCon:number,LU:number,Active:number,Grace:number"/>
+<screen name="LicenseDistributedTab" filter="UserId,ServerIP" sort="UserId,LicenseUnits,Connections,ServerIP,Instance" kinds="UserId:name,LicenseUnits:number,Connections:number,ServerIP:identifier,Instance:text"/>
+<screen name="Dashboard" filter="Sensors.cpuUsage,Dashboard.Performance.GlobalRefsPerSecond,Dashboard.Performance.GlobalRefs,Dashboard.Performance.GlobalSetKill,Dashboard.Performance.RoutineRefs,Dashboard.Performance.LogicalRequests,Dashboard.Performance.DiskReads,Dashboard.Performance.DiskWrites,Dashboard.Performance.CacheEfficiency,Dashboard.ECP.ECPClients,Dashboard.ECP.ECPClientTraffic,Dashboard.ECP.ECPServers,Dashboard.ECP.ECPServerTraffic,Dashboard.ECP.ShadowConnections,Dashboard.ECP.Shadows,Dashboard.Status.UpTime,Dashboard.Status.LastBackup,Dashboard.SystemUsage.DatabaseSpace,Dashboard.SystemUsage.DatabaseJournal,Dashboard.SystemUsage.JournalSpace,Dashboard.SystemUsage.JournalEntries,Dashboard.SystemUsage.LockTable,Dashboard.SystemUsage.WriteDaemon,Dashboard.SystemUsage.Processes,Dashboard.SystemUsage.CSPSessions,Dashboard.Alerts.SeriousAlerts,Dashboard.Alerts.ApplicationErrors,Dashboard.Licensing.LicenseLimit,Dashboard.Licensing.LicenseUse,Dashboard.Licensing.LicenseUseHigh" sort="Sensors.cpuUsage,Dashboard.Performance.GlobalRefsPerSecond,Dashboard.Performance.GlobalRefs,Dashboard.Performance.GlobalSetKill,Dashboard.Performance.RoutineRefs,Dashboard.Performance.LogicalRequests,Dashboard.Performance.DiskReads,Dashboard.Performance.DiskWrites,Dashboard.Performance.CacheEfficiency,Dashboard.ECP.ECPClients,Dashboard.ECP.ECPClientTraffic,Dashboard.ECP.ECPServers,Dashboard.ECP.ECPServerTraffic,Dashboard.ECP.ShadowConnections,Dashboard.ECP.Shadows,Dashboard.Status.UpTime,Dashboard.Status.LastBackup,Dashboard.SystemUsage.DatabaseSpace,Dashboard.SystemUsage.DatabaseJournal,Dashboard.SystemUsage.JournalSpace,Dashboard.SystemUsage.JournalEntries,Dashboard.SystemUsage.LockTable,Dashboard.SystemUsage.WriteDaemon,Dashboard.SystemUsage.Processes,Dashboard.SystemUsage.CSPSessions,Dashboard.Alerts.SeriousAlerts,Dashboard.Alerts.ApplicationErrors,Dashboard.Licensing.LicenseLimit,Dashboard.Licensing.LicenseUse,Dashboard.Licensing.LicenseUseHigh" kinds="Sensors.cpuUsage:number,Dashboard.Performance.GlobalRefsPerSecond:number,Dashboard.Performance.GlobalRefs:number,Dashboard.Performance.GlobalSetKill:number,Dashboard.Performance.RoutineRefs:number,Dashboard.Performance.LogicalRequests:number,Dashboard.Performance.DiskReads:number,Dashboard.Performance.DiskWrites:number,Dashboard.Performance.CacheEfficiency:number,Dashboard.ECP.ECPClients:text,Dashboard.ECP.ECPClientTraffic:number,Dashboard.ECP.ECPServers:text,Dashboard.ECP.ECPServerTraffic:number,Dashboard.ECP.ShadowConnections:text,Dashboard.ECP.Shadows:text,Dashboard.Status.UpTime:name,Dashboard.Status.LastBackup:text,Dashboard.SystemUsage.DatabaseSpace:text,Dashboard.SystemUsage.DatabaseJournal:text,Dashboard.SystemUsage.JournalSpace:text,Dashboard.SystemUsage.JournalEntries:number,Dashboard.SystemUsage.LockTable:text,Dashboard.SystemUsage.WriteDaemon:text,Dashboard.SystemUsage.Processes:number,Dashboard.SystemUsage.CSPSessions:number,Dashboard.Alerts.SeriousAlerts:number,Dashboard.Alerts.ApplicationErrors:number,Dashboard.Licensing.LicenseLimit:number,Dashboard.Licensing.LicenseUse:number,Dashboard.Licensing.LicenseUseHigh:number"/>
 </shapes>
 }
 
@@ -648,18 +662,22 @@ Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
     ; Nspace, not Namespace: the vendor LIST row's own key. A read declaring the reader's word
     ; would project null into every row rather than fail, so the spelling is pinned here on the
     ; declaration and against the live row in OcuPilot.Test.ScreenRead.
-    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals""]", "the seven declared fields carry the vendor's Nspace spelling")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals"",""CanReceiveBroadcast""]", "the eight declared fields carry the vendor's Nspace spelling, and the broadcast flag last")
     Do $$$AssertEquals(tDeclaration.read.filter.%ToJSON(), "[""Pid"",""Username"",""Nspace"",""Routine"",""State""]", "the filter matches on the five text fields, never on the two counters")
     Do $$$AssertEquals(tDeclaration.read.sort.%ToJSON(), "{""fields"":[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals""],""default"":""Pid"",""direction"":""asc""}", "every declared field is sortable, by process id ascending to begin with")
     Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "and the read carries no secret to strip")
-    ; The four CanBe* booleans gate the controls this story does not ship (Stories 5.12, 7.8 and
-    ; 16.6), and the client and identity fields are Story 6.8's process details. Absence from the
-    ; read, the table and the agent's context is the claim.
-    For tAbsent = "CanBe", "CanReceive", "Device", "ClientName", "EXEname", "IPAddress", "OSUserName", "Job", "ParentPid", "PrvGblBlkCnt", "CPUTime", "ElapsedTime" {
+    ; The four CanBe* booleans gate the controls this story does not ship (Stories 5.12 and 7.8),
+    ; and the client and identity fields are Story 6.8's process details. Absence from the read,
+    ; the table and the agent's context is the claim.
+    For tAbsent = "CanBe", "Device", "ClientName", "EXEname", "IPAddress", "OSUserName", "Job", "ParentPid", "PrvGblBlkCnt", "CPUTime", "ElapsedTime" {
         Do $$$AssertEquals((tDeclaration.read.%ToJSON() [ tAbsent), 0, "the read names no " _ tAbsent _ " field, filter or sort")
         Do $$$AssertEquals((tDeclaration.table.%ToJSON() [ tAbsent), 0, "and the table declares no " _ tAbsent _ " column")
         Do $$$AssertEquals((tDeclaration.context.%ToJSON() [ tAbsent), 0, "and the agent's context carries none either")
     }
+    ; Story 16.6: the broadcast flag is read and sent as context, and no column draws it.
+    Do $$$AssertEquals(tDeclaration.context.fields.%ToJSON(), "[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals"",""CanReceiveBroadcast""]", "the agent's context carries the broadcast flag")
+    Do $$$AssertEquals((tDeclaration.table.%ToJSON() [ "CanReceive"), 0, "while no column draws it")
+    Do $$$AssertEquals(tDeclaration.multiSelect.%ToJSON(), "{""action"":""broadcast"",""eligible"":""CanReceiveBroadcast"",""max"":20,""ineligibleKey"":""processBroadcastIneligible""}", "and it makes a row checkable for the broadcast")
     ; "Namespace" is checked over the read and the context alone: the table's own column carries
     ; the reader's word through headerNamespaceLabel, which contains the string by design.
     Do $$$AssertEquals((tDeclaration.read.%ToJSON() [ "Namespace"), 0, "the read names no Namespace field, filter or sort -- only the vendor's Nspace")
@@ -673,9 +691,9 @@ Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
     ; Order matters: OcuPilot.Screen.Gate.EvaluatePairs names the FIRST pair a caller does not
     ; hold, and both wire fixtures pin that name.
     Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%Admin_Manage"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "the endpoint's own gate first, the CONTROLPANEL query's check second, the database read third")
-    ; Story 7.8: the four row actions, none self-protected -- a process refusal reads what only the
-    ; instance knows -- so the empty state invites the agent.
-    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "suspend,resume,terminate,terminate-with-error", "its row actions are Suspend, Resume, Terminate and the Terminate dialog's flag")
+    ; Story 7.8's four row actions and Story 16.6's Broadcast, none self-protected -- a process
+    ; refusal reads what only the instance knows -- so the empty state invites the agent.
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "suspend,resume,terminate,terminate-with-error,broadcast", "its row actions are Suspend, Resume, Terminate, the Terminate dialog's flag and the checked rows' Broadcast")
     Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, "processListEmptyAgent", "and its empty state invites the agent")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the os-management area covers all three")
     ; DW-275, the half that stops the decision being reversed by accident: %Admin_Manage:USE is in
@@ -1034,6 +1052,63 @@ Method TestTheConsoleLogViewerDeclaresTheLogSourceTailAndItsOnePair()
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
 }
 
+/// <p>Story 18.1 -- the Allowed directories list declares the <code>path</code> source's one key, a
+/// <code>LIST</code>, the port's own two pairs in its order with the first declared its own, the
+/// <code>allowed-directory</code> type at instance scope, no classic page and no action, and takes the
+/// Security and secrets area's seventh side-bar position (AD-8, AD-21, AD-36, AD-44). The registry
+/// refuses the declaration once it carries a detail call, per-parent list, fixed query or parts, an
+/// endpoint the port does not serve, a request type other than <code>LIST</code>, or no
+/// <code>%DB_IRISSYS:READ</code>.</p>
+/// <p>Mutation (Rule 19): let a <code>path</code> source declare <code>rowGet</code> in
+/// <method>OcuPilot.Screen.Registry.ReadProblem</method> -&gt; the detail-call refusal goes red.</p>
+Method TestTheAllowedDirectoriesListDeclaresThePathSource()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.AllowedDirectoryList"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration), "", "and its own pair")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing")
+    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""path"",""endpoint"":""roots"",""type"":""LIST""}", "the allow-list's roots are the read's source (AD-21, AD-36)")
+    Do $$$AssertTrue($ListFind($ListFromString(##class(OcuPilot.Port.PathPort).#SOURCES), tDeclaration.read.source.endpoint) > 0, "and its endpoint is one of the port's sources")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_FileSystemAccess"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "the port's own two pairs, in its order")
+    Do $$$AssertTrue($ClassMethod(tClass, "PrivilegePairs") = $ListBuild($ListBuild("%Admin_FileSystemAccess", "USE"), $ListBuild("%DB_IRISSYS", "READ")), "which the gate reads")
+    Do $$$AssertEquals(##class(OcuPilot.Port.PathPort).#PAIRS, "%Admin_FileSystemAccess:USE,%DB_IRISSYS:READ", "and the port gates on the same set")
+    Do $$$AssertEquals(tDeclaration.ownPrivileges.%ToJSON(), "[{""resource"":""%Admin_FileSystemAccess"",""permission"":""USE""}]", "the file-system pair is the screen's own")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", "so the Security and secrets area covers the rest unchanged (AD-8)")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs")) '= "", "and would not cover it without the own pair")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType"), "allowed-directory", "one allowed directory per row (AD-14)")
+    Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", "at instance scope (AD-13)")
+    Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), "single", "keyed by its directory")
+    Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "", "no classic page exists (AD-44)")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "no primary action")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "and no row action")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "it does not refresh (AD-43)")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("security/allowed-directories"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("security.alloweddirectories"), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition"), "security:7", "the Security and secrets area's seventh entry")
+
+    Set tPathPairs = "[{""resource"":""%Admin_FileSystemAccess"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]"
+    For tCase = $ListBuild("rowGet", "{""key"":""Directory"",""param"":""name"",""fields"":[""Restricted""],""derived"":[]}"), $ListBuild("forEach", "{""endpoint"":""Security.SSLConfig"",""type"":""LIST"",""key"":""Name"",""param"":""name"",""as"":""Parent""}"), $ListBuild("query", "{""purpose"":""%GUIFileSelector""}"), $ListBuild("parts", "[{""type"":""GET"",""as"":""Purpose""}]") {
+        Set tBad = ##class(%DynamicObject).%FromJSON(tDeclaration.%ToJSON())
+        Do tBad.read.source.%Set($List(tCase, 1), ##class(%DynamicAbstractObject).%FromJSON($List(tCase, 2)))
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tBad), "read.source." _ $List(tCase, 1) _ " is declared on a path source, which answers the allowed directories whole (AD-36)", "a path source declaring " _ $List(tCase, 1) _ " is refused")
+    }
+    Set tBad = ##class(%DynamicObject).%FromJSON(tDeclaration.%ToJSON())
+    Do tBad.read.source.%Set("endpoint", "purposes")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tBad), "read.source.endpoint 'purposes' is not one of the path port's sources ('roots') (AD-21)", "an endpoint the port does not serve is refused")
+    Set tBad = ##class(%DynamicObject).%FromJSON(tDeclaration.%ToJSON())
+    Do tBad.read.source.%Set("type", "HISTORY")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tBad), "read.source.type 'HISTORY' is declared on a path source, which lists the allowed directories (AD-36)", "a request type other than LIST is refused")
+    Set tBad = ##class(%DynamicObject).%FromJSON(tDeclaration.%ToJSON())
+    Do tBad.%Set("privileges", ##class(%DynamicArray).%FromJSON("[{""resource"":""%Admin_FileSystemAccess"",""permission"":""USE""}]"))
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tBad), "read.source.port 'path' requires the declared privileges to include %DB_IRISSYS:READ, because the port reads the allow-list through the admin API in %SYS (AD-2, AD-8, AD-21)", "a path read without the system read is refused")
+    Do $$$AssertEquals(tPathPairs, tDeclaration.privileges.%ToJSON(), "while the shipped pair set carries both")
+}
+
 /// <p>Story 16.8 -- the six secondary log viewers each declare their own source key, route, tool
 /// identifier and side-bar position 5 to 10 in order, the one pair the port declares for that key,
 /// their classic page, three Troubleshooting prompts, a <code>none</code> id, no action and no
@@ -1073,6 +1148,38 @@ Method TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair()
     }
 }
 
+
+/// <p>Story 16.9 -- the unified log hub declares its composed read (AD-36 as amended): the
+/// <code>timeline</code> source over the <code>logs</code> area, the five projected fields and the
+/// one <code>since</code> bound an hour back; the messages.log viewer's one pair and no pair of its
+/// own, which the logs area covers (AD-8 as amended for DW-1755); the eleventh side-bar entry in the
+/// <code>list</code> archetype, a <code>none</code> id, no classic page, no action, no refresh and
+/// three Troubleshooting prompts.</p>
+/// <p>Mutation (Rule 19): add <code>%Ens_EventLog:USE</code> to the hub's privileges -&gt; the pair
+/// and coverage assertions go red.</p>
+Method TestTheLogHubDeclaresItsComposedRead()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.LogHub"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "it validates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "and its one criterion")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and links out to nothing")
+    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""timeline"",""endpoint"":""logs"",""type"":""LIST""}", "the logs area's composed read is its source")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""time"",""source"",""severity"",""text"",""id""]", "projecting the five fields every member is read into")
+    Do $$$AssertEquals(tDeclaration.read.criteria.%ToJSON(), "{""fields"":[{""param"":""since"",""labelKey"":""auditCriteriaBegin"",""kind"":""datetime"",""maxLength"":50,""defaultHoursAgo"":1}]}", "windowed by one bound, an hour back by default")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("logs/hub"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("logs.hub"), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition") _ "|" _ $ClassMethod(tClass, "Archetype"), "11|list", "the eleventh Logs entry, a list")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString($ClassMethod(tClass, "PrivilegePairs"), .tCut), "%Admin_Operate:USE", "the messages.log viewer's one pair")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString($ClassMethod(tClass, "OwnPrivilegePairs"), .tCut), "", "and no pair of its own")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", "which the logs area covers")
+    Do $$$AssertEquals(tDeclaration.id.%ToJSON() _ "|" _ tDeclaration.classicPage, "{""kind"":""none"",""parts"":[]}|", "a log entry has no id, and no classic page")
+    Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, "three suggested prompts")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes") _ "|" _ $ListLength($ClassMethod(tClass, "RowActionIds")) _ "|" _ $ClassMethod(tClass, "PrimaryActionId"), "0|0|", "no refresh and no action")
+}
 
 /// <p>Story 2.7 AC7 (DW-266) -- a screen declaring a pair its area does not is refused by
 /// <method>OcuPilot.Screen.Registry.Validate</method> naming the class, the area and the pair;
@@ -1605,7 +1712,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 31, "the closed vocabulary holds thirty-one values -- agent-policy joined in Story 14.2; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 39, "the closed vocabulary holds thirty-nine values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14 and database-configuration in Story 18.3; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }
@@ -1747,7 +1854,7 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     Set tExpected = tExpected _ $ListBuild($ListBuild("tasks", "%Admin_Task:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("permissions", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("web-applications", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE, %DB_IRISSYS:READ, %Admin_Wallet:USE, %Admin_OAuth2_Client:USE, %Admin_OAuth2_Server:USE, %Admin_OAuth2_Registration:USE", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("agent", "", 0, 1))
     Do $$$AssertEquals($ListLength(tExpected), 8, "the expectation names all eight areas")
 
@@ -1765,6 +1872,45 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     }
 
     Do $$$AssertTrue('##class(OcuPilot.Screen.Area).Exists("no-such-area"), "and the vocabulary is closed")
+}
+
+/// <p>Story 16.3, DW-1018 (Option A) -- each of the thirteen wallet and OAuth 2.0 screens declares
+/// its wallet or OAuth resource as its own pair, and Story 18.1's Allowed directories its
+/// file-system pair, never one the Security and secrets area declares, and the area covers the rest
+/// of its pairs; every other Security and secrets screen owns no pair and is covered whole
+/// (AD-8).</p>
+/// <p>Mutation (Rule 19): drop <code>ownPrivileges</code> from
+/// <class>OcuPilot.Screen.Descriptor.OAuthServerTab</class> -&gt; its own-pair and coverage rows go
+/// red.</p>
+Method TestTheSecurityScreensOwnTheirWalletAndOAuthPairs()
+{
+    Set tOwned = "WalletCollectionList|%Admin_Wallet,WalletSecretList|%Admin_Wallet,WalletSecretForm|%Admin_Wallet,OAuthServerDescriptionTab|%Admin_OAuth2_Client,OAuthServerDescriptionForm|%Admin_OAuth2_Client,OAuthClientTab|%Admin_OAuth2_Client,OAuthClientForm|%Admin_OAuth2_Client,OAuthResourceServerTab|%Admin_OAuth2_Client,OAuthResourceServerForm|%Admin_OAuth2_Client,OAuthServerTab|%Admin_OAuth2_Server,OAuthServerForm|%Admin_OAuth2_Server,OAuthServerClientTab|%Admin_OAuth2_Registration,OAuthServerClientForm|%Admin_OAuth2_Registration,AllowedDirectoryList|%Admin_FileSystemAccess"
+    Kill tExpect
+    For tI = 1:1:$Length(tOwned, ",") {
+        Set tEntry = $Piece(tOwned, ",", tI)
+        Set tExpect("OcuPilot.Screen.Descriptor." _ $Piece(tEntry, "|", 1)) = $Piece(tEntry, "|", 2) _ ":USE"
+    }
+    Set tAreaPairs = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString(##class(OcuPilot.Screen.Area).PrivilegePairs("security"), .tCut)
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tClasses)
+    Do $$$AssertStatusOK(tSC, "the descriptor roster reads")
+    Set tSeen = 0
+    Set tOthers = 0
+    For tI = 1:1:$ListLength(tClasses) {
+        Set tClass = $List(tClasses, tI)
+        If $ClassMethod(tClass, "AreaKey") '= "security" Continue
+        Set tOwn = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString($ClassMethod(tClass, "OwnPrivilegePairs"), .tCut)
+        Do $$$AssertEquals(tOwn, $Get(tExpect(tClass)), tClass _ ": owns exactly its wallet, OAuth 2.0 or file-system pair, or none")
+        If tOwn '= "" {
+            Set tSeen = tSeen + 1
+            Do $$$AssertTrue('(tAreaPairs [ tOwn), tClass _ ": an own pair the area does not declare (" _ tAreaPairs _ ")")
+            Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs")) '= "", tClass _ ": which the area alone would not cover")
+        } Else {
+            Set tOthers = tOthers + 1
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", tClass _ ": covered by the area, less its own pair")
+    }
+    Do $$$AssertEquals(tSeen, 14, "fourteen screens own a pair")
+    Do $$$AssertTrue(tOthers > 0, "and the rest own none: " _ tOthers)
 }
 
 /// <p>DW-275 -- the os-management area's union, and what it costs a narrower screen.</p>
@@ -1804,6 +1950,54 @@ Method TestANarrowOsManagementScreenIsSoundInsideTheUnion()
     Set tListSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tRoster)
     Do $$$AssertStatusOK(tListSC, "the production descriptor roster reads")
     If $$$ISOK(tListSC) Do $$$AssertEquals($ListFind(tRoster, tClass), 0, "and it is outside it, because it sits under OcuPilot.Test.")
+}
+
+/// <p>AD-5, Story 16.6: every case in <class>OcuPilot.Test.MultiSelectCorpus</class> gets its
+/// exact sentence, or none, from <method>OcuPilot.Screen.Registry.MultiSelectProblem</method>, the
+/// corpus's own sound declaration carries exactly the declared vocabulary, and every shipped
+/// descriptor passes.</p>
+/// <p>Mutation (Rule 19): drop the <code>max</code> arm from
+/// <method>OcuPilot.Screen.Registry.MultiSelectProblem</method> -- the five max cases go red.</p>
+Method TestEveryMultiSelectCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.MultiSelectCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If $$$ISERR(tSC) Quit
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tDeclaration = ##class(OcuPilot.Test.MultiSelectCorpus).DeclarationFor(tCorpus, tCase)
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.%Get("expected"))
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).MultiSelectProblem(tDeclaration), tExpected, tCase.%Get("name"))
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case")
+    Set tKeys = ""
+    Set tKeyIterator = tCorpus.declaration.multiSelect.%GetIterator()
+    While tKeyIterator.%GetNext(.tKey, .tValue) { Set tKeys = tKeys _ $ListBuild(tKey) }
+    Do $$$AssertEquals($ListToString(tKeys), ##class(OcuPilot.Screen.Registry).#MULTISELECTKEYS, "the corpus's sound multiSelect carries exactly the declared vocabulary")
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tRoster)
+    Do $$$AssertStatusOK(tSC, "the shipped roster reads")
+    If $$$ISERR(tSC) Quit
+    For tI = 1:1:$ListLength(tRoster) {
+        Set tClass = $List(tRoster, tI)
+        If $$$ISERR($ClassMethod(tClass, "DeclarationJson", .tShipped)) Continue
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).MultiSelectProblem(tShipped), "", tClass _ "'s multiSelect passes")
+    }
+}
+
+/// <p>AD-5, Story 16.6: the multi-select rule reaches the roster through
+/// <method>OcuPilot.Screen.Registry.Validate</method>, naming the offending class. The corpus test
+/// above calls the rule directly, so this fixture registry is what pins that call site.</p>
+/// <p>Mutation (Rule 19): delete the <method>OcuPilot.Screen.Registry.MultiSelectProblem</method>
+/// call from <method>OcuPilot.Screen.Registry.Validate</method> -- the fixture roster validates and
+/// this goes red.</p>
+Method TestAMultiSelectOutsideTheGrammarIsRefusedByTheRoster()
+{
+    Set tSC = ##class(OcuPilot.Test.MultiSelectShapeRegistry).Validate(.tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster carrying a multiSelect outside the grammar is refused")
+    Do $$$AssertTrue(tProblem [ "OcuPilot.Test.MultiSelectShape.Bad", "the refusal names the offending class: " _ tProblem)
+    Do $$$AssertTrue(tProblem [ "multiSelect.action 'broadcast' is not one of rowActions", "and the sentence MultiSelectProblem returns: " _ tProblem)
 }
 
 /// <p>AC5, AC6 -- every case in <class>OcuPilot.Test.RowTargetCorpus</class>'s <code>Cases</code>

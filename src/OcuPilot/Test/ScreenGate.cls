@@ -9,8 +9,9 @@
 /// principal holding exactly one administrative resource.</li>
 /// <li><method>ClassicResource</method> answers from a declared map instead of
 /// <class>%SYS.Portal.Resources</class>, so the classic-page union is exercised without ever
-/// writing a custom resource to the instance. That store is empty here and stays so; its write
-/// path is an operator's, not a test's.</li>
+/// writing a custom resource to the instance. The one test that writes the store is
+/// <class>OcuPilot.Test.ClassicPageGate</class>, on a throwaway only, and it restores each page it
+/// assigns.</li>
 /// </ul>
 /// <p>Both answers live in process-private globals, cleared by <method>Reset</method>, so
 /// nothing survives the process that armed it. Their subscripts follow identifier rules -- no

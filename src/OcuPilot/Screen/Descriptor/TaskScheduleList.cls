@@ -59,13 +59,18 @@
 /// <p><b>The classic page is <code>%CSP.UI.Portal.TaskSchedule</code></b>, spelled in the class's own
 /// case because the custom-resource lookup does not case-fold (AD-44). As a list archetype it links
 /// out to nothing.</p>
-/// <p><b>It declares four row actions</b>, each carried out for both callers by one write tool
+/// <p><b>It declares Run, Suspend, Resume and Delete</b>, each carried out for both callers by one write tool
 /// (AD-51, AD-53): Run (<class>OcuPilot.Screen.Tool.TaskScheduleRun</class>), Suspend
 /// (<class>OcuPilot.Screen.Tool.TaskSuspend</class>), Resume
 /// (<class>OcuPilot.Screen.Tool.TaskResume</class>) and Delete
 /// (<class>OcuPilot.Screen.Tool.TaskDelete</class>). Only Delete opens a dialog. None carries a
 /// self-protection rule: a system task is deletable behind the typed name. Because the list is
 /// write-capable, its empty state invites the agent.</p>
+/// <p><b>Export and Import</b> (Story 16.4) are declared before Delete, so the row menu lists the
+/// destructive action last: Export writes the selected task to a server file
+/// (<class>OcuPilot.Screen.Tool.TaskExport</class>) and Import creates the tasks a server file holds
+/// (<class>OcuPilot.Screen.Tool.TaskImport</class>), which the client draws as a screen-level action
+/// because it names no row.</p>
 /// <p><b>Its primary action is Create</b> (Story 9.7), which opens the New Task wizard
 /// (<class>OcuPilot.Screen.Descriptor.TaskForm</class>); the agent's twin is
 /// <class>OcuPilot.Screen.Tool.TaskCreate</class>.</p>
@@ -96,7 +101,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["Id"]},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [{"id": "run", "selfProtection": ""}, {"id": "suspend", "selfProtection": ""}, {"id": "resume", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
+  "rowActions": [{"id": "run", "selfProtection": ""}, {"id": "suspend", "selfProtection": ""}, {"id": "resume", "selfProtection": ""}, {"id": "export", "selfProtection": ""}, {"id": "import", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "Type", "Namespace", "Description", "Id", "LastFinished", "NextScheduled", "Suspended"], "secretFields": []},
   "emptyStateKey": "taskListEmpty",
   "commandAliases": ["task manager"],

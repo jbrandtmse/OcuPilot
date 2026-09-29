@@ -1,12 +1,14 @@
 /// <p>Pins the governance baseline (AD-22, Story 14.2): every key a registered write tool yields
-/// has a line in <class>OcuPilot.Kernel.Governance.Baseline</class>, the audit purge's line is
-/// <code>false</code>, and every other line is <code>true</code>.</p>
+/// has a line in <class>OcuPilot.Kernel.Governance.Baseline</class>, the audit purge's, the
+/// namespace delete's, the database delete's and the task import's lines are <code>false</code>, and
+/// every other line is <code>true</code>.</p>
 /// <p><b>What it needs from the environment:</b> the compiled tool registry. Live-safe: it reads
 /// the registry and the baseline and writes nothing.</p>
 Class OcuPilot.Test.GovernanceBaseline Extends %UnitTest.TestCase
 {
 
-Parameter PURGE = "security.auditing.purge";
+/// <p>The lines some story's criteria ship disabled, in name order, comma-separated.</p>
+Parameter DISABLED = "osmgmt.localdatabases.delete, osmgmt.namespaces.delete, security.auditing.purge, tasks.schedule.import";
 
 /// <p>AC2: a registered write key with no baseline line fails here, naming the key. The count is
 /// asserted too, so an empty registry cannot pass by looping zero times.</p>
@@ -45,8 +47,9 @@ Method TestEveryWriteToolYieldsAKey()
     Do $$$AssertEquals($ListToString(tEmpty, ", "), "", "every write tool yields a key")
 }
 
-/// <p>The purge's line is <code>false</code> (Story 12.3's routed criterion) and every other line
-/// is <code>true</code>, and a key the baseline does not list reads disabled.</p>
+/// <p>The purge's line (Story 12.3's routed criterion), the namespace delete's (Story 18.2), the
+/// database delete's (Story 18.3) and the task import's (DW-1827) are <code>false</code> and every
+/// other line is <code>true</code>, and a key the baseline does not list reads disabled.</p>
 /// <p>The expected list is the set of lines some story's criteria ship disabled. A story that adds
 /// a line listed <code>false</code> (Epic 18's are) adds its key to that list, in name order, in
 /// the same change; this failing on such a line is the prompt to do so, never to delete it.</p>
@@ -60,7 +63,7 @@ Method TestThePurgeIsTheOneDisabledLine()
         Do $$$AssertEquals(tList.%GetTypeOf(tKey), "boolean", tKey _ ": the line is a JSON boolean")
         If 'tValue Set tDisabled = tDisabled _ $ListBuild(tKey)
     }
-    Do $$$AssertEquals($ListToString(tDisabled, ", "), ..#PURGE, "the purge is the one line listed false")
+    Do $$$AssertEquals($ListToString(tDisabled, ", "), ..#DISABLED, "the purge, the namespace delete, the database delete and the task import are the lines listed false")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Governance.Baseline).Seed("probe.not.listed", .tListed) _ "|" _ tListed, "0|0", "an unlisted key reads disabled and unlisted")
 }
 

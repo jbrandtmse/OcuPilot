@@ -31,6 +31,7 @@ import {
   IMPLEMENTED_ID_RULES,
   parseEntityTypes,
   parseIdRuleNames,
+  parsePathSources,
   parseIdRules,
   parseRefSeparator,
   parseScopeWords,
@@ -40,6 +41,8 @@ import {
   readSources,
   ROW_TARGET_KEYS,
   rowTargetProblem,
+  MULTI_SELECT_KEYS,
+  multiSelectProblem,
   rowTargetResolutionProblem,
   sideBarPositionProblem,
   tabGroupProblem,
@@ -47,6 +50,8 @@ import {
   PROMPT_GROUP_KEYS,
   SCREEN_REGISTRY_SOURCE,
   tabProblem,
+  timelineMemberProblem,
+  READ_SOURCE_PORTS,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
@@ -194,7 +199,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['user', 'foldcase'],
     ['auditing-configuration', 'singleton'],
     ['task', 'integer'],
-    ['process', 'integer'],
+    // Story 16.6: a process id may name a set of pids.
+    ['process', 'integerset'],
     ['application-error', 'foldcase'],
     ['role', 'foldcase'],
     ['resource', 'foldcase'],
@@ -203,8 +209,16 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['service', 'foldcase'],
     ['ldap-configuration', 'foldcase'],
     ['oauth2-server', 'singleton'],
+    // Story 18.2: a namespace name resolves without case and is stored upper case.
+    ['namespace', 'foldcase'],
+    // Story 18.14: a mapping is keyed by `[namespace, Name]`; only the namespace part folds.
+    ['global-mapping', 'foldcase-firstpart'],
+    ['routine-mapping', 'foldcase-firstpart'],
+    ['package-mapping', 'foldcase-firstpart'],
+    // Story 18.3: a database configuration name resolves without case and is stored upper case.
+    ['database-configuration', 'foldcase'],
   ]);
-  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
+  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
   // nothing are different facts, and only one of them is a source to build from.
   assert.equal(parseIdRules('Class X { }'), null);
@@ -303,7 +317,7 @@ test('AD-13: the generator refuses an id rule no reader can apply, naming the ru
 
   // The roster the third refusal is judged against is the one `entity-ref.ts` is pinned equal to
   // by `ui/tools/entity-ref.test.mjs`, so neither side can grow a rule alone.
-  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
+  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset']);
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {
@@ -647,6 +661,7 @@ test('readProblem returns every source-type, forEach, query and parts sentence O
     if (testCase.sort !== undefined) declaration.read.sort = structuredClone(testCase.sort);
     if (testCase.table !== undefined) declaration.table = structuredClone(testCase.table);
     if (testCase.context !== undefined) declaration.context = structuredClone(testCase.context);
+    if (testCase.area !== undefined) declaration.area = testCase.area;
     assert.equal(readProblem(declaration), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
   }
@@ -766,14 +781,67 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     .filter((screen) => screen.tab !== null)
     .sort((a, b) => a.tab.position - b.tab.position)
     .map((screen) => [screen.route, screen.tab.group, screen.tab.position, screen.sideBarPosition]);
+  // Story 16.7's License usage group sorts beside the OAuth 2.0 group, position by position.
   assert.deepEqual(members, [
+    ['os-management/license-usage', 'os-management/license-usage', 1, 7],
     ['security/oauth', 'security/oauth', 1, 5],
+    ['os-management/license-usage/processes', 'os-management/license-usage', 2, 0],
     ['security/oauth/clients', 'security/oauth', 2, 0],
+    ['os-management/license-usage/users', 'os-management/license-usage', 3, 0],
     ['security/oauth/resource-servers', 'security/oauth', 3, 0],
+    ['os-management/license-usage/distributed', 'os-management/license-usage', 4, 0],
     ['security/oauth/server', 'security/oauth', 4, 0],
     ['security/oauth/server-clients', 'security/oauth', 5, 0],
   ]);
   assert.ok(emitted.every((screen) => 'tab' in screen), 'every screen emits tab, null when it is no tab');
+});
+
+/**
+ * The corpus declaration with `testCase`'s own `multiSelect`, `archetype`, `rowActions`, `read` or
+ * `table`, mirroring `OcuPilot.Test.MultiSelectCorpus.DeclarationFor`.
+ */
+function multiSelectDeclarationFor(corpus, testCase) {
+  const declaration = structuredClone(corpus.declaration);
+  if ('multiSelect' in testCase) declaration.multiSelect = structuredClone(testCase.multiSelect);
+  if (testCase.archetype !== undefined) declaration.archetype = testCase.archetype;
+  if (testCase.rowActions !== undefined) declaration.rowActions = structuredClone(testCase.rowActions);
+  if ('read' in testCase) declaration.read = testCase.read;
+  if ('table' in testCase) declaration.table = testCase.table;
+  return declaration;
+}
+
+// AD-5, Story 16.6: every case in `OcuPilot.Test.MultiSelectCorpus` gets its exact sentence, or
+// none, from `multiSelectProblem`; the refusal reaches the generator; the corpus's sound
+// declaration carries exactly the declared vocabulary; and the shipped Processes declaration is the
+// only one, with its ineligible reason a string key the check above resolves.
+//
+// Mutation (Rule 19): drop the `max` arm from `multiSelectProblem` -> the five max cases go red.
+// Drop the `multiSelectProblem` call from `buildMirror` -> the generator-refusal assertion goes red.
+test('multiSelectProblem returns every sentence OcuPilot.Test.MultiSelectCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'MultiSelectCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0, 'the corpus carries cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    assert.equal(multiSelectProblem(multiSelectDeclarationFor(corpus, testCase)), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+  assert.deepEqual(Object.keys(corpus.declaration.multiSelect), MULTI_SELECT_KEYS, "the corpus's sound multiSelect carries exactly the declared vocabulary");
+
+  const sources = readSources();
+  const declaring = sources.screens.filter((screen) => screen.declaration.multiSelect !== undefined);
+  assert.deepEqual(declaring.map((screen) => screen.className), ['OcuPilot.Screen.Descriptor.ProcessList'], 'Processes is the one list that declares a multi-select');
+  assert.equal(multiSelectProblem(declaring[0].declaration), null, 'and its declaration passes');
+  assert.ok(declaredStringKeys(declaring[0].declaration).includes('processBroadcastIneligible'), 'its ineligible reason is a key the string check resolves');
+
+  const processes = declaring[0];
+  const broken = { ...processes.declaration, multiSelect: { ...processes.declaration.multiSelect, max: 0 } };
+  assert.throws(
+    () => buildMirror({ ...sources, screens: sources.screens.map((screen) => (screen === processes ? { ...screen, declaration: broken } : screen)) }),
+    /ProcessList.*multiSelect\.max must be a whole number from 1 to 1000/,
+    'and a refused multiSelect fails the build, naming the descriptor'
+  );
+  assert.match(generate(), /"multiSelect": \{\s*"action": "broadcast"/, 'the mirror emits it');
 });
 
 /** The corpus declaration with `testCase`'s own `rowTarget`, `archetype` or `table`, mirroring `OcuPilot.Test.RowTargetCorpus.DeclarationFor`. */
@@ -935,7 +1003,11 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
     const declaration = structuredClone(corpus.declaration);
     declaration.privileges = structuredClone(testCase.privileges);
     if (typeof testCase.port === 'string') declaration.read.source.port = testCase.port;
-    if (testCase.rowGet !== null && typeof testCase.rowGet === 'object') declaration.read.source.rowGet = structuredClone(testCase.rowGet);
+    if (typeof testCase.endpoint === 'string') declaration.read.source.endpoint = testCase.endpoint;
+    if (typeof testCase.type === 'string') declaration.read.source.type = testCase.type;
+    for (const key of ['rowGet', 'forEach', 'query', 'parts']) {
+      if (testCase[key] !== null && typeof testCase[key] === 'object') declaration.read.source[key] = structuredClone(testCase[key]);
+    }
     if (testCase.readless) {
       declaration.read = null;
       declaration.table = null;
@@ -951,7 +1023,7 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(declarationProblem(''), 'the declaration is not an object', 'and neither is a string');
 
   const { screens } = readSources();
-  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer', 'RoleList', 'ResourceList', 'ServiceList', 'X509CredentialList', 'LdapConfigList', 'WalletCollectionList', 'WalletSecretList', 'OAuthServerDescriptionTab', 'OAuthClientTab', 'OAuthResourceServerTab', 'OAuthServerTab', 'OAuthServerClientTab', 'TaskOnDemandList', 'TaskUpcomingList']) {
+  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer', 'RoleList', 'ResourceList', 'ServiceList', 'X509CredentialList', 'LdapConfigList', 'WalletCollectionList', 'WalletSecretList', 'OAuthServerDescriptionTab', 'OAuthClientTab', 'OAuthResourceServerTab', 'OAuthServerTab', 'OAuthServerClientTab', 'TaskOnDemandList', 'TaskUpcomingList', 'WebSessionList', 'BackgroundTaskList']) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.ok(screen !== undefined, `${name} is declared`);
     assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
@@ -972,11 +1044,12 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   const upcoming = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskUpcomingList');
   assert.equal(upcoming.declaration.read.source.type, 'UPCOMING');
   // Story 7.6: the Task schedule declares Run, Suspend, Resume and Delete, shows the Suspended
-  // field its INFO rowGet answers, and its empty state invites the agent.
+  // field its INFO rowGet answers, and its empty state invites the agent. Story 16.4 adds Export
+  // and Import before Delete, so the row menu lists the destructive action last.
   const schedule = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskScheduleList');
   assert.deepEqual(
     schedule.declaration.rowActions.map((action) => action.id),
-    ['run', 'suspend', 'resume', 'delete']
+    ['run', 'suspend', 'resume', 'export', 'import', 'delete']
   );
   assert.ok(schedule.declaration.rowActions.every((action) => action.selfProtection === ''), 'no action carries a self-protection rule');
   assert.deepEqual(
@@ -988,13 +1061,14 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(schedule.declaration.table.emptyNextKey, '', 'and names no read-only next step');
   assert.equal(schedule.declaration.entityLabelKey, 'proposalEntityTask');
   // Story 7.8: Processes and Process details declare Suspend, Resume, Terminate and the Terminate
-  // dialog's flag, none self-protected, and invite the agent from their empty states.
-  for (const name of ['ProcessList', 'ProcessDetails']) {
+  // dialog's flag, none self-protected, and invite the agent from their empty states. Story 16.6:
+  // Processes alone adds its checked rows' Broadcast, which Process details does not offer.
+  for (const [name, extra] of [['ProcessList', ['broadcast']], ['ProcessDetails', []]]) {
     const process = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.deepEqual(
       process.declaration.rowActions,
-      ['suspend', 'resume', 'terminate', 'terminate-with-error'].map((id) => ({ id, selfProtection: '' })),
-      `${name} declares the four process actions`
+      ['suspend', 'resume', 'terminate', 'terminate-with-error', ...extra].map((id) => ({ id, selfProtection: '' })),
+      `${name} declares the four process actions${extra.length === 0 ? '' : ' and Broadcast'}`
     );
     assert.equal(process.declaration.table.emptyAgentKey, 'processListEmptyAgent', `${name}'s empty state invites the agent`);
     assert.equal(process.declaration.table.emptyNextKey, '', `and names no read-only next step`);
@@ -1136,7 +1210,9 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // criteria are Story 6.7's and 6.6's; Upcoming tasks, whose two criteria are the horizon; the
   // Secrets list, whose one criterion is its parent collection, filled from the route id
   // (Story 6.3); and Story 6.11's two -- Database details and Database volumes, whose one
-  // criterion each is the parent Databases route's directory.
+  // criterion each is the parent Databases route's directory; Story 16.9's log hub, whose one
+  // criterion is its timeline's window; and Story 18.14's three mapping lists, whose one criterion
+  // each is the parent namespace, filled from the route id and seeded onto every row.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1144,8 +1220,12 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.AuditList',
       'OcuPilot.Screen.Descriptor.DatabaseDetails',
       'OcuPilot.Screen.Descriptor.DatabaseVolumeList',
+      'OcuPilot.Screen.Descriptor.GlobalMappingList',
+      'OcuPilot.Screen.Descriptor.LogHub',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
+      'OcuPilot.Screen.Descriptor.PackageMappingList',
       'OcuPilot.Screen.Descriptor.ProcessDetails',
+      'OcuPilot.Screen.Descriptor.RoutineMappingList',
       'OcuPilot.Screen.Descriptor.TaskDetails',
       'OcuPilot.Screen.Descriptor.TaskHistoryList',
       'OcuPilot.Screen.Descriptor.TaskRunList',
@@ -1153,6 +1233,12 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.WalletSecretList',
     ]
   );
+  for (const descriptor of ['GlobalMappingList', 'RoutineMappingList', 'PackageMappingList']) {
+    const list = emittedScreens.find((screen) => screen.descriptor === `OcuPilot.Screen.Descriptor.${descriptor}`);
+    assert.equal(list.parentScope, 'os-management/namespaces', `${descriptor} declares the Namespaces list its parent`);
+    assert.deepEqual(list.read.criteria.fields.map((field) => field.param), ['namespace'], `${descriptor} declares exactly one criterion`);
+    assert.equal(list.id.parts[0], 'namespace', `and ${descriptor}'s composite id names it first, so the read seeds it onto every row`);
+  }
   const secrets = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.WalletSecretList');
   assert.equal(secrets.parentScope, 'security/wallet', 'the Secrets list declares its parent');
   assert.deepEqual(secrets.read.criteria.fields.map((field) => field.param), ['collection'], 'and exactly one criterion');
@@ -1726,6 +1812,12 @@ test('the vocabulary parser reads the kernel parameter, and reports a source tha
   assert.equal(parseEntityTypes('Parameter OTHER = "a";'), null, 'a missing parameter is not an empty vocabulary');
 });
 
+// Mutation (Rule 19): make parsePathSources answer [] for a missing parameter -> the null leg goes red.
+test('the path-source parser reads PathPort.SOURCES, and reports a source that has none', () => {
+  assert.deepEqual(parsePathSources('Parameter SOURCES = "roots, other";'), ['roots', 'other']);
+  assert.equal(parsePathSources('Parameter OTHER = "roots";'), null, 'a missing parameter is not an empty source list');
+});
+
 // A declared privilege pair missing either half is dropped by both readers rather than carried
 // (OcuPilot.Screen.Area.PairsFrom), so a declaration that misspells `permission` collapses to
 // an empty set -- which AD-8 holds is satisfied by everyone. The declaration reads as a gate and
@@ -2108,10 +2200,34 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
     assert.equal(ownPrivilegesProblem(screen.declaration), null, `${screen.className}'s own pairs pass`);
   }
   const owners = screens.filter((screen) => Array.isArray(screen.declaration.ownPrivileges)).map((screen) => screen.className);
+  // Story 16.3, DW-1018 (Option A): the Logs area's two, and the thirteen wallet and OAuth 2.0
+  // screens, which own their pair so the Security area declares only %Admin_Secure and IRISSYS;
+  // Story 18.1's Allowed directories owns %Admin_FileSystemAccess the same way, and Story 16.2's
+  // Web sessions owns %Admin_Operate beside the Web applications area's two pairs, as Story 16.5's
+  // Background tasks does beside the Tasks area's.
   assert.deepEqual(
     owners.sort(),
-    ['OcuPilot.Screen.Descriptor.LogAnalyticsViewer', 'OcuPilot.Screen.Descriptor.LogEventViewer'],
-    'the two screens AD-8 names are the ones declaring own pairs'
+    [
+      'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
+      'OcuPilot.Screen.Descriptor.BackgroundTaskList',
+      'OcuPilot.Screen.Descriptor.LogAnalyticsViewer',
+      'OcuPilot.Screen.Descriptor.LogEventViewer',
+      'OcuPilot.Screen.Descriptor.OAuthClientForm',
+      'OcuPilot.Screen.Descriptor.OAuthClientTab',
+      'OcuPilot.Screen.Descriptor.OAuthResourceServerForm',
+      'OcuPilot.Screen.Descriptor.OAuthResourceServerTab',
+      'OcuPilot.Screen.Descriptor.OAuthServerClientForm',
+      'OcuPilot.Screen.Descriptor.OAuthServerClientTab',
+      'OcuPilot.Screen.Descriptor.OAuthServerDescriptionForm',
+      'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab',
+      'OcuPilot.Screen.Descriptor.OAuthServerForm',
+      'OcuPilot.Screen.Descriptor.OAuthServerTab',
+      'OcuPilot.Screen.Descriptor.WalletCollectionList',
+      'OcuPilot.Screen.Descriptor.WalletSecretForm',
+      'OcuPilot.Screen.Descriptor.WalletSecretList',
+      'OcuPilot.Screen.Descriptor.WebSessionList',
+    ],
+    "the screens AD-8 names and Story 18.1's Allowed directories are the ones declaring own pairs"
   );
 
   const hostile = structuredClone(testCorpus(['Test', 'DeclarationCorpus.cls'], 'Cases').declaration);
@@ -2408,4 +2524,54 @@ test('a secretArguments entry may name a top-level secret row, and nothing that 
     null,
     'a nested secret path of the shipped list is not admitted'
   );
+});
+
+// Story 16.9 (AD-36 as amended): a timeline's members are its area's other listed built screens,
+// and a member that declares a timeline read itself is refused -- the same sentence
+// `OcuPilot.Screen.Registry.TimelineMemberProblem` returns in `OcuPilot.Test.LogHub`, over the
+// same two-entry roster. The shipped roster holds one timeline and passes.
+//
+// Mutation (Rule 19): drop the `sideBarPosition` test from `timelineMemberProblem` -> the unlisted
+// case goes red.
+test('timelineMemberProblem refuses a timeline member that declares a timeline itself, and the shipped roster passes', () => {
+  const { screens } = readSources();
+  assert.equal(timelineMemberProblem(screens), null, 'the shipped roster holds one timeline, sound');
+  const hub = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.LogHub');
+  assert.ok(hub !== undefined, 'the log hub is in the roster');
+  const second = structuredClone(hub.declaration);
+  second.route = 'logs/hub2';
+  second.sideBarPosition = 12;
+  const roster = [
+    { className: 'Hub', declaration: hub.declaration },
+    { className: 'Hub2', declaration: second },
+  ];
+  assert.equal(
+    timelineMemberProblem(roster),
+    "Hub: timeline member 'logs/hub2' declares a timeline read itself, and a timeline composes its members' own reads (AD-36)"
+  );
+  second.sideBarPosition = 0;
+  assert.equal(
+    timelineMemberProblem(roster),
+    "Hub2: timeline member 'logs/hub' declares a timeline read itself, and a timeline composes its members' own reads (AD-36)",
+    'an unlisted timeline is no member, but the listed one is its member'
+  );
+});
+
+// Story 16.5: Background tasks reads through its own port, the seventh read source, which both
+// engines admit; its rows are keyed by source and id, and it carries three row actions.
+// Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
+// the list's read is refused.
+test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background']);
+  const { screens } = readSources();
+  const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
+  assert.ok(background !== undefined, 'the Background tasks list is declared');
+  assert.deepEqual(background.declaration.read.source, { port: 'background', endpoint: 'BackgroundTask', type: 'LIST' });
+  assert.equal(readProblem(background.declaration), null, 'its read passes');
+  assert.deepEqual(background.declaration.id, { kind: 'composite', parts: ['Source', 'Id'] });
+  assert.deepEqual(
+    background.declaration.rowActions.map((action) => action.id),
+    ['cancel', 'pause', 'resume']
+  );
+  assert.deepEqual(background.declaration.ownPrivileges, [{ resource: '%Admin_Operate', permission: 'USE' }]);
 });

@@ -61,6 +61,8 @@ XData Coverage
 <screen name="AgentTranscript" class="OcuPilot.Test.TranscriptStore" method="TestTheListAndTheTranscriptPageAreDeclared" corpus="one declaration test pins both screens Story 14.4 adds, the list and the transcript page beneath it"/>
 <screen name="AgentTranscripts" class="OcuPilot.Test.TranscriptStore" method="TestTheListAndTheTranscriptPageAreDeclared" corpus="one declaration test pins both screens Story 14.4 adds, the list and the transcript page beneath it"/>
 <screen name="AgentGovernance" class="OcuPilot.Test.GovernanceWire" method="TestTheReadAnswersEveryWriteKey"/>
+<screen name="AgentLedger" class="OcuPilot.Test.LedgerSearch" method="TestTheLedgerScreenDeclaresNoReadAndNoContextFields"/>
+<screen name="AllowedDirectoryList" class="OcuPilot.Test.Descriptor" method="TestTheAllowedDirectoriesListDeclaresThePathSource"/>
 <screen name="AuditList" class="OcuPilot.Test.Descriptor" method="TestTheAuditListValidatesAndDeclaresItsServerCriteria"/>
 <screen name="AuditingConfig" class="OcuPilot.Test.Descriptor" method="TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTool"/>
 <screen name="AuditSystemEventList" class="OcuPilot.Test.AuditingScreen" method="TestTheSystemEventListReadsSystemEvents"/>
@@ -70,6 +72,14 @@ XData Coverage
 <screen name="DatabaseList" class="OcuPilot.Test.Descriptor" method="TestTheDatabasesGeneralViewDeclaresExactlyItsFiveFieldsAndFiveColumns"/>
 <screen name="DatabaseVolumeList" class="OcuPilot.Test.Descriptor" method="TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall"/>
 <screen name="DeviceList" class="OcuPilot.Test.Descriptor" method="TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns"/>
+<screen name="GlobalMappingList" class="OcuPilot.Test.MappingDescriptor" method="TestTheListsAreParentScopedAndKeyedByNamespaceAndName" corpus="the three mapping lists are asserted together in one loop"/>
+<screen name="GlobalMappingForm" class="OcuPilot.Test.MappingDescriptor" method="TestTheFormsAreUnlistedOverTheirKindsDialog" corpus="the three mapping forms are asserted together in one loop"/>
+<screen name="PackageMappingList" class="OcuPilot.Test.MappingDescriptor" method="TestTheListsAreParentScopedAndKeyedByNamespaceAndName" corpus="the three mapping lists are asserted together in one loop"/>
+<screen name="PackageMappingForm" class="OcuPilot.Test.MappingDescriptor" method="TestTheFormsAreUnlistedOverTheirKindsDialog" corpus="the three mapping forms are asserted together in one loop"/>
+<screen name="RoutineMappingList" class="OcuPilot.Test.MappingDescriptor" method="TestTheListsAreParentScopedAndKeyedByNamespaceAndName" corpus="the three mapping lists are asserted together in one loop"/>
+<screen name="RoutineMappingForm" class="OcuPilot.Test.MappingDescriptor" method="TestTheFormsAreUnlistedOverTheirKindsDialog" corpus="the three mapping forms are asserted together in one loop"/>
+<screen name="NamespaceList" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheListDeclaresItsFourFieldsAndItsDelete"/>
+<screen name="LocalDatabaseList" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheListIsOsManagementsNinthEntryKeyedByName"/>
 <screen name="Home" class="OcuPilot.Test.Descriptor" method="TestARefreshingScreenDeclaresItsRatesAndHomeDefaultsToTen"/>
 <screen name="LdapConfigList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="LockList" class="OcuPilot.Test.Descriptor" method="TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns"/>
@@ -77,6 +87,7 @@ XData Coverage
 <screen name="LogAnalyticsViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
 <screen name="LogErrorList" class="OcuPilot.Test.Descriptor" method="TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs"/>
 <screen name="LogEventViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
+<screen name="LogHub" class="OcuPilot.Test.Descriptor" method="TestTheLogHubDeclaresItsComposedRead"/>
 <screen name="LogMessageViewer" class="OcuPilot.Test.Descriptor" method="TestTheConsoleLogViewerDeclaresTheLogSourceTailAndItsOnePair"/>
 <screen name="LogSqlDiagnosticsViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
 <screen name="LogSystemMonitorViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
@@ -119,9 +130,18 @@ XData Coverage
 <screen name="X509Form" class="OcuPilot.Test.X509Import" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="DeviceForm" class="OcuPilot.Test.DeviceCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
+<screen name="NamespaceForm" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
+<screen name="LocalDatabaseForm" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
 <screen name="TaskForm" class="OcuPilot.Test.TaskCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="ServiceForm" class="OcuPilot.Test.ServiceUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
 <screen name="LdapConfigForm" class="OcuPilot.Test.LdapUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
+<screen name="WebSessionList" class="OcuPilot.Test.WebSessions" method="TestTheDescriptorDeclaresTheListItsPairsAndItsRowAction"/>
+<screen name="BackgroundTaskList" class="OcuPilot.Test.BackgroundTasks" method="TestTheDescriptorDeclaresTheListItsPairsAndItsActions"/>
+<screen name="LicenseSummaryTab" class="OcuPilot.Test.LicenseUsage" method="TestTheFourTabsDeclareTheirReadsAndFormOneGroup" corpus="the four License usage tabs are asserted together in one loop"/>
+<screen name="LicenseProcessTab" class="OcuPilot.Test.LicenseUsage" method="TestTheFourTabsDeclareTheirReadsAndFormOneGroup" corpus="the four License usage tabs are asserted together in one loop"/>
+<screen name="LicenseUserTab" class="OcuPilot.Test.LicenseUsage" method="TestTheFourTabsDeclareTheirReadsAndFormOneGroup" corpus="the four License usage tabs are asserted together in one loop"/>
+<screen name="LicenseDistributedTab" class="OcuPilot.Test.LicenseUsage" method="TestTheFourTabsDeclareTheirReadsAndFormOneGroup" corpus="the four License usage tabs are asserted together in one loop"/>
+<screen name="Dashboard" class="OcuPilot.Test.Dashboard" method="TestTheDeclarationIsTheDashboardsThirtyFieldsOverTwoParts"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -141,6 +161,23 @@ XData Coverage
 <tool name="osmgmt.devices.create" class="OcuPilot.Test.DeviceCreate" method="TestTheSchemaAndTheSettableSetAreTheSets"/>
 <tool name="osmgmt.devices.update" class="OcuPilot.Test.DeviceUpdate" method="TestTheEditIsAMergeWriteOverTheEightFields"/>
 <tool name="osmgmt.devices.delete" class="OcuPilot.Test.DeviceDelete" method="TestTheDeleteIsAnActionWriteOverTheWholeRead"/>
+<tool name="osmgmt.namespaces.create" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
+<tool name="osmgmt.namespaces.update" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
+<tool name="osmgmt.namespaces.delete" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
+<tool name="osmgmt.namespaces.copymappings" class="OcuPilot.Test.NamespaceCopy" method="TestTheCopyIsAQueuedWrite"/>
+<tool name="osmgmt.localdatabases.create" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create and the two edits are asserted together in one loop, with the delete"/>
+<tool name="osmgmt.localdatabases.updatemount" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create and the two edits are asserted together in one loop, with the delete"/>
+<tool name="osmgmt.localdatabases.update" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create and the two edits are asserted together in one loop, with the delete"/>
+<tool name="osmgmt.localdatabases.delete" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheDeleteCarriesItsValueAndItsSubject"/>
+<tool name="osmgmt.globalmappings.create" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.globalmappings.update" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.globalmappings.delete" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.routinemappings.create" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.routinemappings.update" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.routinemappings.delete" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.packagemappings.create" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.packagemappings.update" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.packagemappings.delete" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
 <tool name="logs.applicationerrors.delete" class="OcuPilot.Test.ToolWrite" method="TestTheErrorDeleteToolIsAnActionWriteOverItsOwnPort"/>
 <tool name="osmgmt.processes.resume" class="OcuPilot.Test.ToolWrite" method="TestTheProcessResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="osmgmt.processes.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheProcessSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -198,6 +235,13 @@ XData Coverage
 <tool name="security.ldap.update" class="OcuPilot.Test.LdapUpdate" method="TestTheToolDeclaresItsFieldsAndShapes"/>
 <tool name="webapp.list.delete" class="OcuPilot.Test.ToolWrite" method="TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>
+<tool name="webapp.sessions.end" class="OcuPilot.Test.WebSessions" method="TestTheToolIsADestructiveActionWriteOverTheListsPairsAndTheWritePair"/>
+<tool name="tasks.background.cancel" class="OcuPilot.Test.BackgroundTasks" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the three Background tasks control tools are asserted together in one loop"/>
+<tool name="tasks.background.pause" class="OcuPilot.Test.BackgroundTasks" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the three Background tasks control tools are asserted together in one loop"/>
+<tool name="tasks.background.resume" class="OcuPilot.Test.BackgroundTasks" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the three Background tasks control tools are asserted together in one loop"/>
+<tool name="osmgmt.processes.broadcast" class="OcuPilot.Test.ToolWrite" method="TestTheProcessBroadcastToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="tasks.schedule.export" class="OcuPilot.Test.TaskTransfer" method="TestTheExportToolIsAnActionWriteOverTheTransferPort"/>
+<tool name="tasks.schedule.import" class="OcuPilot.Test.TaskTransfer" method="TestTheImportToolIsAnActionWriteOverTheTransferPort"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

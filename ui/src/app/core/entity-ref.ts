@@ -23,6 +23,7 @@ import {
   ENTITY_TYPES,
   type EntityTypeKey,
 } from './screens.generated.ts';
+import { COMPOSITE_SEPARATOR } from './entity-id.ts';
 
 /**
  * The literal scope of a configuration object that has no namespace, mirroring
@@ -81,13 +82,55 @@ const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
   // way, and two languages agreeing about numeric precision is not something a key builder may
   // depend on. A value that is not an optionally-signed run of digits is folded to lower case: a
   // task create's target is the new task's name, compared without regard to case (AD-13, AD-54).
-  integer: (id) => {
-    const match = /^[ \t]*([+-]?)0*([0-9]+)[ \t]*$/.exec(id);
-    if (match === null) return id.toLowerCase();
-    const digits = match[2];
-    return (match[1] === '-' && digits !== '0' ? '-' : '') + digits;
+  integer: (id) => plainInteger(id) ?? id.toLowerCase(),
+  // A process id may name a set of pids (Story 16.6): each comma-separated member in the integer
+  // rule's spelling, each once, the negative ones first by descending magnitude and then the rest
+  // ascending -- ordered on the string (sign, length, digits), as
+  // `OcuPilot.Kernel.EntityRef.PlainIntegerSet` orders it -- joined by a comma. A single pid is
+  // what `integer` answers, and a value with a member that is not an integer is folded to lower
+  // case as that rule folds one.
+  integerset: (id) => {
+    const members = new Set<string>();
+    for (const part of id.split(',')) {
+      const plain = plainInteger(part);
+      if (plain === null) return id.toLowerCase();
+      members.add(plain);
+    }
+    return [...members].sort(compareIntegerSpellings).join(',');
+  },
+  // A namespace mapping is keyed by the composite `[namespace, Name]` (Story 18.14): the instance
+  // resolves the namespace without case, while a global's or routine's name is case-sensitive. So
+  // only the text before the first `COMPOSITE_SEPARATOR` is folded, and an id with no separator is
+  // folded whole -- what `OcuPilot.Kernel.EntityRef.NormalizedId` answers for the same rule.
+  'foldcase-firstpart': (id) => {
+    const at = id.indexOf(COMPOSITE_SEPARATOR);
+    if (at < 0) return id.toLowerCase();
+    return id.slice(0, at).toLowerCase() + id.slice(at);
   },
 };
+
+/**
+ * `id`'s plain decimal spelling -- surrounding space or tab dropped, a leading `+` dropped, leading
+ * zeros dropped, a negative zero answered as `0` -- or `null` for a value that is not an
+ * optionally-signed run of digits.
+ */
+function plainInteger(id: string): string | null {
+  const match = /^[ \t]*([+-]?)0*([0-9]+)[ \t]*$/.exec(id);
+  if (match === null) return null;
+  const digits = match[2];
+  return (match[1] === '-' && digits !== '0' ? '-' : '') + digits;
+}
+
+/** Two plain decimal spellings in numeric order, compared as strings: sign, then length, then digits. */
+function compareIntegerSpellings(a: string, b: string): number {
+  const aNegative = a.startsWith('-');
+  const bNegative = b.startsWith('-');
+  if (aNegative !== bNegative) return aNegative ? -1 : 1;
+  const aDigits = aNegative ? a.slice(1) : a;
+  const bDigits = bNegative ? b.slice(1) : b;
+  const magnitude = aDigits.length - bDigits.length || (aDigits < bDigits ? -1 : aDigits > bDigits ? 1 : 0);
+  return aNegative ? -magnitude : magnitude;
+}
 
 /**
  * The rule names this module implements, for the roster pin in `ui/tools/entity-ref.test.mjs`:

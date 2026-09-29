@@ -2889,6 +2889,14 @@ app-data-table {
   color: var(--ocu-on-surface-variant);
 }
 
+// The server-path picker (Story 18.1): its root select and relative-name field stacked as two
+// fields of the form it sits in.
+.ocu-path-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-3);
+}
+
 .ocu-field-textarea {
   height: auto;
   min-height: calc(var(--ocu-input-height) * 2);
@@ -7051,5 +7059,415 @@ app-data-table .ocu-data-table-header-cell {
   @include typo.ocu-type('code');
 
   color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+// --- Unified log hub (Story 16.9) -----------------------------------------------------------------
+//
+// Two sections over one composed read: the Sources table and the Timeline. The page scrolls as one
+// column, and each wide surface -- the table and the timeline's rows -- scrolls sideways in its own
+// frame rather than widening the page, so the 720px floor keeps every control on screen.
+
+app-log-hub-page {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ocu-log-hub {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--ocu-gutter) var(--ocu-gutter);
+}
+
+.ocu-log-hub-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+}
+
+.ocu-log-hub-heading {
+  @include typo.ocu-type('title');
+
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-log-hub-frame {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.ocu-log-hub-table {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-log-hub-th {
+  @include typo.ocu-type('label');
+
+  padding: var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  color: var(--ocu-on-surface-variant);
+  text-align: left;
+}
+
+.ocu-log-hub-td {
+  padding: var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.ocu-log-hub-last {
+  width: 50%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ocu-log-hub-last-time {
+  @include typo.ocu-type('code');
+
+  margin-right: var(--ocu-space-2);
+}
+
+.ocu-log-hub-last .ocu-log-chip {
+  margin-right: var(--ocu-space-2);
+}
+
+.ocu-log-hub-count {
+  margin-right: var(--ocu-space-2);
+}
+
+.ocu-log-hub-cap,
+.ocu-log-hub-reason,
+.ocu-log-hub-none {
+  @include typo.ocu-type('caption');
+
+  display: block;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-log-hub-denied {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-log-hub-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ocu-space-3);
+}
+
+.ocu-log-hub-notice-line {
+  margin: 0;
+}
+
+// The timeline's rows reuse the log viewer's fixed row, with a source column in place of the pid.
+.ocu-log-hub-rows {
+  min-width: 48rem;
+}
+
+.ocu-log-hub-row {
+  grid-template-columns: 190px 200px 110px minmax(0, 1fr);
+}
+
+.ocu-log-hub-row.ocu-log-hub-row-explain {
+  grid-template-columns: 190px 200px 110px minmax(0, 1fr) auto;
+}
+
+// The entry a log viewer was opened at from the hub's timeline (Story 16.9): marked by a leading
+// rule in the secondary role as well as a surface change, never by colour alone.
+.ocu-log-row-current {
+  background: var(--ocu-surface-container-high);
+  box-shadow: inset 3px 0 0 var(--ocu-secondary);
+}
+
+.ocu-log-row-current:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-log-viewer-entry-gone {
+  margin: var(--ocu-space-2) var(--ocu-space-4) 0;
+}
+
+// --- The try-it console's Copy as curl (Story 16.24) --------------------------------------------
+//
+// Copy as curl follows Send, then its polite status and the note that describes it; the row wraps
+// so the note takes its own line on a narrow console rather than scrolling it sideways.
+
+.ocu-try-it-actions {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-try-it-copy[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+// No state layer on a refused Copy or a blocked Send, as on every other `aria-disabled` control
+// (`.ocu-command-bar-action`, `.ocu-suggested-open`): a hover highlight would offer a dead press.
+.ocu-try-it-send[aria-disabled='true']:hover,
+.ocu-try-it-send[aria-disabled='true']:active,
+.ocu-try-it-copy[aria-disabled='true']:hover,
+.ocu-try-it-copy[aria-disabled='true']:active {
+  background: transparent;
+}
+
+// --- Effective privileges tab and Check permission (Story 16.3) ------------------------------
+//
+// The user editor's third tab reads the instance's composition of an account's roles: sections in a
+// column, each a label-type heading over its rows. The Resources and Web applications sections are
+// plain tables whose cells wrap rather than overflow the form column; the other sections reuse the
+// Roles tab's list. The Check permission dialog's answer is one polite status line under its fields.
+
+.ocu-effective {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  max-width: 720px;
+  min-width: 0;
+}
+
+.ocu-effective-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+}
+
+.ocu-effective-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.ocu-effective-table th,
+.ocu-effective-table td {
+  @include typo.ocu-type('body');
+
+  padding: var(--ocu-space-1) var(--ocu-space-3) var(--ocu-space-1) 0;
+  color: var(--ocu-on-surface);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.ocu-effective-table th {
+  @include typo.ocu-type('label');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-effective-note {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-permission-check-line {
+  @include typo.ocu-type('body');
+
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-permission-check-line:empty {
+  margin: 0;
+}
+
+.ocu-permission-check-line[data-slot='refusal'] {
+  color: var(--ocu-destructive);
+}
+
+// The Agent audit ledger's criteria form (Story 16.16): the field a refused criterion names takes
+// the form error treatment, and the refusal beneath the form describes it.
+.ocu-criteria-input[aria-invalid='true'],
+.ocu-criteria-select[aria-invalid='true'] {
+  border-width: 2px;
+  border-color: var(--ocu-destructive);
+}
+
+// The Namespaces list's copy line (Story 18.14): above the list, the running line while a Copy
+// mappings runs and the line that replaces it. Kept in the tree while empty, so the status region
+// is present before its first announcement, and taking no room until it has text.
+.ocu-namespace-copy-status {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  padding: 0 var(--ocu-gutter);
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-namespace-copy-status:not(:empty) {
+  padding-block: var(--ocu-space-2);
+}
+
+// The data table's checked set (Story 16.6): a 24px checkbox at the leading edge of a multi-select
+// list's name cell and name header, which never shrinks under a narrow column (DW-1337).
+.ocu-data-table-check {
+  flex: 0 0 auto;
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
+  cursor: pointer;
+}
+
+.ocu-data-table-check[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+// The broadcast dialog's refusal and sent line (Story 16.6).
+.ocu-broadcast-refusal {
+  @include typo.ocu-type('body');
+
+  margin: var(--ocu-space-2) 0 0;
+  color: var(--ocu-error);
+}
+
+.ocu-broadcast-sent {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+}
+
+// --- Dashboard (Story 16.7) -- seven groups, each a heading over a grid of meters -----------------
+//
+// The same meter grid System usage draws, one per group; the Task manager group draws Upcoming
+// tasks' rows as a small table under that screen's own column labels.
+.ocu-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-6);
+  min-width: 0;
+  padding: var(--ocu-space-4);
+  box-sizing: border-box;
+}
+
+.ocu-dashboard-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-3);
+  min-width: 0;
+}
+
+.ocu-dashboard-heading {
+  padding-bottom: var(--ocu-space-1);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-dashboard-meters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--ocu-space-4);
+  min-width: 0;
+}
+
+.ocu-dashboard-tasks {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.ocu-dashboard-tasks-gated,
+.ocu-dashboard-tasks-refused,
+.ocu-dashboard-tasks-empty {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-dashboard-tasks-refused {
+  color: var(--ocu-error);
+}
+
+.ocu-dashboard-tasks-table {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-dashboard-tasks-table th {
+  @include typo.ocu-type('label');
+
+  padding: var(--ocu-space-2) var(--ocu-space-3);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  color: var(--ocu-on-surface-variant);
+  text-align: start;
+  text-transform: uppercase;
+}
+
+.ocu-dashboard-tasks-table td {
+  padding: var(--ocu-space-2) var(--ocu-space-3);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  overflow-wrap: anywhere;
+}
+
+// A value meter's loading placeholder, beside its dash until the first readout (Story 16.7); a
+// track meter's own placeholder is `.ocu-meter-fill-skeleton`.
+.ocu-meter-value-skeleton {
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--ocu-surface-container-high);
+  animation: ocu-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ocu-meter-value-skeleton {
+    animation: none;
+  }
+}
+
+// Task schedule's Export and Import (Story 16.4): the status line above the list, as the Namespaces
+// list's copy line, and each dialog's note and refusal. A long server path wraps rather than
+// widening the dialog (DW-1337).
+.ocu-task-transfer-status {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  padding: 0 var(--ocu-gutter);
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-task-transfer-status:not(:empty) {
+  padding-block: var(--ocu-space-2);
+}
+
+.ocu-task-transfer-note {
+  @include typo.ocu-type('body');
+
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.ocu-task-transfer-refusal {
+  @include typo.ocu-type('body');
+
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-error);
   overflow-wrap: anywhere;
 }

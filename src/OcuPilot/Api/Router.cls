@@ -8,7 +8,8 @@
 /// (<code>/proposal/:id</code>); the generic
 /// screen read and row action (<code>/screens/:screen</code>); the log pages (<code>/logs</code>);
 /// and the editors' reads, Saves and checks for web applications, users, roles, resources, services,
-/// tasks, audit events, devices, LDAP, SSL/TLS, X.509 credentials, wallet secrets and OAuth 2.0.
+/// tasks, audit events, devices, LDAP, SSL/TLS, X.509 credentials, wallet secrets and OAuth 2.0; and
+/// the permission check (<code>/permissions/check</code>).
 /// Every other request that clears <method>OnPreDispatch</method> is answered by the framework 404
 /// override. The three ordering invariants below are load-bearing from the first route on; the
 /// first two are each asserted by their own routing test in <class>OcuPilot.Test.Routing</class> against
@@ -92,6 +93,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/web-applications" Method="POST" Call="WebAppCreate"/>
   <Route Url="/users/form" Method="GET" Call="UserFormRules"/>
   <Route Url="/users/name" Method="GET" Call="UserNameCheck"/>
+  <Route Url="/users/effective" Method="GET" Call="UserEffective"/>
   <Route Url="/users/:id" Method="PUT" Call="UserUpdate"/>
   <Route Url="/users" Method="POST" Call="UserCreate"/>
   <Route Url="/roles/form" Method="GET" Call="RoleFormRules"/>
@@ -114,6 +116,18 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/device/name" Method="GET" Call="DeviceNameCheck"/>
   <Route Url="/device/:id" Method="PUT" Call="DeviceUpdate"/>
   <Route Url="/device" Method="POST" Call="DeviceCreate"/>
+  <Route Url="/namespace/form" Method="GET" Call="NamespaceFormRead"/>
+  <Route Url="/namespace/name" Method="GET" Call="NamespaceNameCheck"/>
+  <Route Url="/namespace/:id" Method="PUT" Call="NamespaceUpdate"/>
+  <Route Url="/namespace" Method="POST" Call="NamespaceCreate"/>
+  <Route Url="/mapping/:kind/form" Method="GET" Call="MappingFormRead"/>
+  <Route Url="/mapping/:kind/name" Method="GET" Call="MappingNameCheck"/>
+  <Route Url="/mapping/:kind/:id" Method="PUT" Call="MappingUpdate"/>
+  <Route Url="/mapping/:kind" Method="POST" Call="MappingCreate"/>
+  <Route Url="/database/form" Method="GET" Call="DatabaseFormRead"/>
+  <Route Url="/database/check" Method="POST" Call="DatabaseCheck"/>
+  <Route Url="/database/:id" Method="PUT" Call="DatabaseUpdate"/>
+  <Route Url="/database" Method="POST" Call="DatabaseCreate"/>
   <Route Url="/screens/:screen/action" Method="POST" Call="ScreenAction"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/screens/:screen/impact" Method="GET" Call="ScreenImpact"/>
@@ -185,6 +199,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/oauth/server-client/form" Method="GET" Call="OAuthServerClientFormRead"/>
   <Route Url="/oauth/server-client/:id" Method="PUT" Call="OAuthServerClientUpdate"/>
   <Route Url="/oauth/server-client" Method="POST" Call="OAuthServerClientCreate"/>
+  <Route Url="/permissions/check" Method="GET" Call="PermissionCheck"/>
 </Routes>
 }
 
@@ -379,7 +394,7 @@ ClassMethod WebAppUpdate(pId As %String) As %Status
 
 /// <p>Thin <code>Call=</code> target for <code>GET /users/form</code> (Story 8.2): delegates to
 /// <class>OcuPilot.Area.Permissions.UserCreateRules</class> and carries no logic of its own. The
-/// two sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
+/// three sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
 ClassMethod UserFormRules() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleForm()
@@ -392,10 +407,26 @@ ClassMethod UserNameCheck() As %Status
     Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleName()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>GET /users/effective</code> (Story 16.3): the user
+/// editor's Effective privileges tab. A literal sibling of <code>/users/:id</code>, above it.</p>
+ClassMethod UserEffective() As %Status
+{
+    Quit ##class(OcuPilot.Api.Privileges).HandleEffective()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /permissions/check</code> (Story 16.3): the
+/// command-bar permission check, the route caller of the operation
+/// <code>permissions.privileges.check</code> also answers. It shares no prefix with another
+/// route.</p>
+ClassMethod PermissionCheck() As %Status
+{
+    Quit ##class(OcuPilot.Api.Privileges).HandleCheck()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>PUT /users/:id</code> (Story 9.1): the user editor's
-/// Save, resolved through the one tool the agent's confirm uses (AD-55). The two sub-resources are
-/// <code>GET</code> routes, so a <code>PUT</code> to either path is this route's, for the account
-/// of that name.</p>
+/// Save, resolved through the one tool the agent's confirm uses (AD-55). The three sub-resources are
+/// <code>GET</code> routes, so a <code>PUT</code> to any of those paths is this route's, for the
+/// account of that name.</p>
 ClassMethod UserUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserSave).HandleUpdate(pId)
@@ -551,6 +582,96 @@ ClassMethod DeviceCreate() As %Status
 ClassMethod DeviceUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.DeviceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /namespace/form</code> (Story 18.2): the namespace
+/// editor's read, delegating to <class>OcuPilot.Area.OsMgmt.NamespaceRules</class>. The two
+/// sub-resources precede <code>/namespace/:id</code>.</p>
+ClassMethod NamespaceFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.NamespaceRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /namespace/name</code>: the namespace editor's
+/// blur check of whether a name is taken.</p>
+ClassMethod NamespaceNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.NamespaceRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /namespace</code>: the namespace editor's create
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod NamespaceCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.NamespaceSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /namespace/:id</code>: the namespace editor's edit
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod NamespaceUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.NamespaceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /mapping/:kind/form</code> (Story 18.14): the
+/// mapping editor's read for kind <var>pKind</var>, delegating to
+/// <class>OcuPilot.Area.OsMgmt.MappingRules</class>. The two sub-resources precede
+/// <code>/mapping/:kind/:id</code>.</p>
+ClassMethod MappingFormRead(pKind As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.MappingRules).HandleForm(pKind)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /mapping/:kind/name</code>: the mapping editor's
+/// blur check of whether a name is taken in a namespace.</p>
+ClassMethod MappingNameCheck(pKind As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.MappingRules).HandleName(pKind)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /mapping/:kind</code>: the mapping editor's create
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod MappingCreate(pKind As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.MappingSave).HandleCreate(pKind)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /mapping/:kind/:id</code>: the mapping editor's
+/// edit Save, <var>pId</var> the mapping's composite id as one segment (AD-13), resolved through the
+/// one tool the agent's confirm uses (AD-55).</p>
+ClassMethod MappingUpdate(pKind As %String, pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.MappingSave).HandleUpdate(pKind, pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /database/form</code> (Story 18.3): the local
+/// database editor's and wizard's read, delegating to
+/// <class>OcuPilot.Area.OsMgmt.DatabaseRules</class>. The two sub-resources precede
+/// <code>/database/:id</code>.</p>
+ClassMethod DatabaseFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DatabaseRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /database/check</code>: the database wizard's
+/// Next, which validates one step on the instance.</p>
+ClassMethod DatabaseCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DatabaseRules).HandleCheck()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /database</code>: the database wizard's create,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DatabaseCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DatabaseSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /database/:id</code>: the database editor's Save,
+/// its two groups resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod DatabaseUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DatabaseSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /oauth/server-description/form</code> (Story

@@ -15,6 +15,9 @@ import {
   ADD_GRANTED_ROLE,
   ADD_MATCHING_ROLE,
   ADD_ROLE,
+  COPY_MAPPINGS,
+  LOCAL_DATABASE_LIST,
+  NAMESPACE_LIST,
   REMOVE_APPLICATION_ROLE,
   REMOVE_GRANTED_ROLE,
   REMOVE_MATCHING_ROLE,
@@ -27,6 +30,10 @@ import {
   SET_PASSWORD,
   SET_RESOURCE_GRANT,
   ScreenActionHandler,
+  TASK_EXPORT,
+  TASK_IMPORT,
+  TASK_IMPORT_TARGET,
+  TASK_SCHEDULE,
 } from './screen-action-handler';
 
 /** The screen this handler serves first, read from the mirror rather than restated here. */
@@ -700,6 +707,114 @@ describe('Processes and Process details: Suspend, Resume and Terminate (Story 7.
   });
 });
 
+describe('Processes\u2019 Broadcast over the checked rows (Story 16.6)', () => {
+  const LIST = 'OcuPilot.Screen.Descriptor.ProcessList';
+  const target = { type: 'process', scope: 'instance', id: '812,907' };
+
+  it('opens the broadcast dialog over the checked set, never the selection, and sends one request with the trimmed message', async () => {
+    const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target } }, LIST);
+    expect(actions.has(LIST, 'broadcast')).toBe(true);
+    store.setSelection(['4711']);
+    actions.run(LIST, 'broadcast');
+    await settle();
+    expect(handler.pending()).toBeNull();
+
+    store.setChecked(['907', '812']);
+    actions.run(LIST, 'broadcast');
+    await settle();
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('broadcast');
+    expect(pending?.count).toBe(2);
+    expect(pending?.target).toBe('812,907');
+    expect(calls).toHaveLength(0);
+
+    await handler.submitBroadcast('  Down at 18:00  ');
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/osmgmt.processes/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'broadcast', id: '812,907', values: { Message: 'Down at 18:00' } });
+    expect(handler.pending()?.sent).toBe(true);
+    expect(store.checked().size).toBe(0);
+    expect(store.selection()).toEqual(['4711']);
+    expect(events.map((event) => `${event.type}:${event.action}:${event.id}`)).toEqual(['process:updated:812,907']);
+
+    await handler.submitBroadcast('again');
+    await settle();
+    expect(calls).toHaveLength(1);
+    handler.cancelPending();
+    expect(handler.pending()).toBeNull();
+  });
+
+  // Mutation (Rule 19): put the refusal on the list's store rather than the dialog -> red.
+  it('keeps the dialog open on a refusal with the envelope\u2019s own reason, and keeps the checks', async () => {
+    const refused = { kind: 'error', status: 409, reason: STRINGS.processBroadcastRefusalRecipient, code: 'PROCESS.BROADCAST.RECIPIENT' } as unknown as JsonResult<unknown>;
+    const { actions, handler, store, calls, events } = mount(refused, LIST);
+    store.setChecked(['812', '907']);
+    actions.run(LIST, 'broadcast');
+    await settle();
+    await handler.submitBroadcast('Down at 18:00');
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(handler.pending()?.kind).toBe('broadcast');
+    expect(handler.pending()?.refusal).toBe(STRINGS.processBroadcastRefusalRecipient);
+    expect(handler.pending()?.sent).toBe(false);
+    expect(store.refusal()).toBe('');
+    expect(store.checked().size).toBe(2);
+    expect(events).toEqual([]);
+  });
+
+  // Mutation (Rule 19): drop `pending.sending === true ||` from `submitBroadcast` -> the second
+  // Send posts too and this goes red.
+  it('a second Send while the first is in flight sends nothing', async () => {
+    const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target } }, LIST);
+    store.setChecked(['812', '907']);
+    actions.run(LIST, 'broadcast');
+    await settle();
+    const first = handler.submitBroadcast('Down at 18:00');
+    const second = handler.submitBroadcast('Down at 18:00');
+    await Promise.all([first, second]);
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(handler.pending()?.sent).toBe(true);
+  });
+
+  // Mutation (Rule 19): compare the answered dialog by kind and target instead of identity -> the
+  // reopened dialog reads sent before anything was typed in it, and this goes red.
+  it('a Send answered after its dialog was closed and reopened leaves the reopened one unsent', async () => {
+    const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target } }, LIST);
+    store.setChecked(['812', '907']);
+    actions.run(LIST, 'broadcast');
+    await settle();
+    const inFlight = handler.submitBroadcast('Down at 18:00');
+    handler.cancelPending();
+    actions.run(LIST, 'broadcast');
+    await inFlight;
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(handler.pending()?.kind).toBe('broadcast');
+    expect(handler.pending()?.sent).toBe(false);
+    expect(handler.pending()?.sending).toBe(false);
+  });
+
+  it('Cancel sends nothing, and a set over the declared max opens nothing', async () => {
+    const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: {} }, LIST);
+    store.setChecked(['812']);
+    actions.run(LIST, 'broadcast');
+    await settle();
+    expect(handler.pending()?.count).toBe(1);
+    handler.cancelPending();
+    await settle();
+    expect(calls).toHaveLength(0);
+    expect(store.checked().size).toBe(1);
+
+    store.setChecked(Array.from({ length: 21 }, (_, index) => String(100 + index)));
+    actions.run(LIST, 'broadcast');
+    await settle();
+    expect(handler.pending()).toBeNull();
+    expect(calls).toHaveLength(0);
+  });
+});
+
 describe('the application error log: one Delete whose target names its scope (Story 7.10)', () => {
   const LOG = 'OcuPilot.Screen.Descriptor.LogErrorList';
   const SEP = '\u0001';
@@ -1110,5 +1225,398 @@ describe('the X.509, Secrets and SSL/TLS lists\u2019 Delete (Story 9.5)', () => 
     expect(store.refusal()).toBe(STRINGS.sslRefusalOcuPilot);
     expect(handler.pending()).toBeNull();
     expect(calls).toHaveLength(0);
+  });
+});
+
+/**
+ * Story 18.2 (AD-8, AD-10): the Namespaces list's Delete types the name, states the consequence and
+ * the removal's impact as the dialog opens, or the kernel's refusal of OcuPilot's own namespace, and
+ * publishes the deleted namespace the instance answered.
+ */
+describe('the Namespaces list\u2019s Delete (Story 18.2)', () => {
+  const NAMESPACES = SCREENS.find((screen) => screen.descriptor === NAMESPACE_LIST)!;
+
+  function mountWith(answers: readonly JsonResult<unknown>[]) {
+    const mounted = mount(undefined, NAMESPACE_LIST);
+    const queue = [...answers];
+    const api = TestBed.inject(ApiService) as unknown as { requestJson: (path: string, init?: ApiRequestInit) => Promise<JsonResult<unknown>> };
+    api.requestJson = async (path: string, init: ApiRequestInit = {}) => {
+      mounted.calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+      return (queue.shift() ?? { kind: 'ok', status: 200, body: {} }) as JsonResult<unknown>;
+    };
+    return mounted;
+  }
+
+  it('opens the typed-name dialog with the consequence and the impact read as it opens, and sends the delete once confirmed', async () => {
+    // Mutation (Rule 19): drop the Namespaces list from `IMPACT_ACTIONS` -> the impact read and the
+    // advisory assertions go red; drop it from `SCREEN_ACTION_DESCRIPTORS` -> the registration does.
+    const impact = {
+      kind: 'namespace-delete',
+      refused: null,
+      parts: [
+        { part: 'boundApplications', count: 2, names: ['/csp/ocuprobe182bd1', '/csp/ocuprobe182bd2'], unchecked: '' },
+        { part: 'databases', count: 2, names: ['IRISTEMP', 'USER'], unchecked: '' },
+      ],
+    };
+    const deleted = { action: 'deleted', target: { type: 'namespace', scope: 'instance', id: 'OCUPROBE182BD' } };
+    const { actions, handler, calls, events, store } = mountWith([
+      { kind: 'ok', status: 200, body: { impact } },
+      { kind: 'ok', status: 200, body: deleted },
+    ]);
+    expect(actions.has(NAMESPACE_LIST, 'delete')).toBe(true);
+    handler.startFor(NAMESPACE_LIST, 'delete', 'OCUPROBE182BD', { Name: 'OCUPROBE182BD' }, store);
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${NAMESPACES.toolIdentifier}/impact?action=delete&id=OCUPROBE182BD`);
+    expect(handler.pending()?.kind).toBe('typed-name');
+    expect(handler.pending()?.name).toBe('OCUPROBE182BD');
+    expect(handler.pending()?.consequence).toBe(STRINGS.namespaceDeleteConsequence);
+    expect(handler.pending()?.advisory).toBe(
+      'Impact: 2 web applications run in it and are deleted with it: /csp/ocuprobe182bd1, /csp/ocuprobe182bd2; it uses 2 databases, which stay: IRISTEMP, USER.'
+    );
+
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(2);
+    expect(calls[1].path).toBe(`/api/ocupilot/screens/${NAMESPACES.toolIdentifier}/action`);
+    expect(calls[1].method).toBe('POST');
+    expect(JSON.parse(calls[1].body)).toEqual({ action: 'delete', id: 'OCUPROBE182BD' });
+    expect(events.map(({ kind, type, scope, id, action }) => ({ kind, type, scope, id, action }))).toEqual([
+      { kind: 'changed', type: 'namespace', scope: 'instance', id: 'OCUPROBE182BD', action: 'deleted' },
+    ]);
+  });
+
+  it('states the kernel\u2019s refusal of OcuPilot\u2019s own namespace as the advisory, and sends nothing until confirmed', async () => {
+    const reason = STRINGS.namespaceRefusalOcuPilot;
+    const { handler, calls, store } = mountWith([
+      { kind: 'ok', status: 200, body: { impact: { kind: 'namespace-delete', refused: { code: 'PROHIBITED.OCUPILOTNAMESPACE', reason }, parts: [] } } },
+    ]);
+    handler.startFor(NAMESPACE_LIST, 'delete', 'HSCUSTOM', { Name: 'HSCUSTOM' }, store);
+    await settle();
+    expect(handler.pending()?.consequence).toBe(STRINGS.namespaceDeleteConsequence);
+    expect(handler.pending()?.advisory).toBe(reason);
+    handler.cancelPending();
+    expect(calls.map((call) => call.method)).toEqual(['GET']);
+    expect(NAMESPACES.rowActions.find((action) => action.id === 'delete')?.selfProtection).toBe('');
+  });
+});
+
+/**
+ * Story 16.2: the Web sessions list's End session, typed by the session id with its own consequence,
+ * and a session under one of OcuPilot's own applications drawn refused before anything is sent.
+ */
+describe('the Web sessions list\u2019s End session (Story 16.2)', () => {
+  const SESSIONS = 'OcuPilot.Screen.Descriptor.WebSessionList';
+  const ID = 'wSeS5iOnId';
+
+  it('registers End session, opening the typed-name dialog titled by the verb and the session id', () => {
+    // Mutation (Rule 19): remove 'end' from `DESTRUCTIVE_ACTIONS` -> the action is sent at once
+    // and the dialog assertions go red.
+    const { actions, handler, store, calls } = mount(undefined, SESSIONS);
+    expect(actions.has(SESSIONS, 'end')).toBe(true);
+    handler.startFor(SESSIONS, 'end', ID, { ID, Application: '/api/atelier/' }, store);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('typed-name');
+    expect(`${pending?.verb} ${pending?.name}`).toBe(`End session ${ID}`);
+    expect(pending?.consequence).toBe(STRINGS.webSessionEndConsequence);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed End session once, keyed by the session id, and publishes the deleted event', async () => {
+    const { handler, store, calls, events } = mount(
+      { kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'web-session', scope: 'instance', id: ID } } },
+      SESSIONS
+    );
+    handler.startFor(SESSIONS, 'end', ID, { ID, Application: '/api/atelier/' }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/webapp.sessions/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'end', id: ID });
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`deleted web-session ${ID}`]);
+  });
+
+  it("draws a session under OcuPilot's own application refused before anything is sent", () => {
+    // Mutation (Rule 19): drop the `ocupilot-session` branch from `selfProtectionReason` -> the
+    // dialog opens and the refusal assertion goes red.
+    const { handler, store, calls } = mount(undefined, SESSIONS);
+    handler.startFor(SESSIONS, 'end', ID, { ID, Application: '/api/ocupilot/' }, store);
+    expect(store.refusal()).toBe(STRINGS.webSessionRefusalOcuPilot);
+    expect(handler.pending()).toBeNull();
+    expect(calls).toHaveLength(0);
+  });
+
+  it("offers End session on a preserve-mode session and shows the instance's refusal, pointing to its process, after the click", async () => {
+    // Mutation (Rule 19): answer the preserve-mode sentence for a `Preserve` 1 row in
+    // `selfProtectionReason` -> no dialog opens and the typed-name assertion goes red.
+    const refused = { kind: 'error', status: 403, code: 'PROHIBITED.PRESERVEDSESSION', reason: STRINGS.webSessionRefusalPreserved, detail: null } as JsonResult<unknown>;
+    const { handler, store, calls, events } = mount(refused, SESSIONS);
+    handler.startFor(SESSIONS, 'end', ID, { ID, Application: '/csp/hscustom/', Preserve: 1, SesProcessId: '4242' }, store);
+    expect(handler.pending()?.kind).toBe('typed-name');
+    expect(store.refusal()).toBe('');
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'end', id: ID });
+    expect(store.refusal()).toBe(STRINGS.webSessionRefusalPreserved);
+    expect(events).toEqual([]);
+  });
+});
+
+/**
+ * Story 16.5: the Background tasks list's Cancel task, which warns first with its own consequence,
+ * and its Pause and Resume, each sent at once. A row's id is its source and id joined.
+ */
+describe('the Background tasks list\u2019s Cancel task, Pause and Resume (Story 16.5)', () => {
+  const BACKGROUND = 'OcuPilot.Screen.Descriptor.BackgroundTaskList';
+  const ID = 'Management Portal\u00014242';
+  const ROW = { Source: 'Management Portal', Id: '4242', Status: 'Paused' };
+  const TARGET = { type: 'background-task', scope: 'instance', id: ID };
+
+  it('opens the warning before Cancel task, titled by the verb with the consequence, and the dialog\u2019s Cancel sends nothing', async () => {
+    // Mutation (Rule 19): remove `cancel` from WARNING_CONSEQUENCES' BackgroundTaskList entry -> the
+    // cancel is sent at once and the warning assertions go red.
+    const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, BACKGROUND);
+    expect(actions.has(BACKGROUND, 'cancel')).toBe(true);
+    handler.startFor(BACKGROUND, 'cancel', ID, ROW, store);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('warning');
+    expect(pending?.verb).toBe(STRINGS.backgroundTaskCancelAction);
+    expect(pending?.consequence).toBe(STRINGS.backgroundTaskCancelConsequence);
+    handler.cancelPending();
+    await settle();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends Cancel task once past the warning\u2019s Proceed, keyed by the composite id, and publishes the updated event', async () => {
+    const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, BACKGROUND);
+    handler.startFor(BACKGROUND, 'cancel', ID, ROW, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/tasks.background/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'cancel', id: ID });
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`updated background-task ${ID}`]);
+  });
+
+  it('sends Pause and Resume at once, with no dialog', async () => {
+    // Mutation (Rule 19): add `pause` to WARNING_CONSEQUENCES' BackgroundTaskList entry -> Pause opens
+    // the warning and nothing is sent, red.
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, BACKGROUND);
+    for (const action of ['pause', 'resume']) {
+      handler.startFor(BACKGROUND, action, ID, ROW, store);
+      expect(handler.pending()).toBeNull();
+    }
+    await settle();
+    expect(calls.map((call) => JSON.parse(call.body).action)).toEqual(['pause', 'resume']);
+  });
+});
+
+/**
+ * Story 18.14: the three mapping lists' Delete types the mapping's name -- the row key is
+ * `[namespace, Name]`, whose separator no one can type -- states its kind's consequence, and sends
+ * the whole row key; the Namespaces list's Copy mappings is left to that list's own page.
+ */
+describe('the mapping lists\u2019 Delete and the Namespaces list\u2019s Copy mappings (Story 18.14)', () => {
+  const MAPPING_LISTS = [
+    ['OcuPilot.Screen.Descriptor.GlobalMappingList', STRINGS.globalMappingDeleteConsequence],
+    ['OcuPilot.Screen.Descriptor.RoutineMappingList', STRINGS.routineMappingDeleteConsequence],
+    ['OcuPilot.Screen.Descriptor.PackageMappingList', STRINGS.packageMappingDeleteConsequence],
+  ] as const;
+
+  it('registers Delete on each list, typing the mapping\u2019s name under its kind\u2019s consequence', () => {
+    // Mutation (Rule 19): drop a list's entry from `TYPED_NAME_ROWS` -> its name assertion goes red,
+    // the dialog asking for the joined row key; drop its `DESTRUCTIVE_CONSEQUENCES` entry -> its
+    // registration and consequence assertions go red.
+    for (const [descriptor, consequence] of MAPPING_LISTS) {
+      const { actions, handler, store, calls } = mount(undefined, descriptor);
+      const target = 'OCUPROBE1814BA\u0001OcuProbe1814G';
+      expect(actions.has(descriptor, 'delete')).toBe(true);
+      handler.startFor(descriptor, 'delete', target, { namespace: 'OCUPROBE1814BA', Name: 'OcuProbe1814G' }, store);
+      expect(handler.pending()?.kind).toBe('typed-name');
+      expect(handler.pending()?.name).toBe('OcuProbe1814G');
+      expect(handler.pending()?.target).toBe(target);
+      expect(handler.pending()?.consequence).toBe(consequence);
+      expect(handler.pending()?.advisory).toBe('');
+      expect(calls).toHaveLength(0);
+    }
+  });
+
+  it('sends a confirmed Delete with the whole row key, and publishes what the instance answered', async () => {
+    const descriptor = 'OcuPilot.Screen.Descriptor.GlobalMappingList';
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+    const target = 'OCUPROBE1814BA\u0001OcuProbe1814G';
+    const { handler, store, calls, events } = mount(
+      { kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'global-mapping', scope: 'instance', id: target } } },
+      descriptor
+    );
+    handler.startFor(descriptor, 'delete', target, { namespace: 'OCUPROBE1814BA', Name: 'OcuProbe1814G' }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
+    expect(events.map(({ type, id, action }) => ({ type, id, action }))).toEqual([{ type: 'global-mapping', id: target, action: 'deleted' }]);
+  });
+
+  it('leaves Copy mappings undrawn, for the Namespaces list\u2019s own page to register', () => {
+    // Mutation (Rule 19): drop the Namespaces list's entry from `UNDRAWN_ACTIONS` -> this goes red,
+    // and a later construction of the handler would replace the page's registration with a send
+    // that carries no source.
+    const { actions } = mount(undefined, NAMESPACE_LIST);
+    expect(actions.has(NAMESPACE_LIST, 'delete')).toBe(true);
+    expect(actions.has(NAMESPACE_LIST, COPY_MAPPINGS)).toBe(false);
+  });
+
+  it('leaves the Task schedule\u2019s Export and Import undrawn, for its own page to register', () => {
+    // Mutation (Rule 19): drop the Task schedule's entry from `UNDRAWN_ACTIONS` -> this goes red, and
+    // Export would be sent at once with no file.
+    const { actions } = mount(undefined, TASK_SCHEDULE);
+    expect(actions.has(TASK_SCHEDULE, 'delete')).toBe(true);
+    expect(actions.has(TASK_SCHEDULE, TASK_EXPORT)).toBe(false);
+    expect(actions.has(TASK_SCHEDULE, TASK_IMPORT)).toBe(false);
+  });
+});
+
+/**
+ * Story 16.4: `sendFor` with a sink of its own keeps a refusal off the list's banner, and
+ * `lastRefusal` answers what the instance refused with -- its sentence, its field-level violations and
+ * its detail -- until the next send, which clears it.
+ */
+describe('lastRefusal, the refusal a dialog draws on its own fields', () => {
+  it('answers the envelope\u2019s sentence, violations and detail, and null once an action is applied', async () => {
+    // Mutation (Rule 19): stop `send` setting `lastRefused` from the envelope -> the violations
+    // assertion goes red.
+    const refused: JsonResult<unknown> = {
+      kind: 'error',
+      status: 400,
+      code: 'PATH.ROOT',
+      reason: 'Choose an allowed directory.',
+      detail: { violations: [{ field: 'root', code: 'PATH.ROOT', reason: 'Choose an allowed directory.' }], task: 'OcuP164A' },
+    };
+    const { handler, calls, store } = mount(refused, TASK_SCHEDULE);
+    const seen: string[] = [];
+    const applied = await handler.sendFor(TASK_SCHEDULE, TASK_IMPORT, TASK_IMPORT_TARGET, { root: '/r/', path: 't.xml' }, { setRefusal: (reason) => seen.push(reason) });
+    expect(applied).toBe(false);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'import', id: 'import', values: { root: '/r/', path: 't.xml' } });
+    expect(handler.lastRefusal()).toEqual({
+      reason: 'Choose an allowed directory.',
+      violations: [{ field: 'root', code: 'PATH.ROOT', reason: 'Choose an allowed directory.' }],
+      detail: refused.kind === 'error' ? refused.detail : null,
+    });
+    expect(seen).toEqual(['', 'Choose an allowed directory.']);
+    expect(store.refusal()).toBe('');
+  });
+
+  it('answers null once a later action on the same handler is applied', async () => {
+    // Mutation (Rule 19): keep `lastRefused` through `send` (drop its reset at the top and answer the
+    // previous value on an applied action) -> the null assertion goes red.
+    const answer: Record<string, unknown> = {
+      kind: 'error',
+      status: 409,
+      code: 'TASK.IMPORT.PRESENT',
+      reason: 'Every task in this file is already on this instance.',
+      detail: null,
+    };
+    const { handler } = mount(answer as unknown as JsonResult<unknown>, TASK_SCHEDULE);
+    expect(await handler.sendFor(TASK_SCHEDULE, TASK_IMPORT, TASK_IMPORT_TARGET, { root: '/r/', path: 't.xml' })).toBe(false);
+    expect(handler.lastRefusal()?.reason).toBe('Every task in this file is already on this instance.');
+    for (const key of Object.keys(answer)) delete answer[key];
+    Object.assign(answer, { kind: 'ok', status: 200, body: { action: 'created', target: { type: 'task', scope: 'instance', id: 'import' } } });
+    expect(await handler.sendFor(TASK_SCHEDULE, TASK_IMPORT, TASK_IMPORT_TARGET, { root: '/r/', path: 't.xml' })).toBe(true);
+    expect(handler.lastRefusal()).toBeNull();
+  });
+});
+
+/**
+ * Story 18.3 (AD-8, AD-10, AD-56 (ii)): Local databases' Delete types the name, states the removal's
+ * impact read unchecked as the dialog opens, and offers "Also delete the database file" as the
+ * action's declared `DeleteFile` value -- sent as a string on the same `delete`, never as a
+ * swapped action.
+ */
+describe('the Local databases list\u2019s Delete (Story 18.3)', () => {
+  const DATABASES = SCREENS.find((screen) => screen.descriptor === LOCAL_DATABASE_LIST)!;
+
+  function mountWith(answers: readonly JsonResult<unknown>[]) {
+    const mounted = mount(undefined, LOCAL_DATABASE_LIST);
+    const queue = [...answers];
+    const api = TestBed.inject(ApiService) as unknown as { requestJson: (path: string, init?: ApiRequestInit) => Promise<JsonResult<unknown>> };
+    api.requestJson = async (path: string, init: ApiRequestInit = {}) => {
+      mounted.calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+      return (queue.shift() ?? { kind: 'ok', status: 200, body: {} }) as JsonResult<unknown>;
+    };
+    return mounted;
+  }
+
+  const IMPACT = {
+    kind: 'database-delete',
+    refused: null,
+    parts: [
+      { part: 'namespaces', count: 1, names: ['OCUPROBE183NS'], unchecked: '' },
+      { part: 'applications', count: 1, names: ['/csp/ocuprobe183'], unchecked: '' },
+      { part: 'sharedFile', count: 0, names: [], unchecked: '' },
+    ],
+  };
+
+  it('opens the typed-name dialog with the consequence, the file option and the impact read unchecked', async () => {
+    // Mutation (Rule 19): drop the list from `IMPACT_ACTIONS` -> the impact read and advisory go red;
+    // drop its `VALUE_FLAGS` entry -> the flag label and the `value=false` query go red.
+    const { actions, handler, calls, store } = mountWith([{ kind: 'ok', status: 200, body: { impact: IMPACT } }]);
+    expect(actions.has(LOCAL_DATABASE_LIST, 'delete')).toBe(true);
+    handler.startFor(LOCAL_DATABASE_LIST, 'delete', 'OCUPROBE183A', { Name: 'OCUPROBE183A' }, store);
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${DATABASES.toolIdentifier}/impact?action=delete&id=OCUPROBE183A&value=false`);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('typed-name');
+    expect(pending?.name).toBe('OCUPROBE183A');
+    expect(pending?.consequence).toBe(STRINGS.localDatabaseDeleteConsequence);
+    expect(pending?.flagLabel).toBe(STRINGS.localDatabaseDeleteFileOption);
+    expect(pending?.advisory).toBe(
+      'Impact: 1 namespace uses it and must stop using it first: OCUPROBE183NS; 1 web application runs in those namespaces: /csp/ocuprobe183.'
+    );
+  });
+
+  it('sends DeleteFile as a string value on the same delete, checked or not, and publishes what the instance answered', async () => {
+    // Mutation (Rule 19): make `confirmPending` swap the action for a checked box instead of sending
+    // `DeleteFile` -> the body assertions go red.
+    for (const checked of [true, false]) {
+      const deleted = { action: 'deleted', target: { type: 'database-configuration', scope: 'instance', id: 'OCUPROBE183A' } };
+      const { handler, calls, events, store } = mountWith([
+        { kind: 'ok', status: 200, body: { impact: { ...IMPACT, parts: [] } } },
+        { kind: 'ok', status: 200, body: deleted },
+      ]);
+      handler.startFor(LOCAL_DATABASE_LIST, 'delete', 'OCUPROBE183A', { Name: 'OCUPROBE183A' }, store);
+      await settle();
+      handler.confirmPending(checked);
+      await settle();
+      expect(calls).toHaveLength(2);
+      expect(calls[1].path).toBe(`/api/ocupilot/screens/${DATABASES.toolIdentifier}/action`);
+      expect(calls[1].method).toBe('POST');
+      expect(JSON.parse(calls[1].body)).toEqual({ action: 'delete', id: 'OCUPROBE183A', values: { DeleteFile: checked ? 'true' : 'false' } });
+      expect(events.map(({ type, id, action }) => ({ type, id, action }))).toEqual([
+        { type: 'database-configuration', id: 'OCUPROBE183A', action: 'deleted' },
+      ]);
+    }
+  });
+
+  it('states the kernel\u2019s refusal of a protected database as the advisory, and sends nothing until confirmed', async () => {
+    const reason = STRINGS.databaseRefusalOcuPilot;
+    const { handler, calls, store } = mountWith([
+      { kind: 'ok', status: 200, body: { impact: { kind: 'database-delete', refused: { code: 'PROHIBITED.OCUPILOTDATABASE', reason }, parts: [] } } },
+    ]);
+    handler.startFor(LOCAL_DATABASE_LIST, 'delete', 'IRISSYS', { Name: 'IRISSYS' }, store);
+    await settle();
+    expect(handler.pending()?.advisory).toBe(reason);
+    handler.cancelPending();
+    expect(calls.map((call) => call.method)).toEqual(['GET']);
+  });
+
+  it('keeps the Terminate flag an action swap: a declared value is the database delete\u2019s alone', async () => {
+    const { handler, calls, store } = mount(undefined, 'OcuPilot.Screen.Descriptor.ProcessList');
+    handler.startFor('OcuPilot.Screen.Descriptor.ProcessList', 'terminate', '4711', null, store);
+    handler.confirmPending(true);
+    await settle();
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'terminate-with-error', id: '4711' });
   });
 });

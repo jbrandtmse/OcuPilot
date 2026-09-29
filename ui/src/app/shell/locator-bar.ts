@@ -13,7 +13,7 @@ import {
 import { Router } from '@angular/router';
 
 import { AccountPreferences, FAVORITE_KIND } from '../core/account-preferences';
-import { decodeEntityId } from '../core/entity-id';
+import { decodeEntityId, displayEntityId } from '../core/entity-id';
 import { HelpLinks } from '../core/help';
 import {
   NavigationService,
@@ -548,14 +548,15 @@ export class LocatorBar {
   /**
    * The entity segment's label: on a parent-scoped `detail` screen, once its one row has loaded,
    * the value of its `name` column (Story 6.7) -- Task details names the task rather than its id --
-   * and otherwise the decoded id every other entity view already showed.
+   * and otherwise the decoded id every other entity view already showed, a composite id's parts
+   * joined as a person reads them (`displayEntityId`): a mapping's namespace, then its name (Story 18.14).
    *
    * Matched by `rowKey` rather than taken as `store.data()[0]` unconditionally, so a store still
    * holding the previous id's row mid-navigation falls back to the id instead of naming the wrong
    * task for one tick.
    */
   private entityLabel(screen: ScreenDeclaration, entity: string): string {
-    if (screen.archetype !== 'detail' || screen.parentScope === '') return entity;
+    if (screen.archetype !== 'detail' || screen.parentScope === '') return displayEntityId(entity);
     const nameColumn = screen.table?.columns.find((column) => column.kind === 'name');
     if (nameColumn === undefined) return entity;
     const store = this.stores.for(screen.descriptor, screen.refreshRates);

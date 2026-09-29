@@ -96,9 +96,13 @@ const LIVE_PAYLOAD = {
       allowed: false,
       failedPair: '%Admin_Manage:USE',
       // Story 6.11 took this roster from four screens to eight, and Story 6.12 took it from eight
-      // to nine, in ScreensForArea's own (sideBarPosition, class name) collation: the four unlisted
+      // to nine, in ScreensForArea's own (sideBarPosition, class name) collation: the unlisted
       // sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead of the
-      // listed ones in position order.
+      // listed ones in position order. Story 18.2 adds the namespace editor among the unlisted ones
+      // and Namespaces last, Story 18.14 the three mapping forms and lists among the unlisted ones,
+      // Story 16.7 License usage's three unlisted tabs among them and License usage and the
+      // Dashboard last, and Story 18.3 the local database form among the unlisted ones and Local
+      // databases after the Dashboard.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -122,8 +126,85 @@ const LIVE_PAYLOAD = {
           failedPair: '%Admin_Manage:USE',
         },
         {
+          route: 'os-management/namespaces/global-mappings/edit',
+          labelKey: 'globalMappingFormLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces/global-mappings',
+          labelKey: 'globalMappingListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/license-usage/distributed',
+          labelKey: 'licenseUsageDistributed',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/license-usage/processes',
+          labelKey: 'licenseUsageByProcess',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/license-usage/users',
+          labelKey: 'licenseUsageByUser',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/local-databases/edit',
+          labelKey: 'systemInfoDatabase',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces/edit',
+          labelKey: 'headerNamespaceLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces/package-mappings/edit',
+          labelKey: 'packageMappingFormLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces/package-mappings',
+          labelKey: 'packageMappingListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
           route: 'os-management/processes/details',
           labelKey: 'processDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces/routine-mappings/edit',
+          labelKey: 'routineMappingFormLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces/routine-mappings',
+          labelKey: 'routineMappingListLabel',
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
@@ -160,6 +241,34 @@ const LIVE_PAYLOAD = {
           route: 'os-management/devices',
           labelKey: 'deviceListLabel',
           sideBarPosition: 5,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces',
+          labelKey: 'namespaceListLabel',
+          sideBarPosition: 6,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/license-usage',
+          labelKey: 'licenseUsageLabel',
+          sideBarPosition: 7,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/dashboard',
+          labelKey: 'dashboardLabel',
+          sideBarPosition: 8,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/local-databases',
+          labelKey: 'localDatabaseListLabel',
+          sideBarPosition: 9,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -215,6 +324,13 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 4,
           allowed: false,
           failedPair: '%Admin_Task:USE',
+        },
+        {
+          route: 'tasks/background',
+          labelKey: 'backgroundTaskListLabel',
+          sideBarPosition: 5,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
         },
       ],
     },
@@ -272,6 +388,15 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 1,
           allowed: false,
           failedPair: '%Admin_Secure:USE',
+        },
+        // Story 16.2: Web sessions, whose own %Admin_Operate:USE this principal holds, so it is
+        // denied on its database read, as OcuPilot.Test.Wire compares the live entry.
+        {
+          route: 'web-applications/sessions',
+          labelKey: 'webSessionListLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
         },
       ],
     },
@@ -412,6 +537,9 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   for (const route of ['tasks/on-demand', 'tasks/upcoming', 'tasks/history', 'tasks/schedule/history', 'tasks/schedule/details']) {
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Task:USE' }, route);
   }
+  // Story 16.5: Background tasks declares `%Admin_Operate:USE` -- its own pair, which this principal
+  // holds -- and `%DB_IRISSYS:READ`, which it does not, so it is denied on the second.
+  assert.deepEqual(service.screenVerdict('tasks/background'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
   assert.deepEqual(service.screenVerdict('os-management/processes'), { allowed: false, failedPair: '%Admin_Manage:USE' });
   // Story 6.9: System usage declares no `%Admin_Manage:USE` at all, so this principal, which
   // holds `%Admin_Operate:USE`, is denied on its second pair instead -- the same shape as the
@@ -421,8 +549,12 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   // first, so this Operate-only principal is denied on that pair; Database details declares no
   // Manage pair at all and is denied on its second, as System usage above is. Story 6.12: Devices
   // declares the same two pairs as the General view and Database volumes, so it is denied the
-  // same way.
-  for (const route of ['os-management/databases', 'os-management/database-free-space', 'os-management/databases/volumes', 'os-management/devices']) {
+  // same way, and so are Story 18.2's Namespaces list and its editor, and Story 18.14's three mapping
+  // lists and forms, which declare the Namespaces screens' pairs, and Story 18.3's Local databases
+  // and its form, which declare them too.
+  const mappingRoutes = ['global', 'routine', 'package'].flatMap((kind) => [`os-management/namespaces/${kind}-mappings`, `os-management/namespaces/${kind}-mappings/edit`]);
+  const databaseRoutes = ['os-management/local-databases', 'os-management/local-databases/edit'];
+  for (const route of ['os-management/databases', 'os-management/database-free-space', 'os-management/databases/volumes', 'os-management/devices', 'os-management/namespaces', 'os-management/namespaces/edit', ...mappingRoutes, ...databaseRoutes]) {
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
   }
   assert.deepEqual(service.screenVerdict('os-management/databases/details'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });

@@ -250,7 +250,7 @@ Method TestTaskManagerAndTasksSuspendedAfterAnError()
     Do tRows.%Push({"Name": "succeeded", "Id": 5, "Suspended": true})
     Do tRows.%Push({"Name": "running", "Id": 6, "Suspended": false})
     Do ##class(OcuPilot.Test.FindingsFixture).SetRows(..#TASKS, tRows, 0, "taskManagerSuspendedBanner")
-    Do ##class(OcuPilot.Test.FindingsFixture).SetDetail("Task.CRUD", 1002, {"Error": "<THROW>OnTask+1 a failure"})
+    Do ##class(OcuPilot.Test.FindingsFixture).SetDetail("Task.CRUD", 1002, {"Status": "1", "Error": "<THROW>OnTask+1 a failure", "LastStarted": "2026-09-20 06:27:00", "LastFinished": "2026-09-20 06:27:00"})
     Do ##class(OcuPilot.Test.FindingsFixture).SetDetail("Task.CRUD", 4, {"Error": ""})
     Do ##class(OcuPilot.Test.FindingsFixture).SetDetail("Task.CRUD", 5, {"Error": "Success"})
     Do ##class(OcuPilot.Test.FindingsFixture).SetDetail("Task.CRUD", 6, {"Error": "an error from before"})
@@ -263,6 +263,31 @@ Method TestTaskManagerAndTasksSuspendedAfterAnError()
     If $IsObject(tManager) Do $$$AssertEquals(tManager.%Get("detail") _ " " _ tManager.%Get("route") _ " " _ tManager.%Get("fix"), "taskManagerSuspendedBanner tasks/schedule link", "carrying the banner key, as a link")
     Do ##class(OcuPilot.Test.FindingsFixture).SetRows(..#TASKS, [], 0, "")
     Do $$$AssertEquals(..First(..Answer(), "task-manager"), "", "a running Task Manager is not")
+}
+
+/// <p><code>task-error</code> needs a recorded run: a suspended task that never ran is not a finding
+/// although its <code>Error</code> holds the Task Manager's missed-schedule notice, which is what
+/// <code>INFO</code> answers for the stock Integrity Check and Automatic Table Statistic Collection
+/// on an instance where that notice was written. A task that ran and failed is a finding, and so is
+/// one whose <code>Status</code> is a job-failure code although it never started.</p>
+/// <p>Mutation: drop the recorded-run condition in
+/// <method>OcuPilot.Kernel.Shell.Findings.TaskErrors</method> and recompile the package -&gt; this
+/// goes red naming both stock tasks.</p>
+Method TestASuspendedTaskThatNeverRanIsNotAFinding()
+{
+    Set tRows = []
+    Do tRows.%Push({"Name": "Automatic Table Statistic Collection", "Id": 21, "Suspended": true})
+    Do tRows.%Push({"Name": "Integrity Check", "Id": 4, "Suspended": true})
+    Do tRows.%Push({"Name": "failed", "Id": 1002, "Suspended": true})
+    Do tRows.%Push({"Name": "timed out", "Id": 7, "Suspended": true})
+    Do ##class(OcuPilot.Test.FindingsFixture).SetRows(..#TASKS, tRows)
+    Do ##class(OcuPilot.Test.FindingsFixture).SetDetail("Task.CRUD", 21, {"Type": "System", "Status": "1", "Error": "Task Has Expired for 2026-06-27 02:00  Continuing from 2026-09-23 02:00", "LastStarted": "", "LastFinished": "", "Suspended": true})
+    Do ##class(OcuPilot.Test.FindingsFixture).SetDetail("Task.CRUD", 4, {"Type": "System", "Status": "1", "Error": "Task Has Expired for 2026-06-29 02:00  Continuing from 2026-09-21 02:00", "LastStarted": "", "LastFinished": "", "Suspended": true})
+    Do ##class(OcuPilot.Test.FindingsFixture).SetDetail("Task.CRUD", 1002, {"Type": "User", "Status": "1", "Error": "<THROW>OnTask+1 a failure", "LastStarted": "2026-09-20 06:27:00", "LastFinished": "2026-09-20 06:27:00", "Suspended": true})
+    Do ##class(OcuPilot.Test.FindingsFixture).SetDetail("Task.CRUD", 7, {"Type": "User", "Status": "-4", "Error": "Job Command Timeout", "LastStarted": "", "LastFinished": "", "Suspended": true})
+    Set tAnswer = ..Answer()
+    Do $$$AssertEquals(..CheckRow(tAnswer, "task-error").%Get("status"), "checked", "the check was read")
+    Do $$$AssertEquals(..Names(tAnswer, "task-error"), "failed,timed out", "a task that ran and failed and one with a job-failure code are findings, and the two stock tasks that never ran are not")
 }
 
 /// <p>Unread: a caller short of a screen's pair reads every check on that screen

@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 // never has a handler, and listeners hear only changes that happened.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const { ScreenActions, actionLabel, REFRESH_ACTION_ID } = await import(
+const { ScreenActions, actionLabel, REFRESH_ACTION_ID, TASK_IMPORT_ACTION_ID } = await import(
   join(uiRoot, 'src', 'app', 'core', 'screen-actions.ts')
 );
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -108,6 +108,28 @@ test("a screen's row action draws its own published words", () => {
   assert.equal(actionLabel(DEFINITIONS, 'no-such-action'), 'no-such-action');
   // Story 7.8: Terminate carries the published verb on the process screens.
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.ProcessList', 'terminate'), STRINGS.actionTerminate);
+  // Story 16.2: the Web sessions list's End session is its own words, and the id means nothing
+  // on a screen that does not publish it.
+  // Mutation (Rule 19): drop the WebSessionList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.WebSessionList', 'end'), STRINGS.webSessionEndAction);
+  assert.equal(actionLabel(DEFINITIONS, 'end'), 'end');
+  // Story 16.5: Background tasks' Cancel task is its own words, since the warning dialog's own
+  // dismiss reads "Cancel"; its Pause is the shared verb, and Resume the Task schedule's.
+  // Mutation (Rule 19): drop the BackgroundTaskList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.BackgroundTaskList', 'cancel'), STRINGS.backgroundTaskCancelAction);
+  assert.equal(actionLabel(DEFINITIONS, 'cancel'), 'cancel');
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.BackgroundTaskList', 'pause'), STRINGS.actionPause);
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.BackgroundTaskList', 'resume'), STRINGS.actionResume);
+  // Story 16.6: Processes' Broadcast over its checked rows.
+  // Mutation (Rule 19): drop the ProcessList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.ProcessList', 'broadcast'), STRINGS.processBroadcastAction);
+  assert.equal(actionLabel(DEFINITIONS, 'broadcast'), 'broadcast');
+  // Story 16.4: the Task schedule's Export, and its screen-level Import under the id its page
+  // registers.
+  // Mutation (Rule 19): drop the TaskScheduleList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.TaskScheduleList', 'export'), STRINGS.taskExportAction);
+  assert.equal(actionLabel(DEFINITIONS, 'export'), 'export');
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.TaskScheduleList', TASK_IMPORT_ACTION_ID), STRINGS.actionImport);
 });
 
 test('an action that means the same thing everywhere falls back to the shared map', () => {

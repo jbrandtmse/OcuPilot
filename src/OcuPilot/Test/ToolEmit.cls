@@ -147,8 +147,8 @@ Method TestAToolTheProviderCannotTakeRefusesTheListing()
 }
 
 /// <p>Every live tool's privilege pairs are read, and are its screen's: a descriptor-derived read
-/// tool's are its descriptor's, the application error tool's are its screen descriptor's, and a shell
-/// read declares none (AD-8). The application error tool's arguments add the pairs its port requires
+/// tool's are its descriptor's, the application error tool's and the permission check's are their
+/// screen descriptor's, and a shell read declares none (AD-8). The application error tool's arguments add the pairs its port requires
 /// for the namespace they name, database pairs included -- this namespace's, and another namespace's
 /// when a call names that one; no other live tool's arguments add any (AD-48).</p>
 /// <p>Mutations: delete <method>OcuPilot.Screen.Tool.ErrorRead.PrivilegePairs</method> -> this goes
@@ -205,10 +205,37 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; (AD-34, AD-40), never a privilege delta.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            ; Story 18.14: the mapping copy declares the pair its queued task's poll needs, before
+            ; the write's own (AD-8).
+            If $Parameter(tTool.class, "POLLRESOURCE") '= "" {
+                Set tPollPair = $ListBuild($Parameter(tTool.class, "POLLRESOURCE"), $Parameter(tTool.class, "POLLPERMISSION"))
+                If '$ListFind(tExpected, tPollPair) Set tExpected = tExpected _ $ListBuild(tPollPair)
+            }
+            ; Story 18.3: the database file edit alone declares no write pair, since its PUT writes no
+            ; system database (measured); every other write tool must still name its own.
             Set tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION"))
-            If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            If (tTool.name '= "osmgmt.localdatabases.update") && '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            ; Story 18.3: the database create declares the resource pair and the path pair after the
+            ; write's own, and the two edits add pairs by argument (AD-8 as amended 2026-09-29).
+            If tTool.name = "osmgmt.localdatabases.create" Set tExpected = tExpected _ $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_FileSystemAccess", "USE"))
+            If tTool.name = "osmgmt.localdatabases.updatemount" {
+                Set tByArgument = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, {"MountRequired": true}, .tByArgumentResolved)
+                Do $$$AssertTrue(tByArgumentResolved && (tByArgument = $ListBuild($ListBuild("%Admin_Operate", "USE"))), tTool.name _ ": setting MountRequired true adds %Admin_Operate:USE")
+            }
+            If tTool.name = "osmgmt.localdatabases.update" {
+                Set tByArgument = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, {"ResourceName": "%DB_USER", "volumeRoot": "/probe/", "volumePath": "v"}, .tByArgumentResolved)
+                Do $$$AssertTrue(tByArgumentResolved && (tByArgument = $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_FileSystemAccess", "USE"))), tTool.name _ ": a resource adds %Admin_Secure:USE and a new volume directory %Admin_FileSystemAccess:USE")
+            }
+            ; Story 18.2: the namespace delete declares a second pair beyond its write's, the
+            ; application pair its cascade reaches (AD-8), after the write's own.
+            If $Parameter(tTool.class, "APPLICATIONRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "APPLICATIONRESOURCE"), $Parameter(tTool.class, "APPLICATIONPERMISSION")))
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
+        } ElseIf tTool.class = "OcuPilot.Kernel.Shell.PermissionCheck" {
+            ; Story 16.3: a read with a class of its own, gated as the Users list is; its arguments
+            ; add no pair, and a role check asks the Roles list's set inside the operation.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
         } ElseIf tTool.class = "OcuPilot.Screen.Tool.Navigate" {
             ; Story 4.7: no static requirement of its own -- the target screen's own pairs are
             ; what gate it, resolved per call in ArgumentPairs from the (untested-here) route

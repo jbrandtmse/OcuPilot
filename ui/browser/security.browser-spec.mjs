@@ -4,8 +4,9 @@
  * under its declared headers from one read (AC1); the demo X.509 credential's certificate cells
  * against its own read answer (AC2); a Wallet collection's name cell opening its Secrets list, read
  * once for that collection, with the locator bar leading back to the Wallet list (AC3); and a
- * principal holding the Security pairs without `%Admin_Wallet:USE` gated on the wallet pair in the
- * rail, the command box and two deep links, while X.509 still reads (AC5).
+ * principal holding the Security pairs without `%Admin_Wallet:USE` offered the Security area with
+ * Wallet and OAuth 2.0 alone unavailable (Story 16.3, DW-1018), gated on the wallet pair in the
+ * command box and two deep links, while X.509 still reads (AC5).
  *
  * **It needs the demo fixture** (`OCUPILOT_DEMO=1`, AD-25): `OcuPilotDemoCert` and the
  * `OcuPilotDemo` wallet collection with its one secret are the rows AC2 and AC3 are asserted on.
@@ -32,7 +33,7 @@ import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
-const { formatDeniedScreen, formatRequires } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
+const { formatArea, formatDeniedScreen, formatRequires } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
 
 const config = browserConfig();
 const READ_PREFIX = '/api/ocupilot/screens/';
@@ -214,6 +215,24 @@ async function sideBarOf(page) {
   });
 }
 
+/**
+ * Open an area's side bar (the gate spec's pattern). **The rail item toggles**, so a click is never
+ * assumed to have opened anything: the side bar starts open and follows the route's area, so after a
+ * deep link it may already list this area, and a click on the visible area's item collapses it
+ * (DW-1823). The side bar's own landmark name, `"<Area> screens"`, says which area is listed.
+ */
+async function openSideBar(page, area) {
+  const wanted = STRINGS.navSideBarLandmark.split('<Area>').join(area);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const shown = await page.$$eval('app-side-bar nav.ocu-side-bar', (nodes, label) =>
+      nodes.some((node) => node.getAttribute('aria-label') === label), wanted);
+    if (shown) return;
+    await page.click(`.ocu-rail-item[aria-label="${area}"]`);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  assert.fail(`the ${area} side bar never opened`);
+}
+
 /** The table's header labels, in order. */
 function headersOf(page) {
   return page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
@@ -225,7 +244,7 @@ async function answerFor(answers, readPath) {
   return answered.filter((entry) => entry.path === readPath).pop();
 }
 
-test('AC1: the Security and secrets side bar reads SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, and each new list renders its declared headers from exactly one read', async () => {
+test('AC1: the Security and secrets side bar reads SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories, and each new list renders its declared headers from exactly one read', async () => {
   for (const [key, list] of Object.entries(LISTS)) {
     const { context, page, reads } = await signedInAt(list.url, config.username, config.password);
     try {
@@ -239,10 +258,10 @@ test('AC1: the Security and secrets side bar reads SSL/TLS, X.509, LDAP / Kerber
       assert.equal(sideBar.area, STRINGS.navAreaSecurity, `${key}: in the Security and secrets area`);
       assert.deepEqual(
         sideBar.entries,
-        [STRINGS.sslListLabel, STRINGS.x509ListLabel, STRINGS.ldapListLabel, STRINGS.walletListLabel, STRINGS.oauthLabel, STRINGS.auditingConfigurationLink],
-        `${key}: the side bar lists the six entries in their declared order`
+        [STRINGS.sslListLabel, STRINGS.x509ListLabel, STRINGS.ldapListLabel, STRINGS.walletListLabel, STRINGS.oauthLabel, STRINGS.auditingConfigurationLink, STRINGS.allowedDirectoriesLabel],
+        `${key}: the side bar lists the seven entries in their declared order`
       );
-      assert.deepEqual(sideBar.entries, ['SSL/TLS', 'X.509', 'LDAP / Kerberos', 'Wallet', 'OAuth 2.0', 'Auditing configuration']);
+      assert.deepEqual(sideBar.entries, ['SSL/TLS', 'X.509', 'LDAP / Kerberos', 'Wallet', 'OAuth 2.0', 'Auditing configuration', 'Allowed directories']);
       if (list.listed) assert.equal(sideBar.current, list.label, `${key}: and the current entry is this list`);
       else assert.equal(sideBar.entries.includes(list.label), false, `${key}: which is never listed`);
     } finally {
@@ -325,7 +344,7 @@ test("AC3: the demo collection's name cell opens its Secrets list, read once for
   }
 });
 
-test('AC5: without %Admin_Wallet:USE the Security rail item and the command box Wallet entry are gated, both wallet deep links are refused by name with no read, and X.509 reads', async () => {
+test('AC5, Story 16.3 AC7 (DW-1018, Option A): without %Admin_Wallet:USE the Security rail item opens, its side bar offers SSL/TLS, X.509, LDAP and Auditing and names the pair Wallet and OAuth 2.0 lack, the command box Wallet entry is gated, both wallet deep links are refused by name with no read, and X.509 reads', async () => {
   const requires = formatRequires(STRINGS.privilegeRequiresResource, WALLET_PAIR);
   assert.equal(requires, 'Requires %Admin_Wallet:USE');
 
@@ -334,11 +353,36 @@ test('AC5: without %Admin_Wallet:USE the Security rail item and the command box 
     await waitForRows(x509.page, config.navigationTimeoutMs);
     assert.deepEqual(x509.reads.map((read) => read.path), [LISTS.x509.read], 'the X.509 deep link reads');
 
+    // Mutation (Rule 19): put %Admin_Wallet:USE back on the security area in OcuPilot.Screen.Area,
+    // reload the throwaway -> the rail assertion goes red.
     const rail = await x509.page.evaluate((label) => {
       const item = document.querySelector(`.ocu-rail-item[aria-label="${label}"]`);
       return { disabled: item.getAttribute('aria-disabled'), tip: document.getElementById(item.getAttribute('aria-describedby'))?.textContent.trim() };
     }, STRINGS.navAreaSecurity);
-    assert.deepEqual(rail, { disabled: 'true', tip: requires }, 'the Security rail item is gated on the wallet pair');
+    assert.deepEqual(rail, { disabled: null, tip: formatArea(STRINGS.navRailItemTooltip, STRINGS.navAreaSecurity) }, 'the Security rail item opens for the two area pairs alone');
+
+    await openSideBar(x509.page, STRINGS.navAreaSecurity);
+    await x509.page.waitForSelector('app-side-bar .ocu-side-bar-item', { timeout: config.navigationTimeoutMs });
+    const entries = await x509.page.$$eval('app-side-bar .ocu-side-bar-item', (items) =>
+      items.map((item) => ({
+        label: item.querySelector('.ocu-side-bar-label')?.textContent.trim() ?? '',
+        disabled: item.getAttribute('aria-disabled'),
+        reason: item.querySelector('.ocu-side-bar-reason')?.textContent.trim() ?? '',
+      }))
+    );
+    assert.deepEqual(
+      entries,
+      [
+        { label: STRINGS.sslListLabel, disabled: null, reason: '' },
+        { label: STRINGS.x509ListLabel, disabled: null, reason: '' },
+        { label: STRINGS.ldapListLabel, disabled: null, reason: '' },
+        { label: STRINGS.walletListLabel, disabled: 'true', reason: requires },
+        { label: STRINGS.oauthLabel, disabled: 'true', reason: formatRequires(STRINGS.privilegeRequiresResource, '%Admin_OAuth2_Client:USE') },
+        { label: STRINGS.auditingConfigurationLink, disabled: null, reason: '' },
+        { label: STRINGS.allowedDirectoriesLabel, disabled: 'true', reason: formatRequires(STRINGS.privilegeRequiresResource, '%Admin_FileSystemAccess:USE') },
+      ],
+      'SSL/TLS, X.509, LDAP and Auditing are available, and Wallet, OAuth 2.0 and Allowed directories each name the pair they lack'
+    );
 
     await x509.page.click('[role="combobox"]');
     await x509.page.type('[role="combobox"]', STRINGS.walletListLabel);

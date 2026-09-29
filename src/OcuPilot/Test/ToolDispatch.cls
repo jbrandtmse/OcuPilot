@@ -133,10 +133,11 @@ Method TestAGateDenialReachesNothingAndTheToolStaysAdvertised()
 }
 
 /// <p>Under the default policy the shipped gate point allows every live tool except the audit
-/// purge, which its baseline line disables (AD-10, AD-22). It reads the stored policy, so it
+/// purge, the namespace delete, the database delete and the task import, which their baseline lines
+/// disable (AD-10, AD-22). It reads the stored policy, so it
 /// first asserts that no policy is stored.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.Governance.Gate.Decide</method> answers 0 -> this goes red.</p>
-Method TestTheShippedGateAllowsEveryLiveToolButThePurge()
+Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tStored), "the stored policy reads")
     Do $$$AssertTrue(##class(OcuPilot.Test.GovernanceFixture).IsDefault(.tStored), "and leaves every key to the baseline")
@@ -147,7 +148,7 @@ Method TestTheShippedGateAllowsEveryLiveToolButThePurge()
     While tIterator.%GetNext(.tIndex, .tTool) {
         Kill tDecision
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Governance.Gate).Decide(tTool.name, tTool.kind, $Username, {}, .tDecision), tTool.name _ ": the gate decides")
-        Set tExpected = $Select(tTool.name = "security.auditing.purge": "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, 1: "1|")
+        Set tExpected = $Select((tTool.name = "security.auditing.purge") || (tTool.name = "osmgmt.namespaces.delete") || (tTool.name = "osmgmt.localdatabases.delete") || (tTool.name = "tasks.schedule.import"): "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, 1: "1|")
         Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), tExpected, tTool.name _ ": " _ tExpected)
     }
 }

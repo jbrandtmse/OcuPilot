@@ -6233,11 +6233,12 @@ So that I can clear a stuck or unwanted session from here.
 
 - **Given** a session
 - **When** the user ends it
-- **Then** it ends, confirming by naming the session, and the row leaves the list.
+- **Then** it ends, confirming by naming the session, and the row leaves the list; a preserve-mode session is instead refused by name on both callers while its own process runs, saying why (that process holds its lock) and pointing to the process in Process details; once the process is terminated, the session ends [AMENDED 2026-09-28, orchestrator merge gate, Rule 5, DW-1792].
 
-- **Given** the user's **own** session
+- **Given** a session **OcuPilot is itself running in** [AMENDED 2026-09-28 — see the story change log]
 - **When** an end is attempted
 - **Then** it is refused with an explanation, in the UI and on the instance - the same self-protection shape as a process OcuPilot is itself running in.
+- DW-1792: Ending a preserve-mode web session hangs until the gateway answers 504 and never ends it: the vendor DELETE waits on the session lock the session's own process holds (ledger; routed by merge_gate 2026-09-28)
 
 ### Story 16.3: Effective privileges and the permission-check tool
 
@@ -6415,6 +6416,8 @@ As a developer-administrator running Python or Java gateways,
 I want to see and control them,
 So that the last unmapped polish-week area is covered.
 
+[AMENDED 2026-09-29, orchestrator merge gate: split from 16.10 for size, Rule 5] The fourth criterion (create, edit and delete) and DW-253 moved to Story 16.25, The external language server editor.
+
 **Acceptance Criteria:**
 
 - **Given** the External language servers screen
@@ -6428,16 +6431,6 @@ So that the last unmapped polish-week area is covered.
 - **Given** a server
 - **When** its activity log is opened
 - **Then** it renders in the shared log viewer.
-
-- **Given** create, edit and delete
-- **When** each runs
-- **Then** it round-trips through the admin API, with delete confirming by name.
-
----
-
-**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
-
-- DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
 
 ### Story 16.11: Start, suspend and resume the Task Manager
 
@@ -6459,6 +6452,7 @@ So that I can hold maintenance during a change window.
 - **Given** `Task.Manager` publishes no body template
 - **When** the tool is built
 - **Then** it is recorded as action-style with a trivial body needing no template, rather than being given a hand-typed field list.
+- DW-1638: Task delete, suspend, resume and run skip the task type's declared privilege (%SYS.Task.Definition RESOURCE) that the create, the edit and the classic portal enforce (ledger; routed by spec_gate 2026-09-28)
 
 ### Story 16.12: Remove locks - one, all of a process, all of a remote client
 
@@ -6790,6 +6784,26 @@ So that I can repeat it from a terminal, a script or a ticket.
 - **When** this story lands
 - **Then** they are added to the canonical Fixed strings table and the client string source in the same change.
 
+### Story 16.25: The external language server editor
+
+[AMENDED 2026-09-29, orchestrator merge gate: split from 16.10 for size, Rule 5]
+
+As a developer-administrator running Python or Java gateways,
+I want to create, edit and delete external language servers,
+So that a gateway's definition is managed where its status is.
+
+**Acceptance Criteria:**
+
+- **Given** create, edit and delete
+- **When** each runs
+- **Then** it round-trips through the admin API, with delete confirming by name.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
+
 ## Epic 17: The Open Exchange listing and the contest submission
 
 A judge finds OcuPilot on Open Exchange, follows a README whose install steps work the first time on a clean machine, and reads a walkthrough that shows what an agent write looks like even without an API key. **Floating** - not a build step and not sequenced against one. It runs when the owner decides to release, which is why it sits after the polish week: nothing it publishes should depict a build that is not yet finished.
@@ -7043,10 +7057,15 @@ So that no later screen has to invent its own answer to "which directories may I
 - **When** the stage is sequenced
 - **Then** it lands **first**.
 
+- DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file (iris.cpf sits in the manager directory's parent), so an overwriting file consumer under an allowed data-directory root could resolve it (ledger; re-routed by merge_gate 2026-09-28; first routed by harvest 2026-09-28)
+- DW-1778: PathPort.Resolve's file kind offers only new-or-overwrite, so a consumer that reads an existing file (an import, a key file to activate) is refused PATH.EXISTS unless it passes pOverwrite, which no tool declaration ties it to (ledger; re-routed by merge_gate 2026-09-28; first routed by cr 2026-09-28)
+- DW-1779: A directory-kind location may be the manager directory itself (the unrestricted root, empty name), so a consumer whose vendor writes its own files into the chosen directory (a database's IRIS.DAT) lands among the instance's own (ledger; re-routed by merge_gate 2026-09-28; first routed by cr 2026-09-28)
+- DW-1790: PATH.INSTANCE protects only the files DW-1777 names; widen it to every configured database directory and the journal directories, read from the instance at call time (ledger; routed by merge_gate 2026-09-28)
+
 ### Story 18.2: Namespaces and their mappings
 
 As an operator,
-I want to create, edit and delete namespaces and manage their mappings,
+I want to create, edit and delete namespaces,
 So that the most common configuration task the contest deferred is available.
 
 **Acceptance Criteria:**
@@ -7055,13 +7074,7 @@ So that the most common configuration task the contest deferred is available.
 - **When** each runs
 - **Then** it round-trips through the admin API, the delete wizard listing dependent databases and web applications before removing anything.
 
-- **Given** global, routine and package mappings
-- **When** they are listed, created, edited and deleted
-- **Then** the `%`-global guard harvested from the sibling's mapping manager applies.
-
-- **Given** copy-mappings, which is asynchronous
-- **When** it runs
-- **Then** it goes through the async path with progress.
+- Mappings and copy-mappings moved to Story 18.14 [AMENDED 2026-09-28, orchestrator merge gate: split from 18.2 for size, Rule 5].
 
 ### Story 18.3: Databases - configuration, creation, properties and volumes
 
@@ -7071,18 +7084,31 @@ So that database administration is complete rather than list-only.
 
 **Acceptance Criteria:**
 
-- **Given** the configuration list, the create wizard, the delete wizard, the properties editor, multi-volume properties and remote database management
+- **Given** the configuration list, the create wizard, the delete wizard, the properties editor and multi-volume properties
 - **When** each runs
-- **Then** it round-trips through the admin API.
+- **Then** it round-trips through the admin API. Remote database management is Story 18.16's [AMENDED 2026-09-28, orchestrator merge gate: split from 18.3, Rule 5]
 
 - **Given** the delete wizard
 - **When** it runs
 - **Then** it lists dependent namespaces and applications first, and confirms by name.
 
+- DW-1791: A directory a vendor writes into may be another database's own: pVendorWrites refuses only <ManagerDirectory> itself, so <mgr>/irissecurity/ resolves for a database create (ledger; routed by cr 2026-09-28)
+- DW-1795: PATH.INSTANCE refuses a database's volume files only beside its IRIS.DAT; an overwriting consumer can resolve an existing volume file in an additional volume directory (ledger; routed by harvest 2026-09-28)
+- DW-1796: PathPort.DatabaseDirectories' own read is pinned only against a stable default configuration (a configured StreamLocation, a ':' directory, a failure or cache inside the reader) (ledger; routed by cr 2026-09-28)
+- DW-1807: The database directory picker must plan for PATH.SERVED, a directory under OcuPilot's served directory refused as a vendor-writes directory, and render it on the field (ledger; routed by cr 2026-09-29)
+- DW-1080: Database details' background-tasks section, read through Epic 16's `Port/BackgroundTaskPort` (ledger; routed by spec_gate 2026-09-28)
+
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- `GET /v2/database-dirs` answers a plain list of directory objects, not the object the schema `LocalDatabaseList` declares (checked: 14 entries).
+- Take the privileges from the instance, not the specification: `%Operator` holds `%Admin_Operate:USE`, which the specification accepts for `GET /v2/databases` and `GET /v2/database-dirs`, yet both answer it 403 with an empty error list (reported).
+
 ### Story 18.4: The deferred disk operations
 
 As an operator,
-I want mount, dismount, truncate, compact, defragment, expand and the integrity check,
+I want mount, dismount, truncate, compact, defragment, expand (a new volume, or a database grown to a larger size) and the integrity check, [AMENDED 2026-09-28, orchestrator merge gate: expand-volume and size-grow assigned from 18.3, Rule 5]
 So that "disks" means operating on them rather than only reading them.
 
 **Acceptance Criteria:**
@@ -7099,6 +7125,16 @@ So that "disks" means operating on them rather than only reading them.
 - **When** the governance baseline is computed
 - **Then** each key defaults to **disabled**.
 
+- DW-1821: Database details lists only background tasks the classic Background tasks page holds, so a compact or defragment started through the admin API is not attributed to its database (ledger; routed by harvest 2026-09-29)
+- DW-1791: a new volume directory naming another database's directory still resolves for the expand, and whether the vendor accepts that collision is unmeasured (ledger; routed by adjudication 2026-09-29)
+
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- Read a finished asynchronous task exactly once. A second read of an ended task through `async-result` logs a severity-2 alert (`ERROR #7846` from `TryToKillQueue^%Api.Admin.Util.AsyncTask`) and turns the instance's state to Warning (reported). `OcuPilot.Port.AdminPort` reads the end once and deletes the row, which adds no alert (checked); a progress view must stop polling at the end, and two views of one task must share one poller.
+- The integrity check takes its databases in the body (`Databases[]`, each with `Directory`), while compact, defragment and the other operations take the `dir` query parameter. The specification agrees; the family is uneven.
+
 ### Story 18.5: Journals
 
 As an operator,
@@ -7114,6 +7150,15 @@ So that the transaction record is inspectable from the portal.
 - **Given** the journal is a transaction record rather than an operator log
 - **When** it is placed
 - **Then** it stays in System Operation rather than joining the Logs area - a deliberate judgment carried from the catalog.
+
+- DW-1797: PathPort's journal read names only the primary, alternate and current file's directories, so files in a former journal directory and IRIS.WIJ outside the manager directory resolve for an overwrite (ledger; routed by cr 2026-09-28)
+
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- `POST /v2/journal/file/records` returns half its `maxRows`: 10 gave 5 and 40 gave 20 (checked); the article reports they are the file's first records, contiguous. Ask for twice the page and mark the list when the limit is reached. It answers 202, so it runs through the port's async path.
+- `POST /v2/journal/switch-dir` takes no body, so it switches only to the alternate directory already configured. The specification agrees.
 
 ### Story 18.6: Licensing and ECP
 
@@ -7156,6 +7201,8 @@ So that key management is not a reason to keep the classic portal open.
 - **When** it is entered
 - **Then** it is write-only and returned by no read, like every other secret.
 
+- DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards (ledger; routed by cr 2026-09-28)
+
 ### Story 18.8: Superservers, authentication options and managed file transfer
 
 As an operator,
@@ -7192,6 +7239,13 @@ So that the Permissions area reaches parity.
 - **When** it is proposed by the agent
 - **Then** the Release 1 prohibition on privilege escalation still applies - a grant that would confer `%All` or an `%Admin_*` role remains refused.
 
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- `GET /v2/security/sql-privileges` names a row's object and action `Object` and `Action`, not the schema's `Name` and `Privilege` (checked); a revoke is built from those.
+- A role owner's `AdminOption` arrives as the string `"0"` or `"1"`, not a boolean (reported). `"0"` is truthy in TypeScript, so compare the value.
+
 ### Story 18.10: Web application extras and spec-based REST services
 
 As a developer-administrator,
@@ -7223,6 +7277,12 @@ So that monitoring is continuous rather than sampled.
 - **Given** the live tail
 - **When** it is enabled on a text log
 - **Then** it long-polls with a heartbeat, and the Release 1 rule that log viewers load bounded pages is superseded **only** for the sources that opt into it.
+
+**Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
+[20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
+"checked" means seen on slot A that day, "reported" means the article's word only]
+
+- `SystemUsage.BusyProcesses` in `GET /v2/monitor/dashboard/main` always has ten rows; unused ones are `{"Process": "", "Commands": 0}` (checked: 8 of 10 on slot A). Drop them before showing a top ten.
 
 ### Story 18.12: The agent grows with the stage
 
@@ -7271,6 +7331,62 @@ So that it is not confined to the one the installer picks.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths (ledger; routed by merge_gate 2026-09-13)
+
+### Story 18.14: Namespace mappings and copy-mappings
+
+As an operator,
+I want to manage a namespace's global, routine and package mappings and copy mappings from another namespace,
+So that the namespace configuration task the contest deferred is complete. [AMENDED 2026-09-28, orchestrator merge gate: split from 18.2 for size, Rule 5]
+
+**Acceptance Criteria:**
+
+- **Given** global, routine and package mappings
+- **When** they are listed, created, edited and deleted
+- **Then** the `%`-global guard harvested from the sibling's mapping manager applies.
+
+- **Given** copy-mappings, which is asynchronous
+- **When** it runs
+- **Then** it goes through the async path with progress.
+
+- DW-1784: A screen that replaces more than one classic page unions only the one it declares (AD-44), so the New Namespace page's and the Delete Namespace dialog's custom resources never reach the namespace create and delete (ledger; routed by merge_gate 2026-09-28)
+- Enable-interop moved to Story 18.15 [AMENDED 2026-09-28, orchestrator merge gate: split from 18.14 for risk, Rule 5].
+- DW-1803: PROHIBITED.OCUPILOTMAPPING matches only names beginning with OcuPilot, so a routine mapping such as Ocu* or O* in the install namespace would redirect OcuPilot's own code; match by pattern overlap (ledger; routed by merge_gate 2026-09-28)
+- DW-1798: PATH.INSTANCE does not cover OcuPilot's own served files (csp/ocupilot/) for an overwriting consumer (ledger; routed by merge_gate 2026-09-28)
+- DW-1806: PathPort refuses only existing files in OcuPilot's served directory, so a new file there resolves and the unauthenticated static application would serve it (ledger; routed by merge_gate 2026-09-28)
+
+### Story 18.15: Enable interoperability on a namespace
+
+As an operator,
+I want to enable interoperability on a namespace,
+So that the namespace configuration the contest deferred includes the step the classic New Namespace page offers. [AMENDED 2026-09-28, orchestrator merge gate: split from 18.14 for risk, Rule 5]
+
+**Acceptance Criteria:**
+
+- **Given** SA-13's enable-interop route, which is asynchronous and changes more than the namespace
+- **When** it is picked up
+- **Then** its payload, its effects and the privileges it needs are observed on a throwaway first, before any form or tool is built.
+
+- **Given** the enable action
+- **When** it runs
+- **Then** it round-trips through the admin API's async path, reading the finished task's result once, and states its consequence before it is confirmed.
+
+- DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan (ledger; routed by merge_gate 2026-09-28)
+
+### Story 18.16: Remote databases
+
+As an operator,
+I want to manage remote databases,
+So that database administration also covers the databases an ECP data server holds, as the classic page does. [AMENDED 2026-09-28, orchestrator merge gate: split from 18.3, Rule 5]
+
+**Acceptance Criteria:**
+
+- **Given** the remote-database list, create, edit and delete
+- **When** each runs
+- **Then** it round-trips through the admin API.
+
+- **Given** choosing a remote directory opens an ECP connection to its data server (a read blocked about 11 seconds on the throwaway)
+- **When** a remote directory is chosen or a remote database is written
+- **Then** AD-21 carries its own case for that connection, and the wait is bounded and stated before it starts.
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

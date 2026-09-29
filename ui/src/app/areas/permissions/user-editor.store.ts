@@ -5,7 +5,10 @@ import { ChangeBus } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { normalizeEntityId } from '../../core/entity-ref';
 import { FormDirty } from '../../core/form-dirty';
+import { formatRequires } from '../../core/navigation';
+import { type Effective, effectiveOf } from '../../core/privileges';
 import { readBackOf, type ReadBack } from '../../core/read-back';
+import { STRINGS } from '../../core/strings';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
 
 /** The route the editor saves through: `PUT <path>/<id>`. */
@@ -14,15 +17,23 @@ export const USERS_PATH = '/api/ocupilot/users';
 /** The form read: the rules, their sentences, the roles the instance holds and, with a name, the account. */
 export const USERS_FORM_PATH = `${USERS_PATH}/form`;
 
+/** The Effective privileges read (Story 16.3): `GET <path>?name=<account>`. */
+export const USERS_EFFECTIVE_PATH = `${USERS_PATH}/effective`;
+
+/** The machine code a privilege denial carries (AD-39). */
+const NO_PRIVILEGE_CODE = 'AUTH.NOPRIVILEGE';
+
 /** The entity type and scope every change this editor publishes carries (AD-13, AD-14). */
 export const USER_ENTITY = 'user';
 
 export const USER_SCOPE = 'instance';
 
-/** The two tabs, named after the classic editor's (`%CSP.UI.Portal.User`). */
+/** The classic editor's two tabs (`%CSP.UI.Portal.User`), and the Effective privileges tab (Story 16.3). */
 export const GENERAL_TAB = 'general';
 
 export const ROLES_TAB = 'roles';
+
+export const EFFECTIVE_TAB = 'effective';
 
 /** The text settings of the General tab, as the server names them. */
 export const TEXT_FIELDS = [
@@ -133,6 +144,10 @@ function arrayAt(source: unknown, key: string): readonly unknown[] {
  * **Two-factor sign-in is two bits of one mask.** The two checkboxes set or clear
  * `TWO_FACTOR_SMS_BIT` and `TWO_FACTOR_TOTP_BIT` over the mask the read answered and never another
  * bit, and turning one on turns the other off, as the classic editor does.
+ *
+ * **The Effective privileges tab is read, never computed** (Story 16.3, AD-8):
+ * `GET /users/effective` answers the account's composition, read when the tab is selected and again
+ * on every re-read of the account.
  */
 @Injectable({ providedIn: 'root' })
 export class UserEditor {
@@ -179,6 +194,18 @@ export class UserEditor {
   private savedValue = false;
   /** The instance's read-back of the last accepted Save (AD-58), or `null`. */
   private readBackValue: ReadBack | null = null;
+
+  /** The Effective privileges answer (Story 16.3), or `null` before it lands. */
+  private effectiveValue: Effective | null = null;
+
+  /** Why the Effective privileges read was refused, or `''`. */
+  private effectiveRefusalValue = '';
+
+  /** Whether the Effective privileges tab has been opened, which is when a re-read reads it again. */
+  private effectiveWanted = false;
+
+  /** Counts Effective privileges reads, so an answer overtaken by a later read is dropped. */
+  private effectiveGeneration = 0;
 
   /** The account a create has just made, whose editor opens already saved. */
   private arrivingSaved = '';
@@ -293,6 +320,16 @@ export class UserEditor {
     return this.savedValue;
   }
 
+  /** The account's effective privileges as the instance composed them (Story 16.3), or `null`. */
+  effective(): Effective | null {
+    return this.effectiveValue;
+  }
+
+  /** Why the Effective privileges read was refused, or `''`. */
+  effectiveRefusal(): string {
+    return this.effectiveRefusalValue;
+  }
+
   dirty(): boolean {
     return this.formDirty.dirty();
   }
@@ -335,6 +372,10 @@ export class UserEditor {
     this.actionRefusalValue = '';
     this.savedValue = false;
     this.readBackValue = null;
+    this.effectiveValue = null;
+    this.effectiveRefusalValue = '';
+    this.effectiveWanted = false;
+    this.effectiveGeneration += 1;
     this.formDirty.reset();
     this.notify();
   }
@@ -379,6 +420,25 @@ export class UserEditor {
     if (generation !== this.generation) return;
     if (result.kind !== 'ok') return;
     this.absorb(result, !this.formDirty.dirty());
+    this.notify();
+    if (this.effectiveWanted) void this.readEffective();
+  }
+
+  /**
+   * Read the account's effective privileges (Story 16.3): when the tab is selected, and again on
+   * every re-read of the account once it has been. A refusal keeps its own sentence, a privilege
+   * denial naming its pair; an answer outside the wire shape reads as refused.
+   */
+  async readEffective(): Promise<void> {
+    if (this.accountName === '') return;
+    this.effectiveWanted = true;
+    this.effectiveGeneration += 1;
+    const generation = this.effectiveGeneration;
+    const result = await this.api().requestJson<unknown>(`${USERS_EFFECTIVE_PATH}?name=${encodeURIComponent(this.accountName)}`);
+    if (generation !== this.effectiveGeneration) return;
+    const answer = result.kind === 'ok' ? effectiveOf(result.body) : null;
+    this.effectiveValue = answer;
+    this.effectiveRefusalValue = answer !== null ? '' : effectiveRefusalOf(result);
     this.notify();
   }
 
@@ -582,4 +642,12 @@ export class UserEditor {
   private notify(): void {
     for (const listener of [...this.listeners]) listener();
   }
+}
+
+/** The sentence a refused or unreadable Effective privileges read shows. */
+function effectiveRefusalOf(result: JsonResult<unknown>): string {
+  if (result.kind !== 'error') return STRINGS.connectivityRequestRefused;
+  const pair = result.detail === null ? undefined : result.detail['failedPair'];
+  if (result.code === NO_PRIVILEGE_CODE && typeof pair === 'string' && pair !== '') return formatRequires(STRINGS.privilegeRequiresResource, pair);
+  return result.reason !== null && result.reason !== '' ? result.reason : STRINGS.connectivityRequestRefused;
 }

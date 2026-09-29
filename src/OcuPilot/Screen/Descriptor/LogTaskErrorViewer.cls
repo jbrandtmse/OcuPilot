@@ -1,6 +1,7 @@
 /// <p>The background task error log: the newest error rows of the portal's background tasks,
 /// whichever namespace each ran in, read through <code>%CSP.UI.System.BackgroundTask</code>. Its
-/// classic page declares no resource, so it takes the Logs area's <code>%Admin_Operate:USE</code>.
+/// classic page declares no resource, so it takes the Logs area's <code>%Admin_Operate:USE</code>,
+/// and <code>%DB_IRISSYS:READ</code>, because the task list is read in <code>%SYS</code>.
 /// (Story 16.8, AD-21, AD-36)</p>
 /// <p>Rows travel on <method>OcuPilot.Port.LogSourcePort.Recent</method> under this screen's own
 /// route, and the declared read the tool derives from travels on
@@ -21,7 +22,7 @@ XData Declaration
   "built": true,
   "refreshes": false,
   "refreshRates": [],
-  "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}],
+  "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
   "entityType": "log-entry",
   "secondaryEntityTypes": [],
   "scope": "instance",

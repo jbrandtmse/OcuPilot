@@ -71,6 +71,14 @@ Parameter EVENTUSER = "OcuPilotLogEvent";
 /// <p>See <parameter>EVENTUSER</parameter>.</p>
 Parameter EVENTROLE = "OcuPilotLogEventRole";
 
+/// <p>The principal holding <code>%Admin_Operate:U</code> and <code>%DB_IRISSYS:R</code> and not
+/// <code>%Admin_Secure:U</code>: the background task error log's served principal, since that log
+/// reads the task list in <code>%SYS</code> (Story 16.5).</p>
+Parameter TASKSUSER = "OcuPilotLogTasks";
+
+/// <p>See <parameter>TASKSUSER</parameter>.</p>
+Parameter TASKSROLE = "OcuPilotLogTasksRole";
+
 /// <p>Story 16.8's six routes and the pair each names when refused,
 /// <code>key=resource:permission</code>. <code>%DeepSee_Portal</code> carries public
 /// <code>USE</code>, so no real principal lacks it and the analytics route has no refused leg.</p>
@@ -139,6 +147,8 @@ Method OnBeforeAllTests() As %Status
         If $$$ISERR(tSC) Quit
         Set tSC = ..EnsurePrincipal(..#EVENTROLE, ..#EVENTUSER, tCodeRead _ ",%Admin_Secure:U,%Ens_EventLog:U", ..PreparedPassword)
         If $$$ISERR(tSC) Quit
+        Set tSC = ..EnsurePrincipal(..#TASKSROLE, ..#TASKSUSER, tCodeRead _ ",%Admin_Operate:U,%DB_IRISSYS:R", ..PreparedPassword)
+        If $$$ISERR(tSC) Quit
 
         Set tSecure = ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%Admin_Secure", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%Admin_Operate", "USE") '= 1)
         ; The allowed principal holds the one pair and NEITHER of the two the Logs area also
@@ -146,9 +156,10 @@ Method OnBeforeAllTests() As %Status
         Set tOperate = ($SYSTEM.Security.CheckUserPermission(..#OPERATEUSER, "%Admin_Operate", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#OPERATEUSER, "%Admin_Secure", "USE") '= 1) && ($SYSTEM.Security.CheckUserPermission(..#OPERATEUSER, "%DB_IRISSYS", "READ") '= 1)
         Set tEvent = ($SYSTEM.Security.CheckUserPermission(..#EVENTUSER, "%Ens_EventLog", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#EVENTUSER, "%Admin_Operate", "USE") '= 1)
         Set tSecure = tSecure && ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%Ens_EventLog", "USE") '= 1)
-        Set ..PreparedSetupOk = tSecure && tOperate && tEvent
+        Set tTasks = ($SYSTEM.Security.CheckUserPermission(..#TASKSUSER, "%Admin_Operate", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#TASKSUSER, "%DB_IRISSYS", "READ") = 1) && ($SYSTEM.Security.CheckUserPermission(..#TASKSUSER, "%Admin_Secure", "USE") '= 1)
+        Set ..PreparedSetupOk = tSecure && tOperate && tEvent && tTasks
         If '..PreparedSetupOk {
-            Set tSC = $$$ERROR($$$GeneralError, "Setup could not confirm the principals' pairs: secure " _ tSecure _ ", operate " _ tOperate _ ", event " _ tEvent)
+            Set tSC = $$$ERROR($$$GeneralError, "Setup could not confirm the principals' pairs: secure " _ tSecure _ ", operate " _ tOperate _ ", event " _ tEvent _ ", tasks " _ tTasks)
         }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -158,7 +169,7 @@ Method OnBeforeAllTests() As %Status
     Quit tSC
 }
 
-/// <p>Remove the two accounts and their roles, and <b>return a failing status</b> if any survives.
+/// <p>Remove the accounts and their roles, and <b>return a failing status</b> if any survives.
 /// Reported through the status rather than assertions, which <code>%UnitTest.Manager</code> does
 /// not record from this method.</p>
 Method OnAfterAllTests() As %Status
@@ -169,11 +180,11 @@ Method OnAfterAllTests() As %Status
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
         Set tLeft = ""
-        For tUser = ..#SECUREUSER, ..#OPERATEUSER, ..#EVENTUSER {
+        For tUser = ..#SECUREUSER, ..#OPERATEUSER, ..#EVENTUSER, ..#TASKSUSER {
             If ##class(Security.Users).Exists(tUser, .tU, .tUS) Do ##class(Security.Users).Delete(tUser)
             If ##class(Security.Users).Exists(tUser, .tU2, .tUS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "user " _ tUser
         }
-        For tRole = ..#SECUREROLE, ..#OPERATEROLE, ..#EVENTROLE {
+        For tRole = ..#SECUREROLE, ..#OPERATEROLE, ..#EVENTROLE, ..#TASKSROLE {
             If ##class(Security.Roles).Exists(tRole, .tR, .tRS) Do ##class(Security.Roles).Delete(tRole)
             If ##class(Security.Roles).Exists(tRole, .tR2, .tRS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "role " _ tRole
         }
@@ -387,7 +398,9 @@ Method TestTheOlderFilesMeetTheConsoleLogsOnePair()
 /// <p>Story 16.8 AC2 -- each secondary log route and its screen's declared read, measured on real
 /// principals: without the route's pair the answer is 403 naming it; with that pair alone it is 200
 /// (the event log's principal holds <code>%Ens_EventLog:USE</code> and read on HSCUSTOM's database,
-/// which the per-namespace gate adds). The analytics route's pair carries public <code>USE</code>,
+/// which the per-namespace gate adds, and the background task error log's also holds
+/// <code>%DB_IRISSYS:READ</code>, which that log's read in <code>%SYS</code> adds). The analytics
+/// route's pair carries public <code>USE</code>,
 /// so it is served to the principal the others refuse.</p>
 /// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Port.LogSourcePort.EVENTLOGPAIRS</parameter>
 /// -&gt; the event log's refusal names no pair and its served leg is refused, so both go red.</p>
@@ -410,9 +423,9 @@ Method TestEachSecondaryLogRouteMeetsItsPair()
             Do $$$AssertEquals(tFault.code, "AUTH.NOPRIVILEGE", tPath _ ": on the screen-privilege code")
             Do $$$AssertEquals($Select($IsObject(tFault.detail): tFault.detail.failedPair, 1: ""), tPair, tPath _ ": naming the pair")
 
-            Set tServed = $Select(tKey = "eventlog": ..#EVENTUSER, 1: ..#OPERATEUSER)
+            Set tServed = $Select(tKey = "eventlog": ..#EVENTUSER, tKey = "taskerrors": ..#TASKSUSER, 1: ..#OPERATEUSER)
             Set tSC = ..FetchPath(tServed, tPath, .tStatus2, .tBody2, .tHeaders2)
-            Do $$$AssertEquals(tStatus2, 200, tPath _ ": served with " _ tPair _ " alone: " _ $Extract(tBody2, 1, 200))
+            Do $$$AssertEquals(tStatus2, 200, tPath _ ": served with " _ tPair _ $Select(tKey = "taskerrors": " and %DB_IRISSYS:READ", 1: "") _ " alone: " _ $Extract(tBody2, 1, 200))
         }
     }
 }

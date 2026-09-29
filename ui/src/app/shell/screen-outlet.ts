@@ -15,10 +15,12 @@ import { DefinitionFormPage } from '../areas/agent/definition-form.page';
 import { SwitchesPage } from '../areas/agent/switches.page';
 import { GuardrailsPage } from '../areas/agent/guardrails.page';
 import { TranscriptPage } from '../areas/agent/transcript.page';
+import { LedgerPage } from '../areas/agent/ledger.page';
 import { DatabaseDetailsPage } from '../areas/os-management/database-details.page';
 import { DatabasesPage } from '../areas/os-management/databases.page';
 import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
 import { SystemUsagePage } from '../areas/os-management/system-usage.page';
+import { DashboardPage } from '../areas/os-management/dashboard.page';
 import { AuditingConfigPage } from '../areas/security/auditing-config.page';
 import { OAuthServerDescriptionFormPage } from '../areas/security/oauth-server-description-form.page';
 import { OAuthClientFormPage } from '../areas/security/oauth-client-form.page';
@@ -31,6 +33,7 @@ import { UpcomingPage } from '../areas/tasks/upcoming.page';
 import { HomePage } from '../areas/home/home.page';
 import { AuditPage } from '../areas/logs/audit.page';
 import { ErrorLogPage } from '../areas/logs/error-log.page';
+import { LogHubPage } from '../areas/logs/log-hub.page';
 import { LogViewerPage } from '../areas/logs/log-viewer.page';
 import { UserCreateFormPage } from '../areas/permissions/user-create-form.page';
 import { RoleEditorPage } from '../areas/permissions/role-editor.page';
@@ -44,6 +47,12 @@ import { SslFormPage } from '../areas/security/ssl-form.page';
 import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { DeviceFormPage } from '../areas/os-management/device-form.page';
+import { NamespaceFormPage } from '../areas/os-management/namespace-form.page';
+import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
+import { TaskSchedulePage } from '../areas/tasks/task-schedule.page';
+import { MappingFormPage } from '../areas/os-management/mapping-form.page';
+import { DatabaseWizardPage } from '../areas/os-management/database-wizard.page';
+import { DatabaseEditorPage } from '../areas/os-management/database-editor.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -131,12 +140,27 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.OAuthServerClientForm': OAuthRegisteredClientFormPage,
   'OcuPilot.Screen.Descriptor.WalletSecretForm': WalletSecretFormPage,
   'OcuPilot.Screen.Descriptor.DeviceForm': DeviceFormPage,
+  'OcuPilot.Screen.Descriptor.NamespaceForm': NamespaceFormPage,
+  // Story 18.14: the Namespaces list with its Copy mappings, and the one page serving the three
+  // mapping forms, which takes the kind from the route.
+  'OcuPilot.Screen.Descriptor.NamespaceList': NamespaceListPage,
+  'OcuPilot.Screen.Descriptor.GlobalMappingForm': MappingFormPage,
+  'OcuPilot.Screen.Descriptor.RoutineMappingForm': MappingFormPage,
+  'OcuPilot.Screen.Descriptor.PackageMappingForm': MappingFormPage,
+  // Story 18.3: the local database form's bare route is the create wizard.
+  'OcuPilot.Screen.Descriptor.LocalDatabaseForm': DatabaseWizardPage,
   'OcuPilot.Screen.Descriptor.SslForm': SslFormPage,
   'OcuPilot.Screen.Descriptor.TaskForm': TaskWizardPage,
   'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
   'OcuPilot.Screen.Descriptor.LdapConfigForm': ReducedFormPage,
   'OcuPilot.Screen.Descriptor.AuditUserEventList': AuditUserEventListPage,
   'OcuPilot.Screen.Descriptor.AgentGovernance': GovernancePage,
+  'OcuPilot.Screen.Descriptor.LogHub': LogHubPage,
+  'OcuPilot.Screen.Descriptor.AgentLedger': LedgerPage,
+  // Story 16.7: the Dashboard's seven meter groups; System usage keeps the meters archetype's page.
+  'OcuPilot.Screen.Descriptor.Dashboard': DashboardPage,
+  // Story 16.4: the Task schedule with its Export and Import dialogs.
+  'OcuPilot.Screen.Descriptor.TaskScheduleList': TaskSchedulePage,
 };
 
 /**
@@ -158,6 +182,8 @@ export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, Type<unknown>>> = {
   // their id route from the one page.
   'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
   'OcuPilot.Screen.Descriptor.LdapConfigForm': ReducedFormPage,
+  // Story 18.3: the local database form's id route is the properties editor beside the wizard.
+  'OcuPilot.Screen.Descriptor.LocalDatabaseForm': DatabaseEditorPage,
 };
 
 /**

@@ -5,6 +5,7 @@ import { ApiService } from '../core/api';
 import { ChangeBus, type ChangeAction } from '../core/change-bus';
 import { splitCompositeId } from '../core/entity-id';
 import { impactLine, impactOf } from '../core/impact';
+import { checkedSetReason, checkedSetTarget, isCheckedSetAction } from '../core/multi-select';
 import { readBackOf } from '../core/read-back';
 import { ScreenActions, actionLabel } from '../core/screen-actions';
 import { SCREEN_READ_PATH_PREFIX } from '../core/screen-read';
@@ -12,8 +13,9 @@ import { ScreenStores } from '../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
-import { STRINGS } from '../core/strings';
+import { STRINGS, stringFor } from '../core/strings';
 import { rowKey } from '../core/table-model';
+import { violationsOf, type Violation } from '../core/violations';
 
 /** The absolute path a screen's own row action is issued under (AD-20, AD-53). */
 export const SCREEN_ACTION_PATH_SUFFIX = '/action';
@@ -45,7 +47,14 @@ export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
  * actions the role editor sends, and the X.509 credentials, Secrets and SSL/TLS configurations lists
  * (Story 9.5), whose Delete types the name, and the OAuth 2.0 Resource servers tab (Story 12.6), whose
  * Delete types the name, and the Authorization server tab (Story 12.7), whose Delete types the issuer
- * and whose Rotate Keys is sent at once.
+ * and whose Rotate Keys is sent at once, and the Namespaces list (Story 18.2), whose Delete types the
+ * name and states the removal's impact -- and whose Copy mappings its own page runs (Story 18.14) --
+ * the Web sessions list (Story 16.2), whose End session types the session id, the Background tasks
+ * list (Story 16.5), whose Pause and Resume are sent at once and whose Cancel task warns first, the
+ * global, routine and package mapping lists (Story 18.14), whose Delete types the mapping's name,
+ * Processes' Broadcast (Story 16.6), which acts on the checked rows and opens the broadcast
+ * dialog, and the Local databases list (Story 18.3), whose Delete types the name, states the
+ * removal's impact and offers to delete the file too.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -68,6 +77,13 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.SslConfigList',
   'OcuPilot.Screen.Descriptor.OAuthResourceServerTab',
   'OcuPilot.Screen.Descriptor.OAuthServerTab',
+  'OcuPilot.Screen.Descriptor.NamespaceList',
+  'OcuPilot.Screen.Descriptor.WebSessionList',
+  'OcuPilot.Screen.Descriptor.BackgroundTaskList',
+  'OcuPilot.Screen.Descriptor.GlobalMappingList',
+  'OcuPilot.Screen.Descriptor.RoutineMappingList',
+  'OcuPilot.Screen.Descriptor.PackageMappingList',
+  'OcuPilot.Screen.Descriptor.LocalDatabaseList',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -88,6 +104,27 @@ export const ROLE_LIST = 'OcuPilot.Screen.Descriptor.RoleList';
 /** The Resources list's descriptor, whose Delete is drawn refused for a system resource (Story 9.3). */
 export const RESOURCE_LIST = 'OcuPilot.Screen.Descriptor.ResourceList';
 
+/** The Namespaces list's descriptor, whose Delete states the web applications deleted with it (Story 18.2). */
+export const NAMESPACE_LIST = 'OcuPilot.Screen.Descriptor.NamespaceList';
+
+/**
+ * The Namespaces list's Copy mappings (Story 18.14): declared, and run by the list's own page
+ * (`areas/os-management/namespace-list.page.ts`), whose dialog supplies the source namespace and
+ * whose status line follows the copy.
+ */
+export const COPY_MAPPINGS = 'copy-mappings';
+
+/**
+ * The Local databases list's descriptor (Story 18.3), whose Delete states the removal's impact and
+ * carries the file option as a declared value (AD-56 (ii)).
+ */
+export const LOCAL_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.LocalDatabaseList';
+
+/** The three mapping lists (Story 18.14), each keyed by `[namespace, Name]`, whose Delete types the name. */
+const GLOBAL_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.GlobalMappingList';
+const ROUTINE_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.RoutineMappingList';
+const PACKAGE_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.PackageMappingList';
+
 /** The role value actions, and the values each sends (AD-56 (ii)). */
 export const ADD_GRANTED_ROLE = 'add-granted-role';
 export const REMOVE_GRANTED_ROLE = 'remove-granted-role';
@@ -95,7 +132,16 @@ export const SET_RESOURCE_GRANT = 'set-resource-grant';
 export const REMOVE_RESOURCE_GRANT = 'remove-resource-grant';
 
 /** The Task schedule's descriptor, whose delete types a name that is not its row key. */
-const TASK_SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
+export const TASK_SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
+
+/**
+ * The Task schedule's Export and Import (Story 16.4): declared, and run by the list's own page
+ * (`areas/tasks/task-schedule.page.ts`), whose dialogs supply the file. Import names no task, so it
+ * is sent with the one target the tool reads, `TASK_IMPORT_TARGET`.
+ */
+export const TASK_EXPORT = 'export';
+export const TASK_IMPORT = 'import';
+export const TASK_IMPORT_TARGET = 'import';
 
 /** The processes list and Process details, whose Terminate carries the error-to-job flag. */
 const PROCESS_LIST = 'OcuPilot.Screen.Descriptor.ProcessList';
@@ -120,6 +166,19 @@ export const REQUIRE_PASSWORD_CHANGE = 'require-password-change';
 /** The set-password action, and the one value it sends: the declared secret (AD-56 (i)). */
 export const SET_PASSWORD = 'set-password';
 const PASSWORD_VALUE = 'Password';
+
+/** The broadcast action, and the one value it sends (Story 16.6, AD-56 (ii)). */
+export const BROADCAST = 'broadcast';
+const MESSAGE_VALUE = 'Message';
+
+/**
+ * The multi-select actions that open a dialog over the checked rows, keyed by descriptor and then
+ * by action id (Story 16.6). An action here is never sent without its dialog, which supplies its
+ * value.
+ */
+const CHECKED_SET_DIALOGS: Readonly<Record<string, Readonly<Record<string, 'broadcast'>>>> = {
+  [PROCESS_LIST]: { [BROADCAST]: 'broadcast' },
+};
 
 /** The two role actions, and the one value each sends (AD-56 (ii)). */
 export const ADD_ROLE = 'add-role';
@@ -149,6 +208,10 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [PROCESS_DETAILS]: [TERMINATE_WITH_ERROR],
   // The role editor draws these beside its grants, members and assigned roles, which supply the values.
   [ROLE_LIST]: [ADD_GRANTED_ROLE, REMOVE_GRANTED_ROLE, SET_RESOURCE_GRANT, REMOVE_RESOURCE_GRANT],
+  // The Namespaces list's page registers Copy mappings itself, after this handler, so its dialog opens.
+  [NAMESPACE_LIST]: [COPY_MAPPINGS],
+  // The Task schedule's page registers Export itself and draws Import as a screen-level action.
+  [TASK_SCHEDULE]: [TASK_EXPORT, TASK_IMPORT],
 };
 
 /**
@@ -161,6 +224,24 @@ const FLAGGED_ACTIONS: Readonly<Record<string, Readonly<Record<string, { readonl
   [PROCESS_LIST]: { terminate: { label: STRINGS.processTerminateErrorFlag, action: TERMINATE_WITH_ERROR } },
   [PROCESS_DETAILS]: { terminate: { label: STRINGS.processTerminateErrorFlag, action: TERMINATE_WITH_ERROR } },
 };
+
+/**
+ * The optional checkbox a typed-name dialog offers as one of the action's own declared values,
+ * keyed by descriptor and then by action id: the value's name and the key of its published label
+ * (AD-56 (ii)). Unlike `FLAGGED_ACTIONS` the action id is kept, and the box's state travels as the
+ * value -- `'true'` or `'false'`, a string, as every screen-action value does -- on the one write,
+ * and as the impact read's `value` when the dialog opens, unchecked.
+ */
+const VALUE_FLAGS: Readonly<Record<string, Readonly<Record<string, { readonly value: string; readonly labelKey: keyof typeof STRINGS }>>>> = {
+  [LOCAL_DATABASE_LIST]: { delete: { value: 'DeleteFile', labelKey: 'localDatabaseDeleteFileOption' } },
+};
+
+/** A typed-name dialog's checkbox: its label, and either the action it swaps in or the value it sends. */
+interface DialogFlag {
+  readonly label: string;
+  readonly action?: string;
+  readonly value?: string;
+}
 
 /**
  * The screen whose action route a descriptor's row actions are sent to, where it is not the
@@ -179,7 +260,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens'];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'end'];
 
 /**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
@@ -188,6 +269,8 @@ const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-t
 const IMPACT_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [ROLE_LIST]: ['delete'],
   [RESOURCE_LIST]: ['delete'],
+  [NAMESPACE_LIST]: ['delete'],
+  [LOCAL_DATABASE_LIST]: ['delete'],
 };
 
 /**
@@ -217,6 +300,12 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.SslConfigList': { delete: STRINGS.sslDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthResourceServerTab': { delete: STRINGS.oauthResourceServerDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthServerTab': { delete: STRINGS.oauthAuthServerDeleteConsequence },
+  [NAMESPACE_LIST]: { delete: STRINGS.namespaceDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.WebSessionList': { end: STRINGS.webSessionEndConsequence },
+  [GLOBAL_MAPPING_LIST]: { delete: STRINGS.globalMappingDeleteConsequence },
+  [ROUTINE_MAPPING_LIST]: { delete: STRINGS.routineMappingDeleteConsequence },
+  [PACKAGE_MAPPING_LIST]: { delete: STRINGS.packageMappingDeleteConsequence },
+  [LOCAL_DATABASE_LIST]: { delete: STRINGS.localDatabaseDeleteConsequence },
 };
 
 /**
@@ -259,6 +348,11 @@ const TYPED_NAME_ROWS: Readonly<
   [AUDIT_USER_EVENT_LIST]: { name: 'EventName', field: 'EventName', equals: AGENT_WRITE_EVENT, advisory: STRINGS.proposalAuditWarning },
   // An X.509 credential is typed by its alias, which is also its row key; it carries no advisory.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { name: 'Alias', field: '', equals: '', advisory: '' },
+  // A mapping is keyed by `[namespace, Name]`, whose separator no one can type, so its Delete types
+  // the mapping's name and sends the row key.
+  [GLOBAL_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
+  [ROUTINE_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
+  [PACKAGE_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
 };
 
 /**
@@ -269,6 +363,8 @@ const TYPED_NAME_ROWS: Readonly<
  */
 const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   'OcuPilot.Screen.Descriptor.AuditingConfig': { disable: STRINGS.proposalAuditWarning },
+  // Story 16.5: a canceled background task cannot be resumed.
+  'OcuPilot.Screen.Descriptor.BackgroundTaskList': { cancel: STRINGS.backgroundTaskCancelConsequence },
 };
 
 /**
@@ -294,7 +390,7 @@ interface ScreenActionAnswer {
 }
 
 /** Which dialog a pending row action is waiting on. */
-export type PendingKind = 'typed-name' | 'warning' | 'set-password' | 'role';
+export type PendingKind = 'typed-name' | 'warning' | 'set-password' | 'role' | 'broadcast';
 
 /**
  * The dialog a row action is waiting on, or `null`: the typed-name confirm of a destructive action,
@@ -322,6 +418,14 @@ export interface PendingConfirm {
   /** The role dialog's choices that grant %All or an administrative privilege (AD-10, DW-1523). */
   readonly privileged: readonly string[];
   readonly impact: string;
+  /** The broadcast dialog's count of checked rows (Story 16.6); absent for every other kind. */
+  readonly count?: number;
+  /** The broadcast dialog's message is being sent. */
+  readonly sending?: boolean;
+  /** The instance applied the broadcast, so the dialog reads its sent line. */
+  readonly sent?: boolean;
+  /** The envelope's reason for a refused broadcast, shown in the dialog, or `''`. */
+  readonly refusal?: string;
 }
 
 /**
@@ -332,6 +436,17 @@ export interface PendingConfirm {
 export interface ActionSink {
   setRefusal(reason: string): void;
   applied?(actionId: string): void;
+}
+
+/**
+ * What the instance answered the last refused action with (AD-39): the envelope's sentence, its
+ * field-level violations and its structured detail. A dialog that draws a refusal on its own fields
+ * reads it right after the `sendFor` that sent the action.
+ */
+export interface ActionRefusal {
+  readonly reason: string;
+  readonly violations: readonly Violation[];
+  readonly detail: Readonly<Record<string, unknown>> | null;
 }
 
 /** The fields of the row an action is about, where the caller holds them. */
@@ -408,14 +523,21 @@ export class ScreenActionHandler {
 
   /**
    * The typed name matched, or the warning was proceeded past: send the write the dialog was
-   * standing in front of. `flag` is the dialog's checkbox; checked, the flagged action is sent in
-   * place of the one the dialog was opened for, and nothing else about the request changes.
+   * standing in front of. `flag` is the dialog's checkbox. Where the checkbox is one of the action's
+   * declared values (`VALUE_FLAGS`), the action id is kept and the box's state is sent as that value,
+   * checked or not (AD-56 (ii)); otherwise a checked box sends the flagged action in place of the one
+   * the dialog was opened for, and nothing else about the request changes.
    */
   confirmPending(flag = false): void {
     const pending = this.waiting();
     const sink = this.takeSink();
     if (pending === null || (pending.kind !== 'typed-name' && pending.kind !== 'warning')) return;
-    const flagged = flag ? this.flag(pending.descriptor, pending.actionId) : null;
+    const own = this.flag(pending.descriptor, pending.actionId);
+    if (own?.value !== undefined) {
+      void this.send(pending.descriptor, pending.actionId, pending.target, { [own.value]: flag ? 'true' : 'false' }, sink);
+      return;
+    }
+    const flagged = flag ? own : null;
     void this.send(pending.descriptor, flagged?.action ?? pending.actionId, pending.target, undefined, sink);
   }
 
@@ -447,6 +569,34 @@ export class ScreenActionHandler {
     const sink = this.takeSink();
     if (pending === null || pending.kind !== 'role' || role === '') return;
     void this.send(pending.descriptor, pending.actionId, pending.target, { [ROLE_VALUE]: role }, sink);
+  }
+
+  /**
+   * The broadcast dialog's Send (Story 16.6): the message, trimmed, goes as one request to the
+   * checked set the dialog opened over. On the instance's 200 the checks are cleared and the dialog
+   * reads its sent line; a refusal puts the envelope's own reason in the dialog, which stays open.
+   */
+  async submitBroadcast(message: string): Promise<void> {
+    const pending = this.waiting();
+    if (pending === null || pending.kind !== 'broadcast' || pending.sending === true || pending.sent === true) return;
+    const text = message.trim();
+    if (text === '') return;
+    const screen = SCREENS.find((entry) => entry.descriptor === pending.descriptor);
+    if (screen === undefined) return;
+    const sending: PendingConfirm = { ...pending, sending: true, refusal: '' };
+    this.waiting.set(sending);
+    let refusal = '';
+    const sink: ActionSink = {
+      setRefusal: (reason) => {
+        refusal = reason;
+      },
+    };
+    const applied = await this.send(pending.descriptor, pending.actionId, pending.target, { [MESSAGE_VALUE]: text }, sink);
+    if (applied) this.store(screen.descriptor, screen.refreshRates).setChecked([]);
+    // Only the dialog this Send came from takes its answer: one closed and reopened meanwhile, over
+    // the same set, has sent nothing yet.
+    if (this.waiting() !== sending) return;
+    this.waiting.set({ ...sending, sending: false, sent: applied, refusal: applied ? '' : refusal });
   }
 
   /** Escape, Cancel or the scrim: nothing was sent and nothing is. */
@@ -556,11 +706,31 @@ export class ScreenActionHandler {
     );
   }
 
-  /** A row menu's action: `startFor` on the list's selected row, reporting to the list's store. */
+  /**
+   * A row menu's action: `startFor` on the list's selected row, reporting to the list's store. A
+   * multi-select action acts on the checked rows instead (Story 16.6), and does nothing while its
+   * surfaces draw it refused.
+   */
   private start(screen: ScreenDeclaration, actionId: string): void {
+    if (isCheckedSetAction(screen, actionId)) {
+      this.startCheckedSet(screen, actionId);
+      return;
+    }
     const target = this.selected(screen);
     if (target === '') return;
     this.startFor(screen.descriptor, actionId, target, this.row(screen, target), this.store(screen.descriptor, screen.refreshRates));
+  }
+
+  /** Open the dialog a multi-select action waits on, over the checked rows as one target (AD-13). */
+  private startCheckedSet(screen: ScreenDeclaration, actionId: string): void {
+    const store = this.store(screen.descriptor, screen.refreshRates);
+    const checked = store.checked();
+    if (checkedSetReason(screen, checked.size) !== '') return;
+    if (CHECKED_SET_DIALOGS[screen.descriptor]?.[actionId] !== 'broadcast') return;
+    const target = checkedSetTarget(screen, checked);
+    this.open('broadcast', screen.descriptor, actionId, target, '', [], store);
+    const opened = this.waiting();
+    if (opened !== null) this.waiting.set({ ...opened, count: checked.size, sending: false, sent: false, refusal: '' });
   }
 
   private open(
@@ -645,7 +815,9 @@ export class ScreenActionHandler {
    */
   private async openWithImpact(descriptor: string, actionId: string, target: string, sink: ActionSink): Promise<void> {
     const ask = ++this.impactAsk;
-    const line = await this.impactFor(descriptor, actionId, target);
+    // An action whose checkbox is a declared value is read as the dialog opens it: unchecked.
+    const value = this.flag(descriptor, actionId)?.value === undefined ? '' : 'false';
+    const line = await this.impactFor(descriptor, actionId, target, value);
     if (ask !== this.impactAsk) return;
     this.open('typed-name', descriptor, actionId, target, this.consequence(descriptor, actionId), [], sink, target, line);
   }
@@ -691,6 +863,7 @@ export class ScreenActionHandler {
     values?: ActionValues,
     sink: ActionSink | null = null
   ): Promise<boolean> {
+    this.lastRefused = null;
     const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
     if (screen === undefined) return false;
     const addressed = SCREENS.find((entry) => entry.descriptor === (ACTION_ADDRESS[descriptor] ?? descriptor));
@@ -708,6 +881,14 @@ export class ScreenActionHandler {
       }
     );
     this.lastContinues = result.kind === 'ok' && result.body?.continues === true;
+    this.lastRefused =
+      result.kind === 'error'
+        ? {
+            reason: result.reason ?? '',
+            violations: result.detail ? violationsOf(result) : [],
+            detail: result.detail ?? null,
+          }
+        : null;
     if (result.kind !== 'ok') {
       // The envelope's own sentence (AD-39). A refused write changed nothing, so nothing is
       // published and no row is marked.
@@ -736,13 +917,24 @@ export class ScreenActionHandler {
    * Send `actionId` for `target` on `descriptor` with no dialog, as a row action would, and answer
    * whether the instance applied it. For a page that composes several actions itself -- the
    * Selective SQL auditing dialog -- so each still takes the one request and change event `send`
-   * makes.
+   * makes. `sink`, where given, takes the refusal sentence in place of the screen's own store: a
+   * dialog that shows the refusal itself keeps it off the list's banner.
    */
-  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues): Promise<boolean> {
-    return this.send(descriptor, actionId, target, values);
+  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues, sink?: ActionSink): Promise<boolean> {
+    return this.send(descriptor, actionId, target, values, sink ?? null);
   }
 
   private lastContinues = false;
+
+  private lastRefused: ActionRefusal | null = null;
+
+  /**
+   * The refusal the last action this handler sent was answered with, or `null` when it was applied
+   * or not sent. Read right after the `sendFor` that sent it, as `continued` is.
+   */
+  lastRefusal(): ActionRefusal | null {
+    return this.lastRefused;
+  }
 
   /**
    * Whether the last action this handler sent was applied and answered that it is still running on
@@ -784,7 +976,12 @@ export class ScreenActionHandler {
     return rowFields?.[entry.field] === entry.equals ? entry.consequence : '';
   }
 
-  private flag(descriptor: string, actionId: string): { readonly label: string; readonly action: string } | null {
+  /** The checkbox a typed-name dialog offers for `actionId`: a flagged action or a declared value, or `null`. */
+  private flag(descriptor: string, actionId: string): DialogFlag | null {
+    const valued = VALUE_FLAGS[descriptor];
+    if (valued !== undefined && Object.hasOwn(valued, actionId)) {
+      return { label: stringFor(valued[actionId].labelKey), value: valued[actionId].value };
+    }
     const own = FLAGGED_ACTIONS[descriptor];
     if (own === undefined) return null;
     return Object.hasOwn(own, actionId) ? own[actionId] : null;

@@ -63,12 +63,13 @@ Parameter ROUTENOTFOUND = "ROUTE.NOTFOUND";
 /// <code>member=value</code> pair the probe loop asserts against the answered envelope, so a
 /// precondition a <var>why</var> rests on is measured rather than assumed.</p>
 /// <p><var>substitute</var> is the identifier a <code>:param</code> segment carries instead of
-/// <parameter>PROBEID</parameter>, and <var>substitutewhy</var> is why. One row needs it:
-/// <method>OcuPilot.Api.ScreenRead.Handle</method> answers <code>ROUTE.NOTFOUND</code> for a
-/// screen identifier that resolves to nothing, which is indistinguishable from the router's own
-/// route-not-found -- so a probe carrying <parameter>PROBEID</parameter> there would assert
-/// exactly what this class exists to refute. Declaring it keeps that row derived rather than
-/// silently different.</p>
+/// <parameter>PROBEID</parameter>, and <var>substitutewhy</var> is why. The screen and mapping
+/// routes need it: <method>OcuPilot.Api.ScreenRead.Handle</method> answers
+/// <code>ROUTE.NOTFOUND</code> for a screen identifier that resolves to nothing, and
+/// <method>OcuPilot.Area.OsMgmt.MappingRules.NotAKind</method> for a mapping kind that is not one
+/// of the three, which is indistinguishable from the router's own route-not-found -- so a probe
+/// carrying <parameter>PROBEID</parameter> there would assert exactly what this class exists to
+/// refute. Declaring it keeps those rows derived rather than silently different.</p>
 XData Probes
 {
 <probes>
@@ -147,6 +148,10 @@ XData Probes
 <!-- /users/name carries no query string here, for /web-applications/name's reason: it draws the
      documented 422 USER.NAME.REQUIRED envelope. Its own answers are OcuPilot.Test.UserCreateWire's. -->
 <probe class="Api.Router" method="GET" url="/users/name" path="/api/ocupilot/users/name" disposition="envelope"/>
+<!-- /users/effective and /permissions/check carry no query string: each refuses its first missing
+     argument (name, and kind) 400 TOOL.ARGUMENTS before any read. Their own answers are OcuPilot.Test.EffectiveUser's and
+     OcuPilot.Test.PermissionCheck's. -->
+<probe class="Api.Router" method="GET" url="/users/effective" path="/api/ocupilot/users/effective" disposition="envelope" expect="code=TOOL.ARGUMENTS"/>
 <probe class="Api.Router" method="PUT" url="/users/:id" path="/api/ocupilot/users/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/users" path="/api/ocupilot/users" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/roles/form" path="/api/ocupilot/roles/form" disposition="envelope"/>
@@ -185,6 +190,18 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/device/name" path="/api/ocupilot/device/name" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/device/:id" path="/api/ocupilot/device/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/device" path="/api/ocupilot/device" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/namespace/form" path="/api/ocupilot/namespace/form" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/namespace/name" path="/api/ocupilot/namespace/name" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/namespace/:id" path="/api/ocupilot/namespace/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/namespace" path="/api/ocupilot/namespace" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/mapping/:kind/form" path="/api/ocupilot/mapping/global/form" disposition="envelope" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind; the path names no namespace, which the handler answers 404 before any read"/>
+<probe class="Api.Router" method="GET" url="/mapping/:kind/name" path="/api/ocupilot/mapping/global/name" disposition="envelope" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind"/>
+<probe class="Api.Router" method="PUT" url="/mapping/:kind/:id" path="/api/ocupilot/mapping/global/global" disposition="envelope" refusal="1" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind; the identifier segment carries the same value, which names no namespace and mapping pair, so the handler refuses before any write"/>
+<probe class="Api.Router" method="POST" url="/mapping/:kind" path="/api/ocupilot/mapping/global" disposition="envelope" refusal="1" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind; the body is the unreadable one every write-verb probe sends"/>
+<probe class="Api.Router" method="GET" url="/database/form" path="/api/ocupilot/database/form" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/database/check" path="/api/ocupilot/database/check" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="PUT" url="/database/:id" path="/api/ocupilot/database/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/database" path="/api/ocupilot/database" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/ssl/form" path="/api/ocupilot/ssl/form" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/ssl/name" path="/api/ocupilot/ssl/name" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/ssl/:id/test" path="/api/ocupilot/ssl/ocupilot-coverage-probe/test" disposition="envelope" refusal="1"/>
@@ -201,6 +218,7 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/audit-events/form" path="/api/ocupilot/audit-events/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/audit-events/:id" path="/api/ocupilot/audit-events/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/audit-events" path="/api/ocupilot/audit-events" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/permissions/check" path="/api/ocupilot/permissions/check" disposition="envelope" expect="code=TOOL.ARGUMENTS"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>
 <probe class="Api.StaticHandler" method="HEAD" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -141,24 +141,31 @@ export interface ReadRowGet {
 export interface ReadSourcePart {
   readonly type: string;
   readonly as: string;
+  /** `monitor` for the one part the sensors answer (Story 16.7); absent is the admin endpoint. */
+  readonly port?: 'admin' | 'monitor';
 }
 
 /**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
- * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, or one
- * instance log file's bounded tail. A `state` source names the store by its own name, declares no
- * `rowGet` and no `criteria`, and is bounded by the same row cap; a `mgmnt` or
- * `logsource` source declares no `rowGet`.
+ * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, one
+ * instance log file's bounded tail, the instance's allowed directories, or an area's listed screens'
+ * reads composed into one timeline. A `state` source names the store by its own name, declares no
+ * `rowGet` and no `criteria`, and is bounded by the same row cap; a `mgmnt` or `logsource`
+ * source declares no `rowGet`, a `path` source is a `LIST` of one of its port's sources, and a
+ * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
    * `UPCOMING` reads an admin endpoint's scheduled occurrences as rows; `HISTORY` reads its task-run history;
-   * `VOLUMELIST` reads a database's own volume files as rows.
+   * `VOLUMELIST` reads a database's own volume files as rows; a bare admin type is read with
+   * `rows` (Story 16.7).
    */
-  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST';
+  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'LICENSEUSAGE';
+  /** The one member of a bare admin type's one-object answer this read lists (AD-36, Story 16.7). */
+  readonly rows?: string | null;
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;
@@ -381,6 +388,8 @@ export interface ScreenDeclaration {
   readonly toolIdentifier: string;
   /** This list's one declared cross-screen row target, or `null` for a screen with none (AD-5, Story 6.10). */
   readonly rowTarget: ScreenRowTarget | null;
+  /** This list's one declared multi-select action, or `null` for a screen with none (AD-5, Story 16.6). */
+  readonly multiSelect: ScreenMultiSelect | null;
 }
 
 /** One suggested prompt: the string key of the task group it sits under, and of its own text. */
@@ -407,6 +416,18 @@ export interface TabDeclaration {
 export interface ScreenRowTarget {
   readonly route: string;
   readonly field: string;
+}
+
+/**
+ * A list's one multi-select action (AD-5, Story 16.6): the row action that acts on the checked rows,
+ * the read field that makes a row checkable, the most rows it takes, and the string key an
+ * ineligible row's checkbox reads.
+ */
+export interface ScreenMultiSelect {
+  readonly action: string;
+  readonly eligible: string;
+  readonly max: number;
+  readonly ineligibleKey: string;
 }
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */
@@ -441,7 +462,15 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "log-entry",
   "agent-definition",
   "agent-switch",
-  "agent-policy"
+  "agent-policy",
+  "allowed-directory",
+  "namespace",
+  "web-session",
+  "background-task",
+  "global-mapping",
+  "routine-mapping",
+  "package-mapping",
+  "database-configuration"
 ];
 
 /**
@@ -464,7 +493,7 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "user": "foldcase",
   "auditing-configuration": "singleton",
   "task": "integer",
-  "process": "integer",
+  "process": "integerset",
   "application-error": "foldcase",
   "role": "foldcase",
   "resource": "foldcase",
@@ -472,7 +501,12 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "audit-user-event": "foldcase",
   "service": "foldcase",
   "ldap-configuration": "foldcase",
-  "oauth2-server": "singleton"
+  "oauth2-server": "singleton",
+  "namespace": "foldcase",
+  "global-mapping": "foldcase-firstpart",
+  "routine-mapping": "foldcase-firstpart",
+  "package-mapping": "foldcase-firstpart",
+  "database-configuration": "foldcase"
 };
 
 /**
@@ -599,22 +633,6 @@ export const AREAS: readonly AreaDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
-      },
-      {
-        "resource": "%Admin_Wallet",
-        "permission": "USE"
-      },
-      {
-        "resource": "%Admin_OAuth2_Client",
-        "permission": "USE"
-      },
-      {
-        "resource": "%Admin_OAuth2_Server",
-        "permission": "USE"
-      },
-      {
-        "resource": "%Admin_OAuth2_Registration",
-        "permission": "USE"
       }
     ]
   },
@@ -695,6 +713,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -847,6 +866,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -917,6 +937,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -983,6 +1004,76 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentLedger",
+    "route": "agent/ledger",
+    "area": "agent",
+    "labelKey": "agentLedgerLabel",
+    "sideBarPosition": 5,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "ledgerId"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "agentLedgerEmpty",
+    "commandAliases": [
+      "agent audit ledger",
+      "ledger",
+      "agent activity"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "agentLedgerPrompt1"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "agentLedgerPrompt2"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "agentLedgerPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "agent.ledger",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -1059,6 +1150,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -1123,6 +1215,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -1132,7 +1225,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "route": "agent/transcripts",
     "area": "agent",
     "labelKey": "agentTranscriptsLabel",
-    "sideBarPosition": 5,
+    "sideBarPosition": 6,
     "archetype": "list",
     "built": true,
     "refreshes": false,
@@ -1259,6 +1352,129 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AllowedDirectoryList",
+    "route": "security/allowed-directories",
+    "area": "security",
+    "labelKey": "allowedDirectoriesLabel",
+    "sideBarPosition": 7,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "allowed-directory",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Directory",
+        "Restricted"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "allowedDirectoriesEmpty",
+    "commandAliases": [
+      "allow-list",
+      "file access"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "allowedDirectoryListPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "allowedDirectoryListPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "allowedDirectoryListPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "path",
+        "endpoint": "roots",
+        "type": "LIST"
+      },
+      "fields": [
+        "Directory",
+        "Restricted"
+      ],
+      "filter": [
+        "Directory",
+        "Restricted"
+      ],
+      "sort": {
+        "fields": [
+          "Directory",
+          "Restricted"
+        ],
+        "default": "Directory",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Directory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "name"
+        },
+        {
+          "field": "Restricted",
+          "labelKey": "allowedDirectoriesColumnRestricted",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "security.alloweddirectories",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -1543,6 +1759,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -1701,6 +1918,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
   },
@@ -1862,6 +2080,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
   },
@@ -1974,8 +2193,577 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.BackgroundTaskList",
+    "route": "tasks/background",
+    "area": "tasks",
+    "labelKey": "backgroundTaskListLabel",
+    "sideBarPosition": 5,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "background-task",
+    "entityLabelKey": "proposalEntityBackgroundTask",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Source",
+        "Id"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "cancel",
+        "selfProtection": ""
+      },
+      {
+        "id": "pause",
+        "selfProtection": ""
+      },
+      {
+        "id": "resume",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Source",
+        "Id",
+        "Task",
+        "Namespace",
+        "Status",
+        "Details",
+        "ErrorCount",
+        "StartTime",
+        "Database"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "backgroundTaskListEmpty",
+    "commandAliases": [
+      "background tasks",
+      "background jobs"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backgroundTaskListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backgroundTaskListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backgroundTaskListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.BackgroundTaskList",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "background",
+        "endpoint": "BackgroundTask",
+        "type": "LIST"
+      },
+      "fields": [
+        "Source",
+        "Id",
+        "Task",
+        "Namespace",
+        "Status",
+        "Details",
+        "ErrorCount",
+        "StartTime",
+        "Database"
+      ],
+      "filter": [
+        "Source",
+        "Task",
+        "Namespace",
+        "Status",
+        "Details"
+      ],
+      "sort": {
+        "fields": [
+          "StartTime",
+          "Task",
+          "Source",
+          "Namespace",
+          "Status"
+        ],
+        "default": "StartTime",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Task",
+          "labelKey": "proposalEntityTask",
+          "kind": "name"
+        },
+        {
+          "field": "Source",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Details",
+          "labelKey": "backgroundTaskColumnDetails",
+          "kind": "text"
+        },
+        {
+          "field": "ErrorCount",
+          "labelKey": "backgroundTaskColumnErrorCount",
+          "kind": "text"
+        },
+        {
+          "field": "StartTime",
+          "labelKey": "taskStartTime",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "backgroundTaskListEmptyAgent"
+    },
+    "toolIdentifier": "tasks.background",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.Dashboard",
+    "route": "os-management/dashboard",
+    "area": "os-management",
+    "labelKey": "dashboardLabel",
+    "sideBarPosition": 8,
+    "archetype": "meters",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Sensors.cpuUsage",
+        "Dashboard.Performance.GlobalRefsPerSecond",
+        "Dashboard.Performance.GlobalRefs",
+        "Dashboard.Performance.GlobalSetKill",
+        "Dashboard.Performance.RoutineRefs",
+        "Dashboard.Performance.LogicalRequests",
+        "Dashboard.Performance.DiskReads",
+        "Dashboard.Performance.DiskWrites",
+        "Dashboard.Performance.CacheEfficiency",
+        "Dashboard.ECP.ECPClients",
+        "Dashboard.ECP.ECPClientTraffic",
+        "Dashboard.ECP.ECPServers",
+        "Dashboard.ECP.ECPServerTraffic",
+        "Dashboard.ECP.ShadowConnections",
+        "Dashboard.ECP.Shadows",
+        "Dashboard.Status.UpTime",
+        "Dashboard.Status.LastBackup",
+        "Dashboard.SystemUsage.DatabaseSpace",
+        "Dashboard.SystemUsage.DatabaseJournal",
+        "Dashboard.SystemUsage.JournalSpace",
+        "Dashboard.SystemUsage.JournalEntries",
+        "Dashboard.SystemUsage.LockTable",
+        "Dashboard.SystemUsage.WriteDaemon",
+        "Dashboard.SystemUsage.Processes",
+        "Dashboard.SystemUsage.CSPSessions",
+        "Dashboard.Alerts.SeriousAlerts",
+        "Dashboard.Alerts.ApplicationErrors",
+        "Dashboard.Licensing.LicenseLimit",
+        "Dashboard.Licensing.LicenseUse",
+        "Dashboard.Licensing.LicenseUseHigh"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "dashboardEmpty",
+    "commandAliases": [
+      "dashboard",
+      "system dashboard",
+      "cpu"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "dashboardPrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "dashboardPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "dashboardPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utildashboard",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "GET",
+        "parts": [
+          {
+            "type": "DASHBOARDMAIN",
+            "as": "Dashboard"
+          },
+          {
+            "port": "monitor",
+            "type": "SENSORS",
+            "as": "Sensors"
+          }
+        ]
+      },
+      "fields": [
+        "Sensors.cpuUsage",
+        "Dashboard.Performance.GlobalRefsPerSecond",
+        "Dashboard.Performance.GlobalRefs",
+        "Dashboard.Performance.GlobalSetKill",
+        "Dashboard.Performance.RoutineRefs",
+        "Dashboard.Performance.LogicalRequests",
+        "Dashboard.Performance.DiskReads",
+        "Dashboard.Performance.DiskWrites",
+        "Dashboard.Performance.CacheEfficiency",
+        "Dashboard.ECP.ECPClients",
+        "Dashboard.ECP.ECPClientTraffic",
+        "Dashboard.ECP.ECPServers",
+        "Dashboard.ECP.ECPServerTraffic",
+        "Dashboard.ECP.ShadowConnections",
+        "Dashboard.ECP.Shadows",
+        "Dashboard.Status.UpTime",
+        "Dashboard.Status.LastBackup",
+        "Dashboard.SystemUsage.DatabaseSpace",
+        "Dashboard.SystemUsage.DatabaseJournal",
+        "Dashboard.SystemUsage.JournalSpace",
+        "Dashboard.SystemUsage.JournalEntries",
+        "Dashboard.SystemUsage.LockTable",
+        "Dashboard.SystemUsage.WriteDaemon",
+        "Dashboard.SystemUsage.Processes",
+        "Dashboard.SystemUsage.CSPSessions",
+        "Dashboard.Alerts.SeriousAlerts",
+        "Dashboard.Alerts.ApplicationErrors",
+        "Dashboard.Licensing.LicenseLimit",
+        "Dashboard.Licensing.LicenseUse",
+        "Dashboard.Licensing.LicenseUseHigh"
+      ],
+      "filter": [
+        "Sensors.cpuUsage",
+        "Dashboard.Performance.GlobalRefsPerSecond",
+        "Dashboard.Performance.GlobalRefs",
+        "Dashboard.Performance.GlobalSetKill",
+        "Dashboard.Performance.RoutineRefs",
+        "Dashboard.Performance.LogicalRequests",
+        "Dashboard.Performance.DiskReads",
+        "Dashboard.Performance.DiskWrites",
+        "Dashboard.Performance.CacheEfficiency",
+        "Dashboard.ECP.ECPClients",
+        "Dashboard.ECP.ECPClientTraffic",
+        "Dashboard.ECP.ECPServers",
+        "Dashboard.ECP.ECPServerTraffic",
+        "Dashboard.ECP.ShadowConnections",
+        "Dashboard.ECP.Shadows",
+        "Dashboard.Status.UpTime",
+        "Dashboard.Status.LastBackup",
+        "Dashboard.SystemUsage.DatabaseSpace",
+        "Dashboard.SystemUsage.DatabaseJournal",
+        "Dashboard.SystemUsage.JournalSpace",
+        "Dashboard.SystemUsage.JournalEntries",
+        "Dashboard.SystemUsage.LockTable",
+        "Dashboard.SystemUsage.WriteDaemon",
+        "Dashboard.SystemUsage.Processes",
+        "Dashboard.SystemUsage.CSPSessions",
+        "Dashboard.Alerts.SeriousAlerts",
+        "Dashboard.Alerts.ApplicationErrors",
+        "Dashboard.Licensing.LicenseLimit",
+        "Dashboard.Licensing.LicenseUse",
+        "Dashboard.Licensing.LicenseUseHigh"
+      ],
+      "sort": {
+        "fields": [
+          "Sensors.cpuUsage",
+          "Dashboard.Performance.GlobalRefsPerSecond",
+          "Dashboard.Performance.GlobalRefs",
+          "Dashboard.Performance.GlobalSetKill",
+          "Dashboard.Performance.RoutineRefs",
+          "Dashboard.Performance.LogicalRequests",
+          "Dashboard.Performance.DiskReads",
+          "Dashboard.Performance.DiskWrites",
+          "Dashboard.Performance.CacheEfficiency",
+          "Dashboard.ECP.ECPClients",
+          "Dashboard.ECP.ECPClientTraffic",
+          "Dashboard.ECP.ECPServers",
+          "Dashboard.ECP.ECPServerTraffic",
+          "Dashboard.ECP.ShadowConnections",
+          "Dashboard.ECP.Shadows",
+          "Dashboard.Status.UpTime",
+          "Dashboard.Status.LastBackup",
+          "Dashboard.SystemUsage.DatabaseSpace",
+          "Dashboard.SystemUsage.DatabaseJournal",
+          "Dashboard.SystemUsage.JournalSpace",
+          "Dashboard.SystemUsage.JournalEntries",
+          "Dashboard.SystemUsage.LockTable",
+          "Dashboard.SystemUsage.WriteDaemon",
+          "Dashboard.SystemUsage.Processes",
+          "Dashboard.SystemUsage.CSPSessions",
+          "Dashboard.Alerts.SeriousAlerts",
+          "Dashboard.Alerts.ApplicationErrors",
+          "Dashboard.Licensing.LicenseLimit",
+          "Dashboard.Licensing.LicenseUse",
+          "Dashboard.Licensing.LicenseUseHigh"
+        ],
+        "default": "Dashboard.Status.UpTime",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Sensors.cpuUsage",
+          "labelKey": "dashboardCpu",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.GlobalRefsPerSecond",
+          "labelKey": "systemUsageGlobalRefsPerSecond",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.GlobalRefs",
+          "labelKey": "processDetailsGlobalReferences",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.GlobalSetKill",
+          "labelKey": "systemUsageGlobalUpdates",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.RoutineRefs",
+          "labelKey": "dashboardRoutineReferences",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.LogicalRequests",
+          "labelKey": "systemUsageLogicalBlockRequests",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.DiskReads",
+          "labelKey": "performanceDiskReads",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.DiskWrites",
+          "labelKey": "performanceDiskWrites",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.CacheEfficiency",
+          "labelKey": "systemUsageCacheEfficiency",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.ECP.ECPClients",
+          "labelKey": "dashboardApplicationServers",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.ECP.ECPClientTraffic",
+          "labelKey": "dashboardApplicationServerTraffic",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.ECP.ECPServers",
+          "labelKey": "dashboardDataServers",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.ECP.ECPServerTraffic",
+          "labelKey": "dashboardDataServerTraffic",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.ECP.ShadowConnections",
+          "labelKey": "dashboardShadowSource",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.ECP.Shadows",
+          "labelKey": "dashboardShadowServer",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.Status.UpTime",
+          "labelKey": "systemInfoUptime",
+          "kind": "name"
+        },
+        {
+          "field": "Dashboard.Status.LastBackup",
+          "labelKey": "dashboardLastBackup",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.DatabaseSpace",
+          "labelKey": "systemUsageDatabaseSpace",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.DatabaseJournal",
+          "labelKey": "dashboardDatabaseJournal",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.JournalSpace",
+          "labelKey": "systemUsageJournalSpace",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.JournalEntries",
+          "labelKey": "systemUsageJournalEntries",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.SystemUsage.LockTable",
+          "labelKey": "systemUsageLockTable",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.WriteDaemon",
+          "labelKey": "systemUsageWriteDaemon",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.Processes",
+          "labelKey": "processListLabel",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.SystemUsage.CSPSessions",
+          "labelKey": "webSessionListLabel",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Alerts.SeriousAlerts",
+          "labelKey": "dashboardSeriousAlerts",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Alerts.ApplicationErrors",
+          "labelKey": "errorLogListLabel",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Licensing.LicenseLimit",
+          "labelKey": "dashboardLicenseLimit",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Licensing.LicenseUse",
+          "labelKey": "dashboardLicenseUse",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Licensing.LicenseUseHigh",
+          "labelKey": "dashboardLicenseUseHigh",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.dashboard",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseDetails",
@@ -2233,6 +3021,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -2394,6 +3183,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -2424,7 +3214,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "database",
-    "secondaryEntityTypes": [],
+    "secondaryEntityTypes": [
+      "database-configuration"
+    ],
     "scope": "instance",
     "parentScope": "",
     "id": {
@@ -2541,6 +3333,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -2699,6 +3492,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -2772,6 +3566,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -2921,6 +3716,234 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.GlobalMappingForm",
+    "route": "os-management/namespaces/global-mappings/edit",
+    "area": "os-management",
+    "labelKey": "globalMappingFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "global-mapping",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "globalMappingFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "globalMappingFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "globalMappingFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mappings.Global",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.globalmappingform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.GlobalMappingList",
+    "route": "os-management/namespaces/global-mappings",
+    "area": "os-management",
+    "labelKey": "globalMappingListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "global-mapping",
+    "secondaryEntityTypes": [
+      "namespace"
+    ],
+    "scope": "instance",
+    "parentScope": "os-management/namespaces",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "namespace",
+        "Name",
+        "Database",
+        "LockDatabase",
+        "Collation"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "globalMappingListEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "globalMappingListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "globalMappingListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "globalMappingListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mappings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Namespace.GlobalMappings",
+        "type": "LIST"
+      },
+      "fields": [
+        "namespace",
+        "Name",
+        "Database",
+        "LockDatabase",
+        "Collation"
+      ],
+      "filter": [
+        "Name",
+        "Database",
+        "LockDatabase"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Database",
+          "LockDatabase",
+          "Collation"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "namespace",
+            "labelKey": "headerNamespaceLabel",
+            "kind": "text",
+            "maxLength": 64
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Database",
+          "labelKey": "systemInfoDatabase",
+          "kind": "identifier"
+        },
+        {
+          "field": "LockDatabase",
+          "labelKey": "mappingColumnLockDatabase",
+          "kind": "identifier"
+        },
+        {
+          "field": "Collation",
+          "labelKey": "mappingColumnCollation",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "globalMappingListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.globalmappings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -2997,6 +4020,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -3070,6 +4094,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -3191,6 +4216,819 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LicenseDistributedTab",
+    "route": "os-management/license-usage/distributed",
+    "area": "os-management",
+    "labelKey": "licenseUsageDistributed",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "UserId",
+        "LicenseUnits",
+        "Connections",
+        "ServerIP",
+        "Instance"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "licenseUsageDistributedEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.LicenseUsage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "LICENSEUSAGE",
+        "rows": "ConnectionList"
+      },
+      "fields": [
+        "UserId",
+        "LicenseUnits",
+        "Connections",
+        "ServerIP",
+        "Instance"
+      ],
+      "filter": [
+        "UserId",
+        "ServerIP"
+      ],
+      "sort": {
+        "fields": [
+          "UserId",
+          "LicenseUnits",
+          "Connections",
+          "ServerIP",
+          "Instance"
+        ],
+        "default": "UserId",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "UserId",
+          "labelKey": "licenseUsageUserId",
+          "kind": "name"
+        },
+        {
+          "field": "LicenseUnits",
+          "labelKey": "licenseUsageLicenseUnits",
+          "kind": "number"
+        },
+        {
+          "field": "Connections",
+          "labelKey": "sslPromptGroupConnections",
+          "kind": "number"
+        },
+        {
+          "field": "ServerIP",
+          "labelKey": "licenseUsageServerIp",
+          "kind": "identifier"
+        },
+        {
+          "field": "Instance",
+          "labelKey": "statusSegmentInstance",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/license-usage",
+      "position": 4,
+      "labelKey": "licenseUsageDistributed"
+    },
+    "toolIdentifier": "osmgmt.licensedistributed",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LicenseProcessTab",
+    "route": "os-management/license-usage/processes",
+    "area": "os-management",
+    "labelKey": "licenseUsageByProcess",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "PID",
+        "Process",
+        "LID",
+        "Type",
+        "Con",
+        "Active",
+        "CSPCon",
+        "LU",
+        "Grace"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "licenseUsageProcessesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.LicenseUsage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "LICENSEUSAGE",
+        "rows": "UsageByProcess"
+      },
+      "fields": [
+        "PID",
+        "Process",
+        "LID",
+        "Type",
+        "Con",
+        "Active",
+        "CSPCon",
+        "LU",
+        "Grace"
+      ],
+      "filter": [
+        "Process",
+        "LID",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "PID",
+          "Process",
+          "LID",
+          "Type",
+          "Con",
+          "Active",
+          "CSPCon",
+          "LU",
+          "Grace"
+        ],
+        "default": "PID",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "PID",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "Process",
+          "labelKey": "licenseUsageLoginId",
+          "kind": "text"
+        },
+        {
+          "field": "LID",
+          "labelKey": "licenseUsageUserId",
+          "kind": "text"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Con",
+          "labelKey": "sslPromptGroupConnections",
+          "kind": "number"
+        },
+        {
+          "field": "Active",
+          "labelKey": "licenseUsageActiveTime",
+          "kind": "number"
+        },
+        {
+          "field": "CSPCon",
+          "labelKey": "webSessionListLabel",
+          "kind": "number"
+        },
+        {
+          "field": "LU",
+          "labelKey": "licenseUsageUnits",
+          "kind": "number"
+        },
+        {
+          "field": "Grace",
+          "labelKey": "licenseUsageGraceTime",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/license-usage",
+      "position": 2,
+      "labelKey": "licenseUsageByProcess"
+    },
+    "toolIdentifier": "osmgmt.licenseprocesses",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LicenseSummaryTab",
+    "route": "os-management/license-usage",
+    "area": "os-management",
+    "labelKey": "licenseUsageLabel",
+    "sideBarPosition": 7,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "LicenseUnitUse",
+        "Local",
+        "Distributed"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "licenseUsageSummaryEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.LicenseUsage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "LICENSEUSAGE",
+        "rows": "Summary"
+      },
+      "fields": [
+        "LicenseUnitUse",
+        "Local",
+        "Distributed"
+      ],
+      "filter": [],
+      "sort": {
+        "fields": [
+          "LicenseUnitUse",
+          "Local",
+          "Distributed"
+        ],
+        "default": "LicenseUnitUse",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "LicenseUnitUse",
+          "labelKey": "licenseUsageUnitUse",
+          "kind": "name"
+        },
+        {
+          "field": "Local",
+          "labelKey": "licenseUsageLocal",
+          "kind": "text"
+        },
+        {
+          "field": "Distributed",
+          "labelKey": "licenseUsageDistributed",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/license-usage",
+      "position": 1,
+      "labelKey": "openApiColumnSummary"
+    },
+    "toolIdentifier": "osmgmt.licensesummary",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LicenseUserTab",
+    "route": "os-management/license-usage/users",
+    "area": "os-management",
+    "labelKey": "licenseUsageByUser",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "UserId",
+        "Type",
+        "Connects",
+        "MaxCon",
+        "CSPCon",
+        "LU",
+        "Active",
+        "Grace"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "licenseUsageUsersEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.LicenseUsage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "LICENSEUSAGE",
+        "rows": "UsageByUser"
+      },
+      "fields": [
+        "UserId",
+        "Type",
+        "Connects",
+        "MaxCon",
+        "CSPCon",
+        "LU",
+        "Active",
+        "Grace"
+      ],
+      "filter": [
+        "UserId",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "UserId",
+          "Type",
+          "Connects",
+          "MaxCon",
+          "CSPCon",
+          "LU",
+          "Active",
+          "Grace"
+        ],
+        "default": "UserId",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "UserId",
+          "labelKey": "licenseUsageUserId",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Connects",
+          "labelKey": "sslPromptGroupConnections",
+          "kind": "number"
+        },
+        {
+          "field": "MaxCon",
+          "labelKey": "licenseUsageMaxConnections",
+          "kind": "number"
+        },
+        {
+          "field": "CSPCon",
+          "labelKey": "webSessionListLabel",
+          "kind": "number"
+        },
+        {
+          "field": "LU",
+          "labelKey": "licenseUsageUnits",
+          "kind": "number"
+        },
+        {
+          "field": "Active",
+          "labelKey": "licenseUsageActiveTime",
+          "kind": "number"
+        },
+        {
+          "field": "Grace",
+          "labelKey": "licenseUsageGraceTime",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/license-usage",
+      "position": 3,
+      "labelKey": "licenseUsageByUser"
+    },
+    "toolIdentifier": "osmgmt.licenseusers",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LocalDatabaseForm",
+    "route": "os-management/local-databases/edit",
+    "area": "os-management",
+    "labelKey": "systemInfoDatabase",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localDatabaseFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "databaseDetailsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localDatabaseFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Database",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.localdatabaseform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LocalDatabaseList",
+    "route": "os-management/local-databases",
+    "area": "os-management",
+    "labelKey": "localDatabaseListLabel",
+    "sideBarPosition": 9,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Directory",
+        "Status"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "localDatabaseListEmpty",
+    "commandAliases": [
+      "local databases",
+      "configure database",
+      "create database"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localDatabaseListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localDatabaseListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localDatabaseListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Databases",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Database.ConfigCRUD",
+        "type": "LIST",
+        "query": {
+          "localOnly": "1"
+        }
+      },
+      "fields": [
+        "Name",
+        "Directory",
+        "Status"
+      ],
+      "filter": [
+        "Name",
+        "Directory",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Directory",
+          "Status"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Directory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "identifier"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "localDatabaseListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.localdatabases",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -3359,6 +5197,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -3478,6 +5317,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -3603,6 +5443,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -3694,6 +5535,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
   },
@@ -3818,6 +5660,147 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogHub",
+    "route": "logs/hub",
+    "area": "logs",
+    "labelKey": "logHubLabel",
+    "sideBarPosition": 11,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "source",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "log hub",
+      "timeline",
+      "all logs"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logHubPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logHubPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "logHubPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "timeline",
+        "endpoint": "logs",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "source",
+        "severity",
+        "text",
+        "id"
+      ],
+      "filter": [
+        "time",
+        "source",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "since",
+            "labelKey": "auditCriteriaBegin",
+            "kind": "datetime",
+            "maxLength": 50,
+            "defaultHoursAgo": 1
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "source",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.hub",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -3937,6 +5920,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4056,6 +6040,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4175,6 +6160,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4193,6 +6179,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%Admin_Operate",
         "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
       }
     ],
     "entityType": "log-entry",
@@ -4293,6 +6283,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4413,6 +6404,222 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.NamespaceForm",
+    "route": "os-management/namespaces/edit",
+    "area": "os-management",
+    "labelKey": "headerNamespaceLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "namespace",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.NamespaceEdit",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.namespaceform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.NamespaceList",
+    "route": "os-management/namespaces",
+    "area": "os-management",
+    "labelKey": "namespaceListLabel",
+    "sideBarPosition": 6,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "namespace",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      },
+      {
+        "id": "copy-mappings",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Globals",
+        "Routines",
+        "TempGlobals"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "namespaceListEmpty",
+    "commandAliases": [
+      "namespaces",
+      "configure namespace"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Namespaces",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Namespace.Namespace",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Globals",
+        "Routines",
+        "TempGlobals"
+      ],
+      "filter": [
+        "Name",
+        "Globals",
+        "Routines",
+        "TempGlobals"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Globals",
+          "Routines",
+          "TempGlobals"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Globals",
+          "labelKey": "namespaceColumnGlobals",
+          "kind": "identifier"
+        },
+        {
+          "field": "Routines",
+          "labelKey": "namespaceColumnRoutines",
+          "kind": "identifier"
+        },
+        {
+          "field": "TempGlobals",
+          "labelKey": "namespaceColumnTemp",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "namespaceListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.namespaces",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4435,6 +6642,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-client-configuration",
@@ -4491,6 +6704,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -4511,6 +6725,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-client-configuration",
@@ -4660,6 +6880,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -4682,6 +6903,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "resource": "%DB_IRISSYS",
         "permission": "READ"
       },
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
       {
         "resource": "%Admin_OAuth2_Client",
         "permission": "USE"
@@ -4738,6 +6965,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -4759,6 +6987,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "resource": "%DB_IRISSYS",
         "permission": "READ"
       },
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
       {
         "resource": "%Admin_OAuth2_Client",
         "permission": "USE"
@@ -4866,6 +7100,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -4887,6 +7122,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Registration",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-server-client",
@@ -4940,6 +7181,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -4960,6 +7202,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Registration",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-server-client",
@@ -5097,6 +7345,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -5118,6 +7367,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-server-definition",
@@ -5171,6 +7426,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -5191,6 +7447,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-server-definition",
@@ -5311,6 +7573,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -5332,6 +7595,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Server",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-server",
@@ -5385,6 +7654,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -5405,6 +7675,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_OAuth2_Server",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-server",
@@ -5556,6 +7832,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -5691,6 +7968,217 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.PackageMappingForm",
+    "route": "os-management/namespaces/package-mappings/edit",
+    "area": "os-management",
+    "labelKey": "packageMappingFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "package-mapping",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "packageMappingFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "packageMappingFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "packageMappingFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mappings.Package",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.packagemappingform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.PackageMappingList",
+    "route": "os-management/namespaces/package-mappings",
+    "area": "os-management",
+    "labelKey": "packageMappingListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "package-mapping",
+    "secondaryEntityTypes": [
+      "namespace"
+    ],
+    "scope": "instance",
+    "parentScope": "os-management/namespaces",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "namespace",
+        "Name",
+        "Database"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "packageMappingListEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "packageMappingListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "packageMappingListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "packageMappingListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mappings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Namespace.PackageMappings",
+        "type": "LIST"
+      },
+      "fields": [
+        "namespace",
+        "Name",
+        "Database"
+      ],
+      "filter": [
+        "Name",
+        "Database"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Database"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "namespace",
+            "labelKey": "headerNamespaceLabel",
+            "kind": "text",
+            "maxLength": 64
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Database",
+          "labelKey": "systemInfoDatabase",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "packageMappingListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.packagemappings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -6071,6 +8559,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -6133,6 +8622,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "terminate-with-error",
         "selfProtection": ""
+      },
+      {
+        "id": "broadcast",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -6143,7 +8636,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Routine",
         "State",
         "Commands",
-        "Globals"
+        "Globals",
+        "CanReceiveBroadcast"
       ],
       "secretFields": []
     },
@@ -6185,7 +8679,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Routine",
         "State",
         "Commands",
-        "Globals"
+        "Globals",
+        "CanReceiveBroadcast"
       ],
       "filter": [
         "Pid",
@@ -6251,6 +8746,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "processListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.processes",
+    "multiSelect": {
+      "action": "broadcast",
+      "eligible": "CanReceiveBroadcast",
+      "max": 20,
+      "ineligibleKey": "processBroadcastIneligible"
+    },
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
@@ -6398,6 +8899,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -6536,6 +9038,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -6609,6 +9112,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -6758,6 +9262,226 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RoutineMappingForm",
+    "route": "os-management/namespaces/routine-mappings/edit",
+    "area": "os-management",
+    "labelKey": "routineMappingFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "routine-mapping",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineMappingFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineMappingFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineMappingFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mappings.Routine",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.routinemappingform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RoutineMappingList",
+    "route": "os-management/namespaces/routine-mappings",
+    "area": "os-management",
+    "labelKey": "routineMappingListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "routine-mapping",
+    "secondaryEntityTypes": [
+      "namespace"
+    ],
+    "scope": "instance",
+    "parentScope": "os-management/namespaces",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "namespace",
+        "Name",
+        "Type",
+        "Database"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "routineMappingListEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineMappingListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineMappingListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineMappingListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mappings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Namespace.RoutineMappings",
+        "type": "LIST"
+      },
+      "fields": [
+        "namespace",
+        "Name",
+        "Type",
+        "Database"
+      ],
+      "filter": [
+        "Name",
+        "Type",
+        "Database"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Type",
+          "Database"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "namespace",
+            "labelKey": "headerNamespaceLabel",
+            "kind": "text",
+            "maxLength": 64
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Database",
+          "labelKey": "systemInfoDatabase",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "routineMappingListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.routinemappings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -6831,6 +9555,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -6973,6 +9698,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -7111,6 +9837,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -7185,6 +9912,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -7463,6 +10191,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -7741,6 +10470,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -7814,6 +10544,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -8016,6 +10747,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -8177,6 +10909,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
   },
@@ -8359,6 +11092,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -8414,6 +11148,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "resume",
+        "selfProtection": ""
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
         "selfProtection": ""
       },
       {
@@ -8564,6 +11306,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
   },
@@ -8722,6 +11465,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -8797,6 +11541,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -8994,6 +11739,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -9015,6 +11761,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Wallet",
+        "permission": "USE"
       }
     ],
     "entityType": "wallet-collection",
@@ -9116,6 +11868,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -9138,6 +11891,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Wallet",
+        "permission": "USE"
       }
     ],
     "entityType": "wallet-secret",
@@ -9191,6 +11950,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -9211,6 +11971,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Wallet",
+        "permission": "USE"
       }
     ],
     "entityType": "wallet-secret",
@@ -9319,6 +12085,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -9391,6 +12158,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -9568,7 +12336,167 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
-    "rowTarget": null
+    "rowTarget": null,
+    "multiSelect": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.WebSessionList",
+    "route": "web-applications/sessions",
+    "area": "web-applications",
+    "labelKey": "webSessionListLabel",
+    "sideBarPosition": 3,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "web-session",
+    "entityLabelKey": "proposalEntityWebSession",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "ID"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "end",
+        "selfProtection": "ocupilot-session"
+      }
+    ],
+    "context": {
+      "fields": [
+        "ID",
+        "Username",
+        "Application",
+        "SesProcessId",
+        "Timeout"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "webSessionListEmpty",
+    "commandAliases": [
+      "sessions",
+      "CSP sessions"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "webSessionListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "webSessionListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "webSessionListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.CSPSessions",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "WebSession",
+        "type": "LIST"
+      },
+      "fields": [
+        "ID",
+        "Username",
+        "Application",
+        "SesProcessId",
+        "Timeout",
+        "Preserve"
+      ],
+      "filter": [
+        "ID",
+        "Username",
+        "Application",
+        "SesProcessId"
+      ],
+      "sort": {
+        "fields": [
+          "ID",
+          "Username",
+          "Application",
+          "SesProcessId",
+          "Timeout"
+        ],
+        "default": "Application",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "SesProcessId",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "ID",
+          "labelKey": "webSessionColumnSession",
+          "kind": "identifier"
+        },
+        {
+          "field": "Username",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "Application",
+          "labelKey": "oauthResourceServerFieldApplication",
+          "kind": "identifier"
+        },
+        {
+          "field": "Timeout",
+          "labelKey": "webSessionColumnExpires",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "webSessionListEmptyAgent"
+    },
+    "rowTarget": {
+      "route": "os-management/processes/details",
+      "field": "SesProcessId"
+    },
+    "toolIdentifier": "webapp.sessions",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "multiSelect": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.X509CredentialList",
@@ -9732,6 +12660,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -9808,6 +12737,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   }
 ];

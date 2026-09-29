@@ -96,7 +96,7 @@ Method TestTheFourToolsAndTheListDeclareTheActions()
     Set tSC = $ClassMethod(..#SCREEN, "DeclarationJson", .tDeclaration)
     Do $$$AssertStatusOK(tSC, "the list's declaration parses")
     If $$$ISERR(tSC) Quit
-    Do $$$AssertEquals(tDeclaration.rowActions.%ToJSON(), "[{""id"":""run"",""selfProtection"":""""},{""id"":""suspend"",""selfProtection"":""""},{""id"":""resume"",""selfProtection"":""""},{""id"":""delete"",""selfProtection"":""""}]", "the list declares Run, Suspend, Resume and Delete, none self-protected")
+    Do $$$AssertEquals(tDeclaration.rowActions.%ToJSON(), "[{""id"":""run"",""selfProtection"":""""},{""id"":""suspend"",""selfProtection"":""""},{""id"":""resume"",""selfProtection"":""""},{""id"":""export"",""selfProtection"":""""},{""id"":""import"",""selfProtection"":""""},{""id"":""delete"",""selfProtection"":""""}]", "the list declares Run, Suspend, Resume, Export, Import and Delete, none self-protected and the destructive one last")
     Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, "taskScheduleEmptyAgent", "its empty state invites the agent")
     Do $$$AssertEquals(tDeclaration.table.emptyNextKey, "", "and names no read-only next step")
     Do $$$AssertEquals(tDeclaration.entityLabelKey, "proposalEntityTask", "and names its entity's noun")

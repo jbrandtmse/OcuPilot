@@ -74,6 +74,15 @@ export const OCUPILOT_SSL_RULE = 'ocupilot-ssl';
  */
 export const OCUPILOT_SSL_CONFIGURATION = 'OcuPilotProvider';
 
+/**
+ * The rule that protects a web session OcuPilot is itself running in (Story 16.2, AD-10): the
+ * instance refuses ending one under an application OcuPilot is served through, or the serving
+ * request's own session, whoever asks. The client reads the row's `Application`; the serving
+ * request's own session is the instance's alone to know. So is a preserve-mode session whose own
+ * process runs, which the instance refuses on the click: the list carries no process liveness.
+ */
+export const OCUPILOT_SESSION_RULE = 'ocupilot-session';
+
 /** The rule that protects the accounts whose removal the instance refuses (Story 7.2). */
 export const PROTECTED_ACCOUNT_RULE = 'protected-account';
 
@@ -116,7 +125,8 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
  *
  * `row` is the row's own fields where the caller holds them. `system-role` reads the key alone;
  * `system-resource` reads the row's `AllowDelete` and answers `''` with no row, where the instance
- * still refuses the write.
+ * still refuses the write. `ocupilot-session` reads the row's `Application` under the web
+ * application's canonical rule, and answers `''` with no row.
  */
 export function selfProtectionReason(
   rule: string,
@@ -130,6 +140,13 @@ export function selfProtectionReason(
   if (rule === SYSTEM_RESOURCE_RULE) {
     const allow = row?.['AllowDelete'];
     return allow === false || allow === 'false' || allow === 0 || allow === '0' ? STRINGS.resourceRefusalSystem : '';
+  }
+  if (rule === OCUPILOT_SESSION_RULE) {
+    const application = row?.['Application'];
+    if (typeof application !== 'string' || application === '') return '';
+    const canonical = normalizeEntityId(WEB_APPLICATION, application);
+    const own = OCUPILOT_APPLICATION_PATHS.some((path) => normalizeEntityId(WEB_APPLICATION, path) === canonical);
+    return own ? STRINGS.webSessionRefusalOcuPilot : '';
   }
   if (rule === PROTECTED_ACCOUNT_RULE) {
     const account = normalizeEntityId(USER, rowKey);

@@ -40,6 +40,26 @@ Parameter STRUCTUREDFIELDS = "entries=[{""date"":""2026-09-26"",""errorNumber"":
 /// part.</p>
 Parameter TARGETID = "OcuPilotDraftSource/OcuPilotDraftType/OcuPilotDraftName";
 
+/// <p>The entity types whose port splits the target id into its composite parts, comma-separated
+/// (Story 18.14's mappings, keyed <code>[namespace, Name]</code>): their synthetic id is
+/// <parameter>SPLITTARGETID</parameter>, since a port answers no step for an id it cannot split.</p>
+Parameter SPLITTARGETS = "global-mapping,routine-mapping,package-mapping";
+
+/// <p>The parts of the synthetic id a <parameter>SPLITTARGETS</parameter> type is given, joined as
+/// a composite.</p>
+Parameter SPLITTARGETID = "OcuPilotDraftNamespace,OcuPilotDraftName";
+
+/// <p>The synthetic target id of an entity type whose port reads the id as more than a name, as
+/// <code>&lt;type&gt;=&lt;id&gt;</code> entries separated by <code>;</code>: a <code>process</code>
+/// id is a pid set, which the broadcast's port refuses to compose from anything else (Story
+/// 16.6).</p>
+Parameter TYPEDTARGETIDS = "process=812,907";
+/// <p>The fields a tool's declared port adds to its fresh read, which its stored payload therefore
+/// carries, as <code>tool=field</code> entries, comma-separated (Story 18.3's file edit: the database
+/// port answers the configuration's directory for a file read by name, and the script addresses
+/// it).</p>
+Parameter PORTREADFIELDS = "osmgmt.localdatabases.update=Directory";
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
@@ -224,6 +244,10 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     For tI = 1:1:$ListLength(tSubject) {
         If tPayload.%GetTypeOf($List(tSubject, tI)) = "unassigned" Do ..SetProbe(tPayload, $List(tSubject, tI), "string", 0, .tN)
     }
+    For tI = 1:1:$Length(..#PORTREADFIELDS, ",") {
+        Set tEntry = $Piece(..#PORTREADFIELDS, ",", tI)
+        If ($Piece(tEntry, "=", 1) = pTool.%Get("name")) && (tPayload.%GetTypeOf($Piece(tEntry, "=", 2)) = "unassigned") Do ..SetProbe(tPayload, $Piece(tEntry, "=", 2), "string", 0, .tN)
+    }
     ; A composed secret is never stored: the mint names it in the diff with both sides empty, and
     ; the confirm is supplied it (Mint.AppendComposedSecrets).
     Set tComposed = ""
@@ -243,7 +267,12 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
         Do tPayload.%Set($List(tSecrets, tI), ..#SECRETPROBE _ tN, "string")
     }
     Set tDescriptor = $Parameter(tClass, "DESCRIPTORCLASS")
-    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($ClassMethod(tDescriptor, "PrimaryEntityType"), ##class(OcuPilot.Kernel.EntityRef).ScopeFor($ClassMethod(tDescriptor, "Scope")), ..#TARGETID, .tRef)
+    Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
+    Set tTargetId = $Select($ListFind($ListFromString(..#SPLITTARGETS), tType): ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#SPLITTARGETID)), 1: ..#TARGETID)
+    For tI = 1:1:$Length(..#TYPEDTARGETIDS, ";") {
+        If $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 1) = tType Set tTargetId = $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 2, *)
+    }
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key(tType, ##class(OcuPilot.Kernel.EntityRef).ScopeFor($ClassMethod(tDescriptor, "Scope")), tTargetId, .tRef)
     If $$$ISERR(tSC) Quit "no target reference: " _ $System.Status.GetErrorText(tSC)
     Kill tRow
     Set tRow("targetRef") = tRef

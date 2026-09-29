@@ -408,7 +408,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; descriptor's declared secret names excluded here, at write time, never redacted later.
         Set tFieldNames = ..FieldNames(tBody, tSecretNames)
         Set tLedgerKey = ""
-        Do $ClassMethod(..LedgerClass(), "OpenConfirmedWrite", $Get(pRow("turnKey")), pUser, $Get(pRow("toolName")), $Get(pRow("targetRef")), ..LimitsClass(), .tLedgerKey, tPairs)
+        Do $ClassMethod(..LedgerClass(), "OpenConfirmedWrite", $Get(pRow("turnKey")), pUser, $Get(pRow("toolName")), $Get(pRow("targetRef")), ..LimitsClass(), .tLedgerKey, tPairs, ..TurnRoute($Get(pRow("turnKey")), pUser))
         ; The window the marker and the vendor's own change row are joined inside: taken on the
         ; instance immediately before the call, so the vendor row is the *Change row for this
         ; target and this user at or after it.
@@ -824,6 +824,23 @@ ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Out
     If $IsObject(pReadBack) Do pResult.%Set("readBack", pReadBack)
     Set pHttpStatus = 200
     Quit $$$OK
+}
+
+/// <p>The screen route turn <var>pTurnKey</var> of <var>pUser</var> was begun from, which the
+/// confirmed write's ledger row records; <code>""</code> when it cannot be read, which never fails
+/// the confirm (AD-15's posture).</p>
+ClassMethod TurnRoute(pTurnKey As %String, pUser As %String) As %String [ Private ]
+{
+    Set tRoute = ""
+    Try {
+        If pTurnKey = "" Quit
+        Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedForOwner(pTurnKey, pUser, .tFound, .tValues)
+        If $$$ISERR(tSC) || 'tFound Quit
+        Set tRoute = $Get(tValues("route"))
+    } Catch ex {
+        Set tRoute = ""
+    }
+    Quit tRoute
 }
 
 /// <p>The top-level field names <var>pBody</var> carries, minus every name in

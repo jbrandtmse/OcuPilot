@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { ScreenActions } from '../core/screen-actions';
+import { PERMISSION_CHECK_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -393,6 +393,39 @@ describe('the command box', () => {
     expect(field().getAttribute('aria-expanded')).toBe('true');
   });
 
+  it('Story 16.6: a multi-select action is listed with the checked rows\' reasons -- none, and above its max', () => {
+    // Mutation (Rule 19): drop the `isCheckedSetAction` branch from `actionCandidates` -> the box
+    // lists "Select a row first" and this goes red.
+    navigation.current = screen('os-management/processes', 'processListLabel', 'os-management', {
+      descriptor: 'OcuPilot.Screen.Descriptor.ProcessList',
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'broadcast', selfProtection: '' }],
+      multiSelect: { action: 'broadcast', eligible: 'CanReceiveBroadcast', max: 20, ineligibleKey: 'processBroadcastIneligible' },
+    });
+    TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.ProcessList', 'broadcast', () => {});
+    const store = TestBed.inject(ScreenStores).for('OcuPilot.Screen.Descriptor.ProcessList', []);
+    const entry = (): HTMLElement | undefined =>
+      (Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')) as HTMLElement[]).find(
+        (option) => option.querySelector('.ocu-command-box-option-label')?.textContent?.trim() === STRINGS.processBroadcastAction
+      );
+
+    chord();
+    expect(entry()?.getAttribute('aria-disabled')).toBe('true');
+    expect(entry()?.textContent).toContain(STRINGS.tableCheckRowsFirst);
+
+    store.setChecked(Array.from({ length: 21 }, (_, index) => String(100 + index)));
+    type('b');
+    type('');
+    expect(entry()?.getAttribute('aria-disabled')).toBe('true');
+    expect(entry()?.textContent).toContain('Check at most 20 rows');
+
+    store.setChecked(['100', '101']);
+    type('b');
+    type('');
+    expect(entry()?.getAttribute('aria-disabled')).toBeNull();
+    expect(entry()?.textContent).not.toContain(STRINGS.privilegeSelectRowFirst);
+  });
+
   it("AD-53: with a row selected, a self-protected action is listed with the instance's own sentence", () => {
     // The box says what the bar and the row menu say about the same action on the same row: the
     // reason is the published one, inline after the label, and the entry stays `aria-disabled`
@@ -545,6 +578,45 @@ describe('the command box', () => {
     fixture.detectChanges();
     expect(create()).toBeNull();
     expect(creates).toBe(1);
+  });
+
+  it('Story 16.3: Check permission is listed only where registered, never held back for want of a selection, and runs once', () => {
+    // Mutation (Rule 19): drop the Check permission branch from `actionCandidates` -> the listed
+    // assertion goes red.
+    const option = (): HTMLElement | null => fixture.nativeElement.querySelector(`#ocu-command-box-action-${PERMISSION_CHECK_ACTION_ID}`);
+    chord();
+    expect(option()).toBeNull();
+    let ran = 0;
+    const stop = actions.register(USERS.descriptor, PERMISSION_CHECK_ACTION_ID, () => (ran += 1));
+    fixture.detectChanges();
+    expect(option()?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.permissionCheckAction);
+    expect(option()?.getAttribute('aria-disabled')).toBeNull();
+    expect(option()?.textContent).not.toContain(STRINGS.privilegeSelectRowFirst);
+    option()?.click();
+    fixture.detectChanges();
+    expect(ran).toBe(1);
+    stop();
+    chord();
+    expect(option()).toBeNull();
+  });
+
+  it('Story 16.4: Import is listed only where registered, never held back for want of a selection, and runs once', () => {
+    // Mutation (Rule 19): drop the Import branch from `actionCandidates` -> the listed assertion goes red.
+    const option = (): HTMLElement | null => fixture.nativeElement.querySelector(`#ocu-command-box-action-${TASK_IMPORT_ACTION_ID}`);
+    chord();
+    expect(option()).toBeNull();
+    let ran = 0;
+    const stop = actions.register(USERS.descriptor, TASK_IMPORT_ACTION_ID, () => (ran += 1));
+    fixture.detectChanges();
+    expect(option()?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.actionImport);
+    expect(option()?.getAttribute('aria-disabled')).toBeNull();
+    expect(option()?.textContent).not.toContain(STRINGS.privilegeSelectRowFirst);
+    option()?.click();
+    fixture.detectChanges();
+    expect(ran).toBe(1);
+    stop();
+    chord();
+    expect(option()).toBeNull();
   });
 
   it('Integration AC: Escape closes the box, restores focus, and leaves the side bar alone', () => {

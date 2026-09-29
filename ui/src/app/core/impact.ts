@@ -11,7 +11,7 @@
 import { READ_BACK_NAMES_SHOWN } from './read-back.ts';
 import { STRINGS } from './strings.ts';
 
-export type ImpactKind = 'role-delete' | 'resource-delete' | 'role-removal';
+export type ImpactKind = 'role-delete' | 'resource-delete' | 'role-removal' | 'namespace-delete' | 'database-delete';
 
 export type ImpactPartName =
   | 'holders'
@@ -19,13 +19,20 @@ export type ImpactPartName =
   | 'grantingRoles'
   | 'guardedApplications'
   | 'guardedDatabases'
-  | 'loses';
+  | 'loses'
+  | 'boundApplications'
+  | 'databases'
+  | 'namespaces'
+  | 'applications'
+  | 'sharedFile';
 
 /** The parts each kind carries, in the order the line states them. */
 export const IMPACT_PARTS: Readonly<Record<ImpactKind, readonly ImpactPartName[]>> = {
   'role-delete': ['holders', 'grantingApplications'],
   'resource-delete': ['grantingRoles', 'guardedApplications', 'guardedDatabases'],
   'role-removal': ['loses'],
+  'namespace-delete': ['boundApplications', 'databases'],
+  'database-delete': ['namespaces', 'applications', 'sharedFile'],
 };
 
 /** A part's `unchecked` when its read was cut at its cap. */
@@ -102,7 +109,13 @@ function namesOf(part: ImpactPart): string {
   return rest > 0 ? `${joined}${STRINGS.readBackMore.replace('<n>', String(rest))}` : joined;
 }
 
-/** The three counted phrases and the unchecked phrase of each part but `loses`. */
+/**
+ * The three counted phrases and the unchecked phrase of each part but `loses`. A phrase left `''`
+ * renders nothing: a namespace's `databases` part names the databases that stay and publishes no
+ * none or unchecked phrase, since the instance reads it from the fresh read the delete itself needs
+ * (Story 18.2); a database's `applications` part publishes neither, and its `sharedFile` part no
+ * none phrase (Story 18.3).
+ */
 const PHRASES: Readonly<
   Record<Exclude<ImpactPartName, 'loses'>, { readonly many: string; readonly one: string; readonly none: string; readonly unchecked: string }>
 > = {
@@ -136,10 +149,54 @@ const PHRASES: Readonly<
     none: STRINGS.impactGuardedDatabasesNone,
     unchecked: STRINGS.impactGuardedDatabasesUnchecked,
   },
+  boundApplications: {
+    many: STRINGS.impactBoundApplications,
+    one: STRINGS.impactBoundApplicationsOne,
+    none: STRINGS.impactBoundApplicationsNone,
+    unchecked: STRINGS.impactBoundApplicationsUnchecked,
+  },
+  databases: {
+    many: STRINGS.impactDatabasesStay,
+    one: STRINGS.impactDatabasesStayOne,
+    none: '',
+    unchecked: '',
+  },
+  namespaces: {
+    many: STRINGS.impactNamespacesUse,
+    one: STRINGS.impactNamespacesUseOne,
+    none: STRINGS.impactNamespacesUseNone,
+    unchecked: STRINGS.impactNamespacesUseUnchecked,
+  },
+  applications: {
+    many: STRINGS.impactApplicationsInThem,
+    one: STRINGS.impactApplicationsInThemOne,
+    none: '',
+    unchecked: '',
+  },
+  sharedFile: {
+    many: STRINGS.impactSharedFile,
+    one: STRINGS.impactSharedFileOne,
+    none: '',
+    unchecked: STRINGS.impactSharedFileUnchecked,
+  },
 };
 
-/** Why a part was not read: the pair it requires, or that its read was too long to check. */
-function whyUnchecked(unchecked: string): string {
+/**
+ * Whether `part` is left out because the part it depends on found nothing: a database delete's
+ * `applications` are the applications running in the namespaces its `namespaces` part found, so
+ * they render nothing when that part counted 0 or was not checked (Story 18.3).
+ */
+function dependsOnNothing(part: ImpactPart, parts: readonly ImpactPart[]): boolean {
+  if (part.part !== 'applications') return false;
+  const namespaces = parts.find((entry) => entry.part === 'namespaces');
+  return namespaces === undefined || namespaces.count === 0 || namespaces.unchecked !== '';
+}
+
+/**
+ * Why a part was not read: " (requires <pair>)", or " (too many to check)" when its read was cut
+ * at its cap. The Effective privileges tab's unread sections take the same suffix.
+ */
+export function whyUnchecked(unchecked: string): string {
   return unchecked === IMPACT_TRUNCATED ? STRINGS.impactTooMany : STRINGS.impactRequires.replace('<pair>', () => unchecked);
 }
 
@@ -155,7 +212,7 @@ function phraseOf(part: ImpactPart, subject: string): string {
     return STRINGS.impactLoses.replace('<names>', () => namesOf(part)).replace('<user>', () => subject);
   }
   const phrases = PHRASES[part.part];
-  if (part.unchecked !== '') return `${phrases.unchecked}${whyUnchecked(part.unchecked)}`;
+  if (part.unchecked !== '') return phrases.unchecked === '' ? '' : `${phrases.unchecked}${whyUnchecked(part.unchecked)}`;
   if (part.count === 0) return phrases.none;
   const template = part.count === 1 ? phrases.one : phrases.many.replace('<n>', String(part.count));
   return template.replace('<names>', () => namesOf(part));
@@ -164,11 +221,16 @@ function phraseOf(part: ImpactPart, subject: string): string {
 /**
  * The line one impact renders as, or `''` for none: the refusal's own sentence where the
  * prohibited set refuses the removal, else "Impact: <parts>." with the part phrases joined by "; ".
+ * A part whose phrase is `''` is left out of the join, and a line with no phrase left is `''`.
  * `subject` is the target the dialog or card is about -- the account, for a role removal.
  */
 export function impactLine(impact: Impact | null, subject: string): string {
   if (impact === null) return '';
   if (impact.refused !== null) return impact.refused.reason;
-  if (impact.parts.length === 0) return '';
-  return STRINGS.impactLine.replace('<parts>', () => impact.parts.map((part) => phraseOf(part, subject)).join('; '));
+  const phrases = impact.parts
+    .filter((part) => !dependsOnNothing(part, impact.parts))
+    .map((part) => phraseOf(part, subject))
+    .filter((phrase) => phrase !== '');
+  if (phrases.length === 0) return '';
+  return STRINGS.impactLine.replace('<parts>', () => phrases.join('; '));
 }

@@ -32,6 +32,22 @@ export const REFRESH_ACTION_ID = 'refresh';
 export const DOWNLOAD_CSV_ACTION_ID = 'download-csv';
 
 /**
+ * Check permission (Story 16.3): like Refresh, a screen-level action rather than a declared one. It
+ * needs no row -- a selected row or the open user or role only prefills its dialog -- so it is never
+ * held back for want of a selection, and a descriptor declaring it would make the Users and Roles
+ * lists write-capable (`Registry.IsWriteCapable`).
+ */
+export const PERMISSION_CHECK_ACTION_ID = 'permission-check';
+
+/**
+ * Import on Task schedule (Story 16.4): screen-level like Check permission. It names a server file,
+ * not a row, so it is never held back for want of a selection. The descriptor declares `import` so
+ * the action route admits it; this id is what the Task schedule's page registers and the two
+ * surfaces draw.
+ */
+export const TASK_IMPORT_ACTION_ID = 'task-import';
+
+/**
  * The label a surface draws for `actionId` on `descriptor`.
  *
  * A declared action's label is its own identifier until a screen carries published copy for it.
@@ -63,6 +79,8 @@ export function actionLabel(descriptor: string, actionId: string): string {
  */
 const ACTION_LABELS: Readonly<Record<string, string>> = {
   [REFRESH_ACTION_ID]: STRINGS.actionRefresh,
+  [PERMISSION_CHECK_ACTION_ID]: STRINGS.permissionCheckAction,
+  [TASK_IMPORT_ACTION_ID]: STRINGS.actionImport,
   create: STRINGS.actionCreate,
   enable: STRINGS.agentDefinitionEnable,
   disable: STRINGS.agentDefinitionDisable,
@@ -80,6 +98,8 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   terminate: STRINGS.actionTerminate,
   // Story 7.11: an audit event's Reset counters, on System events and User events.
   reset: STRINGS.actionResetCounters,
+  // Story 16.5: a background task's Pause, on Background tasks.
+  pause: STRINGS.actionPause,
 };
 
 /**
@@ -120,6 +140,16 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.OAuthServerTab': { rotatekeys: STRINGS.oauthClientRotateKeys },
   // Story 12.8: the OAuth 2.0 Server client descriptions tab's key-set refresh.
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab': { updatejwks: STRINGS.oauthServerUpdateJwks },
+  // Story 16.2: the Web sessions list's End session.
+  'OcuPilot.Screen.Descriptor.WebSessionList': { end: STRINGS.webSessionEndAction },
+  // Story 16.5: the Background tasks list's Cancel task, which also titles its warning dialog.
+  'OcuPilot.Screen.Descriptor.BackgroundTaskList': { cancel: STRINGS.backgroundTaskCancelAction },
+  // Story 18.14: the Namespaces list's Copy mappings, which also titles its dialog.
+  'OcuPilot.Screen.Descriptor.NamespaceList': { 'copy-mappings': STRINGS.namespaceCopyMappingsAction },
+  // Story 16.6: the Processes list's Broadcast, over its checked rows.
+  'OcuPilot.Screen.Descriptor.ProcessList': { broadcast: STRINGS.processBroadcastAction },
+  // Story 16.4: the Task schedule's Export, on the selected task.
+  'OcuPilot.Screen.Descriptor.TaskScheduleList': { export: STRINGS.taskExportAction },
 };
 
 export class ScreenActions {

@@ -32,8 +32,9 @@ import { OverlayStack } from '../core/overlay-stack';
 import { readBackLine, withReadBack } from '../core/read-back';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { csvFileName, csvText, tableCsvRows } from '../core/csv';
+import { csvFileName, csvText, saveCsv, tableCsvRows } from '../core/csv';
 import { DOWNLOAD_CSV_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
+import { isCheckable, isCheckedSetAction } from '../core/multi-select';
 import { applyView, textOf } from '../core/screen-read';
 import type { ScreenStore } from '../core/screen-store';
 import type { ScreenDeclaration, TableColumn } from '../core/screens.generated';
@@ -97,6 +98,8 @@ interface CellModel {
   readonly active: boolean;
   /** This one cell draws a skeleton bar instead of `view` (Story 6.11, `pendingFields`). */
   readonly pending: boolean;
+  /** This cell draws the row's checkbox at its leading edge: the name cell of a multi-select list. */
+  readonly check: boolean;
 }
 
 /** One row-menu entry, resolved for rendering (EXPERIENCE.md `row-overflow-menu`). */
@@ -128,6 +131,16 @@ interface RowModel {
   readonly triggerActive: boolean;
   /** The row menu is open on this row. */
   readonly menuOpen: boolean;
+  /** The row may be checked for the screen's multi-select action (Story 16.6). */
+  readonly checkable: boolean;
+  /** The row is in the checked set. */
+  readonly checked: boolean;
+  /** The checkbox's accessible name: the row's own name. */
+  readonly checkLabel: string;
+  /** Why the row cannot be checked, or `null`. */
+  readonly checkReason: string | null;
+  /** `'true'` on an ineligible row's checkbox, else `null`. */
+  readonly checkDisabled: string | null;
 }
 
 interface HeaderModel {
@@ -138,6 +151,8 @@ interface HeaderModel {
   readonly arrow: string;
   /** This column's edge is being dragged. */
   readonly resizing: boolean;
+  /** This header draws the Check all checkbox: the name column of a multi-select list. */
+  readonly check: boolean;
 }
 
 /** A header edge being dragged: component-local layout until the pointer lets go. */
@@ -160,6 +175,8 @@ interface CellTooltip {
   readonly text: string;
   /** What showed it: the pointer resting on the cell, or the active cell moving onto it. */
   readonly source: 'pointer' | 'focus';
+  /** It carries an ineligible row's reason, shown at the checkbox in this cell, not a cut value. */
+  readonly check: boolean;
   readonly top: number;
   readonly left: number;
   /** Measured and positioned; until then it is laid out unseen. */
@@ -265,6 +282,18 @@ interface CellTooltip {
                   [class.ocu-data-table-cell-numeric]="header.numeric"
                   [attr.aria-sort]="header.sort"
                 >
+                  @if (header.check) {
+                    <input
+                      type="checkbox"
+                      class="ocu-data-table-check ocu-data-table-check-all"
+                      tabindex="-1"
+                      [checked]="allChecked"
+                      [indeterminate]="someChecked"
+                      [attr.aria-label]="STRINGS.tableCheckAll"
+                      [attr.aria-disabled]="checkAllDisabled"
+                      (click)="onCheckAll($event)"
+                    />
+                  }
                   <span class="ocu-data-table-header-label">{{ header.label }}</span>
                   <span class="ocu-data-table-sort-arrow" aria-hidden="true">{{ header.arrow }}</span>
                   <div
@@ -319,6 +348,18 @@ interface CellTooltip {
                     [class.ocu-data-table-cell-numeric]="cell.view.numeric"
                     [class.ocu-data-table-cell-active]="cell.active"
                   >
+                    @if (cell.check) {
+                      <input
+                        type="checkbox"
+                        class="ocu-data-table-check"
+                        tabindex="-1"
+                        [checked]="row.checked"
+                        [attr.aria-label]="row.checkLabel"
+                        [attr.aria-disabled]="row.checkDisabled"
+                        [attr.aria-description]="row.checkReason"
+                        (click)="onCheckClick($event, row)"
+                      />
+                    }
                     @if (cell.pending) {
                       <span class="ocu-skeleton-bar ocu-data-table-cell-skeleton" aria-hidden="true"></span>
                     }
@@ -525,8 +566,12 @@ export class DataTable implements OnInit {
   /** The cut-cell tooltip, or `null` while none shows. */
   private readonly tooltip = signal<CellTooltip | null>(null);
 
-  /** The gridcell the pointer rests on, and the delay before its tooltip shows. */
+  /**
+   * The gridcell the pointer rests on, whether it rests on an ineligible row's checkbox inside it,
+   * and the delay before its tooltip shows.
+   */
   private hoverCellId = '';
+  private hoverOnCheck = false;
   private hoverTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** The view's keys when the table last reconciled. */
@@ -614,8 +659,14 @@ export class DataTable implements OnInit {
     const linkRoute = linkTarget?.route ?? '';
     const linkable = linkTarget !== null && hasIdRoute(linkTarget);
     const currentUrl = this.router.url;
+    // Story 16.6: a list that declares a multi-select draws a checkbox in its name cell, beside the
+    // single selection rather than in place of it.
+    const multiSelect = screen.multiSelect;
+    const checked = store.checked();
+    const ineligible = multiSelect === null ? '' : this.lookup(multiSelect.ineligibleKey);
     return this.view().map((row, index) => {
       const key = rowKey(row, screen);
+      const checkable = multiSelect !== null && key !== '' && isCheckable(screen, row);
       const id = `${this.tableId}-row-${index}`;
       const isActive = key !== '' && key === active;
       const isChanged = key !== '' && markedKeys.has(key);
@@ -650,11 +701,17 @@ export class DataTable implements OnInit {
             readBack: !pending && isChanged && column.kind === 'name' ? (readBackLines.get(key) ?? '') : '',
             active: isActive && activeColumn === columnIndex,
             pending,
+            check: multiSelect !== null && column.kind === 'name',
           };
         }),
         triggerId: `${id}-cell-${columns.length}`,
         triggerActive: isActive && activeColumn === columns.length,
         menuOpen: key === menuKey,
+        checkable,
+        checked: checkable && checked.has(key),
+        checkLabel: key,
+        checkReason: multiSelect === null || checkable ? null : ineligible,
+        checkDisabled: multiSelect === null || checkable ? null : 'true',
       };
     });
   });
@@ -732,23 +789,14 @@ export class DataTable implements OnInit {
 
   /**
    * Save the view as it stands -- filter and sort applied, the declared columns under their header
-   * labels, each cell as displayed -- as a CSV file built here: an in-document anchor over an
-   * object URL, clicked and removed, with the URL revoked on a later task. No request leaves the
-   * page and nothing navigates (AD-20, AD-47).
+   * labels, each cell as displayed -- as a CSV file built here and saved through `saveCsv`. No
+   * request leaves the page and nothing navigates (AD-20, AD-47).
    */
   private downloadCsv(): void {
     const columns = this.columns();
     const header = columns.map((column) => this.lookup(column.labelKey));
     const text = csvText(header, tableCsvRows(this.view(), columns, this.lookup, this.pendingFields()));
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = csvFileName(this.gridLabel, new Date());
-    anchor.hidden = true;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    saveCsv(document, text, csvFileName(this.gridLabel, new Date()));
   }
 
   // --- What renders ------------------------------------------------------------------------------
@@ -839,6 +887,9 @@ export class DataTable implements OnInit {
     const row = rowFor(this.store().data(), screen, selected);
     return screen.rowActions
       .filter((action) => action.id !== '')
+      // Story 16.6: a multi-select action acts on the checked rows, from the command bar and the
+      // command box, never on the one row a menu opens on.
+      .filter((action) => !isCheckedSetAction(screen, action.id))
       .filter((action) => this.actions.has(screen.descriptor, action.id))
       .map((action) => {
         const reason = selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
@@ -869,6 +920,7 @@ export class DataTable implements OnInit {
         sort: sorted ? (direction === 'desc' ? 'descending' : 'ascending') : null,
         arrow: sorted ? (direction === 'desc' ? '\u2193' : '\u2191') : '',
         resizing: this.drag()?.field === column.field,
+        check: screen.multiSelect !== null && column.kind === 'name',
       };
     });
   }
@@ -909,6 +961,31 @@ export class DataTable implements OnInit {
 
   protected get rows(): readonly RowModel[] {
     return this.rowModels();
+  }
+
+  /** The keys of the checkable rows in view (Story 16.6). */
+  private checkableKeys(): readonly string[] {
+    return this.rowModels()
+      .filter((row) => row.checkable)
+      .map((row) => row.key);
+  }
+
+  /** Every checkable row in view is checked, and there is at least one. */
+  protected get allChecked(): boolean {
+    const keys = this.checkableKeys();
+    const checked = this.store().checked();
+    return keys.length > 0 && keys.every((key) => checked.has(key));
+  }
+
+  /** Some checkable row in view is checked, and not all of them. */
+  protected get someChecked(): boolean {
+    const checked = this.store().checked();
+    return !this.allChecked && this.checkableKeys().some((key) => checked.has(key));
+  }
+
+  /** `'true'` while no row in view is checkable, so Check all has nothing to check. */
+  protected get checkAllDisabled(): string | null {
+    return this.checkableKeys().length === 0 ? 'true' : null;
   }
 
   protected get ariaRowCount(): number {
@@ -974,6 +1051,17 @@ export class DataTable implements OnInit {
 
   protected onGridKeydown(event: KeyboardEvent): void {
     const keys = this.lastKeys;
+    // Story 16.6: Space toggles the active row's check, on a list that declares a multi-select
+    // alone; everywhere else the key is left to the browser, as it always was.
+    if (this.screen().multiSelect !== null && event.key === ' ' && !event.altKey && !event.ctrlKey && !event.metaKey) {
+      const index = this.activeIndex();
+      if (index < 0) return;
+      event.preventDefault();
+      const row = this.rowModels()[index];
+      if (row !== undefined && !row.checkable) this.refuseCheck(row, 'focus');
+      else this.toggleCheck(row);
+      return;
+    }
     if (event.altKey && event.shiftKey && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
       this.resizeActiveColumn(event, event.key === 'ArrowRight' ? COLUMN_RESIZE_STEP_PX : -COLUMN_RESIZE_STEP_PX);
       return;
@@ -1140,7 +1228,10 @@ export class DataTable implements OnInit {
       const px = (value: string) => parseFloat(value) || 0;
       const text = textWidth(cell.querySelector('.ocu-data-table-header-label'));
       const arrow = cell.querySelector('.ocu-data-table-sort-arrow')?.getBoundingClientRect().width ?? 0;
-      const width = text + arrow + px(style.columnGap) + px(style.paddingLeft) + px(style.paddingRight);
+      // Story 16.6: a multi-select list's name header also holds Check all, and its gap.
+      const check = cell.querySelector('.ocu-data-table-check')?.getBoundingClientRect().width ?? 0;
+      const width =
+        text + arrow + px(style.columnGap) + (check > 0 ? check + px(style.columnGap) : 0) + px(style.paddingLeft) + px(style.paddingRight);
       // One pixel of slack, so a label whose width rounds down is never cut by the rounding.
       next.set(cell.getAttribute('data-column') ?? '', width > 0 ? Math.ceil(width) + 1 : 0);
     }
@@ -1214,20 +1305,29 @@ export class DataTable implements OnInit {
     this.showTooltip(cell, text, 'focus');
   }
 
+  /**
+   * The pointer resting on a cut cell shows its whole value, and on an ineligible row's checkbox
+   * shows that row's reason; the checkbox is a target of its own inside its cell, so moving between
+   * it and the rest of the cell swaps one tooltip for the other.
+   */
   protected onCellPointerOver(event: PointerEvent): void {
     const cell = bodyCellOf(event.target);
-    if (cell === null || cell.id === this.hoverCellId) return;
+    if (cell === null) return;
+    const onBox = event.target instanceof Element && event.target.closest('.ocu-data-table-check') !== null;
+    const check = onBox && this.checkReasonIn(cell) !== '';
+    if (cell.id === this.hoverCellId && check === this.hoverOnCheck) return;
     this.hoverCellId = cell.id;
+    this.hoverOnCheck = check;
     this.clearHoverTimer();
     const shown = this.tooltip();
-    if (shown?.cellId === cell.id) return;
+    if (shown?.cellId === cell.id && shown.check === check) return;
     if (shown?.source === 'pointer') this.hideTooltip();
     const cellId = cell.id;
     this.hoverTimer = setTimeout(() => {
       this.hoverTimer = null;
-      const target = this.hoverCellId === cellId ? document.getElementById(cellId) : null;
-      const text = target === null ? '' : cutText(target);
-      if (target !== null && text !== '') this.showTooltip(target, text, 'pointer');
+      const target = this.hoverCellId === cellId && this.hoverOnCheck === check ? document.getElementById(cellId) : null;
+      const text = target === null ? '' : check ? this.checkReasonIn(target) : cutText(target);
+      if (target !== null && text !== '') this.showTooltip(target, text, 'pointer', check);
     }, tooltipDelayMs());
   }
 
@@ -1264,8 +1364,8 @@ export class DataTable implements OnInit {
     this.hideTooltip();
   }
 
-  private showTooltip(cell: HTMLElement, text: string, source: CellTooltip['source']): void {
-    this.tooltip.set({ cellId: cell.id, text, source, top: 0, left: 0, placed: false });
+  private showTooltip(cell: HTMLElement, text: string, source: CellTooltip['source'], check = false): void {
+    this.tooltip.set({ cellId: cell.id, text, source, check, top: 0, left: 0, placed: false });
     this.overlays.push(this.tooltipOverlayId, () => this.hideTooltip());
     afterNextRender(() => this.placeTooltip(), { injector: this.injector });
   }
@@ -1329,6 +1429,83 @@ export class DataTable implements OnInit {
 
   protected onRowClick(row: RowModel): void {
     this.select(row.index);
+  }
+
+  /**
+   * A row's checkbox toggles that row's check and nothing else: the click never reaches the row, so
+   * the selection stays where it was. An ineligible row's checkbox is `aria-disabled` rather than
+   * `disabled`, so the click arrives here and is refused with the row's reason (`refuseCheck`).
+   */
+  protected onCheckClick(event: MouseEvent, row: RowModel): void {
+    event.stopPropagation();
+    this.keepGridFocus();
+    if (!row.checkable) {
+      event.preventDefault();
+      this.refuseCheck(row, 'pointer');
+      return;
+    }
+    this.toggleCheck(row);
+  }
+
+  /** Check every checkable row in view, or uncheck them when all already are. */
+  protected onCheckAll(event: MouseEvent): void {
+    event.stopPropagation();
+    this.keepGridFocus();
+    const keys = this.checkableKeys();
+    if (keys.length === 0) {
+      event.preventDefault();
+      return;
+    }
+    const store = this.store();
+    const all = this.allChecked;
+    const next = new Set(store.checked());
+    for (const key of keys) {
+      if (all) next.delete(key);
+      else next.add(key);
+    }
+    store.setChecked(next);
+  }
+
+  /**
+   * A click focuses the checkbox it lands on, which is out of the Tab order but focusable; DOM focus
+   * belongs on the grid, where `aria-activedescendant` is read and Space checks the active row.
+   */
+  private keepGridFocus(): void {
+    this.gridElement()?.nativeElement.focus({ preventScroll: true });
+  }
+
+  private toggleCheck(row: RowModel | undefined): void {
+    if (row === undefined || !row.checkable) return;
+    this.store().toggleChecked(row.key);
+  }
+
+  /**
+   * An ineligible row's check, asked for by Space or a click, checks nothing and says why: the
+   * declared reason shows at once in the table's tooltip at the row's checkbox, and is announced in
+   * the table's polite region, since the checkbox never holds focus and its description is not read.
+   */
+  private refuseCheck(row: RowModel, source: CellTooltip['source']): void {
+    const reason = row.checkReason ?? '';
+    if (reason === '') return;
+    const cellId = row.cells.find((cell) => cell.check)?.id ?? '';
+    const cell = cellId === '' ? null : document.getElementById(cellId);
+    if (cell !== null) this.showTooltip(cell, reason, source, true);
+    this.announce(reason);
+  }
+
+  /** The reason the row holding `element` cannot be checked, or `''` where it can or none is drawn. */
+  private checkReasonIn(element: Element): string {
+    const at = element.closest('[data-row-index]')?.getAttribute('data-row-index') ?? null;
+    return at === null ? '' : (this.rowModels()[Number(at)]?.checkReason ?? '');
+  }
+
+  /**
+   * Say `text` in the table's polite region. The region is emptied first and filled after the next
+   * render, so a sentence it already holds is read out again rather than rewritten unheard.
+   */
+  private announce(text: string): void {
+    this.announcement.set('');
+    afterNextRender(() => this.announcement.set(text), { injector: this.injector });
   }
 
   protected onLinkClick(event: MouseEvent, row: RowModel): void {
@@ -1457,9 +1634,10 @@ export class DataTable implements OnInit {
    * The polite sentence a screen reader hears when a change event marks a row (EXPERIENCE.md's
    * accessibility floor: status messages are announced politely).
    *
-   * **Only a change is announced.** The refresh stamp and every silent tick stay unannounced --
-   * that is what makes auto-refresh silent -- so this slot is written by `announceChanged` alone
-   * and holds the last change, once per marked row and action.
+   * **Only what the user did or a change is announced.** The refresh stamp and every silent tick
+   * stay unannounced -- that is what makes auto-refresh silent -- so this slot is written by
+   * `announceChanged`, once per marked row and action, by a keyboard column resize, and by a refused
+   * check (`refuseCheck`).
    */
   protected get announcementText(): string {
     this.generation();
@@ -1502,9 +1680,23 @@ export class DataTable implements OnInit {
         this.focusFilter.emit();
       }
     }
+    this.pruneChecked();
     this.applyPendingSelection();
     this.scrollChangedIntoView();
     this.announceChanged();
+  }
+
+  /**
+   * Uncheck every row that left the view or stopped being checkable (Story 16.6). A tick leaves the
+   * checked set alone, so this is what keeps it to rows the person can see and act on.
+   */
+  private pruneChecked(): void {
+    const screen = this.screen();
+    const store = this.store();
+    if (screen.multiSelect === null || store.checked().size === 0) return;
+    const checkable = new Set(this.view().filter((row) => isCheckable(screen, row)).map((row) => rowKey(row, screen)));
+    const kept = [...store.checked()].filter((key) => checkable.has(key));
+    if (kept.length !== store.checked().size) store.setChecked(kept);
   }
 
   /**

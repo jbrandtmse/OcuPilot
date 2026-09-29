@@ -10,9 +10,10 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { ChangeBus } from '../../core/change-bus';
+import { decodeEntityId, splitCompositeId } from '../../core/entity-id';
 import { ExplainEntry } from '../../core/explain-entry';
 import { isBannerFault } from '../../core/fault';
 import { formatDeniedAction, NavigationService } from '../../core/navigation';
@@ -79,7 +80,9 @@ interface GridRow {
  * **Drill level is store state, not a route.** `buildRoutes` emits one `<route>/:id` segment and no
  * more, and this screen has four levels; putting them in the URL would need a route grammar no
  * other screen has. The store holds the level, the namespace and the date, and it is root-provided
- * so a navigation across the `/:id` boundary cannot drop them.
+ * so a navigation across the `/:id` boundary cannot drop them. The one exception is an error's own
+ * id route, which the log hub opens (Story 16.9): the page drills from the top to that error's
+ * detail once, and the drill is store state again from there.
  *
  * **Each level names its own scope in its empty state** -- the instance, then the namespace, then
  * the namespace and date -- because "no errors" means something different at each, and an
@@ -452,7 +455,16 @@ export class ErrorLogPage {
       // The handler is the app's, so a dialog left open would outlive the page it was opened on.
       if (this.screenActions.pending()?.descriptor === LOG_ERROR_LIST) this.screenActions.cancelPending();
     });
-    if (!this.drill.loaded() && !this.drill.loading()) void this.drill.openNamespaces();
+    // Story 16.9: the id route names one error, `namespace, date, number` (AD-13), which the log
+    // hub's timeline opens; the drill walks to it from the top. The bare route keeps the drill as
+    // it stands.
+    const raw = inject(ActivatedRoute, { optional: true })?.snapshot.paramMap.get('id') ?? null;
+    const parts = raw === null ? [] : splitCompositeId(decodeEntityId(raw));
+    if (parts.length === 3 && /^[1-9][0-9]*$/.test(parts[2])) {
+      void this.drill.drillTo(parts[0], parts[1], Number(parts[2]));
+    } else if (!this.drill.loaded() && !this.drill.loading()) {
+      void this.drill.openNamespaces();
+    }
   }
 
   protected get level(): ErrorLogLevel {

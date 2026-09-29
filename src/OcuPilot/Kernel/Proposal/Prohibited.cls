@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -269,6 +269,10 @@ Parameter TYPEAUDITING = "auditing-configuration";
 Parameter TYPETASK = "task";
 
 Parameter TYPEPROCESS = "process";
+
+/// <p>The process write the process arm is not evaluated for: a broadcast (AD-10 as amended,
+/// Story 16.6), keyed on the tool's declared write type.</p>
+Parameter BROADCASTWRITETYPE = "BROADCAST";
 
 Parameter TYPEAPPLICATIONERROR = "application-error";
 
@@ -341,6 +345,148 @@ Parameter TYPESSL = "ssl-configuration";
 Parameter TYPESERVICE = "service";
 
 Parameter TYPELDAP = "ldap-configuration";
+
+/// <p>A namespace (Story 18.2, <method>Namespace</method>).</p>
+Parameter TYPENAMESPACE = "namespace";
+
+/// <p>The write would delete, or change the globals or routines database of, the namespace
+/// OcuPilot's own API application runs in or <code>%SYS</code> (<method>IsOwnNamespace</method>,
+/// AD-10 as amended 2026-09-28). The vendor's delete removes every web application bound to the
+/// namespace, OcuPilot's own among them, and the routines database holds the code that answers
+/// OcuPilot's addresses.</p>
+Parameter OCUPILOTNAMESPACE = "PROHIBITED.OCUPILOTNAMESPACE";
+
+/// <p>The one sentence <parameter>OCUPILOTNAMESPACE</parameter> carries, caller-neutral, published
+/// and pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter OCUPILOTNAMESPACEREASON = "OcuPilot or the instance itself runs in this namespace. It cannot be deleted, and its globals and routines databases cannot be changed.";
+
+/// <p>The two namespace fields whose change on an own namespace
+/// (<parameter>OCUPILOTNAMESPACE</parameter>) is refused, comma-separated.</p>
+Parameter OWNNAMESPACEFIELDS = "Globals,Routines";
+/// <p>A database configuration (Story 18.3, <method>Database</method>), keyed by its name.</p>
+Parameter TYPEDATABASECONFIG = "database-configuration";
+
+/// <p>The write would delete, or change the directory, data server, resource or read-only setting
+/// of, one of the databases OcuPilot or the instance itself depends on
+/// (<method>OwnDatabaseNames</method>), compared by name without regard to case, or change the
+/// resource or read-only setting of another configuration name over one of their directories, which
+/// reaches the same file (AD-10 as amended 2026-09-29).</p>
+Parameter OCUPILOTDATABASE = "PROHIBITED.OCUPILOTDATABASE";
+
+/// <p>The one sentence <parameter>OCUPILOTDATABASE</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned equal to <code>databaseRefusalOcuPilot</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTDATABASEREASON = "OcuPilot or the instance itself depends on this database. It cannot be deleted, and its directory, resource and read-only setting cannot be changed.";
+
+/// <p>The seven databases the classic Delete Database dialog refuses by name
+/// (<code>%CSP.UI.Portal.Dialog.DatabaseDelete</code>), comma-separated.</p>
+Parameter SYSTEMDATABASES = "IRISAUDIT,IRISSYS,IRISLIB,IRISLOCALDATA,IRISTEMP,IRISMETRICS,IRISSECURITY";
+
+/// <p>The fields of an own database a change may not touch, comma-separated.</p>
+Parameter OWNDATABASEFIELDS = "Directory,Server,ResourceName,ReadOnly";
+
+/// <p>The fields whose change through another configuration name reaches an own database's file,
+/// comma-separated.</p>
+Parameter OWNFILEFIELDS = "ResourceName,ReadOnly";
+
+/// <p>A web session (Story 16.2, <method>WebSession</method>).</p>
+Parameter TYPEWEBSESSION = "web-session";
+
+/// <p>A background task (Story 16.5), whose cancel, pause and resume the reviewed-few sweep alone
+/// judges (<method>ReviewedFewOnly</method>).</p>
+Parameter TYPEBACKGROUNDTASK = "background-task";
+
+/// <p>The write would end a web session OcuPilot is itself running in
+/// (<method>IsOcuPilotSession</method>): one under an application OcuPilot is served through, or
+/// the session the serving request itself runs in (AD-10 as amended 2026-09-28). The web-session
+/// twin of <parameter>OCUPILOTPROCESS</parameter>, refused whatever the caller.</p>
+Parameter OCUPILOTSESSION = "PROHIBITED.OCUPILOTSESSION";
+
+/// <p>The one sentence <parameter>OCUPILOTSESSION</parameter> carries, caller-neutral, published
+/// in EXPERIENCE.md's Fixed strings and pinned equal to <code>webSessionRefusalOcuPilot</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTSESSIONREASON = "OcuPilot itself is running in this session. It cannot be ended from OcuPilot.";
+
+/// <p>A web session's field the own-session arm reads.</p>
+Parameter FIELDAPPLICATION = "Application";
+
+/// <p>A web session's id field, compared exactly with the serving request's own session id.</p>
+Parameter FIELDSESSIONID = "ID";
+
+/// <p>The write would end a preserve-mode web session while its own process runs
+/// (<method>IsPreservedSession</method>): that process holds the session's lock, so the vendor's end
+/// waits out the lock timeout and the session stays listed (AD-10 as amended 2026-09-28). Refused
+/// whatever the caller, before any <code>DELETE</code> is sent. Once the process has ended, the
+/// session may be ended.</p>
+Parameter PRESERVEDSESSION = "PROHIBITED.PRESERVEDSESSION";
+
+/// <p>The one sentence <parameter>PRESERVEDSESSION</parameter> carries, caller-neutral, published
+/// in EXPERIENCE.md's Fixed strings and pinned equal to <code>webSessionRefusalPreserved</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter PRESERVEDSESSIONREASON = "This session's own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session.";
+
+/// <p>A web session's preserve-mode field, which the vendor's list answers as a number.</p>
+Parameter FIELDPRESERVE = "Preserve";
+
+/// <p>A web session's own process id, which a preserve-mode session carries.</p>
+Parameter FIELDSESPROCESSID = "SesProcessId";
+
+/// <p>A namespace's global, routine and package mappings (Story 18.14, <method>Mapping</method>),
+/// each keyed by the composite <code>[namespace, Name]</code>.</p>
+Parameter TYPEGLOBALMAPPING = "global-mapping";
+
+Parameter TYPEROUTINEMAPPING = "routine-mapping";
+
+Parameter TYPEPACKAGEMAPPING = "package-mapping";
+
+/// <p>The write would create, change or delete one of OcuPilot's own mappings -- a mapping whose name,
+/// pattern or range covers one of OcuPilot's own names, or a global mapping that moves one of
+/// <parameter>CODEGLOBALS</parameter> (<method>CoversOwnName</method>), in the namespace OcuPilot's
+/// API runs in or in <parameter>ALLNAMESPACE</parameter> -- or copy mappings into either namespace
+/// from a source holding one (AD-10 as amended 2026-09-28, DW-1803). Such a mapping moves OcuPilot's
+/// protected globals out of its database (AD-9) or lets other code answer for its classes.</p>
+Parameter OCUPILOTMAPPING = "PROHIBITED.OCUPILOTMAPPING";
+
+/// <p>The one sentence <parameter>OCUPILOTMAPPING</parameter> carries, caller-neutral, published and
+/// pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter OCUPILOTMAPPINGREASON = "A mapping whose name or pattern covers OcuPilot's own names decides where OcuPilot's globals and code are found. In the namespace OcuPilot runs in, and in %ALL, such a mapping cannot be added, changed, removed or copied in.";
+
+/// <p>The pseudo-namespace whose mappings apply to every namespace.</p>
+Parameter ALLNAMESPACE = "%ALL";
+
+/// <p>The instance's routine and class-dictionary globals that hold OcuPilot's names in the namespace
+/// it runs in, comma-separated and spelled as the instance spells them: its routines' object code,
+/// source and indexes, and its classes' definitions, compiled records, dependencies, extents, storage
+/// maps and SQL projections. Measured on this build by walking the routine database's globals for
+/// subscripts, at the first or second level, beginning with an <method>OwnNameStems</method> stem in
+/// any case (Story 18.14's spec,
+/// Design Notes); <class>OcuPilot.Test.MappingCodeGlobals</class> holds it equal to that walk. A global
+/// mapping of one, whole or over a range reaching OcuPilot's names, moves where OcuPilot's code is
+/// read from (<method>CoversCodeGlobal</method>).</p>
+Parameter CODEGLOBALS = "ROUTINE,oddCOM,oddDEF,oddDEP,oddEXT,oddEXTR,oddMAP,oddPROC,oddSQL,rINDEX,rINDEXCLASS,rINDEXEXT,rINDEXSQL,rMAC,rMAP,rOBJ";
+
+/// <p>The members of <parameter>CODEGLOBALS</parameter> that also hold OcuPilot's names under a first
+/// subscript that is not one (<code>^oddDEP(0,...)</code>, <code>^rINDEXEXT("C",...)</code>,
+/// <code>^rINDEXSQL("TABLE",...)</code>), measured with it: the first subscript cannot tell whether a
+/// mapping reaches OcuPilot's names, so any subscript mapping of one is read as reaching them.</p>
+Parameter NESTEDCODEGLOBALS = "oddDEP,rINDEXEXT,rINDEXSQL";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for a global mapping whose name begins with
+/// <code>%</code>: it shadows a system global for its namespace (AD-10 as amended 2026-09-28). It is
+/// also the proposal's consequence code.</p>
+Parameter EFFECTSYSTEMGLOBAL = "MAPPING.SYSTEMGLOBAL";
+
+/// <p>The request type a copy of mappings is issued with, which the namespace predicate branches on
+/// (<method>Namespace</method>).</p>
+Parameter COPYMAPPINGSTYPE = "MAPPINGS";
+
+/// <p>The payload field a copy of mappings names its source in.</p>
+Parameter COPYSOURCEFIELD = "SourceNamespace";
+
+/// <p>The tool identifiers of the lists whose reads a copy into an own namespace checks the source
+/// through, comma-separated; each resolves to its descriptor through the screen registry, so the set
+/// names no screen class.</p>
+Parameter MAPPINGLISTS = "osmgmt.globalmappings,osmgmt.routinemappings,osmgmt.packagemappings";
 
 /// <p>The write would turn off the service OcuPilot is served through
 /// (<parameter>SERVINGSERVICENAME</parameter>): every request to OcuPilot arrives through it (AD-10 as
@@ -466,10 +612,13 @@ Parameter READTYPE = "GET";
 /// only a web application reaches, then the two <method>Process</method> adds, then the one every
 /// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
 /// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
-/// <method>Ssl</method> adds, and the one <method>Service</method> adds last -- eighteen in all.</p>
+/// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the one
+/// <method>Namespace</method> adds, the two <method>WebSession</method> adds, the one
+/// <method>Mapping</method> adds, and the one <method>Database</method> adds last -- twenty-three in
+/// all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -499,6 +648,11 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTRESOURCE Quit ..#OCUPILOTRESOURCEREASON
     If pCode = ..#OCUPILOTSSL Quit ..#OCUPILOTSSLREASON
     If pCode = ..#SERVINGSERVICE Quit ..#SERVINGSERVICEREASON
+    If pCode = ..#OCUPILOTNAMESPACE Quit ..#OCUPILOTNAMESPACEREASON
+    If pCode = ..#OCUPILOTSESSION Quit ..#OCUPILOTSESSIONREASON
+    If pCode = ..#PRESERVEDSESSION Quit ..#PRESERVEDSESSIONREASON
+    If pCode = ..#OCUPILOTMAPPING Quit ..#OCUPILOTMAPPINGREASON
+    If pCode = ..#OCUPILOTDATABASE Quit ..#OCUPILOTDATABASEREASON
     Quit ""
 }
 
@@ -599,6 +753,9 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPETASK Quit ..TaskChangeFields()
     If pType = ..#TYPESERVICE Quit $ListBuild("AutheEnabled", "ClientSystems", ..#FIELDENABLED)
     If pType = ..#TYPELDAP Quit ..LdapFields()
+    If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
+    If ..IsMappingType(pType) Quit ..MappingFields(pType)
+    If pType = ..#TYPEDATABASECONFIG Quit ..DatabaseChangeFields()
     Quit ""
 }
 
@@ -705,6 +862,9 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPESSL Quit ..SslFields()
     If pType = ..#TYPETASK Quit ..TaskCreateFields()
     If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
+    If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
+    If ..IsMappingType(pType) Quit ..MappingFields(pType)
+    If pType = ..#TYPEDATABASECONFIG Quit ..DatabaseCreateFields()
     Quit ""
 }
 
@@ -785,11 +945,16 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && '..IsMappingType(tType) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
+
+        ; The session the serving request runs in, read before any port call, since the port
+        ; stubs %session while it runs (AD-2).
+        Set tOwnSession = ""
+        If tType = ..#TYPEWEBSESSION Set tOwnSession = ..ServingSessionId()
 
         Set tServes = 0
         If tType = ..#TYPEWEBAPPLICATION {
@@ -798,6 +963,13 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..ServesOcuPilot(tId, .tServes)
             If $$$ISERR(tSC) Quit
         }
+
+        ; AD-10 as amended (Story 16.6): the process arm is not evaluated for a broadcast. No IRIS
+        ; system process and no process OcuPilot runs in can receive one (the vendor's
+        ; CanReceiveBroadcast reads 0 for each, measured), and the port refuses an ineligible
+        ; recipient for both callers. Asked before the target read: a broadcast's target is a pid
+        ; set, which the process predicates do not read.
+        If (tType = ..#TYPEPROCESS) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#BROADCASTWRITETYPE) Quit
 
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit
@@ -861,6 +1033,18 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..Device($Get(tToolClass), .tChanged, .pProhibits, .pCode)
             Quit
         }
+        If tType = ..#TYPENAMESPACE {
+            Set tSC = ..Namespace(tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode, tPayloadObject)
+            Quit
+        }
+        If ..IsMappingType(tType) {
+            Set tSC = ..Mapping(tType, tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEDATABASECONFIG {
+            Set tSC = ..Database(tId, $Get(tToolClass), tTarget, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
         If tType = ..#TYPEAUDITING {
             Set tSC = ..Auditing(.tChanged, .pProhibits, .pCode)
             Quit
@@ -891,6 +1075,16 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If (tType = ..#TYPEAUDITEVENT) || (tType = ..#TYPEAUDITUSEREVENT) {
             Set tSC = ..AuditEvent(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEWEBSESSION {
+            Set tSC = ..WebSession(tTarget, tOwnSession, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A background task's control sets no field (AD-51) and AD-10 names no effect on one: the
+        ; reviewed-few sweep over an empty permitted list, and nothing else (Story 16.5).
+        If tType = ..#TYPEBACKGROUNDTASK {
+            Set tSC = ..ReviewedFewOnly(..#TYPEBACKGROUNDTASK, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -956,7 +1150,8 @@ ClassMethod UncoveredWriteTools(Output pTools As %List) As %Status
 /// registering before its type's list exists is the shape this fails closed against.</p>
 /// <p><var>pId</var> is the intended name, canonical under AD-13. A resource create that gives one of
 /// OcuPilot's own resources (<method>OcuPilotResources</method>) a public permission is refused
-/// <parameter>OCUPILOTRESOURCE</parameter>.</p>
+/// <parameter>OCUPILOTRESOURCE</parameter>, and a mapping create of one of OcuPilot's own mappings
+/// (<method>IsOwnMapping</method>) <parameter>OCUPILOTMAPPING</parameter>.</p>
 ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String, pId As %String = "") As %Status [ Private ]
 {
     Set pProhibits = 0
@@ -979,6 +1174,10 @@ ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicO
                 Do ..Refuse(..#OCUPILOTRESOURCE, .pProhibits, .pCode)
                 Quit
             }
+        }
+        If ..IsMappingType(pType) && ..IsOwnMapping(pId, pType) {
+            Do ..Refuse(..#OCUPILOTMAPPING, .pProhibits, .pCode)
+            Quit
         }
         Set tPermitted = ..PermittedCreateFields(pType)
         If tPermitted = "" {
@@ -1128,11 +1327,19 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// answers true, else <parameter>EFFECTAUTHENTICATORRESET</parameter> when
 /// <method>ResetsAuthenticator</method> does. For the authorization server configuration,
 /// <method>ServerClientsEffect</method>'s answer over <var>pTarget</var>.</p>
-ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "") As %Status
+/// <p>For a global mapping (<var>pId</var> being its composite id), <parameter>EFFECTSYSTEMGLOBAL</parameter>
+/// when the mapping's name begins with <code>%</code> (<method>IsSystemGlobalMapping</method>), on a
+/// create and a change alike and never on a removal (<var>pRemoves</var>), which shadows nothing.
+/// The mint asks it for a create of this type too, and no request field can suppress it.</p>
+ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "", pRemoves As %Boolean = 0) As %Status
 {
     Set pEffect = ""
     Set tSC = $$$OK
     Try {
+        If pType = ..#TYPEGLOBALMAPPING {
+            If 'pRemoves && ..IsSystemGlobalMapping(pId) Set pEffect = ..#EFFECTSYSTEMGLOBAL
+            Quit
+        }
         If pType = ..#TYPESSL {
             Set pEffect = ..SslWeakening(pPayload, pTarget)
             Quit
@@ -1443,6 +1650,20 @@ ClassMethod AddsPublicLetter(pPayload As %DynamicObject, pTarget As %DynamicObje
     Quit tAdds
 }
 
+/// <p>The class of the registered tool named <var>pToolName</var>, resolved as
+/// <method>Target</method> resolves it, or <code>""</code> when the registry names none.</p>
+ClassMethod ToolClassNamed(pToolName As %String) As %String [ Private ]
+{
+    Set tClass = ""
+    Try {
+        Set tSC = $ClassMethod(..RegistryClass(), "Resolve", pToolName, .tTool, 1)
+        If $$$ISOK(tSC) && $IsObject(tTool) Set tClass = tTool.%Get("class")
+    } Catch {
+        Set tClass = ""
+    }
+    Quit tClass
+}
+
 /// <p>The admin request type <var>pToolClass</var>'s write is issued with, or <code>""</code> for
 /// a class that names none or cannot be asked -- which no role predicate reads as a delete.</p>
 ClassMethod WriteTypeOf(pToolClass As %String) As %String [ Private ]
@@ -1556,6 +1777,531 @@ ClassMethod Device(pToolClass As %String, ByRef pChanged, Output pProhibits As %
 ClassMethod DeviceFields() As %List [ Private ]
 {
     Quit $ListBuild("PhysicalDevice", "Type", "SubType", "OpenParameters", "Description", "Alias", "AlternateDevice", "Prompt")
+}
+
+/// <p>The namespace predicates, in declared order, first hit wins: for an own namespace
+/// (<method>IsOwnNamespace</method>), a delete, or a change to its globals or routines database, is
+/// refused <parameter>OCUPILOTNAMESPACE</parameter>; then, for every write, the reviewed-few sweep
+/// over <method>NamespaceFields</method>.</p>
+/// <p><var>pId</var> is the target's id as the reference carries it and <var>pToolClass</var> the
+/// proposal's tool. A delete sends no body and its card rows are its fingerprint subject, so it
+/// reaches the sweep with nothing changed; a tool that cannot say whether it removes reads as one
+/// that does.</p>
+/// <p>A copy of mappings (<parameter>COPYMAPPINGSTYPE</parameter>, Story 18.14) is refused
+/// <parameter>OCUPILOTMAPPING</parameter> when <method>CopiesOwnMapping</method> answers true for the
+/// source <var>pPayload</var> names, and is otherwise permitted.</p>
+ClassMethod Namespace(pId As %String, pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String, pPayload As %DynamicObject = "") As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        ; Story 18.14: a copy of mappings is judged by what it would copy in, before the sweep, which
+        ; its one argument field is not a reviewed change of (AD-10 as amended 2026-09-28).
+        If ..WriteTypeOf(pToolClass) = ..#COPYMAPPINGSTYPE {
+            Kill pChanged
+            Set tSC = ..CopiesOwnMapping(pId, ..Rendered(pPayload, ..#COPYSOURCEFIELD), .tCopies)
+            If $$$ISERR(tSC) Quit
+            If tCopies Do ..Refuse(..#OCUPILOTMAPPING, .pProhibits, .pCode)
+            Quit
+        }
+        Set tDelete = (..WriteTypeOf(pToolClass) = "DELETE") || ..RemovesOf(pToolClass)
+        If tDelete Kill pChanged
+        If ..IsOwnNamespace(pId) {
+            Set tMoves = tDelete
+            Set tOwn = $ListFromString(..#OWNNAMESPACEFIELDS)
+            For tI = 1:1:$ListLength(tOwn) {
+                If $Data(pChanged($List(tOwn, tI))) Set tMoves = 1
+            }
+            If tMoves {
+                Do ..Refuse(..#OCUPILOTNAMESPACE, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPENAMESPACE, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pId</var>, compared upper-cased, is <code>%SYS</code> or the namespace this
+/// process runs in, read at each call. OcuPilot's API process runs in its web application's
+/// configured namespace and never switches it outside a port, and a turn job refuses any other, so
+/// for both callers that is the install namespace.</p>
+ClassMethod IsOwnNamespace(pId As %String) As %Boolean
+{
+    Set tName = $ZConvert(pId, "U")
+    If tName = "" Quit 0
+    Quit (tName = "%SYS") || (tName = $ZConvert($NAMESPACE, "U"))
+}
+
+/// <p>A namespace's settable fields, create and change alike: the three
+/// <code>Namespace.Namespace</code> template fields. Its name is its id and never changes.</p>
+ClassMethod NamespaceFields() As %List [ Private ]
+{
+    Quit $ListBuild("Globals", "Routines", "TempGlobals")
+}
+
+/// <p>The database predicates (Story 18.3, AD-10 as amended 2026-09-29), stated over the effect so a
+/// bodyless delete is covered: a delete of one of <method>OwnDatabaseNames</method>, compared
+/// upper-cased, and a change of <parameter>OWNDATABASEFIELDS</parameter> of one, are refused
+/// <parameter>OCUPILOTDATABASE</parameter>; so is a change of <parameter>OWNFILEFIELDS</parameter>
+/// whose target's directory <var>pTarget</var> answers is an own database's directory, read from one
+/// configuration list at the write (<method>OwnDatabaseDirectories</method>), since that change
+/// reaches the protected file through another name. Then the reviewed-few sweep over
+/// <method>DatabaseChangeFields</method>. A read that fails refuses. A create is
+/// <method>Created</method>'s.</p>
+ClassMethod Database(pId As %String, pToolClass As %String, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tDelete = (..WriteTypeOf(pToolClass) = "DELETE") || ..RemovesOf(pToolClass)
+        If tDelete Kill pChanged
+        Set tPort = ..PortClassOf(pToolClass)
+        Set tNamesSC = ..OwnDatabaseNames(tPort, .tOwn)
+        If $$$ISERR(tNamesSC) {
+            Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
+            Quit
+        }
+        If $ListFind(tOwn, $ZConvert(pId, "U")) {
+            Set tMoves = tDelete
+            Set tFields = $ListFromString(..#OWNDATABASEFIELDS)
+            For tI = 1:1:$ListLength(tFields) {
+                If $Data(pChanged($List(tFields, tI))) Set tMoves = 1
+            }
+            If tMoves {
+                Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tTouchesFile = 0
+        Set tFields = $ListFromString(..#OWNFILEFIELDS)
+        For tI = 1:1:$ListLength(tFields) {
+            If $Data(pChanged($List(tFields, tI))) Set tTouchesFile = 1
+        }
+        If tTouchesFile {
+            Set tDirectory = ..Rendered(pTarget, "Directory")
+            Set tDirsSC = ..OwnDatabaseDirectories(tPort, tOwn, .tDirectories)
+            If $$$ISERR(tDirsSC) || (tDirectory = "") {
+                Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
+                Quit
+            }
+            For tI = 1:1:$ListLength(tDirectories) {
+                If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tDirectories, tI), tDirectory) {
+                    Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
+                    Quit
+                }
+            }
+            If pProhibits Quit
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPEDATABASECONFIG, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The names, upper-cased, of the databases OcuPilot or the instance itself depends on:
+/// <parameter>OcuPilot.Kernel.State.Base.DATABASENAME</parameter>,
+/// <parameter>SYSTEMDATABASES</parameter>, and the globals and routines databases of the namespace
+/// this process runs in, read at each call through <var>pPort</var>'s <code>Namespace.Namespace</code>
+/// <code>GET</code> as the caller. A read that fails is an error status, which the caller refuses on.
+/// Overridable so a fixture can add a probe database; production never overrides it.</p>
+ClassMethod OwnDatabaseNames(pPort As %String, Output pNames As %List) As %Status
+{
+    Set pNames = $ListBuild($ZConvert(##class(OcuPilot.Kernel.State.Base).#DATABASENAME, "U")) _ $ListFromString(..#SYSTEMDATABASES)
+    Kill tQuery
+    Set tQuery("name") = $NAMESPACE
+    Set tSC = $ClassMethod(pPort, "Invoke", "Namespace.Namespace", ..#READTYPE, .tQuery, "", .tNamespace, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tNamespace)) Quit $$$ERROR($$$GeneralError, "the install namespace's databases could not be read")
+    For tField = "Globals", "Routines" {
+        Set tName = $ZConvert(..Rendered(tNamespace, tField), "U")
+        If tName = "" Quit
+        If '$ListFind(pNames, tName) Set pNames = pNames _ $ListBuild(tName)
+    }
+    If tName = "" Quit $$$ERROR($$$GeneralError, "the install namespace names no globals or routines database")
+    Quit $$$OK
+}
+
+/// <p>The directories of the configurations <var>pOwn</var> names, from one
+/// <code>Database.ConfigCRUD</code> <code>LIST</code> through <var>pPort</var> as the caller. A list
+/// that cannot be read is an error status.</p>
+ClassMethod OwnDatabaseDirectories(pPort As %String, pOwn As %List, Output pDirectories As %List) As %Status [ Private ]
+{
+    Set pDirectories = ""
+    Kill tQuery
+    Set tSC = $ClassMethod(pPort, "Invoke", "Database.ConfigCRUD", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tRows)) || 'tRows.%IsA("%Library.DynamicArray") Quit $$$ERROR($$$GeneralError, "the database configuration list did not answer an array")
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) Continue
+        If '$ListFind(pOwn, $ZConvert(tRow.%Get("Name"), "U")) Continue
+        Set tDirectory = ..Rendered(tRow, "Directory")
+        If tDirectory '= "" Set pDirectories = pDirectories _ $ListBuild(tDirectory)
+    }
+    Quit $$$OK
+}
+
+/// <p>A database configuration's reviewed change fields: the mounting edit's three and the file
+/// edit's seven, with the file edit's two volume-directory arguments.</p>
+ClassMethod DatabaseChangeFields() As %List [ Private ]
+{
+    Quit $ListBuild("MountAtStartup", "MountRequired", "ClusterMountMode", "MaxSize", "ExpansionSize", "ResourceName", "NewGlobalIsKeep", "GlobalJournalState", "ReadOnly", "NewVolumeThreshold", "volumeRoot", "volumePath")
+}
+
+/// <p>A database create's fields: its five declared arguments.</p>
+ClassMethod DatabaseCreateFields() As %List [ Private ]
+{
+    Quit $ListBuild("root", "path", "Size", "GlobalJournalState", "ResourceName")
+}
+
+/// <p>Whether <var>pType</var> is one of the three mapping types (Story 18.14).</p>
+ClassMethod IsMappingType(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEGLOBALMAPPING) || (pType = ..#TYPEROUTINEMAPPING) || (pType = ..#TYPEPACKAGEMAPPING)
+}
+
+/// <p>A mapping's settable fields, create and change alike: its kind's template fields --
+/// <code>Database</code>, <code>LockDatabase</code> and <code>Collation</code> for a global, and
+/// <code>Database</code> for a routine or a package. Its namespace and name are its id and never
+/// change.</p>
+ClassMethod MappingFields(pType As %String) As %List [ Private ]
+{
+    If pType = ..#TYPEGLOBALMAPPING Quit $ListBuild("Database", "LockDatabase", "Collation")
+    Quit $ListBuild("Database")
+}
+
+/// <p>The mapping predicates (Story 18.14), in declared order, first hit wins: any write to one of
+/// OcuPilot's own mappings (<method>IsOwnMapping</method>) -- a change or a delete, whatever it
+/// changes -- is refused <parameter>OCUPILOTMAPPING</parameter>; then the reviewed-few sweep over
+/// <method>MappingFields</method>. A create is <method>Created</method>'s. A delete sends no body and
+/// its card rows are its fingerprint subject, so it reaches the sweep with nothing changed.</p>
+ClassMethod Mapping(pType As %String, pId As %String, pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If (..WriteTypeOf(pToolClass) = "DELETE") || ..RemovesOf(pToolClass) Kill pChanged
+        If ..IsOwnMapping(pId, pType) {
+            Do ..Refuse(..#OCUPILOTMAPPING, .pProhibits, .pCode)
+            Quit
+        }
+        Set tSC = ..ReviewedFewOnly(pType, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether the mapping of type <var>pType</var> whose composite id is <var>pId</var> is one of
+/// OcuPilot's own: its namespace part, upper-cased, is the namespace this process runs in or
+/// <parameter>ALLNAMESPACE</parameter>, and its name part covers one of OcuPilot's own names
+/// (<method>CoversOwnName</method>). The namespace is read at each call, for the reason
+/// <method>IsOwnNamespace</method> reads it. An id that is not two parts is none.</p>
+ClassMethod IsOwnMapping(pId As %String, pType As %String) As %Boolean
+{
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    If $ListLength(tParts) '= 2 Quit 0
+    If '..IsOwnMappingNamespace($ListGet(tParts, 1)) Quit 0
+    Quit ..CoversOwnName($ListGet(tParts, 2), pType, $ListGet(tParts, 1))
+}
+
+/// <p>Whether <var>pNamespace</var>, upper-cased, is the namespace this process runs in or
+/// <parameter>ALLNAMESPACE</parameter>: a namespace where one of OcuPilot's own mappings may
+/// live.</p>
+ClassMethod IsOwnMappingNamespace(pNamespace As %String) As %Boolean
+{
+    Set tName = $ZConvert(pNamespace, "U")
+    If tName = "" Quit 0
+    Quit (tName = $ZConvert($NAMESPACE, "U")) || (tName = ..#ALLNAMESPACE)
+}
+
+/// <p>The stems OcuPilot's own names begin with, lower-cased and each named once, read at each call
+/// rather than kept as a second literal: the top-level package of this class, which OcuPilot's
+/// classes and their routines are named under, and
+/// <parameter>OcuPilot.Kernel.State.Base.MAPPINGPATTERN</parameter> up to its <code>*</code>, the
+/// global mapping install creates for OcuPilot's own globals (AD-9).</p>
+ClassMethod OwnNameStems() As %List
+{
+    Set tStems = ""
+    For tStem = $Piece($ClassName(), "."), $Piece(##class(OcuPilot.Kernel.State.Base).#MAPPINGPATTERN, "*") {
+        Set tStem = $ZConvert(tStem, "L")
+        If (tStem '= "") && '$ListFind(tStems, tStem) Set tStems = tStems _ $ListBuild(tStem)
+    }
+    Quit tStems
+}
+
+/// <p>Whether mapping name <var>pName</var>, of type <var>pType</var> in namespace
+/// <var>pNamespace</var>, covers any of OcuPilot's own names (<method>OwnNameStems</method>),
+/// ignoring case: by overlap, not by prefix (AD-10 as amended, DW-1803). A global mapping also
+/// covers them when it moves one of the globals OcuPilot's code is read from
+/// (<method>CoversCodeGlobal</method>). A range whose low end is empty (<code>:A</code>) covers
+/// them whatever its upper end: the instance reads that low end as <code>%</code> and drops the upper
+/// one (<code>NSPMAP</code>), and <code>:A</code> moved OcuPilot's routines and
+/// <code>^rINDEXEXT</code> (measured).</p>
+/// <p>Otherwise a global's subscripts and a routine's type suffix (<code>_MAC</code>) are set aside,
+/// since each only narrows the mapping within the name before it. What is left is a range
+/// <code>L:U</code>, a pattern <code>P*</code> or a name. A pattern covers a stem when either
+/// begins with the other, so <code>*</code>, <code>O*</code> and <code>OcuPilotX*</code> each do; a
+/// name when it begins with the stem; a range when <method>RangeCoversStem</method> says so, and a
+/// range holding <code>*</code> always.</p>
+ClassMethod CoversOwnName(pName As %String, pType As %String, pNamespace As %String) As %Boolean
+{
+    Set tName = $Piece(pName, "(")
+    If (tName [ ":") && ($Piece(tName, ":") = "") Quit 1
+    If (pType = ..#TYPEGLOBALMAPPING) && ..CoversCodeGlobal(pName, pNamespace) Quit 1
+    If $Match(tName, "(?s).*_[A-Za-z]+") Set tName = $Piece(tName, "_", 1, $Length(tName, "_") - 1)
+    Set tLower = $ZConvert(tName, "L")
+    Set tStems = ..OwnNameStems()
+    Set tCovers = 0
+    For tI = 1:1:$ListLength(tStems) {
+        Set tStem = $List(tStems, tI)
+        If tName [ ":" {
+            Set tCovers = (tName [ "*") || ..RangeCoversStem($Piece(tName, ":"), $Piece(tName, ":", 2, *), tStem)
+        } ElseIf tName [ "*" {
+            Set tPrefix = $Piece(tLower, "*")
+            Set tCovers = ($Extract(tPrefix, 1, $Length(tStem)) = tStem) || ($Extract(tStem, 1, $Length(tPrefix)) = tPrefix)
+        } Else {
+            Set tCovers = ($Extract(tLower, 1, $Length(tStem)) = tStem)
+        }
+        If tCovers Quit
+    }
+    Quit tCovers
+}
+
+/// <p>Whether the range from <var>pLow</var> to <var>pHigh</var>, both ends included and compared as
+/// the instance orders names (character codes), holds a name beginning with some spelling of
+/// lower-case stem <var>pStem</var>, each of its letters in either case: some spelling is at most
+/// <var>pHigh</var>, or <var>pHigh</var> is empty, which the instance reads as open
+/// (<code>O:</code> maps every name from <code>O</code> on), and <var>pLow</var> is at most that
+/// spelling or begins with it. Every spelling is tried; an OcuPilot stem has eight letters, so
+/// there are 256.</p>
+ClassMethod RangeCoversStem(pLow As %String, pHigh As %String, pStem As %String) As %Boolean
+{
+    Set tLetters = ""
+    For tI = 1:1:$Length(pStem) {
+        If $ZConvert($Extract(pStem, tI), "U") '= $Extract(pStem, tI) Set tLetters = tLetters _ $ListBuild(tI)
+    }
+    Set tCovers = 0
+    For tMask = 0:1:(2 ** $ListLength(tLetters)) - 1 {
+        Set tSpelling = pStem
+        For tJ = 1:1:$ListLength(tLetters) {
+            If (tMask \ (2 ** (tJ - 1))) # 2 Set $Extract(tSpelling, $List(tLetters, tJ)) = $ZConvert($Extract(pStem, $List(tLetters, tJ)), "U")
+        }
+        If (pHigh '= "") && (tSpelling ] pHigh) Continue
+        If '(pLow ] tSpelling) || ($Extract(pLow, 1, $Length(tSpelling)) = tSpelling) {
+            Set tCovers = 1
+            Quit
+        }
+    }
+    Quit tCovers
+}
+
+/// <p>Whether global mapping name <var>pName</var> in namespace <var>pNamespace</var> moves one of
+/// <parameter>CODEGLOBALS</parameter>, whose names compare with case as the instance's do:</p>
+/// <ul>
+/// <li>a pattern <code>P*</code> naming one (<code>odd*</code>, <code>r*</code>), or a range
+/// <code>L:U</code> holding one, both ends included, or a range holding <code>*</code>;</li>
+/// <li>the whole global;</li>
+/// <li>any subscript mapping of one of <parameter>NESTEDCODEGLOBALS</parameter>;</li>
+/// <li>any subscript mapping of one when the base mapping the instance creates with it would move the
+/// global (<method>BaseMappingMoves</method>);</li>
+/// <li>a subscript mapping whose first subscript, or first-subscript range, reaches OcuPilot's names
+/// (<method>FirstSubscriptBounds</method>, judged by <method>RangeCoversStem</method>, a single
+/// subscript as a range of itself).</li>
+/// </ul>
+ClassMethod CoversCodeGlobal(pName As %String, pNamespace As %String) As %Boolean
+{
+    Set tGlobal = $Piece(pName, "(")
+    Set tMembers = $ListFromString(..#CODEGLOBALS)
+    If (tGlobal [ ":") || (tGlobal [ "*") {
+        If (tGlobal [ ":") && (tGlobal [ "*") Quit 1
+        Set tLow = $Piece(tGlobal, ":")
+        Set tHigh = $Piece(tGlobal, ":", 2, *)
+        Set tPrefix = $Piece(tGlobal, "*")
+        Set tCovers = 0
+        For tI = 1:1:$ListLength(tMembers) {
+            Set tMember = $List(tMembers, tI)
+            If tGlobal [ ":" {
+                Set tCovers = '(tLow ] tMember) && ((tHigh = "") || '(tMember ] tHigh))
+            } Else {
+                Set tCovers = ($Extract(tMember, 1, $Length(tPrefix)) = tPrefix)
+            }
+            If tCovers Quit
+        }
+        Quit tCovers
+    }
+    If '$ListFind(tMembers, tGlobal) Quit 0
+    If pName '[ "(" Quit 1
+    If $ListFind($ListFromString(..#NESTEDCODEGLOBALS), tGlobal) Quit 1
+    If ..BaseMappingMoves(pNamespace, tGlobal) Quit 1
+    Do ..FirstSubscriptBounds(pName, .tLow, .tHigh)
+    Set tStems = ..OwnNameStems()
+    Set tCovers = 0
+    For tI = 1:1:$ListLength(tStems) {
+        Set tCovers = ..RangeCoversStem(tLow, tHigh, $List(tStems, tI))
+        If tCovers Quit
+    }
+    Quit tCovers
+}
+
+/// <p>The first subscript's bounds of subscripted global mapping name <var>pName</var>, the form the
+/// instance accepts: <code>G(s,...)</code>, whose bounds are both <code>s</code>, or
+/// <code>G(l,...):(h,...)</code>. <code>BEGIN</code>, <code>END</code> and anything that does not
+/// read as a subscript answer <code>""</code>, which <method>RangeCoversStem</method> reads as open
+/// at that end (the instance accepts <code>BEGIN</code> and <code>END</code> as open ends and refuses
+/// an empty one, #655).</p>
+ClassMethod FirstSubscriptBounds(pName As %String, Output pLow As %String, Output pHigh As %String)
+{
+    Set tStart = $Find(pName, "(") - 1
+    Set tEnd = 0
+    Set tDepth = 0
+    Set tQuoted = 0
+    For tI = tStart:1:$Length(pName) {
+        Set tChar = $Extract(pName, tI)
+        If tChar = """" {
+            Set tQuoted = 'tQuoted
+            Continue
+        }
+        If tQuoted Continue
+        If tChar = "(" Set tDepth = tDepth + 1
+        If tChar = ")" {
+            Set tDepth = tDepth - 1
+            If tDepth = 0 {
+                Set tEnd = tI
+                Quit
+            }
+        }
+    }
+    If tEnd = 0 {
+        Set pLow = ""
+        Set pHigh = ""
+        Quit
+    }
+    Set pLow = ..SubscriptBound($Extract(pName, tStart, tEnd))
+    Set pHigh = $Select($Extract(pName, tEnd + 1) = ":": ..SubscriptBound($Extract(pName, tEnd + 2, *)), 1: pLow)
+}
+
+/// <p>The first subscript of the parenthesized subscript list <var>pGroup</var>, or <code>""</code>
+/// for <code>BEGIN</code>, <code>END</code> or a list that does not read as subscripts.</p>
+ClassMethod SubscriptBound(pGroup As %String) As %String [ Private ]
+{
+    Set tToken = $ZConvert($Piece($Piece($Extract(pGroup, 2, *), ","), ")"), "U")
+    If (tToken = "BEGIN") || (tToken = "END") Quit ""
+    Set tValue = ""
+    Try {
+        Set tValue = $QSubscript("x" _ pGroup, 1)
+    } Catch {
+        Set tValue = ""
+    }
+    Quit tValue
+}
+
+/// <p>Whether a subscript mapping of global <var>pGlobal</var> in namespace <var>pNamespace</var>
+/// would move the whole global: the instance creates the global's base mapping with it, on the
+/// namespace's default globals database (measured), so it moves the global when that database is not
+/// the one the global is read from now. <parameter>ALLNAMESPACE</parameter>'s base mapping lands on
+/// each namespace's globals database (inference from <code>NSPMAP</code>), so it is judged in the
+/// namespace this process runs in. A namespace the instance does not know answers true.</p>
+ClassMethod BaseMappingMoves(pNamespace As %String, pGlobal As %String) As %Boolean
+{
+    Set tNamespace = $ZConvert(pNamespace, "U")
+    If (tNamespace = "") || (tNamespace = ..#ALLNAMESPACE) Set tNamespace = $ZConvert($NAMESPACE, "U")
+    Set tDefault = ##class(%SYS.Namespace).GetGlobalDest(tNamespace)
+    If tDefault = "" Quit 1
+    Quit tDefault '= ##class(%SYS.Namespace).GetGlobalDest(tNamespace, pGlobal)
+}
+
+/// <p>Whether the global mapping whose composite id is <var>pId</var> names a system global: its
+/// name part begins with <code>%</code>, with or without a subscript range.</p>
+ClassMethod IsSystemGlobalMapping(pId As %String) As %Boolean
+{
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    If $ListLength(tParts) '= 2 Quit 0
+    Quit $Extract($ListGet(tParts, 2)) = "%"
+}
+
+/// <p>The row cap the source's lists are read with when a copy into an own namespace is checked
+/// (<method>CopiesOwnMapping</method>): <code>""</code>, the read's default. A seam a fixture
+/// narrows so a cut list is observed; production never overrides it.</p>
+ClassMethod CopySourceCap() As %String
+{
+    Quit ""
+}
+
+/// <p>Whether copying the mappings of <var>pSource</var> into the namespace <var>pDestination</var>
+/// would copy one of OcuPilot's own mappings in, in <var>pCopies</var> (Story 18.14).</p>
+/// <p>Only a destination where one may live (<method>IsOwnMappingNamespace</method>) is checked, and
+/// then each of the source's three lists is read as the caller, through its descriptor's own gate
+/// and declared read (the <method>OcuPilot.Kernel.Proposal.Impact</method> idiom), at
+/// <method>CopySourceCap</method>. It fails closed: a row whose <code>Name</code> covers one of
+/// OcuPilot's own names (<method>CoversOwnName</method>), a list the caller may not read, a list
+/// cut at its cap and an empty source each answer true. A read that fails is an error status.</p>
+ClassMethod CopiesOwnMapping(pDestination As %String, pSource As %String, Output pCopies As %Boolean) As %Status
+{
+    Set pCopies = 0
+    Set tSC = $$$OK
+    Try {
+        If '..IsOwnMappingNamespace(pDestination) Quit
+        If pSource = "" {
+            Set pCopies = 1
+            Quit
+        }
+        For tI = 1:1:$Length(..#MAPPINGLISTS, ",") {
+            Set tDescriptor = ##class(OcuPilot.Screen.Registry).DescriptorForTool($Piece(..#MAPPINGLISTS, ",", tI))
+            If tDescriptor = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "no screen answers the mapping list " _ $Piece(..#MAPPINGLISTS, ",", tI))
+                Quit
+            }
+            Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
+            Set tGateSC = ##class(OcuPilot.Kernel.Shell.Effective).Gate(tDescriptor, .tUnchecked)
+            If $$$ISERR(tGateSC) {
+                Set tSC = tGateSC
+                Quit
+            }
+            If tUnchecked '= "" {
+                Set pCopies = 1
+                Quit
+            }
+            Kill tCriteria
+            Set tCriteria("namespace") = pSource
+            Set tReadSC = ##class(OcuPilot.Screen.Read).Execute(tDescriptor, ..CopySourceCap(), .tResult, .tHttp, .tFault, .tCriteria)
+            If $$$ISERR(tReadSC) {
+                Set tSC = tReadSC
+                Quit
+            }
+            If '$IsObject($Get(tResult)) || tResult.%Get("truncated") {
+                Set pCopies = 1
+                Quit
+            }
+            Set tRows = tResult.%Get("rows")
+            If '$IsObject(tRows) {
+                Set pCopies = 1
+                Quit
+            }
+            Set tIterator = tRows.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tRow) {
+                If $IsObject(tRow) && ..CoversOwnName(tRow.%Get("Name"), tType, pDestination) Set pCopies = 1
+            }
+            If pCopies Quit
+        }
+    } Catch ex {
+        Set pCopies = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>An OAuth 2.0 server description's settable fields, create and change alike: the four
@@ -1676,7 +2422,9 @@ ClassMethod OAuthEntry(pType As %String, ByRef pChanged, Output pProhibits As %B
 }
 
 /// <p>The process predicates, in declared order, first hit wins: a process OcuPilot is itself
-/// running in, an IRIS system process, then the reviewed-few sweep over an empty permitted list.</p>
+/// running in, an IRIS system process, then the reviewed-few sweep over an empty permitted list. A
+/// broadcast never reaches them (<parameter>BROADCASTWRITETYPE</parameter>): neither kind of process
+/// can receive one, and the port refuses a recipient that cannot.</p>
 /// <p><var>pTarget</var> is the <b>fresh</b> read <method>Target</method> took inside the confirm
 /// transition, so both predicates read the instance rather than the stored payload -- a pid is
 /// reusable once its process has ended, and the fingerprint's declared subject does not cover
@@ -3196,6 +3944,90 @@ ClassMethod AddressGrantsPrivilege(pPayload As %DynamicObject, pTarget As %Dynam
 ClassMethod LdapFields() As %List
 {
     Quit $ListFromString("Description,LDAPAttributes,LDAPAttributeComment,LDAPAttributeFullName,LDAPAttributeMail,LDAPAttributeMobile,LDAPAttributeMobileProvider,LDAPAttributeNameSpace,LDAPAttributeRoutine,LDAPAttributeRoles,LDAPAttributeEscalationRoles,LDAPBaseDN,LDAPBaseDNForGroups,LDAPClientTimeout,LDAPFlags,LDAPGroupId,LDAPHostNames,LDAPInstanceId,OrganizationId,GroupId,InstanceId,RoleId,EscalationRoleId,RoutineId,NamespaceId,DelimiterId,LDAPSearchUsername,LDAPServerTimeout,LDAPUniqueDNIdentifier")
+}
+
+/// <p>The web session predicates (Story 16.2): a session OcuPilot is itself running in is refused
+/// <parameter>OCUPILOTSESSION</parameter> (<method>IsOcuPilotSession</method>), then a preserve-mode
+/// session whose own process runs is refused <parameter>PRESERVEDSESSION</parameter>
+/// (<method>IsPreservedSession</method>), and every other session may be ended. <var>pTarget</var>
+/// is the fresh list row and <var>pOwnSession</var> the serving request's own session id,
+/// <code>""</code> when it runs in none.</p>
+/// <p>The end sends no body (AD-51), and its card rows are removals read from the fresh read, so it
+/// reaches the reviewed-few sweep with nothing changed, as <method>Device</method> reasons.</p>
+ClassMethod WebSession(pTarget As %DynamicObject, pOwnSession As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If ..IsOcuPilotSession(pTarget, pOwnSession) {
+            Do ..Refuse(..#OCUPILOTSESSION, .pProhibits, .pCode)
+            Quit
+        }
+        If ..IsPreservedSession(pTarget) {
+            Do ..Refuse(..#PRESERVEDSESSION, .pProhibits, .pCode)
+            Quit
+        }
+        Kill pChanged
+        Set tSC = ..ReviewedFewOnly(..#TYPEWEBSESSION, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pTarget</var>, a web session's list row, is a session OcuPilot is itself running
+/// in: its <code>Application</code> is one <method>ServesOcuPilot</method> names, under the web
+/// application's canonical spelling, or its <code>ID</code> equals <var>pOwnSession</var>, the
+/// serving request's own session id, exactly.</p>
+/// <p><b>It fails closed</b>: a row that is not an object or carries no <code>Application</code>,
+/// and a roster or install record that cannot be read, are all a session OcuPilot may be running
+/// in.</p>
+ClassMethod IsOcuPilotSession(pTarget As %DynamicObject, pOwnSession As %String = "") As %Boolean
+{
+    If '$IsObject(pTarget) Quit 1
+    Set tApplication = ..Rendered(pTarget, ..#FIELDAPPLICATION)
+    If tApplication = "" Quit 1
+    If (pOwnSession '= "") && (..Rendered(pTarget, ..#FIELDSESSIONID) = pOwnSession) Quit 1
+    Set tSC = ..ServesOcuPilot(tApplication, .tServes)
+    If $$$ISERR(tSC) Quit 1
+    Quit ''tServes
+}
+
+/// <p>Whether <var>pTarget</var>, a web session's list row, is a preserve-mode session whose own
+/// process runs: its <code>Preserve</code> reads 1, as the vendor's number or as a boolean true, and
+/// its <code>SesProcessId</code> names a process running on this instance now
+/// (<method>IsRunningProcess</method>). A row that carries no <code>Preserve</code>, or whose
+/// process has ended, is not one: no process holds its lock, and the vendor's end succeeds.</p>
+ClassMethod IsPreservedSession(pTarget As %DynamicObject) As %Boolean
+{
+    Set tPreserve = ..Rendered(pTarget, ..#FIELDPRESERVE)
+    If (tPreserve '= 1) && (tPreserve '= "true") Quit 0
+    Quit ..IsRunningProcess(..Rendered(pTarget, ..#FIELDSESPROCESSID))
+}
+
+/// <p>Whether <var>pPid</var> is a whole number naming a process running on this instance, read
+/// from <code>^$JOB</code> when called.</p>
+ClassMethod IsRunningProcess(pPid As %String) As %Boolean
+{
+    If '$Match(pPid, "^[0-9]+$") Quit 0
+    Quit ''$Data(^$JOB(pPid))
+}
+
+/// <p>The session id of the CSP session the serving request runs in, or <code>""</code> when
+/// <code>%session</code> is not an object -- a request served with no session, a background job, a
+/// test.</p>
+ClassMethod ServingSessionId() As %String
+{
+    Set tId = ""
+    Try {
+        If $IsObject($Get(%session)) Set tId = %session.SessionId
+    } Catch {
+        Set tId = ""
+    }
+    Quit tId
 }
 
 }

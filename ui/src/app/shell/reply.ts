@@ -6,20 +6,21 @@ import { REPLY_TAGS, parseReply, type ReplyNode } from '../core/reply';
 import { CODE_FRAME_CLASS, createCopyButton } from './copy-control';
 
 /**
- * Exactly what the builder ever writes (Boundaries & Constraints). `rel` is here alongside the
- * spec's own four -- every `<a>` this module builds carries `rel="noopener noreferrer nofollow"`
- * (Design Notes D5), and DOMPurify drops any attribute name absent from this list regardless of
- * what wrote it, `rel` included; omitting it would have the sanitizer undo D5 on every link.
+ * Exactly what the builder ever writes (Boundaries & Constraints). No `src` is among them: no
+ * reply element fetches anything (AD-11 rule 4). Every `<a>` this module builds carries
+ * `rel="noopener noreferrer nofollow"` (Design Notes D5), and DOMPurify drops any attribute name
+ * absent from this list regardless of what wrote it, `rel` included; omitting it would have the
+ * sanitizer undo D5 on every link.
  * `type` is a citation chip's `type="button"` (Story 11.4).
  */
-const ALLOWED_ATTR: readonly string[] = ['class', 'href', 'src', 'alt', 'rel', 'type'];
+const ALLOWED_ATTR: readonly string[] = ['class', 'href', 'rel', 'type'];
 
 /** The class a citation chip carries (Story 11.4). */
 export const CITATION_CLASS = 'ocu-reply-citation';
 
 /**
  * `http:`/`https:` absolute, or anything with no scheme at all (a relative or root-relative
- * path) -- the same shape `core/reply.ts`'s own link/image policy admits. Mirrors DOMPurify
+ * path) -- the same shape `core/reply.ts`'s own link policy admits. Mirrors DOMPurify
  * 3.4.15's own default `ALLOWED_URI_REGEXP` with the extra schemes it also allows (`mailto:`,
  * `tel:`, `callto:`, `sms:`, `cid:`, `xmpp:`, `matrix:`) removed: this reply never produces them,
  * so the sanitizer's second gate should not admit them either.
@@ -29,7 +30,7 @@ const ALLOWED_URI_REGEXP = /^(?:https?:|[^a-z]|[a-z][a-z0-9+.-]*(?:[^a-z0-9+.:-]
 /**
  * Builds one DOM node from a `ReplyNode` -- `createElement`/`textContent` only, never
  * `innerHTML` and never a template string (AD-11 rule 4, AD-33). The class list, and every
- * `href`/`src`/`alt`, are exactly what `core/reply.ts` decided; this function makes no rendering
+ * `href`, are exactly what `core/reply.ts` decided; this function makes no rendering
  * decision of its own.
  */
 function buildNode(doc: Document, node: ReplyNode, chips?: WeakMap<Element, Citation>): Node {
@@ -48,8 +49,6 @@ function buildNode(doc: Document, node: ReplyNode, chips?: WeakMap<Element, Cita
   const el = doc.createElement(node.tag);
   if (node.classes.length > 0) el.className = node.classes.join(' ');
   if (node.href !== undefined) el.setAttribute('href', node.href);
-  if (node.src !== undefined) el.setAttribute('src', node.src);
-  if (node.alt !== undefined) el.setAttribute('alt', node.alt);
   // rel carries even though DOMPurify would also strip a bare target -- "inert" is the link's
   // own contract, not only what the sanitizer happens to remove (Design Notes D5).
   if (node.tag === 'a') el.setAttribute('rel', 'noopener noreferrer nofollow');

@@ -56,12 +56,12 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integer,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase,global-mapping:foldcase-firstpart,routine-mapping:foldcase-firstpart,package-mapping:foldcase-firstpart,database-configuration:foldcase";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
 /// <class>OcuPilot.Test.EntityRef</class>.</p>
-Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer";
+Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer,foldcase-firstpart,integerset";
 
 /// <p>The web-application rule: fold to lower case, then strip every trailing slash.</p>
 Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
@@ -77,8 +77,17 @@ Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
 /// <code>HSCUSTOM</code>, <code>hscustom</code> and <code>HsCustom</code> -- so two spellings are
 /// one entity and AD-34's per-target lock has to cover both (AD-13).</p>
 /// <p>A service's and an LDAP configuration's name are resolved without case by the vendor's own
-/// <code>GET</code> (measured on this build, Story 9.9), so they take the same rule.</p>
+/// <code>GET</code> (measured on this build, Story 9.9), so they take the same rule. So does a
+/// namespace's: the vendor resolves it without case and stores it upper case (Story 18.2). So does a
+/// database configuration name's (Story 18.3, measured on this build).</p>
 Parameter RULEFOLDCASE = "foldcase";
+
+/// <p>The namespace mappings' rule (Story 18.14): fold to lower case the text before the first
+/// <parameter>OcuPilot.Kernel.EntityId.COMPOSITESEPARATOR</parameter>, and keep the rest as it is.
+/// A mapping's composite id is <code>[namespace, Name]</code>; the instance resolves a namespace
+/// without case, while a global's or routine's name is case-sensitive. An id with no separator is
+/// folded whole.</p>
+Parameter RULEFOLDCASEFIRSTPART = "foldcase-firstpart";
 
 /// <p>The rule of a configuration with exactly one instance -- the auditing configuration and the
 /// OAuth 2.0 authorization server configuration: answer <parameter>RULESINGLETONID</parameter>
@@ -89,8 +98,8 @@ Parameter RULEFOLDCASE = "foldcase";
 /// defeating AD-34's per-target lock and its sibling cancel.</p>
 Parameter RULESINGLETON = "singleton";
 
-/// <p>The task and process rule: a numeric id in its plain decimal spelling. Both vendor ids are
-/// integers the model supplies as strings through
+/// <p>The task rule, and each member of the process rule's set: a numeric id in its plain decimal
+/// spelling. Both vendor ids are integers the model supplies as strings through
 /// <method>OcuPilot.Screen.Tool.Write.View</method>, so <code>"007"</code>, <code>"+7"</code> and
 /// <code>" 7 "</code> are spellings of one target and would otherwise be three keys. Measured on
 /// this build against <code>Process</code>'s own <code>GET</code>, <code>"837"</code>,
@@ -99,6 +108,16 @@ Parameter RULESINGLETON = "singleton";
 /// task's name, which both create callers compare without regard to case, so two spellings of one
 /// name are one key and AD-34's per-target lock covers both (AD-13, AD-54).</p>
 Parameter RULEINTEGER = "integer";
+
+/// <p>The process rule: a set of numeric ids, comma-separated, in one spelling -- each member in
+/// <parameter>RULEINTEGER</parameter>'s plain decimal spelling, each named once, in ascending
+/// order, joined by a comma with no space. <code>" 907,812, 812"</code> and <code>"812,907"</code>
+/// are one target, so a broadcast to one set of processes takes one key (AD-13, Story 16.6). A
+/// single pid answers exactly what <parameter>RULEINTEGER</parameter> answers, and a value with a
+/// member that is not an optionally-signed run of digits is folded to lower case as that rule folds
+/// one. The order is on the string -- sign, then length, then digits -- so
+/// <file>ui/src/app/core/entity-ref.ts</file> answers the same without arithmetic.</p>
+Parameter RULEINTEGERSET = "integerset";
 
 /// <p>The one id a <parameter>RULESINGLETON</parameter> type's reference carries.
 /// <code>SYSTEM</code> is <class>Security.System</class>'s own row id, which
@@ -248,7 +267,13 @@ ClassMethod NormalizedId(pType As %String, pId As %String) As %String
     If tRule = "" Quit pId
     If tRule = ..#RULESINGLETON Quit ..#RULESINGLETONID
     If tRule = ..#RULEINTEGER Quit ..PlainInteger(pId)
+    If tRule = ..#RULEINTEGERSET Quit ..PlainIntegerSet(pId)
     If tRule = ..#RULEFOLDCASE Quit $ZConvert(pId, "L")
+    If tRule = ..#RULEFOLDCASEFIRSTPART {
+        Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
+        If pId '[ tSeparator Quit $ZConvert(pId, "L")
+        Quit $ZConvert($Piece(pId, tSeparator, 1), "L") _ tSeparator _ $Piece(pId, tSeparator, 2, *)
+    }
     If tRule '= ..#RULEFOLDCASESTRIPTRAILINGSLASH Quit pId
     Set tId = $ZConvert(pId, "L")
     While (tId '= "") && ($Extract(tId, $Length(tId)) = "/") {
@@ -277,6 +302,52 @@ ClassMethod PlainInteger(pId As %String) As %String [ Private ]
     }
     If tId = "0" Set tSign = ""
     Quit tSign _ tId
+}
+
+/// <p><var>pId</var> as a set of plain decimal ids (<parameter>RULEINTEGERSET</parameter>): each
+/// comma-separated member in <method>PlainInteger</method>'s spelling, each once, the negative
+/// ones first by descending magnitude and then the rest ascending, joined by a comma. A member
+/// that is not an optionally-signed run of digits, an empty one included, answers the whole value
+/// folded to lower case.</p>
+ClassMethod PlainIntegerSet(pId As %String) As %String [ Private ]
+{
+    Kill tNegative, tPositive
+    For tI = 1:1:$Length(pId, ",") {
+        Set tPart = $ZStrip($Piece(pId, ",", tI), "<>W")
+        If '$Match(tPart, "^[+-]?[0-9]+$") Return $ZConvert(pId, "L")
+        Set tPlain = ..PlainInteger(tPart)
+        ; The digits are subscripted behind a letter so every member collates as a string: within
+        ; one length, string order is numeric order, and no member is ever read as a number.
+        If $Extract(tPlain) = "-" {
+            Set tNegative($Length(tPlain) - 1, "d" _ $Extract(tPlain, 2, *)) = tPlain
+        } Else {
+            Set tPositive($Length(tPlain), "d" _ tPlain) = tPlain
+        }
+    }
+    Set tSet = ""
+    Set tLength = ""
+    For {
+        Set tLength = $Order(tNegative(tLength), -1)
+        If tLength = "" Quit
+        Set tDigits = ""
+        For {
+            Set tDigits = $Order(tNegative(tLength, tDigits), -1, tPlain)
+            If tDigits = "" Quit
+            Set tSet = tSet _ $Select(tSet = "": "", 1: ",") _ tPlain
+        }
+    }
+    Set tLength = ""
+    For {
+        Set tLength = $Order(tPositive(tLength))
+        If tLength = "" Quit
+        Set tDigits = ""
+        For {
+            Set tDigits = $Order(tPositive(tLength, tDigits), 1, tPlain)
+            If tDigits = "" Quit
+            Set tSet = tSet _ $Select(tSet = "": "", 1: ",") _ tPlain
+        }
+    }
+    Quit tSet
 }
 
 /// <p>The rule <parameter>IDRULES</parameter> declares for <var>pType</var>, or <code>""</code>
