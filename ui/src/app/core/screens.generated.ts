@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'global-mapping' | 'routine-mapping' | 'package-mapping';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -153,7 +153,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -446,6 +446,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "agent-policy",
   "allowed-directory",
   "namespace",
+  "web-session",
+  "background-task",
   "global-mapping",
   "routine-mapping",
   "package-mapping"
@@ -2160,6 +2162,186 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "secretArguments": [],
     "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.BackgroundTaskList",
+    "route": "tasks/background",
+    "area": "tasks",
+    "labelKey": "backgroundTaskListLabel",
+    "sideBarPosition": 5,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "background-task",
+    "entityLabelKey": "proposalEntityBackgroundTask",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Source",
+        "Id"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "cancel",
+        "selfProtection": ""
+      },
+      {
+        "id": "pause",
+        "selfProtection": ""
+      },
+      {
+        "id": "resume",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Source",
+        "Id",
+        "Task",
+        "Namespace",
+        "Status",
+        "Details",
+        "ErrorCount",
+        "StartTime"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "backgroundTaskListEmpty",
+    "commandAliases": [
+      "background tasks",
+      "background jobs"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backgroundTaskListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backgroundTaskListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "backgroundTaskListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.BackgroundTaskList",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "background",
+        "endpoint": "BackgroundTask",
+        "type": "LIST"
+      },
+      "fields": [
+        "Source",
+        "Id",
+        "Task",
+        "Namespace",
+        "Status",
+        "Details",
+        "ErrorCount",
+        "StartTime"
+      ],
+      "filter": [
+        "Source",
+        "Task",
+        "Namespace",
+        "Status",
+        "Details"
+      ],
+      "sort": {
+        "fields": [
+          "StartTime",
+          "Task",
+          "Source",
+          "Namespace",
+          "Status"
+        ],
+        "default": "StartTime",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Task",
+          "labelKey": "proposalEntityTask",
+          "kind": "name"
+        },
+        {
+          "field": "Source",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Details",
+          "labelKey": "backgroundTaskColumnDetails",
+          "kind": "text"
+        },
+        {
+          "field": "ErrorCount",
+          "labelKey": "backgroundTaskColumnErrorCount",
+          "kind": "text"
+        },
+        {
+          "field": "StartTime",
+          "labelKey": "taskStartTime",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "backgroundTaskListEmptyAgent"
+    },
+    "toolIdentifier": "tasks.background",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseDetails",
@@ -4741,6 +4923,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%Admin_Operate",
         "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
       }
     ],
     "entityType": "log-entry",
@@ -10833,6 +11019,164 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.WebSessionList",
+    "route": "web-applications/sessions",
+    "area": "web-applications",
+    "labelKey": "webSessionListLabel",
+    "sideBarPosition": 3,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "web-session",
+    "entityLabelKey": "proposalEntityWebSession",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "ID"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "end",
+        "selfProtection": "ocupilot-session"
+      }
+    ],
+    "context": {
+      "fields": [
+        "ID",
+        "Username",
+        "Application",
+        "SesProcessId",
+        "Timeout"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "webSessionListEmpty",
+    "commandAliases": [
+      "sessions",
+      "CSP sessions"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "webSessionListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "webSessionListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "webSessionListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.CSPSessions",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "WebSession",
+        "type": "LIST"
+      },
+      "fields": [
+        "ID",
+        "Username",
+        "Application",
+        "SesProcessId",
+        "Timeout",
+        "Preserve"
+      ],
+      "filter": [
+        "ID",
+        "Username",
+        "Application",
+        "SesProcessId"
+      ],
+      "sort": {
+        "fields": [
+          "ID",
+          "Username",
+          "Application",
+          "SesProcessId",
+          "Timeout"
+        ],
+        "default": "Application",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "SesProcessId",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "ID",
+          "labelKey": "webSessionColumnSession",
+          "kind": "identifier"
+        },
+        {
+          "field": "Username",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "Application",
+          "labelKey": "oauthResourceServerFieldApplication",
+          "kind": "identifier"
+        },
+        {
+          "field": "Timeout",
+          "labelKey": "webSessionColumnExpires",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "webSessionListEmptyAgent"
+    },
+    "rowTarget": {
+      "route": "os-management/processes/details",
+      "field": "SesProcessId"
+    },
+    "toolIdentifier": "webapp.sessions",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.X509CredentialList",

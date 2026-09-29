@@ -47,7 +47,9 @@ export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
  * Delete types the name, and the Authorization server tab (Story 12.7), whose Delete types the issuer
  * and whose Rotate Keys is sent at once, and the Namespaces list (Story 18.2), whose Delete types the
  * name and states the removal's impact -- and whose Copy mappings its own page runs (Story 18.14) --
- * and the global, routine and package mapping lists (Story 18.14), whose Delete types the mapping's
+ * the Web sessions list (Story 16.2), whose End session types the session id, the Background tasks
+ * list (Story 16.5), whose Pause and Resume are sent at once and whose Cancel task warns first, and
+ * the global, routine and package mapping lists (Story 18.14), whose Delete types the mapping's
  * name.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
@@ -72,6 +74,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.OAuthResourceServerTab',
   'OcuPilot.Screen.Descriptor.OAuthServerTab',
   'OcuPilot.Screen.Descriptor.NamespaceList',
+  'OcuPilot.Screen.Descriptor.WebSessionList',
+  'OcuPilot.Screen.Descriptor.BackgroundTaskList',
   'OcuPilot.Screen.Descriptor.GlobalMappingList',
   'OcuPilot.Screen.Descriptor.RoutineMappingList',
   'OcuPilot.Screen.Descriptor.PackageMappingList',
@@ -203,7 +207,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens'];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'end'];
 
 /**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
@@ -243,6 +247,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.OAuthResourceServerTab': { delete: STRINGS.oauthResourceServerDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthServerTab': { delete: STRINGS.oauthAuthServerDeleteConsequence },
   [NAMESPACE_LIST]: { delete: STRINGS.namespaceDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.WebSessionList': { end: STRINGS.webSessionEndConsequence },
   [GLOBAL_MAPPING_LIST]: { delete: STRINGS.globalMappingDeleteConsequence },
   [ROUTINE_MAPPING_LIST]: { delete: STRINGS.routineMappingDeleteConsequence },
   [PACKAGE_MAPPING_LIST]: { delete: STRINGS.packageMappingDeleteConsequence },
@@ -303,6 +308,8 @@ const TYPED_NAME_ROWS: Readonly<
  */
 const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   'OcuPilot.Screen.Descriptor.AuditingConfig': { disable: STRINGS.proposalAuditWarning },
+  // Story 16.5: a canceled background task cannot be resumed.
+  'OcuPilot.Screen.Descriptor.BackgroundTaskList': { cancel: STRINGS.backgroundTaskCancelConsequence },
 };
 
 /**

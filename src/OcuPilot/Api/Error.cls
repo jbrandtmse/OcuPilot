@@ -4159,4 +4159,13 @@ Parameter PERMISSIONUNCHECKED = "PERMISSION.UNCHECKED";
 
 Parameter REASONPERMISSIONUNCHECKED = "There are too many roles or resources to read, so this was not checked.";
 
+/// <p>Machine code (AD-12, AD-39, Story 16.5): a background task whose current state does not
+/// allow the cancel, pause or resume asked of it -- the vendor's own refusal (the admin API's 409,
+/// <code>%SYS.BackgroundTask</code>'s error 9503), or a Management Portal job with no background
+/// task to act on. Answered on the <parameter>CONFLICT</parameter> slug with 409 by
+/// <class>OcuPilot.Port.BackgroundTaskPort</class>.</p>
+Parameter TASKBACKGROUNDSTATE = "TASK.BACKGROUND.STATE";
+
+Parameter REASONTASKBACKGROUNDSTATE = "This background task's current state does not allow that.";
+
 }

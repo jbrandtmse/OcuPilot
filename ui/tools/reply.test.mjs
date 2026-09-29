@@ -14,8 +14,10 @@ import { dirname, join } from 'node:path';
 //   goes red (a `<script>` would then produce a real, if inert, node in the tree).
 // - drop the `registered(lang)` guard before calling `lowlight.highlight` -> "a fenced block
 //   tagged with an unregistered language" throws instead of rendering plain.
-// - allow a non-same-origin `src` through `imageNode` -> "a same-origin image renders" and
-//   "a remote image renders as text" both go red, the second because an `img` node appears.
+// - return an `img` element from `imageNode` for a same-origin `src` -> "a same-origin Markdown
+//   image renders as its alt text" goes red, because an `img` node appears (AD-11 rule 4: no
+//   rendered reply fetches anything, the instance's own origin included).
+// - put `img` back into `REPLY_TAGS` -> "REPLY_TAGS admits no img" goes red.
 // - drop the `isAllowedLinkUrl` check in `linkNodes` -> "a hostile scheme renders as text" goes
 //   red, producing an `a` node for a `javascript:` href.
 // - make `isAllowedClass` return `true` unconditionally -> "isAllowedClass admits exactly the
@@ -142,12 +144,21 @@ test('a remote Markdown image with empty alt renders its literal source', () => 
   assert.equal(textOf(nodes), '![](http://203.0.113.9/m.png)');
 });
 
-test('a same-origin image renders as an img node with its src and alt', () => {
-  const nodes = parse('![logo](/ocupilot/media/x.png)');
-  const img = findFirst(nodes, (n) => n.tag === 'img');
-  assert.ok(img, 'expected an img node');
-  assert.equal(img.src, '/ocupilot/media/x.png');
-  assert.equal(img.alt, 'logo');
+test('a same-origin Markdown image renders as its alt text and creates no img node', () => {
+  for (const src of ['/ocupilot/media/x.png', 'media/x.png', `${ORIGIN}/api/ocupilot/readiness`]) {
+    const nodes = parse(`![logo](${src})`);
+    assert.equal(textOf(nodes), 'logo', `alt text for ${src}`);
+    assert.equal(findFirst(nodes, (n) => n.tag === 'img'), null, `no img node for ${src}`);
+  }
+});
+
+test('a same-origin Markdown image with empty alt renders its literal source', () => {
+  const nodes = parse('![](/ocupilot/media/x.png)');
+  assert.equal(textOf(nodes), '![](/ocupilot/media/x.png)');
+});
+
+test('REPLY_TAGS admits no img, so the sanitizer removes one whatever built it', () => {
+  assert.equal(REPLY_TAGS.includes('img'), false);
 });
 
 // DESIGN.md `message-agent` puts the host "after the link text", and the I/O matrix's External

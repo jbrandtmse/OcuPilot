@@ -177,6 +177,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'tasks/on-demand',
       'tasks/upcoming',
       'tasks/history',
+      // Story 16.5: Background tasks, the fifth Tasks entry.
+      'tasks/background',
       'permissions/roles/edit',
       // Story 9.9: the unlisted reduced service form, reached from the Services list's name cell.
       'permissions/services/edit',
@@ -189,6 +191,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'web-applications/list/edit',
       'web-applications/list',
       'web-applications/rest-apis',
+      // Story 16.2: Web sessions, the third Web applications entry.
+      'web-applications/sessions',
       // Story 7.4: the two unlisted audit event lists, then Auditing configuration at position 6.
       'security/auditing/system-events',
       'security/auditing/user-events',
@@ -225,7 +229,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/ledger',
       'agent/transcripts',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files, device editor, the global mapping form and list, the namespace editor, the package mapping form and list, process details, the routine mapping form and list, processes, Locks, System usage, Databases, Devices, Namespaces, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files, device editor, the global mapping form and list, the namespace editor, the package mapping form and list, process details, the routine mapping form and list, processes, Locks, System usage, Databases, Devices, Namespaces, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
   );
 });
 
@@ -381,8 +385,8 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   assert.equal(editorScreenFor(roles)?.route, 'permissions/roles/edit', 'and a row name opens the role editor at its id route');
   assert.deepEqual(
     listedScreensForArea('web-applications').map((screen) => screen.route),
-    ['web-applications/list', 'web-applications/rest-apis'],
-    'the side bar lists Web applications then the REST API explorer -- the viewer takes no position'
+    ['web-applications/list', 'web-applications/rest-apis', 'web-applications/sessions'],
+    'the side bar lists Web applications, the REST API explorer and Web sessions (Story 16.2) -- the viewer takes no position'
   );
   assert.equal(isListedScreen(screenForRoute('web-applications/rest-apis/document')), false, 'the viewer is the unlisted one');
 });

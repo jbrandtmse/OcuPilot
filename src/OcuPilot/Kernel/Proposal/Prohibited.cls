@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,global-mapping,routine-mapping,package-mapping";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -359,6 +359,47 @@ Parameter OCUPILOTNAMESPACEREASON = "OcuPilot or the instance itself runs in thi
 /// <p>The two namespace fields whose change on an own namespace
 /// (<parameter>OCUPILOTNAMESPACE</parameter>) is refused, comma-separated.</p>
 Parameter OWNNAMESPACEFIELDS = "Globals,Routines";
+/// <p>A web session (Story 16.2, <method>WebSession</method>).</p>
+Parameter TYPEWEBSESSION = "web-session";
+
+/// <p>A background task (Story 16.5), whose cancel, pause and resume the reviewed-few sweep alone
+/// judges (<method>ReviewedFewOnly</method>).</p>
+Parameter TYPEBACKGROUNDTASK = "background-task";
+
+/// <p>The write would end a web session OcuPilot is itself running in
+/// (<method>IsOcuPilotSession</method>): one under an application OcuPilot is served through, or
+/// the session the serving request itself runs in (AD-10 as amended 2026-09-28). The web-session
+/// twin of <parameter>OCUPILOTPROCESS</parameter>, refused whatever the caller.</p>
+Parameter OCUPILOTSESSION = "PROHIBITED.OCUPILOTSESSION";
+
+/// <p>The one sentence <parameter>OCUPILOTSESSION</parameter> carries, caller-neutral, published
+/// in EXPERIENCE.md's Fixed strings and pinned equal to <code>webSessionRefusalOcuPilot</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTSESSIONREASON = "OcuPilot itself is running in this session. It cannot be ended from OcuPilot.";
+
+/// <p>A web session's field the own-session arm reads.</p>
+Parameter FIELDAPPLICATION = "Application";
+
+/// <p>A web session's id field, compared exactly with the serving request's own session id.</p>
+Parameter FIELDSESSIONID = "ID";
+
+/// <p>The write would end a preserve-mode web session while its own process runs
+/// (<method>IsPreservedSession</method>): that process holds the session's lock, so the vendor's end
+/// waits out the lock timeout and the session stays listed (AD-10 as amended 2026-09-28). Refused
+/// whatever the caller, before any <code>DELETE</code> is sent. Once the process has ended, the
+/// session may be ended.</p>
+Parameter PRESERVEDSESSION = "PROHIBITED.PRESERVEDSESSION";
+
+/// <p>The one sentence <parameter>PRESERVEDSESSION</parameter> carries, caller-neutral, published
+/// in EXPERIENCE.md's Fixed strings and pinned equal to <code>webSessionRefusalPreserved</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter PRESERVEDSESSIONREASON = "This session's own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session.";
+
+/// <p>A web session's preserve-mode field, which the vendor's list answers as a number.</p>
+Parameter FIELDPRESERVE = "Preserve";
+
+/// <p>A web session's own process id, which a preserve-mode session carries.</p>
+Parameter FIELDSESPROCESSID = "SesProcessId";
 
 /// <p>A namespace's global, routine and package mappings (Story 18.14, <method>Mapping</method>),
 /// each keyed by the composite <code>[namespace, Name]</code>.</p>
@@ -525,11 +566,11 @@ Parameter READTYPE = "GET";
 /// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
 /// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
 /// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the one
-/// <method>Namespace</method> adds, and the one <method>Mapping</method> adds last -- twenty in
-/// all.</p>
+/// <method>Namespace</method> adds, the two <method>WebSession</method> adds, and the one
+/// <method>Mapping</method> adds last -- twenty-two in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTMAPPING)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -560,6 +601,8 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTSSL Quit ..#OCUPILOTSSLREASON
     If pCode = ..#SERVINGSERVICE Quit ..#SERVINGSERVICEREASON
     If pCode = ..#OCUPILOTNAMESPACE Quit ..#OCUPILOTNAMESPACEREASON
+    If pCode = ..#OCUPILOTSESSION Quit ..#OCUPILOTSESSIONREASON
+    If pCode = ..#PRESERVEDSESSION Quit ..#PRESERVEDSESSIONREASON
     If pCode = ..#OCUPILOTMAPPING Quit ..#OCUPILOTMAPPINGREASON
     Quit ""
 }
@@ -851,11 +894,16 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && '..IsMappingType(tType) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && '..IsMappingType(tType) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
+
+        ; The session the serving request runs in, read before any port call, since the port
+        ; stubs %session while it runs (AD-2).
+        Set tOwnSession = ""
+        If tType = ..#TYPEWEBSESSION Set tOwnSession = ..ServingSessionId()
 
         Set tServes = 0
         If tType = ..#TYPEWEBAPPLICATION {
@@ -965,6 +1013,16 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If (tType = ..#TYPEAUDITEVENT) || (tType = ..#TYPEAUDITUSEREVENT) {
             Set tSC = ..AuditEvent(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEWEBSESSION {
+            Set tSC = ..WebSession(tTarget, tOwnSession, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A background task's control sets no field (AD-51) and AD-10 names no effect on one: the
+        ; reviewed-few sweep over an empty permitted list, and nothing else (Story 16.5).
+        If tType = ..#TYPEBACKGROUNDTASK {
+            Set tSC = ..ReviewedFewOnly(..#TYPEBACKGROUNDTASK, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -3565,6 +3623,90 @@ ClassMethod AddressGrantsPrivilege(pPayload As %DynamicObject, pTarget As %Dynam
 ClassMethod LdapFields() As %List
 {
     Quit $ListFromString("Description,LDAPAttributes,LDAPAttributeComment,LDAPAttributeFullName,LDAPAttributeMail,LDAPAttributeMobile,LDAPAttributeMobileProvider,LDAPAttributeNameSpace,LDAPAttributeRoutine,LDAPAttributeRoles,LDAPAttributeEscalationRoles,LDAPBaseDN,LDAPBaseDNForGroups,LDAPClientTimeout,LDAPFlags,LDAPGroupId,LDAPHostNames,LDAPInstanceId,OrganizationId,GroupId,InstanceId,RoleId,EscalationRoleId,RoutineId,NamespaceId,DelimiterId,LDAPSearchUsername,LDAPServerTimeout,LDAPUniqueDNIdentifier")
+}
+
+/// <p>The web session predicates (Story 16.2): a session OcuPilot is itself running in is refused
+/// <parameter>OCUPILOTSESSION</parameter> (<method>IsOcuPilotSession</method>), then a preserve-mode
+/// session whose own process runs is refused <parameter>PRESERVEDSESSION</parameter>
+/// (<method>IsPreservedSession</method>), and every other session may be ended. <var>pTarget</var>
+/// is the fresh list row and <var>pOwnSession</var> the serving request's own session id,
+/// <code>""</code> when it runs in none.</p>
+/// <p>The end sends no body (AD-51), and its card rows are removals read from the fresh read, so it
+/// reaches the reviewed-few sweep with nothing changed, as <method>Device</method> reasons.</p>
+ClassMethod WebSession(pTarget As %DynamicObject, pOwnSession As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If ..IsOcuPilotSession(pTarget, pOwnSession) {
+            Do ..Refuse(..#OCUPILOTSESSION, .pProhibits, .pCode)
+            Quit
+        }
+        If ..IsPreservedSession(pTarget) {
+            Do ..Refuse(..#PRESERVEDSESSION, .pProhibits, .pCode)
+            Quit
+        }
+        Kill pChanged
+        Set tSC = ..ReviewedFewOnly(..#TYPEWEBSESSION, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pTarget</var>, a web session's list row, is a session OcuPilot is itself running
+/// in: its <code>Application</code> is one <method>ServesOcuPilot</method> names, under the web
+/// application's canonical spelling, or its <code>ID</code> equals <var>pOwnSession</var>, the
+/// serving request's own session id, exactly.</p>
+/// <p><b>It fails closed</b>: a row that is not an object or carries no <code>Application</code>,
+/// and a roster or install record that cannot be read, are all a session OcuPilot may be running
+/// in.</p>
+ClassMethod IsOcuPilotSession(pTarget As %DynamicObject, pOwnSession As %String = "") As %Boolean
+{
+    If '$IsObject(pTarget) Quit 1
+    Set tApplication = ..Rendered(pTarget, ..#FIELDAPPLICATION)
+    If tApplication = "" Quit 1
+    If (pOwnSession '= "") && (..Rendered(pTarget, ..#FIELDSESSIONID) = pOwnSession) Quit 1
+    Set tSC = ..ServesOcuPilot(tApplication, .tServes)
+    If $$$ISERR(tSC) Quit 1
+    Quit ''tServes
+}
+
+/// <p>Whether <var>pTarget</var>, a web session's list row, is a preserve-mode session whose own
+/// process runs: its <code>Preserve</code> reads 1, as the vendor's number or as a boolean true, and
+/// its <code>SesProcessId</code> names a process running on this instance now
+/// (<method>IsRunningProcess</method>). A row that carries no <code>Preserve</code>, or whose
+/// process has ended, is not one: no process holds its lock, and the vendor's end succeeds.</p>
+ClassMethod IsPreservedSession(pTarget As %DynamicObject) As %Boolean
+{
+    Set tPreserve = ..Rendered(pTarget, ..#FIELDPRESERVE)
+    If (tPreserve '= 1) && (tPreserve '= "true") Quit 0
+    Quit ..IsRunningProcess(..Rendered(pTarget, ..#FIELDSESPROCESSID))
+}
+
+/// <p>Whether <var>pPid</var> is a whole number naming a process running on this instance, read
+/// from <code>^$JOB</code> when called.</p>
+ClassMethod IsRunningProcess(pPid As %String) As %Boolean
+{
+    If '$Match(pPid, "^[0-9]+$") Quit 0
+    Quit ''$Data(^$JOB(pPid))
+}
+
+/// <p>The session id of the CSP session the serving request runs in, or <code>""</code> when
+/// <code>%session</code> is not an object -- a request served with no session, a background job, a
+/// test.</p>
+ClassMethod ServingSessionId() As %String
+{
+    Set tId = ""
+    Try {
+        If $IsObject($Get(%session)) Set tId = %session.SessionId
+    } Catch {
+        Set tId = ""
+    }
+    Quit tId
 }
 
 }

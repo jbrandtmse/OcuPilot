@@ -168,8 +168,9 @@ Parameter TASKERRORSKEY = "taskerrors";
 
 /// <p>The background task error log's pair set. Its classic page
 /// (<code>%CSP.UI.Portal.BackgroundTaskError</code>) declares no resource, so it takes the one the
-/// Logs area's other pages carry.</p>
-Parameter TASKERRORSPAIRS = "%Admin_Operate:USE";
+/// Logs area's other pages carry, and <code>%DB_IRISSYS:READ</code>, because the task list is read
+/// in <code>%SYS</code> (<method>FetchTasks</method>).</p>
+Parameter TASKERRORSPAIRS = "%Admin_Operate:USE,%DB_IRISSYS:READ";
 
 /// <p>The <parameter>SOURCES</parameter> key for the xDBC error log.</p>
 Parameter XDBCKEY = "xdbc";
@@ -1381,30 +1382,44 @@ ClassMethod Interoperable(pNamespace As %String) As %Boolean
 }
 
 /// <p>The background tasks <code>EnumerateTasks</code> lists, newest first, each
-/// <code>$ListBuild(ID, StartTime, Namespace, Task, Status, Details)</code>.</p>
+/// <code>$ListBuild(ID, StartTime, Namespace, Task, Status, Details)</code>, read in
+/// <code>%SYS</code> (AD-16): outside it the query reports a job's stored status rather than its
+/// background task's state.</p>
 ClassMethod FetchTasks(Output pTasks) As %Status
 {
     Set tSC = $$$OK
     Kill pTasks
     Set tRS = ""
+    Set tOrigNS = $NAMESPACE
     Try {
+        Set $NAMESPACE = "%SYS"
         Set tRS = ##class(%ResultSet).%New("%CSP.UI.System.BackgroundTask:EnumerateTasks")
         If '$IsObject(tRS) {
+            Set $NAMESPACE = tOrigNS
             Set tSC = $$$ERROR($$$GeneralError, "the background task list could not be opened")
             Quit
         }
         Set tSC = tRS.Execute()
-        If $$$ISERR(tSC) Quit
+        If $$$ISERR(tSC) {
+            Do tRS.Close()
+            Set tRS = ""
+            Set $NAMESPACE = tOrigNS
+            Quit
+        }
         Set tCount = 0
         While tRS.Next(.tSC) {
             Set tCount = tCount + 1
             Set pTasks(tCount) = $ListBuild(tRS.Get("ID"), tRS.Get("StartTime"), tRS.Get("Namespace"), tRS.Get("Task"), tRS.Get("Status"), tRS.Get("Details"))
         }
+        Do tRS.Close()
+        Set tRS = ""
+        Set $NAMESPACE = tOrigNS
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Kill pTasks
+        Set tRS = ""
         Set tSC = ex.AsStatus()
     }
-    If $IsObject(tRS) Do tRS.Close()
     Quit tSC
 }
 

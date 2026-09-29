@@ -1189,6 +1189,117 @@ describe('the Namespaces list\u2019s Delete (Story 18.2)', () => {
 });
 
 /**
+ * Story 16.2: the Web sessions list's End session, typed by the session id with its own consequence,
+ * and a session under one of OcuPilot's own applications drawn refused before anything is sent.
+ */
+describe('the Web sessions list\u2019s End session (Story 16.2)', () => {
+  const SESSIONS = 'OcuPilot.Screen.Descriptor.WebSessionList';
+  const ID = 'wSeS5iOnId';
+
+  it('registers End session, opening the typed-name dialog titled by the verb and the session id', () => {
+    // Mutation (Rule 19): remove 'end' from `DESTRUCTIVE_ACTIONS` -> the action is sent at once
+    // and the dialog assertions go red.
+    const { actions, handler, store, calls } = mount(undefined, SESSIONS);
+    expect(actions.has(SESSIONS, 'end')).toBe(true);
+    handler.startFor(SESSIONS, 'end', ID, { ID, Application: '/api/atelier/' }, store);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('typed-name');
+    expect(`${pending?.verb} ${pending?.name}`).toBe(`End session ${ID}`);
+    expect(pending?.consequence).toBe(STRINGS.webSessionEndConsequence);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends a confirmed End session once, keyed by the session id, and publishes the deleted event', async () => {
+    const { handler, store, calls, events } = mount(
+      { kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'web-session', scope: 'instance', id: ID } } },
+      SESSIONS
+    );
+    handler.startFor(SESSIONS, 'end', ID, { ID, Application: '/api/atelier/' }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/webapp.sessions/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'end', id: ID });
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`deleted web-session ${ID}`]);
+  });
+
+  it("draws a session under OcuPilot's own application refused before anything is sent", () => {
+    // Mutation (Rule 19): drop the `ocupilot-session` branch from `selfProtectionReason` -> the
+    // dialog opens and the refusal assertion goes red.
+    const { handler, store, calls } = mount(undefined, SESSIONS);
+    handler.startFor(SESSIONS, 'end', ID, { ID, Application: '/api/ocupilot/' }, store);
+    expect(store.refusal()).toBe(STRINGS.webSessionRefusalOcuPilot);
+    expect(handler.pending()).toBeNull();
+    expect(calls).toHaveLength(0);
+  });
+
+  it("offers End session on a preserve-mode session and shows the instance's refusal, pointing to its process, after the click", async () => {
+    // Mutation (Rule 19): answer the preserve-mode sentence for a `Preserve` 1 row in
+    // `selfProtectionReason` -> no dialog opens and the typed-name assertion goes red.
+    const refused = { kind: 'error', status: 403, code: 'PROHIBITED.PRESERVEDSESSION', reason: STRINGS.webSessionRefusalPreserved, detail: null } as JsonResult<unknown>;
+    const { handler, store, calls, events } = mount(refused, SESSIONS);
+    handler.startFor(SESSIONS, 'end', ID, { ID, Application: '/csp/hscustom/', Preserve: 1, SesProcessId: '4242' }, store);
+    expect(handler.pending()?.kind).toBe('typed-name');
+    expect(store.refusal()).toBe('');
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'end', id: ID });
+    expect(store.refusal()).toBe(STRINGS.webSessionRefusalPreserved);
+    expect(events).toEqual([]);
+  });
+});
+
+/**
+ * Story 16.5: the Background tasks list's Cancel task, which warns first with its own consequence,
+ * and its Pause and Resume, each sent at once. A row's id is its source and id joined.
+ */
+describe('the Background tasks list\u2019s Cancel task, Pause and Resume (Story 16.5)', () => {
+  const BACKGROUND = 'OcuPilot.Screen.Descriptor.BackgroundTaskList';
+  const ID = 'Management Portal\u00014242';
+  const ROW = { Source: 'Management Portal', Id: '4242', Status: 'Paused' };
+  const TARGET = { type: 'background-task', scope: 'instance', id: ID };
+
+  it('opens the warning before Cancel task, titled by the verb with the consequence, and the dialog\u2019s Cancel sends nothing', async () => {
+    // Mutation (Rule 19): remove `cancel` from WARNING_CONSEQUENCES' BackgroundTaskList entry -> the
+    // cancel is sent at once and the warning assertions go red.
+    const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, BACKGROUND);
+    expect(actions.has(BACKGROUND, 'cancel')).toBe(true);
+    handler.startFor(BACKGROUND, 'cancel', ID, ROW, store);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('warning');
+    expect(pending?.verb).toBe(STRINGS.backgroundTaskCancelAction);
+    expect(pending?.consequence).toBe(STRINGS.backgroundTaskCancelConsequence);
+    handler.cancelPending();
+    await settle();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends Cancel task once past the warning\u2019s Proceed, keyed by the composite id, and publishes the updated event', async () => {
+    const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, BACKGROUND);
+    handler.startFor(BACKGROUND, 'cancel', ID, ROW, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/tasks.background/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'cancel', id: ID });
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`updated background-task ${ID}`]);
+  });
+
+  it('sends Pause and Resume at once, with no dialog', async () => {
+    // Mutation (Rule 19): add `pause` to WARNING_CONSEQUENCES' BackgroundTaskList entry -> Pause opens
+    // the warning and nothing is sent, red.
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, BACKGROUND);
+    for (const action of ['pause', 'resume']) {
+      handler.startFor(BACKGROUND, action, ID, ROW, store);
+      expect(handler.pending()).toBeNull();
+    }
+    await settle();
+    expect(calls.map((call) => JSON.parse(call.body).action)).toEqual(['pause', 'resume']);
+  });
+});
+
+/**
  * Story 18.14: the three mapping lists' Delete types the mapping's name -- the row key is
  * `[namespace, Name]`, whose separator no one can type -- states its kind's consequence, and sends
  * the whole row key; the Namespaces list's Copy mappings is left to that list's own page.

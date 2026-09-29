@@ -74,6 +74,7 @@ XData ReadShapes
 <screen name="AuditSystemEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
 <screen name="AuditUserEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
 <screen name="AuditingConfig" filter="Enabled" sort="Enabled" kinds=""/>
+<screen name="BackgroundTaskList" filter="Source,Task,Namespace,Status,Details" sort="StartTime,Task,Source,Namespace,Status" kinds="Task:name,Source:text,Status:status,Namespace:text,Details:text,ErrorCount:text,StartTime:text"/>
 <screen name="DatabaseDetails" filter="Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted" sort="Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted" kinds="Directory:name,Size:number,MaxSize:number,AvailableSpace:number,DiskFree:text,Mounted:status,ExpansionSize:number,NewVolumeThreshold:number,NewVolumeDirectory:identifier,ResourceName:identifier,NewGlobalIsKeep:status,NewGlobalCollation:number,ClusterMountMode:status,ReadOnly:status,GlobalJournalState:status"/>
 <screen name="DatabaseFreeSpace" filter="Directory,Size,AvailableSpace,DiskFree,Mounted" sort="Directory,Size,AvailableSpace,DiskFree" kinds="Directory:name,Size:number,AvailableSpace:number,DiskFree:text,Mounted:text"/>
 <screen name="DatabaseList" filter="Directory,Size,MaxSize,Status,Resource" sort="Directory,Size,MaxSize,Status,Resource" kinds="Directory:name,Size:number,MaxSize:text,Status:text,Resource:identifier"/>
@@ -118,6 +119,7 @@ XData ReadShapes
 <screen name="WalletCollectionList" filter="Name,UseResource,EditResource" sort="Name,UseResource,EditResource" kinds="Name:name,UseResource:text,EditResource:text"/>
 <screen name="WalletSecretList" filter="Name,Type" sort="Name,Type" kinds="Name:name,Type:text"/>
 <screen name="WebAppList" filter="Name,Namespace,Type,DispatchClass,Resource" sort="Name,Namespace,Type,DispatchClass,Resource" kinds="Name:name,Namespace:identifier,Type:text,Enabled:status,DispatchClass:identifier,Resource:identifier"/>
+<screen name="WebSessionList" filter="ID,Username,Application,SesProcessId" sort="ID,Username,Application,SesProcessId,Timeout" kinds="SesProcessId:name,ID:identifier,Username:text,Application:identifier,Timeout:text"/>
 <screen name="X509CredentialList" filter="Alias,SubjectDN,IssuerDN" sort="Alias,SubjectDN,IssuerDN,ValidityNotAfter" kinds="Alias:name,SubjectDN:text,IssuerDN:text,ValidityNotBefore:text,ValidityNotAfter:text"/>
 </shapes>
 }
@@ -1700,7 +1702,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 36, "the closed vocabulary holds thirty-six values -- the three mapping types joined in Story 18.14; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 38, "the closed vocabulary holds thirty-eight values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5 and the three mapping types in Story 18.14; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }

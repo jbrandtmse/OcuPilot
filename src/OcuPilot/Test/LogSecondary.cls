@@ -79,6 +79,7 @@ Method HoldAll()
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Operate", "USE")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Ens_EventLog", "USE")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DeepSee_Portal", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_HSCUSTOM", "READ")
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_USER", "READ")
 }

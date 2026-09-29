@@ -3428,6 +3428,65 @@ export const STRINGS = {
   impactDatabasesStay: 'it uses <n> databases, which stay: <names>',
   /** EXPERIENCE.md:577 */
   impactDatabasesStayOne: 'it uses 1 database, which stays: <names>',
+  // Story 16.2: Web sessions, the third Web applications entry. Its Process ID, User and
+  // Application column headers reuse existing keys.
+  /** EXPERIENCE.md:357 */
+  webSessionListLabel: 'Web sessions',
+  /** EXPERIENCE.md:357 */
+  webSessionColumnSession: 'Session',
+  /** EXPERIENCE.md:357 */
+  webSessionColumnExpires: 'Expires (UTC)',
+  /** EXPERIENCE.md:357 */
+  webSessionListEmpty: 'No web sessions on this instance.',
+  /** EXPERIENCE.md:357 */
+  webSessionListEmptyAgent: 'end a web session that is stuck or unwanted',
+  /** EXPERIENCE.md:357 */
+  webSessionEndAction: 'End session',
+  /** EXPERIENCE.md:357 */
+  webSessionEndConsequence:
+    'Ending this session discards what its application kept for it, and its next request starts a new session. This cannot be undone.',
+  /** EXPERIENCE.md:357 */
+  webSessionRefusalOcuPilot: 'OcuPilot itself is running in this session. It cannot be ended from OcuPilot.',
+  /** EXPERIENCE.md:357 */
+  proposalEntityWebSession: 'Web session',
+  /** EXPERIENCE.md:357 */
+  webSessionListPrompt1: 'Which web sessions are open on this instance, and for which applications?',
+  /** EXPERIENCE.md:357 */
+  webSessionListPrompt2: 'Which users have more than one web session open?',
+  /** EXPERIENCE.md:357 */
+  webSessionListPrompt3: 'Which web sessions expire soonest?',
+  /** EXPERIENCE.md:357 */
+  webSessionRefusalPreserved:
+    'This session\'s own process holds its lock, so it cannot be ended while that process runs. Terminate the process in Process details, then end the session.',
+
+  // Story 16.5: Background tasks, the fifth Tasks entry. Its Source, Task, Status, Namespace and
+  // Start time column headers and its Resume row action reuse existing keys.
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListLabel: 'Background tasks',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskColumnDetails: 'Details',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskColumnErrorCount: 'Error count',
+  /** EXPERIENCE.md:371 */
+  actionPause: 'Pause',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskCancelAction: 'Cancel task',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListEmpty: 'No background tasks.',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListEmptyAgent: 'cancel, pause or resume a background task',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskCancelConsequence: 'Canceling stops this task where it is. What it has done stays done, and it cannot be resumed.',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskRefusalState: 'This background task\'s current state does not allow that.',
+  /** EXPERIENCE.md:371 */
+  proposalEntityBackgroundTask: 'Background task',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListPrompt1: 'Which background tasks are running, and since when?',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListPrompt2: 'Which background tasks ended with errors?',
+  /** EXPERIENCE.md:371 */
+  backgroundTaskListPrompt3: 'Is a database compact or defragment running?',
 
   // Story 18.14: a namespace's global, routine and package mappings -- each list's and form's title,
   // the global list's two extra column headers, each list's empty state and agent invitation, the

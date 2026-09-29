@@ -4,7 +4,14 @@
 
 ## Goal
 
-Voting-week work: the second-tier screens and actions a judge compares entries on, six stories deferred from the contest build (16.11 to 16.16) and stories from the contest surveys (16.17 to 16.24). Done: 16.1, 16.8, 16.9 and 16.17 to 16.24. **Remaining run order:** 16.3 (spec ready), then 16.16. 16.4 waits for Story 18.1, and the rest stay in the backlog. **Nothing here may break a Release 1 screen or a Release 1 agent write**; anything that risks either waits for Stage 2.
+This is the voting-week work. It finishes the second-tier screens and actions of the six areas, the six stories deferred from the contest build (16.11 to 16.16) and the contest-survey additions (16.17 to 16.24).
+
+- **Done:** 16.1, 16.2, 16.3, 16.5, 16.8, 16.9, and 16.16 to 16.24.
+- **Next on slot A:** 16.6 and 16.7, then 16.10 to 16.12.
+- **Waiting:** 16.4, on Epic 18's PathPort follow-up.
+- **Backlog:** 16.13 to 16.15.
+
+**Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
 
 ## Stories
 
@@ -35,35 +42,114 @@ Voting-week work: the second-tier screens and actions a judge compares entries o
 
 ## Requirements & Constraints
 
-- **Every story.** A screen is one descriptor with its derived read tool; an action ships with its confirmed write tool, its key joins `Kernel/Governance/Baseline.cls` in the same story (enabled unless the criteria say disabled), and every `Invoke` branch has a `Snippet` branch. A test fails on either gap.
-- **Copy.** Every new string goes into EXPERIENCE.md's Fixed strings and `strings.ts` in the same change; runners never invent copy. While slot B also edits it, EXPERIENCE.md is edited in place with its line count unchanged (new strings fold into existing rows), so no `EXPERIENCE.md:n` citation shifts.
-- **Bundle.** 2,006,491 bytes after 16.24, against a 2107kB `maximumWarning`; a story that crosses it re-bases it under DW-1166 (5% above the measured total, with the `angular-json.test.mjs` literal). Stop and ask above 3800kB (hard stop 4000kB). No lazy routes, no `@defer`.
-- **16.3.** A user's effective roles, resources, applications, databases and services render, composed from reads the area already makes. The permission-check tool (agent or user, for a user or a role) answers yes or no, naming the role whose own grant it is and the account's role it is reached through, and short-circuits on `%All`. Its routed DW-1018 is decided as Option A (AD-8 below); the routing line's "a rail item is allowed when any of its screens is" is not adopted, and that residual is DW-1768.
-- **16.16.** Lists ledger rows with filters by user, screen and date, and opens a row's arguments and result. A user sees their own rows; an OcuPilot administrator's view of another user's rows is gated by the resources recorded on each row. Secrets are absent because they were excluded at write time by schema, never redacted afterwards.
-- **Keep intact:** the done stories' surfaces. Download CSV (16.23) comes automatically on a new data table; the hub's members (16.9) are the listed Logs screens, pinned by a test.
-- **Routed ledger entries** for backlog stories (16.5, 16.7, 16.10, 16.12 to 16.15) are addressed or declined with a reason when their story is built.
+- **Every story.**
+  - A screen is one descriptor with its derived read tool. An action ships with its confirmed write tool.
+  - The action's governance key joins `Kernel/Governance/Baseline.cls` in the same change. It is enabled unless the criteria say disabled.
+  - A write tool's port gives a `Snippet` branch for every `Invoke` branch.
+  - A field the instance normalizes on save needs a declared read-back `compare`.
+  - A new prohibited arm needs reason text, because the Guardrails page is generated from the prohibited set. Tests fail on each of these gaps.
+- **Copy.** New strings go into EXPERIENCE.md's Fixed strings and `strings.ts` in the same change. EXPERIENCE.md is edited in place and stays at 993 lines, so no line citation shifts. Publish a refusal sentence once, and pin the kernel's reason equal to it.
+- **Bundle.** 16.5 deployed at about 2.06 MB against a 2107kB `maximumWarning`.
+  - A story that crosses the warning re-bases it to 5% above the measured total. It updates the `angular-json.test.mjs` literal in the same change (DW-1166).
+  - Stop and ask above 3800kB. The hard stop is 4000kB.
+- **Side-bar pins.** A screen-adding story extends every browser spec that pins its area's side-bar list (`grep -l ocu-side-bar-label ui/browser`). 16.5 missed this and CI failed (DW-1774).
+- **16.6.** The broadcast reaches the selected processes, and the confirmation names how many will receive it. Selection is single everywhere else, so extend the data table's selection model here rather than assume it.
+- **16.7.**
+  - **License usage.** Show the summary plus the by-process, by-user and distributed views.
+  - **Dashboard.** Draw every meter group: performance, ECP and shadowing, status, usage, errors and alerts, licensing, and task manager. The CPU meter belongs here.
+  - **Meter names and values.** They come from the instance's own monitor answers. The classic `EnsembleMonitor` page is the Interoperability monitor and defines neither the meters nor their thresholds.
+  - **Alerts (DW-1116).** Every vendor `Alerts()` call advances an instance-wide SAM cursor that other scrapers share, whatever the tag. For that reason the monitoring half was never shipped, and alerts.log is read through `LogSourcePort` alone.
+  - **Decide it.** The errors-and-alerts group re-opens that decision, so make it explicitly. The earlier implementation is recoverable at `33361dc` on `OCU-1-epic6`.
+- **16.10.**
+  - The list shows each server's status. Start and stop update the row in place.
+  - The activity log opens in the shared log viewer.
+  - Create, edit and delete round-trip through the admin API, and delete confirms by name.
+  - **DW-253.** The template is evaluated at its default type. Derive one field list per language-server type, as `Wallet.Secret` does, and amend AD-3.
+- **16.11.**
+  - **Action-style.** `Task.Manager` publishes no body template, so record the tool as action-style, never with a hand-typed field list.
+  - **Suspend.** Suspending first warns that no scheduled task will run until it is resumed.
+  - **Banner.** The suspended banner sits above the table with a privilege-gated Resume, and the rows still list. Its copy for the suspended and stopped states is already published.
+  - **DW-1638.** Task delete, suspend, resume and run must judge `TaskRules.Permitted` in `ArgumentProblem`, as the task edit does.
+- **16.12.**
+  - **Action-style.** `Lock` publishes no body template, so record it as action-style.
+  - **Scopes.** It offers three scopes, each naming what it removes.
+  - **Transaction warning (DW-1073).** Warn from the endpoint's own 409 "is currently in a transaction", never from a `$zu` probe.
+  - **Remote owner (DW-1074).** Suppress the Process details link on a row with a remote owner.
+- **16.4 (waiting).**
+  - The acceptance is the export-import round trip, not either half alone.
+  - The file field takes a root and a relative name through `Port/PathPort`, with `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`. It resolves again at the write.
+  - Never build on the overwrite workaround.
+- **16.13 to 16.15 (backlog).**
+  - **Service editor.**
+    - Disabling `%Service_WebGateway` is drawn disabled, and the instance refuses it for both callers.
+    - Changing its addresses or authentication is minted destructive, with a consequence line.
+    - DW-1016: a diff row needs a word for an empty cell.
+  - **LDAP editor.**
+    - It covers the classic LDAP page's fields.
+    - List, get and put stay synchronous. Test connection goes through `AdminPort`'s async path and reports the instance's own result text.
+    - DW-1639: the Enabled column reads wrong.
+  - **Egress line.** It derives from the configuration the request actually uses. A local provider on a private network reads as not leaving the instance.
 
 ## Technical Decisions
 
-- **Reads (AD-5, AD-24, AD-36).** A hand-written descriptor with at least three prompts; `Screen/Registry.cls` and `screen-mirror.mjs` refuse identically. Screen and tool share one bounded read that reports truncation. Its source is an instance endpoint through a port, OcuPilot's protected state through a kernel store's guarded list, or a composition of the area's screens' reads, each member through its own gate, never widening. A `state` store may release only the caller's own rows, or every row to an `OcuPilotAdmin:USE` holder, decided before any escalation, with no caller argument on the read (first used by 14.4's Transcripts). A `datetime` criterion may declare `defaultHoursAgo`.
-- **Privilege (AD-8, AD-29).** Pair sets are checked at call time, with no elevation; what a caller cannot read is reported, never inferred. An area's set gates its rail item, Home tile and side bar, and covers its screens' pairs except pairs a screen declares its own (`ownPrivileges`, validated alike by `Screen.Registry` and `screen-mirror.mjs`), which are never pairs the area declares; a caller lacking an own pair loses that screen alone. The cases: Logs (event log `%Ens_EventLog:USE`, analytics log `%DeepSee_Portal:USE`) and, from 16.3, Security, whose set is `%Admin_Secure:USE` + `%DB_IRISSYS:READ`, the wallet screens owning `%Admin_Wallet:USE` and each OAuth 2.0 tab and form its OAuth resource.
-- **Effective privilege.** `Kernel.Shell.Effective` is the one composition, and 16.3's Effective privileges view and permission check use it: the union over the user's roles and, transitively, every role they grant; `%All` anywhere in that closure holds everything; a resource's public permission is held by every user; an escalation role counts for nothing until used.
-- **Ledger (AD-9, AD-41, AD-46).** OcuPilot's own protected state, per user, holding prompts and rationales. A row is finalized after the write and records what executed (resolved target, fields sent, privileges exercised); secret-typed fields are excluded at write time (AD-3). Bounded per turn, overflow recorded as a count. The per-row gate lives with the ledger, not the screen. The agent markers in the IRIS audit database are a separate thing, shown on the audit screen.
-- **Navigation (AD-11).** `shell.screen.open` accepts registry routes only; `criteria` only on `list (server criteria)` screens, validated on the instance and carried on the directive, never in a URL. A person-initiated arrival is not announced.
-- **Dates.** Emitted timestamps are ISO-8601 UTC (a log entry's instance-local `time` excepted); local-calendar comparisons use `+$Horolog`.
-- **Writes (backlog stories).** One tool, two callers (AD-53, AD-55), port declared per tool (AD-52), read back (AD-58), governance checked at dispatch and at Confirm (AD-22).
-- **Conventions.** Client: zoneless, `OnPush`, framework-free root stores in `core/` mirrored into signals, reset at sign-out; every API URL absolute (AD-19, AD-20). Server: one envelope `{error, reason, code, detail}`; ids encoded twice, decoded once; tools named `<area>.<screen>.<verb>`.
-- **Tests.** CI runs each long suite as three shards on fresh throwaways, regrouped as timings change, so a test depends on nothing another left, on order, or on instance uptime; such a red is fixed in the test, never by pinning.
+- **Reads (AD-5, AD-36).**
+  - **Descriptor.** It is hand-written with at least three suggested prompts.
+  - **Lists.** A list declares `table`, with column kinds and an optional `emptyKey`, and may declare one cross-screen row target.
+  - **Shared read.** Screen and tool share one bounded read that reports truncation. It may add a per-row detail call (`rowGet`). Its source is a port endpoint, a kernel store's guarded list, or a composition.
+- **Privilege (AD-8, AD-29).**
+  - **Pair sets.** They are checked at call time, with no elevation. An administrative resource is required at `USE`, never `WRITE`.
+  - **Establishing a set.** `ResourcesOR()` is only a lower bound. Read the backing class's own check in `irislib/`, then run a least-privileged principal on the throwaway. Never use `%Operator` to prove a denial.
+  - **A screen's own pairs.** Pairs beyond the area's set go in `ownPrivileges`, each a named AD-8 case. The latest cases are Web sessions and Background tasks, both with `%Admin_Operate:USE`.
+  - **A tool's extra pairs.** A write tool may add pairs only in two cases. One is where the vendor writes a database the screen's read does not. The other is where an endpoint the call must reach names the pair. The mint refuses a caller who lacks one by name, before any port call.
+  - **Dashboard sensors.** `MonitorPort` reads them in-process under `%Admin_Operate:USE` and `%DB_IRISSYS:READ`, and is the only class that names them. Its reads shorten an external scraper's windows (inference).
+- **Writes.**
+  - **Two callers.** A screen action and the agent's write are one operation. The screen caller mints no proposal, emits no agent marker, and ignores read-only and the kill switch (AD-53, AD-55).
+  - **Declared shape.**
+    - Each tool declares its port, `AdminPort` by default (AD-52).
+    - An action-style write declares its request type and sends no body. Its fingerprint covers a declared subject that holds every precondition field (AD-51).
+    - A create fingerprints the target's absence (AD-54).
+    - A screen action accepts only declared values, and list fields change by a server-side delta (AD-56).
+  - **Prohibited set.** It lives once in the kernel, is defined by effect, and is evaluated inside the confirm transition for both callers (AD-10, AD-34).
+  - **Vendor class.** Where the admin API cannot carry a call, a port may use the vendor's `%SYS` class after repeating its guard. Each such use is a new named case in AD-27. The latest is `BackgroundTaskPort`, from 16.5.
+  - **Queued writes.** `AdminPort`'s async path is the only poller, so no slice polls. A write that would queue is refused unless it is on `QUEUEDWRITES` (AD-26).
+  - **Unaudited writes.** Measure each new write with auditing on. Where IRIS records no event, name the write as a further case in AD-15 and AD-53. The agent's marker is then the write's only record, and the screen action leaves no audit row. OAuth revoke, `WebSession` `DELETE` and background-task control are the cases so far.
+  - **Governance and read-back.** Governance is checked at dispatch and again at Confirm (AD-22). Every write reads its target back (AD-58).
+- **Files and logs (AD-21, AD-60).** No endpoint accepts a path. A log is a fixed-enum `LogSourcePort` source. Log text reaches the model only through the sanitizer.
+- **Identity and refresh (AD-11, AD-13, AD-14, AD-43, AD-44).**
+  - **Ids and entity types.** Ids are encoded twice and decoded once. Each write story adds its entity type's canonical-spelling rule, and types come from the kernel's closed enum.
+  - **Classic page.** A descriptor names the classic page class it replaces. Only a detail view may carry a classic-link exemption.
+  - **Auto-refresh.** A screen joins only by declaring it in its descriptor and appearing in EXPERIENCE.md's roster.
+  - **No outbound requests.** Nothing rendered from a reply or tool result requests any host.
+- **Conventions.**
+  - **Client.** It is zoneless and `OnPush`. Framework-free `core/` stores are mirrored into signals and reset at sign-out. API URLs are absolute.
+  - **Errors and naming.** The envelope is `{error, reason, code, detail}`, and tools are named `<area>.<screen>.<verb>`.
+  - **Tests.** A test depends on no other test, no order and no instance uptime, because CI shards regroup.
 
 ## UX & Interaction Patterns
 
-- **Placement.** Effective privileges is a view in the User editor (Permissions area, detail); Permission check is a command-bar action (dialog); the Agent audit ledger is a polish-week entry in the Agent co-pilot area (list, server criteria), beside Guardrails, Governance policy and Transcripts.
-- **Gated controls** use `aria-disabled`, never `disabled`, and name their reason ("Requires <resource>"). A screen's destructive dialog asks for the typed name; a destructive agent proposal takes the destructive bar without one.
+- **Placement.** A screen appears in the side bar only once it is built.
+  - **OS management side bar:** License usage and Dashboard as meters, and External language servers as a list followed by a form-page editor.
+  - **Dialogs from lists:** Broadcast comes from the Processes multi-select, and Remove locks from the Locks row menu.
+  - **Task schedule command bar:** it holds Suspend Task Manager, with Export and Import as dialogs.
+- **Meters.** Each shows label, value and unit, with its state (Normal, Warning or Troubled) as a word and a color. It shows "—" with a skeleton until the first value arrives, and puts an error in its tooltip. The needle never animates.
+- **Dialogs.** They are one level deep and never stack, and the title names the action and the target.
+  - A screen's destructive dialog asks for the typed name; an agent proposal does not.
+  - A non-destructive warning, such as Suspend Task Manager, uses a primary button and states the consequence.
+- **Controls.** A gated control uses `aria-disabled` and reads "Requires <resource>". An instance-only refusal stays offered, and the instance answers the click with the published sentence.
+- **Rows and color.** Color never carries meaning alone. Row actions update the row in place with "Changed", and every data table offers Download CSV.
 
 ## Cross-Story Dependencies
 
-- **Slot A.** Profile `ocupilot-slot-a`, throwaway `ocupilot-ci` on 52776/1975. After an integrate forward, load the merged ObjectScript into the throwaway (Rule 22). Push a code commit alone and confirm its CI before a skip-tagged one (Rule 28). `main` and release branches move only at owner-planned releases; a cut release branch is never touched.
-- **Slot B runs Epic 18 (18.1 to 18.4).** Both epics touch `ui/tools/**`, `scripts/ci-throwaway.sh` and EXPERIENCE.md; keep shared roster edits to added lines (inference).
-- **Epic 14 is complete**: its governance baseline, sanitizer, per-user read-only and transcripts bind new work.
-- **Within this epic.** 16.3 uses `Kernel.Shell.Effective` (16.19) and adds Security's `ownPrivileges`. 16.16 can follow the Transcripts caller-scoped store (inference).
-- **Held and pending.** 16.4 needs Story 18.1's directory allow-list. 16.13 and 16.14 each remove a classic-link exemption (AD-44). DW-1768 (the any-screen rail) and DW-1769 (whether Copy as curl masks beyond the credential-name pattern) are owner decisions, not 16.3's or 16.16's to settle.
+- **Keep intact.**
+  - **Earlier Epic 16 work:** try-it and Copy as curl; Web sessions' refusals; `Kernel.Shell.Effective` and the own-pair screens; the log viewers and hub; the ledger viewer; Background tasks and `BackgroundTaskPort`; and 16.17 to 16.23.
+  - **Epic 14:** its baseline, sanitizer and per-user read-only bind new work.
+- **Within the epic.**
+  - 16.7's dashboard reads through the `MonitorPort` that 16.18 introduced.
+  - 16.11's Task Manager resume becomes 16.21's Operations "Fix it". Until then, that finding links to the screen.
+  - 16.12 extends Story 6.10's Locks list and its owner link.
+  - 16.13 and 16.14 each remove one classic-link exemption (`ServiceForm`, `LdapConfigForm`).
+- **16.4.** It waits on Epic 18: DW-1778 (a read-existing file mode, routed to 18.7) and DW-1777 (refusing the configuration file and the system databases).
+- **Moved to Story 18.3:** DW-1080, the background-tasks section of Database details.
+- **Slot B runs Epic 18.** Both epics touch `ui/tools/**`, `scripts/ci-throwaway.sh` and EXPERIENCE.md, so keep shared roster edits additive (inference). DW-1768 (the any-screen rail) awaits the owner after the voting week.
+- **Slot A.** It uses `ocupilot-slot-a` and the `ocupilot-ci` throwaway (52776/1975).
+- **Release 1.0.3.** It is cut Tue 2026-09-29 at 14:00 PDT. No story starts after 12:00 PDT unless it reaches its boundary by 14:00.

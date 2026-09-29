@@ -11,7 +11,7 @@ import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
-import type { ScreenDeclaration } from '../core/screens.generated';
+import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
 import { tableDeclaration } from '../testing/table-declaration';
 import { ListPage } from './list-page';
@@ -735,5 +735,125 @@ describe('the list page', () => {
     // all, from drawing a control that would have nothing to re-read.
     const none = await mount(tableDeclaration({ read: null, table: null }), []);
     expect(none.actions.has(none.declaration!.descriptor, REFRESH_ACTION_ID)).toBe(false);
+  });
+
+  describe('Story 16.2: Web sessions', () => {
+    const SESSIONS = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.WebSessionList')!;
+    const session = (id: string, application: string, pid: string) => ({
+      ID: id,
+      Username: '_SYSTEM',
+      Application: application,
+      SesProcessId: pid,
+      Timeout: '2026-09-28 16:00:00',
+      Preserve: pid === '' ? 0 : 1,
+    });
+    const listed = [session('ownSess001', '/api/ocupilot/', ''), session('prsvSess02', '/csp/sys/', '4711'), session('endSess003', '/api/atelier/', '')];
+    const rowFor = (host: HTMLElement, id: string) =>
+      Array.from(host.querySelectorAll('.ocu-data-table-body [role="row"]')).find((row) => row.textContent?.includes(id)) as HTMLElement;
+
+    it('links the Process cell of a row carrying a process to Process details, and reads (none) unlinked for one without', async () => {
+      // Mutation (Rule 19): drop the descriptor's rowTarget -> the linked row's href names the
+      // session's own route and the first assertion goes red.
+      const page = await mount(SESSIONS, listed, true, '/web-applications/sessions?ns=HSCUSTOM');
+      const withProcess = rowFor(page.host(), 'prsvSess02');
+      const link = withProcess.querySelector('.ocu-data-table-link') as HTMLAnchorElement;
+      expect(link.textContent?.trim()).toBe('4711');
+      expect(link.getAttribute('href')).toContain('/os-management/processes/details/4711');
+      const withoutProcess = rowFor(page.host(), 'ownSess001');
+      expect(withoutProcess.querySelector('.ocu-data-table-link')).toBeNull();
+      expect(withoutProcess.textContent).toContain(STRINGS.tableEmptyValue);
+    });
+
+    it('reads the empty state and invites the agent when the instance holds no session', async () => {
+      const page = await mount(SESSIONS, [], true, '/web-applications/sessions?ns=HSCUSTOM');
+      const empty = page.host().querySelector('.ocu-data-table-empty') as HTMLElement;
+      expect(empty).not.toBeNull();
+      expect(empty.querySelector('.ocu-data-table-empty-title')?.textContent?.trim()).toBe(STRINGS.webSessionListEmpty);
+      expect(empty.querySelector('.ocu-data-table-empty-next')?.textContent?.trim()).toBe(
+        STRINGS.tableWriteCapableEmptyState.split('<a write it could propose here>').join(STRINGS.webSessionListEmptyAgent)
+      );
+    });
+
+    it("draws End session refused on a session under OcuPilot's own application, sending nothing, and types the id on another", async () => {
+      // Through the real handler, page and table; only the transport is stubbed.
+      // Mutation (Rule 19): answer '' for `ocupilot-session` in `selfProtectionReason` -> the own
+      // row's entry is offered and its click opens the dialog, red.
+      const page = await mount(SESSIONS, listed, true, '/web-applications/sessions?ns=HSCUSTOM');
+      (rowFor(page.host(), 'ownSess001').querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
+      await settle(page.fixture);
+      const refused = page.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+      expect(refused.querySelector('.ocu-data-table-menu-label')?.textContent?.trim()).toBe(STRINGS.webSessionEndAction);
+      expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.webSessionRefusalOcuPilot);
+      expect(refused.getAttribute('aria-disabled')).toBe('true');
+      refused.click();
+      await settle(page.fixture);
+      expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+      expect(page.bodies).toEqual([]);
+
+      (rowFor(page.host(), 'endSess003').querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
+      await settle(page.fixture);
+      const offered = page.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+      expect(offered.hasAttribute('aria-disabled')).toBe(false);
+      offered.click();
+      await settle(page.fixture);
+      const dialog = page.host().querySelector('[role="dialog"]') as HTMLElement;
+      expect(dialog).not.toBeNull();
+      expect(dialog.textContent).toContain(`${STRINGS.webSessionEndAction} endSess003`);
+      expect(dialog.textContent).toContain(STRINGS.webSessionEndConsequence);
+      expect(page.bodies).toEqual([]);
+    });
+
+    it('offers End session on a preserve-mode session, whose refusal while its process runs is the instance\'s to answer', async () => {
+      // Through the real handler, page and table; only the transport is stubbed.
+      // Mutation (Rule 19): answer the preserve-mode sentence for a `Preserve` 1 row in
+      // `ocupilot-session` -> the entry is drawn refused and no dialog opens, red.
+      const page = await mount(SESSIONS, listed, true, '/web-applications/sessions?ns=HSCUSTOM');
+      (rowFor(page.host(), 'prsvSess02').querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
+      await settle(page.fixture);
+      const offered = page.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+      expect(offered.querySelector('.ocu-data-table-menu-label')?.textContent?.trim()).toBe(STRINGS.webSessionEndAction);
+      expect(offered.hasAttribute('aria-disabled')).toBe(false);
+      offered.click();
+      await settle(page.fixture);
+      const dialog = page.host().querySelector('[role="dialog"]') as HTMLElement;
+      expect(dialog).not.toBeNull();
+      expect(dialog.textContent).toContain(`${STRINGS.webSessionEndAction} prsvSess02`);
+      expect(page.bodies).toEqual([]);
+    });
+  });
+
+  describe('Story 16.5: Background tasks', () => {
+    const BACKGROUND = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.BackgroundTaskList')!;
+
+    it('reads the empty state and invites the agent when the instance holds no background task', async () => {
+      // Mutation (Rule 19): point the descriptor's emptyStateKey at another key -> the title
+      // assertion goes red.
+      const page = await mount(BACKGROUND, [], true, '/tasks/background?ns=HSCUSTOM');
+      const empty = page.host().querySelector('.ocu-data-table-empty') as HTMLElement;
+      expect(empty).not.toBeNull();
+      expect(empty.querySelector('.ocu-data-table-empty-title')?.textContent?.trim()).toBe(STRINGS.backgroundTaskListEmpty);
+      expect(empty.querySelector('.ocu-data-table-empty-next')?.textContent?.trim()).toBe(
+        STRINGS.tableWriteCapableEmptyState.split('<a write it could propose here>').join(STRINGS.backgroundTaskListEmptyAgent)
+      );
+    });
+
+    it('offers Cancel task, Pause and Resume on a row, and Cancel task opens its warning with nothing sent', async () => {
+      const row = { Source: 'Management Portal', Id: '4242', Task: 'Compact DB Space', Namespace: '%SYS', Status: 'Paused', Details: 'OCUBGSEED', ErrorCount: '', StartTime: '2026-09-28 12:00:05' };
+      const page = await mount(BACKGROUND, [row], true, '/tasks/background?ns=HSCUSTOM');
+      (page.host().querySelector('.ocu-data-table-body [role="row"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+      await settle(page.fixture);
+      const items = Array.from(page.host().querySelectorAll('[role="menu"] [role="menuitem"]')) as HTMLButtonElement[];
+      expect(items.map((item) => item.querySelector('.ocu-data-table-menu-label')?.textContent?.trim())).toEqual([
+        STRINGS.backgroundTaskCancelAction,
+        STRINGS.actionPause,
+        STRINGS.actionResume,
+      ]);
+      items[0].click();
+      await settle(page.fixture);
+      const dialog = page.host().querySelector('[role="dialog"]') as HTMLElement;
+      expect(dialog).not.toBeNull();
+      expect(dialog.textContent).toContain(STRINGS.backgroundTaskCancelConsequence);
+      expect(page.bodies).toEqual([]);
+    });
   });
 });

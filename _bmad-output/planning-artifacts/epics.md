@@ -6233,11 +6233,12 @@ So that I can clear a stuck or unwanted session from here.
 
 - **Given** a session
 - **When** the user ends it
-- **Then** it ends, confirming by naming the session, and the row leaves the list.
+- **Then** it ends, confirming by naming the session, and the row leaves the list; a preserve-mode session is instead refused by name on both callers while its own process runs, saying why (that process holds its lock) and pointing to the process in Process details; once the process is terminated, the session ends [AMENDED 2026-09-28, orchestrator merge gate, Rule 5, DW-1792].
 
-- **Given** the user's **own** session
+- **Given** a session **OcuPilot is itself running in** [AMENDED 2026-09-28 — see the story change log]
 - **When** an end is attempted
 - **Then** it is refused with an explanation, in the UI and on the instance - the same self-protection shape as a process OcuPilot is itself running in.
+- DW-1792: Ending a preserve-mode web session hangs until the gateway answers 504 and never ends it: the vendor DELETE waits on the session lock the session's own process holds (ledger; routed by merge_gate 2026-09-28)
 
 ### Story 16.3: Effective privileges and the permission-check tool
 
@@ -6459,6 +6460,7 @@ So that I can hold maintenance during a change window.
 - **Given** `Task.Manager` publishes no body template
 - **When** the tool is built
 - **Then** it is recorded as action-style with a trivial body needing no template, rather than being given a hand-typed field list.
+- DW-1638: Task delete, suspend, resume and run skip the task type's declared privilege (%SYS.Task.Definition RESOURCE) that the create, the edit and the classic portal enforce (ledger; routed by spec_gate 2026-09-28)
 
 ### Story 16.12: Remove locks - one, all of a process, all of a remote client
 

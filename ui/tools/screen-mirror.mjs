@@ -310,7 +310,7 @@ function oneActionProblem(action, where, rules) {
  * no explanation, which is the divergence `checkedDeclaredNameKinds` exists to prevent for its own
  * vocabulary (AD-5, AD-53).
  */
-export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl'];
+export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl', 'ocupilot-session'];
 
 /**
  * The projection names this module's `declaredNames` fills, for the roster check against
@@ -937,7 +937,10 @@ export const SOURCE_PATH = 'path';
 
 /** The log hub's composition of its area's listed screens' reads (AD-36 as amended, Story 16.9). */
 export const SOURCE_TIMELINE = 'timeline';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE];
+
+/** The background tasks read through `OcuPilot.Port.BackgroundTaskPort` (AD-27, Story 16.5). */
+export const SOURCE_BACKGROUND = 'background';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -971,6 +974,33 @@ export const PATH_READ_TYPE = 'LIST';
 
 /** The source keys a `path` source declares none of, in the order they are reported. */
 const PATH_REFUSED_SOURCE_KEYS = ['rowGet', 'forEach', 'query', 'parts'];
+
+/** Where `OcuPilot.Port.BackgroundTaskPort` declares the one endpoint a `background` read names. */
+export const BACKGROUND_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'BackgroundTaskPort.cls');
+
+const BACKGROUND_ENDPOINT_PARAM_RE = /^Parameter\s+ENDPOINT\s*=\s*"([^"]*)"\s*;/m;
+
+/**
+ * The endpoint `OcuPilot.Port.BackgroundTaskPort`'s `ENDPOINT` parameter declares, read from its
+ * own class rather than restated here, or `null` when the parameter is missing.
+ */
+export function parseBackgroundEndpoint(text) {
+  const match = BACKGROUND_ENDPOINT_PARAM_RE.exec(text);
+  return match === null ? null : match[1];
+}
+
+let backgroundEndpointCache;
+
+/** `parseBackgroundEndpoint` over the class on disk, read once. */
+export function backgroundEndpoint() {
+  if (backgroundEndpointCache === undefined) {
+    backgroundEndpointCache = parseBackgroundEndpoint(readFileSync(BACKGROUND_PORT_SOURCE, 'utf8'));
+  }
+  return backgroundEndpointCache;
+}
+
+/** The one request type a `background` source declares. */
+export const BACKGROUND_READ_TYPE = 'LIST';
 
 /** The package a `state` source's `endpoint` names a store inside, trailing dot included. */
 export const STATE_PACKAGE = 'OcuPilot.Kernel.State.';
@@ -1153,7 +1183,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}' or '${SOURCE_TIMELINE}', the six sources a declared read names (AD-36)`
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}' or '${SOURCE_BACKGROUND}', ` +
+      'the seven sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1183,6 +1214,24 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on a path source, which answers the allowed directories whole (AD-36)`;
+    }
+  }
+  // A background source lists the instance's background tasks through
+  // `OcuPilot.Port.BackgroundTaskPort`, which merges both halves whole on every call (AD-27): the
+  // port's own endpoint, a LIST, and nothing the port would have to issue per row, per parent, under
+  // a fixed query or in parts.
+  if (source.port === SOURCE_BACKGROUND) {
+    const endpoint = backgroundEndpoint();
+    if (endpoint === null) return `${BACKGROUND_PORT_SOURCE} declares no 'Parameter ENDPOINT'`;
+    if (source.endpoint !== endpoint) {
+      return `read.source.endpoint '${source.endpoint}' is not the background port's endpoint ('${endpoint}') (AD-27)`;
+    }
+    if (source.type !== BACKGROUND_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a background source, which lists the background tasks (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a background source, which answers the background tasks whole (AD-36)`;
     }
   }
   // AD-36 as amended (Story 16.9): a timeline composes its area's listed screens' own reads, so its

@@ -184,6 +184,18 @@ ClassMethod TimelineClass() As %String
     Quit "OcuPilot.Screen.Timeline"
 }
 
+/// <p>The <code>read.source.port</code> value naming the instance's background tasks, the admin API's
+/// async tasks the caller queued beside the classic portal's jobs, read through
+/// <method>BackgroundPortClass</method> (AD-27, AD-36).</p>
+Parameter SOURCEBACKGROUND = "background";
+
+/// <p>The port every <b>background</b> read is issued through. Overridable so a fixture can reach
+/// another; production never overrides it.</p>
+ClassMethod BackgroundPortClass() As %String
+{
+    Quit "OcuPilot.Port.BackgroundTaskPort"
+}
+
 /// <p>The package a <code>state</code> source's <code>endpoint</code> names a class in, trailing
 /// dot included. A source declares the class's short name -- <code>Agent</code> -- and never a
 /// package-qualified one, so no descriptor can point the read at a class outside the kernel's own
@@ -277,7 +289,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Set tRead = $ClassMethod(pDescriptor, "Read")
         Set tSource = $Select($IsObject(tRead): tRead.%Get("source"), 1: "")
         Set tSourceType = $Select($IsObject(tSource): tSource.%Get("type"), 1: "")
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE), tSource.%Get("port")) || ((tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND), tSource.%Get("port")) || ((tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -312,6 +324,16 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             ; The instance's allowed directories, computed by the port on this call: no namespace,
             ; since the allow-list is the instance's, and no criteria, so the cap is the whole ask.
             Set tPortSC = $ClassMethod(..PathPortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCEBACKGROUND {
+            ; The admin API's async tasks the caller queued beside the portal's jobs, merged newest
+            ; start first by the port; no namespace and no criteria, so the cap is the whole ask.
+            Kill tQuery
+            Set tQuery("maxRows") = tMax + 1
+            Set tPortSC = $ClassMethod(..BackgroundPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit
