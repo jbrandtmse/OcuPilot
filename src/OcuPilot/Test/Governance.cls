@@ -91,7 +91,7 @@ Method Store(pPreset As %String, pKey As %String = "", pSetting As %String = "")
 /// <p>Matrix row 1 and AC2: with no stored policy every registered write key is enabled by the
 /// baseline except the purge, the namespace delete and the database delete, which the baseline
 /// disables.</p>
-Method TestTheDefaultEnablesEveryWriteButTheTwoDisabled()
+Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Governance.Policy).WriteKeys(.tKeys), "the write keys are read")
     Set tWrong = ""

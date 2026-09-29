@@ -220,8 +220,10 @@ Method TestDatabasePort()
     Set tQuery("name") = "DRAFTDB"
     Set tQuery("root") = "/draft/"
     Set tQuery("path") = "db"
+    Set tQuery("Size") = 3
     Set tText = ..Text($ClassMethod(tPort, "Snippet", "Database.ConfigCRUD", "PUT", .tQuery, {"Directory": "/draft/db/"}, ..Context()))
     Do $$$AssertTrue(tText [ "If '##class(Security.Resources).Exists(""%DB_DRAFTDB"") { Set tSC = ##class(Security.Resources).Create(""%DB_DRAFTDB"", """", """")", "the resource is created only when it does not exist: " _ tText)
+    Do $$$AssertTrue(tText [ """Size"":3", "and the file is made at the size asked for")
     Do $$$AssertTrue(tText '[ "Security.Resources).Modify(", "and one that exists is never modified")
     For tCase = $ListBuild(1, ""), $ListBuild(0, "DELETE /database") {
         Kill tQuery

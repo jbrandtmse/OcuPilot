@@ -64,7 +64,8 @@ Parameter FIELDRESOURCE = "ResourceName";
 /// <p><var>pMode</var> <code>create</code> applies the name's own rules, the initial size, a named
 /// resource, and the directory from <code>root</code> and <code>path</code>; <code>update</code> applies
 /// each whole-megabyte field, a resource (which may not be emptied) and a new volume directory from
-/// <code>volumeRoot</code> and <code>volumePath</code>, each only when <var>pArgs</var> carries it.
+/// <code>volumeRoot</code> and <code>volumePath</code>, each only when <var>pArgs</var> carries it (a
+/// path without its root is refused on the root).
 /// <var>pCheckTaken</var> 0 skips the name look-up. <var>pFields</var>, where not <code>""</code>,
 /// limits the rules to those fields (a wizard step).</p>
 /// <p>A read that cannot be made is an error status, never a pass; a path refusal that names no
@@ -100,7 +101,7 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
         If ..Checks(pFields, ..#FIELDRESOURCE) && (pArgs.%GetTypeOf(..#FIELDRESOURCE) '= "unassigned") {
             Set tResource = ..Text(pArgs, ..#FIELDRESOURCE)
             If (tResource '= "") || 'tCreates {
-                Set tSC = ..ResourceViolation(tResource, .pViolations)
+                Set tSC = ..ResourceViolation(tResource, .pViolations, .pHttpStatus, .pFault)
                 If $$$ISERR(tSC) Quit
             }
         }
@@ -108,7 +109,7 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
             Set tSC = ..DirectoryViolations(..Text(pArgs, "root"), ..Text(pArgs, "path"), "root", "path", 1, .pViolations, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
         }
-        If 'tCreates && ..Checks(pFields, "volumeRoot") && (..Text(pArgs, "volumeRoot") '= "") {
+        If 'tCreates && ..Checks(pFields, "volumeRoot") && ((..Text(pArgs, "volumeRoot") '= "") || (..Text(pArgs, "volumePath") '= "")) {
             Set tSC = ..DirectoryViolations(..Text(pArgs, "volumeRoot"), ..Text(pArgs, "volumePath"), "volumeRoot", "volumePath", 0, .pViolations, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
         }
@@ -153,9 +154,13 @@ ClassMethod NameViolation(pName As %String, Output pViolations)
 
 /// <p>Add <var>pResource</var>'s violation, or none: it must begin
 /// <parameter>RESOURCEPREFIX</parameter> and name a resource this instance holds, read through the
-/// create tool's port as the caller (a 404 is absent).</p>
-ClassMethod ResourceViolation(pResource As %String, Output pViolations) As %Status
+/// create tool's port as the caller (a 404 is absent). A read refused for any other reason is an error
+/// status with the port's own <var>pHttpStatus</var> and <var>pFault</var>, a denial naming its
+/// pair.</p>
+ClassMethod ResourceViolation(pResource As %String, Output pViolations, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
+    Set pHttpStatus = 0
+    Set pFault = ""
     If $ZConvert($Extract(pResource, 1, $Length(..#RESOURCEPREFIX)), "U") '= ..#RESOURCEPREFIX {
         Do ..Add(.pViolations, ..#FIELDRESOURCE, ##class(OcuPilot.Api.DatabaseError).#RESOURCESHAPE)
         Quit $$$OK
@@ -164,7 +169,11 @@ ClassMethod ResourceViolation(pResource As %String, Output pViolations) As %Stat
     Set tQuery("name") = pResource
     Set tSC = $ClassMethod(..PortClass(), "Invoke", ..#RESOURCEENDPOINT, "GET", .tQuery, "", .tHeld, .tHttp, .tFault)
     If $$$ISOK(tSC) Quit $$$OK
-    If +$Get(tHttp) '= 404 Quit tSC
+    If +$Get(tHttp) '= 404 {
+        Set pHttpStatus = $Get(tHttp)
+        Set pFault = $Get(tFault)
+        Quit tSC
+    }
     Do ..Add(.pViolations, ..#FIELDRESOURCE, ##class(OcuPilot.Api.DatabaseError).#RESOURCEABSENT)
     Quit $$$OK
 }
@@ -226,7 +235,7 @@ ClassMethod PortClass() As %String
 /// <p>Answer <code>GET /database/form[?name=&lt;n&gt;]</code>: <code>{requiredFields, rules}</code>,
 /// with <code>resources</code>, the <code>%DB_*</code> resource names, when the caller may read the
 /// Resources list, and <code>resourcesRefused</code> naming the pair it lacks otherwise. With a name it
-/// adds <code>name</code>, <code>configuration</code> (the mounting edit's fresh read) and
+/// adds <code>Name</code>, <code>configuration</code> (the mounting edit's fresh read) and
 /// <code>file</code> (the file edit's fresh read, <code>Directory</code> included); a name this
 /// instance does not hold is 404 <parameter>OcuPilot.Api.DatabaseError.NAMEABSENT</parameter>.</p>
 ClassMethod HandleForm() As %Status

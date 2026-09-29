@@ -343,6 +343,21 @@ export class DatabaseEditor {
     this.notify();
   }
 
+  /**
+   * Cancel Change: hide the picker and send no new volume directory, so the picker's preselected
+   * root never reaches a Save; the form reads dirty only if another field still differs.
+   */
+  keepVolumeDirectory(): void {
+    if (!this.changingVolume) return;
+    this.changingVolume = false;
+    this.volumeRootValue = '';
+    this.volumePathValue = '';
+    this.clearFieldViolation(VOLUME_ROOT_FIELD);
+    this.clearFieldViolation(VOLUME_PATH_FIELD);
+    this.formDirty.setDirty(Object.keys(this.saveBody()).length > 0);
+    this.notify();
+  }
+
   /** The picker's root and relative path for a new volume directory. */
   setVolumeLocation(root: string, path: string): void {
     if (!this.changingVolume || (root === this.volumeRootValue && path === this.volumePathValue)) return;
@@ -391,8 +406,9 @@ export class DatabaseEditor {
       return false;
     }
     const answer = result.body;
-    const readBack = objectAt(objectAt(answer, FILE_GROUP), 'readBack') ?? objectAt(objectAt(answer, CONFIGURATION_GROUP), 'readBack');
-    this.readBackValue = readBackOf(readBack);
+    // Both groups written: the one that does not hold what it sent is the one to show (AD-58).
+    const readBacks = [FILE_GROUP, CONFIGURATION_GROUP].map((group) => readBackOf(objectAt(objectAt(answer, group), 'readBack')));
+    this.readBackValue = readBacks.find((back) => back !== null && back.verdict !== 'matches') ?? readBacks.find((back) => back !== null) ?? null;
     this.savedValue = true;
     this.formDirty.setDirty(false);
     this.publish('updated');

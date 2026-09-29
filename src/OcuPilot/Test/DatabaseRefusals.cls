@@ -35,6 +35,8 @@ Parameter CREATETOOL = "OcuPilot.Screen.Tool.LocalDatabaseCreate";
 
 Parameter UPDATETOOL = "OcuPilot.Screen.Tool.LocalDatabaseUpdate";
 
+Parameter MOUNTTOOL = "OcuPilot.Screen.Tool.LocalDatabaseUpdateMount";
+
 Parameter RULES = "OcuPilot.Area.OsMgmt.DatabaseRules";
 
 /// <p>The allow-list as it stood before each test.</p>
@@ -214,9 +216,9 @@ Method TestARootDroppedAfterTheMintRefusesTheConfirm()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tName), 0, "and nothing was created")
 }
 
-/// <p>A file edit's new volume directory: a root outside the allow-list and a name with
-/// <code>..</code> are refused on <code>volumeRoot</code> and <code>volumePath</code> at the Save and at
-/// the mint, with no vendor write; and a volume root dropped from the allow-list after the mint refuses
+/// <p>A file edit's new volume directory: a root outside the allow-list, a name with <code>..</code>
+/// and a name sent without its root are refused on <code>volumeRoot</code> and <code>volumePath</code>
+/// at the Save and at the mint, with no vendor write; and a volume root dropped from the allow-list after the mint refuses
 /// the confirm <code>PATH.ROOT</code> with nothing sent (AD-21: resolved again at the write).</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.LocalDatabaseUpdate.PortQuery</method> drops
 /// <code>volumeRoot</code> -> the confirm's write is sent and this goes red.</p>
@@ -225,7 +227,7 @@ Method TestTheVolumeDirectoryRefusalsLandOnTheirFields()
     Set tName = "OCUPROBE183VR"
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Add", tName), "a probe database is created")
     Set tRoot = $ClassMethod(..#PROBE, "Manager")
-    For tCase = $ListBuild("/ocuprobe183nowhere/", "ocuprobe183v", "volumeRoot:PATH.ROOT"), $ListBuild(tRoot, "../ocuprobe183v", "volumePath:PATH.NAME") {
+    For tCase = $ListBuild("/ocuprobe183nowhere/", "ocuprobe183v", "volumeRoot:PATH.ROOT"), $ListBuild(tRoot, "../ocuprobe183v", "volumePath:PATH.NAME"), $ListBuild("", "ocuprobe183v", "volumeRoot:PATH.ROOT") {
         Set tEdit = {}
         Do tEdit.%Set("volumeRoot", $List(tCase, 1), "string")
         Do tEdit.%Set("volumePath", $List(tCase, 2), "string")
@@ -293,8 +295,10 @@ Method TestTheFileEndpointsFaultsLandOnTheirFields()
 }
 
 /// <p>A file edit of a remote configuration is refused 409 <code>DATABASE.REMOTE</code> by the Save,
-/// the mint and the form read, and nothing is sent; and neither the Local databases list's read nor
-/// <code>osmgmt.localdatabases.read</code> answers it, although the unnarrowed list does.</p>
+/// the mint and the form read, and nothing is sent; neither the Local databases list's read nor
+/// <code>osmgmt.localdatabases.read</code> answers it, although the unnarrowed list does; and its
+/// delete with the file option deletes the configuration alone, sending no file delete to a directory
+/// that names a path on its data server.</p>
 /// <p>Mutation (Rule 19): drop <code>localOnly</code> from the list's read -> the remote row is
 /// answered and this goes red.</p>
 Method TestARemoteDatabaseIsRefused()
@@ -324,6 +328,12 @@ Method TestARemoteDatabaseIsRefused()
     Set tRows = $Select($IsObject($Get(tView)): tView.%Get("rows"), 1: "")
     Do $$$AssertTrue($IsObject(tRows) && (tRows.%Size() > 0), "with rows")
     Do $$$AssertTrue(..Names(tRows) '[ ("," _ tName _ ","), "without it too")
+    Do $ClassMethod(..#RECORD, "Clear")
+    Kill tQuery
+    Set tQuery("name") = tName
+    Set tQuery("DeleteFile") = 1
+    Set tSC = $ClassMethod(..#RECORD, "Invoke", "Database.ConfigCRUD", "DELETE", .tQuery, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals($$$ISOK(tSC) _ " " _ $ClassMethod(..#RECORD, "Writes") _ " " _ $Select($IsObject($Get(tResult)): tResult.%Get("fileDeleted"), 1: ""), "1 Database.ConfigCRUD/DELETE 0", "its delete with the file option sends the configuration's delete alone")
 }
 
 /// <p>A key outside the group's tool on each group, and a group the edit does not have, are refused
@@ -345,8 +355,9 @@ Method TestAKeyOutsideAGroupIsRefused()
 }
 
 /// <p>An edit of a database the instance no longer holds: the Save route answers 404
-/// <code>DATABASE.NAME.ABSENT</code>, and a proposal minted before the delete is refused
-/// <code>PROPOSAL.TARGETCHANGED</code> at its confirm, with nothing sent.</p>
+/// <code>DATABASE.NAME.ABSENT</code>, and a file edit and a mounting edit minted before the delete are
+/// each refused <code>PROPOSAL.TARGETCHANGED</code> at their confirm, with nothing sent, so the
+/// mounting edit's upsert never re-creates the configuration.</p>
 Method TestAnEditOfADeletedDatabaseIsRefused()
 {
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/database/OCUPROBE183GONE", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders, {"file": {"MaxSize": 2}}.%ToJSON(), "application/json")
@@ -359,6 +370,13 @@ Method TestAnEditOfADeletedDatabaseIsRefused()
     Do $$$AssertStatusOK(tSC, "an edit is minted (" _ tProblem _ ")")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", tName, 1), "and the database is deleted")
     Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseWrite).Confirm(tProposal), "409 PROPOSAL.TARGETCHANGED", "the confirm is refused as a moved target")
+    Do $$$AssertEquals($ClassMethod(..#RECORD, "Writes"), "", "no vendor write was sent")
+    Set tName = "OCUPROBE183TM"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Add", tName), "a second probe database is created")
+    Set tSC = ##class(OcuPilot.Test.DatabaseWrite).Mint(..#MOUNTTOOL, tName, {"Name": (tName), "MountAtStartup": true}, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a mounting edit is minted (" _ tProblem _ ")")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", tName, 1), "and the database is deleted")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseWrite).Confirm(tProposal), "409 PROPOSAL.TARGETCHANGED", "its confirm is refused as a moved target")
     Do $$$AssertEquals($ClassMethod(..#RECORD, "Writes"), "", "no vendor write was sent")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tName), 0, "and the upsert did not re-create it")
 }

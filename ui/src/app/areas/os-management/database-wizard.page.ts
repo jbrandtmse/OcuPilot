@@ -441,8 +441,10 @@ export class DatabaseWizardPage {
     return uncheckedLine(this.store.resourcesRefused());
   }
 
+  /** The refused pair's line, and a resource refusal drawn under the new-resource choice. */
   protected get resourceChoiceDescribedBy(): string | null {
-    return this.resourcesRefused ? this.resourceRefusedId : null;
+    const ids = [this.resourcesRefused ? this.resourceRefusedId : '', this.resourceRefusedOnChoice ? `${this.resourceField.id}-reason` : ''].filter((id) => id !== '');
+    return ids.length === 0 ? null : ids.join(' ');
   }
 
   /** "Create the resource %DB_<NAME>". */

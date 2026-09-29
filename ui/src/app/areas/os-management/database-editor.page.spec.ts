@@ -153,6 +153,20 @@ describe('DatabaseEditorPage', () => {
     expect((host.querySelector('#ocu-database-volume-path') as HTMLInputElement).getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('Cancel beside the picker keeps the current volume directory: the picker closes and a Save sends none', async () => {
+    const { fixture, host, calls } = await mount();
+    (host.querySelector('[data-action="change-volume-directory"]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect((host.querySelector('#ocu-database-volume-root') as HTMLSelectElement).value).toBe(ROOT);
+    (host.querySelector('[data-action="keep-volume-directory"]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(host.querySelector('app-server-path-picker')).toBeNull();
+    expect(host.querySelector('[data-action="change-volume-directory"]')).not.toBeNull();
+    save(host);
+    await settle(fixture);
+    expect(calls.filter((call) => call.method === 'PUT')).toEqual([]);
+  });
+
   it('a caller who may not list the resources sees the resource read-only, naming the pair', async () => {
     const { host } = await mount({ form: { ...FORM, resources: undefined, resourcesRefused: '%Admin_Secure:USE' } });
     const resource = host.querySelector('#ocu-database-edit-ResourceName') as HTMLInputElement;

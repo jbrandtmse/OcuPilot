@@ -141,6 +141,38 @@ describe('the local database editor store', () => {
     expect(store.violationFor('volumePath')).toBe(reason);
   });
 
+  it('Cancel after Change sends no new volume directory: the preselected root is dropped and the form reads clean', async () => {
+    const { store, calls, formDirty } = mount();
+    await store.open('OCUPROBE183A');
+    store.changeVolumeDirectory();
+    store.setVolumeLocation('/durable/iris/mgr/', '');
+    expect(formDirty.dirty()).toBe(true);
+    store.keepVolumeDirectory();
+    expect([store.changingVolumeDirectory(), store.volumeRoot(), store.volumePath(), formDirty.dirty()]).toEqual([false, '', '', false]);
+    store.setText('ExpansionSize', '4');
+    expect(await store.save()).toBe(true);
+    expect(JSON.parse(writes(calls)[0].body)).toEqual({ file: { ExpansionSize: 4 } });
+  });
+
+  it('AD-58: a Save of both groups shows the read-back that does not hold what it sent', async () => {
+    const { store } = mount([
+      {
+        kind: 'ok',
+        status: 200,
+        body: {
+          name: 'OCUPROBE183A',
+          configuration: { readBack: { verdict: 'differs', fields: ['MountRequired'], written: [] } },
+          file: { readBack: { verdict: 'matches', fields: [], written: [] } },
+        },
+      },
+    ]);
+    await store.open('OCUPROBE183A');
+    store.setFlag('MountRequired', true);
+    store.setText('ExpansionSize', '4');
+    expect(await store.save()).toBe(true);
+    expect(store.readBack()?.verdict).toBe('differs');
+  });
+
   it('a refusal after the mounting group applied keeps it from being sent again, and publishes the change it made', async () => {
     const reason = 'No resource on this instance has that name.';
     const { store, calls, events } = mount([

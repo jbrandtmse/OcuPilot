@@ -237,6 +237,11 @@ interface VolumeRowView {
           [idPrefix]="volumeIdPrefix"
           (changed)="onVolumeLocation($event)"
         />
+        <div class="ocu-form-actions">
+          <button type="button" class="ocu-button-text" data-action="keep-volume-directory" (click)="onKeepVolume()">
+            {{ STRINGS.actionCancel }}
+          </button>
+        </div>
       }
       @if (volumesFault) {
         <div class="ocu-data-table-refusal" role="alert">
@@ -544,6 +549,11 @@ export class DatabaseEditorPage {
   protected onChangeVolume(): void {
     this.store.changeVolumeDirectory();
     void this.directories.load(this.api);
+  }
+
+  /** Cancel Change: keep the current volume directory. */
+  protected onKeepVolume(): void {
+    this.store.keepVolumeDirectory();
   }
 
   protected onVolumeLocation(location: ServerPath): void {

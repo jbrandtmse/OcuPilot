@@ -233,6 +233,32 @@ Method TestTheReadToolAnswersTheListsRowsAllLocal()
 
 /// <p><var>pRows</var> as one sorted comparable string, each row its three fields joined, or with
 /// <var>pField</var> that field alone.</p>
+/// <p>Every code <class>OcuPilot.Api.DatabaseError</class> declares is a <code>DATABASE.*</code> code
+/// with a sentence the one writer answers (AD-39), and each field-level code is among
+/// <method>OcuPilot.Api.DatabaseError.ViolationCodes</method>, so the form read's rules carry it; only
+/// the three envelope codes stay out.</p>
+/// <p>Mutation (Rule 19): drop a code from <method>OcuPilot.Api.DatabaseError.ViolationCodes</method>
+/// -> this goes red.</p>
+Method TestEveryDatabaseCodeIsSaidAndListed()
+{
+    Set tEnvelopes = $ListBuild(##class(OcuPilot.Api.DatabaseError).#VALIDATION, ##class(OcuPilot.Api.DatabaseError).#INUSE, ##class(OcuPilot.Api.DatabaseError).#REMOTE)
+    Set tListed = ##class(OcuPilot.Api.DatabaseError).ViolationCodes()
+    Set tCount = 0
+    Set tWrong = ""
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.CompiledParameter WHERE parent = ? AND Origin = ?", "OcuPilot.Api.DatabaseError", "OcuPilot.Api.DatabaseError")
+    While tRS.%Next() {
+        Set tKey = tRS.%Get("Name")
+        If $Extract(tKey, 1, 6) = "REASON" Continue
+        Set tCode = $Parameter("OcuPilot.Api.DatabaseError", tKey)
+        Set tCount = tCount + 1
+        If '$Match(tCode, "DATABASE(\.[A-Z]+)+") || (##class(OcuPilot.Api.Error).ReasonForViolation(tCode) = "") Set tWrong = tWrong _ " " _ tKey _ "=" _ tCode
+        If '$ListFind(tEnvelopes, tCode) && '$ListFind(tListed, tCode) Set tWrong = tWrong _ " unlisted:" _ tCode
+    }
+    Do $$$AssertTrue(tCount > 3, "the class declares its codes (" _ tCount _ ")")
+    Do $$$AssertEquals(tWrong, "", "each is a DATABASE code with its sentence, and each field-level code is listed")
+    Do $$$AssertEquals($ListLength(tListed), tCount - 3, "and the list holds no code the class does not declare")
+}
+
 ClassMethod Rows(pRows As %DynamicArray, pField As %String = "") As %String
 {
     Kill tSorted

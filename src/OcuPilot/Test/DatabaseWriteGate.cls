@@ -125,6 +125,16 @@ Method TestTheScreensPairsReadTheListTheFormAndTheCheck()
     Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("resourcesRefused") _ "|" _ tAnswer.%GetTypeOf("resources") _ "|" _ tAnswer.%GetTypeOf("file"), 1: ""), "%Admin_Secure:USE|unassigned|object", "naming the pair the resource choice needs, with the file read")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tBase _ "/database/check", tUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders, {"step": "size", "values": {"Size": 2}}.%ToJSON(), "application/json")
     Do $$$AssertEquals(tStatus _ " " _ tBody, "200 {""violations"":[]}", "and the step check answers the reader")
+    ; The two steps that read beyond the screen's pairs are refused 403, never answered 500: the
+    ; resource read by the admin port's own gate, the directory by the path port's, naming its pair.
+    For tCase = $ListBuild({"step": "resource", "values": {"ResourceName": "%DB_USER"}}.%ToJSON(), "code", "PORT.ACCESSDENIED"), $ListBuild({"step": "name", "values": {"Name": "OCUPROBE183GC", "root": "/", "path": "ocuprobe183gc"}}.%ToJSON(), "failedPair", "%Admin_FileSystemAccess:USE") {
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tBase _ "/database/check", tUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders, $List(tCase, 1), "application/json")
+        Set tAnswer = ""
+        Try { Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody) } Catch {}
+        Set tSaid = ""
+        If $IsObject(tAnswer) Set tSaid = $Select($List(tCase, 2) = "code": tAnswer.%Get("code"), $IsObject(tAnswer.%Get("detail")): tAnswer.detail.%Get("failedPair"), 1: "")
+        Do $$$AssertEquals(tStatus _ " " _ tSaid, "403 " _ $List(tCase, 3), "a step reading beyond the screen's pairs is refused 403: " _ $Extract(tBody, 1, 200))
+    }
 }
 
 /// <p>Each extra pair, missing: the create without <code>%DB_IRISSYS:WRITE</code>,
@@ -244,6 +254,72 @@ Method TestExactlyTheDeclaredPairsWriteOnBothCallers()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "StoredFile", $ClassMethod(..#PROBE, "DirectoryFor", "af"), "ResourceName") _ " " _ $ClassMethod(..#PROBE, "HoldsDirectory", $ClassMethod(..#PROBE, "DirectoryFor", "af-vol")), ..#PROBERESOURCE _ " 1", "and its file edit")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", "OCUPROBE183FD") _ $ClassMethod(..#PROBE, "Holds", "OCUPROBE183AD"), "00", "both deletes removed their configuration")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "HoldsFile", $ClassMethod(..#PROBE, "DirectoryFor", "fd")) _ $ClassMethod(..#PROBE, "HoldsFile", $ClassMethod(..#PROBE, "DirectoryFor", "ad")), "00", "and their files")
+}
+
+/// <p>A plain edit needs no argument pair (AD-4, AD-29): each edit sends its endpoint's complete set,
+/// the unchanged resource and <code>MountRequired</code> among it, yet a principal holding the
+/// screens' two pairs alone changes a file setting, and one holding the mounting edit's pairs but not
+/// <code>%Admin_Operate:USE</code> changes a mounting setting of a database whose
+/// <code>MountRequired</code> is false, on both callers.</p>
+Method TestAPlainEditNeedsNoArgumentPair()
+{
+    For tName = "OCUPROBE183PF", "OCUPROBE183PG", "OCUPROBE183PM", "OCUPROBE183PN" {
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Add", tName), tName _ " is created")
+    }
+    For tCase = $ListBuild(1, "file", "OCUPROBE183PF", ..#UPDATETOOL, "OCUPROBE183PG", {"ExpansionSize": 3}.%ToJSON(), "Database.SysCRUD/PUT"), $ListBuild(5, "configuration", "OCUPROBE183PM", ..#MOUNTTOOL, "OCUPROBE183PN", {"MountAtStartup": true}.%ToJSON(), "Database.ConfigCRUD/PUT") {
+        Set tRun = ..EditAs(..User($List(tCase, 1)), $List(tCase, 2), $List(tCase, 3), $List(tCase, 4), $List(tCase, 5), $List(tCase, 6))
+        For tI = 1, 2 {
+            Set tLeg = ..Leg(tRun, tI)
+            Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http"), 1: ""), 200, ..User($List(tCase, 1)) _ ": " _ $Select(tI = 1: "the screen's edit", 1: "the agent's edit confirm") _ " succeeds (" _ ..LegText(tRun, tI) _ ")")
+            Do $$$AssertTrue($IsObject(tLeg) && $ListFind($ListFromString(tLeg.%Get("types")), $List(tCase, 7)), ..User($List(tCase, 1)) _ ": and reaches the port's " _ $List(tCase, 7))
+        }
+    }
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "StoredFile", $ClassMethod(..#PROBE, "DirectoryFor", "pf"), "ExpansionSize") _ " " _ $ClassMethod(..#PROBE, "StoredFile", $ClassMethod(..#PROBE, "DirectoryFor", "pg"), "ExpansionSize"), "3 3", "both file edits are stored")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", "OCUPROBE183PM", "MountAtStartup") _ " " _ $ClassMethod(..#PROBE, "Stored", "OCUPROBE183PN", "MountAtStartup"), "true true", "and both mounting edits")
+}
+
+/// <p>A mounting edit of a database whose <code>MountRequired</code> is stored true sends it true in
+/// its complete set (AD-4), which the vendor refuses without <code>%Admin_Operate:USE</code> (#921), so
+/// the edit declares that pair although its own arguments leave <code>MountRequired</code> alone: a
+/// principal without it is refused 403 naming it on both callers with no port call, and the database
+/// is unchanged (AD-8, AD-29).</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.LocalDatabaseUpdateMount.ArgumentPairs</method>
+/// answers nothing when the arguments leave <code>MountRequired</code> out -> the vendor's refusal
+/// answers 500 and this goes red.</p>
+Method TestAStoredMountRequiredNeedsTheOperatePair()
+{
+    For tName = "OCUPROBE183PR", "OCUPROBE183PS" {
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Add", tName), tName _ " is created")
+        Kill tQuery
+        Set tQuery("name") = tName
+        Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Database.ConfigCRUD", "PUT", .tQuery, {"MountRequired": true}, .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tName, "MountRequired"), "true", tName _ " is required at startup")
+    }
+    Set tUser = ..User(5)
+    Set tRun = ..EditAs(tUser, "configuration", "OCUPROBE183PR", ..#MOUNTTOOL, "OCUPROBE183PS", {"MountAtStartup": true}.%ToJSON())
+    For tI = 1, 2 {
+        Do $$$AssertEquals(..LegText(tRun, tI), "403 AUTH.NOPRIVILEGE %Admin_Operate:USE calls=0 types=", tUser _ ": " _ $Select(tI = 1: "the screen's edit", 1: "the agent's edit confirm") _ " is refused naming %Admin_Operate:USE")
+    }
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", "OCUPROBE183PR", "MountAtStartup") _ " " _ $ClassMethod(..#PROBE, "Stored", "OCUPROBE183PS", "MountAtStartup"), "false false", "and neither database is changed")
+}
+
+/// <p>Run, as <var>pUser</var>, the screen's edit of group <var>pGroup</var> of <var>pScreenName</var>
+/// and the agent's confirm of <var>pToolClass</var>'s edit of <var>pAgentName</var>, each with the
+/// arguments of the JSON object <var>pArgsJson</var>, answering what the child signalled.</p>
+Method EditAs(pUser As %String, pGroup As %String, pScreenName As %String, pToolClass As %String, pAgentName As %String, pArgsJson As %String) As %DynamicObject
+{
+    Set tGroup = {}
+    Do tGroup.%Set(pGroup, ##class(%DynamicObject).%FromJSON(pArgsJson))
+    Set tArgs = ##class(%DynamicObject).%FromJSON(pArgsJson)
+    Do tArgs.%Set("Name", pAgentName, "string")
+    Set tSC = ..MintFor(pUser, pToolClass, pAgentName, tArgs, .tProposal)
+    Do $$$AssertStatusOK(tSC, pUser _ ": the agent's edit is minted for the principal")
+    Set tPlan = []
+    Do tPlan.%Push({"kind": "update", "name": (pScreenName), "body": (tGroup)})
+    Do tPlan.%Push({"kind": "confirm", "proposalId": ($Select($IsObject(tProposal): tProposal.%Get("proposalId"), 1: ""))})
+    Set tRun = ..RunAs(pUser, tPlan)
+    Do $$$AssertEquals(..Ran(tRun), pUser _ " 1", "the child process ran as " _ pUser)
+    Quit tRun
 }
 
 /// <p>The principal of entry <var>pIndex</var> of <parameter>PRINCIPALS</parameter>.</p>

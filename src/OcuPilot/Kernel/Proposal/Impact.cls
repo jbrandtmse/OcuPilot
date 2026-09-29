@@ -1,6 +1,7 @@
 /// <p>The impact of a removal (AD-8, AD-53): what else depends on a role or a resource about to be
 /// deleted, what a user actually loses when a role is taken from them, what a namespace delete
-/// takes with it and leaves, and what uses a database about to be deleted. Both callers of the four write tools share it: the agent's mint records it on the proposal row, and the screen's
+/// takes with it and leaves, and what uses a database about to be deleted. Both callers of each of
+/// those write tools share it: the agent's mint records it on the proposal row, and the screen's
 /// dialog asks <class>OcuPilot.Api.ScreenImpact</class> for it when it opens.</p>
 /// <p><b>Names only.</b> The answer is
 /// <code>{kind, refused, parts: [{part, count, names, unchecked}]}</code>: counts, at most
@@ -180,7 +181,11 @@ ClassMethod Of(pToolName As %String, pTargetRef As %String, pFreshJson As %Strin
             Set tSC = ..UsingNamespaces(tId, .tPart, .tUsing)
             If $$$ISERR(tSC) Quit
             Do tParts.%Push(tPart)
+            Set tNamespacesUnchecked = tPart.%Get("unchecked")
             Set tSC = ..RunningIn(tUsing, .tPart)
+            If $$$ISERR(tSC) Quit
+            ; Namespaces unread leave the applications in them unread too, for the same reason.
+            If tNamespacesUnchecked '= "" Set tSC = ..Unchecked(tPart, tNamespacesUnchecked)
             If $$$ISERR(tSC) Quit
             Do tParts.%Push(tPart)
             Set tSC = ..SharedFile(tId, tFresh, .tPart)

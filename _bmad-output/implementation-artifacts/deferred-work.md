@@ -7979,6 +7979,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md (code review 4) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Executed on ocupilot-b-ci: Resolve(<mgr>, "irissecurity", "directory", pVendorWrites 1) answers 200 /durable/iris/mgr/irissecurity/. Whether the vendor's database create accepts a directory already holding an IRIS.DAT is unmeasured (severity unverified); epic-18-context.md:76 reads this half of DW-1779 as fixed under 18.1.
 - 2026-09-28T17:21:24Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=probe the create on the throwaway; refuse a directory holding an IRIS.DAT in 18.3's tool, or amend AD-21 if PathPort should
+- 2026-09-29T14:12:01Z occurrence=18-3-databases-configuration-creation-properties-and-volumes
+- 2026-09-29T14:12:01Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=residual: create refuses; a NewVolumeDirectory naming another DB's directory resolves (vendor collision unmeasured, 18.4)
 
 ### DW-1792: Ending a preserve-mode web session hangs until the gateway answers 504 and never ends it: the vendor DELETE waits on the session lock the session's own process holds
 - source: spec-16-2-web-sessions-listed-and-ended.md | severity: med | fix-risk: med | footprint: in-story
@@ -8149,3 +8151,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: EnumerateTasks reads ^IRIS.Temp.MgtPortalTask only (irissys/%CSP/UI/System/BackgroundTask.cls:1195-1256) while %SYS.BackgroundTask:DatabaseList lists every compact and defragment (irissys/%SYS/BackgroundTask.cls:911-920); inference until 18.4 queues one
 - 2026-09-29T13:12:13Z status=routed owner=18-4-the-deferred-disk-operations by=harvest note=18.4 queues admin-API compacts and defragments; it attributes them to their database in Database details' Background tasks section (BackgroundTaskPort PortalRows), or measures that the vendor gives them a portal row
+
+### DW-1824: The New Namespace form's Create a database leaves the form: typed values are discarded after the leave prompt, the wizard lands on the new database's editor, and nothing returns to the form
+- source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: namespace-form.page.ts resets its store on destroy (retaining() false), so the change-bus re-read never runs for this flow; database-wizard.page.ts replaces the route with the editor. AC6 holds only because the form's next open re-reads.
+- 2026-09-29T14:12:00Z status=decision-pending owner=burndown by=cr note=product call: carry the form across the wizard and return with the new database selected, as classic SA-13 does?
+
+### DW-1825: An accepted Save in the database editor re-opens its store through reset(), unmounting every field and the form bar until the re-read lands: focus is lost and edits typed during the PUT are dropped
+- source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: database-editor.store.ts save() awaits open(name, true), which calls reset(); NamespaceForm.save keeps its saved buffer as the new baseline instead.
+- 2026-09-29T14:12:00Z status=wontfix-accepted owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=reopen_if=a keyboard walk of the database editor finds focus off the form bar after an accepted Save
+
+### DW-1826: OcuPilot.Test.DatabaseWrite is 764 lines, over the ~500-line test-class guideline
+- source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: .claude/rules/objectscript-testing.md asks about 500 lines per class; the code review put its new legs in DatabaseWriteDetail rather than grow it.
+- 2026-09-29T14:12:01Z status=wontfix-accepted owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=reopen_if=DatabaseWrite.cls gains a test method or passes 800 lines

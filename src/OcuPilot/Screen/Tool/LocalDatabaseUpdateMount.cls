@@ -107,16 +107,26 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
 }
 
-/// <p><parameter>OPERATERESOURCE</parameter> when <var>pArgs</var> sets <code>MountRequired</code>
-/// true, and nothing otherwise.</p>
+/// <p><parameter>OPERATERESOURCE</parameter> when the write sends <code>MountRequired</code> true:
+/// when <var>pArgs</var> sets it true, or leaves it out while the configuration its
+/// <code>Name</code> argument names holds it true, since the complete set carries the stored value
+/// (AD-4) and the vendor answers #921 for it all the same (measured on <code>ocupilot-b-ci</code>).
+/// That configuration is read through this tool's own port as the caller; a read that fails for any
+/// reason but absence answers the pair, and an absent configuration none, its write refused later.</p>
 ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
 {
     Set pResolved = 1
     If '$IsObject(pArgs) Quit ""
+    Set tOperate = $ListBuild($ListBuild(..#OPERATERESOURCE, ..#OPERATEPERMISSION))
     Set tType = pArgs.%GetTypeOf("MountRequired")
-    If (tType = "unassigned") || (tType = "null") Quit ""
-    If '##class(OcuPilot.Port.DatabasePort).Truthy(pArgs.%Get("MountRequired")) Quit ""
-    Quit $ListBuild($ListBuild(..#OPERATERESOURCE, ..#OPERATEPERMISSION))
+    If (tType '= "unassigned") && (tType '= "null") Quit $Select(##class(OcuPilot.Port.DatabasePort).Truthy(pArgs.%Get("MountRequired")): tOperate, 1: "")
+    If pArgs.%GetTypeOf(..IdArgument()) '= "string" Quit ""
+    Kill tQuery
+    Set tQuery(..IdParam()) = pArgs.%Get(..IdArgument())
+    Set tSC = $ClassMethod(..PortClass(), "Invoke", ..Endpoint(), ..#READTYPE, .tQuery, "", .tFresh, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit $Select(+$Get(tHttp) = 404: "", 1: tOperate)
+    If '$IsObject($Get(tFresh)) Quit ""
+    Quit $Select(##class(OcuPilot.Port.DatabasePort).Truthy(tFresh.%Get("MountRequired")): tOperate, 1: "")
 }
 
 }

@@ -220,7 +220,7 @@ const FLAGGED_ACTIONS: Readonly<Record<string, Readonly<Record<string, { readonl
  * value -- `'true'` or `'false'`, a string, as every screen-action value does -- on the one write,
  * and as the impact read's `value` when the dialog opens, unchecked.
  */
-const VALUE_FLAGS: Readonly<Record<string, Readonly<Record<string, { readonly value: string; readonly labelKey: string }>>>> = {
+const VALUE_FLAGS: Readonly<Record<string, Readonly<Record<string, { readonly value: string; readonly labelKey: keyof typeof STRINGS }>>>> = {
   [LOCAL_DATABASE_LIST]: { delete: { value: 'DeleteFile', labelKey: 'localDatabaseDeleteFileOption' } },
 };
 

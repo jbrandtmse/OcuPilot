@@ -137,7 +137,7 @@ Method TestAGateDenialReachesNothingAndTheToolStaysAdvertised()
 /// AD-22). It reads the stored policy, so it
 /// first asserts that no policy is stored.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.Governance.Gate.Decide</method> answers 0 -> this goes red.</p>
-Method TestTheShippedGateAllowsEveryLiveToolButTheTwoDisabled()
+Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tStored), "the stored policy reads")
     Do $$$AssertTrue(##class(OcuPilot.Test.GovernanceFixture).IsDefault(.tStored), "and leaves every key to the baseline")

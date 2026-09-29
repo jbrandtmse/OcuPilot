@@ -268,11 +268,18 @@ before(async () => {
 });
 
 after(async () => {
-  if (browser !== null) await browser.close();
-  if (config.container === LIVE_CONTAINER || managerDirectory === '') return;
-  if (seededCompact) removeCompactSeed();
-  const { values, output } = irisSys([...cleanupLines(), mark('CLEAN', noneSurvives())], ['CLEAN']);
-  assert.equal(values.CLEAN, '1', `no probe database, namespace, application, directory or resource survives:\n${output}`);
+  try {
+    if (browser !== null) await browser.close();
+  } finally {
+    if (config.container !== LIVE_CONTAINER && managerDirectory !== '') {
+      try {
+        if (seededCompact) removeCompactSeed();
+      } finally {
+        const { values, output } = irisSys([...cleanupLines(), mark('CLEAN', noneSurvives())], ['CLEAN']);
+        assert.equal(values.CLEAN, '1', `no probe database, namespace, application, directory or resource survives:\n${output}`);
+      }
+    }
+  }
 });
 
 /** The side bar as rendered: its area and its entry labels, opening it first. */

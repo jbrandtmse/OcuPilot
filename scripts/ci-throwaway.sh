@@ -379,9 +379,10 @@ services:
       # Save, row-action and confirm paths. Its own variable because no narrower one names that
       # effect: a database delete with its file removes data. The classes touch only OCUPROBE183*
       # databases, %DB_OCUPROBE183* resources and <mgr>ocuprobe183* directories, each by exact
-      # name, with the probe namespaces, mapping and /csp/ocuprobe183* applications they create,
-      # and write to the instance's own databases only through a port that sends nothing.
-      # classes: DatabaseRefusals, DatabaseWrite, DatabaseWriteGate, PathPortDatabases
+      # name, with the probe namespaces, mapping and /csp/ocuprobe183* applications and the
+      # OCUPROBE183SRV data server they create, and write to the instance's own databases only
+      # through a port that sends nothing.
+      # classes: DatabaseRefusals, DatabaseWrite, DatabaseWriteDetail, DatabaseWriteGate, PathPortDatabases
       OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
     volumes:
       - $DIR/data:/durable

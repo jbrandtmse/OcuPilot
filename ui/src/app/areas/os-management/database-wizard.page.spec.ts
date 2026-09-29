@@ -180,6 +180,27 @@ describe('DatabaseWizardPage', () => {
     expect(host.querySelector('[data-slot="resources-refused"]')?.textContent?.trim()).toBe(uncheckedLine('%Admin_Secure:USE'));
   });
 
+  it('a resource refusal drawn under the new-resource choice describes the choice group', async () => {
+    const reason = 'No resource on this instance has that name.';
+    const { fixture, host } = await mount({
+      create: {
+        kind: 'error',
+        status: 422,
+        code: 'DATABASE.VALIDATION',
+        reason: 'The database was refused.',
+        detail: { violations: [{ field: 'ResourceName', code: 'DATABASE.RESOURCE.ABSENT', reason }] },
+      },
+    });
+    type(host, 'ocu-database-Name', 'OcuProbe183A');
+    await settle(fixture);
+    await next(fixture, host);
+    await next(fixture, host);
+    primary(host).click();
+    await settle(fixture);
+    expect(host.querySelector('#ocu-database-ResourceName-reason')?.textContent?.trim()).toBe(reason);
+    expect(host.querySelector('fieldset')?.getAttribute('aria-describedby') ?? '').toContain('ocu-database-ResourceName-reason');
+  });
+
   it('AC1, AD-14: an accepted Create posts the values and replaces the page with the new database\u2019s editor', async () => {
     const { fixture, host, router, calls } = await mount();
     const navigate = vi.spyOn(router, 'navigateByUrl');

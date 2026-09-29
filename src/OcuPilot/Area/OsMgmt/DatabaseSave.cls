@@ -93,7 +93,8 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Quit
         }
         Set tName = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
-        ; The groups' keys and shapes first, then every group's pairs, before anything is read.
+        ; The group names and shapes first, then every group's pairs, before anything is read; a key
+        ; inside a group is its own Update's check, made before that group is written.
         Set tBad = ""
         Set tIterator = tBody.%GetIterator()
         While tIterator.%GetNext(.tKey, .tValue) {
@@ -110,7 +111,11 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tGroup = $Piece($Piece(..#GROUPS, ",", tI), ":", 1)
             If tBody.%GetTypeOf(tGroup) '= "object" Continue
             Set tGroups = tGroups _ $ListBuild(tGroup)
-            Set tGateSC = ..Gate(.tRefused, ..ToolOf(tGroup), tBody.%Get(tGroup))
+            ; The group's arguments with its target named, as the agent's are, so a tool whose pairs
+            ; depend on the target's stored values resolves them for this database.
+            Set tArgs = ##class(OcuPilot.Port.DatabasePort).Without(tBody.%Get(tGroup), $ListBuild(..#IDARGUMENT))
+            Do tArgs.%Set(..#IDARGUMENT, tName, "string")
+            Set tGateSC = ..Gate(.tRefused, ..ToolOf(tGroup), tArgs)
         }
         If tRefused || $$$ISERR(tGateSC) {
             Set tSC = tGateSC

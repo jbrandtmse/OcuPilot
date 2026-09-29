@@ -211,10 +211,10 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 Set tPollPair = $ListBuild($Parameter(tTool.class, "POLLRESOURCE"), $Parameter(tTool.class, "POLLPERMISSION"))
                 If '$ListFind(tExpected, tPollPair) Set tExpected = tExpected _ $ListBuild(tPollPair)
             }
-            ; Story 18.3: the database file edit declares no write pair, since its PUT writes no system
-            ; database (measured), so a tool naming no write resource adds none.
+            ; Story 18.3: the database file edit alone declares no write pair, since its PUT writes no
+            ; system database (measured); every other write tool must still name its own.
             Set tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION"))
-            If ($List(tOwnPair, 1) '= "") && '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            If (tTool.name '= "osmgmt.localdatabases.update") && '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
             ; Story 18.3: the database create declares the resource pair and the path pair after the
             ; write's own, and the two edits add pairs by argument (AD-8 as amended 2026-09-29).
             If tTool.name = "osmgmt.localdatabases.create" Set tExpected = tExpected _ $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_FileSystemAccess", "USE"))

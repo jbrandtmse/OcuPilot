@@ -274,9 +274,9 @@ ClassMethod HoldsResource(pName As %String) As %Boolean
     Quit tHeld
 }
 
-/// <p>Create the probe namespace <var>pName</var> over <var>pGlobals</var> and <var>pRoutines</var>
-/// through the port.</p>
-ClassMethod AddNamespace(pName As %String, pGlobals As %String, pRoutines As %String) As %Status
+/// <p>Create the probe namespace <var>pName</var> over <var>pGlobals</var> and <var>pRoutines</var>,
+/// and over <var>pTempGlobals</var> for its temporary globals when given, through the port.</p>
+ClassMethod AddNamespace(pName As %String, pGlobals As %String, pRoutines As %String, pTempGlobals As %String = "") As %Status
 {
     If '..IsProbe(pName) Quit $$$ERROR($$$GeneralError, "a probe namespace's name starts with " _ ..#PREFIX)
     Kill tQuery
@@ -284,6 +284,7 @@ ClassMethod AddNamespace(pName As %String, pGlobals As %String, pRoutines As %St
     Set tBody = {}
     Do tBody.%Set("Globals", pGlobals, "string")
     Do tBody.%Set("Routines", pRoutines, "string")
+    If pTempGlobals '= "" Do tBody.%Set("TempGlobals", pTempGlobals, "string")
     Set tSC = $ClassMethod(..#PORT, "Invoke", "Namespace.Namespace", "PUT", .tQuery, tBody, .tResult, .tHttp, .tFault)
     If $$$ISERR(tSC) Quit tSC
     If +$Get(tHttp) '= 201 Quit $$$ERROR($$$GeneralError, "the probe namespace " _ pName _ " was answered " _ $Get(tHttp) _ ", not created")
