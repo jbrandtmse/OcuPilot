@@ -8156,6 +8156,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Mint.cls:317 classifies RunAs-other from payload RunAsUser, absent from the import's {root,path,tasks}; TaskTransferPort.cls:381/312 summarize and compare Name (NAMESPACE) only; a digit-first name imported whole on ocupilot-ci 2026-09-29, which TaskCreate refuses TASK.NAME.SHAPE
 - 2026-09-29T15:14:07Z status=escalated owner=burndown by=cr note=decision sheet: review TaskClass+RunAsUser, classify RunAs-other, preview on screen (spec amendment), or accept vendor parity
 - 2026-09-29T15:14:30Z status=escalated owner=burndown by=cr note=port lines cited are 8bc275b5's; after this review's doc edit they read TaskTransferPort.cls:382/313
+- 2026-09-29T17:56:22Z status=routed owner=range-end-cleanup by=merge_gate note=agent import key tasks.schedule.import disabled by default in 1.0.3 (staging); follow-up: review TaskClass and RunAsUser on an import proposal, classify run-as-other at the strongest confirmation, apply the create rules, then re-enable
 
 ### DW-1828: A vendor ImportTasks failure after Examine passes answers 500 with the tasks before it kept and no change event (unverified)
 - source: spec-16-4-task-export-and-import.md | severity: med | fix-risk: med | footprint: in-story

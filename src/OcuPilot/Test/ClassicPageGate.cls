@@ -49,6 +49,9 @@ Parameter DELETEKEY = "osmgmt.namespaces.delete";
 /// <p>The agent's database delete key, which the baseline disables too (Story 18.3).</p>
 Parameter DATABASEDELETEKEY = "osmgmt.localdatabases.delete";
 
+/// <p>The agent's task import key, which the baseline disables too (DW-1827).</p>
+Parameter TASKIMPORTKEY = "tasks.schedule.import";
+
 /// <p>The pairs each declaring tool declares beyond its list's own, as <code>tool=pair|pair</code>
 /// entries: its declared set, with no classic page assigned. The declaring tools are exactly these,
 /// and the database file edit declares none of its own.</p>
@@ -163,7 +166,7 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
 /// <var>pPairs</var> unchanged -> the lacking principal is admitted and this goes red.</p>
 Method TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller()
 {
-    Do $$$AssertStatusOK(..EnableDelete(), "the agent's namespace and database delete keys are enabled, so only the pairs stand in the way")
+    Do $$$AssertStatusOK(..EnableDelete(), "the agent's namespace and database delete keys and its task import key are enabled, so only the pairs stand in the way")
     Set tSC = ..Roster(.tRoster)
     Set tTools = ..Declared()
     Do $$$AssertStatusOK(..Assign(.tRoster), "the probe resource is assigned to every declared page")
@@ -324,12 +327,14 @@ Method RestorePages() As %Status
     Quit tSC
 }
 
-/// <p>Enable the agent's namespace and database delete keys, over the snapshot this class took.</p>
+/// <p>Enable the agent's namespace and database delete keys and its task import key, over the
+/// snapshot this class took.</p>
 Method EnableDelete() As %Status
 {
     Kill tSettings
     Set tSettings(..#DELETEKEY) = "enabled"
     Set tSettings(..#DATABASEDELETEKEY) = "enabled"
+    Set tSettings(..#TASKIMPORTKEY) = "enabled"
     Quit ##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings)
 }
 

@@ -3,7 +3,8 @@
 /// round-tripping a task with every stored property kept but its id, the vendor audit rows each writes,
 /// and the same file refused the second time; the rules a principal decides refusing the whole file;
 /// the agent's export and import through mint and confirm, and a file rewritten after the proposal
-/// refused; a principal without <code>%Admin_FileSystemAccess:USE</code> or <code>%Admin_Task:USE</code>
+/// refused; at the baseline, the agent's import refused as disabled while the screen's proceeds; a
+/// principal without <code>%Admin_FileSystemAccess:USE</code> or <code>%Admin_Task:USE</code>
 /// refused on the screen, and the one without the file pair at the agent's confirm; files the
 /// vendor's own export writes and reads interchangeable with the tools'; and a task whose start date
 /// is past scheduled as the vendor's own import schedules it.</p>
@@ -29,6 +30,9 @@ Parameter EXPORTTOOL = "OcuPilot.Screen.Tool.TaskExport";
 
 Parameter IMPORTTOOL = "OcuPilot.Screen.Tool.TaskImport";
 
+/// <p>The agent's import key, which the baseline disables (DW-1827).</p>
+Parameter IMPORTKEY = "tasks.schedule.import";
+
 /// <p>The principal holding the code read and exactly the tools' three pairs; the one lacking
 /// <code>%Admin_FileSystemAccess:USE</code>; the one lacking <code>%Admin_Task:USE</code>; and a
 /// disabled account a task may name.</p>
@@ -42,6 +46,9 @@ Parameter DISABLEDUSER = "OcuP164Disabled";
 
 /// <p>The throwaway principals' password, generated for the run.</p>
 Property PreparedPassword As %String;
+
+/// <p>The governance policy as it stood before the class ran, restored after each test.</p>
+Property PreparedPolicy [ MultiDimensional ];
 
 Method %OnNew(initvalue As %String = "") As %Status
 {
@@ -59,6 +66,9 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#TASKVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.TaskTransferLive creates and deletes tasks in this instance's Task Manager and runs on a throwaway container only. " _ ..#TASKVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Merge ..PreparedPolicy = tRows
     Set ..PreparedPassword = "OcuP164Xfer" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(18), 1), "+/=", "") _ "!Aa9"
     Set tSC = $ClassMethod(..#PROBE, "RemoveProbes")
     If $$$ISERR(tSC) Quit tSC
@@ -69,6 +79,8 @@ Method OnBeforeAllTests() As %Status
 Method OnAfterAllTests() As %Status
 {
     Set tSC = $ClassMethod(..#PROBE, "RemoveProbes")
+    Merge tRows = ..PreparedPolicy
+    Set tSC = $$$ADDSC(tSC, ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows))
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
@@ -94,6 +106,8 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Merge tRows = ..PreparedPolicy
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the governance policy is restored")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveProbes"), "every probe task and file is removed")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Probes"), 0, "and no probe task is left")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe proposals and turns are removed")
@@ -186,6 +200,7 @@ Method TestTheAgentExportsAndImportsThroughConfirm()
     Do $$$AssertStatusOK(tSC, "and its confirm writes the file: " _ $Get(tCode))
     Do $$$AssertTrue($ClassMethod(..#PROBE, "FileText", tDirectory _ "agent.xml") [ "<Name>OcuP164Agent</Name>", "the file holds the task")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveTask", tId), "the task is deleted")
+    Do $$$AssertStatusOK(..EnableImport(), "the agent's import key, which the baseline disables, is enabled")
     Set tSC = ..MintAs($Username, ..#IMPORTTOOL, "import", {"Id": "import", "root": (tRoot), "path": "OcuP164/agent.xml"}, .tProposal, .tTurn)
     Do $$$AssertStatusOK(tSC, "the import mints")
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm($Select($IsObject($Get(tProposal)): tProposal.%Get("proposalId"), 1: ""), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
@@ -201,6 +216,32 @@ Method TestTheAgentExportsAndImportsThroughConfirm()
     Do $ClassMethod(..#PROBE, "Probes", .tIds)
     Do $$$AssertTrue('$Data(tIds("OcuP164Swapped")) && '$Data(tIds("OcuP164Reviewed")), "and nothing is imported")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>Governance (AD-22, DW-1827): at the baseline the agent's import is refused
+/// <code>GOVERNANCE.DISABLED</code> at its confirm and imports nothing, while the screen's Import of the
+/// same file proceeds, because the policy gates only the agent's tools.</p>
+/// <p>Mutation (Rule 19): list <code>tasks.schedule.import</code> true in
+/// <class>OcuPilot.Kernel.Governance.Baseline</class> -- the confirm imports and this goes red.</p>
+Method TestAtTheBaselineTheAgentsImportIsDisabledAndTheScreensProceeds()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Clear(), "the baseline alone decides")
+    Set tRoot = $ClassMethod(..#PROBE, "FirstRoot")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeTask", "Baseline", .tId, .tGuid), "a probe task is made")
+    Do ..Act("export", tId, "OcuP164/baseline.xml", ..#LEASTUSER, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "the screen's Export writes it: " _ ..Json(tBody))
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveTask", tId), "the task is deleted")
+    Set tSC = ..MintAs($Username, ..#IMPORTTOOL, "import", {"Id": "import", "root": (tRoot), "path": "OcuP164/baseline.xml"}, .tProposal, .tTurn)
+    Do $$$AssertStatusOK(tSC, "the agent's import mints")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm($Select($IsObject($Get(tProposal)): tProposal.%Get("proposalId"), 1: ""), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertEquals($Get(tHttp) _ " " _ $Get(tCode), "403 " _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, "and its confirm is refused as disabled by policy")
+    Do $ClassMethod(..#PROBE, "Probes", .tIds)
+    Do $$$AssertTrue('$Data(tIds("OcuP164Baseline")), "nothing is imported")
+    Do ..Act("import", "import", "OcuP164/baseline.xml", ..#LEASTUSER, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "the screen's Import of the same file proceeds: " _ ..Json(tBody))
+    Do $ClassMethod(..#PROBE, "Probes", .tIds)
+    Do $$$AssertTrue($Data(tIds("OcuP164Baseline")), "and creates the task")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
 }
 
 /// <p>AC7: a principal without <code>%Admin_FileSystemAccess:USE</code>, or without
@@ -417,6 +458,14 @@ Method Act(pAction As %String, pId As %String, pPath As %String, pUser As %Strin
     Do tRequest.%Set("values", tValues)
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/screens/tasks.schedule/action", pUser, ..PreparedPassword, .pStatus, .tRaw, .tHeaders, tRequest.%ToJSON(), "application/json")
     Try { Set pBody = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set pBody = $Get(tRaw) }
+}
+
+/// <p>Enable the agent's import key, over the snapshot this class took.</p>
+ClassMethod EnableImport() As %Status
+{
+    Kill tSettings
+    Set tSettings(..#IMPORTKEY) = "enabled"
+    Quit ##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings)
 }
 
 /// <p>The agent's mint of <var>pTool</var> for <var>pId</var> with <var>pArgs</var>, as <var>pUser</var>,

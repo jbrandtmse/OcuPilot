@@ -87,7 +87,8 @@ Method TestTheImportToolIsAnActionWriteOverTheTransferPort()
 }
 
 /// <p>What both tools share: the pairs, the classic page, the composed and mutating pair, the two
-/// required arguments, and a governance key enabled in the baseline.</p>
+/// required arguments, and a governance key in the baseline -- the export's enabled, the import's
+/// disabled until DW-1827's review of <code>TaskClass</code> and <code>RunAsUser</code> lands.</p>
 Method AssertCommon(pTool As %String)
 {
     Set tPairs = $ClassMethod(pTool, "PrivilegePairs", , .tResolved)
@@ -99,7 +100,8 @@ Method AssertCommon(pTool As %String)
     Do $$$AssertTrue($ListFind($ListFromString($Parameter("OcuPilot.Port.TaskTransferPort", "COMPOSEDTYPES")), tPair) && ##class(OcuPilot.Port.AdminPort).IsMutating($ClassMethod(pTool, "Endpoint"), $ClassMethod(pTool, "WriteType")), pTool _ ": a composed, mutating pair")
     Set tRequired = $ClassMethod(pTool, "InputSchema").%Get("required").%ToJSON()
     Do $$$AssertEquals(tRequired, "[""Id"",""root"",""path""]", pTool _ ": the id and the file are required")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Governance.Baseline).Seed($Parameter(pTool, "TOOLNAME"), .tListed) _ "|" _ tListed, "1|1", pTool _ ": its key is in the baseline, enabled")
+    Set tEnabled = (pTool '= ..#IMPORTTOOL)
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Governance.Baseline).Seed($Parameter(pTool, "TOOLNAME"), .tListed) _ "|" _ tListed, tEnabled _ "|1", pTool _ ": its key is in the baseline, " _ $Select(tEnabled: "enabled", 1: "disabled (DW-1827)"))
 }
 
 /// <p>AD-29: a caller the port's gate finds without any one of <parameter>OcuPilot.Port.TaskTransferPort.PAIRS</parameter>
