@@ -2,7 +2,7 @@
 title: 'Story 16.7: License usage and the full dashboard'
 type: 'feature'
 created: '2026-09-28'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -343,11 +343,13 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-09-29, spec gate (lead): the plan's four rulings answered (A) each; the orchestrator approved AD-7's third named shape (the vendor's sensor baseline, rewritten by `PrometheusMetrics()`, never the alerts cursor). Spine amended: AD-7, AD-29, AD-36, AD-43. DW-1116 is to resolve at this story's adjudication by AC4's pin. DW-118 declined (Story 15.6 resolved it). Status `blocked` to `ready-for-dev`.
+
 ## Review Triage Log
 
 ## Design Notes
 
-**Intent gap: four rulings for the lead (Rules 5, 6 and 20).** The spec is written to the recommendations. Each "yes" is a spine or EXPERIENCE.md edit the lead records at the gate.
+**Ruling (lead, spec gate 2026-09-29; the orchestrator raised no objection, and approved the AD-7 amendment at the merge gate): (A) on Q1-Q4.** The spine is amended in the same commit: AD-36 (`source.rows`; one `MonitorPort` part), AD-43 (the set is nine), AD-7 (the sensor-baseline shape) and AD-29 (measured). EXPERIENCE.md :101 and :845 are this story's in-place edits. The plan's options, for the record:
 
 - **Q1. AD-36: a list over one member of a bare-type answer.**
   - The problem: `Monitor` `LICENSEUSAGE` answers one object with four row arrays. Today's grammar issues a bare type only as a `part`, which merges as one row, so none of AC1's four views is expressible.
@@ -461,7 +463,7 @@ deferred: []
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: four rulings for the lead, spec written to the recommended (A) of each -- Q1 AD-36: License usage's four views need a bare admin type's one-object answer read as a list over one member (`source.rows`, `Monitor` `LICENSEUSAGE`); Q2 AD-36/AD-29: the Dashboard's CPU meter needs a `MonitorPort` part (`{port: monitor, type: SENSORS}`) beside `DASHBOARDMAIN` in its parts read; Q3 EXPERIENCE.md:101: License usage as a four-tab group of `detail` lists rather than `meters`; Q4 AD-43: the Dashboard joins the auto-refresh roster (nine, default off). Apply-and-report for the lead: AD-7/AD-29 record the measured SAM sensor-baseline write (24 `^IRIS.Temp.SAM` nodes per collection, never `LastAlertSent`); DW-1116 resolves by this story's choice (the errors-and-alerts counts come from `DASHBOARDMAIN`, measured not to write the cursor).
+Status: ready-for-dev
+Blocking condition: none -- resolved at the spec gate (Spec Change Log). The plan's halt read: intent gap: four rulings for the lead, spec written to the recommended (A) of each -- Q1 AD-36: License usage's four views need a bare admin type's one-object answer read as a list over one member (`source.rows`, `Monitor` `LICENSEUSAGE`); Q2 AD-36/AD-29: the Dashboard's CPU meter needs a `MonitorPort` part (`{port: monitor, type: SENSORS}`) beside `DASHBOARDMAIN` in its parts read; Q3 EXPERIENCE.md:101: License usage as a four-tab group of `detail` lists rather than `meters`; Q4 AD-43: the Dashboard joins the auto-refresh roster (nine, default off). Apply-and-report for the lead: AD-7/AD-29 record the measured SAM sensor-baseline write (24 `^IRIS.Temp.SAM` nodes per collection, never `LastAlertSent`); DW-1116 resolves by this story's choice (the errors-and-alerts counts come from `DASHBOARDMAIN`, measured not to write the cursor).
 
 Plan stage only; nothing implemented. The options, measurements and recommended spine texts are under Design Notes.

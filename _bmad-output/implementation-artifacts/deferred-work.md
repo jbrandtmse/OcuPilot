@@ -799,6 +799,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T16:21:41Z status=routed owner=15-6-the-light-and-dark-theme by=cr note=1.10s :root.ocu-theme-dark .ocu-server-flag reads --ocu-on-shell-dark, the one component rule naming a -dark token; the pairing it computes never occurs
 - 2026-09-12T23:55:35Z occurrence=1-13-uniform-error-handling-and-the-connectivity-probe
 - 2026-09-24T00:06:35Z status=resolved-by:15-6-the-light-and-dark-theme by=adjudication note=same fix as DW-39; the last component dark selector (.ocu-server-flag) became a token pair; single-home test pins it
+- 2026-09-29T01:24:25Z status=resolved-by:15-6-the-theme-toggle-wired-end-to-end by=spec_gate note=16.7 plan: Story 15.6 resolved it, as 16.18 recorded
+- 2026-09-29T01:24:31Z status=resolved-by:15-6-the-light-and-dark-theme by=spec_gate note=restores 2026-09-24's resolution; the 01:24 line named a key that does not exist
 
 ### DW-119: An identity call that fails in a way that is neither AUTH.NOADMIN nor INSTALL.* leaves the shell on 'checking' with nothing scheduled to ask again, so a signed-in tab can sit on a blank content area
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: med | footprint: in-story

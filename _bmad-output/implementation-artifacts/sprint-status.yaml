@@ -242,7 +242,7 @@ development_status:
   16-4-task-export-and-import: backlog
   16-5-background-tasks: done
   16-6-broadcast-a-message-to-processes: in-progress
-  16-7-license-usage-and-the-full-dashboard: backlog
+  16-7-license-usage-and-the-full-dashboard: ready-for-dev
   16-8-the-six-secondary-log-viewers: done
   16-9-the-unified-log-hub: done
   16-10-external-language-servers: backlog
