@@ -112,7 +112,9 @@ XData Keys [ MimeType = application/json ]
   "tasks.background.resume": true,
   "osmgmt.processes.broadcast": true,
   "tasks.schedule.export": true,
-  "tasks.schedule.import": true
+  "tasks.schedule.import": true,
+  "osmgmt.languageservers.start": true,
+  "osmgmt.languageservers.stop": true
 }
 }
 

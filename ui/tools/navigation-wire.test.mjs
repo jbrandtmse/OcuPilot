@@ -101,7 +101,8 @@ const LIVE_PAYLOAD = {
       // listed ones in position order. Story 18.2 adds the namespace editor among the unlisted ones
       // and Namespaces last, Story 18.14 the three mapping forms and lists among the unlisted ones,
       // and Story 16.7 License usage's three unlisted tabs among them and License usage and the
-      // Dashboard last.
+      // Dashboard after Namespaces; Story 16.10 its unlisted Activity log among them and External
+      // language servers last, refused on its own pair.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -137,6 +138,13 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/language-servers/activity',
+          labelKey: 'languageServerActivityLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_ExternalLanguageServerEdit:USE',
         },
         {
           route: 'os-management/license-usage/distributed',
@@ -256,6 +264,13 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 8,
           allowed: false,
           failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/language-servers',
+          labelKey: 'languageServersLabel',
+          sideBarPosition: 9,
+          allowed: false,
+          failedPair: '%Admin_ExternalLanguageServerEdit:USE',
         },
       ],
     },

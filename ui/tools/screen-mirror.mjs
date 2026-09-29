@@ -1202,6 +1202,8 @@ export function readProblem(declaration) {
   if (source.rows !== undefined && source.rows !== null) {
     const rowsFault = rowsProblem(source);
     if (rowsFault !== null) return rowsFault;
+    const activityFault = activityRowsProblem(declaration);
+    if (activityFault !== null) return activityFault;
   } else if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
     return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'`;
   }
@@ -2055,6 +2057,31 @@ export function rowsProblem(source) {
   return null;
 }
 
+/** The detail type that answers one server's activity rows beside its running state (Story 16.10). */
+export const ACTIVITY_TYPE = 'ACTIVITY';
+
+/**
+ * What is wrong with a `rows` read of type `ACTIVITY`, or `null` for any other type (AD-36 as
+ * amended, Story 16.10). An `ACTIVITY` answer is one server's activity, so the read is admitted only
+ * on a screen declaring a `parentScope` whose one criterion is the `text` criterion `name`, which the
+ * route id fills. `OcuPilot.Screen.Registry.ActivityRowsProblem` returns the same sentence for every
+ * case in `OcuPilot.Test.ReadSourceCorpus`.
+ */
+export function activityRowsProblem(declaration) {
+  const { read } = declaration;
+  if (read.source.type !== ACTIVITY_TYPE) return null;
+  if (typeof declaration.parentScope !== 'string' || declaration.parentScope === '') {
+    return "read.source.type 'ACTIVITY' is declared with no parentScope, and a list over one server's activity reads the server its route id names (AD-36, Story 16.10)";
+  }
+  const fields = isObject(read.criteria) ? read.criteria.fields : undefined;
+  const sound =
+    Array.isArray(fields) && fields.length === 1 && isObject(fields[0]) && fields[0].param === 'name' && fields[0].kind === 'text';
+  if (!sound) {
+    return "read.criteria on an 'ACTIVITY' read is not the one text criterion 'name', which its route id fills (AD-36, Story 16.10)";
+  }
+  return null;
+}
+
 /**
  * What is wrong with `source.parts`, or `null` (AD-36, Story 6.9). `read` is the declared read and
  * `fields` its declared fields.
@@ -2489,7 +2516,7 @@ export const ROW_GET_RULES = ['beforeToday'];
  * `OcuPilot.Screen.Registry`'s own `ROWGETTYPES`: `GET`, the default; `INFO`, where the list's own
  * row is wrong; and `CERTINFO`, where only that type carries the fields.
  */
-export const ROW_GET_TYPES = ['GET', 'INFO', 'CERTINFO'];
+export const ROW_GET_TYPES = ['GET', 'INFO', 'CERTINFO', 'ACTIVITY'];
 
 const PARAM_RE = /^[A-Za-z][A-Za-z0-9]*$/;
 

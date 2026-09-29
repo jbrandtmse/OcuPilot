@@ -3721,6 +3721,41 @@ export const STRINGS = {
   dashboardPrompt2: 'How busy is the instance right now, and how much CPU is it using?',
   /** EXPERIENCE.md:375 */
   dashboardPrompt3: 'Have serious alerts or application errors been raised?',
+  // Story 16.10, External language servers. The Port column reuses `sslTestPort`, and the Name and
+  // Type columns `tableColumnName` and `tableColumnType`, because a value already published belongs
+  // to one key.
+  /** EXPERIENCE.md:584 */
+  languageServersLabel: 'External language servers',
+  /** EXPERIENCE.md:584 */
+  languageServerColumnRunning: 'Running',
+  /** EXPERIENCE.md:584 */
+  languageServerActivityLabel: 'Activity log',
+  /** EXPERIENCE.md:584 */
+  actionStart: 'Start',
+  /** EXPERIENCE.md:584 */
+  languageServerRefusalRunning: 'This server is already running.',
+  /** EXPERIENCE.md:584 */
+  languageServerRefusalStopped: 'This server is not running.',
+  /** EXPERIENCE.md:584 */
+  languageServerStopConsequence: 'Stopping it ends every connection to it at once.',
+  /** EXPERIENCE.md:584 */
+  languageServerStartFailed: 'The server did not start. Its activity log records why.',
+  /** EXPERIENCE.md:584 */
+  languageServerListEmpty: 'No external language servers on this instance.',
+  /** EXPERIENCE.md:584 */
+  languageServerListEmptyAgent: 'start or stop an external language server',
+  /** EXPERIENCE.md:585 */
+  languageServerListPrompt1: 'Which external language servers are running?',
+  /** EXPERIENCE.md:585 */
+  languageServerListPrompt2: 'Which servers share a port with another server?',
+  /** EXPERIENCE.md:585 */
+  languageServerListPrompt3: 'Which server should I check first when a gateway call fails?',
+  /** EXPERIENCE.md:585 */
+  languageServerActivityPrompt1: 'What does this server\'s activity log say about its last start?',
+  /** EXPERIENCE.md:585 */
+  languageServerActivityPrompt2: 'Did this server log any errors?',
+  /** EXPERIENCE.md:585 */
+  languageServerActivityPrompt3: 'When was this server last started or stopped?',
 } as const;
 
 /**

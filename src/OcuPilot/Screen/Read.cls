@@ -62,7 +62,9 @@
 /// AD-36, Story 16.7): the type is issued as a list is, with <code>maxRows</code> the cap plus one,
 /// and the answer must be an object whose member <code>rows</code> names is an array of objects
 /// (<method>RowsMember</method>). Those objects are the rows, projected, filtered, sorted, capped and
-/// reported exactly as a <code>LIST</code>'s; any other answer fails the whole read.</p>
+/// reported exactly as a <code>LIST</code>'s; any other answer fails the whole read. On a
+/// parent-scoped screen (Story 16.10's <code>ACTIVITY</code>) its one criterion is the route id and
+/// is required, refused 400 <code>READ.CRITERION</code> before the port is called when missing.</p>
 /// <p><b>A parent-scoped <code>GET</code> takes its one criterion from the route id</b> (Story
 /// 6.7): the value is required, refused 400 <code>READ.CRITERION</code> before the port is called
 /// when it is missing, and is then seeded onto the fetched object under two independent names,
@@ -115,6 +117,12 @@ Parameter OBJECTTYPE = "GET";
 /// <p>The request type a declared <code>rowGet</code> issues once per surviving row when it declares
 /// no <code>type</code> of its own.</p>
 Parameter DETAILTYPE = "GET";
+
+/// <p>The detail type that answers one member's row array beside the fields a row merges
+/// (<code>LanguageServer</code>'s <code>ACTIVITY</code>, AD-36 as amended, Story 16.10). A
+/// <code>rowGet</code> of this type sends the vendor's <code>maxRows</code> 1, because only its
+/// scalar fields merge.</p>
+Parameter ACTIVITYTYPE = "ACTIVITY";
 
 /// <p>The ASCII capitals the view rule lower-cases, and nothing else.</p>
 Parameter UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -267,7 +275,8 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 /// every screen that declares none. <var>pHttpStatus</var> is 200.</p>
 /// <p>When the read declares <code>source.rowGet</code>, each surviving row's detail is read with
 /// one call of the declared <code>rowGet.type</code> -- <code>GET</code> when it declares none, or
-/// <code>INFO</code> or <code>CERTINFO</code> -- carrying <code>param</code> set to that row's
+/// <code>INFO</code>, <code>CERTINFO</code> or <code>ACTIVITY</code>, which also sends
+/// <code>maxRows</code> 1 -- carrying <code>param</code> set to that row's
 /// <code>key</code> value. Its
 /// <code>fields</code> replace the row's with their JSON types, and each <code>derived</code> field
 /// is set from its rule (<method>Derive</method>). A row whose detail call answers 404 was
@@ -481,6 +490,14 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tSeededPart = ..SeededPart(pDescriptor, tRead)
             If (tSeededPart '= "") && ($Get(pCriteria(tSeededPart)) = "") {
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tSeededPart _ " is required", .pHttpStatus, .pFault)
+                Quit
+            }
+            ; A parent-scoped list over one member (Story 16.10's Activity log) reads for its route
+            ; id, so its one criterion is required, as a single-object read's route-id criterion is.
+            Set tRouteParam = ""
+            If tBareRows && ($ClassMethod(pDescriptor, "ParentScope") '= "") Set tRouteParam = ..ObjectCriterionParam(tRead)
+            If (tRouteParam '= "") && ($Get(pCriteria(tRouteParam)) = "") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tRouteParam _ " is required", .pHttpStatus, .pFault)
                 Quit
             }
             Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
@@ -1069,6 +1086,7 @@ ClassMethod DetailRow(pDescriptor As %String, pEndpoint As %String, pRowGet As %
         Set tQuery(pRowGet.%Get("param")) = pRow.%Get(tKeyField)
         Set tDetailType = pRowGet.%Get("type")
         If tDetailType = "" Set tDetailType = ..#DETAILTYPE
+        If tDetailType = ..#ACTIVITYTYPE Set tQuery("maxRows") = 1
         Set tDetail = ""
         Set tPortSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, tDetailType, .tQuery, "", .tDetail, .tHttp, .tFault)
         If $$$ISERR(tPortSC) {

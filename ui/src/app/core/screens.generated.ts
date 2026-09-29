@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'language-server';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -128,7 +128,7 @@ export interface ReadRowGet {
   readonly key: string;
   readonly param: string;
   /** The detail type issued per row; absent means `GET`. */
-  readonly type?: 'GET' | 'INFO' | 'CERTINFO';
+  readonly type?: 'GET' | 'INFO' | 'CERTINFO' | 'ACTIVITY';
   readonly fields: readonly string[];
   readonly derived: readonly ReadDerived[];
 }
@@ -163,7 +163,7 @@ export interface ReadSource {
    * `VOLUMELIST` reads a database's own volume files as rows; a bare admin type is read with
    * `rows` (Story 16.7).
    */
-  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'LICENSEUSAGE';
+  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'ACTIVITY' | 'LICENSEUSAGE';
   /** The one member of a bare admin type's one-object answer this read lists (AD-36, Story 16.7). */
   readonly rows?: string | null;
   readonly rowGet?: ReadRowGet | null;
@@ -469,7 +469,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "background-task",
   "global-mapping",
   "routine-mapping",
-  "package-mapping"
+  "package-mapping",
+  "language-server"
 ];
 
 /**
@@ -4017,6 +4018,306 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LanguageServerActivity",
+    "route": "os-management/language-servers/activity",
+    "area": "os-management",
+    "labelKey": "languageServerActivityLabel",
+    "sideBarPosition": 0,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_ExternalLanguageServerEdit",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_ExternalLanguageServerEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "os-management/language-servers",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ID",
+        "DateTime",
+        "RecordType",
+        "Job",
+        "Text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "languageServerActivityPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "languageServerActivityPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "languageServerActivityPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ExternalLanguageServerActivities",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "LanguageServer",
+        "type": "ACTIVITY",
+        "rows": "Activity"
+      },
+      "fields": [
+        "ID",
+        "DateTime",
+        "RecordType",
+        "Job",
+        "Text"
+      ],
+      "filter": [
+        "DateTime",
+        "RecordType",
+        "Text"
+      ],
+      "sort": {
+        "fields": [
+          "ID"
+        ],
+        "default": "ID",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "name",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 50
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "DateTime",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "RecordType",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "Job",
+          "labelKey": "processColumnPid",
+          "kind": "number"
+        },
+        {
+          "field": "Text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.languageserveractivity",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LanguageServerList",
+    "route": "os-management/language-servers",
+    "area": "os-management",
+    "labelKey": "languageServersLabel",
+    "sideBarPosition": 9,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_ExternalLanguageServerEdit",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_ExternalLanguageServerEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "language-server",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "start",
+        "selfProtection": ""
+      },
+      {
+        "id": "stop",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Type",
+        "Port",
+        "CurrentlyRunning"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "languageServerListEmpty",
+    "commandAliases": [
+      "language servers",
+      "gateways",
+      "external servers"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "languageServerListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "languageServerListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "languageServerListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ExternalLanguageServers",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "LanguageServer",
+        "type": "LIST",
+        "rowGet": {
+          "key": "Name",
+          "param": "name",
+          "type": "ACTIVITY",
+          "fields": [
+            "CurrentlyRunning"
+          ],
+          "derived": []
+        }
+      },
+      "fields": [
+        "Name",
+        "Type",
+        "Port",
+        "CurrentlyRunning"
+      ],
+      "filter": [
+        "Name",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "Name"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Port",
+          "labelKey": "sslTestPort",
+          "kind": "number"
+        },
+        {
+          "field": "CurrentlyRunning",
+          "labelKey": "languageServerColumnRunning",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "languageServerListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.languageservers",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {

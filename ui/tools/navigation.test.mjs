@@ -155,6 +155,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // editor's Mappings line, among the unlisted screens in descriptor class-name order.
       'os-management/namespaces/global-mappings/edit',
       'os-management/namespaces/global-mappings',
+      // Story 16.10: the unlisted Activity log of External language servers, by descriptor class name.
+      'os-management/language-servers/activity',
       // Story 16.7: License usage's three unlisted tabs, by descriptor class name.
       'os-management/license-usage/distributed',
       'os-management/license-usage/processes',
@@ -176,6 +178,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 16.7: License usage and the Dashboard, the seventh and eighth OS management entries.
       'os-management/license-usage',
       'os-management/dashboard',
+      // Story 16.10: External language servers, position 9.
+      'os-management/language-servers',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -245,7 +249,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
 //
 // Mutation (Rule 19): give NamespaceList `sideBarPosition` 0 and regenerate the mirror -> this and
 // the built-screens roster above go red.
-test('OS management lists Processes, Locks, System usage, Databases, Devices, Namespaces, then License usage and Dashboard', () => {
+test('OS management lists Processes, Locks, System usage, Databases, Devices, Namespaces, then License usage, Dashboard and External language servers', () => {
   assert.deepEqual(
     listedScreensForArea('os-management').map((screen) => screen.route),
     [
@@ -258,8 +262,12 @@ test('OS management lists Processes, Locks, System usage, Databases, Devices, Na
       // Story 16.7: the seventh and eighth entries.
       'os-management/license-usage',
       'os-management/dashboard',
+      // Story 16.10: the ninth entry.
+      'os-management/language-servers',
     ]
   );
+  // Story 16.10: the list's name cell opens its one parent-scoped child, the Activity log.
+  assert.equal(childListFor(screenForRoute('os-management/language-servers'))?.route, 'os-management/language-servers/activity');
   assert.equal(stringFor(screenForRoute('os-management/namespaces').labelKey), STRINGS.namespaceListLabel);
   const editor = createFormFor(screenForRoute('os-management/namespaces'));
   assert.equal(editor?.route, 'os-management/namespaces/edit', "the list's Create opens its own form");
