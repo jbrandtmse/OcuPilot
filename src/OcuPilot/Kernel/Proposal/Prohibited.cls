@@ -410,11 +410,11 @@ Parameter TYPEROUTINEMAPPING = "routine-mapping";
 Parameter TYPEPACKAGEMAPPING = "package-mapping";
 
 /// <p>The write would create, change or delete one of OcuPilot's own mappings -- a mapping whose name,
-/// pattern or range covers one of OcuPilot's own names (<method>CoversOwnName</method>), in the
-/// namespace OcuPilot's API runs in or in <parameter>ALLNAMESPACE</parameter> -- or copy mappings
-/// into either namespace from a source holding one (AD-10 as amended 2026-09-28, DW-1803). Such a
-/// mapping moves OcuPilot's protected globals out of its database (AD-9) or lets other code answer
-/// for its classes.</p>
+/// pattern or range covers one of OcuPilot's own names, or a global mapping that moves one of
+/// <parameter>CODEGLOBALS</parameter> (<method>CoversOwnName</method>), in the namespace OcuPilot's
+/// API runs in or in <parameter>ALLNAMESPACE</parameter> -- or copy mappings into either namespace
+/// from a source holding one (AD-10 as amended 2026-09-28, DW-1803). Such a mapping moves OcuPilot's
+/// protected globals out of its database (AD-9) or lets other code answer for its classes.</p>
 Parameter OCUPILOTMAPPING = "PROHIBITED.OCUPILOTMAPPING";
 
 /// <p>The one sentence <parameter>OCUPILOTMAPPING</parameter> carries, caller-neutral, published and
@@ -423,6 +423,23 @@ Parameter OCUPILOTMAPPINGREASON = "A mapping whose name or pattern covers OcuPil
 
 /// <p>The pseudo-namespace whose mappings apply to every namespace.</p>
 Parameter ALLNAMESPACE = "%ALL";
+
+/// <p>The instance's routine and class-dictionary globals that hold OcuPilot's names in the namespace
+/// it runs in, comma-separated and spelled as the instance spells them: its routines' object code,
+/// source and indexes, and its classes' definitions, compiled records, dependencies, extents, storage
+/// maps and SQL projections. Measured on this build by walking the routine database's globals for
+/// subscripts, at the first or second level, beginning with an <method>OwnNameStems</method> stem in
+/// any case (Story 18.14's spec,
+/// Design Notes); <class>OcuPilot.Test.MappingCodeGlobals</class> holds it equal to that walk. A global
+/// mapping of one, whole or over a range reaching OcuPilot's names, moves where OcuPilot's code is
+/// read from (<method>CoversCodeGlobal</method>).</p>
+Parameter CODEGLOBALS = "ROUTINE,oddCOM,oddDEF,oddDEP,oddEXT,oddEXTR,oddMAP,oddPROC,oddSQL,rINDEX,rINDEXCLASS,rINDEXEXT,rINDEXSQL,rMAC,rMAP,rOBJ";
+
+/// <p>The members of <parameter>CODEGLOBALS</parameter> that also hold OcuPilot's names under a first
+/// subscript that is not one (<code>^oddDEP(0,...)</code>, <code>^rINDEXEXT("C",...)</code>,
+/// <code>^rINDEXSQL("TABLE",...)</code>), measured with it: the first subscript cannot tell whether a
+/// mapping reaches OcuPilot's names, so any subscript mapping of one is read as reaching them.</p>
+Parameter NESTEDCODEGLOBALS = "oddDEP,rINDEXEXT,rINDEXSQL";
 
 /// <p>The effect <method>WeakensByEffect</method> answers for a global mapping whose name begins with
 /// <code>%</code>: it shadows a system global for its namespace (AD-10 as amended 2026-09-28). It is
@@ -1113,7 +1130,7 @@ ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicO
                 Quit
             }
         }
-        If ..IsMappingType(pType) && ..IsOwnMapping(pId) {
+        If ..IsMappingType(pType) && ..IsOwnMapping(pId, pType) {
             Do ..Refuse(..#OCUPILOTMAPPING, .pProhibits, .pCode)
             Quit
         }
@@ -1797,7 +1814,7 @@ ClassMethod Mapping(pType As %String, pId As %String, pToolClass As %String, ByR
     Set tSC = $$$OK
     Try {
         If (..WriteTypeOf(pToolClass) = "DELETE") || ..RemovesOf(pToolClass) Kill pChanged
-        If ..IsOwnMapping(pId) {
+        If ..IsOwnMapping(pId, pType) {
             Do ..Refuse(..#OCUPILOTMAPPING, .pProhibits, .pCode)
             Quit
         }
@@ -1810,17 +1827,17 @@ ClassMethod Mapping(pType As %String, pId As %String, pToolClass As %String, ByR
     Quit tSC
 }
 
-/// <p>Whether the mapping whose composite id is <var>pId</var> is one of OcuPilot's own: its
-/// namespace part, upper-cased, is the namespace this process runs in or
+/// <p>Whether the mapping of type <var>pType</var> whose composite id is <var>pId</var> is one of
+/// OcuPilot's own: its namespace part, upper-cased, is the namespace this process runs in or
 /// <parameter>ALLNAMESPACE</parameter>, and its name part covers one of OcuPilot's own names
 /// (<method>CoversOwnName</method>). The namespace is read at each call, for the reason
 /// <method>IsOwnNamespace</method> reads it. An id that is not two parts is none.</p>
-ClassMethod IsOwnMapping(pId As %String) As %Boolean
+ClassMethod IsOwnMapping(pId As %String, pType As %String) As %Boolean
 {
     Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
     If $ListLength(tParts) '= 2 Quit 0
     If '..IsOwnMappingNamespace($ListGet(tParts, 1)) Quit 0
-    Quit ..CoversOwnName($ListGet(tParts, 2))
+    Quit ..CoversOwnName($ListGet(tParts, 2), pType, $ListGet(tParts, 1))
 }
 
 /// <p>Whether <var>pNamespace</var>, upper-cased, is the namespace this process runs in or
@@ -1848,16 +1865,20 @@ ClassMethod OwnNameStems() As %List
     Quit tStems
 }
 
-/// <p>Whether mapping name <var>pName</var> covers any of OcuPilot's own names
-/// (<method>OwnNameStems</method>), ignoring case: by overlap, not by prefix (AD-10 as amended,
-/// DW-1803). A global's subscripts and a routine's type suffix (<code>_MAC</code>) are set aside,
+/// <p>Whether mapping name <var>pName</var>, of type <var>pType</var> in namespace
+/// <var>pNamespace</var>, covers any of OcuPilot's own names (<method>OwnNameStems</method>),
+/// ignoring case: by overlap, not by prefix (AD-10 as amended, DW-1803). A global mapping also
+/// covers them when it moves one of the globals OcuPilot's code is read from
+/// (<method>CoversCodeGlobal</method>).</p>
+/// <p>Otherwise a global's subscripts and a routine's type suffix (<code>_MAC</code>) are set aside,
 /// since each only narrows the mapping within the name before it. What is left is a range
 /// <code>L:U</code>, a pattern <code>P*</code> or a name. A pattern covers a stem when either
 /// begins with the other, so <code>*</code>, <code>O*</code> and <code>OcuPilotX*</code> each do; a
 /// name when it begins with the stem; a range when <method>RangeCoversStem</method> says so, and a
 /// range holding <code>*</code> always.</p>
-ClassMethod CoversOwnName(pName As %String) As %Boolean
+ClassMethod CoversOwnName(pName As %String, pType As %String, pNamespace As %String) As %Boolean
 {
+    If (pType = ..#TYPEGLOBALMAPPING) && ..CoversCodeGlobal(pName, pNamespace) Quit 1
     Set tName = $Piece(pName, "(")
     If $Match(tName, "(?s).*_[A-Za-z]+") Set tName = $Piece(tName, "_", 1, $Length(tName, "_") - 1)
     Set tLower = $ZConvert(tName, "L")
@@ -1906,6 +1927,121 @@ ClassMethod RangeCoversStem(pLow As %String, pHigh As %String, pStem As %String)
     Quit tCovers
 }
 
+/// <p>Whether global mapping name <var>pName</var> in namespace <var>pNamespace</var> moves one of
+/// <parameter>CODEGLOBALS</parameter>, whose names compare with case as the instance's do:</p>
+/// <ul>
+/// <li>a pattern <code>P*</code> naming one (<code>odd*</code>, <code>r*</code>), or a range
+/// <code>L:U</code> holding one, both ends included, or a range holding <code>*</code>;</li>
+/// <li>the whole global;</li>
+/// <li>any subscript mapping of one of <parameter>NESTEDCODEGLOBALS</parameter>;</li>
+/// <li>any subscript mapping of one when the base mapping the instance creates with it would move the
+/// global (<method>BaseMappingMoves</method>);</li>
+/// <li>a subscript mapping whose first subscript, or first-subscript range, reaches OcuPilot's names
+/// (<method>FirstSubscriptBounds</method>, judged by <method>RangeCoversStem</method>, a single
+/// subscript as a range of itself).</li>
+/// </ul>
+ClassMethod CoversCodeGlobal(pName As %String, pNamespace As %String) As %Boolean
+{
+    Set tGlobal = $Piece(pName, "(")
+    Set tMembers = $ListFromString(..#CODEGLOBALS)
+    If (tGlobal [ ":") || (tGlobal [ "*") {
+        If (tGlobal [ ":") && (tGlobal [ "*") Quit 1
+        Set tLow = $Piece(tGlobal, ":")
+        Set tHigh = $Piece(tGlobal, ":", 2, *)
+        Set tPrefix = $Piece(tGlobal, "*")
+        Set tCovers = 0
+        For tI = 1:1:$ListLength(tMembers) {
+            Set tMember = $List(tMembers, tI)
+            If tGlobal [ ":" {
+                Set tCovers = '(tLow ] tMember) && ((tHigh = "") || '(tMember ] tHigh))
+            } Else {
+                Set tCovers = ($Extract(tMember, 1, $Length(tPrefix)) = tPrefix)
+            }
+            If tCovers Quit
+        }
+        Quit tCovers
+    }
+    If '$ListFind(tMembers, tGlobal) Quit 0
+    If pName '[ "(" Quit 1
+    If $ListFind($ListFromString(..#NESTEDCODEGLOBALS), tGlobal) Quit 1
+    If ..BaseMappingMoves(pNamespace, tGlobal) Quit 1
+    Do ..FirstSubscriptBounds(pName, .tLow, .tHigh)
+    Set tStems = ..OwnNameStems()
+    Set tCovers = 0
+    For tI = 1:1:$ListLength(tStems) {
+        Set tCovers = ..RangeCoversStem(tLow, tHigh, $List(tStems, tI))
+        If tCovers Quit
+    }
+    Quit tCovers
+}
+
+/// <p>The first subscript's bounds of subscripted global mapping name <var>pName</var>, the form the
+/// instance accepts: <code>G(s,...)</code>, whose bounds are both <code>s</code>, or
+/// <code>G(l,...):(h,...)</code>. <code>BEGIN</code>, <code>END</code> and anything that does not
+/// read as a subscript answer <code>""</code>, which <method>RangeCoversStem</method> reads as open
+/// at that end (the instance accepts <code>BEGIN</code> and <code>END</code> as open ends and refuses
+/// an empty one, #655).</p>
+ClassMethod FirstSubscriptBounds(pName As %String, Output pLow As %String, Output pHigh As %String)
+{
+    Set tStart = $Find(pName, "(") - 1
+    Set tEnd = 0
+    Set tDepth = 0
+    Set tQuoted = 0
+    For tI = tStart:1:$Length(pName) {
+        Set tChar = $Extract(pName, tI)
+        If tChar = """" {
+            Set tQuoted = 'tQuoted
+            Continue
+        }
+        If tQuoted Continue
+        If tChar = "(" Set tDepth = tDepth + 1
+        If tChar = ")" {
+            Set tDepth = tDepth - 1
+            If tDepth = 0 {
+                Set tEnd = tI
+                Quit
+            }
+        }
+    }
+    If tEnd = 0 {
+        Set pLow = ""
+        Set pHigh = ""
+        Quit
+    }
+    Set pLow = ..SubscriptBound($Extract(pName, tStart, tEnd))
+    Set pHigh = $Select($Extract(pName, tEnd + 1) = ":": ..SubscriptBound($Extract(pName, tEnd + 2, *)), 1: pLow)
+}
+
+/// <p>The first subscript of the parenthesized subscript list <var>pGroup</var>, or <code>""</code>
+/// for <code>BEGIN</code>, <code>END</code> or a list that does not read as subscripts.</p>
+ClassMethod SubscriptBound(pGroup As %String) As %String [ Private ]
+{
+    Set tToken = $ZConvert($Piece($Piece($Extract(pGroup, 2, *), ","), ")"), "U")
+    If (tToken = "BEGIN") || (tToken = "END") Quit ""
+    Set tValue = ""
+    Try {
+        Set tValue = $QSubscript("x" _ pGroup, 1)
+    } Catch {
+        Set tValue = ""
+    }
+    Quit tValue
+}
+
+/// <p>Whether a subscript mapping of global <var>pGlobal</var> in namespace <var>pNamespace</var>
+/// would move the whole global: the instance creates the global's base mapping with it, on the
+/// namespace's default globals database (measured), so it moves the global when that database is not
+/// the one the global is read from now. <parameter>ALLNAMESPACE</parameter>'s base mapping lands on
+/// each namespace's globals database (inference from <code>NSPMAP</code>), so it is judged in the
+/// namespace this process runs in. A namespace the instance does not know answers true.</p>
+ClassMethod BaseMappingMoves(pNamespace As %String, pGlobal As %String) As %Boolean
+{
+    Set tNamespace = $ZConvert(pNamespace, "U")
+    If (tNamespace = "") || (tNamespace = ..#ALLNAMESPACE) Set tNamespace = $ZConvert($NAMESPACE, "U")
+    Set tDefault = ##class(%SYS.Namespace).GetGlobalDest(tNamespace)
+    If tDefault = "" Quit 1
+    Quit tDefault '= ##class(%SYS.Namespace).GetGlobalDest(tNamespace, pGlobal)
+}
+
 /// <p>Whether the global mapping whose composite id is <var>pId</var> names a system global: its
 /// name part begins with <code>%</code>, with or without a subscript range.</p>
 ClassMethod IsSystemGlobalMapping(pId As %String) As %Boolean
@@ -1947,6 +2083,7 @@ ClassMethod CopiesOwnMapping(pDestination As %String, pSource As %String, Output
                 Set tSC = $$$ERROR($$$GeneralError, "no screen answers the mapping list " _ $Piece(..#MAPPINGLISTS, ",", tI))
                 Quit
             }
+            Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
             Set tGateSC = ##class(OcuPilot.Kernel.Shell.Effective).Gate(tDescriptor, .tUnchecked)
             If $$$ISERR(tGateSC) {
                 Set tSC = tGateSC
@@ -1974,7 +2111,7 @@ ClassMethod CopiesOwnMapping(pDestination As %String, pSource As %String, Output
             }
             Set tIterator = tRows.%GetIterator()
             While tIterator.%GetNext(.tIndex, .tRow) {
-                If $IsObject(tRow) && ..CoversOwnName(tRow.%Get("Name")) Set pCopies = 1
+                If $IsObject(tRow) && ..CoversOwnName(tRow.%Get("Name"), tType, pDestination) Set pCopies = 1
             }
             If pCopies Quit
         }

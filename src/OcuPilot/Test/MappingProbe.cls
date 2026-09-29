@@ -28,14 +28,14 @@ ClassMethod IsProbe(pName As %String) As %Boolean
     Quit $Extract($ZConvert(pName, "U"), 1, $Length(..#PREFIX)) = ..#PREFIX
 }
 
-/// <p>Create the namespace <var>pName</var> over <code>USER</code> through the port; a name outside
-/// the probe names is refused.</p>
-ClassMethod Add(pName As %String) As %Status
+/// <p>Create the namespace <var>pName</var> through the port, its routines on <code>USER</code> and
+/// its globals on <var>pGlobals</var>; a name outside the probe names is refused.</p>
+ClassMethod Add(pName As %String, pGlobals As %String = "USER") As %Status
 {
     If '..IsProbe(pName) Quit $$$ERROR($$$GeneralError, "a probe namespace's name starts with " _ ..#PREFIX)
     Kill tQuery
     Set tQuery("name") = pName
-    Set tSC = $ClassMethod(..#PORT, "Invoke", ..#ENDPOINT, "PUT", .tQuery, {"Globals": "USER", "Routines": "USER"}, .tResult, .tHttp, .tFault)
+    Set tSC = $ClassMethod(..#PORT, "Invoke", ..#ENDPOINT, "PUT", .tQuery, {"Globals": (pGlobals), "Routines": "USER"}, .tResult, .tHttp, .tFault)
     If $$$ISERR(tSC) Quit tSC
     If +$Get(tHttp) '= 201 Quit $$$ERROR($$$GeneralError, "the probe namespace " _ pName _ " was answered " _ $Get(tHttp) _ ", not created")
     Quit $$$OK

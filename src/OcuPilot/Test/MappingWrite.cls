@@ -352,8 +352,9 @@ Method TestOcuPilotsOwnMappingsAreRefusedInAll()
 /// <code>%ALL</code> the set refuses the same patterns and permits <code>Q*</code>; and in a probe
 /// namespace the patterns the instance accepts are created on both callers.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Proposal.Prohibited.CoversOwnName</method> tests
-/// only whether the name begins with a stem -> each pattern and range leg that does not begin with
-/// the stem reaches the port and this goes red.</p>
+/// only whether the name begins with a stem -> each pattern and range leg that neither begins with
+/// the stem nor names a code global (<class>OcuPilot.Test.MappingCodeGlobals</class>) reaches the
+/// port and this goes red.</p>
 Method TestAMappingWhosePatternCoversOcuPilotsNamesIsRefused()
 {
     Set tOwnNs = $ZConvert($NAMESPACE, "U")

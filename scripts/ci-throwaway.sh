@@ -367,7 +367,7 @@ services:
       # and copies OCUPROBE1814* mappings between OCUPROBE1814* namespaces, and assigns a probe
       # custom resource to the classic namespace and mapping pages, restoring each.
       # classes: NamespaceRefusals, NamespaceWrite, NamespaceWriteGate
-      # classes: ClassicPageGate, MappingRefusals, MappingWrite, MappingWriteGate, NamespaceCopy
+      # classes: ClassicPageGate, MappingCodeGlobals, MappingRefusals, MappingWrite, MappingWriteGate, NamespaceCopy
       OCUPILOT_ALLOW_NAMESPACE_CONFIG: "1"
     volumes:
       - $DIR/data:/durable
