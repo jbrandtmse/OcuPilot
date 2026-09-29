@@ -7865,6 +7865,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T06:34:37Z status=decision-pending owner=range-end-cleanup by=merge_gate note=owner decision after the voting week: keep AD-8's area set, or Option B (AD-8 any-screen rail: rail/Home tile/side bar open when any listed screen is allowed)
 - 2026-09-28T11:20:47Z occurrence=16-3-effective-privileges-and-the-permission-check-tool
 - 2026-09-28T18:07:16Z occurrence=16-2-web-sessions-listed-and-ended
+- 2026-09-29T21:50:33Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner 2026-09-29: yes to option B - a rail item, Home tile and side bar open when ANY of the area's screens is allowed; each screen keeps its own gate (no read widens); amend AD-8's area rule at origin; Epic 16 after DW-1838/1836/1837, before 16.25, aiming at 1.0.4
 
 ### DW-1769: Copy as curl's note and AD-57 (5) promise every secret value is left out, but only names the credential pattern matches are masked
 - source: spec-16-24-a-try-it-request-copied-as-curl.md | severity: med | fix-risk: low | footprint: in-story
