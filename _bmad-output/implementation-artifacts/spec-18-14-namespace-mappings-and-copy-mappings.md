@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-28'
 baseline_revision: 'cae9a12c907d829e447938c23e8a999e56bb6aec'
 baseline_commit: 'cae9a12c907d829e447938c23e8a999e56bb6aec'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -571,6 +571,10 @@ Rejected:
 - [x] [Decision] DW-1803 (owner, by=merge_gate 2026-09-28; AD-10's own-mappings bullet as amended): `PROHIBITED.OCUPILOTMAPPING` refuses, in the install namespace (the evaluating process's `$NAMESPACE`) or `%ALL`, any global, routine or package mapping whose name pattern or range overlaps an OcuPilot package, routine or global name -- `O*`, `Ocu*`, `*`, a subscript range or routine range spanning an `OcuPilot` name -- not only a name beginning with `OcuPilot`; a copy into either namespace from a source holding such a mapping is refused the same way. Read OcuPilot's names from the instance (its package mapping and state-database mapping, `Kernel/State/Base` `MAPPINGPATTERN`), never a second literal. Pin the overlap cases (`O*`, `Ocu*`, `*`, a range) with tests on both callers through the recording/accepting port, plus a permitting leg (`Q*`, `Zz*` in the install namespace, and any pattern in another namespace), and a Rule 19 mutation that puts the prefix match back.
 - [x] [Decision] DW-1798 (owner, by=merge_gate 2026-09-28; AD-21's sixth case as amended): `PathPort.Resolve` refuses an overwriting consumer (`file` with `pOverwrite` 1) any existing file in OcuPilot's own served files -- the static application's directory (`csp/ocupilot/`, read from the instance's own application definition or the installer's roster at call time, never a literal path) and whatever the installer deploys there -- with `PATH.INSTANCE`; a new name elsewhere is unaffected. Pin it with a `PathPortInstance` leg and a Rule 19 mutation.
 
+### Rework iteration 2 (DW-1806, orchestrator decision)
+
+- [ ] [Decision] DW-1806 (owner, by=merge_gate 2026-09-28; AD-21's sixth case as amended): `PathPort.Resolve` refuses every file consumer (`file`, whatever `pOverwrite`, and `source`) any file, new or existing, under OcuPilot's served directory (`PathPort.ServedDirectory()`), and refuses that directory and any directory under it as a `pVendorWrites` directory, with `PATH.INSTANCE` (or a new `PATH.*` code with a server-written reason if the sentence would mislead). A file or directory outside it is unaffected. Replace `PathPortInstance`'s leg that pins a new name under `csp/ocupilot/` resolving with legs that pin it refused (a new file; a source; the directory as vendor-writes), each with a Rule 19 mutation, plus a permitting leg for a sibling directory. If `PathPortInstance.cls` stays over ~500 lines, move these legs into a second class.
+
 ## Spec Change Log
 
 - 2026-09-28, spec gate (runner): the orchestrator split the story for risk (Rule 5, by=merge_gate): Part C, SA-13's enable-interop with its Task 0 observation (DW-1776), moved to Story 18.15, which runs after 18.4; the intent block was cut to Parts A and B. The owner's DW-1784 decision (AD-44 amended: a screen replacing several classic pages unions each replaced page's custom resource into its write tools' pairs) joined the scope, routed here, with the namespace tools 18.2 shipped included. The orchestrator's 18.4 note applies to the copy: read a finished async task's result exactly once, one poller per task. The spec is `draft` for a re-plan; the first plan's Part C stays in this file's history at commit `4b73be11`.
@@ -580,6 +584,7 @@ Rejected:
 - 2026-09-28, implement (Task 0), for the runner (Rule 20): AD-8's Story 18.14 paragraph gains the sentence "`osmgmt.namespaces.copymappings` also declares `%DB_IRISSYS:WRITE`: a principal holding the Namespaces screens' pairs and `%Admin_Operate:USE` was answered 500, its queued copy failing `<PROTECT>` in `Config.Namespaces.CopyMaps` with the destination unchanged (measured on `ocupilot-b-ci`, 2026-09-28)."
 - 2026-09-28, runner: the implement commit (first 12a936cc) was moved by cherry-pick to 35f085bc on top of 18.1's DW-1790 fix, which the orchestrator ordered first; the code is byte-identical, and the review baseline is `c267f6da`, the cherry-pick's parent (`baseline_commit`), since `baseline_revision` 57c4a1d7 now also spans the DW-1790 commits.
 - 2026-09-28, rework iteration 1 (runner): re-opened after the first code review (no HIGH) on two owner decisions the orchestrator directed into this story: DW-1803 (the own-mappings refusal by overlap) and DW-1798 (PathPort refuses an overwrite of OcuPilot's served files, folded here instead of a separate commit). AD-10 and AD-21 carry both rules.
+- 2026-09-29, rework iteration 2 (runner): DW-1806 (owner, by=merge_gate) folded in before the re-review of rework 1, so one scoped re-review covers both passes; AD-21 carries the rule.
 
 ## Review Triage Log
 

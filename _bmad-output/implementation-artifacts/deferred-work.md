@@ -8021,3 +8021,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: PathPortInstance pins that a new name under csp/ocupilot/ resolves; reach needs a restricted root above the data directory's csp/ (the default root is the manager directory); no file consumer on this branch yet (inference)
 - 2026-09-29T00:44:20Z status=decision-pending owner=burndown by=harvest note=owner: refuse any file, new or existing, under the served directory (recommended), or keep existing-only
+- 2026-09-29T00:44:54Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: refuse any file, new or existing, under the served directory, and the directory as a vendor-writes directory; fold into 18.14; AD-21

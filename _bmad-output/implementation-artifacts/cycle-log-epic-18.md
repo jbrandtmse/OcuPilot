@@ -168,3 +168,9 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-29T00:44:35Z	Story 18.14	committed_code	sha=ad3c9429 pushed=true ci=pending run=36504519612 head_confirmed_by=headSha
 2026-09-29T00:44:35Z	Story 18.14	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none
 2026-09-29T00:44:35Z	Story 18.14	stage_spawned	stage=code-review spawn_at=2026-09-29T00:44:35Z model=opus agent_name=18-14-mappings-code-review-2 cycle_iteration=2 review_tier=full-opus scope=cae9a12c..ad3c9429
+2026-09-29T00:45:03Z	Story 18.14	stage_cancelled	stage=code-review agent_name=18-14-mappings-code-review-2 reason=never_spawned;DW-1806_decision_arrived_first;one_scoped_re-review_after_rework_2_covers_both
+2026-09-29T00:45:03Z	Epic 18	decision_received	by=orchestrator(merge_gate) dw=DW-1806 decision=refuse_any_file_new_or_existing_under_served_dir_and_dir_as_vendor-writes;fold_into_18.14
+2026-09-29T00:45:03Z	Epic 18	spine_updated	ad=AD-21 reason=decision_sheet(DW-1806) by=runner story=18-14-namespace-mappings-and-copy-mappings lint=ok
+2026-09-29T00:45:03Z	Story 18.14	ledger_routed_planned	story=18-14-namespace-mappings-and-copy-mappings entries=1 excess=0 by=merge_gate dw=DW-1806
+2026-09-29T00:45:03Z	Story 18.14	rework_opened	cycle_iteration=3 iteration=2 trigger=orchestrator_decision(DW-1806) items=Decision:DW-1806 scope_baseline=pending_rework_commit
+2026-09-29T00:45:03Z	Story 18.14	stage_spawned	stage=implement spawn_at=2026-09-29T00:45:03Z model=opus agent_name=18-14-mappings-implement-3 cycle_iteration=3 rework_iteration=2 ci_prev=pending_run_36504519612(ad3c9429,same_story)
