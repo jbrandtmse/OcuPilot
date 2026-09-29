@@ -499,3 +499,9 @@
 2026-09-29T21:11:46Z	Epic 16	owner_fix_committed	item=DW-1838 sha=ae14af90 ci=pending run=36631527264 footprint_extensions=src/OcuPilot/Kernel/Agent/Prompt.cls,src/OcuPilot/Api/Turn.cls,src/OcuPilot/Screen/Context.cls,ui/src/app/shell/panel.ts,ui/src/app/core/screen-context.ts,prd.md(FR-70),epics.md(11.2_AC)
 2026-09-29T21:11:46Z	Epic 16	stage_spawned	stage=owner_fix(implement) item=DW-1836 spawn_at=2026-09-29T21:11:46Z model=opus agent_name=dw1836-try-it-status0-implement-1 cycle_iteration=1
 2026-09-29T21:42:32Z	Epic 16	owner_fix_implemented	item=DW-1836 agent=dw1836-try-it-status0-implement-1 model=opus files=8 tests=tools_1715,components_31/31,browser_openapi-try-it_7/7 mutations=8 bundle=2.24MB decisions=three_outcomes(unsent:nothing_sent,failed:hedged_no_complete_answer,redirected:owner_wording) review=1_read-only_layer decision_pending=DW-1845
+2026-09-29T21:43:20Z	Epic 16	owner_fix_committed	item=DW-1836 sha=20bca172 ci=held(push_waits_for_DW-1838_run_36631527264) note=local_only_until_then
+2026-09-29T21:43:20Z	Epic 16	stage_spawned	stage=owner_fix(implement) item=DW-1837 spawn_at=2026-09-29T21:43:20Z model=opus agent_name=dw1837-role-font-implement-1 cycle_iteration=1
+2026-09-29T21:55:00Z	Epic 16	ci_resolved	story=owner_fix_DW-1838 run=36631527264 result=success head=ae14af90
+2026-09-29T21:55:00Z	Epic 16	owner_fix_boundary	item=DW-1838 head=ae14af90 ci_run=36631527264 ci=success reported_to=main
+2026-09-29T21:55:00Z	Epic 16	owner_fix_pushed	item=DW-1836 sha=20bca172 ci=pending run=36636324310
+2026-09-29T21:55:00Z	Epic 16	owner_fix_implemented	item=DW-1837 agent=dw1837-role-font-implement-1 model=opus files=2(_components.scss_add-only,permissions-effective.browser-spec) tests=permissions-effective_5/5,tools_1715 mutations=2(role-name_type_removed->AC1_red;field-input_type_removed->AC4_red) scope=shared_.ocu-form-role-name(7_lists)

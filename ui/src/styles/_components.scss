@@ -5787,6 +5787,8 @@ app-resource-list-page {
 }
 
 .ocu-form-role-name {
+  @include typo.ocu-type('body');
+
   overflow-wrap: anywhere;
 }
 
