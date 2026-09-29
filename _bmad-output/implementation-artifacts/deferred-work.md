@@ -4990,6 +4990,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T15:29:55Z occurrence=18-2-namespaces-and-their-mappings note=CI run 36440901497 shard 1/3 on merge head 1afd8045: AC2 timed out at :140 (30 s); passed locally on the merged tree in 8 s
 - 2026-09-29T05:35:50Z occurrence=16-6-broadcast-a-message-to-processes note=CI run 36523565927 shard 1/3 on e235b1fc: AC2 30 s wait; failed jobs re-run
 - 2026-09-29T06:00:34Z status=routed owner=16-7-license-usage-and-the-full-dashboard by=merge_gate note=orchestrator: fix now as a test-only commit (6bcc6d3b, requireFreeSlot before the tag)
+- 2026-09-29T06:52:01Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=adjudication note=6bcc6d3b: requireFreeSlot before the tag; CI 36528845707 and merge CI 36531012604 green
 
 ### DW-1315: The IsEnabled-before-HoldsAdminResource ordering in OnPreDispatch is unexercised
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -8040,6 +8041,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: data-table.ts puts the reason only in aria-description on a tabindex=-1 checkbox; the grid keeps DOM focus with aria-activedescendant on the row or cell, so it is never read there; onCheckClick and the Space branch return silently on an ineligible row; EXPERIENCE.md:646 forbids a title and a tooltip on an uncut cell
 - 2026-09-29T04:47:44Z status=decision-pending owner=burndown by=cr note=recommend: table tooltip on hover of an ineligible box or an ineligible active row, announced on Space; amends EXPERIENCE:646
 - 2026-09-29T06:26:25Z status=routed owner=16-7-license-usage-and-the-full-dashboard by=merge_gate note=decided as recommended: the table's tooltip on hover of an ineligible box, announced on Space; fixed ahead in f9c77be2
+- 2026-09-29T06:52:01Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=adjudication note=f9c77be2: tooltip on hover of an ineligible checkbox, announced on Space or a click; merge CI 36531012604 green
 
 ### DW-1816: Check all on a multi-select list has no keyboard path: its header checkbox is out of the Tab order and the grid's keys never reach the header
 - source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: med | footprint: in-story
