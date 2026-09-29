@@ -49,6 +49,12 @@ Parameter SPLITTARGETS = "global-mapping,routine-mapping,package-mapping";
 /// a composite.</p>
 Parameter SPLITTARGETID = "OcuPilotDraftNamespace,OcuPilotDraftName";
 
+/// <p>The synthetic target id of an entity type whose port reads the id as more than a name, as
+/// <code>&lt;type&gt;=&lt;id&gt;</code> entries separated by <code>;</code>: a <code>process</code>
+/// id is a pid set, which the broadcast's port refuses to compose from anything else (Story
+/// 16.6).</p>
+Parameter TYPEDTARGETIDS = "process=812,907";
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
@@ -254,6 +260,9 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     Set tDescriptor = $Parameter(tClass, "DESCRIPTORCLASS")
     Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
     Set tTargetId = $Select($ListFind($ListFromString(..#SPLITTARGETS), tType): ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#SPLITTARGETID)), 1: ..#TARGETID)
+    For tI = 1:1:$Length(..#TYPEDTARGETIDS, ";") {
+        If $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 1) = tType Set tTargetId = $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 2, *)
+    }
     Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key(tType, ##class(OcuPilot.Kernel.EntityRef).ScopeFor($ClassMethod(tDescriptor, "Scope")), tTargetId, .tRef)
     If $$$ISERR(tSC) Quit "no target reference: " _ $System.Status.GetErrorText(tSC)
     Kill tRow

@@ -151,14 +151,7 @@ ClassMethod PausedCompact(Output pJob As %String, Output pTaskId As %String) As 
         Set tTask = ##class(%SYS.BackgroundTask).%OpenId(pTaskId)
         Set tPauseSC = $Select($IsObject(tTask): tTask.Pause(), 1: $$$ERROR($$$GeneralError, "the background task did not open"))
         Set tTask = ""
-        Set tState = ""
-        For tI = 1:1:200 {
-            Set tTask = ##class(%SYS.BackgroundTask).%OpenId(pTaskId)
-            Set tState = $Select($IsObject(tTask): tTask.RunningState, 1: "")
-            Set tTask = ""
-            If tState '= "Running" Quit
-            Hang 0.01
-        }
+        Set tState = ..Settled(pTaskId, "Running")
         Set $NAMESPACE = tOrigNS
         If $$$ISERR(tPauseSC) {
             Set tSC = tPauseSC
@@ -173,12 +166,13 @@ ClassMethod PausedCompact(Output pJob As %String, Output pTaskId As %String) As 
 }
 
 /// <p>The state background task <var>pTaskId</var> reads once it has left <var>pFrom</var>, read
-/// every 10 ms for at most 2 s: a pause or resume the vendor accepted is carried out by the task at
-/// its next checkpoint, so the state read at once can still be the one it left.</p>
+/// every 10 ms for at most 30 s: a pause or resume the vendor accepted is carried out by the task at
+/// its next checkpoint, which a slow host reaches later, so the state read at once can still be the
+/// one it left.</p>
 ClassMethod Settled(pTaskId As %String, pFrom As %String = "Running") As %String
 {
     Set tState = ..State(pTaskId)
-    For tI = 1:1:200 {
+    For tI = 1:1:3000 {
         If tState '= pFrom Quit
         Hang 0.01
         Set tState = ..State(pTaskId)

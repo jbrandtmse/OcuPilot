@@ -3586,6 +3586,30 @@ export const STRINGS = {
   /** EXPERIENCE.md:481 */
   mappingRefusalOcuPilot:
     'A mapping whose name or pattern covers OcuPilot\'s own names decides where OcuPilot\'s globals and code are found. In the namespace OcuPilot runs in, and in %ALL, such a mapping cannot be added, changed, removed or copied in.',
+
+  // Story 16.6: Processes' Broadcast over the checked rows, its dialog and refusal, and the data
+  // table's checked set. The dialog's field label and buttons reuse `logViewerColumnMessage`,
+  // `actionSend`, `actionCancel` and `auditDialogClose`.
+  /** EXPERIENCE.md:320 */
+  processBroadcastAction: 'Broadcast',
+  /** EXPERIENCE.md:320 */
+  processBroadcastTitle: 'Broadcast to <n> processes',
+  /** EXPERIENCE.md:320 */
+  processBroadcastTitleOne: 'Broadcast to 1 process',
+  /** EXPERIENCE.md:320 */
+  processBroadcastHint: 'At most 255 characters, on one line. A broadcast reaches at most <n> processes.',
+  /** EXPERIENCE.md:320 */
+  processBroadcastSent: 'Message sent.',
+  /** EXPERIENCE.md:320 */
+  processBroadcastIneligible: 'Only a terminal session can receive a broadcast.',
+  /** EXPERIENCE.md:320 */
+  processBroadcastRefusalRecipient: 'At least one of these processes has ended or is not a terminal session, so nothing was sent.',
+  /** EXPERIENCE.md:294 */
+  tableCheckRowsFirst: 'Check one or more rows first',
+  /** EXPERIENCE.md:294 */
+  tableCheckAtMost: 'Check at most <n> rows',
+  /** EXPERIENCE.md:294 */
+  tableCheckAll: 'Check all',
 } as const;
 
 /**

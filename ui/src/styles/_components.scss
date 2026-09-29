@@ -7320,3 +7320,32 @@ app-log-hub-page {
 .ocu-namespace-copy-status:not(:empty) {
   padding-block: var(--ocu-space-2);
 }
+
+// The data table's checked set (Story 16.6): a 24px checkbox at the leading edge of a multi-select
+// list's name cell and name header, which never shrinks under a narrow column (DW-1337).
+.ocu-data-table-check {
+  flex: 0 0 auto;
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
+  cursor: pointer;
+}
+
+.ocu-data-table-check[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+// The broadcast dialog's refusal and sent line (Story 16.6).
+.ocu-broadcast-refusal {
+  @include typo.ocu-type('body');
+
+  margin: var(--ocu-space-2) 0 0;
+  color: var(--ocu-error);
+}
+
+.ocu-broadcast-sent {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+}

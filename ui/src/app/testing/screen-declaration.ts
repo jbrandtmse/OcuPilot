@@ -46,6 +46,7 @@ export function screenDeclaration(overrides: Partial<ScreenDeclaration> = {}): S
     tab: null,
     toolIdentifier: 'stub',
     rowTarget: null,
+    multiSelect: null,
     ...overrides,
   };
 }

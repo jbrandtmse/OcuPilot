@@ -799,6 +799,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T16:21:41Z status=routed owner=15-6-the-light-and-dark-theme by=cr note=1.10s :root.ocu-theme-dark .ocu-server-flag reads --ocu-on-shell-dark, the one component rule naming a -dark token; the pairing it computes never occurs
 - 2026-09-12T23:55:35Z occurrence=1-13-uniform-error-handling-and-the-connectivity-probe
 - 2026-09-24T00:06:35Z status=resolved-by:15-6-the-light-and-dark-theme by=adjudication note=same fix as DW-39; the last component dark selector (.ocu-server-flag) became a token pair; single-home test pins it
+- 2026-09-29T01:24:25Z status=resolved-by:15-6-the-theme-toggle-wired-end-to-end by=spec_gate note=16.7 plan: Story 15.6 resolved it, as 16.18 recorded
+- 2026-09-29T01:24:31Z status=resolved-by:15-6-the-light-and-dark-theme by=spec_gate note=restores 2026-09-24's resolution; the 01:24 line named a key that does not exist
 
 ### DW-119: An identity call that fails in a way that is neither AUTH.NOADMIN nor INSTALL.* leaves the shell on 'checking' with nothing scheduled to ask again, so a signed-in tab can sit on a blank content area
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: med | footprint: in-story
@@ -1679,6 +1681,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: FieldLists.cls LanguageServer Custom is an object with no members; the vendor template builds Custom per type argument; AD-3 fixes no-argument evaluation except SSLConfig
 - 2026-09-14T08:16:26Z status=routed owner=16-10-external-language-servers by=harvest note=decided 2026-09-14 (owner-delegated): derive one list per language-server type as Wallet.Secret does, amending AD-3 in that story
+- 2026-09-29T06:26:25Z status=routed owner=16-25-the-external-language-server-editor by=merge_gate note=16.10 split for size (orchestrator): the editor and its per-type field lists moved to 16.25
 
 ### DW-254: The credential pattern missed string secrets (wallet Secret64, License.Key Key) and refuses ordinary on the string OAuth2 ReturnRefreshToken
 - source: spec-2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned.md | severity: med | fix-risk: low | footprint: in-story
@@ -4985,6 +4988,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-28T11:46:09Z occurrence=16-3-effective-privileges-and-the-permission-check-tool note=recurred on sharded CI run 36411822579 shard 1 (30s wait for the refused card); green next run
 - 2026-09-28T15:29:55Z occurrence=18-2-namespaces-and-their-mappings note=CI run 36440901497 shard 1/3 on merge head 1afd8045: AC2 timed out at :140 (30 s); passed locally on the merged tree in 8 s
+- 2026-09-29T05:35:50Z occurrence=16-6-broadcast-a-message-to-processes note=CI run 36523565927 shard 1/3 on e235b1fc: AC2 30 s wait; failed jobs re-run
+- 2026-09-29T06:00:34Z status=routed owner=16-7-license-usage-and-the-full-dashboard by=merge_gate note=orchestrator: fix now as a test-only commit (6bcc6d3b, requireFreeSlot before the tag)
 
 ### DW-1315: The IsEnabled-before-HoldsAdminResource ordering in OnPreDispatch is unexercised
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -8024,6 +8029,32 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: InstanceFile answers 0 for /durable/iris/csp/ocupilot/index.html on ocupilot-b-ci (read-only, blind-hunter layer); DW-1790's 17:21:25Z trailer lists the bundle, and its merge_gate decision names database and journal directories only; no overwriting consumer exists yet.
 - 2026-09-28T22:34:01Z status=decision-pending owner=burndown by=cr note=owner: should an overwriting consumer also be refused OcuPilot's own served files, as self-protection?
+
+### DW-1812: A broadcast whose every checked pid has ended is refused as not found (the RECIPIENTS read's 404), not with AC3's published PROCESS.BROADCAST.RECIPIENT sentence
+- source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ProcessPort answers RECIPIENTS 404 when no pid of the set runs, as the spec's Boundaries specify; the screen route and the mint stop on that read
+- 2026-09-29T04:04:49Z status=by-design owner=16-6-broadcast-a-message-to-processes by=harvest note=spec-bound: the RECIPIENTS clause specifies the 404; a set naming one running pid reaches the sentence
+
+### DW-1815: An ineligible Processes row's reason reaches no pointer user and is not announced through the grid; Space or a click on it is silent
+- source: spec-16-6-broadcast-a-message-to-processes.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: data-table.ts puts the reason only in aria-description on a tabindex=-1 checkbox; the grid keeps DOM focus with aria-activedescendant on the row or cell, so it is never read there; onCheckClick and the Space branch return silently on an ineligible row; EXPERIENCE.md:646 forbids a title and a tooltip on an uncut cell
+- 2026-09-29T04:47:44Z status=decision-pending owner=burndown by=cr note=recommend: table tooltip on hover of an ineligible box or an ineligible active row, announced on Space; amends EXPERIENCE:646
+- 2026-09-29T06:26:25Z status=routed owner=16-7-license-usage-and-the-full-dashboard by=merge_gate note=decided as recommended: the table's tooltip on hover of an ineligible box, announced on Space; fixed ahead in f9c77be2
+
+### DW-1816: Check all on a multi-select list has no keyboard path: its header checkbox is out of the Tab order and the grid's keys never reach the header
+- source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: data-table.ts draws Check all with tabindex=-1 and onGridKeydown moves only data rows; Space on each row reaches the same checks one at a time
+- 2026-09-29T04:47:44Z status=wontfix-accepted owner=16-6-broadcast-a-message-to-processes by=cr note=reopen_if=a keyboard-only user must check more than a few rows at once, or a second list declares multiSelect
+
+### DW-1817: A broadcast to two or more pids marks no row and announces nothing, while a one-pid broadcast marks its row Changed
+- source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: the change event's id is the comma-joined set (812,907), which no row key matches (refresh.ts markChanged); the dialog's Message sent. is the confirmation
+- 2026-09-29T04:47:44Z status=wontfix-accepted owner=16-6-broadcast-a-message-to-processes by=cr note=reopen_if=a person or test expects each recipient row of a set broadcast marked Changed (AD-14)
+
+### DW-1818: A message the screen route refuses (a pasted tab) shows the agent-worded TOOL.ARGUMENTS sentence in the broadcast dialog
+- source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Api/ScreenAction.cls Refuse renders REASONTOOLARGUMENTS for every ScreenActionDelta problem, and the dialog shows the envelope's reason; nothing is sent
+- 2026-09-29T04:47:44Z status=wontfix-accepted owner=16-6-broadcast-a-message-to-processes by=cr note=reopen_if=a person meets the generic sentence from a screen dialog, or a second free-text screen value reaches ScreenAction.Refuse
 - 2026-09-28T23:19:46Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: refuse an overwriting consumer OcuPilot's own served files (csp/ocupilot/ and what the installer deploys); folded into 18.14's rework
 - 2026-09-29T04:42:42Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings owner=18-14-namespace-mappings-and-copy-mappings by=adjudication note=PathPort.Resolve refuses an existing file under PathPort.ServedDirectory() to an overwriting consumer; PathPortInstance pins it with a recorded mutation; AD-21 sixth case amended
 
@@ -8105,3 +8136,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 36522971621 (browser shard 3/3), Epic 18 head c811f1ab | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: background-tasks.browser-spec.mjs AC1 'the compact reads Running, not Paused', AC2 'a background task still runs over the seed database'; BackgroundSeed.cls:155 polls 200 x 0.01 s; the same spec passed on e40733ef (run 36519473392); 18.14 touches neither file
 - 2026-09-29T05:18:37Z status=routed owner=burndown by=lead note=Story 16.5's seed; a timing race (inference); the failed job is re-run
+- 2026-09-29T06:52:04Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=merge_gate note=6bcc6d3b (Epic 16): BackgroundSeed waits through Settled, bounded at 30 s; the fix reaches feature in this merge

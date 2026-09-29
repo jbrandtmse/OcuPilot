@@ -15,6 +15,7 @@ import { NavigationService } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
 import { DOWNLOAD_CSV_ACTION_ID, PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
+import { checkedSetReason, isCheckedSetAction } from '../core/multi-select';
 import { applyView } from '../core/screen-read';
 import { ScreenStores, type SortDirection } from '../core/screen-store';
 import { selfProtectionReason } from '../core/self-protection';
@@ -422,6 +423,7 @@ export class CommandBar {
       ? ''
       : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
     const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
+    const checked = screen.multiSelect === null ? 0 : this.stores.for(screen.descriptor, screen.refreshRates).checked().size;
     return screen.rowActions
       .filter((action) => action.id !== '')
       // DW-389: a declared action with no registered handler is a control nothing can act on, so
@@ -431,10 +433,13 @@ export class CommandBar {
         // Two reasons, in this order: with nothing selected the action has no target, and with a
         // self-protected row selected the instance would refuse it -- with this very sentence
         // (AD-10, AD-53). Neither is enforcement: the route refuses it identically if it is
-        // pressed anyway.
-        const reason = selected === ''
-          ? STRINGS.privilegeSelectRowFirst
-          : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
+        // pressed anyway. A multi-select action (Story 16.6) acts on the checked rows instead, so
+        // its reason is theirs: none checked, or more than it takes.
+        const reason = isCheckedSetAction(screen, action.id)
+          ? checkedSetReason(screen, checked)
+          : selected === ''
+            ? STRINGS.privilegeSelectRowFirst
+            : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
         return {
           id: action.id,
           // Resolved through the one label map, as the command box already does (Story 3.5), and

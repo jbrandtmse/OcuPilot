@@ -267,6 +267,53 @@ describe('the command bar', () => {
     expect(fixture.nativeElement.querySelectorAll('[disabled]')).toHaveLength(0);
   });
 
+  it('Story 16.6: a multi-select action reads the checked rows -- none, within its max, and above it', () => {
+    // Mutation (Rule 19): drop the `isCheckedSetAction` branch from `resolved` in `command-bar.ts`
+    // -> the action reads "Select a row first" and this goes red.
+    const declared = screenDeclaration({
+      rowActions: [
+        { id: 'disable', selfProtection: '' },
+        { id: 'broadcast', selfProtection: '' },
+      ],
+      multiSelect: { action: 'broadcast', eligible: 'Enabled', max: 2, ineligibleKey: 'processBroadcastIneligible' },
+    });
+    build(declared);
+    let runs = 0;
+    actions.register(declared.descriptor, 'disable', () => {});
+    actions.register(declared.descriptor, 'broadcast', () => (runs += 1));
+    fixture.detectChanges();
+    const store = stores.for(declared.descriptor, declared.refreshRates);
+    const button = (): HTMLButtonElement =>
+      (Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')) as HTMLButtonElement[])[1];
+    const reason = (): string =>
+      button().getAttribute('aria-describedby') === null
+        ? ''
+        : (fixture.nativeElement.querySelector(`#${button().getAttribute('aria-describedby')}`)?.textContent?.trim() ?? '');
+
+    expect(button().getAttribute('aria-disabled')).toBe('true');
+    expect(reason()).toBe(STRINGS.tableCheckRowsFirst);
+    button().click();
+    expect(runs).toBe(0);
+
+    store.setChecked(['/csp/app00', '/csp/app02']);
+    fixture.detectChanges();
+    expect(button().getAttribute('aria-disabled')).toBeNull();
+    expect(reason()).toBe('');
+    button().click();
+    expect(runs).toBe(1);
+
+    store.setChecked(['/csp/app00', '/csp/app02', '/csp/app04']);
+    fixture.detectChanges();
+    expect(button().getAttribute('aria-disabled')).toBe('true');
+    expect(reason()).toBe('Check at most 2 rows');
+
+    // The single-row action beside it still asks for the selection, which checking never moves.
+    const single = fixture.nativeElement.querySelector('.ocu-command-bar-action') as HTMLButtonElement;
+    expect(fixture.nativeElement.querySelector(`#${single.getAttribute('aria-describedby')}`)?.textContent?.trim()).toBe(
+      STRINGS.privilegeSelectRowFirst
+    );
+  });
+
   it('Story 7.10: on a screen with row actions and no declared read, the bar follows the selection the page writes', () => {
     // The application error log's drill-down declares no read and writes its own selection into
     // its store; the bar has to see it move.

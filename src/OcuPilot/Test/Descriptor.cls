@@ -656,18 +656,22 @@ Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
     ; Nspace, not Namespace: the vendor LIST row's own key. A read declaring the reader's word
     ; would project null into every row rather than fail, so the spelling is pinned here on the
     ; declaration and against the live row in OcuPilot.Test.ScreenRead.
-    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals""]", "the seven declared fields carry the vendor's Nspace spelling")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals"",""CanReceiveBroadcast""]", "the eight declared fields carry the vendor's Nspace spelling, and the broadcast flag last")
     Do $$$AssertEquals(tDeclaration.read.filter.%ToJSON(), "[""Pid"",""Username"",""Nspace"",""Routine"",""State""]", "the filter matches on the five text fields, never on the two counters")
     Do $$$AssertEquals(tDeclaration.read.sort.%ToJSON(), "{""fields"":[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals""],""default"":""Pid"",""direction"":""asc""}", "every declared field is sortable, by process id ascending to begin with")
     Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "and the read carries no secret to strip")
-    ; The four CanBe* booleans gate the controls this story does not ship (Stories 5.12, 7.8 and
-    ; 16.6), and the client and identity fields are Story 6.8's process details. Absence from the
-    ; read, the table and the agent's context is the claim.
-    For tAbsent = "CanBe", "CanReceive", "Device", "ClientName", "EXEname", "IPAddress", "OSUserName", "Job", "ParentPid", "PrvGblBlkCnt", "CPUTime", "ElapsedTime" {
+    ; The four CanBe* booleans gate the controls this story does not ship (Stories 5.12 and 7.8),
+    ; and the client and identity fields are Story 6.8's process details. Absence from the read,
+    ; the table and the agent's context is the claim.
+    For tAbsent = "CanBe", "Device", "ClientName", "EXEname", "IPAddress", "OSUserName", "Job", "ParentPid", "PrvGblBlkCnt", "CPUTime", "ElapsedTime" {
         Do $$$AssertEquals((tDeclaration.read.%ToJSON() [ tAbsent), 0, "the read names no " _ tAbsent _ " field, filter or sort")
         Do $$$AssertEquals((tDeclaration.table.%ToJSON() [ tAbsent), 0, "and the table declares no " _ tAbsent _ " column")
         Do $$$AssertEquals((tDeclaration.context.%ToJSON() [ tAbsent), 0, "and the agent's context carries none either")
     }
+    ; Story 16.6: the broadcast flag is read and sent as context, and no column draws it.
+    Do $$$AssertEquals(tDeclaration.context.fields.%ToJSON(), "[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals"",""CanReceiveBroadcast""]", "the agent's context carries the broadcast flag")
+    Do $$$AssertEquals((tDeclaration.table.%ToJSON() [ "CanReceive"), 0, "while no column draws it")
+    Do $$$AssertEquals(tDeclaration.multiSelect.%ToJSON(), "{""action"":""broadcast"",""eligible"":""CanReceiveBroadcast"",""max"":20,""ineligibleKey"":""processBroadcastIneligible""}", "and it makes a row checkable for the broadcast")
     ; "Namespace" is checked over the read and the context alone: the table's own column carries
     ; the reader's word through headerNamespaceLabel, which contains the string by design.
     Do $$$AssertEquals((tDeclaration.read.%ToJSON() [ "Namespace"), 0, "the read names no Namespace field, filter or sort -- only the vendor's Nspace")
@@ -681,9 +685,9 @@ Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
     ; Order matters: OcuPilot.Screen.Gate.EvaluatePairs names the FIRST pair a caller does not
     ; hold, and both wire fixtures pin that name.
     Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%Admin_Manage"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "the endpoint's own gate first, the CONTROLPANEL query's check second, the database read third")
-    ; Story 7.8: the four row actions, none self-protected -- a process refusal reads what only the
-    ; instance knows -- so the empty state invites the agent.
-    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "suspend,resume,terminate,terminate-with-error", "its row actions are Suspend, Resume, Terminate and the Terminate dialog's flag")
+    ; Story 7.8's four row actions and Story 16.6's Broadcast, none self-protected -- a process
+    ; refusal reads what only the instance knows -- so the empty state invites the agent.
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "suspend,resume,terminate,terminate-with-error,broadcast", "its row actions are Suspend, Resume, Terminate, the Terminate dialog's flag and the checked rows' Broadcast")
     Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, "processListEmptyAgent", "and its empty state invites the agent")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the os-management area covers all three")
     ; DW-275, the half that stops the decision being reversed by accident: %Admin_Manage:USE is in
@@ -1940,6 +1944,54 @@ Method TestANarrowOsManagementScreenIsSoundInsideTheUnion()
     Set tListSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tRoster)
     Do $$$AssertStatusOK(tListSC, "the production descriptor roster reads")
     If $$$ISOK(tListSC) Do $$$AssertEquals($ListFind(tRoster, tClass), 0, "and it is outside it, because it sits under OcuPilot.Test.")
+}
+
+/// <p>AD-5, Story 16.6: every case in <class>OcuPilot.Test.MultiSelectCorpus</class> gets its
+/// exact sentence, or none, from <method>OcuPilot.Screen.Registry.MultiSelectProblem</method>, the
+/// corpus's own sound declaration carries exactly the declared vocabulary, and every shipped
+/// descriptor passes.</p>
+/// <p>Mutation (Rule 19): drop the <code>max</code> arm from
+/// <method>OcuPilot.Screen.Registry.MultiSelectProblem</method> -- the five max cases go red.</p>
+Method TestEveryMultiSelectCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.MultiSelectCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If $$$ISERR(tSC) Quit
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tDeclaration = ##class(OcuPilot.Test.MultiSelectCorpus).DeclarationFor(tCorpus, tCase)
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.%Get("expected"))
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).MultiSelectProblem(tDeclaration), tExpected, tCase.%Get("name"))
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case")
+    Set tKeys = ""
+    Set tKeyIterator = tCorpus.declaration.multiSelect.%GetIterator()
+    While tKeyIterator.%GetNext(.tKey, .tValue) { Set tKeys = tKeys _ $ListBuild(tKey) }
+    Do $$$AssertEquals($ListToString(tKeys), ##class(OcuPilot.Screen.Registry).#MULTISELECTKEYS, "the corpus's sound multiSelect carries exactly the declared vocabulary")
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tRoster)
+    Do $$$AssertStatusOK(tSC, "the shipped roster reads")
+    If $$$ISERR(tSC) Quit
+    For tI = 1:1:$ListLength(tRoster) {
+        Set tClass = $List(tRoster, tI)
+        If $$$ISERR($ClassMethod(tClass, "DeclarationJson", .tShipped)) Continue
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).MultiSelectProblem(tShipped), "", tClass _ "'s multiSelect passes")
+    }
+}
+
+/// <p>AD-5, Story 16.6: the multi-select rule reaches the roster through
+/// <method>OcuPilot.Screen.Registry.Validate</method>, naming the offending class. The corpus test
+/// above calls the rule directly, so this fixture registry is what pins that call site.</p>
+/// <p>Mutation (Rule 19): delete the <method>OcuPilot.Screen.Registry.MultiSelectProblem</method>
+/// call from <method>OcuPilot.Screen.Registry.Validate</method> -- the fixture roster validates and
+/// this goes red.</p>
+Method TestAMultiSelectOutsideTheGrammarIsRefusedByTheRoster()
+{
+    Set tSC = ##class(OcuPilot.Test.MultiSelectShapeRegistry).Validate(.tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster carrying a multiSelect outside the grammar is refused")
+    Do $$$AssertTrue(tProblem [ "OcuPilot.Test.MultiSelectShape.Bad", "the refusal names the offending class: " _ tProblem)
+    Do $$$AssertTrue(tProblem [ "multiSelect.action 'broadcast' is not one of rowActions", "and the sentence MultiSelectProblem returns: " _ tProblem)
 }
 
 /// <p>AC5, AC6 -- every case in <class>OcuPilot.Test.RowTargetCorpus</class>'s <code>Cases</code>

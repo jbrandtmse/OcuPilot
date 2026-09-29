@@ -4168,4 +4168,12 @@ Parameter TASKBACKGROUNDSTATE = "TASK.BACKGROUND.STATE";
 
 Parameter REASONTASKBACKGROUNDSTATE = "This background task's current state does not allow that.";
 
+/// <p>Machine code (AD-12, AD-39, Story 16.6): a broadcast whose set names a process that has ended
+/// or cannot receive one, so nothing was sent to any of them. Answered on the
+/// <parameter>CONFLICT</parameter> slug with 409 by <class>OcuPilot.Port.ProcessPort</class>, for
+/// both callers, before any vendor call.</p>
+Parameter PROCESSBROADCASTRECIPIENT = "PROCESS.BROADCAST.RECIPIENT";
+
+Parameter REASONPROCESSBROADCASTRECIPIENT = "At least one of these processes has ended or is not a terminal session, so nothing was sent.";
+
 }

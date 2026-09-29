@@ -439,3 +439,44 @@ test('Story 16.18: the name home keys the refresh kind only -- another screen wi
   assert.equal(store.setRate(10), true);
   assert.equal(held.calls.length, before, 'nothing is written');
 });
+
+// Story 16.6 (AD-19): the checked set a multi-select list keeps beside its selection. A tick leaves
+// it alone, a scope switch drops it, it is never remembered on the instance, and a sign-out's new
+// stores start without it.
+//
+// Mutation (Rule 19): clear `checkedKeys` in `applyTick` -> the tick leg goes red.
+test('Story 16.6: the checked set toggles, survives a tick, is dropped by clearAnswers and a sign-out, and is never remembered', async () => {
+  const held = await account();
+  const stores = new ScreenStores({ account: held });
+  const store = stores.for(ONE, []);
+  const calls = held.calls.length;
+  let notified = 0;
+  store.subscribe(() => (notified += 1));
+
+  store.toggleChecked('812');
+  store.toggleChecked('907');
+  store.toggleChecked('');
+  assert.deepEqual([...store.checked()], ['812', '907']);
+  store.toggleChecked('812');
+  assert.deepEqual([...store.checked()], ['907']);
+  store.setSelection(['4711']);
+  assert.deepEqual([...store.checked()], ['907'], 'the selection moves nothing checked');
+  assert.deepEqual(store.selection(), ['4711'], 'and checking moved no selection');
+
+  const before = notified;
+  store.setChecked(['907']);
+  assert.equal(notified, before, 'setting the same set notifies nobody');
+  store.setChecked(['812', '907']);
+  store.applyTick([{ Pid: 812 }], false, '', new Date());
+  assert.deepEqual([...store.checked()].sort(), ['812', '907'], 'a tick leaves the checked set to the table');
+
+  await flush();
+  assert.equal(held.calls.length, calls, 'and nothing about it reaches the instance');
+
+  store.clearAnswers();
+  assert.equal(store.checked().size, 0, 'a scope switch drops it');
+
+  store.setChecked(['812']);
+  stores.reset();
+  assert.equal(stores.for(ONE, []).checked().size, 0, 'and a sign-out starts the next store without it');
+});
