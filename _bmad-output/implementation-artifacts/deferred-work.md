@@ -8100,3 +8100,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead smoke, Story 18.14 | severity: med | fix-risk: low | footprint: out-of-story
 - evidence: measured on ocupilot-b-ci 2026-09-29: alerts.log holds only OcuPilot adminport 'failed with HTTP 404' lines (Namespace.Namespace, Namespace.GlobalMappings) plus 'generated 3 alerts' suspensions; $SYSTEM.Monitor.State() reads 2; AdminPort.Fail:2431 logs via Fault.LogRaw whatever the status
 - 2026-09-29T04:42:42Z status=routed owner=burndown by=lead note=pre-existing since Story 2.1; an expected 404 (a delete's re-read, a read-back of an absent row) should log below error, or not at all
+
+### DW-1819: BackgroundSeed.PausedCompact waits 2 s for a paused compact to leave Running; on a slow CI runner it read Running, failed background-tasks AC1, and the still-running compact then failed AC2's reseed
+- source: CI run 36522971621 (browser shard 3/3), Epic 18 head c811f1ab | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: background-tasks.browser-spec.mjs AC1 'the compact reads Running, not Paused', AC2 'a background task still runs over the seed database'; BackgroundSeed.cls:155 polls 200 x 0.01 s; the same spec passed on e40733ef (run 36519473392); 18.14 touches neither file
+- 2026-09-29T05:18:37Z status=routed owner=burndown by=lead note=Story 16.5's seed; a timing race (inference); the failed job is re-run
