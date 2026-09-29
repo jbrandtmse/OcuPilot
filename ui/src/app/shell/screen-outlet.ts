@@ -20,6 +20,7 @@ import { DatabaseDetailsPage } from '../areas/os-management/database-details.pag
 import { DatabasesPage } from '../areas/os-management/databases.page';
 import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
 import { SystemUsagePage } from '../areas/os-management/system-usage.page';
+import { DashboardPage } from '../areas/os-management/dashboard.page';
 import { AuditingConfigPage } from '../areas/security/auditing-config.page';
 import { OAuthServerDescriptionFormPage } from '../areas/security/oauth-server-description-form.page';
 import { OAuthClientFormPage } from '../areas/security/oauth-client-form.page';
@@ -48,6 +49,7 @@ import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { DeviceFormPage } from '../areas/os-management/device-form.page';
 import { NamespaceFormPage } from '../areas/os-management/namespace-form.page';
 import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
+import { TaskSchedulePage } from '../areas/tasks/task-schedule.page';
 import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { DatabaseWizardPage } from '../areas/os-management/database-wizard.page';
 import { DatabaseEditorPage } from '../areas/os-management/database-editor.page';
@@ -158,6 +160,10 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AgentGovernance': GovernancePage,
   'OcuPilot.Screen.Descriptor.LogHub': LogHubPage,
   'OcuPilot.Screen.Descriptor.AgentLedger': LedgerPage,
+  // Story 16.7: the Dashboard's seven meter groups; System usage keeps the meters archetype's page.
+  'OcuPilot.Screen.Descriptor.Dashboard': DashboardPage,
+  // Story 16.4: the Task schedule with its Export and Import dialogs.
+  'OcuPilot.Screen.Descriptor.TaskScheduleList': TaskSchedulePage,
 };
 
 /**

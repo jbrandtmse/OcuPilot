@@ -53,6 +53,9 @@ const DASH = '\u2014';
   template: `<div class="ocu-meter">
     <span class="ocu-meter-label">{{ label() }}</span>
     <div class="ocu-meter-bar">
+      @if (showValueSkeleton) {
+        <span class="ocu-meter-value-skeleton" aria-hidden="true"></span>
+      }
       @if (isTrack) {
         <div class="ocu-meter-track">
           @if (showSkeletonFill) {
@@ -100,6 +103,18 @@ export class Meter {
   readonly state = input<MeterSeverity | null>(null);
   readonly word = input<string | null>(null);
   readonly error = input<string | null>(null);
+  /**
+   * A readout the caller has already formatted -- a grouped count, a one-decimal rate, or a vendor
+   * string such as an uptime (Story 16.7's Dashboard) -- shown in place of `value`'s own text, with
+   * the unit appended. `null`, the default, shows `value` as before.
+   */
+  readonly text = input<string | null>(null);
+  /**
+   * Whether a value meter shows a skeleton beside its dash until its first readout, as a track
+   * meter always does in its track. Off by default, so a caller that never sets it draws exactly as
+   * before.
+   */
+  readonly skeleton = input(false);
 
   /** The whole meter's tooltip: the current fault's text, or none. */
   protected get tooltip(): string | null {
@@ -111,9 +126,9 @@ export class Meter {
     return this.state() !== null;
   }
 
-  /** Whether an answer has ever arrived: a numeric value, or a status word. */
+  /** Whether an answer has ever arrived: a numeric value, a formatted readout, or a status word. */
   private get hasContent(): boolean {
-    return this.value() !== null || this.word() !== null;
+    return this.value() !== null || this.text() !== null || this.word() !== null;
   }
 
   /** No content yet, and no fault either -- the cold-load state EXPERIENCE.md's matrix names. */
@@ -123,6 +138,11 @@ export class Meter {
 
   private get failed(): boolean {
     return this.error() !== null;
+  }
+
+  /** A value meter's loading placeholder, where its caller asked for one. */
+  protected get showValueSkeleton(): boolean {
+    return this.skeleton() && !this.isTrack && this.pending;
   }
 
   /** The loading placeholder, in place of the track's colored fill, on a track meter only. */
@@ -171,14 +191,15 @@ export class Meter {
   protected get displayValue(): string {
     if (this.pending || this.failed) return DASH;
     const value = this.value();
-    if (value === null) return DASH;
+    const readout = this.text() ?? (value === null ? null : String(value));
+    if (readout === null) return DASH;
     const unit = this.unit();
-    return unit === '' ? String(value) : `${value} ${unit}`;
+    return unit === '' ? readout : `${readout} ${unit}`;
   }
 
   /** The value text, except on a loaded, unfaulted status meter, whose word is its whole readout. */
   protected get showValue(): boolean {
-    return this.value() !== null || this.word() === null || this.failed;
+    return this.value() !== null || this.text() !== null || this.word() === null || this.failed;
   }
 
   /** The word beside the value, once one has arrived, on a track meter only. */

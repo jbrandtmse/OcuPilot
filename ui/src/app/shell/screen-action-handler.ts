@@ -15,6 +15,7 @@ import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
 import { rowKey } from '../core/table-model';
+import { violationsOf, type Violation } from '../core/violations';
 
 /** The absolute path a screen's own row action is issued under (AD-20, AD-53). */
 export const SCREEN_ACTION_PATH_SUFFIX = '/action';
@@ -52,7 +53,8 @@ export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
  * list (Story 16.5), whose Pause and Resume are sent at once and whose Cancel task warns first, the
  * global, routine and package mapping lists (Story 18.14), whose Delete types the mapping's name,
  * Processes' Broadcast (Story 16.6), which acts on the checked rows and opens the broadcast
- * dialog, and the Local databases list (Story 18.3), whose Delete types the name, states the
+ * dialog, External language servers (Story 16.10), whose Start is sent at once and whose Stop
+ * warns first, the Local databases list (Story 18.3), whose Delete types the name, states the
  * removal's impact and offers to delete the file too, and Database details (Story 18.4), whose five
  * disk operations each warn first -- the mount carrying its read-only flag, the truncate and the
  * compact a size -- and whose Dismount states the prohibited set's refusal of a protected database
@@ -86,6 +88,7 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.RoutineMappingList',
   'OcuPilot.Screen.Descriptor.PackageMappingList',
   'OcuPilot.Screen.Descriptor.LocalDatabaseList',
+  'OcuPilot.Screen.Descriptor.LanguageServerList',
   'OcuPilot.Screen.Descriptor.DatabaseDetails',
 ];
 
@@ -147,7 +150,16 @@ export const SET_RESOURCE_GRANT = 'set-resource-grant';
 export const REMOVE_RESOURCE_GRANT = 'remove-resource-grant';
 
 /** The Task schedule's descriptor, whose delete types a name that is not its row key. */
-const TASK_SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
+export const TASK_SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
+
+/**
+ * The Task schedule's Export and Import (Story 16.4): declared, and run by the list's own page
+ * (`areas/tasks/task-schedule.page.ts`), whose dialogs supply the file. Import names no task, so it
+ * is sent with the one target the tool reads, `TASK_IMPORT_TARGET`.
+ */
+export const TASK_EXPORT = 'export';
+export const TASK_IMPORT = 'import';
+export const TASK_IMPORT_TARGET = 'import';
 
 /** The processes list and Process details, whose Terminate carries the error-to-job flag. */
 const PROCESS_LIST = 'OcuPilot.Screen.Descriptor.ProcessList';
@@ -218,6 +230,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [NAMESPACE_LIST]: [COPY_MAPPINGS],
   // The database editor draws Add a volume beside its volume files, for the database it shows.
   [LOCAL_DATABASE_LIST]: [EXPAND_VOLUME],
+  // The Task schedule's page registers Export itself and draws Import as a screen-level action.
+  [TASK_SCHEDULE]: [TASK_EXPORT, TASK_IMPORT],
 };
 
 /**
@@ -374,6 +388,8 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   'OcuPilot.Screen.Descriptor.AuditingConfig': { disable: STRINGS.proposalAuditWarning },
   // Story 16.5: a canceled background task cannot be resumed.
   'OcuPilot.Screen.Descriptor.BackgroundTaskList': { cancel: STRINGS.backgroundTaskCancelConsequence },
+  // Story 16.10: a stop is the vendor's hard shutdown.
+  'OcuPilot.Screen.Descriptor.LanguageServerList': { stop: STRINGS.languageServerStopConsequence },
   // Story 18.4: each disk operation is disruptive, and none removes data, so each warns.
   [DATABASE_DETAILS]: {
     mount: STRINGS.databaseMountConsequence,
@@ -408,6 +424,21 @@ const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningVal
     [EXPAND_VOLUME]: { kind: 'field', value: 'InitialSize', labelKey: 'databaseInitialSize', hintKey: 'databaseInitialSizeHint' },
   },
 };
+
+/**
+ * The state refusals whose sentence EXPERIENCE.md publishes, which a write tool answers as the
+ * `detail.problem` of a 400 `TOOL.ARGUMENTS` (AD-39, AD-51): the list shows the sentence in place of
+ * the envelope's generic reason. Any other problem keeps the envelope's reason. Each is pinned equal
+ * to its server copy by `ui/tools/self-protection.test.mjs`.
+ */
+const PUBLISHED_PROBLEMS: readonly string[] = [STRINGS.languageServerRefusalRunning, STRINGS.languageServerRefusalStopped];
+
+/** The sentence a refused action shows: a published state refusal, else the envelope's own reason. */
+function refusalReason(result: { readonly reason: string | null; readonly detail: Record<string, unknown> | null }): string {
+  const problem = result.detail === null || result.detail === undefined ? undefined : result.detail['problem'];
+  if (typeof problem === 'string' && PUBLISHED_PROBLEMS.includes(problem)) return problem;
+  return result.reason ?? '';
+}
 
 /**
  * The warning a non-delete write states for one row only, keyed by descriptor and then by action id:
@@ -481,6 +512,17 @@ export interface PendingConfirm {
 export interface ActionSink {
   setRefusal(reason: string): void;
   applied?(actionId: string): void;
+}
+
+/**
+ * What the instance answered the last refused action with (AD-39): the envelope's sentence, its
+ * field-level violations and its structured detail. A dialog that draws a refusal on its own fields
+ * reads it right after the `sendFor` that sent the action.
+ */
+export interface ActionRefusal {
+  readonly reason: string;
+  readonly violations: readonly Violation[];
+  readonly detail: Readonly<Record<string, unknown>> | null;
 }
 
 /** The fields of the row an action is about, where the caller holds them. */
@@ -953,6 +995,7 @@ export class ScreenActionHandler {
     values?: ActionValues,
     sink: ActionSink | null = null
   ): Promise<boolean> {
+    this.lastRefused = null;
     const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
     if (screen === undefined) return false;
     const addressed = SCREENS.find((entry) => entry.descriptor === (ACTION_ADDRESS[descriptor] ?? descriptor));
@@ -979,10 +1022,18 @@ export class ScreenActionHandler {
       state: result.kind !== 'ok' ? 'refused' : this.lastContinues ? 'continues' : 'finished',
       since,
     });
+    this.lastRefused =
+      result.kind === 'error'
+        ? {
+            reason: refusalReason(result),
+            violations: result.detail ? violationsOf(result) : [],
+            detail: result.detail ?? null,
+          }
+        : null;
     if (result.kind !== 'ok') {
-      // The envelope's own sentence (AD-39). A refused write changed nothing, so nothing is
-      // published and no row is marked.
-      store.setRefusal(result.kind === 'error' ? (result.reason ?? '') : '');
+      // The envelope's own sentence (AD-39), or a published state refusal. A refused write changed
+      // nothing, so nothing is published and no row is marked.
+      store.setRefusal(result.kind === 'error' ? refusalReason(result) : '');
       return false;
     }
     const answer = result.body;
@@ -1007,14 +1058,25 @@ export class ScreenActionHandler {
    * Send `actionId` for `target` on `descriptor` with no dialog, as a row action would, and answer
    * whether the instance applied it. For a page that composes several actions itself -- the
    * Selective SQL auditing dialog -- so each still takes the one request and change event `send`
-   * makes. `sink`, where given, takes the refusal in place of the descriptor's own store (the Check
-   * integrity flow's, Story 18.4).
+   * makes. `sink`, where given, takes the refusal sentence in place of the screen's own store: a
+   * dialog that shows the refusal itself keeps it off the list's banner, and the Check integrity
+   * flow (Story 18.4) keeps it in its own store.
    */
-  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues, sink: ActionSink | null = null): Promise<boolean> {
-    return this.send(descriptor, actionId, target, values, sink);
+  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues, sink?: ActionSink): Promise<boolean> {
+    return this.send(descriptor, actionId, target, values, sink ?? null);
   }
 
   private lastContinues = false;
+
+  private lastRefused: ActionRefusal | null = null;
+
+  /**
+   * The refusal the last action this handler sent was answered with, or `null` when it was applied
+   * or not sent. Read right after the `sendFor` that sent it, as `continued` is.
+   */
+  lastRefusal(): ActionRefusal | null {
+    return this.lastRefused;
+  }
 
   /**
    * Whether the last action this handler sent was applied and answered that it is still running on

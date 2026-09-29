@@ -40,6 +40,14 @@ export const DOWNLOAD_CSV_ACTION_ID = 'download-csv';
 export const PERMISSION_CHECK_ACTION_ID = 'permission-check';
 
 /**
+ * Import on Task schedule (Story 16.4): screen-level like Check permission. It names a server file,
+ * not a row, so it is never held back for want of a selection. The descriptor declares `import` so
+ * the action route admits it; this id is what the Task schedule's page registers and the two
+ * surfaces draw.
+ */
+export const TASK_IMPORT_ACTION_ID = 'task-import';
+
+/**
  * The label a surface draws for `actionId` on `descriptor`.
  *
  * A declared action's label is its own identifier until a screen carries published copy for it.
@@ -72,6 +80,7 @@ export function actionLabel(descriptor: string, actionId: string): string {
 const ACTION_LABELS: Readonly<Record<string, string>> = {
   [REFRESH_ACTION_ID]: STRINGS.actionRefresh,
   [PERMISSION_CHECK_ACTION_ID]: STRINGS.permissionCheckAction,
+  [TASK_IMPORT_ACTION_ID]: STRINGS.actionImport,
   create: STRINGS.actionCreate,
   enable: STRINGS.agentDefinitionEnable,
   disable: STRINGS.agentDefinitionDisable,
@@ -91,6 +100,9 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   reset: STRINGS.actionResetCounters,
   // Story 16.5: a background task's Pause, on Background tasks.
   pause: STRINGS.actionPause,
+  // Story 16.10: an external language server's Start and Stop, on External language servers.
+  start: STRINGS.actionStart,
+  stop: STRINGS.actionStop,
 };
 
 /**
@@ -139,6 +151,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.NamespaceList': { 'copy-mappings': STRINGS.namespaceCopyMappingsAction },
   // Story 16.6: the Processes list's Broadcast, over its checked rows.
   'OcuPilot.Screen.Descriptor.ProcessList': { broadcast: STRINGS.processBroadcastAction },
+  // Story 16.4: the Task schedule's Export, on the selected task.
+  'OcuPilot.Screen.Descriptor.TaskScheduleList': { export: STRINGS.taskExportAction },
   // Story 18.4: Database details' five disk operations, each also titling its warning dialog.
   'OcuPilot.Screen.Descriptor.DatabaseDetails': {
     mount: STRINGS.databaseActionMount,

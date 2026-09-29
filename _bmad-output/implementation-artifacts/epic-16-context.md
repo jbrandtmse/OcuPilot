@@ -4,12 +4,10 @@
 
 ## Goal
 
-This is the voting-week work. It gives the classic portal's remaining second-tier screens and actions an OcuPilot equivalent that both a person and the agent can use (FR-74, FR-76 to FR-78). It also covers the six stories deferred from the contest build (16.11 to 16.16) and the contest-survey additions (16.17 to 16.24). **Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
+This is the voting-week work. It gives the classic portal's remaining second-tier screens and actions an OcuPilot equivalent that a person and the agent both use. It also carries the six stories deferred from the contest build (16.11 to 16.16), the contest-survey additions (16.17 to 16.24), and 16.25, which was split from 16.10 for size. **Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
 
-- **Done:** 16.1, 16.2, 16.3, 16.5, 16.6, 16.8, 16.9 and 16.16 to 16.24.
-- **Next on slot A:** implement 16.7 (planned), then plan 16.10, 16.11 and 16.12.
-- **Waiting:** 16.4, on Epic 18's PathPort follow-up.
-- **Backlog:** 16.13 to 16.15.
+- **Done:** 16.1 to 16.10 and 16.16 to 16.24.
+- **Next on slot A:** 16.25, the editor for 16.10's list. After it, 16.11 to 16.15 are backlog.
 
 ## Stories
 
@@ -37,106 +35,115 @@ This is the voting-week work. It gives the classic portal's remaining second-tie
 - Story 16.22: The Guardrails page
 - Story 16.23: Any table, downloaded as CSV
 - Story 16.24: A try-it request, copied as curl
+- Story 16.25: The external language server editor
 
 ## Requirements & Constraints
 
 - **Every story.**
-  - A screen is one hand-written descriptor, with its derived read tool and at least three suggested prompts.
-  - An action ships with its confirmed write tool. Its governance key joins `Kernel/Governance/Baseline.cls` in the same change, enabled unless the criteria say disabled.
-  - The tool's port gives a `Snippet` branch for every `Invoke` branch.
-  - A field the instance normalizes on save declares a read-back `compare`.
-  - A new prohibited arm needs reason text, because the Guardrails page is generated from the prohibited set.
-  - Tests fail on each of these gaps.
-- **Copy.** New strings go into EXPERIENCE.md's Fixed strings and `strings.ts` in the same change. Publish a refusal sentence once, and pin the kernel's reason equal to it. Edit EXPERIENCE.md in place so it stays at 993 lines and no line citation shifts. After touching it or epics.md, run `cd ui && npm run test:tools`.
-- **Bundle.** 16.6 left the bundle at about 2.09 MB, against a 2107kB `maximumWarning`. A story that crosses the warning re-bases it to 5% above the measured total and updates the `angular-json.test.mjs` literal in the same change (DW-1166). Stop and ask above 3800kB. The hard stop is 4000kB.
-- **Side-bar pins.** A screen-adding story extends every browser spec that pins its area's side-bar list (`grep -l ocu-side-bar-label ui/browser`). Story 16.5 missed this and CI failed (DW-1774). Stories 16.7 and 16.10 add OS management entries.
-- **16.7.**
-  - **License usage** shows the summary and the by-process, by-user and distributed views.
-  - **Dashboard** draws every meter group: performance, ECP and shadowing, status, usage, errors and alerts, licensing, and task manager. The CPU meter belongs here.
-  - **Meter source.** Meter names and values come from the instance's own `Monitor` answers. The classic `EnsembleMonitor` page is the Interoperability monitor and defines neither meters nor thresholds.
-- **16.10.**
-  - **List and actions.** The list shows each server's status. Start and stop update the row in place, and the activity log opens in the shared log viewer.
-  - **Create, edit and delete** round-trip through the admin API, and delete confirms by name.
-  - **Admin API routes.** The catalog maps them to `/ext-lang-servers` and `/ext-lang-server`, with its start, stop and activity routes. This sub-area is known from the UrlMap alone, so treat it as unverified until exercised.
-  - **DW-253.** The template is evaluated at its default type, so derive one field list per server type, as `Wallet.Secret` does, and amend AD-3.
+  - **Screens.** A screen is one hand-written descriptor with its derived read tool and at least three grouped suggested prompts. It enters the side bar only once built. A screen-adding story extends every browser spec pinning its area's side-bar list (`grep -l ocu-side-bar-label ui/browser`).
+  - **Governance key.** An action ships with its confirmed write tool. Through 2026-10-04 its key joins `Kernel/Governance/Baseline.cls` in the same change, enabled unless the criteria say disabled.
+  - **Each write tool** meets all of the following, and a test fails on any gap:
+    - Its port has a `Snippet` for every `Invoke` branch.
+    - A field the instance normalizes on save declares a read-back `compare`.
+    - Its entity type gets a canonical-spelling rule.
+    - It is measured with auditing on. Where IRIS records nothing, it is named as the next unaudited case in both AD-15 and AD-53. There are six so far: the fifth is the language server Stop, the sixth the task export.
+    - Each classic page (and Hidden dialog) whose operation it performs beyond its descriptor's own page is named in `CLASSICPAGES`, read on the instance.
+  - **Prohibited arms.** A new arm needs reason text, because the Guardrails page is generated from the prohibited set. Its sentence is published once in Fixed strings and pinned equal to the kernel's reason.
+- **Copy.** New strings go into EXPERIENCE.md's Fixed strings and `strings.ts` in the same change. Edit EXPERIENCE.md in place so it stays at 993 lines. After touching it or epics.md, run `cd ui && npm run test:tools`.
+- **Bundle.** It measures about 2.18 MB, against a 2217kB `maximumWarning`.
+  - Crossing the warning re-bases it to about 5% above the measured total, with the `angular-json.test.mjs` literal updated in the same change.
+  - Stop and ask above 3800kB. The hard stop is 4000kB.
+- **16.25.**
+  - **Round trip.** Create, edit and delete round-trip through the admin API, and delete confirms by name.
+  - **DW-253.** Derive one field list per server type, as `Wallet.Secret` does, and amend AD-3.
+  - **Measured by 16.10, not to be re-probed.**
+    - PUT is the only create and edit (an upsert). `Type` is required and cannot change, and `Port` is required on create.
+    - A PUT carrying `Custom` clears a Python server's classic-only members, so an unchanged `Custom` is omitted. That is an AD-4 named exception.
+    - PUT and DELETE need `%Admin_Manage:USE` and `%DB_IRISSYS:WRITE`. A Python delete also needs `%System_CallOut:USE`.
+    - A running server keeps listening after a delete, so edit and delete are refused while it runs, as the classic page does.
+    - The path fields (`LogFile`, `ClassPath`, `JavaHome`, `PythonPath`, `FilePath`) are recommended shown and never sent. A settable path would be a new AD-21 case.
 - **16.11.**
-  - **Tool shape.** `Task.Manager` publishes no body template, so the tool is action-style, never a hand-typed field list.
+  - **Tool shape.** `Task.Manager` has no body template, so the tool is action-style.
   - **Suspend** first warns that no scheduled task will run until it is resumed.
-  - **Banner.** The suspended banner sits above the table with a privilege-gated Resume, and the rows still list. Its copy for the suspended and stopped states is already published.
-  - **DW-1638.** Task delete, suspend, resume and run must judge `TaskRules.Permitted` in `ArgumentProblem`, as the task edit does.
+  - **Banner.** The suspended banner, with its privilege-gated Resume, sits above rows that still list. Its copy for suspended and stopped is already published.
+  - **DW-1638.** Task delete, suspend, resume and run must enforce the task type's declared privilege, as the create and the edit do.
 - **16.12.**
-  - **Tool shape.** `Lock` publishes no body template, so the tool is action-style.
+  - **Tool shape.** `Lock` has no template, so the tool is action-style.
   - **Scopes.** It offers three scopes, each naming what it removes.
-  - **DW-1073.** Warn from the endpoint's own 409 "is currently in a transaction", never from a `$zu` probe.
-  - **DW-1074.** Suppress the Process details link on a row with a remote owner.
-- **16.4 (waiting).** Task export and import have no admin-API route; they go through the vendor's `%SYS.Task`. The acceptance is the export-import round trip, not either half alone. The file field takes a root and a relative name through `Port/PathPort` (AD-21's sixth case). An import reads an existing file as a `source`. DW-1798 is decision-pending: whether an overwriting consumer is also refused OcuPilot's own bundle.
-- **16.13 to 16.15 (backlog).**
-  - **Service editor.** Disabling `%Service_WebGateway` is drawn disabled and refused for both callers. An address or authentication change on it is minted destructive. DW-1016: an empty diff cell needs a word.
-  - **LDAP editor.** List, get and put stay synchronous, and its test goes through `AdminPort`'s async path. DW-1639: the Enabled column reads wrong.
-  - **Egress line.** It derives from the configuration the request actually uses.
+  - **DW-1073.** Warn from the endpoint's own 409 "in a transaction" refusal, never from a `$zu` probe.
+  - **DW-1074.** Drop the Process details link on a row with a remote owner.
+- **16.13.**
+  - **Coverage.** The editor covers enabled state, allowed addresses with add and delete, roles and authentication methods.
+  - **Disabling `%Service_WebGateway`.** The control is drawn disabled with the published sentence. The disable is refused `PROHIBITED.SERVINGSERVICE` on the instance for both callers.
+  - **Address and authentication changes** on that service are permitted, minted destructive with a consequence line.
+  - **DW-1016.** An empty address-list diff cell reads as unrestricted, not "(none)".
+- **16.14.**
+  - **Fields.** The editor covers the classic LDAP page's fields.
+  - **Test.** List, get and put stay synchronous. The test runs through `AdminPort`'s async path and reports the instance's own result text.
+  - **Open questions (inference).** AD-39 names only the SSL/TLS test as screen-only instance text, so this test likely needs its own case there. Check whether the queued-write refusal treats its request type as mutating.
+  - **DW-1639.** The list's Enabled column reads No for an enabled configuration. Derive it from LDAPFlags bit 64 or the List query.
+- **16.15.**
+  - **Egress line.** It derives from the configuration the request actually uses (AD-42): a marked-local endpoint bypasses the proxy, and a proxy is judged as a destination.
+  - **DW-1076.** Add a live leg in which the chip follows a real default-marker move.
+  - **DW-1192.** A Gemini endpoint with no model placeholder is allowed, but never silently: log that the Model is unused, and say so where the endpoint is edited.
+- **Epic-level DW-118.** Story 15.6 resolved it, so decline it with that reason.
 
 ## Technical Decisions
 
-- **16.7's spine amendments.**
-  - **License usage (AD-5, AD-36).** It is a four-tab group, following the OAuth 2.0 tab-group precedent. It reads `Monitor` `LICENSEUSAGE` as a list over one named member (`source.rows`). The vendor's `maxRows` is the cap plus one, and any other answer fails the read.
-  - **Dashboard (AD-29, AD-36).** It is a parts read, with one `{port: monitor, type: SENSORS}` part for CPU, answered behind `MonitorPort`'s gate (`%Admin_Operate:USE`, `%DB_IRISSYS:READ`).
-  - **Auto-refresh (AD-43).** The Dashboard joins the refresh set as its ninth member, default off, so EXPERIENCE.md's Auto-refresh controls row must name it.
-  - **Alerts (AD-7, DW-1116).** `PrometheusMetrics()` rewrites the SAM sensor baseline, a named AD-7 shape. Nothing calls `SYS.Monitor.SAM.Sensors.Alerts()` or `/api/monitor/alerts`, which advance the shared `LastAlertSent` cursor. The errors-and-alerts group reads the dashboard answer's counts.
-- **16.6's changes to shared code.**
-  - **Multi-select (AD-5, AD-19).** A list may declare one `multiSelect {action, eligible, max, ineligibleKey}`. The table keeps a checked set beside the unchanged single selection, and a list that declares nothing behaves as before.
-  - **Pid sets (AD-13).** A `process` id may name a canonical, ascending set of pids.
-  - **Body (AD-51).** `ProcessPort` builds the `BROADCAST` body.
-- **Reads (AD-5, AD-36).**
-  - A list declares `table`, and may declare one cross-screen row target.
-  - Screen and tool share one bounded read that reports truncation, optionally with a per-row `rowGet`.
-  - A tab group is one descriptor per tab.
-- **Privilege (AD-8, AD-29).**
-  - Pair sets are checked at call time, with no elevation. An administrative resource is required at `USE`, never `WRITE`.
-  - To establish a set, read the backing class's own check in `irislib/`, then run a least-privileged principal on the throwaway. Never use `%Operator` to prove a denial.
-  - A pair beyond the area's set goes in the screen's `ownPrivileges`, each a named AD-8 case.
-  - A write tool adds pairs only where its vendor writes a database the screen's read does not, or where an endpoint its call must reach names the pair. It refuses by name before any port call.
-- **Classic pages (AD-44).** A descriptor names the classic page class it replaces. A write tool that performs another page's operation names it in `CLASSICPAGES`, and its pairs union that page's custom resource.
+- **Reads (AD-5, AD-36).** One declared read serves both screen and tool, is bounded, and reports truncation.
+  - **Optional parts:** a `rowGet` per row, `source.rows` over one member (the vendor's `maxRows` sent as the cap plus one), and up to three `parts`.
+  - **External language servers.** `rowGet` issues `LanguageServer` `ACTIVITY` with `maxRows` 1 to merge `CurrentlyRunning`, and the parent-scoped Activity log reads `ACTIVITY` with `source.rows` `Activity`.
+- **Privilege (AD-8, AD-29, AD-44).**
+  - Pairs are checked at call time, and an administrative resource is required at `USE`, never `WRITE`.
+  - **Establishing a set.** Read the backing class's own check in `irislib/`, then run a least-privileged principal on the throwaway. Never use `%Operator` to prove a denial.
+  - **Extra pairs** go in the screen's `ownPrivileges` or on the write tool. A caller without one is refused by name before any port call. External language servers' list and Activity log own `%Admin_ExternalLanguageServerEdit:USE` beside `%DB_IRISSYS:READ`.
+  - **Classic pages.** A descriptor declares the classic page it replaces. A write tool names every further page it performs in `CLASSICPAGES`, and `Screen.Gate.WithClassicPages` unions each page's custom resource into its pairs at `USE` on every gate call. The mechanism is on this branch: 16.4 and 16.10 both declare theirs, so a new tool never defers it.
 - **Writes.**
-  - **Two callers.** A screen action and the agent's write are one operation. The screen caller mints no proposal, emits no marker, and ignores read-only and the kill switch (AD-53, AD-55).
-  - **Declared shape.** Each tool declares its port, `AdminPort` by default (AD-52). An action-style write declares its request type, sends no body, and fingerprints a declared subject that holds every precondition field (AD-51). A create fingerprints the target's absence (AD-54). A screen action accepts only declared values (AD-56).
-  - **Prohibited set.** It is defined by effect and evaluated inside the confirm transition for both callers (AD-10, AD-34).
-  - **Vendor class.** A port may use the vendor's `%SYS` class only as a named AD-27 case, after repeating the endpoint's guard.
-  - **Queued writes.** A write that would queue is refused unless it is listed on `QUEUEDWRITES` (AD-26).
-  - **Unaudited writes.** Measure each new write with auditing on. Where IRIS records nothing, name it as a further case in AD-15 and AD-53.
-  - **Gates.** Governance is checked at dispatch and again at Confirm (AD-22). Every write reads its target back (AD-58) and renders a copy-out script (AD-59).
-- **Files and logs (AD-21, AD-60).** No endpoint accepts a path. Log text reaches the model only through the sanitizer.
-- **Identity and refresh (AD-11, AD-13, AD-14).**
-  - Ids are encoded twice and decoded once.
-  - Each write story adds its entity type's canonical-spelling rule, from the kernel's closed enum.
-  - Nothing rendered from a reply or tool result requests any host.
-- **Conventions.**
-  - The client is zoneless and `OnPush`. Its framework-free `core/` stores are mirrored into signals and reset at sign-out, and API URLs are absolute.
-  - The error envelope is `{error, reason, code, detail}`, and tools are named `<area>.<screen>.<verb>`.
-  - A test depends on no other test, no order and no instance uptime.
+  - **Two callers.** A screen action and the agent's write are one operation. The screen caller mints no proposal and emits no marker, and read-only and the kill switch do not gate it (AD-53, AD-55).
+  - **Declared shape.** Each tool declares its port, `AdminPort` by default (AD-52).
+    - An action-style write sends no body and fingerprints a declared subject holding every precondition field (AD-51).
+    - A merge sends the complete body (AD-4).
+    - A create fingerprints the target's absence (AD-54).
+    - A screen action accepts only declared values, and changes a list field by a server-side delta over a fresh read (AD-56).
+  - **Named cases.** Each is a closed list, and a new entry is added to the AD, never assumed.
+    - **A port that builds the vendor body** from declared non-secret arguments (AD-51).
+    - **A vendor `%SYS` class** reached instead of the admin API, allowed only where the admin API cannot carry the call (AD-27).
+    - **16.4 is the latest of both.** `TaskTransferPort` calls `%SYS.Task.ExportTasks` and `ImportTasks`, which the admin API lacks, and builds their file argument from the declared `root` and `path`.
+  - **Gates.**
+    - The prohibited set is judged by effect, inside the confirm transition, for both callers (AD-10, AD-34).
+    - Governance is checked at dispatch and again at Confirm.
+    - A write that would queue is refused unless it is listed on `QUEUEDWRITES` (AD-26).
+  - **Absence (AD-2).** A read answered 404 writes no log line, so a delete's re-read, a read-back or an existence check still gets `PORT.NOTFOUND` without raising the instance's alert state. A write answered 404 is still logged at error.
+  - **After the write.** It reads its target back (AD-58), and a copy-out draft renders on the instance (AD-59).
+- **Paths and logs (AD-21, AD-60).**
+  - **No endpoint accepts a path.** A file is named as a root and a relative name through `Port/PathPort`, and is resolved again at the write. The tool declares `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`.
+  - **Overwriting consumers** are also refused configuration, database, journal and OcuPilot-served files. A file the tool reads is a `source`.
+  - **Log text** reaches the model only through the sanitizer.
+- **Refresh (AD-43).** Auto-refresh covers nine screens, including the Dashboard. A new one needs both its descriptor and EXPERIENCE.md's Auto-refresh controls row.
 
 ## UX & Interaction Patterns
 
-- **Placement.** A screen appears in the side bar only once it is built.
-  - **OS management** gains License usage, Dashboard (meters) and External language servers (a list, then a form-page editor).
+- **Placement.**
+  - **External language servers** is an OS management list with Start and Stop as row actions. Its editor (16.25) is a form-page. Once the editor exists, the name cell opens it, and the editor links the Activity log.
   - **Remove locks** is a dialog from the Locks row menu.
-  - **Suspend Task Manager** is on the Task schedule command bar, with Export and Import as dialogs.
-- **Meters.** Each shows label, value and unit, with its state as a word and a color. The state is Normal, Warning or Troubled, the dashboard's own words. A percentage meter turns warning at 85% and error at 95%. A meter shows "—" with a skeleton until its first value, and puts an error in its tooltip. The needle never animates.
-- **Dialogs.** One level deep, never stacked, and titled with the action and target. A screen's destructive dialog asks for the typed name. A non-destructive warning, such as Suspend Task Manager, uses a primary button and states the consequence.
-- **Controls and rows.** A gated control uses `aria-disabled` and reads "Requires <resource>". Color never carries meaning alone. Row actions update the row in place with "Changed", and every data table offers Download CSV.
+  - **Suspend Task Manager** is on the Task schedule command bar.
+  - **The service and LDAP editors** are tabbed form pages.
+- **Dialogs.** One level deep and titled with the action and target.
+  - A destructive dialog asks for the typed name.
+  - A non-destructive warning uses a primary button and states the consequence.
+- **Controls.** A gated control uses `aria-disabled` with "Requires <resource>". Row actions update the row in place with "Changed".
 
 ## Cross-Story Dependencies
 
-- **Keep intact.** Earlier Epic 16 work, and Epic 14's baseline, sanitizer and per-user read-only.
+- **Keep intact.** 16.6's shared multi-select table, 16.8's shared log viewer, and Epic 14's baseline, sanitizer and per-user read-only.
 - **Within the epic.**
-  - 16.6's multi-select changed the shared data table, so every other list must render as before.
-  - 16.7 reads through 16.18's `MonitorPort`.
-  - 16.11's Task Manager resume becomes 16.21's Operations "Fix it". Until then, that finding links to the screen.
-  - 16.12 extends Story 6.10's Locks list and its owner link.
-  - 16.13 and 16.14 each remove one classic-link exemption (`ServiceForm`, `LdapConfigForm`).
-- **Epic 18.**
-  - 16.4 waits on its PathPort follow-up.
-  - Shared rosters and one-line lists are unioned at each merge, so keep edits to them additive: `EntityType`, `Prohibited`'s covered types, `ReadTool` counts, `AdminPort`'s mutating and bodyless types, and the screen mirror.
-  - Slot B runs Epic 18 and also touches `ui/tools/**`, `scripts/ci-throwaway.sh` and EXPERIENCE.md.
-  - DW-1768 (the any-screen rail) and DW-1815 (an ineligible row's reason) await the owner.
+  - 16.25 builds on 16.10's list, entity type `language-server` and Activity log read. 16.10's spec Design Notes, "Handed to the editor story", hold the full measured facts.
+  - 16.11's Task Manager resume becomes 16.21's Operations "Fix it", which links to the screen until then.
+  - 16.12 extends Story 6.10's Locks list.
+  - 16.13 and 16.14 each remove one classic-link exemption (`ServiceForm`, `LdapConfigForm`), which lowers SM-C1 from two.
+  - **DW-1827 is decided.** The agent's task import (`tasks.schedule.import`) is disabled by default in the governance baseline, and the person's screen import is unaffected. The commit was made in the 1.0.3 staging branch, so this branch receives it at the next forward merge. The fix is routed to range-end cleanup, and a later task story does not re-decide it.
+- **Epic 18, on slot B.**
+  - Shared rosters are unioned at each merge, so keep edits additive: `EntityType`, `Prohibited` codes and covered types, `ReadTool` counts, `AdminPort` type lists, `CLASSICPAGES` rosters, the baseline and the screen mirror.
+  - OS management side-bar positions are reconciled from the merged registry.
 - **Slot A.** It uses `ocupilot-slot-a` and the `ocupilot-ci` throwaway (52776/1975).
-- **Release 1.0.3.** It is cut Tue 2026-09-29 at 14:00 PDT. No story starts after 12:00 PDT unless it reaches its boundary by 14:00.
+- **Release 1.0.3.** It is cut Tue 2026-09-29 at 14:00 PDT and staged with 16.4. 16.10 and every later story merge after the cut.

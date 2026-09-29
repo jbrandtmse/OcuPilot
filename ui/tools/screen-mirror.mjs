@@ -1179,7 +1179,7 @@ export function readProblem(declaration) {
   if (source === null || typeof source !== 'object' || Array.isArray(source)) {
     return 'read.source is not an object naming its port, endpoint and type (AD-36)';
   }
-  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet', 'forEach', 'query', 'parts']);
+  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet', 'forEach', 'query', 'parts', 'rows']);
   if (sourceKeysFault !== null) return sourceKeysFault;
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
@@ -1197,7 +1197,14 @@ export function readProblem(declaration) {
       `store inside ${STATE_PACKAGE} by its own name alone (AD-9)`
     );
   }
-  if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
+  // AD-36 as amended (Story 16.7): a bare admin type read as a list over one member takes its own
+  // type rule, and every other read keeps the five declared types.
+  if (source.rows !== undefined && source.rows !== null) {
+    const rowsFault = rowsProblem(source);
+    if (rowsFault !== null) return rowsFault;
+    const activityFault = activityRowsProblem(declaration);
+    if (activityFault !== null) return activityFault;
+  } else if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
     return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'`;
   }
   // A path source lists the instance's allowed directories through `OcuPilot.Port.PathPort`, which
@@ -2012,12 +2019,77 @@ export const PART_AS_RE = /^[A-Z][A-Za-z0-9]*$/;
 /** The most parts a single-object `GET` may declare, `OcuPilot.Screen.Registry`'s `MAXPARTS`. */
 export const MAX_PARTS = 3;
 
+/** The ports a declared part may name, byte for byte `OcuPilot.Screen.Registry`'s `PARTPORTS` (Story 16.7). */
+export const PART_PORTS = ['admin', 'monitor'];
+
+/** The part port answered by the sensors, `OcuPilot.Screen.Read`'s `PARTMONITOR`. */
+export const PART_MONITOR = 'monitor';
+
+/** The one type a `monitor` part declares, `OcuPilot.Port.MonitorPort`'s `SENSORSTYPE`. */
+export const MONITOR_SENSORS_TYPE = 'SENSORS';
+
+/** The shape a `read.source.rows` member name takes, byte for byte `OcuPilot.Screen.Registry`'s `ROWSMEMBERPATTERN`. */
+export const ROWS_MEMBER_RE = /^[A-Za-z][A-Za-z0-9]*$/;
+
+/**
+ * What is wrong with `source.rows`, or `null` (AD-36 as amended, Story 16.7). A declared `rows` is a
+ * member name (`ROWS_MEMBER_RE`) on an `admin` source whose `type` is an upper-case bare type
+ * (`PART_TYPE_RE`) other than the five `READ_SOURCE_TYPES`, with no `parts`, `forEach` or `rowGet`:
+ * the read issues that type once, with `maxRows` the cap plus one, and lists the answer's one member.
+ * `OcuPilot.Screen.Registry.RowsProblem` returns the same sentence for every case in
+ * `OcuPilot.Test.ReadSourceCorpus`.
+ */
+export function rowsProblem(source) {
+  const where = 'read.source.rows';
+  if (typeof source.rows !== 'string' || !ROWS_MEMBER_RE.test(source.rows)) {
+    return `${where} '${shown(source.rows)}' is not a member name, and a list over one member names the answer's row array (AD-36)`;
+  }
+  if (source.port !== SOURCE_ADMIN) {
+    return `${where} is declared on a '${shown(source.port)}' source, and a list over one member reads an admin endpoint's one-object answer (AD-36)`;
+  }
+  if (typeof source.type !== 'string' || !PART_TYPE_RE.test(source.type) || READ_SOURCE_TYPES.includes(source.type)) {
+    return `read.source.type '${shown(source.type)}' is not an upper-case bare admin type, and read.source.rows reads one member of a bare type's one-object answer (AD-36)`;
+  }
+  const declared = ['parts', 'forEach', 'rowGet'].find((key) => source[key] !== undefined && source[key] !== null);
+  if (declared !== undefined) {
+    return `read.source.${declared} is declared with read.source.rows, and a list over one member issues one call and projects its rows (AD-36)`;
+  }
+  return null;
+}
+
+/** The detail type that answers one server's activity rows beside its running state (Story 16.10). */
+export const ACTIVITY_TYPE = 'ACTIVITY';
+
+/**
+ * What is wrong with a `rows` read of type `ACTIVITY`, or `null` for any other type (AD-36 as
+ * amended, Story 16.10). An `ACTIVITY` answer is one server's activity, so the read is admitted only
+ * on a screen declaring a `parentScope` whose one criterion is the `text` criterion `name`, which the
+ * route id fills. `OcuPilot.Screen.Registry.ActivityRowsProblem` returns the same sentence for every
+ * case in `OcuPilot.Test.ReadSourceCorpus`.
+ */
+export function activityRowsProblem(declaration) {
+  const { read } = declaration;
+  if (read.source.type !== ACTIVITY_TYPE) return null;
+  if (typeof declaration.parentScope !== 'string' || declaration.parentScope === '') {
+    return "read.source.type 'ACTIVITY' is declared with no parentScope, and a list over one server's activity reads the server its route id names (AD-36, Story 16.10)";
+  }
+  const fields = isObject(read.criteria) ? read.criteria.fields : undefined;
+  const sound =
+    Array.isArray(fields) && fields.length === 1 && isObject(fields[0]) && fields[0].param === 'name' && fields[0].kind === 'text';
+  if (!sound) {
+    return "read.criteria on an 'ACTIVITY' read is not the one text criterion 'name', which its route id fills (AD-36, Story 16.10)";
+  }
+  return null;
+}
+
 /**
  * What is wrong with `source.parts`, or `null` (AD-36, Story 6.9). `read` is the declared read and
  * `fields` its declared fields.
  *
  * An absent or `null` `parts` declares none. Otherwise it is a non-empty array of 1 to `MAX_PARTS`
- * objects carrying only `type` (`PART_TYPE_RE`) and `as` (`PART_AS_RE`, unique across the block),
+ * objects carrying only `type` (`PART_TYPE_RE`), `as` (`PART_AS_RE`, unique across the block) and an
+ * optional `port` (one of `PART_PORTS`; at most one part names `monitor`, and its `type` is
+ * `MONITOR_SENSORS_TYPE`, Story 16.7),
  * declared on a single-object `GET` source with no `criteria` or `query` -- either would name the
  * read's one criterion or a fixed parameter, and a parts read's row is assembled from the parts
  * alone. A `GET` source already guarantees an `admin` port and already refuses `rowGet` and
@@ -2051,14 +2123,29 @@ export function partsProblem(read, source, fields) {
     return `${where} declares ${parts.length} part(s), and a parts read names 1 to ${MAX_PARTS}`;
   }
   const seenAs = [];
+  let monitorParts = 0;
   for (let index = 0; index < parts.length; index += 1) {
     const part = parts[index];
     const at = `${where} entry #${index + 1}`;
     if (!isObject(part)) return `${at} is not an object declaring its type and as`;
-    const keysFault = unknownKeyProblem(at, part, ['type', 'as']);
+    const keysFault = unknownKeyProblem(at, part, ['type', 'as', 'port']);
     if (keysFault !== null) return keysFault;
     if (typeof part.type !== 'string' || !PART_TYPE_RE.test(part.type)) {
       return `${at} type '${shown(part.type)}' is not upper-case letters`;
+    }
+    // AD-36 as amended (Story 16.7): one part may be the sensors', answered by the monitor port
+    // behind its own gate, for the one type that port answers.
+    if (part.port !== undefined) {
+      if (typeof part.port !== 'string' || !PART_PORTS.includes(part.port)) {
+        return `${at} port '${shown(part.port)}' is not 'admin' or 'monitor', the two ports a part is answered through (AD-36)`;
+      }
+      if (part.port === PART_MONITOR) {
+        if (part.type !== MONITOR_SENSORS_TYPE) {
+          return `${at} type '${part.type}' is declared on a monitor part, which answers only '${MONITOR_SENSORS_TYPE}' (AD-29, AD-36)`;
+        }
+        if (monitorParts > 0) return `${at} is a second monitor part, and a parts read names at most one (AD-36)`;
+        monitorParts += 1;
+      }
     }
     if (typeof part.as !== 'string' || !PART_AS_RE.test(part.as)) {
       return `${at} as '${shown(part.as)}' is not an upper camel-case identifier`;
@@ -2427,9 +2514,10 @@ export const ROW_GET_RULES = ['beforeToday'];
 /**
  * The request types a `read.source.rowGet` may issue (AD-36), byte for byte
  * `OcuPilot.Screen.Registry`'s own `ROWGETTYPES`: `GET`, the default; `INFO`, where the list's own
- * row is wrong; and `CERTINFO`, where only that type carries the fields.
+ * row is wrong; `CERTINFO`, where only that type carries the fields; and `ACTIVITY`, which alone
+ * answers a language server's `CurrentlyRunning`.
  */
-export const ROW_GET_TYPES = ['GET', 'INFO', 'CERTINFO'];
+export const ROW_GET_TYPES = ['GET', 'INFO', 'CERTINFO', 'ACTIVITY'];
 
 const PARAM_RE = /^[A-Za-z][A-Za-z0-9]*$/;
 
@@ -2935,6 +3023,19 @@ export function buildMirror({
     screens.some((screen) => screen.declaration.built === true && screen.declaration.archetype === key)
   );
 
+  // AD-36 as amended (Story 16.7): a `rows` read declares a bare admin type, so the emitted type
+  // union carries the five declared types and every bare type a declaration names, and nothing else.
+  const bareRowTypes = [
+    ...new Set(
+      screens
+        .map((screen) => screen.declaration.read?.source)
+        .filter((source) => isObject(source) && typeof source.rows === 'string')
+        .map((source) => source.type)
+        .filter((type) => !READ_SOURCE_TYPES.includes(type))
+    ),
+  ].sort();
+  const emittedReadTypes = [...READ_SOURCE_TYPES, ...bareRowTypes];
+
   return `${HEADER}
 export type EntityTypeKey = ${entityTypes.map((value) => `'${value}'`).join(' | ')};
 
@@ -3043,6 +3144,8 @@ export interface ReadRowGet {
 export interface ReadSourcePart {
   readonly type: string;
   readonly as: string;
+  /** \`monitor\` for the one part the sensors answer (Story 16.7); absent is the admin endpoint. */
+  readonly port?: ${PART_PORTS.map((value) => `'${value}'`).join(' | ')};
 }
 
 /**
@@ -3060,9 +3163,12 @@ export interface ReadSource {
   /**
    * \`LIST\` reads rows; \`GET\` reads one object as the one row, and a 404 reads as none;
    * \`UPCOMING\` reads an admin endpoint's scheduled occurrences as rows; \`HISTORY\` reads its task-run history;
-   * \`VOLUMELIST\` reads a database's own volume files as rows.
+   * \`VOLUMELIST\` reads a database's own volume files as rows; a bare admin type is read with
+   * \`rows\` (Story 16.7).
    */
-  readonly type: ${READ_SOURCE_TYPES.map((value) => `'${value}'`).join(' | ')};
+  readonly type: ${emittedReadTypes.map((value) => `'${value}'`).join(' | ')};
+  /** The one member of a bare admin type's one-object answer this read lists (AD-36, Story 16.7). */
+  readonly rows?: string | null;
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;

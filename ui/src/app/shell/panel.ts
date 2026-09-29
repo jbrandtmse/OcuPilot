@@ -53,9 +53,11 @@ import {
   assembleEntryContext,
   assembleScreenContext,
   looksLikeSecret,
+  type ScreenContextInputs,
   type ScreenContextPayload,
 } from '../core/screen-context';
 import { ScreenStores } from '../core/screen-store';
+import type { ScreenDeclaration } from '../core/screens.generated';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
@@ -1880,24 +1882,20 @@ export class Panel {
   }
 
   /**
-   * "Explain this entry" (Story 11.2): take a page's pending request and send the fixed sentence as
-   * the user's message, with a context whose `view` is that one entry, through the same path and
-   * leaving the draft as it is. The gate is checked again here, and a request whose context
-   * assembles to nothing sends nothing.
+   * "Explain this entry" (Story 11.2, DW-1838): take a page's pending request and send the fixed
+   * sentence naming the selected entry as the user's message, with the entry's screen's own context
+   * and a marker for the entry (`assembleEntryContext`), through the same path and leaving the
+   * draft as it is. The gate is checked again here, and a request whose context assembles to
+   * nothing sends nothing.
    */
   private onExplainEntry(): void {
     const entry = this.explainEntry;
     const request = entry === null ? null : entry.take();
     if (entry === null || request === null) return;
     if (!entry.shown() || entry.reason() !== null) return;
-    const context = assembleEntryContext({
-      descriptor: request.screen,
-      namespace: this.scope.namespace(),
-      share: this.agentContext.share(),
-      row: request.row,
-    });
+    const context = assembleEntryContext({ ...this.contextInputs(request.screen), row: request.row });
     if (context === null) return;
-    void this.sendWithContext(STRINGS.agentExplainEntryAction, context);
+    void this.sendWithContext(STRINGS.agentExplainEntryMessage, context);
   }
 
   /**
@@ -1931,23 +1929,31 @@ export class Panel {
 
   /**
    * The `context` this send carries (Story 4.11, AD-24, AD-42): the screen the user is on right
-   * now, read fresh from the router, `ScopeService` and that screen's own `ScreenStore` -- never
-   * a value cached from an earlier render.
+   * now.
    */
   private assembleContext(): ScreenContextPayload | null {
-    const screen = screenForUrl(this.router.url);
+    return assembleScreenContext(this.contextInputs(screenForUrl(this.router.url)));
+  }
+
+  /**
+   * What a send's context is built from for `screen`, read fresh from the router, `ScopeService`
+   * and that screen's own `ScreenStore` -- never a value cached from an earlier render. The entity
+   * is the route's when `screen` is the one the user is on, and none otherwise.
+   */
+  private contextInputs(screen: ScreenDeclaration | null): ScreenContextInputs {
     const store = screen === null ? null : this.screenStores.for(screen.descriptor, screen.refreshRates);
-    return assembleScreenContext({
+    const onScreen = screen !== null && screenForUrl(this.router.url)?.descriptor === screen.descriptor;
+    return {
       descriptor: screen,
       namespace: this.scope.namespace(),
-      entity: this.currentEntityId(),
+      entity: onScreen ? this.currentEntityId() : '',
       share: this.agentContext.share(),
       rows: store === null ? [] : store.data(),
       filter: store === null ? '' : store.filter(),
       sort: store === null ? '' : store.sort(),
       direction: store === null ? '' : store.direction(),
       rowCap: this.agentContext.contextRowCap(),
-    });
+    };
   }
 
   /** The selected entity's id, decoded once (AD-13), the same way `locator-bar.ts` reads it. */

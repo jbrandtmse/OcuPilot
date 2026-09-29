@@ -32,6 +32,10 @@ import {
   SET_PASSWORD,
   SET_RESOURCE_GRANT,
   ScreenActionHandler,
+  TASK_EXPORT,
+  TASK_IMPORT,
+  TASK_IMPORT_TARGET,
+  TASK_SCHEDULE,
 } from './screen-action-handler';
 
 /** The screen this handler serves first, read from the mirror rather than restated here. */
@@ -1411,6 +1415,75 @@ describe('the Background tasks list\u2019s Cancel task, Pause and Resume (Story 
 });
 
 /**
+ * Story 16.10: External language servers' Start, sent at once, and its Stop, which warns first with
+ * its own consequence; the wrong verb for a server's state is refused with its published sentence.
+ */
+describe('External language servers\u2019 Start and Stop (Story 16.10)', () => {
+  const SERVERS = 'OcuPilot.Screen.Descriptor.LanguageServerList';
+  const NAME = '%Java Server';
+  const ROW = { Name: NAME, Type: 'Java', Port: 53272, CurrentlyRunning: false };
+  const TARGET = { type: 'language-server', scope: 'instance', id: NAME };
+
+  it('sends Start at once, with no dialog, keyed by the server\u2019s name, and publishes the updated event', async () => {
+    const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, SERVERS);
+    expect(actions.has(SERVERS, 'start')).toBe(true);
+    handler.startFor(SERVERS, 'start', NAME, ROW, store);
+    expect(handler.pending()).toBeNull();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/osmgmt.languageservers/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'start', id: NAME });
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`updated language-server ${NAME}`]);
+  });
+
+  it('opens the warning before Stop with its consequence, sends nothing on Cancel, and sends once past Proceed', async () => {
+    // Mutation (Rule 19): remove the LanguageServerList entry from WARNING_CONSEQUENCES -> Stop is
+    // sent at once and the warning assertions go red.
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, SERVERS);
+    handler.startFor(SERVERS, 'stop', NAME, { ...ROW, CurrentlyRunning: true }, store);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('warning');
+    expect(pending?.verb).toBe(STRINGS.actionStop);
+    expect(pending?.consequence).toBe(STRINGS.languageServerStopConsequence);
+    handler.cancelPending();
+    await settle();
+    expect(calls).toHaveLength(0);
+    handler.startFor(SERVERS, 'stop', NAME, { ...ROW, CurrentlyRunning: true }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action: 'stop', id: NAME }]);
+  });
+
+  it('shows a state refusal\u2019s published sentence rather than the envelope\u2019s generic reason', async () => {
+    // Mutation (Rule 19): drop the published problems from `refusalReason` -> the store shows the
+    // generic reason and this goes red.
+    for (const problem of [STRINGS.languageServerRefusalRunning, STRINGS.languageServerRefusalStopped]) {
+      const refused = { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The tool call\'s arguments do not match what the tool accepts.', detail: { problem } } as unknown as JsonResult<unknown>;
+      const { handler, store, events } = mount(refused, SERVERS);
+      handler.startFor(SERVERS, 'start', NAME, ROW, store);
+      await settle();
+      expect(store.refusal()).toBe(problem);
+      expect(events).toEqual([]);
+      TestBed.resetTestingModule();
+    }
+    const unpublished = { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The generic reason.', detail: { problem: 'this instance did not report whether that server is running' } } as unknown as JsonResult<unknown>;
+    const { handler, store } = mount(unpublished, SERVERS);
+    handler.startFor(SERVERS, 'start', NAME, ROW, store);
+    await settle();
+    expect(store.refusal()).toBe('The generic reason.');
+  });
+
+  it('a start the instance refused shows the envelope\u2019s own sentence', async () => {
+    const refused = { kind: 'error', status: 500, code: 'LANGUAGESERVER.START', reason: STRINGS.languageServerStartFailed, detail: null } as unknown as JsonResult<unknown>;
+    const { handler, store, events } = mount(refused, SERVERS);
+    handler.startFor(SERVERS, 'start', NAME, ROW, store);
+    await settle();
+    expect(store.refusal()).toBe(STRINGS.languageServerStartFailed);
+    expect(events).toEqual([]);
+  });
+});
+
+/**
  * Story 18.14: the three mapping lists' Delete types the mapping's name -- the row key is
  * `[namespace, Name]`, whose separator no one can type -- states its kind's consequence, and sends
  * the whole row key; the Namespaces list's Copy mappings is left to that list's own page.
@@ -1464,6 +1537,65 @@ describe('the mapping lists\u2019 Delete and the Namespaces list\u2019s Copy map
     const { actions } = mount(undefined, NAMESPACE_LIST);
     expect(actions.has(NAMESPACE_LIST, 'delete')).toBe(true);
     expect(actions.has(NAMESPACE_LIST, COPY_MAPPINGS)).toBe(false);
+  });
+
+  it('leaves the Task schedule\u2019s Export and Import undrawn, for its own page to register', () => {
+    // Mutation (Rule 19): drop the Task schedule's entry from `UNDRAWN_ACTIONS` -> this goes red, and
+    // Export would be sent at once with no file.
+    const { actions } = mount(undefined, TASK_SCHEDULE);
+    expect(actions.has(TASK_SCHEDULE, 'delete')).toBe(true);
+    expect(actions.has(TASK_SCHEDULE, TASK_EXPORT)).toBe(false);
+    expect(actions.has(TASK_SCHEDULE, TASK_IMPORT)).toBe(false);
+  });
+});
+
+/**
+ * Story 16.4: `sendFor` with a sink of its own keeps a refusal off the list's banner, and
+ * `lastRefusal` answers what the instance refused with -- its sentence, its field-level violations and
+ * its detail -- until the next send, which clears it.
+ */
+describe('lastRefusal, the refusal a dialog draws on its own fields', () => {
+  it('answers the envelope\u2019s sentence, violations and detail, and null once an action is applied', async () => {
+    // Mutation (Rule 19): stop `send` setting `lastRefused` from the envelope -> the violations
+    // assertion goes red.
+    const refused: JsonResult<unknown> = {
+      kind: 'error',
+      status: 400,
+      code: 'PATH.ROOT',
+      reason: 'Choose an allowed directory.',
+      detail: { violations: [{ field: 'root', code: 'PATH.ROOT', reason: 'Choose an allowed directory.' }], task: 'OcuP164A' },
+    };
+    const { handler, calls, store } = mount(refused, TASK_SCHEDULE);
+    const seen: string[] = [];
+    const applied = await handler.sendFor(TASK_SCHEDULE, TASK_IMPORT, TASK_IMPORT_TARGET, { root: '/r/', path: 't.xml' }, { setRefusal: (reason) => seen.push(reason) });
+    expect(applied).toBe(false);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'import', id: 'import', values: { root: '/r/', path: 't.xml' } });
+    expect(handler.lastRefusal()).toEqual({
+      reason: 'Choose an allowed directory.',
+      violations: [{ field: 'root', code: 'PATH.ROOT', reason: 'Choose an allowed directory.' }],
+      detail: refused.kind === 'error' ? refused.detail : null,
+    });
+    expect(seen).toEqual(['', 'Choose an allowed directory.']);
+    expect(store.refusal()).toBe('');
+  });
+
+  it('answers null once a later action on the same handler is applied', async () => {
+    // Mutation (Rule 19): keep `lastRefused` through `send` (drop its reset at the top and answer the
+    // previous value on an applied action) -> the null assertion goes red.
+    const answer: Record<string, unknown> = {
+      kind: 'error',
+      status: 409,
+      code: 'TASK.IMPORT.PRESENT',
+      reason: 'Every task in this file is already on this instance.',
+      detail: null,
+    };
+    const { handler } = mount(answer as unknown as JsonResult<unknown>, TASK_SCHEDULE);
+    expect(await handler.sendFor(TASK_SCHEDULE, TASK_IMPORT, TASK_IMPORT_TARGET, { root: '/r/', path: 't.xml' })).toBe(false);
+    expect(handler.lastRefusal()?.reason).toBe('Every task in this file is already on this instance.');
+    for (const key of Object.keys(answer)) delete answer[key];
+    Object.assign(answer, { kind: 'ok', status: 200, body: { action: 'created', target: { type: 'task', scope: 'instance', id: 'import' } } });
+    expect(await handler.sendFor(TASK_SCHEDULE, TASK_IMPORT, TASK_IMPORT_TARGET, { root: '/r/', path: 't.xml' })).toBe(true);
+    expect(handler.lastRefusal()).toBeNull();
   });
 });
 

@@ -7349,3 +7349,125 @@ app-log-hub-page {
 
   margin: 0;
 }
+
+// --- Dashboard (Story 16.7) -- seven groups, each a heading over a grid of meters -----------------
+//
+// The same meter grid System usage draws, one per group; the Task manager group draws Upcoming
+// tasks' rows as a small table under that screen's own column labels.
+.ocu-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-6);
+  min-width: 0;
+  padding: var(--ocu-space-4);
+  box-sizing: border-box;
+}
+
+.ocu-dashboard-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-3);
+  min-width: 0;
+}
+
+.ocu-dashboard-heading {
+  padding-bottom: var(--ocu-space-1);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-dashboard-meters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--ocu-space-4);
+  min-width: 0;
+}
+
+.ocu-dashboard-tasks {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.ocu-dashboard-tasks-gated,
+.ocu-dashboard-tasks-refused,
+.ocu-dashboard-tasks-empty {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-dashboard-tasks-refused {
+  color: var(--ocu-error);
+}
+
+.ocu-dashboard-tasks-table {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-dashboard-tasks-table th {
+  @include typo.ocu-type('label');
+
+  padding: var(--ocu-space-2) var(--ocu-space-3);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  color: var(--ocu-on-surface-variant);
+  text-align: start;
+  text-transform: uppercase;
+}
+
+.ocu-dashboard-tasks-table td {
+  padding: var(--ocu-space-2) var(--ocu-space-3);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  overflow-wrap: anywhere;
+}
+
+// A value meter's loading placeholder, beside its dash until the first readout (Story 16.7); a
+// track meter's own placeholder is `.ocu-meter-fill-skeleton`.
+.ocu-meter-value-skeleton {
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--ocu-surface-container-high);
+  animation: ocu-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ocu-meter-value-skeleton {
+    animation: none;
+  }
+}
+
+// Task schedule's Export and Import (Story 16.4): the status line above the list, as the Namespaces
+// list's copy line, and each dialog's note and refusal. A long server path wraps rather than
+// widening the dialog (DW-1337).
+.ocu-task-transfer-status {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  padding: 0 var(--ocu-gutter);
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-task-transfer-status:not(:empty) {
+  padding-block: var(--ocu-space-2);
+}
+
+.ocu-task-transfer-note {
+  @include typo.ocu-type('body');
+
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.ocu-task-transfer-refusal {
+  @include typo.ocu-type('body');
+
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-error);
+  overflow-wrap: anywhere;
+}

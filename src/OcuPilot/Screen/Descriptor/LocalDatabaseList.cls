@@ -2,7 +2,7 @@
 /// its directory and status, read through the vendor's own <code>Database.ConfigCRUD</code>
 /// <code>LIST</code> narrowed by the fixed <code>localOnly</code> parameter (AD-2, AD-36) and rendered
 /// by the <code>list</code> archetype's page from the declared <code>table</code> (AD-5). It is OS
-/// management's seventh side-bar entry, after Namespaces.</p>
+/// management's tenth side-bar entry, after External language servers.</p>
 /// <p><b>It sits beside Databases, not inside it</b> (Story 18.3): Databases is the operations view,
 /// keyed by directory (<code>database</code>), and this is the configuration view, keyed by name
 /// (<code>database-configuration</code>), as the classic portal separates
@@ -29,7 +29,7 @@ XData Declaration
   "route": "os-management/local-databases",
   "area": "os-management",
   "labelKey": "localDatabaseListLabel",
-  "sideBarPosition": 7,
+  "sideBarPosition": 10,
   "archetype": "list",
   "built": true,
   "refreshes": false,

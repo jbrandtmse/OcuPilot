@@ -54,7 +54,17 @@
 /// (<method>TotalRow</method>). Any part's fault, a missing <code>Total</code> row included, fails
 /// the whole read; there is no partial row. A part field composes
 /// <code>&lt;as&gt;.&lt;member&gt;</code> with the existing <code>&lt;object&gt;.&lt;member&gt;</code>
-/// projection to at most two members deep.</p>
+/// projection to at most two members deep. A part declaring <code>port</code>
+/// <parameter>PARTMONITOR</parameter> is answered by <method>MonitorPortClass</method>'s
+/// <code>Invoke</code> at that port's sensors endpoint, behind that port's own gate (AD-29, AD-36,
+/// Story 16.7); every other part is the admin endpoint's.</p>
+/// <p><b>A bare admin type may be read as a list over one member</b> (<code>source.rows</code>,
+/// AD-36, Story 16.7): the type is issued as a list is, with <code>maxRows</code> the cap plus one,
+/// and the answer must be an object whose member <code>rows</code> names is an array of objects
+/// (<method>RowsMember</method>). Those objects are the rows, projected, filtered, sorted, capped and
+/// reported exactly as a <code>LIST</code>'s; any other answer fails the whole read. On a
+/// parent-scoped screen (Story 16.10's <code>ACTIVITY</code>) its one criterion is the route id and
+/// is required, refused 400 <code>READ.CRITERION</code> before the port is called when missing.</p>
 /// <p><b>A parent-scoped <code>GET</code> takes its one criterion from the route id</b> (Story
 /// 6.7): the value is required, refused 400 <code>READ.CRITERION</code> before the port is called
 /// when it is missing, and is then seeded onto the fetched object under two independent names,
@@ -107,6 +117,12 @@ Parameter OBJECTTYPE = "GET";
 /// <p>The request type a declared <code>rowGet</code> issues once per surviving row when it declares
 /// no <code>type</code> of its own.</p>
 Parameter DETAILTYPE = "GET";
+
+/// <p>The detail type that answers one member's row array beside the fields a row merges
+/// (<code>LanguageServer</code>'s <code>ACTIVITY</code>, AD-36 as amended, Story 16.10). A
+/// <code>rowGet</code> of this type sends the vendor's <code>maxRows</code> 1, because only its
+/// scalar fields merge.</p>
+Parameter ACTIVITYTYPE = "ACTIVITY";
 
 /// <p>The ASCII capitals the view rule lower-cases, and nothing else.</p>
 Parameter UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -184,6 +200,23 @@ ClassMethod TimelineClass() As %String
     Quit "OcuPilot.Screen.Timeline"
 }
 
+/// <p>The <code>port</code> a <code>source.parts</code> entry declares to be answered by the sensors
+/// rather than the admin endpoint (AD-36, Story 16.7). A part that declares none is the admin
+/// endpoint's.</p>
+Parameter PARTMONITOR = "monitor";
+
+/// <p>The port every <b>monitor</b> part is issued through. Overridable so a fixture can reach
+/// <class>OcuPilot.Test.MonitorPortFixture</class>; production never overrides it.</p>
+ClassMethod MonitorPortClass() As %String
+{
+    Quit "OcuPilot.Port.MonitorPort"
+}
+
+/// <p>The shape a <code>source.rows</code> read's type takes: the vendor's own upper-case request-type
+/// name, resolved through <class>OcuPilot.Port.AdminPort</class>'s <code>BARETYPES</code> (AD-36,
+/// Story 16.7).</p>
+Parameter BARETYPEPATTERN = "^[A-Z]+$";
+
 /// <p>The <code>read.source.port</code> value naming the instance's background tasks, the admin API's
 /// async tasks the caller queued beside the classic portal's jobs, read through
 /// <method>BackgroundPortClass</method> (AD-27, AD-36).</p>
@@ -242,7 +275,8 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 /// every screen that declares none. <var>pHttpStatus</var> is 200.</p>
 /// <p>When the read declares <code>source.rowGet</code>, each surviving row's detail is read with
 /// one call of the declared <code>rowGet.type</code> -- <code>GET</code> when it declares none, or
-/// <code>INFO</code> or <code>CERTINFO</code> -- carrying <code>param</code> set to that row's
+/// <code>INFO</code>, <code>CERTINFO</code> or <code>ACTIVITY</code>, which also sends
+/// <code>maxRows</code> 1 -- carrying <code>param</code> set to that row's
 /// <code>key</code> value. Its
 /// <code>fields</code> replace the row's with their JSON types, and each <code>derived</code> field
 /// is set from its rule (<method>Derive</method>). A row whose detail call answers 404 was
@@ -289,7 +323,10 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Set tRead = $ClassMethod(pDescriptor, "Read")
         Set tSource = $Select($IsObject(tRead): tRead.%Get("source"), 1: "")
         Set tSourceType = $Select($IsObject(tSource): tSource.%Get("type"), 1: "")
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND), tSource.%Get("port")) || ((tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
+        Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
+        Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -443,7 +480,8 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tSC = ..ForEachRows(pDescriptor, tSource, tMax, .tAnswer, .tTruncated, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
         } Else {
-            ; An admin LIST, UPCOMING, HISTORY or VOLUMELIST: the declared type, the fixed query and then the criteria.
+            ; An admin LIST, UPCOMING, HISTORY or VOLUMELIST, or a bare type read over one member
+            ; (source.rows): the declared type, the fixed query and then the criteria.
             Do ..SeedSourceQuery(tSource, .tQuery)
             Set tQuery("maxRows") = tMax + 1
             ; AD-36 as amended (Story 18.14): a parent-scoped list whose rows carry no parent key
@@ -452,6 +490,14 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tSeededPart = ..SeededPart(pDescriptor, tRead)
             If (tSeededPart '= "") && ($Get(pCriteria(tSeededPart)) = "") {
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tSeededPart _ " is required", .pHttpStatus, .pFault)
+                Quit
+            }
+            ; A parent-scoped list over one member (Story 16.10's Activity log) reads for its route
+            ; id, so its one criterion is required, as a single-object read's route-id criterion is.
+            Set tRouteParam = ""
+            If tBareRows && ($ClassMethod(pDescriptor, "ParentScope") '= "") Set tRouteParam = ..ObjectCriterionParam(tRead)
+            If (tRouteParam '= "") && ($Get(pCriteria(tRouteParam)) = "") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tRouteParam _ " is required", .pHttpStatus, .pFault)
                 Quit
             }
             Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
@@ -463,6 +509,13 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit
+            }
+            If tBareRows {
+                Set tAnswer = ..RowsMember(tAnswer, tRowsMember)
+                If '$IsObject(tAnswer) {
+                    Set tSC = ..Internal(pDescriptor _ "'s read answered no array of objects under '" _ tRowsMember _ "'", .pHttpStatus, .pFault)
+                    Quit
+                }
             }
             If (tSeededPart '= "") && $IsObject(tAnswer) && tAnswer.%IsA("%Library.DynamicArray") Do ..SeedRows(tAnswer, tSeededPart, pCriteria(tSeededPart))
         }
@@ -637,8 +690,10 @@ ClassMethod ForEachRows(pDescriptor As %String, pSource As %DynamicObject, pMax 
 
 /// <p>The single-object read's one row assembled from <var>pParts</var> (<code>source.parts</code>,
 /// AD-36, Story 6.9): one call per declared part, issued in declared order against
-/// <var>pEndpoint</var> with the same <var>pQuery</var>, merged into <var>pObject</var> under each
-/// part's own <code>as</code>. An object answer is merged whole; an array answer is merged as the
+/// <var>pEndpoint</var> with the same <var>pQuery</var> -- or, for a part whose <code>port</code> is
+/// <parameter>PARTMONITOR</parameter>, against <method>MonitorPortClass</method>'s sensors endpoint
+/// with no query (Story 16.7) -- merged into <var>pObject</var> under each part's own
+/// <code>as</code>. An object answer is merged whole; an array answer is merged as the
 /// one row whose <code>Description</code> is exactly <code>Total</code>
 /// (<method>TotalRow</method>), and a part with no such row is a 500 -- like any other structural
 /// read failure, this is never sent to the wire. Any part whose call answers a non-2xx status,
@@ -656,7 +711,14 @@ ClassMethod PartsObject(pEndpoint As %String, pParts As %DynamicArray, ByRef pQu
             Set tAnswer = ""
             Set tHttp = 0
             Set tFault = ""
-            Set tPortSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, tType, .pQuery, "", .tAnswer, .tHttp, .tFault)
+            If tPart.%Get("port") = ..#PARTMONITOR {
+                ; AD-36 as amended (Story 16.7): the sensors, behind the monitor port's own gate.
+                Set tMonitorClass = ..MonitorPortClass()
+                Kill tMonitorQuery
+                Set tPortSC = $ClassMethod(tMonitorClass, "Invoke", $Parameter(tMonitorClass, "SENSORSENDPOINT"), tType, .tMonitorQuery, "", .tAnswer, .tHttp, .tFault)
+            } Else {
+                Set tPortSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, tType, .pQuery, "", .tAnswer, .tHttp, .tFault)
+            }
             If $$$ISERR(tPortSC) {
                 Set pObject = ""
                 Set pHttpStatus = tHttp
@@ -685,6 +747,23 @@ ClassMethod PartsObject(pEndpoint As %String, pParts As %DynamicArray, ByRef pQu
         Set tSC = ..Internal("the parts read failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The member <var>pMember</var> of <var>pAnswer</var> when <var>pAnswer</var> is an object and that
+/// member is an array whose every element is an object (AD-36, Story 16.7), or
+/// <code>$$$NULLOREF</code> for any other answer, which fails the whole read.</p>
+ClassMethod RowsMember(pAnswer, pMember As %String) As %DynamicArray [ Private ]
+{
+    If '$IsObject(pAnswer) || 'pAnswer.%IsA("%Library.DynamicObject") Quit $$$NULLOREF
+    If pAnswer.%GetTypeOf(pMember) '= "array" Quit $$$NULLOREF
+    Set tRows = pAnswer.%Get(pMember)
+    Set tAllObjects = 1
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow, .tType) {
+        If tType '= "object" Set tAllObjects = 0 Quit
+    }
+    If 'tAllObjects Quit $$$NULLOREF
+    Quit tRows
 }
 
 /// <p>The first row of <var>pRows</var> whose <code>Description</code> is the exact (case-sensitive,
@@ -1007,6 +1086,7 @@ ClassMethod DetailRow(pDescriptor As %String, pEndpoint As %String, pRowGet As %
         Set tQuery(pRowGet.%Get("param")) = pRow.%Get(tKeyField)
         Set tDetailType = pRowGet.%Get("type")
         If tDetailType = "" Set tDetailType = ..#DETAILTYPE
+        If tDetailType = ..#ACTIVITYTYPE Set tQuery("maxRows") = 1
         Set tDetail = ""
         Set tPortSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, tDetailType, .tQuery, "", .tDetail, .tHttp, .tFault)
         If $$$ISERR(tPortSC) {

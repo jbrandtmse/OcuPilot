@@ -19,7 +19,7 @@ import {
   withQuery,
 } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
+import { PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID, actionLabel } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { checkedSetReason, isCheckedSetAction } from '../core/multi-select';
@@ -496,6 +496,10 @@ export class CommandBox {
     // for want of a selection.
     if (this.actions.has(screen.descriptor, PERMISSION_CHECK_ACTION_ID)) {
       declared.push({ id: PERMISSION_CHECK_ACTION_ID, rowScoped: false });
+    }
+    // Import on Task schedule (Story 16.4), by the same test: screen-level too.
+    if (this.actions.has(screen.descriptor, TASK_IMPORT_ACTION_ID)) {
+      declared.push({ id: TASK_IMPORT_ACTION_ID, rowScoped: false });
     }
     if (this.actions.has(screen.descriptor, screen.primaryAction.id)) {
       declared.push({ id: screen.primaryAction.id, rowScoped: false });

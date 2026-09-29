@@ -12,7 +12,7 @@ import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
-import { stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
+import { explainContext, narrowedEntry, stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
 import { fileOptionText } from './log-line';
 import { LogViewerPage } from './log-viewer.page';
 import { LogViewerStore } from './log-viewer.store';
@@ -473,7 +473,12 @@ describe('LogViewerPage', () => {
       const { store } = await mount(screen);
 
       expect(store.fault()).toBeNull();
-      expect(api.paths[0]).toBe(`/api/ocupilot/logs/${screen.read?.source.endpoint ?? ''}`);
+      // Story 16.10: a viewer over an admin endpoint reads its own declared read, never a log route.
+      if (screen.read?.source.port === 'admin') {
+        expect(api.paths[0].startsWith(`/api/ocupilot/screens/${screen.toolIdentifier}/read?maxRows=`)).toBe(true);
+      } else {
+        expect(api.paths[0]).toBe(`/api/ocupilot/logs/${screen.read?.source.endpoint ?? ''}`);
+      }
     }
   });
 
@@ -769,8 +774,9 @@ describe('LogViewerPage: Explain this entry', () => {
   const explainButtons = (fixture: ComponentFixture<LogViewerPage>): HTMLButtonElement[] =>
     Array.from(fixture.nativeElement.querySelectorAll('[data-ocu-log="explain"]'));
 
-  // Mutation (Rule 19): request `line.raw` instead of `row.entry` -> this goes red on the row.
-  it('messages.log: each row carries the control, and a click hands that row alone to the panel', async () => {
+  // Mutation (Rule 19): request `line.raw` instead of `row.entry` -> this goes red on the row. Send
+  // the one entry as the view, as Story 11.2 shipped it (DW-1838) -> this goes red on the rows.
+  it("messages.log: each row carries the control, and a click hands that row to the panel, marked among the screen's rows", async () => {
     const { fixture, entry } = await mountWith(MESSAGES_SCREEN);
     const buttons = explainButtons(fixture);
     expect(buttons).toHaveLength(2);
@@ -782,6 +788,10 @@ describe('LogViewerPage: Explain this entry', () => {
     const taken = entry.take();
     expect(taken?.screen.route).toBe('logs/messages');
     expect(taken?.row).toEqual({ time: '2026-09-18T07:33:56.057', severity: '0', text: 'an informational entry' });
+    const context = explainContext(TestBed.inject(ScreenStores), taken);
+    expect(context?.view?.rows).toHaveLength(2);
+    expect(context?.view?.rows[context?.view?.selected ?? -1]).toEqual(taken?.row);
+    expect(context?.view?.focus).toBeUndefined();
   });
 
   it('alerts.log: the same control, sent as the alerts screen', async () => {
@@ -960,6 +970,185 @@ describe('LogViewerPage over an entries source (Story 16.8)', () => {
     previous.click();
     fixture.detectChanges();
     expect(count(fixture)).toBe('3 of 3');
+  });
+});
+
+/** Story 16.10's Activity log, whose source is its own declared read. */
+const ACTIVITY_SCREEN = SCREENS.find((screen) => screen.route === 'os-management/language-servers/activity')!;
+
+/** `GET /screens/osmgmt.languageserveractivity/read`'s answer: the vendor's activity rows, newest first. */
+function activityPage(truncated = false) {
+  return {
+    fields: ['ID', 'DateTime', 'RecordType', 'Job', 'Text'],
+    rows: [
+      { ID: 4, DateTime: '2026-09-29 05:06:48', RecordType: 'Custom', Job: 7, Text: 'a word outside the four' },
+      { ID: 3, DateTime: '2026-09-29 05:06:47', RecordType: 'Error', Job: 7, Text: 'Java executable not found' },
+      { ID: 2, DateTime: '2026-09-29 05:06:21', RecordType: 'Warning', Job: 7, Text: 'slow to answer' },
+      { ID: 1, DateTime: '2026-09-29 05:06:09', RecordType: 'Debug', Job: 7, Text: 'starting' },
+    ],
+    truncated,
+    banner: '',
+  };
+}
+
+describe('LogViewerPage over a declared read (Story 16.10)', () => {
+  let api: StubApi;
+
+  beforeEach(() => {
+    api = new StubApi();
+    api.tail(activityPage());
+  });
+
+  afterEach(() => {
+    TestBed.inject(LogViewerStore).reset();
+    TestBed.resetTestingModule();
+  });
+
+  async function settle(): Promise<void> {
+    for (let turn = 0; turn < 8; turn += 1) await Promise.resolve();
+  }
+
+  async function mount(name = 'OcuPilotProbeA'): Promise<{ fixture: ComponentFixture<LogViewerPage>; store: LogViewerStore; entry: ExplainEntry }> {
+    const explain = stubExplainEntry();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: `${ACTIVITY_SCREEN.route}/:id`, children: [] }, { path: '**', children: [] }]),
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: NavigationService, useValue: { screenForUrl: () => ACTIVITY_SCREEN } as unknown as NavigationService },
+        { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ExplainEntry, useValue: explain.entry },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
+      ],
+    });
+    await TestBed.inject(Router).navigateByUrl(`/${ACTIVITY_SCREEN.route}/${name}`);
+    const fixture = TestBed.createComponent(LogViewerPage);
+    fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
+    return { fixture, store: TestBed.inject(LogViewerStore), entry: explain.entry };
+  }
+
+  function cells(fixture: ComponentFixture<LogViewerPage>): string[][] {
+    return Array.from(fixture.nativeElement.querySelectorAll('.ocu-log-row')).map((row) =>
+      Array.from((row as HTMLElement).querySelectorAll('.ocu-log-cell')).map((cell) => ((cell as HTMLElement).textContent ?? '').trim())
+    );
+  }
+
+  it('reads its own declared read for the route id under the screen store\'s max rows, never a log route', async () => {
+    const { store } = await mount();
+    const maxRows = TestBed.inject(ScreenStores).for(ACTIVITY_SCREEN.descriptor, ACTIVITY_SCREEN.refreshRates).maxRows();
+    expect(api.paths).toEqual([`/api/ocupilot/screens/osmgmt.languageserveractivity/read?maxRows=${maxRows}&name=OcuPilotProbeA`]);
+    expect(store.fault()).toBeNull();
+  });
+
+  // Mutation (Rule 19): map `Error` to `'0'` in `RECORD_SEVERITIES` -> the Severe chip case goes red.
+  it('maps each row to a line oldest first: its time, its job as the pid, its record type as the chip, and its text', async () => {
+    const { fixture } = await mount();
+    const rendered = cells(fixture);
+    expect(rendered.map((row) => row[3])).toEqual(['starting', 'slow to answer', 'Java executable not found', 'a word outside the four']);
+    expect(rendered[0][0]).toBe('2026-09-29T05:06:09.000');
+    expect(rendered[0][1]).toBe('7');
+    expect(rendered.map((row) => row[2])).toEqual([STRINGS.logSeverityDebug, STRINGS.logSeverityWarning, STRINGS.logSeveritySevere, 'Custom']);
+    const severe = fixture.nativeElement.querySelector('[data-ocu-chip="severe"] .ocu-log-chip-count') as HTMLElement;
+    expect(severe.textContent?.trim()).toBe('1');
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="file"]')).toBeNull();
+  });
+
+  it('Load newer reads the window again and replaces the rows', async () => {
+    const { fixture, store } = await mount();
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="load-newer"]')).not.toBeNull();
+    const first = api.paths[0];
+    const later = activityPage();
+    later.rows.unshift({ ID: 5, DateTime: '2026-09-29 05:07:00', RecordType: 'Info', Job: 8, Text: 'arrived later' });
+    api.tail(later);
+    await store.loadNewer();
+    await settle();
+    fixture.detectChanges();
+    expect(api.paths).toEqual([first, first]);
+    expect(cells(fixture)).toHaveLength(5);
+    expect(cells(fixture).map((row) => row[3]).at(-1)).toBe('arrived later');
+  });
+
+  it('publishes the rows as the read answered them, newest first, with the answer\'s truncation', async () => {
+    api.tail(activityPage(true));
+    await mount();
+    const published = TestBed.inject(ScreenStores).for(ACTIVITY_SCREEN.descriptor, []);
+    expect(published.data()[0]).toEqual({ ID: 4, DateTime: '2026-09-29 05:06:48', RecordType: 'Custom', Job: 7, Text: 'a word outside the four' });
+    expect(published.data()).toHaveLength(4);
+    expect(published.truncated()).toBe(true);
+  });
+
+  it('a vendor server\'s name, encoded twice in the route, reaches the read as the name the instance defines', async () => {
+    await mount('%2525Java%2520Server');
+    const maxRows = TestBed.inject(ScreenStores).for(ACTIVITY_SCREEN.descriptor, ACTIVITY_SCREEN.refreshRates).maxRows();
+    expect(api.paths).toEqual([`/api/ocupilot/screens/osmgmt.languageserveractivity/read?maxRows=${maxRows}&name=%25Java%20Server`]);
+  });
+
+  // Mutation (Rule 19): send `{time, severity, text}` rather than `line.record` as the row's entry ->
+  // the handed-off row loses every declared context field and this goes red.
+  it("Explain this entry hands that row, as the read answered it, to the panel as this screen, marked among the screen's rows", async () => {
+    const { fixture, entry } = await mount();
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('[data-ocu-log="explain"]')) as HTMLButtonElement[];
+    expect(buttons).toHaveLength(4);
+    buttons[2].click();
+    const taken = entry.take();
+    expect(taken?.screen.route).toBe(ACTIVITY_SCREEN.route);
+    expect(taken?.row).toEqual({ ID: 3, DateTime: '2026-09-29 05:06:47', RecordType: 'Error', Job: 7, Text: 'Java executable not found' });
+    const context = explainContext(TestBed.inject(ScreenStores), taken);
+    expect(context?.view?.rows).toHaveLength(4);
+    expect(context?.view?.rows[context?.view?.selected ?? -1]).toEqual(narrowedEntry(ACTIVITY_SCREEN, taken?.row));
+    expect(context?.view?.focus).toBeUndefined();
+  });
+
+  // Mutation (Rule 19): drop the declared-read branch from the page's NavigationEnd handler -> the
+  // viewer keeps the first server's rows under the second server's route and this goes red.
+  it('another server\'s Activity log, reached without leaving the page, reads that server and publishes its rows', async () => {
+    const { fixture } = await mount('OcuPilotProbeA');
+    const other = activityPage();
+    other.rows = [{ ID: 9, DateTime: '2026-09-29 06:00:00', RecordType: 'Info', Job: 12, Text: 'the other server' }];
+    api.tail(other);
+    await TestBed.inject(Router).navigateByUrl(`/${ACTIVITY_SCREEN.route}/OcuPilotProbeB`);
+    await settle();
+    fixture.detectChanges();
+    expect(api.paths.at(-1)?.endsWith('&name=OcuPilotProbeB')).toBe(true);
+    expect(cells(fixture).map((row) => row[3])).toEqual(['the other server']);
+    const published = TestBed.inject(ScreenStores).for(ACTIVITY_SCREEN.descriptor, []);
+    expect(published.data()).toEqual([{ ID: 9, DateTime: '2026-09-29 06:00:00', RecordType: 'Info', Job: 12, Text: 'the other server' }]);
+  });
+
+  // Mutation (Rule 19): drop `&& this.source.kind !== 'read'` from `LogViewerPage.onLoadNewer` ->
+  // the viewport is never scrolled and this goes red.
+  it('the Load newer button jumps to the bottom once the newest window has rendered', async () => {
+    const { fixture } = await mount();
+    const viewport = fixture.nativeElement.querySelector('[data-ocu-log="viewport"]') as HTMLElement;
+    const scrollTo = vi.fn();
+    viewport.scrollTo = scrollTo as unknown as HTMLElement['scrollTo'];
+    (fixture.nativeElement.querySelector('[data-ocu-log="load-newer"]') as HTMLButtonElement).click();
+    await settle();
+    fixture.detectChanges();
+    TestBed.inject(ApplicationRef).tick();
+    expect(scrollTo).toHaveBeenCalledWith({ top: viewport.scrollHeight });
+  });
+
+  // Mutation (Rule 19): drop `this.answeredRows = []` from `LogViewerStore.open` -> the refused
+  // re-read leaves the earlier read's rows published and this goes red.
+  it('a refused re-read publishes no rows, never the rows the earlier read answered', async () => {
+    const { store } = await mount();
+    const published = TestBed.inject(ScreenStores).for(ACTIVITY_SCREEN.descriptor, []);
+    expect(published.data()).toHaveLength(4);
+    api.refuseTail(403, 'AUTH.NOPRIVILEGE');
+    await store.open();
+    await settle();
+    expect(store.fault()).not.toBeNull();
+    expect(published.data()).toEqual([]);
+  });
+
+  it('a refused read shows the viewer\'s refusal and no rows', async () => {
+    api.refuseTail(404, 'PORT.NOTFOUND');
+    const { fixture, store } = await mount('NoSuch');
+    expect(store.fault()).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="refusal"]')).not.toBeNull();
+    expect(cells(fixture)).toHaveLength(0);
   });
 });
 

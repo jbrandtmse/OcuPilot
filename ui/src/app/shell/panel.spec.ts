@@ -205,6 +205,7 @@ async function mount(
         { path: 'agent/definitions', children: [] },
         { path: 'agent/definitions/edit', children: [] },
         { path: 'permissions/users', children: [] },
+        { path: 'logs/audit/:id', children: [] },
         // `app.routes.ts` ends in this, and it is what keeps the shell -- and this panel --
         // mounted on a URL that names no built descriptor.
         { path: '**', children: [] },
@@ -4285,9 +4286,9 @@ describe('Story 11.2: Explain this entry', () => {
     { time: '2026-09-25T09:00:02.000', severity: '2', text: 'third line', pid: '13' },
   ];
 
-  /** The panel on messages.log with the hand-off provided, a transport that accepts turns, and `share`. */
-  async function mountEntry(options: { share?: boolean; restraint?: Partial<Restraint>; progress?: unknown[] } = {}) {
-    const agentContext = stubAgentContext({ share: options.share ?? true, contextRowCap: 200 });
+  /** The panel on messages.log, or on `url`, with the hand-off provided, a transport that accepts turns, and `share`. */
+  async function mountEntry(options: { share?: boolean; restraint?: Partial<Restraint>; progress?: unknown[]; rowCap?: number; url?: string } = {}) {
+    const agentContext = stubAgentContext({ share: options.share ?? true, contextRowCap: options.rowCap ?? 200 });
     await agentContext.load();
     const { schedule, scheduled } = fakeTurnSchedule();
     const api = fakeTurnApi({
@@ -4303,7 +4304,7 @@ describe('Story 11.2: Explain this entry', () => {
       rows: [{ enabled: true }],
       agentContext,
       turn,
-      url: '/logs/messages',
+      url: options.url ?? '/logs/messages',
       restraint: options.restraint ?? {},
       explainEntry: true,
     });
@@ -4321,8 +4322,9 @@ describe('Story 11.2: Explain this entry', () => {
     return recorded;
   }
 
-  // Mutation (Rule 19): send `this.assembleContext()` from `onExplainEntry` -> this goes red on the rows.
-  it('messages.log row: the fixed sentence goes with that one row as the view, and the draft is left as it was', async () => {
+  // Mutation (Rule 19): send `this.assembleContext()` from `onExplainEntry` -> this goes red on the
+  // marker; send the one entry as the view, as Story 11.2 shipped it -> this goes red on the rows.
+  it("messages.log row: the fixed sentence goes with the screen's own rows and the entry selected among them, and the draft is left as it was", async () => {
     const mounted = await mountEntry();
     await typeDraft(mounted.host, mounted.fixture, 'keep me');
     expect(await explain(mounted, MESSAGES, LINES[1])).toBe(true);
@@ -4334,32 +4336,73 @@ describe('Story 11.2: Explain this entry', () => {
       route: 'logs/messages',
       namespace: 'HSCUSTOM',
       view: {
-        rows: [{ time: LINES[1].time, severity: '1', text: INJECTED }],
-        rowsAvailable: 1,
+        rows: [
+          { time: LINES[2].time, severity: '2', text: 'third line' },
+          { time: LINES[1].time, severity: '1', text: INJECTED },
+          { time: LINES[0].time, severity: '0', text: 'first line' },
+        ],
+        rowsAvailable: 3,
         sort: '',
         direction: '',
         filter: '',
+        selected: 1,
       },
     });
-    expect(mounted.host.querySelector('.ocu-panel-message-user')?.textContent?.trim()).toBe(STRINGS.agentExplainEntryAction);
+    expect(mounted.host.querySelector('.ocu-panel-message-user')?.textContent?.trim()).toBe(STRINGS.agentExplainEntryMessage);
     expect((mounted.host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement).value).toBe('keep me');
   });
 
-  // Mutation (Rule 19): send the row's text as the message -> this goes red.
-  it('the user message is exactly the sentence, and the entry\u2019s text rides only in the context', async () => {
+  // Mutation (Rule 19): read the context row cap as unlimited in `contextInputs` -> this goes red on the focus.
+  it("an entry past the screen's row cap goes as the focus row, beside the screen's rows up to the cap", async () => {
+    const mounted = await mountEntry({ rowCap: 2 });
+    await explain(mounted, MESSAGES, LINES[0]);
+    const body = JSON.parse(turnPosts(mounted.api)[0]?.body ?? '{}') as { context: { view: Record<string, unknown> } };
+    expect(body.context.view['rows']).toEqual([
+      { time: LINES[2].time, severity: '2', text: 'third line' },
+      { time: LINES[1].time, severity: '1', text: INJECTED },
+    ]);
+    expect(body.context.view['rowsAvailable']).toBe(3);
+    expect(body.context.view['focus']).toEqual({ time: LINES[0].time, severity: '0', text: 'first line' });
+    expect('selected' in body.context.view).toBe(false);
+  });
+
+  // Mutation (Rule 19): send the row's text as the message -> this goes red; send the button's
+  // label as the message -> this goes red on the sentence.
+  it('the user message is exactly the sentence naming the selected entry, and the entry\u2019s text rides only in the context', async () => {
     const mounted = await mountEntry();
     await explain(mounted, MESSAGES, LINES[1]);
     const body = JSON.parse(turnPosts(mounted.api)[0]?.body ?? '{}') as { message: string };
-    expect(body.message).toBe(STRINGS.agentExplainEntryAction);
+    expect(body.message).toBe(STRINGS.agentExplainEntryMessage);
+    expect(body.message).not.toBe(STRINGS.agentExplainEntryAction);
     expect(body.message).not.toContain(INJECTED);
   });
 
-  it('an audit entry is narrowed to its declared fields, so its event data never goes', async () => {
+  // Mutation (Rule 19): send `entity: ''` from `onExplainEntry` -> the dialog's case goes red; drop
+  // the `onScreen` check from `contextInputs` -> the other screen's case goes red.
+  it("an entry explained on the screen the address names carries that address's entity, and one from another screen carries none", async () => {
+    const onDialog = await mountEntry({ url: '/logs/audit/rec-1' });
+    await explain(onDialog, AUDIT, { Event: 'RoleGranted', Username: '_SYSTEM' });
+    const dialogBody = JSON.parse(turnPosts(onDialog.api)[0]?.body ?? '{}') as { context: { route: string; entity?: string } };
+    expect(dialogBody.context.route).toBe('logs/audit');
+    expect(dialogBody.context.entity).toBe('rec-1');
+
+    const elsewhere = await mountEntry({ url: '/logs/audit/rec-1' });
+    await explain(elsewhere, MESSAGES, LINES[1]);
+    const elsewhereBody = JSON.parse(turnPosts(elsewhere.api)[0]?.body ?? '{}') as { context: { route: string; entity?: string } };
+    expect(elsewhereBody.context.route).toBe('logs/messages');
+    expect(elsewhereBody.context.entity).toBeUndefined();
+  });
+
+  it("an audit entry goes as its own screen's context, narrowed to its declared fields, so its event data never goes", async () => {
     const mounted = await mountEntry();
     await explain(mounted, AUDIT, { Event: 'RoleGranted', Username: '_SYSTEM', EventData: '{"secret":1}', Unlisted: 'x' });
-    const body = JSON.parse(turnPosts(mounted.api)[0]?.body ?? '{}') as { context: { route: string; view: { rows: Record<string, unknown>[] } } };
+    const body = JSON.parse(turnPosts(mounted.api)[0]?.body ?? '{}') as {
+      context: { route: string; entity?: string; view: { rows: Record<string, unknown>[]; focus?: Record<string, unknown> } };
+    };
     expect(body.context.route).toBe('logs/audit');
-    expect(body.context.view.rows).toEqual([{ Event: 'RoleGranted', Username: '_SYSTEM' }]);
+    expect(body.context.entity).toBeUndefined();
+    expect(body.context.view.rows).toEqual([]);
+    expect(body.context.view.focus).toEqual({ Event: 'RoleGranted', Username: '_SYSTEM' });
     expect(AUDIT.context.fields.includes('EventData')).toBe(false);
   });
 

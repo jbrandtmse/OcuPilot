@@ -518,6 +518,9 @@ ClassMethod ContextViolation(pBody As %DynamicObject, pLimitsClass As %String) A
 /// <code>rowsSent</code> 0 and is measured whole; one with rows reports each non-scalar value
 /// <method>OcuPilot.Screen.Context.Build</method> dropped in <code>truncatedFields</code> and is
 /// cut by <method>OcuPilot.Kernel.Agent.Bound.Apply</method> under <var>pRowCap</var>.</p>
+/// <p>An explain-entry marker the projection kept stays within the bounds: a <code>focus</code> row
+/// is cut per field as a row is and counts within the total, and a <code>selected</code> index whose
+/// row the row cap or the total cut removed becomes the <code>focus</code> row.</p>
 /// <p><b>Caller contract:</b> <var>pContext</var> has passed <method>ContextViolation</method>, and
 /// <var>pReadOnly</var> is the <code>blocked</code> answer of the verdict dispatch enforces
 /// (<method>OcuPilot.Kernel.Restraint.Resolved</method>, AD-30), never a switch read on its
@@ -547,12 +550,49 @@ ClassMethod BoundedContext(pContext As %DynamicObject, pReadOnly As %Boolean, pR
             Do tPayload.%Set("truncatedFields", tDropped)
             Do tPayload.%Set("truncated", 1, "boolean")
         }
-        Do ##class(OcuPilot.Kernel.Agent.Bound).Apply(tPayload, pRowCap, .tFieldMaxLengths, +$Parameter(pLimits, "FIELDMAXLENGTH"), tTotalMax, .pJson)
+        Set tFieldMax = +$Parameter(pLimits, "FIELDMAXLENGTH")
+        Set tSelectedRow = ""
+        If tPayload.%GetTypeOf("selected") = "number" Set tSelectedRow = tPayload.rows.%Get(tPayload.%Get("selected"))
+        If tPayload.%GetTypeOf("focus") = "object" Do ..BoundFocus(tPayload, .tFieldMaxLengths, tFieldMax, tTotalMax)
+        Do ##class(OcuPilot.Kernel.Agent.Bound).Apply(tPayload, pRowCap, .tFieldMaxLengths, tFieldMax, tTotalMax, .pJson)
+        ; A selected entry the row cap or the total bound cut travels as the focus row instead.
+        If $IsObject(tSelectedRow) && (tPayload.%Get("selected") >= tPayload.%Get("rowsSent")) {
+            Do tPayload.%Remove("selected")
+            Do tPayload.%Set("focus", tSelectedRow)
+            Do ..BoundFocus(tPayload, .tFieldMaxLengths, tFieldMax, tTotalMax)
+            Do ##class(OcuPilot.Kernel.Agent.Bound).Apply(tPayload, pRowCap, .tFieldMaxLengths, tFieldMax, tTotalMax, .pJson)
+        }
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     If $$$ISERR(tSC) Set pJson = ""
     Quit tSC
+}
+
+/// <p>Cut <var>pPayload</var>'s <code>focus</code> row with the per-field bounds its rows take, by
+/// <method>OcuPilot.Kernel.Agent.Bound.Apply</method> over a payload holding that one row, and fold
+/// any field it cuts into <code>truncatedFields</code> and <code>truncated</code>. A focus row that
+/// cannot fit <var>pTotalMax</var> on its own is removed.</p>
+ClassMethod BoundFocus(pPayload As %DynamicObject, ByRef pFieldMaxLengths, pFieldMax As %Integer, pTotalMax As %Integer) [ Private ]
+{
+    Set tHolder = {"rows": []}
+    Do tHolder.rows.%Push(pPayload.%Get("focus"))
+    Set tFits = ##class(OcuPilot.Kernel.Agent.Bound).Apply(tHolder, 1, .pFieldMaxLengths, pFieldMax, pTotalMax, .tJson)
+    If 'tFits || (tHolder.%Get("rowsSent") '= 1) {
+        Do pPayload.%Remove("focus")
+        Quit
+    }
+    Do pPayload.%Set("focus", tHolder.rows.%Get(0))
+    If 'tHolder.%Get("truncated") Quit
+    Do pPayload.%Set("truncated", 1, "boolean")
+    Set tFields = pPayload.%Get("truncatedFields")
+    If '$IsObject(tFields) Set tFields = []
+    Set tIterator = tHolder.truncatedFields.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tName) {
+        Do tFields.%Push(tName)
+    }
+    Do pPayload.%Set("truncatedFields", tFields)
+    Quit
 }
 
 /// <p>Refuse with 422: the violation's code on the envelope, and the same code with its sentence on

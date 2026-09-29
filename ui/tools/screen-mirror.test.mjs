@@ -783,10 +783,15 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     .filter((screen) => screen.tab !== null)
     .sort((a, b) => a.tab.position - b.tab.position)
     .map((screen) => [screen.route, screen.tab.group, screen.tab.position, screen.sideBarPosition]);
+  // Story 16.7's License usage group sorts beside the OAuth 2.0 group, position by position.
   assert.deepEqual(members, [
+    ['os-management/license-usage', 'os-management/license-usage', 1, 7],
     ['security/oauth', 'security/oauth', 1, 5],
+    ['os-management/license-usage/processes', 'os-management/license-usage', 2, 0],
     ['security/oauth/clients', 'security/oauth', 2, 0],
+    ['os-management/license-usage/users', 'os-management/license-usage', 3, 0],
     ['security/oauth/resource-servers', 'security/oauth', 3, 0],
+    ['os-management/license-usage/distributed', 'os-management/license-usage', 4, 0],
     ['security/oauth/server', 'security/oauth', 4, 0],
     ['security/oauth/server-clients', 'security/oauth', 5, 0],
   ]);
@@ -1041,11 +1046,12 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   const upcoming = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskUpcomingList');
   assert.equal(upcoming.declaration.read.source.type, 'UPCOMING');
   // Story 7.6: the Task schedule declares Run, Suspend, Resume and Delete, shows the Suspended
-  // field its INFO rowGet answers, and its empty state invites the agent.
+  // field its INFO rowGet answers, and its empty state invites the agent. Story 16.4 adds Export
+  // and Import before Delete, so the row menu lists the destructive action last.
   const schedule = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskScheduleList');
   assert.deepEqual(
     schedule.declaration.rowActions.map((action) => action.id),
-    ['run', 'suspend', 'resume', 'delete']
+    ['run', 'suspend', 'resume', 'export', 'import', 'delete']
   );
   assert.ok(schedule.declaration.rowActions.every((action) => action.selfProtection === ''), 'no action carries a self-protection rule');
   assert.deepEqual(
@@ -1207,8 +1213,9 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Secrets list, whose one criterion is its parent collection, filled from the route id
   // (Story 6.3); and Story 6.11's two -- Database details and Database volumes, whose one
   // criterion each is the parent Databases route's directory; Story 16.9's log hub, whose one
-  // criterion is its timeline's window; and Story 18.14's three mapping lists, whose one criterion
-  // each is the parent namespace, filled from the route id and seeded onto every row.
+  // criterion is its timeline's window; Story 18.14's three mapping lists, whose one criterion
+  // each is the parent namespace, filled from the route id and seeded onto every row; and Story
+  // 16.10's Activity log, whose one criterion is the language server its route id names.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1217,6 +1224,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.DatabaseDetails',
       'OcuPilot.Screen.Descriptor.DatabaseVolumeList',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
+      'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LogHub',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
       'OcuPilot.Screen.Descriptor.PackageMappingList',
@@ -2200,12 +2208,15 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // screens, which own their pair so the Security area declares only %Admin_Secure and IRISSYS;
   // Story 18.1's Allowed directories owns %Admin_FileSystemAccess the same way, and Story 16.2's
   // Web sessions owns %Admin_Operate beside the Web applications area's two pairs, as Story 16.5's
-  // Background tasks does beside the Tasks area's.
+  // Background tasks does beside the Tasks area's; Story 16.10's External language servers and its
+  // Activity log own %Admin_ExternalLanguageServerEdit beside OS management's database read.
   assert.deepEqual(
     owners.sort(),
     [
       'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
+      'OcuPilot.Screen.Descriptor.LanguageServerActivity',
+      'OcuPilot.Screen.Descriptor.LanguageServerList',
       'OcuPilot.Screen.Descriptor.LogAnalyticsViewer',
       'OcuPilot.Screen.Descriptor.LogEventViewer',
       'OcuPilot.Screen.Descriptor.OAuthClientForm',

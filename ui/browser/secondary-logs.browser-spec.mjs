@@ -211,7 +211,7 @@ test('AC1: Load newer reads the newest window again, and an entry written after 
   }
 });
 
-test('AC3: Explain on the event log entry sends that entry alone, and a typed turn\u2019s screen context carries the rows on screen', async () => {
+test('AC3: Explain on the event log entry marks that entry among the rows on screen, and a typed turn\u2019s screen context carries those rows', async () => {
   ensureSeeded();
   await requireFreeSlot(config);
   const explainTag = nextTag(probe);
@@ -221,7 +221,7 @@ test('AC3: Explain on the event log entry sends that entry alone, and a typed tu
   let typedTag = '';
   try {
     const row = await seededRow(page);
-    assert.ok(row.total >= 2, `the event log holds more than the one entry Explain sends: ${row.total}`);
+    assert.ok(row.total >= 2, `the event log holds more than the one entry Explain marks: ${row.total}`);
     await page.waitForFunction(
       (selector) => {
         const button = document.querySelector(selector);
@@ -236,9 +236,11 @@ test('AC3: Explain on the event log entry sends that entry alone, and a typed tu
     const explained = screenContextPayload(recordedMessages(explainTag));
     assert.ok(explained, 'a screen_context pair was recorded');
     assert.equal(explained.route, 'logs/eventlog');
-    assert.equal(explained.rowsSent, 1, 'exactly one row was sent');
-    assert.deepEqual(Object.keys(explained.rows[0]).sort(), ['severity', 'text', 'time'], 'as its declared fields');
-    assert.equal(explained.rows[0].text, row.text, 'the entry clicked');
+    assert.equal(explained.rowsSent, row.total, 'every entry on screen was sent, not the entry alone');
+    assert.equal(Number('selected' in explained) + Number('focus' in explained), 1, `exactly one marker: ${Object.keys(explained).join(',')}`);
+    const entry = 'selected' in explained ? explained.rows[explained.selected] : explained.focus;
+    assert.deepEqual(Object.keys(entry).sort(), ['severity', 'text', 'time'], 'as its declared fields');
+    assert.equal(entry.text, row.text, 'the entry marked is the entry clicked');
     assert.deepEqual(explained.tools, ['logs_eventlog_read'], 'the viewer names its read');
     await requireFreeSlot(config);
 

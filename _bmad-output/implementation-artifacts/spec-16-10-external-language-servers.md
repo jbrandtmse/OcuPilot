@@ -2,7 +2,9 @@
 title: 'Story 16.10: External language servers'
 type: 'feature'
 created: '2026-09-28'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'fcbe98eb34edaab5ceb5fcea4f9811e9d0b51a17'
+baseline_commit: 'fcbe98eb34edaab5ceb5fcea4f9811e9d0b51a17'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -13,6 +15,13 @@ deferred:
     evidence: 'git grep CLASSICPAGES on OCU-1-epic16 and on origin/feature/OCU-1_ocupilot-mvp at a9e7c151 finds nothing; AD-44 names Story 18.14 as the implementer'
     location: 'src/OcuPilot/Screen/Tool/LanguageServerStart.cls, LanguageServerStop.cls'
     severity: 'low'
+  - summary: >-
+      A start the instance refuses (500 LANGUAGESERVER.START) also raises the shell's generic server-fault banner beside the list's own sentence, until the next call succeeds.
+    evidence: |-
+      ui/src/app/core/fault.ts classifyFault reads every 5xx other than INSTALL.* as server-fault, and main.ts hands every requestJson outcome to connectivity.note; the spec fixes the status at 500 (inference: not observed in a browser).
+    location: >-
+      ui/src/app/core/fault.ts:81
+    severity: low
 ---
 
 <intent-contract>
@@ -264,11 +273,76 @@ Anchors are as of `0a3f28dd`. Story 16.7, implemented first, moves lines in `Rea
   - `ListPage` (consumer) shows the Running value that `osmgmt.languageservers.read` returns;
   - both screens pass the DW-1337 walk with no new allowance.
 
+### Review Findings
+
+Code review, 2026-09-29 (four layers, full-opus): 40 rows. 12 entries survived (high 1, medium 2, low 9): 10 patch items and 3 defer items, the Remote-ping entry holding one of each; 0 decision-needed; 12 entries rejected (below).
+
+- [x] [Review][Patch] AD-44: Start and Stop declared no `CLASSICPAGES` (DW-1832, high under Rule 6) — Start declares `%CSP.UI.Portal.ExternalLanguageServerStart`, Stop `...ExternalLanguageServerStop` and the hidden `%CSP.UI.Portal.Dialog.ExternalLanguageServerStopDialog` (each read on the instance; `%ZEN.Controller` enforces a custom resource on a dialog too), unioned through `Gate.WithClassicPages`; `ClassicPageGate` and `MappingDescriptor.CLASSICROSTER` bumped for these two tools. The frontmatter `deferred[0]` evidence ("finds nothing") was false. [src/OcuPilot/Screen/Tool/LanguageServerStart.cls:50]
+- [x] [Review][Patch] A refused re-open of the Activity log kept publishing the earlier read's rows as screen context while the viewer showed the refusal — `open()` clears the answered rows; test added. [ui/src/app/areas/logs/log-viewer.store.ts:396]
+- [x] [Review][Patch] Load newer's jump to the bottom on a declared read had no test — declared-read case added. [ui/src/app/areas/logs/log-viewer.spec.ts:1112]
+- [x] [Review][Patch] AC7's mutation line named a mutation (sort `asc`) that moves the tool and the screen alike and reddens the ordering check, not the comparison — replaced under Verification. [src/OcuPilot/Test/LanguageServerWire.cls:170]
+- [x] [Review][Patch] Roster messages kept their old counts (Prohibited twenty-seven, ReadTool ninety-six and one hundred and two, Wire and WireSecurityRead twenty-three screens) — corrected on the lines this story bumped. [src/OcuPilot/Test/Prohibited.cls:218]
+- [x] [Review][Patch] The probe activity-row deletes compared `GatewayName` without `%EXACT` — both sites. [src/OcuPilot/Test/LanguageServerWire.cls:419]
+- [x] [Review][Patch] The vendor's own 404 for an undefined name was pinned only against the stand-in endpoint — instance leg added. [src/OcuPilot/Test/LanguageServer.cls:171]
+- [x] [Review][Patch] Teardown deleted a probe even if its stop failed, and a deleted running server keeps listening — both teardowns now refuse. [src/OcuPilot/Test/LanguageServerWire.cls:413]
+- [x] [Review][Patch] `ROW_GET_TYPES`' doc omitted `ACTIVITY`. [ui/tools/screen-mirror.mjs:2517]
+- [x] [Review][Patch] AdminPort's `ACTIVITY` doc said `IsGatewayRunning` pings only a busy port; it always pings a `Remote` server. [src/OcuPilot/Port/AdminPort.cls:114]
+- [x] [Review][Defer] A refused start raises the shell's server-fault banner beside the list's sentence [ui/src/app/core/fault.ts:81] — deferred: observed on `ocupilot-ci` (500, banner still up 20 s later); the fix is shell-wide, not a two-way door; DW-1833 `wontfix-accepted`.
+- [x] [Review][Defer] The agent's Stop card carries no consequence line, while the screen's Stop warns [src/OcuPilot/Screen/Tool/LanguageServerStop.cls:8] — deferred: DW-1834 `wontfix-accepted`, as 16.5's cancel.
+- [x] [Review][Defer] The list read waits up to 10 s per unanswering `Remote` server [src/OcuPilot/Screen/Descriptor/LanguageServerList.cls:57] — deferred: DW-1835 `by-design` (AC1 reads the vendor's `CurrentlyRunning` per row).
+
+Rejected:
+
+- `false` A second Start during a slow start races the first — measured on `ocupilot-ci`: two concurrent vendor STARTs serialize, the second answering 200 "Server is already running", one JVM launched.
+- `false` The tools' fresh `ACTIVITY` read is persisted into the proposal — `Mint` narrows the stored payload to the fingerprint subject (`Mint.cls:269-280`).
+- `low` That fresh read carries up to the vendor's default 1,000 rows — in process and never stored; bounding it needs a read-only query hook in the kernel.
+- `low` The spec's Auto Run Result counts one deferred item where the frontmatter holds two — spec text; the ledger holds both.
+- `low` The spec's frontmatter `deferred[0]` evidence is false — spec text; corrected in DW-1832 and above.
+- `low` The empty-state agent fragment names start or stop — the copy is the spec's.
+- `low` EXPERIENCE.md lists "Port" among this story's strings although `:488` publishes it — cosmetic; the code reuses the key.
+- `low` Raw shows only `Text` — the spec sets `raw` to `Text`.
+- `low` The browser spec arms a probe definition it does not drive — no user harm.
+- `low` A future `TYPEFAULTS` entry could lack its `REASON` parameter — no entry does; the one entry is pinned.
+- `low` A hung server that fails the ping reads stopped and cannot be stopped — the classic page gates Stop on the same status.
+- `low` Two servers whose names differ only in case share activity rows — the vendor's own reader; no realistic configuration.
+- `low` No single test compares the rendered Activity log with the tool's rows — the chain is pinned by the wire, component and browser tests.
+
 ## Spec Change Log
 
 - 2026-09-29, spec gate (lead): the orchestrator took the split (A) at the merge gate -- this story keeps the list with each server's Running state, Start and Stop, and the Activity log; the editor (create, edit, delete) and DW-253 moved to Story 16.25 (epics.md, both blocks tagged). Spine amended at the gate: AD-8 (the own pair), AD-36 (`ACTIVITY` as a `rowGet` detail and as `source.rows` `Activity`), AD-15 and AD-53 (Stop, the fifth unaudited write). This story's Activity log needs Story 16.7's `source.rows`, which lands first. Status `blocked` to `ready-for-dev`.
 
 ## Review Triage Log
+
+### 2026-09-29 — Review pass
+
+- verdicts: 26 findings — high 0, medium 4, low 17, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Explain this entry on the Activity log hands off the row as answered, and no test read the handed-off row — added the declared-read case in `log-viewer.spec.ts`; mutation line under Verification.
+  - `[medium]` `[patch]` The page's switch to another server's Activity log without leaving the page was untested — added the post-mount navigation case in `log-viewer.spec.ts`; mutation line under Verification.
+  - `[low]` `[patch]` The refused start's vendor text reaching the log was unasserted — `LogProbe.Captured` assertion added to `LanguageServer.TestARefusedStartAnswersItsPublishedCode`; mutation line under Verification.
+  - `[low]` `[patch]` `ActivityRowsProblem`'s criterion-kind and one-criterion legs had no corpus case — two rows added to `ReadSourceCorpus`; `screen-mirror.test.mjs`, `Descriptor` and `ReadTool` green.
+  - `[low]` `[patch]` AC4's mutation line named only the unarmed class — re-run against `LanguageServerWire` (all four red) and the line corrected.
+  - `[low]` `[patch]` AC6 had no mutation line — demonstrated on `self-protection.test.mjs` and written.
+  - `[medium]` `[patch]` AC7 had no test comparing the read tools' answers with the screens' — `LanguageServerWire` now compares both tools' views with the screen reads; mutation line written.
+  - `[low]` `[patch]` `rail-wire.spec.ts`'s new case named a fixture-only mutation — comment reworded to what it pins; the server side is `OcuPilot.Test.Wire`'s.
+  - `[low]` `[patch]` `LanguageServerWire.Running()` read 0 on a failed read, so stopped-state checks passed on a failure — it now answers -1 for a failed or non-boolean read.
+  - `[low]` `[patch]` Two `LanguageServer` legs quit silently when the vendor list was empty — each now asserts the list first.
+  - `[false]` `[reject]` Wrong-verb refusal comes after the fresh `ACTIVITY` read, not before any port call — Boundaries say "before any write", and `StateDiff` needs that read.
+  - `[false]` `[reject]` Stop on a stopped row opens the warning before the refusal — Boundaries make the warning unconditional ("Stop first opens the warning dialog").
+  - `[low]` `[reject]` The two state sentences reach the screen through a client allow-list over `detail.problem`, not the envelope's reason — both copies are pinned equal by `self-protection.test.mjs`; moving them into the reason is a kernel change for every action tool.
+  - `[low]` `[reject]` A missing `name` is refused 400 by the read layer, not the port — the outcome (400, the viewer's refusal) is the matrix row's; it follows the parent-scoped read precedent in `Read.cls`.
+  - `[low]` `[reject]` The area principal's agent mint and confirm are not exercised — the tools' pairs are pinned equal to the screen's, and the dispatch gate over `PrivilegePairs` is pinned by existing suites.
+  - `[low]` `[reject]` The failed start is not driven end to end in a browser — each part is pinned (wire 500 and stopped state and Error row, client sentence, Error to Severe mapping); a browser leg adds a second probe and minutes.
+  - `[medium]` `[patch]` The unarmed class asserted every `%` server reads not running, which depends on the instance — assertion removed; the class counts the vendor rows only.
+  - `[low]` `[patch]` A vendor `%` name's route-to-read decode was untested — declared-read case added for `%2525Java%2520Server` in `log-viewer.spec.ts`.
+  - `[low]` `[reject]` Load newer is re-read only in a stubbed unit test — the windowed re-read is shared with the secondary logs, whose browser spec clicks it.
+  - `[false]` `[reject]` The out-of-band stop is exercised through the kernel's `Mint`/`Confirm`, not HTTP — the confirm route is a thin wrapper over that operation (AD-53).
+  - `[low]` `[reject]` Read-back and copy-out rest on generic machinery — `DraftRegistry` and `ReadBack` iterate every registered write tool and stayed green.
+  - `[low]` `[patch]` The "live-captured" navigation payloads gained hand-shaped entries — same root cause as the rail-wire row; the comment now says the instance side is `OcuPilot.Test.Wire`'s.
+  - `[low]` `[reject]` The generic log-viewer loop keys its expectation on `port === 'admin'` while the page keys on `SOURCES` — a mismatch reddens the loop, which is the wanted signal.
+  - `[false]` `[reject]` Shared modules were refactored despite add-only — the add-only rule covers the contended files, and every edit there is an addition or a directed count bump.
+  - `[low]` `[reject]` "Port" is published at `:584` and reused from `sslTestPort` rather than keyed `languageServerColumnPort` — the strings test allows one key per value; `test:tools` green.
+  - `[false]` `[reject]` Explain sends the raw row rather than `{time, severity, text}` — the intent has screen context carry the rows as answered, and `narrowRow` keeps the declared fields.
 
 ## Design Notes
 
@@ -393,9 +467,45 @@ Slot A only. Everything that creates a server, starts it, stops it or creates a 
   - If the bundle crosses `maximumWarning`, re-base it to 5% above the measured total and update `angular-json.test.mjs`'s literal in the same change (DW-1166). Stop and ask above 3800 kB.
 - The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before `dev_complete`) -- expected: green apart from the known residue. The full browser suite is CI's (Rule 29).
 
+Mutations demonstrated (implement stage, each reverted with the tree unchanged after):
+
+- mutation: `activityRowsProblem` admits an `ACTIVITY` read with no `parentScope` → `screen-mirror.test.mjs` "readProblem returns every ... sentence OcuPilot.Test.ReadSourceCorpus declares" went red.
+- mutation: `RECORD_SEVERITIES` maps `Error` to `'0'` → `log-viewer.spec.ts` "maps each row to a line oldest first ..." went red.
+- mutation: the `LanguageServerList` entry dropped from `WARNING_CONSEQUENCES` → `screen-action-handler.spec.ts` "opens the warning before Stop ..." went red.
+- mutation: `PUBLISHED_PROBLEMS` emptied → `screen-action-handler.spec.ts` "shows a state refusal's published sentence ..." went red.
+- mutation: `Read.DetailRow` sends no `maxRows` on an `ACTIVITY` detail call → `OcuPilot.Test.LanguageServer.TestTheActivityDetailCallSendsOneRow` went red.
+- mutation: `LanguageServerStart.StateDiff` lets a start through for a running server → `OcuPilot.Test.LanguageServer.TestTheStateDiffRefusesTheWrongVerb` went red.
+- mutation (AC4): `FINGERPRINTSUBJECT` emptied → the tool registry refuses it: `OcuPilot.Test.LanguageServer`'s `TestTheToolsAreActionWritesOverTheScreensOwnPairs`, `TestTheDescriptorsRegister` and `TestProhibitedCoversTheType` went red, and so did all four `OcuPilot.Test.LanguageServerWire` methods, `TestTheAgentsStartConfirmsAndAMovedStopIsRefused` among them.
+- mutation: `ownPrivileges` dropped from `LanguageServerList` → `OcuPilot.Test.LanguageServer.TestTheDescriptorsRegister` (area coverage and registry validation) went red.
+- mutation: `AdminPort.TYPEFAULTS` emptied → `OcuPilot.Test.LanguageServer.TestARefusedStartAnswersItsPublishedCode` went red.
+- mutation: `language-server` dropped from `Prohibited.COVEREDTYPES` → `OcuPilot.Test.LanguageServer.TestProhibitedCoversTheType` went red.
+- mutation: `LanguageServerStart.PrivilegePairs` adds `%Admin_Manage:USE` → `OcuPilot.Test.LanguageServerWire.TestTheExactPairsPrincipalStartsAndStopsTheProbe` went red (403 naming `%Admin_Manage:USE`).
+- mutation: the name cell's `childListFor` link skipped for this list, rebuilt and redeployed → `language-servers.browser-spec.mjs` AC1-AC3 went red at the Activity log wait.
+- mutation (AC3): a row's `entry` sent as `{time, severity, text}` rather than `line.record` → `log-viewer.spec.ts` "Explain this entry hands that row, as the read answered it, ..." went red.
+- mutation (AC3): the page's declared-read `NavigationEnd` branch removed → `log-viewer.spec.ts` "another server's Activity log, reached without leaving the page, ..." went red.
+- mutation (AC2): the `TYPEFAULTS` branch's `LogFault` call removed → `OcuPilot.Test.LanguageServer.TestARefusedStartAnswersItsPublishedCode` ("which reaches the log") went red.
+- mutation (AC6): one word of `LanguageServerStart.RUNNINGREASON` changed → `self-protection.test.mjs` "Story 16.10: the two state refusals and the refused start ..." went red.
+- mutation (AC7): `Screen.Tool.Read.View` drops its view's first row (the tool path only), recompiled with its subclasses → `OcuPilot.Test.LanguageServerWire.TestTheExactPairsPrincipalStartsAndStopsTheProbe`'s "returns the rows the screen's read answers" went red alone (run 20832, code review).
+- mutation (AC5, AD-44): `LanguageServerStart.PrivilegePairs` returns the screen's pairs without `Gate.WithClassicPages` → `OcuPilot.Test.ClassicPageGate.TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller` went red on the start and stop legs (run 20829, code review).
+- mutation (AC3): `this.answeredRows = []` dropped from `LogViewerStore.open` → `log-viewer.spec.ts` "a refused re-read publishes no rows ..." went red (code review).
+- mutation (AC3): `&& this.source.kind !== 'read'` dropped from `LogViewerPage.onLoadNewer` → the declared-read "the Load newer button jumps to the bottom ..." went red (code review).
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none -- resolved at the spec gate (Spec Change Log). The plan's halt read: intent gap: Q1 (Rule 5 tier 2). Story 16.10 as written in epics.md is two stories' worth. Recommended (A), to which this spec is written: 16.10 carries the epics' first three criteria (the list with each server's Running state, Start and Stop updating the row in place, the Activity log in the shared log viewer), and a new Story 16.25, "The external language server editor", carries the fourth (create, edit and delete confirming by name) and DW-253. The alternatives are (B), delete stays in 16.10 as a row action, or (C), keep one oversized story using the editor facts in Design Notes. The lead also writes three spine changes at the gate, none of which blocks: AD-8 (a further own-pair case), AD-36 (`ACTIVITY` as a detail type and as a list over one member) and AD-15/AD-53 (the fifth unaudited write, Stop).
+Status: done
+Blocking condition: none
 
-**This pass.** Planned from `0a3f28dd`; nothing implemented. The vendor facts were measured on `ocupilot-ci`: its eight vendor servers and their running state were verified identical before and after, and every probe server, principal, activity row, log file and virtual environment was removed. Checks: `check-prose` and `markdownlint` report 0 problems.
+**Change.** External language servers is OS management's ninth entry: the vendor's `LanguageServer` LIST with a per-row `ACTIVITY` detail call (`maxRows` 1) for Running, Start and Stop as action-style row actions and agent tools (Stop warns first; the wrong verb is refused with its published sentence; a refused start answers 500 `LANGUAGESERVER.START`), and each server's Activity log as a parent-scoped `log-viewer` reading `ACTIVITY` over `Activity` through a new `read` source in the shared viewer. The plan's Q1 halt closed at the spec gate (Spec Change Log).
+
+**Files.**
+
+- Server: `Port/AdminPort.cls` (`ACTIVITY`, bodyless `START`/`STOP`, `TYPEFAULTS`), `Api/Error.cls` (code and sentence), `Screen/Read.cls` and `Screen/Registry.cls` (`ACTIVITY` detail and rows rule), two descriptors, two tools, `EntityType`, `Prohibited`, `Baseline`.
+- Client: `log-viewer.store.ts`/`.page.ts` (`read` source, published rows, route switch), `log-line.ts` (`record`), `screen-actions.ts`, `screen-action-handler.ts` (registration, Stop warning, published state refusals), `strings.ts`, regenerated `screens.generated.ts`, `screen-mirror.mjs`; EXPERIENCE.md in place (993 lines).
+- Tests: new `Test/LanguageServer.cls`, `Test/LanguageServerWire.cls` (armed by `OCUPILOT_ALLOW_PRINCIPALS`; `ci-throwaway.sh` roster comment), `language-servers.browser-spec.mjs`; roster bumps for this story's additions only.
+- Outside the Code Map: `Test/LanguageServerEndpoint.cls` (fixture), `ui/src/app/areas/logs/log-line.ts`, `ui/tools/screen-mirror.test.mjs`.
+
+**Review.** 26 findings (medium 4, low 17, false 5): 13 patched, all test-side (Explain row, route switch, `%` name decode, vendor text to log, two corpus rows, AC7 tool-versus-screen comparison, strict `Running()`, no silent skips, an instance-dependent assertion removed, AC4/AC6/AC7 mutation lines); 13 rejected with reasons in the Review Triage Log; one item deferred (the server-fault banner beside a refused start). Follow-up review: `false` -- four mediums were patched, all test-only and each demonstrated red by mutation, so no unverified risk can be named.
+
+**Verification.** On `ocupilot-ci`: targeted classes green (WireSecurityRead's known task-history residue aside); every AC's mutation demonstrated red and reverted (Verification). `npm test` green (tools 1,707, components 1,839); build 2.18 MB; `check-objectscript`, `lint-docs` 0 problems. Browser: this story's eleven spec files 70/72, the two failures in `alerts-log.browser-spec.mjs`, whose seed-once entries have left the 202 KB tail of the 9-day-old throwaway's alerts.log. Full sweep: 365 classes, 2,988 tests, 7 failed, all residue: `PathPortInstance` 1, `Retention` 1, `TaskHistory` 3, `WireSecurityRead` 1, and `ProposalPrivilege.TestAMintRecordsItsArgumentPairs`, whose `%SYS` delete mint meets 1,085 application errors, more than one delete lists (150 to 231 a day since 09-24, so not this story's). The list read takes about 20 ms (NFR-1).
+
+**Residual risks.** The tools' fresh `ACTIVITY` read sends no `maxRows`, so a mint or confirm reads up to the vendor's default of a server's activity rows; a start blocks up to the server's `InitializationTimeout` (Named limits); the full browser suite is CI's.

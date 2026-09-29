@@ -4202,6 +4202,34 @@ Parameter TASKBACKGROUNDSTATE = "TASK.BACKGROUND.STATE";
 
 Parameter REASONTASKBACKGROUNDSTATE = "This background task's current state does not allow that.";
 
+/// <p>Machine code (AD-12, AD-39, Story 16.4): a task export whose relative name names a directory
+/// that does not exist under its allowed directory, answered 400 with one violation on
+/// <code>path</code> by <class>OcuPilot.Port.TaskTransferPort</class> before any vendor call.</p>
+Parameter TASKEXPORTDIRECTORY = "TASK.EXPORT.DIRECTORY";
+
+Parameter REASONTASKEXPORTDIRECTORY = "There is no such directory under that allowed directory.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): a file an import names that is not a task export --
+/// unreadable XML, another root element, or no task -- answered 422 by
+/// <class>OcuPilot.Port.TaskTransferPort</class> before any vendor call.</p>
+Parameter TASKIMPORTFILE = "TASK.IMPORT.FILE";
+
+Parameter REASONTASKIMPORTFILE = "This file is not a task export, or it holds no task.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): an import whose every task is already on this
+/// instance, by the vendor's own task GUID, answered 409 by
+/// <class>OcuPilot.Port.TaskTransferPort</class> with nothing imported.</p>
+Parameter TASKIMPORTPRESENT = "TASK.IMPORT.PRESENT";
+
+Parameter REASONTASKIMPORTPRESENT = "Every task in this file is already on this instance.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): an agent's import whose file no longer yields the
+/// tasks its proposal reviewed, answered 409 by <class>OcuPilot.Port.TaskTransferPort</class> with
+/// nothing imported.</p>
+Parameter TASKIMPORTCHANGED = "TASK.IMPORT.CHANGED";
+
+Parameter REASONTASKIMPORTCHANGED = "The file's tasks changed after the import was proposed.";
+
 /// <p>Machine code (AD-12, AD-39, Story 16.6): a broadcast whose set names a process that has ended
 /// or cannot receive one, so nothing was sent to any of them. Answered on the
 /// <parameter>CONFLICT</parameter> slug with 409 by <class>OcuPilot.Port.ProcessPort</class>, for
@@ -4209,5 +4237,13 @@ Parameter REASONTASKBACKGROUNDSTATE = "This background task's current state does
 Parameter PROCESSBROADCASTRECIPIENT = "PROCESS.BROADCAST.RECIPIENT";
 
 Parameter REASONPROCESSBROADCASTRECIPIENT = "At least one of these processes has ended or is not a terminal session, so nothing was sent.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.10): an external language server's start the instance
+/// refused, answered on the <parameter>SERVERERROR</parameter> slug with 500 by
+/// <class>OcuPilot.Port.AdminPort</class> (<code>TYPEFAULTS</code>) for both callers. The vendor's
+/// text goes to the log alone; the server's activity log records why.</p>
+Parameter LANGUAGESERVERSTART = "LANGUAGESERVER.START";
+
+Parameter REASONLANGUAGESERVERSTART = "The server did not start. Its activity log records why.";
 
 }

@@ -40,6 +40,7 @@ const {
   CONSEQUENCE_PRIVILEGED,
   CONSEQUENCE_PURGEMARKERS,
   CONSEQUENCE_COPYMAPPINGS,
+  CONSEQUENCE_TASKEXPORTREPLACES,
   CONSEQUENCE_SYSTEMGLOBAL,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
@@ -236,6 +237,15 @@ test("the system-global mapping's and the mapping copy's consequence codes resol
   assert.equal(CONSEQUENCE_COPYMAPPINGS, 'NAMESPACE.COPYMAPPINGS');
   assert.equal(consequenceSentence(CONSEQUENCE_SYSTEMGLOBAL), STRINGS.mappingSystemGlobalConsequence);
   assert.equal(consequenceSentence(CONSEQUENCE_COPYMAPPINGS), STRINGS.namespaceCopyMappingsConsequence);
+});
+
+// Story 16.4: a task export replaces a file already at its name, and its card says so in the export
+// dialog's own replace line.
+//
+// Mutation (Rule 19): drop the TASK.EXPORT.REPLACES branch from `consequenceSentence` -> this goes red.
+test("the task export's consequence code resolves to the export dialog's replace line", () => {
+  assert.equal(CONSEQUENCE_TASKEXPORTREPLACES, 'TASK.EXPORT.REPLACES');
+  assert.equal(consequenceSentence(CONSEQUENCE_TASKEXPORTREPLACES), STRINGS.taskExportReplaces);
 });
 
 // Story 9.7, AD-10: a task create that runs as another account is permitted, minted destructive

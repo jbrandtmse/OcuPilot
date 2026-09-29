@@ -4150,6 +4150,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on throwaway ocupilot-b-ci 2026-09-18: kill ^IRIS.Temp.SAM in %SYS, confirm undefined after a 5s control with no call, then one MonitorPort.Invoke -- the node comes back defined, carrying alerts.log's newest line. Repeated with an empty tag, a bogus tag and a tag the vendor matched (97 of 98 rows returned): all three advance it to the newest entry. It only looked byte-identical on slot B because that cursor already named the newest line, which is what the spec's own probe measured. The spine's AD-7 says the read-triggered-vendor-write exception covers exactly two shapes and extends to nothing else; another SAM scraper polling /api/monitor/alerts without a tag shares that cursor and loses the alerts OcuPilot's read moved it past.
 - 2026-09-18T11:19:09Z status=decision-pending owner=burndown by=cr note=HIGH, paused for the lead (Rule 6 + Rule 20: the spine is the lead's to write). Options: amend AD-7 with a third named shape and its observable cost, as the two existing ones are named, and amend the Always block and AC2 to match; or drop the monitoring half; or save and restore the cursor around the call, which makes OcuPilot itself the writer. The port doc comment and Test/MonitorPort.cls now state the measured behaviour and name this entry.
 - 2026-09-18T11:25:34Z status=routed owner=16-7-license-usage-and-the-full-dashboard by=adjudication note=orchestrator decided option b at the 6.13 spec gate: alerts.log is read through LogSourcePort alone, the monitoring half is not shipped, and the MonitorPort implementation is recoverable at worktree sha 33361dc on OCU-1-epic6; FR-76 re-takes it where a consumer exists
+- 2026-09-29T11:52:09Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=adjudication note=9300a952: AD-7 third shape; no Alerts() call; DashboardLive.TestTheAlertCursorIsUnchanged... pins LastAlertSent (AC4)
 
 ### DW-1117: EXPERIENCE.md:368 still authorizes alertLogRecentUnavailable, a string no shipped component renders now that the monitoring half is not shipped
 - source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -4991,6 +4992,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T15:29:55Z occurrence=18-2-namespaces-and-their-mappings note=CI run 36440901497 shard 1/3 on merge head 1afd8045: AC2 timed out at :140 (30 s); passed locally on the merged tree in 8 s
 - 2026-09-29T05:35:50Z occurrence=16-6-broadcast-a-message-to-processes note=CI run 36523565927 shard 1/3 on e235b1fc: AC2 30 s wait; failed jobs re-run
 - 2026-09-29T06:00:34Z status=routed owner=16-7-license-usage-and-the-full-dashboard by=merge_gate note=orchestrator: fix now as a test-only commit (6bcc6d3b, requireFreeSlot before the tag)
+- 2026-09-29T06:52:01Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=adjudication note=6bcc6d3b: requireFreeSlot before the tag; CI 36528845707 and merge CI 36531012604 green
 
 ### DW-1315: The IsEnabled-before-HoldsAdminResource ordering in OnPreDispatch is unexercised
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -7863,6 +7865,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T06:34:37Z status=decision-pending owner=range-end-cleanup by=merge_gate note=owner decision after the voting week: keep AD-8's area set, or Option B (AD-8 any-screen rail: rail/Home tile/side bar open when any listed screen is allowed)
 - 2026-09-28T11:20:47Z occurrence=16-3-effective-privileges-and-the-permission-check-tool
 - 2026-09-28T18:07:16Z occurrence=16-2-web-sessions-listed-and-ended
+- 2026-09-29T21:50:33Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner 2026-09-29: yes to option B - a rail item, Home tile and side bar open when ANY of the area's screens is allowed; each screen keeps its own gate (no read widens); amend AD-8's area rule at origin; Epic 16 after DW-1838/1836/1837, before 16.25, aiming at 1.0.4
 
 ### DW-1769: Copy as curl's note and AD-57 (5) promise every secret value is left out, but only names the credential pattern matches are masked
 - source: spec-16-24-a-try-it-request-copied-as-curl.md | severity: med | fix-risk: low | footprint: in-story
@@ -8047,6 +8050,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: data-table.ts puts the reason only in aria-description on a tabindex=-1 checkbox; the grid keeps DOM focus with aria-activedescendant on the row or cell, so it is never read there; onCheckClick and the Space branch return silently on an ineligible row; EXPERIENCE.md:646 forbids a title and a tooltip on an uncut cell
 - 2026-09-29T04:47:44Z status=decision-pending owner=burndown by=cr note=recommend: table tooltip on hover of an ineligible box or an ineligible active row, announced on Space; amends EXPERIENCE:646
 - 2026-09-29T06:26:25Z status=routed owner=16-7-license-usage-and-the-full-dashboard by=merge_gate note=decided as recommended: the table's tooltip on hover of an ineligible box, announced on Space; fixed ahead in f9c77be2
+- 2026-09-29T06:52:01Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=adjudication note=f9c77be2: tooltip on hover of an ineligible checkbox, announced on Space or a click; merge CI 36531012604 green
 
 ### DW-1816: Check all on a multi-select list has no keyboard path: its header checkbox is out of the Tab order and the grid's keys never reach the header
 - source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: med | footprint: in-story
@@ -8148,10 +8152,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T05:18:37Z status=routed owner=burndown by=lead note=Story 16.5's seed; a timing race (inference); the failed job is re-run
 - 2026-09-29T06:52:04Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=merge_gate note=6bcc6d3b (Epic 16): BackgroundSeed waits through Settled, bounded at 30 s; the fix reaches feature in this merge
 
+### DW-1827: Task import reviews task names only: a task running as another account is minted non-destructive with no consequence, a same-named rewrite passes TASK.IMPORT.CHANGED, and the create's own rules are skipped
+- source: spec-16-4-task-export-and-import.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Mint.cls:317 classifies RunAs-other from payload RunAsUser, absent from the import's {root,path,tasks}; TaskTransferPort.cls:381/312 summarize and compare Name (NAMESPACE) only; a digit-first name imported whole on ocupilot-ci 2026-09-29, which TaskCreate refuses TASK.NAME.SHAPE
+- 2026-09-29T15:14:07Z status=escalated owner=burndown by=cr note=decision sheet: review TaskClass+RunAsUser, classify RunAs-other, preview on screen (spec amendment), or accept vendor parity
+- 2026-09-29T15:14:30Z status=escalated owner=burndown by=cr note=port lines cited are 8bc275b5's; after this review's doc edit they read TaskTransferPort.cls:382/313
+- 2026-09-29T17:56:22Z status=routed owner=range-end-cleanup by=merge_gate note=agent import key tasks.schedule.import disabled by default in 1.0.3 (staging); follow-up: review TaskClass and RunAsUser on an import proposal, classify run-as-other at the strongest confirmation, apply the create rules, then re-enable
+
+### DW-1828: A vendor ImportTasks failure after Examine passes answers 500 with the tasks before it kept and no change event (unverified)
+- source: spec-16-4-task-export-and-import.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: TaskTransferPort.cls:322 answers Fail 500 on a vendor error; the vendor keeps earlier tasks (measured); Examine refused every failing shape tried on ocupilot-ci 2026-09-29 (TimePeriod 9, a 60-char JobGUID) before the call
+- 2026-09-29T15:14:10Z status=wontfix-theoretical owner=16-4-task-export-and-import by=cr note=real when a file Examine accepts makes ImportTasks fail; none found (a digit-first name imports whole)
+- 2026-09-29T15:14:30Z status=wontfix-theoretical owner=16-4-task-export-and-import by=cr note=port line cited is 8bc275b5's; after this review's doc edit it reads TaskTransferPort.cls:323
+### DW-1822: a11y-structural-invariants.browser-spec.mjs failed whole (8 tests) on a Chrome protocol timeout: Runtime.callFunctionOn timed out during the structural walk
+- source: staging-16-7 run 36569407842 attempt 1 on ff53360c (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/a11y-structural-invariants.browser-spec.mjs, ui/browser/structural-walk.mjs
+- evidence: attempt 2 green on the same head; the same spec passed on 01e36ec7 (run 36564571344); the walk evaluates one long function per screen (inference: a slow runner exceeds puppeteer's default protocolTimeout)
+- 2026-09-29T13:27:46Z status=routed owner=range-end-cleanup by=orchestrator note=raise protocolTimeout for the walk's browser or split the per-screen evaluation
+
+### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
+- source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
+- evidence: browser shard 1/3, 3 passed 1 failed; the same code passed on staging ff53360c attempt 2 and on 16.3's own runs; shard 1 duration unchanged (21 min vs 18-23); intermittent (inference: the side bar renders after a privilege read the spec does not wait for)
+- 2026-09-29T13:58:49Z status=routed owner=16-4-task-export-and-import by=orchestrator note=Epic 16 owns the spec (16.3): wait for the rail item's side bar to finish its privilege read before querying items; pin with repeated runs
+- 2026-09-29T17:56:44Z status=resolved-by:16-4-task-export-and-import by=merge_gate note=restores the 15:25:45Z adjudication trailer (6b3fe9c7: security AC5 opens the side bar through the toggle-aware openSideBar), which the 1.0.3 staging union merge left under DW-1831
 ### DW-1820: Three candidate admin API defects observed probing databases on 2026.2: DELETE /database-dir deletes a mounted file other names and namespaces still use, for a principal holding only %Admin_Manage:USE and %DB_IRISSYS:READ; PUT /database for a new name without Directory points it at the manager directory (IRISSYS's own file); a POST /database-dir refused for privilege leaves a directory and an unregistered IRIS.DAT the API can neither delete (#57) nor create over
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Measured on ocupilot-b-ci 2026-09-28 by Story 18.3's plan probe (Steps 5, 6, 9); OcuPilot guards each on its own side: the file delete only after the configuration delete and no sharing name, the create always sends the resolved Directory, pairs refused before any port call
 - 2026-09-29T13:12:13Z status=decision-pending owner=burndown by=harvest note=human=report the three to intersystems-community/sysadmin-api-specification as candidate defects, as DW-1527 was
+- 2026-09-29T18:58:55Z status=wontfix-accepted by=owner note=well-known vendor behaviour; no upstream report (owner 2026-09-29, relayed by the Planner); standing rule: creating or moving a database always requires a directory and never writes into IRISSYS
 
 ### DW-1821: Database details lists only background tasks the classic Background tasks page holds: a compact or defragment started through the admin API (18.4 Database.Actions), ^DATABASE or %SYS.BackgroundTask.Start() has no portal row, carries no Database and is not listed
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: med | fix-risk: low | footprint: in-epic
@@ -8215,3 +8242,71 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (DW-1847 decision) | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Orchestrator decision 2026-09-29 on DW-1847: 18.4 ships dismount with %Admin_Manage:USE; the classic page lets an %Admin_Operate holder dismount
 - 2026-09-29T22:56:51Z status=routed owner=range-end-cleanup by=merge_gate note=e.g. the protected directories recorded at install into OcuPilot's protected state, or read through the port's own privileged path
+- 2026-09-29T15:25:45Z status=resolved-by:16-4-task-export-and-import by=adjudication note=security AC5 opens the side bar through the gate spec's toggle-aware openSideBar; old code failed 1/3 locally with the same timeout, fixed 5/5
+- 2026-09-29T17:56:44Z status=routed owner=burndown by=merge_gate note=restores the 17:09:15Z routing; the 15:25:45Z resolved-by:16-4 trailer above is DW-1823's, misplaced by the 1.0.3 staging union merge
+
+### DW-1836: The try-it console shows a bare "0" in its Response block when a request never reaches the server (status 0: an opaque redirect or a network failure), e.g. on demo.ocupilot.org where the proxy passes only /api/ocupilot
+- source: owner, 2026-09-29 ~12:30 PDT, relayed by the Planner (demo RC) | severity: medium | fix-risk: low | footprint: ui/src/app/areas/web-applications/try-it.ts, its strings and browser spec
+- evidence: demo: REST API explorer > /api/mgmnt OpenAPI > GET /v2/ > Try it > Send answered 0; the demo Caddy redirects every path but /api/ocupilot (by design)
+- 2026-09-29T19:31:06Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner: fail gracefully; a status-0, network or redirect outcome gets a plain sentence that the request did not reach the application because something between the browser and the instance stopped it, and says nothing was sent to the instance where true; refusal rules unchanged; do not open other APIs on the demo or touch the droplet; browser spec by intercepting and failing the request; first after the 1.0.3 cut, in the next release
+
+### DW-1837: On the user editor's Effective privileges tab, a role name under Roles (e.g. OcuPilotDemoOperator for user operator) renders in a serif browser-default font instead of the app's type
+- source: owner, 2026-09-29 ~12:30 PDT, relayed by the Planner (demo RC) | severity: low | fix-risk: low | footprint: the Effective privileges tab component and its styles (Story 16.3)
+- evidence: demo RC /ocupilot/permissions/users/edit/operator, Effective privileges tab; screenshot scratchpad 24e5d414.../readme-images/14-effective-privileges.png; the rest of the tab uses the app type
+- 2026-09-29T19:31:06Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner: fix for the next release; a browser check that the role name computes the app font family; the Planner retakes the README image after it ships
+
+### DW-1838: Explain this entry sends the agent only the chosen row as the whole screen (view rows=[that row], rowsAvailable 1, no selection marker), so the agent reports it as the only row on the screen
+- source: owner, 2026-09-29 ~12:45 PDT, relayed by the Planner (demo RC, messages.log) | severity: medium | fix-risk: medium | footprint: ui/src/app/core/screen-context.ts (assembleEntryContext, ScreenContextView), ui/src/app/shell/panel.ts onExplainEntry, the server framing of screen_context, the log viewers, log hub, audit and error-log pages
+- evidence: demo: messages.log > Explain this entry answered 'This is the only row on the Messages log screen'; assembleEntryContext returns rows [the narrowed row], rowsAvailable 1, sort/direction/filter empty; ScreenContextView has no selection field; Fix it (16.21) uses another path
+- 2026-09-29T19:40:50Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner design: send the page's normal context (same rows, cap, filter, sort as assembleScreenContext) plus an explicit marker for the chosen entry (a selected index into rows, or a separate focus row when outside the cap); the server framing says what the marker means; the sent sentence references the selection; amend AD-11/AD-24 at origin; tests pin the entry identified and the other rows present; next release
+
+### DW-1839: A stored governance policy override makes 5 ObjectScript test classes fail (DeviceDelete, DeviceWire, DeviceWriteGate, Prohibited, ToolDispatch) on any instance that holds one, as DW-1759's agent definitions do
+- source: 1.0.3 upgrade check (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: src/OcuPilot/Test/**
+- evidence: upgrade check on ocupilot-c-ci: a seeded osmgmt.devices.delete disabled override gave 7 failures (GOVERNANCE.DISABLED, 'leaves every key to the baseline'); all 3,031 passed after resetting it to inherit; fresh installs hold no override
+- 2026-09-29T19:58:42Z status=routed owner=range-end-cleanup by=orchestrator note=test isolation: each test sets and restores the governance state it relies on, or tolerates overrides
+### DW-1832: Story 16.10's Start and Stop tools declare no CLASSICPAGES for the classic ExternalLanguageServerStart/Stop pages (and the Stop dialog), so a custom resource on those pages is not honored (AD-44)
+- source: spec-16-10-external-language-servers.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: the implement stage deferred it believing CLASSICPAGES absent on this branch; git grep finds Parameter CLASSICPAGES on Namespace*, *Mapping* and Gate.cls (lead, 2026-09-29)
+- 2026-09-29T18:06:08Z status=open owner=16-10-external-language-servers by=harvest note=in-story AD-44 gap; for the code review to patch
+- 2026-09-29T18:41:23Z status=resolved-by:16-10-external-language-servers owner=16-10-external-language-servers by=cr note=Start/Stop declare CLASSICPAGES via Gate.WithClassicPages; ClassicPageGate run 20828 green, mutation run 20829 red
+
+### DW-1833: A start the instance refuses (500 LANGUAGESERVER.START) also raises the shell's generic server-fault banner beside the list's own sentence
+- source: spec-16-10-external-language-servers.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: fault.ts classifyFault reads every 5xx other than INSTALL.* as server-fault (inference, not observed in a browser)
+- 2026-09-29T18:06:09Z status=open owner=16-10-external-language-servers by=harvest note=for the code review: fix as a two-way door or close wontfix-accepted with a probe
+- 2026-09-29T18:41:23Z status=wontfix-accepted owner=16-10-external-language-servers by=cr note=seen on ocupilot-ci: the 500 raises the banner beside the sentence; fix is shell-wide; reopen_if=a 2nd action's 5xx does too
+
+### DW-1834: An agent proposal to stop an external language server carries no consequence line, while the screen's Stop warns that every connection ends at once
+- source: spec-16-10-external-language-servers.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: LanguageServerStop declares no Consequence, so Mint.ConsequenceOf answers none; WARNING_CONSEQUENCES in screen-action-handler.ts warns on the screen only (16.5's cancel is alike)
+- 2026-09-29T18:41:32Z status=wontfix-accepted owner=16-10-external-language-servers by=cr note=the tool description states it to the model; reopen_if=a warning-dialog action (16.11's Suspend) gets a card consequence
+
+### DW-1835: External language servers' list read waits up to 10 s per Remote-type server whose address does not answer, because the vendor pings every non-local server for CurrentlyRunning
+- source: spec-16-10-external-language-servers.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: %Net.Remote.Service.IsGatewayRunning pings with a 10 s timeout unless the host is local and its port free; a Remote server's host is its Address (vendor source, read at review)
+- 2026-09-29T18:41:32Z status=by-design owner=16-10-external-language-servers by=cr note=AC1 reads the vendor's own CurrentlyRunning per row (AD-36 as amended); the spec's Named limits name the 10 s ping
+
+### DW-1840: Explain this entry: a focus row that fits alone but not beside the rest of the payload drops the whole screen_context (BoundFocus measures focus on its own)
+- source: DW-1838 review | severity: low | fix-risk: med | footprint: in-epic
+- evidence: needs about 60K of escaped control characters in a crafted request; fails closed (review, 2026-09-29)
+- 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=a screen_context is dropped while view.focus is present
+
+### DW-1841: Log hub: a Sources last entry longer than 1,000 characters that is also in the timeline is sent as focus beside its own unmarked row
+- source: DW-1838 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the Sources entry text is cut at 1,000 characters, so the equality match misses its timeline row (review, 2026-09-29)
+- 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=a reply treats that focus and row as two entries
+
+### DW-1842: Log viewer screen context ignores the active severity chip, so Explain and ordinary turns carry lines the chip hides
+- source: DW-1838 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: pre-existing; severity chips do not narrow the context rows (review, 2026-09-29)
+- 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=an explain with a chip active is answered as if the hidden lines were on screen
+
+### DW-1843: Error log keeps the first error's id in the route after Back, so a turn's entity can name another error than the one shown or marked
+- source: DW-1838 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: pre-existing; the prompt now says the marker, not entity, names the entry (review, 2026-09-29)
+- 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=an ordinary turn after Back answers about the error the URL names
+
+### DW-1844: A non-finite number (1e400) inside screen_context rows or rowsAvailable answers 500 instead of being dropped
+- source: DW-1838 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: pre-existing; only a crafted client sends it; the marker path now drops it (review, 2026-09-29)
+- 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=any client sends a non-finite number in screen_context

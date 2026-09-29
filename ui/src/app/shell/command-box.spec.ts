@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PERMISSION_CHECK_ACTION_ID, ScreenActions } from '../core/screen-actions';
+import { PERMISSION_CHECK_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -604,6 +604,25 @@ describe('the command box', () => {
     const stop = actions.register(USERS.descriptor, PERMISSION_CHECK_ACTION_ID, () => (ran += 1));
     fixture.detectChanges();
     expect(option()?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.permissionCheckAction);
+    expect(option()?.getAttribute('aria-disabled')).toBeNull();
+    expect(option()?.textContent).not.toContain(STRINGS.privilegeSelectRowFirst);
+    option()?.click();
+    fixture.detectChanges();
+    expect(ran).toBe(1);
+    stop();
+    chord();
+    expect(option()).toBeNull();
+  });
+
+  it('Story 16.4: Import is listed only where registered, never held back for want of a selection, and runs once', () => {
+    // Mutation (Rule 19): drop the Import branch from `actionCandidates` -> the listed assertion goes red.
+    const option = (): HTMLElement | null => fixture.nativeElement.querySelector(`#ocu-command-box-action-${TASK_IMPORT_ACTION_ID}`);
+    chord();
+    expect(option()).toBeNull();
+    let ran = 0;
+    const stop = actions.register(USERS.descriptor, TASK_IMPORT_ACTION_ID, () => (ran += 1));
+    fixture.detectChanges();
+    expect(option()?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.actionImport);
     expect(option()?.getAttribute('aria-disabled')).toBeNull();
     expect(option()?.textContent).not.toContain(STRINGS.privilegeSelectRowFirst);
     option()?.click();

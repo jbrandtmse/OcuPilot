@@ -174,7 +174,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 
 #### PRD 5.12 - Polish-week capabilities (P1, 2026-09-28 to 2026-10-04)
 
-- FR-70: Screen-aware help from the agent - "Explain this screen" as one click on every screen citing the read tool it used; an explain entry point on every log and audit entry sending that entry alone; at least three suggested prompts per screen grouped by task. Catalog: CP-23, CP-24, CP-25.
+- FR-70: Screen-aware help from the agent - "Explain this screen" as one click on every screen citing the read tool it used; an explain entry point on every log and audit entry sending the screen's context with that entry marked [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry alone"]; at least three suggested prompts per screen grouped by task. Catalog: CP-23, CP-24, CP-25.
 - FR-71: Agent transparency - click-through citation chips on every reply that used a read tool; a data-egress line on every turn with context sharing on; an agent audit viewer over the ledger with filters by user, screen and date, where administrators see all users' rows and others their own. Catalog: CP-26, CP-27, CP-31.
 - FR-72: Agent restraint and governance - a copy-out ObjectScript, CLI or REST draft instead of an execution on any proposal; a per-tool-and-action governance policy with read-only and full presets over a baseline that keeps every Release 1 write key enabled and, through 2026-10-04, gains each new write key in the story that ships it [AMENDED 2026-09-26, owner: new write keys join the baseline through the voting week; was "a frozen baseline"]; truncation, control-stripping, delimiter-wrapping and secret redaction of tool and log content before it reaches the model with a seeded-injection test; transcripts persisted per user with a retention purge, an administrator's view of another user's transcript ledgered and gated by the resources those calls required. Catalog: CP-29, CP-30, CP-32, CP-33.
 - FR-73: Shell conveniences - change own password, favorites, recent items, menu search, About, per-screen Help, the fixed shortcuts menu, the links panel, the Home system information panel, UI state across sessions and a light or dark theme, each reachable from the header or Home with per-user state surviving a sign-out. Catalog: SH-12 to SH-22.
@@ -938,7 +938,7 @@ A developer gets classes and routines with source view, compile, delete, export,
 
 **FRs covered:** FR-80, covering 36 post-Release-1 catalog rows (S 17 / M 15 / L 4, 0 new REST endpoints)
 
-**Implementation notes:** Row groups: CP-36; OS-23; EX-02 to EX-34; DT-01. **EX-15 must ship with EX-14** - `action/query` executes any statement type unguarded, and the same guard protects the agent's free-form SQL tool, which Release 1 deliberately withheld. The Atelier port's authentication is decided as a choice between an explicit Basic header and a pass-through on the OcuPilot API: the JWT route is **closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The iris-table-editor harvest lifts cleanly for the builders and formatters but needs three algorithms ported out of a 6,023-line vanilla-DOM grid, and its plaintext-password-in-server-memory session pattern is explicitly not carried.
+**Implementation notes:** Row groups: CP-36; OS-23; EX-02 to EX-34; DT-01. **EX-15 must ship with EX-14** - `action/query` executes any statement type unguarded, and the same guard protects the agent's free-form SQL tool, which Release 1 deliberately withheld. The Atelier port's authentication is decided: through the OcuPilot API, in process as the signed-in user, never an explicit Basic header [AMENDED 2026-09-29, owner]. The JWT route is **closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The iris-table-editor harvest lifts cleanly for the builders and formatters but needs three algorithms ported out of a 6,023-line vanilla-DOM grid, and its plaintext-password-in-server-memory session pattern is explicitly not carried.
 
 ### Epic 20: Stage 4 - Interoperability, with the Analytics rider
 
@@ -5289,7 +5289,7 @@ So that a log line becomes an explanation in one gesture.
 
 - **Given** any row in a log viewer or the audit database viewer
 - **When** the user activates its explain entry point
-- **Then** a turn is sent carrying **that entry, and only that entry**, as context.
+- **Then** a turn is sent carrying the screen's own context with **that entry marked** as the one asked about [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry, and only that entry"].
 
 - **Given** an application error row
 - **When** its explain entry point is used
@@ -6351,7 +6351,7 @@ So that "all the logs" is literally true.
 
 - **Given** each viewer
 - **When** it renders a row
-- **Then** the row carries an explain entry point sending that entry alone.
+- **Then** the row carries an explain entry point sending that entry marked among the screen's rows [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry alone"].
 
 - DW-1102: the log viewer's next and previous match controls have no accessible name; approved copy is "Next match" and "Previous match" (ledger; routed by merge_gate 2026-09-18)
 - DW-1110: `LogViewerStore` is absent from sign-out teardown, so one principal's log lines survive a sign-out in the same tab (ledger; routed by merge_gate 2026-09-18)
@@ -6404,7 +6404,7 @@ time; the hub gains that timeline beside its list of sources.
 - **Given** an entry in the timeline
 - **When** it is chosen
 - **Then** its source opens at that entry, and the entry carries the same explain entry point as the source's own
-  viewer, sending that entry alone.
+  viewer, sending that entry marked among the timeline's rows [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry alone"].
 
 - **Given** the strings the timeline needs
 - **When** this story lands
@@ -7392,7 +7392,7 @@ So that database administration also covers the databases an ECP data server hol
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
 
-**Applies to every story in this epic.** **FR-80** governs these too; acceptance is that contract plus each row's backing route. This stage introduces a **new port** for the Atelier API, whose authentication is a choice between an explicit Basic header and a pass-through on the OcuPilot API - **the JWT route is closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The port carries its own resource gate like every other. Every write is a confirmed proposal; every new destructive key defaults to disabled.
+**Applies to every story in this epic.** **FR-80** governs these too; acceptance is that contract plus each row's backing route. This stage introduces a **new port** for the Atelier API. Its features go **through the OcuPilot API**, which calls the Atelier implementation in process as the signed-in user, the way the admin API is reached [AMENDED 2026-09-29, owner: the authentication decided; was a choice between an explicit Basic header and a pass-through on the OcuPilot API]. The explicit Basic header is not used, and **the JWT route is closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The port carries its own resource gate like every other. Every write is a confirmed proposal; every new destructive key defaults to disabled.
 
 **What gates the stage.** `action/query` executes **any** statement type unguarded, so the DML and DDL guard must ship **with** the query console rather than after it. XML export and load are Atelier v7 routes and carry a version gate. The ETag conflict path on document PUT must be observed rather than assumed. The iris-table-editor harvest lifts cleanly for its builders and formatters but needs three algorithms ported out of a 6,023-line vanilla-DOM grid, and its plaintext-password-in-server-memory session pattern is explicitly not carried. DocDB needs its service enabled.
 
