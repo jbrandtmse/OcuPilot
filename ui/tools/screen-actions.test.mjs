@@ -120,6 +120,10 @@ test("a screen's row action draws its own published words", () => {
   assert.equal(actionLabel(DEFINITIONS, 'cancel'), 'cancel');
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.BackgroundTaskList', 'pause'), STRINGS.actionPause);
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.BackgroundTaskList', 'resume'), STRINGS.actionResume);
+  // Story 16.6: Processes' Broadcast over its checked rows.
+  // Mutation (Rule 19): drop the ProcessList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.ProcessList', 'broadcast'), STRINGS.processBroadcastAction);
+  assert.equal(actionLabel(DEFINITIONS, 'broadcast'), 'broadcast');
 });
 
 test('an action that means the same thing everywhere falls back to the shared map', () => {

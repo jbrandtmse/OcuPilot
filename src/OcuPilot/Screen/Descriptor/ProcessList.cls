@@ -24,13 +24,19 @@
 /// sends it, and no surface draws it. None declares a self-protection rule, because the process
 /// refusals read <code>JobType</code>, turn jobs and the request's own job, which only the instance
 /// knows; the refusal is <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s, after the click.</p>
-/// <p><b>It declares none of the <code>CanBe*</code> fields.</b> The four booleans and
-/// <code>CanReceiveBroadcast</code> exist only to gate the vendor's own controls, so a read that
-/// carried them would ship the inputs to a decision nothing here makes -- and
-/// <code>CanBeSuspended</code> is not even the suspended-state discriminator, since its retrieval
-/// code ends <code>i State'["SUSP"</code>. Suspend and Resume read <code>State</code>, which this
-/// screen already declares; the two terminates also read <code>StartTimeUTC</code>, through their
-/// own <code>GET</code>.</p>
+/// <p><b>Its fifth, <code>broadcast</code>, is its one multi-select action</b> (Story 16.6, AD-5):
+/// <class>OcuPilot.Screen.Tool.ProcessBroadcast</class> sends a message to the rows checked in the
+/// table, at most <code>multiSelect.max</code> of them, from the command bar and the command box and
+/// never from the row menu. A row is checkable when the vendor's own <code>CanReceiveBroadcast</code>
+/// reads true -- a foreground terminal job -- so the read and the agent's context carry that one
+/// flag, and no column draws it. The same read's rows are what the port re-reads the recipients from
+/// at the write.</p>
+/// <p><b>It declares none of the <code>CanBe*</code> fields.</b> The four booleans exist only to gate
+/// the vendor's own controls, so a read that carried them would ship the inputs to a decision
+/// nothing here makes -- and <code>CanBeSuspended</code> is not even the suspended-state
+/// discriminator, since its retrieval code ends <code>i State'["SUSP"</code>. Suspend and Resume
+/// read <code>State</code>, which this screen already declares; the two terminates also read
+/// <code>StartTimeUTC</code>, through their own <code>GET</code>.</p>
 /// <p><b>The client and identity columns are absent too</b> -- <code>Device</code>,
 /// <code>ClientName</code>, <code>EXEname</code>, <code>IPAddress</code>, <code>OSUserName</code>,
 /// <code>ParentPid</code>, <code>Job</code>, <code>PrvGblBlkCnt</code>, <code>CPUTime</code> and
@@ -99,8 +105,8 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "suspend", "selfProtection": ""}, {"id": "resume", "selfProtection": ""}, {"id": "terminate", "selfProtection": ""}, {"id": "terminate-with-error", "selfProtection": ""}],
-  "context": {"fields": ["Pid", "Username", "Nspace", "Routine", "State", "Commands", "Globals"], "secretFields": []},
+  "rowActions": [{"id": "suspend", "selfProtection": ""}, {"id": "resume", "selfProtection": ""}, {"id": "terminate", "selfProtection": ""}, {"id": "terminate-with-error", "selfProtection": ""}, {"id": "broadcast", "selfProtection": ""}],
+  "context": {"fields": ["Pid", "Username", "Nspace", "Routine", "State", "Commands", "Globals", "CanReceiveBroadcast"], "secretFields": []},
   "emptyStateKey": "processListEmpty",
   "commandAliases": ["jobs"],
   "suggestedPrompts": [
@@ -112,7 +118,7 @@ XData Declaration
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "admin", "endpoint": "Process", "type": "LIST"},
-    "fields": ["Pid", "Username", "Nspace", "Routine", "State", "Commands", "Globals"],
+    "fields": ["Pid", "Username", "Nspace", "Routine", "State", "Commands", "Globals", "CanReceiveBroadcast"],
     "filter": ["Pid", "Username", "Nspace", "Routine", "State"],
     "sort": {"fields": ["Pid", "Username", "Nspace", "Routine", "State", "Commands", "Globals"], "default": "Pid", "direction": "asc"},
     "paging": "cap"
@@ -130,7 +136,8 @@ XData Declaration
     "emptyNextKey": "",
     "emptyAgentKey": "processListEmptyAgent"
   },
-  "toolIdentifier": "osmgmt.processes"
+  "toolIdentifier": "osmgmt.processes",
+  "multiSelect": {"action": "broadcast", "eligible": "CanReceiveBroadcast", "max": 20, "ineligibleKey": "processBroadcastIneligible"}
 }
 }
 

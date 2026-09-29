@@ -383,6 +383,8 @@ export interface ScreenDeclaration {
   readonly toolIdentifier: string;
   /** This list's one declared cross-screen row target, or `null` for a screen with none (AD-5, Story 6.10). */
   readonly rowTarget: ScreenRowTarget | null;
+  /** This list's one declared multi-select action, or `null` for a screen with none (AD-5, Story 16.6). */
+  readonly multiSelect: ScreenMultiSelect | null;
 }
 
 /** One suggested prompt: the string key of the task group it sits under, and of its own text. */
@@ -409,6 +411,18 @@ export interface TabDeclaration {
 export interface ScreenRowTarget {
   readonly route: string;
   readonly field: string;
+}
+
+/**
+ * A list's one multi-select action (AD-5, Story 16.6): the row action that acts on the checked rows,
+ * the read field that makes a row checkable, the most rows it takes, and the string key an
+ * ineligible row's checkbox reads.
+ */
+export interface ScreenMultiSelect {
+  readonly action: string;
+  readonly eligible: string;
+  readonly max: number;
+  readonly ineligibleKey: string;
 }
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */
@@ -473,7 +487,7 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "user": "foldcase",
   "auditing-configuration": "singleton",
   "task": "integer",
-  "process": "integer",
+  "process": "integerset",
   "application-error": "foldcase",
   "role": "foldcase",
   "resource": "foldcase",
@@ -692,6 +706,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -844,6 +859,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -914,6 +930,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -980,6 +997,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -1048,6 +1066,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -1124,6 +1143,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -1188,6 +1208,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -1324,6 +1345,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -1445,6 +1467,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -1729,6 +1752,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -1887,6 +1911,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
   },
@@ -2048,6 +2073,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
   },
@@ -2160,6 +2186,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
   },
@@ -2341,7 +2368,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
-    "rowTarget": null
+    "rowTarget": null,
+    "multiSelect": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseDetails",
@@ -2599,6 +2627,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -2760,6 +2789,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -2907,6 +2937,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -3065,6 +3096,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -3138,6 +3170,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -3287,6 +3320,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -3363,6 +3397,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -3512,6 +3547,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -3588,6 +3624,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -3661,6 +3698,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -3782,6 +3820,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -3950,6 +3989,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4069,6 +4109,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4194,6 +4235,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4285,6 +4327,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
   },
@@ -4409,6 +4452,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4548,6 +4592,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4667,6 +4712,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4786,6 +4832,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4905,6 +4952,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -5027,6 +5075,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -5147,6 +5196,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -5220,6 +5270,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -5360,6 +5411,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -5444,6 +5496,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -5619,6 +5672,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -5703,6 +5757,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -5837,6 +5892,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -5917,6 +5973,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -6080,6 +6137,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -6160,6 +6218,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -6306,6 +6365,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -6386,6 +6446,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -6563,6 +6624,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -6698,6 +6760,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -6774,6 +6837,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -6906,6 +6970,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -7286,6 +7351,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -7348,6 +7414,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "terminate-with-error",
         "selfProtection": ""
+      },
+      {
+        "id": "broadcast",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -7358,7 +7428,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Routine",
         "State",
         "Commands",
-        "Globals"
+        "Globals",
+        "CanReceiveBroadcast"
       ],
       "secretFields": []
     },
@@ -7400,7 +7471,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Routine",
         "State",
         "Commands",
-        "Globals"
+        "Globals",
+        "CanReceiveBroadcast"
       ],
       "filter": [
         "Pid",
@@ -7466,6 +7538,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "processListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.processes",
+    "multiSelect": {
+      "action": "broadcast",
+      "eligible": "CanReceiveBroadcast",
+      "max": 20,
+      "ineligibleKey": "processBroadcastIneligible"
+    },
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
@@ -7613,6 +7691,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -7751,6 +7830,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -7824,6 +7904,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -7973,6 +8054,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -8049,6 +8131,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -8190,6 +8273,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -8263,6 +8347,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -8405,6 +8490,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -8543,6 +8629,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -8617,6 +8704,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -8895,6 +8983,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -9173,6 +9262,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -9246,6 +9336,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -9448,6 +9539,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -9609,6 +9701,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
   },
@@ -9791,6 +9884,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -9996,6 +10090,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
   },
@@ -10154,6 +10249,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -10229,6 +10325,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -10426,6 +10523,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -10554,6 +10652,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -10635,6 +10734,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -10769,6 +10869,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -10841,6 +10942,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -11018,7 +11120,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
-    "rowTarget": null
+    "rowTarget": null,
+    "multiSelect": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.WebSessionList",
@@ -11176,7 +11279,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "webapp.sessions",
     "refreshDefault": 0,
     "banner": null,
-    "tab": null
+    "tab": null,
+    "multiSelect": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.X509CredentialList",
@@ -11340,6 +11444,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
@@ -11416,6 +11521,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   }
 ];

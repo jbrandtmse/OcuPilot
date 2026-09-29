@@ -270,6 +270,10 @@ Parameter TYPETASK = "task";
 
 Parameter TYPEPROCESS = "process";
 
+/// <p>The process write the process arm is not evaluated for: a broadcast (AD-10 as amended,
+/// Story 16.6), keyed on the tool's declared write type.</p>
+Parameter BROADCASTWRITETYPE = "BROADCAST";
+
 Parameter TYPEAPPLICATIONERROR = "application-error";
 
 Parameter TYPEOAUTHCLIENT = "oauth2-client-configuration";
@@ -929,6 +933,13 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..ServesOcuPilot(tId, .tServes)
             If $$$ISERR(tSC) Quit
         }
+
+        ; AD-10 as amended (Story 16.6): the process arm is not evaluated for a broadcast. No IRIS
+        ; system process and no process OcuPilot runs in can receive one (the vendor's
+        ; CanReceiveBroadcast reads 0 for each, measured), and the port refuses an ineligible
+        ; recipient for both callers. Asked before the target read: a broadcast's target is a pid
+        ; set, which the process predicates do not read.
+        If (tType = ..#TYPEPROCESS) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#BROADCASTWRITETYPE) Quit
 
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit
@@ -1605,6 +1616,20 @@ ClassMethod AddsPublicLetter(pPayload As %DynamicObject, pTarget As %DynamicObje
     Quit tAdds
 }
 
+/// <p>The class of the registered tool named <var>pToolName</var>, resolved as
+/// <method>Target</method> resolves it, or <code>""</code> when the registry names none.</p>
+ClassMethod ToolClassNamed(pToolName As %String) As %String [ Private ]
+{
+    Set tClass = ""
+    Try {
+        Set tSC = $ClassMethod(..RegistryClass(), "Resolve", pToolName, .tTool, 1)
+        If $$$ISOK(tSC) && $IsObject(tTool) Set tClass = tTool.%Get("class")
+    } Catch {
+        Set tClass = ""
+    }
+    Quit tClass
+}
+
 /// <p>The admin request type <var>pToolClass</var>'s write is issued with, or <code>""</code> for
 /// a class that names none or cannot be asked -- which no role predicate reads as a delete.</p>
 ClassMethod WriteTypeOf(pToolClass As %String) As %String [ Private ]
@@ -2244,7 +2269,9 @@ ClassMethod OAuthEntry(pType As %String, ByRef pChanged, Output pProhibits As %B
 }
 
 /// <p>The process predicates, in declared order, first hit wins: a process OcuPilot is itself
-/// running in, an IRIS system process, then the reviewed-few sweep over an empty permitted list.</p>
+/// running in, an IRIS system process, then the reviewed-few sweep over an empty permitted list. A
+/// broadcast never reaches them (<parameter>BROADCASTWRITETYPE</parameter>): neither kind of process
+/// can receive one, and the port refuses a recipient that cannot.</p>
 /// <p><var>pTarget</var> is the <b>fresh</b> read <method>Target</method> took inside the confirm
 /// transition, so both predicates read the instance rather than the stored payload -- a pid is
 /// reusable once its process has ended, and the fingerprint's declared subject does not cover

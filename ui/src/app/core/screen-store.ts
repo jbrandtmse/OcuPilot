@@ -11,7 +11,7 @@
  * and the others are two rows on the instance, keyed by this screen's route (Home's rate by
  * `HOME_REFRESH_NAME`), adopted on the
  * first answered read of `AccountPreferences`. `data`, `truncated`, `banner`, `lastUpdate`, `selection`, `active`,
- * `changed`, `refusal` and
+ * `changed`, `refusal`, `checked` and
  * `scroll` are what the instance last said and where the user last was, so they live for as long
  * as the tab holds the store and are never persisted -- a remembered scroll offset into rows that
  * have since changed is worse than none, and a remembered `lastUpdate` would claim a freshness the
@@ -123,6 +123,7 @@ export class ScreenStore {
   private refusalText = '';
   private lastUpdateAt: Date | null = null;
   private selected: readonly string[] = [];
+  private checkedKeys: ReadonlySet<string> = new Set();
   private activeKey = '';
   private changedKeys: ReadonlySet<string> = new Set();
   private changedActions: ReadonlyMap<string, string> = new Map();
@@ -306,6 +307,7 @@ export class ScreenStore {
     this.refusalText = '';
     this.lastUpdateAt = null;
     this.selected = [];
+    this.checkedKeys = new Set();
     this.activeKey = '';
     this.changedKeys = new Set();
     this.changedActions = new Map();
@@ -323,6 +325,36 @@ export class ScreenStore {
 
   setSelection(ids: readonly string[]): void {
     this.selected = ids;
+    this.notify();
+  }
+
+  /**
+   * The keys of the rows checked for the screen's one multi-select action (AD-5, AD-19), apart
+   * from the single selection, which checking never moves.
+   *
+   * Only a screen that declares `multiSelect` ever writes it. `applyTick` leaves it alone -- the
+   * table prunes a row that left the view or stopped being checkable -- and `clearAnswers` and a
+   * sign-out drop it; it is never remembered.
+   */
+  checked(): ReadonlySet<string> {
+    return this.checkedKeys;
+  }
+
+  /** Replace the checked set with `keys`. */
+  setChecked(keys: Iterable<string>): void {
+    const next = new Set([...keys].filter((key) => key !== ''));
+    if (next.size === this.checkedKeys.size && [...next].every((key) => this.checkedKeys.has(key))) return;
+    this.checkedKeys = next;
+    this.notify();
+  }
+
+  /** Check `key` when it is not checked, and uncheck it when it is. */
+  toggleChecked(key: string): void {
+    if (key === '') return;
+    const next = new Set(this.checkedKeys);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    this.checkedKeys = next;
     this.notify();
   }
 

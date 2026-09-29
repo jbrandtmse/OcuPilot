@@ -312,6 +312,12 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ tRowTargetProblem
                 Quit
             }
+            ; AD-5, Story 16.6: a list's one declared multi-select action.
+            Set tMultiSelectProblem = ..MultiSelectProblem(tObject)
+            If tMultiSelectProblem '= "" {
+                Set pProblem = tClass _ ": " _ tMultiSelectProblem
+                Quit
+            }
             ; AD-5, AD-53: a declared action's self-protection rule is drawn by the client from a
             ; closed vocabulary both sides read, so a rule neither understands is refused where it
             ; is declared rather than rendered as a word in a row menu.
@@ -385,15 +391,15 @@ ClassMethod EntityLabelProblem(pDeclaration As %DynamicObject) As %String
 
 /// <p>The keys a screen declaration may carry at its top level -- the whole vocabulary, in the
 /// order <class>OcuPilot.Screen.Descriptor.Base</class> reads them (AD-5).</p>
-/// <p>Eleven are optional and the rest are not, but this parameter says nothing about which:
+/// <p>Twelve are optional and the rest are not, but this parameter says nothing about which:
 /// <method>DeclarationProblem</method> is an <b>unknown-key</b> check, never a presence check. A
 /// declaration missing an optional key -- <code>refreshes</code>, <code>refreshRates</code>, <code>refreshDefault</code>,
 /// <code>read</code>, <code>table</code>, <code>banner</code>, <code>tab</code>,
-/// <code>rowTarget</code>, <code>secretArguments</code>, <code>fingerprintExcludes</code>,
+/// <code>rowTarget</code>, <code>multiSelect</code>, <code>secretArguments</code>, <code>fingerprintExcludes</code>,
 /// <code>entityLabelKey</code> -- is sound, and a declaration missing a required one is already
 /// refused by the rule that reads it, with a sentence naming what it was for. <code>suggestedPrompts</code>
 /// is required on a built screen and optional on an unbuilt one (Story 11.3).</p>
-Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,refreshDefault,privileges,ownPrivileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
+Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,refreshDefault,privileges,ownPrivileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget,multiSelect";
 
 /// <p>What is wrong with <var>pDeclaration</var>'s own top-level keys, or <code>""</code> when
 /// nothing is (DW-271). Every key must be one of <parameter>DECLARATIONKEYS</parameter>.</p>
@@ -3457,6 +3463,97 @@ ClassMethod RowTargetProblem(pDeclaration As %DynamicObject) As %String
         }
     } Catch ex {
         Set tProblem = "rowTarget could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>The keys a declared <code>multiSelect</code> carries (AD-5, Story 16.6).</p>
+Parameter MULTISELECTKEYS = "action,eligible,max,ineligibleKey";
+
+/// <p>The most rows a <code>multiSelect</code> may let a person check.</p>
+Parameter MULTISELECTMAX = 1000;
+
+/// <p>What is wrong with <var>pDeclaration</var>'s declared <code>multiSelect</code>, or
+/// <code>""</code> when nothing is, including when none is declared (AD-5, Story 16.6). A
+/// multi-select is a list's one checked-set action: the table draws a checkbox on each row whose
+/// <code>eligible</code> read field is true, and the declared <code>action</code> acts on the
+/// checked rows from the command bar and the command box.</p>
+/// <p>Declarable only on a <code>list</code> archetype that declares a <code>read</code> and a
+/// <code>table</code>. Its <code>action</code> is one of the screen's <code>rowActions</code>, its
+/// <code>eligible</code> one of <code>read.fields</code>, its <code>max</code> a whole number from 1
+/// to <parameter>MULTISELECTMAX</parameter>, and its <code>ineligibleKey</code> a non-empty string
+/// key, the reason an ineligible row's checkbox carries.
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>multiSelectProblem</code> returns the same
+/// sentence for every case in <class>OcuPilot.Test.MultiSelectCorpus</class>, and its tests hold the
+/// key to the string source.</p>
+ClassMethod MultiSelectProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tType = pDeclaration.%GetTypeOf("multiSelect")
+        If (tType = "unassigned") || (tType = "null") Quit
+        If tType '= "object" {
+            Set tProblem = "multiSelect is not an object naming its action, eligible field, max and ineligibleKey (AD-5)"
+            Quit
+        }
+        Set tMulti = pDeclaration.%Get("multiSelect")
+        Set tProblem = ..UnknownKeyProblem(tMulti, "multiSelect", $ListFromString(..#MULTISELECTKEYS))
+        If tProblem '= "" Quit
+        If pDeclaration.%Get("archetype") '= "list" {
+            Set tProblem = "multiSelect is declared on a '" _ pDeclaration.%Get("archetype") _ "' archetype, and a multi-select is a list's own (AD-5)"
+            Quit
+        }
+        If pDeclaration.%GetTypeOf("read") '= "object" {
+            Set tProblem = "multiSelect is declared without a read, and its eligible field is one of read.fields (AD-5)"
+            Quit
+        }
+        If pDeclaration.%GetTypeOf("table") '= "object" {
+            Set tProblem = "multiSelect is declared without a table, and its checkboxes are drawn in the table (AD-5)"
+            Quit
+        }
+        If (tMulti.%GetTypeOf("action") '= "string") || (tMulti.%Get("action") = "") {
+            Set tProblem = "multiSelect.action is empty, and a multi-select names the row action it acts through"
+            Quit
+        }
+        Set tActions = ""
+        Set tActionsArray = pDeclaration.%Get("rowActions")
+        If $IsObject(tActionsArray) && tActionsArray.%IsA("%Library.DynamicArray") {
+            Set tActionIterator = tActionsArray.%GetIterator()
+            While tActionIterator.%GetNext(.tActionIndex, .tAction) {
+                If $IsObject(tAction) && tAction.%IsA("%Library.DynamicObject") && (tAction.%GetTypeOf("id") = "string") Set tActions = tActions _ $ListBuild(tAction.%Get("id"))
+            }
+        }
+        If '$ListFind(tActions, tMulti.%Get("action")) {
+            Set tProblem = "multiSelect.action '" _ tMulti.%Get("action") _ "' is not one of rowActions"
+            Quit
+        }
+        If (tMulti.%GetTypeOf("eligible") '= "string") || (tMulti.%Get("eligible") = "") {
+            Set tProblem = "multiSelect.eligible is empty, and a multi-select names the read field that makes a row checkable"
+            Quit
+        }
+        Set tFields = ""
+        Set tFieldsArray = pDeclaration.%Get("read").%Get("fields")
+        If $IsObject(tFieldsArray) && tFieldsArray.%IsA("%Library.DynamicArray") {
+            Set tFieldIterator = tFieldsArray.%GetIterator()
+            While tFieldIterator.%GetNext(.tFieldIndex, .tFieldValue) {
+                If '$IsObject(tFieldValue) Set tFields = tFields _ $ListBuild(tFieldValue)
+            }
+        }
+        If '$ListFind(tFields, tMulti.%Get("eligible")) {
+            Set tProblem = "multiSelect.eligible '" _ tMulti.%Get("eligible") _ "' is not one of read.fields"
+            Quit
+        }
+        Set tMax = tMulti.%Get("max")
+        If (tMulti.%GetTypeOf("max") '= "number") || (tMax '= (tMax \ 1)) || (tMax < 1) || (tMax > ..#MULTISELECTMAX) {
+            Set tProblem = "multiSelect.max must be a whole number from 1 to " _ ..#MULTISELECTMAX
+            Quit
+        }
+        If (tMulti.%GetTypeOf("ineligibleKey") '= "string") || (tMulti.%Get("ineligibleKey") = "") {
+            Set tProblem = "multiSelect.ineligibleKey is empty, and a multi-select names the string key an ineligible row's checkbox reads"
+            Quit
+        }
+    } Catch ex {
+        Set tProblem = "multiSelect could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
 }

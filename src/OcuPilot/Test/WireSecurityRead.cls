@@ -566,8 +566,8 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
     Do $$$AssertEquals(tStatus, 200, "and answers")
     If tStatus '= 200 Quit
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
-    Set tFields = "[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals""]"
-    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), tFields, "with the seven declared fields, the vendor's Nspace spelling included")
+    Set tFields = "[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals"",""CanReceiveBroadcast""]"
+    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), tFields, "with the eight declared fields, the vendor's Nspace spelling and Story 16.6's broadcast flag included")
     ; The caller is itself a process, so a zero-row answer would mean the read is not reading the
     ; instance at all.
     Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "and the instance's processes listed: " _ tAnswer.rows.%Size())

@@ -876,6 +876,34 @@ Method TestTheProcessTerminateWithErrorToolIsAnActionWriteOverTheScreensOwnPairs
     Do $$$AssertTrue($ClassMethod("OcuPilot.Port.ProcessPort", "%Extends", "OcuPilot.Port.AdminPort"), "which extends the admin port, so its request types are the admin port's roster")
 }
 
+/// <p>AD-51, AD-52, AD-8, Story 16.6: the broadcast is an action-style write through the process
+/// port -- <code>RECIPIENTS</code> read, <code>BROADCAST</code> written, no body, the message its
+/// one settable argument, not destructive -- over its screen's own three pairs at <code>USE</code>.
+/// Its <code>Process/BROADCAST</code> is a mutating pair and not a bodyless one: the port composes
+/// its body.</p>
+/// <p>Mutation (Rule 19): add <code>Process/BROADCAST</code> to
+/// <parameter>OcuPilot.Port.AdminPort.BODYLESSTYPES</parameter> -- the bodyless leg goes red, and so
+/// does <method>TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster</method>.</p>
+Method TestTheProcessBroadcastToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Set tClass = "OcuPilot.Screen.Tool.ProcessBroadcast"
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", "osmgmt.processes.broadcast", .tTool)
+    Do $$$AssertStatusOK(tSC, "the registry resolves the broadcast by name")
+    If '$IsObject($Get(tTool)) Quit
+    Do $$$AssertEquals(tTool.%Get("kind") _ " " _ tTool.%Get("class"), "write " _ tClass, "a write tool answered by its own class")
+    Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance")
+    Do $$$AssertEquals($ClassMethod(tClass, "ReadType") _ " " _ $ClassMethod(tClass, "WriteType") _ " " _ $ClassMethod(tClass, "SendsBody") _ " " _ $ClassMethod(tClass, "Destructive"), "RECIPIENTS BROADCAST 0 0", "an action write that sends no body and is not destructive")
+    Do $$$AssertEquals($ClassMethod(tClass, "PortClass"), "OcuPilot.Port.ProcessPort", "through the process port")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "SettableFields")), "Message", "whose one argument is the message the port composes the body from")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Process", "BROADCAST"), "Process/BROADCAST is a mutating pair")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsBodyless("Process", "BROADCAST"), "and not a bodyless one")
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs", "", .tResolved)
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tClass, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tResolved _ tDeclaredResolved, "11", "both sets resolve")
+    Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is the screen's own three")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tClass), "", "with a subject the registration guard holds adequate")
+}
+
 /// <p>AD-48, AD-51, AD-52: the application-error delete is an action-style write whose port is not
 /// the admin port, whose fingerprint subject is the enumerated id set, and whose pair set is the
 /// screen's own two pairs -- the per-namespace half is resolved by the port at call time and cannot

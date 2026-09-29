@@ -6416,6 +6416,8 @@ As a developer-administrator running Python or Java gateways,
 I want to see and control them,
 So that the last unmapped polish-week area is covered.
 
+[AMENDED 2026-09-29, orchestrator merge gate: split from 16.10 for size, Rule 5] The fourth criterion (create, edit and delete) and DW-253 moved to Story 16.25, The external language server editor.
+
 **Acceptance Criteria:**
 
 - **Given** the External language servers screen
@@ -6429,16 +6431,6 @@ So that the last unmapped polish-week area is covered.
 - **Given** a server
 - **When** its activity log is opened
 - **Then** it renders in the shared log viewer.
-
-- **Given** create, edit and delete
-- **When** each runs
-- **Then** it round-trips through the admin API, with delete confirming by name.
-
----
-
-**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
-
-- DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
 
 ### Story 16.11: Start, suspend and resume the Task Manager
 
@@ -6791,6 +6783,26 @@ So that I can repeat it from a terminal, a script or a ticket.
 - **Given** the strings the copy needs
 - **When** this story lands
 - **Then** they are added to the canonical Fixed strings table and the client string source in the same change.
+
+### Story 16.25: The external language server editor
+
+[AMENDED 2026-09-29, orchestrator merge gate: split from 16.10 for size, Rule 5]
+
+As a developer-administrator running Python or Java gateways,
+I want to create, edit and delete external language servers,
+So that a gateway's definition is managed where its status is.
+
+**Acceptance Criteria:**
+
+- **Given** create, edit and delete
+- **When** each runs
+- **Then** it round-trips through the admin API, with delete confirming by name.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
