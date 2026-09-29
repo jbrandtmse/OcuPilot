@@ -8140,3 +8140,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: background-tasks.browser-spec.mjs AC1 'the compact reads Running, not Paused', AC2 'a background task still runs over the seed database'; BackgroundSeed.cls:155 polls 200 x 0.01 s; the same spec passed on e40733ef (run 36519473392); 18.14 touches neither file
 - 2026-09-29T05:18:37Z status=routed owner=burndown by=lead note=Story 16.5's seed; a timing race (inference); the failed job is re-run
 - 2026-09-29T06:52:04Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=merge_gate note=6bcc6d3b (Epic 16): BackgroundSeed waits through Settled, bounded at 30 s; the fix reaches feature in this merge
+
+### DW-1827: Task import reviews task names only: a task running as another account is minted non-destructive with no consequence, a same-named rewrite passes TASK.IMPORT.CHANGED, and the create's own rules are skipped
+- source: spec-16-4-task-export-and-import.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Mint.cls:317 classifies RunAs-other from payload RunAsUser, absent from the import's {root,path,tasks}; TaskTransferPort.cls:381/312 summarize and compare Name (NAMESPACE) only; a digit-first name imported whole on ocupilot-ci 2026-09-29, which TaskCreate refuses TASK.NAME.SHAPE
+- 2026-09-29T15:14:07Z status=escalated owner=burndown by=cr note=decision sheet: review TaskClass+RunAsUser, classify RunAs-other, preview on screen (spec amendment), or accept vendor parity
+- 2026-09-29T15:14:30Z status=escalated owner=burndown by=cr note=port lines cited are 8bc275b5's; after this review's doc edit they read TaskTransferPort.cls:382/313
+
+### DW-1828: A vendor ImportTasks failure after Examine passes answers 500 with the tasks before it kept and no change event (unverified)
+- source: spec-16-4-task-export-and-import.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: TaskTransferPort.cls:322 answers Fail 500 on a vendor error; the vendor keeps earlier tasks (measured); Examine refused every failing shape tried on ocupilot-ci 2026-09-29 (TimePeriod 9, a 60-char JobGUID) before the call
+- 2026-09-29T15:14:10Z status=wontfix-theoretical owner=16-4-task-export-and-import by=cr note=real when a file Examine accepts makes ImportTasks fail; none found (a digit-first name imports whole)
+- 2026-09-29T15:14:30Z status=wontfix-theoretical owner=16-4-task-export-and-import by=cr note=port line cited is 8bc275b5's; after this review's doc edit it reads TaskTransferPort.cls:323

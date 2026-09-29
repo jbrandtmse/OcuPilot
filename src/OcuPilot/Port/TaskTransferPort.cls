@@ -16,13 +16,14 @@
 /// <p><b>An import is refused whole or made whole</b>. The vendor keeps the tasks it created before a
 /// failure, so <method>Examine</method> reads the file's tasks through <class>%XML.Reader</class>
 /// correlated to <parameter>TASKCLASS</parameter>, saving nothing and never reading a task's settings,
-/// and refuses the file when any task it would create breaks one of the create's rules. A task whose
-/// <code>JobGUID</code> is already on the instance is skipped, as the vendor skips it.</p>
+/// and refuses the file when any task it would create breaks one of the rules
+/// <method>TaskProblem</method> repeats. A task whose <code>JobGUID</code> is already on the instance
+/// is skipped, as the vendor skips it.</p>
 /// <p>Seams a test subclass overrides (<class>OcuPilot.Test.TaskTransferFixture</class>):
 /// <method>PathPortClass</method>, <method>VendorExport</method> and <method>VendorImport</method>,
 /// with the admin port's own <method>HoldsPair</method> and <method>LogFault</method>. Production
-/// overrides none of them. The vendor seams are private, so <method>Invoke</method>, behind the gate,
-/// is the only way in.</p>
+/// overrides none of them. The vendor seams and the file and task readers are private, so
+/// <method>Invoke</method> and <method>CheckExport</method>, behind the gate, are the only ways in.</p>
 Class OcuPilot.Port.TaskTransferPort Extends OcuPilot.Port.TaskPort
 {
 
@@ -345,7 +346,7 @@ ClassMethod Import(pRoot As %String, pPath As %String, pReviewed As %String, Out
 /// breaks a rule, 422 with that rule's code and reason and <code>detail.task</code> naming it
 /// (<method>TaskProblem</method>); and 409 <code>TASK.IMPORT.PRESENT</code> when every task is
 /// present.</p>
-ClassMethod Examine(pFile As %String, Output pExamined As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod Examine(pFile As %String, Output pExamined As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pExamined = ""
     Set pHttpStatus = 0
@@ -401,7 +402,7 @@ ClassMethod Examine(pFile As %String, Output pExamined As %DynamicObject, Output
 /// <var>pReadable</var> is 0 for a file that does not parse, whose root element is not
 /// <parameter>ROOTELEMENT</parameter>, whose tasks do not import, or one of whose tasks has no name.
 /// The returned status is an error only when the read could not be made.</p>
-ClassMethod FileTasks(pFile As %String, Output pTasks As %DynamicArray, Output pReadable As %Boolean) As %Status
+ClassMethod FileTasks(pFile As %String, Output pTasks As %DynamicArray, Output pReadable As %Boolean) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pTasks = []
@@ -451,7 +452,7 @@ ClassMethod FileTasks(pFile As %String, Output pTasks As %DynamicArray, Output p
 /// <parameter>TASKCLASS</parameter>'s own table with <code>%ExecDirectNoPriv</code>: the read rests on
 /// this port's gate and on the <code>%DB_IRISSYS:READ</code> IRIS enforces on the globals, not on SQL
 /// grants (AD-29). A failed statement is an error, never an empty answer.</p>
-ClassMethod Held(Output pGuids, Output pNames) As %Status
+ClassMethod Held(Output pGuids, Output pNames) As %Status [ Private ]
 {
     Kill pGuids, pNames
     Set tSC = $$$OK
@@ -483,13 +484,13 @@ ClassMethod Held(Output pGuids, Output pNames) As %Status
     Quit tSC
 }
 
-/// <p>The code of the first create rule task <var>pTask</var> breaks, or <code>""</code>, in the
-/// create's own order: its namespace is not one the caller can read (<method>Readable</method>); its
+/// <p>The code of the first rule task <var>pTask</var> breaks, or <code>""</code>: the vendor's own
+/// refusals, then OcuPilot's task-name rule. Its namespace is not one the caller can read (<method>Readable</method>); its
 /// class is not a task type there (<method>IsTaskType</method>); the caller lacks the privilege the
 /// type declares (<code>CheckPermission</code>); it runs as another account and the caller lacks
 /// <parameter>SECURERESOURCE</parameter>:USE, or as an account that is unknown or disabled; its name
 /// is one <var>pNames</var> holds, compared without regard to case.</p>
-ClassMethod TaskProblem(pTask As %DynamicObject, ByRef pNames) As %String
+ClassMethod TaskProblem(pTask As %DynamicObject, ByRef pNames) As %String [ Private ]
 {
     Set tNamespace = pTask.%Get("NameSpace")
     Set tClass = pTask.%Get("TaskClass")
@@ -511,7 +512,7 @@ ClassMethod TaskProblem(pTask As %DynamicObject, ByRef pNames) As %String
 /// <p>Whether <var>pNamespace</var> exists and the caller holds <code>READ</code> on the resource of its
 /// default global database, as <code>%SYS.Namespace</code> reports it without connecting to a remote
 /// database. A namespace whose database names no resource is not readable.</p>
-ClassMethod Readable(pNamespace As %String) As %Boolean
+ClassMethod Readable(pNamespace As %String) As %Boolean [ Private ]
 {
     If (pNamespace = "") || ($Extract(pNamespace) = "^") Quit 0
     Set tReadable = 0
@@ -531,7 +532,7 @@ ClassMethod Readable(pNamespace As %String) As %Boolean
 /// <p>Whether <var>pClass</var> is a compiled, non-abstract class extending
 /// <parameter>DEFINITIONCLASS</parameter> in <var>pNamespace</var>, asked there by explicit save and
 /// restore (AD-16).</p>
-ClassMethod IsTaskType(pClass As %String, pNamespace As %String) As %Boolean
+ClassMethod IsTaskType(pClass As %String, pNamespace As %String) As %Boolean [ Private ]
 {
     If '$Match(pClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit 0
     Set tKnown = 0
@@ -552,7 +553,7 @@ ClassMethod IsTaskType(pClass As %String, pNamespace As %String) As %Boolean
 /// <p>The <code>RunAsUser</code> rule's code for <var>pUser</var>, or <code>""</code>: blank or the
 /// caller's own name passes; any other name needs <parameter>SECURERESOURCE</parameter>:USE before it
 /// is read, and must name an existing, enabled account, read in <code>%SYS</code> (AD-16).</p>
-ClassMethod RunAsProblem(pUser As %String) As %String
+ClassMethod RunAsProblem(pUser As %String) As %String [ Private ]
 {
     If (pUser = "") || ($ZConvert(pUser, "U") = $ZConvert($Username, "U")) Quit ""
     If '$System.Security.Check(..#SECURERESOURCE, "USE") Quit ##class(OcuPilot.Api.Error).#TASKRUNASUSERSECURE

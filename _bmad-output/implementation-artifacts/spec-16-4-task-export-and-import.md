@@ -341,6 +341,41 @@ deferred: []
   - both dialogs pass the structural walk in both themes.
 - **AC9 (integration).** Given `ocupilot-ci`, when `TaskSchedulePage`'s dialogs (consumer) send through `POST /api/ocupilot/screens/tasks.schedule/action` to the tools over `TaskTransferPort`, then the Task schedule re-reads and shows the imported task.
 
+### Review Findings
+
+Code review 2026-09-29, four layers on the full-opus tier: 55 rows, 15 entries after grouping (high 0, medium 3, low 12), 19 rejected. Each entry is dispositioned under Rule 15.
+
+- [x] [Review][Patch] AC4's root half was unpinned: no page case answered a `root` violation [ui/src/app/areas/tasks/task-schedule.page.ts:235]. Medium, fix-risk low (one spec case), in-story. Added "AC4: a refusal on the directory…".
+- [x] [Review][Patch] The export dialog's title inserted the task name through a string replacement, so a `$&` in a name rendered `<task>` [ui/src/app/areas/tasks/task-export-dialog.ts:82]. Low, fix-risk low, in-story. It now uses a function replacer, as `impact.ts` does.
+- [x] [Review][Patch] The page's `fill` replaced placeholders one after another, so a task name holding `<reason>` was replaced again [ui/src/app/areas/tasks/task-schedule.page.ts:38]. Low, fix-risk low, in-story. It now replaces in one pass.
+- [x] [Review][Patch] The port's doc comments said the import applies the create's rules, in the create's order [src/OcuPilot/Port/TaskTransferPort.cls:19]. Low, fix-risk low (docs only), in-story. They now name the rules `TaskProblem` repeats; the behavior itself is DW-1827.
+- [x] [Review][Patch] The port's file and task readers were public and callable without its gate, `Held`'s `%ExecDirectNoPriv` among them [src/OcuPilot/Port/TaskTransferPort.cls:349]. Low, fix-risk low (no outside caller), in-story. They are now private.
+- [x] [Review][Patch] AC1's "no task changed" had no assertion [src/OcuPilot/Test/TaskTransferLive.cls:123]. Low (Rule 19), fix-risk low, in-story. The round-trip leg now compares the task's stored properties across the export.
+- [x] [Review][Patch] `TaskTransferLive`'s comments said the tools declare four pairs, and that both missing pairs are refused on both callers [src/OcuPilot/Test/TaskTransferLive.cls:6]. Low, in-story. Corrected.
+- [x] [Review][Patch] `ReadTool`'s message still counted one hundred class tools [src/OcuPilot/Test/ReadTool.cls:94]. Low, in-story. It now counts one hundred and two.
+- [x] [Review][Patch] The arming comment said each probe task and file is deleted by exact name [scripts/ci-throwaway.sh:319]. Low, in-story. It now says what `RemoveProbes` does.
+- [x] [Review][Patch] `fileHolds`' doc comment did not describe it [ui/browser/task-transfer.browser-spec.mjs:65]. Low, in-story. Rewritten.
+- [x] [Review][Patch] Rule 19: AC7's governance half, AC8's walk and AC9's re-read had no mutation line of their own. Low, in-story. Each was demonstrated and is recorded under `## Verification`; the page's import leg now asserts its change event.
+- [x] [Review][Defer] The import reviews task names only [src/OcuPilot/Screen/Tool/TaskImport.cls:42] -- deferred: DW-1827, medium, fix-risk high (a spec amendment and a change to the kernel's classification), `escalated owner=burndown` for the decision sheet. A file task that runs as another account is minted non-destructive with no consequence line, where `TaskCreate` gives `TASK.RUNSASOTHER`. A same-named rewrite passes `TASK.IMPORT.CHANGED`, the screen previews nothing, and the create's own rules are skipped: a digit-first name imported, measured on `ocupilot-ci`.
+- [x] [Review][Defer] A vendor import failure after `Examine` passes answers 500 with the earlier tasks kept [src/OcuPilot/Port/TaskTransferPort.cls:323] -- deferred: DW-1828, medium (unverified), `wontfix-theoretical`. `Examine` refused every failing shape tried first: TimePeriod 9 and a 60-character JobGUID, measured on `ocupilot-ci`.
+
+Rejected:
+
+- `false`: a later task with an invalid value leaves a partial import. Measured: `FileTasks`' correlation refuses TimePeriod 9 and a 60-character JobGUID with 422 before the vendor call, and a digit-first name imports whole.
+- `false`: an over-long name or GUID answers 500. A 60-character JobGUID is refused 422 at correlation (measured), and `Name` truncates.
+- `false`: the dialogs go silent on a transport fault or an `installing` answer. `ApiService.report` hands both to the shell's fault reporter, as for every screen action.
+- `false`: the status line is never cleared. It reports the last applied Export or Import, which stays true.
+- `false`: `TestTheFourToolsAndTheListDeclareTheActions` and "offer all four actions" are stale. Both still name the four actions the list keeps.
+- `false`: the browser spec's tests depend on each other. The Tests convention binds a file's dependence on another file.
+- `low`, spec-bound: a failed export over an existing file leaves it as the call left it; the Always section says so.
+- `low`, spec-bound: export publishes `updated` (the spec's `CHANGEACTION`); its description says "a new file" (the amended description verbatim); the import's done line always mentions skips (the Fixed string).
+- `low`, each a spec edit: the run record's inference, the Auto Run Result's reject count, and the "append" wording for the row actions.
+- `low`: the EXPERIENCE.md `:173` and `:603` edits carry no `[ADDED]` tag. The text is the spec's, and `:173`'s Story 18.14 entry carries none either.
+- `low`: the file is read twice, so two imports can race. It needs OS write access and millisecond timing, and the fix is a private copy of the bytes.
+- `low`: two concurrent exports to one free name. Theoretical; the fix is a lock or a temp-and-rename.
+- `low` (maybe-false): internal entity expansion or an unbounded file. It needs OS write access to an allowed directory, and the vendor's own `ImportTasks` parses the same file.
+- `low`: the fixture's empty `FirstRoot`, since the throwaway always answers a root; and a GUID-less task counted imported, since a vendor export always writes `JobGUID`.
+
 ## Spec Change Log
 
 - 2026-09-29, spec gate (lead): export overwrites. The plan made export non-overwriting (`pOverwrite` 0); the orchestrator's direction for this story is `kind=file` with `pOverwrite` declared, and DW-1777's fix and Story 18.3's spec already count 16.4 as an overwriting consumer. Amended: Boundaries (file naming, the vendor-failure cleanup, the replace line, Never), the matrix's existing-name rows, the port's EXPORT step 5 and `Locate`, the browser spec's existing-name step, AC1, Decision 2, the export tool description, the Fixed strings (`taskExportReplaces`), spine change (e) and the AC4 mutation. The spine's (a)-(e) were written at this gate (AD-15, AD-21, AD-27, AD-44, AD-51, AD-53).
@@ -508,6 +543,15 @@ deferred: []
 - Other: drop the `NullEntityResolver` → `TestAnExternalEntityIsNeverResolved` red (the summary carries the sentinel file's text); drop the in-file GUID line → `TestAFileNeverYieldsOneTaskTwice` red; drop the nameless check → `TestAnImportRefusesAFileThatIsNotATaskExport` red; keep `lastRefused` through `send` → `screen-action-handler.spec.ts` "answers null once a later action…" red.
 - Password row mutation: drop `WithholdSettings` from `TaskPort`'s read → `TaskTransfer` `TestAPasswordSettingIsExportedButNeverRead` red on the read leg.
 - AC8/AC9 mutation: the page's `sendFor` omits `path` → `task-schedule.page.spec.ts` export and import legs red; `task-transfer.browser-spec.mjs` red after rebuild and redeploy.
+- Added by the code review, each reverted with the tree unchanged after:
+  - AC1 ("no task changed"): `VendorExport` suspends the task after exporting it → `TaskTransferLive` `TestTheScreenRoundTripKeepsEveryStoredProperty` red on "the export changed no stored property of the task" (run 20393).
+  - AC4 (client, root): `showRefusal` sets the root reason to `''` → `task-schedule.page.spec.ts` "AC4: a refusal on the directory…" red.
+  - AC7 (governance): `Baseline.cls` ships `tasks.schedule.export` false → `TaskTransfer` `TestTheExportToolIsAnActionWriteOverTheTransferPort` red on its baseline key (run 20394). The disabled key's refusal is the generic `Governance.TestADisabledKeyIsRefusedAtDispatchAndStaysAdvertised`'s.
+  - AC8 (walk): `.ocu-task-transfer-note`'s color becomes `--ocu-outline-variant` → `task-transfer.browser-spec.mjs` "both dialogs pass the structural walk" red on contrast in both themes (1.59:1 light, 2.23:1 dark), after rebuild and redeploy.
+  - AC9 (re-read): the handler publishes no change event for Import → `task-schedule.page.spec.ts` "AC2, AC6…" red on its change-event assertion.
+  - Other: the export dialog's title inserts the name through a string replacement, or `fill` replaces one placeholder after another → "inserts a task name as it is…" red.
+
+**Run (code review):** on `ocupilot-ci`, `TaskTransfer` 15/15 (run 20395), `TaskTransferLive` 6/6 (20396), `ReadTool` 27/27 (20397) and `PortGate` 4/4 (20398). `npm run test:tools` passed 1706/1706 and the four touched component files 77/77. On a rebuilt (2.18 MB) and redeployed bundle, `task-transfer` passed 3/3 and `task-schedule-actions` 4/4.
 
 **Run (implement stage, after review):** the full ObjectScript sweep on `ocupilot-ci` ran 362 classes and 2,737 tests. Its one failure in a class this story touches, `ToolEmit` (both tools declared their file pair outside the `WRITERESOURCE` convention), was fixed and re-ran 11/11. The rest is residue: `PathPortInstance` 1, `TaskHistory` 3, `Retention` 1, `WireSecurityRead` 1, `ProposalPrivilege` 1 (`%SYS` holds 1,055 application errors, above one delete's cap), and 30 classes refused by arming variable. This story's refused classes re-ran armed (`docker exec -e`): `TaskTransfer` 15/15, `TaskTransferLive` 6/6, `TaskWire` 6/6, `ClassicPageGate` 3/3. `npm test` passed 1706 tool and 1826 component tests; the bundle is 2.18 MB. On a redeployed bundle, `task-transfer` passed 3/3 and `task-schedule-actions` 4/4. `tasks.browser-spec.mjs` passed 12/15; its three failures are Task history reads timing out, as the `TaskHistory` residue does (inference).
 

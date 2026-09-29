@@ -316,7 +316,7 @@ services:
       # classes: TaskUpdate, TaskEdit
       # classes: InjectionChannels, InjectionCompromised, InjectionSeed
       # Task export and import's classes export probe tasks to files under the first allowed
-      # directory and import them back, deleting each probe task and file by exact name.
+      # directory and import them back, then delete every task named OcuP164* and that directory.
       # classes: TaskTransfer, TaskTransferLive
       OCUPILOT_ALLOW_TASK_CONTROL: "1"
       # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm

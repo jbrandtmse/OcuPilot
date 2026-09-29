@@ -31,11 +31,12 @@ interface ExportTarget {
   readonly name: string;
 }
 
-/** `template` with each `<placeholder>` of `values` replaced. */
+/**
+ * `template` with each `<placeholder>` of `values` replaced in one pass, so a value -- a task name read
+ * from a file -- that itself holds a placeholder or a `$` pattern is inserted as it is.
+ */
 function fill(template: string, values: Readonly<Record<string, string>>): string {
-  let text = template;
-  for (const [key, value] of Object.entries(values)) text = text.split(`<${key}>`).join(value);
-  return text;
+  return template.replace(/<(\w+)>/g, (match: string, key: string) => (Object.hasOwn(values, key) ? values[key] : match));
 }
 
 /**

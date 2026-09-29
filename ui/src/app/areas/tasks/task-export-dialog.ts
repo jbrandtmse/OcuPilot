@@ -78,7 +78,8 @@ export class TaskExportDialog {
   protected readonly path = signal('');
 
   protected get heading(): string {
-    return STRINGS.taskExportTitle.replace('<task>', this.task());
+    // A function replacer: a task name is untrusted text, and `$&` in it must stay literal.
+    return STRINGS.taskExportTitle.replace('<task>', () => this.task());
   }
 
   /** Export is drawn unavailable until a root and a name are chosen, and while a send is in flight. */

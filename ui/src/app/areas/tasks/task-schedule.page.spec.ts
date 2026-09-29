@@ -32,6 +32,7 @@ const ROOT = '/durable/iris/mgr/';
 const ROWS = [
   { Id: '12', Name: 'OcuP164Nightly', Namespace: '%SYS', Type: 'User' },
   { Id: '13', Name: 'OcuP164Weekly', Namespace: '%SYS', Type: 'User' },
+  { Id: '14', Name: 'OcuP164 $& run', Namespace: '%SYS', Type: 'User' },
 ];
 
 const planted: HTMLElement[] = [];
@@ -171,7 +172,9 @@ describe('the Task schedule page', () => {
   });
 
   it('AC2, AC6: Import sends the import target, an import refused over one task names it in the dialog, and an applied one reads the done line', async () => {
-    const { fixture, host, actions, calls } = mount([
+    // Mutation (Rule 19, AC9): the handler publishes no change event for Import -> the last assertion
+    // goes red, and the list is never told to re-read.
+    const { fixture, host, actions, calls, events } = mount([
       {
         kind: 'error',
         status: 422,
@@ -198,5 +201,43 @@ describe('the Task schedule page', () => {
     expect(calls).toHaveLength(3);
     expect(host.querySelector('[role="dialog"]')).toBeNull();
     expect(line(host)).toBe(STRINGS.taskImportDone.replace('<path>', `${ROOT}in/tasks.xml`));
+    expect(events.map(({ type, id, action }) => ({ type, id, action }))).toEqual([{ type: 'task', id: 'import', action: 'created' }]);
+  });
+
+  it('AC4: a refusal on the directory is drawn on that field, the dialog stays open, and nothing else shows it', async () => {
+    // Mutation (Rule 19): `showRefusal` sets the root field's reason to '' -> red.
+    const reason = 'That directory is not one of the allowed directories.';
+    const { fixture, host, actions, events } = mount([
+      { kind: 'error', status: 400, code: 'PATH.ROOT', reason, detail: { violations: [{ field: 'root', code: 'PATH.ROOT', reason }] } },
+    ]);
+    actions.run(TASK_SCHEDULE, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    await submit(fixture, host, 'in/tasks.xml', '[data-task-import-confirm]');
+    expect(host.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(Array.from(host.querySelectorAll('.ocu-form-error')).map((node) => node.textContent?.trim())).toEqual([reason]);
+    expect(host.querySelector('select')?.getAttribute('aria-invalid')).toBe('true');
+    expect(host.querySelector('[data-task-transfer-refusal]')).toBeNull();
+    expect(events).toEqual([]);
+  });
+
+  it('inserts a task name as it is, whatever placeholder or replacement pattern it holds', async () => {
+    // Mutation (Rule 19): the dialog's title substitutes with a string replacement, or the page's
+    // `fill` substitutes one placeholder after another -> red.
+    const name = 'OcuP164 <reason> $& run';
+    const { fixture, host, store, actions } = mount([
+      { kind: 'error', status: 422, code: 'TASK.NAMESPACE.UNKNOWN', reason: 'Refused.', detail: { task: name } },
+    ]);
+    store.setSelection(['14']);
+    actions.run(TASK_SCHEDULE, TASK_EXPORT);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.taskExportTitle.split('<task>').join('OcuP164 $& run'));
+    (host.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();
+    await settle(fixture);
+    actions.run(TASK_SCHEDULE, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    await submit(fixture, host, 'in/tasks.xml', '[data-task-import-confirm]');
+    expect(host.querySelector('[data-task-transfer-refusal]')?.textContent?.trim()).toBe(
+      STRINGS.taskImportRefused.split('<reason>').join('Refused.').split('<task>').join(name)
+    );
   });
 });

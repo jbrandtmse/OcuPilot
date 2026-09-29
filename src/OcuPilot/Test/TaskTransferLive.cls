@@ -4,8 +4,9 @@
 /// and the same file refused the second time; the rules a principal decides refusing the whole file;
 /// the agent's export and import through mint and confirm, and a file rewritten after the proposal
 /// refused; a principal without <code>%Admin_FileSystemAccess:USE</code> or <code>%Admin_Task:USE</code>
-/// refused on both callers; files the vendor's own export writes and reads interchangeable with the
-/// tools'; and a task whose start date is past scheduled as the vendor's own import schedules it.</p>
+/// refused on the screen, and the one without the file pair at the agent's confirm; files the
+/// vendor's own export writes and reads interchangeable with the tools'; and a task whose start date
+/// is past scheduled as the vendor's own import schedules it.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving
 /// over HTTP, auditing on with <code>%System/%System/ConfigurationChange</code> enabled, and both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>TASKVARIABLE</parameter> reading <code>1</code>,
@@ -28,7 +29,7 @@ Parameter EXPORTTOOL = "OcuPilot.Screen.Tool.TaskExport";
 
 Parameter IMPORTTOOL = "OcuPilot.Screen.Tool.TaskImport";
 
-/// <p>The principal holding the code read and exactly the tools' four pairs; the one lacking
+/// <p>The principal holding the code read and exactly the tools' three pairs; the one lacking
 /// <code>%Admin_FileSystemAccess:USE</code>; the one lacking <code>%Admin_Task:USE</code>; and a
 /// disabled account a task may name.</p>
 Parameter LEASTUSER = "OcuP164Least";
@@ -99,12 +100,15 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>AC1, AC2, AC9, AD-15: as the four-pair principal, the screen's Export writes the task and no audit
-/// row, and the screen's Import of that file, once the task is deleted, recreates it with every stored
-/// property but its id, writing one <code>ConfigurationChange</code> "Create Task" row; the same file
-/// again is 409 <code>TASK.IMPORT.PRESENT</code> with nothing added.</p>
+/// <p>AC1, AC2, AC9, AD-15: as the four-pair principal, the screen's Export writes the task, changes
+/// no stored property of it and writes no audit row, and the screen's Import of that file, once the
+/// task is deleted, recreates it with every stored property but its id, writing one
+/// <code>ConfigurationChange</code> "Create Task" row; the same file again is 409
+/// <code>TASK.IMPORT.PRESENT</code> with nothing added.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.TaskTransferPort.Export</method> passes
-/// <code>$ListBuild()</code> to the vendor -- the file holds no task and this goes red.</p>
+/// <code>$ListBuild()</code> to the vendor -- the file holds no task and this goes red; and
+/// <method>OcuPilot.Port.TaskTransferPort.VendorExport</method> suspends the task after exporting it --
+/// the unchanged assertion goes red.</p>
 Method TestTheScreenRoundTripKeepsEveryStoredProperty()
 {
     Set tDirectory = $ClassMethod(..#PROBE, "ProbeDirectory")
@@ -116,6 +120,7 @@ Method TestTheScreenRoundTripKeepsEveryStoredProperty()
     Do $$$AssertEquals(tStatus, 200, "the screen's Export answers 200: " _ ..Json(tBody))
     Set tText = $ClassMethod(..#PROBE, "FileText", tDirectory _ "round.xml")
     Do $$$AssertTrue(($Length(tText, "<Task>") = 2) && (tText [ ("<Name>" _ tName _ "</Name>")), "the file holds exactly that task")
+    Do $$$AssertEquals(..Stored(tId).%ToJSON(), tBefore.%ToJSON(), "the export changed no stored property of the task")
     Do $$$AssertEquals(..AuditRows(tSince, tName), 0, "and the export wrote no audit row naming it")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveTask", tId), "the task is deleted")
     Set tSince = ..Now()
@@ -446,7 +451,7 @@ ClassMethod Json(pBody) As %String
 }
 
 /// <p>Create the four principals, each with a role of its own: the least-privileged one holding the
-/// code read and the tools' four pairs, one without the file pair, one without the Task Manager pair,
+/// code read and the tools' three pairs, one without the file pair, one without the Task Manager pair,
 /// and a disabled account; then read the grants back.</p>
 Method EnsurePrincipals() As %Status
 {

@@ -62,7 +62,7 @@ function probeId() {
   return markerValue(output, 'XFERNOW') ?? '';
 }
 
-/** What the probe file under the probe directory holds, its first line of each task's name. */
+/** The probe file `name` under the probe directory: its task count, whether it names the probe task, and whether it holds the stale marker. */
 function fileHolds(name) {
   const output = runIris([
     `Set text=##class(${FIXTURE}).FileText(##class(${FIXTURE}).ProbeDirectory()_"${name}")`,
