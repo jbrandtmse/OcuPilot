@@ -175,6 +175,8 @@ interface CellTooltip {
   readonly text: string;
   /** What showed it: the pointer resting on the cell, or the active cell moving onto it. */
   readonly source: 'pointer' | 'focus';
+  /** It carries an ineligible row's reason, shown at the checkbox in this cell, not a cut value. */
+  readonly check: boolean;
   readonly top: number;
   readonly left: number;
   /** Measured and positioned; until then it is laid out unseen. */
@@ -564,8 +566,12 @@ export class DataTable implements OnInit {
   /** The cut-cell tooltip, or `null` while none shows. */
   private readonly tooltip = signal<CellTooltip | null>(null);
 
-  /** The gridcell the pointer rests on, and the delay before its tooltip shows. */
+  /**
+   * The gridcell the pointer rests on, whether it rests on an ineligible row's checkbox inside it,
+   * and the delay before its tooltip shows.
+   */
   private hoverCellId = '';
+  private hoverOnCheck = false;
   private hoverTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** The view's keys when the table last reconciled. */
@@ -1051,7 +1057,9 @@ export class DataTable implements OnInit {
       const index = this.activeIndex();
       if (index < 0) return;
       event.preventDefault();
-      this.toggleCheck(this.rowModels()[index]);
+      const row = this.rowModels()[index];
+      if (row !== undefined && !row.checkable) this.refuseCheck(row, 'focus');
+      else this.toggleCheck(row);
       return;
     }
     if (event.altKey && event.shiftKey && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
@@ -1297,20 +1305,29 @@ export class DataTable implements OnInit {
     this.showTooltip(cell, text, 'focus');
   }
 
+  /**
+   * The pointer resting on a cut cell shows its whole value, and on an ineligible row's checkbox
+   * shows that row's reason; the checkbox is a target of its own inside its cell, so moving between
+   * it and the rest of the cell swaps one tooltip for the other.
+   */
   protected onCellPointerOver(event: PointerEvent): void {
     const cell = bodyCellOf(event.target);
-    if (cell === null || cell.id === this.hoverCellId) return;
+    if (cell === null) return;
+    const onBox = event.target instanceof Element && event.target.closest('.ocu-data-table-check') !== null;
+    const check = onBox && this.checkReasonIn(cell) !== '';
+    if (cell.id === this.hoverCellId && check === this.hoverOnCheck) return;
     this.hoverCellId = cell.id;
+    this.hoverOnCheck = check;
     this.clearHoverTimer();
     const shown = this.tooltip();
-    if (shown?.cellId === cell.id) return;
+    if (shown?.cellId === cell.id && shown.check === check) return;
     if (shown?.source === 'pointer') this.hideTooltip();
     const cellId = cell.id;
     this.hoverTimer = setTimeout(() => {
       this.hoverTimer = null;
-      const target = this.hoverCellId === cellId ? document.getElementById(cellId) : null;
-      const text = target === null ? '' : cutText(target);
-      if (target !== null && text !== '') this.showTooltip(target, text, 'pointer');
+      const target = this.hoverCellId === cellId && this.hoverOnCheck === check ? document.getElementById(cellId) : null;
+      const text = target === null ? '' : check ? this.checkReasonIn(target) : cutText(target);
+      if (target !== null && text !== '') this.showTooltip(target, text, 'pointer', check);
     }, tooltipDelayMs());
   }
 
@@ -1347,8 +1364,8 @@ export class DataTable implements OnInit {
     this.hideTooltip();
   }
 
-  private showTooltip(cell: HTMLElement, text: string, source: CellTooltip['source']): void {
-    this.tooltip.set({ cellId: cell.id, text, source, top: 0, left: 0, placed: false });
+  private showTooltip(cell: HTMLElement, text: string, source: CellTooltip['source'], check = false): void {
+    this.tooltip.set({ cellId: cell.id, text, source, check, top: 0, left: 0, placed: false });
     this.overlays.push(this.tooltipOverlayId, () => this.hideTooltip());
     afterNextRender(() => this.placeTooltip(), { injector: this.injector });
   }
@@ -1417,13 +1434,14 @@ export class DataTable implements OnInit {
   /**
    * A row's checkbox toggles that row's check and nothing else: the click never reaches the row, so
    * the selection stays where it was. An ineligible row's checkbox is `aria-disabled` rather than
-   * `disabled`, so the click arrives here and is refused (Story 16.6).
+   * `disabled`, so the click arrives here and is refused with the row's reason (`refuseCheck`).
    */
   protected onCheckClick(event: MouseEvent, row: RowModel): void {
     event.stopPropagation();
     this.keepGridFocus();
     if (!row.checkable) {
       event.preventDefault();
+      this.refuseCheck(row, 'pointer');
       return;
     }
     this.toggleCheck(row);
@@ -1459,6 +1477,35 @@ export class DataTable implements OnInit {
   private toggleCheck(row: RowModel | undefined): void {
     if (row === undefined || !row.checkable) return;
     this.store().toggleChecked(row.key);
+  }
+
+  /**
+   * An ineligible row's check, asked for by Space or a click, checks nothing and says why: the
+   * declared reason shows at once in the table's tooltip at the row's checkbox, and is announced in
+   * the table's polite region, since the checkbox never holds focus and its description is not read.
+   */
+  private refuseCheck(row: RowModel, source: CellTooltip['source']): void {
+    const reason = row.checkReason ?? '';
+    if (reason === '') return;
+    const cellId = row.cells.find((cell) => cell.check)?.id ?? '';
+    const cell = cellId === '' ? null : document.getElementById(cellId);
+    if (cell !== null) this.showTooltip(cell, reason, source, true);
+    this.announce(reason);
+  }
+
+  /** The reason the row holding `element` cannot be checked, or `''` where it can or none is drawn. */
+  private checkReasonIn(element: Element): string {
+    const at = element.closest('[data-row-index]')?.getAttribute('data-row-index') ?? null;
+    return at === null ? '' : (this.rowModels()[Number(at)]?.checkReason ?? '');
+  }
+
+  /**
+   * Say `text` in the table's polite region. The region is emptied first and filled after the next
+   * render, so a sentence it already holds is read out again rather than rewritten unheard.
+   */
+  private announce(text: string): void {
+    this.announcement.set('');
+    afterNextRender(() => this.announcement.set(text), { injector: this.injector });
   }
 
   protected onLinkClick(event: MouseEvent, row: RowModel): void {
@@ -1587,9 +1634,10 @@ export class DataTable implements OnInit {
    * The polite sentence a screen reader hears when a change event marks a row (EXPERIENCE.md's
    * accessibility floor: status messages are announced politely).
    *
-   * **Only a change is announced.** The refresh stamp and every silent tick stay unannounced --
-   * that is what makes auto-refresh silent -- so this slot is written by `announceChanged` alone
-   * and holds the last change, once per marked row and action.
+   * **Only what the user did or a change is announced.** The refresh stamp and every silent tick
+   * stay unannounced -- that is what makes auto-refresh silent -- so this slot is written by
+   * `announceChanged`, once per marked row and action, by a keyboard column resize, and by a refused
+   * check (`refuseCheck`).
    */
   protected get announcementText(): string {
     this.generation();

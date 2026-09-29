@@ -3,7 +3,9 @@
  * Broadcast (AD-5, AD-53).
  *
  * What it pins: a daemon's checkbox is drawn `aria-disabled` with the published reason and a click
- * leaves it unchecked, with DOM focus on the grid; Space checks a terminal session this spec
+ * leaves it unchecked, with DOM focus on the grid; the pointer resting on that checkbox shows the
+ * reason in the table's tooltip, which passes DW-1337 in both themes, and Space on the daemon's row
+ * announces it in the table's polite region; Space checks a terminal session this spec
  * started, and Broadcast opens "Broadcast to 1 process" over it; with the checkboxes drawn and the
  * dialog open the screen passes the structural and contrast checks at 1280 light, 720 light and
  * 1280 dark with no entry beyond the baseline (DW-1337); Send posts one request, the receiver's
@@ -108,9 +110,10 @@ function frames(page) {
 /**
  * The DW-1337 walk of this screen at 1280 light, 720 light and 1280 dark, answering every entry the
  * baseline does not already hold; with `dialog`, the open dialog's body is also held to scrolling
- * nothing sideways, which the walk skips inside a scroll container.
+ * nothing sideways, which the walk skips inside a scroll container. `arrange`, where given, runs
+ * after each pass's resize and theme and before its walk, since a resize hides the table's tooltip.
  */
-async function structural(page, dialog = false) {
+async function structural(page, dialog = false, arrange = null) {
   const found = [];
   const passes = [
     { viewport: VIEWPORTS.wide, theme: 'light', checks: INVARIANTS },
@@ -124,6 +127,7 @@ async function structural(page, dialog = false) {
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    if (arrange !== null) await arrange(`${viewport.width}px ${theme}`);
     const { entries } = await detectScreen(page, { route: ROUTE, checks, viewport: viewport.width, theme, minimums });
     found.push(...entries);
     if (dialog) {
@@ -215,6 +219,31 @@ function waitForRow(page, pid, key, value) {
   );
 }
 
+/** The table's tooltip once it is placed: its text, `aria-hidden`, and whether it sits inside the window. */
+async function placedTooltip(page) {
+  await page.waitForSelector('.ocu-data-table-tooltip.ocu-data-table-tooltip-placed', { timeout: 2000 });
+  return page.$eval('.ocu-data-table-tooltip', (element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      text: element.textContent.trim(),
+      hidden: element.getAttribute('aria-hidden'),
+      inWindow: rect.left >= 0 && rect.top >= 0 && rect.right <= document.documentElement.clientWidth && rect.bottom <= document.documentElement.clientHeight,
+    };
+  });
+}
+
+/** Move the pointer off the grid, then rest it on the row for `pid`'s checkbox, and answer the tooltip that shows. */
+async function restOnCheckbox(page, pid) {
+  await page.mouse.move(0, 0);
+  await page.waitForFunction(() => document.querySelector('.ocu-data-table-tooltip') === null, { timeout: 2000 });
+  const point = await (await rowOf(page, pid)).evaluate((row) => {
+    const box = row.querySelector('.ocu-data-table-check').getBoundingClientRect();
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  });
+  await page.mouse.move(point.x, point.y);
+  return placedTooltip(page);
+}
+
 /** The command bar's Broadcast, as drawn. */
 function broadcastButton(page, label) {
   return page.evaluate((wanted) => {
@@ -255,6 +284,53 @@ test('a daemon\'s checkbox is aria-disabled with the published reason, and a cli
     assert.equal((await checkbox(page, pid)).checked, false, 'a click leaves it unchecked');
     assert.equal(await rowSelected(page, pid), selected, 'and leaves the selection where it was');
     assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('role') ?? ''), 'grid', 'with DOM focus on the grid, not the checkbox');
+    assert.deepEqual(await broadcastButton(page, STRINGS.processBroadcastAction), { disabled: 'true' }, 'and Broadcast still waits for a checked row');
+    assert.equal(posts.length, 0, 'nothing was sent');
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): ask `cutText` alone when the table's hover delay ends, dropping the checkbox
+// branch, then rebuild and redeploy -> no tooltip is placed and this goes red.
+test('DW-1815: the pointer resting on a daemon\'s checkbox shows the published reason in the table\'s tooltip, and the screen passes DW-1337 with it showing', async () => {
+  const { context, page, posts } = await atList();
+  try {
+    const pid = daemonPid();
+    await filterTo(page, pid);
+    assert.deepEqual(await restOnCheckbox(page, pid), { text: STRINGS.processBroadcastIneligible, hidden: 'true', inWindow: true }, 'the reason shows in the table\'s own tooltip, inside the window');
+    assert.equal(await page.evaluate(() => document.querySelectorAll('app-data-table [title]').length), 0, 'and nothing in the table carries a title');
+    assert.equal((await checkbox(page, pid)).checked, false, 'the pointer resting there checks nothing');
+
+    const fresh = await structural(page, false, async (pass) => {
+      assert.equal((await restOnCheckbox(page, pid)).text, STRINGS.processBroadcastIneligible, `the tooltip shows the reason at ${pass}`);
+    });
+    assert.deepEqual(fresh, [], 'with the reason\'s tooltip showing, no violation beyond the baseline\'s entries in either theme');
+    assert.equal(posts.length, 0, 'nothing was sent');
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): drop `this.announce(reason)` from the data table's `refuseCheck`, then rebuild
+// and redeploy -> the polite region never reads the reason and this goes red.
+test('DW-1815: Space on a daemon\'s row checks nothing, announces the published reason and shows it at once in the table\'s tooltip', async () => {
+  const { context, page, posts } = await atList();
+  try {
+    const pid = daemonPid();
+    await filterTo(page, pid);
+    await clickRowCentre(page, { text: pid, cell: 1 });
+    await waitForRow(page, pid, 'selected', 'true');
+    await page.keyboard.press('Space');
+    await page.waitForFunction(
+      (wanted) => document.querySelector('.ocu-data-table-announcement')?.textContent.trim() === wanted,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.processBroadcastIneligible
+    );
+    assert.equal(await page.$eval('.ocu-data-table-announcement', (region) => region.getAttribute('role')), 'status', 'in the table\'s polite region');
+    assert.equal((await placedTooltip(page)).text, STRINGS.processBroadcastIneligible, 'and in the table\'s tooltip');
+    assert.equal((await checkbox(page, pid)).checked, false, 'the daemon stays unchecked');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('role') ?? ''), 'grid', 'with DOM focus on the grid');
     assert.deepEqual(await broadcastButton(page, STRINGS.processBroadcastAction), { disabled: 'true' }, 'and Broadcast still waits for a checked row');
     assert.equal(posts.length, 0, 'nothing was sent');
   } finally {

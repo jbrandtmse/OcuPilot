@@ -1315,6 +1315,23 @@ describe('the data table\'s checked set', () => {
     return event;
   }
 
+  /** The table's polite region's text. */
+  function announced(wired: Wired): string {
+    return wired.host().querySelector('.ocu-data-table-announcement')?.textContent?.trim() ?? '';
+  }
+
+  /** The table's tooltip's text, or `null` while none is drawn. */
+  function tooltipText(wired: Wired): string | null {
+    return wired.host().querySelector('.ocu-data-table-tooltip')?.textContent?.trim() ?? null;
+  }
+
+  /** Rest the pointer on `target` past the tooltip delay. */
+  async function rest(wired: Wired, target: Element): Promise<void> {
+    target.dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await settle(wired.fixture);
+  }
+
   // Mutation (Rule 19): handle Space in `onGridKeydown` without the `multiSelect` guard -> this goes red.
   it('an undeclared list draws no checkbox and leaves Space to the browser', async () => {
     const wired = await wire(tableDeclaration(), ok(rows(3)));
@@ -1329,6 +1346,10 @@ describe('the data table\'s checked set', () => {
     expect(wired.store.checked().size).toBe(0);
     expect(wired.host().querySelectorAll('[aria-selected="true"]').length).toBe(1);
     expect(grid.hasAttribute('aria-multiselectable')).toBe(false);
+    // DW-1815: Space there shows no tooltip and announces nothing, and nothing is on the overlay stack.
+    expect(wired.host().querySelector('.ocu-data-table-tooltip')).toBeNull();
+    expect(announced(wired)).toBe('');
+    expect(wired.overlays.top()).toBe('');
   });
 
   it('Space and a checkbox click each toggle one check, beside the one selection', async () => {
@@ -1397,6 +1418,101 @@ describe('the data table\'s checked set', () => {
     const eligible = wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-check') as HTMLInputElement;
     expect(eligible.hasAttribute('aria-disabled')).toBe(false);
     expect(eligible.getAttribute('aria-label')).toBe('/csp/app00');
+  });
+
+  // jsdom lays nothing out, so no cell reads as cut: a tooltip here can only be the reason.
+  //
+  // Mutation (Rule 19): ask `cutText` alone when the hover delay ends, dropping the checkbox branch
+  // -> no tooltip shows and this goes red.
+  it('DW-1815: the pointer resting on an ineligible row\'s checkbox shows its reason in the table\'s tooltip, and leaving the cell takes it', async () => {
+    const wired = await wire(declared(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const box = wired.host().querySelector('[aria-rowindex="3"] .ocu-data-table-check') as HTMLInputElement;
+
+    await rest(wired, box);
+    expect(tooltipText(wired)).toBe(STRINGS.processBroadcastIneligible);
+    expect(wired.host().querySelector('.ocu-data-table-tooltip')?.getAttribute('aria-hidden')).toBe('true');
+    expect(wired.overlays.top()).not.toBe('');
+    expect(wired.host().querySelectorAll('[title]').length).toBe(0);
+    expect(wired.store.checked().size).toBe(0);
+
+    box.dispatchEvent(new MouseEvent('pointerout', { bubbles: true, relatedTarget: wired.host().querySelector('.ocu-data-table-count') }));
+    await settle(wired.fixture);
+    expect(tooltipText(wired)).toBeNull();
+    expect(wired.overlays.top()).toBe('');
+  });
+
+  // Mutation (Rule 19): answer the declared sentence from `checkReasonIn` for every row, not the
+  // row's own `checkReason` -> the eligible checkbox shows it and this goes red.
+  it('DW-1815: an eligible row\'s checkbox shows no tooltip on hover, and Space or a click there checks it and announces nothing', async () => {
+    const wired = await wire(declared(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const box = wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-check') as HTMLInputElement;
+
+    await rest(wired, box);
+    expect(tooltipText(wired)).toBeNull();
+    expect(wired.overlays.top()).toBe('');
+
+    box.click();
+    await settle(wired.fixture);
+    expect([...wired.store.checked()]).toEqual(['/csp/app00']);
+    const grid = await arrowTo(wired, 1);
+    space(grid);
+    await settle(wired.fixture);
+    expect(wired.store.checked().size).toBe(0);
+    expect(tooltipText(wired)).toBeNull();
+    expect(announced(wired)).toBe('');
+  });
+
+  // Rows 1 and 3 are ineligible and carry the same sentence, so the second refusal is heard only if
+  // the region is emptied before it is written again.
+  //
+  // Mutation (Rule 19): drop `this.announce(reason)` from `refuseCheck` -> the region stays empty, red.
+  // Mutation (Rule 19): write the sentence straight into the region in `announce`, without emptying
+  // it first -> the second refusal records no empty text between the two, red.
+  it('DW-1815: Space or a click on an ineligible row checks nothing, shows its reason at once and announces it each time', async () => {
+    const wired = await wire(declared(), ok(rows(4)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const region = wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement;
+    // Each record's old value, in order: what the region held before each write.
+    const heard: string[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const record of records) heard.push((record.oldValue ?? '').trim());
+    });
+    observer.observe(region, { childList: true, characterData: true, characterDataOldValue: true, subtree: true });
+    try {
+      const grid = await arrowTo(wired, 2);
+      expect(space(grid).defaultPrevented).toBe(true);
+      await settle(wired.fixture);
+      expect(wired.store.checked().size).toBe(0);
+      expect(announced(wired)).toBe(STRINGS.processBroadcastIneligible);
+      expect(tooltipText(wired)).toBe(STRINGS.processBroadcastIneligible);
+      expect(wired.overlays.top()).not.toBe('');
+      expect(document.activeElement).toBe(grid);
+
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      await settle(wired.fixture);
+      heard.length = 0;
+      space(grid);
+      await settle(wired.fixture);
+      expect(wired.store.checked().size).toBe(0);
+      expect(heard).toEqual([STRINGS.processBroadcastIneligible, '']);
+      expect(announced(wired)).toBe(STRINGS.processBroadcastIneligible);
+
+      heard.length = 0;
+      (wired.host().querySelector('[aria-rowindex="3"] .ocu-data-table-check') as HTMLInputElement).click();
+      await settle(wired.fixture);
+      expect(wired.store.checked().size).toBe(0);
+      expect(heard).toEqual([STRINGS.processBroadcastIneligible, '']);
+      expect(announced(wired)).toBe(STRINGS.processBroadcastIneligible);
+      expect(tooltipText(wired)).toBe(STRINGS.processBroadcastIneligible);
+    } finally {
+      observer.disconnect();
+    }
   });
 
   it('Check all checks the eligible rows in view and no other, and unchecks them when all are', async () => {
