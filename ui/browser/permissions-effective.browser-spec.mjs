@@ -5,7 +5,8 @@
  * granted by a reached role and a public letter; the web applications, databases and services those
  * resources guard -- and an account whose role grants `%All` as the `%All` statement over its roles
  * alone (AC1, AC2, AC9). With the tab showing, the page passes the structural and contrast checks at
- * 1280 light, 720 light and 1280 dark beyond the baseline (DW-1337).
+ * 1280 light, 720 light and 1280 dark beyond the baseline (DW-1337), and a role name, like every other
+ * line on the tab and on the Check permission dialog, is set in the app's type family (DW-1837).
  *
  * The Users list's Check permission opens its dialog on the selected row and answers from
  * `GET /api/ocupilot/permissions/check`; a scripted turn asks `permissions.privileges.check` the same
@@ -186,6 +187,33 @@ async function openTab(who, user) {
   return { context, page, traffic };
 }
 
+/** The computed font family of the first element `selector` matches. */
+function familyOf(page, selector) {
+  return page.$eval(selector, (element) => getComputedStyle(element).fontFamily);
+}
+
+/**
+ * Every rendered element under `root` that holds its own text, or is a form control, and computes a
+ * font family other than `family`. The page's body sets no family, so an element that takes no type
+ * role falls back to the browser's serif default (DW-1837).
+ */
+function offFamily(page, root, family) {
+  return page.$eval(
+    root,
+    (rootElement, expected) => {
+      const off = [];
+      for (const element of [rootElement, ...rootElement.querySelectorAll('*')]) {
+        if (element.getClientRects().length === 0) continue;
+        const text = Array.from(element.childNodes).some((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '');
+        const seen = getComputedStyle(element).fontFamily;
+        if ((text || element.matches('input, select, textarea, button')) && seen !== expected) off.push(`${[element.localName, ...element.classList].join('.')}: ${seen}`);
+      }
+      return off;
+    },
+    family
+  );
+}
+
 /** The tab's rendered text, section by section. */
 function sections(page) {
   return page.evaluate(() => {
@@ -243,7 +271,7 @@ after(async () => {
   assert.equal(values.CLEAN, '1', `the probes are gone:\n${output}`);
 });
 
-test('AC1, AC9, DW-1337: the chained account\u2019s tab renders its sections, read when selected, in both themes within the structural baseline', async () => {
+test('AC1, AC9, DW-1337, DW-1837: the chained account\u2019s tab renders its sections, read when selected, in the app\u2019s type, in both themes within the structural baseline', async () => {
   const { context, page, traffic } = await openTab(config, USER_CHAINED);
   try {
     assert.deepEqual(traffic.reads, [`GET ${EFFECTIVE_PATH}?name=${USER_CHAINED}&ns=HSCUSTOM`], 'read from the Effective privileges route as the tab opened');
@@ -258,6 +286,15 @@ test('AC1, AC9, DW-1337: the chained account\u2019s tab renders its sections, re
     assert.ok(seen.applications.rows.some((row) => row[0] === APP && row[1] === RES), `the web application the resource guards is listed: ${JSON.stringify(seen.applications)}`);
     assert.ok(seen.databases.rows.some((row) => /\/user\/: Read$/i.test(row[0])), `the USER database is listed with Read: ${JSON.stringify(seen.databases)}`);
     assert.ok(seen.services.rows.length > 0, `the services a public resource of their own name guards are listed: ${JSON.stringify(seen.services)}`);
+
+    // Mutation (Rule 19): drop the type role from `.ocu-form-role-name`, rebuild and redeploy -> the
+    // role name, and every Roles, Databases and Services line, reads the browser's serif default.
+    const body = await familyOf(page, '[data-ocu-effective="resources"] td');
+    assert.deepEqual(
+      { roleName: await familyOf(page, '[data-ocu-effective="roles"] .ocu-form-role-name'), off: await offFamily(page, '[data-ocu-effective="tab"]', body) },
+      { roleName: body, off: [] },
+      'a role name is set in the app\u2019s body family, as a resource cell is, and so is every other line on the tab'
+    );
 
     const found = [];
     const passes = [
@@ -330,6 +367,10 @@ test('AC4, AC9: the Users list\u2019s Check permission answers from the route, a
         .replace('<pair>', `${RES}:READ`)
         .replace('<role>', `${ROLE_B}${STRINGS.userEffectiveThrough.replace('<role>', ROLE_A)}`);
       assert.deepEqual(line, { text: expected, role: 'status' }, 'a yes names B, through A, in the polite status line');
+      // Mutation (Rule 19): drop the type role from `.ocu-field-input`, rebuild and redeploy -> the
+      // dialog's four fields take the browser's control font, which they never inherit, and this goes red.
+      const body = await familyOf(page, 'app-permission-check-dialog .ocu-permission-check-line');
+      assert.deepEqual(await offFamily(page, 'app-permission-check-dialog', body), [], 'every line and field on the dialog is set in the app\u2019s family (DW-1837)');
       assert.deepEqual(
         traffic.reads,
         [`GET ${CHECK_PATH}?kind=user&name=${USER_CHAINED}&resource=${RES}&permission=READ&ns=HSCUSTOM`],

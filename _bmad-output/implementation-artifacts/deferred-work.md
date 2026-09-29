@@ -8222,16 +8222,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner, 2026-09-29 ~12:30 PDT, relayed by the Planner (demo RC) | severity: medium | fix-risk: low | footprint: ui/src/app/areas/web-applications/try-it.ts, its strings and browser spec
 - evidence: demo: REST API explorer > /api/mgmnt OpenAPI > GET /v2/ > Try it > Send answered 0; the demo Caddy redirects every path but /api/ocupilot (by design)
 - 2026-09-29T19:31:06Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner: fail gracefully; a status-0, network or redirect outcome gets a plain sentence that the request did not reach the application because something between the browser and the instance stopped it, and says nothing was sent to the instance where true; refusal rules unchanged; do not open other APIs on the demo or touch the droplet; browser spec by intercepting and failing the request; first after the 1.0.3 cut, in the next release
+- 2026-09-29T21:42:32Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=status-0 outcomes answer unsent/failed/redirected sentences, never a bare 0; openapi-try-it browser leg intercepts; follow-up DW-1845
 
 ### DW-1837: On the user editor's Effective privileges tab, a role name under Roles (e.g. OcuPilotDemoOperator for user operator) renders in a serif browser-default font instead of the app's type
 - source: owner, 2026-09-29 ~12:30 PDT, relayed by the Planner (demo RC) | severity: low | fix-risk: low | footprint: the Effective privileges tab component and its styles (Story 16.3)
 - evidence: demo RC /ocupilot/permissions/users/edit/operator, Effective privileges tab; screenshot scratchpad 24e5d414.../readme-images/14-effective-privileges.png; the rest of the tab uses the app type
 - 2026-09-29T19:31:06Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner: fix for the next release; a browser check that the role name computes the app font family; the Planner retakes the README image after it ships
+- 2026-09-29T21:55:00Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=.ocu-form-role-name takes the body type; permissions-effective AC1/AC4 compare computed font families
 
 ### DW-1838: Explain this entry sends the agent only the chosen row as the whole screen (view rows=[that row], rowsAvailable 1, no selection marker), so the agent reports it as the only row on the screen
 - source: owner, 2026-09-29 ~12:45 PDT, relayed by the Planner (demo RC, messages.log) | severity: medium | fix-risk: medium | footprint: ui/src/app/core/screen-context.ts (assembleEntryContext, ScreenContextView), ui/src/app/shell/panel.ts onExplainEntry, the server framing of screen_context, the log viewers, log hub, audit and error-log pages
 - evidence: demo: messages.log > Explain this entry answered 'This is the only row on the Messages log screen'; assembleEntryContext returns rows [the narrowed row], rowsAvailable 1, sort/direction/filter empty; ScreenContextView has no selection field; Fix it (16.21) uses another path
 - 2026-09-29T19:40:50Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner design: send the page's normal context (same rows, cap, filter, sort as assembleScreenContext) plus an explicit marker for the chosen entry (a selected index into rows, or a separate focus row when outside the cap); the server framing says what the marker means; the sent sentence references the selection; amend AD-11/AD-24 at origin; tests pin the entry identified and the other rows present; next release
+- 2026-09-29T21:55:00Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=ae14af90 (run 36631527264 green): screen context plus selected/focus marker on every Explain path; AD-11/AD-24 amended
 
 ### DW-1839: A stored governance policy override makes 5 ObjectScript test classes fail (DeviceDelete, DeviceWire, DeviceWriteGate, Prohibited, ToolDispatch) on any instance that holds one, as DW-1759's agent definitions do
 - source: 1.0.3 upgrade check (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: src/OcuPilot/Test/**
@@ -8283,3 +8286,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: DW-1838 review | severity: low | fix-risk: low | footprint: in-epic
 - evidence: pre-existing; only a crafted client sends it; the marker path now drops it (review, 2026-09-29)
 - 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=any client sends a non-finite number in screen_context
+
+### DW-1845: Try-it's redirect sentence says the request did not reach the application, which is false when the application itself answers a 3xx (e.g. a POST answered 303 after creating something); a resend would then duplicate the write
+- source: DW-1836 review | severity: med | fix-risk: low | footprint: in-epic
+- evidence: fetch redirect:manual hides who answered (status 0, no Location); the owner's binding wording was kept (DW-1836 implement review, 2026-09-29)
+- 2026-09-29T21:42:32Z status=decision-pending owner=burndown by=cr note=owner: keep the wording, or hedge it for writes only (e.g. '...or the application redirected after acting on it')
+- 2026-09-29T22:05:50Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=by=merge_gate hedge applied: a non-safe verb's opaque redirect reads outcome unknown, may have acted, check before resending; unit/component/browser pinned

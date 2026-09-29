@@ -1,7 +1,8 @@
 /**
  * The try-it console's state (Story 16.1, AD-19, AD-57): per operation, whether its console is open,
- * what its form holds, whether a request is in flight, and the masked record and rendered answer of
- * the last one sent; and, for the whole page, the one write waiting on its confirmation.
+ * what its form holds, whether a request is in flight, and the masked record and the rendered answer
+ * or outcome of the last one dispatched; and, for the whole page, the one write waiting on its
+ * confirmation.
  *
  * **Framework-free and provided by the page**, like `OpenApiViewerStore`: nothing a principal typed
  * or read here survives the page, and nothing here reaches screen context, a tool, the ledger or a
@@ -11,6 +12,7 @@
  * **It sends through the injected `fetch`, never through `ApiService`**: same origin, the tab's
  * access token as the one credential, no cookie and no redirect followed (AD-57 (1)). The request is
  * checked against `refuseRequest` once more at the moment it is sent, whatever the page decided.
+ * A request that brings back no answer to show records its `TryItOutcome` instead of a status.
  *
  * **Copy as curl writes through the injected `copyText` and sends nothing** (Story 16.24, AD-57 (5)):
  * the command is `curlCommand`'s, so a request `refuseRequest` refuses is never copied, and the
@@ -62,6 +64,17 @@ export interface CopyOutcome {
   readonly command: string;
 }
 
+/**
+ * Why the last request brought back no answer to show, decided from what the browser reports:
+ * `unsent`, the browser would not build it (`new Request` throws, as `fetch` would before sending
+ * anything); `failed`, no complete answer arrived: `fetch` rejected once the request was built,
+ * before or after it left the browser, or the answer's body broke off; `redirected`, the answer was a
+ * redirect, which `redirect: 'manual'` hands back opaque as status 0, the only status-0 response a
+ * same-origin request resolves with; `redirected-write`, that answer to a request `isSafeVerb` does
+ * not pass, which the application may have acted on before it redirected.
+ */
+export type TryItOutcome = 'unsent' | 'failed' | 'redirected' | 'redirected-write';
+
 /** An answer, as the console shows it. */
 export interface TryItAnswer {
   readonly status: number;
@@ -83,11 +96,25 @@ interface ConsoleState {
   sending: boolean;
   record: RequestRecord | null;
   answer: TryItAnswer | null;
-  failed: boolean;
+  outcome: TryItOutcome | null;
   generation: number;
   copy: CopyOutcome | null;
   /** Bumped by each copy and each form edit, so a copy the form has since moved past never lands. */
   copies: number;
+}
+
+/**
+ * Whether the browser builds `init` into a request for `url`. `fetch` builds the same `Request` first
+ * and rejects before sending anything when it throws, as it does for a header name or value it cannot
+ * carry, a body on a GET or HEAD, or a method it forbids.
+ */
+function buildable(url: string, init: TryItFetchInit): boolean {
+  try {
+    void new Request(url, init);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export class TryItStore {
@@ -158,7 +185,7 @@ export class TryItStore {
     return this.consoles.get(key)?.sending ?? false;
   }
 
-  /** The masked record of the last request sent, or `null`. */
+  /** The masked record of the last request dispatched, whether or not it was sent, or `null`. */
   record(key: string): RequestRecord | null {
     return this.consoles.get(key)?.record ?? null;
   }
@@ -168,9 +195,9 @@ export class TryItStore {
     return this.consoles.get(key)?.answer ?? null;
   }
 
-  /** Whether the last request did not complete: the browser answered no response at all. */
-  failed(key: string): boolean {
-    return this.consoles.get(key)?.failed ?? false;
+  /** Why the last request brought back no answer to show, or `null` when it did or none was sent. */
+  outcome(key: string): TryItOutcome | null {
+    return this.consoles.get(key)?.outcome ?? null;
   }
 
   /** The last Copy as curl's outcome, or `null` when none stands for the form as it is. */
@@ -256,7 +283,7 @@ export class TryItStore {
     state.sending = true;
     state.record = maskedRecord(request);
     state.answer = null;
-    state.failed = false;
+    state.outcome = null;
     this.notify();
 
     // The tab's token is the one `Authorization` sent; a declared header of that name is not.
@@ -273,30 +300,39 @@ export class TryItStore {
     };
 
     let answer: TryItAnswer | null = null;
-    try {
-      const response = await this.http(request.url, init);
-      const lines: string[] = [];
-      let contentType = '';
-      response.headers.forEach((value, name) => {
-        lines.push(`${name}: ${value}`);
-        if (name.toLowerCase() === 'content-type') contentType = value;
-      });
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      answer = { status: response.status, statusText: response.statusText, headers: lines, body: renderBody(contentType, bytes) };
-    } catch {
-      answer = null;
+    let outcome: TryItOutcome | null = null;
+    if (!buildable(request.url, init)) {
+      outcome = 'unsent';
+    } else {
+      try {
+        const response = await this.http(request.url, init);
+        if (response.status === 0) {
+          outcome = isSafeVerb(request.method) ? 'redirected' : 'redirected-write';
+        } else {
+          const lines: string[] = [];
+          let contentType = '';
+          response.headers.forEach((value, name) => {
+            lines.push(`${name}: ${value}`);
+            if (name.toLowerCase() === 'content-type') contentType = value;
+          });
+          const bytes = new Uint8Array(await response.arrayBuffer());
+          answer = { status: response.status, statusText: response.statusText, headers: lines, body: renderBody(contentType, bytes) };
+        }
+      } catch {
+        outcome = 'failed';
+      }
     }
     if (this.consoles.get(key) !== state || state.generation !== generation) return;
     state.sending = false;
     state.answer = answer;
-    state.failed = answer === null;
+    state.outcome = outcome;
     this.notify();
   }
 
   private state(key: string): ConsoleState {
     let state = this.consoles.get(key);
     if (state === undefined) {
-      state = { open: false, parameters: [], body: '', sending: false, record: null, answer: null, failed: false, generation: 0, copy: null, copies: 0 };
+      state = { open: false, parameters: [], body: '', sending: false, record: null, answer: null, outcome: null, generation: 0, copy: null, copies: 0 };
       this.consoles.set(key, state);
     }
     return state;
