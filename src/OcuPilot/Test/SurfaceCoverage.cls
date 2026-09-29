@@ -79,7 +79,7 @@ XData Coverage
 <screen name="RoutineMappingList" class="OcuPilot.Test.MappingDescriptor" method="TestTheListsAreParentScopedAndKeyedByNamespaceAndName" corpus="the three mapping lists are asserted together in one loop"/>
 <screen name="RoutineMappingForm" class="OcuPilot.Test.MappingDescriptor" method="TestTheFormsAreUnlistedOverTheirKindsDialog" corpus="the three mapping forms are asserted together in one loop"/>
 <screen name="NamespaceList" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheListDeclaresItsFourFieldsAndItsDelete"/>
-<screen name="LocalDatabaseList" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheListIsOsManagementsNinthEntryKeyedByName"/>
+<screen name="LocalDatabaseList" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheListIsOsManagementsTenthEntryKeyedByName"/>
 <screen name="Home" class="OcuPilot.Test.Descriptor" method="TestARefreshingScreenDeclaresItsRatesAndHomeDefaultsToTen"/>
 <screen name="LdapConfigList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="LockList" class="OcuPilot.Test.Descriptor" method="TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns"/>
@@ -142,6 +142,8 @@ XData Coverage
 <screen name="LicenseUserTab" class="OcuPilot.Test.LicenseUsage" method="TestTheFourTabsDeclareTheirReadsAndFormOneGroup" corpus="the four License usage tabs are asserted together in one loop"/>
 <screen name="LicenseDistributedTab" class="OcuPilot.Test.LicenseUsage" method="TestTheFourTabsDeclareTheirReadsAndFormOneGroup" corpus="the four License usage tabs are asserted together in one loop"/>
 <screen name="Dashboard" class="OcuPilot.Test.Dashboard" method="TestTheDeclarationIsTheDashboardsThirtyFieldsOverTwoParts"/>
+<screen name="LanguageServerList" class="OcuPilot.Test.LanguageServer" method="TestTheDescriptorsRegister" corpus="both External language servers screens are asserted in one test method"/>
+<screen name="LanguageServerActivity" class="OcuPilot.Test.LanguageServer" method="TestTheDescriptorsRegister" corpus="both External language servers screens are asserted in one test method"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -242,6 +244,8 @@ XData Coverage
 <tool name="osmgmt.processes.broadcast" class="OcuPilot.Test.ToolWrite" method="TestTheProcessBroadcastToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="tasks.schedule.export" class="OcuPilot.Test.TaskTransfer" method="TestTheExportToolIsAnActionWriteOverTheTransferPort"/>
 <tool name="tasks.schedule.import" class="OcuPilot.Test.TaskTransfer" method="TestTheImportToolIsAnActionWriteOverTheTransferPort"/>
+<tool name="osmgmt.languageservers.start" class="OcuPilot.Test.LanguageServer" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the start and stop tools are asserted together in one loop"/>
+<tool name="osmgmt.languageservers.stop" class="OcuPilot.Test.LanguageServer" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the start and stop tools are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

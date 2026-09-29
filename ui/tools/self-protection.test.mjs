@@ -381,3 +381,24 @@ test('Story 16.6: the broadcast recipient refusal is one sentence on both surfac
   assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
   assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
 });
+
+/** Story 16.10's start tool, which declares both state refusals (its stop extends it). */
+const LANGUAGE_SERVER_START = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'LanguageServerStart.cls');
+
+/** Story 16.10's three published refusals: `[file, parameter, strings.ts key]`. */
+const LANGUAGE_SERVER_REFUSALS = [
+  [LANGUAGE_SERVER_START, 'RUNNINGREASON', 'languageServerRefusalRunning'],
+  [LANGUAGE_SERVER_START, 'STOPPEDREASON', 'languageServerRefusalStopped'],
+  [ERROR, 'REASONLANGUAGESERVERSTART', 'languageServerStartFailed'],
+];
+
+test('Story 16.10: the two state refusals and the refused start are each one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of RUNNINGREASON in LanguageServerStart.cls -> this goes red naming both.
+  for (const [file, parameter, key] of LANGUAGE_SERVER_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});

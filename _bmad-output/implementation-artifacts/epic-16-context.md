@@ -6,8 +6,8 @@
 
 This is the voting-week work. It gives the classic portal's remaining second-tier screens and actions an OcuPilot equivalent that a person and the agent both use. It also carries the six stories deferred from the contest build (16.11 to 16.16), the contest-survey additions (16.17 to 16.24), and 16.25, which was split from 16.10 for size. **Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
 
-- **Done:** 16.1 to 16.9 and 16.16 to 16.24. 16.4 is committed at 6b3fe9c7, with CI pending.
-- **Next on slot A:** 16.10 (spec validated, ready for dev), then 16.25. After those, 16.11 to 16.15 are backlog.
+- **Done:** 16.1 to 16.10 and 16.16 to 16.24.
+- **Next on slot A:** 16.25, the editor for 16.10's list. After it, 16.11 to 16.15 are backlog.
 
 ## Stories
 
@@ -46,19 +46,22 @@ This is the voting-week work. It gives the classic portal's remaining second-tie
     - Its port has a `Snippet` for every `Invoke` branch.
     - A field the instance normalizes on save declares a read-back `compare`.
     - Its entity type gets a canonical-spelling rule.
-    - It is measured with auditing on. Where IRIS records nothing, it is named as the next unaudited case in both AD-15 and AD-53. There are six so far, the latest being the task export.
+    - It is measured with auditing on. Where IRIS records nothing, it is named as the next unaudited case in both AD-15 and AD-53. There are six so far: the fifth is the language server Stop, the sixth the task export.
+    - Each classic page (and Hidden dialog) whose operation it performs beyond its descriptor's own page is named in `CLASSICPAGES`, read on the instance.
   - **Prohibited arms.** A new arm needs reason text, because the Guardrails page is generated from the prohibited set. Its sentence is published once in Fixed strings and pinned equal to the kernel's reason.
 - **Copy.** New strings go into EXPERIENCE.md's Fixed strings and `strings.ts` in the same change. Edit EXPERIENCE.md in place so it stays at 993 lines. After touching it or epics.md, run `cd ui && npm run test:tools`.
 - **Bundle.** It measures about 2.18 MB, against a 2217kB `maximumWarning`.
   - Crossing the warning re-bases it to about 5% above the measured total, with the `angular-json.test.mjs` literal updated in the same change.
   - Stop and ask above 3800kB. The hard stop is 4000kB.
-- **16.10 (spec validated).**
-  - **List and actions.** The list shows status. Start and stop update the row in place, and the Activity log opens in the shared log viewer.
-  - **Privilege.** Both screens declare `%Admin_ExternalLanguageServerEdit:USE` as their own pair, beside `%DB_IRISSYS:READ`.
-  - **Auditing.** Stop is unaudited (the fifth named case).
 - **16.25.**
   - **Round trip.** Create, edit and delete round-trip through the admin API, and delete confirms by name.
   - **DW-253.** Derive one field list per server type, as `Wallet.Secret` does, and amend AD-3.
+  - **Measured by 16.10, not to be re-probed.**
+    - PUT is the only create and edit (an upsert). `Type` is required and cannot change, and `Port` is required on create.
+    - A PUT carrying `Custom` clears a Python server's classic-only members, so an unchanged `Custom` is omitted. That is an AD-4 named exception.
+    - PUT and DELETE need `%Admin_Manage:USE` and `%DB_IRISSYS:WRITE`. A Python delete also needs `%System_CallOut:USE`.
+    - A running server keeps listening after a delete, so edit and delete are refused while it runs, as the classic page does.
+    - The path fields (`LogFile`, `ClassPath`, `JavaHome`, `PythonPath`, `FilePath`) are recommended shown and never sent. A settable path would be a new AD-21 case.
 - **16.11.**
   - **Tool shape.** `Task.Manager` has no body template, so the tool is action-style.
   - **Suspend** first warns that no scheduled task will run until it is resumed.
@@ -89,12 +92,12 @@ This is the voting-week work. It gives the classic portal's remaining second-tie
 
 - **Reads (AD-5, AD-36).** One declared read serves both screen and tool, is bounded, and reports truncation.
   - **Optional parts:** a `rowGet` per row, `source.rows` over one member (the vendor's `maxRows` sent as the cap plus one), and up to three `parts`.
-  - **16.10.** `rowGet` issues `LanguageServer` `ACTIVITY` with `maxRows` 1 to merge `CurrentlyRunning`. The parent-scoped Activity log reads `ACTIVITY` with `source.rows` `Activity`.
+  - **External language servers.** `rowGet` issues `LanguageServer` `ACTIVITY` with `maxRows` 1 to merge `CurrentlyRunning`, and the parent-scoped Activity log reads `ACTIVITY` with `source.rows` `Activity`.
 - **Privilege (AD-8, AD-29, AD-44).**
   - Pairs are checked at call time, and an administrative resource is required at `USE`, never `WRITE`.
   - **Establishing a set.** Read the backing class's own check in `irislib/`, then run a least-privileged principal on the throwaway. Never use `%Operator` to prove a denial.
-  - **Extra pairs** go in the screen's `ownPrivileges` or on the write tool. A caller without one is refused by name before any port call.
-  - **Classic pages.** Each classic page a tool's operation replaces is named in `CLASSICPAGES`, and its custom resource joins the tool's pairs at `USE`.
+  - **Extra pairs** go in the screen's `ownPrivileges` or on the write tool. A caller without one is refused by name before any port call. External language servers' list and Activity log own `%Admin_ExternalLanguageServerEdit:USE` beside `%DB_IRISSYS:READ`.
+  - **Classic pages.** A descriptor declares the classic page it replaces. A write tool names every further page it performs in `CLASSICPAGES`, and `Screen.Gate.WithClassicPages` unions each page's custom resource into its pairs at `USE` on every gate call. The mechanism is on this branch: 16.4 and 16.10 both declare theirs, so a new tool never defers it.
 - **Writes.**
   - **Two callers.** A screen action and the agent's write are one operation. The screen caller mints no proposal and emits no marker, and read-only and the kill switch do not gate it (AD-53, AD-55).
   - **Declared shape.** Each tool declares its port, `AdminPort` by default (AD-52).
@@ -110,18 +113,18 @@ This is the voting-week work. It gives the classic portal's remaining second-tie
     - The prohibited set is judged by effect, inside the confirm transition, for both callers (AD-10, AD-34).
     - Governance is checked at dispatch and again at Confirm.
     - A write that would queue is refused unless it is listed on `QUEUEDWRITES` (AD-26).
-  - **Absence (AD-2, DW-1814).** A read answered 404 writes no log line: a delete's re-read, a read-back or an existence check still gets `PORT.NOTFOUND`, but it no longer raises the instance's alert state. A write answered 404 is still logged at error.
+  - **Absence (AD-2).** A read answered 404 writes no log line, so a delete's re-read, a read-back or an existence check still gets `PORT.NOTFOUND` without raising the instance's alert state. A write answered 404 is still logged at error.
   - **After the write.** It reads its target back (AD-58), and a copy-out draft renders on the instance (AD-59).
 - **Paths and logs (AD-21, AD-60).**
   - **No endpoint accepts a path.** A file is named as a root and a relative name through `Port/PathPort`, and is resolved again at the write. The tool declares `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`.
   - **Overwriting consumers** are also refused configuration, database, journal and OcuPilot-served files. A file the tool reads is a `source`.
   - **Log text** reaches the model only through the sanitizer.
-- **Refresh (AD-43).** Auto-refresh now covers nine screens, including the Dashboard. A new one needs both its descriptor and EXPERIENCE.md's Auto-refresh controls row.
+- **Refresh (AD-43).** Auto-refresh covers nine screens, including the Dashboard. A new one needs both its descriptor and EXPERIENCE.md's Auto-refresh controls row.
 
 ## UX & Interaction Patterns
 
 - **Placement.**
-  - **External language servers** is an OS management list, whose form-page editor (16.25) takes side-bar position 0. Its Activity log uses the shared log viewer.
+  - **External language servers** is an OS management list with Start and Stop as row actions. Its editor (16.25) is a form-page. Once the editor exists, the name cell opens it, and the editor links the Activity log.
   - **Remove locks** is a dialog from the Locks row menu.
   - **Suspend Task Manager** is on the Task schedule command bar.
   - **The service and LDAP editors** are tabbed form pages.
@@ -132,17 +135,15 @@ This is the voting-week work. It gives the classic portal's remaining second-tie
 
 ## Cross-Story Dependencies
 
-- **Keep intact.** 16.6's shared multi-select table, and Epic 14's baseline, sanitizer and per-user read-only.
+- **Keep intact.** 16.6's shared multi-select table, 16.8's shared log viewer, and Epic 14's baseline, sanitizer and per-user read-only.
 - **Within the epic.**
-  - 16.25 builds on 16.10's list and entity type.
+  - 16.25 builds on 16.10's list, entity type `language-server` and Activity log read. 16.10's spec Design Notes, "Handed to the editor story", hold the full measured facts.
   - 16.11's Task Manager resume becomes 16.21's Operations "Fix it", which links to the screen until then.
   - 16.12 extends Story 6.10's Locks list.
   - 16.13 and 16.14 each remove one classic-link exemption (`ServiceForm`, `LdapConfigForm`), which lowers SM-C1 from two.
-  - **An open owner decision.** DW-1827 (16.4's import reviews task names only) is escalated to the owner. A later task story does not re-decide it.
+  - **DW-1827 is decided.** The agent's task import (`tasks.schedule.import`) is disabled by default in the governance baseline, and the person's screen import is unaffected. The commit was made in the 1.0.3 staging branch, so this branch receives it at the next forward merge. The fix is routed to range-end cleanup, and a later task story does not re-decide it.
 - **Epic 18, on slot B.**
-  - Shared rosters are unioned at each merge, so keep edits additive: `EntityType`, `Prohibited` codes and covered types, `ReadTool` counts, `AdminPort` type lists, the baseline and the screen mirror.
+  - Shared rosters are unioned at each merge, so keep edits additive: `EntityType`, `Prohibited` codes and covered types, `ReadTool` counts, `AdminPort` type lists, `CLASSICPAGES` rosters, the baseline and the screen mirror.
   - OS management side-bar positions are reconciled from the merged registry.
 - **Slot A.** It uses `ocupilot-slot-a` and the `ocupilot-ci` throwaway (52776/1975).
-- **Release 1.0.3.** It is cut Tue 2026-09-29 at 14:00 PDT.
-  - No story starts after 12:00 PDT unless it reaches its boundary by 14:00.
-  - Stories done with green CI merge, and the one in progress waits.
+- **Release 1.0.3.** It is cut Tue 2026-09-29 at 14:00 PDT and staged with 16.4. 16.10 and every later story merge after the cut.

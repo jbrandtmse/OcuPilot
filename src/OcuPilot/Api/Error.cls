@@ -4238,4 +4238,12 @@ Parameter PROCESSBROADCASTRECIPIENT = "PROCESS.BROADCAST.RECIPIENT";
 
 Parameter REASONPROCESSBROADCASTRECIPIENT = "At least one of these processes has ended or is not a terminal session, so nothing was sent.";
 
+/// <p>Machine code (AD-12, AD-39, Story 16.10): an external language server's start the instance
+/// refused, answered on the <parameter>SERVERERROR</parameter> slug with 500 by
+/// <class>OcuPilot.Port.AdminPort</class> (<code>TYPEFAULTS</code>) for both callers. The vendor's
+/// text goes to the log alone; the server's activity log records why.</p>
+Parameter LANGUAGESERVERSTART = "LANGUAGESERVER.START";
+
+Parameter REASONLANGUAGESERVERSTART = "The server did not start. Its activity log records why.";
+
 }

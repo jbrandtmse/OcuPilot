@@ -1060,6 +1060,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         If (tRowsType '= "unassigned") && (tRowsType '= "null") {
             Set tProblem = ..RowsProblem(tSource)
             If tProblem '= "" Quit
+            Set tProblem = ..ActivityRowsProblem(pDeclaration)
+            If tProblem '= "" Quit
         } ElseIf (tSource.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#READSOURCETYPES), tSource.%Get("type")) {
             Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'"
             Quit
@@ -2002,6 +2004,33 @@ ClassMethod RowsProblem(pSource As %DynamicObject) As %String
     Quit tProblem
 }
 
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>rows</code> read of type
+/// <code>ACTIVITY</code>, or <code>""</code> for any other type (AD-36 as amended, Story 16.10). An
+/// <code>ACTIVITY</code> answer is one server's activity, so the read is admitted only on a screen
+/// declaring a <code>parentScope</code> whose one criterion is the <code>text</code> criterion
+/// <code>name</code>, which the route id fills. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>activityRowsProblem</code> returns the same sentence for every case in
+/// <class>OcuPilot.Test.ReadSourceCorpus</class>.</p>
+ClassMethod ActivityRowsProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tRead = pDeclaration.%Get("read")
+    Set tSource = tRead.%Get("source")
+    If tSource.%Get("type") '= ##class(OcuPilot.Screen.Read).#ACTIVITYTYPE Quit ""
+    If (pDeclaration.%GetTypeOf("parentScope") '= "string") || (pDeclaration.%Get("parentScope") = "") {
+        Quit "read.source.type 'ACTIVITY' is declared with no parentScope, and a list over one server's activity reads the server its route id names (AD-36, Story 16.10)"
+    }
+    Set tSound = 0
+    If tRead.%GetTypeOf("criteria") = "object" {
+        Set tFields = tRead.%Get("criteria").%Get("fields")
+        If $IsObject(tFields) && tFields.%IsA("%Library.DynamicArray") && (tFields.%Size() = 1) {
+            Set tField = tFields.%Get(0)
+            If $IsObject(tField) && tField.%IsA("%Library.DynamicObject") Set tSound = (tField.%Get("param") = "name") && (tField.%Get("kind") = "text")
+        }
+    }
+    If 'tSound Quit "read.criteria on an 'ACTIVITY' read is not the one text criterion 'name', which its route id fills (AD-36, Story 16.10)"
+    Quit ""
+}
+
 /// <p>The <code>port</code> values a declared part may name (AD-36): <code>admin</code>, the default,
 /// and <code>monitor</code>, the sensors behind <class>OcuPilot.Port.MonitorPort</class>'s own gate
 /// (Story 16.7).</p>
@@ -2147,9 +2176,10 @@ ClassMethod PartsProblem(pRead As %DynamicObject, pSource As %DynamicObject, pFi
 Parameter ROWGETRULES = "beforeToday";
 
 /// <p>The request types a <code>read.source.rowGet</code> may issue (AD-36): <code>GET</code>, the
-/// default; <code>INFO</code>, where the list's own row is wrong; and <code>CERTINFO</code>, where only
-/// that type carries the fields.</p>
-Parameter ROWGETTYPES = "GET,INFO,CERTINFO";
+/// default; <code>INFO</code>, where the list's own row is wrong; <code>CERTINFO</code>, where only
+/// that type carries the fields; and <code>ACTIVITY</code>, a language server's running state beside
+/// its activity rows, issued with <code>maxRows</code> 1 (Story 16.10).</p>
+Parameter ROWGETTYPES = "GET,INFO,CERTINFO,ACTIVITY";
 
 /// <p>What is wrong with <var>pSource</var>'s <code>rowGet</code>, or <code>""</code> (AD-36).
 /// <var>pFields</var> is the read's declared fields. <var>pKeyAllowed</var> is non-empty only for a

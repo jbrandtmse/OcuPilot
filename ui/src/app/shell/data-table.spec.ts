@@ -12,7 +12,7 @@ import { ScopeService } from '../core/scope';
 import { DOWNLOAD_CSV_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../core/screen-store';
 import { Session } from '../core/session';
-import type { ScreenDeclaration } from '../core/screens.generated';
+import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
 import { tableDeclaration } from '../testing/table-declaration';
 import { DataTable, TABLE_STRING_LOOKUP } from './data-table';
@@ -256,6 +256,30 @@ describe('the data table', () => {
     const secretLink = secrets.host().querySelector('[aria-rowindex="2"] [role="gridcell"] a') as HTMLAnchorElement;
     expect(secretLink).not.toBeNull();
     expect(secretLink.getAttribute('href')).toBe('/security/wallet/secrets/edit/%252Fcsp%252Fapp00?ns=HSCUSTOM');
+  });
+
+  it('Story 16.10: External language servers draws Running as Yes or No with its disc, and links each name at its Activity log', async () => {
+    // Mutation (Rule 19): declare the list's CurrentlyRunning column `text` -> the disc assertions go red.
+    const servers = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.LanguageServerList')!;
+    const wired = await wire(
+      servers,
+      ok([
+        { Name: '%Java Server', Type: 'Java', Port: 53272, CurrentlyRunning: true },
+        { Name: '%Python Server', Type: 'Python', Port: 53472, CurrentlyRunning: false },
+      ])
+    );
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const running = Array.from(wired.host().querySelectorAll('[aria-rowindex="2"] [role="gridcell"]')) as HTMLElement[];
+    expect(running[3].querySelector('.ocu-data-table-disc')?.getAttribute('data-disc')).toBe('success');
+    expect(running[3].textContent?.trim()).toBe(STRINGS.tableStatusYes);
+    expect(running[2].classList.contains('ocu-data-table-cell-numeric')).toBe(true);
+    const stopped = Array.from(wired.host().querySelectorAll('[aria-rowindex="3"] [role="gridcell"]')) as HTMLElement[];
+    expect(stopped[3].querySelector('.ocu-data-table-disc')?.getAttribute('data-disc')).toBe('outline');
+    expect(stopped[3].textContent?.trim()).toBe(STRINGS.tableStatusNo);
+    const link = running[0].querySelector('a') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/os-management/language-servers/activity/%2525Java%2520Server?ns=HSCUSTOM');
+    expect(wired.host().querySelector('[role="columnheader"]:nth-child(4)')?.textContent).toContain(STRINGS.languageServerColumnRunning);
   });
 
   it('Story 9.8: a list that pairs both a detail screen and an editor links each name cell at the detail screen', async () => {

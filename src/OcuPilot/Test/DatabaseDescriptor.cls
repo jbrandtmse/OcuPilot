@@ -16,11 +16,11 @@ Parameter PORT = "OcuPilot.Port.DatabasePort";
 
 Parameter SCREENPAIRS = "[{""resource"":""%Admin_Manage"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]";
 
-/// <p>The list: OS management's ninth entry over the vendor's configuration <code>LIST</code>
+/// <p>The list: OS management's tenth entry over the vendor's configuration <code>LIST</code>
 /// narrowed to local databases, three fields filtered and sorted alike, Name first, one Delete row
 /// action and a Create, the classic Local Databases page; Epic 6's Databases re-fetches on its
 /// entity type (AD-14).</p>
-Method TestTheListIsOsManagementsNinthEntryKeyedByName()
+Method TestTheListIsOsManagementsTenthEntryKeyedByName()
 {
     Set tClass = ..#LIST
     Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
@@ -28,7 +28,7 @@ Method TestTheListIsOsManagementsNinthEntryKeyedByName()
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
-    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition") _ ":" _ tDeclaration.labelKey, "os-management:9:localDatabaseListLabel", "OS management's ninth side-bar entry")
+    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition") _ ":" _ tDeclaration.labelKey, "os-management:10:localDatabaseListLabel", "OS management's tenth side-bar entry")
     Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""Database.ConfigCRUD"",""type"":""LIST"",""query"":{""localOnly"":""1""}}", "read through the vendor's configuration list, local databases only")
     For tKey = "fields", "filter" {
         Do $$$AssertEquals(tDeclaration.read.%Get(tKey).%ToJSON(), "[""Name"",""Directory"",""Status""]", "read." _ tKey _ " is the three fields")
