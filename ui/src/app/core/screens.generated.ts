@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'language-server';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -470,6 +470,7 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "global-mapping",
   "routine-mapping",
   "package-mapping",
+  "database-configuration",
   "language-server"
 ];
 
@@ -505,7 +506,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "namespace": "foldcase",
   "global-mapping": "foldcase-firstpart",
   "routine-mapping": "foldcase-firstpart",
-  "package-mapping": "foldcase-firstpart"
+  "package-mapping": "foldcase-firstpart",
+  "database-configuration": "foldcase"
 };
 
 /**
@@ -2261,7 +2263,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Status",
         "Details",
         "ErrorCount",
-        "StartTime"
+        "StartTime",
+        "Database"
       ],
       "secretFields": []
     },
@@ -2307,7 +2310,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Status",
         "Details",
         "ErrorCount",
-        "StartTime"
+        "StartTime",
+        "Database"
       ],
       "filter": [
         "Source",
@@ -3211,7 +3215,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "database",
-    "secondaryEntityTypes": [],
+    "secondaryEntityTypes": [
+      "database-configuration"
+    ],
     "scope": "instance",
     "parentScope": "",
     "id": {
@@ -5116,6 +5122,212 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "osmgmt.licenseusers",
     "refreshDefault": 0,
     "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LocalDatabaseForm",
+    "route": "os-management/local-databases/edit",
+    "area": "os-management",
+    "labelKey": "systemInfoDatabase",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localDatabaseFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "databaseDetailsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localDatabaseFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Database",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.localdatabaseform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LocalDatabaseList",
+    "route": "os-management/local-databases",
+    "area": "os-management",
+    "labelKey": "localDatabaseListLabel",
+    "sideBarPosition": 10,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Directory",
+        "Status"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "localDatabaseListEmpty",
+    "commandAliases": [
+      "local databases",
+      "configure database",
+      "create database"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localDatabaseListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localDatabaseListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "localDatabaseListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Databases",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Database.ConfigCRUD",
+        "type": "LIST",
+        "query": {
+          "localOnly": "1"
+        }
+      },
+      "fields": [
+        "Name",
+        "Directory",
+        "Status"
+      ],
+      "filter": [
+        "Name",
+        "Directory",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Directory",
+          "Status"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Directory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "identifier"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "localDatabaseListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.localdatabases",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
     "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],

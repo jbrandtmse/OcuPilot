@@ -3721,6 +3721,74 @@ export const STRINGS = {
   dashboardPrompt2: 'How busy is the instance right now, and how much CPU is it using?',
   /** EXPERIENCE.md:375 */
   dashboardPrompt3: 'Have serious alerts or application errors been raised?',
+  /** EXPERIENCE.md:377 */
+  localDatabaseListLabel: 'Local databases',
+  /** EXPERIENCE.md:377 */
+  localDatabaseListEmpty: 'No local databases on this instance.',
+  /** EXPERIENCE.md:377 */
+  localDatabaseListEmptyAgent: 'create a database',
+  /** EXPERIENCE.md:377 */
+  localDatabaseFormRefusedAction: 'change this database',
+  /** EXPERIENCE.md:377 */
+  localDatabaseListPrompt1: 'Which databases does this instance define, and where are their files?',
+  /** EXPERIENCE.md:377 */
+  localDatabaseListPrompt2: 'Which databases could a new namespace use?',
+  /** EXPERIENCE.md:377 */
+  localDatabaseListPrompt3: 'What would deleting a database take with it?',
+  /** EXPERIENCE.md:377 */
+  localDatabaseFormPrompt1: 'Which resource guards this database?',
+  /** EXPERIENCE.md:377 */
+  localDatabaseFormPrompt3: 'What changes if this database becomes read only?',
+  /** EXPERIENCE.md:377 */
+  databaseWizardStepName: 'Name and directory',
+  /** EXPERIENCE.md:377 */
+  databaseWizardStepSize: 'Size and journaling',
+  /** EXPERIENCE.md:377 */
+  databaseInitialSize: 'Initial size (MB)',
+  /** EXPERIENCE.md:377 */
+  databaseResourceNew: 'Create the resource <name>',
+  /** EXPERIENCE.md:377 */
+  databaseResourceExisting: 'Use an existing resource',
+  /** EXPERIENCE.md:377 */
+  databaseGroupMounting: 'Mounting',
+  /** EXPERIENCE.md:377 */
+  databaseMountAtStartup: 'Mount at startup',
+  /** EXPERIENCE.md:377 */
+  databaseMountRequired: 'Mount required at startup',
+  /** EXPERIENCE.md:377 */
+  databaseCreateLink: 'Create a database',
+  /** EXPERIENCE.md:377 */
+  databaseDirectoryChange: 'Change',
+  /** EXPERIENCE.md:377 */
+  localDatabaseDeleteFileOption: 'Also delete the database file and its volume files',
+  /** EXPERIENCE.md:377 */
+  databaseTasksNone: 'No background task is running against this database.',
+  /** EXPERIENCE.md:377 */
+  databaseTasksTruncated: 'Only the newest <n> background tasks were checked.',
+  /** EXPERIENCE.md:479 */
+  localDatabaseDeleteConsequence:
+    'Deleting this database removes it from the instance\'s configuration. Its file stays unless you also delete it here. This cannot be undone.',
+  /** EXPERIENCE.md:481 */
+  databaseRefusalOcuPilot:
+    'OcuPilot or the instance itself depends on this database. It cannot be deleted, and its directory, resource and read-only setting cannot be changed.',
+  /** EXPERIENCE.md:577 */
+  impactNamespacesUse: '<n> namespaces use it and must stop using it first: <names>',
+  /** EXPERIENCE.md:577 */
+  impactNamespacesUseOne: '1 namespace uses it and must stop using it first: <names>',
+  /** EXPERIENCE.md:577 */
+  impactNamespacesUseNone: 'no namespace uses it',
+  /** EXPERIENCE.md:577 */
+  impactNamespacesUseUnchecked: 'which namespaces use it was not checked',
+  /** EXPERIENCE.md:577 */
+  impactApplicationsInThem: '<n> web applications run in those namespaces: <names>',
+  /** EXPERIENCE.md:577 */
+  impactApplicationsInThemOne: '1 web application runs in those namespaces: <names>',
+  /** EXPERIENCE.md:577 */
+  impactSharedFile: '<n> other databases share its file, which stays: <names>',
+  /** EXPERIENCE.md:577 */
+  impactSharedFileOne: '1 other database shares its file, which stays: <names>',
+  /** EXPERIENCE.md:577 */
+  impactSharedFileUnchecked: 'whether another database shares its file was not checked',
   // Story 16.10, External language servers. The Port column reuses `sslTestPort`, and the Name and
   // Type columns `tableColumnName` and `tableColumnType`, because a value already published belongs
   // to one key.

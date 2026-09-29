@@ -100,9 +100,10 @@ const LIVE_PAYLOAD = {
       // sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead of the
       // listed ones in position order. Story 18.2 adds the namespace editor among the unlisted ones
       // and Namespaces last, Story 18.14 the three mapping forms and lists among the unlisted ones,
-      // and Story 16.7 License usage's three unlisted tabs among them and License usage and the
+      // Story 16.7 License usage's three unlisted tabs among them and License usage and the
       // Dashboard after Namespaces; Story 16.10 its unlisted Activity log among them and External
-      // language servers last, refused on its own pair.
+      // language servers after the Dashboard, refused on its own pair; and Story 18.3 the local
+      // database form among the unlisted ones and Local databases last.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -166,6 +167,13 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/local-databases/edit',
+          labelKey: 'systemInfoDatabase',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
         },
         {
           route: 'os-management/namespaces/edit',
@@ -271,6 +279,13 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 9,
           allowed: false,
           failedPair: '%Admin_ExternalLanguageServerEdit:USE',
+        },
+        {
+          route: 'os-management/local-databases',
+          labelKey: 'localDatabaseListLabel',
+          sideBarPosition: 10,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
         },
       ],
     },
@@ -550,9 +565,11 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   // Manage pair at all and is denied on its second, as System usage above is. Story 6.12: Devices
   // declares the same two pairs as the General view and Database volumes, so it is denied the
   // same way, and so are Story 18.2's Namespaces list and its editor, and Story 18.14's three mapping
-  // lists and forms, which declare the Namespaces screens' pairs.
+  // lists and forms, which declare the Namespaces screens' pairs, and Story 18.3's Local databases
+  // and its form, which declare them too.
   const mappingRoutes = ['global', 'routine', 'package'].flatMap((kind) => [`os-management/namespaces/${kind}-mappings`, `os-management/namespaces/${kind}-mappings/edit`]);
-  for (const route of ['os-management/databases', 'os-management/database-free-space', 'os-management/databases/volumes', 'os-management/devices', 'os-management/namespaces', 'os-management/namespaces/edit', ...mappingRoutes]) {
+  const databaseRoutes = ['os-management/local-databases', 'os-management/local-databases/edit'];
+  for (const route of ['os-management/databases', 'os-management/database-free-space', 'os-management/databases/volumes', 'os-management/devices', 'os-management/namespaces', 'os-management/namespaces/edit', ...mappingRoutes, ...databaseRoutes]) {
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
   }
   assert.deepEqual(service.screenVerdict('os-management/databases/details'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });

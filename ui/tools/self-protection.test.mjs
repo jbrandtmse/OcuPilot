@@ -272,6 +272,9 @@ const KERNEL_REFUSALS = [
   // Story 18.14: OcuPilot's own mappings in the install namespace and %ALL, refused on the envelope
   // of either caller's create, change, delete or copy.
   ['OCUPILOTMAPPING', 'mappingRefusalOcuPilot'],
+  // Story 18.3: OcuPilot's own database, its install namespace's databases and the seven system
+  // databases, whose Delete dialog states this sentence as its advisory when it opens.
+  ['OCUPILOTDATABASE', 'databaseRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {

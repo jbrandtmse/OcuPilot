@@ -236,6 +236,7 @@ services:
       # classes: LedgerSearchWire
       # classes: NamespaceWriteGate
       # classes: ClassicPageGate, MappingWriteGate
+      # classes: DatabaseRefusals, DatabaseWriteGate
       # classes: WebSessionsLive
       # The Background tasks classes also create a scratch database and pause, resume and cancel a
       # compact of it; AdminPortForget runs the whole retention sweep.
@@ -380,6 +381,16 @@ services:
       # classes: NamespaceRefusals, NamespaceWrite, NamespaceWriteGate
       # classes: ClassicPageGate, MappingCodeGlobals, MappingRefusals, MappingWrite, MappingWriteGate, NamespaceCopy
       OCUPILOT_ALLOW_NAMESPACE_CONFIG: "1"
+      # Creates, edits and deletes database configurations and database files in this instance's own
+      # configuration, with the %DB_* resources and directories a create makes, through the shipped
+      # Save, row-action and confirm paths. Its own variable because no narrower one names that
+      # effect: a database delete with its file removes data. The classes touch only OCUPROBE183*
+      # databases, %DB_OCUPROBE183* resources and <mgr>ocuprobe183* directories, each by exact
+      # name, with the probe namespaces, mapping and /csp/ocuprobe183* applications and the
+      # OCUPROBE183SRV data server they create, and write to the instance's own databases only
+      # through a port that sends nothing.
+      # classes: DatabaseRefusals, DatabaseWrite, DatabaseWriteDetail, DatabaseWriteGate, PathPortDatabases
+      OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

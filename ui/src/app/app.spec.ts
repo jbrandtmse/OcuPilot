@@ -25,6 +25,8 @@ import { OAuthRegisteredClientForm } from './areas/security/oauth-registered-cli
 import { DeviceForm } from './areas/os-management/device-form.store';
 import { NamespaceForm } from './areas/os-management/namespace-form.store';
 import { MappingForm } from './areas/os-management/mapping-form.store';
+import { DatabaseEditor } from './areas/os-management/database-editor.store';
+import { DatabaseWizard } from './areas/os-management/database-wizard.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { LedgerSearch } from './areas/agent/ledger.store';
@@ -516,34 +518,45 @@ describe('the shell frame', () => {
         // The application error log's drill (Story 2.12) is the one root-provided store that
         // reads through `ApiService` directly -- it declares no read, so it has no `RefreshRead`
         // to stub. The stub answers an empty page so the drill's state can be driven here without
-        // a network, which is what the sign-out teardown below needs a subject for.
+        // a network, which is what the sign-out teardown below needs a subject for. The database
+        // editor's form read answers one database, so the teardown has an opened editor to clear.
         {
           provide: ApiService,
           useValue: {
             requestJson: async (path: string) =>
-              path.startsWith('/api/ocupilot/logs/xdbc')
+              path.startsWith('/api/ocupilot/database/form?name=')
                 ? {
                     kind: 'ok',
                     status: 200,
                     body: {
-                      source: 'xdbc',
-                      entries: [{ time: '2026-09-27T10:00:00.000', pid: '7', severity: '2', text: '[HSCUSTOM] <-30>', raw: 'x' }],
-                      truncated: false,
+                      Name: 'ADATABASETHISPRINCIPALOPENED',
+                      configuration: { Directory: '/durable/iris/mgr/adatabase/', MountAtStartup: true },
+                      file: { Directory: '/durable/iris/mgr/adatabase/', ExpansionSize: '0' },
                     },
                   }
-                : path.startsWith('/api/ocupilot/screens/logs.hub/read')
+                : path.startsWith('/api/ocupilot/logs/xdbc')
                   ? {
                       kind: 'ok',
                       status: 200,
                       body: {
-                        fields: ['time', 'source', 'severity', 'text', 'id'],
-                        rows: [{ time: '2026-09-27T10:00:00.000', source: 'logs/xdbc', severity: '2', text: '[HSCUSTOM] <-30>', id: '' }],
+                        source: 'xdbc',
+                        entries: [{ time: '2026-09-27T10:00:00.000', pid: '7', severity: '2', text: '[HSCUSTOM] <-30>', raw: 'x' }],
                         truncated: false,
-                        criteria: { since: '2026-09-27 09:00:00' },
-                        sources: [{ source: 'logs/xdbc', shown: true, requires: '', count: 1, truncated: false, last: null }],
                       },
                     }
-                  : { kind: 'ok', status: 200, body: { rows: [] } },
+                  : path.startsWith('/api/ocupilot/screens/logs.hub/read')
+                    ? {
+                        kind: 'ok',
+                        status: 200,
+                        body: {
+                          fields: ['time', 'source', 'severity', 'text', 'id'],
+                          rows: [{ time: '2026-09-27T10:00:00.000', source: 'logs/xdbc', severity: '2', text: '[HSCUSTOM] <-30>', id: '' }],
+                          truncated: false,
+                          criteria: { since: '2026-09-27 09:00:00' },
+                          sources: [{ source: 'logs/xdbc', shown: true, requires: '', count: 1, truncated: false, last: null }],
+                        },
+                      }
+                    : { kind: 'ok', status: 200, body: { rows: [] } },
           } as unknown as ApiService,
         },
       ],
@@ -1227,6 +1240,17 @@ describe('the shell frame', () => {
     mappingForm.setValue('Name', 'AMappingThisPrincipalTyped');
     expect(mappingForm.value('Name')).not.toBe('');
 
+    // The same answer for the database wizard and editor (Story 18.3): a database THIS principal
+    // typed or opened and has not saved, in two root-provided stores. The wizard takes input before
+    // its form read is made; the editor takes input once its form read has answered.
+    const databaseWizard = TestBed.inject(DatabaseWizard);
+    databaseWizard.setName('ADATABASETHISPRINCIPALTYPED');
+    expect(databaseWizard.values().Name).not.toBe('');
+    const databaseEditor = TestBed.inject(DatabaseEditor);
+    await databaseEditor.open('ADATABASETHISPRINCIPALOPENED');
+    databaseEditor.setText('ExpansionSize', '7');
+    expect(databaseEditor.text('ExpansionSize')).toBe('7');
+
     // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
     // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
     // only in an edit, which is set before its form read answers.
@@ -1341,6 +1365,15 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.mappingForm.reset()` from `App.verifyWhenSignedIn` -> this
     // goes red, and the next principal's mapping editor holds the previous one's typed name.
     expect(mappingForm.value('Name')).toBe('');
+
+    // Mutation (Rule 19): delete `this.databaseWizard.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's wizard holds the previous one's typed name.
+    expect(databaseWizard.values().Name).toBe('');
+    // Mutation (Rule 19): delete `this.databaseEditor.reset()` from `App.verifyWhenSignedIn` -> the
+    // first of these goes red, and the next principal's editor holds the previous one's opened
+    // database and unsaved change.
+    expect(databaseEditor.name()).toBe('');
+    expect(databaseEditor.text('ExpansionSize')).toBe('');
 
     // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
     // red, and the next principal's SSL/TLS form holds the previous one's typed key password.

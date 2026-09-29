@@ -522,6 +522,46 @@ XData Entries
       "Database": "ordinary"
     }
   },
+  "osmgmt.localdatabases.create": {
+    "fieldList": "Database.ConfigCRUD",
+    "compare": {"Directory": "unslashed"},
+    "classification": {
+      "Server": "ordinary",
+      "Directory": "ordinary",
+      "StreamLocation": "ordinary",
+      "ClusterMountMode": "ordinary",
+      "MountAtStartup": "ordinary",
+      "MountRequired": "ordinary"
+    }
+  },
+  "osmgmt.localdatabases.updatemount": {
+    "fieldList": "Database.ConfigCRUD",
+    "compare": {"Directory": "unslashed"},
+    "classification": {
+      "Server": "ordinary",
+      "Directory": "ordinary",
+      "StreamLocation": "ordinary",
+      "ClusterMountMode": "ordinary",
+      "MountAtStartup": "ordinary",
+      "MountRequired": "ordinary"
+    }
+  },
+  "osmgmt.localdatabases.update": {
+    "fieldList": "Database.SysCRUD",
+    "compare": {"NewVolumeDirectory": "unslashed"},
+    "classification": {
+      "MaxSize": "ordinary",
+      "ExpansionSize": "ordinary",
+      "NewVolumeThreshold": "ordinary",
+      "NewVolumeDirectory": "ordinary",
+      "ResourceName": "ordinary",
+      "NewGlobalIsKeep": "ordinary",
+      "GlobalJournalState": "ordinary",
+      "NewGlobalCollation": "ordinary",
+      "ClusterMountMode": "ordinary",
+      "ReadOnly": "ordinary"
+    }
+  },
   "security.oauthserverdescriptions.create": {
     "fieldList": "Security.OAuth2.Client.ServerDefinition",
     "compare": {"Metadata": "members"},

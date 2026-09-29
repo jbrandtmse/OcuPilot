@@ -23,7 +23,9 @@ OcuPilot is an Angular portal served from the IRIS instance itself, with an Obje
 behind it. It covers the six areas named by InterSystems' ["Build Your Own Management
 Portal"](https://openexchange.intersystems.com/contest/48) contest - web applications, permissions,
 security and secrets, tasks, OS management and the logs - with list screens, row actions and full
-editors that work against live instance data.
+editors that work against live instance data. Home adds the instance's performance and a list of
+security and operational findings, each with a fix you can review, and a log hub merges every log
+the instance keeps into one timeline.
 
 A panel docked on the right of every screen holds the agent. It sees the screen you are on, answers
 questions about it from the rows in front of you, opens the screen a conversation is about, and
@@ -58,6 +60,30 @@ instance. Sign in as `demo` with the password `ocupilot-demo`. Or watch it first
 <details>
 <summary><b>More screenshots</b></summary>
 
+**What needs attention** - Home shows the instance's performance and its findings; **Fix it** asks
+the agent for a proposal, which waits for your Confirm.
+
+![Home with the performance row and the Security and Operations findings, each with a Fix it button.](docs/images/10-home-findings.png)
+
+**Every log in one timeline** - the unified log hub merges `messages.log`, the audit database and
+the other logs, newest first, and any entry can be explained.
+
+![The unified log hub's timeline, with messages.log and audit database entries interleaved newest first.](docs/images/11-log-hub.png)
+
+**The dashboard** - performance, system usage, errors, licensing and the Task Manager at a glance.
+
+![The dashboard with CPU, global references, disk and journal meters, license use and their states.](docs/images/12-dashboard.png)
+
+**The guardrails, in one place** - what the agent and the screens refuse, what always needs your
+Confirm and what is never sent to the model, read from the rules the instance enforces.
+
+![The Guardrails page listing the changes refused outright, each with its reason and code.](docs/images/13-guardrails.png)
+
+**Who can do what** - a user's effective privileges, each resource with the role or public
+permission that grants it, and **Check permission** for any user or role.
+
+![The user editor's Effective privileges tab for operator, listing each resource and the role that grants it.](docs/images/14-effective-privileges.png)
+
 **Asking about the screen you are on** - the agent reads the task schedule and history and explains
 what needs attention.
 
@@ -74,7 +100,7 @@ change and says what would be needed; Home marks the screens this user may not o
 
 **Light and dark** - every screen in both themes.
 
-![Home in the dark theme, with suggested questions in the agent panel.](docs/images/07-dark-home.png)
+![Home in the dark theme, with the performance row, the findings and suggested questions in the agent panel.](docs/images/07-dark-home.png)
 
 </details>
 
@@ -89,6 +115,8 @@ change and says what would be needed; Home marks the screens this user may not o
    change is there.
 7. Sign out, sign in as `operator` / `ocupilot-operator`, and ask for the same change: the agent
    explains what that account would need instead.
+8. Open **Agent co-pilot → Guardrails** to see what the agent may never do, and what always waits
+   for your Confirm.
 
 ## Why OcuPilot
 
@@ -97,31 +125,49 @@ change and says what would be needed; Home marks the screens this user may not o
   unauthenticated?" is answered from the data in front of you, and every screen offers an
   **Explain this screen** prompt and suggested questions.
 - **Changes are proposals, never surprises.** A write appears as a card with the target, an
-  instance-computed before-and-after diff, the privilege it needs and how to reverse it. The agent
-  cannot confirm its own proposal: Confirm comes only from you, in your browser or a script signed
-  in as you.
+  instance-computed before-and-after diff, the privilege it needs and how to reverse it. A removal
+  also says what depends on it ("Impact: 3 users hold it: ..."). The agent cannot confirm its own
+  proposal: Confirm comes only from you, in your browser or a script signed in as you. If your
+  changes go through your own process, **Give me the script instead** turns the proposal into a
+  REST or ObjectScript script and changes nothing.
 - **It acts as you, and it is on the record.** A confirmed change runs with your roles, never an
   elevated service account. Each one is recorded in the IRIS audit database as
-  `OcuPilot/Security/AgentWrite`, and the screen marks the changed row.
+  `OcuPilot/Security/AgentWrite`, the screen marks the changed row, and a read-back line says
+  whether the instance now holds what was written.
 - **Guardrails that live on the instance.** OcuPilot refuses, on the server, changes that would
   lock you out or break it: the last `%All` holder, `_SYSTEM`, the signed-in user, the service
   accounts, OcuPilot's own applications, roles, resources and processes. An administrator can stop
-  the agent everywhere with a kill switch, or hold it read-only.
+  the agent everywhere with a kill switch, hold it read-only, switch off individual agent writes,
+  and cap how many turns each user runs an hour; anyone can make the agent read-only for
+  themselves. Four agent actions ship switched off - deleting a local database, deleting a
+  namespace, importing tasks and purging the audit database - and an administrator turns them on
+  under **Agent co-pilot → Governance policy**. The **Guardrails** page shows all of it in one
+  place.
+- **Findings you can fix.** Home checks for open web applications, an open monitoring API, accounts
+  holding `%All`, certificates that expire within 30 days, auditing switched off, dismounted or
+  nearly full databases, the Task Manager's state and suspended tasks. Where a fix exists, **Fix
+  it** asks the agent for a proposal; nothing changes until you confirm it.
 - **Bring your own model.** Anthropic, OpenAI, Google Gemini, or any OpenAI-compatible endpoint -
   including a model on your own network, which keeps screen data and log text inside it.
 - **A portal that feels current.** A VS Code-shaped shell, a command palette (`Ctrl+K`),
-  favorites and recent items, resizable columns, per-screen help, and a light and a dark theme.
+  favorites and recent items, resizable columns, **Download CSV** on every table, per-screen help,
+  and a light and a dark theme.
 
 ## The six areas
 
 | Area | Screens | What you can do |
 | --- | --- | --- |
-| Web applications | Web applications, REST API explorer, OpenAPI document viewer | Create, edit, enable, disable and delete applications; browse every REST application's endpoints |
-| Permissions | Users, roles, resources, services | Create and edit users and roles, set passwords, grant and revoke roles and resource permissions, enable and disable services |
-| Security and secrets | SSL/TLS, X.509 credentials, wallet, OAuth 2.0 (client server descriptions, client configurations, resource servers, the authorization server, server client descriptions), LDAP, auditing | Editors for each, SSL/TLS and LDAP connection tests, OAuth token revocation, audit event configuration, and audit database copy and purge |
-| Tasks | Task schedule, on-demand tasks, upcoming tasks, task history, task details | A New Task wizard, edit, run, suspend, resume and delete |
-| OS management | Processes, process details, locks, system usage, databases, devices | Suspend, resume and terminate processes; edit devices; free space per database |
-| Logs | `alerts.log`, `messages.log` and its older files, application errors, the audit database | Search and page each log, filter the audit database to agent writes, delete application errors, and ask the agent to explain any entry |
+| Web applications | Web applications, web sessions, REST API explorer, OpenAPI document viewer | Create, edit, enable, disable and delete applications; end web sessions; browse every REST application's endpoints, send a request from its OpenAPI document and copy it as curl |
+| Permissions | Users, roles, resources, services | Create and edit users and roles, set passwords, grant and revoke roles and resource permissions, enable and disable services; see a user's effective privileges, and check whether a user or role holds a permission and through which role |
+| Security and secrets | SSL/TLS, X.509 credentials, wallet, OAuth 2.0 (client server descriptions, client configurations, resource servers, the authorization server, server client descriptions), LDAP, auditing, allowed directories | Editors for each, SSL/TLS and LDAP connection tests, OAuth token revocation, audit event configuration, and audit database copy and purge |
+| Tasks | Task schedule, on-demand tasks, upcoming tasks, task history, task details, background tasks | A New Task wizard, edit, run, suspend, resume and delete; export and import tasks; pause, resume and cancel background tasks |
+| OS management | Processes, process details, locks, system usage, dashboard, license usage, databases, local databases, namespaces, devices | Suspend, resume and terminate processes; broadcast a message to terminal sessions; create, edit and delete local databases, optionally with their files; create, edit and delete namespaces and their global, routine and package mappings, and copy mappings between namespaces; edit devices; free space per database |
+| Logs | A unified log hub; `alerts.log`, `messages.log` and its older files, application errors, the audit database, and six more: the System Monitor log, background task errors, xDBC errors, SQL diagnostics, the interoperability event log and the analytics log | See every log in one list and one timeline, newest first; search and page each log, filter the audit database to agent writes, delete application errors, and ask the agent to explain any entry |
+
+Two more areas sit beside the six. **Home** shows the instance's performance, refreshing itself,
+and its findings. **Agent co-pilot** holds the agent's definitions, switches and governance policy
+for administrators, and for everyone the Guardrails page, your transcripts, and the agent audit
+ledger of each model call, tool call and confirmed write.
 
 ## Quick start
 
@@ -195,6 +241,11 @@ Since 1.0.2, OcuPilot removes agent conversations older than each agent definiti
 from before the update. To keep them longer, raise **Retention** on the definition in **Agent
 co-pilot → Agent definitions** right after you update.
 
+In 1.0.3, the agent's local database delete, namespace delete, task import and audit purge start
+switched off, on an update as on a new install, unless you already set them explicitly. The screens
+themselves still do all four; to let the agent propose them, turn them on under **Agent co-pilot →
+Governance policy**.
+
 ## Get a model key in two minutes
 
 | Provider | Default model | Where to get a key |
@@ -255,6 +306,8 @@ OcuPilot is an administration tool, so it says plainly what it adds to an instan
   `/api/ocupilot/readiness`.
 - **Two privileged routine applications**, `OcuPilotState` and `OcuPilotIdentity`, a global mapping
   and an SSL/TLS configuration, `OcuPilotProvider`, for model calls.
+- **One scheduled task**, "OcuPilot transcript retention", which runs at 03:15 each night and removes
+  agent conversations and their records once they are older than each definition's **Retention**.
 - **Auditing is switched on** if it was off, and OcuPilot registers its own audit events
   (`OcuPilot/Security/AgentWrite`, `ConfigChange`, `SecurityChange`, `RoleGranted`, `LedgerRead`).
   This is a deliberate change to the instance's security posture: an agent write that could not be
@@ -274,8 +327,9 @@ Uninstalling (`zpm "uninstall ocupilot"`) removes what the installer created.
 
 3. **Press Confirm.** OcuPilot re-checks that you still hold the privilege, that the target has not
    changed since the proposal was made, and that the change is not prohibited, then runs it as you.
-4. **The screen refreshes** and marks `/csp/myapp` as Changed; the panel shows the change done and
-   audit-marked, confirmed by you.
+4. **The screen refreshes** and marks `/csp/myapp` as Changed, with a read-back line that says the
+   instance now holds the new values; the panel shows the change done and audit-marked, confirmed by
+   you.
 
    ![The Web applications list with /csp/myapp enabled and marked Changed, and the confirmed proposal in the panel.](docs/images/03-changed.png)
 
@@ -298,6 +352,13 @@ the read-only state changes.
   one asks you for it on the proposal card, and it travels only with your Confirm.
 - **Where it goes:** to the model provider you configured, and nowhere else. A definition marked
   local sends nothing off your network.
+- **Content is data, not instructions.** Log lines, field values and everything else a tool returns
+  are cleaned and marked as data before they reach the model, so text planted in a log cannot pose
+  as an instruction. Tests plant such text in every source the agent reads and check that it is not
+  obeyed.
+- **How long it is kept:** conversations are removed once they are older than the agent
+  definition's **Retention** (30 days unless you change it). You can read your own transcripts; an
+  administrator can read everyone's, and each such read is recorded.
 
 ## From a script
 
@@ -324,6 +385,10 @@ curl -s -u demo:ocupilot-demo $B/turn/$T/progress | jq '{state, reply, proposals
 
 Against your own install, use `http://localhost:52774/api/ocupilot` and your own account.
 
+For any other REST application on the instance, the OpenAPI document viewer's **Try it** sends a
+request from the portal, and **Copy as curl** gives you the same request for a script, with the
+token and hidden values left as placeholders.
+
 ## How it is built
 
 ![How OcuPilot is built: the browser calls /api/ocupilot with a JWT; the API reads and writes through the IRIS management APIs as the user, starts the agent turn as a background job that exchanges screen context and tools with the model provider and mints proposals on the instance, and records agent writes in the IRIS audit database.](docs/images/09-architecture.png)
@@ -340,20 +405,21 @@ Against your own install, use `http://localhost:52774/api/ocupilot` and your own
   described in the [published specification](https://github.com/intersystems-community/sysadmin-api-specification).
   OcuPilot runs the same endpoint classes, validation and permission checks the REST service
   dispatches to, in process and as the signed-in user, so there is no second sign-in, token or CORS
-  setup. What the admin API does not serve is read directly: `messages.log` and `alerts.log` from
-  the instance's manager directory, and the REST API explorer's applications and OpenAPI documents
-  from the logic behind `/api/mgmnt`.
+  setup. What the admin API does not serve is read directly: `messages.log`, `alerts.log` and the
+  other logs from the instance's own files and tables, and the REST API explorer's applications and
+  OpenAPI documents from the logic behind `/api/mgmnt`.
 - **The model never writes.** An agent turn runs in a background job that can only read and
   propose. Writes happen in a separate request that only your Confirm makes.
 
 ## Quality
 
-- **Continuous integration on every push:** five GitHub Actions jobs build and test the client on
-  each supported Node release, run the full ObjectScript suite against a fresh IRIS container, drive
-  the portal in headless Chrome, compile and smoke-test on both IRIS Community and IRIS for Health
-  Community, and build and load the IPM package offline.
-- **Tests:** 287 `%UnitTest` classes run inside IRIS; 76 Node test files and 106 Angular component
-  specs cover the client; 92 browser specs exercise the running portal.
+- **Continuous integration on every push:** GitHub Actions builds and tests the client on each
+  supported Node release, runs the full ObjectScript suite against fresh IRIS containers, drives the
+  portal in headless Chrome, compiles and smoke-tests on both IRIS Community and IRIS for Health
+  Community, and builds and loads the IPM package offline. The two long suites each run across three
+  containers at once, so a full run takes about 20 minutes.
+- **Tests:** 363 `%UnitTest` classes run inside IRIS; 97 Node test files and 134 Angular component
+  specs cover the client; 126 browser specs exercise the running portal.
 - **A smoke test you can run:** `bash scripts/smoke.sh --container ocupilot --user _SYSTEM
   --password SYS` asks the running instance whether OcuPilot works; the assertions live inside
   IRIS, so CI and your machine ask the same question.
@@ -396,9 +462,10 @@ that carry Community Opportunity status:
 ## Known limitations
 
 - **One instance at a time.** OcuPilot manages the instance it is installed on.
-- **Not every portal page yet.** Namespaces, database configuration, journals, mirroring and
-  Interoperability are still the classic portal's; the LDAP and Kerberos and the service editors
-  cover the common fields and link to the classic page for the rest.
+- **Not every portal page yet.** Remote databases, the disk operations (mount, compact, the
+  integrity check and the rest), journals, encryption, mirroring and Interoperability are still the
+  classic portal's; the LDAP and Kerberos and the service editors cover the common fields and link to
+  the classic page for the rest.
 - **A model is needed for the agent.** Every screen works without one; the agent needs a key or a
   local model. A turn that makes a change can take up to a minute, and a small local model may
   propose changes that need correcting.
@@ -416,18 +483,19 @@ that carry Community Opportunity status:
 
 ## Roadmap
 
-Improvements continue through the contest's voting week, released to `main` in tested batches:
+New releases arrive every few days, each installed and tested on a clean machine before it reaches
+`main`. Next:
 
-- a try-it console that sends a request from the REST API explorer;
-- a read-back line showing that the instance now holds what a change wrote;
-- a performance row on Home, and impact lines on removals ("3 users hold this role");
-- the remaining log viewers and a unified log hub;
-- the agent handing you a script instead of running a change, and tests that content the agent
-  reads cannot steer it.
+- **Databases and disks:** remote databases, and mount, dismount, compact, defragment, expand and
+  the integrity check.
+- **The rest of system operation:** journals, licensing and ECP, encryption, superservers and
+  authentication options.
+- **The remaining editors:** the service editor and the LDAP and Kerberos editor in full, external
+  language servers, starting and suspending the Task Manager, and removing locks.
+- **Permissions and monitoring:** SQL privileges, the raw metrics, and a live log tail.
 
-Beyond the contest, OcuPilot grows toward parity with the classic portal: the rest of the admin API
-(namespaces, databases, journals, encryption), a code and SQL explorer, Interoperability, and every
-remaining portal page.
+After that, OcuPilot grows toward parity with the classic portal: a code and SQL explorer,
+Interoperability, and every remaining portal page.
 
 ## Developing OcuPilot
 

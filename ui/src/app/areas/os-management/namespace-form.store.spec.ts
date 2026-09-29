@@ -239,4 +239,56 @@ describe('the namespace editor store', () => {
     expect(store.canSave()).toBe(false);
     expect(store.reason()).toBe('This instance has no namespace with that name.');
   });
+
+  it('AC6, SA-13: a database created or deleted re-reads the choices while the form is open, keeping what was entered', async () => {
+    // Mutation (Rule 19): make the store ignore the `database-configuration` event -> the re-read and
+    // the new choice go red.
+    TestBed.resetTestingModule();
+    const calls: Call[] = [];
+    let databases = ['ENSLIB', 'USER'];
+    const api = {
+      requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
+        calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+        return { kind: 'ok', status: 200, body: { ...RULES, databases } } as unknown as JsonResult<T>;
+      },
+    };
+    const bus = new ChangeBus();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: ChangeBus, useValue: bus },
+        { provide: FormDirty, useValue: new FormDirty() },
+      ],
+    });
+    const store = TestBed.inject(NamespaceForm);
+    await store.open('');
+    store.setValue('Name', 'OCUPROBE183NS');
+    store.setValue('Globals', 'USER');
+    expect(store.choices('Routines')).toEqual(['', 'ENSLIB', 'USER']);
+
+    // An update, and another type's create, change which databases exist not at all.
+    bus.publish({ kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'USER', action: 'updated' });
+    bus.publish({ kind: 'changed', type: 'namespace', scope: 'instance', id: 'OTHERNS', action: 'created' });
+    await settle();
+    expect(calls).toHaveLength(1);
+
+    databases = ['ENSLIB', 'OCUPROBE183A', 'USER'];
+    bus.publish({ kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'OCUPROBE183A', action: 'created' });
+    await settle();
+    expect(calls.map((call) => call.path)).toEqual([NAMESPACE_FORM_PATH, NAMESPACE_FORM_PATH]);
+    expect(store.choices('Routines')).toEqual(['', 'ENSLIB', 'OCUPROBE183A', 'USER']);
+    expect([store.value('Name'), store.value('Globals')]).toEqual(['OCUPROBE183NS', 'USER']);
+
+    databases = ['ENSLIB', 'USER'];
+    bus.publish({ kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'OCUPROBE183A', action: 'deleted' });
+    await settle();
+    expect(calls).toHaveLength(3);
+    expect(store.choices('Routines')).toEqual(['', 'ENSLIB', 'USER']);
+
+    // A form no longer open is not read: its next open reads the choices anyway.
+    store.reset();
+    bus.publish({ kind: 'changed', type: 'database-configuration', scope: 'instance', id: 'OCUPROBE183B', action: 'created' });
+    await settle();
+    expect(calls).toHaveLength(3);
+  });
 });

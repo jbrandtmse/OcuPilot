@@ -79,6 +79,7 @@ XData Coverage
 <screen name="RoutineMappingList" class="OcuPilot.Test.MappingDescriptor" method="TestTheListsAreParentScopedAndKeyedByNamespaceAndName" corpus="the three mapping lists are asserted together in one loop"/>
 <screen name="RoutineMappingForm" class="OcuPilot.Test.MappingDescriptor" method="TestTheFormsAreUnlistedOverTheirKindsDialog" corpus="the three mapping forms are asserted together in one loop"/>
 <screen name="NamespaceList" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheListDeclaresItsFourFieldsAndItsDelete"/>
+<screen name="LocalDatabaseList" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheListIsOsManagementsTenthEntryKeyedByName"/>
 <screen name="Home" class="OcuPilot.Test.Descriptor" method="TestARefreshingScreenDeclaresItsRatesAndHomeDefaultsToTen"/>
 <screen name="LdapConfigList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="LockList" class="OcuPilot.Test.Descriptor" method="TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns"/>
@@ -130,6 +131,7 @@ XData Coverage
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="DeviceForm" class="OcuPilot.Test.DeviceCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="NamespaceForm" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
+<screen name="LocalDatabaseForm" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
 <screen name="TaskForm" class="OcuPilot.Test.TaskCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="ServiceForm" class="OcuPilot.Test.ServiceUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
 <screen name="LdapConfigForm" class="OcuPilot.Test.LdapUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
@@ -165,6 +167,10 @@ XData Coverage
 <tool name="osmgmt.namespaces.update" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
 <tool name="osmgmt.namespaces.delete" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
 <tool name="osmgmt.namespaces.copymappings" class="OcuPilot.Test.NamespaceCopy" method="TestTheCopyIsAQueuedWrite"/>
+<tool name="osmgmt.localdatabases.create" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create and the two edits are asserted together in one loop, with the delete"/>
+<tool name="osmgmt.localdatabases.updatemount" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create and the two edits are asserted together in one loop, with the delete"/>
+<tool name="osmgmt.localdatabases.update" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create and the two edits are asserted together in one loop, with the delete"/>
+<tool name="osmgmt.localdatabases.delete" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheDeleteCarriesItsValueAndItsSubject"/>
 <tool name="osmgmt.globalmappings.create" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
 <tool name="osmgmt.globalmappings.update" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
 <tool name="osmgmt.globalmappings.delete" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>

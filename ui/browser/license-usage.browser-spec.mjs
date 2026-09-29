@@ -1,8 +1,9 @@
 /**
  * Story 16.7's License usage in a real browser, against the throwaway instance (AC1, AC6).
  *
- * What it pins: OS management's side bar lists its nine entries in order, License usage seventh, the
- * Dashboard eighth and External language servers (Story 16.10) ninth; License usage's strip shows its four tabs; Summary lists the vendor's five
+ * What it pins: OS management's side bar lists its ten entries in order, License usage seventh,
+ * the Dashboard eighth, External language servers (Story 16.10) ninth and Local databases tenth;
+ * License usage's strip shows its four tabs; Summary lists the vendor's five
  * rows under its three headers; By process lists rows whose first cell is a process id; By user and
  * Distributed each list rows or show their own empty text; and all four tabs pass the structural and
  * contrast checks at 1280 light, 720 light and 1280 dark, with no entry beyond the baseline
@@ -135,8 +136,9 @@ test('AC1: OS management lists nine entries, License usage seventh; its strip sh
         STRINGS.licenseUsageLabel,
         STRINGS.dashboardLabel,
         STRINGS.languageServersLabel,
+        STRINGS.localDatabaseListLabel,
       ],
-      'the side bar lists License usage seventh, the Dashboard eighth and External language servers ninth'
+      'the side bar lists License usage seventh, the Dashboard eighth, External language servers ninth and Local databases tenth'
     );
     const tabs = await page.$$eval('.ocu-detail-tab .ocu-detail-tab-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(tabs, [STRINGS.openApiColumnSummary, STRINGS.licenseUsageByProcess, STRINGS.licenseUsageByUser, STRINGS.licenseUsageDistributed], 'the strip shows the four tabs');

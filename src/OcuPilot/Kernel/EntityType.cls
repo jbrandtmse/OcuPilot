@@ -42,6 +42,9 @@
 /// <p><code>global-mapping</code>, <code>routine-mapping</code> and <code>package-mapping</code> are
 /// one mapping of a namespace, keyed by the composite <code>[namespace, Name]</code> (Story 18.14):
 /// the namespace part resolves without case, and the mapping's name keeps its case.</p>
+/// <p><code>database-configuration</code> is one database configuration name (Story 18.3), keyed by
+/// that name, which the instance resolves without case. It is a second id space beside
+/// <code>database</code>, which is keyed by the database's directory.</p>
 /// <p><code>language-server</code> is one of the instance's external language servers, keyed by its
 /// name, which the instance compares with its case (Story 16.10), so it needs no spelling rule of its
 /// own.</p>
@@ -51,7 +54,7 @@ Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,language-server";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

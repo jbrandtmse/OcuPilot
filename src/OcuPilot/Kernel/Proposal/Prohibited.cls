@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,language-server";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -363,6 +363,32 @@ Parameter OCUPILOTNAMESPACEREASON = "OcuPilot or the instance itself runs in thi
 /// <p>The two namespace fields whose change on an own namespace
 /// (<parameter>OCUPILOTNAMESPACE</parameter>) is refused, comma-separated.</p>
 Parameter OWNNAMESPACEFIELDS = "Globals,Routines";
+/// <p>A database configuration (Story 18.3, <method>Database</method>), keyed by its name.</p>
+Parameter TYPEDATABASECONFIG = "database-configuration";
+
+/// <p>The write would delete, or change the directory, data server, resource or read-only setting
+/// of, one of the databases OcuPilot or the instance itself depends on
+/// (<method>OwnDatabaseNames</method>), compared by name without regard to case, or change the
+/// resource or read-only setting of another configuration name over one of their directories, which
+/// reaches the same file (AD-10 as amended 2026-09-29).</p>
+Parameter OCUPILOTDATABASE = "PROHIBITED.OCUPILOTDATABASE";
+
+/// <p>The one sentence <parameter>OCUPILOTDATABASE</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned equal to <code>databaseRefusalOcuPilot</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTDATABASEREASON = "OcuPilot or the instance itself depends on this database. It cannot be deleted, and its directory, resource and read-only setting cannot be changed.";
+
+/// <p>The seven databases the classic Delete Database dialog refuses by name
+/// (<code>%CSP.UI.Portal.Dialog.DatabaseDelete</code>), comma-separated.</p>
+Parameter SYSTEMDATABASES = "IRISAUDIT,IRISSYS,IRISLIB,IRISLOCALDATA,IRISTEMP,IRISMETRICS,IRISSECURITY";
+
+/// <p>The fields of an own database a change may not touch, comma-separated.</p>
+Parameter OWNDATABASEFIELDS = "Directory,Server,ResourceName,ReadOnly";
+
+/// <p>The fields whose change through another configuration name reaches an own database's file,
+/// comma-separated.</p>
+Parameter OWNFILEFIELDS = "ResourceName,ReadOnly";
+
 /// <p>A web session (Story 16.2, <method>WebSession</method>).</p>
 Parameter TYPEWEBSESSION = "web-session";
 
@@ -591,11 +617,12 @@ Parameter READTYPE = "GET";
 /// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
 /// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
 /// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the one
-/// <method>Namespace</method> adds, the two <method>WebSession</method> adds, and the one
-/// <method>Mapping</method> adds last -- twenty-two in all.</p>
+/// <method>Namespace</method> adds, the two <method>WebSession</method> adds, the one
+/// <method>Mapping</method> adds, and the one <method>Database</method> adds last -- twenty-three in
+/// all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -629,6 +656,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTSESSION Quit ..#OCUPILOTSESSIONREASON
     If pCode = ..#PRESERVEDSESSION Quit ..#PRESERVEDSESSIONREASON
     If pCode = ..#OCUPILOTMAPPING Quit ..#OCUPILOTMAPPINGREASON
+    If pCode = ..#OCUPILOTDATABASE Quit ..#OCUPILOTDATABASEREASON
     Quit ""
 }
 
@@ -731,6 +759,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPELDAP Quit ..LdapFields()
     If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
     If ..IsMappingType(pType) Quit ..MappingFields(pType)
+    If pType = ..#TYPEDATABASECONFIG Quit ..DatabaseChangeFields()
     Quit ""
 }
 
@@ -839,6 +868,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
     If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
     If ..IsMappingType(pType) Quit ..MappingFields(pType)
+    If pType = ..#TYPEDATABASECONFIG Quit ..DatabaseCreateFields()
     Quit ""
 }
 
@@ -919,7 +949,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1013,6 +1043,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If ..IsMappingType(tType) {
             Set tSC = ..Mapping(tType, tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEDATABASECONFIG {
+            Set tSC = ..Database(tId, $Get(tToolClass), tTarget, .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPEAUDITING {
@@ -1819,6 +1853,125 @@ ClassMethod IsOwnNamespace(pId As %String) As %Boolean
 ClassMethod NamespaceFields() As %List [ Private ]
 {
     Quit $ListBuild("Globals", "Routines", "TempGlobals")
+}
+
+/// <p>The database predicates (Story 18.3, AD-10 as amended 2026-09-29), stated over the effect so a
+/// bodyless delete is covered: a delete of one of <method>OwnDatabaseNames</method>, compared
+/// upper-cased, and a change of <parameter>OWNDATABASEFIELDS</parameter> of one, are refused
+/// <parameter>OCUPILOTDATABASE</parameter>; so is a change of <parameter>OWNFILEFIELDS</parameter>
+/// whose target's directory <var>pTarget</var> answers is an own database's directory, read from one
+/// configuration list at the write (<method>OwnDatabaseDirectories</method>), since that change
+/// reaches the protected file through another name. Then the reviewed-few sweep over
+/// <method>DatabaseChangeFields</method>. A read that fails refuses. A create is
+/// <method>Created</method>'s.</p>
+ClassMethod Database(pId As %String, pToolClass As %String, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tDelete = (..WriteTypeOf(pToolClass) = "DELETE") || ..RemovesOf(pToolClass)
+        If tDelete Kill pChanged
+        Set tPort = ..PortClassOf(pToolClass)
+        Set tNamesSC = ..OwnDatabaseNames(tPort, .tOwn)
+        If $$$ISERR(tNamesSC) {
+            Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
+            Quit
+        }
+        If $ListFind(tOwn, $ZConvert(pId, "U")) {
+            Set tMoves = tDelete
+            Set tFields = $ListFromString(..#OWNDATABASEFIELDS)
+            For tI = 1:1:$ListLength(tFields) {
+                If $Data(pChanged($List(tFields, tI))) Set tMoves = 1
+            }
+            If tMoves {
+                Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tTouchesFile = 0
+        Set tFields = $ListFromString(..#OWNFILEFIELDS)
+        For tI = 1:1:$ListLength(tFields) {
+            If $Data(pChanged($List(tFields, tI))) Set tTouchesFile = 1
+        }
+        If tTouchesFile {
+            Set tDirectory = ..Rendered(pTarget, "Directory")
+            Set tDirsSC = ..OwnDatabaseDirectories(tPort, tOwn, .tDirectories)
+            If $$$ISERR(tDirsSC) || (tDirectory = "") {
+                Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
+                Quit
+            }
+            For tI = 1:1:$ListLength(tDirectories) {
+                If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tDirectories, tI), tDirectory) {
+                    Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
+                    Quit
+                }
+            }
+            If pProhibits Quit
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPEDATABASECONFIG, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The names, upper-cased, of the databases OcuPilot or the instance itself depends on:
+/// <parameter>OcuPilot.Kernel.State.Base.DATABASENAME</parameter>,
+/// <parameter>SYSTEMDATABASES</parameter>, and the globals and routines databases of the namespace
+/// this process runs in, read at each call through <var>pPort</var>'s <code>Namespace.Namespace</code>
+/// <code>GET</code> as the caller. A read that fails is an error status, which the caller refuses on.
+/// Overridable so a fixture can add a probe database; production never overrides it.</p>
+ClassMethod OwnDatabaseNames(pPort As %String, Output pNames As %List) As %Status
+{
+    Set pNames = $ListBuild($ZConvert(##class(OcuPilot.Kernel.State.Base).#DATABASENAME, "U")) _ $ListFromString(..#SYSTEMDATABASES)
+    Kill tQuery
+    Set tQuery("name") = $NAMESPACE
+    Set tSC = $ClassMethod(pPort, "Invoke", "Namespace.Namespace", ..#READTYPE, .tQuery, "", .tNamespace, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tNamespace)) Quit $$$ERROR($$$GeneralError, "the install namespace's databases could not be read")
+    For tField = "Globals", "Routines" {
+        Set tName = $ZConvert(..Rendered(tNamespace, tField), "U")
+        If tName = "" Quit
+        If '$ListFind(pNames, tName) Set pNames = pNames _ $ListBuild(tName)
+    }
+    If tName = "" Quit $$$ERROR($$$GeneralError, "the install namespace names no globals or routines database")
+    Quit $$$OK
+}
+
+/// <p>The directories of the configurations <var>pOwn</var> names, from one
+/// <code>Database.ConfigCRUD</code> <code>LIST</code> through <var>pPort</var> as the caller. A list
+/// that cannot be read is an error status.</p>
+ClassMethod OwnDatabaseDirectories(pPort As %String, pOwn As %List, Output pDirectories As %List) As %Status [ Private ]
+{
+    Set pDirectories = ""
+    Kill tQuery
+    Set tSC = $ClassMethod(pPort, "Invoke", "Database.ConfigCRUD", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tRows)) || 'tRows.%IsA("%Library.DynamicArray") Quit $$$ERROR($$$GeneralError, "the database configuration list did not answer an array")
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) Continue
+        If '$ListFind(pOwn, $ZConvert(tRow.%Get("Name"), "U")) Continue
+        Set tDirectory = ..Rendered(tRow, "Directory")
+        If tDirectory '= "" Set pDirectories = pDirectories _ $ListBuild(tDirectory)
+    }
+    Quit $$$OK
+}
+
+/// <p>A database configuration's reviewed change fields: the mounting edit's three and the file
+/// edit's seven, with the file edit's two volume-directory arguments.</p>
+ClassMethod DatabaseChangeFields() As %List [ Private ]
+{
+    Quit $ListBuild("MountAtStartup", "MountRequired", "ClusterMountMode", "MaxSize", "ExpansionSize", "ResourceName", "NewGlobalIsKeep", "GlobalJournalState", "ReadOnly", "NewVolumeThreshold", "volumeRoot", "volumePath")
+}
+
+/// <p>A database create's fields: its five declared arguments.</p>
+ClassMethod DatabaseCreateFields() As %List [ Private ]
+{
+    Quit $ListBuild("root", "path", "Size", "GlobalJournalState", "ResourceName")
 }
 
 /// <p>Whether <var>pType</var> is one of the three mapping types (Story 18.14).</p>

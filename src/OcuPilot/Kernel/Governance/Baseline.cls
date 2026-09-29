@@ -24,6 +24,10 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.globalmappings.create": true,
   "osmgmt.globalmappings.delete": true,
   "osmgmt.globalmappings.update": true,
+  "osmgmt.localdatabases.create": true,
+  "osmgmt.localdatabases.delete": false,
+  "osmgmt.localdatabases.update": true,
+  "osmgmt.localdatabases.updatemount": true,
   "osmgmt.namespaces.copymappings": true,
   "osmgmt.namespaces.create": true,
   "osmgmt.namespaces.delete": false,
@@ -112,7 +116,7 @@ XData Keys [ MimeType = application/json ]
   "tasks.background.resume": true,
   "osmgmt.processes.broadcast": true,
   "tasks.schedule.export": true,
-  "tasks.schedule.import": true,
+  "tasks.schedule.import": false,
   "osmgmt.languageservers.start": true,
   "osmgmt.languageservers.stop": true
 }

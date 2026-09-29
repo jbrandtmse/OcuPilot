@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
@@ -241,5 +241,17 @@ describe('the namespace editor', () => {
     choose(fixture, host, 'ocu-namespace-Globals', 'USER');
     await settle(fixture);
     expect(formDirty.dirty()).toBe(true);
+  });
+
+  it('AC6, SA-13 (Story 18.3): a "Create a database" link beside the globals select opens the create database wizard in place', async () => {
+    const { fixture, host } = await mount();
+    const links = [...host.querySelectorAll('[data-create-database] a')] as HTMLAnchorElement[];
+    expect(links).toHaveLength(1);
+    expect(links[0].textContent?.trim()).toBe(STRINGS.databaseCreateLink);
+    expect(links[0].closest('.ocu-field')?.querySelector('#ocu-namespace-Globals')).not.toBeNull();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
+    links[0].click();
+    await settle(fixture);
+    expect(navigate).toHaveBeenCalledWith('/os-management/local-databases/edit');
   });
 });

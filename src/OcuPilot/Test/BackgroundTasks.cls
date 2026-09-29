@@ -70,7 +70,7 @@ Method TestTheDescriptorDeclaresTheListItsPairsAndItsActions()
     Do $$$AssertEquals($Select($IsObject(tDeclaration.ownPrivileges): tDeclaration.ownPrivileges.%ToJSON(), 1: ""), "[{""resource"":""%Admin_Operate"",""permission"":""USE""}]", "the first of which is the screen's own, beyond the area's")
     Do $$$AssertEquals(tDeclaration.rowActions.%ToJSON(), "[{""id"":""cancel"",""selfProtection"":""""},{""id"":""pause"",""selfProtection"":""""},{""id"":""resume"",""selfProtection"":""""}]", "three row actions, none self-protected")
     Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""background"",""endpoint"":""BackgroundTask"",""type"":""LIST""}", "read through the background task port")
-    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Source"",""Id"",""Task"",""Namespace"",""Status"",""Details"",""ErrorCount"",""StartTime""]", "declaring the eight fields")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Source"",""Id"",""Task"",""Namespace"",""Status"",""Details"",""ErrorCount"",""StartTime"",""Database""]", "declaring the nine fields, the database a task runs against among them (Story 18.3)")
     Do $$$AssertEquals(tDeclaration.context.fields.%ToJSON(), tDeclaration.read.fields.%ToJSON(), "all of them as context, none secret")
     Do $$$AssertEquals(tDeclaration.read.sort.default _ " " _ tDeclaration.read.sort.direction, "StartTime desc", "newest start first")
     Do $$$AssertEquals(tDeclaration.table.columns.%Get(0).field _ " " _ tDeclaration.table.columns.%Get(0).kind _ " " _ tDeclaration.table.columns.%Get(2).field _ " " _ tDeclaration.table.columns.%Get(2).kind, "Task name Status status", "the task as the name column and a status column")
@@ -139,7 +139,7 @@ Method TestTheListMergesBothHalvesNewestFirst()
     Do $$$AssertEquals(tText, "Admin API/" _ ..#GUID _ "/Running//|Management Portal/4242/Paused/%SYS/1|Management Portal/4243/Done/%SYS/1", "both halves, newest start first, the admin row's namespace and error count empty")
     Set tAdmin = tRows.%Get(0)
     Do $$$AssertEquals(tAdmin.%GetTypeOf("Id") _ " " _ tAdmin.%Get("Task") _ " " _ tAdmin.%Get("Details") _ " " _ tAdmin.%Get("StartTime"), "string POST /v2/database-dir/compact the probe's reason 2026-09-28 12:30:00", "the admin row's GUID a string, its task name, failure reason and start")
-    Do $$$AssertEquals(##class(OcuPilot.Test.DeviceCreate).Keys(tRows.%Get(1)), "Details,ErrorCount,Id,Namespace,Source,StartTime,Status,Task", "a portal row answers the declared fields and no background task id")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DeviceCreate).Keys(tRows.%Get(1)), "Database,Details,ErrorCount,Id,Namespace,Source,StartTime,Status,Task", "a portal row answers the declared fields and no background task id")
     Set tQuery("maxRows") = 2
     Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "BackgroundTask", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
     Do $$$AssertEquals($Select($IsObject($Get(tRows)): tRows.%Size() _ " " _ tRows.%Get(1).%Get("Id"), 1: ""), "2 4242", "the cap applies to the merged rows, keeping the newest")
@@ -151,6 +151,42 @@ Method TestTheListMergesBothHalvesNewestFirst()
         Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code _ " " _ tFault.detail.failedPair, 1: ""), "403 " _ ##class(OcuPilot.Api.Error).#PORTACCESSDENIED _ " " _ tPair, "a caller missing " _ tPair _ " is refused naming it")
         Do $$$AssertEquals(##class(OcuPilot.Test.BackgroundTaskFixture).Reads(), 0, "before either half is read")
     }
+}
+
+/// <p>DW-1080 (Story 18.3): a portal row whose task runs against a database carries that database as
+/// the vendor spells it; a row whose task has ended, a row with no background task and an admin API
+/// row carry <code>""</code>; and a task database read that fails fails the whole read (AD-36).</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.BackgroundTaskPort.KeepRunning</method> keeps an ended
+/// task -> the ended row names its database and this goes red.</p>
+Method TestAPortalRowNamesTheDatabaseItsTaskRunsAgainst()
+{
+    Set tRows = []
+    Do tRows.%Push(..PortalRow("4242", "Paused", "7", "2026-09-28 12:00:05"))
+    Do tRows.%Push(..PortalRow("4243", "Done", "8", "2026-09-28 11:00:00"))
+    Do tRows.%Push(..PortalRow("4244", "Done", "", "2026-09-28 10:00:00"))
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmPortal(tRows.%ToJSON())
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmAdmin(..Rows(..AdminRow(..#GUID, "Running", "2026-09-28 12:30:00")))
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmDatabases("[{""ID"":""7"",""Database"":""/DURABLE/IRIS/MGR/OCUBGSEED/"",""HasEnded"":false},{""ID"":""8"",""Database"":""/DURABLE/IRIS/MGR/OCUBGENDED/"",""HasEnded"":true}]")
+    Kill tQuery
+    Set tQuery("maxRows") = 10
+    Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "BackgroundTask", "LIST", .tQuery, "", .tListed, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the list answers")
+    If $$$ISERR(tSC) Quit
+    Set tText = ""
+    Set tIterator = tListed.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tText = tText _ $Select(tText = "": "", 1: "|") _ tRow.%Get("Id") _ "=" _ tRow.%Get("Database")
+    }
+    Do $$$AssertEquals(tText, ..#GUID _ "=|4242=/DURABLE/IRIS/MGR/OCUBGSEED/|4243=|4244=", "only the running portal task names its database, as the vendor spells it")
+    Kill tQuery
+    Set tQuery("id") = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Management Portal", "4242"))
+    Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "BackgroundTask", "LIST", .tQuery, "", .tOne, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($IsObject($Get(tOne)): tOne.%Get("Database"), 1: ""), "/DURABLE/IRIS/MGR/OCUBGSEED/", "and so does the one-row read")
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmDatabases("fail")
+    Kill tQuery
+    Set tQuery("maxRows") = 10
+    Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "BackgroundTask", "LIST", .tQuery, "", .tListed, .tHttp, .tFault)
+    Do $$$AssertEquals($$$ISERR(tSC) _ " " _ +$Get(tHttp), "1 500", "a task database read that fails fails the whole read")
 }
 
 /// <p>AD-13: the mint refuses a <code>source</code> or <code>id</code> carrying the composite
@@ -249,6 +285,43 @@ Method TestTheFingerprintRefusesAMovedStatus()
     Do $$$AssertStatusOK(tSC, "a task whose details alone moved is still the one reviewed (HTTP " _ +$Get(tHttp) _ " " _ $Get(tCode) _ ")")
     Do $$$AssertEquals(##class(OcuPilot.Test.BackgroundTaskFixture).Calls(), "PORTAL PAUSE 7", "one pause reached the job's background task")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>AD-51, DW-1080 (Story 18.3): a task's <code>Database</code> is outside the fingerprint. A pause
+/// minted while the task database read names the row's task, and confirmed once that read answers
+/// the task ended -- two reads the port takes a moment apart -- while the row's status still reads
+/// Running, sends one control naming the row's background task.</p>
+/// <p>Mutation (Rule 19): add <code>Database</code> to
+/// <parameter>OcuPilot.Screen.Tool.BackgroundTaskCancel.FINGERPRINTSUBJECT</parameter> -- the
+/// confirm is refused <code>PROPOSAL.TARGETCHANGED</code> and this goes red.</p>
+Method TestAMovedDatabaseIsStillTheTaskReviewed()
+{
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmPortal(..Rows(..PortalRow("4242", "Running", "7", "2026-09-28 12:00:05")))
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmDatabases("[{""ID"":""7"",""Database"":""/DURABLE/IRIS/MGR/OCUBGSEED/"",""HasEnded"":false}]")
+    Set tSC = ..MintFor("tasks.background.pause", "Management Portal", "4242", tTurn, .tProposal)
+    Do $$$AssertStatusOK(tSC, "the pause mints: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(..DatabaseOf("4242"), "/DURABLE/IRIS/MGR/OCUBGSEED/", "the row named its database when the pause was minted")
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmDatabases("[{""ID"":""7"",""Database"":""/DURABLE/IRIS/MGR/OCUBGSEED/"",""HasEnded"":true}]")
+    Do $$$AssertEquals(..DatabaseOf("4242"), "", "and names none now")
+    Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "a task whose database alone moved is still the one reviewed (HTTP " _ +$Get(tHttp) _ " " _ $Get(tCode) _ ")")
+    Do $$$AssertEquals(##class(OcuPilot.Test.BackgroundTaskFixture).Calls(), "PORTAL PAUSE 7", "one pause reached the job's background task")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>The <code>Database</code> the fixture port's one-row read answers for portal job
+/// <var>pId</var>, or <code>"?"</code> when it answers no row.</p>
+Method DatabaseOf(pId As %String) As %String
+{
+    Kill tQuery
+    Set tQuery("id") = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Management Portal", pId))
+    Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "BackgroundTask", "LIST", .tQuery, "", .tRow, .tHttp, .tFault)
+    If $$$ISERR(tSC) || '$IsObject($Get(tRow)) Quit "?"
+    Quit tRow.%Get("Database")
 }
 
 /// <p>A portal job with no background task -- a compile, say -- is refused

@@ -86,6 +86,21 @@ ClassMethod DatabaseDirectories(Output pDirectories As %List, Output pStreams As
     Quit $$$OK
 }
 
+/// <p>Fail every database's volume-directory read until <method>Reset</method>, overriding
+/// <method>VolumeDirectories</method> alone, so the real <code>Config.Databases</code> read runs and the
+/// reader's own handling of an inner failure is what a test reaches (Story 18.3, DW-1796).</p>
+ClassMethod FailVolumeDirectories()
+{
+    Set ^||OcuPilotPathPortFixture("volumesFail") = 1
+}
+
+ClassMethod VolumeDirectories(pDirectory As %String, Output pDirectories As %List) As %Status
+{
+    Set pDirectories = ""
+    If $Get(^||OcuPilotPathPortFixture("volumesFail")) Quit $$$ERROR($$$GeneralError, "the volume read failed, as the fixture was told")
+    Quit ##super(pDirectory, .pDirectories)
+}
+
 /// <p>Answer the directories <var>pDirectories</var>, a <code>$List</code> of normalized
 /// directories, as the instance's journal directories until <method>Reset</method>; with
 /// <var>pFail</var>, fail that read instead.</p>
