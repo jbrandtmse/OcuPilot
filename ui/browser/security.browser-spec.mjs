@@ -215,6 +215,24 @@ async function sideBarOf(page) {
   });
 }
 
+/**
+ * Open an area's side bar (the gate spec's pattern). **The rail item toggles**, so a click is never
+ * assumed to have opened anything: the side bar starts open and follows the route's area, so after a
+ * deep link it may already list this area, and a click on the visible area's item collapses it
+ * (DW-1823). The side bar's own landmark name, `"<Area> screens"`, says which area is listed.
+ */
+async function openSideBar(page, area) {
+  const wanted = STRINGS.navSideBarLandmark.split('<Area>').join(area);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const shown = await page.$$eval('app-side-bar nav.ocu-side-bar', (nodes, label) =>
+      nodes.some((node) => node.getAttribute('aria-label') === label), wanted);
+    if (shown) return;
+    await page.click(`.ocu-rail-item[aria-label="${area}"]`);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  assert.fail(`the ${area} side bar never opened`);
+}
+
 /** The table's header labels, in order. */
 function headersOf(page) {
   return page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
@@ -343,7 +361,7 @@ test('AC5, Story 16.3 AC7 (DW-1018, Option A): without %Admin_Wallet:USE the Sec
     }, STRINGS.navAreaSecurity);
     assert.deepEqual(rail, { disabled: null, tip: formatArea(STRINGS.navRailItemTooltip, STRINGS.navAreaSecurity) }, 'the Security rail item opens for the two area pairs alone');
 
-    await x509.page.click(`.ocu-rail-item[aria-label="${STRINGS.navAreaSecurity}"]`);
+    await openSideBar(x509.page, STRINGS.navAreaSecurity);
     await x509.page.waitForSelector('app-side-bar .ocu-side-bar-item', { timeout: config.navigationTimeoutMs });
     const entries = await x509.page.$$eval('app-side-bar .ocu-side-bar-item', (items) =>
       items.map((item) => ({

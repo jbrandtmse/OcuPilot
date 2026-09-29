@@ -11151,6 +11151,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "selfProtection": ""
       },
       {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
         "id": "delete",
         "selfProtection": ""
       }

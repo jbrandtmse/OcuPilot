@@ -49,6 +49,7 @@ import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { DeviceFormPage } from '../areas/os-management/device-form.page';
 import { NamespaceFormPage } from '../areas/os-management/namespace-form.page';
 import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
+import { TaskSchedulePage } from '../areas/tasks/task-schedule.page';
 import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { DatabaseWizardPage } from '../areas/os-management/database-wizard.page';
 import { DatabaseEditorPage } from '../areas/os-management/database-editor.page';
@@ -158,6 +159,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AgentLedger': LedgerPage,
   // Story 16.7: the Dashboard's seven meter groups; System usage keeps the meters archetype's page.
   'OcuPilot.Screen.Descriptor.Dashboard': DashboardPage,
+  // Story 16.4: the Task schedule with its Export and Import dialogs.
+  'OcuPilot.Screen.Descriptor.TaskScheduleList': TaskSchedulePage,
 };
 
 /**

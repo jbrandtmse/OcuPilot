@@ -1044,11 +1044,12 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   const upcoming = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskUpcomingList');
   assert.equal(upcoming.declaration.read.source.type, 'UPCOMING');
   // Story 7.6: the Task schedule declares Run, Suspend, Resume and Delete, shows the Suspended
-  // field its INFO rowGet answers, and its empty state invites the agent.
+  // field its INFO rowGet answers, and its empty state invites the agent. Story 16.4 adds Export
+  // and Import before Delete, so the row menu lists the destructive action last.
   const schedule = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskScheduleList');
   assert.deepEqual(
     schedule.declaration.rowActions.map((action) => action.id),
-    ['run', 'suspend', 'resume', 'delete']
+    ['run', 'suspend', 'resume', 'export', 'import', 'delete']
   );
   assert.ok(schedule.declaration.rowActions.every((action) => action.selfProtection === ''), 'no action carries a self-protection rule');
   assert.deepEqual(

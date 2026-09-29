@@ -30,6 +30,10 @@ import {
   SET_PASSWORD,
   SET_RESOURCE_GRANT,
   ScreenActionHandler,
+  TASK_EXPORT,
+  TASK_IMPORT,
+  TASK_IMPORT_TARGET,
+  TASK_SCHEDULE,
 } from './screen-action-handler';
 
 /** The screen this handler serves first, read from the mirror rather than restated here. */
@@ -1462,6 +1466,65 @@ describe('the mapping lists\u2019 Delete and the Namespaces list\u2019s Copy map
     const { actions } = mount(undefined, NAMESPACE_LIST);
     expect(actions.has(NAMESPACE_LIST, 'delete')).toBe(true);
     expect(actions.has(NAMESPACE_LIST, COPY_MAPPINGS)).toBe(false);
+  });
+
+  it('leaves the Task schedule\u2019s Export and Import undrawn, for its own page to register', () => {
+    // Mutation (Rule 19): drop the Task schedule's entry from `UNDRAWN_ACTIONS` -> this goes red, and
+    // Export would be sent at once with no file.
+    const { actions } = mount(undefined, TASK_SCHEDULE);
+    expect(actions.has(TASK_SCHEDULE, 'delete')).toBe(true);
+    expect(actions.has(TASK_SCHEDULE, TASK_EXPORT)).toBe(false);
+    expect(actions.has(TASK_SCHEDULE, TASK_IMPORT)).toBe(false);
+  });
+});
+
+/**
+ * Story 16.4: `sendFor` with a sink of its own keeps a refusal off the list's banner, and
+ * `lastRefusal` answers what the instance refused with -- its sentence, its field-level violations and
+ * its detail -- until the next send, which clears it.
+ */
+describe('lastRefusal, the refusal a dialog draws on its own fields', () => {
+  it('answers the envelope\u2019s sentence, violations and detail, and null once an action is applied', async () => {
+    // Mutation (Rule 19): stop `send` setting `lastRefused` from the envelope -> the violations
+    // assertion goes red.
+    const refused: JsonResult<unknown> = {
+      kind: 'error',
+      status: 400,
+      code: 'PATH.ROOT',
+      reason: 'Choose an allowed directory.',
+      detail: { violations: [{ field: 'root', code: 'PATH.ROOT', reason: 'Choose an allowed directory.' }], task: 'OcuP164A' },
+    };
+    const { handler, calls, store } = mount(refused, TASK_SCHEDULE);
+    const seen: string[] = [];
+    const applied = await handler.sendFor(TASK_SCHEDULE, TASK_IMPORT, TASK_IMPORT_TARGET, { root: '/r/', path: 't.xml' }, { setRefusal: (reason) => seen.push(reason) });
+    expect(applied).toBe(false);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'import', id: 'import', values: { root: '/r/', path: 't.xml' } });
+    expect(handler.lastRefusal()).toEqual({
+      reason: 'Choose an allowed directory.',
+      violations: [{ field: 'root', code: 'PATH.ROOT', reason: 'Choose an allowed directory.' }],
+      detail: refused.kind === 'error' ? refused.detail : null,
+    });
+    expect(seen).toEqual(['', 'Choose an allowed directory.']);
+    expect(store.refusal()).toBe('');
+  });
+
+  it('answers null once a later action on the same handler is applied', async () => {
+    // Mutation (Rule 19): keep `lastRefused` through `send` (drop its reset at the top and answer the
+    // previous value on an applied action) -> the null assertion goes red.
+    const answer: Record<string, unknown> = {
+      kind: 'error',
+      status: 409,
+      code: 'TASK.IMPORT.PRESENT',
+      reason: 'Every task in this file is already on this instance.',
+      detail: null,
+    };
+    const { handler } = mount(answer as unknown as JsonResult<unknown>, TASK_SCHEDULE);
+    expect(await handler.sendFor(TASK_SCHEDULE, TASK_IMPORT, TASK_IMPORT_TARGET, { root: '/r/', path: 't.xml' })).toBe(false);
+    expect(handler.lastRefusal()?.reason).toBe('Every task in this file is already on this instance.');
+    for (const key of Object.keys(answer)) delete answer[key];
+    Object.assign(answer, { kind: 'ok', status: 200, body: { action: 'created', target: { type: 'task', scope: 'instance', id: 'import' } } });
+    expect(await handler.sendFor(TASK_SCHEDULE, TASK_IMPORT, TASK_IMPORT_TARGET, { root: '/r/', path: 't.xml' })).toBe(true);
+    expect(handler.lastRefusal()).toBeNull();
   });
 });
 

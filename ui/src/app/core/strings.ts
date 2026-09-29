@@ -391,6 +391,23 @@ export const STRINGS = {
   taskColumnNextRun: 'Next run',
   /** EXPERIENCE.md:319 */
   taskListEmpty: 'No scheduled tasks on this instance.',
+  // Story 16.4: Task schedule's Export and Import dialogs.
+  /** EXPERIENCE.md:319 */
+  taskExportAction: 'Export',
+  /** EXPERIENCE.md:319 */
+  taskExportTitle: 'Export <task>',
+  /** EXPERIENCE.md:319 */
+  taskImportTitle: 'Import tasks',
+  /** EXPERIENCE.md:319 */
+  taskExportNote: 'The file holds the task\'s definition and settings, and a password setting in it is encoded, not encrypted.',
+  /** EXPERIENCE.md:319 */
+  taskExportReplaces: 'A file already at this name is replaced.',
+  /** EXPERIENCE.md:319 */
+  taskExportDone: 'Exported <task> to <path>.',
+  /** EXPERIENCE.md:319 */
+  taskImportDone: 'Imported the tasks in <path>. Any already on this instance were skipped.',
+  /** EXPERIENCE.md:319 */
+  taskImportRefused: 'Nothing was imported: task <task> cannot be created here. <reason>',
   /** EXPERIENCE.md:320 */
   processListLabel: 'Processes',
   /** EXPERIENCE.md:320 */

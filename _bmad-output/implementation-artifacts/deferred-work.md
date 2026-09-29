@@ -8151,6 +8151,17 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T05:18:37Z status=routed owner=burndown by=lead note=Story 16.5's seed; a timing race (inference); the failed job is re-run
 - 2026-09-29T06:52:04Z status=resolved-by:16-7-license-usage-and-the-full-dashboard by=merge_gate note=6bcc6d3b (Epic 16): BackgroundSeed waits through Settled, bounded at 30 s; the fix reaches feature in this merge
 
+### DW-1827: Task import reviews task names only: a task running as another account is minted non-destructive with no consequence, a same-named rewrite passes TASK.IMPORT.CHANGED, and the create's own rules are skipped
+- source: spec-16-4-task-export-and-import.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Mint.cls:317 classifies RunAs-other from payload RunAsUser, absent from the import's {root,path,tasks}; TaskTransferPort.cls:381/312 summarize and compare Name (NAMESPACE) only; a digit-first name imported whole on ocupilot-ci 2026-09-29, which TaskCreate refuses TASK.NAME.SHAPE
+- 2026-09-29T15:14:07Z status=escalated owner=burndown by=cr note=decision sheet: review TaskClass+RunAsUser, classify RunAs-other, preview on screen (spec amendment), or accept vendor parity
+- 2026-09-29T15:14:30Z status=escalated owner=burndown by=cr note=port lines cited are 8bc275b5's; after this review's doc edit they read TaskTransferPort.cls:382/313
+
+### DW-1828: A vendor ImportTasks failure after Examine passes answers 500 with the tasks before it kept and no change event (unverified)
+- source: spec-16-4-task-export-and-import.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: TaskTransferPort.cls:322 answers Fail 500 on a vendor error; the vendor keeps earlier tasks (measured); Examine refused every failing shape tried on ocupilot-ci 2026-09-29 (TimePeriod 9, a 60-char JobGUID) before the call
+- 2026-09-29T15:14:10Z status=wontfix-theoretical owner=16-4-task-export-and-import by=cr note=real when a file Examine accepts makes ImportTasks fail; none found (a digit-first name imports whole)
+- 2026-09-29T15:14:30Z status=wontfix-theoretical owner=16-4-task-export-and-import by=cr note=port line cited is 8bc275b5's; after this review's doc edit it reads TaskTransferPort.cls:323
 ### DW-1822: a11y-structural-invariants.browser-spec.mjs failed whole (8 tests) on a Chrome protocol timeout: Runtime.callFunctionOn timed out during the structural walk
 - source: staging-16-7 run 36569407842 attempt 1 on ff53360c (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/a11y-structural-invariants.browser-spec.mjs, ui/browser/structural-walk.mjs
 - evidence: attempt 2 green on the same head; the same spec passed on 01e36ec7 (run 36564571344); the walk evaluates one long function per screen (inference: a slow runner exceeds puppeteer's default protocolTimeout)
@@ -8200,3 +8211,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (CI run 36600327713) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Run 36600327713 on 822c0e3f, instance shard 1/3, run 60: 'content: at 422, by name' red; the class and its port are untouched since Epic 12/14 and passed in runs 36573329469, 36581952884 and 36588987899 and 3/3 on ocupilot-b-ci (runs 428-430)
 - 2026-09-29T17:09:15Z status=routed owner=burndown by=lead note=Epic 12's issuer fixture (OAuthServerDiscover); probe the fixture server's timing on a slow runner
+- 2026-09-29T15:25:45Z status=resolved-by:16-4-task-export-and-import by=adjudication note=security AC5 opens the side bar through the gate spec's toggle-aware openSideBar; old code failed 1/3 locally with the same timeout, fixed 5/5

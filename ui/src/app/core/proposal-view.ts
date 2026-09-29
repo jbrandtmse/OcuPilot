@@ -194,6 +194,9 @@ export const CONSEQUENCE_SYSTEMGLOBAL = 'MAPPING.SYSTEMGLOBAL';
 /** Story 18.14: a copy of mappings, which replaces the destination's same-named mappings. */
 export const CONSEQUENCE_COPYMAPPINGS = 'NAMESPACE.COPYMAPPINGS';
 
+/** Story 16.4: a task export, which replaces a file already at its name. */
+export const CONSEQUENCE_TASKEXPORTREPLACES = 'TASK.EXPORT.REPLACES';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -222,6 +225,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SYSTEMGLOBAL) return STRINGS.mappingSystemGlobalConsequence;
   // The copy dialog's own consequence sentence, published once.
   if (code === CONSEQUENCE_COPYMAPPINGS) return STRINGS.namespaceCopyMappingsConsequence;
+  // The export dialog's own replace line, published once.
+  if (code === CONSEQUENCE_TASKEXPORTREPLACES) return STRINGS.taskExportReplaces;
   return '';
 }
 

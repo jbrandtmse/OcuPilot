@@ -4202,6 +4202,34 @@ Parameter TASKBACKGROUNDSTATE = "TASK.BACKGROUND.STATE";
 
 Parameter REASONTASKBACKGROUNDSTATE = "This background task's current state does not allow that.";
 
+/// <p>Machine code (AD-12, AD-39, Story 16.4): a task export whose relative name names a directory
+/// that does not exist under its allowed directory, answered 400 with one violation on
+/// <code>path</code> by <class>OcuPilot.Port.TaskTransferPort</class> before any vendor call.</p>
+Parameter TASKEXPORTDIRECTORY = "TASK.EXPORT.DIRECTORY";
+
+Parameter REASONTASKEXPORTDIRECTORY = "There is no such directory under that allowed directory.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): a file an import names that is not a task export --
+/// unreadable XML, another root element, or no task -- answered 422 by
+/// <class>OcuPilot.Port.TaskTransferPort</class> before any vendor call.</p>
+Parameter TASKIMPORTFILE = "TASK.IMPORT.FILE";
+
+Parameter REASONTASKIMPORTFILE = "This file is not a task export, or it holds no task.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): an import whose every task is already on this
+/// instance, by the vendor's own task GUID, answered 409 by
+/// <class>OcuPilot.Port.TaskTransferPort</class> with nothing imported.</p>
+Parameter TASKIMPORTPRESENT = "TASK.IMPORT.PRESENT";
+
+Parameter REASONTASKIMPORTPRESENT = "Every task in this file is already on this instance.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.4): an agent's import whose file no longer yields the
+/// tasks its proposal reviewed, answered 409 by <class>OcuPilot.Port.TaskTransferPort</class> with
+/// nothing imported.</p>
+Parameter TASKIMPORTCHANGED = "TASK.IMPORT.CHANGED";
+
+Parameter REASONTASKIMPORTCHANGED = "The file's tasks changed after the import was proposed.";
+
 /// <p>Machine code (AD-12, AD-39, Story 16.6): a broadcast whose set names a process that has ended
 /// or cannot receive one, so nothing was sent to any of them. Answered on the
 /// <parameter>CONFLICT</parameter> slug with 409 by <class>OcuPilot.Port.ProcessPort</class>, for
