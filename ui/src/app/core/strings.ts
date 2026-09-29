@@ -99,6 +99,8 @@ export const STRINGS = {
   agentExplainScreenAction: 'Explain this screen',
   /** EXPERIENCE.md:268 */
   agentExplainEntryAction: 'Explain this entry',
+  /** EXPERIENCE.md:268 */
+  agentExplainEntryMessage: 'Explain the selected entry',
   /** EXPERIENCE.md:269 */
   actionTestConnection: 'Test connection',
   /** EXPERIENCE.md:269 */

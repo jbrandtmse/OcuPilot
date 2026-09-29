@@ -971,7 +971,7 @@ A user can ask the agent to explain the current screen or a log entry, and sees 
 **Consequences (testable):**
 
 - "Explain this screen" is a one-click action in the panel on every screen; the reply names the screen's purpose, the data shown and the actions available, and cites the read tool it used.
-- Every log viewer and the audit database viewer give each entry an explain entry point that sends that entry, and only that entry, as context.
+- Every log viewer and the audit database viewer give each entry an explain entry point that sends the screen's own context with that entry marked as the one asked about. [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry, and only that entry"]
 - Each screen offers at least three suggested prompts grouped by task; choosing one sends it as a turn.
 
 #### FR-71: Agent transparency

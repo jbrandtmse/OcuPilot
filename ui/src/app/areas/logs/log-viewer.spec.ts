@@ -12,7 +12,7 @@ import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
-import { stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
+import { explainContext, narrowedEntry, stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
 import { fileOptionText } from './log-line';
 import { LogViewerPage } from './log-viewer.page';
 import { LogViewerStore } from './log-viewer.store';
@@ -774,8 +774,9 @@ describe('LogViewerPage: Explain this entry', () => {
   const explainButtons = (fixture: ComponentFixture<LogViewerPage>): HTMLButtonElement[] =>
     Array.from(fixture.nativeElement.querySelectorAll('[data-ocu-log="explain"]'));
 
-  // Mutation (Rule 19): request `line.raw` instead of `row.entry` -> this goes red on the row.
-  it('messages.log: each row carries the control, and a click hands that row alone to the panel', async () => {
+  // Mutation (Rule 19): request `line.raw` instead of `row.entry` -> this goes red on the row. Send
+  // the one entry as the view, as Story 11.2 shipped it (DW-1838) -> this goes red on the rows.
+  it("messages.log: each row carries the control, and a click hands that row to the panel, marked among the screen's rows", async () => {
     const { fixture, entry } = await mountWith(MESSAGES_SCREEN);
     const buttons = explainButtons(fixture);
     expect(buttons).toHaveLength(2);
@@ -787,6 +788,10 @@ describe('LogViewerPage: Explain this entry', () => {
     const taken = entry.take();
     expect(taken?.screen.route).toBe('logs/messages');
     expect(taken?.row).toEqual({ time: '2026-09-18T07:33:56.057', severity: '0', text: 'an informational entry' });
+    const context = explainContext(TestBed.inject(ScreenStores), taken);
+    expect(context?.view?.rows).toHaveLength(2);
+    expect(context?.view?.rows[context?.view?.selected ?? -1]).toEqual(taken?.row);
+    expect(context?.view?.focus).toBeUndefined();
   });
 
   it('alerts.log: the same control, sent as the alerts screen', async () => {
@@ -1081,7 +1086,7 @@ describe('LogViewerPage over a declared read (Story 16.10)', () => {
 
   // Mutation (Rule 19): send `{time, severity, text}` rather than `line.record` as the row's entry ->
   // the handed-off row loses every declared context field and this goes red.
-  it('Explain this entry hands that row, as the read answered it, to the panel as this screen', async () => {
+  it("Explain this entry hands that row, as the read answered it, to the panel as this screen, marked among the screen's rows", async () => {
     const { fixture, entry } = await mount();
     const buttons = Array.from(fixture.nativeElement.querySelectorAll('[data-ocu-log="explain"]')) as HTMLButtonElement[];
     expect(buttons).toHaveLength(4);
@@ -1089,6 +1094,10 @@ describe('LogViewerPage over a declared read (Story 16.10)', () => {
     const taken = entry.take();
     expect(taken?.screen.route).toBe(ACTIVITY_SCREEN.route);
     expect(taken?.row).toEqual({ ID: 3, DateTime: '2026-09-29 05:06:47', RecordType: 'Error', Job: 7, Text: 'Java executable not found' });
+    const context = explainContext(TestBed.inject(ScreenStores), taken);
+    expect(context?.view?.rows).toHaveLength(4);
+    expect(context?.view?.rows[context?.view?.selected ?? -1]).toEqual(narrowedEntry(ACTIVITY_SCREEN, taken?.row));
+    expect(context?.view?.focus).toBeUndefined();
   });
 
   // Mutation (Rule 19): drop the declared-read branch from the page's NavigationEnd handler -> the
