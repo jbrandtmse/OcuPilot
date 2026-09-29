@@ -2,7 +2,7 @@
 title: 'Story 16.10: External language servers'
 type: 'feature'
 created: '2026-09-28'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -266,6 +266,8 @@ Anchors are as of `0a3f28dd`. Story 16.7, implemented first, moves lines in `Rea
 
 ## Spec Change Log
 
+- 2026-09-29, spec gate (lead): the orchestrator took the split (A) at the merge gate -- this story keeps the list with each server's Running state, Start and Stop, and the Activity log; the editor (create, edit, delete) and DW-253 moved to Story 16.25 (epics.md, both blocks tagged). Spine amended at the gate: AD-8 (the own pair), AD-36 (`ACTIVITY` as a `rowGet` detail and as `source.rows` `Activity`), AD-15 and AD-53 (Stop, the fifth unaudited write). This story's Activity log needs Story 16.7's `source.rows`, which lands first. Status `blocked` to `ready-for-dev`.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -393,7 +395,7 @@ Slot A only. Everything that creates a server, starts it, stops it or creates a 
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: Q1 (Rule 5 tier 2). Story 16.10 as written in epics.md is two stories' worth. Recommended (A), to which this spec is written: 16.10 carries the epics' first three criteria (the list with each server's Running state, Start and Stop updating the row in place, the Activity log in the shared log viewer), and a new Story 16.25, "The external language server editor", carries the fourth (create, edit and delete confirming by name) and DW-253. The alternatives are (B), delete stays in 16.10 as a row action, or (C), keep one oversized story using the editor facts in Design Notes. The lead also writes three spine changes at the gate, none of which blocks: AD-8 (a further own-pair case), AD-36 (`ACTIVITY` as a detail type and as a list over one member) and AD-15/AD-53 (the fifth unaudited write, Stop).
+Status: ready-for-dev
+Blocking condition: none -- resolved at the spec gate (Spec Change Log). The plan's halt read: intent gap: Q1 (Rule 5 tier 2). Story 16.10 as written in epics.md is two stories' worth. Recommended (A), to which this spec is written: 16.10 carries the epics' first three criteria (the list with each server's Running state, Start and Stop updating the row in place, the Activity log in the shared log viewer), and a new Story 16.25, "The external language server editor", carries the fourth (create, edit and delete confirming by name) and DW-253. The alternatives are (B), delete stays in 16.10 as a row action, or (C), keep one oversized story using the editor facts in Design Notes. The lead also writes three spine changes at the gate, none of which blocks: AD-8 (a further own-pair case), AD-36 (`ACTIVITY` as a detail type and as a list over one member) and AD-15/AD-53 (the fifth unaudited write, Stop).
 
 **This pass.** Planned from `0a3f28dd`; nothing implemented. The vendor facts were measured on `ocupilot-ci`: its eight vendor servers and their running state were verified identical before and after, and every probe server, principal, activity row, log file and virtual environment was removed. Checks: `check-prose` and `markdownlint` report 0 problems.

@@ -1681,6 +1681,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: FieldLists.cls LanguageServer Custom is an object with no members; the vendor template builds Custom per type argument; AD-3 fixes no-argument evaluation except SSLConfig
 - 2026-09-14T08:16:26Z status=routed owner=16-10-external-language-servers by=harvest note=decided 2026-09-14 (owner-delegated): derive one list per language-server type as Wallet.Secret does, amending AD-3 in that story
+- 2026-09-29T06:26:25Z status=routed owner=16-25-the-external-language-server-editor by=merge_gate note=16.10 split for size (orchestrator): the editor and its per-type field lists moved to 16.25
 
 ### DW-254: The credential pattern missed string secrets (wallet Secret64, License.Key Key) and refuses ordinary on the string OAuth2 ReturnRefreshToken
 - source: spec-2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned.md | severity: med | fix-risk: low | footprint: in-story
@@ -8038,6 +8039,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-6-broadcast-a-message-to-processes.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: data-table.ts puts the reason only in aria-description on a tabindex=-1 checkbox; the grid keeps DOM focus with aria-activedescendant on the row or cell, so it is never read there; onCheckClick and the Space branch return silently on an ineligible row; EXPERIENCE.md:646 forbids a title and a tooltip on an uncut cell
 - 2026-09-29T04:47:44Z status=decision-pending owner=burndown by=cr note=recommend: table tooltip on hover of an ineligible box or an ineligible active row, announced on Space; amends EXPERIENCE:646
+- 2026-09-29T06:26:25Z status=routed owner=16-7-license-usage-and-the-full-dashboard by=merge_gate note=decided as recommended: the table's tooltip on hover of an ineligible box, announced on Space; fixed ahead in f9c77be2
 
 ### DW-1816: Check all on a multi-select list has no keyboard path: its header checkbox is out of the Tab order and the grid's keys never reach the header
 - source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: med | footprint: in-story
