@@ -11,8 +11,8 @@ Class OcuPilot.Test.ScreenGrounding Extends %UnitTest.TestCase
 
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
-/// <p>The process list's tools, as the registry names them: its read, then the four write tools
-/// behind its four row actions, in name order.</p>
+/// <p>The process list's tools, as the registry names them: its read, then the five write tools
+/// behind its five row actions, in name order.</p>
 Parameter PROCESSTOOLS = "[""osmgmt_processes_read"",""osmgmt_processes_broadcast"",""osmgmt_processes_resume"",""osmgmt_processes_suspend"",""osmgmt_processes_terminate"",""osmgmt_processes_terminatewitherror""]";
 
 /// <p>The prompt's statement at <var>pIndex</var> (1 to 8), verbatim.</p>

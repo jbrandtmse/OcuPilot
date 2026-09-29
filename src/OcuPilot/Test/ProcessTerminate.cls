@@ -133,7 +133,7 @@ Method TestTheTwoToolsAndBothScreensDeclareTheTerminate()
         ; Story 16.6: Processes alone adds its checked rows' Broadcast after the four.
         Set tDeclared = tActions
         If tScreen = ..#SCREEN Set tDeclared = $Extract(tActions, 1, *-1) _ ",{""id"":""broadcast"",""selfProtection"":""""}]"
-        Do $$$AssertEquals(tDeclaration.rowActions.%ToJSON(), tDeclared, tScreen _ " declares Suspend, Resume, Terminate and the flag, none self-protected")
+        Do $$$AssertEquals(tDeclaration.rowActions.%ToJSON(), tDeclared, tScreen _ " declares Suspend, Resume, Terminate and the flag, and Processes its Broadcast, none self-protected")
         Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, "processListEmptyAgent", "its empty state invites the agent")
         Do $$$AssertEquals(tDeclaration.table.emptyNextKey, "", "and names no read-only next step")
     }

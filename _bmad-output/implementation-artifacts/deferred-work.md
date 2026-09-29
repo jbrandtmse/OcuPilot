@@ -8030,3 +8030,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ProcessPort answers RECIPIENTS 404 when no pid of the set runs, as the spec's Boundaries specify; the screen route and the mint stop on that read
 - 2026-09-29T04:04:49Z status=by-design owner=16-6-broadcast-a-message-to-processes by=harvest note=spec-bound: the RECIPIENTS clause specifies the 404; a set naming one running pid reaches the sentence
+
+### DW-1815: An ineligible Processes row's reason reaches no pointer user and is not announced through the grid; Space or a click on it is silent
+- source: spec-16-6-broadcast-a-message-to-processes.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: data-table.ts puts the reason only in aria-description on a tabindex=-1 checkbox; the grid keeps DOM focus with aria-activedescendant on the row or cell, so it is never read there; onCheckClick and the Space branch return silently on an ineligible row; EXPERIENCE.md:646 forbids a title and a tooltip on an uncut cell
+- 2026-09-29T04:47:44Z status=decision-pending owner=burndown by=cr note=recommend: table tooltip on hover of an ineligible box or an ineligible active row, announced on Space; amends EXPERIENCE:646
+
+### DW-1816: Check all on a multi-select list has no keyboard path: its header checkbox is out of the Tab order and the grid's keys never reach the header
+- source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: data-table.ts draws Check all with tabindex=-1 and onGridKeydown moves only data rows; Space on each row reaches the same checks one at a time
+- 2026-09-29T04:47:44Z status=wontfix-accepted owner=16-6-broadcast-a-message-to-processes by=cr note=reopen_if=a keyboard-only user must check more than a few rows at once, or a second list declares multiSelect
+
+### DW-1817: A broadcast to two or more pids marks no row and announces nothing, while a one-pid broadcast marks its row Changed
+- source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: the change event's id is the comma-joined set (812,907), which no row key matches (refresh.ts markChanged); the dialog's Message sent. is the confirmation
+- 2026-09-29T04:47:44Z status=wontfix-accepted owner=16-6-broadcast-a-message-to-processes by=cr note=reopen_if=a person or test expects each recipient row of a set broadcast marked Changed (AD-14)
+
+### DW-1818: A message the screen route refuses (a pasted tab) shows the agent-worded TOOL.ARGUMENTS sentence in the broadcast dialog
+- source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Api/ScreenAction.cls Refuse renders REASONTOOLARGUMENTS for every ScreenActionDelta problem, and the dialog shows the envelope's reason; nothing is sent
+- 2026-09-29T04:47:44Z status=wontfix-accepted owner=16-6-broadcast-a-message-to-processes by=cr note=reopen_if=a person meets the generic sentence from a screen dialog, or a second free-text screen value reaches ScreenAction.Refuse

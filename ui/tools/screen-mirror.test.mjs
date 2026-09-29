@@ -804,7 +804,7 @@ function multiSelectDeclarationFor(corpus, testCase) {
 // declaration carries exactly the declared vocabulary; and the shipped Processes declaration is the
 // only one, with its ineligible reason a string key the check above resolves.
 //
-// Mutation (Rule 19): drop the `max` arm from `multiSelectProblem` -> the four max cases go red.
+// Mutation (Rule 19): drop the `max` arm from `multiSelectProblem` -> the five max cases go red.
 // Drop the `multiSelectProblem` call from `buildMirror` -> the generator-refusal assertion goes red.
 test('multiSelectProblem returns every sentence OcuPilot.Test.MultiSelectCorpus declares', () => {
   const corpus = testCorpus(['Test', 'MultiSelectCorpus.cls'], 'Cases');

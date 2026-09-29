@@ -286,6 +286,51 @@ deferred:
 - Given a set naming a process that cannot receive or has ended, when either caller broadcasts, then nothing is sent and the refusal is the published sentence.
 - Given a message that is empty, longer than 255 characters or holds a control character, when either caller sends it, then it is refused and nothing is sent.
 
+### Review Findings
+
+Code review, 2026-09-29 (four layers, full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 1 decision, 12 patches, 3 closed, 20 rejected. No high; no AD violation in product code (AD-5, 10, 12, 13, 19, 22, 51, 52/53, 58, 59 checked). Rule 3 is met by `process-broadcast.browser-spec.mjs` and `ProcessBroadcastLive`.
+
+- [x] [Review][Decision] An ineligible row's reason reaches no pointer user and is not announced through the grid: it sits only in `aria-description` on a checkbox that never holds focus, and Space or a click on it is silent. This is the lead's UX question. EXPERIENCE.md's letter is met: the :648 Selection rule says `aria-disabled` with its reason, and the Mechanism's tooltip clause binds only a control that takes DOM focus. Its intent ("names its reason", "always announced") is not. The surface is a UX call against :646 (no `title`, no tooltip on an uncut cell). Medium; DW-1815, decision-pending, for the epic's decision sheet.
+- [x] [Review][Patch] A checkbox click left DOM focus on the checkbox, off the grid (EXPERIENCE.md:869), so Space then toggled the active row rather than the clicked one [ui/src/app/shell/data-table.ts:1424]
+- [x] [Review][Patch] The dialog's refusal was never drawn through the path Processes renders [ui/src/app/shell/broadcast-dialog.spec.ts:224]
+- [x] [Review][Patch] The in-flight guard behind "one Send is one request" was untested [ui/src/app/shell/screen-action-handler.spec.ts:762]
+- [x] [Review][Patch] `Registry.Validate`'s `MultiSelectProblem` call was untested (AD-5's server half); a fixture registry now pins it [src/OcuPilot/Test/Descriptor.cls:1986]
+- [x] [Review][Patch] The browser spec required exactly one row after a substring pid filter, so a live pid holding the target's digits timed it out [ui/browser/process-broadcast.browser-spec.mjs:158]
+- [x] [Review][Patch] An Enter that commits an IME composition sent the message [ui/src/app/shell/broadcast-dialog.ts:166]
+- [x] [Review][Patch] A Send answered after its dialog was closed and reopened marked the reopened dialog sent [ui/src/app/shell/screen-action-handler.ts:513]
+- [x] [Review][Patch] `stopReceiver` asserted before killing the `docker exec` child, so a failed terminate left the child running [ui/browser/process-broadcast.browser-spec.mjs:77]
+- [x] [Review][Patch] The class doc said the confirm refuses with the published sentence; it refuses as a changed target [src/OcuPilot/Screen/Tool/ProcessBroadcast.cls:19]
+- [x] [Review][Patch] Stale counts: "four max cases" (five), "thirty-two keys" (34), "four write tools" (five), and the Processes row-action comment and assertion message [src/OcuPilot/Test/Descriptor.cls:1951]
+- [x] [Review][Patch] `EnsurePrincipal`'s Catch did not restore `$NAMESPACE` first (AD-16's letter, low: every path restored it after the Try, and the Catch names no class outside `%SYS`) [src/OcuPilot/Test/ProcessBroadcastLive.cls:426]
+- [x] [Review][Patch] EXPERIENCE.md's Keyboard model table lacked Space; it is folded into the data-table Enter row, and the file is still 993 lines [EXPERIENCE.md:821]
+- [x] [Review][Defer] Check all has no keyboard path [ui/src/app/shell/data-table.ts] — closed: DW-1816, wontfix-accepted (Space reaches every row).
+- [x] [Review][Defer] A broadcast to a set marks no row; a one-pid broadcast marks its row Changed [src/OcuPilot/Screen/Tool/ProcessBroadcast.cls:55] — closed: DW-1817, wontfix-accepted.
+- [x] [Review][Defer] A pasted tab gets the agent-worded `TOOL.ARGUMENTS` sentence in the dialog [src/OcuPilot/Api/ScreenAction.cls:550] — closed: DW-1818, wontfix-accepted, out of footprint.
+- For the lead: AD-51 says "Two cases:" and lists three (ARCHITECTURE-SPINE.md:659). The spine is the lead's under Rule 20, so it was not edited here.
+
+Rejected:
+
+- `false` Error.cls says the port answers 409 "for both callers": it does, at either caller's write.
+- `false` The live class's `Delete` statuses go unchecked: the `Exists` read-back after them turns a survivor into an error.
+- `false` A transport fault leaves the dialog silent: `ApiService` reports transport and install faults on the shell's own surfaces (api.ts:346, :367), as for every dialog.
+- `low` A refused send retries the set frozen at open: the dialog sends exactly the set its title named, and nothing partial.
+- `low` A filter unchecks hidden rows: Boundaries, "a row that leaves the view ... is unchecked", is pinned.
+- `low` Check all ignores `max`: Boundaries, "checks the eligible rows in view"; the over-cap reason names the cap.
+- `low` The dialog trims and the agent does not: Boundaries, "Send trims the message".
+- `low` The dialog names a count, not pids: Boundaries set the title to the count.
+- `low` The checked set is not in screen context: no AC asks for it.
+- `low` The corpus has no non-string `action`/`eligible`/`ineligibleKey` case: each type check shares its branch and sentence with the pinned empty case, and a declaration is hand-written JSON reviewed with its class.
+- `low` No check that a `multiSelect` entity type can hold a set: theoretical; the one declaration is on `integerset`.
+- `low` 255 and 20 are literals in the dialog, hint and `DESCRIPTION`: developer-only drift, and the fix is a cross-file test.
+- `low` `multi-select.ts` has no tools test: three component specs execute it.
+- `low` The live class does not check `%System_CallOut`: theoretical, since CI runs as `_SYSTEM`.
+- `low` A receiver can outlive the 10 s poll: it ends itself at 60 s.
+- `low` Pid reuse or an end between the port's `LIST` and the vendor call: Design Notes, "Message sent." means handed to the instance.
+- `low` An all-ended set answers 404: duplicate of DW-1812 (by-design).
+- `low` `\p{Zl}`, `\p{Zp}` and `\p{Cf}` pass: the refused set is the Boundaries'.
+- `low` A non-boolean `eligible` passes validation: theoretical.
+- `low` The matrix's `""` set departure is missing from the Spec Change Log: the fix edits this spec; Auto Run Result records it.
+
 ## Spec Change Log
 
 - 2026-09-29, after implement (lead): four Boundaries/Tasks statements are superseded by the build, as its Auto Run Result reports -- `FINGERPRINTSUBJECT` is `Recipients,Absent,Message` (the mint narrows the stored payload to the subject, so without `Message` the broadcast would carry none); the mint's recipient refusal lives in `MergeUpdate`, not `StateDiff` (the screen route also runs `StateDiff` and would answer 400 instead of the port's 409); `ProcessBroadcastLive` is armed on `OCUPILOT_ALLOW_PRINCIPALS` because it creates a user; the receiver records its pid in `^OcuPilotTestBroadcast` instead of writing `PID=` (AD-12's one-writer check refuses a bare `Write`). The frozen intent block is left as written.
@@ -428,6 +473,12 @@ deferred:
 - mutation (review pass): `MergeUpdate`'s `Receivable` refusal becomes `If 0` → `ProcessBroadcast` red (run 18827): `TestTheFingerprintRefusesAMovedRecipient` (the ended and flag legs), with the two tests above.
 - mutation (review pass): `pruneChecked` builds its set from `store.data()`; the row checkbox binds `[attr.title]`; `ScreenActionDialogs.broadcastMax` answers `0` → red, one each: `data-table.spec.ts` "a filter that hides a checked row unchecks it" and "Story 15.8: no element under a multi-select table carries a title", `broadcast-dialog.spec.ts` "titles the dialog with the checked rows' count" (the hint).
 - mutation (review pass): `BroadcastDialog`'s focus effect never runs, rebuilt and redeployed → `process-broadcast.browser-spec.mjs` red: the Space/Broadcast/Send leg times out waiting for focus on Close.
+- mutation (QA pass): `DataTable`'s row-mapping `checkReason` becomes `null` unconditionally (`data-table.ts`) → `data-table.spec.ts` red: "an ineligible row's checkbox is aria-disabled with the declared reason, and neither Space nor a click checks it" (expected the published sentence, got `null`); reverted, tree byte-identical. This is the matrix's "Ineligible row" leg: the Boundaries and EXPERIENCE.md:648 ask only that the checkbox "carries the declared reason" (`aria-disabled` + `aria-description`), not that the reason be visible to a sighted mouse user without assistive tech — the DW-146 no-`title` constraint already forecloses a hover tooltip. The follow-up review's residual risk is therefore a product question for the lead, not an unpinned behavior: what the spec asks for is pinned and now demonstrated load-bearing.
+- mutation (code review): `DataTable.onCheckClick`/`onCheckAll` lose `keepGridFocus()` -> `data-table.spec.ts` red: "a checkbox click, a row's or Check all, leaves DOM focus on the grid"; rebuilt and redeployed, `process-broadcast.browser-spec.mjs` red: "with DOM focus on the grid, not the checkbox".
+- mutation (code review): `ScreenActionDialogs.broadcastRefusal` answers `''` -> `broadcast-dialog.spec.ts` red: "draws the instance's refusal in the dialog it opened"; `onEnter` loses its `isComposing` return -> red: "an Enter that commits an IME composition does not".
+- mutation (code review): `submitBroadcast` loses `pending.sending === true ||` -> `screen-action-handler.spec.ts` red: "a second Send while the first is in flight sends nothing"; its identity check becomes a kind-and-target compare -> red: "a Send answered after its dialog was closed and reopened leaves the reopened one unsent".
+- mutation (code review): `Registry.Validate`'s `MultiSelectProblem` call deleted on `ocupilot-ci`, compiled with subclasses -> `Descriptor` red (run 19180): `TestAMultiSelectOutsideTheGrammarIsRefusedByTheRoster`; restored, green (run 19181).
+- Each mutation was reverted and the tree confirmed byte-identical.
 
 ## Auto Run Result
 

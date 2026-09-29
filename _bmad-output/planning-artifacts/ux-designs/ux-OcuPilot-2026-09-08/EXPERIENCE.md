@@ -818,7 +818,7 @@ Exceptions: Databases list adds *async values arriving*; OpenAPI document viewer
 | Shift+Enter | composer | newline |
 | Up / Down · Home / End · PageUp / PageDown | data-table | move the active row (the selection, and the screen context's entity) |
 | Right / Left | data-table row | step into the row's cells (name link, chips, ⋮) and back |
-| Enter | data-table row | open the detail or editor route |
+| Enter · Space | data-table row | Enter opens the detail or editor route; Space, on a list that declares a multi-select action, checks or unchecks the row [ADDED 2026-09-28 - Story 16.6] |
 | Alt/Option+Down · the `contextmenu` event (Shift+F10, the menu key, VO+Shift+M, right-click) | data-table row | open the row-overflow-menu |
 | Alt/Option+Shift+Right / Left | data-table cell | widen or narrow the active cell's column by 16 px, never below its header label, and announce the new width; at row level or on the ⋮ cell, nothing [AMENDED 2026-09-25, Story 15.8] |
 | Enter / Space | tool-call-card | expand or collapse |

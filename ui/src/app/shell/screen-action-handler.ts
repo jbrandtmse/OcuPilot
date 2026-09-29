@@ -498,7 +498,8 @@ export class ScreenActionHandler {
     if (text === '') return;
     const screen = SCREENS.find((entry) => entry.descriptor === pending.descriptor);
     if (screen === undefined) return;
-    this.waiting.set({ ...pending, sending: true, refusal: '' });
+    const sending: PendingConfirm = { ...pending, sending: true, refusal: '' };
+    this.waiting.set(sending);
     let refusal = '';
     const sink: ActionSink = {
       setRefusal: (reason) => {
@@ -507,9 +508,10 @@ export class ScreenActionHandler {
     };
     const applied = await this.send(pending.descriptor, pending.actionId, pending.target, { [MESSAGE_VALUE]: text }, sink);
     if (applied) this.store(screen.descriptor, screen.refreshRates).setChecked([]);
-    const now = this.waiting();
-    if (now === null || now.kind !== 'broadcast' || now.target !== pending.target) return;
-    this.waiting.set({ ...now, sending: false, sent: applied, refusal: applied ? '' : refusal });
+    // Only the dialog this Send came from takes its answer: one closed and reopened meanwhile, over
+    // the same set, has sent nothing yet.
+    if (this.waiting() !== sending) return;
+    this.waiting.set({ ...sending, sending: false, sent: applied, refusal: applied ? '' : refusal });
   }
 
   /** Escape, Cancel or the scrim: nothing was sent and nothing is. */

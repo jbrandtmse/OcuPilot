@@ -113,7 +113,7 @@ XData Cases
     "multiSelect": null
   },
   "cases": [
-    {"name": "the sound shape, all thirty-two keys", "addKey": "", "dropKey": "", "expected": null},
+    {"name": "the sound shape, all thirty-four keys", "addKey": "", "dropKey": "", "expected": null},
     {"name": "a pluralised banner, the misspelling that installed a screen whose strip never raises", "addKey": "banners", "dropKey": "", "expected": "the declaration declares the unknown key 'banners'"},
     {"name": "a capitalised banner", "addKey": "Banner", "dropKey": "", "expected": "the declaration declares the unknown key 'Banner'"},
     {"name": "a pluralised read", "addKey": "reads", "dropKey": "", "expected": "the declaration declares the unknown key 'reads'"},

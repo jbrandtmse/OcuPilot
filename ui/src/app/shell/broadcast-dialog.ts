@@ -162,6 +162,8 @@ export class BroadcastDialog {
   }
 
   protected onEnter(event: Event): void {
+    // An Enter that commits an IME composition is not a Send.
+    if ((event as KeyboardEvent).isComposing) return;
     event.preventDefault();
     this.submit();
   }

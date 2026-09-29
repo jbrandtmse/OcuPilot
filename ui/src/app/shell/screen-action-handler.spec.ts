@@ -757,6 +757,39 @@ describe('Processes\u2019 Broadcast over the checked rows (Story 16.6)', () => {
     expect(events).toEqual([]);
   });
 
+  // Mutation (Rule 19): drop `pending.sending === true ||` from `submitBroadcast` -> the second
+  // Send posts too and this goes red.
+  it('a second Send while the first is in flight sends nothing', async () => {
+    const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target } }, LIST);
+    store.setChecked(['812', '907']);
+    actions.run(LIST, 'broadcast');
+    await settle();
+    const first = handler.submitBroadcast('Down at 18:00');
+    const second = handler.submitBroadcast('Down at 18:00');
+    await Promise.all([first, second]);
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(handler.pending()?.sent).toBe(true);
+  });
+
+  // Mutation (Rule 19): compare the answered dialog by kind and target instead of identity -> the
+  // reopened dialog reads sent before anything was typed in it, and this goes red.
+  it('a Send answered after its dialog was closed and reopened leaves the reopened one unsent', async () => {
+    const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target } }, LIST);
+    store.setChecked(['812', '907']);
+    actions.run(LIST, 'broadcast');
+    await settle();
+    const inFlight = handler.submitBroadcast('Down at 18:00');
+    handler.cancelPending();
+    actions.run(LIST, 'broadcast');
+    await inFlight;
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(handler.pending()?.kind).toBe('broadcast');
+    expect(handler.pending()?.sent).toBe(false);
+    expect(handler.pending()?.sending).toBe(false);
+  });
+
   it('Cancel sends nothing, and a set over the declared max opens nothing', async () => {
     const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: {} }, LIST);
     store.setChecked(['812']);

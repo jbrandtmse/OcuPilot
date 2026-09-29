@@ -16,9 +16,9 @@
 /// the stored payload is narrowed to it, and the port query is read from that payload.</p>
 /// <p><b>Only a terminal session can receive one</b>, which the vendor's own
 /// <code>CanReceiveBroadcast</code> reports. A set holding an ended or ineligible pid is refused
-/// whole, with the published sentence: by <method>MergeUpdate</method> at the mint (and so at the
-/// confirm's re-read), and by the port at the write, for both callers. Nothing is ever sent to part
-/// of a set.</p>
+/// whole: by <method>MergeUpdate</method> at the mint, with the published sentence; at the
+/// confirm's re-read as a target that changed; and by the port at the write, for both callers, with
+/// the published sentence. Nothing is ever sent to part of a set.</p>
 /// <p><b>The message</b> is one <method>MessageProblem</method> for every caller: at least one
 /// character other than a space, at most <parameter>MESSAGEMAX</parameter> characters, no
 /// <code>\p{Cc}</code> control character and no unpaired surrogate. It is sent exactly as given,

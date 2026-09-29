@@ -1357,6 +1357,25 @@ describe('the data table\'s checked set', () => {
     expect(grid.hasAttribute('aria-multiselectable')).toBe(false);
   });
 
+  // Mutation (Rule 19): drop the `keepGridFocus()` calls from `onCheckClick` and `onCheckAll` ->
+  // focus is not on the grid after either click and this goes red.
+  it('a checkbox click, a row\'s or Check all, leaves DOM focus on the grid', async () => {
+    const wired = await wire(declared(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+
+    (document.activeElement as HTMLElement | null)?.blur();
+    (wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-check') as HTMLInputElement).click();
+    await settle(wired.fixture);
+    expect(document.activeElement).toBe(grid);
+
+    (document.activeElement as HTMLElement | null)?.blur();
+    (wired.host().querySelector('[role="columnheader"] .ocu-data-table-check') as HTMLInputElement).click();
+    await settle(wired.fixture);
+    expect(document.activeElement).toBe(grid);
+  });
+
   it('an ineligible row\'s checkbox is aria-disabled with the declared reason, and neither Space nor a click checks it', async () => {
     const wired = await wire(declared(), ok(rows(3)));
     await wired.refresh.readNow();

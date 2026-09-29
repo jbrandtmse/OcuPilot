@@ -1421,6 +1421,7 @@ export class DataTable implements OnInit {
    */
   protected onCheckClick(event: MouseEvent, row: RowModel): void {
     event.stopPropagation();
+    this.keepGridFocus();
     if (!row.checkable) {
       event.preventDefault();
       return;
@@ -1431,6 +1432,7 @@ export class DataTable implements OnInit {
   /** Check every checkable row in view, or uncheck them when all already are. */
   protected onCheckAll(event: MouseEvent): void {
     event.stopPropagation();
+    this.keepGridFocus();
     const keys = this.checkableKeys();
     if (keys.length === 0) {
       event.preventDefault();
@@ -1444,6 +1446,14 @@ export class DataTable implements OnInit {
       else next.add(key);
     }
     store.setChecked(next);
+  }
+
+  /**
+   * A click focuses the checkbox it lands on, which is out of the Tab order but focusable; DOM focus
+   * belongs on the grid, where `aria-activedescendant` is read and Space checks the active row.
+   */
+  private keepGridFocus(): void {
+    this.gridElement()?.nativeElement.focus({ preventScroll: true });
   }
 
   private toggleCheck(row: RowModel | undefined): void {

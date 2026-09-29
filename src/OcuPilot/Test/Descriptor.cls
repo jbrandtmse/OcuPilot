@@ -682,8 +682,8 @@ Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
     ; Order matters: OcuPilot.Screen.Gate.EvaluatePairs names the FIRST pair a caller does not
     ; hold, and both wire fixtures pin that name.
     Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%Admin_Manage"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "the endpoint's own gate first, the CONTROLPANEL query's check second, the database read third")
-    ; Story 7.8: the four row actions, none self-protected -- a process refusal reads what only the
-    ; instance knows -- so the empty state invites the agent.
+    ; Story 7.8's four row actions and Story 16.6's Broadcast, none self-protected -- a process
+    ; refusal reads what only the instance knows -- so the empty state invites the agent.
     Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "suspend,resume,terminate,terminate-with-error,broadcast", "its row actions are Suspend, Resume, Terminate, the Terminate dialog's flag and the checked rows' Broadcast")
     Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, "processListEmptyAgent", "and its empty state invites the agent")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the os-management area covers all three")
@@ -1948,7 +1948,7 @@ Method TestANarrowOsManagementScreenIsSoundInsideTheUnion()
 /// corpus's own sound declaration carries exactly the declared vocabulary, and every shipped
 /// descriptor passes.</p>
 /// <p>Mutation (Rule 19): drop the <code>max</code> arm from
-/// <method>OcuPilot.Screen.Registry.MultiSelectProblem</method> -- the four max cases go red.</p>
+/// <method>OcuPilot.Screen.Registry.MultiSelectProblem</method> -- the five max cases go red.</p>
 Method TestEveryMultiSelectCorpusCaseGetsItsSentence()
 {
     Set tSC = ##class(OcuPilot.Test.MultiSelectCorpus).Corpus(.tCorpus)
@@ -1975,6 +1975,20 @@ Method TestEveryMultiSelectCorpusCaseGetsItsSentence()
         If $$$ISERR($ClassMethod(tClass, "DeclarationJson", .tShipped)) Continue
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).MultiSelectProblem(tShipped), "", tClass _ "'s multiSelect passes")
     }
+}
+
+/// <p>AD-5, Story 16.6: the multi-select rule reaches the roster through
+/// <method>OcuPilot.Screen.Registry.Validate</method>, naming the offending class. The corpus test
+/// above calls the rule directly, so this fixture registry is what pins that call site.</p>
+/// <p>Mutation (Rule 19): delete the <method>OcuPilot.Screen.Registry.MultiSelectProblem</method>
+/// call from <method>OcuPilot.Screen.Registry.Validate</method> -- the fixture roster validates and
+/// this goes red.</p>
+Method TestAMultiSelectOutsideTheGrammarIsRefusedByTheRoster()
+{
+    Set tSC = ##class(OcuPilot.Test.MultiSelectShapeRegistry).Validate(.tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster carrying a multiSelect outside the grammar is refused")
+    Do $$$AssertTrue(tProblem [ "OcuPilot.Test.MultiSelectShape.Bad", "the refusal names the offending class: " _ tProblem)
+    Do $$$AssertTrue(tProblem [ "multiSelect.action 'broadcast' is not one of rowActions", "and the sentence MultiSelectProblem returns: " _ tProblem)
 }
 
 /// <p>AC5, AC6 -- every case in <class>OcuPilot.Test.RowTargetCorpus</class>'s <code>Cases</code>

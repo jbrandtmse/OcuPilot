@@ -3,11 +3,12 @@
  * Broadcast (AD-5, AD-53).
  *
  * What it pins: a daemon's checkbox is drawn `aria-disabled` with the published reason and a click
- * leaves it unchecked; Space checks a terminal session this spec started, and Broadcast opens
- * "Broadcast to 1 process" over it; with the checkboxes drawn and the dialog open the screen passes
- * the structural and contrast checks at 1280 light, 720 light and 1280 dark with no entry beyond the
- * baseline (DW-1337); Send posts one request, the receiver's terminal shows the message, and the
- * dialog reads "Message sent." with focus on Close and the check cleared.
+ * leaves it unchecked, with DOM focus on the grid; Space checks a terminal session this spec
+ * started, and Broadcast opens "Broadcast to 1 process" over it; with the checkboxes drawn and the
+ * dialog open the screen passes the structural and contrast checks at 1280 light, 720 light and
+ * 1280 dark with no entry beyond the baseline (DW-1337); Send posts one request, the receiver's
+ * terminal shows the message, and the dialog reads "Message sent." with focus on Close and the check
+ * cleared.
  *
  * **It broadcasts only to a terminal session it starts itself** -- `iris session` over `docker exec`
  * without `-t`, running `OcuPilot.Test.ProcessBroadcastLive.Receiver` -- and terminates it in `after`,
@@ -74,14 +75,17 @@ async function startReceiver() {
 
 /** End the receiver on the instance and its `docker exec` child here, and forget its global node. */
 function stopReceiver() {
-  if (receiver.pid !== '') {
-    const output = runIris(config.container, [
-      `Set ok=$SYSTEM.Process.Terminate(${receiver.pid}) Kill ^OcuPilotTestBroadcast(${receiver.pid})`,
-      'Write "OCU-BCSTOP-START:"_ok_":OCU-BCSTOP-END",!',
-    ]);
-    assert.notEqual(markerValue(output, 'BCSTOP'), null, `the receiver's end was asked for: ${output}`);
+  try {
+    if (receiver.pid !== '') {
+      const output = runIris(config.container, [
+        `Set ok=$SYSTEM.Process.Terminate(${receiver.pid}) Kill ^OcuPilotTestBroadcast(${receiver.pid})`,
+        'Write "OCU-BCSTOP-START:"_ok_":OCU-BCSTOP-END",!',
+      ]);
+      assert.notEqual(markerValue(output, 'BCSTOP'), null, `the receiver's end was asked for: ${output}`);
+    }
+  } finally {
+    if (receiver.child !== null && receiver.child.exitCode === null) receiver.child.kill();
   }
-  if (receiver.child !== null && receiver.child.exitCode === null) receiver.child.kill();
 }
 
 /** The write daemon's pid, read through the endpoint the screen reads. */
@@ -145,30 +149,70 @@ async function atList() {
   return { context, page, posts };
 }
 
-/** Filter the list to the one row whose pid is `pid`. */
+/**
+ * Filter the list by `pid` and wait for the row whose name reads it. The filter matches text, so
+ * another pid that contains this one's digits may stay listed beside it; every read below finds the
+ * row by its name cell's link or text, never by its position or the cell's whole text, which gains
+ * the "Changed" tag after a send.
+ */
 async function filterTo(page, pid) {
   await page.click(FILTER_SELECTOR, { clickCount: 3 });
   await page.keyboard.press('Backspace');
   await page.type(FILTER_SELECTOR, pid);
   await page.waitForFunction(
-    (rowSelector, wanted) => {
-      const rows = Array.from(document.querySelectorAll(rowSelector));
-      return rows.length === 1 && rows[0].querySelector('[role="gridcell"]')?.textContent.trim() === wanted;
-    },
+    (rowSelector, wanted) =>
+      Array.from(document.querySelectorAll(rowSelector)).some((row) => (row.querySelector('[role="gridcell"] .ocu-data-table-link, [role="gridcell"] .ocu-data-table-text')?.textContent ?? '').trim() === wanted),
     { timeout: config.navigationTimeoutMs },
     ROW_SELECTOR,
     pid
   );
 }
 
-/** The one rendered row's checkbox, as the page draws it. */
-function checkbox(page) {
-  return page.$eval(`${ROW_SELECTOR} .ocu-data-table-check`, (box) => ({
-    checked: box.checked,
-    disabled: box.getAttribute('aria-disabled'),
-    reason: box.getAttribute('aria-description'),
-    label: box.getAttribute('aria-label'),
-  }));
+/** The rendered row whose name reads `pid`, as an element handle. */
+function rowOf(page, pid) {
+  return page.evaluateHandle(
+    (rowSelector, wanted) =>
+      Array.from(document.querySelectorAll(rowSelector)).find((row) => (row.querySelector('[role="gridcell"] .ocu-data-table-link, [role="gridcell"] .ocu-data-table-text')?.textContent ?? '').trim() === wanted) ?? null,
+    ROW_SELECTOR,
+    pid
+  );
+}
+
+/** The row for `pid`'s checkbox, as the page draws it. */
+async function checkbox(page, pid) {
+  const row = await rowOf(page, pid);
+  return row.evaluate((element) => {
+    const box = element.querySelector('.ocu-data-table-check');
+    return {
+      checked: box.checked,
+      disabled: box.getAttribute('aria-disabled'),
+      reason: box.getAttribute('aria-description'),
+      label: box.getAttribute('aria-label'),
+    };
+  });
+}
+
+/** The row for `pid`'s `aria-selected`, or `null`. */
+async function rowSelected(page, pid) {
+  return (await rowOf(page, pid)).evaluate((element) => element.getAttribute('aria-selected'));
+}
+
+/** Wait until the row for `pid` reads `value` under `key`: its checkbox's `checked`, or its `selected`. */
+function waitForRow(page, pid, key, value) {
+  return page.waitForFunction(
+    (rowSelector, wantedPid, wantedKey, wantedValue) => {
+      const row = Array.from(document.querySelectorAll(rowSelector)).find((candidate) => (candidate.querySelector('[role="gridcell"] .ocu-data-table-link, [role="gridcell"] .ocu-data-table-text')?.textContent ?? '').trim() === wantedPid);
+      if (row === undefined) return false;
+      const box = row.querySelector('.ocu-data-table-check');
+      const drawn = { checked: box?.checked ?? null, selected: row.getAttribute('aria-selected') };
+      return drawn[wantedKey] === wantedValue;
+    },
+    { timeout: config.navigationTimeoutMs },
+    ROW_SELECTOR,
+    pid,
+    key,
+    value
+  );
 }
 
 /** The command bar's Broadcast, as drawn. */
@@ -197,16 +241,20 @@ after(async () => {
 
 // Mutation (Rule 19): draw the checkbox without its `aria-disabled` for an ineligible row, then
 // rebuild and redeploy -> the daemon leg goes red.
-test('a daemon\'s checkbox is aria-disabled with the published reason, and a click leaves it unchecked', async () => {
+test('a daemon\'s checkbox is aria-disabled with the published reason, and a click leaves it unchecked and the grid focused', async () => {
   const { context, page, posts } = await atList();
   try {
     const pid = daemonPid();
     await filterTo(page, pid);
-    const drawn = await checkbox(page);
+    const drawn = await checkbox(page, pid);
     assert.deepEqual(drawn, { checked: false, disabled: 'true', reason: STRINGS.processBroadcastIneligible, label: pid }, 'the daemon cannot be checked, and says why');
-    await page.click(`${ROW_SELECTOR} .ocu-data-table-check`);
+    const selected = await rowSelected(page, pid);
+    const box = await (await rowOf(page, pid)).evaluateHandle((row) => row.querySelector('.ocu-data-table-check'));
+    await box.click();
     await frames(page);
-    assert.equal((await checkbox(page)).checked, false, 'a click leaves it unchecked');
+    assert.equal((await checkbox(page, pid)).checked, false, 'a click leaves it unchecked');
+    assert.equal(await rowSelected(page, pid), selected, 'and leaves the selection where it was');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('role') ?? ''), 'grid', 'with DOM focus on the grid, not the checkbox');
     assert.deepEqual(await broadcastButton(page, STRINGS.processBroadcastAction), { disabled: 'true' }, 'and Broadcast still waits for a checked row');
     assert.equal(posts.length, 0, 'nothing was sent');
   } finally {
@@ -220,12 +268,12 @@ test('Space checks the receiver, Broadcast opens over it and passes DW-1337, and
   const { context, page, posts } = await atList();
   try {
     await filterTo(page, receiver.pid);
-    assert.deepEqual(await checkbox(page), { checked: false, disabled: null, reason: null, label: receiver.pid }, 'the receiver can be checked');
-    await clickRowCentre(page, { index: 0, cell: 1 });
-    await page.waitForFunction((rowSelector) => document.querySelector(rowSelector)?.getAttribute('aria-selected') === 'true', { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    assert.deepEqual(await checkbox(page, receiver.pid), { checked: false, disabled: null, reason: null, label: receiver.pid }, 'the receiver can be checked');
+    await clickRowCentre(page, { text: receiver.pid, cell: 1 });
+    await waitForRow(page, receiver.pid, 'selected', 'true');
     await page.keyboard.press('Space');
-    await page.waitForFunction((rowSelector) => document.querySelector(`${rowSelector} .ocu-data-table-check`)?.checked === true, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
-    assert.equal(await page.$eval(ROW_SELECTOR, (row) => row.getAttribute('aria-selected')), 'true', 'the selection stays on the row');
+    await waitForRow(page, receiver.pid, 'checked', true);
+    assert.equal(await rowSelected(page, receiver.pid), 'true', 'the selection stays on the row');
     assert.deepEqual(await broadcastButton(page, STRINGS.processBroadcastAction), { disabled: null }, 'Broadcast is available over one checked row');
 
     await page.evaluate((wanted) => {
@@ -250,7 +298,7 @@ test('Space checks the receiver, Broadcast opens over it and passes DW-1337, and
     assert.equal(await page.$eval('.ocu-dialog-actions .ocu-button-secondary', (button) => button.textContent.trim()), STRINGS.auditDialogClose, 'and Close is the one action left');
     // Send is gone once sent, so focus moves to Close rather than falling to the page.
     await page.waitForFunction((wanted) => document.activeElement?.textContent?.trim() === wanted, { timeout: config.navigationTimeoutMs }, STRINGS.auditDialogClose);
-    assert.equal((await checkbox(page)).checked, false, 'and the sent check is cleared');
+    assert.equal((await checkbox(page, receiver.pid)).checked, false, 'and the sent check is cleared');
   } finally {
     await context.close();
   }

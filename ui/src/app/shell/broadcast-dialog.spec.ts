@@ -109,6 +109,20 @@ describe('the broadcast dialog (Story 16.6)', () => {
     expect(fixture.componentInstance.submits()).toEqual(['Down at 18:00']);
   });
 
+  // Mutation (Rule 19): drop the `isComposing` return from `onEnter` -> the composing Enter sends and
+  // this goes red.
+  it('Enter sends the message, and an Enter that commits an IME composition does not', () => {
+    type('Down at 18:00');
+    const input = field() as HTMLInputElement;
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.submits()).toEqual([]);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.submits()).toEqual(['Down at 18:00']);
+  });
+
   it('Cancel sends nothing', () => {
     type('Down at 18:00');
     (host.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();
@@ -200,6 +214,58 @@ describe('the broadcast dialog as Processes opens it (Story 16.6)', () => {
       expect(JSON.parse(calls[0].body)).toEqual({ action: 'broadcast', id: '812,907', values: { Message: 'Down at 18:00' } });
       expect(element.querySelector('.ocu-broadcast-sent')?.textContent?.trim()).toBe(STRINGS.processBroadcastSent);
       expect(store.checked().size).toBe(0);
+    } finally {
+      element.remove();
+    }
+  });
+
+  // Mutation (Rule 19): answer `''` from `ScreenActionDialogs.broadcastRefusal` -> no refusal is
+  // drawn and this goes red.
+  it('draws the instance\u2019s refusal in the dialog it opened, and keeps the field and the checks', async () => {
+    const calls: string[] = [];
+    const api = {
+      requestJson: async <T,>(_path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
+        calls.push(init.body ?? '');
+        return {
+          kind: 'error',
+          status: 409,
+          code: 'PROCESS.BROADCAST.RECIPIENT',
+          reason: STRINGS.processBroadcastRefusalRecipient,
+          detail: null,
+        } as JsonResult<T>;
+      },
+    };
+    const stores = new ScreenStores({ account: stubAccountPreferences() });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: ChangeBus, useValue: new ChangeBus() },
+        { provide: ScreenStores, useValue: stores },
+        { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: OverlayStack, useValue: new OverlayStack() },
+      ],
+    });
+    const actions = TestBed.inject(ScreenActions);
+    const fixture = TestBed.createComponent(DialogsHost);
+    const element = fixture.nativeElement as HTMLElement;
+    document.body.appendChild(element);
+    try {
+      const store = stores.for(LIST, [5, 10, 30, 60]);
+      store.setChecked(['812', '907']);
+      actions.run(LIST, 'broadcast');
+      fixture.detectChanges();
+      const input = element.querySelector('.ocu-broadcast-message') as HTMLInputElement;
+      input.value = 'Down at 18:00';
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      (element.querySelector('.ocu-broadcast-send') as HTMLButtonElement).click();
+      for (let pass = 0; pass < 4; pass += 1) await new Promise((resolve) => setTimeout(resolve, 2));
+      fixture.detectChanges();
+      expect(calls).toHaveLength(1);
+      expect(element.querySelector('.ocu-broadcast-refusal')?.textContent?.trim()).toBe(STRINGS.processBroadcastRefusalRecipient);
+      expect(element.querySelector('.ocu-broadcast-message')).not.toBeNull();
+      expect(element.querySelector('.ocu-broadcast-sent')).toBeNull();
+      expect(store.checked().size).toBe(2);
     } finally {
       element.remove();
     }
