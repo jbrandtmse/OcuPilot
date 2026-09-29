@@ -141,6 +141,8 @@ export interface ReadRowGet {
 export interface ReadSourcePart {
   readonly type: string;
   readonly as: string;
+  /** `monitor` for the one part the sensors answer (Story 16.7); absent is the admin endpoint. */
+  readonly port?: 'admin' | 'monitor';
 }
 
 /**
@@ -158,9 +160,12 @@ export interface ReadSource {
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
    * `UPCOMING` reads an admin endpoint's scheduled occurrences as rows; `HISTORY` reads its task-run history;
-   * `VOLUMELIST` reads a database's own volume files as rows.
+   * `VOLUMELIST` reads a database's own volume files as rows; a bare admin type is read with
+   * `rows` (Story 16.7).
    */
-  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST';
+  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'LICENSEUSAGE';
+  /** The one member of a bare admin type's one-object answer this read lists (AD-36, Story 16.7). */
+  readonly rows?: string | null;
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;
@@ -2372,6 +2377,391 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "multiSelect": null
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.Dashboard",
+    "route": "os-management/dashboard",
+    "area": "os-management",
+    "labelKey": "dashboardLabel",
+    "sideBarPosition": 8,
+    "archetype": "meters",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Sensors.cpuUsage",
+        "Dashboard.Performance.GlobalRefsPerSecond",
+        "Dashboard.Performance.GlobalRefs",
+        "Dashboard.Performance.GlobalSetKill",
+        "Dashboard.Performance.RoutineRefs",
+        "Dashboard.Performance.LogicalRequests",
+        "Dashboard.Performance.DiskReads",
+        "Dashboard.Performance.DiskWrites",
+        "Dashboard.Performance.CacheEfficiency",
+        "Dashboard.ECP.ECPClients",
+        "Dashboard.ECP.ECPClientTraffic",
+        "Dashboard.ECP.ECPServers",
+        "Dashboard.ECP.ECPServerTraffic",
+        "Dashboard.ECP.ShadowConnections",
+        "Dashboard.ECP.Shadows",
+        "Dashboard.Status.UpTime",
+        "Dashboard.Status.LastBackup",
+        "Dashboard.SystemUsage.DatabaseSpace",
+        "Dashboard.SystemUsage.DatabaseJournal",
+        "Dashboard.SystemUsage.JournalSpace",
+        "Dashboard.SystemUsage.JournalEntries",
+        "Dashboard.SystemUsage.LockTable",
+        "Dashboard.SystemUsage.WriteDaemon",
+        "Dashboard.SystemUsage.Processes",
+        "Dashboard.SystemUsage.CSPSessions",
+        "Dashboard.Alerts.SeriousAlerts",
+        "Dashboard.Alerts.ApplicationErrors",
+        "Dashboard.Licensing.LicenseLimit",
+        "Dashboard.Licensing.LicenseUse",
+        "Dashboard.Licensing.LicenseUseHigh"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "dashboardEmpty",
+    "commandAliases": [
+      "dashboard",
+      "system dashboard",
+      "cpu"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "dashboardPrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "dashboardPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "dashboardPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utildashboard",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "GET",
+        "parts": [
+          {
+            "type": "DASHBOARDMAIN",
+            "as": "Dashboard"
+          },
+          {
+            "port": "monitor",
+            "type": "SENSORS",
+            "as": "Sensors"
+          }
+        ]
+      },
+      "fields": [
+        "Sensors.cpuUsage",
+        "Dashboard.Performance.GlobalRefsPerSecond",
+        "Dashboard.Performance.GlobalRefs",
+        "Dashboard.Performance.GlobalSetKill",
+        "Dashboard.Performance.RoutineRefs",
+        "Dashboard.Performance.LogicalRequests",
+        "Dashboard.Performance.DiskReads",
+        "Dashboard.Performance.DiskWrites",
+        "Dashboard.Performance.CacheEfficiency",
+        "Dashboard.ECP.ECPClients",
+        "Dashboard.ECP.ECPClientTraffic",
+        "Dashboard.ECP.ECPServers",
+        "Dashboard.ECP.ECPServerTraffic",
+        "Dashboard.ECP.ShadowConnections",
+        "Dashboard.ECP.Shadows",
+        "Dashboard.Status.UpTime",
+        "Dashboard.Status.LastBackup",
+        "Dashboard.SystemUsage.DatabaseSpace",
+        "Dashboard.SystemUsage.DatabaseJournal",
+        "Dashboard.SystemUsage.JournalSpace",
+        "Dashboard.SystemUsage.JournalEntries",
+        "Dashboard.SystemUsage.LockTable",
+        "Dashboard.SystemUsage.WriteDaemon",
+        "Dashboard.SystemUsage.Processes",
+        "Dashboard.SystemUsage.CSPSessions",
+        "Dashboard.Alerts.SeriousAlerts",
+        "Dashboard.Alerts.ApplicationErrors",
+        "Dashboard.Licensing.LicenseLimit",
+        "Dashboard.Licensing.LicenseUse",
+        "Dashboard.Licensing.LicenseUseHigh"
+      ],
+      "filter": [
+        "Sensors.cpuUsage",
+        "Dashboard.Performance.GlobalRefsPerSecond",
+        "Dashboard.Performance.GlobalRefs",
+        "Dashboard.Performance.GlobalSetKill",
+        "Dashboard.Performance.RoutineRefs",
+        "Dashboard.Performance.LogicalRequests",
+        "Dashboard.Performance.DiskReads",
+        "Dashboard.Performance.DiskWrites",
+        "Dashboard.Performance.CacheEfficiency",
+        "Dashboard.ECP.ECPClients",
+        "Dashboard.ECP.ECPClientTraffic",
+        "Dashboard.ECP.ECPServers",
+        "Dashboard.ECP.ECPServerTraffic",
+        "Dashboard.ECP.ShadowConnections",
+        "Dashboard.ECP.Shadows",
+        "Dashboard.Status.UpTime",
+        "Dashboard.Status.LastBackup",
+        "Dashboard.SystemUsage.DatabaseSpace",
+        "Dashboard.SystemUsage.DatabaseJournal",
+        "Dashboard.SystemUsage.JournalSpace",
+        "Dashboard.SystemUsage.JournalEntries",
+        "Dashboard.SystemUsage.LockTable",
+        "Dashboard.SystemUsage.WriteDaemon",
+        "Dashboard.SystemUsage.Processes",
+        "Dashboard.SystemUsage.CSPSessions",
+        "Dashboard.Alerts.SeriousAlerts",
+        "Dashboard.Alerts.ApplicationErrors",
+        "Dashboard.Licensing.LicenseLimit",
+        "Dashboard.Licensing.LicenseUse",
+        "Dashboard.Licensing.LicenseUseHigh"
+      ],
+      "sort": {
+        "fields": [
+          "Sensors.cpuUsage",
+          "Dashboard.Performance.GlobalRefsPerSecond",
+          "Dashboard.Performance.GlobalRefs",
+          "Dashboard.Performance.GlobalSetKill",
+          "Dashboard.Performance.RoutineRefs",
+          "Dashboard.Performance.LogicalRequests",
+          "Dashboard.Performance.DiskReads",
+          "Dashboard.Performance.DiskWrites",
+          "Dashboard.Performance.CacheEfficiency",
+          "Dashboard.ECP.ECPClients",
+          "Dashboard.ECP.ECPClientTraffic",
+          "Dashboard.ECP.ECPServers",
+          "Dashboard.ECP.ECPServerTraffic",
+          "Dashboard.ECP.ShadowConnections",
+          "Dashboard.ECP.Shadows",
+          "Dashboard.Status.UpTime",
+          "Dashboard.Status.LastBackup",
+          "Dashboard.SystemUsage.DatabaseSpace",
+          "Dashboard.SystemUsage.DatabaseJournal",
+          "Dashboard.SystemUsage.JournalSpace",
+          "Dashboard.SystemUsage.JournalEntries",
+          "Dashboard.SystemUsage.LockTable",
+          "Dashboard.SystemUsage.WriteDaemon",
+          "Dashboard.SystemUsage.Processes",
+          "Dashboard.SystemUsage.CSPSessions",
+          "Dashboard.Alerts.SeriousAlerts",
+          "Dashboard.Alerts.ApplicationErrors",
+          "Dashboard.Licensing.LicenseLimit",
+          "Dashboard.Licensing.LicenseUse",
+          "Dashboard.Licensing.LicenseUseHigh"
+        ],
+        "default": "Dashboard.Status.UpTime",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Sensors.cpuUsage",
+          "labelKey": "dashboardCpu",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.GlobalRefsPerSecond",
+          "labelKey": "systemUsageGlobalRefsPerSecond",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.GlobalRefs",
+          "labelKey": "processDetailsGlobalReferences",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.GlobalSetKill",
+          "labelKey": "systemUsageGlobalUpdates",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.RoutineRefs",
+          "labelKey": "dashboardRoutineReferences",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.LogicalRequests",
+          "labelKey": "systemUsageLogicalBlockRequests",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.DiskReads",
+          "labelKey": "performanceDiskReads",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.DiskWrites",
+          "labelKey": "performanceDiskWrites",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.CacheEfficiency",
+          "labelKey": "systemUsageCacheEfficiency",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.ECP.ECPClients",
+          "labelKey": "dashboardApplicationServers",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.ECP.ECPClientTraffic",
+          "labelKey": "dashboardApplicationServerTraffic",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.ECP.ECPServers",
+          "labelKey": "dashboardDataServers",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.ECP.ECPServerTraffic",
+          "labelKey": "dashboardDataServerTraffic",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.ECP.ShadowConnections",
+          "labelKey": "dashboardShadowSource",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.ECP.Shadows",
+          "labelKey": "dashboardShadowServer",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.Status.UpTime",
+          "labelKey": "systemInfoUptime",
+          "kind": "name"
+        },
+        {
+          "field": "Dashboard.Status.LastBackup",
+          "labelKey": "dashboardLastBackup",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.DatabaseSpace",
+          "labelKey": "systemUsageDatabaseSpace",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.DatabaseJournal",
+          "labelKey": "dashboardDatabaseJournal",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.JournalSpace",
+          "labelKey": "systemUsageJournalSpace",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.JournalEntries",
+          "labelKey": "systemUsageJournalEntries",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.SystemUsage.LockTable",
+          "labelKey": "systemUsageLockTable",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.WriteDaemon",
+          "labelKey": "systemUsageWriteDaemon",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.Processes",
+          "labelKey": "processListLabel",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.SystemUsage.CSPSessions",
+          "labelKey": "webSessionListLabel",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Alerts.SeriousAlerts",
+          "labelKey": "dashboardSeriousAlerts",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Alerts.ApplicationErrors",
+          "labelKey": "errorLogListLabel",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Licensing.LicenseLimit",
+          "labelKey": "dashboardLicenseLimit",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Licensing.LicenseUse",
+          "labelKey": "dashboardLicenseUse",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Licensing.LicenseUseHigh",
+          "labelKey": "dashboardLicenseUseHigh",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.dashboard",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseDetails",
     "route": "os-management/databases/details",
     "area": "os-management",
@@ -3819,6 +4209,612 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LicenseDistributedTab",
+    "route": "os-management/license-usage/distributed",
+    "area": "os-management",
+    "labelKey": "licenseUsageDistributed",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "UserId",
+        "LicenseUnits",
+        "Connections",
+        "ServerIP",
+        "Instance"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "licenseUsageDistributedEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.LicenseUsage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "LICENSEUSAGE",
+        "rows": "ConnectionList"
+      },
+      "fields": [
+        "UserId",
+        "LicenseUnits",
+        "Connections",
+        "ServerIP",
+        "Instance"
+      ],
+      "filter": [
+        "UserId",
+        "ServerIP"
+      ],
+      "sort": {
+        "fields": [
+          "UserId",
+          "LicenseUnits",
+          "Connections",
+          "ServerIP",
+          "Instance"
+        ],
+        "default": "UserId",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "UserId",
+          "labelKey": "licenseUsageUserId",
+          "kind": "name"
+        },
+        {
+          "field": "LicenseUnits",
+          "labelKey": "licenseUsageLicenseUnits",
+          "kind": "number"
+        },
+        {
+          "field": "Connections",
+          "labelKey": "sslPromptGroupConnections",
+          "kind": "number"
+        },
+        {
+          "field": "ServerIP",
+          "labelKey": "licenseUsageServerIp",
+          "kind": "identifier"
+        },
+        {
+          "field": "Instance",
+          "labelKey": "statusSegmentInstance",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/license-usage",
+      "position": 4,
+      "labelKey": "licenseUsageDistributed"
+    },
+    "toolIdentifier": "osmgmt.licensedistributed",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LicenseProcessTab",
+    "route": "os-management/license-usage/processes",
+    "area": "os-management",
+    "labelKey": "licenseUsageByProcess",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "PID",
+        "Process",
+        "LID",
+        "Type",
+        "Con",
+        "Active",
+        "CSPCon",
+        "LU",
+        "Grace"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "licenseUsageProcessesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.LicenseUsage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "LICENSEUSAGE",
+        "rows": "UsageByProcess"
+      },
+      "fields": [
+        "PID",
+        "Process",
+        "LID",
+        "Type",
+        "Con",
+        "Active",
+        "CSPCon",
+        "LU",
+        "Grace"
+      ],
+      "filter": [
+        "Process",
+        "LID",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "PID",
+          "Process",
+          "LID",
+          "Type",
+          "Con",
+          "Active",
+          "CSPCon",
+          "LU",
+          "Grace"
+        ],
+        "default": "PID",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "PID",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "Process",
+          "labelKey": "licenseUsageLoginId",
+          "kind": "text"
+        },
+        {
+          "field": "LID",
+          "labelKey": "licenseUsageUserId",
+          "kind": "text"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Con",
+          "labelKey": "sslPromptGroupConnections",
+          "kind": "number"
+        },
+        {
+          "field": "Active",
+          "labelKey": "licenseUsageActiveTime",
+          "kind": "number"
+        },
+        {
+          "field": "CSPCon",
+          "labelKey": "webSessionListLabel",
+          "kind": "number"
+        },
+        {
+          "field": "LU",
+          "labelKey": "licenseUsageUnits",
+          "kind": "number"
+        },
+        {
+          "field": "Grace",
+          "labelKey": "licenseUsageGraceTime",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/license-usage",
+      "position": 2,
+      "labelKey": "licenseUsageByProcess"
+    },
+    "toolIdentifier": "osmgmt.licenseprocesses",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LicenseSummaryTab",
+    "route": "os-management/license-usage",
+    "area": "os-management",
+    "labelKey": "licenseUsageLabel",
+    "sideBarPosition": 7,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "LicenseUnitUse",
+        "Local",
+        "Distributed"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "licenseUsageSummaryEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.LicenseUsage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "LICENSEUSAGE",
+        "rows": "Summary"
+      },
+      "fields": [
+        "LicenseUnitUse",
+        "Local",
+        "Distributed"
+      ],
+      "filter": [],
+      "sort": {
+        "fields": [
+          "LicenseUnitUse",
+          "Local",
+          "Distributed"
+        ],
+        "default": "LicenseUnitUse",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "LicenseUnitUse",
+          "labelKey": "licenseUsageUnitUse",
+          "kind": "name"
+        },
+        {
+          "field": "Local",
+          "labelKey": "licenseUsageLocal",
+          "kind": "text"
+        },
+        {
+          "field": "Distributed",
+          "labelKey": "licenseUsageDistributed",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/license-usage",
+      "position": 1,
+      "labelKey": "openApiColumnSummary"
+    },
+    "toolIdentifier": "osmgmt.licensesummary",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LicenseUserTab",
+    "route": "os-management/license-usage/users",
+    "area": "os-management",
+    "labelKey": "licenseUsageByUser",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "UserId",
+        "Type",
+        "Connects",
+        "MaxCon",
+        "CSPCon",
+        "LU",
+        "Active",
+        "Grace"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "licenseUsageUsersEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseUsagePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.LicenseUsage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "LICENSEUSAGE",
+        "rows": "UsageByUser"
+      },
+      "fields": [
+        "UserId",
+        "Type",
+        "Connects",
+        "MaxCon",
+        "CSPCon",
+        "LU",
+        "Active",
+        "Grace"
+      ],
+      "filter": [
+        "UserId",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "UserId",
+          "Type",
+          "Connects",
+          "MaxCon",
+          "CSPCon",
+          "LU",
+          "Active",
+          "Grace"
+        ],
+        "default": "UserId",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "UserId",
+          "labelKey": "licenseUsageUserId",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Connects",
+          "labelKey": "sslPromptGroupConnections",
+          "kind": "number"
+        },
+        {
+          "field": "MaxCon",
+          "labelKey": "licenseUsageMaxConnections",
+          "kind": "number"
+        },
+        {
+          "field": "CSPCon",
+          "labelKey": "webSessionListLabel",
+          "kind": "number"
+        },
+        {
+          "field": "LU",
+          "labelKey": "licenseUsageUnits",
+          "kind": "number"
+        },
+        {
+          "field": "Active",
+          "labelKey": "licenseUsageActiveTime",
+          "kind": "number"
+        },
+        {
+          "field": "Grace",
+          "labelKey": "licenseUsageGraceTime",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/license-usage",
+      "position": 3,
+      "labelKey": "licenseUsageByUser"
+    },
+    "toolIdentifier": "osmgmt.licenseusers",
+    "refreshDefault": 0,
+    "banner": null,
     "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],

@@ -142,4 +142,22 @@ describe('the meter fill never animates (AC2)', () => {
     expect(body).toMatch(/transition:\s*none/);
     expect(body).toMatch(/animation:\s*none/);
   });
+
+  // Story 16.7's two optional inputs, which the Dashboard sets and System usage does not.
+  it('a formatted readout (text) replaces the value text, with the unit appended, and counts as content', () => {
+    const { host } = mount({ label: 'Uptime', value: null, text: '8d 18h 25m', unit: '', state: null });
+    expect(host.querySelector('.ocu-meter-value')?.textContent?.trim()).toBe('8d 18h 25m');
+    const grouped = mount({ label: 'Global references', value: null, text: '64,649,129,276', unit: '/s', state: null });
+    expect(grouped.host.querySelector('.ocu-meter-value')?.textContent?.trim()).toBe('64,649,129,276 /s');
+  });
+
+  it('a pending value meter shows a skeleton beside its dash only when asked, and none once a readout arrives', () => {
+    const plain = mount({ label: 'Serious alerts', value: null, text: null, state: null });
+    expect(plain.host.querySelector('.ocu-meter-value-skeleton')).toBeNull();
+    const asked = mount({ label: 'Serious alerts', value: null, text: null, state: null, skeleton: true });
+    expect(asked.host.querySelector('.ocu-meter-value-skeleton')).not.toBeNull();
+    expect(asked.host.querySelector('.ocu-meter-value')?.textContent?.trim()).toBe('\u2014');
+    const loaded = mount({ label: 'Serious alerts', value: null, text: '3', state: null, skeleton: true });
+    expect(loaded.host.querySelector('.ocu-meter-value-skeleton')).toBeNull();
+  });
 });

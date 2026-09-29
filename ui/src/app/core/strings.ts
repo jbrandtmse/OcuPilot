@@ -3610,6 +3610,100 @@ export const STRINGS = {
   tableCheckAtMost: 'Check at most <n> rows',
   /** EXPERIENCE.md:294 */
   tableCheckAll: 'Check all',
+  /** EXPERIENCE.md:375 */
+  licenseUsageLabel: 'License usage',
+  /** EXPERIENCE.md:375 */
+  licenseUsageByProcess: 'By process',
+  /** EXPERIENCE.md:375 */
+  licenseUsageByUser: 'By user',
+  /** EXPERIENCE.md:375 */
+  licenseUsageDistributed: 'Distributed',
+  /** EXPERIENCE.md:375 */
+  licenseUsageUnitUse: 'License unit use',
+  /** EXPERIENCE.md:375 */
+  licenseUsageLocal: 'Local',
+  /** EXPERIENCE.md:375 */
+  licenseUsageLoginId: 'Login ID',
+  /** EXPERIENCE.md:375 */
+  licenseUsageUserId: 'User ID',
+  /** EXPERIENCE.md:375 */
+  licenseUsageActiveTime: 'Active time',
+  /** EXPERIENCE.md:375 */
+  licenseUsageUnits: 'Units',
+  /** EXPERIENCE.md:375 */
+  licenseUsageGraceTime: 'Grace time',
+  /** EXPERIENCE.md:375 */
+  licenseUsageMaxConnections: 'Maximum connections',
+  /** EXPERIENCE.md:375 */
+  licenseUsageLicenseUnits: 'License units',
+  /** EXPERIENCE.md:375 */
+  licenseUsageServerIp: 'Server IP',
+  /** EXPERIENCE.md:375 */
+  licenseUsageSummaryEmpty: 'The instance reports no license summary.',
+  /** EXPERIENCE.md:375 */
+  licenseUsageProcessesEmpty: 'No process holds a license unit.',
+  /** EXPERIENCE.md:375 */
+  licenseUsageUsersEmpty: 'No user holds a license unit.',
+  /** EXPERIENCE.md:375 */
+  licenseUsageDistributedEmpty: 'The instance reports no license connections.',
+  /** EXPERIENCE.md:375 */
+  licenseUsagePrompt1: 'How many license units are in use, and how close is that to the limit?',
+  /** EXPERIENCE.md:375 */
+  licenseUsagePrompt2: 'Which processes and users hold license units right now?',
+  /** EXPERIENCE.md:375 */
+  licenseUsagePrompt3: 'Is this instance connected to a license server?',
+  /** EXPERIENCE.md:375 */
+  dashboardLabel: 'Dashboard',
+  /** EXPERIENCE.md:375 */
+  dashboardGroupEcp: 'ECP and shadowing',
+  /** EXPERIENCE.md:375 */
+  dashboardGroupStatus: 'System status',
+  /** EXPERIENCE.md:375 */
+  dashboardGroupAlerts: 'Errors and alerts',
+  /** EXPERIENCE.md:375 */
+  dashboardGroupLicensing: 'Licensing',
+  /** EXPERIENCE.md:375 */
+  dashboardGroupTasks: 'Task manager',
+  /** EXPERIENCE.md:375 */
+  dashboardCpu: 'CPU',
+  /** EXPERIENCE.md:375 */
+  dashboardRoutineReferences: 'Routine references',
+  /** EXPERIENCE.md:375 */
+  dashboardApplicationServers: 'Application servers',
+  /** EXPERIENCE.md:375 */
+  dashboardApplicationServerTraffic: 'Application server traffic',
+  /** EXPERIENCE.md:375 */
+  dashboardDataServers: 'Data servers',
+  /** EXPERIENCE.md:375 */
+  dashboardDataServerTraffic: 'Data server traffic',
+  /** EXPERIENCE.md:375 */
+  dashboardShadowSource: 'Shadow source',
+  /** EXPERIENCE.md:375 */
+  dashboardShadowServer: 'Shadow server',
+  /** EXPERIENCE.md:375 */
+  dashboardLastBackup: 'Last backup',
+  /** EXPERIENCE.md:375 */
+  dashboardDatabaseJournal: 'Database journal',
+  /** EXPERIENCE.md:375 */
+  dashboardSeriousAlerts: 'Serious alerts',
+  /** EXPERIENCE.md:375 */
+  dashboardLicenseLimit: 'License limit',
+  /** EXPERIENCE.md:375 */
+  dashboardLicenseUse: 'Current license use',
+  /** EXPERIENCE.md:375 */
+  dashboardLicenseUseHigh: 'Highest license use',
+  /** EXPERIENCE.md:375 */
+  dashboardBytesPerSecond: 'bytes/s',
+  /** EXPERIENCE.md:375 */
+  dashboardLicenseUnitsUnit: 'license units',
+  /** EXPERIENCE.md:375 */
+  dashboardEmpty: 'The dashboard is unavailable.',
+  /** EXPERIENCE.md:375 */
+  dashboardPrompt1: 'Is any dashboard meter in a warning or troubled state?',
+  /** EXPERIENCE.md:375 */
+  dashboardPrompt2: 'How busy is the instance right now, and how much CPU is it using?',
+  /** EXPERIENCE.md:375 */
+  dashboardPrompt3: 'Have serious alerts or application errors been raised?',
 } as const;
 
 /**

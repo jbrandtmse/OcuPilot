@@ -779,10 +779,15 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     .filter((screen) => screen.tab !== null)
     .sort((a, b) => a.tab.position - b.tab.position)
     .map((screen) => [screen.route, screen.tab.group, screen.tab.position, screen.sideBarPosition]);
+  // Story 16.7's License usage group sorts beside the OAuth 2.0 group, position by position.
   assert.deepEqual(members, [
+    ['os-management/license-usage', 'os-management/license-usage', 1, 7],
     ['security/oauth', 'security/oauth', 1, 5],
+    ['os-management/license-usage/processes', 'os-management/license-usage', 2, 0],
     ['security/oauth/clients', 'security/oauth', 2, 0],
+    ['os-management/license-usage/users', 'os-management/license-usage', 3, 0],
     ['security/oauth/resource-servers', 'security/oauth', 3, 0],
+    ['os-management/license-usage/distributed', 'os-management/license-usage', 4, 0],
     ['security/oauth/server', 'security/oauth', 4, 0],
     ['security/oauth/server-clients', 'security/oauth', 5, 0],
   ]);

@@ -20,6 +20,7 @@ import { DatabaseDetailsPage } from '../areas/os-management/database-details.pag
 import { DatabasesPage } from '../areas/os-management/databases.page';
 import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
 import { SystemUsagePage } from '../areas/os-management/system-usage.page';
+import { DashboardPage } from '../areas/os-management/dashboard.page';
 import { AuditingConfigPage } from '../areas/security/auditing-config.page';
 import { OAuthServerDescriptionFormPage } from '../areas/security/oauth-server-description-form.page';
 import { OAuthClientFormPage } from '../areas/security/oauth-client-form.page';
@@ -151,6 +152,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AgentGovernance': GovernancePage,
   'OcuPilot.Screen.Descriptor.LogHub': LogHubPage,
   'OcuPilot.Screen.Descriptor.AgentLedger': LedgerPage,
+  // Story 16.7: the Dashboard's seven meter groups; System usage keeps the meters archetype's page.
+  'OcuPilot.Screen.Descriptor.Dashboard': DashboardPage,
 };
 
 /**
