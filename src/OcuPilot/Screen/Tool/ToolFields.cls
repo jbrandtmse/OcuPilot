@@ -30,6 +30,16 @@ XData Tools
   {"path":"SubType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Type","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
+"osmgmt.globalmappings.create": {"fieldList":"Namespace.GlobalMappings","fields":[
+  {"path":"Database","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LockDatabase","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Collation","shape":"literal","templateType":"number","itemType":"","class":"ordinary"}
+]},
+"osmgmt.globalmappings.update": {"fieldList":"Namespace.GlobalMappings","fields":[
+  {"path":"Database","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LockDatabase","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Collation","shape":"literal","templateType":"number","itemType":"","class":"ordinary"}
+]},
 "osmgmt.namespaces.create": {"fieldList":"Namespace.Namespace","fields":[
   {"path":"Globals","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Routines","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
@@ -39,6 +49,18 @@ XData Tools
   {"path":"Globals","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Routines","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"TempGlobals","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"osmgmt.packagemappings.create": {"fieldList":"Namespace.PackageMappings","fields":[
+  {"path":"Database","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"osmgmt.packagemappings.update": {"fieldList":"Namespace.PackageMappings","fields":[
+  {"path":"Database","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"osmgmt.routinemappings.create": {"fieldList":"Namespace.RoutineMappings","fields":[
+  {"path":"Database","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"osmgmt.routinemappings.update": {"fieldList":"Namespace.RoutineMappings","fields":[
+  {"path":"Database","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
 "permissions.resources.create": {"fieldList":"Security.Resource","fields":[
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

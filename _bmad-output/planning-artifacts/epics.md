@@ -7072,9 +7072,9 @@ So that database administration is complete rather than list-only.
 
 **Acceptance Criteria:**
 
-- **Given** the configuration list, the create wizard, the delete wizard, the properties editor, multi-volume properties and remote database management
+- **Given** the configuration list, the create wizard, the delete wizard, the properties editor and multi-volume properties
 - **When** each runs
-- **Then** it round-trips through the admin API.
+- **Then** it round-trips through the admin API. Remote database management is Story 18.16's [AMENDED 2026-09-28, orchestrator merge gate: split from 18.3, Rule 5]
 
 - **Given** the delete wizard
 - **When** it runs
@@ -7083,6 +7083,8 @@ So that database administration is complete rather than list-only.
 - DW-1791: A directory a vendor writes into may be another database's own: pVendorWrites refuses only <ManagerDirectory> itself, so <mgr>/irissecurity/ resolves for a database create (ledger; routed by cr 2026-09-28)
 - DW-1795: PATH.INSTANCE refuses a database's volume files only beside its IRIS.DAT; an overwriting consumer can resolve an existing volume file in an additional volume directory (ledger; routed by harvest 2026-09-28)
 - DW-1796: PathPort.DatabaseDirectories' own read is pinned only against a stable default configuration (a configured StreamLocation, a ':' directory, a failure or cache inside the reader) (ledger; routed by cr 2026-09-28)
+- DW-1807: The database directory picker must plan for PATH.SERVED, a directory under OcuPilot's served directory refused as a vendor-writes directory, and render it on the field (ledger; routed by cr 2026-09-29)
+- DW-1080: Database details' background-tasks section, read through Epic 16's `Port/BackgroundTaskPort` (ledger; routed by spec_gate 2026-09-28)
 
 **Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
@@ -7094,7 +7096,7 @@ So that database administration is complete rather than list-only.
 ### Story 18.4: The deferred disk operations
 
 As an operator,
-I want mount, dismount, truncate, compact, defragment, expand and the integrity check,
+I want mount, dismount, truncate, compact, defragment, expand (a new volume, or a database grown to a larger size) and the integrity check, [AMENDED 2026-09-28, orchestrator merge gate: expand-volume and size-grow assigned from 18.3, Rule 5]
 So that "disks" means operating on them rather than only reading them.
 
 **Acceptance Criteria:**
@@ -7333,6 +7335,9 @@ So that the namespace configuration task the contest deferred is complete. [AMEN
 
 - DW-1784: A screen that replaces more than one classic page unions only the one it declares (AD-44), so the New Namespace page's and the Delete Namespace dialog's custom resources never reach the namespace create and delete (ledger; routed by merge_gate 2026-09-28)
 - Enable-interop moved to Story 18.15 [AMENDED 2026-09-28, orchestrator merge gate: split from 18.14 for risk, Rule 5].
+- DW-1803: PROHIBITED.OCUPILOTMAPPING matches only names beginning with OcuPilot, so a routine mapping such as Ocu* or O* in the install namespace would redirect OcuPilot's own code; match by pattern overlap (ledger; routed by merge_gate 2026-09-28)
+- DW-1798: PATH.INSTANCE does not cover OcuPilot's own served files (csp/ocupilot/) for an overwriting consumer (ledger; routed by merge_gate 2026-09-28)
+- DW-1806: PathPort refuses only existing files in OcuPilot's served directory, so a new file there resolves and the unauthenticated static application would serve it (ledger; routed by merge_gate 2026-09-28)
 
 ### Story 18.15: Enable interoperability on a namespace
 
@@ -7351,6 +7356,22 @@ So that the namespace configuration the contest deferred includes the step the c
 - **Then** it round-trips through the admin API's async path, reading the finished task's result once, and states its consequence before it is confirmed.
 
 - DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan (ledger; routed by merge_gate 2026-09-28)
+
+### Story 18.16: Remote databases
+
+As an operator,
+I want to manage remote databases,
+So that database administration also covers the databases an ECP data server holds, as the classic page does. [AMENDED 2026-09-28, orchestrator merge gate: split from 18.3, Rule 5]
+
+**Acceptance Criteria:**
+
+- **Given** the remote-database list, create, edit and delete
+- **When** each runs
+- **Then** it round-trips through the admin API.
+
+- **Given** choosing a remote directory opens an ECP connection to its data server (a read blocked about 11 seconds on the throwaway)
+- **When** a remote directory is chosen or a remote database is written
+- **Then** AD-21 carries its own case for that connection, and the wait is bounded and stated before it starts.
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

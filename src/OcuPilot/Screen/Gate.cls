@@ -121,6 +121,27 @@ ClassMethod RequiredPairs(pDescriptor As %String, Output pResolved As %Boolean) 
     Quit tPairs
 }
 
+/// <p><var>pPairs</var> with the custom resource assigned to each classic page <var>pPages</var>
+/// names appended at <parameter>CLASSICPERMISSION</parameter>, once each (AD-44 as amended
+/// 2026-09-28, DW-1784). <var>pPages</var> is a comma-separated list of normalized class names,
+/// a write tool's <parameter>OcuPilot.Screen.Tool.Write.CLASSICPAGES</parameter>. An unassigned
+/// page adds nothing.</p>
+/// <p><b>It reads the store on every call and caches nothing</b>, so an assignment made after a
+/// proposal was minted gates its confirm (AD-8).</p>
+ClassMethod WithClassicPages(pPairs As %List, pPages As %String) As %List
+{
+    Set tPairs = pPairs
+    For tI = 1:1:$Length(pPages, ",") {
+        Set tPage = $ZStrip($Piece(pPages, ",", tI), "<>W")
+        If tPage = "" Continue
+        Set tCustom = ..ClassicResource(tPage)
+        If tCustom = "" Continue
+        Set tPair = $ListBuild(tCustom, ..#CLASSICPERMISSION)
+        If '$ListFind(tPairs, tPair) Set tPairs = tPairs _ $ListBuild(tPair)
+    }
+    Quit tPairs
+}
+
 /// <p>Whether the <b>declared</b> requirement <var>pPairs</var> is met. An empty set is held by
 /// everyone, because a declared-empty set is how a screen that never gates is expressed --
 /// <class>OcuPilot.Screen.Descriptor.Home</class> declares <code>"privileges": []</code>
@@ -235,10 +256,9 @@ ClassMethod HoldsPrivilege(pResource As %String, pPermission As %String) As %Boo
 /// <p>The custom resource an operator has assigned to the classic page <var>pPageClass</var>,
 /// or <code>""</code>. The class name is URL-encoded on the way in, which is the form
 /// <class>%SYS.Portal.Resources</class> documents and the portal itself passes.</p>
-/// <p><b>Overridable</b> so the union can be exercised against a fixture value: no custom
-/// resource is ever written to <class>%SYS.Portal.Resources</class> by this project's tests,
-/// whose store is empty on the development instance and stays so. Production never overrides
-/// it.</p>
+/// <p><b>Overridable</b> so the union can be exercised against a fixture value. The one test that
+/// writes the store is <class>OcuPilot.Test.ClassicPageGate</class>, on a throwaway only, and it
+/// restores each page it assigns. Production never overrides it.</p>
 ClassMethod ClassicResource(pPageClass As %String) As %String
 {
     If pPageClass = "" Quit ""

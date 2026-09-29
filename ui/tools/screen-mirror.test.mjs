@@ -208,8 +208,12 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['oauth2-server', 'singleton'],
     // Story 18.2: a namespace name resolves without case and is stored upper case.
     ['namespace', 'foldcase'],
+    // Story 18.14: a mapping is keyed by `[namespace, Name]`; only the namespace part folds.
+    ['global-mapping', 'foldcase-firstpart'],
+    ['routine-mapping', 'foldcase-firstpart'],
+    ['package-mapping', 'foldcase-firstpart'],
   ]);
-  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
+  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
   // nothing are different facts, and only one of them is a source to build from.
   assert.equal(parseIdRules('Class X { }'), null);
@@ -308,7 +312,7 @@ test('AD-13: the generator refuses an id rule no reader can apply, naming the ru
 
   // The roster the third refusal is judged against is the one `entity-ref.ts` is pinned equal to
   // by `ui/tools/entity-ref.test.mjs`, so neither side can grow a rule alone.
-  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
+  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart']);
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {
@@ -1146,8 +1150,9 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // criteria are Story 6.7's and 6.6's; Upcoming tasks, whose two criteria are the horizon; the
   // Secrets list, whose one criterion is its parent collection, filled from the route id
   // (Story 6.3); and Story 6.11's two -- Database details and Database volumes, whose one
-  // criterion each is the parent Databases route's directory; and Story 16.9's log hub, whose one
-  // criterion is its timeline's window.
+  // criterion each is the parent Databases route's directory; Story 16.9's log hub, whose one
+  // criterion is its timeline's window; and Story 18.14's three mapping lists, whose one criterion
+  // each is the parent namespace, filled from the route id and seeded onto every row.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1155,9 +1160,12 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.AuditList',
       'OcuPilot.Screen.Descriptor.DatabaseDetails',
       'OcuPilot.Screen.Descriptor.DatabaseVolumeList',
+      'OcuPilot.Screen.Descriptor.GlobalMappingList',
       'OcuPilot.Screen.Descriptor.LogHub',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
+      'OcuPilot.Screen.Descriptor.PackageMappingList',
       'OcuPilot.Screen.Descriptor.ProcessDetails',
+      'OcuPilot.Screen.Descriptor.RoutineMappingList',
       'OcuPilot.Screen.Descriptor.TaskDetails',
       'OcuPilot.Screen.Descriptor.TaskHistoryList',
       'OcuPilot.Screen.Descriptor.TaskRunList',
@@ -1165,6 +1173,12 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.WalletSecretList',
     ]
   );
+  for (const descriptor of ['GlobalMappingList', 'RoutineMappingList', 'PackageMappingList']) {
+    const list = emittedScreens.find((screen) => screen.descriptor === `OcuPilot.Screen.Descriptor.${descriptor}`);
+    assert.equal(list.parentScope, 'os-management/namespaces', `${descriptor} declares the Namespaces list its parent`);
+    assert.deepEqual(list.read.criteria.fields.map((field) => field.param), ['namespace'], `${descriptor} declares exactly one criterion`);
+    assert.equal(list.id.parts[0], 'namespace', `and ${descriptor}'s composite id names it first, so the read seeds it onto every row`);
+  }
   const secrets = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.WalletSecretList');
   assert.equal(secrets.parentScope, 'security/wallet', 'the Secrets list declares its parent');
   assert.deepEqual(secrets.read.criteria.fields.map((field) => field.param), ['collection'], 'and exactly one criterion');

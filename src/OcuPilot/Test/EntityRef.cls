@@ -254,6 +254,16 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#KNOWNTYPE, "/API/OcuPilot/"), "/API/OcuPilot/", "so its ids are the instance's own strings")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("role", "%All"), "%all", "while a role's fold, by Story 8.3's rule")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("resource", "%DB_OcuPilot"), "%db_ocupilot", "and a resource's, by Story 8.4's")
+    ; Story 18.14's rule: a mapping is addressed by [namespace, Name], and only the namespace part
+    ; folds -- a routine mapping's type suffix and a global mapping's subscript are the instance's
+    ; own spelling. The same corpus runs through the client twin (ui/tools/entity-ref.test.mjs).
+    Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
+    For tType = "global-mapping", "routine-mapping", "package-mapping" {
+        Do $$$AssertTrue($ListFind(tRuled, tType) > 0, "the " _ tType _ " pair is one Story 18.14 added")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("routine-mapping", "OcuProbe" _ tSeparator _ "Probe*_MAC"), "ocuprobe" _ tSeparator _ "Probe*_MAC", "a mapping folds its namespace part and keeps its name's spelling")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("global-mapping", "USER" _ tSeparator _ "Probe(""A"")"), "user" _ tSeparator _ "Probe(""A"")", "a global mapping's subscript keeps its case")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("package-mapping", "OcuProbe"), "ocuprobe", "and a value with no separator folds whole")
 
     ; A key built from a non-canonical spelling is the key built from the canonical one, which is
     ; the necessary condition behind AD-34's per-target lock.

@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -447,7 +447,10 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "allowed-directory",
   "namespace",
   "web-session",
-  "background-task"
+  "background-task",
+  "global-mapping",
+  "routine-mapping",
+  "package-mapping"
 ];
 
 /**
@@ -479,7 +482,10 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "service": "foldcase",
   "ldap-configuration": "foldcase",
   "oauth2-server": "singleton",
-  "namespace": "foldcase"
+  "namespace": "foldcase",
+  "global-mapping": "foldcase-firstpart",
+  "routine-mapping": "foldcase-firstpart",
+  "package-mapping": "foldcase-firstpart"
 };
 
 /**
@@ -3286,6 +3292,231 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.GlobalMappingForm",
+    "route": "os-management/namespaces/global-mappings/edit",
+    "area": "os-management",
+    "labelKey": "globalMappingFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "global-mapping",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "globalMappingFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "globalMappingFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "globalMappingFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mappings.Global",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.globalmappingform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.GlobalMappingList",
+    "route": "os-management/namespaces/global-mappings",
+    "area": "os-management",
+    "labelKey": "globalMappingListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "global-mapping",
+    "secondaryEntityTypes": [
+      "namespace"
+    ],
+    "scope": "instance",
+    "parentScope": "os-management/namespaces",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "namespace",
+        "Name",
+        "Database",
+        "LockDatabase",
+        "Collation"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "globalMappingListEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "globalMappingListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "globalMappingListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "globalMappingListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mappings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Namespace.GlobalMappings",
+        "type": "LIST"
+      },
+      "fields": [
+        "namespace",
+        "Name",
+        "Database",
+        "LockDatabase",
+        "Collation"
+      ],
+      "filter": [
+        "Name",
+        "Database",
+        "LockDatabase"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Database",
+          "LockDatabase",
+          "Collation"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "namespace",
+            "labelKey": "headerNamespaceLabel",
+            "kind": "text",
+            "maxLength": 64
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Database",
+          "labelKey": "systemInfoDatabase",
+          "kind": "identifier"
+        },
+        {
+          "field": "LockDatabase",
+          "labelKey": "mappingColumnLockDatabase",
+          "kind": "identifier"
+        },
+        {
+          "field": "Collation",
+          "labelKey": "mappingColumnCollation",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "globalMappingListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.globalmappings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.Home",
     "route": "",
     "area": "home",
@@ -5027,6 +5258,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "delete",
         "selfProtection": ""
+      },
+      {
+        "id": "copy-mappings",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -6468,6 +6703,214 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.PackageMappingForm",
+    "route": "os-management/namespaces/package-mappings/edit",
+    "area": "os-management",
+    "labelKey": "packageMappingFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "package-mapping",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "packageMappingFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "packageMappingFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "packageMappingFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mappings.Package",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.packagemappingform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.PackageMappingList",
+    "route": "os-management/namespaces/package-mappings",
+    "area": "os-management",
+    "labelKey": "packageMappingListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "package-mapping",
+    "secondaryEntityTypes": [
+      "namespace"
+    ],
+    "scope": "instance",
+    "parentScope": "os-management/namespaces",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "namespace",
+        "Name",
+        "Database"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "packageMappingListEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "packageMappingListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "packageMappingListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "packageMappingListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mappings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Namespace.PackageMappings",
+        "type": "LIST"
+      },
+      "fields": [
+        "namespace",
+        "Name",
+        "Database"
+      ],
+      "filter": [
+        "Name",
+        "Database"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Database"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "namespace",
+            "labelKey": "headerNamespaceLabel",
+            "kind": "text",
+            "maxLength": 64
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Database",
+          "labelKey": "systemInfoDatabase",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "packageMappingListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.packagemappings",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ProcessDetails",
     "route": "os-management/processes/details",
     "area": "os-management",
@@ -7526,6 +7969,223 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "roleListEmptyAgent"
     },
     "toolIdentifier": "permissions.roles",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RoutineMappingForm",
+    "route": "os-management/namespaces/routine-mappings/edit",
+    "area": "os-management",
+    "labelKey": "routineMappingFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "routine-mapping",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineMappingFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineMappingFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineMappingFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mappings.Routine",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.routinemappingform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RoutineMappingList",
+    "route": "os-management/namespaces/routine-mappings",
+    "area": "os-management",
+    "labelKey": "routineMappingListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "routine-mapping",
+    "secondaryEntityTypes": [
+      "namespace"
+    ],
+    "scope": "instance",
+    "parentScope": "os-management/namespaces",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "namespace",
+        "Name",
+        "Type",
+        "Database"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "routineMappingListEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineMappingListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineMappingListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineMappingListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Mappings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Namespace.RoutineMappings",
+        "type": "LIST"
+      },
+      "fields": [
+        "namespace",
+        "Name",
+        "Type",
+        "Database"
+      ],
+      "filter": [
+        "Name",
+        "Type",
+        "Database"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Type",
+          "Database"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "namespace",
+            "labelKey": "headerNamespaceLabel",
+            "kind": "text",
+            "maxLength": 64
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Database",
+          "labelKey": "systemInfoDatabase",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "routineMappingListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.routinemappings",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

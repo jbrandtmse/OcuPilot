@@ -3,6 +3,7 @@ import { Router, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
+import { COMPOSITE_DISPLAY_SEPARATOR, encodeEntityId } from '../core/entity-id';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
@@ -248,6 +249,14 @@ describe('the locator bar', () => {
 
     await go('/permissions/users');
     expect(fixture.nativeElement.querySelector('.ocu-locator-entity')).toBeNull();
+  });
+
+  it('Story 18.14: a composite id reads as its parts, a mapping\u2019s namespace then its name', async () => {
+    // Mutation (Rule 19): answer `entity` unchanged from `entityLabel`'s first branch -> the segment
+    // carries the joining control character and this goes red.
+    await go(`/permissions/users/${encodeEntityId('OCUPROBE1814A\u0001OcuProbe1814G')}`);
+    const entity = fixture.nativeElement.querySelector('.ocu-locator-entity');
+    expect(entity.textContent.trim()).toBe(`OCUPROBE1814A${COMPOSITE_DISPLAY_SEPARATOR}OcuProbe1814G`);
   });
 
   it('Story 6.7: on a parent-scoped detail screen the entity segment names the loaded row, and the decoded id until then', async () => {
