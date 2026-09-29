@@ -60,6 +60,10 @@ Parameter APPLICATIONRESOURCE = "%Admin_Secure";
 
 Parameter APPLICATIONPERMISSION = "USE";
 
+/// <p>The classic dialog whose operation this tool performs beyond the list's own (AD-44,
+/// DW-1784).</p>
+Parameter CLASSICPAGES = "%CSP.UI.Portal.Dialog.NamespaceDelete";
+
 ClassMethod Endpoint() As %String
 {
     Quit "Namespace.Namespace"
@@ -85,8 +89,8 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 
 /// <p>What the caller must hold: the screen's own pairs, then
 /// <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter> and
-/// <parameter>APPLICATIONRESOURCE</parameter>:<parameter>APPLICATIONPERMISSION</parameter>, each
-/// pair once.</p>
+/// <parameter>APPLICATIONRESOURCE</parameter>:<parameter>APPLICATIONPERMISSION</parameter>, then the
+/// custom resource of the <parameter>CLASSICPAGES</parameter> dialog, each pair once.</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
 {
     Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
@@ -94,7 +98,7 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     For tOwn = $ListBuild(..#WRITERESOURCE, ..#WRITEPERMISSION), $ListBuild(..#APPLICATIONRESOURCE, ..#APPLICATIONPERMISSION) {
         If '$ListFind(tPairs, tOwn) Set tPairs = tPairs _ $ListBuild(tOwn)
     }
-    Quit tPairs
+    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
 }
 
 /// <p>The removal rows this proposal's card shows, from the fresh <code>GET</code>

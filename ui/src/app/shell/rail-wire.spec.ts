@@ -96,7 +96,7 @@ const LIVE_PAYLOAD = {
       // to nine, in ScreensForArea's own (sideBarPosition, class name) collation: the unlisted
       // sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead of the
       // listed ones in position order. Story 18.2 adds the namespace editor among the unlisted ones
-      // and Namespaces last.
+      // and Namespaces last, and Story 18.14 the three mapping forms and lists among the unlisted ones.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -120,6 +120,20 @@ const LIVE_PAYLOAD = {
           failedPair: '%Admin_Manage:USE',
         },
         {
+          route: 'os-management/namespaces/global-mappings/edit',
+          labelKey: 'globalMappingFormLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces/global-mappings',
+          labelKey: 'globalMappingListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
           route: 'os-management/namespaces/edit',
           labelKey: 'headerNamespaceLabel',
           sideBarPosition: 0,
@@ -127,8 +141,36 @@ const LIVE_PAYLOAD = {
           failedPair: '%Admin_Manage:USE',
         },
         {
+          route: 'os-management/namespaces/package-mappings/edit',
+          labelKey: 'packageMappingFormLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces/package-mappings',
+          labelKey: 'packageMappingListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
           route: 'os-management/processes/details',
           labelKey: 'processDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces/routine-mappings/edit',
+          labelKey: 'routineMappingFormLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/namespaces/routine-mappings',
+          labelKey: 'routineMappingListLabel',
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
@@ -487,6 +529,17 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     const navigation = TestBed.inject(NavigationService);
     for (const route of ['logs/alerts', 'logs/errors']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%DB_IRISSYS:READ' });
+    }
+  });
+
+  it('Story 18.14: reads each mapping list and form verdict the live payload carries', () => {
+    // The six unlisted mapping screens declare the Namespaces screens' pairs, so this principal is
+    // denied on `%Admin_Manage:USE` for each, as it is on Namespaces itself.
+    const navigation = TestBed.inject(NavigationService);
+    for (const kind of ['global', 'routine', 'package']) {
+      for (const route of [`os-management/namespaces/${kind}-mappings`, `os-management/namespaces/${kind}-mappings/edit`]) {
+        expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
+      }
     }
   });
 

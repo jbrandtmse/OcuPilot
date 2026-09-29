@@ -40,6 +40,15 @@ Parameter STRUCTUREDFIELDS = "entries=[{""date"":""2026-09-26"",""errorNumber"":
 /// part.</p>
 Parameter TARGETID = "OcuPilotDraftSource/OcuPilotDraftType/OcuPilotDraftName";
 
+/// <p>The entity types whose port splits the target id into its composite parts, comma-separated
+/// (Story 18.14's mappings, keyed <code>[namespace, Name]</code>): their synthetic id is
+/// <parameter>SPLITTARGETID</parameter>, since a port answers no step for an id it cannot split.</p>
+Parameter SPLITTARGETS = "global-mapping,routine-mapping,package-mapping";
+
+/// <p>The parts of the synthetic id a <parameter>SPLITTARGETS</parameter> type is given, joined as
+/// a composite.</p>
+Parameter SPLITTARGETID = "OcuPilotDraftNamespace,OcuPilotDraftName";
+
 /// <p>The synthetic target id of an entity type whose port reads the id as more than a name, as
 /// <code>&lt;type&gt;=&lt;id&gt;</code> entries separated by <code>;</code>: a <code>process</code>
 /// id is a pid set, which the broadcast's port refuses to compose from anything else (Story
@@ -250,7 +259,7 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     }
     Set tDescriptor = $Parameter(tClass, "DESCRIPTORCLASS")
     Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
-    Set tTargetId = ..#TARGETID
+    Set tTargetId = $Select($ListFind($ListFromString(..#SPLITTARGETS), tType): ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListFromString(..#SPLITTARGETID)), 1: ..#TARGETID)
     For tI = 1:1:$Length(..#TYPEDTARGETIDS, ";") {
         If $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 1) = tType Set tTargetId = $Piece($Piece(..#TYPEDTARGETIDS, ";", tI), "=", 2, *)
     }

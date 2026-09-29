@@ -206,6 +206,35 @@ describe('the namespace editor', () => {
     expect(host.querySelector('.ocu-banner[role="alert"]')?.textContent?.trim()).toBe(STRINGS.namespaceRefusalOcuPilot);
   });
 
+  it('AC1 (Story 18.14): an edit links the namespace\u2019s global, routine and package mappings, and a create links none', async () => {
+    // Mutation (Rule 19): answer `[]` from `mappingLinks` -> the edit's line assertions go red.
+    const created = await mount('/os-management/namespaces/edit?ns=HSCUSTOM');
+    expect(created.host.querySelector('[data-namespace-mappings]')).toBeNull();
+    for (const node of planted.splice(0)) node.remove();
+
+    const { fixture, host } = await mount('/os-management/namespaces/edit/OCUPROBE182?ns=HSCUSTOM');
+    const line = host.querySelector('[data-namespace-mappings]');
+    expect(line?.tagName).toBe('NAV');
+    const label = line?.querySelector('#ocu-namespace-mappings-label');
+    expect(label?.textContent?.trim()).toBe(STRINGS.oauthResourceServerTabMappings);
+    expect(line?.getAttribute('aria-labelledby')).toBe('ocu-namespace-mappings-label');
+    const links = [...(line?.querySelectorAll('a.ocu-details-link') ?? [])] as HTMLAnchorElement[];
+    expect(links.map((link) => link.textContent?.trim())).toEqual([
+      STRINGS.globalMappingListLabel,
+      STRINGS.routineMappingListLabel,
+      STRINGS.packageMappingListLabel,
+    ]);
+    const kinds = ['global', 'routine', 'package'];
+    links.forEach((link, index) => {
+      expect(link.getAttribute('href')).toContain(`/os-management/namespaces/${kinds[index]}-mappings/OCUPROBE182?ns=HSCUSTOM`);
+    });
+
+    // A plain click opens the list in place, carrying the data scope.
+    links[1].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    await settle(fixture);
+    expect(TestBed.inject(Router).url).toBe('/os-management/namespaces/routine-mappings/OCUPROBE182?ns=HSCUSTOM');
+  });
+
   it('a change raises the dirty flag, so leaving asks the shared question first', async () => {
     const { fixture, host, formDirty } = await mount();
     expect(formDirty.dirty()).toBe(false);

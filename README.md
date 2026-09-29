@@ -190,6 +190,11 @@ docker compose up -d --wait
 with. The restart installs the new release over the same data, and `--wait` returns once the health
 check reports it installed.
 
+Since 1.0.2, OcuPilot removes agent conversations older than each agent definition's **Retention**
+(30 days unless you change it) once a night, at 03:15 instance time. That includes conversations
+from before the update. To keep them longer, raise **Retention** on the definition in **Agent
+co-pilot → Agent definitions** right after you update.
+
 ## Get a model key in two minutes
 
 | Provider | Default model | Where to get a key |

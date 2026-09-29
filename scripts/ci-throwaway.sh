@@ -231,9 +231,11 @@ services:
       # classes: UiPerformanceWire
       # classes: FindingsWire, GuardrailsWire
       # classes: LogHubWire, PathPort, PathPortInstance, PathPortPrivilege
+      # classes: PathPortServed
       # classes: PermissionCheck, EffectiveUser
       # classes: LedgerSearchWire
       # classes: NamespaceWriteGate
+      # classes: ClassicPageGate, MappingWriteGate
       # classes: WebSessionsLive
       # The Background tasks classes also create a scratch database and pause, resume and cancel a
       # compact of it; AdminPortForget runs the whole retention sweep.
@@ -363,8 +365,11 @@ services:
       # removes every web application bound to it, so a runner pointed at an instance someone cares
       # about could take applications nobody there asked to lose. The classes touch only OCUPROBE182*
       # namespaces and /csp/ocuprobe182* applications, each by exact name, and write to the install
-      # namespace and %SYS only through a port that sends nothing.
+      # namespace and %SYS only through a port that sends nothing. It also adds, changes, removes
+      # and copies OCUPROBE1814* mappings between OCUPROBE1814* namespaces, and assigns a probe
+      # custom resource to the classic namespace and mapping pages, restoring each.
       # classes: NamespaceRefusals, NamespaceWrite, NamespaceWriteGate
+      # classes: ClassicPageGate, MappingCodeGlobals, MappingRefusals, MappingWrite, MappingWriteGate, NamespaceCopy
       OCUPILOT_ALLOW_NAMESPACE_CONFIG: "1"
     volumes:
       - $DIR/data:/durable

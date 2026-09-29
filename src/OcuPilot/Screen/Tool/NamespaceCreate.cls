@@ -44,6 +44,9 @@ Parameter WRITERESOURCE = "%DB_IRISSYS";
 
 Parameter WRITEPERMISSION = "WRITE";
 
+/// <p>The classic page whose operation this tool performs beyond the list's own (AD-44, DW-1784).</p>
+Parameter CLASSICPAGES = "%CSP.UI.Portal.Namespace";
+
 ClassMethod Endpoint() As %String
 {
     Quit "Namespace.Namespace"
@@ -138,14 +141,15 @@ ClassMethod DerivedFields(pPayload As %DynamicObject)
 }
 
 /// <p>What the caller must hold: the screen's own pairs together with
-/// <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter>, each pair once.</p>
+/// <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter>, then the custom
+/// resource of each <parameter>CLASSICPAGES</parameter> page, each pair once.</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
 {
     Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
     If 'pResolved Quit ""
     Set tOwn = $ListBuild(..#WRITERESOURCE, ..#WRITEPERMISSION)
-    If $ListFind(tPairs, tOwn) Quit tPairs
-    Quit tPairs _ $ListBuild(tOwn)
+    If '$ListFind(tPairs, tOwn) Set tPairs = tPairs _ $ListBuild(tOwn)
+    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
 }
 
 }

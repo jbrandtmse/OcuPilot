@@ -56,12 +56,12 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase,global-mapping:foldcase-firstpart,routine-mapping:foldcase-firstpart,package-mapping:foldcase-firstpart";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
 /// <class>OcuPilot.Test.EntityRef</class>.</p>
-Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer,integerset";
+Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer,foldcase-firstpart,integerset";
 
 /// <p>The web-application rule: fold to lower case, then strip every trailing slash.</p>
 Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
@@ -80,6 +80,13 @@ Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
 /// <code>GET</code> (measured on this build, Story 9.9), so they take the same rule. So does a
 /// namespace's: the vendor resolves it without case and stores it upper case (Story 18.2).</p>
 Parameter RULEFOLDCASE = "foldcase";
+
+/// <p>The namespace mappings' rule (Story 18.14): fold to lower case the text before the first
+/// <parameter>OcuPilot.Kernel.EntityId.COMPOSITESEPARATOR</parameter>, and keep the rest as it is.
+/// A mapping's composite id is <code>[namespace, Name]</code>; the instance resolves a namespace
+/// without case, while a global's or routine's name is case-sensitive. An id with no separator is
+/// folded whole.</p>
+Parameter RULEFOLDCASEFIRSTPART = "foldcase-firstpart";
 
 /// <p>The rule of a configuration with exactly one instance -- the auditing configuration and the
 /// OAuth 2.0 authorization server configuration: answer <parameter>RULESINGLETONID</parameter>
@@ -261,6 +268,11 @@ ClassMethod NormalizedId(pType As %String, pId As %String) As %String
     If tRule = ..#RULEINTEGER Quit ..PlainInteger(pId)
     If tRule = ..#RULEINTEGERSET Quit ..PlainIntegerSet(pId)
     If tRule = ..#RULEFOLDCASE Quit $ZConvert(pId, "L")
+    If tRule = ..#RULEFOLDCASEFIRSTPART {
+        Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
+        If pId '[ tSeparator Quit $ZConvert(pId, "L")
+        Quit $ZConvert($Piece(pId, tSeparator, 1), "L") _ tSeparator _ $Piece(pId, tSeparator, 2, *)
+    }
     If tRule '= ..#RULEFOLDCASESTRIPTRAILINGSLASH Quit pId
     Set tId = $ZConvert(pId, "L")
     While (tId '= "") && ($Extract(tId, $Length(tId)) = "/") {

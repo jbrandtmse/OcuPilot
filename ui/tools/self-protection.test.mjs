@@ -269,6 +269,9 @@ const KERNEL_REFUSALS = [
   // Story 16.2 (DW-1792): a preserve-mode web session while its own process runs, which holds its
   // lock; the instance answers End session's click with this same sentence.
   ['PRESERVEDSESSION', 'webSessionRefusalPreserved'],
+  // Story 18.14: OcuPilot's own mappings in the install namespace and %ALL, refused on the envelope
+  // of either caller's create, change, delete or copy.
+  ['OCUPILOTMAPPING', 'mappingRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {

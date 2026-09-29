@@ -47,10 +47,12 @@ export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
  * (Story 9.5), whose Delete types the name, and the OAuth 2.0 Resource servers tab (Story 12.6), whose
  * Delete types the name, and the Authorization server tab (Story 12.7), whose Delete types the issuer
  * and whose Rotate Keys is sent at once, and the Namespaces list (Story 18.2), whose Delete types the
- * name and states the removal's impact, the Web sessions list (Story 16.2), whose End session types
- * the session id, and the Background tasks list (Story 16.5), whose Pause and Resume are sent at once
- * and whose Cancel task warns first. Processes' Broadcast (Story 16.6) acts on the checked rows and
- * opens the broadcast dialog.
+ * name and states the removal's impact -- and whose Copy mappings its own page runs (Story 18.14) --
+ * the Web sessions list (Story 16.2), whose End session types the session id, the Background tasks
+ * list (Story 16.5), whose Pause and Resume are sent at once and whose Cancel task warns first, the
+ * global, routine and package mapping lists (Story 18.14), whose Delete types the mapping's name,
+ * and Processes' Broadcast (Story 16.6), which acts on the checked rows and opens the broadcast
+ * dialog.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -76,6 +78,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.NamespaceList',
   'OcuPilot.Screen.Descriptor.WebSessionList',
   'OcuPilot.Screen.Descriptor.BackgroundTaskList',
+  'OcuPilot.Screen.Descriptor.GlobalMappingList',
+  'OcuPilot.Screen.Descriptor.RoutineMappingList',
+  'OcuPilot.Screen.Descriptor.PackageMappingList',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -98,6 +103,18 @@ export const RESOURCE_LIST = 'OcuPilot.Screen.Descriptor.ResourceList';
 
 /** The Namespaces list's descriptor, whose Delete states the web applications deleted with it (Story 18.2). */
 export const NAMESPACE_LIST = 'OcuPilot.Screen.Descriptor.NamespaceList';
+
+/**
+ * The Namespaces list's Copy mappings (Story 18.14): declared, and run by the list's own page
+ * (`areas/os-management/namespace-list.page.ts`), whose dialog supplies the source namespace and
+ * whose status line follows the copy.
+ */
+export const COPY_MAPPINGS = 'copy-mappings';
+
+/** The three mapping lists (Story 18.14), each keyed by `[namespace, Name]`, whose Delete types the name. */
+const GLOBAL_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.GlobalMappingList';
+const ROUTINE_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.RoutineMappingList';
+const PACKAGE_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.PackageMappingList';
 
 /** The role value actions, and the values each sends (AD-56 (ii)). */
 export const ADD_GRANTED_ROLE = 'add-granted-role';
@@ -173,6 +190,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [PROCESS_DETAILS]: [TERMINATE_WITH_ERROR],
   // The role editor draws these beside its grants, members and assigned roles, which supply the values.
   [ROLE_LIST]: [ADD_GRANTED_ROLE, REMOVE_GRANTED_ROLE, SET_RESOURCE_GRANT, REMOVE_RESOURCE_GRANT],
+  // The Namespaces list's page registers Copy mappings itself, after this handler, so its dialog opens.
+  [NAMESPACE_LIST]: [COPY_MAPPINGS],
 };
 
 /**
@@ -244,6 +263,9 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.OAuthServerTab': { delete: STRINGS.oauthAuthServerDeleteConsequence },
   [NAMESPACE_LIST]: { delete: STRINGS.namespaceDeleteConsequence },
   'OcuPilot.Screen.Descriptor.WebSessionList': { end: STRINGS.webSessionEndConsequence },
+  [GLOBAL_MAPPING_LIST]: { delete: STRINGS.globalMappingDeleteConsequence },
+  [ROUTINE_MAPPING_LIST]: { delete: STRINGS.routineMappingDeleteConsequence },
+  [PACKAGE_MAPPING_LIST]: { delete: STRINGS.packageMappingDeleteConsequence },
 };
 
 /**
@@ -286,6 +308,11 @@ const TYPED_NAME_ROWS: Readonly<
   [AUDIT_USER_EVENT_LIST]: { name: 'EventName', field: 'EventName', equals: AGENT_WRITE_EVENT, advisory: STRINGS.proposalAuditWarning },
   // An X.509 credential is typed by its alias, which is also its row key; it carries no advisory.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { name: 'Alias', field: '', equals: '', advisory: '' },
+  // A mapping is keyed by `[namespace, Name]`, whose separator no one can type, so its Delete types
+  // the mapping's name and sends the row key.
+  [GLOBAL_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
+  [ROUTINE_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
+  [PACKAGE_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
 };
 
 /**

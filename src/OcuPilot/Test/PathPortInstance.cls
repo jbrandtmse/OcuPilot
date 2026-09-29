@@ -1,19 +1,18 @@
 /// <p>AD-21's sixth case at <class>OcuPilot.Port.PathPort</class>, the instance's database and
 /// journal files: to a caller that overwrites, every existing file directly in a configured
-/// database's directory or under its stream location, and every existing file directly in a
-/// journal directory, is refused 400 <code>PATH.INSTANCE</code> on the name's field, the
-/// directories read from the instance at each call and compared ignoring case, and a failed read
-/// refusing; an ordinary file in
-/// a subdirectory still resolves. It also pins the port's two reads against the instance's own
-/// answers.</p>
+/// database's directory or under its stream location, and every existing file directly in a journal
+/// directory, is refused 400 <code>PATH.INSTANCE</code> on the name's field, the directories read
+/// from the instance at each call and compared ignoring case, and a failed read refusing; an
+/// ordinary file in a subdirectory still resolves. It also pins the port's two reads against the
+/// instance's own answers. <class>OcuPilot.Test.PathPortServed</class> pins OcuPilot's own served
+/// directory.</p>
 /// <p>Each method records the allow-list before it runs and restores it exactly afterwards, failure
 /// included, through <class>OcuPilot.Test.PathPortFixture</class>, which is why
 /// <method>OnBeforeAllTests</method> refuses unless <parameter>ARMINGVARIABLE</parameter> arms it.
 /// The refusal legs only resolve names and write nothing to the instance's own files. The
 /// permitting leg creates a scratch directory under the manager directory, and the seam legs one
 /// under <parameter>TMPROOT</parameter>; each removes what it created. Needs a process holding
-/// <code>%All</code>, journaling on, a configured database outside the manager directory, and
-/// OcuPilot installed in the namespace it runs in.</p>
+/// <code>%All</code>, journaling on, and a configured database outside the manager directory.</p>
 Class OcuPilot.Test.PathPortInstance Extends %UnitTest.TestCase
 {
 

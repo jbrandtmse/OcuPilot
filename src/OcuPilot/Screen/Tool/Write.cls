@@ -113,6 +113,16 @@ Parameter PRECONDITIONFIELD = "";
 /// the write path changes -- a port is where the target lives, never a lighter path to it.</p>
 Parameter PORTCLASS = "OcuPilot.Port.AdminPort";
 
+/// <p>The classic portal pages, beyond the descriptor's own <code>classicPage</code>, whose operation
+/// this tool performs, as comma-separated normalized class names spelled exactly (AD-44 as amended
+/// 2026-09-28, DW-1784). <code>""</code> here.</p>
+/// <p>A tool's <method>OcuPilot.Screen.Tool.Base.PrivilegePairs</method> unions the custom resource
+/// assigned to each page at <code>USE</code> through
+/// <method>OcuPilot.Screen.Gate.WithClassicPages</method>, read on every gate call, so an operator's
+/// custom resource on a replaced classic page gates this write on both callers. A page whose
+/// operation the descriptor's own classic page performs is not redeclared.</p>
+Parameter CLASSICPAGES = "";
+
 /// <p>The AD-14 action a confirmed write of this tool performs, which the change event carries and
 /// a screen showing the entity type decides what to do with. <code>updated</code> here, which every
 /// write against an object that already exists performs; a tool that declares

@@ -135,6 +135,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.WebSessionList': { end: STRINGS.webSessionEndAction },
   // Story 16.5: the Background tasks list's Cancel task, which also titles its warning dialog.
   'OcuPilot.Screen.Descriptor.BackgroundTaskList': { cancel: STRINGS.backgroundTaskCancelAction },
+  // Story 18.14: the Namespaces list's Copy mappings, which also titles its dialog.
+  'OcuPilot.Screen.Descriptor.NamespaceList': { 'copy-mappings': STRINGS.namespaceCopyMappingsAction },
   // Story 16.6: the Processes list's Broadcast, over its checked rows.
   'OcuPilot.Screen.Descriptor.ProcessList': { broadcast: STRINGS.processBroadcastAction },
 };

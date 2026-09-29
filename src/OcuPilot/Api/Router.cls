@@ -120,6 +120,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/namespace/name" Method="GET" Call="NamespaceNameCheck"/>
   <Route Url="/namespace/:id" Method="PUT" Call="NamespaceUpdate"/>
   <Route Url="/namespace" Method="POST" Call="NamespaceCreate"/>
+  <Route Url="/mapping/:kind/form" Method="GET" Call="MappingFormRead"/>
+  <Route Url="/mapping/:kind/name" Method="GET" Call="MappingNameCheck"/>
+  <Route Url="/mapping/:kind/:id" Method="PUT" Call="MappingUpdate"/>
+  <Route Url="/mapping/:kind" Method="POST" Call="MappingCreate"/>
   <Route Url="/screens/:screen/action" Method="POST" Call="ScreenAction"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/screens/:screen/impact" Method="GET" Call="ScreenImpact"/>
@@ -603,6 +607,37 @@ ClassMethod NamespaceCreate() As %Status
 ClassMethod NamespaceUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.NamespaceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /mapping/:kind/form</code> (Story 18.14): the
+/// mapping editor's read for kind <var>pKind</var>, delegating to
+/// <class>OcuPilot.Area.OsMgmt.MappingRules</class>. The two sub-resources precede
+/// <code>/mapping/:kind/:id</code>.</p>
+ClassMethod MappingFormRead(pKind As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.MappingRules).HandleForm(pKind)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /mapping/:kind/name</code>: the mapping editor's
+/// blur check of whether a name is taken in a namespace.</p>
+ClassMethod MappingNameCheck(pKind As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.MappingRules).HandleName(pKind)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /mapping/:kind</code>: the mapping editor's create
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod MappingCreate(pKind As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.MappingSave).HandleCreate(pKind)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /mapping/:kind/:id</code>: the mapping editor's
+/// edit Save, <var>pId</var> the mapping's composite id as one segment (AD-13), resolved through the
+/// one tool the agent's confirm uses (AD-55).</p>
+ClassMethod MappingUpdate(pKind As %String, pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.MappingSave).HandleUpdate(pKind, pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /oauth/server-description/form</code> (Story

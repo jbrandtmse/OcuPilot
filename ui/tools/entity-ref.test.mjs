@@ -278,6 +278,45 @@ test('AD-13: the integer rule folds a task id to its plain decimal spelling, and
   );
 });
 
+// Story 18.14, AD-13: a namespace mapping is keyed by the composite `[namespace, Name]`. The instance
+// resolves the namespace without case while a global's or routine's name is case-sensitive, so the
+// client folds the text before the first composite separator and keeps the rest, which is what
+// `OcuPilot.Kernel.EntityRef.NormalizedId` answers for `foldcase-firstpart`.
+//
+// Mutation (Rule 19): implement `foldcase-firstpart` as `(id) => id.toLowerCase()` in
+// `entity-ref.ts` -> the case-kept name legs go red; as `(id) => id` -> the folded namespace legs go red.
+test('AD-13: the foldcase-firstpart rule folds a mapping id\'s namespace part and keeps its name', () => {
+  for (const type of ['global-mapping', 'routine-mapping', 'package-mapping']) {
+    assert.equal(ENTITY_ID_RULES[type], 'foldcase-firstpart', `the mirrored table declares the rule for ${type}`);
+  }
+  const type = 'global-mapping';
+  const canonical = joinCompositeId(['user', 'OcuProbe1814G("a"):("m")']);
+  for (const namespace of ['USER', 'user', 'User']) {
+    assert.equal(
+      normalizeEntityId(type, joinCompositeId([namespace, 'OcuProbe1814G("a"):("m")'])),
+      canonical,
+      `${namespace} folds and the name keeps its case`
+    );
+  }
+  assert.notEqual(
+    normalizeEntityId(type, joinCompositeId(['USER', 'OCUPROBE1814G'])),
+    normalizeEntityId(type, joinCompositeId(['USER', 'OcuProbe1814G'])),
+    'two names differing only in case are two mappings'
+  );
+  assert.equal(
+    normalizeEntityId('routine-mapping', joinCompositeId(['HsCustom', 'X_MAC', 'extra'])),
+    joinCompositeId(['hscustom', 'X_MAC', 'extra']),
+    'only the text before the first separator folds'
+  );
+  assert.equal(normalizeEntityId('package-mapping', 'OcuProbe1814P'), 'ocuprobe1814p', 'an id with no separator folds whole');
+  assert.equal(
+    entityRefKey(type, INSTANCE_SCOPE, joinCompositeId(['USER', '%OcuProbe1814'])),
+    entityRefKey(type, INSTANCE_SCOPE, joinCompositeId(['user', '%OcuProbe1814'])),
+    'so two spellings of one mapping build one key'
+  );
+});
+
+
 // Story 16.6, AD-13: a process id may name a set of pids. The client answers what
 // `OcuPilot.Kernel.EntityRef.PlainIntegerSet` answers for the same corpus (`OcuPilot.Test.EntityRef`):
 // each member in the integer rule's spelling, each once, ordered on the string -- sign, length,
