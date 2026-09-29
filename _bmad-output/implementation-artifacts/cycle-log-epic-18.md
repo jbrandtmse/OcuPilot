@@ -228,3 +228,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-29T13:13:07Z	Story 18.3	committed_code	sha=b43a0a2d pushed=true ci=pending run=36573329469 head_confirmed_by=headSha
 2026-09-29T13:13:07Z	Story 18.3	ledger_routed_planned	story=18-4-the-deferred-disk-operations entries=1 excess=0 by=harvest dw=DW-1821
 2026-09-29T13:13:07Z	Story 18.3	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none note=AD-constrained_ACs_pinned_by_the_stage_s_own_mutations(Verification)
+2026-09-29T13:13:20Z	Story 18.3	stage_spawned	stage=qa spawn_at=2026-09-29T13:13:20Z model=sonnet agent_name=18-3-databases-qa-1 cycle_iteration=1
