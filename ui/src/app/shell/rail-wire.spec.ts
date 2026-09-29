@@ -98,8 +98,9 @@ const LIVE_PAYLOAD = {
       // listed ones in position order. Story 18.2 adds the namespace editor among the unlisted ones
       // and Namespaces last, Story 18.14 the three mapping forms and lists among the unlisted ones,
       // Story 16.7 License usage's three unlisted tabs among them and License usage and the
-      // Dashboard last, and Story 18.3 the local database form among the unlisted ones and Local
-      // databases after the Dashboard.
+      // Dashboard after Namespaces; Story 16.10 its unlisted Activity log among them and External
+      // language servers after the Dashboard, refused on its own pair; and Story 18.3 the local
+      // database form among the unlisted ones and Local databases last.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -135,6 +136,13 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/language-servers/activity',
+          labelKey: 'languageServerActivityLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_ExternalLanguageServerEdit:USE',
         },
         {
           route: 'os-management/license-usage/distributed',
@@ -263,9 +271,16 @@ const LIVE_PAYLOAD = {
           failedPair: '%DB_IRISSYS:READ',
         },
         {
+          route: 'os-management/language-servers',
+          labelKey: 'languageServersLabel',
+          sideBarPosition: 9,
+          allowed: false,
+          failedPair: '%Admin_ExternalLanguageServerEdit:USE',
+        },
+        {
           route: 'os-management/local-databases',
           labelKey: 'localDatabaseListLabel',
-          sideBarPosition: 9,
+          sideBarPosition: 10,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -572,6 +587,16 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     // `%DB_IRISSYS:READ`, which it does not, so it is denied on the second.
     const navigation = TestBed.inject(NavigationService);
     expect(navigation.screenVerdict('tasks/background')).toEqual({ allowed: false, failedPair: '%DB_IRISSYS:READ' });
+  });
+
+  it('Story 16.10: reads both External language servers verdicts the live payload carries', () => {
+    // Both declare their own `%Admin_ExternalLanguageServerEdit:USE` first, which this principal does
+    // not hold, so each is denied on it. The payload's two entries are what OcuPilot.Test.Wire pins
+    // the instance to answer; this pins only that the navigation service reads them.
+    const navigation = TestBed.inject(NavigationService);
+    for (const route of ['os-management/language-servers', 'os-management/language-servers/activity']) {
+      expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_ExternalLanguageServerEdit:USE' });
+    }
   });
 
   it('Story 2.12/6.13: reads both Logs file-screen verdicts the live payload carries', () => {

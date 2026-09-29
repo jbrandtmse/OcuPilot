@@ -32,6 +32,11 @@ export interface LogLine {
   readonly raw: string;
   /** Whether the entry opened with a head line. A window can open mid-continuation. */
   readonly head: boolean;
+  /**
+   * The row as a screen's declared read answered it (Story 16.10), which that screen's context and
+   * "Explain this entry" carry; absent for a line read from a log's own route.
+   */
+  readonly record?: Readonly<Record<string, unknown>>;
 }
 
 /** The vendor's severity scale (`irissys/%sySystem.inc`), which has five words, not four. */

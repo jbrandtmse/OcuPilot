@@ -100,6 +100,9 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   reset: STRINGS.actionResetCounters,
   // Story 16.5: a background task's Pause, on Background tasks.
   pause: STRINGS.actionPause,
+  // Story 16.10: an external language server's Start and Stop, on External language servers.
+  start: STRINGS.actionStart,
+  stop: STRINGS.actionStop,
 };
 
 /**

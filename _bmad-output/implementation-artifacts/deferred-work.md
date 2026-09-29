@@ -8236,3 +8236,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 1.0.3 upgrade check (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: src/OcuPilot/Test/**
 - evidence: upgrade check on ocupilot-c-ci: a seeded osmgmt.devices.delete disabled override gave 7 failures (GOVERNANCE.DISABLED, 'leaves every key to the baseline'); all 3,031 passed after resetting it to inherit; fresh installs hold no override
 - 2026-09-29T19:58:42Z status=routed owner=range-end-cleanup by=orchestrator note=test isolation: each test sets and restores the governance state it relies on, or tolerates overrides
+### DW-1832: Story 16.10's Start and Stop tools declare no CLASSICPAGES for the classic ExternalLanguageServerStart/Stop pages (and the Stop dialog), so a custom resource on those pages is not honored (AD-44)
+- source: spec-16-10-external-language-servers.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: the implement stage deferred it believing CLASSICPAGES absent on this branch; git grep finds Parameter CLASSICPAGES on Namespace*, *Mapping* and Gate.cls (lead, 2026-09-29)
+- 2026-09-29T18:06:08Z status=open owner=16-10-external-language-servers by=harvest note=in-story AD-44 gap; for the code review to patch
+- 2026-09-29T18:41:23Z status=resolved-by:16-10-external-language-servers owner=16-10-external-language-servers by=cr note=Start/Stop declare CLASSICPAGES via Gate.WithClassicPages; ClassicPageGate run 20828 green, mutation run 20829 red
+
+### DW-1833: A start the instance refuses (500 LANGUAGESERVER.START) also raises the shell's generic server-fault banner beside the list's own sentence
+- source: spec-16-10-external-language-servers.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: fault.ts classifyFault reads every 5xx other than INSTALL.* as server-fault (inference, not observed in a browser)
+- 2026-09-29T18:06:09Z status=open owner=16-10-external-language-servers by=harvest note=for the code review: fix as a two-way door or close wontfix-accepted with a probe
+- 2026-09-29T18:41:23Z status=wontfix-accepted owner=16-10-external-language-servers by=cr note=seen on ocupilot-ci: the 500 raises the banner beside the sentence; fix is shell-wide; reopen_if=a 2nd action's 5xx does too
+
+### DW-1834: An agent proposal to stop an external language server carries no consequence line, while the screen's Stop warns that every connection ends at once
+- source: spec-16-10-external-language-servers.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: LanguageServerStop declares no Consequence, so Mint.ConsequenceOf answers none; WARNING_CONSEQUENCES in screen-action-handler.ts warns on the screen only (16.5's cancel is alike)
+- 2026-09-29T18:41:32Z status=wontfix-accepted owner=16-10-external-language-servers by=cr note=the tool description states it to the model; reopen_if=a warning-dialog action (16.11's Suspend) gets a card consequence
+
+### DW-1835: External language servers' list read waits up to 10 s per Remote-type server whose address does not answer, because the vendor pings every non-local server for CurrentlyRunning
+- source: spec-16-10-external-language-servers.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: %Net.Remote.Service.IsGatewayRunning pings with a 10 s timeout unless the host is local and its port free; a Remote server's host is its Address (vendor source, read at review)
+- 2026-09-29T18:41:32Z status=by-design owner=16-10-external-language-servers by=cr note=AC1 reads the vendor's own CurrentlyRunning per row (AD-36 as amended); the spec's Named limits name the 10 s ping

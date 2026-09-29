@@ -12,9 +12,9 @@ Parameter SCREENPAIRS = "[{""resource"":""%Admin_Manage"",""permission"":""USE""
 
 /// <p>The registered write tools that declare replaced classic pages, each with its pages, as
 /// <code>tool=page</code> entries: the namespace create, edit, delete and copy of mappings, each
-/// mapping kind's create and edit, Story 18.3's database create, edits and delete, and Story 16.4's
-/// task export and import.</p>
-Parameter CLASSICROSTER = "osmgmt.globalmappings.create=%CSP.UI.Portal.Mappings.Global,osmgmt.globalmappings.update=%CSP.UI.Portal.Mappings.Global,osmgmt.localdatabases.create=%CSP.UI.Portal.Dialog.DatabaseWizard,osmgmt.localdatabases.delete=%CSP.UI.Portal.Dialog.DatabaseDelete,osmgmt.localdatabases.update=%CSP.UI.Portal.Database,%CSP.UI.Portal.DatabaseVolumes,osmgmt.localdatabases.updatemount=%CSP.UI.Portal.Database,osmgmt.namespaces.copymappings=%CSP.UI.Portal.Namespace,osmgmt.namespaces.create=%CSP.UI.Portal.Namespace,osmgmt.namespaces.delete=%CSP.UI.Portal.Dialog.NamespaceDelete,osmgmt.namespaces.update=%CSP.UI.Portal.NamespaceEdit,osmgmt.packagemappings.create=%CSP.UI.Portal.Mappings.Package,osmgmt.packagemappings.update=%CSP.UI.Portal.Mappings.Package,osmgmt.routinemappings.create=%CSP.UI.Portal.Mappings.Routine,osmgmt.routinemappings.update=%CSP.UI.Portal.Mappings.Routine,tasks.schedule.export=%cspapp.op.utilsystaskaction,tasks.schedule.import=%cspapp.op.utilsystaskaction";
+/// mapping kind's create and edit, Story 18.3's database create, edits and delete, Story 16.4's
+/// task export and import, and Story 16.10's language server start and stop.</p>
+Parameter CLASSICROSTER = "osmgmt.globalmappings.create=%CSP.UI.Portal.Mappings.Global,osmgmt.globalmappings.update=%CSP.UI.Portal.Mappings.Global,osmgmt.languageservers.start=%CSP.UI.Portal.ExternalLanguageServerStart,osmgmt.languageservers.stop=%CSP.UI.Portal.ExternalLanguageServerStop,%CSP.UI.Portal.Dialog.ExternalLanguageServerStopDialog,osmgmt.localdatabases.create=%CSP.UI.Portal.Dialog.DatabaseWizard,osmgmt.localdatabases.delete=%CSP.UI.Portal.Dialog.DatabaseDelete,osmgmt.localdatabases.update=%CSP.UI.Portal.Database,%CSP.UI.Portal.DatabaseVolumes,osmgmt.localdatabases.updatemount=%CSP.UI.Portal.Database,osmgmt.namespaces.copymappings=%CSP.UI.Portal.Namespace,osmgmt.namespaces.create=%CSP.UI.Portal.Namespace,osmgmt.namespaces.delete=%CSP.UI.Portal.Dialog.NamespaceDelete,osmgmt.namespaces.update=%CSP.UI.Portal.NamespaceEdit,osmgmt.packagemappings.create=%CSP.UI.Portal.Mappings.Package,osmgmt.packagemappings.update=%CSP.UI.Portal.Mappings.Package,osmgmt.routinemappings.create=%CSP.UI.Portal.Mappings.Routine,osmgmt.routinemappings.update=%CSP.UI.Portal.Mappings.Routine,tasks.schedule.export=%cspapp.op.utilsystaskaction,tasks.schedule.import=%cspapp.op.utilsystaskaction";
 
 /// <p>The lists: unlisted, parent-scoped to Namespaces, keyed by <code>[namespace, Name]</code>, read
 /// through the vendor's own <code>LIST</code> with one namespace criterion, with Create and Delete,
@@ -109,7 +109,7 @@ Method TestTheToolsDeclareTheirFieldsKindsAndPairs()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("global-mapping", "OCUPROBE1814X" _ $Char(1) _ "OcuProbe1814Case"), "ocuprobe1814x" _ $Char(1) _ "OcuProbe1814Case", "a mapping's id folds its namespace part alone (AD-13)")
 }
 
-/// <p>The replaced classic pages (AD-44, DW-1784): exactly the sixteen tools of
+/// <p>The replaced classic pages (AD-44, DW-1784): exactly the eighteen tools of
 /// <parameter>CLASSICROSTER</parameter> declare <parameter>OcuPilot.Screen.Tool.Write.CLASSICPAGES</parameter>,
 /// each its page, and no other registered tool declares one; every declared page is spelled exactly as
 /// the instance names it, because the custom-resource store does not fold case: a compiled class, or,

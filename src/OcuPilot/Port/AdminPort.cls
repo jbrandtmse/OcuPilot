@@ -106,7 +106,15 @@ Parameter ASYNCLOCATION = "async-result?id=";
 /// roles that hold one role, as <code>[{Name, Type, AdminOption}]</code>, 404 for an absent role. It is
 /// synchronous: that endpoint's <code>ShouldRunAsync()</code> answers 0 for it (measured on this
 /// build).</p>
-Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWNERLIST";
+/// <p><code>ACTIVITY</code> is <code>LanguageServer</code>'s activity read (Story 16.10), which requires
+/// <code>name</code>: <code>{Activity: [{ID, DateTime, RecordType, Job, Text}], CurrentlyRunning}</code>,
+/// the rows newest first from <code>%Net.Remote.ActivityLog</code> and bounded by <code>maxRows</code>,
+/// <code>CurrentlyRunning</code> from <code>%Net.Remote.Service.IsGatewayRunning</code>, which pings the
+/// server with a 10 s timeout unless it is local and its port is free, so a <code>Remote</code>
+/// server is always pinged; 404 for a name the instance does not define, which is compared with
+/// its case. It is synchronous: the endpoint defines no <code>ShouldRunAsync</code> (measured on
+/// <code>ocupilot-ci</code>).</p>
+Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWNERLIST,ACTIVITY";
 
 /// <p>The <b>mutating</b> <code>&lt;endpoint&gt;/&lt;type&gt;</code> pairs <method>Invoke</method>
 /// accepts, each type resolved through that endpoint's own <code>TYPE&lt;suffix&gt;</code>
@@ -338,7 +346,17 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// #429 while a namespace uses the database. Every one but the two <code>SysCRUD</code>
 /// <code>PUT</code> and <code>DELETE</code> writes the system database and is refused without
 /// <code>%DB_IRISSYS:WRITE</code>.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,TaskTransfer/EXPORT,TaskTransfer/IMPORT";
+/// <p><code>LanguageServer/START</code> and <code>/STOP</code> are Story 16.10's
+/// (<class>OcuPilot.Screen.Tool.LanguageServerStart</class>, AD-51). Measured on <code>ocupilot-ci</code>:
+/// each takes <code>name</code>, reads no body and answers 404 for an absent server. A start runs
+/// <code>%Net.Remote.Service.StartGateway</code> and answers 200 <code>{}</code> once the server
+/// answers, in 10.7 to 14.7 s for a Java server, and 200 in 0.2 s for one already running; a
+/// <code>JavaHome</code> that names no JVM answers 500 #5001 in 0.3 s, and a process that dies after
+/// launch answers 500 "Failed to detect Gateway" (<parameter>TYPEFAULTS</parameter>). It leaves only
+/// the launch's <code>%System/%System/OSCommand</code> audit events. A stop is
+/// <code>StopGateway</code>'s hard <code>%Shutdown(0)</code>, 200 in 0.7 s, and 200 again on a stopped
+/// server; it records no audit event.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -354,7 +372,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,LanguageServer/START,LanguageServer/STOP";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -554,6 +572,16 @@ Parameter CONSTANTBODIES = "Task.CRUD/RUN={""RunNow"":true};Task.CRUD/SUSPEND={"
 /// <method>AwaitTask</method> is its one poller and reads the finished result once; a second read of
 /// an ended task logs ERROR #7846 (AD-26 as amended 2026-09-28).</p>
 Parameter QUEUEDWRITES = "Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Namespace.Namespace/MAPPINGS";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> pairs whose vendor error answers the product's own code,
+/// as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;code&gt;</code> entries (AD-39). A listed
+/// pair the vendor answers 500 is answered 500 on that code, with the sentence
+/// <class>OcuPilot.Api.Error</class> declares for it (<code>REASON</code> and the code without its
+/// dots); the vendor's text goes to the log alone.</p>
+/// <p><code>LanguageServer/START</code> (Story 16.10): a start the instance refused -- no JVM at the
+/// server's <code>JavaHome</code>, or a process that did not answer -- which the server's activity log
+/// records.</p>
+Parameter TYPEFAULTS = "LanguageServer/START=LANGUAGESERVER.START";
 
 /// <p>The query parameters an endpoint reads as parts of one composite key, as comma-separated
 /// <code>&lt;endpoint&gt;/&lt;key&gt;=&lt;part&gt;:&lt;part&gt;...</code> entries.
@@ -970,6 +998,13 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
         }
         ; UNLOGGEDQUERY: a refusal quoting a value that must not reach the log is masked first.
         If $$$ISERR(tSeqSC) Set tSeqSC = ..Unlogged(pEndpoint, pType, .pQuery, tSeqSC)
+        ; TYPEFAULTS: a listed pair's vendor error answers the product's own code and sentence.
+        Set tTypeFault = ..TypeFault(pEndpoint, pType)
+        If $$$ISERR(tSeqSC) && (tHttp = 500) && (tTypeFault '= "") {
+            Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, tTypeFault, $Parameter("OcuPilot.Api.Error", "REASON" _ $Translate(tTypeFault, ".")), .pHttpStatus, .pFault)
+            Do ..LogFault(pEndpoint _ " " _ pType _ " failed with HTTP 500", ..LoggedStatus(tSeqSC, pBody), pFault.code)
+            Quit
+        }
         ; AD-2: a read the vendor answers 404 has its answer, an absence, and is not logged.
         Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType), pBody, '..IsMutating(pEndpoint, pType))
     } Catch ex {
@@ -2158,6 +2193,18 @@ ClassMethod TestOutcome(pEndpoint As %String, pSeqSC As %Status, pHttp As %Integ
 ClassMethod IsMutating(pEndpoint As %String, pSuffix As %String) As %Boolean
 {
     Quit ''$ListFind($ListFromString(..#MUTATINGTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>The code <parameter>TYPEFAULTS</parameter> names for <var>pEndpoint</var>'s request type
+/// <var>pSuffix</var>, or <code>""</code>.</p>
+ClassMethod TypeFault(pEndpoint As %String, pSuffix As %String) As %String
+{
+    Set tCode = ""
+    For tI = 1:1:$Length(..#TYPEFAULTS, ",") {
+        Set tEntry = $Piece(..#TYPEFAULTS, ",", tI)
+        If $Piece(tEntry, "=", 1) = (pEndpoint _ "/" _ pSuffix) Set tCode = $Piece(tEntry, "=", 2)
+    }
+    Quit tCode
 }
 
 /// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is a
