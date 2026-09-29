@@ -8164,3 +8164,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: browser shard 1/3, 3 passed 1 failed; the same code passed on staging ff53360c attempt 2 and on 16.3's own runs; shard 1 duration unchanged (21 min vs 18-23); intermittent (inference: the side bar renders after a privilege read the spec does not wait for)
 - 2026-09-29T13:58:49Z status=routed owner=16-4-task-export-and-import by=orchestrator note=Epic 16 owns the spec (16.3): wait for the rail item's side bar to finish its privilege read before querying items; pin with repeated runs
 - 2026-09-29T15:25:45Z status=resolved-by:16-4-task-export-and-import by=adjudication note=security AC5 opens the side bar through the gate spec's toggle-aware openSideBar; old code failed 1/3 locally with the same timeout, fixed 5/5
+
+### DW-1832: Story 16.10's Start and Stop tools declare no CLASSICPAGES for the classic ExternalLanguageServerStart/Stop pages (and the Stop dialog), so a custom resource on those pages is not honored (AD-44)
+- source: spec-16-10-external-language-servers.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: the implement stage deferred it believing CLASSICPAGES absent on this branch; git grep finds Parameter CLASSICPAGES on Namespace*, *Mapping* and Gate.cls (lead, 2026-09-29)
+- 2026-09-29T18:06:08Z status=open owner=16-10-external-language-servers by=harvest note=in-story AD-44 gap; for the code review to patch
+
+### DW-1833: A start the instance refuses (500 LANGUAGESERVER.START) also raises the shell's generic server-fault banner beside the list's own sentence
+- source: spec-16-10-external-language-servers.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: fault.ts classifyFault reads every 5xx other than INSTALL.* as server-fault (inference, not observed in a browser)
+- 2026-09-29T18:06:09Z status=open owner=16-10-external-language-servers by=harvest note=for the code review: fix as a two-way door or close wontfix-accepted with a probe
