@@ -8199,6 +8199,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-4-the-deferred-disk-operations.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-b-ci 2026-09-29 by 18.4's implement: Namespace.Namespace GET and Database.ConfigCRUD LIST have ResourcesOR %Admin_Manage alone, and a failed read refuses, so an Operate-only holder is refused PROHIBITED on every dismount without the pair
 - 2026-09-29T22:56:14Z status=decision-pending owner=burndown by=harvest note=recommended: accept %Admin_Manage:USE for dismount now (AD-8 amended, intent pair line corrected) -- the classic page lets an Operate-only holder dismount, so an Operate-only path needs a Manage-free own-set read (an AD-27 named case) later
+- 2026-09-29T22:56:51Z status=routed owner=18-4-the-deferred-disk-operations by=merge_gate note=option A (orchestrator 2026-09-29): dismount declares %Admin_Manage:USE because the self-protection check reads the protected set; amend AD-8's 18.4 paragraph and the spec's pair line at origin; test that an Operate-only holder is refused with the missing pair named, not PROHIBITED
 
 ### DW-1848: The Integrity log's error branch is unverified: no test renders the report of a check that found errors through the real Display^Integrity capture
 - source: spec-18-4-the-deferred-disk-operations.md | severity: med | fix-risk: low | footprint: in-story
@@ -8209,3 +8210,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-4-the-deferred-disk-operations.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Observed on ocupilot-b-ci 2026-09-29 by 18.4's implement; BackgroundTaskPort controls a Database row no portal or own admin row holds through %SYS.BackgroundTask (AD-27's 18.4 case); an own admin row cancels through AsyncResult
 - 2026-09-29T22:56:14Z status=wontfix-accepted owner=18-4-the-deferred-disk-operations by=harvest note=vendor behaviour; reopen_if=a user's own admin API task reads Running after another user's cancel on a live instance
+
+### DW-1850: Operate-only dismount (parity with the classic Database details page): the self-protection check needs a Manage-free read of the protected set (OcuPilot's, the install namespace's and the seven system databases' directories), as an AD-27 named case, so dismount can drop %Admin_Manage:USE
+- source: cycle-log-epic-18.md (DW-1847 decision) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Orchestrator decision 2026-09-29 on DW-1847: 18.4 ships dismount with %Admin_Manage:USE; the classic page lets an %Admin_Operate holder dismount
+- 2026-09-29T22:56:51Z status=routed owner=range-end-cleanup by=merge_gate note=e.g. the protected directories recorded at install into OcuPilot's protected state, or read through the port's own privileged path
