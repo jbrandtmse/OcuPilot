@@ -2514,7 +2514,8 @@ export const ROW_GET_RULES = ['beforeToday'];
 /**
  * The request types a `read.source.rowGet` may issue (AD-36), byte for byte
  * `OcuPilot.Screen.Registry`'s own `ROWGETTYPES`: `GET`, the default; `INFO`, where the list's own
- * row is wrong; and `CERTINFO`, where only that type carries the fields.
+ * row is wrong; `CERTINFO`, where only that type carries the fields; and `ACTIVITY`, which alone
+ * answers a language server's `CurrentlyRunning`.
  */
 export const ROW_GET_TYPES = ['GET', 'INFO', 'CERTINFO', 'ACTIVITY'];
 

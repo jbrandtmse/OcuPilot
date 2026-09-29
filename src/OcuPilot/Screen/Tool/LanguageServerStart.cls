@@ -46,6 +46,9 @@ Parameter WRITERESOURCE = "%Admin_ExternalLanguageServerEdit";
 
 Parameter WRITEPERMISSION = "USE";
 
+/// <p>The classic page whose Start this tool performs (AD-44).</p>
+Parameter CLASSICPAGES = "%CSP.UI.Portal.ExternalLanguageServerStart";
+
 /// <p>The <code>ACTIVITY</code> field this tool's precondition reads, a JSON boolean.</p>
 Parameter PRECONDITIONFIELD = "CurrentlyRunning";
 
@@ -107,12 +110,13 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
-/// <p>What the caller must hold: the screen's own pairs, and nothing more (AD-8 as amended).</p>
+/// <p>What the caller must hold: the screen's own pairs (AD-8 as amended), then the custom resource
+/// of each <parameter>CLASSICPAGES</parameter> page, each pair once (AD-44).</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
 {
     Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
     If 'pResolved Quit ""
-    Quit tPairs
+    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
 }
 
 /// <p>The one row this proposal's card shows, from the fresh <code>ACTIVITY</code> read

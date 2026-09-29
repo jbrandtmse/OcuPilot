@@ -168,6 +168,9 @@ Method TestTheActivityReadListsOneServersRows()
     Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#ACTIVITY, 5, .tResult, .tHttp, .tFault, .tCriteria)
     Do $$$AssertStatusOK(tSC, "a vendor server's own activity reads")
     Do $$$AssertTrue($$$ISOK(tSC) && (tResult.rows.%Size() <= 5) && (tResult.fields.%Size() = 5), "within the cap, over the five fields")
+    Set tCriteria("name") = "OcuPilotProbeELSNoSuch"
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#ACTIVITY, 5, .tResult, .tHttp, .tFault, .tCriteria)
+    Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "404 " _ ##class(OcuPilot.Api.Error).#PORTNOTFOUND, "and a name the instance does not define is the vendor's own 404")
 }
 
 /// <p>AD-51, AD-52, AD-8, AD-22: each tool is a bodyless, non-destructive action write through the

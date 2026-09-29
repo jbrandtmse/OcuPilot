@@ -393,6 +393,7 @@ export class LogViewerStore {
   /** The first read: the last bytes of the file. */
   async open(): Promise<void> {
     this.fileEntries = [];
+    this.answeredRows = [];
     this.restartedValue = false;
     await this.read('');
   }

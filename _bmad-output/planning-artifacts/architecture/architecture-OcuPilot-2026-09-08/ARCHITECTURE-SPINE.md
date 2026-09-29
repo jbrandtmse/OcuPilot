@@ -593,6 +593,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 16.4's `CLASSICPAGES`** [AMENDED 2026-09-29, Story 16.4 spec gate, Rule 20]: the task export and import tools both declare the Task Manager's action page `%cspapp.op.utilsystaskaction` (Hidden), whose Export and Import they replace.
 
+  **Story 16.10's `CLASSICPAGES`** [AMENDED 2026-09-29, Story 16.10 code review, DW-1832, Rule 20]: the external language server Start tool declares `%CSP.UI.Portal.ExternalLanguageServerStart`, and the Stop tool `%CSP.UI.Portal.ExternalLanguageServerStop` and its Hidden dialog `%CSP.UI.Portal.Dialog.ExternalLanguageServerStopDialog`, each read on the instance.
+
 ### AD-45 — There is one smoke path, and it is also the health check
 
 - **Binds:** FR-66, FR-67, NFR-9, AD-38; the installer, CI, the demo

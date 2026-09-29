@@ -17,6 +17,9 @@ Parameter SCREENACTIONS = "stop";
 
 Parameter WRITETYPE = "STOP";
 
+/// <p>The classic page whose Stop this tool performs, and the Stop dialog that opens it (AD-44).</p>
+Parameter CLASSICPAGES = "%CSP.UI.Portal.ExternalLanguageServerStop,%CSP.UI.Portal.Dialog.ExternalLanguageServerStopDialog";
+
 Parameter STARTS As BOOLEAN = 0;
 
 }

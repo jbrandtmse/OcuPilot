@@ -1107,6 +1107,33 @@ describe('LogViewerPage over a declared read (Story 16.10)', () => {
     expect(published.data()).toEqual([{ ID: 9, DateTime: '2026-09-29 06:00:00', RecordType: 'Info', Job: 12, Text: 'the other server' }]);
   });
 
+  // Mutation (Rule 19): drop `&& this.source.kind !== 'read'` from `LogViewerPage.onLoadNewer` ->
+  // the viewport is never scrolled and this goes red.
+  it('the Load newer button jumps to the bottom once the newest window has rendered', async () => {
+    const { fixture } = await mount();
+    const viewport = fixture.nativeElement.querySelector('[data-ocu-log="viewport"]') as HTMLElement;
+    const scrollTo = vi.fn();
+    viewport.scrollTo = scrollTo as unknown as HTMLElement['scrollTo'];
+    (fixture.nativeElement.querySelector('[data-ocu-log="load-newer"]') as HTMLButtonElement).click();
+    await settle();
+    fixture.detectChanges();
+    TestBed.inject(ApplicationRef).tick();
+    expect(scrollTo).toHaveBeenCalledWith({ top: viewport.scrollHeight });
+  });
+
+  // Mutation (Rule 19): drop `this.answeredRows = []` from `LogViewerStore.open` -> the refused
+  // re-read leaves the earlier read's rows published and this goes red.
+  it('a refused re-read publishes no rows, never the rows the earlier read answered', async () => {
+    const { store } = await mount();
+    const published = TestBed.inject(ScreenStores).for(ACTIVITY_SCREEN.descriptor, []);
+    expect(published.data()).toHaveLength(4);
+    api.refuseTail(403, 'AUTH.NOPRIVILEGE');
+    await store.open();
+    await settle();
+    expect(store.fault()).not.toBeNull();
+    expect(published.data()).toEqual([]);
+  });
+
   it('a refused read shows the viewer\'s refusal and no rows', async () => {
     api.refuseTail(404, 'PORT.NOTFOUND');
     const { fixture, store } = await mount('NoSuch');

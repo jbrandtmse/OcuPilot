@@ -109,8 +109,9 @@ Parameter ASYNCLOCATION = "async-result?id=";
 /// <p><code>ACTIVITY</code> is <code>LanguageServer</code>'s activity read (Story 16.10), which requires
 /// <code>name</code>: <code>{Activity: [{ID, DateTime, RecordType, Job, Text}], CurrentlyRunning}</code>,
 /// the rows newest first from <code>%Net.Remote.ActivityLog</code> and bounded by <code>maxRows</code>,
-/// <code>CurrentlyRunning</code> from <code>%Net.Remote.Service.IsGatewayRunning</code>, which pings only
-/// when the server's port is busy; 404 for a name the instance does not define, which is compared with
+/// <code>CurrentlyRunning</code> from <code>%Net.Remote.Service.IsGatewayRunning</code>, which pings the
+/// server with a 10 s timeout unless it is local and its port is free, so a <code>Remote</code>
+/// server is always pinged; 404 for a name the instance does not define, which is compared with
 /// its case. It is synchronous: the endpoint defines no <code>ShouldRunAsync</code> (measured on
 /// <code>ocupilot-ci</code>).</p>
 Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWNERLIST,ACTIVITY";

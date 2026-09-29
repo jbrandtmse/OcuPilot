@@ -403,18 +403,20 @@ Method CreateProbe(pName As %String, pPort As %Integer, pJavaHome As %String) As
 }
 
 /// <p>Stop probe server <var>pName</var>, delete it and remove its activity rows; OK when it is
-/// absent.</p>
+/// absent, and an error, deleting nothing, when it still reads running after the stop, because a
+/// deleted running server keeps listening.</p>
 Method RemoveProbe(pName As %String) As %Status
 {
     Set tSC = $$$OK
     If $Extract(pName, 1, 16) '= "OcuPilotProbeELS" Quit $$$ERROR($$$GeneralError, "only a probe server is removed")
     Do ..StopOutOfBand(pName)
+    If ..Running(pName) = 1 Quit $$$ERROR($$$GeneralError, "the probe server " _ pName _ " still reads running after its stop, so it was not deleted")
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
         If ##class(Config.Gateways).Exists(pName) Set tSC = ##class(Config.Gateways).Delete(pName)
         If $$$ISOK(tSC) {
-            Set tResult = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM %Net_Remote.ActivityLog WHERE GatewayName = ?", pName)
+            Set tResult = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM %Net_Remote.ActivityLog WHERE %EXACT(GatewayName) = ?", pName)
             If tResult.%SQLCODE < 0 Set tSC = $$$ERROR($$$GeneralError, "the probe's activity rows were not removed: SQLCODE " _ tResult.%SQLCODE)
         }
         If $$$ISOK(tSC) && ##class(Config.Gateways).Exists(pName) Set tSC = $$$ERROR($$$GeneralError, "the probe server " _ pName _ " is still defined")

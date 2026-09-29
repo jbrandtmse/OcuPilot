@@ -75,11 +75,13 @@ async function seedServer() {
 /** Stop the probe server, delete it and remove its activity rows. */
 async function removeServer() {
   const name = encodeURIComponent(SERVER);
-  await adminApi('POST', `/ext-lang-server/stop?name=${name}`);
+  const stopped = await adminApi('POST', `/ext-lang-server/stop?name=${name}`);
+  // A deleted running server keeps listening, so nothing is deleted unless the stop answered.
+  assert.ok(stopped === 200 || stopped === 404, `the probe server stops, or is absent (HTTP ${stopped})`);
   await adminApi('DELETE', `/ext-lang-server?name=${name}`);
   const output = runIris(config.container, [
     'Set $NAMESPACE="%SYS"',
-    `Set rs=##class(%SQL.Statement).%ExecDirect(,"DELETE FROM %Net_Remote.ActivityLog WHERE GatewayName = ?","${SERVER}")`,
+    `Set rs=##class(%SQL.Statement).%ExecDirect(,"DELETE FROM %Net_Remote.ActivityLog WHERE %EXACT(GatewayName) = ?","${SERVER}")`,
     `Write "OCU-ELSGONE-START:"_('##class(Config.Gateways).Exists("${SERVER}"))_(rs.%SQLCODE>=0)_":OCU-ELSGONE-END",!`,
   ]);
   assert.equal(markerValue(output, 'ELSGONE'), '11', `the probe server and its activity rows are removed: ${output}`);

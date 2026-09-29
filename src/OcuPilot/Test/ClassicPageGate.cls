@@ -48,7 +48,7 @@ Parameter DELETEKEY = "osmgmt.namespaces.delete";
 
 /// <p>The pairs each declaring tool declares beyond its list's own, as <code>tool=pair|pair</code>
 /// entries: its declared set, with no classic page assigned.</p>
-Parameter OWNPAIRS = "osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,tasks.schedule.export=%Admin_FileSystemAccess:USE,tasks.schedule.import=%Admin_FileSystemAccess:USE";
+Parameter OWNPAIRS = "osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,tasks.schedule.export=%Admin_FileSystemAccess:USE,tasks.schedule.import=%Admin_FileSystemAccess:USE,osmgmt.languageservers.start=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.stop=%Admin_ExternalLanguageServerEdit:USE";
 
 /// <p>The throwaway principals' password, generated for the run.</p>
 Property PreparedPassword As %String;
@@ -117,7 +117,7 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
 {
     Set tSC = ..Roster(.tRoster, .tTools)
     Do $$$AssertStatusOK(tSC, "the declaring tools are read from the registry")
-    Do $$$AssertEquals($ListLength(tTools), 12, "twelve tools declare a replaced classic page")
+    Do $$$AssertEquals($ListLength(tTools), 14, "fourteen tools declare a replaced classic page")
     For tI = 1:1:$ListLength(tTools) {
         Set tName = $List(tTools, tI)
         Kill tTool
@@ -363,7 +363,7 @@ Method EnsurePrincipals() As %Status
             Set tSC = ##class(Security.Resources).Create(..#RESOURCE, "OcuPilot test: a classic page's custom resource (throwaway)", "")
             If $$$ISERR(tSC) Quit
         }
-        Set tDeclared = tCode _ ",%DB_IRISSYS:RW,%Admin_Manage:U,%Admin_Secure:U,%Admin_Operate:U,%Admin_Task:U,%Admin_FileSystemAccess:U"
+        Set tDeclared = tCode _ ",%DB_IRISSYS:RW,%Admin_Manage:U,%Admin_Secure:U,%Admin_Operate:U,%Admin_Task:U,%Admin_FileSystemAccess:U,%Admin_ExternalLanguageServerEdit:U"
         For tCase = $ListBuild(..#LACKINGUSER, tDeclared, 0), $ListBuild(..#HOLDINGUSER, tDeclared _ "," _ ..#RESOURCE _ ":U", 1) {
             Set tUser = $List(tCase, 1)
             Set tRole = tUser _ "Role"
