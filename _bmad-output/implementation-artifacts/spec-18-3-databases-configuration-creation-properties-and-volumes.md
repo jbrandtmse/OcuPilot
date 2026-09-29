@@ -543,6 +543,21 @@ Rejected (layer: BS/BC blind server/client, ES/EC edge server/client, VG, AA):
 
 - [x] [CI] browser shard 1/3 (run 36573329469 on `b43a0a2d`): `a11y-structural-invariants.browser-spec.mjs` 12/12 failed in its hook, `Waiting failed: 30000ms exceeded` in `structural-walk.mjs` `goInApp` -- `database-wizard.page.ts`/`database-wizard.store.ts` -- opening the create wizard marks the form dirty with nothing typed: `server-path-picker.ts` preselects the single allowed root and emits `changed`, and `DatabaseWizard.setLocation` records that as an edit (`change('path')` sets `FormDirty`). Leaving the wizard then raises the unsaved-changes guard, the walk's next in-app navigation is canceled and the URL restored (measured by the runner on `ocupilot-b-ci`: after `local-databases/edit` then `namespaces/edit`, the walk asking for `namespaces/package-mappings/edit` stood at `local-databases/edit`). The fix must make the picker's one preselection of a single root leave the wizard clean while any user change of root or path still marks it dirty; pin it (a store or page spec: open, preselect, not dirty; then a user change, dirty) with a demonstrated mutation, and re-run `a11y-structural-invariants.browser-spec.mjs` (both themes) against a rebuilt and redeployed bundle on `ocupilot-b-ci`. Check the editor's Change picker under the same rule (its preselection follows an explicit Change, so dirty there is intended).
 
+### Review Findings (rework 1)
+
+Code review, 2026-09-29, `full-opus`, four layers over `8692236c..11682150` (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor): 14 findings, 4 kept after grouping (all low, all patched), 0 high or medium. The `[CI]` item's fix holds: the wizard opens clean and a user's change of root or path marks it dirty (re-run in review: `a11y-structural-invariants` 12/12 on `ocupilot-b-ci`, `main-JT27HVRD.js`, 83 of 83 walked; components 1841/1841 after the patches). The flag changes no other consumer: the editor passes only `root` and `path`, and Epic 16's task dialogs rebuild `{root, path}` on submit.
+
+- [x] [Review][Patch] [low] The picker's doc names the flag but not a form's duty to hold a `preselected` report without marking itself dirty; the next form that draws the picker on open would open dirty again [ui/src/app/shell/server-path-picker.ts:37]
+- [x] [Review][Patch] [low] The picker spec's mutation comment named the select's assertion, not the `changes` one [ui/src/app/shell/server-path-picker.spec.ts:165]
+- [x] [Review][Patch] [low] `preselectRoot` clearing a `root` refusal (Next pressed before the allow-list arrived) was untested; a store leg pins it [ui/src/app/areas/os-management/database-wizard.store.spec.ts:94]
+- [x] [Review][Patch] [low] Rule 19: no recorded mutation showed `preselectRoot` holding the root that Next and Create send, or the store's path half of the user-change leg; both are recorded under `## Verification`
+
+Rejected:
+
+- false: the flag reaching Epic 16's `submitted` values (the dialogs emit a fresh `{root, path}`); the store comment "the first test goes red" (true as written); legs without in-file mutation comments (the `## Verification` line is the record); `preselectRoot`'s early return untested (removing it adds one notify, nothing visible).
+- outside the rework, not high: `structural-walk.mjs` `goInApp` reports a guard-canceled navigation as a 30 s timeout.
+- spec or lead bookkeeping: the bundle line's 2217 kB warning, the triage log's doubled row, the oversized spec's growth, the cycle-log order.
+
 ## Spec Change Log
 
 - 2026-09-29, runner, rework 1: CI run 36573329469 was red on `b43a0a2d` (the structural walk, one [CI] item under Tasks & Acceptance); status set to `in-progress` for one rework iteration. The code review's patches are committed with the rework commit.
@@ -847,6 +862,7 @@ Probe objects created and removed: database `OCUPROBE183X` (directory `ocuprobe1
 - mutation (rework 1, review): `DatabaseWizard.setLocation` marks the form dirty only when the path differs → `database-wizard.store.spec.ts`' user-change leg (root half) and `database-wizard.page.spec.ts`' several-roots leg red.
 - mutation (rework 1, review): `DatabaseEditor.setVolumeLocation` notifies without marking the form dirty → `database-editor.page.spec.ts`' AD-21 leg red on the dirty-after-Change assertion.
 - mutation (rework 1): the picker reports its preselection without `preselected` → `server-path-picker.spec.ts`' loading-to-ready and preselection legs and the page's single-root leg red; the picker marks a typed name `preselected` → the picker's preselection and change legs and the page's single-root and edited-path legs red. Each reverted byte-identical.
+- mutation (rework 1, code review): `DatabaseWizard.preselectRoot` drops its `clearFieldViolation('root')` → `database-wizard.store.spec.ts`' refused-root leg alone red; `preselectRoot` holds no root → the store's preselection leg and `database-wizard.page.spec.ts`' two AC1 legs (check and create bodies) red; `setLocation` marks the form dirty only when the root differs → the store's user-change leg (path half) and the page's single-root leg red. Each reverted byte-identical.
 
 ## Auto Run Result
 

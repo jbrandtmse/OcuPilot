@@ -91,6 +91,16 @@ describe('the create database wizard store', () => {
     expect(store.values().path).toBe('ocuprobe183a');
   });
 
+  it('a preselection arriving after Next refused the empty root clears that refusal', async () => {
+    const { store } = mount({ check: [{ field: 'root', code: 'PATH.ROOT', reason: 'Choose one of the allowed directories.' }] });
+    await store.open();
+    store.setName('OcuProbe183A');
+    expect(await store.next()).toBe(false);
+    expect(store.violationFor('root')).toBe('Choose one of the allowed directories.');
+    store.preselectRoot('/durable/iris/mgr/');
+    expect(store.violationFor('root')).toBe('');
+  });
+
   it('after the preselection, a user\u2019s change of the root, or of the path, marks the form dirty', async () => {
     const byRoot = mount();
     await byRoot.store.open();

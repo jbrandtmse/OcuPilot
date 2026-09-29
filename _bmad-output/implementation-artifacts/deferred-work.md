@@ -4063,6 +4063,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T00:05:40Z status=decision-pending owner=burndown by=plan note=orchestrator-decided at the 6.11 spec gate (Q3 option a): epics.md 6.11 AC3 amended to properties and volume files; only the owner can charter a story outside this epic
 - 2026-09-18T19:44:55Z status=routed owner=16-5-background-tasks by=merge_gate note=FR-76 owns background tasks; take the port decision there, not by widening AD-36 now
 - 2026-09-28T20:51:24Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=spec_gate note=16.5 took the port decision (public %SYS.BackgroundTask:DatabaseList; no AD-36 widening); the section belongs to DatabaseDetails.cls, 18.3's
+- 2026-09-29T15:13:58Z status=resolved-by:18-3-databases-configuration-creation-properties-and-volumes by=adjudication note=b43a0a2d AC8: Database details' Background tasks section reads the Background tasks screen's declared read through BackgroundTaskPort (BackgroundTasks, BackgroundTasksLive, database-details.page.spec, local-databases browser AC8 leg); the admin-API-started residual is DW-1821 (18.4)
 
 ### DW-1090: A rowGet read's async bound is per row, so a staged read's wall clock is rows x ASYNCTIMEOUT with no read-wide deadline
 - source: spec-6-11-databases-with-free-space-arriving-as-it-lands.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -7981,6 +7982,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T17:21:24Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=probe the create on the throwaway; refuse a directory holding an IRIS.DAT in 18.3's tool, or amend AD-21 if PathPort should
 - 2026-09-29T14:12:01Z occurrence=18-3-databases-configuration-creation-properties-and-volumes
 - 2026-09-29T14:12:01Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=residual: create refuses; a NewVolumeDirectory naming another DB's directory resolves (vendor collision unmeasured, 18.4)
+- 2026-09-29T15:13:58Z status=routed owner=18-4-the-deferred-disk-operations by=adjudication note=create half resolved in 18.3 (DatabaseRules refuses a directory holding an IRIS.DAT; DatabaseRefusals DW-1791 legs); residual: a NewVolumeDirectory naming another database's directory still resolves, and whether the vendor accepts that collision is unmeasured -- 18.4's expand (new volume) owns it
 
 ### DW-1792: Ending a preserve-mode web session hangs until the gateway answers 504 and never ends it: the vendor DELETE waits on the session lock the session's own process holds
 - source: spec-16-2-web-sessions-listed-and-ended.md | severity: med | fix-risk: med | footprint: in-story
@@ -8016,11 +8018,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: PathPort.DatabaseDirectories reads Config.Databases, which carries no volume directories; every local database on ocupilot-b-ci is single-volume, so no reach today (inference)
 - 2026-09-28T22:08:13Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=harvest note=18.3's multi-volume properties create the first additional volume directory; extend the instance-file read to SYS.Database's volume directories there
+- 2026-09-29T15:13:58Z status=resolved-by:18-3-databases-configuration-creation-properties-and-volumes by=adjudication note=b43a0a2d AC9: PathPort.DatabaseDirectories adds VolumeDirectories, so PATH.INSTANCE refuses a volume file in a new volume directory (PathPortDatabases volume leg, mutation recorded)
 
 ### DW-1796: PathPort.DatabaseDirectories' own read is pinned only against a stable default configuration: a configured StreamLocation, the skip of a ':' directory, and a failure or cache inside the reader keep every test green
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: All 14 local databases on ocupilot-b-ci answer StreamLocation empty (read-only probe, review layers), so the port's comparison with GetStreamLocation is default against default; the fixture's UseDatabaseDirectories replaces the reader whole, so the failed-read and never-kept legs (runs 11, 13, 395) mutate the consumer, not the reader.
 - 2026-09-28T22:34:01Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=pin the reader with a probe database whose stream location and configuration change between two reads
+- 2026-09-29T15:13:58Z status=resolved-by:18-3-databases-configuration-creation-properties-and-volumes by=adjudication note=b43a0a2d AC9: the reader follows a configured StreamLocation and a configuration change within one process, never keeps its answer in ^||, refuses on a failed volume read and skips a leading ':' directory (PathPortDatabases stream, never-kept, failure and colon legs, mutations recorded)
 
 ### DW-1797: PathPort's journal read names only the primary, alternate and current file's directories: journal files left in a former journal directory, and IRIS.WIJ in a write-image-journal directory outside the manager directory, resolve for an overwriting consumer
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: in-story
@@ -8103,6 +8107,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 18.3's spec and epic-18-context.md were written before PATH.SERVED existed; 18.3 is PathPort.Resolve's first real caller
 - 2026-09-29T01:16:56Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=harvest note=fold into 18.3's spec at its gate
+- 2026-09-29T15:13:58Z status=resolved-by:18-3-databases-configuration-creation-properties-and-volumes by=adjudication note=b43a0a2d AC1: the create wizard's directory step renders PATH.SERVED and the other PATH.* violations on the field (database-wizard.page.spec PATH.SERVED leg, browser PATH.MANAGERDIR leg; DatabaseRefusals ReasonForViolation over all eight PATH codes)
 
 ### DW-1808: audit-events.browser-spec.mjs AC2 (Selective SQL auditing sends exactly the one changed box, and the list re-reads it) flaked: it collected one 200 where it expects two (the write and the re-read), so the response collection ends before the re-read arrives
 - source: feature CI run 36507726737 attempt 1 on 3fa9c0db (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/audit-events.browser-spec.mjs

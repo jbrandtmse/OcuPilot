@@ -162,8 +162,8 @@ describe('the server-path picker (Story 18.1, AD-21)', () => {
     expect(slot('resolved')).toBeNull();
   });
 
-  // Mutation (Rule 19): drop `preselected` from the preselection's report -> the first assertion
-  // goes red; mark a user's input `preselected` -> the last one does.
+  // Mutation (Rule 19): drop `preselected` from the preselection's report -> the first `changes`
+  // assertion goes red; mark a user's input `preselected` -> the last one does.
   it('preselects a single root and reports it once, marked preselected, so the consumer holds it and can tell it from a user change', async () => {
     await ready([{ Directory: '/tmp/', Restricted: true }]);
     expect(select()?.value).toBe('/tmp/');

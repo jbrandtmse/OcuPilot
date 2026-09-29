@@ -7126,6 +7126,7 @@ So that "disks" means operating on them rather than only reading them.
 - **Then** each key defaults to **disabled**.
 
 - DW-1821: Database details lists only background tasks the classic Background tasks page holds, so a compact or defragment started through the admin API is not attributed to its database (ledger; routed by harvest 2026-09-29)
+- DW-1791: a new volume directory naming another database's directory still resolves for the expand, and whether the vendor accepts that collision is unmeasured (ledger; routed by adjudication 2026-09-29)
 
 **Admin API behavior to design for.** [AMENDED 2026-09-28, owner: warnings from the DC article
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);

@@ -35,7 +35,9 @@ export interface ServerPath {
  * **It offers only the roots the store read.** The select's options are exactly those roots, in
  * read order, and a `root` that is not one of them is not selected. A single root is preselected,
  * and the preselection is reported once through `changed`, marked `preselected`, so the consumer
- * holds it too and can tell it from a user's choice.
+ * holds it too and can tell it from a user's choice. A form that draws the picker as it opens must
+ * hold a `preselected` report without marking itself dirty, or it opens dirty and the
+ * unsaved-changes guard stops the user leaving a form nobody touched.
  *
  * **The composed path is display only.** The "Resolves to" line joins the chosen root and the name
  * as typed; whether they resolve is the instance's answer, which arrives as `rootReason` or
