@@ -3013,6 +3013,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:574 */
   tryItRedirected: 'The request did not reach the application: something between the browser and the instance, such as a proxy, answered it with a redirect, which the console does not follow.',
   /** EXPERIENCE.md:574 */
+  tryItRedirectedWrite: 'The answer was a redirect, which the console does not follow, so the outcome is unknown: the instance may have acted on this request. Check before you send it again.',
+  /** EXPERIENCE.md:574 */
   tryItUnsent: 'The browser would not build this request, so nothing was sent to the instance.',
   /** EXPERIENCE.md:574 */
   tryItCut: 'The response was cut at 256 KB.',

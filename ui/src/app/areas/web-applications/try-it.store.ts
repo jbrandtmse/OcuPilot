@@ -70,9 +70,10 @@ export interface CopyOutcome {
  * anything); `failed`, no complete answer arrived: `fetch` rejected once the request was built,
  * before or after it left the browser, or the answer's body broke off; `redirected`, the answer was a
  * redirect, which `redirect: 'manual'` hands back opaque as status 0, the only status-0 response a
- * same-origin request resolves with.
+ * same-origin request resolves with; `redirected-write`, that answer to a request `isSafeVerb` does
+ * not pass, which the application may have acted on before it redirected.
  */
-export type TryItOutcome = 'unsent' | 'failed' | 'redirected';
+export type TryItOutcome = 'unsent' | 'failed' | 'redirected' | 'redirected-write';
 
 /** An answer, as the console shows it. */
 export interface TryItAnswer {
@@ -306,7 +307,7 @@ export class TryItStore {
       try {
         const response = await this.http(request.url, init);
         if (response.status === 0) {
-          outcome = 'redirected';
+          outcome = isSafeVerb(request.method) ? 'redirected' : 'redirected-write';
         } else {
           const lines: string[] = [];
           let contentType = '';

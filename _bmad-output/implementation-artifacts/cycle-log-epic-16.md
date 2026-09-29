@@ -505,3 +505,4 @@
 2026-09-29T21:55:00Z	Epic 16	owner_fix_boundary	item=DW-1838 head=ae14af90 ci_run=36631527264 ci=success reported_to=main
 2026-09-29T21:55:00Z	Epic 16	owner_fix_pushed	item=DW-1836 sha=20bca172 ci=pending run=36636324310
 2026-09-29T21:55:00Z	Epic 16	owner_fix_implemented	item=DW-1837 agent=dw1837-role-font-implement-1 model=opus files=2(_components.scss_add-only,permissions-effective.browser-spec) tests=permissions-effective_5/5,tools_1715 mutations=2(role-name_type_removed->AC1_red;field-input_type_removed->AC4_red) scope=shared_.ocu-form-role-name(7_lists)
+2026-09-29T22:05:50Z	Epic 16	owner_fix_implemented	item=DW-1845(by=merge_gate) agent=dw1845-write-redirect-implement-1 model=opus files=6 tests=tools_1716,components_1895,browser_openapi-try-it_7/7 mutations=5 decision=non-safe_verbs(isSafeVerb:GET,HEAD,OPTIONS_keep_read_sentence)

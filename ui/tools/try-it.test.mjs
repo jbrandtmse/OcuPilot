@@ -22,6 +22,9 @@ import { dirname, join } from 'node:path';
 // - stop masking a secret-named query value -> "every secret the request carries reads masked".
 // - read a status-0 response as an answer in `TryItStore.dispatch` -> "a redirect answer ... is a
 //   redirected outcome".
+// - record every status-0 response as `redirected`, whatever the verb -> "a redirect answer to a
+//   write"; as `redirected-write` -> the same test at GET; judge a write by GET and HEAD alone ->
+//   the same test at OPTIONS.
 // - skip the `buildable` check before `fetch` -> "a request the browser would not build".
 // - record a rejected fetch as `unsent` -> "a fetch that rejects".
 // - read a body that broke off as an empty answer -> "an answer whose body breaks off".
@@ -354,6 +357,21 @@ test('a redirect answer (fetch resolved, redirect: manual) is a redirected outco
   await other.send('7', composed('/api/mgmnt', 'get', '/v2/', [], []));
   assert.equal(other.outcome('7'), null, 'a non-2xx status is an answer');
   assert.equal(other.answer('7').status, 404);
+});
+
+test('a redirect answer to a write is a redirected-write outcome; a safe verb keeps the redirected one', async () => {
+  // The application itself may answer a write with a 3xx after acting on it, so a write's redirect
+  // cannot say the request never reached it. The safe verbs are the ones sent without a confirmation.
+  const verbs = { post: 'redirected-write', put: 'redirected-write', patch: 'redirected-write', delete: 'redirected-write', get: 'redirected', head: 'redirected', options: 'redirected' };
+  for (const [verb, expected] of Object.entries(verbs)) {
+    const { fetch, calls } = stubFetch({ status: 0, statusText: '', headers: {}, body: '' });
+    const store = new TryItStore({ fetch, accessToken: () => 't' });
+    await store.send('11', composed('/api/mgmnt', verb, '/v2/', [], []));
+    await store.confirm();
+    assert.equal(calls.length, 1, `${verb} was sent once`);
+    assert.equal(store.outcome('11'), expected, `${verb} answered by a redirect`);
+    assert.equal(store.answer('11'), null, `${verb}: no answer, so no status 0 to show`);
+  }
 });
 
 test('reset forgets every console, and an answer still in flight does not land', async () => {

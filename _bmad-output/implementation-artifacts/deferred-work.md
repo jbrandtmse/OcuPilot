@@ -8290,3 +8290,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: DW-1836 review | severity: med | fix-risk: low | footprint: in-epic
 - evidence: fetch redirect:manual hides who answered (status 0, no Location); the owner's binding wording was kept (DW-1836 implement review, 2026-09-29)
 - 2026-09-29T21:42:32Z status=decision-pending owner=burndown by=cr note=owner: keep the wording, or hedge it for writes only (e.g. '...or the application redirected after acting on it')
+- 2026-09-29T22:05:50Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=by=merge_gate hedge applied: a non-safe verb's opaque redirect reads outcome unknown, may have acted, check before resending; unit/component/browser pinned

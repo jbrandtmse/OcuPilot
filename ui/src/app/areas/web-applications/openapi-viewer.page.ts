@@ -22,6 +22,7 @@ const OUTCOME_SENTENCES: Readonly<Record<TryItOutcome, string>> = {
   unsent: STRINGS.tryItUnsent,
   failed: STRINGS.tryItFailed,
   redirected: STRINGS.tryItRedirected,
+  'redirected-write': STRINGS.tryItRedirectedWrite,
 };
 
 /** One parameter, resolved for drawing. */

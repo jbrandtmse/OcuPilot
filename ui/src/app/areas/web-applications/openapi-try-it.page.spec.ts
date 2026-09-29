@@ -113,9 +113,9 @@ async function settle(fixture: ComponentFixture<OpenApiViewerPage>): Promise<voi
  * fill the dialog heading from `url` rather than `displayUrl` -> the secrets case goes red; pass the
  * dialog's URL to `replace` as a string -> the `$&` case goes red; drop the page's no-address
  * refusal -> the no-address case goes red; judge the page's refusal on the fully decoded path alone
- * -> the disagreeing-readings case goes red; swap two outcome sentences, read a status-0 response
- * as an answer in the store, skip the store's build check, or read a 4xx or 5xx as a redirect -> the
- * no-answer case goes red.
+ * -> the disagreeing-readings case goes red; swap two outcome sentences, show a write's redirect
+ * with the read's sentence, read a status-0 response as an answer in the store, skip the store's
+ * build check, or read a 4xx or 5xx as a redirect -> the no-answer case goes red.
  */
 describe('OpenApiViewerPage try-it console', () => {
   afterEach(() => {
@@ -324,6 +324,18 @@ describe('OpenApiViewerPage try-it console', () => {
     expect(one(redirect, 'answer')).toBeNull();
     expect(bareZero(redirect)).toBe(false);
     expect(one(redirect, 'record')).not.toBeNull();
+
+    TestBed.resetTestingModule();
+    const redirectedWrite = stubRedirect();
+    const write = await opened('/api/probe', answer('/api/probe', [row(1, '/x', 'post')]));
+    one(write, 'send')!.click();
+    write.detectChanges();
+    one(write, 'confirm')!.click();
+    await settle(write);
+    expect(redirectedWrite.map((call) => call.init.method)).toEqual(['POST']);
+    expect(textOf(one(write, 'failed'))).toBe(STRINGS.tryItRedirectedWrite);
+    expect(one(write, 'answer')).toBeNull();
+    expect(bareZero(write)).toBe(false);
 
     TestBed.resetTestingModule();
     const sent = stubFetch({ status: 200, type: 'text/plain', body: '' });

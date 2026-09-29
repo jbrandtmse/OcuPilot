@@ -24,10 +24,14 @@
  *    neither on the wire, while the same Send let through is recorded there and answers its 401.
  *    The page passes DW-1337 in both themes with the redirect sentence shown. On the same page,
  *    Chrome's `Request` refuses to build the requests the store reports unsent, which its unit tests
- *    decide under Node's `Request`, and builds a Latin-1 header value.
+ *    decide under Node's `Request`, and builds a Latin-1 header value. Then a confirmed `POST` on
+ *    `/v2/{namespace}/{applicationName}`, answered in the browser with a 302, shows the write's
+ *    redirect sentence, which says the instance may have acted on it, and passes DW-1337; CDP
+ *    records it nowhere on the wire.
  *
- * **It sends reads only.** No mutating request is ever sent: the one write it composes is cancelled,
- * and the refused ones have no Send. Refuses the live container.
+ * **It sends reads only.** No mutating request reaches the instance: the `DELETE` it composes is
+ * cancelled, the interception in 7 answers every request to `/api/mgmnt` other than a GET before it
+ * leaves the browser, and the refused ones have no Send. Refuses the live container.
  *
  * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
  * then `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test
@@ -317,7 +321,8 @@ test('Copy as curl on GET /v2/web-apps writes the exact command without the toke
 test('a Send stopped before the instance shows its sentence and never a bare 0: aborted, then answered with a redirect', async () => {
   // Mutations (Rule 19), each rebuilt and redeployed: read a status-0 response as an answer in
   // `TryItStore.dispatch`, or show `tryItFailed` for the redirected outcome -> the wait for the
-  // redirect sentence times out.
+  // redirect sentence times out; record every status-0 response as `redirected` -> the wait for the
+  // write's redirect sentence times out.
   const { context, page, sentHeaders } = await atDocument('/api/mgmnt');
   try {
     const operation = await openConsole(page, '/v2/', 'Get');
@@ -326,6 +331,7 @@ test('a Send stopped before the instance shows its sentence and never a bare 0: 
     const stopped = [];
     const passed = [];
     const followed = [];
+    const writes = [];
     let mode = 'abort';
     await page.setRequestInterception(true);
     page.on('request', (request) => {
@@ -333,6 +339,10 @@ test('a Send stopped before the instance shows its sentence and never a bare 0: 
       if (path === probe) {
         followed.push(request.id);
         void request.abort('failed');
+      } else if (path.startsWith('/api/mgmnt') && request.method() !== 'GET') {
+        // Whatever the mode, nothing but a GET is let through to the management API.
+        writes.push({ id: request.id, method: request.method() });
+        void request.respond({ status: 302, headers: { location: `${config.origin}${probe}` }, body: '' });
       } else if (path === target && mode !== 'continue') {
         stopped.push(request.id);
         if (mode === 'abort') void request.abort('failed');
@@ -343,19 +353,26 @@ test('a Send stopped before the instance shows its sentence and never a bare 0: 
       }
     });
 
-    /** Press Send, then wait until the console shows `sentence` and nothing is in flight. */
-    const sendFor = async (sentence) => {
-      await page.click(`${operation} [data-ocu-try-it="send"]`);
+    /**
+     * Press Send on the console of the operation `at` selects, and its confirmation when `confirm`,
+     * then wait until the console shows `sentence` and nothing is in flight.
+     */
+    const sendFor = async (sentence, at = operation, confirm = false) => {
+      await page.click(`${at} [data-ocu-try-it="send"]`);
+      if (confirm) {
+        await page.waitForSelector('[data-ocu-try-it="confirm"]', { timeout: config.navigationTimeoutMs });
+        await page.click('[data-ocu-try-it="confirm"]');
+      }
       await page.waitForFunction(
         (selector, wanted) => {
           const box = document.querySelector(`${selector} [data-ocu-try-it="console"]`);
           return box?.getAttribute('aria-busy') === 'false' && box.querySelector('[data-ocu-try-it="failed"]')?.textContent.trim() === wanted;
         },
         { timeout: config.navigationTimeoutMs },
-        operation,
+        at,
         sentence
       );
-      return page.$eval(`${operation} [data-ocu-try-it="console"]`, (box) => ({
+      return page.$eval(`${at} [data-ocu-try-it="console"]`, (box) => ({
         answer: box.querySelector('[data-ocu-try-it="answer"]') !== null,
         bareZero: Array.from(box.querySelectorAll('*')).some((node) => node.textContent.trim() === '0'),
       }));
@@ -402,6 +419,19 @@ test('a Send stopped before the instance shows its sentence and never a bare 0: 
       return out;
     }, `${config.origin}/api/mgmnt/v2/`);
     assert.deepEqual(built, { pastLatin1: false, lineBreak: false, badName: false, getBody: false, trace: false, latin1: true }, 'Chrome refuses to build what the store reports unsent');
+
+    // A write answered by a redirect: the application may have acted on it, so the read's sentence
+    // would be false. The handler above answers it with a 302 before it leaves the browser.
+    assert.deepEqual(writes, [], 'no write was issued before this leg');
+    await page.evaluate(() => Array.from(document.querySelectorAll('[data-ocu-openapi="path"]')).find((node) => node.textContent.trim() === '/v2/')?.click());
+    await page.waitForFunction(() => document.querySelector('[data-ocu-openapi="operation"]') === null, { timeout: config.navigationTimeoutMs });
+    const write = await openConsole(page, '/v2/{namespace}/{applicationName}', 'Post');
+    assert.deepEqual(await sendFor(STRINGS.tryItRedirectedWrite, write, true), { answer: false, bareZero: false }, 'a redirected write: its sentence, no Response block, no bare 0');
+    assert.deepEqual(writes.map((entry) => entry.method), ['POST'], 'the confirmed write was answered in the browser');
+    assert.deepEqual(followed, [], 'the write\'s redirect was not followed');
+    await frames(page);
+    assert.deepEqual(writes.filter((entry) => sentHeaders.has(entry.id)), [], 'CDP records the write nowhere on the wire');
+    await assertStructure(page);
   } finally {
     await context.close();
   }
