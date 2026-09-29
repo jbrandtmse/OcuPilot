@@ -240,6 +240,8 @@ services:
       # The Background tasks classes also create a scratch database and pause, resume and cancel a
       # compact of it; AdminPortForget runs the whole retention sweep.
       # classes: AdminPortForget, BackgroundSeed, BackgroundTasksLive
+      # The 404 class creates and deletes a probe role through the real port and reads the alert state.
+      # classes: AdminPortAbsence
       # The broadcast's live class also starts terminal sessions of its own and broadcasts to them.
       # classes: ProcessBroadcastLive
       OCUPILOT_ALLOW_PRINCIPALS: "1"
