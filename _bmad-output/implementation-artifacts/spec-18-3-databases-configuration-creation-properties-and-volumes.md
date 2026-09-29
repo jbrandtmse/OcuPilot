@@ -2,7 +2,7 @@
 title: 'Story 18.3: Databases - configuration, creation, properties and volumes'
 type: 'feature'
 created: '2026-09-28'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '8692236c883a2c50d05c4d55c8399ff9d308f557'
 baseline_commit: '8692236c883a2c50d05c4d55c8399ff9d308f557'
 review_loop_iteration: 0
@@ -558,8 +558,13 @@ Rejected:
 - outside the rework, not high: `structural-walk.mjs` `goInApp` reports a guard-canceled navigation as a 30 s timeout.
 - spec or lead bookkeeping: the bundle line's 2217 kB warning, the triage log's doubled row, the oversized spec's growth, the cycle-log order.
 
+**Rework 2 (2026-09-29, CI):**
+
+- [ ] [CI] instance shard 2/3 (run 36588987899 on `f13a007c`): `BackgroundTasksLive.TestTheAgentsConfirmPausesACompact` red -- the confirm answered `PROPOSAL.TARGETCHANGED` (then: not paused, no ledger row, no marker). It passed on `b43a0a2d` and `8692236c`, and nothing server-side changed after `8692236c`, so the failure is timing-dependent. This story added `Database` to every Background tasks row (`BackgroundTaskPort.WithDatabases`/`TaskDatabases`/`KeepRunning`, the list descriptor's fields), which the write tools' fresh read carries into their fingerprint. Find which value moved between the mint and the confirm for a just-resumed compact (for example `Database` read from `%SYS.BackgroundTask:DatabaseList` lagging or changing against the portal row, or a moving `Details` counter that predates this story), and fix it at its cause: a fingerprint subject carries no value that moves while the target's own state does not (AD-51), and a task's `Database` must read the same for the task's life or stay out of the subject. Pin it with a test that goes red on the moving value (on `ocupilot-b-ci`, `BackgroundTasksLive` or a recording fixture) and a demonstrated mutation; then run `BackgroundTasks`, `BackgroundTasksLive` (at least three times, one run at a time) and `database-details.page.spec.ts`. If the cause predates this story, say so with evidence and still fix it here only if it is inside the Background tasks footprint this story already extended.
+
 ## Spec Change Log
 
+- 2026-09-29, runner, rework 2: CI run 36588987899 was red on `f13a007c` (`BackgroundTasksLive`, one [CI] item under Tasks & Acceptance); status set to `in-progress`.
 - 2026-09-29, runner, rework 1: CI run 36573329469 was red on `b43a0a2d` (the structural walk, one [CI] item under Tasks & Acceptance); status set to `in-progress` for one rework iteration. The code review's patches are committed with the rework commit.
 - 2026-09-29, runner, before re-plan: the orchestrator split remote databases (SA-17, Part C) into Story 18.16 (Rule 5, 2026-09-28) and kept expand-volume and size-grow in 18.4. The intent contract drops Part C and adds DW-1080 (Database details' background tasks through `BackgroundTaskPort`), DW-1807 (`PATH.SERVED`), DW-1795 and DW-1796. Since the first plan, `PATH.INSTANCE` covers every file in every configured database and journal directory (DW-1790), and every file and vendor-writes directory under OcuPilot's served directory is refused `PATH.SERVED` (DW-1798, DW-1806). Status set to `draft` for the re-plan.
 
