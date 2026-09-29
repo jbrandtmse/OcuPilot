@@ -8171,3 +8171,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: .claude/rules/objectscript-testing.md asks about 500 lines per class; the code review put its new legs in DatabaseWriteDetail rather than grow it.
 - 2026-09-29T14:12:01Z status=wontfix-accepted owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=reopen_if=DatabaseWrite.cls gains a test method or passes 800 lines
+
+### DW-1829: Pre-existing CI flake (Story 16.5): BackgroundSeed.PausedCompact can see a paused compact read Running for the whole 30 s Settled wait, so BackgroundTasksLive fails at its seed; and its ~2 s seeded compact can end between a pause test's mint and confirm (18.3 rework 2 retries up to 3 times, which makes that race unlikely, not impossible)
+- source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Feature run 36530303753 (2026-09-29 06:22, no 18.3 code): TestASeededPortalCompactIsListedPaused read Running after a 79 s class run; a PAUSEDISPOSITION -1 task reads Paused only while its process state is 18 (irissys/%SYS/BackgroundTask.cls:567-569); 18.3 rework 2 measured the resumed compact at 1.4-1.9 s on ocupilot-b-ci
+- 2026-09-29T16:48:14Z status=routed owner=burndown by=harvest note=BackgroundSeed.cls is Epic 16's (16.5); a longer seeded compact and a Settled that tolerates the process-state window would remove both races
