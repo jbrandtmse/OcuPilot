@@ -229,3 +229,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-29T13:13:07Z	Story 18.3	ledger_routed_planned	story=18-4-the-deferred-disk-operations entries=1 excess=0 by=harvest dw=DW-1821
 2026-09-29T13:13:07Z	Story 18.3	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none note=AD-constrained_ACs_pinned_by_the_stage_s_own_mutations(Verification)
 2026-09-29T13:13:20Z	Story 18.3	stage_spawned	stage=qa spawn_at=2026-09-29T13:13:20Z model=sonnet agent_name=18-3-databases-qa-1 cycle_iteration=1
+2026-09-29T13:16:07Z	Story 18.3	qa_complete	spawn_at=2026-09-29T13:13:20Z model=sonnet tests_added=0 mutations_demonstrated=0 first_run_failures=0 clarifications=0 closing_sections_present=true note=gap_audit_found_none(AC1-AC9,matrix,P1-P11,Q1-Q11_each_pinned_with_observed_red)
+2026-09-29T13:16:07Z	Story 18.3	stage_spawned	stage=code-review spawn_at=2026-09-29T13:16:07Z model=opus agent_name=18-3-databases-code-review-1 cycle_iteration=1 review_tier=full-opus scope=fb12ead7..b43a0a2d
