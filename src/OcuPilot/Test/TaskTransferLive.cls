@@ -226,6 +226,7 @@ Method TestTheAgentExportsAndImportsThroughConfirm()
 Method TestAtTheBaselineTheAgentsImportIsDisabledAndTheScreensProceeds()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Clear(), "the baseline alone decides")
+    Set tDirectory = $ClassMethod(..#PROBE, "ProbeDirectory")
     Set tRoot = $ClassMethod(..#PROBE, "FirstRoot")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeTask", "Baseline", .tId, .tGuid), "a probe task is made")
     Do ..Act("export", tId, "OcuP164/baseline.xml", ..#LEASTUSER, .tStatus, .tBody)
