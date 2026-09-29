@@ -80,8 +80,10 @@ Method TestAWriteAnswered404IsStillLogged()
 }
 
 /// <p>A role deleted through the real port is re-read (<parameter>OcuPilot.Port.AdminPort.VERIFIEDDELETES</parameter>),
-/// the re-read is answered 404, and the instance's alert counter does not move, <code>alerts.log</code>
-/// gains no line once the log monitor has run, and a state below Alert stays below it.</p>
+/// the re-read is answered 404, and the instance's alert counter does not move, no line
+/// <code>alerts.log</code> gains once the log monitor has run is an <code>adminport</code> entry, and a
+/// state below Alert stays below it. <code>alerts.log</code> is read by content, because the log
+/// monitor also copies severe lines posted before the delete, a fresh instance's among them.</p>
 /// <p>Mutation: pass <code>0</code> for <var>pRead</var> at <method>OcuPilot.Port.AdminPort.Invoke</method>'s
 /// <method>Fail</method> call -> the re-read's line is posted as an alert and the counter and
 /// <code>alerts.log</code> assertions go red.</p>
@@ -100,7 +102,7 @@ Method TestAVerifiedDeletePostsNoAlert()
     Do $$$AssertTrue('..ProbeRoleExists(), "the role is gone")
     Do $$$AssertEquals($SYSTEM.Monitor.Alerts(), tAlerts, "the delete and its re-read post no alert")
     Hang ..#LOGMONITORWAIT
-    Do $$$AssertEquals(..AlertsLogLines(), tLines, "alerts.log gains no line once the log monitor has run")
+    Do $$$AssertEquals(..PortAlertsAfter(tLines), 0, "no line alerts.log gains once the log monitor has run is the port's")
     If tState < 2 Do $$$AssertTrue($SYSTEM.Monitor.State() < 2, "and the instance's state, " _ tState _ " before, has not reached Alert")
 }
 
@@ -126,6 +128,36 @@ ClassMethod AlertsLogLines() As %Integer
         Set tLines = -1
     }
     Quit tLines
+}
+
+/// <p>How many of the <code>alerts.log</code> lines after the first <var>pSkip</var> are
+/// <class>OcuPilot.Port.AdminPort</class> log entries, -1 when the file cannot be read.</p>
+ClassMethod PortAlertsAfter(pSkip As %Integer) As %Integer
+{
+    Set tFound = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tFile = ##class(%File).ManagerDirectory() _ "alerts.log"
+        Set $NAMESPACE = tOrigNS
+        If '##class(%File).Exists(tFile) Quit
+        Set tStream = ##class(%Stream.FileCharacter).%New()
+        Set tSC = tStream.LinkToFile(tFile)
+        If $$$ISERR(tSC) {
+            Set tFound = -1
+            Quit
+        }
+        Set tLine = 0
+        While 'tStream.AtEnd {
+            Set tText = tStream.ReadLine()
+            Set tLine = tLine + 1
+            If (tLine > pSkip) && (tText [ """subsystem"":""adminport""") Set tFound = tFound + 1
+        }
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tFound = -1
+    }
+    Quit tFound
 }
 
 ClassMethod CreateProbeRole() As %Status
