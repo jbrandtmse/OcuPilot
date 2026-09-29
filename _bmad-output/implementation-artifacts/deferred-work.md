@@ -8025,3 +8025,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: InstanceFile answers 0 for /durable/iris/csp/ocupilot/index.html on ocupilot-b-ci (read-only, blind-hunter layer); DW-1790's 17:21:25Z trailer lists the bundle, and its merge_gate decision names database and journal directories only; no overwriting consumer exists yet.
 - 2026-09-28T22:34:01Z status=decision-pending owner=burndown by=cr note=owner: should an overwriting consumer also be refused OcuPilot's own served files, as self-protection?
+
+### DW-1812: A broadcast whose every checked pid has ended is refused as not found (the RECIPIENTS read's 404), not with AC3's published PROCESS.BROADCAST.RECIPIENT sentence
+- source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ProcessPort answers RECIPIENTS 404 when no pid of the set runs, as the spec's Boundaries specify; the screen route and the mint stop on that read
+- 2026-09-29T04:04:49Z status=by-design owner=16-6-broadcast-a-message-to-processes by=harvest note=spec-bound: the RECIPIENTS clause specifies the 404; a set naming one running pid reaches the sentence

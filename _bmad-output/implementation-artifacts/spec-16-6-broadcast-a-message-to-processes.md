@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-28'
 status: 'done'
 baseline_revision: '4552cadf3d8daa7083a393f705b56b81f9cd9e9b'
+baseline_commit: '4552cadf3d8daa7083a393f705b56b81f9cd9e9b'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -286,6 +287,8 @@ deferred:
 - Given a message that is empty, longer than 255 characters or holds a control character, when either caller sends it, then it is refused and nothing is sent.
 
 ## Spec Change Log
+
+- 2026-09-29, after implement (lead): four Boundaries/Tasks statements are superseded by the build, as its Auto Run Result reports -- `FINGERPRINTSUBJECT` is `Recipients,Absent,Message` (the mint narrows the stored payload to the subject, so without `Message` the broadcast would carry none); the mint's recipient refusal lives in `MergeUpdate`, not `StateDiff` (the screen route also runs `StateDiff` and would answer 400 instead of the port's 409); `ProcessBroadcastLive` is armed on `OCUPILOT_ALLOW_PRINCIPALS` because it creates a user; the receiver records its pid in `^OcuPilotTestBroadcast` instead of writing `PID=` (AD-12's one-writer check refuses a bare `Write`). The frozen intent block is left as written.
 
 - 2026-09-28, spec gate (lead): the orchestrator accepted the 255-character message and 20-recipient caps as product choices and asked that both be named in the Fixed strings and stated in the dialog (Tasks). Spine amended at the gate: AD-5, AD-10, AD-13, AD-15, AD-51, AD-53.
 
