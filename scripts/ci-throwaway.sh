@@ -242,6 +242,8 @@ services:
       # classes: AdminPortForget, BackgroundSeed, BackgroundTasksLive
       # The broadcast's live class also starts terminal sessions of its own and broadcasts to them.
       # classes: ProcessBroadcastLive
+      # Task export and import's live class also exports and imports probe tasks as its principals.
+      # classes: TaskTransferLive
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -313,6 +315,9 @@ services:
       # classes: TaskCreate, TaskRules, TaskSave, TaskWire
       # classes: TaskUpdate, TaskEdit
       # classes: InjectionChannels, InjectionCompromised, InjectionSeed
+      # Task export and import's classes export probe tasks to files under the first allowed
+      # directory and import them back, deleting each probe task and file by exact name.
+      # classes: TaskTransfer, TaskTransferLive
       OCUPILOT_ALLOW_TASK_CONTROL: "1"
       # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
       # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted

@@ -15,6 +15,7 @@ import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { STRINGS } from '../core/strings';
 import { rowKey } from '../core/table-model';
+import { violationsOf, type Violation } from '../core/violations';
 
 /** The absolute path a screen's own row action is issued under (AD-20, AD-53). */
 export const SCREEN_ACTION_PATH_SUFFIX = '/action';
@@ -123,7 +124,16 @@ export const SET_RESOURCE_GRANT = 'set-resource-grant';
 export const REMOVE_RESOURCE_GRANT = 'remove-resource-grant';
 
 /** The Task schedule's descriptor, whose delete types a name that is not its row key. */
-const TASK_SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
+export const TASK_SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
+
+/**
+ * The Task schedule's Export and Import (Story 16.4): declared, and run by the list's own page
+ * (`areas/tasks/task-schedule.page.ts`), whose dialogs supply the file. Import names no task, so it
+ * is sent with the one target the tool reads, `TASK_IMPORT_TARGET`.
+ */
+export const TASK_EXPORT = 'export';
+export const TASK_IMPORT = 'import';
+export const TASK_IMPORT_TARGET = 'import';
 
 /** The processes list and Process details, whose Terminate carries the error-to-job flag. */
 const PROCESS_LIST = 'OcuPilot.Screen.Descriptor.ProcessList';
@@ -192,6 +202,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [ROLE_LIST]: [ADD_GRANTED_ROLE, REMOVE_GRANTED_ROLE, SET_RESOURCE_GRANT, REMOVE_RESOURCE_GRANT],
   // The Namespaces list's page registers Copy mappings itself, after this handler, so its dialog opens.
   [NAMESPACE_LIST]: [COPY_MAPPINGS],
+  // The Task schedule's page registers Export itself and draws Import as a screen-level action.
+  [TASK_SCHEDULE]: [TASK_EXPORT, TASK_IMPORT],
 };
 
 /**
@@ -396,6 +408,17 @@ export interface PendingConfirm {
 export interface ActionSink {
   setRefusal(reason: string): void;
   applied?(actionId: string): void;
+}
+
+/**
+ * What the instance answered the last refused action with (AD-39): the envelope's sentence, its
+ * field-level violations and its structured detail. A dialog that draws a refusal on its own fields
+ * reads it right after the `sendFor` that sent the action.
+ */
+export interface ActionRefusal {
+  readonly reason: string;
+  readonly violations: readonly Violation[];
+  readonly detail: Readonly<Record<string, unknown>> | null;
 }
 
 /** The fields of the row an action is about, where the caller holds them. */
@@ -803,6 +826,7 @@ export class ScreenActionHandler {
     values?: ActionValues,
     sink: ActionSink | null = null
   ): Promise<boolean> {
+    this.lastRefused = null;
     const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
     if (screen === undefined) return false;
     const addressed = SCREENS.find((entry) => entry.descriptor === (ACTION_ADDRESS[descriptor] ?? descriptor));
@@ -820,6 +844,14 @@ export class ScreenActionHandler {
       }
     );
     this.lastContinues = result.kind === 'ok' && result.body?.continues === true;
+    this.lastRefused =
+      result.kind === 'error'
+        ? {
+            reason: result.reason ?? '',
+            violations: result.detail ? violationsOf(result) : [],
+            detail: result.detail ?? null,
+          }
+        : null;
     if (result.kind !== 'ok') {
       // The envelope's own sentence (AD-39). A refused write changed nothing, so nothing is
       // published and no row is marked.
@@ -848,13 +880,24 @@ export class ScreenActionHandler {
    * Send `actionId` for `target` on `descriptor` with no dialog, as a row action would, and answer
    * whether the instance applied it. For a page that composes several actions itself -- the
    * Selective SQL auditing dialog -- so each still takes the one request and change event `send`
-   * makes.
+   * makes. `sink`, where given, takes the refusal sentence in place of the screen's own store: a
+   * dialog that shows the refusal itself keeps it off the list's banner.
    */
-  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues): Promise<boolean> {
-    return this.send(descriptor, actionId, target, values);
+  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues, sink?: ActionSink): Promise<boolean> {
+    return this.send(descriptor, actionId, target, values, sink ?? null);
   }
 
   private lastContinues = false;
+
+  private lastRefused: ActionRefusal | null = null;
+
+  /**
+   * The refusal the last action this handler sent was answered with, or `null` when it was applied
+   * or not sent. Read right after the `sendFor` that sent it, as `continued` is.
+   */
+  lastRefusal(): ActionRefusal | null {
+    return this.lastRefused;
+  }
 
   /**
    * Whether the last action this handler sent was applied and answered that it is still running on

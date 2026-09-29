@@ -2,7 +2,8 @@
 title: 'Story 16.4: Task export and import'
 type: 'feature'
 created: '2026-09-29'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '99fa0b4e6a22b8ac4351e94b375b9a3ab6da1464'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -345,6 +346,34 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-29 — Review pass
+
+- verdicts: 23 findings — high 0, medium 6, low 14, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` verification-gap: `ImportTasks`' `runPastTasksTomorrow` 0 was unpinned, since every probe started in the future — added `TaskTransferLive.TestAPastStartTaskIsScheduledAsTheVendorSchedulesIt`, which holds a past-start import equal to the vendor's own with 0; passing 1 turns it red.
+  - `[medium]` `[patch]` verification-gap: the port's gate was tested only for `%Admin_FileSystemAccess:USE` — `TestTheGateRefusesAMissingPairBeforeAnyCall` now denies each `PAIRS` member on EXPORT, IMPORT, PREVIEW and `CheckExport`; a gate skipping `%Admin_Task:USE` turns it red.
+  - `[medium]` `[patch]` verification-gap: the `NullEntityResolver` was unpinned — added `TestAnExternalEntityIsNeverResolved` (an external DTD declaring the file's elements and an entity over a sentinel file); without the resolver the summary carries the sentinel's text, measured red.
+  - `[low]` `[patch]` verification-gap: the in-file duplicate-name refusal was unpinned — added `TestAFileNeverYieldsOneTaskTwice`; dropping the line imports two same-named tasks (red).
+  - `[medium]` `[patch]` verification-gap: the unreadable-but-existing namespace branch was never reached — the Live rules leg adds a `USER` task as the four-pair principal, who cannot read `%DB_USER` (asserted); `Readable` answering 1 turns it red.
+  - `[medium]` `[patch]` verification-gap: `lastRefusal`'s "null after an applied action" ran on a fresh handler and could not fail — it now refuses, then applies, on one handler; keeping `lastRefused` through `send` turns it red.
+  - `[low]` `[patch]` verification-gap: AC3, AC8 and the client halves of AC4 and AC6 had no mutation line of their own — each mutation was demonstrated, reverted and recorded under `## Verification`.
+  - `[low]` `[reject]` verification-gap other: AC2's "every stored property equals" holds for a future-start task only; with the 0 the Always section requires, the vendor recomputes a past-start task's `DayNextScheduled` and `LastSchedule` forward. These are vendor-computed next-run state (AD-6 names a task's next-scheduled time as a side-effect field). The fix edits the spec; the behavior is pinned by the past-start leg above and recorded under residual risks.
+  - `[medium]` `[patch]` verification-gap other: a task with no `<Name>` would reach `$Data(pNames(""))` and answer 500 — `FileTasks` now reads such a file as not a task export (422 `TASK.IMPORT.FILE`), pinned by a `nameless.xml` case (red without the check).
+  - `[low]` `[patch]` verification-gap other: two tasks sharing a `JobGUID` in one file were both summarized and counted — `Examine` now marks an accepted task's GUID present, as the vendor skips the second; pinned in `TestAFileNeverYieldsOneTaskTwice` (red without the line).
+  - `[low]` `[reject]` verification-gap other: no row is highlighted after an import — the change event's target is `import` by Decision 4, and the matrix asks for a re-read and the status line only.
+  - `[low]` `[reject]` verification-gap other: the spec's run line said `TaskTransfer` 12/12 — the fix edits the spec; the run record was rewritten anyway with this pass's results.
+  - `[low]` `[patch]` intent-alignment: `PATH.INSTANCE` was never exercised through these tools and import had no `PATH.MANAGER` case — `TestTheServedDirectoryAndInstanceFilesAreRefused` (through `PathPortFixture`'s database-directory seam, the file left untouched) and a `messages.log` import case were added; `PATH.SERVED` is covered the same way.
+  - `[false]` `[reject]` intent-alignment: the status line and script join `root` and `path` as text — every root ends in a separator: `%SYS.FileSystemAccess.Create` stores `NormalizeDirectory(RootPath)` (`irissys/%SYS/FileSystemAccess.cls:39`), and the manager directory ends in one; `NameAdmitted` admits only clean segments, so the join equals the resolved path.
+  - `[low]` `[reject]` intent-alignment: the import script is the bare `ImportTasks` with no whole-file pre-check, and the export's `$ListBuild("12")` quotes the id — the spec's Snippet text, and AD-59 renders the vendor call.
+  - `[low]` `[reject]` intent-alignment: the Live missing-pair leg mints in the runner's process and checks the refusal at confirm — the agent's dispatch gate is the generic `Kernel/Agent/Dispatch` pair check over `PrivilegePairs`, which `AssertCommon` pins for both tools.
+  - `[false]` `[reject]` intent-alignment: the RunAs rule order differs from the create's — `TaskRules.RunAsViolations:520-542` also checks `%Admin_Secure` before existence; the port repeating the rules is the spec's (the port must not call `Area/`).
+  - `[low]` `[reject]` intent-alignment: `TASK.IMPORT.CHANGED` answers only after the other checks, and its reason names the file when the instance moved — the spec's IMPORT step order and reason.
+  - `[low]` `[reject]` intent-alignment: correlation loads Settings into memory, and hostile names reach the card — correlation is spec-mandated and never reads Settings; the summary is built from `Name` and `NameSpace` alone; names are untrusted data under AD-11 and AD-60.
+  - `[low]` `[reject]` intent-alignment: classic-page byte parity is not tested — measured at plan (Design Notes); AC3's pinning test holds the vendor calls the classic page makes.
+  - `[low]` `[reject]` intent-alignment: `MappingDescriptor` gains a `%cspapp.` branch and `ClassicPageGate` principals gain two grants — the branch checks the key through the portal's own resolver (AD-44), since that page is no compiled class here; the grants are the two tools' own pairs, held by both principals, so the discriminating resource is unchanged.
+  - `[false]` `[reject]` intent-alignment: a wrapper page, a screen-level Import and the regenerated mirror — `task-schedule.page.ts` in `DESCRIPTOR_PAGES` and Decision 5 are the spec's, and `screen-mirror.mjs --check` passes in `prebuild`.
+  - `[low]` `[reject]` intent-alignment: the dark pass checks contrast only — the same pass set every structural spec uses.
+
 ## Design Notes
 
 **Measured on `ocupilot-ci`, 2026-09-29** (vendor source in `%SYS.TaskSuper`, which is Hidden):
@@ -464,10 +493,46 @@ deferred: []
 | AC7 | `PrivilegePairs` drops `%Admin_FileSystemAccess:USE` | `TaskTransferLive` 403 leg (the port's gate must refuse too, so mutate both) |
 | AC8/AC9 | the page's `sendFor` omits `path` | `task-schedule.page.spec.ts` and `task-transfer.browser-spec.mjs` |
 
+**Mutations run (Rule 19)**, each on `ocupilot-ci`, reverted, and the tree checked unchanged after:
+
+- AC1 mutation: `TaskTransferPort.Export` passes `$ListBuild()` to the vendor → `TaskTransferLive` `TestTheScreenRoundTripKeepsEveryStoredProperty` (the export answers 500, no file), `TestTheAgentExportsAndImportsThroughConfirm` and `TestVendorFilesAndToolFilesAreInterchangeable` red.
+- AC2 mutation: `VendorImport` passes `runPastTasksTomorrow` 1 → `TaskTransferLive` `TestAPastStartTaskIsScheduledAsTheVendorSchedulesIt` red (a future-start probe cannot show it); `Examine` never counting a task present → the round-trip leg's second import red.
+- AC3 mutation: `ROOTELEMENT` "TaskList" → `TaskTransferLive` `TestVendorFilesAndToolFilesAreInterchangeable` red (the vendor's file refused `TASK.IMPORT.FILE`).
+- AC4 mutation: `Locate` passes `pOverwrite` 0 for an export → `TaskTransfer` `TestAnExportWritesTheTaskAndReplacesAFileAtTheName` (answers `PATH.EXISTS`) and `TestAFailedExportDeletesOnlyAFileItWrote` red.
+- AC5 mutation: the reviewed-tasks comparison becomes `If 0` → `TaskTransferLive` `TestTheAgentExportsAndImportsThroughConfirm` `TASK.IMPORT.CHANGED` leg red.
+- AC4 mutation (client): the page's `showRefusal` ignores the violations → `task-schedule.page.spec.ts` "AC4: a refusal on the name…" red.
+- AC6 mutation: `Examine` checks only the first task it would create → `TaskTransfer` `TestOneTaskThatCannotBeCreatedImportsNothing` bad-task-last legs red, with the vendor import made. `Readable` answers 1 → `TaskTransferLive` rules leg answers `TASK.TASKCLASS.UNKNOWN` for `USER`, red. Dropping the in-file name line → `TestAFileNeverYieldsOneTaskTwice` red. The page drops its `detail.task` sentence → `task-schedule.page.spec.ts` "AC2, AC6…" red.
+- AC7 mutation: `%Admin_FileSystemAccess:USE` dropped from both tools' `PrivilegePairs` and the port's `PAIRS` → `TaskTransferLive` `TestAPrincipalWithoutAPairIsRefusedOnBothCallers` red. `TaskTransferPort.Gate` skips `%Admin_Task:USE` → `TaskTransfer` `TestTheGateRefusesAMissingPairBeforeAnyCall` red on every type and on `CheckExport`.
+- AC8 mutation: `taskExportReplaces` reworded in `strings.ts` → `tools/strings.test.mjs` red.
+- Other: drop the `NullEntityResolver` → `TestAnExternalEntityIsNeverResolved` red (the summary carries the sentinel file's text); drop the in-file GUID line → `TestAFileNeverYieldsOneTaskTwice` red; drop the nameless check → `TestAnImportRefusesAFileThatIsNotATaskExport` red; keep `lastRefused` through `send` → `screen-action-handler.spec.ts` "answers null once a later action…" red.
+- Password row mutation: drop `WithholdSettings` from `TaskPort`'s read → `TaskTransfer` `TestAPasswordSettingIsExportedButNeverRead` red on the read leg.
+- AC8/AC9 mutation: the page's `sendFor` omits `path` → `task-schedule.page.spec.ts` export and import legs red; `task-transfer.browser-spec.mjs` red after rebuild and redeploy.
+
+**Run (implement stage, after review):** the full ObjectScript sweep on `ocupilot-ci` ran 362 classes and 2,737 tests. Its one failure in a class this story touches, `ToolEmit` (both tools declared their file pair outside the `WRITERESOURCE` convention), was fixed and re-ran 11/11. The rest is residue: `PathPortInstance` 1, `TaskHistory` 3, `Retention` 1, `WireSecurityRead` 1, `ProposalPrivilege` 1 (`%SYS` holds 1,055 application errors, above one delete's cap), and 30 classes refused by arming variable. This story's refused classes re-ran armed (`docker exec -e`): `TaskTransfer` 15/15, `TaskTransferLive` 6/6, `TaskWire` 6/6, `ClassicPageGate` 3/3. `npm test` passed 1706 tool and 1826 component tests; the bundle is 2.18 MB. On a redeployed bundle, `task-transfer` passed 3/3 and `task-schedule-actions` 4/4. `tasks.browser-spec.mjs` passed 12/15; its three failures are Task history reads timing out, as the `TaskHistory` residue does (inference).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- Planned from the committed `epic-16-context.md`, the full spine, 16.3's continuity, and three investigations: a code map of the server, a code map of the client, and vendor measurements on `ocupilot-ci`. Every probe object and file was removed.
-- No file outside this spec was edited.
+- **Implemented:** Task schedule's Export and Import, as two write tools (`tasks.schedule.export`, `tasks.schedule.import`) with two callers each, over the new `Port/TaskTransferPort` (PathPort-resolved files, `%SYS.Task.ExportTasks`/`ImportTasks` in `%SYS`, whole-file validation before import). The client adds the Task schedule page, two dialogs over the server path picker, a screen-level Import, `lastRefusal()` on the handler and eight strings. `PathPort.cls` is untouched; `AdminPort.cls` has only the `MUTATINGTYPES` append.
+- **Files:**
+  - Server: `Port/TaskTransferPort.cls`; `Screen/Tool/TaskExport.cls`, `TaskExportMint.cls`, `TaskImport.cls`, `TaskImportMint.cls`; `Api/Error.cls` (four codes); `Kernel/Governance/Baseline.cls`; `Port/AdminPort.cls`; `Screen/Descriptor/TaskScheduleList.cls`.
+  - Server tests: `Test/TaskTransfer.cls`, `TaskTransferLive.cls`, `TaskTransferFixture.cls`, and the Code Map's rosters.
+  - Client: `areas/tasks/` page, two dialogs and their three specs; the handler, `screen-actions.ts`, the command bar and box; `strings.ts`; `screens.generated.ts` (regenerated); `screen-outlet.ts`.
+  - Also: `scripts/ci-throwaway.sh` arming comments, EXPERIENCE.md (993 lines), `browser/task-transfer.browser-spec.mjs` and `task-schedule-actions.browser-spec.mjs`.
+  - Outside the Code Map: `core/proposal-view.ts` with `tools/proposal-view.test.mjs` (the card's `TASK.EXPORT.REPLACES` consequence line), and an add-only block at the end of `_components.scss`.
+- **Deviations:**
+  - Export and Import are declared before Delete, not appended, so the row menu keeps the destructive action last.
+  - PREVIEW refuses an all-present file, so the agent's mint refuses it too.
+  - Both tools declare the file pair as `WRITERESOURCE`/`WRITEPERMISSION`, the convention `ToolEmit` reads.
+- **Review:** 23 findings (high 0, medium 6, low 14, false 3), triaged in the Review Triage Log.
+  - Patched: 6 medium and 4 low.
+  - The two port changes: a task with no name is refused `TASK.IMPORT.FILE`, and a second task sharing a `JobGUID` is counted present. The rest are new test legs and Rule 19 lines.
+  - Nothing deferred; 10 rejected with reasons in the log.
+  - Follow-up review: `false`. The computation reached two or more patched mediums, but every patch is pinned by a demonstrated red, so no specific unverified risk can be named.
+- **Verification:** see `## Verification`, "Run (implement stage, after review)". Every recorded mutation was applied, observed red and reverted with the tree unchanged, and every probe task, file and principal was removed.
+- **Residual risks:**
+  - A task whose start date is past has its `DayNextScheduled` and `LastSchedule` recomputed by the vendor's import with 0, so AC2's property compare holds for a future-start task only.
+  - The three `tasks.browser-spec.mjs` Task history failures are attributed to the throwaway's old history rows (inference); CI's fresh throwaway settles it.
+  - `ocupilot-ci` lacks `OCUPILOT_ALLOW_TASK_CONTROL` and `OCUPILOT_ALLOW_NAMESPACE_CONFIG`, so the armed classes ran through `docker exec -e`; CI arms them itself.

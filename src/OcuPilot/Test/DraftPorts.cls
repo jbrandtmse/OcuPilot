@@ -169,6 +169,30 @@ Method TestTaskPort()
     Do $$$AssertTrue(tText [ """DailyStartTime"":""08:00:00""", "a clock field the diff names is sent: " _ tText)
 }
 
+/// <p>An export is the vendor's <code>ExportTasks</code> of the target to the root joined to the
+/// relative name, and an import its <code>ImportTasks</code> of that file, each in <code>%SYS</code>
+/// with no display.</p>
+/// <p>Mutation (Rule 19): drop the root from <method>OcuPilot.Port.TaskTransferPort.Snippet</method>'s
+/// file -- both legs go red.</p>
+Method TestTaskTransferPort()
+{
+    Kill tQuery
+    Set tQuery("id") = "12"
+    Set tQuery("root") = "/durable/iris/mgr/"
+    Set tQuery("path") = "out/t.xml"
+    Set tText = ..Text(##class(OcuPilot.Port.TaskTransferPort).Snippet("TaskTransfer", "EXPORT", .tQuery, "", ..Context()))
+    Do $$$AssertTrue(tText [ "objectscript:  Set $NAMESPACE = ""%SYS""", "an export is ObjectScript in %SYS: " _ tText)
+    Do $$$AssertTrue(tText [ "##class(%SYS.Task).ExportTasks($ListBuild(""12""), ""/durable/iris/mgr/out/t.xml"", ""-d"")", "writing the target to the root and the name joined")
+    Kill tQuery
+    Set tQuery("id") = "import"
+    Set tQuery("root") = "/durable/iris/mgr/"
+    Set tQuery("path") = "out/t.xml"
+    Set tQuery("tasks") = "Nightly (%SYS)"
+    Set tText = ..Text(##class(OcuPilot.Port.TaskTransferPort).Snippet("TaskTransfer", "IMPORT", .tQuery, "", ..Context()))
+    Do $$$AssertTrue(tText [ "##class(%SYS.Task).ImportTasks(""/durable/iris/mgr/out/t.xml"", ""-d"", 0)", "an import reads that file: " _ tText)
+    Do $$$AssertTrue(tText '[ "Nightly", "and renders no reviewed task")
+}
+
 /// <p>A revoke names the account by the stored read's own name where it carries one.</p>
 Method TestTokenPort()
 {

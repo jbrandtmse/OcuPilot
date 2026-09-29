@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 // never has a handler, and listeners hear only changes that happened.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const { ScreenActions, actionLabel, REFRESH_ACTION_ID } = await import(
+const { ScreenActions, actionLabel, REFRESH_ACTION_ID, TASK_IMPORT_ACTION_ID } = await import(
   join(uiRoot, 'src', 'app', 'core', 'screen-actions.ts')
 );
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -124,6 +124,12 @@ test("a screen's row action draws its own published words", () => {
   // Mutation (Rule 19): drop the ProcessList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.ProcessList', 'broadcast'), STRINGS.processBroadcastAction);
   assert.equal(actionLabel(DEFINITIONS, 'broadcast'), 'broadcast');
+  // Story 16.4: the Task schedule's Export, and its screen-level Import under the id its page
+  // registers.
+  // Mutation (Rule 19): drop the TaskScheduleList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.TaskScheduleList', 'export'), STRINGS.taskExportAction);
+  assert.equal(actionLabel(DEFINITIONS, 'export'), 'export');
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.TaskScheduleList', TASK_IMPORT_ACTION_ID), STRINGS.actionImport);
 });
 
 test('an action that means the same thing everywhere falls back to the shared map', () => {

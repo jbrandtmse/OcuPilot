@@ -234,6 +234,8 @@ XData Coverage
 <tool name="tasks.background.pause" class="OcuPilot.Test.BackgroundTasks" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the three Background tasks control tools are asserted together in one loop"/>
 <tool name="tasks.background.resume" class="OcuPilot.Test.BackgroundTasks" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the three Background tasks control tools are asserted together in one loop"/>
 <tool name="osmgmt.processes.broadcast" class="OcuPilot.Test.ToolWrite" method="TestTheProcessBroadcastToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="tasks.schedule.export" class="OcuPilot.Test.TaskTransfer" method="TestTheExportToolIsAnActionWriteOverTheTransferPort"/>
+<tool name="tasks.schedule.import" class="OcuPilot.Test.TaskTransfer" method="TestTheImportToolIsAnActionWriteOverTheTransferPort"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>
