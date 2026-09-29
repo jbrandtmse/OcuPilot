@@ -72,6 +72,12 @@ XData Coverage
 <screen name="DatabaseList" class="OcuPilot.Test.Descriptor" method="TestTheDatabasesGeneralViewDeclaresExactlyItsFiveFieldsAndFiveColumns"/>
 <screen name="DatabaseVolumeList" class="OcuPilot.Test.Descriptor" method="TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall"/>
 <screen name="DeviceList" class="OcuPilot.Test.Descriptor" method="TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns"/>
+<screen name="GlobalMappingList" class="OcuPilot.Test.MappingDescriptor" method="TestTheListsAreParentScopedAndKeyedByNamespaceAndName" corpus="the three mapping lists are asserted together in one loop"/>
+<screen name="GlobalMappingForm" class="OcuPilot.Test.MappingDescriptor" method="TestTheFormsAreUnlistedOverTheirKindsDialog" corpus="the three mapping forms are asserted together in one loop"/>
+<screen name="PackageMappingList" class="OcuPilot.Test.MappingDescriptor" method="TestTheListsAreParentScopedAndKeyedByNamespaceAndName" corpus="the three mapping lists are asserted together in one loop"/>
+<screen name="PackageMappingForm" class="OcuPilot.Test.MappingDescriptor" method="TestTheFormsAreUnlistedOverTheirKindsDialog" corpus="the three mapping forms are asserted together in one loop"/>
+<screen name="RoutineMappingList" class="OcuPilot.Test.MappingDescriptor" method="TestTheListsAreParentScopedAndKeyedByNamespaceAndName" corpus="the three mapping lists are asserted together in one loop"/>
+<screen name="RoutineMappingForm" class="OcuPilot.Test.MappingDescriptor" method="TestTheFormsAreUnlistedOverTheirKindsDialog" corpus="the three mapping forms are asserted together in one loop"/>
 <screen name="NamespaceList" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheListDeclaresItsFourFieldsAndItsDelete"/>
 <screen name="Home" class="OcuPilot.Test.Descriptor" method="TestARefreshingScreenDeclaresItsRatesAndHomeDefaultsToTen"/>
 <screen name="LdapConfigList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
@@ -151,6 +157,16 @@ XData Coverage
 <tool name="osmgmt.namespaces.create" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
 <tool name="osmgmt.namespaces.update" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
 <tool name="osmgmt.namespaces.delete" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
+<tool name="osmgmt.namespaces.copymappings" class="OcuPilot.Test.NamespaceCopy" method="TestTheCopyIsAQueuedWrite"/>
+<tool name="osmgmt.globalmappings.create" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.globalmappings.update" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.globalmappings.delete" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.routinemappings.create" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.routinemappings.update" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.routinemappings.delete" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.packagemappings.create" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.packagemappings.update" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
+<tool name="osmgmt.packagemappings.delete" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
 <tool name="logs.applicationerrors.delete" class="OcuPilot.Test.ToolWrite" method="TestTheErrorDeleteToolIsAnActionWriteOverItsOwnPort"/>
 <tool name="osmgmt.processes.resume" class="OcuPilot.Test.ToolWrite" method="TestTheProcessResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="osmgmt.processes.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheProcessSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>

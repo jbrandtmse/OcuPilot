@@ -446,6 +446,14 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             ; An admin LIST, UPCOMING, HISTORY or VOLUMELIST: the declared type, the fixed query and then the criteria.
             Do ..SeedSourceQuery(tSource, .tQuery)
             Set tQuery("maxRows") = tMax + 1
+            ; AD-36 as amended (Story 18.14): a parent-scoped list whose rows carry no parent key
+            ; takes it from its one criterion, which is therefore required, as a single-object
+            ; read's route-id criterion is.
+            Set tSeededPart = ..SeededPart(pDescriptor, tRead)
+            If (tSeededPart '= "") && ($Get(pCriteria(tSeededPart)) = "") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tSeededPart _ " is required", .pHttpStatus, .pFault)
+                Quit
+            }
             Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
             If tCriterionProblem '= "" {
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
@@ -456,6 +464,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tPortSC
                 Quit
             }
+            If (tSeededPart '= "") && $IsObject(tAnswer) && tAnswer.%IsA("%Library.DynamicArray") Do ..SeedRows(tAnswer, tSeededPart, pCriteria(tSeededPart))
         }
         If '$IsObject(tAnswer) || 'tAnswer.%IsA("%Library.DynamicArray") {
             Set tSC = ..Internal(pDescriptor _ "'s read answered something other than a list", .pHttpStatus, .pFault)
@@ -723,6 +732,38 @@ ClassMethod CriteriaParams(pDescriptor As %String) As %List
         Set tParams = ""
     }
     Quit tParams
+}
+
+/// <p>The id part a parent-scoped admin list seeds onto its rows, or <code>""</code> (AD-36 as
+/// amended 2026-09-28, Story 18.14): the first part of <var>pDescriptor</var>'s composite id where
+/// the descriptor declares a <code>parentScope</code> and <var>pRead</var> declares exactly one
+/// criterion whose <code>param</code> is that part's name. The vendor's rows for such a list carry
+/// no parent key -- a namespace's mapping lists answer none -- so the row's id could not address
+/// the object its write reaches without it.</p>
+ClassMethod SeededPart(pDescriptor As %String, pRead As %DynamicObject) As %String [ Private ]
+{
+    Set tPart = ""
+    Try {
+        If $ClassMethod(pDescriptor, "ParentScope") = "" Quit
+        If $ClassMethod(pDescriptor, "IdKind") '= "composite" Quit
+        Set tParts = $ClassMethod(pDescriptor, "IdParts")
+        If $ListLength(tParts) < 2 Quit
+        Set tParam = ..ObjectCriterionParam(pRead)
+        If (tParam '= "") && (tParam = $List(tParts, 1)) Set tPart = tParam
+    } Catch {
+        Set tPart = ""
+    }
+    Quit tPart
+}
+
+/// <p>Set <var>pValue</var> as the string member <var>pPart</var> of every object row of
+/// <var>pRows</var>, before any row is projected (<method>SeededPart</method>).</p>
+ClassMethod SeedRows(pRows As %DynamicArray, pPart As %String, pValue As %String) [ Private ]
+{
+    Set tIterator = pRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $IsObject(tRow) && tRow.%IsA("%Library.DynamicObject") Do tRow.%Set(pPart, pValue, "string")
+    }
 }
 
 /// <p>The one <code>read.criteria</code> field's <code>param</code> a parent-scoped

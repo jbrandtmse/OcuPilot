@@ -7915,6 +7915,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: NamespaceForm declares only %CSP.UI.Portal.NamespaceEdit and NamespaceList only %CSP.UI.Portal.Namespaces; %CSP.UI.Portal.Namespace and Dialog.NamespaceDelete are separate Zen pages whose custom resource Screen.Gate.RequiredPairs never reads. The spec names the gap in Design Notes; the spine does not. Dialog.Resource, Dialog.ProcessTerminate and the RoleResource dialogs share it; 18.3's Dialog.DatabaseDelete will.
 - 2026-09-28T14:20:12Z status=decision-pending owner=burndown by=cr note=owner call: union each replaced page's key into its write tool's pairs, or name the gap in AD-44; mirror in spine Deferred
 - 2026-09-28T15:06:10Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=owner decision: a screen replacing more than one classic page unions every replaced page's custom resource into its write tools' pairs; AD-44
+- 2026-09-28T23:19:24Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings by=adjudication note=35f085bc plus review: Write.CLASSICPAGES and Screen.Gate.WithClassicPages; namespace and mapping tools declare their pages; ClassicPageGate isolates each page
 
 ### DW-1785: NamespaceRules.Taken's fail-closed branch (a name read failing with anything but 404) is pinned by no test; the tool's own reads have no port seam
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: med | footprint: in-story
@@ -8023,8 +8024,84 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: InstanceFile answers 0 for /durable/iris/csp/ocupilot/index.html on ocupilot-b-ci (read-only, blind-hunter layer); DW-1790's 17:21:25Z trailer lists the bundle, and its merge_gate decision names database and journal directories only; no overwriting consumer exists yet.
 - 2026-09-28T22:34:01Z status=decision-pending owner=burndown by=cr note=owner: should an overwriting consumer also be refused OcuPilot's own served files, as self-protection?
+- 2026-09-28T23:19:46Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: refuse an overwriting consumer OcuPilot's own served files (csp/ocupilot/ and what the installer deploys); folded into 18.14's rework
+- 2026-09-29T04:42:42Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings owner=18-14-namespace-mappings-and-copy-mappings by=adjudication note=PathPort.Resolve refuses an existing file under PathPort.ServedDirectory() to an overwriting consumer; PathPortInstance pins it with a recorded mutation; AD-21 sixth case amended
+
+### DW-1799: A global mapping's Collation cannot be cleared from the edit form
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: reported by the implement stage's client work (mapping-form)
+- 2026-09-28T22:38:33Z status=open owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=in-story LOW, adjudicated at 18.14's gate
+- 2026-09-28T23:17:52Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=cr note=vendor Collation is a number (template 0), no empty form; field refusal names it. reopen_if=a PUT omitting Collation is measured to reset it
+
+### DW-1800: The mapping form's locator screen segment opens the create route without its namespace, which shows the namespace-absent message
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: reported by the implement stage's client work (locator segment of the mapping form)
+- 2026-09-28T22:38:33Z status=open owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=in-story LOW, adjudicated at 18.14's gate
+- 2026-09-28T23:17:52Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=cr note=every form's locator segment opens its own route; reopen_if=a parent-scoped form gains a locator link to its list
+
+### DW-1801: A mapping create refused on Namespace shows its sentence only in the form's summary, on no field
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the form draws no Namespace control, so a MAPPING.NAMESPACE.ABSENT violation has no field to attach to
+- 2026-09-28T22:38:33Z status=open owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=in-story LOW, adjudicated at 18.14's gate
+- 2026-09-28T23:17:52Z status=by-design owner=18-14-namespace-mappings-and-copy-mappings by=cr note=the form takes its namespace from the route and draws no Namespace control (spec fields); its summary shows the sentence
+
+### DW-1803: AD-10's own-mapping predicate matches only names beginning OcuPilot, so a wildcard covering them (Ocu*, O*) in the install namespace or %ALL is permitted
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Prohibited.IsOwnMappingName compares the name's first 8 characters with ocupilot, so a routine mapping Ocu* or O* in the install namespace is minted and applied; it would redirect OcuPilot's compiled class routines to another database (inference, vendor wildcard resolution not measured). AD-10's text names only the prefix, so widening it is a spine change.
+- 2026-09-28T23:17:46Z status=decision-pending owner=burndown by=cr note=owner call: widen AD-10 to wildcard stems that cover OcuPilot (recommended); fix is IsOwnMappingName plus a MappingWrite leg
+- 2026-09-28T23:19:46Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: widen AD-10 to pattern overlap (O*, Ocu*, *, ranges) with OcuPilot package, routine or global names; fix in 18.14's rework
+- 2026-09-29T01:49:35Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=cr note=residual HIGH: rOBJ/oddDEF subscript ranges and code-global maps uncovered (measured); open range O: patched in cr
+- 2026-09-29T04:36:23Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=cr note=residual HIGH: empty-low-end range :A moved OcuPilot routines and rINDEXEXT (measured); patched in cr round 3
+- 2026-09-29T04:42:42Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings owner=18-14-namespace-mappings-and-copy-mappings by=adjudication note=Prohibited.CoversOwnName matches by overlap (O*, Ocu*, *, ranges, empty-ended ranges) plus the code globals; MappingCodeGlobals and MappingWrite pin both callers; lead smoke on ocupilot-b-ci refused O* and rOBJ in HSCUSTOM with 403 PROHIBITED.OCUPILOTMAPPING
+
+### DW-1804: The mapping form read and name check are never called by a principal lacking the screen's pairs
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: MappingRules.HandleForm and HandleName gate through Screen.Gate.Evaluate; MappingWriteGate calls them only as a reader holding the pairs, and 18.2's /namespace/form has the same untested denial.
+- 2026-09-28T23:17:46Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=cr note=reopen_if=GET /mapping/global/form answers other than 403 AUTH.NOPRIVILEGE naming %Admin_Manage:USE for a principal without it
+
+### DW-1806: PathPort refuses only existing files in OcuPilot's served directory: a file consumer can resolve a NEW file under csp/ocupilot/, which the unauthenticated static application would then serve on the instance's origin (AD-47)
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: PathPortInstance pins that a new name under csp/ocupilot/ resolves; reach needs a restricted root above the data directory's csp/ (the default root is the manager directory); no file consumer on this branch yet (inference)
+- 2026-09-29T00:44:20Z status=decision-pending owner=burndown by=harvest note=owner: refuse any file, new or existing, under the served directory (recommended), or keep existing-only
+- 2026-09-29T00:44:54Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: refuse any file, new or existing, under the served directory, and the directory as a vendor-writes directory; fold into 18.14; AD-21
+- 2026-09-29T04:42:42Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings owner=18-14-namespace-mappings-and-copy-mappings by=adjudication note=PathPort.Resolve refuses every file consumer any file, new or existing, under the served directory and the directory as vendor-writes, PATH.SERVED; PathPortServed legs with recorded mutations; AD-21 sixth case amended
+
+### DW-1807: Story 18.3's ready spec predates DW-1806: its database directory picker must plan for PATH.SERVED (a directory under OcuPilot's served directory refused as a vendor-writes directory) and render it on the field
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 18.3's spec and epic-18-context.md were written before PATH.SERVED existed; 18.3 is PathPort.Resolve's first real caller
+- 2026-09-29T01:16:56Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=harvest note=fold into 18.3's spec at its gate
 
 ### DW-1808: audit-events.browser-spec.mjs AC2 (Selective SQL auditing sends exactly the one changed box, and the list re-reads it) flaked: it collected one 200 where it expects two (the write and the re-read), so the response collection ends before the re-read arrives
 - source: feature CI run 36507726737 attempt 1 on 3fa9c0db (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/audit-events.browser-spec.mjs
 - evidence: spec :342 deepStrictEqual [200] vs [200,200]; the same code passed on 580d4005 (run 36504027685) and every earlier feature run; nothing in 16.5 touches the spec or the auditing screen
 - 2026-09-29T01:47:49Z status=routed owner=range-end-cleanup by=orchestrator note=wait for the re-read response by URL before asserting the list, instead of a fixed collection window
+
+### DW-1809: Prohibited.BaseMappingMoves judges a %ALL subscript mapping of a code global on an inference that %ALL's base mapping lands on each namespace's globals database (read from the vendor's NSPMAP, not measured: the throwaway has no %ALL)
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: no %ALL namespace on ocupilot-b-ci; the refusal errs toward refusing
+- 2026-09-29T03:58:28Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=reopen_if=a %ALL code-global subscript mapping is measured to leave OcuPilot's code where it was, or to move it despite the check
+
+### DW-1810: PROHIBITED.OCUPILOTMAPPING's sentence says the mapping's name or pattern covers OcuPilot's own names, which a code-global refusal (rOBJ, oddDEP(0)) does not literally do
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the sentence is written once in the kernel and pinned in strings.ts and EXPERIENCE.md :481 (AD-53); a code-global mapping moves OcuPilot's code without naming it
+- 2026-09-29T03:58:28Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=reopen_if=an operator reports the refusal sentence as misleading for a code-global mapping
+
+### DW-1811: Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay failed once in a full sweep: a deleted account's token was served where 401 AUTH.DISABLED was expected; it passed alone on rerun
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ocupilot-b-ci sweep run 185 red, run 198 green alone; 18.14's diff does not touch the class or the token path (inference: timing in the deleted-user token check)
+- 2026-09-29T03:58:28Z status=wontfix-accepted owner=18-14-namespace-mappings-and-copy-mappings by=harvest note=reopen_if=the Retention leg fails again in CI or a sweep
+
+### DW-1813: A global mapping range whose low end is empty (':A') covers the % globals in any namespace, yet carries no MAPPING.SYSTEMGLOBAL consequence, which 18.14 applies only to names beginning with %
+- source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: measured in 18.14's round-3 review on ocupilot-b-ci: ':A' moved ^%zz in a probe namespace; the vendor reads an empty low end as '%' (NSPMAP oneglob)
+- 2026-09-29T04:38:55Z status=routed owner=burndown by=cr note=found after 18.14's rework cap; the %-global effect should also cover a range or pattern that reaches the % globals
+
+### DW-1814: AdminPort logs every vendor 404 at error severity, including VerifyGone's expected absence after a delete, so the lines reach alerts.log and an OcuPilot delete raises the instance's alert state
+- source: lead smoke, Story 18.14 | severity: med | fix-risk: low | footprint: out-of-story
+- evidence: measured on ocupilot-b-ci 2026-09-29: alerts.log holds only OcuPilot adminport 'failed with HTTP 404' lines (Namespace.Namespace, Namespace.GlobalMappings) plus 'generated 3 alerts' suspensions; $SYSTEM.Monitor.State() reads 2; AdminPort.Fail:2431 logs via Fault.LogRaw whatever the status
+- 2026-09-29T04:42:42Z status=routed owner=burndown by=lead note=pre-existing since Story 2.1; an expected 404 (a delete's re-read, a read-back of an absent row) should log below error, or not at all
+
+### DW-1819: BackgroundSeed.PausedCompact waits 2 s for a paused compact to leave Running; on a slow CI runner it read Running, failed background-tasks AC1, and the still-running compact then failed AC2's reseed
+- source: CI run 36522971621 (browser shard 3/3), Epic 18 head c811f1ab | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: background-tasks.browser-spec.mjs AC1 'the compact reads Running, not Paused', AC2 'a background task still runs over the seed database'; BackgroundSeed.cls:155 polls 200 x 0.01 s; the same spec passed on e40733ef (run 36519473392); 18.14 touches neither file
+- 2026-09-29T05:18:37Z status=routed owner=burndown by=lead note=Story 16.5's seed; a timing race (inference); the failed job is re-run

@@ -188,6 +188,12 @@ export const CONSEQUENCE_SERVERCLIENTSECRETCHANGE = 'OAUTH.SERVERCLIENTSECRETCHA
 /** Story 14.2: the agent's audit purge, which removes the markers of the agent's own writes too. */
 export const CONSEQUENCE_PURGEMARKERS = 'AUDIT.PURGEMARKERS';
 
+/** Story 18.14: a global mapping whose name begins with `%`, which shadows a system global (AD-10). */
+export const CONSEQUENCE_SYSTEMGLOBAL = 'MAPPING.SYSTEMGLOBAL';
+
+/** Story 18.14: a copy of mappings, which replaces the destination's same-named mappings. */
+export const CONSEQUENCE_COPYMAPPINGS = 'NAMESPACE.COPYMAPPINGS';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -213,6 +219,9 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED) return STRINGS.oauthAuthServerClientsHiddenPrivilegedEffect;
   if (code === CONSEQUENCE_SERVERCLIENTSECRETCHANGE) return STRINGS.oauthRegisteredClientSecretEffect;
   if (code === CONSEQUENCE_PURGEMARKERS) return STRINGS.auditPurgeMarkersEffect;
+  if (code === CONSEQUENCE_SYSTEMGLOBAL) return STRINGS.mappingSystemGlobalConsequence;
+  // The copy dialog's own consequence sentence, published once.
+  if (code === CONSEQUENCE_COPYMAPPINGS) return STRINGS.namespaceCopyMappingsConsequence;
   return '';
 }
 

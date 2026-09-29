@@ -562,9 +562,11 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // the table past 1400; the bound moves to 1500 under the same protocol.
   // Stories 16.3's and 18.1's rows, merged together, take the table past 1500; the bound moves to
   // 1600 under the same protocol.
+  // Stories 16.2's, 16.5's and 18.14's rows, merged together, take the table past 1600; the bound
+  // moves to 1700 under the same protocol.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 1600,
-    `expected between 150 and 1600 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 1700,
+    `expected between 150 and 1700 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 
@@ -640,7 +642,7 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // `userFormNamespace` is a field label, not a sentence about a namespace: the create-a-user
   // form's startup namespace, which the account enters on sign-in. Story 18.2's Namespaces list and
   // form name their own copy `namespace*`, on the device screens' convention, and are listed here
-  // one by one.
+  // one by one; so does Story 18.14's Copy mappings row action on that list.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
@@ -653,6 +655,10 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'namespaceColumnGlobals',
       'namespaceColumnRoutines',
       'namespaceColumnTemp',
+      'namespaceCopyMappingsAction',
+      'namespaceCopyMappingsConsequence',
+      'namespaceCopyMappingsDone',
+      'namespaceCopyMappingsRunning',
       'namespaceDeleteConsequence',
       'namespaceFormPrompt1',
       'namespaceFormPrompt2',

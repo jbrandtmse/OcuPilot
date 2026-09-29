@@ -49,6 +49,33 @@ describe('the route table', () => {
     }
   });
 
+  it('no declared route is swallowed by an earlier one, so every screen keeps its own guard', () => {
+    // Angular takes the first route whose segments match, a `:id` matching any one segment. Story
+    // 18.14 puts the mapping lists at `os-management/namespaces/<kind>-mappings`, the shape
+    // `os-management/namespaces/:id` also matches, and each form at `<list>/edit`, the shape its
+    // list's `:id` matches: the unlisted screens sort first (`builtScreens`), which is what keeps each
+    // literal ahead of the parameter that would otherwise take it and drop the form's leave guard.
+    //
+    // Mutation (Rule 19): sort `builtScreensForArea` by descending side-bar position -> the mapping
+    // lists and forms are taken by their parents' `:id` routes and this goes red naming them.
+    const matches = (pattern: string, path: string): boolean => {
+      const want = pattern.split('/');
+      const got = path.split('/');
+      return want.length === got.length && want.every((segment, index) => segment.startsWith(':') || segment === got[index]);
+    };
+    const swallowed: string[] = [];
+    for (const path of paths()) {
+      if (path === undefined || path === '' || path === '**' || path.includes(':')) continue;
+      const first = paths().find((candidate) => candidate !== undefined && candidate !== '**' && candidate !== '' && matches(candidate, path));
+      if (first !== path) swallowed.push(`${path} by ${first}`);
+    }
+    expect(swallowed).toEqual([]);
+    for (const kind of ['global', 'routine', 'package']) {
+      expect(paths()).toContain(`os-management/namespaces/${kind}-mappings`);
+      expect(paths()).toContain(`os-management/namespaces/${kind}-mappings/edit`);
+    }
+  });
+
   it('a screen that declares no id accessor gets no /:id route', () => {
     for (const screen of builtScreens()) {
       if (hasIdRoute(screen)) continue;

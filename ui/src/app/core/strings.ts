@@ -3487,6 +3487,105 @@ export const STRINGS = {
   backgroundTaskListPrompt2: 'Which background tasks ended with errors?',
   /** EXPERIENCE.md:371 */
   backgroundTaskListPrompt3: 'Is a database compact or defragment running?',
+
+  // Story 18.14: a namespace's global, routine and package mappings -- each list's and form's title,
+  // the global list's two extra column headers, each list's empty state and agent invitation, the
+  // edit's refused action, the system-global consequence under a global's Name, eighteen suggested
+  // prompts; the Namespaces list's Copy mappings action, its dialog's consequence and its running and
+  // done lines; each mapping Delete's consequence; and the kernel's refusal of OcuPilot's own
+  // mappings. The Mappings line's label reuses `oauthResourceServerTabMappings`, the Copy button
+  // `auditDatabaseCopyConfirm` and a copy that outlasts the wait `auditDatabaseStillRunning`.
+  /** EXPERIENCE.md:378 */
+  globalMappingListLabel: 'Global mappings',
+  /** EXPERIENCE.md:378 */
+  routineMappingListLabel: 'Routine mappings',
+  /** EXPERIENCE.md:378 */
+  packageMappingListLabel: 'Package mappings',
+  /** EXPERIENCE.md:378 */
+  globalMappingFormLabel: 'Global mapping',
+  /** EXPERIENCE.md:378 */
+  routineMappingFormLabel: 'Routine mapping',
+  /** EXPERIENCE.md:378 */
+  packageMappingFormLabel: 'Package mapping',
+  /** EXPERIENCE.md:378 */
+  mappingColumnLockDatabase: 'Lock database',
+  /** EXPERIENCE.md:378 */
+  mappingColumnCollation: 'Collation',
+  /** EXPERIENCE.md:378 */
+  globalMappingListEmpty: 'This namespace has no global mappings.',
+  /** EXPERIENCE.md:378 */
+  routineMappingListEmpty: 'This namespace has no routine mappings.',
+  /** EXPERIENCE.md:378 */
+  packageMappingListEmpty: 'This namespace has no package mappings.',
+  /** EXPERIENCE.md:378 */
+  globalMappingListEmptyAgent: 'map a global',
+  /** EXPERIENCE.md:378 */
+  routineMappingListEmptyAgent: 'map routines',
+  /** EXPERIENCE.md:378 */
+  packageMappingListEmptyAgent: 'map a package',
+  /** EXPERIENCE.md:378 */
+  mappingFormRefusedAction: 'change this mapping',
+  /** EXPERIENCE.md:378 */
+  mappingSystemGlobalConsequence:
+    'This maps a system global. Code in this namespace that uses it reads the mapped database instead of the system\'s own.',
+  /** EXPERIENCE.md:378 */
+  namespaceCopyMappingsAction: 'Copy mappings',
+  /** EXPERIENCE.md:378 */
+  namespaceCopyMappingsConsequence:
+    'Copies every mapping of the chosen namespace into this one. A mapping this namespace already has under the same name is replaced; its other mappings stay.',
+  /** EXPERIENCE.md:378 */
+  namespaceCopyMappingsRunning:
+    'Copying mappings from <source> into <namespace> on the instance since <time>',
+  /** EXPERIENCE.md:378 */
+  namespaceCopyMappingsDone: 'Copied the mappings of <source> into <namespace>.',
+  /** EXPERIENCE.md:378 */
+  globalMappingListPrompt1: 'Which globals does this namespace read from another database?',
+  /** EXPERIENCE.md:378 */
+  globalMappingListPrompt2: 'Is any system global mapped in this namespace?',
+  /** EXPERIENCE.md:378 */
+  globalMappingListPrompt3: 'Which database holds this namespace\'s mapped globals?',
+  /** EXPERIENCE.md:378 */
+  routineMappingListPrompt1: 'Which routines does this namespace run from another database?',
+  /** EXPERIENCE.md:378 */
+  routineMappingListPrompt2: 'Which routine mappings use a wildcard?',
+  /** EXPERIENCE.md:378 */
+  routineMappingListPrompt3: 'Where do this namespace\'s mapped routines come from?',
+  /** EXPERIENCE.md:378 */
+  packageMappingListPrompt1: 'Which packages does this namespace load from another database?',
+  /** EXPERIENCE.md:378 */
+  packageMappingListPrompt2: 'Is any package here mapped to a database outside this namespace?',
+  /** EXPERIENCE.md:378 */
+  packageMappingListPrompt3: 'Which database does this package load from here?',
+  /** EXPERIENCE.md:378 */
+  globalMappingFormPrompt1: 'What does mapping a global to another database change?',
+  /** EXPERIENCE.md:378 */
+  globalMappingFormPrompt2: 'When should a global mapping name a subscript range?',
+  /** EXPERIENCE.md:378 */
+  globalMappingFormPrompt3: 'What does a global mapping\'s lock database do?',
+  /** EXPERIENCE.md:378 */
+  routineMappingFormPrompt1: 'What does mapping routines to another database change?',
+  /** EXPERIENCE.md:378 */
+  routineMappingFormPrompt2: 'How do I map only one routine type?',
+  /** EXPERIENCE.md:378 */
+  routineMappingFormPrompt3: 'Can a routine mapping use a wildcard?',
+  /** EXPERIENCE.md:378 */
+  packageMappingFormPrompt1: 'What does mapping a package to another database change?',
+  /** EXPERIENCE.md:378 */
+  packageMappingFormPrompt2: 'Does a package mapping include its subpackages?',
+  /** EXPERIENCE.md:378 */
+  packageMappingFormPrompt3: 'Which database should this package mapping name?',
+  /** EXPERIENCE.md:479 */
+  globalMappingDeleteConsequence:
+    'This namespace stops reading these globals from the mapped database and reads its default database again. No data is deleted. This cannot be undone.',
+  /** EXPERIENCE.md:479 */
+  routineMappingDeleteConsequence:
+    'This namespace stops running these routines from the mapped database. The routines themselves stay. This cannot be undone.',
+  /** EXPERIENCE.md:479 */
+  packageMappingDeleteConsequence:
+    'This namespace stops loading this package\'s classes from the mapped database. The classes themselves stay. This cannot be undone.',
+  /** EXPERIENCE.md:481 */
+  mappingRefusalOcuPilot:
+    'A mapping whose name or pattern covers OcuPilot\'s own names decides where OcuPilot\'s globals and code are found. In the namespace OcuPilot runs in, and in %ALL, such a mapping cannot be added, changed, removed or copied in.',
 } as const;
 
 /**

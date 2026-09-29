@@ -482,6 +482,46 @@ XData Entries
       "TempGlobals": "ordinary"
     }
   },
+  "osmgmt.globalmappings.create": {
+    "fieldList": "Namespace.GlobalMappings",
+    "classification": {
+      "Database": "ordinary",
+      "LockDatabase": "ordinary",
+      "Collation": "ordinary"
+    }
+  },
+  "osmgmt.globalmappings.update": {
+    "fieldList": "Namespace.GlobalMappings",
+    "classification": {
+      "Database": "ordinary",
+      "LockDatabase": "ordinary",
+      "Collation": "ordinary"
+    }
+  },
+  "osmgmt.routinemappings.create": {
+    "fieldList": "Namespace.RoutineMappings",
+    "classification": {
+      "Database": "ordinary"
+    }
+  },
+  "osmgmt.routinemappings.update": {
+    "fieldList": "Namespace.RoutineMappings",
+    "classification": {
+      "Database": "ordinary"
+    }
+  },
+  "osmgmt.packagemappings.create": {
+    "fieldList": "Namespace.PackageMappings",
+    "classification": {
+      "Database": "ordinary"
+    }
+  },
+  "osmgmt.packagemappings.update": {
+    "fieldList": "Namespace.PackageMappings",
+    "classification": {
+      "Database": "ordinary"
+    }
+  },
   "security.oauthserverdescriptions.create": {
     "fieldList": "Security.OAuth2.Client.ServerDefinition",
     "compare": {"Metadata": "members"},
