@@ -1959,7 +1959,7 @@ So that I can tell at a glance which ones are reachable and which are not.
 
 - **Given** the user lacks the required privilege
 - **When** they reach the screen
-- **Then** the entry is gated in the rail, side bar and command box naming the resource, and a deep link renders the title plus a permission-denied message.
+- **Then** the entry is gated in the side bar and command box naming the resource, and the rail item too when none of the area's other side-bar entries is open to them [AMENDED 2026-09-29, DW-1768, owner decision], and a deep link renders the title plus a permission-denied message.
 
 - **Given** the descriptor
 - **When** it is declared

@@ -7865,6 +7865,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T06:34:37Z status=decision-pending owner=range-end-cleanup by=merge_gate note=owner decision after the voting week: keep AD-8's area set, or Option B (AD-8 any-screen rail: rail/Home tile/side bar open when any listed screen is allowed)
 - 2026-09-28T11:20:47Z occurrence=16-3-effective-privileges-and-the-permission-check-tool
 - 2026-09-28T18:07:16Z occurrence=16-2-web-sessions-listed-and-ended
+- 2026-09-29T23:51:43Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=option B: area verdict is the OR of its listed screens (Gate.EvaluateArea); own gates unchanged; AD-8 amended; follow-up DW-1852
 
 ### DW-1769: Copy as curl's note and AD-57 (5) promise every secret value is left out, but only names the credential pattern matches are masked
 - source: spec-16-24-a-try-it-request-copied-as-curl.md | severity: med | fix-risk: low | footprint: in-story
@@ -8291,3 +8292,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: fetch redirect:manual hides who answered (status 0, no Location); the owner's binding wording was kept (DW-1836 implement review, 2026-09-29)
 - 2026-09-29T21:42:32Z status=decision-pending owner=burndown by=cr note=owner: keep the wording, or hedge it for writes only (e.g. '...or the application redirected after acting on it')
 - 2026-09-29T22:05:50Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=by=merge_gate hedge applied: a non-safe verb's opaque redirect reads outcome unknown, may have acted, check before resending; unit/component/browser pinned
+
+### DW-1852: Under DW-1768's any-screen rule only an area's listed tab counts, so a holder of only the OAuth 2.0 authorization-server or registration resource reads their own tab but still finds Security and secrets gated
+- source: DW-1768 implement | severity: med | fix-risk: low | footprint: in-epic
+- evidence: OAuth 2.0 is a tab group whose listed tab is the client configurations (needs %Admin_OAuth2_Client); measured on ocupilot-ci 2026-09-29
+- 2026-09-29T23:51:42Z status=decision-pending owner=burndown by=cr note=owner: should a tab group open its area when any of its tabs does?
+
+### DW-1853: A listed screen with an empty or publicly granted pair set opens its area for every caller past the admin floor; the analytics log (%DeepSee_Portal:USE, public on a stock instance) opens Logs this way
+- source: DW-1768 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: no rule refuses a listed screen with privileges []; recorded in AD-8's DW-1768 paragraph (review, 2026-09-29)
+- 2026-09-29T23:51:42Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=a listed screen in a gated area declares privileges: []
+
+### DW-1854: The pair a gated area names can be neither necessary nor sufficient to open it (e.g. OS management names %Admin_Manage:USE to an Operate-only holder, while %DB_IRISSYS:READ alone would open it through Locks)
+- source: DW-1768 review | severity: low | fix-risk: med | footprint: in-epic
+- evidence: AD-8 names the first unheld pair of the declared set (review, 2026-09-29)
+- 2026-09-29T23:51:43Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=the owner wants the shortest missing set named
+
+### DW-1855: DW-1768 test hygiene: LIVE_PAYLOAD screen-level entries stale since 6.13, canned-map client specs overlap older tests, full side-bar rosters pinned in WireAreaAnyScreen and the wallet-only leg, client arms reachable only on mirror drift
+- source: DW-1768 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: listed by the DW-1768 review, 2026-09-29
+- 2026-09-29T23:51:43Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=an Epic 18 merge adds a listed OS management or Security screen, or screen-mirror --check fails in CI

@@ -586,6 +586,33 @@ describe('Home', () => {
     expect(shell.visibleArea()).toBe('');
   });
 
+  it('AD-8 as amended for DW-1768: the map a holder of the %Operator role is served opens OS management on Locks and gates Permissions naming its pair', async () => {
+    // The instance opens an area when any screen it lists is allowed, and each screen keeps its own
+    // gate: OS management is allowed while Processes is refused, and Permissions, none of whose
+    // screens that holder can open, is refused on the first pair of its set.
+    //
+    // Mutation (Rule 19): gate a tile whenever any screen its area lists is refused -- the
+    // all-pairs rule, on the client -- and this goes red.
+    await router.navigateByUrl('/');
+    navigation.screens.set('os-management', [PROCESSES, LOCKS]);
+    navigation.screenVerdicts.set(PROCESSES.route, { allowed: false, failedPair: '%Admin_Manage:USE' });
+    navigation.areaVerdicts.set('permissions', { allowed: false, failedPair: '%Admin_Secure:USE' });
+    navigation.notify();
+    fixture.detectChanges();
+
+    const permissions = tiles()[3];
+    expect(permissions.getAttribute('aria-disabled')).toBe('true');
+    expect(
+      fixture.nativeElement.querySelector(`#${permissions.getAttribute('aria-describedby')}`)?.textContent?.trim()
+    ).toBe('Requires %Admin_Secure:USE');
+
+    const osManagement = tiles()[1];
+    expect(osManagement.getAttribute('aria-disabled')).toBeNull();
+    osManagement.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/os-management/locks');
+  });
+
   it('an area with no built screen still opens its list, and navigates nowhere', async () => {
     // Started away from `/`, deliberately: `withQuery('', '/')` is itself `'/'`, so a run that
     // began at the root would assert the URL it already had and would stay green with the

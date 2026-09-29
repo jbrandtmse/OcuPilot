@@ -432,7 +432,7 @@ test('AC5: with the Resource servers pairs alone the Security rail item opens (S
       const item = document.querySelector(`.ocu-rail-item[aria-label="${label}"]`);
       return { disabled: item.getAttribute('aria-disabled'), tip: document.getElementById(item.getAttribute('aria-describedby'))?.textContent.trim() };
     }, STRINGS.navAreaSecurity);
-    assert.deepEqual(rail, { disabled: null, tip: formatArea(STRINGS.navRailItemTooltip, STRINGS.navAreaSecurity) }, 'the Security rail item opens: the wallet and OAuth 2.0 screens own their pair');
+    assert.deepEqual(rail, { disabled: null, tip: formatArea(STRINGS.navRailItemTooltip, STRINGS.navAreaSecurity) }, 'the Security rail item opens, on the screens these pairs open');
 
     const strip = await stripOf(page);
     assert.deepEqual(

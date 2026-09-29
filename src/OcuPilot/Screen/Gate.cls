@@ -1,5 +1,6 @@
-/// <p>The privilege gate (AD-8). A requirement is a <b>set</b> of
-/// <code>(resource, permission)</code> pairs, <b>all</b> of which are required; each is checked
+/// <p>The privilege gate (AD-8). A screen's requirement is a <b>set</b> of
+/// <code>(resource, permission)</code> pairs, <b>all</b> of which are required, and an area opens on
+/// its listed screens' answers (<method>EvaluateArea</method>); each pair is checked
 /// with <code>$System.Security.Check</code> in the calling process at the moment of the call
 /// (the <method>OcuPilot.Api.Router.HoldsAdminResource</method> idiom); nothing is cached,
 /// there is no service account and no <code>$ROLES</code> is inspected. A denial names the
@@ -65,8 +66,8 @@ ClassMethod IsAuthenticatedPrincipal(pUser As %String) As %Boolean
 }
 
 /// <p>Whether the calling process may reach <var>pTarget</var> -- either an area key
-/// <class>OcuPilot.Screen.Area</class> declares, or the class name of a screen descriptor.
-/// <var>pFailedPair</var> is the first pair that failed, spelled
+/// <class>OcuPilot.Screen.Area</class> declares, answered by <method>EvaluateArea</method>, or the
+/// class name of a screen descriptor. <var>pFailedPair</var> is the first pair that failed, spelled
 /// <code>resource:permission</code>, and <code>""</code> when the answer is yes.</p>
 /// <p>The two kinds are told apart by asking the area vocabulary first: an area key is a
 /// declared value and a descriptor is a class name, so nothing that is not a declared area is
@@ -78,7 +79,7 @@ ClassMethod Evaluate(pTarget As %String, Output pFailedPair As %String) As %Bool
     Set tAllowed = 0
     Try {
         If ##class(OcuPilot.Screen.Area).Exists(pTarget) {
-            Set tAllowed = ..EvaluatePairs(##class(OcuPilot.Screen.Area).PrivilegePairs(pTarget), .pFailedPair)
+            Set tAllowed = ..EvaluateArea(pTarget, .pFailedPair)
             Quit
         }
         If '##class(%Dictionary.CompiledClass).%ExistsId(pTarget) Quit
@@ -92,6 +93,66 @@ ClassMethod Evaluate(pTarget As %String, Output pFailedPair As %String) As %Bool
         Set pFailedPair = ""
     }
     Quit tAllowed
+}
+
+/// <p>Whether the calling process may open the area <var>pAreaKey</var>: its rail item, Home tile
+/// and side bar (AD-8). A key the area vocabulary does not declare is refused, naming nothing. An
+/// area that declares no pair never gates (Home, Agent co-pilot). Any other area opens when at
+/// least one screen its side bar lists (<method>ListedScreens</method>) passes that screen's own
+/// gate (<method>Evaluate</method>, the classic page's custom resource included). Each screen keeps
+/// its own gate, so the answer admits no read that screen's gate refuses.</p>
+/// <p>When none of them does, <var>pFailedPair</var> is the first pair of the area's declared set the
+/// caller lacks, or, when the caller holds that whole set, the first failed pair a listed screen
+/// names. <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> holds that set to every pair
+/// the area's screens declare but their own, so holding it opens every screen that declares no own
+/// pair and whose classic page carries no custom resource. An area that lists no screen is answered by its declared set alone, as its tile expects;
+/// a roster that cannot be read refuses, naming nothing.</p>
+ClassMethod EvaluateArea(pAreaKey As %String, Output pFailedPair As %String) As %Boolean
+{
+    Set pFailedPair = ""
+    Set tAllowed = 0
+    Try {
+        If '##class(OcuPilot.Screen.Area).Exists(pAreaKey) Quit
+        Set tAreaPairs = ##class(OcuPilot.Screen.Area).PrivilegePairs(pAreaKey)
+        If tAreaPairs = "" {
+            Set tAllowed = 1
+            Quit
+        }
+        Set tSC = ..ListedScreens(pAreaKey, .tScreens)
+        If $$$ISERR(tSC) Quit
+        If $ListLength(tScreens) = 0 {
+            Set tAllowed = ..EvaluatePairs(tAreaPairs, .pFailedPair)
+            Quit
+        }
+        Set tScreenPair = ""
+        For tI = 1:1:$ListLength(tScreens) {
+            Set tFailed = ""
+            If ..Evaluate($List(tScreens, tI), .tFailed) {
+                Set tAllowed = 1
+                Quit
+            }
+            If tScreenPair = "" Set tScreenPair = tFailed
+        }
+        If tAllowed Quit
+        Set tAreaPair = ""
+        If ..EvaluatePairs(tAreaPairs, .tAreaPair) Set tAreaPair = tScreenPair
+        Set pFailedPair = tAreaPair
+    } Catch {
+        Set tAllowed = 0
+        Set pFailedPair = ""
+    }
+    Quit tAllowed
+}
+
+/// <p>The descriptor classes <var>pAreaKey</var>'s side bar lists, in side-bar order
+/// (<method>OcuPilot.Screen.Registry.ListedScreensForArea</method>), which
+/// <method>EvaluateArea</method> reads.</p>
+/// <p><b>Overridable</b> so a test can arrange a roster the shipped descriptors do not form -- one
+/// whose first screen needs a pair its area does not name, or none at all. Production never
+/// overrides it.</p>
+ClassMethod ListedScreens(pAreaKey As %String, Output pList As %List) As %Status
+{
+    Quit ##class(OcuPilot.Screen.Registry).ListedScreensForArea(pAreaKey, .pList)
 }
 
 /// <p>What descriptor class <var>pDescriptor</var> requires: its declared pair set unioned with

@@ -843,8 +843,8 @@ export function ownPrivilegesProblem(declaration) {
  * refuses it for a descriptor, but nothing on the serving path calls `Validate`, and no rule
  * anywhere read `XData Areas` at all: `check-objectscript.py`'s entity-type rule reads
  * `XData Declaration` only. Refusing it here means the bad declaration never reaches a running
- * instance, which is where Epic 1's gating actually lives -- every area's screen list is empty
- * until Epic 2, so the area sets are the whole gate.
+ * instance, where an area whose set collapses to empty never gates
+ * (`OcuPilot.Screen.Gate.EvaluateArea`).
  *
  * `scope` is checked only when a screen declares one (a non-empty string): a fixture built to
  * exercise the privilege-pair refusal above declares no `scope` at all, and treating an absent
@@ -3066,6 +3066,11 @@ export interface AreaDeclaration {
   readonly labelKey: string;
   readonly navigates: boolean;
   readonly pinBottom: boolean;
+  /**
+   * Empty for an area that never gates. Otherwise the area opens when any screen it lists is allowed,
+   * and when none is it names the first of these the caller lacks, or a listed screen's failed pair
+   * when the caller lacks none (AD-8).
+   */
   readonly privileges: readonly PrivilegePair[];
 }
 

@@ -698,9 +698,8 @@ Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
     Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "suspend,resume,terminate,terminate-with-error,broadcast", "its row actions are Suspend, Resume, Terminate, the Terminate dialog's flag and the checked rows' Broadcast")
     Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, "processListEmptyAgent", "and its empty state invites the agent")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the os-management area covers all three")
-    ; DW-275, the half that stops the decision being reversed by accident: %Admin_Manage:USE is in
-    ; the area's own set, and dropping it there makes this screen fail coverage at install rather
-    ; than making the narrower screens reachable.
+    ; %Admin_Manage:USE is in the area's own set, and dropping it there makes this screen fail
+    ; coverage at install.
     Set tAreaPairs = ##class(OcuPilot.Screen.Area).PrivilegePairs("os-management")
     Set tHasManage = 0
     For tI = 1:1:$ListLength(tAreaPairs) {
@@ -1188,9 +1187,9 @@ Method TestTheLogHubDeclaresItsComposedRead()
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> answers the same sentence for an
 /// uncovered set and <code>""</code> for a covered one; and the production roster still validates
 /// now that every area covers its screens.</p>
-/// <p><b>Why the refusal matters:</b> <class>OcuPilot.Screen.Gate</class> evaluates an area's set
-/// and a screen's set separately and never unions them, so an area declaring less than its screens
-/// require shows the rail item allowed and refuses everything inside it.</p>
+/// <p><b>Why the refusal matters:</b> a gated area names a pair from its declared set
+/// (<method>OcuPilot.Screen.Gate.EvaluateArea</method>), and holding that set opens every screen of
+/// the area that declares no own pair only while the set covers each such screen's pairs.</p>
 /// <p>Mutation: make <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> answer
 /// <code>""</code> unconditionally -> the fixture-roster and value assertions go red. Drop
 /// <code>%DB_IRISSYS:READ</code> from the <code>security</code> area in
@@ -1212,11 +1211,11 @@ Method TestAnAreaThatDoesNotCoverItsScreensPairsIsRefused()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tSubset), "", "so does a set the area declares more than")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", ""), "", "and so does an empty set")
     Set tUncovered = $ListBuild($ListBuild("%Admin_Operate", "USE"))
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tUncovered), "area 'security' does not declare %Admin_Operate:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)", "an uncovered pair answers the sentence Validate prefixes")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tUncovered), "area 'security' does not declare %Admin_Operate:USE, which this screen requires, so a holder of the area's set would still be refused it (AD-8)", "an uncovered pair answers the sentence Validate prefixes")
     ; The method names the FIRST uncovered pair, so a covered pair ahead of it is skipped and a
     ; second uncovered one behind it is not the one reported.
     Set tMixed = $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_Operate", "USE"), $ListBuild("%Admin_Task", "USE"))
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tMixed), "area 'security' does not declare %Admin_Operate:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)", "and the first uncovered pair is the one named, past a covered one and ahead of a second uncovered one")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tMixed), "area 'security' does not declare %Admin_Operate:USE, which this screen requires, so a holder of the area's set would still be refused it (AD-8)", "and the first uncovered pair is the one named, past a covered one and ahead of a second uncovered one")
 
     Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
     Do $$$AssertEquals(tProdProblem, "", "and every production area covers its own screens' pairs")
@@ -1256,9 +1255,9 @@ Method TestAPairAScreenDeclaresItsOwnIsLeftOutOfItsAreasCoverage()
     Set tPairs = $ListBuild($ListBuild("%Admin_Operate", "USE"), $ListBuild("%Ens_EventLog", "USE"))
     Set tOwn = $ListBuild($ListBuild("%Ens_EventLog", "USE"))
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", tPairs, tOwn), "", "a pair the screen declares its own passes the logs area's coverage")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", tPairs), "area 'logs' does not declare %Ens_EventLog:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)", "and the same pair not declared its own is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", tPairs), "area 'logs' does not declare %Ens_EventLog:USE, which this screen requires, so a holder of the area's set would still be refused it (AD-8)", "and the same pair not declared its own is refused")
     Set tExtra = tPairs _ $ListBuild($ListBuild("%Admin_Manage", "USE"))
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", tExtra, tOwn), "area 'logs' does not declare %Admin_Manage:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)", "an extra pair not declared its own is still refused beside one that is")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", tExtra, tOwn), "area 'logs' does not declare %Admin_Manage:USE, which this screen requires, so a holder of the area's set would still be refused it (AD-8)", "an extra pair not declared its own is still refused beside one that is")
 
     Set tSC = ##class(OcuPilot.Test.OwnPairRegistry).Validate(.tProblem)
     Do $$$AssertStatusNotOK(tSC, "a roster whose screen owns a pair it does not require is refused")
@@ -1915,20 +1914,15 @@ Method TestTheSecurityScreensOwnTheirWalletAndOAuthPairs()
     Do $$$AssertTrue(tOthers > 0, "and the rest own none: " _ tOthers)
 }
 
-/// <p>DW-275 -- the os-management area's union, and what it costs a narrower screen.</p>
-/// <p><class>OcuPilot.Test.NarrowArea</class> is the screen Stories 6.8 and 6.10 will add: one
-/// needing <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code> and not
-/// <code>%Admin_Manage:USE</code>. It validates, and the area covers it -- coverage is
-/// containment, so an area declaring more than a screen requires is sound. The cost, recorded at
-/// <class>OcuPilot.Screen.Area</class> and accepted, is a false denial for an operator holding
-/// only those two pairs. <method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>
-/// observes the area denial itself with a real principal; that the denial turns false once a
-/// screen like this one is built is an <b>(inference)</b>, since this fixture is not a built
-/// screen and no real principal can be denied it.</p>
+/// <p>DW-275 -- the os-management area's union holds a narrower screen.</p>
+/// <p><class>OcuPilot.Test.NarrowArea</class> is a screen needing <code>%Admin_Operate:USE</code> and
+/// <code>%DB_IRISSYS:READ</code> and not <code>%Admin_Manage:USE</code>, as Locks and System usage
+/// are. It validates, and the area covers it -- coverage is containment, so an area declaring more
+/// than a screen requires is sound, and such a screen opens its area for a holder of its two pairs (<method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>
+/// observes it with a real principal).</p>
 /// <p>Mutation: drop <code>%Admin_Manage:USE</code> from the <code>os-management</code> area ->
-/// the processes list's own coverage assertion goes red (the decision cannot be reversed by
-/// accident), while the narrow fixture's assertions here stay green -- which is what says these
-/// two halves are independent. Relax
+/// the processes list's own coverage assertion goes red, while the narrow fixture's coverage
+/// assertion here stays green -- which is what says these two halves are independent. Relax
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> to per-screen coverage -> the
 /// same assertion goes red.</p>
 Method TestANarrowOsManagementScreenIsSoundInsideTheUnion()
@@ -1943,10 +1937,8 @@ Method TestANarrowOsManagementScreenIsSoundInsideTheUnion()
     Do $$$AssertEquals($ClassMethod(tClass, "AreaKey"), "os-management", "inside the same area as the processes list")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the area's union covers it, because coverage is containment")
 
-    ; The area is still gated on the union, so this screen's own operator is denied the rail entry
-    ; -- the accepted false denial, stated as the count it costs rather than left implicit.
     Do $$$AssertEquals(..PairText("os-management"), "%Admin_Operate:USE, %Admin_Manage:USE, %DB_IRISSYS:READ", "the area declares the union of its screens' pairs")
-    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "PrivilegePairs")), 2, "while this screen needs two of them, which is the accepted false denial")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "PrivilegePairs")), 2, "while this screen needs two of them")
 
     ; And it is a fixture, not a screen: the production roster never lists it.
     Set tListSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tRoster)

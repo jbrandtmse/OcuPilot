@@ -506,3 +506,15 @@
 2026-09-29T21:55:00Z	Epic 16	owner_fix_pushed	item=DW-1836 sha=20bca172 ci=pending run=36636324310
 2026-09-29T21:55:00Z	Epic 16	owner_fix_implemented	item=DW-1837 agent=dw1837-role-font-implement-1 model=opus files=2(_components.scss_add-only,permissions-effective.browser-spec) tests=permissions-effective_5/5,tools_1715 mutations=2(role-name_type_removed->AC1_red;field-input_type_removed->AC4_red) scope=shared_.ocu-form-role-name(7_lists)
 2026-09-29T22:05:50Z	Epic 16	owner_fix_implemented	item=DW-1845(by=merge_gate) agent=dw1845-write-redirect-implement-1 model=opus files=6 tests=tools_1716,components_1895,browser_openapi-try-it_7/7 mutations=5 decision=non-safe_verbs(isSafeVerb:GET,HEAD,OPTIONS_keep_read_sentence)
+2026-09-29T22:07:18Z	Epic 16	owner_fix_committed	item=DW-1837 sha=d510aeea ci=held(after_DW-1836_run)
+2026-09-29T22:07:18Z	Epic 16	owner_fix_committed	item=DW-1845 sha=42a89cf9 ci=held(after_DW-1836_run)
+2026-09-29T22:07:18Z	Epic 16	stage_spawned	stage=owner_fix(implement) item=DW-1768(option_B) spawn_at=2026-09-29T22:07:18Z model=opus agent_name=dw1768-any-screen-area-implement-1 cycle_iteration=1
+2026-09-29T22:24:38Z	Epic 16	ci_resolved	story=owner_fix_DW-1836 run=36636324310 result=success head=20bca172
+2026-09-29T22:24:38Z	Epic 16	owner_fix_boundary	item=DW-1836 head=20bca172 ci_run=36636324310 ci=success reported_to=main
+2026-09-29T22:24:38Z	Epic 16	owner_fix_pushed	item=DW-1837 sha=d510aeea run=36639381860
+2026-09-29T23:28:21Z	Epic 16	ci_resolved	story=owner_fix_DW-1837 run=36639381860 result=success head=d510aeea
+2026-09-29T23:28:21Z	Epic 16	owner_fix_pushed	item=DW-1845 sha=42a89cf9 run=36645280775
+2026-09-29T23:28:21Z	Epic 16	owner_fix_implemented	item=DW-1768(option_B) agent=dw1768-any-screen-area-implement-1 model=opus decisions=own_pairs_kept;gated_area_names_first_unheld_set_pair tests=WireAreaAnyScreen_3,Navigation_13,Wire_20,WireOAuthRead_6,WireSecurityRead_24/25(residue),BackgroundTasksLive_7,WebSessionsLive_7,Descriptor_60,tools_1716,browser_security_5/5,oauth_5/5 consequences=Logs_opens_for_%DeepSee_Portal_public_grant;OAuth_non-client_tabs_do_not_open_Security
+2026-09-29T23:28:21Z	Epic 16	spine_updated	ad=AD-8(area_verdict_OR),Deferred(DW-1768_decided),Conventions(listed_screens_row) reason=decision_sheet(owner_option_B) by=runner story=none lint=ok
+2026-09-29T23:28:21Z	Epic 16	stage_spawned	stage=owner_fix(code-review) item=DW-1768 spawn_at=2026-09-29T23:28:21Z model=opus agent_name=dw1768-any-screen-area-review-1 cycle_iteration=1
+2026-09-29T23:51:53Z	Epic 16	owner_fix_reviewed	item=DW-1768 agent=dw1768-any-screen-area-review-1 model=opus entries=high=0,med=2(patched),low=15(5_patched;rest_filed:DW-1853,1854,1855) unresolved_high_med=0 security=area_verdict_display_only(Navigation.SetVerdict;rail,home,locator-bar) tests=Navigation(r20917),WireAreaAnyScreen(r20918),WireSecurityRead_24/25(r20919),tools_1716 spine=AD-8_four_precision_fixes decision_pending=DW-1852(OAuth_tab_group) protocol_note=two_read-only_layers_wrote_scratch_files_outside_the_tree(deleted_by_reviewer)
