@@ -8216,3 +8216,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T17:09:15Z status=routed owner=burndown by=lead note=Epic 12's issuer fixture (OAuthServerDiscover); probe the fixture server's timing on a slow runner
 - 2026-09-29T15:25:45Z status=resolved-by:16-4-task-export-and-import by=adjudication note=security AC5 opens the side bar through the gate spec's toggle-aware openSideBar; old code failed 1/3 locally with the same timeout, fixed 5/5
 - 2026-09-29T17:56:44Z status=routed owner=burndown by=merge_gate note=restores the 17:09:15Z routing; the 15:25:45Z resolved-by:16-4 trailer above is DW-1823's, misplaced by the 1.0.3 staging union merge
+
+### DW-1836: The try-it console shows a bare "0" in its Response block when a request never reaches the server (status 0: an opaque redirect or a network failure), e.g. on demo.ocupilot.org where the proxy passes only /api/ocupilot
+- source: owner, 2026-09-29 ~12:30 PDT, relayed by the Planner (demo RC) | severity: medium | fix-risk: low | footprint: ui/src/app/areas/web-applications/try-it.ts, its strings and browser spec
+- evidence: demo: REST API explorer > /api/mgmnt OpenAPI > GET /v2/ > Try it > Send answered 0; the demo Caddy redirects every path but /api/ocupilot (by design)
+- 2026-09-29T19:31:06Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner: fail gracefully; a status-0, network or redirect outcome gets a plain sentence that the request did not reach the application because something between the browser and the instance stopped it, and says nothing was sent to the instance where true; refusal rules unchanged; do not open other APIs on the demo or touch the droplet; browser spec by intercepting and failing the request; first after the 1.0.3 cut, in the next release
+
+### DW-1837: On the user editor's Effective privileges tab, a role name under Roles (e.g. OcuPilotDemoOperator for user operator) renders in a serif browser-default font instead of the app's type
+- source: owner, 2026-09-29 ~12:30 PDT, relayed by the Planner (demo RC) | severity: low | fix-risk: low | footprint: the Effective privileges tab component and its styles (Story 16.3)
+- evidence: demo RC /ocupilot/permissions/users/edit/operator, Effective privileges tab; screenshot scratchpad 24e5d414.../readme-images/14-effective-privileges.png; the rest of the tab uses the app type
+- 2026-09-29T19:31:06Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner: fix for the next release; a browser check that the role name computes the app font family; the Planner retakes the README image after it ships
