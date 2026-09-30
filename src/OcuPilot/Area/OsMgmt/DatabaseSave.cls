@@ -8,10 +8,13 @@
 /// types, the port, the settable fields, the payload, the derived fields, the port query and the
 /// pairs, the argument pairs among them, each asked before anything is read or sent. It mints no
 /// proposal and takes no confirm token.</p>
-/// <p><b>An edit is two groups, each one write</b>: <code>configuration</code> (the mounting edit)
-/// and then <code>file</code> (the file edit), each sent only when the body carries it, each over its
-/// own fresh read with its endpoint's complete set (AD-4). A failed second group leaves the first
-/// applied, and the refusal's <code>detail.applied</code> says so.</p>
+/// <p><b>An edit is up to three groups, each one write</b>: <code>configuration</code> (the mounting
+/// edit), then <code>file</code> (the file edit), each over its own fresh read with its endpoint's
+/// complete set (AD-4), and last <code>size</code>, the size grow
+/// (<class>OcuPilot.Screen.Tool.LocalDatabaseGrow</class>, Story 18.4), an action write whose body the
+/// port builds from the group's <code>Size</code>. Each is sent only when the body carries it. A failed
+/// later group leaves the earlier ones applied, and the refusal's <code>detail.applied</code> says
+/// so.</p>
 /// <p>Seams a subclass may override: <method>PortClass</method> and
 /// <method>ProhibitedClass</method>. Production overrides neither.</p>
 Class OcuPilot.Area.OsMgmt.DatabaseSave Extends %RegisteredObject
@@ -24,8 +27,8 @@ Parameter MOUNTTOOL = "OcuPilot.Screen.Tool.LocalDatabaseUpdateMount";
 
 Parameter UPDATETOOL = "OcuPilot.Screen.Tool.LocalDatabaseUpdate";
 
-/// <p>The edit's two groups, in the order they are written, each <code>&lt;key&gt;:&lt;tool&gt;</code>.</p>
-Parameter GROUPS = "configuration:OcuPilot.Screen.Tool.LocalDatabaseUpdateMount,file:OcuPilot.Screen.Tool.LocalDatabaseUpdate";
+/// <p>The edit's groups, in the order they are written, each <code>&lt;key&gt;:&lt;tool&gt;</code>.</p>
+Parameter GROUPS = "configuration:OcuPilot.Screen.Tool.LocalDatabaseUpdateMount,file:OcuPilot.Screen.Tool.LocalDatabaseUpdate,size:OcuPilot.Screen.Tool.LocalDatabaseGrow";
 
 /// <p>The screen whose declared pairs gate these routes, and whose entity type and scope the
 /// prohibited set's reference carries (AD-8, AD-13).</p>
@@ -79,9 +82,10 @@ ClassMethod HandleCreate() As %Status
 }
 
 /// <p>Answer <code>PUT /database/:id</code>: change the configuration <var>pId</var> -- one path
-/// segment, decoded once here (AD-13) -- from the body's <code>configuration</code> and
-/// <code>file</code> groups, and answer <code>{name, configuration?, file?}</code> with 200, each group
-/// <code>{readBack}</code>. A key outside the two groups, or outside a group's tool, is 400
+/// segment, decoded once here (AD-13) -- from the body's <code>configuration</code>, <code>file</code>
+/// and <code>size</code> groups, and answer <code>{name, configuration?, file?, size?}</code> with 200,
+/// each group <code>{readBack}</code>, and <code>continues: true</code> when the size grow is still
+/// running on the instance (AD-26). A key outside the groups, or outside a group's tool, is 400
 /// <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>; a configuration the instance does not
 /// hold is 404 <parameter>OcuPilot.Api.DatabaseError.NAMEABSENT</parameter>.</p>
 ClassMethod HandleUpdate(pId As %String) As %Status
@@ -141,6 +145,8 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tOutcome = {}
             If $IsObject($Get(tReadBack)) Do tOutcome.%Set("readBack", tReadBack)
             Do tAnswer.%Set(tGroup, tOutcome)
+            ; AD-26: a queued size grow the port answered 202 was made and continues on the instance.
+            If +$Get(tHttp) = 202 Do tAnswer.%Set("continues", 1, "boolean")
             Do tApplied.%Push(tGroup, "string")
         }
         If 'tDone Quit
@@ -291,14 +297,19 @@ ClassMethod Prohibited(pToolClass As %String, pName As %String, pPayload As %Dyn
 
 /// <p>Issue tool <var>pToolClass</var>'s own write for <var>pName</var> with <var>pPayload</var>, its
 /// derived fields added and its port query set, through <method>PortClass</method>;
-/// <var>pWritten</var> is the port's answer.</p>
+/// <var>pWritten</var> is the port's answer. A tool that sends no body (AD-51), such as the size grow,
+/// is sent none, as its confirm is: the port builds that body from the query.</p>
 ClassMethod Send(pToolClass As %String, pName As %String, pPayload As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pWritten) As %Status [ Private ]
 {
     Kill tQuery
     Set tQuery($ClassMethod(pToolClass, "IdParam")) = pName
     Do $ClassMethod(pToolClass, "PortQuery", pPayload, .tQuery)
-    Do $ClassMethod(pToolClass, "DerivedFields", pPayload)
-    Quit $ClassMethod(..PortClass(), "Invoke", $ClassMethod(pToolClass, "Endpoint"), $ClassMethod(pToolClass, "WriteType"), .tQuery, pPayload, .pWritten, .pHttpStatus, .pFault)
+    Set tBody = ""
+    If ##class(OcuPilot.Kernel.Proposal.Operation).SendsBody(pToolClass) {
+        Do $ClassMethod(pToolClass, "DerivedFields", pPayload)
+        Set tBody = pPayload
+    }
+    Quit $ClassMethod(..PortClass(), "Invoke", $ClassMethod(pToolClass, "Endpoint"), $ClassMethod(pToolClass, "WriteType"), .tQuery, tBody, .pWritten, .pHttpStatus, .pFault)
 }
 
 /// <p>Render the outcome: the violations as one 422 envelope, a refusal as its own envelope, and

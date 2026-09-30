@@ -232,6 +232,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 18.2: the namespace delete declares a second pair beyond its write's, the
             ; application pair its cascade reaches (AD-8), after the write's own.
             If $Parameter(tTool.class, "APPLICATIONRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "APPLICATIONRESOURCE"), $Parameter(tTool.class, "APPLICATIONPERMISSION")))
+            ; Story 18.4: the dismount declares the pair its prohibited set's own-database read needs,
+            ; after the write's own (AD-8, AD-10).
+            If $Parameter(tTool.class, "OWNSETRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "OWNSETRESOURCE"), "USE"))
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
         } ElseIf tTool.class = "OcuPilot.Kernel.Shell.PermissionCheck" {

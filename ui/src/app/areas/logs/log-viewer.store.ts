@@ -25,6 +25,12 @@ export interface LogViewerSource {
    */
   readonly entries?: true;
   /**
+   * Whether the route answers one integrity check's report rather than a page of a log file (Story
+   * 18.4): `filesPath` lists the checks, `file` names one by its id, and no name reads the newest.
+   * Each report line is its own row, at the check's start time, an error where the report marks it.
+   */
+  readonly report?: true;
+  /**
    * `read` when `tailPath` is a screen's own declared read (Story 16.10): a bare GET for the newest
    * window, answered as `{fields, rows, truncated}`, each row mapped to a line by `readRowsOf`. Load
    * newer reads that window again, and the rows as answered are what the screen publishes.
@@ -51,6 +57,20 @@ export const XDBC_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/xdbc
 export const SQL_DIAGNOSTICS_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/sqldiagnostics', entries: true };
 export const EVENT_LOG_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/eventlog', entries: true };
 export const ANALYTICS_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/analytics', entries: true };
+
+/** The Integrity log (Story 18.4), bound to the `integrity` source key by `Api/Router.cls`. */
+export const INTEGRITY_SOURCE: LogViewerSource = {
+  tailPath: '/api/ocupilot/logs/integrity',
+  filesPath: '/api/ocupilot/logs/integrity/files',
+  report: true,
+};
+
+/** The mark `OcuPilot.Port.LogSourcePort` reads an integrity report's error lines by. */
+const REPORT_ERROR_MARK = '****';
+
+/** The vendor severities an integrity report's lines are drawn with: severe for an error, info otherwise. */
+const REPORT_ERROR_SEVERITY = '2';
+const REPORT_INFO_SEVERITY = '0';
 
 /**
  * `OcuPilot.Api.Error`'s code for a log file this instance does not have. It is a 404 rather than an
@@ -163,9 +183,30 @@ function filesOf(body: unknown): readonly LogFileEntry[] {
   for (const file of files) {
     const name = textAt(file, 'name');
     if (name === '') continue;
-    entries.push({ name, size: numberAt(file, 'size'), modified: textAt(file, 'modified') });
+    const entry: LogFileEntry = { name, size: numberAt(file, 'size'), modified: textAt(file, 'modified') };
+    // An integrity check (Story 18.4) carries its start and its state in place of a size.
+    const time = textAt(file, 'time');
+    entries.push(time === '' ? entry : { ...entry, time, state: textAt(file, 'state') });
   }
   return entries;
+}
+
+/**
+ * An integrity report's lines as rows (Story 18.4): each non-empty line its own entry at the check's
+ * start `time`, severe where the report marks it an error, info otherwise.
+ */
+function reportLinesOf(lines: readonly string[], time: string): readonly LogLine[] {
+  return lines
+    .filter((line) => line.trim() !== '')
+    .map((line) => ({
+      stamp: time,
+      pid: '',
+      severity: line.startsWith(REPORT_ERROR_MARK) ? REPORT_ERROR_SEVERITY : REPORT_INFO_SEVERITY,
+      category: '',
+      text: line,
+      raw: line,
+      head: true,
+    }));
 }
 
 /**
@@ -219,6 +260,9 @@ export class LogViewerStore {
 
   private truncatedValue = false;
 
+  /** Whether the integrity check the window names has not ended (Story 18.4). */
+  private runningValue = false;
+
   private cursorValue = false;
 
   private loadingValue = false;
@@ -260,6 +304,7 @@ export class LogViewerStore {
     this.sizeValue = 0;
     this.restartedValue = false;
     this.truncatedValue = false;
+    this.runningValue = false;
     this.cursorValue = false;
     this.loadingValue = false;
     this.loadedValue = false;
@@ -372,6 +417,11 @@ export class LogViewerStore {
     return this.sizeValue;
   }
 
+  /** Whether the integrity check on screen is still running, so it has no report yet (Story 18.4). */
+  running(): boolean {
+    return this.runningValue;
+  }
+
   /**
    * Whether Load newer is offered: only once a page has answered and left a cursor, or, for a
    * source that reads entries, once its window has answered.
@@ -478,7 +528,11 @@ export class LogViewerStore {
     }
 
     const restarted = flagAt(result.body, 'restarted');
-    const window = parseFileLines(linesOf(result.body));
+    this.runningValue = this.sourceValue.report === true && flagAt(result.body, 'running');
+    const window =
+      this.sourceValue.report === true
+        ? reportLinesOf(linesOf(result.body), textAt(result.body, 'time'))
+        : parseFileLines(linesOf(result.body));
     this.offsetValue = numberAt(result.body, 'offset');
     this.identityValue = textAt(result.body, 'identity');
     this.sizeValue = numberAt(result.body, 'size');

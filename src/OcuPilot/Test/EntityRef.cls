@@ -11,9 +11,9 @@ Class OcuPilot.Test.EntityRef Extends %UnitTest.TestCase
 /// ones testing an undeclared one, and one <parameter>OcuPilot.Kernel.EntityRef.IDRULES</parameter>
 /// declares no rule for, so the corpus round-trips verbatim. <code>task</code> held this place
 /// until Story 5.11 gave it the <code>integer</code> rule, <code>role</code> until Story 8.3 gave it
-/// <code>foldcase</code>, <code>resource</code> until Story 8.4 did, and <code>service</code> until
-/// Story 9.9 did.</p>
-Parameter KNOWNTYPE = "database";
+/// <code>foldcase</code>, <code>resource</code> until Story 8.4 did, <code>service</code> until
+/// Story 9.9 did, and <code>database</code> until Story 18.4 gave it <code>directoryset</code>.</p>
+Parameter KNOWNTYPE = "device";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -270,6 +270,14 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("role", "%All"), "%all", "while a role's fold, by Story 8.3's rule")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("resource", "%DB_OcuPilot"), "%db_ocupilot", "and a resource's, by Story 8.4's")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("database-configuration", "OcuProbe183X"), "ocuprobe183x", "and a database configuration's, by Story 18.3's: the instance resolves a configuration name without regard to case")
+    ; Story 18.4's rule: a database is addressed by its directory, kept exactly, or by a JSON array
+    ; of directories -- the integrity check's set -- deduplicated and sorted, one member reading as
+    ; itself. The same corpus runs through the client twin (ui/tools/entity-ref.test.mjs).
+    Do $$$AssertTrue($ListFind(tRuled, "database") > 0, "the database pair is the one Story 18.4 added")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("database", "/Durable/IRIS/mgr/User/"), "/Durable/IRIS/mgr/User/", "a directory keeps its spelling")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("database", "[""/b/"",""/a/"",""/b""]"), "[""/a/"",""/b/""]", "a set drops a later spelling of one directory and sorts the rest")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("database", "[""/a/"",""/a""]"), "/a/", "and a set of one reads as that directory")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("database", "[1]"), "[1]", "while an array that is not of directories is kept exactly")
     ; Story 18.14's rule: a mapping is addressed by [namespace, Name], and only the namespace part
     ; folds -- a routine mapping's type suffix and a global mapping's subscript are the instance's
     ; own spelling. The same corpus runs through the client twin (ui/tools/entity-ref.test.mjs).

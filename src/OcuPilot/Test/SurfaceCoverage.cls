@@ -132,6 +132,8 @@ XData Coverage
 <screen name="DeviceForm" class="OcuPilot.Test.DeviceCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="NamespaceForm" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
 <screen name="LocalDatabaseForm" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
+<screen name="DatabaseIntegrity" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheIntegrityScreensAreBuiltUnlisted" corpus="one declaration test pins both screens Story 18.4 adds, Check integrity and the Integrity log"/>
+<screen name="DatabaseIntegrityLog" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheIntegrityScreensAreBuiltUnlisted" corpus="one declaration test pins both screens Story 18.4 adds, Check integrity and the Integrity log"/>
 <screen name="TaskForm" class="OcuPilot.Test.TaskCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="ServiceForm" class="OcuPilot.Test.ServiceUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
 <screen name="LdapConfigForm" class="OcuPilot.Test.LdapUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
@@ -172,6 +174,14 @@ XData Coverage
 <tool name="osmgmt.localdatabases.updatemount" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create and the two edits are asserted together in one loop, with the delete"/>
 <tool name="osmgmt.localdatabases.update" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create and the two edits are asserted together in one loop, with the delete"/>
 <tool name="osmgmt.localdatabases.delete" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheDeleteCarriesItsValueAndItsSubject"/>
+<tool name="osmgmt.databasedetails.mount" class="OcuPilot.Test.DatabaseActions" method="TestDismountAndMountOnBothCallers" corpus="the dismount and the mount are driven together, each on both callers"/>
+<tool name="osmgmt.databasedetails.dismount" class="OcuPilot.Test.DatabaseActions" method="TestDismountAndMountOnBothCallers" corpus="the dismount and the mount are driven together, each on both callers"/>
+<tool name="osmgmt.databasedetails.truncate" class="OcuPilot.Test.DatabaseActions" method="TestTruncateSendsItsTargetAndShrinksTheFile"/>
+<tool name="osmgmt.databasedetails.compact" class="OcuPilot.Test.DatabaseActions" method="TestCompactAndDefragmentAreQueuedAndFinish" corpus="the compact and the defragment are driven together, one on each caller"/>
+<tool name="osmgmt.databasedetails.defragment" class="OcuPilot.Test.DatabaseActions" method="TestCompactAndDefragmentAreQueuedAndFinish" corpus="the compact and the defragment are driven together, one on each caller"/>
+<tool name="osmgmt.databases.integrity" class="OcuPilot.Test.DatabaseIntegrity" method="TestOneDatabaseAndASetAreCheckedOnBothCallers"/>
+<tool name="osmgmt.localdatabases.grow" class="OcuPilot.Test.DatabaseGrowExpand" method="TestTheSizeGrowsOnTheSaveAndThroughTheTool"/>
+<tool name="osmgmt.localdatabases.expand" class="OcuPilot.Test.DatabaseGrowExpand" method="TestAddAVolumeOnBothCallers"/>
 <tool name="osmgmt.globalmappings.create" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
 <tool name="osmgmt.globalmappings.update" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>
 <tool name="osmgmt.globalmappings.delete" class="OcuPilot.Test.MappingDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the nine mapping tools are asserted together in one loop"/>

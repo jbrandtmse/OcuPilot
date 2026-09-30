@@ -938,7 +938,7 @@ A developer gets classes and routines with source view, compile, delete, export,
 
 **FRs covered:** FR-80, covering 36 post-Release-1 catalog rows (S 17 / M 15 / L 4, 0 new REST endpoints)
 
-**Implementation notes:** Row groups: CP-36; OS-23; EX-02 to EX-34; DT-01. **EX-15 must ship with EX-14** - `action/query` executes any statement type unguarded, and the same guard protects the agent's free-form SQL tool, which Release 1 deliberately withheld. The Atelier port's authentication is decided as a choice between an explicit Basic header and a pass-through on the OcuPilot API: the JWT route is **closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The iris-table-editor harvest lifts cleanly for the builders and formatters but needs three algorithms ported out of a 6,023-line vanilla-DOM grid, and its plaintext-password-in-server-memory session pattern is explicitly not carried.
+**Implementation notes:** Row groups: CP-36; OS-23; EX-02 to EX-34; DT-01. **EX-15 must ship with EX-14** - `action/query` executes any statement type unguarded, and the same guard protects the agent's free-form SQL tool, which Release 1 deliberately withheld. The Atelier port's authentication is decided: through the OcuPilot API, in process as the signed-in user, never an explicit Basic header [AMENDED 2026-09-29, owner]. The JWT route is **closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The iris-table-editor harvest lifts cleanly for the builders and formatters but needs three algorithms ported out of a 6,023-line vanilla-DOM grid, and its plaintext-password-in-server-memory session pattern is explicitly not carried.
 
 ### Epic 20: Stage 4 - Interoperability, with the Analytics rider
 
@@ -6803,6 +6803,7 @@ So that a gateway's definition is managed where its status is.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
+- DW-1423: The change announcement reads 'Updated: <id> created' and 'Updated: <id> deleted' -- its fixed prefix contradicts the verb (ledger; routed by merge_gate 2026-09-29)
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
@@ -7202,6 +7203,7 @@ So that key management is not a reason to keep the classic portal open.
 - **Then** it is write-only and returned by no read, like every other secret.
 
 - DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards (ledger; routed by cr 2026-09-28)
+- DW-1555: Creating and editing RSA and symmetric-key wallet secrets (the key-material design); Story 8.6 ships key-value secrets and shows the other types read-only (ledger; routed by merge_gate 2026-09-29)
 
 ### Story 18.8: Superservers, authentication options and managed file transfer
 
@@ -7371,6 +7373,8 @@ So that the namespace configuration the contest deferred includes the step the c
 - **Then** it round-trips through the admin API's async path, reading the finished task's result once, and states its consequence before it is confirmed.
 
 - DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan (ledger; routed by merge_gate 2026-09-28)
+- DW-1813: A global mapping range whose low end is empty (':A') covers the % globals in any namespace, yet carries no MAPPING.SYSTEMGLOBAL consequence (ledger; routed by merge_gate 2026-09-29)
+- DW-1858: the Integrity log has no way in but the Check integrity flow; give it an OS management side-bar position right after Databases (ledger; routed by merge_gate 2026-09-30)
 
 ### Story 18.16: Remote databases
 
@@ -7392,7 +7396,7 @@ So that database administration also covers the databases an ECP data server hol
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
 
-**Applies to every story in this epic.** **FR-80** governs these too; acceptance is that contract plus each row's backing route. This stage introduces a **new port** for the Atelier API, whose authentication is a choice between an explicit Basic header and a pass-through on the OcuPilot API - **the JWT route is closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The port carries its own resource gate like every other. Every write is a confirmed proposal; every new destructive key defaults to disabled.
+**Applies to every story in this epic.** **FR-80** governs these too; acceptance is that contract plus each row's backing route. This stage introduces a **new port** for the Atelier API. Its features go **through the OcuPilot API**, which calls the Atelier implementation in process as the signed-in user, the way the admin API is reached [AMENDED 2026-09-29, owner: the authentication decided; was a choice between an explicit Basic header and a pass-through on the OcuPilot API]. The explicit Basic header is not used, and **the JWT route is closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The port carries its own resource gate like every other. Every write is a confirmed proposal; every new destructive key defaults to disabled.
 
 **What gates the stage.** `action/query` executes **any** statement type unguarded, so the DML and DDL guard must ship **with** the query console rather than after it. XML export and load are Atelier v7 routes and carry a version gate. The ETag conflict path on document PUT must be observed rather than assumed. The iris-table-editor harvest lifts cleanly for its builders and formatters but needs three algorithms ported out of a 6,023-line vanilla-DOM grid, and its plaintext-password-in-server-memory session pattern is explicitly not carried. DocDB needs its service enabled.
 

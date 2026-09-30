@@ -62,8 +62,11 @@
 /// opposite of AD-8's intent. <code>%DB_IRISSYS:READ</code> is the port's own namespace-switch
 /// requirement, declared second (AD-8, AD-29).</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.DatabaseDetails</code></b>, in the class's own
-/// case (AD-44). It declares no exemption, so it links out to nothing; it declares no primary or
-/// row action, since the database writes are Stage 2.</p>
+/// case (AD-44). It declares no exemption, so it links out to nothing. Its five row actions are the
+/// classic page's operations (Story 18.4): <code>mount</code>, <code>dismount</code>,
+/// <code>truncate</code>, <code>compact</code> and <code>defragment</code>, each carried out by its own
+/// tool (<class>OcuPilot.Screen.Tool.DatabaseMount</class> and its four siblings) through
+/// <class>OcuPilot.Port.DatabasePort</class>, so its empty state invites the agent.</p>
 Class OcuPilot.Screen.Descriptor.DatabaseDetails Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -85,7 +88,7 @@ XData Declaration
   "parentScope": "os-management/databases",
   "id": {"kind": "composite", "parts": ["Directory"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "mount", "selfProtection": ""}, {"id": "dismount", "selfProtection": ""}, {"id": "truncate", "selfProtection": ""}, {"id": "compact", "selfProtection": ""}, {"id": "defragment", "selfProtection": ""}],
   "context": {
     "fields": ["Directory", "MaxSize", "ExpansionSize", "NewVolumeThreshold", "NewVolumeDirectory", "ResourceName", "NewGlobalIsKeep", "NewGlobalCollation", "ClusterMountMode", "ReadOnly", "GlobalJournalState", "Size", "AvailableSpace", "DiskFree", "Mounted"],
     "secretFields": []
@@ -140,8 +143,8 @@ XData Declaration
       {"field": "ReadOnly", "labelKey": "databaseDetailsReadOnly", "kind": "status"},
       {"field": "GlobalJournalState", "labelKey": "databaseDetailsJournalNewGlobals", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "databaseDetailsEmptyAgent"
   },
   "toolIdentifier": "osmgmt.databasedetails"
 }

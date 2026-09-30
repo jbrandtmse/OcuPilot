@@ -605,6 +605,21 @@ describe('the data table', () => {
     expect(items).toEqual([STRINGS.agentDefinitionDisable]);
   });
 
+  it('Story 18.4: a row action the screen also declares as its primary is in no row menu, so a list with no other draws no menu column', async () => {
+    // Mutation (Rule 19): drop the primary-id filter from `DataTable.menuItems` -> each row draws
+    // the menu trigger and its column, red.
+    const declaration = tableDeclaration({
+      primaryAction: { id: 'enable', selfProtection: '' },
+      rowActions: [{ id: 'enable', selfProtection: '' }],
+    });
+    const wired = await wire(declaration, ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    expect(wired.host().querySelectorAll('[role="row"]').length).toBeGreaterThan(1);
+    expect(wired.host().querySelector('.ocu-data-table-trigger')).toBeNull();
+  });
+
   it("AD-53: a self-protected row's menu entry stays listed, aria-disabled with the reason inline, and runs nothing", async () => {
     // The row menu's half of the refusal the command bar and the command box also draw: a
     // non-selectable entry a key manager still reaches, never the `disabled` attribute, with the

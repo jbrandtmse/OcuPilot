@@ -19,7 +19,9 @@ Parameter SCREENPAIRS = "[{""resource"":""%Admin_Manage"",""permission"":""USE""
 /// <p>The list: OS management's tenth entry over the vendor's configuration <code>LIST</code>
 /// narrowed to local databases, three fields filtered and sorted alike, Name first, one Delete row
 /// action and a Create, the classic Local Databases page; Epic 6's Databases re-fetches on its
-/// entity type (AD-14).</p>
+/// entity type, and it on Database details' (AD-14).</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Descriptor.LocalDatabaseList</class> declares no
+/// secondary entity type -> its re-fetch leg goes red.</p>
 Method TestTheListIsOsManagementsTenthEntryKeyedByName()
 {
     Set tClass = ..#LIST
@@ -37,7 +39,8 @@ Method TestTheListIsOsManagementsTenthEntryKeyedByName()
     Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), ..#SCREENPAIRS, "the area's two pairs")
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ClassMethod(tClass, "Scope") _ "|" _ $ClassMethod(tClass, "IdKind"), "database-configuration|instance|single", "one configuration per row, instance-scoped, keyed by its name")
     Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown("database-configuration"), "an entity type the kernel declares (AD-14)")
-    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")), "create|delete", "Create, and Delete on a row")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")), "create|delete,expand", "Create, and Delete and Add a volume on a row (Story 18.4)")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "SecondaryEntityTypes")), "database", "it re-fetches after a mount or dismount, which changes its Status (AD-14, Story 18.4)")
     Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "%CSP.UI.Portal.Databases", "the classic list (AD-44)")
     Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "it does not refresh (AD-43)")
     Do $$$AssertEquals(tDeclaration.emptyStateKey _ "|" _ tDeclaration.table.emptyAgentKey, "localDatabaseListEmpty|localDatabaseListEmptyAgent", "its two empty-state keys")
@@ -79,7 +82,7 @@ Method TestTheFormIsBuiltUnlistedWithTheListsPairs()
         Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).ReasonForViolation($List(tCodes, tI)), "", $List(tCodes, tI) _ " carries a sentence")
         Set tFields = tFields _ $Select(tFields = "": "", 1: ",") _ ##class(OcuPilot.Area.OsMgmt.DatabaseRules).FieldOf($List(tCodes, tI))
     }
-    Do $$$AssertEquals(tFields, "Name,Name,Name,Name,path,Size,MaxSize,ExpansionSize,NewVolumeThreshold,ResourceName,ResourceName", "each code names its own field")
+    Do $$$AssertEquals(tFields, "Name,Name,Name,Name,path,Size,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeThreshold,ResourceName,ResourceName,TargetSize,TargetFreeSpace,Size,InitialSize,Databases,Globals,Globals", "each code names its own field, Story 18.4's operation arguments and DW-1860's threshold among them")
     Do $$$AssertEquals(##class(OcuPilot.Area.OsMgmt.DatabaseRules).Rules().%Size(), $ListLength(tCodes), "and the form read publishes one rule per code")
     For tCode = "DATABASE.INUSE", "DATABASE.REMOTE" {
         Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).ReasonForViolation(tCode), "", tCode _ ": the envelope code carries a sentence too")
@@ -236,12 +239,12 @@ Method TestTheReadToolAnswersTheListsRowsAllLocal()
 /// <p>Every code <class>OcuPilot.Api.DatabaseError</class> declares is a <code>DATABASE.*</code> code
 /// with a sentence the one writer answers (AD-39), and each field-level code is among
 /// <method>OcuPilot.Api.DatabaseError.ViolationCodes</method>, so the form read's rules carry it; only
-/// the three envelope codes stay out.</p>
+/// the eight envelope codes stay out, Story 18.4's five state codes among them.</p>
 /// <p>Mutation (Rule 19): drop a code from <method>OcuPilot.Api.DatabaseError.ViolationCodes</method>
 /// -> this goes red.</p>
 Method TestEveryDatabaseCodeIsSaidAndListed()
 {
-    Set tEnvelopes = $ListBuild(##class(OcuPilot.Api.DatabaseError).#VALIDATION, ##class(OcuPilot.Api.DatabaseError).#INUSE, ##class(OcuPilot.Api.DatabaseError).#REMOTE)
+    Set tEnvelopes = $ListBuild(##class(OcuPilot.Api.DatabaseError).#VALIDATION, ##class(OcuPilot.Api.DatabaseError).#INUSE, ##class(OcuPilot.Api.DatabaseError).#REMOTE, ##class(OcuPilot.Api.DatabaseError).#MOUNTED, ##class(OcuPilot.Api.DatabaseError).#DISMOUNTED, ##class(OcuPilot.Api.DatabaseError).#READONLY, ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYNONE, ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYMANAGER)
     Set tListed = ##class(OcuPilot.Api.DatabaseError).ViolationCodes()
     Set tCount = 0
     Set tWrong = ""
@@ -256,7 +259,100 @@ Method TestEveryDatabaseCodeIsSaidAndListed()
     }
     Do $$$AssertTrue(tCount > 3, "the class declares its codes (" _ tCount _ ")")
     Do $$$AssertEquals(tWrong, "", "each is a DATABASE code with its sentence, and each field-level code is listed")
-    Do $$$AssertEquals($ListLength(tListed), tCount - 3, "and the list holds no code the class does not declare")
+    Do $$$AssertEquals($ListLength(tListed), tCount - $ListLength(tEnvelopes), "and the list holds no code the class does not declare")
+}
+
+/// <p>Story 18.4's two screens: Check integrity, a form page under Databases carrying the list's own
+/// pairs over the database entity, and the Integrity log, a log viewer carrying the log's two pairs and
+/// reading the integrity source; both built and unlisted, each over its classic page. The Databases list
+/// offers Check integrity as its primary action and on a row, and Database details its five
+/// operations.</p>
+Method TestTheIntegrityScreensAreBuiltUnlisted()
+{
+    For tCase = $ListBuild("OcuPilot.Screen.Descriptor.DatabaseIntegrity", "os-management/databases/integrity|form-page|0", "databaseIntegrityLabel", ..#SCREENPAIRS, "database|single", "%CSP.UI.Portal.Dialog.Integ", "osmgmt.databaseintegrity"), $ListBuild("OcuPilot.Screen.Descriptor.DatabaseIntegrityLog", "os-management/databases/integrity-log|log-viewer|0", "databaseIntegrityLogLabel", "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "log-entry|none", "%CSP.UI.Portal.Dialog.IntegLog", "osmgmt.integritylog") {
+        Set tClass = $List(tCase, 1)
+        Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+        Do $$$AssertStatusOK(tSC, tClass _ ": the declaration parses")
+        If $$$ISERR(tSC) Continue
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", tClass _ ": the declaration validates")
+        Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.sideBarPosition, $List(tCase, 2), tClass _ ": its route and archetype, taking no side-bar position")
+        Do $$$AssertEquals(tDeclaration.labelKey, $List(tCase, 3), tClass _ ": its label key")
+        Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), $List(tCase, 4), tClass _ ": its pairs")
+        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ClassMethod(tClass, "IdKind"), $List(tCase, 5), tClass _ ": its entity type and id")
+        Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), $List(tCase, 6), tClass _ ": its classic page (AD-44)")
+        Do $$$AssertEquals(tDeclaration.toolIdentifier, $List(tCase, 7), tClass _ ": its tool identifier")
+        Do $$$AssertTrue(tDeclaration.suggestedPrompts.%Size() >= 3, tClass _ ": with three suggested prompts")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute($Piece($List(tCase, 2), "|", 1)), tClass, tClass _ ": the route resolves to it")
+    }
+    Set tLog = "OcuPilot.Screen.Descriptor.DatabaseIntegrityLog"
+    Do $$$AssertEquals($ClassMethod(tLog, "Read").source.%ToJSON(), "{""port"":""logsource"",""endpoint"":""integrity"",""type"":""LIST""}", "the Integrity log reads the integrity source")
+    Set tSC = $ClassMethod(tLog, "DeclarationJson", .tDeclaration)
+    Do $$$AssertEquals($Select($IsObject($Get(tDeclaration)): tDeclaration.emptyStateKey, 1: ""), "databaseIntegrityNone", "and says so when no check was run")
+    Do $$$AssertEquals(..Names(##class(OcuPilot.Port.LogSourcePort).PairsFor("integrity")), "%Admin_Operate:USE,%DB_IRISSYS:READ", "the port's own pairs for the source are the screen's")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Descriptor.DatabaseList).PrimaryActionId() _ "|" _ $ListToString(##class(OcuPilot.Screen.Descriptor.DatabaseList).RowActionIds()), "integrity|integrity", "the Databases list offers Check integrity, declared on its rows too for the action route")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Screen.Descriptor.DatabaseDetails).RowActionIds()), "mount,dismount,truncate,compact,defragment", "Database details offers its five operations")
+}
+
+/// <p>Story 18.4's eight tools: each a write through <class>OcuPilot.Port.DatabasePort</class> reading
+/// <code>STATE</code> and sending <code>Database.Actions</code>' own request type with no body of the
+/// caller's (AD-51), neither destructive nor a create; each admitting exactly its one argument, or none;
+/// each requiring its screen's pairs and then its own (AD-8); each naming the classic pages it replaces,
+/// compiled classes spelled exactly (AD-44); each that can place a volume file fingerprinting the new
+/// volume directory and threshold its precondition reads (AD-51); the compact and defragment adding read
+/// on the target's own resource.</p>
+/// <p>Mutation (Rule 19): drop <code>%Admin_Secure</code> from
+/// <class>OcuPilot.Screen.Tool.DatabaseMount</class> -> the mount's pairs go red.</p>
+Method TestTheDiskOperationsDeclareTheirTypesArgumentsAndPairs()
+{
+    Set tDetails = "OcuPilot.Screen.Descriptor.DatabaseDetails"
+    Set tDatabases = "OcuPilot.Screen.Descriptor.DatabaseList"
+    Set tLocal = "OcuPilot.Screen.Descriptor.LocalDatabaseList"
+    ; name, descriptor, write type, argument, pairs, classic pages, id argument/param
+    Set tCases = $ListBuild($ListBuild("osmgmt.databasedetails.mount", tDetails, "MOUNT", "ReadOnly", "%Admin_Operate:USE,%DB_IRISSYS:READ,%Admin_Secure:USE", "%CSP.UI.Portal.Dialog.DBActions", "Directory/dir"))
+    Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.databasedetails.dismount", tDetails, "DISMOUNT", "", "%Admin_Operate:USE,%DB_IRISSYS:READ,%Admin_Manage:USE", "", "Directory/dir"))
+    Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.databasedetails.truncate", tDetails, "TRUNCATE", "TargetSize", "%Admin_Operate:USE,%DB_IRISSYS:READ", "%CSP.UI.Portal.Background.Dialog.DatabaseTruncate", "Directory/dir"))
+    Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.databasedetails.compact", tDetails, "COMPACT", "TargetFreeSpace", "%Admin_Operate:USE,%DB_IRISSYS:READ,%DB_IRISSYS:WRITE", "%CSP.UI.Portal.Background.Dialog.DatabaseCompact", "Directory/dir"))
+    Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.databasedetails.defragment", tDetails, "DEFRAGMENT", "", "%Admin_Operate:USE,%DB_IRISSYS:READ,%DB_IRISSYS:WRITE", "%CSP.UI.Portal.Background.Dialog.DatabaseDefragment", "Directory/dir"))
+    Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.databases.integrity", tDatabases, "INTEGRITYCHECK", "Globals", "%Admin_Manage:USE,%DB_IRISSYS:READ,%Admin_Operate:USE,%DB_IRISSYS:WRITE", "%CSP.UI.Portal.Dialog.Integ,%CSP.UI.Portal.Dialog.IntegOutput", "Directory/dir"))
+    Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.localdatabases.grow", tLocal, "MODIFYSIZE", "Size", "%Admin_Manage:USE,%DB_IRISSYS:READ,%Admin_Operate:USE", "%CSP.UI.Portal.Database", "Name/name"))
+    Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.localdatabases.expand", tLocal, "EXPANDVOL", "InitialSize", "%Admin_Manage:USE,%DB_IRISSYS:READ,%Admin_Operate:USE", "%CSP.UI.Portal.DatabaseVolumes,%CSP.UI.Portal.Dialog.ExpandVolume", "Name/name"))
+    For tC = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tC)
+        Set tName = $List(tCase, 1)
+        Kill tTool
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(tName, .tTool, 1)
+        Do $$$AssertTrue($$$ISOK(tSC) && $IsObject($Get(tTool)), tName _ " is registered")
+        If '$IsObject($Get(tTool)) Continue
+        Set tClass = tTool.class
+        Do $$$AssertEquals(tTool.kind _ "|" _ $Parameter(tClass, "DESCRIPTORCLASS") _ "|" _ $ClassMethod(tClass, "PortClass") _ "|" _ $ClassMethod(tClass, "ReadType"), "write|" _ $List(tCase, 2) _ "|" _ ..#PORT _ "|STATE", tName _ " is a write on its screen, through the database port, reading STATE")
+        Do $$$AssertEquals($ClassMethod(tClass, "Endpoint") _ "|" _ $ClassMethod(tClass, "WriteType") _ "|" _ $ClassMethod(tClass, "SendsBody") _ "|" _ $ClassMethod(tClass, "Destructive") _ "|" _ $ClassMethod(tClass, "Creates") _ "|" _ $ClassMethod(tClass, "ChangeAction"), "Database.Actions|" _ $List(tCase, 3) _ "|0|0|0|updated", tName _ ": endpoint, request type, no body of its own, neither destructive nor a create")
+        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "SettableFields")), $List(tCase, 4), tName _ " admits exactly its argument")
+        Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tTool, .tResolved)
+        Do $$$AssertEquals($Select(tResolved: ..Names(tPairs), 1: "unresolved"), $List(tCase, 5), tName _ ": its screen's pairs, then its own")
+        Set tPages = $Parameter(tClass, "CLASSICPAGES")
+        Do $$$AssertEquals(tPages, $List(tCase, 6), tName _ ": the classic pages it replaces (AD-44)")
+        For tI = 1:1:$Length(tPages, ",") {
+            Set tPage = $Piece(tPages, ",", tI)
+            If tPage = "" Continue
+            Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tPage)
+            Do $$$AssertTrue($IsObject(tCompiled) && (tCompiled.Name = tPage), tName _ ": " _ tPage _ " is a compiled class spelled exactly")
+            Set tCompiled = ""
+        }
+        Do $$$AssertEquals($ClassMethod(tClass, "IdArgument") _ "/" _ $ClassMethod(tClass, "IdParam"), $List(tCase, 7), tName _ ": names its database by its screen's id")
+        If $ListFind($ListFromString($Parameter(..#PORT, "VOLUMETYPES") _ "," _ $Parameter(..#PORT, "THRESHOLDVOLUMETYPES")), $List(tCase, 3)) {
+            Set tSubject = $ClassMethod(tClass, "FingerprintSubject")
+            Do $$$AssertTrue($ListFind(tSubject, "NewVolumeDirectory") && $ListFind(tSubject, "NewVolumeThreshold"), tName _ ": fingerprints the new volume directory and threshold its precondition reads (AD-51)")
+        }
+    }
+    Set tDirectory = ##class(OcuPilot.Test.DatabaseWriteProbe).Stored("IRISSYS", "Directory")
+    For tName = "osmgmt.databasedetails.compact", "osmgmt.databasedetails.defragment" {
+        Kill tTool
+        Do ##class(OcuPilot.Screen.Tool.Registry).Resolve(tName, .tTool, 1)
+        If '$IsObject($Get(tTool)) Continue
+        Set tArgs = {}
+        Do tArgs.%Set("Directory", tDirectory, "string")
+        Do $$$AssertEquals(..Names(##class(OcuPilot.Screen.Tool.Registry).ArgumentPairs(tTool, tArgs, .tResolved)), "%DB_IRISSYS:READ", tName _ " adds read on the target's own resource")
+    }
 }
 
 ClassMethod Rows(pRows As %DynamicArray, pField As %String = "") As %String

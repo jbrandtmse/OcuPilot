@@ -549,6 +549,20 @@ describe('the command box', () => {
     expect(count()).toBe('2 screens, 1 actions');
   });
 
+  it('Story 18.4: an action declared as both the primary and a row action is listed once, as the primary', () => {
+    // Mutation (Rule 19): drop the primary-id `continue` from the row-action loop in `command-box.ts`
+    // -> the row-scoped option is listed beside the primary one, red.
+    navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
+      primaryAction: { id: 'delete', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'current-user' }],
+    });
+    chord();
+    const ids = Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')).map(
+      (option) => (option as HTMLElement).id
+    );
+    expect(ids).toEqual(['ocu-command-box-action-delete']);
+  });
+
   it("DW-370: a screen's own published words for an action reach the box's option, not only the bar's button", () => {
     // `command-bar.spec.ts` pins the bar; this is the other surface `actionLabel` was given a
     // descriptor for. Every other case here uses the stub descriptor, which publishes nothing of

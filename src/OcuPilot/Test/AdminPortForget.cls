@@ -140,6 +140,43 @@ Method TestTheSweepTakesOnlyOcuPilotsTerminalRowsADayOld()
     }
 }
 
+/// <p>DW-1859, AD-37: the sweep deletes a labeled terminal row whose work-queue token names no
+/// queue -- what a least-privileged caller's finished read leaves -- without the vendor's SQL delete
+/// trigger attaching it, so <code>messages.log</code> gains no ERROR #7846 line naming that token,
+/// the line the instance counts toward its Warning state.</p>
+/// <p>Mutation (Rule 19): restore the sweep's SQL <code>DELETE</code> in
+/// <method>OcuPilot.Port.AdminPort.SweepOwnTasks</method> -- the console-log leg goes red.</p>
+Method TestTheSweepNeverRunsTheVendorDeleteTrigger()
+{
+    Set tGuid = ..#PROBEGUID _ "DeadToken"
+    Set tToken = "OcuPilotDeadToken" _ $Job _ $Translate($ZTimeStamp, ",.", "")
+    Set tSC = ##class(OcuPilot.Test.PortFixture).SeedTaskRow(tGuid, "GET /v2/ocupilot/database/syscrud", "Finished", ..HoursAgo(48), "", tToken)
+    Do $$$AssertStatusOK(tSC, "a two-day-old finished row carrying a token no queue answers is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Port.AdminPort).SweepOwnTasks(24)
+    Do $$$AssertStatusOK(tSC, "the sweep runs: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(##class(OcuPilot.Test.PortFixture).TaskRowExists(tGuid), 0, "the row is deleted")
+    Do $$$AssertEquals(..ConsoleLinesNaming(tToken), 0, "and messages.log names its token on no line, so no work queue was attached")
+}
+
+/// <p>How many lines of the instance's <code>messages.log</code> contain <var>pText</var>, -1 when
+/// the file cannot be read.</p>
+ClassMethod ConsoleLinesNaming(pText As %String) As %Integer
+{
+    Set tFound = -1
+    Try {
+        Set tStream = ##class(%Stream.FileCharacter).%New()
+        If $$$ISERR(tStream.LinkToFile(##class(%File).ManagerDirectory() _ "messages.log")) Quit
+        Set tFound = 0
+        While 'tStream.AtEnd {
+            If tStream.ReadLine() [ pText Set tFound = tFound + 1
+        }
+    } Catch {
+        Set tFound = -1
+    }
+    Quit tFound
+}
+
 /// <p>AD-37: the daily retention sweep runs that step, deleting a labeled terminal row two days
 /// old.</p>
 /// <p>Mutation (Rule 19): remove the step from <method>OcuPilot.Kernel.Retention.Sweep</method> --
@@ -167,7 +204,7 @@ ClassMethod HoursAgo(pHours As %Integer) As %String
 ClassMethod RemoveProbes() As %Status
 {
     Set tFirst = $$$OK
-    For tSuffix = "Protect", "Finished", "Failed", "Canceled", "Recent", "Day23", "Day25", "Unlabeled", "Running", "Retention" {
+    For tSuffix = "Protect", "Finished", "Failed", "Canceled", "Recent", "Day23", "Day25", "Unlabeled", "Running", "Retention", "DeadToken" {
         Set tSC = ##class(OcuPilot.Test.PortFixture).RemoveTaskRow(..#PROBEGUID _ tSuffix)
         If $$$ISERR(tSC) && $$$ISOK(tFirst) Set tFirst = tSC
     }

@@ -18,6 +18,12 @@ XData Keys [ MimeType = application/json ]
 {
 {
   "logs.applicationerrors.delete": true,
+  "osmgmt.databasedetails.compact": false,
+  "osmgmt.databasedetails.defragment": false,
+  "osmgmt.databasedetails.dismount": false,
+  "osmgmt.databasedetails.mount": false,
+  "osmgmt.databasedetails.truncate": false,
+  "osmgmt.databases.integrity": false,
   "osmgmt.devices.create": true,
   "osmgmt.devices.delete": true,
   "osmgmt.devices.update": true,
@@ -26,6 +32,8 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.globalmappings.update": true,
   "osmgmt.localdatabases.create": true,
   "osmgmt.localdatabases.delete": false,
+  "osmgmt.localdatabases.expand": false,
+  "osmgmt.localdatabases.grow": false,
   "osmgmt.localdatabases.update": true,
   "osmgmt.localdatabases.updatemount": true,
   "osmgmt.namespaces.copymappings": true,

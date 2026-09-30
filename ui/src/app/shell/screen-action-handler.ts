@@ -54,9 +54,11 @@ export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
  * global, routine and package mapping lists (Story 18.14), whose Delete types the mapping's name,
  * Processes' Broadcast (Story 16.6), which acts on the checked rows and opens the broadcast
  * dialog, External language servers (Story 16.10), whose Start is sent at once and whose Stop
- * warns first -- and whose Delete types the server's name (Story 16.25) -- and the Local databases
+ * warns first -- and whose Delete types the server's name (Story 16.25) -- the Local databases
  * list (Story 18.3), whose Delete types the name, states the removal's impact and offers to delete
- * the file too.
+ * the file too, and Database details (Story 18.4), whose five disk operations each warn first -- the
+ * mount carrying its read-only flag, the truncate and the compact a size -- and whose Dismount states
+ * the prohibited set's refusal of a protected database when its dialog opens.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -87,6 +89,7 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.PackageMappingList',
   'OcuPilot.Screen.Descriptor.LocalDatabaseList',
   'OcuPilot.Screen.Descriptor.LanguageServerList',
+  'OcuPilot.Screen.Descriptor.DatabaseDetails',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -122,6 +125,18 @@ export const COPY_MAPPINGS = 'copy-mappings';
  * carries the file option as a declared value (AD-56 (ii)).
  */
 export const LOCAL_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.LocalDatabaseList';
+
+/**
+ * Database details' descriptor (Story 18.4), whose five disk operations each warn before they are
+ * sent, and whose Dismount's dialog states the prohibited set's refusal when it opens (AD-10).
+ */
+export const DATABASE_DETAILS = 'OcuPilot.Screen.Descriptor.DatabaseDetails';
+
+/**
+ * The Local databases list's Add a volume (Story 18.4): declared, and drawn by the database editor's
+ * Volume files section alone, which starts it for the database it shows once the form is saved.
+ */
+export const EXPAND_VOLUME = 'expand';
 
 /** The three mapping lists (Story 18.14), each keyed by `[namespace, Name]`, whose Delete types the name. */
 const GLOBAL_MAPPING_LIST = 'OcuPilot.Screen.Descriptor.GlobalMappingList';
@@ -213,6 +228,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [ROLE_LIST]: [ADD_GRANTED_ROLE, REMOVE_GRANTED_ROLE, SET_RESOURCE_GRANT, REMOVE_RESOURCE_GRANT],
   // The Namespaces list's page registers Copy mappings itself, after this handler, so its dialog opens.
   [NAMESPACE_LIST]: [COPY_MAPPINGS],
+  // The database editor draws Add a volume beside its volume files, for the database it shows.
+  [LOCAL_DATABASE_LIST]: [EXPAND_VOLUME],
   // The Task schedule's page registers Export itself and draws Import as a screen-level action.
   [TASK_SCHEDULE]: [TASK_EXPORT, TASK_IMPORT],
 };
@@ -274,6 +291,9 @@ const IMPACT_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [RESOURCE_LIST]: ['delete'],
   [NAMESPACE_LIST]: ['delete'],
   [LOCAL_DATABASE_LIST]: ['delete'],
+  // Story 18.4: a warning, not a removal -- the read answers only the prohibited set's refusal of a
+  // protected database, which the Dismount dialog draws as its advisory.
+  [DATABASE_DETAILS]: ['dismount'],
 };
 
 /**
@@ -372,6 +392,39 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   'OcuPilot.Screen.Descriptor.BackgroundTaskList': { cancel: STRINGS.backgroundTaskCancelConsequence },
   // Story 16.10: a stop is the vendor's hard shutdown.
   'OcuPilot.Screen.Descriptor.LanguageServerList': { stop: STRINGS.languageServerStopConsequence },
+  // Story 18.4: each disk operation is disruptive, and none removes data, so each warns.
+  [DATABASE_DETAILS]: {
+    mount: STRINGS.databaseMountConsequence,
+    dismount: STRINGS.databaseDismountConsequence,
+    truncate: STRINGS.databaseTruncateConsequence,
+    compact: STRINGS.databaseCompactConsequence,
+    defragment: STRINGS.databaseDefragmentConsequence,
+  },
+  [LOCAL_DATABASE_LIST]: { [EXPAND_VOLUME]: STRINGS.databaseExpandConsequence },
+};
+
+/**
+ * The one declared value a warning dialog asks for, keyed by descriptor and then by action id
+ * (Story 18.4, AD-56 (ii)): a checkbox whose state is sent as the value, `'true'` or `'false'`, or a
+ * whole-number field whose text is, each under the name its tool declares. The dialog keeps Proceed
+ * unavailable while a field holds no whole number; the instance's own rules answer the rest.
+ */
+interface WarningValue {
+  readonly kind: 'flag' | 'field';
+  readonly value: string;
+  readonly labelKey: keyof typeof STRINGS;
+  readonly hintKey?: keyof typeof STRINGS;
+}
+
+const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningValue>>>> = {
+  [DATABASE_DETAILS]: {
+    mount: { kind: 'flag', value: 'ReadOnly', labelKey: 'databaseMountReadOnly' },
+    truncate: { kind: 'field', value: 'TargetSize', labelKey: 'databaseTargetSizeLabel', hintKey: 'databaseTargetSizeHint' },
+    compact: { kind: 'field', value: 'TargetFreeSpace', labelKey: 'databaseTargetFreeLabel', hintKey: 'databaseTargetFreeHint' },
+  },
+  [LOCAL_DATABASE_LIST]: {
+    [EXPAND_VOLUME]: { kind: 'field', value: 'InitialSize', labelKey: 'databaseInitialSize', hintKey: 'databaseInitialSizeHint' },
+  },
 };
 
 /**
@@ -445,6 +498,9 @@ export interface PendingConfirm {
   /** The role dialog's choices that grant %All or an administrative privilege (AD-10, DW-1523). */
   readonly privileged: readonly string[];
   readonly impact: string;
+  /** A warning dialog's whole-number field's label and hint (Story 18.4); absent or `''` for none. */
+  readonly fieldLabel?: string;
+  readonly fieldHint?: string;
   /** The broadcast dialog's count of checked rows (Story 16.6); absent for every other kind. */
   readonly count?: number;
   /** The broadcast dialog's message is being sent. */
@@ -481,6 +537,20 @@ export type RowFields = Readonly<Record<string, unknown>> | null;
 
 /** The values a row action sends beside its id, keyed by the names its tool declares (AD-56). */
 export type ActionValues = Readonly<Record<string, string>>;
+
+/**
+ * The last action this handler sent (Story 18.4): which, on what, since when, and how it stands --
+ * `running` while its request is in flight, then `finished`, `continues` where the instance answered
+ * that it is still running (AD-26), or `refused`. A page draws its running line from it; nothing
+ * here polls the instance.
+ */
+export interface ActionProgress {
+  readonly descriptor: string;
+  readonly actionId: string;
+  readonly target: string;
+  readonly state: 'running' | 'finished' | 'continues' | 'refused';
+  readonly since: Date;
+}
 
 /**
  * The handler behind every declared row action this client runs through
@@ -526,6 +596,8 @@ export class ScreenActionHandler {
   /** Which impact read is current; an answer carrying an older one is stale. */
   private impactAsk = 0;
 
+  private readonly progressSignal = signal<ActionProgress | null>(null);
+
   constructor() {
     for (const screen of SCREENS) {
       if (!SCREEN_ACTION_DESCRIPTORS.includes(screen.descriptor)) continue;
@@ -548,6 +620,11 @@ export class ScreenActionHandler {
     return this.waiting();
   }
 
+  /** The last action sent and how it stands (`ActionProgress`), or `null` before any. */
+  progress(): ActionProgress | null {
+    return this.progressSignal();
+  }
+
   /**
    * The typed name matched, or the warning was proceeded past: send the write the dialog was
    * standing in front of. `flag` is the dialog's checkbox. Where the checkbox is one of the action's
@@ -555,10 +632,17 @@ export class ScreenActionHandler {
    * checked or not (AD-56 (ii)); otherwise a checked box sends the flagged action in place of the one
    * the dialog was opened for, and nothing else about the request changes.
    */
-  confirmPending(flag = false): void {
+  confirmPending(flag = false, value = ''): void {
     const pending = this.waiting();
     const sink = this.takeSink();
     if (pending === null || (pending.kind !== 'typed-name' && pending.kind !== 'warning')) return;
+    // A warning's one declared value (Story 18.4): the checkbox's state or the field's text.
+    const asked = pending.kind === 'warning' ? this.warningValue(pending.descriptor, pending.actionId) : null;
+    if (asked !== null) {
+      const sent = asked.kind === 'flag' ? (flag ? 'true' : 'false') : value;
+      void this.send(pending.descriptor, pending.actionId, pending.target, { [asked.value]: sent }, sink);
+      return;
+    }
     const own = this.flag(pending.descriptor, pending.actionId);
     if (own?.value !== undefined) {
       void this.send(pending.descriptor, pending.actionId, pending.target, { [own.value]: flag ? 'true' : 'false' }, sink);
@@ -699,6 +783,10 @@ export class ScreenActionHandler {
       return;
     }
     const warning = this.warning(descriptor, actionId) || this.rowWarning(descriptor, actionId, rowFields);
+    if (warning !== '' && (IMPACT_ACTIONS[descriptor] ?? []).includes(actionId)) {
+      void this.openWarningWithImpact(descriptor, actionId, target, warning, sink);
+      return;
+    }
     if (warning !== '') {
       this.open('warning', descriptor, actionId, target, warning, [], sink);
       return;
@@ -775,6 +863,9 @@ export class ScreenActionHandler {
   ): void {
     this.waitingSink = sink;
     this.impactAsk++;
+    const asked = kind === 'warning' ? this.warningValue(descriptor, actionId) : null;
+    let flagLabel = kind === 'typed-name' ? (this.flag(descriptor, actionId)?.label ?? '') : '';
+    if (asked?.kind === 'flag') flagLabel = stringFor(asked.labelKey);
     this.waiting.set({
       kind,
       descriptor,
@@ -784,7 +875,9 @@ export class ScreenActionHandler {
       name,
       consequence,
       advisory,
-      flagLabel: kind === 'typed-name' ? (this.flag(descriptor, actionId)?.label ?? '') : '',
+      flagLabel,
+      fieldLabel: asked?.kind === 'field' ? stringFor(asked.labelKey) : '',
+      fieldHint: asked?.kind === 'field' && asked.hintKey !== undefined ? stringFor(asked.hintKey) : '',
       options,
       privileged,
       impact: '',
@@ -850,6 +943,25 @@ export class ScreenActionHandler {
   }
 
   /**
+   * Open a warning with the impact line as its advisory (Story 18.4): read as the dialog opens, as a
+   * removal's is, and drawn only where the instance answers one -- a protected database's dismount,
+   * which the prohibited set refuses. A read that fails opens the dialog without it; a stale answer
+   * is dropped, as `openWithImpact`'s is.
+   */
+  private async openWarningWithImpact(
+    descriptor: string,
+    actionId: string,
+    target: string,
+    consequence: string,
+    sink: ActionSink
+  ): Promise<void> {
+    const ask = ++this.impactAsk;
+    const line = await this.impactFor(descriptor, actionId, target);
+    if (ask !== this.impactAsk) return;
+    this.open('warning', descriptor, actionId, target, consequence, [], sink, target, line);
+  }
+
+  /**
    * The impact line the instance answers for `actionId` on `target` -- with `value` as the action's
    * one declared value, where given -- rendered about `target`, or `''` when the read fails or the
    * action removes nothing covered.
@@ -897,6 +1009,8 @@ export class ScreenActionHandler {
     if (addressed === undefined) return false;
     const store = sink ?? this.store(descriptor, screen.refreshRates);
     store.setRefusal('');
+    const since = new Date();
+    this.progressSignal.set({ descriptor, actionId, target, state: 'running', since });
     const request: { action: string; id: string; values?: ActionValues } = { action: actionId, id: target };
     if (values !== undefined) request.values = values;
     const result = await this.injector.get(ApiService).requestJson<ScreenActionAnswer>(
@@ -908,6 +1022,13 @@ export class ScreenActionHandler {
       }
     );
     this.lastContinues = result.kind === 'ok' && result.body?.continues === true;
+    this.progressSignal.set({
+      descriptor,
+      actionId,
+      target,
+      state: result.kind !== 'ok' ? 'refused' : this.lastContinues ? 'continues' : 'finished',
+      since,
+    });
     this.lastRefused =
       result.kind === 'error'
         ? {
@@ -945,7 +1066,8 @@ export class ScreenActionHandler {
    * whether the instance applied it. For a page that composes several actions itself -- the
    * Selective SQL auditing dialog -- so each still takes the one request and change event `send`
    * makes. `sink`, where given, takes the refusal sentence in place of the screen's own store: a
-   * dialog that shows the refusal itself keeps it off the list's banner.
+   * dialog that shows the refusal itself keeps it off the list's banner, and the Check integrity
+   * flow (Story 18.4) keeps it in its own store.
    */
   sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues, sink?: ActionSink): Promise<boolean> {
     return this.send(descriptor, actionId, target, values, sink ?? null);
@@ -993,6 +1115,13 @@ export class ScreenActionHandler {
     const own = WARNING_CONSEQUENCES[descriptor];
     if (own === undefined) return '';
     return Object.hasOwn(own, actionId) ? own[actionId] : '';
+  }
+
+  /** The one declared value a warning for `actionId` asks for (`WARNING_VALUES`), or `null`. */
+  private warningValue(descriptor: string, actionId: string): WarningValue | null {
+    const own = WARNING_VALUES[descriptor];
+    if (own === undefined || !Object.hasOwn(own, actionId)) return null;
+    return own[actionId];
   }
 
   /** The `WARNING_ROWS` consequence for the row `rowFields`, or `''` where it does not match. */

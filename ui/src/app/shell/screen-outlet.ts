@@ -54,6 +54,7 @@ import { TaskSchedulePage } from '../areas/tasks/task-schedule.page';
 import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { DatabaseWizardPage } from '../areas/os-management/database-wizard.page';
 import { DatabaseEditorPage } from '../areas/os-management/database-editor.page';
+import { DatabaseIntegrityPage } from '../areas/os-management/database-integrity.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -150,6 +151,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.PackageMappingForm': MappingFormPage,
   // Story 18.3: the local database form's bare route is the create wizard.
   'OcuPilot.Screen.Descriptor.LocalDatabaseForm': DatabaseWizardPage,
+  // Story 18.4: the Check integrity flow, a stepped form page of its own.
+  'OcuPilot.Screen.Descriptor.DatabaseIntegrity': DatabaseIntegrityPage,
   'OcuPilot.Screen.Descriptor.SslForm': SslFormPage,
   'OcuPilot.Screen.Descriptor.TaskForm': TaskWizardPage,
   'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,

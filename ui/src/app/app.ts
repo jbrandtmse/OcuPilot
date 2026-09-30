@@ -36,6 +36,7 @@ import { LanguageServerForm } from './areas/os-management/language-server-form.s
 import { DatabaseActions } from './areas/os-management/database-actions';
 import { DatabaseEditor } from './areas/os-management/database-editor.store';
 import { DatabaseWizard } from './areas/os-management/database-wizard.store';
+import { DatabaseIntegrityFlow } from './areas/os-management/database-integrity.store';
 import { MappingActions } from './areas/os-management/mapping-actions';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
@@ -321,6 +322,7 @@ export class App {
   private readonly databaseActions = inject(DatabaseActions);
   private readonly databaseWizard = inject(DatabaseWizard);
   private readonly databaseEditor = inject(DatabaseEditor);
+  private readonly databaseIntegrity = inject(DatabaseIntegrityFlow);
   // The three mapping lists' declared Create, the same way (`areas/os-management/mapping-actions.ts`).
   private readonly mappingActions = inject(MappingActions);
   private readonly mappingForm = inject(MappingForm);
@@ -629,9 +631,11 @@ export class App {
       this.namespaceForm.reset();
       // The language server editor holds a server THIS principal was creating or editing and has not saved.
       this.languageServerForm.reset();
-      // The database wizard and editor hold a database THIS principal was creating or editing and has not saved.
+      // The database wizard and editor hold a database THIS principal was creating or editing and has not saved,
+      // and the Check integrity flow the databases it was choosing (Story 18.4).
       this.databaseWizard.reset();
       this.databaseEditor.reset();
+      this.databaseIntegrity.reset();
       // The mapping editor holds a mapping THIS principal was creating or editing and has not saved.
       this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).

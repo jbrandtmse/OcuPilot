@@ -17,6 +17,9 @@
 /// and while any is queued <method>DirectoryEntries</method> answers those instead of reading the
 /// directory -- which is how a thousand-file listing, or two files sharing one modification time,
 /// is driven without creating them.</p>
+/// <p><b>The integrity checks and a check's report can be armed</b> (Story 18.4):
+/// <method>ArmIntegrityChecks</method> and <method>ArmIntegrityReport</method>, so a running check, a
+/// report carrying errors and a full listing are driven without an instance holding them.</p>
 /// <p>State lives in <code>^||OcuPilotLogFixture</code>; <method>Clear</method> forgets it.</p>
 Class OcuPilot.Test.LogSourceFixture Extends OcuPilot.Port.LogSourcePort
 {
@@ -210,6 +213,38 @@ ClassMethod DirectoryEntries(pDirectory As %String, pCurrent As %String, Output 
     Kill pEntries
     For tAt = 1:1:tCount {
         Set pEntries(tAt) = ^||OcuPilotLogFixture("entry", tAt)
+    }
+    Quit $$$OK
+}
+
+/// <p>Answer <method>IntegrityChecks</method> with the JSON array <var>pChecksJson</var>, each
+/// <code>{ID, StartTime, RunningState, HasEnded}</code> in the order given (Story 18.4).</p>
+ClassMethod ArmIntegrityChecks(pChecksJson As %String)
+{
+    Set ^||OcuPilotLogFixture("integrity") = pChecksJson
+}
+
+/// <p>Answer <method>IntegrityReport</method> for check <var>pId</var> with the lines of
+/// <var>pLines</var>, a <class>%List</class> (Story 18.4).</p>
+ClassMethod ArmIntegrityReport(pId As %String, pLines As %List)
+{
+    Set ^||OcuPilotLogFixture("integrityReport", pId) = pLines
+}
+
+ClassMethod IntegrityChecks(Output pRows As %DynamicArray) As %Status
+{
+    If '$Data(^||OcuPilotLogFixture("integrity")) Quit ##super(.pRows)
+    Set pRows = ##class(%DynamicArray).%FromJSON(^||OcuPilotLogFixture("integrity"))
+    Quit $$$OK
+}
+
+ClassMethod IntegrityReport(pId As %String, Output pStream As %Stream.TmpCharacter) As %Status
+{
+    If '$Data(^||OcuPilotLogFixture("integrityReport", pId)) Quit ##super(pId, .pStream)
+    Set pStream = ##class(%Stream.TmpCharacter).%New()
+    Set tLines = ^||OcuPilotLogFixture("integrityReport", pId)
+    For tI = 1:1:$ListLength(tLines) {
+        Do pStream.Write($ListGet(tLines, tI) _ $Char(10))
     }
     Quit $$$OK
 }
