@@ -8427,3 +8427,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-25-the-external-language-server-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: orchestrator decision 2026-09-29: option A for 16.25 (shown, never set, SSL/TLS precedent); the PathPort-backed follow-up is routed here
 - 2026-09-29T23:53:28Z status=routed owner=range-end-cleanup by=spec_gate note=orchestrator: 16.25 option A; follow-up for the four single-location fields
+
+### DW-1857: audit.browser-spec AC6 waits for a row the opening read already drew, so its timing can measure the response arriving rather than this Search's first row (same weak wait as DW-1780's audit AC1)
+- source: DW-1780 fix | severity: low | fix-risk: low | footprint: in-epic
+- evidence: found by the DW-1780 fix, 2026-09-30; orchestrator asked for the same fix as AC1
+- 2026-09-30T02:01:26Z status=routed owner=16-25-the-external-language-server-editor by=lead note=orchestrator: wait for this Search's own answer, pinned under the throttled condition, before 16.25's first code push
+- 2026-09-30T02:13:03Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=AC6 waits for this Search's own answer (showsAnswer, shared with search()); the timing leg now reddens when the answer lands late
