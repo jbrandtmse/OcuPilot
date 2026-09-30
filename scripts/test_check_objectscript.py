@@ -1819,6 +1819,108 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
         co.check_destructive_test_guard(problems)
         self.assertEqual(problems, [])
 
+    MARKING_TOOL = (
+        "Class OcuPilot.Screen.Tool.AuditingUpdate Extends OcuPilot.Screen.Tool.Write\n"
+        "{\n\n"
+        'Parameter TOOLNAME = "security.auditing.update";\n\n'
+        "Parameter MOVESMARKING As BOOLEAN = 1;\n\n"
+        "}\n"
+    )
+
+    MINT_AND_CONFIRM = (
+        '    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint(tScreen, "security.auditing.update", $Username, "", tTurn, {"AuditEnabled": false}, tLimits, .tProposal, .tHttp, .tFault)\n'
+        '    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)'
+    )
+
+    def test_an_unguarded_class_confirming_a_marking_tool_is_refused_naming_it(self):
+        """A class that mints and confirms `security.auditing.update` turns the instance's auditing
+        off having named no watched call. The marking tools are read from the tree, so the tool is a
+        fixture class here declaring `MOVESMARKING` 1. Mutation (Rule 19): drop the marking-tool arm
+        from `check_destructive_test_guard` -> this goes red."""
+        self.write("src/OcuPilot/Screen/Tool/AuditingUpdate.cls", self.MARKING_TOOL)
+        self.write_test_class("MarkingConfirm", self.MINT_AND_CONFIRM)
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("MarkingConfirm.cls" in p and "security.auditing.update" in p for p in problems),
+            f"expected the unguarded confirm of a marking tool refused by name, got {problems}",
+        )
+
+    def test_each_route_and_the_handler_arm_the_marking_arm_on_their_own(self):
+        """A class that names the marking tool and writes only through a `/confirm"` route, an
+        `/action"` route or the screen action's handler is refused naming the tool, each on its
+        own. Mutation (Rule 19): drop that alternate from `MARKING_WRITE_ENTRY_RE` -> its leg goes
+        red."""
+        self.write("src/OcuPilot/Screen/Tool/AuditingUpdate.cls", self.MARKING_TOOL)
+        for name, call in (
+            (
+                "MarkingConfirmRoute",
+                '    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", "/proposal/" _ tKey _ "/confirm", .tStatus, .tBody, "{}", "application/json")',
+            ),
+            (
+                "MarkingActionRoute",
+                '    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", "/screens/security.auditing/action", .tStatus, .tBody, tRequest, "application/json")',
+            ),
+            ("MarkingHandle", "    Set tSC = ##class(OcuPilot.Api.ScreenAction).Handle(tScreen)"),
+        ):
+            with self.subTest(entry=name):
+                self.write_test_class(name, '    Set tTool = "security.auditing.update"\n' + call)
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertTrue(
+                    any(f"{name}.cls" in p and "security.auditing.update" in p for p in problems),
+                    f"expected {name} refused naming the marking tool, got {problems}",
+                )
+
+    def test_the_same_marking_confirm_with_the_guard_passes(self):
+        self.write("src/OcuPilot/Screen/Tool/AuditingUpdate.cls", self.MARKING_TOOL)
+        self.write_test_class("MarkingConfirmGuarded", self.MINT_AND_CONFIRM, self.GUARDED_BODY)
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
+    def test_an_apply_through_a_fixture_port_arms_nothing(self):
+        """An `ApplyAt` whose port argument is a literal `OcuPilot.Test.*` class writes to that
+        recording port, not to the instance; the same call through any other port arms the rule."""
+        self.write("src/OcuPilot/Screen/Tool/AuditingUpdate.cls", self.MARKING_TOOL)
+        call = (
+            '    Set tTool = "OcuPilot.Screen.Tool.AuditingUpdate"\n'
+            '    Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tTool, {port}, $ClassMethod(tTool, "Endpoint"), "", "", "", "", .tWritten, .tHttp, .tFault)'
+        )
+        for port, refused in (('"OcuPilot.Test.AcceptPort"', False), ('"OcuPilot.Port.AdminPort"', True), ("tPort", True)):
+            with self.subTest(port=port):
+                self.write_test_class("MarkingApply", call.format(port=port))
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertEqual(
+                    any("MarkingApply.cls" in p for p in problems),
+                    refused,
+                    f"port {port}: expected refused={refused}, got {problems}",
+                )
+
+    def test_a_marking_tool_named_only_in_a_comment_arms_nothing(self):
+        """The name has to stand on a code line: a class that confirms some other proposal and
+        mentions the wire name only in a `;` or `///` comment writes nothing through that tool. A
+        class naming the tool without any write entry point arms nothing either."""
+        self.write("src/OcuPilot/Screen/Tool/AuditingUpdate.cls", self.MARKING_TOOL)
+        for name, body in (
+            (
+                "MarkingComment",
+                '    ; mints "security.auditing.update" elsewhere, never here\n'
+                '    /// "security.auditing.update"\n'
+                '    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)',
+            ),
+            (
+                "MarkingReadOnly",
+                '    Set tName = $Parameter("OcuPilot.Screen.Tool.AuditingUpdate", "TOOLNAME")',
+            ),
+        ):
+            with self.subTest(name=name):
+                self.write_test_class(name, body)
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertFalse(any(f"{name}.cls" in p for p in problems), f"expected {name} to pass, got {problems}")
+
     def test_a_guard_that_does_not_refuse_does_not_count(self):
         """The rule reads the barrier, not the mention of it. Each body below names the arming
         variable inside `OnBeforeAllTests` and still runs the class on a live instance: the

@@ -1284,16 +1284,21 @@ def check_test_class_properties(problems: list[str]) -> None:
 # own auditing off: that is the widest effect any class here has, because while it is off nothing on
 # the instance is audited at all -- not only OcuPilot's own events.
 #
-# **A stated limit, not an oversight.** The same story made auditing reachable without naming that
-# API, through the shipped confirm path: `security.auditing.update` is an ordinary write tool, so a
-# class that mints and confirms one of its proposals turns auditing off having named no watched
-# call. This rule reads one file at a time and cannot see through a confirm, and the tool's class
-# name is no proxy for it -- several classes read that class's parameters without ever issuing a
-# write. So the confirm route is outside the population, and a class that takes it carries its own
-# `OnBeforeAllTests` refusal by its author's decision rather than by this gate
-# (`OcuPilot.Test.ProhibitedRoute` is the first). A class holding only the restore helper is not
-# exempt: `RestoreAuditing` reaches `Security.System.Modify` like any other caller, so the rule
-# reads it as in the population and asks for a guard it does not need.
+# **The confirm route is in the population through the tool it confirms.** The same story made
+# auditing reachable without naming that API: `security.auditing.update` is an ordinary write tool,
+# so a class that mints and confirms one of its proposals turns auditing off having named no watched
+# call. A tool's name alone is no proxy -- several classes read a marking tool's parameters without
+# ever issuing a write -- so the rule derives the marking tools from the tree (every class declaring
+# `Parameter MOVESMARKING = 1`, by its class name and by its quoted wire name) and arms a class that
+# names one on a code line AND calls a write entry point: the shipped confirm, a `/confirm"` route,
+# the screen action's handler, an `/action"` route, or `Operation.Apply` / `ApplyAt`. An `Apply`
+# whose port argument is a literal `OcuPilot.Test.*` class writes to that fixture, not to the
+# instance, and arms nothing. **The limit that remains:** the rule reads one file at a time, so a
+# class that reaches a marking tool through a helper in another class, or names it only through a
+# computed string, is outside it and carries its own refusal by its author's decision. A class
+# holding only the restore helper is not exempt: `RestoreAuditing` reaches `Security.System.Modify`
+# like any other caller, so the rule reads it as in the population and asks for a guard it does
+# not need.
 #
 # Deleting a role was outside the rule until DW-396, on the ground that it is the tail of an
 # install probe rather than a principal this suite brought into being. It is inside it now: the
@@ -1367,6 +1372,28 @@ DESTRUCTIVE_TEST_RE = re.compile(
 )
 
 ARMING_GUARD_RE = re.compile(r"\$System\.Util\.GetEnviron\(\s*\.\.#ARMINGVARIABLE\s*\)\s*'=\s*1")
+
+# A class declaring that its write opens or closes the audit channel (AD-53 as amended), with its
+# optional type and keywords.
+MOVES_MARKING_RE = re.compile(
+    r"^Parameter\s+MOVESMARKING(?:\s+As\s+[A-Za-z0-9%.]+)?(?:\s*\[[^\]]*\])?\s*=\s*1\s*;",
+    re.MULTILINE,
+)
+TOOL_NAME_RE = re.compile(r"^Parameter\s+TOOLNAME(?:\s+As\s+[A-Za-z0-9%.]+)?\s*=\s*\"([^\"]+)\"", re.MULTILINE)
+
+# The calls through which a test class writes to the instance: the shipped confirm, a `/confirm"`
+# route, the screen action's handler, an `/action"` route, and the operation's own port call.
+MARKING_WRITE_ENTRY_RE = re.compile(
+    r"##class\(\s*OcuPilot\.Kernel\.Proposal\.Confirm\s*\)\s*\.\s*Confirm\("
+    r"|/confirm\""
+    r"|##class\(\s*OcuPilot\.Api\.ScreenAction\s*\)\s*\.\s*Handle\("
+    r"|/action\""
+    r"|##class\(\s*OcuPilot\.Kernel\.Proposal\.Operation\s*\)\s*\.\s*Apply(?:At)?\("
+)
+
+# A port argument naming one of the suite's own fixture ports, which records a write rather than
+# making it.
+FIXTURE_PORT_RE = re.compile(r'^"OcuPilot\.Test\.[A-Za-z0-9.]+"$')
 
 PRODUCTION_INSTALL_VARIABLE = "OCUPILOT_ALLOW_PRODUCTION_INSTALL"
 
@@ -1450,8 +1477,92 @@ def refuses_on_variable(text: str, variable: str) -> bool:
     return False
 
 
+def marking_tools() -> list[tuple[str, str]]:
+    """Every class in the tree declaring `MOVESMARKING` 1, as `(class name, wire name)`; the wire
+    name is `''` for a class that declares no `TOOLNAME` of its own."""
+    tools: list[tuple[str, str]] = []
+    for p in iter_objectscript_files():
+        if p.suffix != ".cls":
+            continue
+        text = read_text(p)
+        if text is None or MOVES_MARKING_RE.search(text) is None:
+            continue
+        declared = CLASS_RE.search(text)
+        if declared is None:
+            continue
+        wire = TOOL_NAME_RE.search(text)
+        tools.append((declared.group(1), wire.group(1) if wire is not None else ""))
+    return tools
+
+
+def call_argument(raw: str, open_paren: int, index: int) -> str | None:
+    """The `index`th (0-based) top-level argument of the call whose `(` is at `open_paren` on
+    `raw`, stripped, or `None` when the line ends before it. Quoted strings (with `""` escapes) and
+    nested brackets are skipped over, so a comma inside either does not split an argument."""
+    args: list[str] = []
+    depth = 0
+    in_string = False
+    start = open_paren + 1
+    i = open_paren + 1
+    while i < len(raw):
+        c = raw[i]
+        if in_string:
+            if c == '"':
+                if i + 1 < len(raw) and raw[i + 1] == '"':
+                    i += 2
+                    continue
+                in_string = False
+        elif c == '"':
+            in_string = True
+        elif c in "({[":
+            depth += 1
+        elif c in ")}]":
+            if depth == 0:
+                args.append(raw[start:i])
+                break
+            depth -= 1
+        elif c == "," and depth == 0:
+            args.append(raw[start:i])
+            start = i + 1
+        i += 1
+    return args[index].strip() if index < len(args) else None
+
+
+def marking_write(text: str, tools: list[tuple[str, str]]) -> tuple[int, str, str] | None:
+    """`(line, marking tool, write entry point)` when `text` names a marking tool on a code line
+    and calls a write entry point, or `None`.
+
+    A tool is named by its class name as a whole token or by its wire name in quotes. An `Apply`
+    or `ApplyAt` whose second argument, the port, is a literal `OcuPilot.Test.*` class is the
+    suite's own recording port and is not a write entry point.
+    """
+    named = ""
+    for _, raw in iter_non_comment_lines(text):
+        for class_name, wire in tools:
+            if re.search(rf"(?<![\w.]){re.escape(class_name)}(?![\w.])", raw) or (
+                wire and f'"{wire}"' in raw
+            ):
+                named = wire or class_name
+                break
+        if named:
+            break
+    if not named:
+        return None
+    for i, raw in iter_non_comment_lines(text):
+        for found in MARKING_WRITE_ENTRY_RE.finditer(raw):
+            call = found.group(0)
+            if call.endswith("("):
+                if "Operation" in call:
+                    port = call_argument(raw, found.end() - 1, 1)
+                    if port is not None and FIXTURE_PORT_RE.match(port):
+                        continue
+            return i, named, call
+    return None
+
+
 def check_destructive_test_guard(problems: list[str]) -> None:
     graph = build_superclass_graph()
+    tools = marking_tools()
     for p in iter_objectscript_files():
         if p.suffix != ".cls":
             continue
@@ -1470,18 +1581,29 @@ def check_destructive_test_guard(problems: list[str]) -> None:
             if found is not None:
                 hit = (i, found.group(0))
                 break
-        if hit is None:
+        marking = marking_write(text, tools) if hit is None else None
+        if hit is None and marking is None:
             continue
         if not guarded_before_all_tests(text):
-            line, call = hit
-            problems.append(
-                f"{rel}:{line}: a %UnitTest.TestCase calling {call} mutates this instance's own "
-                f"principals or logs, and OnBeforeAllTests does not refuse on "
-                f"$System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 with a Quit $$$ERROR -- so "
-                f"`ci-runner.mjs --container <name>` runs it against whatever instance it was pointed "
-                f"at (DW-289); add the guard OcuPilot.Test.LogSourceDenial carries and arm it in "
-                f"scripts/ci-throwaway.sh"
-            )
+            if hit is not None:
+                line, call = hit
+                problems.append(
+                    f"{rel}:{line}: a %UnitTest.TestCase calling {call} mutates this instance's own "
+                    f"principals or logs, and OnBeforeAllTests does not refuse on "
+                    f"$System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 with a Quit $$$ERROR -- so "
+                    f"`ci-runner.mjs --container <name>` runs it against whatever instance it was pointed "
+                    f"at (DW-289); add the guard OcuPilot.Test.LogSourceDenial carries and arm it in "
+                    f"scripts/ci-throwaway.sh"
+                )
+            else:
+                line, tool, call = marking
+                problems.append(
+                    f"{rel}:{line}: a %UnitTest.TestCase naming the marking tool {tool} and writing "
+                    f"through {call} can change this instance's auditing, and OnBeforeAllTests does not "
+                    f"refuse on $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 with a Quit $$$ERROR -- "
+                    f"add the guard OcuPilot.Test.LogSourceDenial carries and arm it in "
+                    f"scripts/ci-throwaway.sh"
+                )
         install = None
         for i, raw in iter_non_comment_lines(text):
             found = PRODUCTION_INSTALL_RE.search(raw)
