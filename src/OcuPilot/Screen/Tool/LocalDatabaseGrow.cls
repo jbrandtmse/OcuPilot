@@ -14,7 +14,7 @@ Parameter TOOLNAME = "osmgmt.localdatabases.grow";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.LocalDatabaseList";
 
-Parameter DESCRIPTION = "Propose growing one local database's file to a larger size. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the database as the local databases list reports it. A size at or below the current size, above the maximum size, or of a database that is not mounted is refused.";
+Parameter DESCRIPTION = "Propose growing one local database's file to a larger size. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the database as the local databases list reports it. A size at or below the current size, above the maximum size, or of a database that is not mounted is refused, and so is a grow of a database with a new volume threshold whose new volume directory is unset or is the manager directory.";
 
 Parameter IDDESCRIPTION = "The database to grow, as this instance's local databases list reports its name. A name the list does not report is refused.";
 

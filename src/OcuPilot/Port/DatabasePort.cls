@@ -129,6 +129,14 @@ Parameter INITIALSIZEQUERY = "InitialSize";
 /// <p>The integrity check's global names, a JSON array of strings in the query.</p>
 Parameter GLOBALSQUERY = "Globals";
 
+/// <p>The disk operations that place a volume file in the database's new volume directory,
+/// comma-separated: Add a volume always, and a size grow or a defragment of a database with a non-zero
+/// new volume threshold, each of which adds volume files past it (measured on
+/// <code>ocupilot-b-ci</code>, 2026-09-29).</p>
+Parameter VOLUMETYPES = "EXPANDVOL";
+
+Parameter THRESHOLDVOLUMETYPES = "MODIFYSIZE,DEFRAGMENT";
+
 /// <p>The field an integrity check's set refusal is named on.</p>
 Parameter DATABASESFIELD = "Databases";
 
@@ -447,12 +455,17 @@ ClassMethod Action(pType As %String, ByRef pQuery, pBody As %DynamicAbstractObje
 /// <p><b>The state</b>: a mount of a mounted database is <parameter>OcuPilot.Api.DatabaseError.MOUNTED</parameter>;
 /// every other operation of one that is not mounted, and an integrity check naming any member that is
 /// not, <parameter>OcuPilot.Api.DatabaseError.DISMOUNTED</parameter>; a truncate, compact or defragment
-/// of one mounted read-only <parameter>OcuPilot.Api.DatabaseError.READONLY</parameter>. <b>The
+/// of one mounted read-only <parameter>OcuPilot.Api.DatabaseError.READONLY</parameter>; and an
+/// operation that places a volume file (<method>PlacesVolume</method>) of one that names no new volume
+/// directory <parameter>OcuPilot.Api.DatabaseError.VOLUMEDIRECTORYNONE</parameter>, or whose new volume
+/// directory is the manager directory <parameter>OcuPilot.Api.DatabaseError.VOLUMEDIRECTORYMANAGER</parameter>
+/// (the owner's database-directory rule, AD-21's sixth case). <b>The
 /// arguments</b>, each a whole number of megabytes: a truncate's target 0 or below the size; a
 /// compact's target from 0 to the free space; a grow above the size and within a non-zero maximum; a
 /// new volume's initial size 1 or more and within a non-zero threshold. An integrity check names one
 /// database or more, global names <parameter>GLOBALPATTERN</parameter> admits, and globals only for one
-/// database. Pure: it reads nothing.</p>
+/// database. It reads nothing but the manager directory
+/// (<method>OcuPilot.Port.PathPort.IsManagerDirectory</method>).</p>
 ClassMethod ActionViolations(pType As %String, pState As %DynamicObject, ByRef pQuery, Output pViolations) As %String
 {
     Kill pViolations
@@ -480,6 +493,11 @@ ClassMethod ActionViolations(pType As %String, pState As %DynamicObject, ByRef p
     If pType = "MOUNT" Quit $Select(tMounted: $Parameter(tDatabaseError, "MOUNTED"), 1: "")
     If 'tMounted Quit $Parameter(tDatabaseError, "DISMOUNTED")
     If $ListFind($ListBuild("TRUNCATE", "COMPACT", "DEFRAGMENT"), pType) && pState.%Get("ReadOnly") Quit $Parameter(tDatabaseError, "READONLY")
+    If ..PlacesVolume(pType, pState) {
+        Set tVolume = ..Text(pState, "NewVolumeDirectory")
+        If tVolume = "" Quit $Parameter(tDatabaseError, "VOLUMEDIRECTORYNONE")
+        If ##class(OcuPilot.Port.PathPort).IsManagerDirectory(##class(%File).NormalizeDirectory(tVolume)) Quit $Parameter(tDatabaseError, "VOLUMEDIRECTORYMANAGER")
+    }
     Set tSize = +pState.%Get("Size")
     If pType = "TRUNCATE" {
         Set tValue = $Get(pQuery(..#TARGETSIZEQUERY))
@@ -647,6 +665,17 @@ ClassMethod GlobalNames(pText As %String, Output pValid As %Boolean) As %List
         Set pValid = 0
     }
     Quit $Select(pValid: tNames, 1: "")
+}
+
+/// <p>Whether disk operation <var>pType</var> places a volume file in the new volume directory of the
+/// database in state <var>pState</var>: a <parameter>VOLUMETYPES</parameter> type always, a
+/// <parameter>THRESHOLDVOLUMETYPES</parameter> type when its <code>NewVolumeThreshold</code> is not
+/// 0.</p>
+ClassMethod PlacesVolume(pType As %String, pState As %DynamicObject) As %Boolean
+{
+    If $ListFind($ListFromString(..#VOLUMETYPES), pType) Quit 1
+    If '$ListFind($ListFromString(..#THRESHOLDVOLUMETYPES), pType) Quit 0
+    Quit ($IsObject(pState) && (+pState.%Get("NewVolumeThreshold") > 0))
 }
 
 /// <p>Whether <var>pValue</var> is a whole number: a run of at most nine digits.</p>

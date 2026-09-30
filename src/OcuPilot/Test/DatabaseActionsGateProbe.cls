@@ -2,7 +2,8 @@
 /// disk operations as a <b>real principal</b> (AD-8, AD-29). It logs in as that principal and runs each
 /// step of a plan in the process: a screen's action through <class>OcuPilot.Test.DatabaseActionFixture</class>,
 /// the Local databases editor's Save through <class>OcuPilot.Test.DatabaseWriteGateProbe</class>'s route
-/// handler, and the agent's confirm through <class>OcuPilot.Test.DatabaseConfirm</class>. Each reaches
+/// handler, the agent's confirm through <class>OcuPilot.Test.DatabaseConfirm</class>, and the agent's
+/// tool call through <method>OcuPilot.Test.MappingWriteGateProbe.Dispatch</method>. Each but the tool call reaches
 /// the instance through <class>OcuPilot.Test.DatabaseRecordPort</class>, whose process-private record is
 /// why the steps run here.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
@@ -18,9 +19,11 @@ Parameter RECORD = "OcuPilot.Test.DatabaseRecordPort";
 /// <p>Log in as <var>pUsername</var>, run the JSON array <var>pPlan</var>, and signal
 /// <code>{loggedIn, username, steps}</code> to process <var>pParent</var>, or <code>{error}</code>. A
 /// step is <code>{kind: "act", screen, action, id, values}</code>, <code>{kind: "update", name,
-/// body}</code> or <code>{kind: "confirm", proposalId}</code>; its answer is <code>{http, code,
-/// failedPair, calls, types}</code>, where <code>calls</code> and <code>types</code> are what the
-/// recording port was asked during that step alone.</p>
+/// body}</code>, <code>{kind: "confirm", proposalId}</code> or <code>{kind: "dispatch", turnKey, tool,
+/// input}</code>; its answer is <code>{http, code, failedPair, calls, types}</code>, where
+/// <code>calls</code> and <code>types</code> are what the recording port was asked during that step
+/// alone, and a dispatch's <code>http</code> is 403 for a pair refusal, 400 for any other refused call
+/// and 200 for an answered one.</p>
 ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
 {
     Set tOut = {}
@@ -54,6 +57,8 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
         Set tSC = $ClassMethod(..#CONFIRM, "Confirm", pStep.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
         If $$$ISOK(tSC) && (tCode = "") Set tHttp = 200
         If $IsObject($Get(tDetail)) Set tPair = tDetail.%Get("failedPair")
+    } ElseIf tKind = "dispatch" {
+        Set tSC = ##class(OcuPilot.Test.MappingWriteGateProbe).Dispatch(pStep, .tHttp, .tCode, .tPair)
     } ElseIf tKind = "act" {
         Set tRequest = {}
         Do tRequest.%Set("action", pStep.%Get("action"), "string")

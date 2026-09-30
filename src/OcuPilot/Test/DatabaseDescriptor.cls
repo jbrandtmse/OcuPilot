@@ -239,12 +239,12 @@ Method TestTheReadToolAnswersTheListsRowsAllLocal()
 /// <p>Every code <class>OcuPilot.Api.DatabaseError</class> declares is a <code>DATABASE.*</code> code
 /// with a sentence the one writer answers (AD-39), and each field-level code is among
 /// <method>OcuPilot.Api.DatabaseError.ViolationCodes</method>, so the form read's rules carry it; only
-/// the six envelope codes stay out, Story 18.4's three state codes among them.</p>
+/// the eight envelope codes stay out, Story 18.4's five state codes among them.</p>
 /// <p>Mutation (Rule 19): drop a code from <method>OcuPilot.Api.DatabaseError.ViolationCodes</method>
 /// -> this goes red.</p>
 Method TestEveryDatabaseCodeIsSaidAndListed()
 {
-    Set tEnvelopes = $ListBuild(##class(OcuPilot.Api.DatabaseError).#VALIDATION, ##class(OcuPilot.Api.DatabaseError).#INUSE, ##class(OcuPilot.Api.DatabaseError).#REMOTE, ##class(OcuPilot.Api.DatabaseError).#MOUNTED, ##class(OcuPilot.Api.DatabaseError).#DISMOUNTED, ##class(OcuPilot.Api.DatabaseError).#READONLY)
+    Set tEnvelopes = $ListBuild(##class(OcuPilot.Api.DatabaseError).#VALIDATION, ##class(OcuPilot.Api.DatabaseError).#INUSE, ##class(OcuPilot.Api.DatabaseError).#REMOTE, ##class(OcuPilot.Api.DatabaseError).#MOUNTED, ##class(OcuPilot.Api.DatabaseError).#DISMOUNTED, ##class(OcuPilot.Api.DatabaseError).#READONLY, ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYNONE, ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYMANAGER)
     Set tListed = ##class(OcuPilot.Api.DatabaseError).ViolationCodes()
     Set tCount = 0
     Set tWrong = ""

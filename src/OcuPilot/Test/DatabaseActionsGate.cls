@@ -133,6 +133,38 @@ Method TestEachMissingPairIsRefusedBeforeAnyPortCall()
     Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).StateOf(tA, "Mounted") _ ##class(OcuPilot.Test.DatabaseActions).StateOf(tB, "Mounted"), "falsetrue", "the mount's target is still dismounted, and the dismount's still mounted")
 }
 
+/// <p>DW-1847 (AD-8 as amended 2026-09-29): a holder of Database details' pairs without
+/// <code>%Admin_Manage:USE</code> is refused a dismount 403 naming <code>%Admin_Manage:USE</code> on the
+/// agent's tool call, the screen's action and the agent's confirm, the last two with the recording port
+/// asked nothing, and never <code>PROHIBITED.OCUPILOTDATABASE</code>, which the prohibited set's
+/// own-database read would answer such a holder; the database stays mounted.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.DatabaseDismount.PrivilegePairs</method> answers
+/// the base class's pairs alone -> the tool call is admitted, the screen and the confirm are refused
+/// <code>PROHIBITED.OCUPILOTDATABASE</code> after a port read, and this goes red.</p>
+Method TestAnOperateOnlyDismountIsRefusedForItsPairNeverProhibited()
+{
+    Do ..Seed()
+    Set tB = $ClassMethod(..#PROBE, "DirectoryOf", "OCUPROBE184GB")
+    Set tUser = ..User(1)
+    Set tWanted = "403 AUTH.NOPRIVILEGE %Admin_Manage:USE"
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "running", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a running turn is seeded for " _ tUser)
+    Set tInput = {}
+    Do tInput.%Set("Directory", tB, "string")
+    Set tRun = ..RunAs(tUser, [{"kind": "dispatch", "turnKey": (tTurnKey), "tool": "osmgmt.databasedetails.dismount", "input": (tInput)}])
+    Set tLeg = ..Leg(tRun, 1)
+    Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("code") _ " " _ tLeg.%Get("failedPair"), 1: "absent"), tWanted, "the agent's tool call is refused naming the pair")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey), "the ledger rows the call wrote are removed")
+    Set tRun = ..Legs(tUser, "dismount", tB, "OcuPilot.Screen.Tool.DatabaseDismount", "")
+    For tLeg = 1, 2 {
+        Set tOne = ..Leg(tRun, tLeg)
+        Set tWhich = $Select(tLeg = 1: "the screen's action", 1: "the agent's confirm")
+        Do $$$AssertEquals(..LegText(tRun, tLeg), tWanted _ " calls=0 types=", tWhich _ " is refused naming the pair, the port asked nothing")
+        Do $$$AssertTrue($IsObject(tOne) && (tOne.%Get("code") '= "PROHIBITED.OCUPILOTDATABASE"), tWhich _ " is never the prohibited set's refusal")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).StateOf(tB, "Mounted"), "true", "and the database stays mounted")
+}
+
 /// <p>Exactly the declared pairs (AC9): a principal holding each tool's declared set writes on both
 /// callers -- truncate with Database details' pairs alone, dismount with <code>%Admin_Manage:USE</code>
 /// beside them, the mount with

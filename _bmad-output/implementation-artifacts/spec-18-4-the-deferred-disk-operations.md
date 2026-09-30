@@ -2,10 +2,10 @@
 title: 'Story 18.4: The deferred disk operations'
 type: 'feature'
 created: '2026-09-29'
-status: 'in-progress'
-baseline_revision: '5b1bde51dc7fc45238cb45b6a5cc006c6834a9aa'
+status: 'done'
+baseline_revision: '996602329099023bffcf567f37b57238ae41e4f0'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['multiple-goals', 'oversized']
@@ -481,9 +481,9 @@ deferred:
 
 **Rework 1 (2026-09-29, decisions before review):**
 
-- [ ] [Owner] The owner's database-directory rule (orchestrator relay 2026-09-29, stated at AD-21's sixth case): a database directory is always required and never left for the vendor to default, and nothing is written into IRISSYS's directory (the manager directory). In this story it binds Add a volume (`osmgmt.localdatabases.expandvolume` or its name here) and any other operation that places a file: refuse, by name and before any vendor call, a database whose configured `NewVolumeDirectory` is empty (the vendor would otherwise pick the directory) and one whose effective new-volume directory is the manager directory. Pin both on both callers (the agent's mint and the screen action) with tests that go red when the refusal is removed, and record the `mutation:` lines.
-- [ ] [Decision] DW-1847 (option A, by=merge_gate): dismount keeps `%Admin_Manage:USE` (the intent's pair line and AD-8 are amended). Pin that an Operate-only holder (Database details' pairs without `%Admin_Manage:USE`) is refused with the missing pair named (the declared-pairs refusal, e.g. 403 naming `%Admin_Manage:USE`) before any port call, on both callers, and never `PROHIBITED.OCUPILOTDATABASE`; mutation recorded.
-- [ ] [Ledger] DW-1848: the Integrity log's error branch -- render a report that found errors through the real `Display^Integrity` capture (a hand-built vendor output row or a deliberately damaged probe block, on `ocupilot-b-ci` only, removed afterwards), and pin the error lines; if it cannot be produced on 2026.2, say so with evidence under Design Notes and close it there.
+- [x] [Owner] The owner's database-directory rule (orchestrator relay 2026-09-29, stated at AD-21's sixth case): a database directory is always required and never left for the vendor to default, and nothing is written into IRISSYS's directory (the manager directory). In this story it binds Add a volume (`osmgmt.localdatabases.expandvolume` or its name here) and any other operation that places a file: refuse, by name and before any vendor call, a database whose configured `NewVolumeDirectory` is empty (the vendor would otherwise pick the directory) and one whose effective new-volume directory is the manager directory. Pin both on both callers (the agent's mint and the screen action) with tests that go red when the refusal is removed, and record the `mutation:` lines.
+- [x] [Decision] DW-1847 (option A, by=merge_gate): dismount keeps `%Admin_Manage:USE` (the intent's pair line and AD-8 are amended). Pin that an Operate-only holder (Database details' pairs without `%Admin_Manage:USE`) is refused with the missing pair named (the declared-pairs refusal, e.g. 403 naming `%Admin_Manage:USE`) before any port call, on both callers, and never `PROHIBITED.OCUPILOTDATABASE`; mutation recorded.
+- [x] [Ledger] DW-1848: the Integrity log's error branch -- render a report that found errors through the real `Display^Integrity` capture (a hand-built vendor output row or a deliberately damaged probe block, on `ocupilot-b-ci` only, removed afterwards), and pin the error lines; if it cannot be produced on 2026.2, say so with evidence under Design Notes and close it there.
 
 ## Spec Change Log
 
@@ -522,6 +522,26 @@ deferred:
   - `[false]` `[reject]` `TaskLinks` reads task rows outside the port — `BackgroundTaskPort` extends `AdminPort` and reads a stored property, never `async-result`, as Design Notes plan.
   - `[medium]` `[patch]` The grow on Save showed no still-running line — grouped with R10.
   - `[low]` `[reject]` The Report step shows the newest check, not one by id — the Tasks item says so; only a check another caller starts in the same instant differs.
+
+### 2026-09-29 — Review pass (rework 1)
+
+- verdicts: 15 findings — high 0, medium 1, low 7, false 6, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` The threshold test's Save legs asserted the port's 409, which production never answers: the Save's rules read the unarmed port, so `GrowViolations`' own refusal went unpinned — `DatabaseSaveFixture` now declares `DatabaseRulesFixture`, whose reads follow `^||OcuPilotDatabaseRulesPort`, and the Save legs expect `422 Size:<code>`; mutation run 36.
+  - `[low]` `[patch]` The manager-directory comparison's normalization was never exercised — a leg arming the manager directory without its trailing separator expects `DATABASE.VOLUMEDIRECTORY.MANAGER`; mutation run 37.
+  - `[low]` `[patch]` The DW-1847 test's doc comment said the port was asked nothing on all three legs; the tool-call leg's dispatch cannot observe the recording port — the comment now claims it for the screen and the confirm only.
+  - `[false]` `[reject]` The NONE refusal has no live counterpart and expand-volume takes no directory — the rework item asks for exactly this defensive refusal, so the vendor never chooses the directory; the rule is met by refusing, not by sending one.
+  - `[low]` `[reject]` A grow or defragment of a database with a threshold is refused whether or not it would cross it — only a database whose new volume directory is unset or the manager directory; telling a crossing apart adds a branch for a case no everyday database has.
+  - `[low]` `[reject]` On such a database the volume-directory code precedes `DATABASE.GROWSIZE.SHAPE` — state refusals precede argument refusals, as `DISMOUNTED` and `READONLY` already do.
+  - `[false]` `[reject]` Grow, compact, truncate and defragment of IRISSYS stay allowed — AD-21's rule binds operations that create or move a database file; at threshold 0 none creates one (measured).
+  - `[low]` `[reject]` The confirm is pinned for grow and defragment, not Add a volume — one `ActionViolations` path serves every type; the item asked for the mint and the screen, both pinned.
+  - `[maybe-false]` `[reject]` Whether earlier groups of a multi-group Save are written before a refused `size` group is unobserved — the Save's rules now refuse it at validation; if it were true it would be low, the same as for `DISMOUNTED`.
+  - `[false]` `[reject]` The client's rendering of the two new codes is unexercised — the client renders the server's `reason` per violation and per envelope, code-agnostic (`core/violations.ts`, `database-editor.store.ts`), and R8 pins a 409's sentence.
+  - `[false]` `[reject]` "No UI string was added" against two new refusal sentences — database refusal sentences are server-only (`DatabaseError.ReasonFor`, as every `DATABASE.*` one is), pinned by `DatabaseDescriptor`; no `strings.ts` or EXPERIENCE.md string changed.
+  - `[low]` `[patch]` The DW-1847 tool-call leg observes no port calls and its 403 is the probe's reading of `failedPair` — grouped with the doc-comment row above; the gate refuses before the tool runs.
+  - `[false]` `[reject]` DW-1850 may later allow an Operate-only dismount — option A pins today's decision; DW-1850's story changes this test with it.
+  - `[false]` `[reject]` The block damage is a permanent test, not a one-off on `ocupilot-b-ci` — `DatabaseIntegrity` runs only where `OCUPILOT_ALLOW_DATABASE_CONFIG` and `OCUPILOT_ALLOW_PRINCIPALS` read 1 (throwaways), the probe is removed after each test, and the write is test-only seeding as the vendor's `WriteBlock^DMREPAIR` does it.
+  - `[low]` `[reject]` The error branch is pinned at the declared read, not the rendered log — both callers read that one declared read; a browser leg would need a damaged block in a spec for a generic row rendering.
 
 ## Design Notes
 
@@ -570,6 +590,12 @@ deferred:
 - **Item 2, a volume with no new volume directory.** `NewVolumeDirectory` cannot be empty: `SYS.Database` sets it to the database's own directory at creation, and a `PUT` of `""` reads back as that directory. `EXPANDVOL` `{InitialSize: 1}` created `IRIS-0001.VOL` in the database's own directory; no other file changed outside the database directory. No HALT.
 - **Item 3, the `STATE` sources.** `GET`: `MaxSize`, `ResourceName`, `NewVolumeDirectory`, `NewVolumeThreshold`, and `ReadOnly` (the configured attribute only; a read-only mount leaves it false). `INFO` (queued, read once by the port): `Mounted`, `Size`, `MaxSize`, `AvailableSpace` (MB, equal to `SYS.Database.GetFreeSpace`; 0 when dismounted), `EndFree` (`""` when dismounted or read-only), and `ReadOnlyReason` (`"DB was mounted read-only by user"`, `"DB has read-only attribute"`, `""` otherwise). So `STATE.ReadOnly` is `ReadOnlyReason` non-empty, and `FreeSpace` is `AvailableSpace`.
 - #7846 was counted 0 in `messages.log` and `alerts.log` before and after.
+
+**Measured at rework 1** (`ocupilot-b-ci`, 2026-09-29; probe databases `OCUPROBE184X` and `OCUPROBE184Y`, removed):
+
+- IRISSYS's `NewVolumeDirectory` is the manager directory (`/durable/iris/mgr/`), with threshold 0; every other database's is its own directory.
+- With `NewVolumeThreshold` 2, a `MODIFYSIZE` from 1 to 7 MB created `IRIS-0001.VOL` to `IRIS-0003.VOL`, and a later `DEFRAGMENT` grew the database from 14 to 22 MB with four more, all in its new volume directory.
+- DW-1848: the error branch is produced on 2026.2. With one data block's type byte set to 0 through the view buffer, a check through the port ended `Error`. `LogSourcePort` rendered the errors' heading, `Directory: <dir>`, `Errors found in 1 globals or supporting structures` and `**** Global: OcuProbe184Fill ... 1 errors found`. The vendor's own lines followed: ` Error of type 5 while processing pointer block 47`, `  which is ^OcuProbe184Fill(139) pointing to the lower level block 150`, ` The lower level block has a block type of 0`. The full listing repeats the `****` line. Damaging value bytes alone reported no error, and the check added no line to `messages.log` or `alerts.log`.
 
 **Decisions:**
 
@@ -735,10 +761,33 @@ Demonstrated on `ocupilot-b-ci`, each ObjectScript mutation loaded with its subc
 - mutation: `DataTable.menuItems` lists a primary action's row twin → `data-table.spec`'s Story 18.4 menu-column test red; the same drawing is what `databases.browser-spec`'s five-cell pin refused.
 - mutation: `ScreenRead`'s logsource roster left at eight → `TestEveryDeclaredLogSourceReadFieldIsAKeyOfTheLiveRow` red at 9 in the full sweep (run 417); corrected to nine, green (run 521).
 
+Rework 1: each mutation below was applied to the throwaway's copy alone, loaded with its subclasses, then reverted by copying the worktree file back (`cmp` identical). The worktree's `git status --short` and `git diff --stat` did not change.
+
+- mutation: `DatabasePort.ActionViolations` skips the new volume directory rule → `DatabaseGrowExpand.TestAddAVolumeNeverLeavesItsDirectoryToTheVendor` and `TestAGrowOrDefragmentPastAThresholdKeepsTheRule` red on every refusal leg, the port recording the writes and sending none (run 19).
+- mutation: `DatabasePort.PlacesVolume` answers 0 for the threshold types → `TestAGrowOrDefragmentPastAThresholdKeepsTheRule` alone red on its threshold legs (run 20); answering 1 whatever the threshold → the same test alone red on its threshold-0 legs (run 21).
+- mutation: `DatabaseError.ReasonFor` drops `VOLUMEDIRECTORYNONE`'s sentence → `DatabaseDescriptor.TestEveryDatabaseCodeIsSaidAndListed` alone red (run 28).
+- mutation: `DatabaseDismount.PrivilegePairs` answers the base class's pairs alone → `DatabaseActionsGate.TestAnOperateOnlyDismountIsRefusedForItsPairNeverProhibited` red on all three legs, the screen and the confirm answering `PROHIBITED.OCUPILOTDATABASE`, and `TestEachMissingPairIsRefusedBeforeAnyPortCall` red on its dismount legs (run 23).
+- mutation: `LogSourcePort.IntegrityReport` renders every check through the no-errors branch → `DatabaseIntegrity.TestADamagedBlockIsReportedAsErrors` alone red at the heading (run 25); `IntegrityRows` marks every line info → it and `TestTheLogsShapesOverArmedChecks` red (run 26).
+- mutation: `DatabaseRules.GrowViolations` drops the state code → `TestAGrowOrDefragmentPastAThresholdKeepsTheRule` alone red on its two Save legs, which reach the port's 409 (run 36).
+- mutation: `DatabasePort.ActionViolations` compares the new volume directory unnormalized → `TestAddAVolumeNeverLeavesItsDirectoryToTheVendor` alone red on its trailing-separator leg (run 37).
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
+
+**Rework 1 (2026-09-29, pre-review).** The three decision items:
+
+- **[Owner]** `DatabasePort.ActionViolations` refuses an operation that places a volume file of a database naming no new volume directory (409 `DATABASE.VOLUMEDIRECTORY.NONE`) or naming the manager directory (409 `DATABASE.VOLUMEDIRECTORY.MANAGER`), before any vendor call. `PlacesVolume` covers Add a volume, and a grow or defragment with a new volume threshold, which add volume files there (measured). The mint, the Save's rules (422 on `Size`) and the port (409) each apply it. The two codes are add-only in `DatabaseError.cls`, and the three tools' descriptions name the refusal. The create and the file update already refuse the manager directory through `PathPort` (`PATH.MANAGERDIR`). Pinned by `DatabaseGrowExpand`'s two new tests (IRISSYS live for the manager directory, `DatabaseVolumePort` for none and for the manager directory, on the screen, the mint, the Save and the confirm; the Save's rules read the armed port through `DatabaseRulesFixture`); `DatabaseDescriptor`'s envelope roster gains the two codes.
+- **[Decision] DW-1847.** `DatabaseActionsGate.TestAnOperateOnlyDismountIsRefusedForItsPairNeverProhibited`: the agent's tool call, the screen and the confirm are each refused 403 naming `%Admin_Manage:USE`, never `PROHIBITED.OCUPILOTDATABASE`; the screen and the confirm with no port call, the tool call at the gate before the tool runs. `DatabaseActionsGateProbe` gains a `dispatch` step. No product change.
+- **[Ledger] DW-1848.** A damaged data block (`DatabaseActionProbe.DamageBlock`) gives a real error report (Design Notes › Measured at rework 1), pinned by `DatabaseIntegrity.TestADamagedBlockIsReportedAsErrors`. No product change: the `****` rule holds. The frontmatter `deferred:` entries for DW-1847 and DW-1848 are closed by this pass.
+- **Verification on `ocupilot-b-ci`:** green runs 29 `DatabaseDescriptor` 8/8, 30 `DatabaseGrowExpand` 7/7, 31 `DatabaseActionsGate` 3/3, 32 `DatabaseIntegrity` 9/9, 33 `DatabaseActions` 11/11 and 34 `DatabaseActionsProhibited` 3/3; mutations under Verification. `check-objectscript` is clean. No tool, key or client string was added, so the rosters are unchanged; no client file changed.
+- **Cleanup:** no probe object, principal, check or task remains, and nothing was written into the manager directory. The gate principals' 282 finished async rows (DW-1137) were deleted by SQL. The vendor's delete trigger logged one `#7846` line in `messages.log` for each.
+- **Review (rework 1):** 15 findings (high 0, medium 1, low 7, false 6, maybe-false 1). Patched: the Save legs now pin the Save's own 422 on `Size` (new `Test/DatabaseRulesFixture.cls`, declared by `DatabaseSaveFixture` as its rules and inert unless armed), a trailing-separator leg pins the normalization, and the DW-1847 test's doc comment claims no port call only where the recording port sees it. Rejected findings and their reasons are in the Review Triage Log. Nothing deferred.
+- **After the patches:** green runs 38 `DatabaseGrowExpand` 7/7, 39 `DatabaseWrite` 16/16, 40 `DatabaseWriteDetail` 5/5, 41 `DatabaseRefusals` 12/12 and 42 `DatabaseWriteGate` 6/6 (the Save fixture's other suites); mutations runs 36 and 37, reverted `cmp`-identical with the worktree unchanged. No full ObjectScript sweep: every change stays in the database tools and their fixtures.
+- **Files:** `Api/DatabaseError.cls` (two codes, add-only); `Port/DatabasePort.cls` (`PlacesVolume`, the rule in `ActionViolations`); `Screen/Tool/LocalDatabaseExpand.cls`, `LocalDatabaseGrow.cls`, `DatabaseDefragment.cls` (descriptions); `Test/DatabaseGrowExpand.cls`, `DatabaseActionsGate.cls`, `DatabaseIntegrity.cls`, `DatabaseDescriptor.cls` (pins); `Test/DatabaseActionProbe.cls` (`DamageBlock`), `DatabaseActionsGateProbe.cls` (`dispatch`), `DatabaseSaveFixture.cls` (rules seam); new `Test/DatabaseVolumePort.cls`, `SeamVolumeLocalDatabaseExpand.cls`, `DatabaseRulesFixture.cls`.
+- **Follow-up review recommendation:** false (follow-up pass; patched medium 1, low 2 entries, high 0).
+- **For the runner:** AD-21's owner-rule list names "a new volume directory and Add a volume"; the code also holds a grow or defragment past a new volume threshold to it, since each creates volume files (measured), which "every operation that creates ... a database file" covers but the list does not name. `ocupilot-b-ci`'s `messages.log` now carries 282 `#7846` lines from the cleanup above; a check expecting none there reads them.
 
 **Implement (2026-09-29, baseline `5b1bde51`).** Parts A-C as planned: eight action-style disk tools through `DatabasePort`'s `Database.Actions` branch and its `STATE` read, the dismount arm of `PROHIBITED.OCUPILOTDATABASE`, `SELFQUEUEDTYPES`, the `directoryset` rule, DW-1791 and DW-1821, the Check integrity flow and the Integrity log, the warning dialog's advisory, flag and field, and the eight keys in `Baseline.cls` `false`.
 

@@ -4,7 +4,9 @@
 /// whose one value is <code>InitialSize</code> (AD-56 (ii)), drawn by the editor alone.
 /// <class>OcuPilot.Port.DatabasePort</class> resolves the configuration's directory and sends
 /// <code>{InitialSize}</code>; the vendor queues it (AD-26). No audit event records it (AD-15, AD-53
-/// named gaps).</p>
+/// named gaps). The port refuses a database that names no new volume directory, and one whose new
+/// volume directory is the manager directory, before any vendor call (the owner's database-directory
+/// rule, AD-21's sixth case).</p>
 /// <p><b>Its pairs are Local databases' and <code>%Admin_Operate:USE</code></b> (AD-8 as amended
 /// 2026-09-29): the vendor refuses the expand without it (measured on <code>ocupilot-b-ci</code>), and the
 /// port's poll needs it. The classic volumes page and its Expand dialog are its replaced pages
@@ -16,7 +18,7 @@ Parameter TOOLNAME = "osmgmt.localdatabases.expand";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.LocalDatabaseList";
 
-Parameter DESCRIPTION = "Propose adding a volume file to one local database, created in its configured new volume directory. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the database as the local databases list reports it. A database that is not mounted, and an initial size above its new volume threshold, are refused.";
+Parameter DESCRIPTION = "Propose adding a volume file to one local database, created in its configured new volume directory. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the database as the local databases list reports it. A database that is not mounted, one whose new volume directory is unset or is the manager directory, and an initial size above its new volume threshold are refused.";
 
 Parameter IDDESCRIPTION = "The database to add a volume to, as this instance's local databases list reports its name. A name the list does not report is refused.";
 

@@ -11,7 +11,7 @@ Parameter TOOLNAME = "osmgmt.databasedetails.defragment";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.DatabaseDetails";
 
-Parameter DESCRIPTION = "Propose defragmenting one mounted database, which can grow the database while it works and cannot be paused. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the database by its directory as the databases list reports it. A dismounted or read-only database is refused.";
+Parameter DESCRIPTION = "Propose defragmenting one mounted database, which can grow the database while it works and cannot be paused. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the database by its directory as the databases list reports it. A dismounted or read-only database is refused, and so is one with a new volume threshold whose new volume directory is unset or is the manager directory.";
 
 Parameter WRITETYPE = "DEFRAGMENT";
 

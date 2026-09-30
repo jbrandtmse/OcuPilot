@@ -6,7 +6,9 @@
 /// <code>osmgmt.localdatabases.expand</code> -- each with its body, its effect and its refusals; and
 /// DW-1791, a new volume directory that is another database's directory or volume directory, refused
 /// on <code>volumePath</code> at the Save, the mint and the confirm with no vendor write, and the
-/// vendor's own faults for it landing there too.</p>
+/// vendor's own faults for it landing there too; and the owner's database-directory rule (AD-21's sixth
+/// case), a volume never placed where the database names no new volume directory or in the manager
+/// directory, on Add a volume and on a grow or defragment past a threshold.</p>
 /// <p>A write that should happen goes through <class>OcuPilot.Test.DatabaseRecordPort</class>, which
 /// records and sends it; a refused leg writes through <class>OcuPilot.Test.DatabaseAcceptPort</class>,
 /// which sends no write.</p>
@@ -38,6 +40,14 @@ Parameter EXPANDTOOL = "OcuPilot.Screen.Tool.LocalDatabaseExpand";
 
 Parameter UPDATETOOL = "OcuPilot.Screen.Tool.LocalDatabaseUpdate";
 
+Parameter DEFRAGMENTTOOL = "OcuPilot.Screen.Tool.DatabaseDefragment";
+
+/// <p>The port that answers an armed new volume directory, and Add a volume's tool reading through
+/// it.</p>
+Parameter VOLUME = "OcuPilot.Test.DatabaseVolumePort";
+
+Parameter VOLUMEEXPANDTOOL = "OcuPilot.Test.SeamVolumeLocalDatabaseExpand";
+
 Property PreparedPolicy [ MultiDimensional ];
 
 Method OnBeforeAllTests() As %Status
@@ -53,8 +63,9 @@ Method OnBeforeAllTests() As %Status
 
 Method OnAfterOneTest() As %Status
 {
-    Kill ^||OcuPilotDatabaseWritePort
+    Kill ^||OcuPilotDatabaseWritePort, ^||OcuPilotDatabaseRulesPort
     Do $ClassMethod(..#RECORD, "Clear")
+    Do $ClassMethod(..#VOLUME, "Clear")
     Merge tRows = ..PreparedPolicy
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the governance policy is restored")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll", .tRemaining), "every probe object and task is removed")
@@ -232,6 +243,87 @@ Method TestTheVendorsVolumeFaultsLandOnVolumePath()
         Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseRefusals).ViolationFields($Get(tFault)), "volumePath:DATABASE.DIRECTORY.INUSE", $List(tCase, 2) _ ": on volumePath (" _ $Get(tHttp) _ ")")
     }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "StoredFile", tA, "NewVolumeDirectory"), tA, "and the setting is unchanged")
+}
+
+/// <p>The owner's database-directory rule on Add a volume (AD-21's sixth case): IRISSYS's new volume
+/// directory is the manager directory, so its Add a volume is refused 409
+/// <code>DATABASE.VOLUMEDIRECTORY.MANAGER</code> on the Local databases list's action and at the agent's
+/// mint with the code's sentence; a probe database read as naming no new volume directory
+/// (<class>OcuPilot.Test.DatabaseVolumePort</class>) is refused 409
+/// <code>DATABASE.VOLUMEDIRECTORY.NONE</code> on both callers the same way, and one read as naming the
+/// manager directory without its trailing separator is refused naming the manager directory. No write
+/// reaches the port.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.DatabasePort.ActionViolations</method> skips the new
+/// volume directory -> each leg is admitted, the accept port records the expand, and this goes red;
+/// comparing the directory unnormalized admits the last leg alone.</p>
+Method TestAddAVolumeNeverLeavesItsDirectoryToTheVendor()
+{
+    Set tManager = ##class(OcuPilot.Port.PathPort).ManagerDirectory()
+    Do $$$AssertTrue(##class(OcuPilot.Port.DatabasePort).SameDirectory(..StateOf(tManager, "NewVolumeDirectory"), tManager), "IRISSYS's new volume directory is the manager directory (" _ ..StateOf(tManager, "NewVolumeDirectory") _ ")")
+    Set tA = ..AddProbe("OCUPROBE184GA")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.DatabaseActions).Enable("osmgmt.localdatabases.expand"), "the agent's key is enabled")
+    Do $ClassMethod(..#VOLUME, "Clear")
+    Set ^||OcuPilotDatabaseWritePort = ..#ACCEPT
+    Set tCode = ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYMANAGER
+    Do $$$AssertEquals(..Act("IRISSYS", {"InitialSize": "1"}), "409 " _ tCode, "IRISSYS's Add a volume is refused on the screen")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).MintProblem(..#EXPANDTOOL, "IRISSYS", {"InitialSize": 1}), ##class(OcuPilot.Api.DatabaseError).ReasonFor(tCode), "and at the agent's mint, with the code's sentence")
+    Set ^||OcuPilotDatabaseWritePort = ..#VOLUME
+    Do $ClassMethod(..#VOLUME, "Arm", "")
+    Set tCode = ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYNONE
+    Do $$$AssertEquals(..Act("OCUPROBE184GA", {"InitialSize": "1"}), "409 " _ tCode, "a database naming no new volume directory is refused on the screen")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).MintProblem(..#VOLUMEEXPANDTOOL, "OCUPROBE184GA", {"InitialSize": 1}), ##class(OcuPilot.Api.DatabaseError).ReasonFor(tCode), "and at the agent's mint, with the code's sentence")
+    Do $ClassMethod(..#VOLUME, "Arm", $Extract(tManager, 1, *-1))
+    Do $$$AssertEquals(..Act("OCUPROBE184GA", {"InitialSize": "1"}), "409 " _ ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYMANAGER, "the manager directory without its trailing separator (" _ $Extract(tManager, 1, *-1) _ ") is still the manager directory")
+    Do $$$AssertEquals($ClassMethod(..#VOLUME, "Writes"), "", "no write reached the port")
+}
+
+/// <p>The same rule past a threshold (a grow or a defragment of a database with a new volume threshold
+/// adds volume files in its new volume directory, measured): a probe database read as naming the
+/// manager directory (<class>OcuPilot.Test.DatabaseVolumePort</class>, read by the Save's rules and its
+/// write alike) grows on the editor's Save and defragments on Database details while its threshold is
+/// 0; once a threshold is set, the Save is refused 422 on <code>Size</code> by its rules, and Database
+/// details' defragment and the agent's confirm of a grow and of a defragment minted while the
+/// instance's own reading passed are refused 409, each naming the manager directory, and naming none
+/// when the directory reads unset. Only the two threshold-0 writes reach the port, which sends
+/// neither.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.DatabasePort.PlacesVolume</method> answers 0 for the
+/// threshold types -> the threshold legs are admitted and this goes red; answering 1 for them whatever
+/// the threshold reddens the threshold-0 legs; <method>OcuPilot.Area.OsMgmt.DatabaseRules.GrowViolations</method>
+/// dropping the state code -> the Save reaches the port's 409 and this goes red.</p>
+Method TestAGrowOrDefragmentPastAThresholdKeepsTheRule()
+{
+    Set tA = ..AddProbe("OCUPROBE184GA")
+    Set tManager = ##class(OcuPilot.Port.PathPort).ManagerDirectory()
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.DatabaseActions).Enable("osmgmt.localdatabases.grow", "osmgmt.databasedetails.defragment"), "the agent's keys are enabled")
+    Do $ClassMethod(..#VOLUME, "Clear")
+    Do $ClassMethod(..#VOLUME, "Arm", tManager)
+    Set ^||OcuPilotDatabaseWritePort = ..#VOLUME
+    Set ^||OcuPilotDatabaseRulesPort = ..#VOLUME
+    Set tGroup = {}
+    Do tGroup.%Set("Size", ..StateOf(tA, "Size") + 1, "number")
+    Set tSC = ##class(OcuPilot.Test.DatabaseWrite).Save("size", "OCUPROBE184GA", tGroup, .tHttp, .tCode, .tFields)
+    Do $$$AssertEquals(tHttp _ " " _ tCode _ tFields, "200 ", "with no threshold the Save's grow is not held to the rule")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).Act("defragment", tA), "200 ", "nor Database details' defragment")
+    Do $$$AssertEquals($ClassMethod(..#VOLUME, "Writes"), "Database.Actions/MODIFYSIZE,Database.Actions/DEFRAGMENT", "each reaching the port, which sends neither")
+
+    Do $$$AssertStatusOK(..SetFile(tA, "NewVolumeThreshold", 5), "a new volume threshold is set")
+    For tArmed = tManager, "" {
+        Set tRuleCode = $Select(tArmed = "": ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYNONE, 1: ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYMANAGER)
+        Set tWanted = "409 " _ tRuleCode
+        Set tLabel = $Select(tArmed = "": "naming no new volume directory", 1: "naming the manager directory")
+        Set tGrow = {}
+        Do tGrow.%Set("Size", ..StateOf(tA, "Size") + 2, "number")
+        Set tGrowProposal = ##class(OcuPilot.Test.DatabaseActions).Minted(..#GROWTOOL, "OCUPROBE184GA", tGrow)
+        Set tDefragProposal = ##class(OcuPilot.Test.DatabaseActions).Minted(..#DEFRAGMENTTOOL, tA, {})
+        Do $$$AssertTrue($IsObject(tGrowProposal) && $IsObject(tDefragProposal), tLabel _ ": the agent's grow and defragment are minted over the instance's own reading")
+        Do $ClassMethod(..#VOLUME, "Arm", tArmed)
+        Set tSC = ##class(OcuPilot.Test.DatabaseWrite).Save("size", "OCUPROBE184GA", tGroup, .tHttp, .tCode, .tFields)
+        Do $$$AssertEquals(tHttp _ " " _ tCode _ tFields, "422 Size:" _ tRuleCode, tLabel _ ": the Save's grow is refused on Size by its rules")
+        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).Act("defragment", tA), tWanted, tLabel _ ": and Database details' defragment")
+        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseWrite).Confirm(tGrowProposal), tWanted, tLabel _ ": and the agent's confirm of the grow")
+        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseWrite).Confirm(tDefragProposal), tWanted, tLabel _ ": and of the defragment")
+    }
+    Do $$$AssertEquals($ClassMethod(..#VOLUME, "Writes"), "Database.Actions/MODIFYSIZE,Database.Actions/DEFRAGMENT", "no refused write reached the port")
 }
 
 /// <p>Create the probe database <var>pName</var> and answer its directory.</p>

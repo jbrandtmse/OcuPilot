@@ -322,6 +322,47 @@ Method TestTheLogsShapesOverArmedChecks()
     Do $$$AssertEquals($Select($IsObject($Get(tFiles)): tFiles.files.%Size() _ " " _ tFiles.%Get("truncated") _ " " _ tFiles.files.%Get(0).%Get("name"), 1: ""), "50 1 60", "the list stops at fifty, in the order held, truncated")
 }
 
+/// <p>DW-1848 (AC7): a check over a probe database with a damaged data block
+/// (<method>OcuPilot.Test.DatabaseActionProbe.DamageBlock</method>) ends in state <code>Error</code>, and
+/// the Integrity log renders its report through <code>Display^Integrity</code>'s own capture: the errors'
+/// heading first, the directory's one damaged global, that global marked <code>****</code>, and the
+/// vendor's own description of the damage naming the block. The declared read answers each line the
+/// report marks <code>****</code> as an error, the damaged global's among them, and every other line as
+/// info.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.LogSourcePort.IntegrityReport</method> renders every
+/// check through the no-errors branch -> the report opens "No Errors were found." and this goes red.</p>
+Method TestADamagedBlockIsReportedAsErrors()
+{
+    Set tA = ..AddProbe("OCUPROBE184IA", 1)
+    Set tGlobal = $Parameter(..#PROBE, "GLOBAL")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "DamageBlock", "OCUPROBE184IA", .tBlock), "a data block of " _ tGlobal _ " is damaged (" _ tBlock _ ")")
+    Do $$$AssertEquals(..Check(tA), 200, "a check is run")
+    Set tLines = ..NewestLines(.tCheck)
+    Set tSC = $ClassMethod(..#LOG, "Files", ..#SOURCE, .tFiles, .tHttp, .tFault)
+    Set tFirst = $Select($IsObject($Get(tFiles)): tFiles.files.%Get(0), 1: "")
+    Do $$$AssertEquals($Select($IsObject(tFirst): tFirst.%Get("name") _ "|" _ tFirst.%Get("state"), 1: ""), tCheck _ "|Error", "the check is listed ended in error")
+    Do $$$AssertEquals($ListGet(tLines, 1), $Parameter(..#LOG, "INTEGRITYERRORS"), "its report opens with the errors' heading")
+    Do $$$AssertTrue($ListFind(tLines, "Directory: " _ tA) && $ListFind(tLines, "Errors found in 1 globals or supporting structures"), "naming the directory and its one damaged global")
+    Do $$$AssertTrue(..AnyStarts(tLines, "**** Global: " _ tGlobal), "marking that global ****")
+    Do $$$AssertTrue(..AnyHolds(tLines, "lower level block " _ tBlock), "with the vendor's description of the damage naming the block")
+    Set tSC = $ClassMethod(..#LOG, "Rows", ..#SOURCE, 1000, .tRows, .tHttp, .tFault, .tTruncated)
+    Set (tErrors, tMarks, tBoth, tMarkedGlobal, tDescribed) = 0
+    If $IsObject($Get(tRows)) {
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            Set tMark = ($Extract(tRow.%Get("text"), 1, 4) = "****")
+            Set tError = (tRow.%Get("severity") = "error")
+            Set tErrors = tErrors + tError
+            Set tMarks = tMarks + tMark
+            Set tBoth = tBoth + (tMark && tError)
+            If tMark && tError && ($Extract(tRow.%Get("text"), 1, $Length("**** Global: " _ tGlobal)) = ("**** Global: " _ tGlobal)) Set tMarkedGlobal = 1
+            If 'tError && (tRow.%Get("text") [ ("lower level block " _ tBlock)) Set tDescribed = 1
+        }
+    }
+    Do $$$AssertTrue((tBoth > 0) && (tErrors = tBoth) && (tMarks = tBoth), "the read's error rows are exactly the lines marked **** (" _ tErrors _ " errors, " _ tMarks _ " marked)")
+    Do $$$AssertTrue(tMarkedGlobal && tDescribed, "the damaged global's row is an error, and the description's an info row")
+}
+
 /// <p>A least-privileged reader over the wire (AC7, Task 0): a principal holding
 /// <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code> alone lists the checks and pages the
 /// newest; one holding <code>%Admin_Manage:USE</code> in its place is refused 403 naming it on both
@@ -454,6 +495,16 @@ ClassMethod AnyStarts(pLines As %List, pStart As %String) As %Boolean
     Set tFound = 0
     For tI = 1:1:$ListLength(pLines) {
         If $Extract($ListGet(pLines, tI), 1, $Length(pStart)) = pStart Set tFound = 1 Quit
+    }
+    Quit tFound
+}
+
+/// <p>Whether a member of <var>pLines</var> holds <var>pText</var>.</p>
+ClassMethod AnyHolds(pLines As %List, pText As %String) As %Boolean
+{
+    Set tFound = 0
+    For tI = 1:1:$ListLength(pLines) {
+        If $ListGet(pLines, tI) [ pText Set tFound = 1 Quit
     }
     Quit tFound
 }

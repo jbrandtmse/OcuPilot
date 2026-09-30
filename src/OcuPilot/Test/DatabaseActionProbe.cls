@@ -1,13 +1,14 @@
 /// <p>Test-only helper for the disk operation suites (Story 18.4): <class>OcuPilot.Test.DatabaseWriteProbe</class>
 /// under <parameter>PREFIX</parameter> <code>OCUPROBE184</code>, with what those suites seed beyond it --
 /// probe globals written and half removed so a compact or a truncate has space to act on
-/// (<method>Fill</method>), a file grown to a size (<method>Grow</method>), and an admin API compact
-/// paused while it runs (<method>PausedAdminCompact</method>) -- and a <method>RemoveAll</method> that
+/// (<method>Fill</method>), a file grown to a size (<method>Grow</method>), an admin API compact
+/// paused while it runs (<method>PausedAdminCompact</method>), and a data block damaged for an integrity
+/// check to find (<method>DamageBlock</method>) -- and a <method>RemoveAll</method> that
 /// also ends and removes the background tasks and integrity checks run over a probe directory and the
 /// caller's own async tasks those queued.</p>
 /// <p>Every seed names a probe database by its probe name and is refused outside the prefix. Globals are
-/// written by extended reference and a size set through <code>SYS.Database</code> in <code>%SYS</code>:
-/// test-only seeding.</p>
+/// written by extended reference, a size set through <code>SYS.Database</code> and a block through the
+/// view buffer in <code>%SYS</code>: test-only seeding.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.DatabaseActionProbe Extends OcuPilot.Test.DatabaseWriteProbe
 {
@@ -84,6 +85,57 @@ ClassMethod Grow(pName As %String, pMB As %Integer) As %Status
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
+    Quit tSC
+}
+
+/// <p>Damage the probe database <var>pName</var>'s last data block of <parameter>GLOBAL</parameter>,
+/// the one <method>Fill</method> writes last and keeps, answering its number in <var>pBlock</var>: its
+/// block type is set to 0, so an integrity check finds a pointer to a block that is not a data block.
+/// The block is found as the highest-numbered data block (type 8) naming the global; test-only seeding
+/// through the view buffer in <code>%SYS</code>, as the vendor's own block editor writes one. A database
+/// outside the prefix, and one holding no such block, are refused.</p>
+ClassMethod DamageBlock(pName As %String, Output pBlock As %Integer) As %Status
+{
+    Set pBlock = 0
+    If '..IsProbe(pName) Quit $$$ERROR($$$GeneralError, "a probe database's name starts with " _ ..#PREFIX)
+    Set tDirectory = ..DirectoryOf(pName)
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Set tOpen = 0
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tDatabase = ##class(SYS.Database).%OpenId(tDirectory)
+        If '$IsObject(tDatabase) {
+            Set tSC = $$$ERROR($$$GeneralError, "the probe database did not open")
+            Quit
+        }
+        Set tBlocks = tDatabase.Blocks
+        Set tBlockSize = tDatabase.BlockSize
+        Set tDatabase = ""
+        Set tTypeOffset = $ZUtil(40, 32, 1)
+        Open 63:"^^" _ tDirectory
+        Set tOpen = 1
+        For tBlock = tBlocks:-1:1 {
+            View tBlock
+            If ($View(tTypeOffset, 0, 1) = 8) && ($View(0, 0, -tBlockSize) [ ..#GLOBAL) Set pBlock = tBlock Quit
+        }
+        If pBlock = 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "the probe database holds no data block of " _ ..#GLOBAL)
+            Quit
+        }
+        View pBlock
+        View tTypeOffset:0:1:0
+        Set tSwitch = $ZUtil(68, 80, 1)
+        View -pBlock
+        Do $ZUtil(68, 80, tSwitch)
+        Kill tSwitch
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        If $Data(tSwitch) Do $ZUtil(68, 80, tSwitch)
+        Set tSC = ex.AsStatus()
+    }
+    If tOpen Close 63
+    Set $NAMESPACE = tOrigNS
     Quit tSC
 }
 

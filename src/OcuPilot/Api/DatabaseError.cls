@@ -139,6 +139,21 @@ Parameter GLOBALSONEDATABASE = "DATABASE.GLOBALS.ONEDATABASE";
 
 Parameter REASONGLOBALSONEDATABASE = "Globals can be chosen only when one database is checked.";
 
+/// <p>Envelope code (409, the owner's database-directory rule at AD-21's sixth case): Add a volume, or
+/// a size grow or defragment of a database with a new volume threshold, of a database that names no new
+/// volume directory, refused before any vendor call so the vendor never chooses where a volume
+/// goes.</p>
+Parameter VOLUMEDIRECTORYNONE = "DATABASE.VOLUMEDIRECTORY.NONE";
+
+Parameter REASONVOLUMEDIRECTORYNONE = "This database names no new volume directory, so the instance would choose where the new volume goes. Set its new volume directory first.";
+
+/// <p>Envelope code (409, the owner's database-directory rule at AD-21's sixth case): the same
+/// operations of a database whose new volume directory is the manager directory, refused before any
+/// vendor call.</p>
+Parameter VOLUMEDIRECTORYMANAGER = "DATABASE.VOLUMEDIRECTORY.MANAGER";
+
+Parameter REASONVOLUMEDIRECTORYMANAGER = "This database's new volume directory is the manager directory, which holds the instance's own files, so no volume can be added there. Set another new volume directory first.";
+
 /// <p>Every field-level code, as a <class>%List</class>, in the order the form lists its rules.</p>
 ClassMethod ViolationCodes() As %List
 {
@@ -171,6 +186,8 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#INTEGRITYDATABASES Quit ..#REASONINTEGRITYDATABASES
     If pCode = ..#GLOBALSSHAPE Quit ..#REASONGLOBALSSHAPE
     If pCode = ..#GLOBALSONEDATABASE Quit ..#REASONGLOBALSONEDATABASE
+    If pCode = ..#VOLUMEDIRECTORYNONE Quit ..#REASONVOLUMEDIRECTORYNONE
+    If pCode = ..#VOLUMEDIRECTORYMANAGER Quit ..#REASONVOLUMEDIRECTORYMANAGER
     Quit ""
 }
 
