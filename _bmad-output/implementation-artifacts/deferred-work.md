@@ -8523,3 +8523,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-11-start-suspend-and-resume-the-task-manager.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: EXPERIENCE.md:603 names Import as screen-level but not Suspend Task Manager, and the Privilege Gating rows carry no banner-action entry; Epic 23 has EXPERIENCE.md edited uncommitted, so no in-place edit was made
 - 2026-09-30T12:44:42Z status=wontfix-accepted owner=16-11-start-suspend-and-resume-the-task-manager by=cr note=reopen_if=the command-bar or Privilege Gating row is next edited and still omits Suspend Task Manager
+
+### DW-1866: CI flake: AdminPortAbsence.TestAVerifiedDeletePostsNoAlert saw an alert during a verified delete and its re-read
+- source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: instance shard 3/3: 'the delete and its re-read post no alert' failed at 13:51:56Z; a %SYS.WorkQueueMgr appendError #7802 was logged at 13:52:37Z; the DW-1861 change touches TaskCreate/TaskUpdate only; first occurrence in the last 40 failed runs
+- 2026-09-30T15:17:44Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p1 (CI flake): the assertion counts alerts instance-wide, so an unrelated vendor alert in the window fails it; scope it to alerts the delete itself raises
+
+### DW-1867: CI flake: language-server-editor.browser-spec.mjs AC3 (a started probe's editor states the running sentence and reads only) failed once
+- source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: browser shard 2/3 at 13:58:47Z: 3 passed, 1 failed; the spec is 16.25's own and passed in 36681132055, 36684985324, 36706426500 and 36722327485; DW-1861 touches no language-server code
+- 2026-09-30T15:17:44Z status=routed owner=burndown by=orchestrator note=Epic 16's close gate: a CI flake in its own 16.25 spec (inference: the probe's start is read before it reports running); fix at the epic close under Rule 27 (CI flakes are chartered)
