@@ -6803,6 +6803,7 @@ So that a gateway's definition is managed where its status is.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
+- DW-1423: The change announcement reads 'Updated: <id> created' and 'Updated: <id> deleted' -- its fixed prefix contradicts the verb (ledger; routed by merge_gate 2026-09-29)
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
@@ -7202,6 +7203,7 @@ So that key management is not a reason to keep the classic portal open.
 - **Then** it is write-only and returned by no read, like every other secret.
 
 - DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards (ledger; routed by cr 2026-09-28)
+- DW-1555: Creating and editing RSA and symmetric-key wallet secrets (the key-material design); Story 8.6 ships key-value secrets and shows the other types read-only (ledger; routed by merge_gate 2026-09-29)
 
 ### Story 18.8: Superservers, authentication options and managed file transfer
 
@@ -7371,6 +7373,7 @@ So that the namespace configuration the contest deferred includes the step the c
 - **Then** it round-trips through the admin API's async path, reading the finished task's result once, and states its consequence before it is confirmed.
 
 - DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan (ledger; routed by merge_gate 2026-09-28)
+- DW-1813: A global mapping range whose low end is empty (':A') covers the % globals in any namespace, yet carries no MAPPING.SYSTEMGLOBAL consequence (ledger; routed by merge_gate 2026-09-29)
 - DW-1858: the Integrity log has no way in but the Check integrity flow; give it an OS management side-bar position right after Databases (ledger; routed by merge_gate 2026-09-30)
 
 ### Story 18.16: Remote databases
