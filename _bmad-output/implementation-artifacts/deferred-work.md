@@ -7907,6 +7907,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: container log [ERROR] Status of instance IRIS is running; messages.log ends at Stopping User Jobs; next start recovered cleanly (0 blocks pending); pre-existing in 1.0.1; cause not investigated (inference: the default stop timeout is shorter than IRIS needs)
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=orchestrator note=verify the cause first; a compose change recreates the owner's live ocupilot container on its next up, so coordinate with the owner
 - 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
+- 2026-09-30T17:16:05Z occurrence=1.0.4 upgrade check (orchestrator) 2026-09-30 note=docker compose restart iris logged '[ERROR] Status of instance IRIS is running' at the stop signal, the next start logged 'Previous system shutdown was abnormal' at severity 2 and Monitor.State went 0 to 1; nothing lost; same as 1.0.3's check
 
 ### DW-1763: The README does not say a user needs READ on the install namespace's database beyond %Manager; a %Manager-only user gets an empty 403 on every /api/ocupilot route
 - source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: README.md
@@ -8542,3 +8543,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Api/Response.cls:17 writes pData.%ToJSON() as one string (MaxLocalLength 3,641,144 on ocupilot-b-ci); Entry.StepsJson keeps each turn's step projection, up to about 410 KB of tool text per turn after DW-1210 (inference: about nine such turns exceed it)
 - 2026-09-30T13:10:20Z status=escalated owner=burndown by=cr note=23.2 batch b review: DW-1210 bounds the poll, not the restore; fix touches the one response writer (AD-12)
 - 2026-09-30T16:00:04Z status=routed owner=range-end-cleanup by=merge_gate note=decided (orchestrator 2026-09-30): not in 23.2 (owner cap of 12); queued for the standing cleanup after the next release, priority p4, user-visible but rare (about nine tool-heavy turns); likely fix: write the response with the object's own device writer (Do pData.%ToJSON()) instead of one string - verify on the one AD-12 writer
+
+### DW-1870: A Windows clone (Git for Windows, core.autocrlf=true) checks scripts/*.sh out with CRLF, so durable-init dies at once ('set: Illegal option -') and docker compose up --wait fails in 1 s
+- source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: high | fix-risk: low | footprint: .gitattributes, plus a roster test
+- evidence: reproduced on Linux with git -c core.autocrlf=true clone: durable-init exit 2; with only the .sh files LF the CRLF .cls files compile and install (healthy in 132 s, STARTPATH-OK); '*.sh text eol=lf' in .gitattributes gives 12/12 LF under autocrlf=true; the index is already LF
+- 2026-09-30T17:02:04Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=owner note=owner-approved for 1.0.4, before the 14:00 cut: add '*.sh text eol=lf' to .gitattributes and a test that pins every tracked *.sh to eol=lf (git check-attr); its own commit, ahead of 23.2's remaining batches; outside 23.2's cap of 12 by owner instruction
+
+### DW-1871: With no agent definition, every full load of /ocupilot/ (sign-in, reload, new tab) redirects to /agent/definitions/edit, and Cancel lands on the empty Definitions list rather than Home
+- source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: medium | fix-risk: low | footprint: the first-run redirect, its Cancel target, and the per-user record of the first sign-in
+- evidence: every full load with no definition opens the key form; approved: auto-open only on the first sign-in, later loads land on Home with the panel's 'No agent definition is enabled' note as the pointer; Cancel on the auto-opened form goes to Home; README:196 already says 'The first time an administrator signs in'
+- 2026-09-30T17:02:04Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=owner note=owner-approved for 1.0.4 if it can start before 11:50 PDT, otherwise 1.0.5: Epic 16 takes it right after 16.12's boundary, before 16.13; its own commit
+
+### DW-1872: GET /screens/osmgmt.databasevolumes/read without its dir parameter reaches the admin API, which answers 400, and OcuPilot logs it at severity 2, raising the instance monitor state
+- source: 1.0.4 upgrade check (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: the volumes read's argument check
+- evidence: on ocupilot-c-ci after the 1.0.3 to 1.0.4 upgrade: a hand-made request without dir took Monitor.State to 2; the details and activity reads refuse a missing parameter with 400 before the admin call and log nothing; the UI always sends dir
+- 2026-09-30T17:16:05Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p4: refuse a missing dir before the admin call, as the sibling reads do
