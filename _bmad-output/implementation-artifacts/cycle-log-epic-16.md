@@ -537,3 +537,6 @@
 2026-09-30T02:01:26Z	Epic 16	owner_fix_committed	item=DW-1780 sha=1cf407be ci=pending run=36657035907
 2026-09-30T02:01:26Z	Epic 16	stage_spawned	stage=owner_fix(implement,test-only) item=DW-1857(audit_AC6) spawn_at=2026-09-30T02:01:26Z model=opus agent_name=audit-ac6-wait-implement-1 cycle_iteration=1
 2026-09-30T02:13:03Z	Epic 16	owner_fix_implemented	item=DW-1857(audit_AC6,test-only) agent=audit-ac6-wait-implement-1 model=opus change=showsAnswer_helper_shared_by_search()_and_AC6 evidence=old_AC6_could_only_be_falsely_green(opening_read_fills_the_cap);new_wait_reddens_under_a_2KB/s_held_Search(2/2),green_3/3_throttled+3/3_unthrottled;tools_1717
+2026-09-30T02:26:55Z	Epic 16	ci_resolved	story=owner_fix_DW-1780 run=36657035907 result=success head=1cf407be
+2026-09-30T02:26:55Z	Epic 16	owner_fix_pushed	item=DW-1857 sha=1e5af504 run=36659874828
+2026-09-30T02:26:56Z	Story 16.25	stage_spawned	stage=implement spawn_at=2026-09-30T02:26:56Z model=opus agent_name=16-25-the-external-language-server-editor-implement-1 cycle_iteration=1 ci_prev=DW-1852_success_36653198545,DW-1780_success_36657035907 note=DW-1857_test-only_run_36659874828_resolves_at_dev_complete(implement_pushes_nothing)
