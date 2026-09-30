@@ -2,8 +2,8 @@
 title: 'Story 23.2: The range-end cleanup, part 2'
 type: 'bugfix'
 created: '2026-09-30'
-status: 'in-progress'
-baseline_revision: '961d45c728646a0b6a411511e4045c5f14ddd128'
+status: 'done'
+baseline_revision: '70d3ddd8c3f29118696cc6cfad389414edc9b1dc'
 baseline_commit: '961d45c728646a0b6a411511e4045c5f14ddd128'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -32,6 +32,20 @@ deferred:
     location: >-
       .githooks/pre-commit:1
     severity: low
+  - summary: >-
+      The background seed writes about 1.2 GB each time a test fills it, and on a CI runner the instance suspended every update for 30 s for low WIJ free space while those fills ran, which stalls whatever else the shard is running.
+    evidence: |-
+      Run 36741141564 attempt 1, shard 2/3 `messages.log`: WIJ expansions during the seed fills, "Updates suspended due to low free space in the WIJ" at 16:12:17, "updates resumed" at 16:12:47. That the fills cause it is (inference). The DW-1829 follow-up makes the teardown tolerate the stall; it does not remove it.
+    location: >-
+      src/OcuPilot/Test/BackgroundSeed.cls:28
+    severity: low
+  - summary: >-
+      The follow-up's stand-in for CI's stall is a stopped job, not a write suspension, so whether `ENDSECONDS` covers every stall a CI runner produces is unverified.
+    evidence: |-
+      The one observed incident fits: its compact acted on the cancel at 16:12:58.6, about 15 s into the teardown (inference from the log's timestamps), inside the new bound. It settles on a CI run where `BackgroundTasksLive`'s teardown fails again with this fix in place.
+    location: >-
+      src/OcuPilot/Test/BackgroundSeed.cls:43
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -243,7 +257,7 @@ deferred:
 
 ### DW-1829 follow-up (reopened)
 
-- [ ] **DW-1829 (reopened)** — staging run 36741141564, instance shard 2/3: `BackgroundTasksLive.TestTheAgentsConfirmPausesACompact`'s `OnAfterOneTest` failed "the seeded database and its tasks are removed" with ERROR #5001 "a background task still runs over the seed database, so the database is left in place", and the next test's seed failed "a background task still runs over the seed database, so it is not refilled". Intermittent: green in runs 36706426500, 36722327485 and 36735796060. The held compact, paused by the confirm, is still running when cleanup runs (inference).
+- [x] **DW-1829 (reopened)** — staging run 36741141564, instance shard 2/3: `BackgroundTasksLive.TestTheAgentsConfirmPausesACompact`'s `OnAfterOneTest` failed "the seeded database and its tasks are removed" with ERROR #5001 "a background task still runs over the seed database, so the database is left in place", and the next test's seed failed "a background task still runs over the seed database, so it is not refilled". Intermittent: green in runs 36706426500, 36722327485 and 36735796060. The held compact, paused by the confirm, is still running when cleanup runs (inference).
   - **Reproduce first** on `ocupilot-b-ci`: find and record the condition under which `Remove` finds the held task still running, for example the pause landing just before `Remove`'s cancel, or the task ending or resuming after `%UnlockId`.
   - **Fix** in `Test/BackgroundSeed.cls`, touching `Test/BackgroundTasksLive.cls` only if needed: teardown waits, with a bound, for the held task to reach a terminal state before the database is removed, so the next test finds no task over the seed. The leg's assertions and the seed's refusal to remove a database a task still runs over are not weakened.
   - **Red:** the reproducing condition turns cleanup red before the fix and green after, with a `mutation:` line.
@@ -586,6 +600,25 @@ Rejected:
 - `[medium]` `[defer]` A pre-rule clone keeps CRLF after a pull (edge-case-hunter): DW-1875.
 - Rules: AD-17 and AD-45 match; compose's three start-path scripts are covered, and no start-path code changed. Rule 3: the real-runtime evidence is the fresh clones and the script runs under `DW-1870 (loop)`. No NFR touched. `npm run test:tools` 1,740/1,740; both changed files ASCII only.
 
+### 2026-09-30 — Review pass (DW-1829 follow-up)
+
+- verdicts: 14 findings — high 0, medium 3, low 7, false 3, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` No committed test reproduces the stall, so reverting either change to `Remove` leaves the suite green (verification-gap) — added `BackgroundTasksLive.TestTheTeardownOutlastsAStalledCompact` and `BackgroundSeed.Stall` (Rule 19 patches a missing pin in-pass); red on the baseline wait (run 252) and under both mutations (253, 254), green in 251 and 255-257.
+  - `[medium]` `[patch]` The AC is pinned only by a deleted probe (verification-gap, Rule 19) — same root and patch as the first row.
+  - `[low]` `[patch]` The first `mutation:` line was seen on an intermediate tree, never applied to the final one and reverted (verification-gap) — both mutations re-run on the final tree against the committed test, each reverted byte-identical.
+  - `[low]` `[patch]` `Remove`'s doc says a task that does not open has not ended, but only a task that opens is canceled (verification-gap) — the doc now says "canceled first when it opens and has not ended"; no measured path fails the first open (the holder opens its own task).
+  - `[low]` `[patch]` The doc says the first failure is answered, while the still-runs refusal replaces it (verification-gap; the code is pre-existing, the paragraph was rewritten here) — the doc now says the refusal is answered in its place.
+  - `[low]` `[patch]` The new deferred entry said the seed is filled by "three tests"; four fill it (verification-gap) — reworded to "each time a test fills it" in the entry this pass wrote, correcting the claim at its origin (CLAUDE.md).
+  - `[medium]` `[patch]` Nothing committed would catch a regression (intent-alignment) — same root and patch as the first row.
+  - `[low]` `[patch]` The `mutation:` lines ran against the deleted probe, and "red on the unfixed tree after 44.8 s" matched the intermediate tree's time (intent-alignment) — same root as the third row; the unfixed line is replaced by run 252's red on the baseline wait.
+  - `[low]` `[patch]` The probe paused in-process rather than through the confirm, and recorded no following seed (intent-alignment) — the committed test pauses through the port (`PortalControl`, the call the confirm's apply reaches) and asserts no task is left over the seed, the condition the next seed refuses on.
+  - `[maybe-false]` `[defer]` A stopped job stands in for a write suspension, so whether 60 s covers every CI stall is inferred (intent-alignment) — the observed incident fits inside the bound; settles on a CI recurrence; recorded in `deferred:` as medium (unverified).
+  - `[false]` `[reject]` The bound widens for every task over the seed, not only the held one (intent-alignment) — it lengthens only a wait that ended in a failed teardown before; a cancel ends an answering task within 0.25 s (measured), so no leg's normal teardown changes.
+  - `[low]` `[patch]` `ENDSECONDS` bounds new reads, not total time: the cancel blocks about 18 s before it and the last read can wait the lock timeout past it (intent-alignment) — its doc now says both.
+  - `[false]` `[reject]` The stall's cause is deferred rather than removed (intent-alignment) — the auditor itself reads this as the task's Fix ("teardown waits, with a bound").
+  - `[false]` `[reject]` The pause-just-before-cancel race was not reproduced on its own (intent-alignment) — a paused or held compact ends within 0.25 s of a cancel (measured), so that order alone does not leave a task running; the committed test pauses just before its stall.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story: it is a defect-fix story and introduces no service, module or shared component. `BackgroundSeed.Hold`, the fixture's `Linger`, and `Operation.Hold`/`Release` each have their consumer in the same batch. Consumes: none.
@@ -752,6 +785,16 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 - Fresh-clone evidence (`git clone --config core.autocrlf=true --no-local` of the worktree into the scratchpad, deleted afterwards): at `961d45c7`, without the rule, 16 of 16 `*.sh` carried CR and `bash scripts/durable-init.sh` stopped at line 17 (`set: -: invalid option`); after a throwaway commit of this `.gitattributes`, a second such clone had 0 of 16 with CR (`i/lf w/lf attr/text eol=lf`), `README.md` still CRLF as the control, and `durable-init.sh` ran to its own check (`/durable is not a directory`).
 - `.githooks/pre-commit`, the same way: at `43362b1c` it checked out `w/crlf` with CR on 230 lines, and bash 3.2 failed its `set` line (`set: pipefail: invalid option name`); from a scratch commit of this `.gitattributes`, 0 lines with CR (`i/lf w/lf attr/text eol=lf`), `README.md` CRLF as the control. An empty tracked `.sh` (`i/none w/none`) passes this test and fails the one committed at `43362b1c`. Code review: `npm run test:tools` 1,740/1,740.
 
+**DW-1829 follow-up (loop):**
+
+- CI evidence (run 36741141564 attempt 1, shard 2/3, the instance's `messages.log`): updates were suspended for low WIJ free space from 16:12:17 to 16:12:47. The agent leg's compact started at 16:12:40.0 and logged `gfilecomp caught error 55 ... Canceled` only at 16:12:58.6, 35 ms before the next test's teardown dismounted the seed. The cause is that the stalled compact acted on the cancel after `Remove` had stopped waiting (inference).
+- Vendor, measured on `ocupilot-b-ci`: a held compact whose work is done waits in `End()` (`LOCKW`, `LOCKSW` after the pause); a mid-work pause leaves it `SUSP`; a cancel ends either within 0.25 s. On a stopped job, `$zu(4)` (the vendor's cancel) blocks 17 to 18 s and answers -1, which `Request` accepts, and the job acts on it once it runs again. After `%UnlockId`, a job waiting in `End()` takes the task's lock, and `%OpenId` fails after 10.01 s with #5804 while `%ExistsId` reads 1. A write-daemon freeze (`ExternalFreeze`, `WDSuspendLimit` 30) did not slow the compact here (done in 1.9 s), so it was not used.
+- Reproducing condition, committed as `BackgroundTasksLive.TestTheTeardownOutlastsAStalledCompact`: the agent leg's order (seed, `Hold`, resume through the port, 3 s, pause through the port, the pause request read 1), then the compact's job stopped for `STALLSECONDS` (35) by `BackgroundSeed.Stall` (`$ZF(-100)`: an asynchronous `sleep; kill -CONT` first, then `kill -STOP`), then `Remove` must answer OK with no task left over the seed. The stop stands in for CI's stall (inference). A temporary probe (a 45 s stop, deleted) found it first; its mid-work variant (pause 0.3 s after the resume) was green on the fix in 46.3 s and logged CI's `gfilecomp caught error 55 ... Canceled`.
+- Red before the fix: with `Remove`'s wait restored to the baseline's (500 reads 20 ms apart, a failed open counted as ended), run 252 red on the new test alone: `Remove` answered #9501 "Memory assigned to this background task is still in use" and a task was left over the seed.
+- `mutation:` count a failed open as ended again (the `%ExistsId` arm dropped, `ENDSECONDS` 60) → run 253 red on `TestTheTeardownOutlastsAStalledCompact` alone (#9501, a task left); reverted byte-identical and reloaded.
+- `mutation:` `ENDSECONDS = 10` → run 254 red on `TestTheTeardownOutlastsAStalledCompact` alone (#9501, a task left); reverted byte-identical (`shasum`, `git status --short`, `git diff --stat` unchanged) and reloaded.
+- Green: runs 251, 255, 256 and 257, 8/8 each in `%UnitTest_Result`, the new test 40.0-40.1 s with its 35 s stop, the class about 60 s. The handoff's runs 247-249 (7/7) predate the new test. Afterwards: no background task over the seed, database, configuration, `%DB_OCUBGSEED`, directory or stopped process. `check-objectscript.py` 0 problems.
+
 **Batch e (loop):**
 
 - Classes: `ReadBackRoute`, `ProposalSpelling`, `ProposalConfirm`, `AccountPasswordWire`.
@@ -777,14 +820,14 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 ## Auto Run Result
 
-**DW-1870 (line endings of the shell scripts).** Batches e and d are untouched and stay unchecked.
+**DW-1829 follow-up (a held compact's teardown).** Batches e and d are untouched and stay unchecked.
 
-- **Change:** `.gitattributes` gains `*.sh text eol=lf` (the two existing lines kept, no renormalize; the index was already LF, `git ls-files --eol` read `i/lf` for all 16). The new `ui/tools/line-endings.test.mjs` lists every tracked `*.sh`, requires at least 10 including `scripts/durable-init.sh`, and requires for each that `git check-attr eol` answers `lf` and that `git ls-files --eol` shows LF in the stored copy and in this checkout, naming each offending file. It switches off the host's global and system attributes files.
-- **Files:** `.gitattributes` (the rule); `ui/tools/line-endings.test.mjs` (new; the roster test).
-- **Review:** 11 findings (medium 3, low 6, false 2). Patched: medium 1 (the test now reads the stored and checked-out copies, grouped with the clone-surface finding), low 3 (the header's `info/attributes` claim, the test title, the failure message). Deferred 2: an existing pre-rule Windows clone stays CRLF after a pull (medium), and `.githooks/pre-commit` is outside `*.sh` (low). Rejected: no Windows CI leg (low, new infrastructure), the `.cls` claim (false, measured in the ledger evidence), the missing Auto Run Result (false, written here).
-- **Follow-up review:** not recommended (patched high 0, medium 1, low 3).
-- **Verification:** `npm run test:tools` 1,740/1,740 after the handoff and again after the review patches; `lint-docs.sh` 0 issues; no non-ASCII byte in either changed file. Mutations and the fresh-clone evidence are under `DW-1870 (loop)`: 16 of 16 scripts with CR and `durable-init.sh` stopping at its `set` line before the rule, 0 of 16 after, `README.md` CRLF as the control. Every scratch clone was deleted. No IRIS call, container or throwaway was used.
-- **Residual risks:** the two deferred items; a pre-rule Windows clone needs its scripts checked out again (release-note line, the lead's call).
+- **Change:** `BackgroundSeed.Remove` keeps reading a canceled task for up to `ENDSECONDS` (60 s, was about 10 s), and counts a task whose row exists but does not open as not ended (a released held job holds the task's lock until it acts on the cancel). The new `BackgroundSeed.Stall` stops a job for a set time through `$ZF(-100)`, and `BackgroundTasksLive.TestTheTeardownOutlastsAStalledCompact` stops the agent leg's held, paused compact for 35 s and requires the seed removed with no task left. The agent leg's assertions, `Hold` and the seed's still-runs refusal are unchanged.
+- **Files:** `src/OcuPilot/Test/BackgroundSeed.cls` (the wait, `ENDSECONDS`, `Stall`, docs); `src/OcuPilot/Test/BackgroundTasksLive.cls` (the stalled-compact test, `STALLSECONDS`, header).
+- **Review:** 14 findings (medium 3, low 7, false 3, maybe-false 1). Patched: medium 1 entry (no committed pin, three rows: the new test), low 6 (the mutation lines re-run on the final tree, three `Remove` and `ENDSECONDS` doc corrections, the evidence surface, the deferred entry's count). Deferred 1: whether 60 s covers every CI stall (medium, unverified). Rejected 3, all false: the bound covering every task, the stall's cause deferred, the pause-before-cancel race.
+- **Follow-up review:** not recommended (patched high 0, medium 1, low 6).
+- **Verification:** under `DW-1829 follow-up (loop)`: red on the baseline wait (run 252) and under each mutation (253, 254), each reverted byte-identical and reloaded; green in runs 251 and 255-257, 8/8 each. `check-objectscript.py` 0 problems; no non-ASCII byte in either class. The throwaway kept no seed task, database, resource, directory, probe class or stopped process.
+- **Residual risks:** `BackgroundTasksLive` takes about 40 s longer. The stopped job stands in for CI's write stall (inference, deferred). In the red runs `Remove`'s `Tasks(1)` listed no running task while the canceled, stopped task's row remained, so the still-runs refusal did not fire and the removal went on to the database; with the fix this path needs a task that outlasts the bound.
 
 Status: done
 Blocking condition: none

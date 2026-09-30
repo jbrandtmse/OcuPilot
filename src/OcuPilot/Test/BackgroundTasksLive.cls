@@ -3,12 +3,14 @@
 /// task error log too; the screen's resume, pause and cancel each acting on it; an admin API compact
 /// queued as the test account listed as that account's own and paused through
 /// <code>AsyncResult</code>; the agent's confirmed pause of a compact, as the request the vendor
-/// records; a holder of the Tasks area's pairs alone refused Background tasks by name; and the task
-/// error log refusing a caller without
+/// records; the seed's teardown ending such a compact after its job stops answering for a while; a
+/// holder of the Tasks area's pairs alone refused Background tasks by name; and the task error log
+/// refusing a caller without
 /// <code>%DB_IRISSYS:READ</code> before its read can rewrite a live job's status.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and
 /// serving over HTTP as <class>OcuPilot.Test.Http</class>'s test account, the admin API answering
-/// that account, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class
+/// that account, <code>%System_CallOut:USE</code> to stop and continue a job through
+/// <code>$ZF(-100)</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class
 /// creates and deletes three users and three roles, a scratch database
 /// (<class>OcuPilot.Test.BackgroundSeed</class>) and one idle job of its own. Each test seeds its own
 /// work and removes it.</p>
@@ -29,6 +31,11 @@ Parameter SEED = "OcuPilot.Test.BackgroundSeed";
 /// and minting the pause: longer than a resumed seed compact takes to finish its work (about two
 /// seconds), so an unheld compact would record its end before the confirm.</p>
 Parameter RESUMEDSECONDS As INTEGER = 3;
+
+/// <p>How long <method>TestTheTeardownOutlastsAStalledCompact</method> stops its compact's job: past
+/// the vendor's cancel of a stopped job (which blocks about 18 s) plus a ten-second wait for its end,
+/// and well inside that cancel plus <parameter>OcuPilot.Test.BackgroundSeed.ENDSECONDS</parameter>.</p>
+Parameter STALLSECONDS As INTEGER = 35;
 
 /// <p>The purpose-built principal holding the install namespace's code read and the Tasks area's
 /// two pairs, and not <code>%Admin_Operate</code>.</p>
@@ -328,6 +335,38 @@ Method TestTheAgentsConfirmPausesACompact()
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tTurn, .tLedger), 1, "one write-kind ledger row")
     Do $$$AssertEquals($Get(tLedger("AuditMarked")), $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "and the agent marker landed on it")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>The seed's teardown ends the agent leg's compact after its job stops answering for a while, as
+/// a CI host whose writes stall stops it: the compact is held, resumed and paused through the port in
+/// that leg's order, its job is stopped for <parameter>STALLSECONDS</parameter>, and
+/// <method>OcuPilot.Test.BackgroundSeed.Remove</method> still removes the database and every task over
+/// it, so the next test's seed is not refused.</p>
+/// <p>Mutation (Rule 19): wait ten seconds for the canceled task's end in
+/// <method>OcuPilot.Test.BackgroundSeed.Remove</method>, or count a task that does not open as ended
+/// -- the removal answers that a task still runs and this goes red.</p>
+Method TestTheTeardownOutlastsAStalledCompact()
+{
+    Set tSC = $ClassMethod(..#SEED, "PausedCompact", .tJob, .tTaskId)
+    Do $$$AssertStatusOK(tSC, "a portal compact is seeded and paused: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSC = $ClassMethod(..#SEED, "Hold", tTaskId)
+    Do $$$AssertStatusOK(tSC, "its end is held: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Kill tQuery
+    Set tQuery("id") = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Management Portal", tJob))
+    Set tSC = ##class(OcuPilot.Port.BackgroundTaskPort).Invoke("BackgroundTask", "RESUME", .tQuery, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the compact is resumed through the port")
+    Hang ..#RESUMEDSECONDS
+    Set tSC = ##class(OcuPilot.Port.BackgroundTaskPort).Invoke("BackgroundTask", "PAUSE", .tQuery, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "and paused through the port, as the confirm pauses it")
+    Do $$$AssertEquals($ClassMethod(..#SEED, "RequestOf", tTaskId), 1, "the vendor records the pause request")
+    Set tSC = $ClassMethod(..#SEED, "Stall", tJob, ..#STALLSECONDS)
+    Do $$$AssertStatusOK(tSC, "its job is stopped for " _ ..#STALLSECONDS _ " s: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSC = $ClassMethod(..#SEED, "Remove")
+    Do $$$AssertStatusOK(tSC, "the seed's removal outlasts the stall: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals($ListLength($ClassMethod(..#SEED, "Tasks", 0)), 0, "and leaves no task over the seed database, so the next seed is not refused")
 }
 
 /// <p>AD-8's own-pair case: a holder of the Tasks area's two pairs alone keeps the area and its
