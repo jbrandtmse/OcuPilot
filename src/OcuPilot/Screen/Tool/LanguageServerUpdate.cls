@@ -68,6 +68,11 @@ Parameter RUNNINGREASON = "This server is running. Stop it before changing or de
 /// carried in <parameter>DESCRIPTION</parameter>.</p>
 Parameter PYTHONCONSEQUENCE = "Saving this also turns the server's virtual environment back on and clears its PYTHONPATH, which only the classic portal shows.";
 
+/// <p>The consequence code a proposal carries when its payload sends a Python server's
+/// <code>Custom</code> (<method>Consequence</method>); the card renders
+/// <code>languageServerPythonConsequence</code> for it (AD-4).</p>
+Parameter PYTHONCUSTOMCONSEQUENCE = "LANGUAGESERVER.PYTHONCUSTOM";
+
 /// <p>The rules this tool applies.</p>
 Parameter RULES = "OcuPilot.Area.OsMgmt.LanguageServerRules";
 
@@ -244,6 +249,19 @@ ClassMethod MergeCustom(pFresh As %DynamicObject, pSupplied, pPayload As %Dynami
     }
     If pChanged Do pPayload.%Set(..#CUSTOMFIELD, tMerged)
     Quit $$$OK
+}
+
+/// <p>The consequence code the proposal's card states (<method>OcuPilot.Kernel.Proposal.Mint.ConsequenceOf</method>):
+/// <parameter>PYTHONCUSTOMCONSEQUENCE</parameter> when the merged payload <var>pPayload</var> is a
+/// Python server's and carries <parameter>CUSTOMFIELD</parameter>, which <method>MergeUpdate</method>
+/// keeps only when a member changes; <code>""</code> otherwise, which leaves the mint's own
+/// fallback (AD-4).</p>
+ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String
+{
+    If '$IsObject(pPayload) Quit ""
+    If pPayload.%Get("Type") '= $Parameter(..#RULES, "PYTHONTYPE") Quit ""
+    If pPayload.%GetTypeOf(..#CUSTOMFIELD) = "unassigned" Quit ""
+    Quit ..#PYTHONCUSTOMCONSEQUENCE
 }
 
 /// <p>What the caller must hold: the screen's own pairs, then

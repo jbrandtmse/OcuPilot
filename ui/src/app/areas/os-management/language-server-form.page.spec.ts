@@ -10,7 +10,7 @@ import { OverlayStack } from '../../core/overlay-stack';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { LanguageServerFormPage } from './language-server-form.page';
-import { LANGUAGE_SERVER_FORM_PATH, LANGUAGE_SERVER_NAME_PATH, LANGUAGE_SERVER_PATH } from './language-server-form.store';
+import { LANGUAGE_SERVER_FORM_PATH, LANGUAGE_SERVER_NAME_PATH, LANGUAGE_SERVER_PATH, LanguageServerForm } from './language-server-form.store';
 
 /**
  * The external language server editor over stubs of what an instance supplies -- the URL's screen and
@@ -319,8 +319,11 @@ describe('the external language server editor', () => {
     expect(create.host.querySelector('#ocu-language-server-Port-reason')?.textContent?.trim()).toBe(FORM.rules[0].reason);
     for (const node of planted.splice(0)) node.remove();
 
+    // Mutation (Rule 19): drop the create-only test from the store's `onBlur` -> the edit asks the
+    // name check about its own name and this goes red.
     const edit = await mount('/os-management/language-servers/edit/OcuPilotProbeELS1', JAVA, null, { name: 'OcuPilotProbeELS1', taken: true, reason: STRINGS.languageServerNameTaken });
-    control(edit.host, 'Port')?.dispatchEvent(new Event('blur'));
+    control(edit.host, 'Name')?.dispatchEvent(new Event('blur'));
+    await edit.fixture.debugElement.injector.get(LanguageServerForm).onBlur('Name');
     await settle(edit.fixture);
     expect(edit.calls.filter((call) => call.path.startsWith(LANGUAGE_SERVER_NAME_PATH))).toEqual([]);
     expect(edit.host.querySelector('.ocu-form-error')).toBeNull();
@@ -329,7 +332,7 @@ describe('the external language server editor', () => {
   it('a refused Save lands each violation on its own field, a Custom member\u2019s among them, and keeps what was entered', async () => {
     // Mutation (Rule 19): look a field's refusal up by its last dotted segment in the page's
     // `fieldView` -> the .NET version's refusal leaves its field and this goes red.
-    const net = server('.NET', { DotNetVersion: 'N8.0', Exec32: false, FilePath: '' });
+    const net = server('.NET', { DotNetVersion: 'N8.0', Exec32: 0, FilePath: '' });
     const range = 'The port is a whole number from 1 to 65535.';
     const version = 'The .NET version is one of N8.0, N9.0 or N10.0.';
     const refused = {
@@ -359,6 +362,28 @@ describe('the external language server editor', () => {
     expect(host.querySelectorAll('.ocu-form-summary-list li')).toHaveLength(2);
     expect((control(host, 'Port') as HTMLInputElement).value).toBe('70000');
     expect((control(host, 'Custom.DotNetVersion') as HTMLSelectElement).value).toBe('N9.0');
+  });
+
+  it('AC2: a flag the instance answers as 0 or 1 draws as the server holds it, and an untouched flag is never sent', async () => {
+    // Mutation (Rule 19): buffer a Custom member through `held` rather than `heldAs` in the store's
+    // `absorb` -> a stored Exec32 of 1 draws unchecked and this goes red.
+    const net = server('.NET', { DotNetVersion: 'N8.0', Exec32: 1, FilePath: '' });
+    const port = await mount('/os-management/language-servers/edit/OcuPilotProbeELS1', net);
+    expect((control(port.host, 'Custom.Exec32') as HTMLInputElement).checked).toBe(true);
+    type(port.fixture, port.host, 'Port', '54000');
+    save(port.host);
+    await settle(port.fixture);
+    expect(JSON.parse(port.calls.find((call) => call.method !== 'GET')?.body ?? '{}')).toEqual({ Port: 54000 });
+    for (const node of planted.splice(0)) node.remove();
+
+    const flag = await mount('/os-management/language-servers/edit/OcuPilotProbeELS1', net);
+    const box = control(flag.host, 'Custom.Exec32') as HTMLInputElement;
+    box.checked = false;
+    box.dispatchEvent(new Event('change'));
+    flag.fixture.detectChanges();
+    save(flag.host);
+    await settle(flag.fixture);
+    expect(JSON.parse(flag.calls.find((call) => call.method !== 'GET')?.body ?? '{}')).toEqual({ Custom: { Exec32: false } });
   });
 
   it('a change raises the dirty flag, so leaving asks the shared question first', async () => {

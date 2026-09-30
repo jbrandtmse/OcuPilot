@@ -10,7 +10,7 @@ Class OcuPilot.Api.LanguageServerError Extends %RegisteredObject
 {
 
 /// <p>Envelope code: a server's create or edit broke one or more of the rules
-/// <class>OcuPilot.Area.OsMgmt.LanguageServerRules</class> applies before the port is touched.
+/// <class>OcuPilot.Area.OsMgmt.LanguageServerRules</class> applies before anything is sent.
 /// Rendered on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with every
 /// violation in <code>detail.violations</code>.</p>
 Parameter VALIDATION = "LANGUAGESERVER.VALIDATION";

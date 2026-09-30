@@ -41,6 +41,7 @@ const {
   CONSEQUENCE_PURGEMARKERS,
   CONSEQUENCE_COPYMAPPINGS,
   CONSEQUENCE_TASKEXPORTREPLACES,
+  CONSEQUENCE_PYTHONCUSTOM,
   CONSEQUENCE_SYSTEMGLOBAL,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
@@ -246,6 +247,19 @@ test("the system-global mapping's and the mapping copy's consequence codes resol
 test("the task export's consequence code resolves to the export dialog's replace line", () => {
   assert.equal(CONSEQUENCE_TASKEXPORTREPLACES, 'TASK.EXPORT.REPLACES');
   assert.equal(consequenceSentence(CONSEQUENCE_TASKEXPORTREPLACES), STRINGS.taskExportReplaces);
+});
+
+// Story 16.25, AD-4: the agent's change to a Python language server's own settings carries the
+// update tool's consequence code, read here from `LanguageServerUpdate.cls` rather than restated, and
+// the card states the editor's published consequence line.
+//
+// Mutation (Rule 19): drop the PYTHONCUSTOM branch from `consequenceSentence` -> this goes red.
+test("the language server update's Python consequence code is the tool's own and resolves to the editor's line", () => {
+  const source = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'LanguageServerUpdate.cls'), 'utf8');
+  const declared = /^Parameter PYTHONCUSTOMCONSEQUENCE = "([^"]+)";/m.exec(source);
+  assert.ok(declared, 'LanguageServerUpdate.cls declares its consequence code');
+  assert.equal(CONSEQUENCE_PYTHONCUSTOM, declared[1]);
+  assert.equal(consequenceSentence(CONSEQUENCE_PYTHONCUSTOM), STRINGS.languageServerPythonConsequence);
 });
 
 // Story 9.7, AD-10: a task create that runs as another account is permitted, minted destructive

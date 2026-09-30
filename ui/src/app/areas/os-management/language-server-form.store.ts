@@ -83,6 +83,16 @@ function held(value: unknown): string {
 }
 
 /**
+ * Field `field`'s read value as the form holds it: a flag field's `true` or `1` as `'true'` and
+ * anything else as `'false'`, because the instance answers `Custom.Exec32` as the number 0 or 1;
+ * any other field as `held` reads it.
+ */
+function heldAs(field: string, value: unknown): string {
+  if (FLAG_FIELDS.includes(field)) return value === true || value === 1 || value === '1' || value === 'true' ? 'true' : 'false';
+  return held(value);
+}
+
+/**
  * The external language server editor's store (AD-19, AD-55, Story 16.25): a create on
  * `os-management/language-servers/edit`, an edit of the server its route names on
  * `os-management/language-servers/edit/<name>`.
@@ -596,12 +606,12 @@ export class LanguageServerForm {
     }
     this.serverName = textAt(server, NAME_FIELD) || name;
     const buffer: Record<string, string> = { [NAME_FIELD]: this.serverName, [TYPE_FIELD]: textAt(server, TYPE_FIELD) };
-    for (const field of this.fieldsValue) buffer[field] = held(server[field]);
+    for (const field of this.fieldsValue) buffer[field] = heldAs(field, server[field]);
     const locations: Record<string, string> = {};
     for (const field of this.pathsValue) locations[field] = held(server[field]);
     const custom = record(server[CUSTOM_FIELD]);
     const typeEntry = typeFields[buffer[TYPE_FIELD]];
-    for (const member of typeEntry?.settable ?? []) buffer[`${CUSTOM_FIELD}.${member}`] = held(custom?.[member]);
+    for (const member of typeEntry?.settable ?? []) buffer[`${CUSTOM_FIELD}.${member}`] = heldAs(`${CUSTOM_FIELD}.${member}`, custom?.[member]);
     for (const member of typeEntry?.paths ?? []) locations[`${CUSTOM_FIELD}.${member}`] = held(custom?.[member]);
     this.buffer = buffer;
     this.opened = this.buffer;

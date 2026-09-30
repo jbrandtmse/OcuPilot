@@ -6,8 +6,8 @@
 /// <code>Text</code>.</p>
 /// <p><b>It is a sub-resource of External language servers and never listed</b>
 /// (<code>sideBarPosition</code> 0). It declares its parent, <code>parentScope</code>
-/// <code>os-management/language-servers</code> (AD-5), and is reached from that list's name cell at
-/// <code>os-management/language-servers/activity/&lt;name&gt;</code>. Its one criterion,
+/// <code>os-management/language-servers</code> (AD-5), and is reached from the server's editor, which
+/// the list's name cell opens, at <code>os-management/language-servers/activity/&lt;name&gt;</code>. Its one criterion,
 /// <code>name</code>, is filled from that route id; <code>maxLength</code> 50 is
 /// <code>Config.Gateways</code> <code>Name</code>'s <code>MAXLEN</code>.</p>
 /// <p><b>The rows are the vendor's, newest first</b>, bounded by the vendor's <code>maxRows</code>

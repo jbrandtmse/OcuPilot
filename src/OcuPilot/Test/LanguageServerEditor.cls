@@ -157,9 +157,12 @@ Method TestTheRulesRefuseEachField()
 /// <p>AD-4 as amended: the update merges the arguments over the fresh read, sends the type and the
 /// file locations as held, never sends the running state, leaves out a <code>Custom</code> no member of
 /// which changes, and sends the whole <code>Custom</code> when one does; a running server is refused
-/// with the published sentence unless it is <code>Remote</code>.</p>
+/// with the published sentence unless it is <code>Remote</code>. A Python server's changed member
+/// carries the consequence code the card states, and nothing else does.</p>
 /// <p>Mutation (Rule 19): drop the <code>Remote</code> test from
-/// <method>OcuPilot.Area.OsMgmt.LanguageServerRules.Running</method> -- the Remote leg goes red.</p>
+/// <method>OcuPilot.Area.OsMgmt.LanguageServerRules.Running</method> -- the Remote leg goes red; make
+/// <method>OcuPilot.Screen.Tool.LanguageServerUpdate.Consequence</method> answer <code>""</code> -- the
+/// Python leg goes red.</p>
 Method TestTheUpdateMergesCustomByMember()
 {
     Set tFresh = ..Fresh("Java", 0, {"ClassPath": "/opt/lib/a.jar", "JavaHome": "/opt/jdk", "JVMArgs": "-Xmx32m"})
@@ -180,6 +183,11 @@ Method TestTheUpdateMergesCustomByMember()
     Set tNet = ..Fresh(".NET", 0, {"DotNetVersion": "N8.0", "Exec32": 0, "FilePath": ""})
     Set tSC = $ClassMethod(..#UPDATE, "MergeUpdate", tNet, {"Custom": {"Exec32": true}}, "Name", tSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
     Do $$$AssertEquals($Select($IsObject(tPayload) && $IsObject(tPayload.Custom): tPayload.Custom.%ToJSON(), 1: "") _ " " _ tDiff.%ToJSON(), "{""DotNetVersion"":""N8.0"",""Exec32"":1,""FilePath"":""""} [{""field"":""Custom.Exec32"",""before"":""0"",""after"":""1""}]", "a flag member is sent as the 1 the instance answers it as")
+    Set tPython = ..Fresh("Python", 0, {"PythonOptions": "-u", "PythonPath": "/usr/bin/python3"})
+    Set tSC = $ClassMethod(..#UPDATE, "MergeUpdate", tPython, {"Custom": {"PythonOptions": "-B"}}, "Name", tSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+    Do $$$AssertEquals($ClassMethod(..#UPDATE, "Consequence", tPayload), $Parameter(..#UPDATE, "PYTHONCUSTOMCONSEQUENCE"), "a Python server's changed member carries the consequence code to the card (AD-4)")
+    Set tSC = $ClassMethod(..#UPDATE, "MergeUpdate", tPython, {"Port": 54411}, "Name", tSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+    Do $$$AssertEquals($ClassMethod(..#UPDATE, "Consequence", tPayload) _ "|" _ $ClassMethod(..#UPDATE, "Consequence", {"Type": "Java", "Custom": {"JVMArgs": "-X"}}), "|", "and a shared field's edit, or another type's Custom, carries none")
 
     Set tRunning = ..Fresh("Java", 1, {"ClassPath": "", "JavaHome": "", "JVMArgs": ""})
     Set tSC = $ClassMethod(..#UPDATE, "MergeUpdate", tRunning, {"Port": 54411}, "Name", tSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
@@ -265,9 +273,10 @@ Method TestThePortCompletesTheReadWithOneActivityRow()
 /// <p>AD-8 as amended: the port refuses a Python server's <code>DELETE</code> to a caller without
 /// <code>%System_CallOut:USE</code>, 403 naming the pair, before the vendor's delete is constructed;
 /// the same caller's delete of a Java server, and a holder's delete of the Python one, reach the
-/// vendor.</p>
+/// vendor; a type read that fails is answered as that read, and nothing is deleted.</p>
 /// <p>Mutation (Rule 19): drop the <code>CallOutRefused</code> call from
-/// <method>OcuPilot.Port.LanguageServerPort.Invoke</method> -- the refusal leg goes red.</p>
+/// <method>OcuPilot.Port.LanguageServerPort.Invoke</method> -- the refusal leg goes red; let a failed
+/// type read fall through to the delete -- the unread-type leg goes red.</p>
 Method TestThePortRefusesAPythonDeleteWithoutCallOut()
 {
     Kill tQuery
@@ -286,6 +295,12 @@ Method TestThePortRefusesAPythonDeleteWithoutCallOut()
     Do ##class(OcuPilot.Test.PortFixture).SetHoldsPair(1)
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "LanguageServer", "DELETE", .tQuery, "", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals($$$ISOK(tSC) _ " " _ $ClassMethod(..#ENDPOINT, "Recorded", "type"), "1 " _ $Parameter(..#ENDPOINT, "TYPEDELETE"), "and a holder's delete of the Python one does too")
+    Do $ClassMethod(..#ENDPOINT, "Clear")
+    Do ..Arm("Python")
+    Do $ClassMethod(..#ENDPOINT, "SetDetailFault", "OcuPilotProbeELSA", "errorstatus")
+    Do ##class(OcuPilot.Test.PortFixture).SetHoldsPair(0)
+    Set tSC = $ClassMethod(..#SEAM, "Invoke", "LanguageServer", "DELETE", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertEquals($$$ISERR(tSC) _ " " _ $ClassMethod(..#ENDPOINT, "Recorded", "type"), "1 " _ $Parameter(..#ENDPOINT, "TYPEGET"), "a type read that fails is answered as that read's failure, and the vendor's delete is never constructed")
 }
 
 /// <p>AD-10, AD-54: the prohibited set covers the editor's fields -- a create may set the type and

@@ -9,10 +9,10 @@
 /// <code>ComposeCreate</code>, the edit's <code>MergeUpdate</code>) and the pairs the write needs beyond
 /// the form's. It mints no proposal and takes no confirm token. A create runs, in order: the caller's
 /// pairs (AD-8), the name's own rules, AD-10's prohibited set over the caller's fields, the form's
-/// rules, the composed payload, and only then the port. An edit runs the caller's pairs, the fresh
-/// read, a check that the body carries only settable fields, the form's rules, the merge over the
-/// fresh read (which refuses a running server), the prohibited set over the merged payload and only
-/// then the port.</p>
+/// rules (whose name look-up reads through the port), the composed payload, and only then the write.
+/// An edit runs the caller's pairs, the fresh read, a check that the body carries only settable
+/// fields, the form's rules, the merge over the fresh read (which refuses a running server), the
+/// prohibited set over the merged payload and only then the write.</p>
 /// <p><b>The vendor's <code>PUT</code> is an upsert</b>, so an edit whose server is gone by the time
 /// its fresh read is made answers 404 and sends nothing, rather than re-creating it.</p>
 /// <p>Seams a subclass may override: <method>PortClass</method> and <method>ProhibitedClass</method>.

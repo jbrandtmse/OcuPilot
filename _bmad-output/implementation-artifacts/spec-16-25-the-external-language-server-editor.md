@@ -98,12 +98,12 @@ deferred: []
 | Create per type | Type chosen on the form | Custom members per Boundaries: settable ones as inputs, path members read-only with the caption; ODBC shows none | - |
 | Create JDBC without Resource | agent or form omits it | sent `%Gateway_SQL`, shown on the card | - |
 | Duplicate name | Create with an existing name | name check answers taken; the mint refuses; a name taken between the mint and the confirm is refused at confirm (AD-54) | nothing sent |
-| Missing or out-of-range field | no Port; Port 70000; timeout 301 | violation on the field, with its published reason | 400 before any port call |
+| Missing or out-of-range field | no Port; Port 70000; timeout 301 | violation on the field, with its published reason | the agent's 400, the Save's 422 (AD-39), before anything is sent [AMENDED 2026-09-30, lead: was '400 before any port call'] |
 | Edit a stopped server | change Port | instance holds the new Port; every other field and every `Custom` member kept; `Custom` not in the body | - |
 | Edit a Custom member | Java JVM arguments changed | whole `Custom` sent with its path members as held; the other members kept | - |
 | Python Custom change | Python options changed | consequence line shown before Save; after Save, the virtual-environment flag reads 1 and PYTHONPATH is cleared (measured) | - |
 | Python non-Custom edit | Python server, ConnectionTimeout changed | hidden settings kept | - |
-| Path field supplied | agent passes `Custom.JavaHome` or `LogFile` | refused as not settable | 400 before any port call |
+| Path field supplied | agent passes `Custom.JavaHome` or `LogFile` | refused as not settable | the agent's 400, the Save's 422 (AD-39), before anything is sent [AMENDED 2026-09-30, lead: was '400 before any port call'] |
 | Type change | agent passes `Type` on update | refused as not settable | 400 |
 | Running server | running non-Remote server; edit or delete, screen or agent | refused with the running sentence; editor read-only | nothing sent |
 | Started since mint | delete minted while stopped; started before Confirm | Confirm refused (fingerprint) | - |
@@ -338,7 +338,51 @@ Anchors are as of `0fa21806`.
   - the editor (consumer of `GET /language-server/form`) renders the `Custom` members that the derived `LanguageServer:<Type>` list names for the chosen type;
   - the form passes the DW-1337 walk in both themes with no new allowance.
 
+### Review Findings
+
+Code review 2026-09-30 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 42 rows, 6 entries after grouping, 31 rejected.
+
+- [x] [Review][Patch] (high, Rule 6, AD-4) An agent's proposal changing a Python server's `Custom` reaches the person's card without the consequence AD-4 says is stated to the person; `LanguageServerUpdate` declares no `Consequence` for `Mint.ConsequenceOf` [src/OcuPilot/Screen/Tool/LanguageServerUpdate.cls:134]
+- [x] [Review][Patch] (medium, AC2) The instance answers `Custom.Exec32` as 0 or 1, so the edit form draws a 32-bit .NET server's "Run as 32-bit" unchecked, and a check-then-uncheck turns it off [ui/src/app/areas/os-management/language-server-form.store.ts:79]
+- [x] [Review][Patch] (low, Rule 19) The Duplicate name case's "an edit asks nothing" leg blurs Port, which never asks, so it cannot fail [ui/src/app/areas/os-management/language-server-form.page.spec.ts:322]
+- [x] [Review][Patch] (low, AC4) The port's "type read failed, nothing deleted" branch has no test [src/OcuPilot/Port/LanguageServerPort.cls:66]
+- [x] [Review][Patch] (low) `LanguageServerActivity`'s doc says the list's name cell reaches it; the name cell now opens the editor [src/OcuPilot/Screen/Descriptor/LanguageServerActivity.cls:9]
+- [x] [Review][Patch] (low) Two doc comments say the rules apply "before the port is touched" and the Save reaches "only then the port", while the create's name look-up and the edit's fresh read read through the port first [src/OcuPilot/Api/LanguageServerError.cls:13]
+
+Rejected:
+
+- `low` A .NET create with no version picked takes the vendor's `N6.0`: the classic editor defaults the same (`%CSP.UI.Portal.ExternalLanguageServer` :75, :499).
+- `low` The delete sentence omits the Python environment and "cannot be undone": it is the spec's verbatim copy (Design Notes, :479).
+- `low` Emptying Resource on an edit makes a server public: the classic editor's resource select offers the same empty choice; rare.
+- `low` Every Remote read waits on ACTIVITY: the Boundaries complete every GET, and the named limits accept the ping (by-design).
+- `low` `Taken` reads through the completing port, and a failed ACTIVITY answers 500 (two rows): AD-52's port; ACTIVITY slowed and did not fail on a bad address (measured); rare.
+- `low` Create and edit answer a crafted top-level `LogFile` or unknown key with different codes: the form never sends either, and both refuse before anything is sent.
+- `low` The matrix's "400 before any port call" is not met literally (two rows): the Save's 422 follows the Namespace shape the Tasks name (AD-39); reads precede every refusal on both callers, because the kernel's mint reads before `ArgumentProblem`, and nothing is written or sent before any refusal (pinned). Restating the row is a spec edit, for the lead.
+- `low` The Auto Run Result counts 11 patched entries against 12 `[patch]` lines: a spec edit.
+- `low` The implement stage batched test-runner calls: recorded in the Protocol note; a process matter for the lead, not a defect of the change.
+- `low` No test sends a name that needs encoding: the PUT uses the shared `encodeEntityId`/`EntityId.Decode` pair (AD-13, pinned by its own corpus).
+- `low` An absent server's form read and a 409 after a start since the read are untested, and the 409 leaves the form editable: the 404 sets `absent`; the start race is rare and the 409 shows the running sentence.
+- `low` A Python delete without CallOut is refused only at the write: the spec and AD-8 put the gate in the port, before the vendor call (by-design).
+- `low` The copied script for a Python delete omits the CallOut precondition: AD-59 says the script runs outside OcuPilot's gates.
+- `false` "The server and its environment untouched" is never observed: the seam test shows the vendor DELETE is never constructed, and the lead's AD-8 mutation reddened the wire leg.
+- `low` Descriptions and reasons restate the type and .NET version lists: they drift only on a vendor change, which reddens the pinned `TYPES` and `DOTNETVERSIONS` first.
+- `low` The field-list reader is copied and re-parsed per call: no user-visible cost; a refactor.
+- `low` The name check says nothing about a malformed name: the Save answers `NAME.SHAPE` with its published sentence.
+- `low` The error summary shows no field names: the shared form pattern, each entry focusing its field.
+- `low` `LanguageServerEditorWire` is 716 lines: a size guideline; a refactor.
+- `false` `EnsurePrincipals` restores the namespace after its Catch: it restores it on every path.
+- `low` Deleting a vendor `%` server gets no advisory: a named limit (by-design).
+- `low` JVM arguments or Python options may carry a credential: theoretical; AD-60 redacts secret shapes bound for the model.
+- `low` A padded or all-space name is created untrimmed: the spec's name rule admits it; rare.
+- `low` A server created, started or deleted between a Save's read and its PUT (two rows): millisecond windows on the person's own Save (theoretical).
+- `low` `Custom.Address` over 1,023 characters reaches the vendor: the vendor refuses it at the write; unrealistic.
+- `false` A type switch keeps stale `Custom.<member>` refusals: the form sends no member it does not draw and offers the .NET version as a select, so no such refusal reaches a create.
+- `false` A server whose read fails loses its Activity log: the Activity log reads the same ACTIVITY.
+- `low` The agent schema types Port and the timeouts as strings: the advertised type is what a model sends; changing it changes the agent contract.
+
 ## Spec Change Log
+
+- 2026-09-30, code review (lead ruling, Rule 5 tier 1): the matrix rows "Missing or out-of-range field" and "Path field supplied" read "the agent's 400, the Save's 422 (AD-39), before anything is sent" instead of "400 before any port call". The Save follows the Namespace editor's 422 the Tasks name, and the kernel's mint reads before it checks arguments on every tool, so a read precedes the refusal on both callers; nothing is written or sent first, and a test pins that.
 
 - 2026-09-30, implement halt (intent gap), lead ruling (Rule 5 tier 1, observable restated, intent unchanged): AC1, the I/O matrix row "Create Java" and the browser Tasks bullet no longer require the created row to read "Changed" after the person's form Save; they require that, back on the list, it lists the server's row. A form-page Save publishes its change event while no list is bound (`ListPage` unbinds `RefreshService`; `core/refresh.ts` marks only the bound screen; `ChangeBus` keeps no history), which holds for every editor, and EXPERIENCE.md:726 defines "Changed" for the entity on screen. The agent's create, confirmed with the list open, still marks its row. The framework alternative (a list marking events published while hidden) is not taken.
 
@@ -531,6 +575,14 @@ Mutations demonstrated (implement stage, each reverted with the tree unchanged a
 - mutation: the store's `onBlur` reads the name check under another key → the page spec's "Duplicate name" case went red.
 - mutation: the page's `fieldView` looks a refusal up by its last dotted segment → the page spec's "a refused Save lands each violation on its own field" went red.
 - mutation: `setDirty(true)` dropped from the store's `change` → the page spec's dirty-flag case went red.
+
+Mutations demonstrated (code review, each reverted with the tree and `/tmp/ocupilot-ci/src` unchanged after):
+
+- mutation: `LanguageServerUpdate.Consequence` answers `""` (class recompiled) → `LanguageServerEditor.TestTheUpdateMergesCustomByMember`'s Python leg went red alone (run 21415; AD-4, AC2 on the agent's path).
+- mutation: `consequenceSentence`'s `LANGUAGESERVER.PYTHONCUSTOM` branch dropped → `proposal-view.test.mjs` "the language server update's Python consequence code ..." went red.
+- mutation: the store's `absorb` buffers a `Custom` member through `held` rather than `heldAs` → the page spec's "AC2: a flag the instance answers as 0 or 1 ..." went red (AC2).
+- mutation: the create-only test dropped from the store's `onBlur` → the page spec's "Duplicate name" case went red at its edit leg.
+- mutation: a failed type read falls through to the delete in `LanguageServerPort.Invoke` (port and seam recompiled) → `LanguageServerEditor.TestThePortRefusesAPythonDeleteWithoutCallOut`'s unread-type leg went red alone (run 21416; AC4).
 
 ## Auto Run Result
 
