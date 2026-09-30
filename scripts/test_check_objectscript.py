@@ -1921,6 +1921,78 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
                 co.check_destructive_test_guard(problems)
                 self.assertFalse(any(f"{name}.cls" in p for p in problems), f"expected {name} to pass, got {problems}")
 
+    def test_a_tool_inheriting_the_marking_flag_is_a_marking_tool(self):
+        """`MOVESMARKING` is read through inheritance at the write, so a subclass that only declares
+        its own wire name is a marking tool too, and one that declares 0 is not. Mutation (Rule 19):
+        read only the classes that declare the flag themselves -> the inherited leg goes red."""
+        self.write(
+            "src/OcuPilot/Screen/Tool/AuditEventUpdate.cls",
+            "Class OcuPilot.Screen.Tool.AuditEventUpdate Extends OcuPilot.Screen.Tool.Write\n{\n\n"
+            'Parameter TOOLNAME = "security.auditsystemevents.update";\n\n'
+            "Parameter MOVESMARKING As BOOLEAN = 1;\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Screen/Tool/AuditUserEventUpdate.cls",
+            "Class OcuPilot.Screen.Tool.AuditUserEventUpdate Extends OcuPilot.Screen.Tool.AuditEventUpdate\n{\n\n"
+            'Parameter TOOLNAME = "security.audituserevents.update";\n\n}\n',
+        )
+        self.write(
+            "src/OcuPilot/Screen/Tool/AuditQuietUpdate.cls",
+            "Class OcuPilot.Screen.Tool.AuditQuietUpdate Extends OcuPilot.Screen.Tool.AuditEventUpdate\n{\n\n"
+            'Parameter TOOLNAME = "security.auditquiet.update";\n\n'
+            "Parameter MOVESMARKING As BOOLEAN = 0;\n\n}\n",
+        )
+        confirm = '    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)'
+        for name, wire, refused in (
+            ("MarkingInherited", "security.audituserevents.update", True),
+            ("MarkingOverridden", "security.auditquiet.update", False),
+        ):
+            with self.subTest(wire=wire):
+                self.write_test_class(name, f'    Set tTool = "{wire}"\n' + confirm)
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertEqual(
+                    any(f"{name}.cls" in p and wire in p for p in problems),
+                    refused,
+                    f"{wire}: expected refused={refused}, got {problems}",
+                )
+
+    def test_the_provider_spelling_of_a_wire_name_names_the_tool(self):
+        """A scripted provider turn names a tool with its dots as underscores (Conventions > Tool
+        naming), so that spelling arms the rule as the dotted one does."""
+        self.write("src/OcuPilot/Screen/Tool/AuditingUpdate.cls", self.MARKING_TOOL)
+        self.write_test_class(
+            "MarkingProviderSpelling",
+            '    Set tCall = {"name": "security_auditing_update", "input": {"AuditEnabled": false}}\n'
+            '    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", "/proposal/" _ tKey _ "/confirm", .tStatus, .tBody, "{}", "application/json")',
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("MarkingProviderSpelling.cls" in p and "security.auditing.update" in p for p in problems),
+            f"expected the provider spelling refused naming the tool, got {problems}",
+        )
+
+    def test_apply_arms_the_rule_whatever_its_default_port(self):
+        """`Apply`'s port argument is only a default that a tool's own `PORTCLASS` overrides, so
+        even a literal fixture port there does not keep the write off the instance. Mutation
+        (Rule 19): drop `Apply` from `MARKING_WRITE_ENTRY_RE`, or exempt its fixture port as
+        `ApplyAt`'s is -> this goes red."""
+        self.write("src/OcuPilot/Screen/Tool/AuditingUpdate.cls", self.MARKING_TOOL)
+        call = (
+            '    Set tTool = "OcuPilot.Screen.Tool.AuditingUpdate"\n'
+            '    Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).Apply(tTool, {port}, $ClassMethod(tTool, "Endpoint"), "", "", "", "", .tWritten, .tHttp, .tFault)'
+        )
+        for port in ('"OcuPilot.Test.AcceptPort"', '"OcuPilot.Port.AdminPort"'):
+            with self.subTest(port=port):
+                self.write_test_class("MarkingPlainApply", call.format(port=port))
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertTrue(
+                    any("MarkingPlainApply.cls" in p for p in problems),
+                    f"port {port}: expected refused, got {problems}",
+                )
+
     def test_a_guard_that_does_not_refuse_does_not_count(self):
         """The rule reads the barrier, not the mention of it. Each body below names the arming
         variable inside `OnBeforeAllTests` and still runs the class on a live instance: the
@@ -2392,6 +2464,14 @@ class TestDestructiveTestGuardRealClass(unittest.TestCase):
             any("Test/LogSourceDenial.cls" in p for p in problems),
             f"expected the real, already-guarded class to pass, got {problems}",
         )
+
+    def test_the_marking_arm_reaches_the_shipped_marking_tools(self):
+        """The marking arm is only as strong as the tools it derives: on the shipped tree it holds
+        the auditing switch and the user-event update, which inherits the flag, so a clean tree is
+        not an arm that derives nothing."""
+        wires = {wire for _, wire in co.marking_tools()}
+        for wire in ("security.auditing.update", "security.audituserevents.update"):
+            self.assertIn(wire, wires, f"expected {wire} among the shipped marking tools, got {sorted(wires)}")
 
 
 if __name__ == "__main__":

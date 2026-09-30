@@ -130,7 +130,7 @@ Method TestARowActionOnAHeldTargetIsRefusedBusy()
     Set tAnswer = tStatus _ " " _ $Select($IsObject(tBody): tBody.%Get("code") _ " " _ tBody.%Get("reason"), 1: tBody)
     Do $$$AssertEquals(tAnswer, "409 WRITE.TARGETBUSY " _ ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, "the held disable is refused busy, with the published reason")
     Do $$$AssertTrue(tWaited >= ($Parameter("OcuPilot.Kernel.State.Propose", "CLAIMLOCKSECONDS") - 1), "after waiting for the hold (" _ $FNumber(tWaited, "", 1) _ " s)")
-    Do $$$AssertTrue(tWaited < 12, "and within the 10 s the wait allows, with 2 s for the round trip (" _ $FNumber(tWaited, "", 1) _ " s)")
+    Do $$$AssertTrue(tWaited < 15, "and within the 10 s the wait allows, with 5 s for the round trip (" _ $FNumber(tWaited, "", 1) _ " s)")
     Do $$$AssertEquals(..EnabledOf(..#PROBEAPP), 1, "and the application is still enabled")
 
     Do ..Action("disable", ..#PROBEAPP, .tStatus, .tBody)

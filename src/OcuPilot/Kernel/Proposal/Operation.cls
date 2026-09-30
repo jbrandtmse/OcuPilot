@@ -10,10 +10,10 @@
 /// for the agent, the restraint verdict, the conversation, the definition, the fingerprint
 /// re-match, the atomic claim and the ledger row (AD-6, AD-30, AD-34, AD-41); for the screen,
 /// nothing at all.</p>
-/// <p><b>Both callers hold the target around the three halves</b> (AD-34, AD-53):
-/// <method>Hold</method> before the fresh read, <method>Release</method> after the write, so a row
-/// action and a confirm on one target are ordered here and never interleave between one's read and
-/// its write.</p>
+/// <p><b>A confirm and a screen row action hold the target around the three halves</b> (AD-34,
+/// AD-53): <method>Hold</method> before the fresh read, <method>Release</method> after the write
+/// and its read-back, so the two on one target are ordered here and never interleave between one's
+/// read and its write. A screen's own Save (AD-55) takes no hold.</p>
 /// <p><b>Why the difference is principled rather than convenient</b> (AD-53). AD-6's proposal
 /// exists because a <i>model</i> asked for the write and a human must review a server-computed
 /// diff first; a person pressing a row action has expressed the intent directly, which is AD-49's
@@ -51,8 +51,9 @@ Parameter WRITETYPE = "PUT";
 /// <parameter>OcuPilot.Api.Error.WRITETARGETBUSY</parameter>, and a proposal stays live.
 /// <var>pKey</var> is what <method>Release</method> takes.</p>
 /// <p><b>Caller contract:</b> take it before the fresh read and release it after the port write
-/// on every exit -- success, refusal, fault and exception alike -- in the same request, never
-/// across a turn or into a spawned job.</p>
+/// and its read-back (AD-58) on every exit -- success, refusal, fault and exception alike -- in the
+/// same request, never across a turn or into a spawned job. A write the port answers as started
+/// (AD-26) goes on running on the instance after the release.</p>
 ClassMethod Hold(pTargetRef As %String, Output pHeld As %Boolean, Output pKey As %String) As %Status
 {
     Quit ##class(OcuPilot.Kernel.State.Propose).GuardedTargetHold(pTargetRef, .pHeld, .pKey)

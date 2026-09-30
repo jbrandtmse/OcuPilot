@@ -486,6 +486,38 @@ Rejected:
 - spec edit: the Design Notes lack `Stall`, and `lint-docs.sh` was not recorded; the spec is oversized, and this pass ran `lint-docs.sh`.
 - out of scope: the frontmatter reads `done` while batches e and d are open; the lead's to set.
 
+### Review Findings (batch e)
+
+- [x] [Review][Patch] medium: the marking arm read only classes declaring `MOVESMARKING` themselves, so `AuditUserEventUpdate` (`security.audituserevents.update`), which inherits it, was not a marking tool to the checker (5 compiled classes read 1 on `ocupilot-b-ci`, 4 were derived), and nothing pinned the arm on the shipped tree [scripts/check-objectscript.py:1480]
+- [x] [Review][Patch] medium: a row action's hold through its read-back, and its release, were unasserted (Rule 19) [src/OcuPilot/Test/ProposalConfirm.cls:290]
+- [x] [Review][Patch] the prohibited set runs under the confirm's hold, as the Fix places it, but moving the hold to just above the fingerprint re-read stayed green [src/OcuPilot/Test/ProposalConfirm.cls:245]
+- [x] [Review][Patch] `Operation).Apply(` had no harness leg, and its fixture-port exemption read `Apply`'s default port, which a tool declaring its own `PORTCLASS` bypasses [scripts/check-objectscript.py:1554]
+- [x] [Review][Patch] the marking arm missed the provider spelling of a wire name, and its stated limit named less than it leaves out [scripts/check-objectscript.py:1294]
+- [x] [Review][Patch] `TOOL_NAME_RE` did not accept parameter keywords, as `MOVES_MARKING_RE` does [scripts/check-objectscript.py:1382]
+- [x] [Review][Patch] the row action's busy upper bound left 1.8 s for the round trip on a CI shard [src/OcuPilot/Test/ReadBackRoute.cls:133]
+- [x] [Review][Patch] medium: `Operation`'s class doc says both callers hold the target, while AD-55's Saves take no hold [src/OcuPilot/Kernel/Proposal/Operation.cls:13]
+- [x] [Review][Patch] `Hold`'s caller contract said to release after the port write, while both callers hold through the read-back (AD-58), and nothing said a write the port answers as started (AD-26) continues after the hold [src/OcuPilot/Kernel/Proposal/Operation.cls:53]
+- [x] [Review][Patch] `GuardedTargetLock`'s doc said a principal "without read on" OcuPilot's database is refused, while the probe measured one with no privilege on it [src/OcuPilot/Kernel/State/Base.cls:486]
+- [x] [Review][Patch] `ProposalFixture`'s header omitted that the lock probe sets and kills a node of `^OcuPilotProbeLockFree` [src/OcuPilot/Test/ProposalFixture.cls:16]
+- [x] [Review][Patch] `ENDSECONDS`'s doc broke mid-sentence onto a short line [src/OcuPilot/Test/BackgroundSeed.cls:41]
+- [x] [Review][Defer] medium: AD-55's Saves take no per-target hold, so the proposed AD-34 and AD-53 wording would make each a standing violation [src/OcuPilot/Area/Security/OAuthClientSave.cls:333] — deferred: DW-1882 (routed, burndown), occurrence appended, not re-filed; the wording is the lead's
+
+Rejected:
+
+- low, by-design: the confirm's hold precedes all its gates, so a confirm refused for good (a lost pair, governance, restraint, a moved conversation or definition) on a busy target first answers 409 after up to 10 s, while a row action checks its pairs before its hold. Only the proposal's own minting user inside its window reaches the hold (`ClaimById` runs first), and what they learn is that a write is in flight on a target they already know; nothing is written, the pair is named on the retry (AD-8), every gate stays at the write (AD-40), and the proposed AD-34 holds. The Fix places the hold before the gate.
+- low, wontfix-theoretical: `Release`'s status is discarded in both callers. The unlock fails only if `AddRoles` fails after the same request's hold took it, and the kernel discards its turn-slot unlock the same way (`Turn.cls:218`, `:265`, `:341`, `:410`). Real when a target answers 409 with no live holder.
+- low, wontfix-theoretical: the release after the `Catch` needs the install namespace and a `Catch` body that does not raise. A port returning in `%SYS` would already break the OcuPilot calls after it (AD-16). Real when a port is found returning with `$NAMESPACE` switched.
+- low, by-design: a proposal whose window closes during the hold's wait is claimed up to 10 s late. `ClaimById` judged the token on arrival, as AD-6 words it, and the hold's wait replaces the claim's own 10 s lock wait.
+- low, wontfix-theoretical: a lock-probe job answering after its 10 s wait leaves a `^OcuPilotProbeLockFree` node; the probe tries with a zero timeout.
+- maybe-false, if true low: the claim's own `Canonical` call may have lost its pin now that the hold refuses first. It matters only for a row stored under a non-canonical spelling, which mint no longer writes (AD-13); settles by running "drop `Canonical` from `GuardedClaimAndClose`" against `ProposalSpelling`.
+- low, rejected: `Error.cls`'s one line in `ReasonForToolCode` is a mid-file edit. The intent scopes append-only to new parameters, which are at the end, and Epic 16's hunks sit at 4107-4119; moving it into `Write.ReasonFor` edits another contended file.
+- low, rejected: `ReasonForToolCode`'s doc does not list `WRITE.TARGETBUSY`; it already omits the navigation and lock families it resolves.
+- low, rejected: `STALLSECONDS`'s "that the teardown allowed before" is the sentence the Fix Pack item asked for.
+- low, rejected: `ProposalConfirm` is 776 lines against the approximate 500-line guideline; the row-action leg shares the confirm legs' fixture.
+- low, by-design: "retrying once the lock is free succeeds" is pinned for the row action only. `ConfirmRoute` issues no confirmed write by design, and the busy legs assert the row live and unburned.
+- low, wontfix-accepted (`reopen_if=` a Test class writes a marking tool, unguarded, through a subclass of the shipped confirm, `$ClassMethod`, an AD-55 Save route, or a row action named only by screen and action id): those paths stay outside the arm, and its stated limit now names them.
+- rejected (lead-owned): the proposed AD-53 replacement drops "inside the transition" for the prohibited set, which both callers evaluate under the hold; AD-34's Binds line names the confirm path only; the pointers :505 and :739 read :514 and :753 in the spine. DW-1882 sits flush against DW-1879 (both parse); frontmatter `done` against the tracker's `review`.
+
 ## Spec Change Log
 
 - 2026-09-30 batch b rework 1 (lead): CI run 36720188412 was red on `seeded-injection` (DW-1210's cut hid the seed's row); the leg now filters its scripted read to the probe role (47e15e2b).
@@ -684,6 +716,17 @@ Rejected:
   - `[false]` `[reject]` The pattern pre-check also fails on an empty or unreadable pattern (intent-alignment) — an empty pattern admits "ab", so the POST could change the password; failing closed is the Fix's purpose.
   - `[maybe-false]` `[reject]` The expected 845 sentence is resolved in the test process while the server resolves it in the CSP process (intent-alignment) — unchanged from the deleted probe, which also resolved in the test process; settles on an instance whose CSP process takes another message language; if true, low.
 
+### 2026-09-30 — Code review (batch e)
+
+- layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor, all Opus; none failed. 44 raw rows grouped into 26 entries: high 0, medium 4, low 20, maybe-false 1, lead-owned 1. 12 patched, 1 deferred (DW-1882, occurrence), 13 closed; see `### Review Findings (batch e)`.
+- `[medium]` `[patch]` An inherited `MOVESMARKING` escaped the marking arm (all four layers). Measured on `ocupilot-b-ci`: `%Dictionary.CompiledParameter` reads 1 on five classes, and the checker derived four, missing `AuditUserEventUpdate`. It now walks the superclass graph, the nearest declaration deciding; a harness case and a shipped-tree floor pin it.
+- `[medium]` `[patch]` A row action's hold through its read-back, and its release, were unasserted (verification-gap, blind-hunter, edge-case-hunter, acceptance-auditor). Red in runs 295 and 296.
+- `[medium]` `[patch]` `Operation`'s class doc claimed both callers hold, while AD-55's Saves take none (acceptance-auditor, blind-hunter). DW-1882 carries the code gap, and the lead amends the AD-34 and AD-53 wording.
+- `[low]` `[patch]` The prohibited set under the confirm's hold was unpinned (verification-gap): red in run 295 with the hold moved after the gates.
+- Lock path, read in full: every exit of `Confirm.Transition` and `ScreenAction.Run` reaches the release after the `Catch` (no `Return` inside either `Try`); the escalated frame runs `Lock` alone (AD-9); nothing is spawned under the hold outside the test fixture's probe, which takes no lock the parent holds; the claim re-enters the one canonical key; the ledger's `^OcuPilotStateCap` lock is taken inside the hold and never waits on a target lock, so no cycle exists. The row action checks its pairs before its hold; the confirm holds before its gates (closed by-design, above).
+- `Error.cls`: 989 declared and 992 compiled parameters on `ocupilot-b-ci` (3 inherited), against the 1,000 limit `spec-16-25-the-external-language-server-editor.md:602` states for ERROR #5290; it compiles. Epic 16's worktree adds no parameter to it.
+- Rules: AD-8, AD-9, AD-10, AD-13, AD-15, AD-39, AD-40 and AD-58 match; AD-34 and AD-53 match the proposed wording except where the stage report asks the lead to amend it (the Saves, the read-back, a started write, the prohibited-set anchor). Rule 3 is met by `ReadBackRoute` and `ConfirmRoute`'s busy legs over HTTP; DW-1451 and DW-1290 are test tooling. No NFR touched.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story: it is a defect-fix story and introduces no service, module or shared component. `BackgroundSeed.Hold`, the fixture's `Linger`, and `Operation.Hold`/`Release` each have their consumer in the same batch. Consumes: none.
@@ -878,8 +921,12 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 - `mutation:` take the hold in `ScreenAction.Run` after `Operation.Read` → run 283 red on `ProposalConfirm.TestARowActionHoldsItsTargetFromTheFreshReadThroughTheWrite` alone (the X.509 list's Delete through `SslActionFixture`; a second process took the lock at the fresh read); release it before `Operation.Apply` → run 284 red on the same test alone (at the write); each reverted byte-identical, run 287 24/24.
 - `mutation:` delete the `WRITETARGETBUSY` line from `Error.ReasonForToolCode` → run 285 red on `ConfirmRoute.TestAConfirmOnAHeldTargetIsRefusedBusyOverTheWire` alone (409 `WRITE.TARGETBUSY` with "That tool could not be answered on this instance."); reverted byte-identical, run 288 7/7.
 - `mutation:` drop `/confirm"`, `/action"` or `ScreenAction).Handle(` from `MARKING_WRITE_ENTRY_RE`, one at a time → the harness red on that entry's leg of `test_each_route_and_the_handler_arm_the_marking_arm_on_their_own` alone (1 of 140 each); each reverted byte-identical, 140/140.
-- `mutation:` `CLAIMLOCKSECONDS = 20` → run 286 red on `ReadBackRoute.TestARowActionOnAHeldTargetIsRefusedBusy`'s upper bound alone (waited 20.2 s against `< 12`); reverted byte-identical, run 289 4/4 (waited 10.2 s).
+- `mutation:` `CLAIMLOCKSECONDS = 20` → run 298 red on `ReadBackRoute.TestARowActionOnAHeldTargetIsRefusedBusy`'s upper bound alone (waited 20.2 s against `< 15`); reverted byte-identical, run 299 4/4.
 - Observed on the reverted tree (`OCUPILOT-LOAD:OK:errors=0`): `ProposalConfirm` 287 (24/24), `ConfirmRoute` 288 (7/7), `ReadBackRoute` 289 (4/4); the harness 140/140; the whole-tree checker 0 problems.
+- `mutation:` release the hold in `ScreenAction.Run` before `ReadBack.Of`, and, independently, take `Confirm.Transition`'s hold after its gates, just before `FingerprintMatches` → run 295 red on exactly two assertions, each alone in its leg: `TestARowActionHoldsItsTargetFromTheFreshReadThroughTheWrite` "nor at its read-back" and `TestTheTargetIsHeldThroughThePortWriteAndReleased` "at the prohibited-set check"; reverted byte-identical (`shasum`), run 297 24/24.
+- `mutation:` drop the release after `ScreenAction.Run`'s `Catch` → run 296 red on the row-action leg's "once the action answers, it can" alone, and the class-level "A UnitTest left the following global locked"; reverted byte-identical, run 297 24/24.
+- `mutation:` derive only the classes that declare `MOVESMARKING` themselves → the harness red on `test_a_tool_inheriting_the_marking_flag_is_a_marking_tool` (its inherited leg) and `test_the_marking_arm_reaches_the_shipped_marking_tools` (2 of 144); exempt `Apply(`'s fixture port as `ApplyAt(`'s is → red on `test_apply_arms_the_rule_whatever_its_default_port` alone; drop the provider spelling → red on `test_the_provider_spelling_of_a_wire_name_names_the_tool` alone; each reverted byte-identical, 144/144.
+- Code review pass, on the reloaded tree (`OCUPILOT-LOAD:OK:errors=0`): `ProposalConfirm` run 297 (24/24), `ReadBackRoute` 299 (4/4), `ConfirmRoute` 300 (7/7); the harness 144/144; the whole-tree checker 0 problems, the marking arm deriving five tools and still reaching exactly `AuditEventEditor`, `AuditingUpdate` and `ProhibitedRoute`, all guarded. `ocupilot-b-ci` holds no `^OcuPilotProbeLockFree` node and no target lock.
 
 **Batch d (loop):**
 

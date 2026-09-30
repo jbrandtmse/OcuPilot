@@ -483,7 +483,7 @@ ClassMethod GuardedTurnSlotUnlock(pUser As %String) As %Status [ Private ]
 /// the process ending. It is incremental, so a second take by the holding process re-enters it and
 /// each take needs its own release. Reach it through <code>..</code> dispatch from
 /// <class>OcuPilot.Kernel.State.Propose</class>, whose hold and claim are its callers. The escalation
-/// is required, not only chosen: a principal without read on OcuPilot's database is refused
+/// is required, not only chosen: a principal with no privilege on OcuPilot's database is refused
 /// <code>&lt;PROTECT&gt;</code> by the <code>Lock</code> itself.</p>
 ClassMethod GuardedTargetLock(pKey As %String, pTimeout As %Integer, Output pHeld As %Boolean) As %Status [ Private ]
 {

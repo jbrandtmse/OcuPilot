@@ -14,7 +14,8 @@
 /// needs a real target reads an application the instance already serves; nothing in this suite
 /// writes to the instance at all, because minting is the whole of Story 5.1.</p>
 /// <p><method>LockFreeInAnotherProcess</method> starts one short-lived process, which tries
-/// OcuPilot's target lock once and ends.</p>
+/// OcuPilot's target lock once, leaves its answer in a node of <code>^OcuPilotProbeLockFree</code>
+/// that the caller reads and kills, and ends.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.ProposalFixture Extends %RegisteredObject
 {
@@ -108,16 +109,25 @@ ClassMethod WriteCount() As %Integer
 
 /// <p>Arm every later mutating <method>Invoke</method> to ask, at the moment of the write, whether
 /// another process can take the scoped target lock <var>pKey</var>
-/// (<method>OcuPilot.Kernel.State.Propose.TargetHoldKey</method>), and the first reading
-/// <method>Invoke</method> before any write and the first after one to ask the same;
-/// <method>LockFreeAtWrite</method>, <method>LockFreeAtRead</method> and
-/// <method>LockFreeAtReadBack</method> answer what each found.</p>
+/// (<method>OcuPilot.Kernel.State.Propose.TargetHoldKey</method>), the first reading
+/// <method>Invoke</method> before any write and the first after one to ask the same, and the first
+/// armed <method>Prohibits</method> too; <method>LockFreeAtWrite</method>,
+/// <method>LockFreeAtRead</method>, <method>LockFreeAtReadBack</method> and
+/// <method>LockFreeAtGate</method> answer what each found.</p>
 ClassMethod ArmLockProbe(pKey As %String)
 {
     Set ^||OcuPilotProposalFixture("lockprobe") = pKey
     Kill ^||OcuPilotProposalFixture("lockfree")
     Kill ^||OcuPilotProposalFixture("lockfreeread")
     Kill ^||OcuPilotProposalFixture("lockfreereadback")
+    Kill ^||OcuPilotProposalFixture("lockfreegate")
+}
+
+/// <p>What the armed lock probe found at the first armed prohibited-set check
+/// (<method>Prohibits</method>), as <method>LockFreeAtWrite</method> answers it.</p>
+ClassMethod LockFreeAtGate() As %String
+{
+    Quit $Get(^||OcuPilotProposalFixture("lockfreegate"))
 }
 
 /// <p>What the armed lock probe found at the last write: 1 when another process took the target
@@ -213,12 +223,14 @@ ClassMethod ProhibitedClass() As %String
     Quit $Get(^||OcuPilotProposalFixture("prohibited"))
 }
 
-/// <p>A prohibited set that refuses every write, for
+/// <p>A prohibited set that refuses every write, and asks the armed lock probe
+/// (<method>ArmLockProbe</method>) the first time it is called, for
 /// <method>OcuPilot.Test.ConfirmFixture.ProhibitedClassName</method> to answer with. The signature
 /// is the one <class>OcuPilot.Kernel.Proposal.Confirm</class> calls;
 /// <class>OcuPilot.Kernel.Proposal.Prohibited</class> implements the same one.</p>
 ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %String, pDiff As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status
 {
+    If ($Get(^||OcuPilotProposalFixture("lockprobe")) '= "") && '$Data(^||OcuPilotProposalFixture("lockfreegate")) Set ^||OcuPilotProposalFixture("lockfreegate") = ..LockFreeInAnotherProcess(^||OcuPilotProposalFixture("lockprobe"))
     Set pProhibits = 1
     Set pCode = "AGENT.PROHIBITED"
     Quit $$$OK

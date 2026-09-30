@@ -38,9 +38,8 @@ Parameter COMPACTTASK = "CompactDBSpace";
 /// <p>How long, in seconds, <method>Remove</method> keeps reading a task it canceled for the
 /// vendor's record of its end. The cancel before it blocks about 18 s on a job that does not respond,
 /// and the last read and the delete that follows it can each wait out the lock timeout (10 s) past
-/// this bound. A job that does not respond
-/// acts on the cancel only once it runs again, as a compact on a host whose writes stall does
-/// (inference).</p>
+/// this bound. A job that does not respond acts on the cancel only once it runs again, as a compact
+/// on a host whose writes stall does (inference).</p>
 Parameter ENDSECONDS As INTEGER = 60;
 
 /// <p>A refusal status unless this instance is armed.</p>
