@@ -8332,6 +8332,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T17:04:25Z status=routed owner=burndown by=cr note=void 30 s half: run 36530303753 (dc34dc4a) predates 6bcc6d3b, a DW-1819 sighting; open cause is DW-1802 race
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:47Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T11:05:15Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=840ab37f+9cc37242 agent leg held (r98 red/r99 green; CI 36702722757); screen/admin legs keep resume-pause gap
 
 ### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
@@ -8344,6 +8345,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T17:09:15Z status=routed owner=burndown by=lead note=Epic 12's issuer fixture (OAuthServerDiscover); probe the fixture server's timing on a slow runner
 - 2026-09-30T03:36:26Z status=routed owner=range-end-cleanup by=merge_gate note=restores the owner-approved decision-sheet line (into Story 23.2) that a union merge from OCU-1-epic18 placed before an older trailer
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T11:05:15Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=840ab37f+9cc37242 fixture listens once; linger leg r89 red/r90,r110 green; CI 36702722757
 
 ### DW-1846: Admin API behaviours in Database.Actions on 2026.2 that OcuPilot designs around: mount without %Admin_Secure:USE answers 500 #356; a queued action refused for privilege answers 202 and fails in the task; modify-size silently no-ops a shrink and clamps above MaxSize (logging a severity-2 alert); an integrity check on a non-database directory reports both no errors and errors; NewVolumeDirectory collisions answer 500 (#576, #575); deleting an AsyncTaskSysBackground row as an object leaves its %SYS.BackgroundTask row
 - source: spec-18-4-the-deferred-disk-operations.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -8532,3 +8534,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-09-30: taking ^R("r",2) changed ^R("r",1)'s DeleteID, so a sibling taken mid-loop leaves a listed id stale; the vendor's answer to it is unmeasured, and a crafted id crashed a CSP worker
 - 2026-09-30T16:28:39Z status=decision-pending owner=burndown by=cr note=AD-52 named limit (lead, Rule 20) or re-list before each DELETE at N more LISTs; renumbered-id answer unmeasured
+### DW-1866: CI flake: AdminPortAbsence.TestAVerifiedDeletePostsNoAlert saw an alert during a verified delete and its re-read
+- source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: instance shard 3/3: 'the delete and its re-read post no alert' failed at 13:51:56Z; a %SYS.WorkQueueMgr appendError #7802 was logged at 13:52:37Z; the DW-1861 change touches TaskCreate/TaskUpdate only; first occurrence in the last 40 failed runs
+- 2026-09-30T15:17:44Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p1 (CI flake): the assertion counts alerts instance-wide, so an unrelated vendor alert in the window fails it; scope it to alerts the delete itself raises
+
+### DW-1867: CI flake: language-server-editor.browser-spec.mjs AC3 (a started probe's editor states the running sentence and reads only) failed once
+- source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: browser shard 2/3 at 13:58:47Z: 3 passed, 1 failed; the spec is 16.25's own and passed in 36681132055, 36684985324, 36706426500 and 36722327485; DW-1861 touches no language-server code
+- 2026-09-30T15:17:44Z status=routed owner=burndown by=orchestrator note=Epic 16's close gate: a CI flake in its own 16.25 spec (inference: the probe's start is read before it reports running); fix at the epic close under Rule 27 (CI flakes are chartered)
+### DW-1864: GET /conversation/:id serializes every entry's stored steps as one %ToJSON() string, so a conversation of enough tool-heavy turns raises <MAXSTRING> on restore
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Api/Response.cls:17 writes pData.%ToJSON() as one string (MaxLocalLength 3,641,144 on ocupilot-b-ci); Entry.StepsJson keeps each turn's step projection, up to about 410 KB of tool text per turn after DW-1210 (inference: about nine such turns exceed it)
+- 2026-09-30T13:10:20Z status=escalated owner=burndown by=cr note=23.2 batch b review: DW-1210 bounds the poll, not the restore; fix touches the one response writer (AD-12)
+- 2026-09-30T16:00:04Z status=routed owner=range-end-cleanup by=merge_gate note=decided (orchestrator 2026-09-30): not in 23.2 (owner cap of 12); queued for the standing cleanup after the next release, priority p4, user-visible but rare (about nine tool-heavy turns); likely fix: write the response with the object's own device writer (Do pData.%ToJSON()) instead of one string - verify on the one AD-12 writer
+
+### DW-1870: A Windows clone (Git for Windows, core.autocrlf=true) checks scripts/*.sh out with CRLF, so durable-init dies at once ('set: Illegal option -') and docker compose up --wait fails in 1 s
+- source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: high | fix-risk: low | footprint: .gitattributes, plus a roster test
+- evidence: reproduced on Linux with git -c core.autocrlf=true clone: durable-init exit 2; with only the .sh files LF the CRLF .cls files compile and install (healthy in 132 s, STARTPATH-OK); '*.sh text eol=lf' in .gitattributes gives 12/12 LF under autocrlf=true; the index is already LF
+- 2026-09-30T17:02:04Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=owner note=owner-approved for 1.0.4, before the 14:00 cut: add '*.sh text eol=lf' to .gitattributes and a test that pins every tracked *.sh to eol=lf (git check-attr); its own commit, ahead of 23.2's remaining batches; outside 23.2's cap of 12 by owner instruction
+
+### DW-1871: With no agent definition, every full load of /ocupilot/ (sign-in, reload, new tab) redirects to /agent/definitions/edit, and Cancel lands on the empty Definitions list rather than Home
+- source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: medium | fix-risk: low | footprint: the first-run redirect, its Cancel target, and the per-user record of the first sign-in
+- evidence: every full load with no definition opens the key form; approved: auto-open only on the first sign-in, later loads land on Home with the panel's 'No agent definition is enabled' note as the pointer; Cancel on the auto-opened form goes to Home; README:196 already says 'The first time an administrator signs in'
+- 2026-09-30T17:02:04Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=owner note=owner-approved for 1.0.4 if it can start before 11:50 PDT, otherwise 1.0.5: Epic 16 takes it right after 16.12's boundary, before 16.13; its own commit
