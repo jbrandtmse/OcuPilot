@@ -575,8 +575,9 @@ ClassMethod SecretBodyNames() As %List
 
 /// <p>The top-level <code>secret</code> literal rows of this tool's own
 /// <class>OcuPilot.Screen.Tool.ToolFields</class> entry, as a <class>%List</class> of names: the
-/// secrets its write sends (AD-3). Empty for a tool with no entry, and when the entry cannot be
-/// read.</p>
+/// secrets its field list classifies (AD-3), which <method>ChannelSecretNames</method> opens only
+/// where this tool's <method>SecretArguments</method> also declares them. Empty for a tool with no
+/// entry, and when the entry cannot be read.</p>
 ClassMethod SecretFieldNames() As %List
 {
     Set tNames = ""

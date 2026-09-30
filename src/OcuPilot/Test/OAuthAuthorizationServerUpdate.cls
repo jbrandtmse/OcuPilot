@@ -322,6 +322,7 @@ ClassMethod EnsureUnreadPrincipal() As %Status
             Set tSC = $$$ERROR($$$GeneralError, "the throwaway principal's grants did not read back as declared")
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Set $NAMESPACE = tOrigNS

@@ -318,9 +318,9 @@ Parameter EFFECTSERVERCLIENTSDELETED = "OAUTH.SERVERCLIENTSDELETED";
 
 Parameter EFFECTSERVERCLIENTSDELETEDHIDDEN = "OAUTH.SERVERCLIENTSDELETEDHIDDEN";
 
-/// <p>The consequence of customization roles that add <parameter>ALLROLE</parameter> or an
-/// <parameter>ADMINROLEPREFIX</parameter> role: the vendor's customization code runs with them. Alone,
-/// and with each client effect.</p>
+/// <p>The consequence of customization roles that add a role granting <parameter>ALLROLE</parameter>
+/// or an administrative privilege (<method>AddsPrivilegedCustomizationRole</method>): the vendor's
+/// customization code runs with them. Alone, and with each client effect.</p>
 Parameter EFFECTCUSTOMIZATIONPRIVILEGED = "OAUTH.CUSTOMIZATIONPRIVILEGED";
 
 Parameter EFFECTSERVERCLIENTSPRIVILEGED = "OAUTH.SERVERCLIENTSPRIVILEGED";

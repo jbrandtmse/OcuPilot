@@ -347,6 +347,41 @@ Rejected:
 - false: the sweep misdescribes `auditing-write` and `task-resume`, which read whole-card text. They look for status words and a tool name, which a card shows expanded or not, so the cut cannot remove them.
 - false: the `anywhere` leg does not show the filtered read returned the row. That leg pins what a compliant model can do; the `channels` card assertion pins the row.
 
+### Review Findings (batch c)
+
+- [x] [Review][Patch] medium: a screen action's value that the screen declares secret and its tool does not send went to the ordinary values, where the confirm channel refuses the same key; it is refused now, and so is every value when the secret declaration cannot be read (AD-6, AD-56) [src/OcuPilot/Api/ScreenAction.cls:478]
+- [x] [Review][Patch] medium: no real browser observed the privilege line; the create leg now asserts the default `%Manager` shows it and unticking it removes it (Rule 3) [ui/browser/oauth-server-editor.browser-spec.mjs:268]
+- [x] [Review][Patch] The name-only rule stayed at its origin: the customization effect's doc and EXPERIENCE.md :520, corrected in place (993 lines) [src/OcuPilot/Kernel/Proposal/Prohibited.cls:320]
+- [x] [Review][Patch] ×5 doc corrections: `SecretFieldNames` said "the secrets its write sends" (a tool's own `SecretArguments` still closes them); `ChannelProblem` said an empty body is always sound; `ProposalConfirm`'s header said the probe leg is refused before any port call (its mint reads through the shipped port); `SecretSpelling` claimed the X.509 tools' schema where it reads the edit's; a mirror-test comment said both confirm-channel keys read `declaredNames`
+- [x] [Review][Patch] `EnsureUnreadPrincipal`'s `Catch` did not restore `$NAMESPACE` first (AD-16) [src/OcuPilot/Test/OAuthAuthorizationServerUpdate.cls:324]
+- [x] [Review][Patch] ×2 verification: the loop ran none of the shipped secret-confirm suites, and runs 223-225 went out in one message; the review probed every write tool's channel and ran 18 classes one at a time (runs 229-246)
+- [x] [Review][Defer] A service's `ClientSystems` role grant is judged by name [src/OcuPilot/Kernel/Proposal/Prohibited.cls:4046] — deferred: pre-existing, DW-1869 (owner burndown), occurrence appended
+
+Rejected:
+
+- low, wontfix-accepted (`reopen_if=` two tools under one `toolIdentifier` classify one top-level path differently in `ToolFields.cls`): `Registry.ToolFieldRows` keeps the last tool's row for a path while the mirror takes the union; none today, and the Descriptor test's shipped-descriptor leg reddens on the first.
+- low, wontfix-accepted (`reopen_if=` `DECLAREDNAMEKINDS` is next edited): the `settable` projection has no reader left in either engine; removing it moves the pinned roster in three files.
+- low, wontfix-accepted (`reopen_if=` `ProposalConfirm` reads red where `OCUPILOT_ALLOW_PRINCIPALS` is unset): the password leg fails rather than skips unarmed; throwaways and CI arm it, and a skip adds a roster member in `ci-throwaway.sh`.
+- low, wontfix-accepted (`reopen_if=` a tool's payload or diff names a declared secret outside its own secret rows): the draft and the card read the screen's whole list, as in the implement triage; `proposal-view.ts:170`'s name-only comment is in Epic 16's contended file.
+- low, wontfix-theoretical: an exception raised inside `RoleEscalates` itself still answers an error, and the mint a 500 that refuses it; `RoleGrantsPrivilege` catches its own, and no measured path raises one.
+- low, wontfix-theoretical: the line and the card say "%All or an administrative role" for a role that merely could not be read; only a caller without `%Admin_Secure:USE` meets it, `CustomizationViolations` refuses that caller's new role, and `strings.ts` is append-only.
+- low, wontfix-theoretical: `EnsureUnreadPrincipal` deletes an account of its own test-only name without a marker; the class is armed.
+- low, by-design: the shared predicate also moves the user and role arms and every form mark to privileged on a failed read; fail-closed, and those screens require `%Admin_Secure:USE`, which reads roles.
+- low, rejected: `ROLEABSENTCODE` names a vendor code as a parameter, the project's idiom (`Account.cls` `WRONGPASSWORDCODE`, `POLICYCODES`).
+- low, rejected: the top-level secret rule has three readers, and `SecretFieldNames` parses the field lists per call as `FieldRows` does; merging them is a refactor.
+- low, rejected: a write tool on `Screen.Tool.Base` has a closed channel now; all 116 shipped write tools extend `Write` (probe), and closed is the safe side.
+- low, rejected: `TestADeclaredSecretIsAcceptedFromTheScreensOwnDeclaration` cannot tell the intersection from the whole list; the update-password leg pins the intersection (run 206).
+- low, rejected: `X509SecretProbe`'s `Declare` seam is only reset now; `X509Update`'s own `SecretArguments` answers `""` either way.
+- low, rejected: `CredentialNameProblem`'s exemption no longer fires for a settable field; the doc's condition is what the code checks, and the sentence names the remedy.
+- low, rejected: `FieldRows`' declared-secret filter no longer fires for a validated descriptor; it is a second layer that can only hide a field.
+- low, rejected: `MarkedRoles` repeats two other slices' loop, and a shared helper would cross slices. false: its cost, 10 ms for 71 roles on `ocupilot-b-ci`.
+- low, rejected: test prose (a mutation description, a method name, two long comment lines); the description still reads as removing the secret-row source.
+- low, rejected: no HTTP request carries the per-tool refusal; the route passes the body whole (`Api/Confirm.cls:43`) and `ConfirmRoute` pins the route-to-refusal wiring.
+- low, rejected: a role entry with a name and no mark is untested; `OAuthAuthorizationServerClients` pins the server's mark as a boolean.
+- low, rejected: the password-unchanged assertion cannot redden under the defect, since the vendor refuses the body; as in the implement triage.
+- rejected (lead-owned, spec text): "All 15 shipped entries" is 13, in nine descriptors (probe on `ocupilot-b-ci`).
+- false: `EnsureUnreadPrincipal` creates principals ungated. The class's `ARMINGVARIABLE` is `OCUPILOT_ALLOW_PRINCIPALS`, `OnBeforeAllTests` refuses unarmed, and `ci-throwaway.sh` lists it (:213).
+
 ## Spec Change Log
 
 - 2026-09-30 batch b rework 1 (lead): CI run 36720188412 was red on `seeded-injection` (DW-1210's cut hid the seed's row); the leg now filters its scripted read to the probe role (47e15e2b).
@@ -464,6 +499,15 @@ Rejected:
   - `[low]` `[reject]` The accept arm runs against `SecretTool.Probe`'s authored secret, `ProposalScreen`'s declaration is now refused, and the registry and build AC is tested by direct calls (intent-alignment) — those calls are the functions load and build run, the shipped field-list reader is driven both ways (`UserCreate` run 214 accepts `Password`, the new `ProposalConfirm` leg refuses it), and no `SECRETBODY` name lies outside its tool's secret rows.
   - `[false]` `[reject]` The form change goes beyond the matrix, and no `oauth-server-editor` run is recorded (intent-alignment) — the spec's User-visible changes name the create default's line, and the spec ran 4/4 on the rebuilt bundle (Auto Run Result).
   - `[low]` `[patch]` New comments in `Test/Descriptor.cls` and `screen-mirror.test.mjs` named ledger ids (intent-alignment, prose discipline) — removed.
+
+### 2026-09-30 — Code review (batch c)
+
+- layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor, all Opus; none failed. 39 raw rows grouped into 34 entries: high 0, medium 3, low 30, false 1. 11 patched, 1 deferred (DW-1869, occurrence), 22 closed; see `### Review Findings (batch c)`.
+- `[medium]` `[patch]` The screen-action channel did not apply the confirm channel's rule (blind-hunter, edge-case-hunter, acceptance-auditor): a value the screen declares secret and its tool does not send went to the ordinary values, the delta and the preview payload, where the confirm refuses it. Red in run 228; green in run 229.
+- `[medium]` `[patch]` No real browser observed the privilege line DW-1663 moves (verification-gap, Rule 3). Red at `oauth-server-editor.browser-spec.mjs:278` under a mark-less form read; 4/4 after.
+- `[medium]` `[defer]` DW-1869, the service `ClientSystems` arm's name-only judge (edge-case-hunter): pre-existing, outside batch c's tasks; occurrence appended.
+- Focus (1), measured on `ocupilot-b-ci`: the 13 declared entries (nine descriptors) are each a top-level secret row, and every write tool's channel opens to exactly the declared secrets it sends; the secret and value suites ran green (runs 232-246). Focus (2): `RoleGrantsPrivilege` restores the namespace on every path, a failed `Exists`, `Get` or `GetRecursedRoleSet` answers privileged with an OK status, 883 alone reads as absent, and `RoleGrantsAdministrativePrivilege` cannot answer an error.
+- Rules: AD-3, AD-5, AD-6, AD-8, AD-10, AD-16, AD-21, AD-35, AD-39, AD-53, AD-55 and AD-56 match after the patches. Rule 3 is met: the form read's marks over HTTP (`OAuthAuthorizationServerClients`), the line in a real browser, and the screen actions over HTTP (`UserUpdate`). No NFR touched.
 
 ## Design Notes
 
@@ -617,6 +661,9 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 - `mutation:` answer OK in `RoleGrantsPrivilege` for a role it cannot read (`If 'tExists Quit`) → run 219 red on `TestAnUnreadableRoleCountsAsPrivileged`'s role-read assertion alone; reverted byte-identical, run 224 8/8.
 - `mutation:` drop `$$$ISERR(tReadSC) ||` from both reads in `RoleEscalates` → run 220 red on that test's armed per-role read assertion alone; reverted byte-identical, run 224 8/8.
 - `mutation:` let `Write.FieldRows` keep `secret` rows → run 222 red on `SecretSpelling.TestAnAdmittedSpellingIsNeverOffered` (`PrivateKeyFile` and `PrivateKeyPassword` offered); reverted byte-identical, run 223 2/2.
+- `mutation:` drop the refusal of a declared secret the tool does not send from `ScreenAction.Values` → run 228 red on `ProposalConfirm.TestAScreenActionRefusesADeclaredSecretItsToolDoesNotSend` alone (the value reached the ordinary values); reverted byte-identical, run 229 22/22.
+- `mutation:` `HandleForm` answers the role names without `MarkedRoles` → `oauth-server-editor` AC1 red alone at `:278` (the privilege line stayed once `%Manager` was unticked); reverted byte-identical, the spec 4/4.
+- Code review pass: green on the reloaded tree (`OCUPILOT-LOAD:OK:errors=0`), one class at a time: `ProposalConfirm` run 229 (22/22), `OAuthAuthorizationServerUpdate` 230 (8/8), `SecretSpelling` 231 (2/2), and the shipped secret and value channels in runs 232-246 (`OAuthAuthorizationServerSecret`, `OAuthServerToken`, `SslSecret`, `WalletSecretUpdate`, `WalletSecretCreate`, `OAuthClientSecrets`, `OAuthRegisteredClientSecret`, `OAuthResourceServerSecret`, `X509Import`, `UserSignIn`, `UserUpdate`, `AuditPurge`, `RoleUpdate`, `RoleCreate`, `RoleSave`: 119 tests, 0 failed). A probe of all 116 write tools' `ChannelSecretNames` read every declaration and opened each to exactly the declared secrets its tool sends. `npm run test:tools` 1,738/1,738, `oauth-server-editor` 4/4 against the batch c bundle (deployed `index.html` equal to the build's), `check-objectscript.py` and `lint-docs.sh` 0 problems, EXPERIENCE.md 993 lines.
 
 **Batch e (loop):**
 

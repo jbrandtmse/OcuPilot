@@ -511,8 +511,8 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
 /// <var>pToolName</var> itself sends as a secret
 /// (<method>OcuPilot.Screen.Tool.Registry.ChannelSecretNames</method>): AD-6's "for that tool". Every
 /// other key is a problem -- a secret only another tool of the screen sends, and the identifying
-/// key, which names the target and is the row's, not the request's. An empty body is always
-/// sound.</p>
+/// key, which names the target and is the row's, not the request's. An empty body is sound once the
+/// tool's channel can be read.</p>
 ClassMethod ChannelProblem(pToolName As %String, pBody As %DynamicObject, Output pNames As %List, Output pProblem As %Boolean) As %Status
 {
     Set pNames = ""

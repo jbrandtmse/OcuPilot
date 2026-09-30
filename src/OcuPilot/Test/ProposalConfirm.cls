@@ -7,8 +7,9 @@
 /// <code>OCUPILOT_ALLOW_PRINCIPALS</code> reading <code>1</code>, since that leg creates and removes
 /// its own probe account through <class>OcuPilot.Test.ProposalFixture</class>. Every other port call
 /// is that fixture's, so <b>no write reaches the instance</b>: the confirmed write goes to the
-/// fixture, which records the body it was sent; the probe account's leg is refused before any port
-/// call. Every row names the running account, because the claim's privilege re-check is against a
+/// fixture, which records the body it was sent; the probe account's leg mints through the shipped
+/// port's read, and its confirm is refused before any port call. Every row names the running
+/// account, because the claim's privilege re-check is against a
 /// real principal, and is removed in <method>OnAfterOneTest</method> by the turn it was minted
 /// on.</p>
 Class OcuPilot.Test.ProposalConfirm Extends %UnitTest.TestCase
@@ -550,6 +551,21 @@ Method TestAnUpdateConfirmCarryingAPasswordIsRefused()
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveUser(tName)
     Do $$$AssertStatusOK(tSC, "the probe account is removed")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).UserField(tName, "Enabled"), "", "and does not survive")
+}
+
+/// <p>AD-6, AD-56: a screen action's value that the screen declares secret and the action's tool does
+/// not send is refused, as the confirm channel refuses it, and reaches neither the ordinary values
+/// nor the secret body; one the tool sends goes to the secret body alone.</p>
+/// <p>Mutation (Rule 19): drop the refusal of a declared secret the tool does not send from
+/// <method>OcuPilot.Api.ScreenAction.Values</method> -- it is handed to the tool as an ordinary value
+/// and this goes red.</p>
+Method TestAScreenActionRefusesADeclaredSecretItsToolDoesNotSend()
+{
+    Set tProblem = ##class(OcuPilot.Test.SecretValueAction).ValuesOf({"values": {"Password": "OcuPilotNotSent1a"}}, "OcuPilot.Test.SecretValueTool", "OcuPilot.Screen.Descriptor.UserList", "reveal", .tValues, .tSecrets)
+    Do $$$AssertEquals(tProblem, "'values' names 'Password', a secret this action's tool does not send", "a declared secret the tool does not send is refused")
+    Do $$$AssertEquals(tValues.%ToJSON() _ " " _ tSecrets.%ToJSON(), "{} {}", "and reaches neither the values nor the secret body")
+    Set tProblem = ##class(OcuPilot.Test.SecretValueAction).ValuesOf({"values": {"Password": "OcuPilotSent1a"}}, "OcuPilot.Screen.Tool.UserPassword", "OcuPilot.Screen.Descriptor.UserList", "set-password", .tValues, .tSecrets)
+    Do $$$AssertEquals(tProblem _ " " _ tValues.%ToJSON() _ " " _ tSecrets.%Get("Password"), " {} OcuPilotSent1a", "while the password tool's own secret goes to the secret body alone")
 }
 
 /// <p>Whether account <var>pName</var>'s password is <var>pPassword</var>, as

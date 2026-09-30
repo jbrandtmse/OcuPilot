@@ -2,8 +2,8 @@
 /// offered. For every candidate spelling of the X.509 tools' fields,
 /// <method>OcuPilot.Screen.Registry.ConfirmChannelProblem</method> admits it as a
 /// <code>secretArguments</code> entry only when it is a top-level secret row of those tools, and
-/// neither <method>OcuPilot.Screen.Tool.Write.FieldRows</method> nor the tool's input schema offers
-/// an admitted name, even with nothing declared. An ordinary field and the array spelling
+/// neither the edit's <method>OcuPilot.Screen.Tool.Write.FieldRows</method> nor its input schema
+/// offers an admitted name, even with nothing declared. An ordinary field and the array spelling
 /// <code>OwnerList[]</code>, which the confirm body never carries, are refused (AD-6).</p>
 /// <p><b>What it needs from the environment:</b> the compiled tree only. It reads the X.509 list's
 /// declaration and the generated field lists and writes nothing.</p>
@@ -29,7 +29,7 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>AC7: the validator admits exactly the X.509 tools' top-level secret rows among the
-/// candidates, and no name it admits is among the field rows or the schema the model is offered
+/// candidates, and no name it admits is among the edit's field rows or the schema the model is offered
 /// with nothing declared.</p>
 /// <p>Mutation: re-admit a settable name in
 /// <method>OcuPilot.Screen.Registry.ConfirmChannelProblem</method>'s <code>secretArguments</code>

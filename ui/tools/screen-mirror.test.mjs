@@ -2410,8 +2410,8 @@ test('DW-1206: the projection roster is the kernel\'s, and a mismatch fails the 
   );
 });
 
-// The one builder, asserted as one: both confirm-channel keys read `declaredNames`' projections, so
-// the set cannot be built twice and drift.
+// The one builder, asserted as one: `fingerprintExcludes` and the credential-name rule read
+// `declaredNames`' projections, so the set cannot be built twice and drift.
 test('DW-1206: declaredNames answers one union in the two spellings its consumers honour', () => {
   const { screens, toolFields } = readSources();
   const webApp = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.WebAppList');
